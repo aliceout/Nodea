@@ -6,7 +6,7 @@ export default function HistoryPage() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [month, setMonth] = useState(new Date().getMonth() + 1); // 1-12
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
@@ -29,7 +29,6 @@ export default function HistoryPage() {
     fetchEntries();
   }, []);
 
-  // Suppression d’une entrée
   const handleDelete = async (id) => {
     if (!window.confirm("Supprimer cette entrée ?")) return;
     try {
@@ -40,7 +39,6 @@ export default function HistoryPage() {
     }
   };
 
-  // Filtrer les entrées sur le mois/année choisi
   const filtered = entries.filter((entry) => {
     const date = new Date(entry.date);
     return (
@@ -52,7 +50,6 @@ export default function HistoryPage() {
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
 
-  // Liste des années présentes dans les données
   const years = [
     ...new Set(entries.map((e) => new Date(e.date).getFullYear())),
   ].sort((a, b) => b - a);
@@ -91,7 +88,7 @@ export default function HistoryPage() {
         {filtered.map((entry) => (
           <li
             key={entry.id}
-            className="relative mb-6 pr-12 p-4 bg-white rounded shadow min-w-[250px] max-w-xs flex-1"
+            className="relative mb-6 p-4 bg-white rounded shadow min-w-[250px] max-w-xs flex-1"
           >
             <div className="flex items-center mb-2 justify-between">
               {(() => {
@@ -116,9 +113,9 @@ export default function HistoryPage() {
                   </span>
                 );
               })()}
-              <div className="flex items-center justify-center">
+              <div className="flex items-center justify-center pr-8 ">
                 <span className="text-xl mr-3">{entry.mood_emoji}</span>
-                <span className="ml-auto px-2 py-1 rounded bg-blue-50">
+                <span className="ml-auto px-2 py-1 rounded bg-sky-50">
                   {entry.mood_score}
                 </span>
               </div>
@@ -153,12 +150,36 @@ export default function HistoryPage() {
               </button>
             </div>
             <div>
-              <div className="mb-1">+ {entry.positive1}</div>
-              <div className="mb-1">+ {entry.positive2}</div>
-              <div className="mb-1">+ {entry.positive3}</div>
+              <div className="mb-1 text-sm break-words hyphens-auto">
+                + {entry.positive1}
+              </div>
+              <div className="mb-1 text-sm break-words hyphens-auto">
+                + {entry.positive2}
+              </div>
+              <div className="mb-1 text-sm break-words hyphens-auto">
+                + {entry.positive3}
+              </div>
             </div>
+            {/* Question du jour */}
+            {entry.question && (
+              <div className="mt-2 text-gray-800 text-sm font-semibold">
+                Question du jour : <span className="c">{entry.question}</span>
+              </div>
+            )}
+            {/* Réponse à la question */}
+            {entry.answer && (
+              <div className="mb-1 ml-2 italic text-sky-900 text-sm">
+                ↳ {entry.answer}
+              </div>
+            )}
+            {/* Commentaire */}
             {entry.comment && (
-              <div className="mt-2 text-gray-700 italic">{entry.comment}</div>
+              <div className="mt-2 text-gray-800 text-sm font-semibold">
+                Commentaire :{" "}
+                <span className=" font-normal text-gray-700 italic">
+                  {entry.comment}
+                </span>
+              </div>
             )}
           </li>
         ))}

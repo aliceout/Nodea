@@ -127,7 +127,7 @@ export default function AccountPage() {
                 )}
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mt-2"
+                  className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700 mt-2"
                 >
                   Modifier
                 </button>
@@ -175,14 +175,21 @@ export default function AccountPage() {
                   <div className="text-green-600">{emailSuccess}</div>
                 )}
                 {emailError && <div className="text-red-500">{emailError}</div>}
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mt-2"
-                >
-                  Modifier l'email
-                </button>
+                <div className="flex items-center justify-between mt-2">
+                  <button
+                    type="submit"
+                    className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700 basis-4/10"
+                  >
+                    Modifier l'email
+                  </button>
+                  <span className="text-gray-500 text-xs basis-6/10 text-left ml-3">
+                    Tu vas recevoir un mail de confirmation pour valider ce
+                    changement.
+                  </span>
+                </div>
               </form>
             </section>
+
             {/* Suppression */}
             <section className="p-4 shadow bg-white rounded">
               <label className="block mb-1 font-semibold">

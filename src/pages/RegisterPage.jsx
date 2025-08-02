@@ -128,17 +128,14 @@ export default function RegisterPage() {
         )}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-semibold"
+          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
         >
           Créer le compte
         </button>
       </form>
       <div className="mt-6 text-center w-full">
         <span className="text-gray-600">Déjà un compte ?</span>{" "}
-        <a
-          href="/login"
-          className="text-blue-700 underline hover:text-blue-900"
-        >
+        <a href="/login" className="text-sky-700 underline hover:text-sky-900">
           Se connecter
         </a>
       </div>

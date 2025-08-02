@@ -141,13 +141,13 @@ export default function AdminPage() {
                 key={user.id}
                 className={`${
                   i % 2 === 1 ? "bg-gray-50" : "bg-white"
-                } hover:bg-blue-50`}
+                } hover:bg-sky-50`}
               >
                 <td className="px-3 py-3 font-medium">{user.username}</td>
                 <td className="px-3 py-3">{user.role}</td>
                 <td className="px-3 py-3">
                   <button
-                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm"
+                    className="bg-sky-100 text-sky-700 px-3 py-1 rounded hover:bg-sky-200 text-sm"
                     onClick={() => handleResetPassword(user)}
                   >
                     Reset (mail)
@@ -172,7 +172,7 @@ export default function AdminPage() {
         <div className="flex gap-3 items-center justify-center">
           <button
             onClick={handleGenerateCode}
-            className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800"
+            className="bg-sky-700 text-white px-4 py-2 rounded hover:bg-sky-800"
             disabled={generating}
           >
             {generating ? "Génération..." : "Générer un code d’invitation"}
@@ -194,7 +194,7 @@ export default function AdminPage() {
                 >
                   <span className="font-mono">{c.code}</span>
                   <button
-                    className="text-blue-700 text-xs hover:underline"
+                    className="text-sky-700 text-xs hover:underline"
                     onClick={() => handleCopy(c.code)}
                   >
                     Copier

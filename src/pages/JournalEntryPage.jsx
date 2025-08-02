@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import pb from "../services/pocketbase";
 import EmojiPicker from "emoji-picker-react";
 import Layout from "../components/LayoutTop";
+import questions from "../data/questions.json";
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -9,16 +10,24 @@ export default function JournalEntryPage() {
   const [positive1, setPositive1] = useState("");
   const [positive2, setPositive2] = useState("");
   const [positive3, setPositive3] = useState("");
-  const [moodScore, setMoodScore] = useState(0);
-  const [moodEmoji, setMoodEmoji] = useState("🙂");
+  const [moodScore, setMoodScore] = useState("");
+  const [moodEmoji, setMoodEmoji] = useState("");
   const [comment, setComment] = useState("");
+  const [answer, setAnswer] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [showPicker, setShowPicker] = useState(false);
 
-  // Pour gérer le click hors du picker (fermeture auto)
+  // Question du jour aléatoire (fixée à chaque ouverture de page)
+  const [randomQuestion] = useState(() => {
+    const idx = Math.floor(Math.random() * questions.length);
+    return questions[idx];
+  });
+
+  // Emoji picker refs
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
+
   React.useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -36,10 +45,24 @@ export default function JournalEntryPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showPicker]);
 
+  // Validation stricte sur les champs requis
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+    // Validation obligatoire sur tous les champs requis
+    if (!positive1.trim() || !positive2.trim() || !positive3.trim()) {
+      setError("Merci de remplir les trois points positifs.");
+      return;
+    }
+    if (moodScore === "" || moodScore === null) {
+      setError("Merci de choisir une note d'humeur.");
+      return;
+    }
+    if (!moodEmoji) {
+      setError("Merci de choisir un emoji.");
+      return;
+    }
     try {
       await pb.collection("journal_entries").create({
         user: pb.authStore.model.id,
@@ -47,17 +70,20 @@ export default function JournalEntryPage() {
         positive1,
         positive2,
         positive3,
-        mood_score: moodScore,
+        mood_score: Number(moodScore),
         mood_emoji: moodEmoji,
         comment,
+        question: randomQuestion,
+        answer,
       });
       setSuccess("Entrée enregistrée !");
       setPositive1("");
       setPositive2("");
       setPositive3("");
-      setMoodScore(0);
-      setMoodEmoji("🙂");
+      setMoodScore("");
+      setMoodEmoji("");
       setComment("");
+      setAnswer("");
     } catch (err) {
       setError("Erreur lors de l’enregistrement : " + (err?.message || ""));
     }
@@ -67,7 +93,7 @@ export default function JournalEntryPage() {
     <Layout>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-3xl mx-auto rounded-lg mt-10"
+        className="w-full max-w-3xl mx-auto rounded-lg mt-5"
       >
         {/* Header : h1 et date */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
@@ -93,36 +119,30 @@ export default function JournalEntryPage() {
               Premier point positif du jour  :
             </label>
             <textarea
-              type="text"
               value={positive1}
               onChange={(e) => setPositive1(e.target.value)}
               className="w-full mb-3 p-3 border rounded min-h-18 resize-none align-top"
               rows={2}
-              wrap="soft"
               required
             />
             <label className="mb-1 font-medium">
               Deuxième point positif du jour :
             </label>
             <textarea
-              type="text"
               value={positive2}
               onChange={(e) => setPositive2(e.target.value)}
               className="w-full mb-3 p-3 border rounded min-h-18 resize-none align-top"
               rows={2}
-              wrap="soft"
               required
             />
             <label className="mb-1 font-medium">
               Troisième point positif du jour :
             </label>
             <textarea
-              type="text"
               value={positive3}
               onChange={(e) => setPositive3(e.target.value)}
               className="w-full mb-3 p-3 border rounded min-h-18 resize-none align-top"
               rows={2}
-              wrap="soft"
               required
             />
           </div>
@@ -142,7 +162,7 @@ export default function JournalEntryPage() {
                     onClick={() => setShowPicker(!showPicker)}
                     style={{ lineHeight: 1 }}
                   >
-                    {moodEmoji}
+                    {moodEmoji || "🙂"}
                   </button>
                   {showPicker && (
                     <div
@@ -163,9 +183,13 @@ export default function JournalEntryPage() {
                   <span>Note</span>
                   <select
                     value={moodScore}
-                    onChange={(e) => setMoodScore(Number(e.target.value))}
+                    onChange={(e) => setMoodScore(e.target.value)}
                     className="p-1 h-10 border rounded text-base"
+                    required
                   >
+                    <option value="" disabled>
+                      Sélectionner
+                    </option>
                     <option value="2">🤩 2</option>
                     <option value="1">😊 1</option>
                     <option value="0">😐 0</option>
@@ -195,12 +219,23 @@ export default function JournalEntryPage() {
             {success}
           </div>
         )}
-
-        {/* Bouton valider */}
-        <div className="flex justify-center">
+        {/* Question du jour + bouton */}
+        <div className="mb-6 flex flex-row items-end gap-3">
+          <div className="flex flex-col basis-6/10">
+            <div className="text-lg font-semibold mb-2">Question du jour :</div>
+            <div className="mb-2 italic text-gray-800">{randomQuestion}</div>
+            <textarea
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              className="w-full mb-0 p-3 border rounded min-h-18 resize-none align-top"
+              rows={2}
+              placeholder="Ta réponse (optionnel)"
+            />
+          </div>
           <button
             type="submit"
-            className="w-full md:w-1/2 bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-semibold"
+            className="basis-4/10 bg-sky-600 text-white px-5 py-3 rounded hover:bg-sky-700 font-semibold h-[50px] ml-2"
+            style={{ minWidth: 120 }}
           >
             Enregistrer
           </button>

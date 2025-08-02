@@ -16,7 +16,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-blue-800 text-white pl-20 pr-10 px-4 py-3 flex items-center justify-between">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-sky-800 text-white pl-20 pr-10 px-4 py-3 flex items-center justify-between">
       {/* Desktop */}
       <div className="hidden md:flex w-full items-center justify-between">
         {/* Liens à gauche */}
@@ -44,7 +44,7 @@ export default function Navbar() {
           </Link>
           <button
             onClick={handleLogout}
-            className="bg-gray-200 text-blue-900 px-3 py-1 rounded hover:bg-gray-300"
+            className="bg-gray-200 text-sky-900 px-3 py-1 rounded hover:bg-gray-300"
           >
             Déconnexion
           </button>
@@ -65,7 +65,7 @@ export default function Navbar() {
       {/* Overlay menu mobile */}
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-blue-900/95 flex flex-col items-center justify-center gap-8 z-40 md:hidden"
+          className="fixed inset-0 bg-sky-900/95 flex flex-col items-center justify-center gap-8 z-40 md:hidden"
           onClick={() => setMenuOpen(false)}
         >
           <Link
@@ -111,7 +111,7 @@ export default function Navbar() {
             </Link>
             <button
               onClick={handleLogout}
-              className="bg-gray-200 text-blue-900 px-5 py-2 rounded hover:bg-gray-300"
+              className="bg-gray-200 text-sky-900 px-5 py-2 rounded hover:bg-gray-300"
             >
               Déconnexion
             </button>
