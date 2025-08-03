@@ -22,7 +22,7 @@ export default function PasswordResetSection({ user }) {
         Réinitialiser le mot de passe par email
       </label>
       <button
-        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 w-full"
+        className="bg-yellow-400 text-white px-4 py-2 rounded hover:bg-yellow-500 w-full"
         onClick={handlePasswordReset}
         type="button"
       >

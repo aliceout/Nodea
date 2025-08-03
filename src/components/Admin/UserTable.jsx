@@ -1,4 +1,5 @@
 import React from "react";
+import ExportUserData from "./ExportUserData";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
   return (
@@ -9,6 +10,7 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
             <th className="px-3 py-3 text-left">Username</th>
             <th className="px-3 py-3 text-left">Rôle</th>
             <th className="px-3 py-3">Password</th>
+            <th className="px-3 py-3">Exporter</th>
             <th className="px-3 py-3">Supprimer</th>
           </tr>
         </thead>
@@ -29,6 +31,9 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
                 >
                   Reset (mail)
                 </button>
+              </td>
+              <td className="px-3 py-3">
+                <ExportUserData user={user} />
               </td>
               <td className="px-3 py-3">
                 <button
