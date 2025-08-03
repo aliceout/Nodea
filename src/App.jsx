@@ -2,17 +2,16 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import JournalEntryPage from "./pages/JournalEntryPage";
-import HistoryPage from "./pages/HistoryPage";
-import GraphPage from "./pages/GraphPage";
-import AdminPage from "./pages/AdminPage";
-import AccountPage from "./pages/AccountPage";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import JournalForm from "./pages/JournalForm";
+import History from "./pages/History";
+import Graph from "./pages/Graph";
+import Admin from "./pages/Admin";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
-import Navbar from "./components/Navbar";
+import Navbar from "./components/Navbar/Navbar";
 
 function App() {
   return (
@@ -21,15 +20,14 @@ function App() {
         <Navbar />
         <div className="flex-1 flex flex-col">
           <Routes>
-            <Route path="/" element={<LoginPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route
               path="/journal"
               element={
                 <ProtectedRoute>
-                  <JournalEntryPage />
+                  <JournalForm />
                 </ProtectedRoute>
               }
             />
@@ -37,7 +35,7 @@ function App() {
               path="/history"
               element={
                 <ProtectedRoute>
-                  <HistoryPage />
+                  <History />
                 </ProtectedRoute>
               }
             />
@@ -45,7 +43,7 @@ function App() {
               path="/graph"
               element={
                 <ProtectedRoute>
-                  <GraphPage />
+                  <Graph />
                 </ProtectedRoute>
               }
             />
@@ -53,7 +51,7 @@ function App() {
               path="/account"
               element={
                 <ProtectedRoute>
-                  <AccountPage />
+                  <Account />
                 </ProtectedRoute>
               }
             />
@@ -61,7 +59,7 @@ function App() {
               path="/admin"
               element={
                 <ProtectedRoute adminOnly={true}>
-                  <AdminPage />
+                  <Admin />
                 </ProtectedRoute>
               }
             />

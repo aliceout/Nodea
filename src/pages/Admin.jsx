@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import pb from "../services/pocketbase";
 import Layout from "../components/LayoutTop";
+import UserTable from "../components/Admin/UserTable";
+import InviteCodeManager from "../components/Admin/InviteCode";
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
@@ -43,7 +45,7 @@ export default function AdminPage() {
     fetchCodes();
   }, [generating, lastCode]);
 
-  // Nouvelle fonction pour suppression user + ses entrées journal
+  // Suppression user + ses entrées journal
   const handleDelete = async (userId) => {
     if (
       !window.confirm(
@@ -52,15 +54,12 @@ export default function AdminPage() {
     )
       return;
     try {
-      // Récupère toutes les entrées journal de l'user
       const journals = await pb.collection("journal_entries").getFullList({
         filter: `user="${userId}"`,
       });
-      // Supprime chaque entrée journal
       for (const entry of journals) {
         await pb.collection("journal_entries").delete(entry.id);
       }
-      // Supprime l'user
       await pb.collection("users").delete(userId);
       setUsers(users.filter((u) => u.id !== userId));
     } catch (err) {
@@ -79,7 +78,7 @@ export default function AdminPage() {
     }
   };
 
-  // Génére un code random 8 caractères alphanumériques
+  // Code d'invitation
   function randomCode(len = 8) {
     return Math.random()
       .toString(36)
@@ -93,7 +92,6 @@ export default function AdminPage() {
     setCopySuccess("");
     const code = randomCode(8);
     try {
-      // Si le champ s'appelle "code"
       const record = await pb.collection("invites_codes").create({ code });
       setLastCode(code);
       setInviteCodes([record, ...inviteCodes]);
@@ -123,88 +121,18 @@ export default function AdminPage() {
       <h1 className="text-2xl font-bold mt-10 mb-6">
         Gestion des utilisateur·ices
       </h1>
-
-      {/* Gérer les users */}
-      <div className="rounded-lg overflow-hidden border border-gray-50">
-        <table className="w-full table-auto">
-          <thead>
-            <tr>
-              <th className="px-3 py-3 text-left">Username</th>
-              <th className="px-3 py-3 text-left">Rôle</th>
-              <th className="px-3 py-3">Password</th>
-              <th className="px-3 py-3">Supprimer</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user, i) => (
-              <tr
-                key={user.id}
-                className={`${
-                  i % 2 === 1 ? "bg-gray-50" : "bg-white"
-                } hover:bg-sky-50`}
-              >
-                <td className="px-3 py-3 font-medium">{user.username}</td>
-                <td className="px-3 py-3">{user.role}</td>
-                <td className="px-3 py-3">
-                  <button
-                    className="bg-sky-100 text-sky-700 px-3 py-1 rounded hover:bg-sky-200 text-sm"
-                    onClick={() => handleResetPassword(user)}
-                  >
-                    Reset (mail)
-                  </button>
-                </td>
-                <td className="px-3 py-3">
-                  <button
-                    className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 text-sm"
-                    onClick={() => handleDelete(user.id)}
-                  >
-                    Supprimer
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Génération de codes d’invitation */}
-      <div className="mt-8 px-12">
-        <div className="flex gap-3 items-center justify-center">
-          <button
-            onClick={handleGenerateCode}
-            className="bg-sky-700 text-white px-4 py-2 rounded hover:bg-sky-800"
-            disabled={generating}
-          >
-            {generating ? "Génération..." : "Générer un code d’invitation"}
-          </button>
-        </div>
-        {copySuccess && (
-          <div className="mt-2 text-green-600 font-medium">{copySuccess}</div>
-        )}
-        {inviteCodes.length > 0 && (
-          <div className="mt-4">
-            <div className="font-semibold mb-2">
-              Codes d’invitation valides :
-            </div>
-            <ul className="flex flex-wrap gap-3">
-              {inviteCodes.map((c) => (
-                <li
-                  key={c.id || c.code}
-                  className="bg-gray-100 px-3 py-2 rounded flex items-center gap-2"
-                >
-                  <span className="font-mono">{c.code}</span>
-                  <button
-                    className="text-sky-700 text-xs hover:underline"
-                    onClick={() => handleCopy(c.code)}
-                  >
-                    Copier
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      <UserTable
+        users={users}
+        onDelete={handleDelete}
+        onResetPassword={handleResetPassword}
+      />
+      <InviteCodeManager
+        inviteCodes={inviteCodes}
+        generating={generating}
+        onGenerate={handleGenerateCode}
+        copySuccess={copySuccess}
+        onCopy={handleCopy}
+      />
     </Layout>
   );
 }
