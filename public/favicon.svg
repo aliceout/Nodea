@@ -1,0 +1,15 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="40" cy="40" r="38" fill="url(#paint0_linear)"></circle>
+  <text x="17" y="55" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="bold" fill="#f8fafc">
+    D
+  </text>
+  <text x="40" y="55" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="bold" fill="#f8fafc">
+    y
+  </text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0ea5e9"></stop>
+      <stop offset="1" stop-color="#0284c7"></stop>
+    </linearGradient>
+  </defs>
+</svg>

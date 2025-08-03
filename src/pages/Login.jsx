@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import pb from "../services/pocketbase";
 import Layout from "../components/LayoutMiddle";
+import LogoDaily from "../components/LogoDaily";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -22,11 +23,10 @@ export default function LoginPage() {
     <Layout>
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg"
+        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
       >
-        <h1 className="text-2xl font-bold mb-6 text-center w-full">
-          Connexion
-        </h1>
+        <LogoDaily className="mx-auto mb-6 w-44 h-16" />
+
         <input
           type="email"
           placeholder="Email"

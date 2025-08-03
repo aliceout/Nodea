@@ -8,9 +8,9 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
         <thead>
           <tr>
             <th className="px-3 py-3 text-left">Username</th>
-            <th className="px-3 py-3 text-left">Rôle</th>
+            <th className="px-3 py-3 text-left hidden md:flex">Rôle</th>
             <th className="px-3 py-3">Password</th>
-            <th className="px-3 py-3">Exporter</th>
+            <th className="px-3 py-3 hidden md:flex">Exporter</th>
             <th className="px-3 py-3">Supprimer</th>
           </tr>
         </thead>
@@ -23,7 +23,7 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
               } hover:bg-sky-50`}
             >
               <td className="px-3 py-3 font-medium">{user.username}</td>
-              <td className="px-3 py-3">{user.role}</td>
+              <td className="px-3 py-3 hidden md:flex">{user.role}</td>
               <td className="px-3 py-3">
                 <button
                   className="bg-sky-100 text-sky-700 px-3 py-1 rounded hover:bg-sky-200 text-sm"
@@ -32,7 +32,7 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
                   Reset (mail)
                 </button>
               </td>
-              <td className="px-3 py-3">
+              <td className="px-3 py-3 hidden md:flex">
                 <ExportUserData user={user} />
               </td>
               <td className="px-3 py-3">

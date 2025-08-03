@@ -119,7 +119,7 @@ export default function AdminPage() {
   return (
     <Layout>
       <h1 className="text-2xl font-bold mt-10 mb-6">
-        Gestion des utilisateur·ices
+        Gestion des utilisateur·ice·s
       </h1>
       <UserTable
         users={users}

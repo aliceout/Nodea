@@ -1,9 +1,23 @@
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
+import React, { useEffect } from "react";
 
 export default function Mobile({ menuOpen, setMenuOpen }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Bloque le scroll du body quand menuOpen
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Clean up si unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
 
   if (!user) return null;
 

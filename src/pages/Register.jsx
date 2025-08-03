@@ -73,7 +73,7 @@ export default function RegisterPage() {
     <Layout>
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg"
+        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
       >
         <h1 className="text-2xl font-bold mb-6 text-center w-full">
           Créer un compte
