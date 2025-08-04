@@ -2,11 +2,24 @@ import React, { useEffect, useState } from "react";
 import pb from "../services/pocketbase";
 import Layout from "../components/LayoutTop";
 import GraphChart from "../components/Graph/GraphChart";
+import { useMainKey } from "../hooks/useMainKey";
+import CryptoJS from "crypto-js";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { mainKey } = useMainKey();
+
+  function decryptField(cipherText) {
+    if (!mainKey) return "";
+    try {
+      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
+      return bytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+      return "[Erreur de déchiffrement]";
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,8 +43,8 @@ export default function GraphPage() {
         setData(
           filtered.map((entry) => ({
             date: entry.date,
-            mood: entry.mood_score,
-            emoji: entry.mood_emoji,
+            mood: Number(decryptField(entry.mood_score)), // déchiffré et cast en number
+            emoji: decryptField(entry.mood_emoji), // déchiffré
           }))
         );
       } catch (err) {
@@ -40,11 +53,20 @@ export default function GraphPage() {
         setLoading(false);
       }
     };
+
     fetchData();
-  }, []);
+  }, [mainKey]); // <-- ajoute mainKey en dépendance pour recharger quand la clé change
 
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!mainKey) {
+    return (
+      <div className="p-8 text-red-600 font-semibold">
+        ⚠️ Clé de chiffrement absente. Merci de vous reconnecter pour afficher
+        le graphique.
+      </div>
+    );
+  }
   if (!data.length) return <div className="p-8">Aucune donnée.</div>;
 
   return (

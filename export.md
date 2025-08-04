@@ -1,3 +1,2687 @@
+# Project Structure
+
+```
+public/
+  favicon.svg
+  LogoDaily.svg
+src/
+  components/
+    Account/
+      ChangeEmail.jsx
+      ChangeUsername.jsx
+      DeleteAccount.jsx
+      ExportData.jsx
+      PasswordReset.jsx
+    Admin/
+      ExportUserData.jsx
+      InviteCode.jsx
+      UserTable.jsx
+    Graph/
+      GraphChart.jsx
+    Historique/
+      HistoryEntry.jsx
+      HistoryFilters.jsx
+      HistoryList.jsx
+    Journal/
+      Comment.jsx
+      Mood.jsx
+      Positives.jsx
+      Question.jsx
+    Navbar/
+      Desktop.jsx
+      Hamburger.jsx
+      Mobile.jsx
+      Navbar.jsx
+    LayoutMiddle.jsx
+    LayoutTop.jsx
+    LogoDaily.jsx
+    ProtectedRoute.jsx
+  data/
+    questions.json
+  hooks/
+    useAuth.js
+    useJournalEntries.js
+    useMainKey.jsx
+    useUsers.js
+  pages/
+    Account.jsx
+    Admin.jsx
+    ChangePassword.jsx
+    Graph.jsx
+    History.jsx
+    JournalForm.jsx
+    Login.jsx
+    NotFound.jsx
+    Register.jsx
+  services/
+    crypto.js
+    pocketbase.js
+  App.jsx
+  index.css
+  main.jsx
+.gitignore
+eslint.config.js
+index.html
+package-lock.json
+package.json
+README.md
+vite.config.js
+```
+
+
+## public\favicon.svg
+
+```svg
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="40" cy="40" r="38" fill="url(#paint0_linear)"></circle>
+  <text x="17" y="55" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="bold" fill="#f8fafc">
+    D
+  </text>
+  <text x="40" y="55" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="bold" fill="#f8fafc">
+    y
+  </text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0ea5e9"></stop>
+      <stop offset="1" stop-color="#0284c7"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+```
+
+
+## public\LogoDaily.svg
+
+```svg
+<svg width="180" height="54" viewBox="0 0 180 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="180" height="54" rx="16" fill="#f8fafc"></rect>
+  <text x="20" y="36" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="bold" letter-spacing="1" fill="url(#paint0_linear)">
+    Daily
+  </text>
+  <circle cx="135" cy="22" r="6" fill="#38bdf8"></circle>
+  <defs>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="180" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0284c7"></stop>
+      <stop offset="1" stop-color="#0ea5e9"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+```
+
+
+## src\components\Account\ChangeEmail.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../../services/pocketbase";
+import { useNavigate } from "react-router-dom";
+
+export default function EmailSection({ user }) {
+  const [newEmail, setNewEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailSuccess, setEmailSuccess] = useState("");
+  const navigate = useNavigate();
+
+  const handleEmail = async (e) => {
+    e.preventDefault();
+    setEmailError("");
+    setEmailSuccess("");
+    if (!newEmail) {
+      setEmailError("Renseigne un nouvel email");
+      return;
+    }
+    try {
+      await pb.collection("users").requestEmailChange(newEmail);
+      setEmailSuccess(
+        "Un email de confirmation a été envoyé, la session va être déconnectée. La reconnexion sera possible après validation."
+      );
+      setTimeout(() => {
+        pb.authStore.clear();
+        navigate("/login");
+      }, 6000);
+      setNewEmail("");
+    } catch (err) {
+      if (err.data?.email) {
+        setEmailError("Cet email est déjà utilisé.");
+      } else {
+        setEmailError("Erreur lors de la demande");
+      }
+    }
+  };
+
+  return (
+    <section className="rounded p-4 shadow bg-white">
+      <form onSubmit={handleEmail}>
+        <label className="block mb-1 font-semibold">Changer l'email</label>
+        <input
+          type="email"
+          placeholder="Nouvel email"
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          className="w-full mb-2 p-2 border rounded"
+          required
+        />
+        {emailSuccess && <div className="text-green-600">{emailSuccess}</div>}
+        {emailError && <div className="text-red-500">{emailError}</div>}
+        <div className="flex items-center justify-between mt-2">
+          <button
+            type="submit"
+            className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700 basis-4/10"
+          >
+            Modifier l'email
+          </button>
+          <span className="text-gray-500 text-xs basis-6/10 text-left ml-3">
+            Tu vas recevoir un mail de confirmation pour valider ce changement.
+          </span>
+        </div>
+      </form>
+    </section>
+  );
+}
+```
+
+
+## src\components\Account\ChangeUsername.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../../services/pocketbase";
+
+export default function UsernameSection({ user }) {
+  const [username, setUsername] = useState(user?.username || "");
+  const [usernameSuccess, setUsernameSuccess] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+
+  const handleUsername = async (e) => {
+    e.preventDefault();
+    setUsernameSuccess("");
+    setUsernameError("");
+    try {
+      await pb.collection("users").update(user.id, { username });
+      setUsernameSuccess("Nom d'utilisateur mis à jour");
+    } catch {
+      setUsernameError("Erreur lors de la modification");
+    }
+  };
+
+  return (
+    <section className="p-4 shadow bg-white rounded">
+      <form onSubmit={handleUsername}>
+        <label className="block mb-1 font-semibold">
+          Modifier le nom d'utilisateur
+        </label>
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full mb-2 p-2 border rounded"
+          required
+        />
+        {usernameSuccess && (
+          <div className="text-green-600">{usernameSuccess}</div>
+        )}
+        {usernameError && <div className="text-red-500">{usernameError}</div>}
+        <button
+          type="submit"
+          className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700 mt-2"
+        >
+          Modifier
+        </button>
+      </form>
+    </section>
+  );
+}
+```
+
+
+## src\components\Account\DeleteAccount.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../../services/pocketbase";
+import { useNavigate } from "react-router-dom";
+
+export default function DeleteAccountSection({ user }) {
+  const [deleteError, setDeleteError] = useState("");
+  const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    setDeleteError("");
+    if (
+      !window.confirm(
+        "Attention : cette action est irréversible. Supprimer définitivement ce compte ?"
+      )
+    )
+      return;
+    try {
+      const journals = await pb.collection("journal_entries").getFullList({
+        filter: `user="${user.id}"`,
+      });
+      for (const entry of journals) {
+        await pb.collection("journal_entries").delete(entry.id);
+      }
+      await pb.collection("users").delete(user.id);
+      pb.authStore.clear();
+      navigate("/login");
+    } catch {
+      setDeleteError("Erreur lors de la suppression");
+    }
+  };
+
+  return (
+    <section className="p-4 shadow bg-white rounded">
+      <label className="block mb-1 font-semibold">Suppression du compte</label>
+      <button
+        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full"
+        onClick={handleDelete}
+      >
+        Supprimer mon compte
+      </button>
+      {deleteError && <div className="text-red-500 mt-2">{deleteError}</div>}
+      <div className="text-gray-500 text-xs mt-2">
+        La suppression est définitive
+      </div>
+    </section>
+  );
+}
+```
+
+
+## src\components\Account\ExportData.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../../services/pocketbase";
+
+export default function ExportDataSection({ user }) {
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleExport = async () => {
+    setSuccess("");
+    setError("");
+    setLoading(true);
+
+    try {
+      const entries = await pb.collection("journal_entries").getFullList({
+        filter: `user="${user.id}"`,
+        sort: "date",
+        $autoCancel: false,
+      });
+
+      if (entries.length === 0) {
+        setError("Aucune donnée à exporter");
+        setLoading(false);
+        return;
+      }
+
+      const data = JSON.stringify(entries, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `export_${user.username || user.email}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      setSuccess("Export terminé");
+    } catch (e) {
+      setError("Erreur lors de l’export");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <section className="p-4 shadow bg-white rounded flex flex-col">
+      <label className="block mb-1 font-semibold">
+        Exporter les données du compte
+      </label>
+      <button
+        className="px-4 py-2 rounded bg-green-400 hover:bg-green-500 text-white w-full"
+        onClick={handleExport}
+        type="button"
+        disabled={loading}
+      >
+        {loading ? "Chargement…" : "Exporter"}
+      </button>
+      {success && <div className="text-green-600 mt-2">{success}</div>}
+      {error && <div className="text-red-500 mt-2">{error}</div>}
+    </section>
+  );
+}
+```
+
+
+## src\components\Account\PasswordReset.jsx
+
+```jsx
+import React from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function PasswordResetSection() {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate("/change-password");
+  };
+
+  return (
+    <section className="p-4 shadow bg-white rounded flex flex-col">
+      <label className="block mb-1 font-semibold">
+        Changer le mot de passe en toute sécurité
+      </label>
+      <button
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+        onClick={handleClick}
+        type="button"
+      >
+        Changer mon mot de passe
+      </button>
+      <div className="text-gray-500 text-xs mt-2">
+        Ce bouton te permet de modifier ton mot de passe sans perdre l'accès à
+        tes données chiffrées.
+      </div>
+    </section>
+  );
+}
+```
+
+
+## src\components\Admin\ExportUserData.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../../services/pocketbase";
+
+export default function ExportUserDataButton({ user }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleExport = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const entries = await pb.collection("journal_entries").getFullList({
+        filter: `user="${user.id}"`,
+        sort: "date",
+        $autoCancel: false,
+      });
+      // Crée le blob et télécharge
+      const data = JSON.stringify(entries, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `export_${user.username}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (e) {
+      setError("Erreur lors de l’export");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="inline-flex flex-col items-start">
+      <button
+        className="bg-green-200 px-3 py-1 rounded hover:bg-green-300 text-sm text-green-700"
+        onClick={handleExport}
+        disabled={loading}
+      >
+        {loading ? "Chargement…" : "Exporter"}
+      </button>
+      {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+    </div>
+  );
+}
+```
+
+
+## src\components\Admin\InviteCode.jsx
+
+```jsx
+import React from "react";
+
+export default function InviteCodeManager({
+  inviteCodes,
+  generating,
+  onGenerate,
+  copySuccess,
+  onCopy,
+}) {
+  return (
+    <div className="mt-8 px-12">
+      <div className="flex gap-3 items-center justify-center">
+        <button
+          onClick={onGenerate}
+          className="bg-sky-700 text-white px-4 py-2 rounded hover:bg-sky-800"
+          disabled={generating}
+        >
+          {generating ? "Génération..." : "Générer un code d’invitation"}
+        </button>
+      </div>
+      {copySuccess && (
+        <div className="mt-2 text-green-600 font-medium">{copySuccess}</div>
+      )}
+      {inviteCodes.length > 0 && (
+        <div className="mt-4">
+          <div className="font-semibold mb-2">Codes d’invitation valides :</div>
+          <ul className="flex flex-wrap gap-3">
+            {inviteCodes.map((c) => (
+              <li
+                key={c.id || c.code}
+                className="bg-gray-100 px-3 py-2 rounded flex items-center gap-2"
+              >
+                <span className="font-mono">{c.code}</span>
+                <button
+                  className="text-sky-700 text-xs hover:underline"
+                  onClick={() => onCopy(c.code)}
+                >
+                  Copier
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+
+## src\components\Admin\UserTable.jsx
+
+```jsx
+import React from "react";
+import ExportUserData from "./ExportUserData";
+
+export default function UserTable({ users, onDelete, onResetPassword }) {
+  return (
+    <div className="rounded-lg overflow-hidden border border-gray-50">
+      <table className="w-full table-auto">
+        <thead>
+          <tr>
+            <th className="px-3 py-3 text-left">Username</th>
+            <th className="px-3 py-3 text-left hidden md:flex">Rôle</th>
+            <th className="px-3 py-3">Password</th>
+            <th className="px-3 py-3 hidden md:flex">Exporter</th>
+            <th className="px-3 py-3">Supprimer</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user, i) => (
+            <tr
+              key={user.id}
+              className={`${
+                i % 2 === 1 ? "bg-gray-50" : "bg-white"
+              } hover:bg-sky-50`}
+            >
+              <td className="px-3 py-3 font-medium">{user.username}</td>
+              <td className="px-3 py-3 hidden md:flex">{user.role}</td>
+              <td className="px-3 py-3">
+                <button
+                  className="bg-sky-100 text-sky-700 px-3 py-1 rounded hover:bg-sky-200 text-sm"
+                  onClick={() => onResetPassword(user)}
+                >
+                  Reset (mail)
+                </button>
+              </td>
+              <td className="px-3 py-3 hidden md:flex">
+                <ExportUserData user={user} />
+              </td>
+              <td className="px-3 py-3">
+                <button
+                  className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 text-sm"
+                  onClick={() => onDelete(user.id)}
+                >
+                  Supprimer
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+
+## src\components\Graph\GraphChart.jsx
+
+```jsx
+import React from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+// Format dd.mm
+const formatDDMM = (isoDate) => {
+  const d = new Date(isoDate);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}.${mm}`;
+};
+
+export default function GraphChart({ data }) {
+  return (
+    <div className="h-[60vh] min-h-[400px] md:min-h-[600px] w-full flex justify-center items-center">
+      <ResponsiveContainer width="95%" height="100%">
+        <LineChart
+          data={data}
+          margin={{ top: 30, right: 30, left: 30, bottom: 30 }}
+        >
+          <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={formatDDMM}
+            interval={0}
+            tick={(props) => {
+              const { x, y, payload, index } = props;
+              return (
+                <g>
+                  <text
+                    x={x}
+                    y={y + 15}
+                    textAnchor="middle"
+                    fill="#374151"
+                    fontSize={12}
+                  >
+                    {formatDDMM(payload.value)}
+                  </text>
+                  <text x={x} y={y + 32} textAnchor="middle" fontSize={18}>
+                    {data[index] ? data[index].emoji : ""}
+                  </text>
+                </g>
+              );
+            }}
+          />
+          <YAxis domain={[-2, 3]} />
+          <Tooltip
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                const { mood, emoji } = payload[0].payload;
+                return (
+                  <div className="bg-white border rounded p-2 shadow text-sm">
+                    <div>
+                      <span className="font-bold">Date :</span>{" "}
+                      {formatDDMM(label)}
+                    </div>
+                    <div>
+                      <span className="font-bold">Mood :</span> {mood} {emoji}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="mood"
+            stroke="#2563eb"
+            strokeWidth={3}
+            dot={{ r: 6, fill: "#fbbf24" }}
+            activeDot={{ r: 8 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+```
+
+
+## src\components\Historique\HistoryEntry.jsx
+
+```jsx
+import React from "react";
+
+export default function HistoryEntry({ entry, onDelete, decryptField }) {
+  const dateObj = new Date(entry.date);
+  const jours = [
+    "dimanche",
+    "lundi",
+    "mardi",
+    "mercredi",
+    "jeudi",
+    "vendredi",
+    "samedi",
+  ];
+  const jour = jours[dateObj.getDay()];
+  const dd = String(dateObj.getDate()).padStart(2, "0");
+  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+
+  return (
+    <li className="relative mb-6 p-4 bg-white rounded shadow min-w-[250px] max-w-xs flex-1">
+      <div className="flex items-center mb-2 justify-between">
+        <span className="font-bold">
+          {jour.charAt(0).toUpperCase() + jour.slice(1)}
+          <span className="mx-1 text-gray-500"></span>
+          {dd}.{mm}
+        </span>
+        <div className="flex items-center justify-center pr-8 ">
+          <span className="text-xl mr-3">{decryptField(entry.mood_emoji)}</span>
+          <span className="ml-auto px-2 py-1 rounded bg-sky-50">
+            {decryptField(entry.mood_score)}
+          </span>
+        </div>
+        <button
+          onClick={() => onDelete(entry.id)}
+          className="absolute top-2 right-2 bg-white rounded-full p-1 hover:bg-red-100 transition group"
+          title="Supprimer"
+          tabIndex={-1}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="block"
+          >
+            <circle cx="10" cy="10" r="10" fill="#F87171" opacity="0.20" />
+            <path
+              d="M7 7L13 13M13 7L7 13"
+              stroke="#DC2626"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <div>
+        <div className="mb-1 text-sm break-words hyphens-auto">
+          + {decryptField(entry.positive1)}
+        </div>
+        <div className="mb-1 text-sm break-words hyphens-auto">
+          + {decryptField(entry.positive2)}
+        </div>
+        <div className="mb-1 text-sm break-words hyphens-auto">
+          + {decryptField(entry.positive3)}
+        </div>
+      </div>
+      {/* Question du jour */}
+      {entry.question && (
+        <div className="mt-2 text-gray-800 text-sm font-semibold">
+          Question du jour : <span>{decryptField(entry.question)}</span>
+        </div>
+      )}
+      {/* Réponse à la question */}
+      {entry.answer && (
+        <div className="mb-1 ml-2 italic text-sky-900 text-sm">
+          ↳ {decryptField(entry.answer)}
+        </div>
+      )}
+      {/* Commentaire */}
+      {entry.comment && (
+        <div className="mt-2 text-gray-800 text-sm font-semibold">
+          Commentaire :{" "}
+          <span className=" font-normal text-gray-700 italic">
+            {decryptField(entry.comment)}
+          </span>
+        </div>
+      )}
+    </li>
+  );
+}
+```
+
+
+## src\components\Historique\HistoryFilters.jsx
+
+```jsx
+import React from "react";
+
+export default function HistoryFilters({
+  month,
+  setMonth,
+  year,
+  setYear,
+  years,
+}) {
+  return (
+    <div className="flex gap-4 mb-6">
+      <select
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        className="border rounded p-1"
+      >
+        {Array.from({ length: 12 }, (_, i) => (
+          <option key={i + 1} value={i + 1}>
+            {new Date(0, i).toLocaleString("fr-FR", { month: "long" })}
+          </option>
+        ))}
+      </select>
+      <select
+        value={year}
+        onChange={(e) => setYear(e.target.value)}
+        className="border rounded p-1"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+```
+
+
+## src\components\Historique\HistoryList.jsx
+
+```jsx
+import React from "react";
+import HistoryEntry from "./HistoryEntry";
+
+export default function HistoryList({ entries, onDelete, decryptField }) {
+  if (entries.length === 0) {
+    return (
+      <div className="text-gray-500">Aucune entrée pour cette période.</div>
+    );
+  }
+  return (
+    <ul className="flex flex-wrap gap-8 w-full px-10 ">
+      {entries.map((entry) => (
+        <HistoryEntry
+          key={entry.id}
+          entry={entry}
+          onDelete={onDelete}
+          decryptField={decryptField}
+        />
+      ))}
+    </ul>
+  );
+}
+```
+
+
+## src\components\Journal\Comment.jsx
+
+```jsx
+import React from "react";
+
+export default function JournalComment({ comment, setComment }) {
+  return (
+    <div className="flex flex-col justify-center gap-1">
+      <label className="text-sm font-semibold">Commentaire :</label>
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        className="w-full p-3 border rounded min-h-50"
+        placeholder="Réponse optionnelle"
+      />
+    </div>
+  );
+}
+```
+
+
+## src\components\Journal\Mood.jsx
+
+```jsx
+import React from "react";
+import EmojiPicker from "emoji-picker-react";
+
+export default function JournalMood({
+  moodScore,
+  setMoodScore,
+  moodEmoji,
+  setMoodEmoji,
+  showPicker,
+  setShowPicker,
+  emojiBtnRef,
+  pickerRef,
+}) {
+  return (
+    <div className="mb-4">
+      <div className="flex flex-row items-end justify-between">
+        <div className="flex items-center gap-4">
+          <span>Résumé</span>
+          <button
+            type="button"
+            className="text-2xl border rounded h-10 w-10 flex items-center justify-center"
+            ref={emojiBtnRef}
+            onClick={() => setShowPicker(!showPicker)}
+            style={{ lineHeight: 1 }}
+          >
+            {moodEmoji || "🙂"}
+          </button>
+          {showPicker && (
+            <div
+              ref={pickerRef}
+              className="absolute z-50 top-16 left-1/2 -translate-x-1/2 shadow-xl"
+            >
+              <EmojiPicker
+                onEmojiClick={(e) => {
+                  setMoodEmoji(e.emoji);
+                  setShowPicker(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <span>Note</span>
+          <select
+            value={moodScore}
+            onChange={(e) => setMoodScore(e.target.value)}
+            className="p-1 h-10 border rounded text-base"
+            required
+          >
+            <option value="" disabled>
+              Sélectionner
+            </option>
+            <option value="2">🤩 2</option>
+            <option value="1">😊 1</option>
+            <option value="0">😐 0</option>
+            <option value="-1">😓 -1</option>
+            <option value="-2">😭 -2</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+
+## src\components\Journal\Positives.jsx
+
+```jsx
+import React from "react";
+
+export default function JournalPositives({
+  positive1,
+  setPositive1,
+  positive2,
+  setPositive2,
+  positive3,
+  setPositive3,
+  required = false,
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col justify-center gap-1">
+        <label className="text-sm font-semibold">
+          Premier point positif du jour :
+        </label>
+        <textarea
+          value={positive1}
+          onChange={(e) => setPositive1(e.target.value)}
+          className="w-full p-3 border rounded min-h-18 resize-none align-top"
+          rows={2}
+          required={required}
+        />
+      </div>
+      <div className="flex flex-col justify-center gap-1">
+        <label className="text-sm font-semibold">
+          Deuxième point positif du jour :
+        </label>
+        <textarea
+          value={positive2}
+          onChange={(e) => setPositive2(e.target.value)}
+          className="w-full p-3 border rounded min-h-18 resize-none align-top"
+          rows={2}
+          required={required}
+        />
+      </div>
+      <div className="flex flex-col justify-center gap-1">
+        <label className="text-sm font-semibold">
+          Troisième point positif du jour :
+        </label>
+        <textarea
+          value={positive3}
+          onChange={(e) => setPositive3(e.target.value)}
+          className="w-full p-3 border rounded min-h-18 resize-none align-top"
+          rows={2}
+          required={required}
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+
+## src\components\Journal\Question.jsx
+
+```jsx
+import React from "react";
+
+export default function JournalQuestion({
+  question,
+  answer,
+  setAnswer,
+  loading,
+}) {
+  return (
+    <div className="flex flex-col w-full basis-full md:basis-3/5 ">
+      <div className="text-sm font-semibold">Question du jour :</div>
+      <div className="mb-2 italic text-gray-800 text-sm">
+        {loading ? <span className="opacity-50">Chargement…</span> : question}
+      </div>
+      <textarea
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        className="w-full mb-0 p-3 border rounded min-h-18 resize-none align-top"
+        rows={2}
+        placeholder="Réponse optionnelle"
+        disabled={loading}
+      />
+    </div>
+  );
+}
+```
+
+
+## src\components\Navbar\Desktop.jsx
+
+```jsx
+import { Link, useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
+
+export default function Desktop() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (!user) return null;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  return (
+    <div className="md:px-10 hidden md:flex w-full items-center justify-between">
+      {/* Liens à gauche */}
+      <div className="flex items-center gap-6">
+        <Link to="/journal" className="hover:underline">
+          Journal
+        </Link>
+        <Link to="/history" className="hover:underline">
+          Historique
+        </Link>
+        <Link to="/graph" className="hover:underline">
+          Graphique
+        </Link>
+        {user.role === "admin" && (
+          <Link to="/admin" className="hover:underline">
+            Admin
+          </Link>
+        )}
+      </div>
+      {/* User + bouton à droite */}
+      <div className="flex items-center gap-6">
+        <span className="italic">{user.username || user.email}</span>
+        <Link to="/account" className="hover:underline">
+          Mon compte
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="bg-gray-200 text-sky-900 px-3 py-1 rounded hover:bg-gray-300"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+
+## src\components\Navbar\Hamburger.jsx
+
+```jsx
+export default function Hamburger({ menuOpen, setMenuOpen }) {
+  return (
+    <button
+      className="md:hidden flex flex-col justify-center items-center w-12 h-12 z-50"
+      onClick={() => setMenuOpen(!menuOpen)}
+      aria-label="Ouvrir le menu"
+    >
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+        <rect y="5" width="24" height="3" rx="1.5" fill="white" />
+        <rect y="11" width="24" height="3" rx="1.5" fill="white" />
+        <rect y="17" width="24" height="3" rx="1.5" fill="white" />
+      </svg>
+    </button>
+  );
+}
+```
+
+
+## src\components\Navbar\Mobile.jsx
+
+```jsx
+import { Link, useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
+import React, { useEffect } from "react";
+
+export default function Mobile({ menuOpen, setMenuOpen }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Bloque le scroll du body quand menuOpen
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Clean up si unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  if (!user) return null;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    setMenuOpen(false);
+  };
+
+  if (!menuOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-sky-900/95 flex flex-col items-center justify-center gap-8 z-40 md:hidden"
+      onClick={() => setMenuOpen(false)}
+    >
+      <Link
+        to="/journal"
+        className="text-xl"
+        onClick={() => setMenuOpen(false)}
+      >
+        Journal
+      </Link>
+      <Link
+        to="/history"
+        className="text-xl"
+        onClick={() => setMenuOpen(false)}
+      >
+        Historique
+      </Link>
+      {user.role === "admin" && (
+        <Link
+          to="/admin"
+          className="text-xl"
+          onClick={() => setMenuOpen(false)}
+        >
+          Admin
+        </Link>
+      )}
+      <Link
+        to="/account"
+        className="text-xl mt-5"
+        onClick={() => setMenuOpen(false)}
+      >
+        Mon compte
+      </Link>
+      <button
+        onClick={handleLogout}
+        className="bg-gray-200 text-sky-900 px-5 py-2 rounded hover:bg-gray-300"
+      >
+        Déconnexion
+      </button>
+    </div>
+  );
+}
+```
+
+
+## src\components\Navbar\Navbar.jsx
+
+```jsx
+import { useState } from "react";
+import Desktop from "./Desktop";
+import Mobile from "./Mobile";
+import Hamburger from "./Hamburger";
+import useAuth from "../../hooks/useAuth";
+
+export default function Navbar() {
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  if (!user) return null;
+
+  return (
+    <nav className="fixed top-0 left-0 w-full z-50 bg-sky-800 text-white px-4 py-3 flex items-center justify-between">
+      <Desktop />
+      <Hamburger menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <Mobile menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+    </nav>
+  );
+}
+```
+
+
+## src\components\LayoutMiddle.jsx
+
+```jsx
+export default function LayoutMiddle({ children }) {
+  return (
+    <div className="w-full min-h-screen bg-white">
+      {/* pt-[64px] = padding top pour éviter que le contenu passe sous la navbar */}
+      <div className="w-full min-h-screen flex flex-col justify-center items-center">
+        {/* min-h-[calc(100vh-64px)] = hauteur dispo SANS la navbar (si navbar ≈ 64px) */}
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+
+
+## src\components\LayoutTop.jsx
+
+```jsx
+export default function LayoutTop({ children }) {
+  return (
+    <div className="w-full min-h-screen bg-white pt-[64px]">
+      {/* pt-[64px] = padding top pour éviter que le contenu passe sous la navbar */}
+      <div className="w-full min-h-[calc(100vh-64px)] flex flex-col justify-start items-center">
+        {/* min-h-[calc(100vh-64px)] = hauteur dispo SANS la navbar (si navbar ≈ 64px) */}
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+
+
+## src\components\LogoDaily.jsx
+
+```jsx
+export default function LogoDaily({ className = "" }) {
+  return <img src="/LogoDaily.svg" alt="Daily logo" className={className} />;
+}
+```
+
+
+## src\components\ProtectedRoute.jsx
+
+```jsx
+import { Navigate } from "react-router-dom";
+import pb from "../services/pocketbase";
+
+export default function ProtectedRoute({ children, adminOnly = false }) {
+  const user = pb.authStore.model;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (adminOnly && user.role !== "admin") {
+    return <Navigate to="/journal" replace />;
+  }
+
+  return children;
+}
+```
+
+
+## src\data\questions.json
+
+```json
+[
+  "Qu’est-ce qui t’a fait sourire aujourd’hui ?",
+  "Un moment où tu t’es sentie pleinement vivante aujourd’hui ?",
+  "Quel geste ou parole t’a touchée ?",
+  "Qu’as-tu fait qui demandait du courage, même petit ?",
+  "As-tu eu une surprise, agréable ou pas, aujourd’hui ?",
+  "Qu’est-ce qui t’a apaisée dans ta journée ?",
+  "Quel lien t’a nourrie, ou au contraire t’a pesé ?",
+  "Un moment où tu as ressenti de la fierté ?",
+  "Qu’as-tu appris de neuf sur toi ou sur le monde ?",
+  "Un sentiment qui a traversé ta journée, et que tu nommes ici ?",
+  "Un endroit où tu as respiré ou pris le temps d’exister ?",
+  "Quelque chose dont tu voudrais te souvenir ?",
+  "As-tu croisé la tendresse quelque part aujourd’hui ?",
+  "Une envie que tu as eue, réalisée ou non ?",
+  "Un moment où tu t’es sentie alignée avec tes valeurs ?",
+  "Qu’as-tu laissé derrière toi aujourd’hui ?",
+  "Qu’est-ce qui t’a aidée à traverser un passage difficile ?",
+  "As-tu ressenti de la gratitude aujourd’hui ? Pour quoi, qui ?",
+  "Un détail anodin mais important à tes yeux ?",
+  "Quelque chose que tu aurais aimé dire et que tu n’as pas dit ?",
+  "Un moment où tu t’es sentie en lien avec la nature ?",
+  "Qu’as-tu choisi de faire pour toi, et pas pour les autres ?",
+  "Une peur ressentie aujourd’hui ? Qu’as-tu fait avec ?",
+  "Un rêve ou une pensée qui t’a accompagnée ?",
+  "Qu’est-ce qui t’a mise en colère ?",
+  "Un geste de soin, envers toi-même ou autrui ?",
+  "Une sensation physique marquante (douleur, plaisir, chaleur…) ?",
+  "As-tu pris un risque, petit ou grand ?",
+  "Une musique ou un son qui t’a accompagnée ?",
+  "Un moment où tu t’es sentie libre ?",
+  "As-tu ressenti de la honte ou du doute ?",
+  "Une décision prise, même minime ?",
+  "Un espace où tu t’es sentie en sécurité ?",
+  "Un moment de beauté dans ta journée ?",
+  "As-tu accordé du temps à quelqu’un qui en avait besoin ?",
+  "Qu’as-tu créé ou transformé ?",
+  "As-tu fait preuve de patience ?",
+  "Un souvenir qui t’a traversée aujourd’hui ?",
+  "Un mot ou une phrase que tu veux garder de ce jour ?",
+  "As-tu laissé une place à l’imprévu ?",
+  "Qu’est-ce qui t’a fait rire ?",
+  "Une personne à qui tu penses, et pourquoi ?",
+  "Un lieu où tu aimerais retourner ?",
+  "As-tu ressenti de la joie simple ?",
+  "Un geste ou un mot que tu regrettes ?",
+  "Qu’est-ce que tu voudrais faire différemment demain ?",
+  "Qu’as-tu refusé ou posé comme limite ?",
+  "Un moment de partage, même bref ?",
+  "As-tu été attentive à un besoin qui s’exprimait en toi ?",
+  "Un geste de révolte ou d’insoumission aujourd’hui ?",
+  "As-tu ressenti de la fatigue ou de l’énergie ?",
+  "Une petite victoire à célébrer ?",
+  "As-tu fait une rencontre, même brève ou étrange ?",
+  "Un échec ou une déception ? Comment l’as-tu vécue ?",
+  "Un instant de paix intérieure ?",
+  "Une question que tu te poses ce soir ?",
+  "As-tu donné ou reçu de l’aide ?",
+  "Qu’as-tu lâché prise aujourd’hui ?",
+  "Un aliment ou une saveur marquante ?",
+  "Une envie non satisfaite ?",
+  "Qu’as-tu fait aujourd’hui qui allait dans le sens de ta liberté ?",
+  "Un souvenir d’enfance qui est remonté ?",
+  "Une peur qui t’a retenue ou poussée à agir ?",
+  "Un compliment reçu ou donné ?",
+  "Un moment où tu t’es sentie invisible ou vue ?",
+  "Qu’as-tu observé chez les autres ?",
+  "Un instant de silence, choisi ou subi ?",
+  "Qu’as-tu perdu ou laissé filer ?",
+  "As-tu découvert un nouvel endroit ou un nouveau visage ?",
+  "Qu’as-tu ressenti en début et en fin de journée ?",
+  "Un moment où tu as pris soin de ton corps ?",
+  "Qu’as-tu évité ou reporté aujourd’hui ?",
+  "Un geste ou une parole pour résister à la norme ?",
+  "Une émotion qui domine ce soir ?",
+  "Une chose qui te manque en ce moment ?",
+  "Qu’as-tu trouvé de beau dans le banal ?",
+  "Une question à laquelle tu n’as pas de réponse ?",
+  "As-tu pris le temps de rêver ?",
+  "Un engagement tenu, ou non tenu ?",
+  "Un souvenir à laisser derrière toi ?",
+  "Qu’as-tu accepté aujourd’hui, en toi ou autour de toi ?",
+  "Un moment où tu t’es sentie déplacée, étrangère ?",
+  "Une sensation d’être à ta place, ou non ?",
+  "Qu’as-tu donné sans attendre en retour ?",
+  "Une parole ou un silence important ?",
+  "Un projet, même petit, que tu as avancé ?",
+  "Qu’as-tu envie de remercier, ce soir ?",
+  "As-tu pu exprimer qui tu es, vraiment ?",
+  "Qu’as-tu observé du monde autour de toi ?",
+  "Un instant d’humilité ou de remise en question ?",
+  "Un moment où tu as accueilli l’inconnu ?",
+  "As-tu choisi la facilité ou la difficulté ?",
+  "Un moment où tu as ressenti l’injustice ?",
+  "Qu’as-tu fait pour faire de la place à la joie ?",
+  "Un geste de solidarité, de soutien ?",
+  "Une pensée persistante aujourd’hui ?",
+  "As-tu éprouvé de la peur, de l’envie, du désir ?",
+  "Qu’as-tu envie de changer dans ta vie ?",
+  "Un instant où tu t’es sentie chez toi ?",
+  "Un mot pour résumer ta journée ?"
+]
+```
+
+
+## src\hooks\useAuth.js
+
+```js
+import { useState, useEffect } from 'react'
+import pb from '../services/pocketbase'
+
+export default function useAuth() {
+  const [user, setUser] = useState(pb.authStore.model)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const unsub = pb.authStore.onChange(() => {
+      setUser(pb.authStore.model)
+    })
+    return unsub
+  }, [])
+
+  const login = async (email, password) => {
+    setLoading(true)
+    await pb.collection('users').authWithPassword(email, password)
+    setUser(pb.authStore.model)
+    setLoading(false)
+  }
+
+  const logout = () => {
+    pb.authStore.clear()
+    setUser(null)
+  }
+
+  return { user, login, logout, loading }
+}
+```
+
+
+## src\hooks\useJournalEntries.js
+
+```js
+
+```
+
+
+## src\hooks\useMainKey.jsx
+
+```jsx
+import { createContext, useContext, useState } from "react";
+
+const MainKeyContext = createContext();
+
+export function MainKeyProvider({ children }) {
+  const [mainKey, setMainKey] = useState(null);
+  return (
+    <MainKeyContext.Provider value={{ mainKey, setMainKey }}>
+      {children}
+    </MainKeyContext.Provider>
+  );
+}
+
+export function useMainKey() {
+  return useContext(MainKeyContext);
+}
+```
+
+
+## src\hooks\useUsers.js
+
+```js
+
+```
+
+
+## src\pages\Account.jsx
+
+```jsx
+import React from "react";
+import Layout from "../components/LayoutTop";
+import UsernameSection from "../components/Account/ChangeUsername";
+import PasswordResetSection from "../components/Account/PasswordReset";
+import EmailSection from "../components/Account/ChangeEmail";
+import DeleteAccountSection from "../components/Account/DeleteAccount";
+import ExportData from "../components/Account/ExportData";
+import pb from "../services/pocketbase";
+
+export default function AccountPage() {
+  const user = pb.authStore.model;
+  return (
+    <Layout>
+      <div className="w-full max-w-4xl mx-auto p-8 rounded-lg">
+        <h1 className="text-2xl font-bold text-center mb-8">Mon compte</h1>
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Colonne gauche */}
+          <div className="flex-1 flex flex-col gap-8">
+            <UsernameSection user={user} />
+            <EmailSection user={user} />
+          </div>
+          {/* Colonne droite */}
+          <div className="flex-1 flex flex-col gap-8">
+            <ExportData user={user} />
+            <PasswordResetSection user={user} />
+            <DeleteAccountSection user={user} />
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\Admin.jsx
+
+```jsx
+import React, { useEffect, useState } from "react";
+import pb from "../services/pocketbase";
+import Layout from "../components/LayoutTop";
+import UserTable from "../components/Admin/UserTable";
+import InviteCodeManager from "../components/Admin/InviteCode";
+
+export default function AdminPage() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [inviteCodes, setInviteCodes] = useState([]);
+  const [generating, setGenerating] = useState(false);
+  const [copySuccess, setCopySuccess] = useState("");
+  const [lastCode, setLastCode] = useState("");
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const result = await pb.collection("users").getFullList({
+          sort: "email",
+          $autoCancel: false,
+        });
+        setUsers(result);
+      } catch (err) {
+        setError("Erreur chargement users: " + (err?.message || ""));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchCodes = async () => {
+      try {
+        const result = await pb.collection("invites_codes").getFullList({
+          sort: "-created",
+          $autoCancel: false,
+        });
+        setInviteCodes(result);
+      } catch (err) {}
+    };
+    fetchCodes();
+  }, [generating, lastCode]);
+
+  // Suppression user + ses entrées journal
+  const handleDelete = async (userId) => {
+    if (
+      !window.confirm(
+        "Supprimer cet utilisateur ? Toutes ses entrées journal seront aussi supprimées."
+      )
+    )
+      return;
+    try {
+      const journals = await pb.collection("journal_entries").getFullList({
+        filter: `user="${userId}"`,
+      });
+      for (const entry of journals) {
+        await pb.collection("journal_entries").delete(entry.id);
+      }
+      await pb.collection("users").delete(userId);
+      setUsers(users.filter((u) => u.id !== userId));
+    } catch (err) {
+      alert("Erreur suppression : " + (err?.message || ""));
+    }
+  };
+
+  const handleResetPassword = async (user) => {
+    const email = user.email;
+    if (!window.confirm(`Envoyer un mail de reset à ${email} ?`)) return;
+    try {
+      await pb.collection("users").requestPasswordReset(email);
+      alert("Mail de réinitialisation envoyé");
+    } catch (err) {
+      alert("Erreur reset : " + (err?.message || ""));
+    }
+  };
+
+  // Code d'invitation
+  function randomCode(len = 8) {
+    return Math.random()
+      .toString(36)
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(-len)
+      .toUpperCase();
+  }
+
+  const handleGenerateCode = async () => {
+    setGenerating(true);
+    setCopySuccess("");
+    const code = randomCode(8);
+    try {
+      const record = await pb.collection("invites_codes").create({ code });
+      setLastCode(code);
+      setInviteCodes([record, ...inviteCodes]);
+      setCopySuccess("");
+    } catch (err) {
+      setCopySuccess("Erreur lors de la création du code");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopy = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopySuccess(`Code copié : ${code}`);
+      setTimeout(() => setCopySuccess(""), 2000);
+    } catch {
+      setCopySuccess("Erreur lors de la copie");
+    }
+  };
+
+  if (loading) return <div className="p-8">Chargement...</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
+
+  return (
+    <Layout>
+      <h1 className="text-2xl font-bold mt-10 mb-6">
+        Gestion des utilisateur·ice·s
+      </h1>
+      <UserTable
+        users={users}
+        onDelete={handleDelete}
+        onResetPassword={handleResetPassword}
+      />
+      <InviteCodeManager
+        inviteCodes={inviteCodes}
+        generating={generating}
+        onGenerate={handleGenerateCode}
+        copySuccess={copySuccess}
+        onCopy={handleCopy}
+      />
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\ChangePassword.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../services/pocketbase";
+import { useNavigate } from "react-router-dom";
+import { useMainKey } from "../hooks/useMainKey";
+import {
+  deriveProtectionKey,
+  decryptKey,
+  encryptKey,
+} from "../services/crypto";
+
+import Layout from "../components/LayoutMiddle";
+
+export default function ChangePasswordPage() {
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const { mainKey, setMainKey } = useMainKey();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (newPassword !== newPasswordConfirm) {
+      setError("Les nouveaux mots de passe ne correspondent pas.");
+      return;
+    }
+
+    if (!pb.authStore.isValid) {
+      setError("Vous devez être connecté·e.");
+      return;
+    }
+
+    try {
+      const user = pb.authStore.model;
+      const encryptedKey = user.encrypted_key;
+      const salt = user.encryption_salt;
+
+      // Dérive la clé protection avec l'ancien mot de passe
+      const oldProtectionKey = deriveProtectionKey(oldPassword, salt);
+
+      // Déchiffre la clé principale avec l'ancien mot de passe
+      const decryptedMainKey = decryptKey(encryptedKey, oldProtectionKey);
+
+      if (!decryptedMainKey) {
+        setError("Ancien mot de passe incorrect.");
+        return;
+      }
+
+      // Dérive la clé protection avec le nouveau mot de passe
+      const newProtectionKey = deriveProtectionKey(newPassword, salt);
+
+      // Rechiffre la clé principale avec la nouvelle clé protection
+      const newEncryptedKey = encryptKey(decryptedMainKey, newProtectionKey);
+
+      // Met à jour la clé chiffrée dans PocketBase
+      await pb.collection("users").update(user.id, {
+        encrypted_key: newEncryptedKey,
+      });
+
+      // Change le mot de passe officiel de l’utilisateur·ice
+      await pb.collection("users").update(user.id, {
+        password: newPassword,
+        passwordConfirm: newPassword,
+      });
+
+      // Mets à jour la clé principale dans le contexte
+      setMainKey(decryptedMainKey);
+
+      setSuccess("Mot de passe changé avec succès.");
+      // Optionnel : rediriger vers journal ou page d’accueil
+      // navigate("/journal");
+    } catch (err) {
+      setError("Erreur lors du changement de mot de passe : " + err.message);
+    }
+  };
+
+  return (
+    <Layout>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
+      >
+        <h1 className="text-2xl font-bold mb-6">Changer de mot de passe</h1>
+
+        <input
+          type="password"
+          placeholder="Ancien mot de passe"
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Nouveau mot de passe"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Confirmez le nouveau mot de passe"
+          value={newPasswordConfirm}
+          onChange={(e) => setNewPasswordConfirm(e.target.value)}
+          className="w-full mb-6 p-3 border rounded"
+          required
+        />
+
+        {error && (
+          <div className="text-red-500 mb-4 w-full text-center">{error}</div>
+        )}
+        {success && (
+          <div className="text-green-600 mb-4 w-full text-center">
+            {success}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
+        >
+          Valider
+        </button>
+      </form>
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\Graph.jsx
+
+```jsx
+import React, { useEffect, useState } from "react";
+import pb from "../services/pocketbase";
+import Layout from "../components/LayoutTop";
+import GraphChart from "../components/Graph/GraphChart";
+import { useMainKey } from "../hooks/useMainKey";
+import CryptoJS from "crypto-js";
+
+export default function GraphPage() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const { mainKey } = useMainKey();
+
+  function decryptField(cipherText) {
+    if (!mainKey) return "";
+    try {
+      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
+      return bytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+      return "[Erreur de déchiffrement]";
+    }
+  }
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const result = await pb.collection("journal_entries").getFullList({
+          filter: `user="${pb.authStore.model.id}"`,
+          sort: "date",
+          $autoCancel: false,
+        });
+
+        // Filtrer sur les 6 derniers mois glissants
+        const now = new Date();
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        const filtered = result.filter((entry) => {
+          const entryDate = new Date(entry.date);
+          return entryDate >= sixMonthsAgo && entryDate <= now;
+        });
+
+        setData(
+          filtered.map((entry) => ({
+            date: entry.date,
+            mood: Number(decryptField(entry.mood_score)), // déchiffré et cast en number
+            emoji: decryptField(entry.mood_emoji), // déchiffré
+          }))
+        );
+      } catch (err) {
+        setError("Erreur de chargement : " + (err?.message || ""));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [mainKey]); // <-- ajoute mainKey en dépendance pour recharger quand la clé change
+
+  if (loading) return <div className="p-8">Chargement...</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!mainKey) {
+    return (
+      <div className="p-8 text-red-600 font-semibold">
+        ⚠️ Clé de chiffrement absente. Merci de vous reconnecter pour afficher
+        le graphique.
+      </div>
+    );
+  }
+  if (!data.length) return <div className="p-8">Aucune donnée.</div>;
+
+  return (
+    <Layout>
+      <h1 className="text-2xl font-bold mt-10 mb-4">Évolution</h1>
+      <GraphChart data={data} />
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\History.jsx
+
+```jsx
+import React, { useEffect, useState } from "react";
+import pb from "../services/pocketbase";
+import { useMainKey } from "../hooks/useMainKey";
+import CryptoJS from "crypto-js";
+import Layout from "../components/LayoutTop";
+import HistoryFilters from "../components/Historique/HistoryFilters";
+import HistoryList from "../components/Historique/HistoryList";
+
+export default function HistoryPage() {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    const fetchEntries = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const result = await pb.collection("journal_entries").getFullList({
+          filter: `user="${pb.authStore.model.id}"`,
+          sort: "-date",
+          $autoCancel: false,
+        });
+        setEntries(result);
+      } catch (err) {
+        setError("Erreur lors du chargement : " + (err?.message || ""));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEntries();
+  }, []);
+
+  const { mainKey } = useMainKey();
+
+  function decryptField(cipherText) {
+    if (!mainKey) return ""; // clé non chargée
+    try {
+      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
+      return bytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+      return "[Erreur de déchiffrement]";
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Supprimer cette entrée ?")) return;
+    try {
+      await pb.collection("journal_entries").delete(id);
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      alert("Erreur lors de la suppression : " + (err?.message || ""));
+    }
+  };
+
+  // Liste des années présentes dans les données
+  const years = [
+    ...new Set(entries.map((e) => new Date(e.date).getFullYear())),
+  ].sort((a, b) => b - a);
+
+  // Filtrer les entrées sur le mois/année choisi
+  const filtered = entries.filter((entry) => {
+    const date = new Date(entry.date);
+    return (
+      date.getMonth() + 1 === Number(month) &&
+      date.getFullYear() === Number(year)
+    );
+  });
+  if (!mainKey) {
+    return (
+      <div className="flex items-center justify-center h-64 text-red-700 text-lg font-semibold">
+        ⚠️ Clé de chiffrement absente. Merci de vous reconnecter pour afficher
+        l’historique.
+      </div>
+    );
+  }
+  if (loading) return <div className="p-8">Chargement...</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
+
+  return (
+    <Layout>
+      <h1 className="text-2xl font-bold mb-4 mt-10">Historique</h1>
+      <HistoryFilters
+        month={month}
+        setMonth={setMonth}
+        year={year}
+        setYear={setYear}
+        years={years}
+      />
+      <HistoryList
+        entries={filtered}
+        onDelete={handleDelete}
+        decryptField={decryptField}
+      />{" "}
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\JournalForm.jsx
+
+```jsx
+import React, { useState, useEffect, useRef } from "react";
+import pb from "../services/pocketbase";
+import { useMainKey } from "../hooks/useMainKey";
+import CryptoJS from "crypto-js";
+import Layout from "../components/LayoutTop";
+import PositivePoint from "../components/Journal/Positives";
+import MoodSelector from "../components/Journal/Mood";
+import QuestionBlock from "../components/Journal/Question";
+import CommentBlock from "../components/Journal/Comment";
+import questions from "../data/questions.json";
+
+export default function JournalEntryPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [positive1, setPositive1] = useState("");
+  const [positive2, setPositive2] = useState("");
+  const [positive3, setPositive3] = useState("");
+  const [moodScore, setMoodScore] = useState("");
+  const [moodEmoji, setMoodEmoji] = useState("");
+  const [comment, setComment] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [randomQuestion, setRandomQuestion] = useState("");
+  const [loadingQuestion, setLoadingQuestion] = useState(true);
+  const { mainKey } = useMainKey();
+  const [showPicker, setShowPicker] = useState(false);
+  const emojiBtnRef = useRef(null);
+  const pickerRef = useRef(null);
+
+  function encryptField(value) {
+    if (!mainKey) return ""; // Sécurité, cas anormal
+    return CryptoJS.AES.encrypt(value, mainKey).toString();
+  }
+
+  useEffect(() => {
+    // Aller chercher les questions utilisées sur les 30 derniers jours
+    const fetchQuestion = async () => {
+      setLoadingQuestion(true);
+      try {
+        const since = new Date();
+        since.setDate(since.getDate() - 30);
+        const sinceStr = since.toISOString().slice(0, 10);
+
+        // Prend les entrées du user sur les 30 derniers jours
+        const entries = await pb.collection("journal_entries").getFullList({
+          filter: `user="${pb.authStore.model.id}" && date >= "${sinceStr}"`,
+        });
+        const alreadyUsedQuestions = entries.map((e) => e.question);
+
+        // Filtre les questions jamais (ou pas récemment) posées
+        const availableQuestions = questions.filter(
+          (q) => !alreadyUsedQuestions.includes(q)
+        );
+        let chosen = "";
+        if (availableQuestions.length > 0) {
+          chosen =
+            availableQuestions[
+              Math.floor(Math.random() * availableQuestions.length)
+            ];
+        } else {
+          // fallback : prend n’importe quelle question au hasard
+          chosen = questions[Math.floor(Math.random() * questions.length)];
+        }
+        setRandomQuestion(chosen);
+      } catch {
+        // fallback
+        setRandomQuestion(
+          questions[Math.floor(Math.random() * questions.length)]
+        );
+      } finally {
+        setLoadingQuestion(false);
+      }
+    };
+    fetchQuestion();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!mainKey) {
+      setError(
+        "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
+      );
+      return;
+    }
+    if (!positive1.trim() || !positive2.trim() || !positive3.trim()) {
+      setError("Merci de remplir les trois points positifs.");
+      return;
+    }
+    if (moodScore === "" || moodScore === null) {
+      setError("Merci de choisir une note d'humeur.");
+      return;
+    }
+    if (!moodEmoji) {
+      setError("Merci de choisir un emoji.");
+      return;
+    }
+    try {
+      await pb.collection("journal_entries").create({
+        user: pb.authStore.model.id,
+        date,
+        positive1: encryptField(positive1),
+        positive2: encryptField(positive2),
+        positive3: encryptField(positive3),
+        mood_score: encryptField(String(moodScore)), // Chiffré
+        mood_emoji: encryptField(moodEmoji), // Chiffré
+        comment: encryptField(comment),
+        question: encryptField(randomQuestion), // Chiffré
+        answer: encryptField(answer), // Chiffré
+      });
+
+      setSuccess("Entrée enregistrée !");
+      setPositive1("");
+      setPositive2("");
+      setPositive3("");
+      setMoodScore("");
+      setMoodEmoji("");
+      setComment("");
+      setAnswer("");
+    } catch (err) {
+      setError("Erreur lors de l’enregistrement : " + (err?.message || ""));
+    }
+  };
+
+  return (
+    <Layout>
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-3xl mx-auto rounded-lg mt-5 px-5 md:px-0"
+      >
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
+          <h1 className="text-2xl font-bold text-center md:text-left">
+            Mon journal du jour
+          </h1>
+          <div className="flex-shrink-0 flex items-center justify-center md:justify-end w-full md:w-85 mt-5">
+            <input
+              id="journal-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="border rounded p-2 w-full"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-8 mb-4">
+          <div className="flex flex-col w-full md:w-1/2">
+            <PositivePoint
+              positive1={positive1}
+              setPositive1={setPositive1}
+              positive2={positive2}
+              setPositive2={setPositive2}
+              positive3={positive3}
+              setPositive3={setPositive3}
+              required
+            />
+          </div>
+          <div className="flex flex-col w-full md:w-1/2 gap-4">
+            <MoodSelector
+              moodScore={moodScore}
+              setMoodScore={setMoodScore}
+              moodEmoji={moodEmoji}
+              setMoodEmoji={setMoodEmoji}
+              showPicker={showPicker}
+              setShowPicker={setShowPicker}
+              emojiBtnRef={emojiBtnRef}
+              pickerRef={pickerRef}
+            />
+            <CommentBlock comment={comment} setComment={setComment} />
+          </div>
+        </div>
+        <div className="mb-6 flex flex-col md:flex-row items-end gap-3">
+          <QuestionBlock
+            question={randomQuestion}
+            answer={answer}
+            setAnswer={setAnswer}
+            loading={loadingQuestion}
+          />
+          <button
+            type="submit"
+            className="w-full md:w-1/2 bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
+          >
+            Enregistrer
+          </button>
+        </div>
+        {error && (
+          <div className="text-red-500 mb-2 w-full text-center">{error}</div>
+        )}
+        {success && (
+          <div className="text-green-600 mb-2 w-full text-center">
+            {success}
+          </div>
+        )}
+        <div className="flex justify-center"></div>
+      </form>
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\Login.jsx
+
+```jsx
+import React, { useState } from "react";
+import pb from "../services/pocketbase";
+import { useNavigate } from "react-router-dom";
+import { useMainKey } from "../hooks/useMainKey";
+import { deriveProtectionKey, decryptKey } from "../services/crypto";
+
+import Layout from "../components/LayoutMiddle";
+import LogoDaily from "../components/LogoDaily";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const { setMainKey } = useMainKey();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await pb.collection("users").authWithPassword(email, password);
+
+      const user = pb.authStore.model;
+      const encryptedKey = user.encrypted_key;
+      const salt = user.encryption_salt;
+
+      // Dérive la clé de protection avec le mot de passe saisi + salt
+      const protectionKey = deriveProtectionKey(password, salt);
+
+      // Déchiffre la clé principale
+      const mainKey = decryptKey(encryptedKey, protectionKey);
+
+      if (!mainKey) {
+        setError(
+          "Erreur de déchiffrement de la clé (mot de passe incorrect ou données corrompues)"
+        );
+        return;
+      }
+      setMainKey(mainKey);
+      navigate("/journal");
+    } catch (err) {
+      setError("Identifiants invalides");
+    }
+  };
+
+  return (
+    <Layout>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
+      >
+        <LogoDaily className="mx-auto mb-6 w-44 h-16" />
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Mot de passe"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full mb-6 p-3 border rounded"
+          required
+        />
+        {error && (
+          <div className="text-red-500 mb-4 w-full text-center">{error}</div>
+        )}
+        <button
+          type="submit"
+          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
+        >
+          Se connecter
+        </button>
+      </form>
+      <div className="mt-6 text-center w-full">
+        <span className="text-gray-600">Pas de compte ?</span>{" "}
+        <a
+          href="/register"
+          className="text-sky-700 underline hover:text-sky-900"
+        >
+          Créer un compte
+        </a>
+      </div>
+    </Layout>
+  );
+}
+```
+
+
+## src\pages\NotFound.jsx
+
+```jsx
+export default function NotFound() {
+  return (
+    <div>
+      <h1>Not found</h1>
+    </div>
+  );
+}
+```
+
+
+## src\pages\Register.jsx
+
+```jsx
+import React, { useState } from "react";
+import {
+  generateRandomKey,
+  generateSalt,
+  deriveProtectionKey,
+  encryptKey,
+} from "../services/crypto";
+import pb from "../services/pocketbase";
+import Layout from "../components/LayoutMiddle";
+
+export default function RegisterPage() {
+  const [username, setUsername] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (password !== passwordConfirm) {
+      setError("Les mots de passe ne correspondent pas");
+      return;
+    }
+
+    // 1. Vérification du code d'invitation
+    try {
+      const codeResult = await pb.collection("invites_codes").getFullList({
+        filter: `code="${inviteCode}"`,
+      });
+      if (!codeResult.length) {
+        setError("Code d’invitation invalide ou déjà utilisé");
+        return;
+      }
+    } catch (err) {
+      setError("Erreur lors de la vérification du code");
+      return;
+    }
+
+    // 2. Création du compte + suppression du code
+    try {
+      // 1. Clé principale de chiffrement (unique par user)
+      const mainKey = generateRandomKey(32);
+
+      // 2. Salt unique (pour la dérivation PBKDF2)
+      const salt = generateSalt(16);
+
+      // 3. Dérivation d'une clé de protection à partir du password et du salt
+      const protectionKey = deriveProtectionKey(password, salt);
+
+      // 4. Chiffre la clé principale avec la clé dérivée
+      const encrypted_key = encryptKey(mainKey, protectionKey);
+      const encryption_salt = salt;
+      await pb.collection("users").create({
+        username,
+        email,
+        password,
+        passwordConfirm,
+        role: "user",
+        encrypted_key,
+        encryption_salt,
+      });
+
+      // Suppression du code d'invitation après usage
+      try {
+        const codeRecord = await pb
+          .collection("invites_codes")
+          .getFirstListItem(`code="${inviteCode}"`);
+        if (codeRecord && codeRecord.id) {
+          await pb.collection("invites_codes").delete(codeRecord.id);
+        }
+      } catch (e) {
+        // On log, mais on n'affiche rien à l'utilisateur·ice
+        console.warn("Erreur suppression code invitation :", e);
+      }
+
+      setSuccess("Utilisateur créé avec succès");
+      setUsername("");
+      setInviteCode("");
+      setEmail("");
+      setPassword("");
+      setPasswordConfirm("");
+    } catch (err) {
+      setError("Erreur lors de la création du compte");
+    }
+  };
+
+  return (
+    <Layout>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
+      >
+        <h1 className="text-2xl font-bold mb-6 text-center w-full">
+          Créer un compte
+        </h1>
+        <input
+          type="text"
+          placeholder="Nom d'utilisateur"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="text"
+          placeholder="Code d’invitation"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Mot de passe"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full mb-4 p-3 border rounded"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Confirme le mot de passe"
+          value={passwordConfirm}
+          onChange={(e) => setPasswordConfirm(e.target.value)}
+          className="w-full mb-6 p-3 border rounded"
+          required
+        />
+        {error && (
+          <div className="text-red-500 mb-4 w-full text-center">{error}</div>
+        )}
+        {success && (
+          <div className="text-green-600 mb-4 w-full text-center">
+            {success}
+          </div>
+        )}
+        <button
+          type="submit"
+          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
+        >
+          Créer le compte
+        </button>
+      </form>
+      <div className="mt-6 text-center w-full">
+        <span className="text-gray-600">Déjà un compte ?</span>{" "}
+        <a href="/login" className="text-sky-700 underline hover:text-sky-900">
+          Se connecter
+        </a>
+      </div>
+    </Layout>
+  );
+}
+```
+
+
+## src\services\crypto.js
+
+```js
+import CryptoJS from "crypto-js";
+
+// Génère une clé aléatoire (clé principale AES, 32 bytes => 256 bits)
+export function generateRandomKey(len = 32) {
+  const charset =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let key = "";
+  for (let i = 0; i < len; i++) {
+    key += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return key;
+}
+
+// Génère un salt (pour PBKDF2)
+export function generateSalt(len = 16) {
+  const charset =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let salt = "";
+  for (let i = 0; i < len; i++) {
+    salt += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return salt;
+}
+
+// Dérive une clé de protection depuis le mot de passe et le salt (pour chiffrer la clé principale)
+export function deriveProtectionKey(password, salt) {
+  return CryptoJS.PBKDF2(password, salt, { keySize: 256 / 32 }).toString();
+}
+
+// Chiffre la clé principale avec la clé dérivée
+export function encryptKey(mainKey, protectionKey) {
+  return CryptoJS.AES.encrypt(mainKey, protectionKey).toString();
+}
+
+// Déchiffre la clé principale avec la clé dérivée
+export function decryptKey(encryptedKey, protectionKey) {
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedKey, protectionKey);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  } catch {
+    return null;
+  }
+}
+```
+
+
+## src\services\pocketbase.js
+
+```js
+import PocketBase from "pocketbase";
+const pb = new PocketBase("http://daily.backlice.dev");
+export default pb;
+```
+
+
+## src\App.jsx
+
+```jsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import JournalForm from "./pages/JournalForm";
+import History from "./pages/History";
+import Graph from "./pages/Graph";
+import Admin from "./pages/Admin";
+import Account from "./pages/Account";
+import NotFound from "./pages/NotFound";
+import ChangePasswordPage from "./pages/ChangePassword";
+
+import Navbar from "./components/Navbar/Navbar";
+
+function App() {
+  return (
+    <Router>
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
+        <div className="flex-1 flex flex-col">
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/journal"
+              element={
+                <ProtectedRoute>
+                  <JournalForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <History />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/graph"
+              element={
+                <ProtectedRoute>
+                  <Graph />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <Account />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute adminOnly={true}>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+            {/* À ajouter pour la page changement de mot de passe */}
+            <Route
+              path="/change-password"
+              element={
+                <ProtectedRoute>
+                  {/* Importe et mets ici ton composant ChangePasswordPage */}
+                  <ChangePasswordPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
+```
+
+
+## src\index.css
+
+```css
+@import "tailwindcss";
+```
+
+
+## src\main.jsx
+
+```jsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.jsx";
+import { MainKeyProvider } from "./hooks/useMainKey";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <MainKeyProvider>
+      <App />
+    </MainKeyProvider>
+  </StrictMode>
+);
+```
+
+
+## .gitignore
+
+```
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+/package-lock.json
+/package.json
+```
+
+
+## eslint.config.js
+
+```js
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+])
+```
+
+
+## index.html
+
+```html
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
+```
+
+
+## package-lock.json
+
+```json
 {
   "name": "project_name",
   "version": "0.0.0",
@@ -3888,3 +6572,80 @@
     }
   }
 }
+```
+
+
+## package.json
+
+```json
+{
+  "name": "project_name",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "chart.js": "^4.5.0",
+    "crypto-js": "^4.2.0",
+    "dayjs": "^1.11.13",
+    "emoji-picker-react": "^4.13.2",
+    "pocketbase": "^0.26.2",
+    "react": "^19.1.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.7.1",
+    "recharts": "^3.1.0",
+    "tailwindcss": "^4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "eslint": "^9.30.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "vite": "^7.0.4"
+  }
+}
+```
+
+
+## README.md
+
+```md
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+
+
+## vite.config.js
+
+```js
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+});
+```
+

@@ -1,4 +1,10 @@
 import React, { useState } from "react";
+import {
+  generateRandomKey,
+  generateSalt,
+  deriveProtectionKey,
+  encryptKey,
+} from "../services/crypto";
 import pb from "../services/pocketbase";
 import Layout from "../components/LayoutMiddle";
 
@@ -37,12 +43,26 @@ export default function RegisterPage() {
 
     // 2. Création du compte + suppression du code
     try {
+      // 1. Clé principale de chiffrement (unique par user)
+      const mainKey = generateRandomKey(32);
+
+      // 2. Salt unique (pour la dérivation PBKDF2)
+      const salt = generateSalt(16);
+
+      // 3. Dérivation d'une clé de protection à partir du password et du salt
+      const protectionKey = deriveProtectionKey(password, salt);
+
+      // 4. Chiffre la clé principale avec la clé dérivée
+      const encrypted_key = encryptKey(mainKey, protectionKey);
+      const encryption_salt = salt;
       await pb.collection("users").create({
         username,
         email,
         password,
         passwordConfirm,
         role: "user",
+        encrypted_key,
+        encryption_salt,
       });
 
       // Suppression du code d'invitation après usage

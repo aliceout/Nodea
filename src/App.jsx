@@ -10,6 +10,7 @@ import Graph from "./pages/Graph";
 import Admin from "./pages/Admin";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
+import ChangePasswordPage from "./pages/ChangePassword";
 
 import Navbar from "./components/Navbar/Navbar";
 
@@ -60,6 +61,16 @@ function App() {
               element={
                 <ProtectedRoute adminOnly={true}>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+            {/* À ajouter pour la page changement de mot de passe */}
+            <Route
+              path="/change-password"
+              element={
+                <ProtectedRoute>
+                  {/* Importe et mets ici ton composant ChangePasswordPage */}
+                  <ChangePasswordPage />
                 </ProtectedRoute>
               }
             />

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import pb from "../services/pocketbase";
+import { useMainKey } from "../hooks/useMainKey";
+import CryptoJS from "crypto-js";
 import Layout from "../components/LayoutTop";
 import PositivePoint from "../components/Journal/Positives";
 import MoodSelector from "../components/Journal/Mood";
@@ -21,6 +23,15 @@ export default function JournalEntryPage() {
   const [error, setError] = useState("");
   const [randomQuestion, setRandomQuestion] = useState("");
   const [loadingQuestion, setLoadingQuestion] = useState(true);
+  const { mainKey } = useMainKey();
+  const [showPicker, setShowPicker] = useState(false);
+  const emojiBtnRef = useRef(null);
+  const pickerRef = useRef(null);
+
+  function encryptField(value) {
+    if (!mainKey) return ""; // Sécurité, cas anormal
+    return CryptoJS.AES.encrypt(value, mainKey).toString();
+  }
 
   useEffect(() => {
     // Aller chercher les questions utilisées sur les 30 derniers jours
@@ -68,6 +79,12 @@ export default function JournalEntryPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    if (!mainKey) {
+      setError(
+        "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
+      );
+      return;
+    }
     if (!positive1.trim() || !positive2.trim() || !positive3.trim()) {
       setError("Merci de remplir les trois points positifs.");
       return;
@@ -84,15 +101,16 @@ export default function JournalEntryPage() {
       await pb.collection("journal_entries").create({
         user: pb.authStore.model.id,
         date,
-        positive1,
-        positive2,
-        positive3,
-        mood_score: Number(moodScore),
-        mood_emoji: moodEmoji,
-        comment,
-        question: randomQuestion,
-        answer,
+        positive1: encryptField(positive1),
+        positive2: encryptField(positive2),
+        positive3: encryptField(positive3),
+        mood_score: encryptField(String(moodScore)), // Chiffré
+        mood_emoji: encryptField(moodEmoji), // Chiffré
+        comment: encryptField(comment),
+        question: encryptField(randomQuestion), // Chiffré
+        answer: encryptField(answer), // Chiffré
       });
+
       setSuccess("Entrée enregistrée !");
       setPositive1("");
       setPositive2("");
@@ -146,6 +164,10 @@ export default function JournalEntryPage() {
               setMoodScore={setMoodScore}
               moodEmoji={moodEmoji}
               setMoodEmoji={setMoodEmoji}
+              showPicker={showPicker}
+              setShowPicker={setShowPicker}
+              emojiBtnRef={emojiBtnRef}
+              pickerRef={pickerRef}
             />
             <CommentBlock comment={comment} setComment={setComment} />
           </div>

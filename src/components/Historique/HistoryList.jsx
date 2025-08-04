@@ -1,7 +1,7 @@
 import React from "react";
 import HistoryEntry from "./HistoryEntry";
 
-export default function HistoryList({ entries, onDelete }) {
+export default function HistoryList({ entries, onDelete, decryptField }) {
   if (entries.length === 0) {
     return (
       <div className="text-gray-500">Aucune entrée pour cette période.</div>
@@ -10,7 +10,12 @@ export default function HistoryList({ entries, onDelete }) {
   return (
     <ul className="flex flex-wrap gap-8 w-full px-10 ">
       {entries.map((entry) => (
-        <HistoryEntry key={entry.id} entry={entry} onDelete={onDelete} />
+        <HistoryEntry
+          key={entry.id}
+          entry={entry}
+          onDelete={onDelete}
+          decryptField={decryptField}
+        />
       ))}
     </ul>
   );

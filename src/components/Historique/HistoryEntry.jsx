@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function HistoryEntry({ entry, onDelete }) {
+export default function HistoryEntry({ entry, onDelete, decryptField }) {
   const dateObj = new Date(entry.date);
   const jours = [
     "dimanche",
@@ -24,9 +24,9 @@ export default function HistoryEntry({ entry, onDelete }) {
           {dd}.{mm}
         </span>
         <div className="flex items-center justify-center pr-8 ">
-          <span className="text-xl mr-3">{entry.mood_emoji}</span>
+          <span className="text-xl mr-3">{decryptField(entry.mood_emoji)}</span>
           <span className="ml-auto px-2 py-1 rounded bg-sky-50">
-            {entry.mood_score}
+            {decryptField(entry.mood_score)}
           </span>
         </div>
         <button
@@ -54,25 +54,25 @@ export default function HistoryEntry({ entry, onDelete }) {
       </div>
       <div>
         <div className="mb-1 text-sm break-words hyphens-auto">
-          + {entry.positive1}
+          + {decryptField(entry.positive1)}
         </div>
         <div className="mb-1 text-sm break-words hyphens-auto">
-          + {entry.positive2}
+          + {decryptField(entry.positive2)}
         </div>
         <div className="mb-1 text-sm break-words hyphens-auto">
-          + {entry.positive3}
+          + {decryptField(entry.positive3)}
         </div>
       </div>
       {/* Question du jour */}
       {entry.question && (
         <div className="mt-2 text-gray-800 text-sm font-semibold">
-          Question du jour : <span>{entry.question}</span>
+          Question du jour : <span>{decryptField(entry.question)}</span>
         </div>
       )}
       {/* Réponse à la question */}
       {entry.answer && (
         <div className="mb-1 ml-2 italic text-sky-900 text-sm">
-          ↳ {entry.answer}
+          ↳ {decryptField(entry.answer)}
         </div>
       )}
       {/* Commentaire */}
@@ -80,7 +80,7 @@ export default function HistoryEntry({ entry, onDelete }) {
         <div className="mt-2 text-gray-800 text-sm font-semibold">
           Commentaire :{" "}
           <span className=" font-normal text-gray-700 italic">
-            {entry.comment}
+            {decryptField(entry.comment)}
           </span>
         </div>
       )}

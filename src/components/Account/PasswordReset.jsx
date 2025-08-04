@@ -1,39 +1,28 @@
-import React, { useState } from "react";
-import pb from "../../services/pocketbase";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function PasswordResetSection({ user }) {
-  const [pwResetSuccess, setPwResetSuccess] = useState("");
-  const [pwResetError, setPwResetError] = useState("");
+export default function PasswordResetSection() {
+  const navigate = useNavigate();
 
-  const handlePasswordReset = async () => {
-    setPwResetSuccess("");
-    setPwResetError("");
-    try {
-      await pb.collection("users").requestPasswordReset(user.email);
-      setPwResetSuccess("Mail de réinitialisation envoyé à " + user.email);
-    } catch {
-      setPwResetError("Erreur lors de l’envoi du mail");
-    }
+  const handleClick = () => {
+    navigate("/change-password");
   };
 
   return (
     <section className="p-4 shadow bg-white rounded flex flex-col">
       <label className="block mb-1 font-semibold">
-        Réinitialiser le mot de passe par email
+        Changer le mot de passe en toute sécurité
       </label>
       <button
-        className="bg-yellow-400 text-white px-4 py-2 rounded hover:bg-yellow-500 w-full"
-        onClick={handlePasswordReset}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+        onClick={handleClick}
         type="button"
       >
-        Envoyer le mail de réinitialisation
+        Changer mon mot de passe
       </button>
-      {pwResetSuccess && (
-        <div className="text-green-600 mt-2">{pwResetSuccess}</div>
-      )}
-      {pwResetError && <div className="text-red-500 mt-2">{pwResetError}</div>}
       <div className="text-gray-500 text-xs mt-2">
-        Tu recevras un mail de réinitialisation à l’adresse actuelle.
+        Ce bouton te permet de modifier ton mot de passe sans perdre l'accès à
+        tes données chiffrées.
       </div>
     </section>
   );

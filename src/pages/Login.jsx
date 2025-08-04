@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import pb from "../services/pocketbase";
+import { useNavigate } from "react-router-dom";
+import { useMainKey } from "../hooks/useMainKey";
+import { deriveProtectionKey, decryptKey } from "../services/crypto";
+
 import Layout from "../components/LayoutMiddle";
 import LogoDaily from "../components/LogoDaily";
 
@@ -7,13 +11,33 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const { setMainKey } = useMainKey();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
       await pb.collection("users").authWithPassword(email, password);
-      window.location.href = "/journal";
+
+      const user = pb.authStore.model;
+      const encryptedKey = user.encrypted_key;
+      const salt = user.encryption_salt;
+
+      // Dérive la clé de protection avec le mot de passe saisi + salt
+      const protectionKey = deriveProtectionKey(password, salt);
+
+      // Déchiffre la clé principale
+      const mainKey = decryptKey(encryptedKey, protectionKey);
+
+      if (!mainKey) {
+        setError(
+          "Erreur de déchiffrement de la clé (mot de passe incorrect ou données corrompues)"
+        );
+        return;
+      }
+      setMainKey(mainKey);
+      navigate("/journal");
     } catch (err) {
       setError("Identifiants invalides");
     }
