@@ -17,12 +17,12 @@ export default function AccountPage() {
           {/* Colonne gauche */}
           <div className="flex-1 flex flex-col gap-8">
             <UsernameSection user={user} />
-            <PasswordResetSection user={user} />
-            <ExportData user={user} />
+            <EmailSection user={user} />
           </div>
           {/* Colonne droite */}
           <div className="flex-1 flex flex-col gap-8">
-            <EmailSection user={user} />
+            <ExportData user={user} />
+            <PasswordResetSection user={user} />
             <DeleteAccountSection user={user} />
           </div>
         </div>
