@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import pb from "../services/pocketbase";
 import { useNavigate } from "react-router-dom";
 import { useMainKey } from "../hooks/useMainKey";
-import { deriveProtectionKey, decryptKey } from "../services/crypto";
-
+import { deriveKeyArgon2, decryptAESGCM } from "../services/webcrypto";
 import Layout from "../components/LayoutMiddle";
 import LogoDaily from "../components/LogoDaily";
 
@@ -24,18 +23,37 @@ export default function LoginPage() {
       const encryptedKey = user.encrypted_key;
       const salt = user.encryption_salt;
 
-      // Dérive la clé de protection avec le mot de passe saisi + salt
-      const protectionKey = deriveProtectionKey(password, salt);
+      // 1. Dérive la clé de protection avec Argon2id
+      const protectionKeyRaw = await deriveKeyArgon2(password, salt);
 
-      // Déchiffre la clé principale
-      const mainKey = decryptKey(encryptedKey, protectionKey);
+      // 2. Importe la clé pour WebCrypto
+      const protectionKey = await window.crypto.subtle.importKey(
+        "raw",
+        protectionKeyRaw,
+        { name: "AES-GCM" },
+        false,
+        ["encrypt", "decrypt"]
+      );
 
-      if (!mainKey) {
+      // 3. Déchiffre la clé principale
+      let mainKey;
+      try {
+        const encryptedObj = JSON.parse(encryptedKey); // {iv, data}
+        const mainKeyB64 = await decryptAESGCM(encryptedObj, protectionKey);
+        // Décoder la clé principale (base64 -> Uint8Array)
+        const mainKeyRaw = new Uint8Array(
+          atob(mainKeyB64)
+            .split("")
+            .map((c) => c.charCodeAt(0))
+        );
+        mainKey = mainKeyRaw;
+      } catch (e) {
         setError(
           "Erreur de déchiffrement de la clé (mot de passe incorrect ou données corrompues)"
         );
         return;
       }
+
       setMainKey(mainKey);
       navigate("/journal");
     } catch (err) {

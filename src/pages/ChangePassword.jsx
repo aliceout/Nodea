@@ -3,11 +3,10 @@ import pb from "../services/pocketbase";
 import { useNavigate } from "react-router-dom";
 import { useMainKey } from "../hooks/useMainKey";
 import {
-  deriveProtectionKey,
-  decryptKey,
-  encryptKey,
-} from "../services/crypto";
-
+  deriveKeyArgon2,
+  encryptAESGCM,
+  decryptAESGCM,
+} from "../services/webcrypto";
 import Layout from "../components/LayoutMiddle";
 
 export default function ChangePasswordPage() {
@@ -36,42 +35,67 @@ export default function ChangePasswordPage() {
 
     try {
       const user = pb.authStore.model;
-      const encryptedKey = user.encrypted_key;
+      const encryptedKey = JSON.parse(user.encrypted_key);
       const salt = user.encryption_salt;
 
-      // Dérive la clé protection avec l'ancien mot de passe
-      const oldProtectionKey = deriveProtectionKey(oldPassword, salt);
+      console.log("Changement mdp : user, salt", user, salt);
 
-      // Déchiffre la clé principale avec l'ancien mot de passe
-      const decryptedMainKey = decryptKey(encryptedKey, oldProtectionKey);
+      // Dérive la clé brute depuis l'ancien mot de passe
+      const oldProtectionKey = await deriveKeyArgon2(oldPassword, salt);
 
-      if (!decryptedMainKey) {
+      // Importe la clé brute en CryptoKey WebCrypto pour déchiffrement
+      const oldCryptoKey = await window.crypto.subtle.importKey(
+        "raw",
+        oldProtectionKey,
+        { name: "AES-GCM" },
+        false,
+        ["decrypt"]
+      );
+
+      // Déchiffre la clé principale avec l'ancienne clé
+      let decryptedMainKey;
+      try {
+        decryptedMainKey = await decryptAESGCM(encryptedKey, oldCryptoKey);
+        console.log("Clé principale déchiffrée OK");
+      } catch (err) {
+        console.error("Erreur déchiffrement clé principale:", err);
         setError("Ancien mot de passe incorrect.");
         return;
       }
 
-      // Dérive la clé protection avec le nouveau mot de passe
-      const newProtectionKey = deriveProtectionKey(newPassword, salt);
+      // Dérive la clé brute depuis le nouveau mot de passe
+      const newProtectionKey = await deriveKeyArgon2(newPassword, salt);
 
-      // Rechiffre la clé principale avec la nouvelle clé protection
-      const newEncryptedKey = encryptKey(decryptedMainKey, newProtectionKey);
+      // Importe la nouvelle clé brute en CryptoKey WebCrypto pour chiffrement
+      const newCryptoKey = await window.crypto.subtle.importKey(
+        "raw",
+        newProtectionKey,
+        { name: "AES-GCM" },
+        false,
+        ["encrypt"]
+      );
 
-      // Mets à jour la clé chiffrée, le mot de passe et l'ancien mot de passe dans PocketBase
+      // Rechiffre la clé principale avec la nouvelle clé
+      const newEncryptedKey = JSON.stringify(
+        await encryptAESGCM(decryptedMainKey, newCryptoKey)
+      );
+
+      // Mets à jour PocketBase
       await pb.collection("users").update(user.id, {
         encrypted_key: newEncryptedKey,
         password: newPassword,
         passwordConfirm: newPassword,
-        oldPassword: oldPassword, // <-- ajout ici pour satisfaire la validation serveur
+        oldPassword: oldPassword,
       });
 
-      // Mets à jour la clé principale dans le contexte
       setMainKey(decryptedMainKey);
-
       setSuccess("Mot de passe changé avec succès.");
-      // Optionnel : rediriger vers journal ou page d’accueil
+      // Optionnel : rediriger après succès
       // navigate("/journal");
     } catch (err) {
-      setError("Erreur lors du changement de mot de passe : " + err.message);
+      setError(
+        "Erreur lors du changement de mot de passe : " + (err.message || err)
+      );
     }
   };
 

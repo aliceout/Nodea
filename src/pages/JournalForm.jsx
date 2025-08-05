@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import pb from "../services/pocketbase";
 import { useMainKey } from "../hooks/useMainKey";
-import CryptoJS from "crypto-js";
 import Layout from "../components/LayoutTop";
 import PositivePoint from "../components/Journal/Positives";
 import MoodSelector from "../components/Journal/Mood";
 import QuestionBlock from "../components/Journal/Question";
 import CommentBlock from "../components/Journal/Comment";
 import questions from "../data/questions.json";
+
+import { encryptAESGCM } from "../services/webcrypto";
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -28,9 +29,20 @@ export default function JournalEntryPage() {
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
 
+  // Import CryptoKey WebCrypto dès que mainKey dispo
+  const [cryptoKey, setCryptoKey] = useState(null);
+  useEffect(() => {
+    if (!mainKey) return;
+    window.crypto.subtle
+      .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
+      .then(setCryptoKey);
+  }, [mainKey]);
+
   function encryptField(value) {
-    if (!mainKey) return ""; // Sécurité, cas anormal
-    return CryptoJS.AES.encrypt(value, mainKey).toString();
+    if (!cryptoKey) return ""; // Sécurité, cas anormal
+    return encryptAESGCM(value, cryptoKey).then((encrypted) =>
+      JSON.stringify(encrypted)
+    );
   }
 
   useEffect(() => {
@@ -79,7 +91,7 @@ export default function JournalEntryPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (!mainKey) {
+    if (!cryptoKey) {
       setError(
         "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
       );
@@ -101,14 +113,14 @@ export default function JournalEntryPage() {
       await pb.collection("journal_entries").create({
         user: pb.authStore.model.id,
         date,
-        positive1: encryptField(positive1),
-        positive2: encryptField(positive2),
-        positive3: encryptField(positive3),
-        mood_score: encryptField(String(moodScore)), // Chiffré
-        mood_emoji: encryptField(moodEmoji), // Chiffré
-        comment: encryptField(comment),
-        question: encryptField(randomQuestion), // Chiffré
-        answer: encryptField(answer), // Chiffré
+        positive1: await encryptField(positive1),
+        positive2: await encryptField(positive2),
+        positive3: await encryptField(positive3),
+        mood_score: await encryptField(String(moodScore)), // Chiffré
+        mood_emoji: await encryptField(moodEmoji), // Chiffré
+        comment: await encryptField(comment),
+        question: await encryptField(randomQuestion), // Chiffré
+        answer: await encryptField(answer), // Chiffré
       });
 
       setSuccess("Entrée enregistrée !");

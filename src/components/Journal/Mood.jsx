@@ -43,7 +43,7 @@ export default function JournalMood({
           <span>Note</span>
           <select
             value={moodScore}
-            onChange={(e) => setMoodScore(e.target.value)}
+            onChange={(e) => setMoodScore(Number(e.target.value))} {/* ici */}
             className="p-1 h-10 border rounded text-base"
             required
           >

@@ -1,19 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import pb from "../../services/pocketbase";
-import CryptoJS from "crypto-js";
 import { useMainKey } from "../../hooks/useMainKey";
+import { decryptAESGCM } from "../../services/webcrypto";
 
 export default function ExportDataSection({ user }) {
   const { mainKey } = useMainKey();
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cryptoKey, setCryptoKey] = useState(null);
 
-  const decryptField = (cipherText) => {
-    if (!mainKey) return "";
+  // Prépare la CryptoKey WebCrypto à partir de mainKey
+  useEffect(() => {
+    if (mainKey) {
+      window.crypto.subtle
+        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
+          "encrypt",
+          "decrypt",
+        ])
+        .then(setCryptoKey);
+    }
+  }, [mainKey]);
+
+  // Déchiffre un champ chiffré {iv, data}
+  const decryptField = async (field) => {
+    if (!cryptoKey || !field) return "";
     try {
-      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
-      return bytes.toString(CryptoJS.enc.Utf8);
+      return await decryptAESGCM(JSON.parse(field), cryptoKey);
     } catch {
       return "[Erreur de déchiffrement]";
     }
@@ -37,18 +50,21 @@ export default function ExportDataSection({ user }) {
         return;
       }
 
-      const decrypted = entries.map((e) => ({
-        id: e.id,
-        date: e.date,
-        mood_score: decryptField(e.mood_score),
-        mood_emoji: decryptField(e.mood_emoji),
-        positive1: decryptField(e.positive1),
-        positive2: decryptField(e.positive2),
-        positive3: decryptField(e.positive3),
-        question: decryptField(e.question),
-        answer: decryptField(e.answer),
-        comment: decryptField(e.comment),
-      }));
+      // On attend tous les decryptions (asynchrone)
+      const decrypted = await Promise.all(
+        entries.map(async (e) => ({
+          id: e.id,
+          date: e.date,
+          mood_score: await decryptField(e.mood_score),
+          mood_emoji: await decryptField(e.mood_emoji),
+          positive1: await decryptField(e.positive1),
+          positive2: await decryptField(e.positive2),
+          positive3: await decryptField(e.positive3),
+          question: await decryptField(e.question),
+          answer: await decryptField(e.answer),
+          comment: await decryptField(e.comment),
+        }))
+      );
 
       const data = JSON.stringify(decrypted, null, 2);
       const blob = new Blob([data], { type: "application/json" });
@@ -70,8 +86,7 @@ export default function ExportDataSection({ user }) {
     }
   };
 
-  if (!user) return null;
-
+  if (!user || !cryptoKey) return null;
   return (
     <section className="p-4 shadow bg-white rounded flex flex-col">
       <label className="block mb-1 font-semibold">

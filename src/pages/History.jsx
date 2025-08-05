@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import pb from "../services/pocketbase";
 import { useMainKey } from "../hooks/useMainKey";
-import CryptoJS from "crypto-js";
+import { decryptAESGCM } from "../services/webcrypto";
 import Layout from "../components/LayoutTop";
 import HistoryFilters from "../components/Historique/HistoryFilters";
 import HistoryList from "../components/Historique/HistoryList";
@@ -12,6 +12,20 @@ export default function HistoryPage() {
   const [error, setError] = useState("");
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+  const { mainKey } = useMainKey();
+  const [cryptoKey, setCryptoKey] = useState(null);
+
+  // Prépare la CryptoKey WebCrypto à partir de mainKey
+  useEffect(() => {
+    if (mainKey) {
+      window.crypto.subtle
+        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
+          "encrypt",
+          "decrypt",
+        ])
+        .then(setCryptoKey);
+    }
+  }, [mainKey]);
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -23,27 +37,62 @@ export default function HistoryPage() {
           sort: "-date",
           $autoCancel: false,
         });
-        setEntries(result);
+
+        // Déchiffrer toutes les entrées avec cryptoKey avant de les stocker
+        const decrypted = await Promise.all(
+          result.map(async (e) => ({
+            ...e,
+            mood_score: e.mood_score
+              ? await decryptAESGCM(JSON.parse(e.mood_score), cryptoKey).catch(
+                  (err) => {
+                    console.error("Erreur decrypt mood_score:", err);
+                    return "!!DECRYPT FAIL!!";
+                  }
+                )
+              : "",
+            mood_emoji: e.mood_emoji
+              ? await decryptAESGCM(JSON.parse(e.mood_emoji), cryptoKey)
+              : "",
+            positive1: e.positive1
+              ? (console.log("Valeur brute positive1:", e.positive1),
+                await decryptAESGCM(JSON.parse(e.positive1), cryptoKey)
+                  .then((res) => {
+                    console.log("Déchiffré positive1:", res);
+                    return res;
+                  })
+                  .catch((err) => {
+                    console.error("Erreur decrypt positive1:", err);
+                    return "!!DECRYPT FAIL!!";
+                  }))
+              : "",
+            positive2: e.positive2
+              ? await decryptAESGCM(JSON.parse(e.positive2), cryptoKey)
+              : "",
+            positive3: e.positive3
+              ? await decryptAESGCM(JSON.parse(e.positive3), cryptoKey)
+              : "",
+            question: e.question
+              ? await decryptAESGCM(JSON.parse(e.question), cryptoKey)
+              : "",
+            answer: e.answer
+              ? await decryptAESGCM(JSON.parse(e.answer), cryptoKey)
+              : "",
+            comment: e.comment
+              ? await decryptAESGCM(JSON.parse(e.comment), cryptoKey)
+              : "",
+          }))
+        );
+        console.log("User courant:", pb.authStore.model);
+        console.log("CryptoKey:", cryptoKey);
+        setEntries(decrypted);
       } catch (err) {
         setError("Erreur lors du chargement : " + (err?.message || ""));
       } finally {
         setLoading(false);
       }
     };
-    fetchEntries();
-  }, []);
-
-  const { mainKey } = useMainKey();
-
-  function decryptField(cipherText) {
-    if (!mainKey) return ""; // clé non chargée
-    try {
-      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
-      return bytes.toString(CryptoJS.enc.Utf8);
-    } catch {
-      return "[Erreur de déchiffrement]";
-    }
-  }
+    if (cryptoKey) fetchEntries();
+  }, [cryptoKey]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Supprimer cette entrée ?")) return;
@@ -68,6 +117,7 @@ export default function HistoryPage() {
       date.getFullYear() === Number(year)
     );
   });
+
   if (!mainKey) {
     return (
       <div className="flex items-center justify-center h-64 text-red-700 text-lg font-semibold">
@@ -76,6 +126,7 @@ export default function HistoryPage() {
       </div>
     );
   }
+  if (!cryptoKey) return <div className="p-8">Chargement de la clé…</div>;
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
 
@@ -92,7 +143,8 @@ export default function HistoryPage() {
       <HistoryList
         entries={filtered}
         onDelete={handleDelete}
-        decryptField={decryptField}
+        // decryptField n’est plus utilisé, tout est déjà déchiffré
+        decryptField={() => ""} // argument dummy pour compat
       />{" "}
     </Layout>
   );

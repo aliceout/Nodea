@@ -1,13 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import pb from "../../services/pocketbase";
-import CryptoJS from "crypto-js";
 import { useMainKey } from "../../hooks/useMainKey";
+import { encryptAESGCM } from "../../services/webcrypto";
 
 export default function ImportData({ user }) {
   const { mainKey } = useMainKey();
+  const [cryptoKey, setCryptoKey] = useState(null);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Prépare la CryptoKey pour WebCrypto dès que mainKey est dispo
+  useEffect(() => {
+    if (mainKey) {
+      window.crypto.subtle
+        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
+          "encrypt",
+          "decrypt",
+        ])
+        .then(setCryptoKey);
+    }
+  }, [mainKey]);
 
   const handleImport = async (e) => {
     setError("");
@@ -41,39 +54,39 @@ export default function ImportData({ user }) {
       let importedCount = 0;
       for (let entry of imported) {
         const date = entry.date?.slice(0, 10);
-        if (!date || existingDates.has(date))
-          if (!date || existingDates.has(date)) {
-            ignoredCount++;
-            continue;
-          }
+        if (!date || existingDates.has(date) || !cryptoKey) {
+          ignoredCount++;
+          continue;
+        }
 
+        // Chiffre chaque champ avec la cryptoKey (format {iv, data} stringifié)
         const encrypted = {
           user: user.id,
           date: entry.date,
-          mood_score: mainKey
-            ? CryptoJS.AES.encrypt(entry.mood_score || "", mainKey).toString()
-            : "",
-          mood_emoji: mainKey
-            ? CryptoJS.AES.encrypt(entry.mood_emoji || "", mainKey).toString()
-            : "",
-          positive1: mainKey
-            ? CryptoJS.AES.encrypt(entry.positive1 || "", mainKey).toString()
-            : "",
-          positive2: mainKey
-            ? CryptoJS.AES.encrypt(entry.positive2 || "", mainKey).toString()
-            : "",
-          positive3: mainKey
-            ? CryptoJS.AES.encrypt(entry.positive3 || "", mainKey).toString()
-            : "",
-          question: mainKey
-            ? CryptoJS.AES.encrypt(entry.question || "", mainKey).toString()
-            : "",
-          answer: mainKey
-            ? CryptoJS.AES.encrypt(entry.answer || "", mainKey).toString()
-            : "",
-          comment: mainKey
-            ? CryptoJS.AES.encrypt(entry.comment || "", mainKey).toString()
-            : "",
+          mood_score: JSON.stringify(
+            await encryptAESGCM(entry.mood_score || "", cryptoKey)
+          ),
+          mood_emoji: JSON.stringify(
+            await encryptAESGCM(entry.mood_emoji || "", cryptoKey)
+          ),
+          positive1: JSON.stringify(
+            await encryptAESGCM(entry.positive1 || "", cryptoKey)
+          ),
+          positive2: JSON.stringify(
+            await encryptAESGCM(entry.positive2 || "", cryptoKey)
+          ),
+          positive3: JSON.stringify(
+            await encryptAESGCM(entry.positive3 || "", cryptoKey)
+          ),
+          question: JSON.stringify(
+            await encryptAESGCM(entry.question || "", cryptoKey)
+          ),
+          answer: JSON.stringify(
+            await encryptAESGCM(entry.answer || "", cryptoKey)
+          ),
+          comment: JSON.stringify(
+            await encryptAESGCM(entry.comment || "", cryptoKey)
+          ),
         };
 
         await pb.collection("journal_entries").create(encrypted);

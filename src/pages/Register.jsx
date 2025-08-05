@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-  generateRandomKey,
-  generateSalt,
-  deriveProtectionKey,
-  encryptKey,
-} from "../services/crypto";
+import { deriveKeyArgon2, encryptAESGCM } from "../services/webcrypto";
 import pb from "../services/pocketbase";
 import Layout from "../components/LayoutMiddle";
 
@@ -43,27 +38,45 @@ export default function RegisterPage() {
 
     // 2. Création du compte + suppression du code
     try {
-      // 1. Clé principale de chiffrement (unique par user)
-      const mainKey = generateRandomKey(32);
+      // --- NOUVELLE LOGIQUE CHIFFREMENT ---
 
-      // 2. Salt unique (pour la dérivation PBKDF2)
-      const salt = generateSalt(16);
+      // 1. Générer la clé principale aléatoire (32 bytes)
+      const mainKeyRaw = window.crypto.getRandomValues(new Uint8Array(32));
+      // 2. Générer un salt aléatoire (16 bytes, encodé en base64)
+      const saltRaw = window.crypto.getRandomValues(new Uint8Array(16));
+      const saltB64 = btoa(String.fromCharCode(...saltRaw));
 
-      // 3. Dérivation d'une clé de protection à partir du password et du salt
-      const protectionKey = deriveProtectionKey(password, salt);
+      // 3. Dériver la clé de chiffrement à partir du mot de passe + salt
+      const protectionKeyRaw = await deriveKeyArgon2(password, saltB64);
 
-      // 4. Chiffre la clé principale avec la clé dérivée
-      const encrypted_key = encryptKey(mainKey, protectionKey);
-      const encryption_salt = salt;
-      await pb.collection("users").create({
+      // 4. Importer la clé dérivée dans WebCrypto
+      const protectionKey = await window.crypto.subtle.importKey(
+        "raw",
+        protectionKeyRaw,
+        { name: "AES-GCM" },
+        false,
+        ["encrypt", "decrypt"]
+      );
+
+      // 5. Chiffrer la clé principale (on encode la clé principale en base64 pour la stocker comme texte)
+      const encrypted = await encryptAESGCM(
+        btoa(String.fromCharCode(...mainKeyRaw)),
+        protectionKey
+      );
+      // encrypted = { iv, data } (base64 tous deux)
+
+      // 6. Préparer l'objet utilisateur à envoyer
+      const userObj = {
         username,
         email,
         password,
         passwordConfirm,
         role: "user",
-        encrypted_key,
-        encryption_salt,
-      });
+        encrypted_key: JSON.stringify(encrypted), // {iv, data} en JSON
+        encryption_salt: saltB64,
+      };
+
+      await pb.collection("users").create(userObj);
 
       // Suppression du code d'invitation après usage
       try {

@@ -3,23 +3,36 @@ import pb from "../services/pocketbase";
 import Layout from "../components/LayoutTop";
 import GraphChart from "../components/Graph/GraphChart";
 import { useMainKey } from "../hooks/useMainKey";
-import CryptoJS from "crypto-js";
+import { decryptAESGCM } from "../services/webcrypto";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { mainKey } = useMainKey();
+  const [cryptoKey, setCryptoKey] = useState(null);
 
-  function decryptField(cipherText) {
-    if (!mainKey) return "";
+  // Prépare la CryptoKey à partir de mainKey
+  useEffect(() => {
+    if (mainKey) {
+      window.crypto.subtle
+        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
+          "encrypt",
+          "decrypt",
+        ])
+        .then(setCryptoKey);
+    }
+  }, [mainKey]);
+
+  // Fonction de déchiffrement pour les champs du graphique
+  const decryptField = async (field) => {
+    if (!cryptoKey || !field) return "";
     try {
-      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
-      return bytes.toString(CryptoJS.enc.Utf8);
+      return await decryptAESGCM(JSON.parse(field), cryptoKey);
     } catch {
       return "[Erreur de déchiffrement]";
     }
-  }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,13 +53,18 @@ export default function GraphPage() {
           return entryDate >= sixMonthsAgo && entryDate <= now;
         });
 
-        setData(
-          filtered.map((entry) => ({
+        // Déchiffre les champs pour chaque entrée (en série, ou Promise.all si tu veux)
+        const decrypted = [];
+        for (let entry of filtered) {
+          const mood_score = await decryptField(entry.mood_score);
+          const mood_emoji = await decryptField(entry.mood_emoji);
+          decrypted.push({
             date: entry.date,
-            mood: Number(decryptField(entry.mood_score)), // déchiffré et cast en number
-            emoji: decryptField(entry.mood_emoji), // déchiffré
-          }))
-        );
+            mood: Number(mood_score),
+            emoji: mood_emoji,
+          });
+        }
+        setData(decrypted);
       } catch (err) {
         setError("Erreur de chargement : " + (err?.message || ""));
       } finally {
@@ -54,8 +72,8 @@ export default function GraphPage() {
       }
     };
 
-    fetchData();
-  }, [mainKey]); // <-- ajoute mainKey en dépendance pour recharger quand la clé change
+    if (cryptoKey) fetchData();
+  }, [cryptoKey]);
 
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
@@ -67,6 +85,7 @@ export default function GraphPage() {
       </div>
     );
   }
+  if (!cryptoKey) return <div className="p-8">Chargement de la clé…</div>;
   if (!data.length) return <div className="p-8">Aucune donnée.</div>;
 
   return (

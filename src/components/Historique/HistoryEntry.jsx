@@ -24,9 +24,9 @@ export default function HistoryEntry({ entry, onDelete, decryptField }) {
           {dd}.{mm}
         </span>
         <div className="flex items-center justify-center pr-8 ">
-          <span className="text-xl mr-3">{decryptField(entry.mood_emoji)}</span>
+          <span className="text-xl mr-3">{entry.mood_emoji}</span>
           <span className="ml-auto px-2 py-1 rounded bg-sky-50">
-            {decryptField(entry.mood_score)}
+            {entry.mood_score}
           </span>
         </div>
         <button
@@ -54,25 +54,25 @@ export default function HistoryEntry({ entry, onDelete, decryptField }) {
       </div>
       <div>
         <div className="mb-1 text-sm break-words hyphens-auto">
-          + {decryptField(entry.positive1)}
+          + {entry.positive1}
         </div>
         <div className="mb-1 text-sm break-words hyphens-auto">
-          + {decryptField(entry.positive2)}
+          + {entry.positive2}
         </div>
         <div className="mb-1 text-sm break-words hyphens-auto">
-          + {decryptField(entry.positive3)}
+          + {entry.positive3}
         </div>
       </div>
       {/* Question du jour */}
       {entry.question && (
         <div className="mt-2 text-gray-800 text-sm font-semibold">
-          Question du jour : <span>{decryptField(entry.question)}</span>
+          Question du jour : <span>{entry.question}</span>
         </div>
       )}
       {/* Réponse à la question */}
       {entry.answer && (
         <div className="mb-1 ml-2 italic text-sky-900 text-sm">
-          ↳ {decryptField(entry.answer)}
+          ↳ {entry.answer}
         </div>
       )}
       {/* Commentaire */}
@@ -80,7 +80,7 @@ export default function HistoryEntry({ entry, onDelete, decryptField }) {
         <div className="mt-2 text-gray-800 text-sm font-semibold">
           Commentaire :{" "}
           <span className=" font-normal text-gray-700 italic">
-            {decryptField(entry.comment)}
+            {entry.comment}
           </span>
         </div>
       )}
