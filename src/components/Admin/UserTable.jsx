@@ -9,7 +9,6 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
           <tr>
             <th className="px-3 py-3 text-left">Username</th>
             <th className="px-3 py-3 text-left hidden md:table-cell">Rôle</th>
-            <th className="px-3 py-3 hidden md:table-cell">Exporter</th>
             <th className="px-3 py-3">Supprimer</th>
           </tr>
         </thead>
@@ -23,9 +22,6 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
             >
               <td className="px-3 py-3 font-medium">{user.username}</td>
               <td className="px-3 py-3 hidden md:table-cell">{user.role}</td>
-              <td className="px-3 py-3 hidden md:table-cell">
-                <ExportUserData user={user} />
-              </td>
               <td className="px-3 py-3">
                 <button
                   className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 text-sm"

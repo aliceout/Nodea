@@ -1,10 +1,23 @@
 import React, { useState } from "react";
 import pb from "../../services/pocketbase";
+import CryptoJS from "crypto-js";
+import { useMainKey } from "../../hooks/useMainKey";
 
 export default function ExportDataSection({ user }) {
+  const { mainKey } = useMainKey();
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const decryptField = (cipherText) => {
+    if (!mainKey) return "";
+    try {
+      const bytes = CryptoJS.AES.decrypt(cipherText, mainKey);
+      return bytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+      return "[Erreur de déchiffrement]";
+    }
+  };
 
   const handleExport = async () => {
     setSuccess("");
@@ -24,7 +37,20 @@ export default function ExportDataSection({ user }) {
         return;
       }
 
-      const data = JSON.stringify(entries, null, 2);
+      const decrypted = entries.map((e) => ({
+        id: e.id,
+        date: e.date,
+        mood_score: decryptField(e.mood_score),
+        mood_emoji: decryptField(e.mood_emoji),
+        positive1: decryptField(e.positive1),
+        positive2: decryptField(e.positive2),
+        positive3: decryptField(e.positive3),
+        question: decryptField(e.question),
+        answer: decryptField(e.answer),
+        comment: decryptField(e.comment),
+      }));
+
+      const data = JSON.stringify(decrypted, null, 2);
       const blob = new Blob([data], { type: "application/json" });
       const url = window.URL.createObjectURL(blob);
 
