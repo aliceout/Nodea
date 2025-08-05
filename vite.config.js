@@ -9,8 +9,6 @@ export default defineConfig({
     host: true, // écoute sur 0.0.0.0
     port: 8089, // port forcé
     strictPort: true, // échoue si 8089 n'est pas libre
-  },
-  preview: {
     allowedHosts: "all",
   },
 });
