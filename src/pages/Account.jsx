@@ -5,6 +5,7 @@ import PasswordResetSection from "../components/Account/PasswordReset";
 import EmailSection from "../components/Account/ChangeEmail";
 import DeleteAccountSection from "../components/Account/DeleteAccount";
 import ExportData from "../components/Account/ExportData";
+import ImportData from "../components/Account/ImportData";
 import pb from "../services/pocketbase";
 
 export default function AccountPage() {
@@ -22,6 +23,7 @@ export default function AccountPage() {
           {/* Colonne droite */}
           <div className="flex-1 flex flex-col gap-8">
             <ExportData user={user} />
+            <ImportData user={user} />
             <PasswordResetSection user={user} />
             <DeleteAccountSection user={user} />
           </div>

@@ -1,12 +1,112 @@
-# React + Vite
+# Daily — Journal positif chiffré
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Daily** est une application web pour écrire chaque jour trois points positifs, noter son humeur et répondre à une question originale.  
+Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : toi seul·e peux les lire, même l’admin n’y a jamais accès.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Principes
 
-## Expanding the ESLint configuration
+- **Confidentialité réelle** : chiffrement de bout en bout, personne d’autre que toi ne peut lire tes écrits.
+- **Journal quotidien** : trois points positifs obligatoires, humeur (score + emoji), question du jour aléatoire, commentaire libre.
+- **Aucune analyse automatique, aucun tracking, aucun partage des données** : tu restes propriétaire de tout ce que tu écris.
+- **Interface minimaliste, rapide et accessible.**
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## Stack technique
+
+- **Frontend** : React, TailwindCSS
+- **Backend** : PocketBase auto-hébergé
+- **Chiffrement** :  
+  - AES (CryptoJS), clé dérivée du mot de passe utilisateur·ice (jamais stockée ni transmise).
+  - Tous les contenus sensibles sont chiffrés côté client : positifs, humeur, emoji, question/réponse, commentaire.
+  - La clé principale est stockée chiffrée (jamais en clair).
+- **Pas de tracking, pas d’export CSV ni d’API publique.**
+
+---
+
+## Fonctionnement du chiffrement
+
+- **Chiffrement local** dans le navigateur (AES).
+- La clé de chiffrement est dérivée du mot de passe via un salt unique.
+- Personne n’a accès aux données, même avec un accès serveur.
+- L’export des données se fait déchiffré localement, jamais côté serveur.
+
+---
+
+## Fonctionnalités
+
+- **Entrée quotidienne** (3 positifs, humeur, question, commentaire)
+- **Historique** : filtrage, suppression d’entrées
+- **Graphique** : humeur sur 6 mois glissants
+- **Export** : téléchargement de toutes tes données en JSON
+- **Gestion du compte** : email, mot de passe, suppression, export
+- **Admin** : gestion utilisateurs et invitations
+
+---
+
+## Installation
+
+### Prérequis
+
+- Node.js >= 18
+- PocketBase (serveur à installer localement ou sur un serveur dédié)
+
+### Déploiement local
+
+1. **Cloner le repo**  
+   ```bash
+   git clone https://github.com/aliceout/daily.git
+   cd daily
+   ```
+2. **Installer les dépendances**
+    Installer les dépendances
+   ```bash
+   npm install
+   ```
+3. **Installer et lancer PocketBase**
+- Télécharger PocketBase depuis pocketbase.io
+- Lancer PocketBase sur le port 8090
+   ```bash
+   ./pocketbase serve
+   ```
+
+
+4. **Configurer l’environnement**
+- Créer un fichier .env à la racine avec :
+   ```ini
+   VITE_PB_URL=http://127.0.0.1:8090
+   ```
+5. **Lancer l’application**
+   ```bash
+   npm run dev
+   ```
+6. **Ouvrir dans ton navigateur**
+
+   http://localhost:5173
+
+   ---
+
+## Sécurité et limites
+
+- **La sécurité dépend de la force de ton mot de passe**.
+- **Perte du mot de passe = perte irrémédiable des données** (aucune récupération possible).
+- **Aucune sauvegarde serveur** : exporte régulièrement tes données si besoin.
+- **Pas d’application mobile native** pour l’instant, mais utilisable sur mobile via navigateur.
+
+---
+
+## Améliorations possibles
+
+- Import data
+- Passage à WebCrypto et Argon2 pour un chiffrement/dérivation de clé encore plus robuste
+- Fonction “bilan” ou export analytique
+- Application mobile dédiée
+
+---
+
+## Crédits
+
+Développé par aliceout
+Projet open source, sous licence Mozilla Public License 2.0
