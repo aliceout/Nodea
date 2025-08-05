@@ -19,19 +19,21 @@ Toutes les données sont **chiffrées côté client** avant d’être envoyées 
 - **Frontend** : React, TailwindCSS
 - **Backend** : PocketBase auto-hébergé
 - **Chiffrement** :  
-  - AES (CryptoJS), clé dérivée du mot de passe utilisateur·ice (jamais stockée ni transmise).
+  - AES-GCM (WebCrypto), avec dérivation de clé via Argon2.
   - Tous les contenus sensibles sont chiffrés côté client : positifs, humeur, emoji, question/réponse, commentaire.
-  - La clé principale est stockée chiffrée (jamais en clair).
+  - La clé principale est dérivée du mot de passe et stockée chiffrée avec un salt unique. Aucune donnée sensible ne circule ou n’est stockée en clair.
 - **Pas de tracking, pas d’export CSV ni d’API publique.**
 
 ---
 
 ## Fonctionnement du chiffrement
 
-- **Chiffrement local** dans le navigateur (AES).
-- La clé de chiffrement est dérivée du mot de passe via un salt unique.
-- Personne n’a accès aux données, même avec un accès serveur.
-- L’export des données se fait déchiffré localement, jamais côté serveur.
+- Toutes les données sont chiffrées localement dans le navigateur, avant envoi.
+- Le chiffrement utilise l’API WebCrypto en mode AES-GCM.
+- La clé est dérivée via Argon2 à partir du mot de passe utilisateur·ice et d’un salt unique.
+- La clé principale sert à chiffrer/déchiffrer les données du journal. Elle est elle-même stockée chiffrée côté serveur.
+- Même l’admin n’a jamais accès à tes données, même avec un dump complet de la base.
+- L’export se fait localement en données déchiffrées, à la demande.
 
 ---
 

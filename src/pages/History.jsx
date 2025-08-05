@@ -43,27 +43,13 @@ export default function HistoryPage() {
           result.map(async (e) => ({
             ...e,
             mood_score: e.mood_score
-              ? await decryptAESGCM(JSON.parse(e.mood_score), cryptoKey).catch(
-                  (err) => {
-                    console.error("Erreur decrypt mood_score:", err);
-                    return "!!DECRYPT FAIL!!";
-                  }
-                )
+              ? await decryptAESGCM(JSON.parse(e.mood_score), cryptoKey)
               : "",
             mood_emoji: e.mood_emoji
               ? await decryptAESGCM(JSON.parse(e.mood_emoji), cryptoKey)
               : "",
             positive1: e.positive1
-              ? (console.log("Valeur brute positive1:", e.positive1),
-                await decryptAESGCM(JSON.parse(e.positive1), cryptoKey)
-                  .then((res) => {
-                    console.log("Déchiffré positive1:", res);
-                    return res;
-                  })
-                  .catch((err) => {
-                    console.error("Erreur decrypt positive1:", err);
-                    return "!!DECRYPT FAIL!!";
-                  }))
+              ? await decryptAESGCM(JSON.parse(e.positive1), cryptoKey)
               : "",
             positive2: e.positive2
               ? await decryptAESGCM(JSON.parse(e.positive2), cryptoKey)
@@ -82,8 +68,6 @@ export default function HistoryPage() {
               : "",
           }))
         );
-        console.log("User courant:", pb.authStore.model);
-        console.log("CryptoKey:", cryptoKey);
         setEntries(decrypted);
       } catch (err) {
         setError("Erreur lors du chargement : " + (err?.message || ""));

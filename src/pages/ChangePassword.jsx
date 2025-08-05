@@ -38,8 +38,6 @@ export default function ChangePasswordPage() {
       const encryptedKey = JSON.parse(user.encrypted_key);
       const salt = user.encryption_salt;
 
-      console.log("Changement mdp : user, salt", user, salt);
-
       // Dérive la clé brute depuis l'ancien mot de passe
       const oldProtectionKey = await deriveKeyArgon2(oldPassword, salt);
 
@@ -56,9 +54,7 @@ export default function ChangePasswordPage() {
       let decryptedMainKey;
       try {
         decryptedMainKey = await decryptAESGCM(encryptedKey, oldCryptoKey);
-        console.log("Clé principale déchiffrée OK");
       } catch (err) {
-        console.error("Erreur déchiffrement clé principale:", err);
         setError("Ancien mot de passe incorrect.");
         return;
       }
