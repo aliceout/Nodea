@@ -1,3 +1,5 @@
 import PocketBase from "pocketbase";
-const pb = new PocketBase("http://daily.backlice.dev");
+const baseUrl = import.meta.env.VITE_PB_URL;
+const pb = new PocketBase(baseUrl);
+
 export default pb;
