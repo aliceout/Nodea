@@ -90,7 +90,7 @@ export default function LoginPage() {
         )}
         <button
           type="submit"
-          className="w-full bg-nodea-sage text-white py-3 rounded hover:bg-sky-700 font-semibold"
+          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
         >
           Se connecter
         </button>
