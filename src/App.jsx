@@ -1,18 +1,28 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute from "./components/common/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import JournalForm from "./pages/JournalForm";
-import History from "./pages/History";
-import Graph from "./pages/Graph";
+import Form from "./modules/Mood/Form";
+import History from "./modules/Mood/History";
+import Graph from "./modules/Mood/Graph";
 import Admin from "./pages/Admin";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import ChangePasswordPage from "./pages/ChangePassword";
 
-import Navbar from "./components/Navbar/Navbar";
+import Navbar from "./components/layout/navbar/Navbar";
+
+// Tableau de routes protégées
+const protectedRoutes = [
+  { path: "/journal", element: <Form /> },
+  { path: "/history", element: <History /> },
+  { path: "/graph", element: <Graph /> },
+  { path: "/account", element: <Account /> },
+  { path: "/change-password", element: <ChangePasswordPage /> },
+  { path: "/admin", element: <Admin />, adminOnly: true },
+];
 
 function App() {
   return (
@@ -24,56 +34,18 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route
-              path="/journal"
-              element={
-                <ProtectedRoute>
-                  <JournalForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <History />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/graph"
-              element={
-                <ProtectedRoute>
-                  <Graph />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/account"
-              element={
-                <ProtectedRoute>
-                  <Account />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute adminOnly={true}>
-                  <Admin />
-                </ProtectedRoute>
-              }
-            />
-            {/* À ajouter pour la page changement de mot de passe */}
-            <Route
-              path="/change-password"
-              element={
-                <ProtectedRoute>
-                  {/* Importe et mets ici ton composant ChangePasswordPage */}
-                  <ChangePasswordPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* Routes protégées via mapping */}
+            {protectedRoutes.map(({ path, element, adminOnly }) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <ProtectedRoute adminOnly={adminOnly}>
+                    {element}
+                  </ProtectedRoute>
+                }
+              />
+            ))}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

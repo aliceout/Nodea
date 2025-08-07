@@ -3,8 +3,11 @@ import pb from "../services/pocketbase";
 import { useNavigate } from "react-router-dom";
 import { useMainKey } from "../hooks/useMainKey";
 import { deriveKeyArgon2, decryptAESGCM } from "../services/webcrypto";
-import Layout from "../components/LayoutMiddle";
-import LogoDaily from "../components/LogoDaily";
+import Layout from "../components/layout/LayoutMiddle";
+import NodeaLongLogo from "../components/common/NodeaLongLogo.jsx";
+import Button from "../components/common/Button";
+import Input from "../components/common/Input";
+import FormError from "../components/common/FormError";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -67,39 +70,31 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
       >
-        <LogoDaily className="mx-auto mb-6 w-44 h-16" />
-
-        <input
+        <NodeaLongLogo className="mx-auto mb-3 w-1/2" />
+        <Input
+          label="Email"
           type="email"
-          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
+          placeholder="Email"
           required
         />
-        <input
+        <Input
+          label="Mot de passe"
           type="password"
-          placeholder="Mot de passe"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-6 p-3 border rounded"
+          placeholder="Mot de passe"
           required
         />
-        {error && (
-          <div className="text-red-500 mb-4 w-full text-center">{error}</div>
-        )}
-        <button
-          type="submit"
-          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
-        >
-          Se connecter
-        </button>
+        <Button type="submit">Se connecter</Button>
+        {error && <FormError message={error} />}
       </form>
       <div className="mt-6 text-center w-full">
         <span className="text-gray-600">Pas de compte ?</span>{" "}
         <a
           href="/register"
-          className="text-sky-700 underline hover:text-sky-900"
+          className="text-nodea-sage underline hover:text-nodea-sage-dark"
         >
           Créer un compte
         </a>

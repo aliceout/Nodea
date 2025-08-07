@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import pb from "../services/pocketbase";
-import { useMainKey } from "../hooks/useMainKey";
-import Layout from "../components/LayoutTop";
-import PositivePoint from "../components/Journal/Positives";
-import MoodSelector from "../components/Journal/Mood";
-import QuestionBlock from "../components/Journal/Question";
-import CommentBlock from "../components/Journal/Comment";
-import questions from "../data/questions.json";
+import pb from "../../services/pocketbase";
+import { useMainKey } from "../../hooks/useMainKey";
+import Layout from "../../components/layout/LayoutTop";
+import PositivePoint from "../../components/Mood/FormPositives";
+import MoodSelector from "../../components/Mood/FormMood";
+import QuestionBlock from "../../components/Mood/FormQuestion";
+import CommentBlock from "../../components/Mood/FormComment";
+import questions from "../../data/questions.json";
 
-import { encryptAESGCM } from "../services/webcrypto";
+import { encryptAESGCM } from "../../services/webcrypto";
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
+import useAuth from "../../../hooks/useAuth";
 import React, { useEffect } from "react";
 
 export default function Mobile({ menuOpen, setMenuOpen }) {

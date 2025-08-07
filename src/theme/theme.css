@@ -1,0 +1,31 @@
+@theme {
+  /* Principal, highlights, logo, boutons */
+  --color-nodea-sage-light: #bcd7c9;   /* Plus clair */
+  --color-nodea-sage: #90b6a2;
+  --color-nodea-sage-dark: #587568;    /* Plus foncé */
+
+  /* Fond principal, background, cartes */
+  --color-nodea-sand-light: #ffffff;   /* Plus clair */
+  --color-nodea-sand: #f7f4ef;
+  --color-nodea-sand-dark: #e5ded5;    /* Plus foncé */
+
+  /* Accent, secondary bg, notifications */
+  --color-nodea-lavender-light: #eee3f5;  /* Plus clair */
+  --color-nodea-lavender: #d8c7e4;
+  --color-nodea-lavender-dark: #9f8db0;   /* Plus foncé */
+
+  /* Accent, alertes, tags, hover */
+  --color-nodea-blush-light: #f8ecec;   /* Plus clair */
+  --color-nodea-blush: #f4d8d9;
+  --color-nodea-blush-dark: #c98995;    /* Plus foncé */
+
+  /* Liens, hover, graphes */
+  --color-nodea-sky-light: #d0edf6;     /* Plus clair */
+  --color-nodea-sky: #a9d6e5;
+  --color-nodea-sky-dark: #53899d;      /* Plus foncé */
+
+  /* Texte principal, titres */
+  --color-nodea-slate-light: #7a7c7e;   /* Plus clair (gris moyen) */
+  --color-nodea-slate: #2b2d2f;
+  --color-nodea-slate-dark: #18191a;    /* Plus foncé */
+}

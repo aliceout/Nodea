@@ -7,7 +7,7 @@ import {
   encryptAESGCM,
   decryptAESGCM,
 } from "../services/webcrypto";
-import Layout from "../components/LayoutMiddle";
+import Layout from "../components/layout/LayoutMiddle";
 
 export default function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState("");

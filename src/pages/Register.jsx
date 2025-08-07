@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { deriveKeyArgon2, encryptAESGCM } from "../services/webcrypto";
 import pb from "../services/pocketbase";
-import Layout from "../components/LayoutMiddle";
+import Layout from "../components/layout/LayoutMiddle";
+import Input from "../components/common/Input";
+import Button from "../components/common/Button";
+import FormFeedback from "../components/common/FormError";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -111,64 +114,56 @@ export default function RegisterPage() {
         <h1 className="text-2xl font-bold mb-6 text-center w-full">
           Créer un compte
         </h1>
-        <input
-          type="text"
+        <Input
           placeholder="Nom d'utilisateur"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
           required
         />
-        <input
-          type="text"
+        <Input
           placeholder="Code d’invitation"
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
           required
+          className="mb-2"
         />
-        <input
+        <Input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
           required
+          className="mb-2"
         />
-        <input
+        <Input
           type="password"
           placeholder="Mot de passe"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
           required
         />
-        <input
+        <Input
           type="password"
           placeholder="Confirme le mot de passe"
           value={passwordConfirm}
           onChange={(e) => setPasswordConfirm(e.target.value)}
-          className="w-full mb-6 p-3 border rounded"
           required
+          className="mb-2"
         />
-        {error && (
-          <div className="text-red-500 mb-4 w-full text-center">{error}</div>
-        )}
-        {success && (
-          <div className="text-green-600 mb-4 w-full text-center">
-            {success}
-          </div>
-        )}
-        <button
-          type="submit"
-          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
-        >
+        <FormFeedback message={error} type="error" className="mb-4 w-full" />
+        <FormFeedback
+          message={success}
+          type="success"
+          className="mb-4 w-full"
+        />
+
+        <Button type="submit" className="w-full">
           Créer le compte
-        </button>
+        </Button>
       </form>
       <div className="mt-6 text-center w-full">
         <span className="text-gray-600">Déjà un compte ?</span>{" "}
-        <a href="/login" className="text-sky-700 underline hover:text-sky-900">
+        <a href="/login" className="text-nodea-sage underline hover:text-nodea-sage-dark">
           Se connecter
         </a>
       </div>

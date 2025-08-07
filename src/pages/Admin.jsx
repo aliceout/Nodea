@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import pb from "../services/pocketbase";
-import Layout from "../components/LayoutTop";
-import UserTable from "../components/Admin/UserTable";
+import Layout from "../components/layout/LayoutTop";
+import UserTable from "../components/admin/UserTable";
 import InviteCodeManager from "../components/Admin/InviteCode";
 
 export default function AdminPage() {
