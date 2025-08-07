@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import pb from "../../services/pocketbase";
+import pb from "../../../services/pocketbase";
 import { useNavigate } from "react-router-dom";
 
 export default function EmailSection({ user }) {

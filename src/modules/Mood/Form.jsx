@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import pb from "../../services/pocketbase";
 import { useMainKey } from "../../hooks/useMainKey";
 import Layout from "../../components/layout/LayoutTop";
-import PositivePoint from "../../components/Mood/FormPositives";
-import MoodSelector from "../../components/Mood/FormMood";
-import QuestionBlock from "../../components/Mood/FormQuestion";
-import CommentBlock from "../../components/Mood/FormComment";
+import PositivePoint from "./components/FormPositives";
+import MoodSelector from "./components/FormMood";
+import QuestionBlock from "./components/FormQuestion";
+import CommentBlock from "./components/FormComment";
 import questions from "../../data/questions.json";
 
 import { encryptAESGCM } from "../../services/webcrypto";

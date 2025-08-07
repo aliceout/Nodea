@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import pb from "../../services/pocketbase";
+import pb from "../../../services/pocketbase";
 
 export default function ExportUserDataButton({ user }) {
   const [loading, setLoading] = useState(false);

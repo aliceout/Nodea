@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import pb from "../services/pocketbase";
-import Layout from "../components/layout/LayoutTop";
-import UserTable from "../components/admin/UserTable";
-import InviteCodeManager from "../components/Admin/InviteCode";
+import pb from "../../services/pocketbase";
+import Layout from "../../components/layout/LayoutTop";
+import UserTable from "./Admin/UserTable";
+import InviteCodeManager from "./Admin/InviteCode";
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import pb from "../../services/pocketbase";
 import Layout from "../../components/layout/LayoutTop";
-import GraphChart from "../../components/Mood/GraphChart";
+import GraphChart from "./components/GraphChart";
 import { useMainKey } from "../../hooks/useMainKey";
 import { decryptAESGCM } from "../../services/webcrypto";
 

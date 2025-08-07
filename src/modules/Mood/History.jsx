@@ -3,8 +3,8 @@ import pb from "../../services/pocketbase";
 import { useMainKey } from "../../hooks/useMainKey";
 import { decryptAESGCM } from "../../services/webcrypto";
 import Layout from "../../components/layout/LayoutTop";
-import HistoryFilters from "../../components/Mood/HistoryFilters";
-import HistoryList from "../../components/Mood/HistoryList";
+import HistoryFilters from "./components/HistoryFilters";
+import HistoryList from "./components/HistoryList";
 
 export default function HistoryPage() {
   const [entries, setEntries] = useState([]);

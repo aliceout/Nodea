@@ -1,12 +1,12 @@
 import React from "react";
-import Layout from "../components/layout/LayoutTop";
-import UsernameSection from "../components/Account/ChangeUsername";
-import PasswordResetSection from "../components/account/PasswordReset";
-import EmailSection from "../components/Account/ChangeEmail";
-import DeleteAccountSection from "../components/Account/DeleteAccount";
-import ExportData from "../components/Account/ExportData";
-import ImportData from "../components/Account/ImportData";
-import pb from "../services/pocketbase";
+import Layout from "../../components/layout/LayoutTop";
+import UsernameSection from "./Account/ChangeUsername";
+import PasswordResetSection from "./Account/PasswordReset";
+import EmailSection from "./Account/ChangeEmail";
+import DeleteAccountSection from "./Account/DeleteAccount";
+import ExportData from "./Account/ExportData";
+import ImportData from "./Account/ImportData";
+import pb from "../../services/pocketbase";
 
 export default function AccountPage() {
   const user = pb.authStore.model;

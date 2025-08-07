@@ -7,8 +7,8 @@ import Register from "./pages/Register";
 import Form from "./modules/Mood/Form";
 import History from "./modules/Mood/History";
 import Graph from "./modules/Mood/Graph";
-import Admin from "./pages/Admin";
-import Account from "./pages/Account";
+import Admin from "./modules/Settings/Admin";
+import Account from "./modules/Settings/Account";
 import NotFound from "./pages/NotFound";
 import ChangePasswordPage from "./pages/ChangePassword";
 

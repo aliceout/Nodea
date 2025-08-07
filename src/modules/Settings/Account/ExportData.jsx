@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import pb from "../../services/pocketbase";
-import { useMainKey } from "../../hooks/useMainKey";
-import { decryptAESGCM } from "../../services/webcrypto";
+import pb from "../../../services/pocketbase";
+import { useMainKey } from "../../../hooks/useMainKey";
+import { encryptAESGCM } from "../../../services/webcrypto";
 
 export default function ExportDataSection({ user }) {
   const { mainKey } = useMainKey();
