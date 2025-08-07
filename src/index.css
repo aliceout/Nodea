@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+/* Déclaration du thème custom Nodea */
+@theme {
+  --color-nodea-sage: #90B6A2;     /* Principal, highlights, logo, boutons */
+  --color-nodea-sand: #F7F4EF;     /* Fond principal, background, cartes */
+  --color-nodea-lavender: #D8C7E4; /* Accent, secondary bg, notifications */
+  --color-nodea-blush: #F4D8D9;    /* Accent, alertes, tags, hover */
+  --color-nodea-sky: #A9D6E5;      /* Liens, hover, graphes */
+  --color-nodea-slate: #2B2D2F;    /* Texte principal, titres */
+}
