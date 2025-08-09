@@ -78,7 +78,7 @@ Toutes les données sont **chiffrées côté client** avant d’être envoyées 
 4. **Configurer l’environnement**
 - Créer un fichier .env à la racine avec :
    ```ini
-   VITE_PB_URL=http://127.0.0.1:8090
+   VITE_PB_URL=<Adress of pocketbase>
    ```
 5. **Lancer l’application**
    ```bash
