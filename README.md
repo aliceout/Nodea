@@ -1,6 +1,6 @@
-# Daily — Journal positif chiffré
+# 🍃 Nodea — Journal positif chiffré
 
-**Daily** est une application web pour écrire chaque jour trois points positifs, noter son humeur et répondre à une question originale.  
+**Nodea** est une application web pour écrire chaque jour trois points positifs, noter son humeur et répondre à une question originale.  
 Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : toi seul·e peux les lire, même l’admin n’y a jamais accès.
 
 ---

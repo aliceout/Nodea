@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useMainKey } from "../hooks/useMainKey";
 import { deriveKeyArgon2, decryptAESGCM } from "../services/webcrypto";
 import Layout from "../components/layout/LayoutMiddle";
-import NodeaLongLogo from "../components/common/NodeaLongLogo.jsx";
+import Logo from "../components/common/LogoLong.jsx";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import FormError from "../components/common/FormError";
@@ -70,7 +70,7 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
       >
-        <NodeaLongLogo className="mx-auto mb-3 w-1/2" />
+        <Logo className="mx-auto mb-3 w-1/2" />
         <Input
           label="Email"
           type="email"

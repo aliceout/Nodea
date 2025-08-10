@@ -137,10 +137,10 @@ export default function JournalEntryPage() {
   };
 
   return (
-    <Layout>
+    <>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-3xl mx-auto rounded-lg mt-5 px-5 md:px-0"
+        className="w-full max-w-4xl mx-auto rounded-lg mt-5 px-5 md:px-0"
       >
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
@@ -208,6 +208,6 @@ export default function JournalEntryPage() {
         )}
         <div className="flex justify-center"></div>
       </form>
-    </Layout>
+    </>
   );
 }
