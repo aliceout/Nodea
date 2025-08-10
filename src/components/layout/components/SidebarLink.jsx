@@ -8,8 +8,8 @@ export default function Link({ icon: Icon, label, active, onClick }) {
       onClick={onClick}
       className={classNames(
         active
-          ? "bg-gray-50 text-nodea-sage-dark"
-          : "text-gray-700 hover:bg-gray-50 hover:text-nodea-sage-dark",
+          ? "bg-gray-50 text-nodea-slate"
+          : "text-nodea-sage-dark hover:bg-nodea-sage-light hover:text-nodea-slate",
         "group flex w-full gap-x-3 rounded-md p-2 text-sm font-semibold"
       )}
     >
@@ -17,8 +17,8 @@ export default function Link({ icon: Icon, label, active, onClick }) {
         <Icon
           className={classNames(
             active
-              ? "text-nodea-sage-dark"
-              : "text-gray-400 group-hover:text-nodea-sage-dark",
+              ? "text-nodea-sage"
+              : "text-nodea-sage-dark group-hover:text-nodea-slate",
             "h-6 w-6 shrink-0"
           )}
         />

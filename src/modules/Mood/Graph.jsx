@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import pb from "../../services/pocketbase";
-import Layout from "../../components/layout/LayoutTop";
 import GraphChart from "./components/GraphChart";
 import { useMainKey } from "../../hooks/useMainKey";
 import { decryptAESGCM } from "../../services/webcrypto";
@@ -89,9 +88,6 @@ export default function GraphPage() {
   if (!data.length) return <div className="p-8">Aucune donnée.</div>;
 
   return (
-    <Layout>
-      <h1 className="text-2xl font-bold mt-10 mb-4">Évolution</h1>
       <GraphChart data={data} />
-    </Layout>
   );
 }

@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import pb from "../services/pocketbase";
-import { useNavigate } from "react-router-dom";
 import { useMainKey } from "../hooks/useMainKey";
 import {
   deriveKeyArgon2,
   encryptAESGCM,
   decryptAESGCM,
 } from "../services/webcrypto";
-import Layout from "../components/layout/LayoutMiddle";
 
 export default function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState("");
@@ -15,8 +13,7 @@ export default function ChangePasswordPage() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const { mainKey, setMainKey } = useMainKey();
-  const navigate = useNavigate();
+  const { setMainKey } = useMainKey();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,54 +93,56 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <Layout>
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
-      >
-        <h1 className="text-2xl font-bold mb-6">Changer de mot de passe</h1>
-
-        <input
-          type="password"
-          placeholder="Ancien mot de passe"
-          value={oldPassword}
-          onChange={(e) => setOldPassword(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Nouveau mot de passe"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full mb-4 p-3 border rounded"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Confirmez le nouveau mot de passe"
-          value={newPasswordConfirm}
-          onChange={(e) => setNewPasswordConfirm(e.target.value)}
-          className="w-full mb-6 p-3 border rounded"
-          required
-        />
-
-        {error && (
-          <div className="text-red-500 mb-4 w-full text-center">{error}</div>
-        )}
-        {success && (
-          <div className="text-green-600 mb-4 w-full text-center">
-            {success}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
+    <div className="w-full min-h-screen bg-white">
+      <div className="w-full min-h-screen flex flex-col justify-center items-center">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
         >
-          Valider
-        </button>
-      </form>
-    </Layout>
+          <h1 className="text-2xl font-bold mb-6">Changer de mot de passe</h1>
+
+          <input
+            type="password"
+            placeholder="Ancien mot de passe"
+            value={oldPassword}
+            onChange={(e) => setOldPassword(e.target.value)}
+            className="w-full mb-4 p-3 border rounded"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Nouveau mot de passe"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="w-full mb-4 p-3 border rounded"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Confirmez le nouveau mot de passe"
+            value={newPasswordConfirm}
+            onChange={(e) => setNewPasswordConfirm(e.target.value)}
+            className="w-full mb-6 p-3 border rounded"
+            required
+          />
+
+          {error && (
+            <div className="text-red-500 mb-4 w-full text-center">{error}</div>
+          )}
+          {success && (
+            <div className="text-green-600 mb-4 w-full text-center">
+              {success}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
+          >
+            Valider
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

@@ -1,52 +1,27 @@
 // src/components/layout/Layout.jsx
-import { useState, useMemo } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
-
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import {
-  HomeIcon,
-  BookOpenIcon,
-  ClockIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
-} from "@heroicons/react/24/outline";
+import { nav } from "./Navigation";
+
+import { useStore } from "../../store/StoreProvider";
+import { setTab, openMobile, closeMobile } from "../../store/actions";
+import { selectCurrentTab, selectMobileOpen } from "../../store/selectors";
 
 export default function Layout() {
   const navigate = useNavigate();
-
-  // mobile drawer (tu l’appelais sans l’avoir défini)
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  // onglet courant interne
-  const [currentTab, setCurrentTab] = useState("home");
-
-  // RÉPARATION: on récupère logout (et user) depuis l’auth
   const { logout, user } = useAuth();
 
-  const navigation = useMemo(
-    () => [
-      { id: "home", label: "Home", icon: HomeIcon, position: "top" },
-      { id: "journal", label: "Journal", icon: BookOpenIcon, position: "top" },
-      { id: "history", label: "History", icon: ClockIcon, position: "top" },
-      { id: "graph", label: "Graph", icon: ChartBarIcon, position: "top" },
-      {
-        id: "settings",
-        label: "Settings",
-        icon: Cog6ToothIcon,
-        position: "bottom",
-      },
-    ],
-    []
-  );
+  const { state, dispatch } = useStore();
+  const currentTab = selectCurrentTab(state);
+  const mobileOpen = selectMobileOpen(state);
 
   const handleSelect = (id) => {
-    setCurrentTab(id);
-    navigate("/flow", { replace: true }); // reste sur /flow
+    dispatch(setTab(id)); // met à jour l’onglet
   };
 
-  // handler propre pour la déconnexion
   const handleSignOut = async () => {
     try {
       await logout();
@@ -55,27 +30,37 @@ export default function Layout() {
     }
   };
 
+  const ActiveView = useMemo(
+    () => nav.find((t) => t.id === currentTab)?.element ?? null,
+    [currentTab]
+  );
+
+  // Titre pour le Header (depuis ta nav)
+  const headerTitle = useMemo(
+    () => nav.find((t) => t.id === currentTab)?.title ?? "",
+    [currentTab]
+  );
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar
-        navigation={navigation}
+        navigation={nav}
         current={currentTab}
         onSelect={handleSelect}
         mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
+        onCloseMobile={() => dispatch(closeMobile())}
       />
 
       <div className="lg:pl-64">
         <Header
-          onMenuClick={() => setMobileOpen(true)}
-          onProfile={() => navigate("/flow?tab=settings")}
+          title={headerTitle} 
+          onMenuClick={() => dispatch(openMobile())}
+          onProfile={() => dispatch(setTab("settings"))}
           onSignOut={handleSignOut}
-          user={user ?? { name: "Utilisateur·ice" }}
+          user={user}
         />
 
-        <main className="px-4 sm:px-6 lg:px-8 py-6">
-          <Outlet context={{ tab: currentTab }} />
-        </main>
+        <main className="px-4 sm:px-6 lg:px-8 bg-white">{ActiveView}</main>
       </div>
     </div>
   );

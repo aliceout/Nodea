@@ -19,7 +19,7 @@ const formatDDMM = (isoDate) => {
 
 export default function GraphChart({ data }) {
   return (
-    <div className="h-[60vh] min-h-[400px] md:min-h-[600px] w-full flex justify-center items-center">
+    <div className="h-[60vh] min-h-[400px] md:min-h-[600px] w-full flex justify-start items-center">
       <ResponsiveContainer width="95%" height="100%">
         <LineChart
           data={data}
