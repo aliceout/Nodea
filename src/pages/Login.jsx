@@ -58,7 +58,7 @@ export default function LoginPage() {
       }
 
       setMainKey(mainKey);
-      navigate("/journal");
+      navigate("/");
     } catch (err) {
       setError("Identifiants invalides");
     }

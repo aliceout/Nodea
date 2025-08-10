@@ -1,6 +1,6 @@
 // src/components/layout/Sidebar.jsx
 import Logo from "../common/LogoLong.jsx";
-import Link from "./Sidebar/Link.jsx";
+import Link from "./components/SidebarLink.jsx";
 
 export default function Sidebar({ navigation, current, onSelect }) {
   const topItems = navigation.filter((item) => item.position === "top");
