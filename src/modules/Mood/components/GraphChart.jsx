@@ -19,7 +19,7 @@ const formatDDMM = (isoDate) => {
 
 export default function GraphChart({ data }) {
   return (
-    <div className="h-[60vh] min-h-[400px] md:min-h-[600px] w-full flex justify-start items-center">
+    <div className="h-[60vh] min-h-[400px] md:min-h-[600px] w-full flex justify-start items-center -ml-8">
       <ResponsiveContainer width="95%" height="100%">
         <LineChart
           data={data}
@@ -42,9 +42,6 @@ export default function GraphChart({ data }) {
                     fontSize={12}
                   >
                     {formatDDMM(payload.value)}
-                  </text>
-                  <text x={x} y={y + 32} textAnchor="middle" fontSize={18}>
-                    {data[index] ? data[index].emoji : ""}
                   </text>
                 </g>
               );
@@ -73,9 +70,9 @@ export default function GraphChart({ data }) {
           <Line
             type="monotone"
             dataKey="mood"
-            stroke="#2563eb"
+            stroke="#90b6a2"
             strokeWidth={3}
-            dot={{ r: 6, fill: "#fbbf24" }}
+            dot={{ r: 6, fill: "#f7f4ef" }}
             activeDot={{ r: 8 }}
           />
         </LineChart>

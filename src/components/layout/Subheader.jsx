@@ -15,6 +15,7 @@ export default function Subheader({
       )}
     >
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
+        {" "}
         <div className="flex items-center gap-4">
           <nav className="flex items-center gap-1" aria-label={`${title} tabs`}>
             {tabs.map((t) => (
@@ -34,17 +35,16 @@ export default function Subheader({
             ))}
           </nav>
         </div>
-
         {cta && (
           <button
             type="button"
             onClick={cta.onClick}
             disabled={cta.disabled}
             className={clsx(
-              "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md",
+              "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ",
               cta.disabled
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                : "bg-nodea-sage text-white hover:bg-nodea-sage-dark"
+                ? "bg-white border-1 text-slate-400 cursor-not-allowed"
+                : "bg-white border-1 border-nodea-sage text-nodea-sage-dark hover:bg-nodea-sage hover:text-white transition-colors"
             )}
           >
             {cta.label}
