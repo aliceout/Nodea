@@ -8,11 +8,11 @@ export default function HistoryFilters({
   years,
 }) {
   return (
-    <div className="flex gap-4 mb-6">
+    <div className="flex justify-center gap-4 mb-6">
       <select
         value={month}
         onChange={(e) => setMonth(e.target.value)}
-        className="border rounded p-1"
+        className="border border-nodea-slate-light text-nodea-slate rounded p-1"
       >
         {Array.from({ length: 12 }, (_, i) => (
           <option key={i + 1} value={i + 1}>
@@ -23,7 +23,7 @@ export default function HistoryFilters({
       <select
         value={year}
         onChange={(e) => setYear(e.target.value)}
-        className="border rounded p-1"
+        className="border rounded border-nodea-slate-light text-nodea-slate  p-1"
       >
         {years.map((y) => (
           <option key={y} value={y}>

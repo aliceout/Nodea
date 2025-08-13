@@ -42,7 +42,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex">
       <Sidebar
         navigation={nav}
         current={currentTab}
@@ -51,16 +51,18 @@ export default function Layout() {
         onCloseMobile={() => dispatch(closeMobile())}
       />
 
-      <div className="lg:pl-64">
+      <div className="flex flex-col flex-1 lg:pl-64">
         <Header
-          title={headerTitle} 
+          title={headerTitle}
           onMenuClick={() => dispatch(openMobile())}
           onProfile={() => dispatch(setTab("settings"))}
           onSignOut={handleSignOut}
           user={user}
         />
 
-        <main className="px-4 sm:px-6 lg:px-8 bg-white">{ActiveView}</main>
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 bg-white">
+          {ActiveView}
+        </main>
       </div>
     </div>
   );
