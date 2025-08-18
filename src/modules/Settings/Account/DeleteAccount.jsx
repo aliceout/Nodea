@@ -1,3 +1,4 @@
+// src/modules/Settings/Account/DeleteAccount.jsx
 import React, { useState } from "react";
 import pb from "../../../services/pocketbase";
 import { useNavigate } from "react-router-dom";
@@ -10,10 +11,11 @@ export default function DeleteAccountSection({ user }) {
     setDeleteError("");
     if (
       !window.confirm(
-        "Attention : cette action est irréversible. Supprimer définitivement ce compte ?"
+        "Attention : cette action est irréversible. Supprimer définitivement ce compte ?"
       )
-    )
+    ) {
       return;
+    }
     try {
       const journals = await pb.collection("journal_entries").getFullList({
         filter: `user="${user.id}"`,
@@ -30,17 +32,33 @@ export default function DeleteAccountSection({ user }) {
   };
 
   return (
-    <section className="p-4 shadow bg-white rounded">
-      <label className="block mb-1 font-semibold">Suppression du compte</label>
-      <button
-        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 w-full"
-        onClick={handleDelete}
-      >
-        Supprimer mon compte
-      </button>
-      {deleteError && <div className="text-red-500 mt-2">{deleteError}</div>}
-      <div className="text-gray-500 text-xs mt-2">
-        La suppression est définitive
+    <section>
+      <div className="flex flex-col gap-3">
+        {deleteError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+          >
+            {deleteError}
+          </div>
+        )}
+
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="inline-flex items-center rounded-md bg-nodea-blush-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-blush-darker "
+          >
+            Supprimer mon compte
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500">
+          La suppression est <strong>définitive</strong>
+          <br /> Toutes les données associées à ce compte seront perdues. Cette
+          action est non réversible.
+        </p>
       </div>
     </section>
   );

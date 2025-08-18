@@ -7,7 +7,7 @@ import MoodGraph from "./Graph";
 
 export default function MoodIndex() {
   // onglet/sous-page actif du module (indépendant de la nav globale)
-  const [active, setActive] = useState("history"); // "history" par défaut
+  const [active, setActive] = useState("form"); // "history" par défaut
 
   const tabs = useMemo(
     () => [

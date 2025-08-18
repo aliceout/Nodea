@@ -30,6 +30,7 @@ export const nav = [
     id: "settings",
     label: "Settings",
     icon: Cog6ToothIcon,
+    title: "Settings",
     position: "bottom",
     element: <Settings />,
   },

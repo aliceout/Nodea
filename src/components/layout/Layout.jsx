@@ -60,7 +60,7 @@ export default function Layout() {
           user={user}
         />
 
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 bg-white">
+        <main className="flex-1  bg-white">
           {ActiveView}
         </main>
       </div>

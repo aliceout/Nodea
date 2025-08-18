@@ -26,8 +26,8 @@ export default function Subheader({
                 className={clsx(
                   "px-3 py-1.5 text-sm rounded-md transition",
                   t.active
-                    ? "bg-none text-nodea-slate-dark font-semibold"
-                    : "text-slate-600 hover:bg-nodea-sand hover:bg-nodea-nodea-slate"
+                    ? "bg-none text-nodea-sage-darker bg-nodea-sand hover:bg-nodea-sage-lighter"
+                    : "text-nodea-sage-dark hover:bg-nodea-sage-lighter"
                 )}
               >
                 {t.label}
@@ -44,7 +44,7 @@ export default function Subheader({
               "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ",
               cta.disabled
                 ? "bg-white border-1 text-slate-400 cursor-not-allowed"
-                : "bg-white border-1 border-nodea-sage text-nodea-sage-dark hover:bg-nodea-sage hover:text-white transition-colors"
+                : "bg-nodea-sage-lighter  text-nodea-sage-dark hover:bg-nodea-sage hover:text-white transition-colors"
             )}
           >
             {cta.label}

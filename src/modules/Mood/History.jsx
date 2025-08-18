@@ -4,6 +4,7 @@ import { useMainKey } from "../../hooks/useMainKey";
 import { decryptAESGCM } from "../../services/webcrypto";
 import HistoryFilters from "./components/HistoryFilters";
 import HistoryList from "./components/HistoryList";
+import KeyMissingMessage from "../../components/common/KeyMissingMessage";
 
 export default function HistoryPage() {
   const [entries, setEntries] = useState([]);
@@ -100,15 +101,10 @@ export default function HistoryPage() {
       date.getFullYear() === Number(year)
     );
   });
-
-  if (!mainKey) {
+  if (!mainKey)
     return (
-      <div className="flex items-center justify-center h-64 text-red-700 text-lg font-semibold">
-        ⚠️ Clé de chiffrement absente. Merci de vous reconnecter pour afficher
-        l’historique.
-      </div>
+      <KeyMissingMessage context="afficher l’historique" className="m-5" />
     );
-  }
   if (!cryptoKey) return <div className="p-8">Chargement de la clé…</div>;
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;

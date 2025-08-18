@@ -10,36 +10,61 @@ export default function UsernameSection({ user }) {
     e.preventDefault();
     setUsernameSuccess("");
     setUsernameError("");
+
     try {
       await pb.collection("users").update(user.id, { username });
-      setUsernameSuccess("Nom d'utilisateur mis à jour");
+      setUsernameSuccess("Nom d’utilisateur mis à jour.");
     } catch {
-      setUsernameError("Erreur lors de la modification");
+      setUsernameError("Erreur lors de la modification.");
     }
   };
 
   return (
-    <section className="p-4 shadow bg-white rounded">
-      <form onSubmit={handleUsername}>
-        <label className="block mb-1 font-semibold">
-          Modifier le nom d'utilisateur
-        </label>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full mb-2 p-2 border rounded"
-          required
-        />
+    <section>
+      <form onSubmit={handleUsername} className="flex flex-col gap-3">
+        <div>
+          <input
+            id="username"
+            type="text"
+            placeholder="Nouveau nom d’utilisateur"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="mt-1 block w-1/2 rounded-md border-slate-300 shadow-sm focus:border-slate-900 focus:ring-slate-900 text-sm placeholder:text-sm placeholder:text"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Ton identifiant public dans l’appli.
+          </p>
+        </div>
+
         {usernameSuccess && (
-          <div className="text-green-600">{usernameSuccess}</div>
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700"
+          >
+            {usernameSuccess}
+          </div>
         )}
-        {usernameError && <div className="text-red-500">{usernameError}</div>}
-        <button
-          type="submit"
-          className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700 mt-2"
-        >
-          Modifier
-        </button>
+
+        {usernameError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+          >
+            {usernameError}
+          </div>
+        )}
+
+        <div className="flex items-center">
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md bg-nodea-sage px-4 py-2 text-sm font-medium text-white hover:bg-nodea-sage-dark"
+          >
+            Modifier
+          </button>
+        </div>
       </form>
     </section>
   );

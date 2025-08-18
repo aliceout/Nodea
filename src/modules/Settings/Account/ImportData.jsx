@@ -1,7 +1,9 @@
+// src/modules/Settings/Account/ImportData.jsx
 import React, { useState, useEffect } from "react";
 import pb from "../../../services/pocketbase";
 import { useMainKey } from "../../../hooks/useMainKey";
 import { encryptAESGCM } from "../../../services/webcrypto";
+import KeyMissingMessage from "../../../components/common/KeyMissingMessage";
 
 export default function ImportData({ user }) {
   const { mainKey } = useMainKey();
@@ -10,7 +12,6 @@ export default function ImportData({ user }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Prépare la CryptoKey pour WebCrypto dès que mainKey est dispo
   useEffect(() => {
     if (mainKey) {
       window.crypto.subtle
@@ -19,6 +20,8 @@ export default function ImportData({ user }) {
           "decrypt",
         ])
         .then(setCryptoKey);
+    } else {
+      setCryptoKey(null);
     }
   }, [mainKey]);
 
@@ -34,8 +37,7 @@ export default function ImportData({ user }) {
     }
     try {
       const text = await file.text();
-      let imported = JSON.parse(text);
-
+      const imported = JSON.parse(text);
       if (!Array.isArray(imported))
         throw new Error("Fichier invalide (tableau attendu)");
 
@@ -52,14 +54,14 @@ export default function ImportData({ user }) {
 
       let ignoredCount = 0;
       let importedCount = 0;
-      for (let entry of imported) {
+
+      for (const entry of imported) {
         const date = entry.date?.slice(0, 10);
         if (!date || existingDates.has(date) || !cryptoKey) {
           ignoredCount++;
           continue;
         }
 
-        // Chiffre chaque champ avec la cryptoKey (format {iv, data} stringifié)
         const encrypted = {
           user: user.id,
           date: entry.date,
@@ -92,8 +94,9 @@ export default function ImportData({ user }) {
         await pb.collection("journal_entries").create(encrypted);
         importedCount++;
       }
+
       setSuccess(
-        `Import terminé : ${importedCount} entrée(s) ajoutée(s), ${ignoredCount} ignorée(s) (déjà présentes).`
+        `Import terminé : ${importedCount} entrée(s) ajoutée(s), ${ignoredCount} ignorée(s).`
       );
     } catch (err) {
       setError("Erreur lors de l’import : " + (err.message || ""));
@@ -102,30 +105,62 @@ export default function ImportData({ user }) {
     }
   };
 
+  const ready = Boolean(user && cryptoKey);
+
+  // 👉 Pas de bouton ni d’explication si la clé n’est pas là
+  if (!ready) {
+    return (
+      <section>
+        <KeyMissingMessage context="importer des données" />
+      </section>
+    );
+  }
+
   return (
-    <section className="p-4 shadow bg-white rounded flex flex-col">
-      <label className="block mb-1 font-semibold">Importer des données</label>
-      <label
-        htmlFor="import-json"
-        className="block mb-1 font-semibold bg-sky-400 text-white px-4 py-2 rounded hover:bg-sky-500 w-full text-center"
-        style={{ display: loading ? "none" : "block" }}
-      >
-        Sélectionner le fichier
-        <input
-          id="import-json"
-          type="file"
-          accept="application/json"
-          onChange={handleImport}
-          className="hidden"
-          disabled={loading}
-        />
-      </label>
-      <span className="text-gray-500 text-xs mb-2">
-        Seules les dates absentes seront ajoutées. Aucune donnée existante n’est
-        modifiée. Type de fichier attendu : json
-      </span>
-      {success && <div className="text-green-600 mt-2">{success}</div>}
-      {error && <div className="text-red-500 mt-2">{error}</div>}
+    <section>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center">
+          <label
+            htmlFor="import-json"
+            className="inline-flex items-center justify-center rounded-md bg-nodea-lavender-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-lavender-darker cursor-pointer"
+            style={{ display: loading ? "none" : "inline-flex" }}
+          >
+            Sélectionner le fichier
+            <input
+              id="import-json"
+              type="file"
+              accept="application/json"
+              onChange={handleImport}
+              className="hidden"
+              disabled={loading}
+            />
+          </label>
+        </div>
+
+        {success && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700"
+          >
+            {success}
+          </div>
+        )}
+        {error && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+          >
+            {error}
+          </div>
+        )}
+
+        <p className="text-xs text-slate-500">
+          Seules les dates absentes seront ajoutées. Type de fichier attendu :
+          JSON.
+        </p>
+      </div>
     </section>
   );
 }

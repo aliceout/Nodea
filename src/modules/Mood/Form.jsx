@@ -145,7 +145,7 @@ export default function JournalEntryPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
           <h1 className="text-2xl font-bold text-center md:text-left">
-            Mon journal du jour
+            Nouvelle entrée
           </h1>
           <div className="flex-shrink-0 flex items-center justify-center md:justify-end w-full md:w-85 mt-5">
             <input
