@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import pb from "../../services/pocketbase";
-import Layout from "../../components/layout/LayoutTop";
 import GraphChart from "./components/GraphChart";
 import { useMainKey } from "../../hooks/useMainKey";
 import { decryptAESGCM } from "../../services/webcrypto";
+import KeyMissingMessage from "../../components/common/KeyMissingMessage";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // ← démarre à false
   const [error, setError] = useState("");
   const { mainKey } = useMainKey();
   const [cryptoKey, setCryptoKey] = useState(null);
@@ -20,7 +20,10 @@ export default function GraphPage() {
           "encrypt",
           "decrypt",
         ])
-        .then(setCryptoKey);
+        .then(setCryptoKey)
+        .catch(() => setCryptoKey(null));
+    } else {
+      setCryptoKey(null);
     }
   }, [mainKey]);
 
@@ -34,6 +37,7 @@ export default function GraphPage() {
     }
   };
 
+  // Fetch quand la clé est prête
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -53,7 +57,7 @@ export default function GraphPage() {
           return entryDate >= sixMonthsAgo && entryDate <= now;
         });
 
-        // Déchiffre les champs pour chaque entrée (en série, ou Promise.all si tu veux)
+        // Déchiffrement
         const decrypted = [];
         for (let entry of filtered) {
           const mood_score = await decryptField(entry.mood_score);
@@ -75,23 +79,17 @@ export default function GraphPage() {
     if (cryptoKey) fetchData();
   }, [cryptoKey]);
 
+  // ── Ordre des retours : d’abord l’absence de clé, ensuite loading/erreurs/données
+if (!mainKey)
+  return <KeyMissingMessage context="afficher le graphique" className="m-5" />;
+
+  if (!cryptoKey) {
+    return <div className="p-8">Chargement de la clé…</div>;
+  }
+
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
-  if (!mainKey) {
-    return (
-      <div className="p-8 text-red-600 font-semibold">
-        ⚠️ Clé de chiffrement absente. Merci de vous reconnecter pour afficher
-        le graphique.
-      </div>
-    );
-  }
-  if (!cryptoKey) return <div className="p-8">Chargement de la clé…</div>;
   if (!data.length) return <div className="p-8">Aucune donnée.</div>;
 
-  return (
-    <Layout>
-      <h1 className="text-2xl font-bold mt-10 mb-4">Évolution</h1>
-      <GraphChart data={data} />
-    </Layout>
-  );
+  return <GraphChart data={data} />;
 }

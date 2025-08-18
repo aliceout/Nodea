@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import pb from "../../services/pocketbase";
 import { useMainKey } from "../../hooks/useMainKey";
-import Layout from "../../components/layout/LayoutTop";
 import PositivePoint from "./components/FormPositives";
 import MoodSelector from "./components/FormMood";
 import QuestionBlock from "./components/FormQuestion";
 import CommentBlock from "./components/FormComment";
+import Button from "../../components/common/Button";
 import questions from "../../data/questions.json";
 
 import { encryptAESGCM } from "../../services/webcrypto";
@@ -137,15 +137,15 @@ export default function JournalEntryPage() {
   };
 
   return (
-    <Layout>
+    <>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-3xl mx-auto rounded-lg mt-5 px-5 md:px-0"
+        className="w-full max-w-4xl mx-auto rounded-lg px-5 md:px-0"
       >
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
           <h1 className="text-2xl font-bold text-center md:text-left">
-            Mon journal du jour
+            Nouvelle entrée
           </h1>
           <div className="flex-shrink-0 flex items-center justify-center md:justify-end w-full md:w-85 mt-5">
             <input
@@ -191,23 +191,13 @@ export default function JournalEntryPage() {
             setAnswer={setAnswer}
             loading={loadingQuestion}
           />
-          <button
-            type="submit"
-            className="w-full md:w-1/2 bg-sky-600 text-white py-3 rounded hover:bg-sky-700 font-semibold"
-          >
+          <Button type="submit" className="w-full md:w-1/2">
             Enregistrer
-          </button>
+          </Button>
+          {error && <FormError message={error} />}
         </div>
-        {error && (
-          <div className="text-red-500 mb-2 w-full text-center">{error}</div>
-        )}
-        {success && (
-          <div className="text-green-600 mb-2 w-full text-center">
-            {success}
-          </div>
-        )}
         <div className="flex justify-center"></div>
       </form>
-    </Layout>
+    </>
   );
 }

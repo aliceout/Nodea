@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import pb from "../../services/pocketbase";
-import Layout from "../../components/layout/LayoutTop";
 import UserTable from "./Admin/UserTable";
 import InviteCodeManager from "./Admin/InviteCode";
 
@@ -117,7 +116,7 @@ export default function AdminPage() {
   if (error) return <div className="p-8 text-red-500">{error}</div>;
 
   return (
-    <Layout>
+    <>
       <h1 className="text-2xl font-bold mt-10 mb-6">
         Gestion des utilisateur·ice·s
       </h1>
@@ -133,6 +132,6 @@ export default function AdminPage() {
         copySuccess={copySuccess}
         onCopy={handleCopy}
       />
-    </Layout>
+    </>
   );
 }

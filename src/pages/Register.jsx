@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { deriveKeyArgon2, encryptAESGCM } from "../services/webcrypto";
 import pb from "../services/pocketbase";
-import Layout from "../components/layout/LayoutMiddle";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import FormFeedback from "../components/common/FormError";
@@ -106,67 +105,72 @@ export default function RegisterPage() {
   };
 
   return (
-    <Layout>
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
-      >
-        <h1 className="text-2xl font-bold mb-6 text-center w-full">
-          Créer un compte
-        </h1>
-        <Input
-          placeholder="Nom d'utilisateur"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <Input
-          placeholder="Code d’invitation"
-          value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value)}
-          required
-          className="mb-2"
-        />
-        <Input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="mb-2"
-        />
-        <Input
-          type="password"
-          placeholder="Mot de passe"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <Input
-          type="password"
-          placeholder="Confirme le mot de passe"
-          value={passwordConfirm}
-          onChange={(e) => setPasswordConfirm(e.target.value)}
-          required
-          className="mb-2"
-        />
-        <FormFeedback message={error} type="error" className="mb-4 w-full" />
-        <FormFeedback
-          message={success}
-          type="success"
-          className="mb-4 w-full"
-        />
+    <div className="w-full min-h-screen bg-white">
+      <div className="w-full min-h-screen flex flex-col justify-center items-center">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
+        >
+          <h1 className="text-2xl font-bold mb-6 text-center w-full">
+            Créer un compte
+          </h1>
+          <Input
+            placeholder="Nom d'utilisateur"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+          <Input
+            placeholder="Code d’invitation"
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value)}
+            required
+            className="mb-2"
+          />
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="mb-2"
+          />
+          <Input
+            type="password"
+            placeholder="Mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Input
+            type="password"
+            placeholder="Confirme le mot de passe"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            required
+            className="mb-2"
+          />
+          <FormFeedback message={error} type="error" className="mb-4 w-full" />
+          <FormFeedback
+            message={success}
+            type="success"
+            className="mb-4 w-full"
+          />
 
-        <Button type="submit" className="w-full">
-          Créer le compte
-        </Button>
-      </form>
-      <div className="mt-6 text-center w-full">
-        <span className="text-gray-600">Déjà un compte ?</span>{" "}
-        <a href="/login" className="text-nodea-sage underline hover:text-nodea-sage-dark">
-          Se connecter
-        </a>
+          <Button type="submit" className="w-full">
+            Créer le compte
+          </Button>
+        </form>
+        <div className="mt-6 text-center w-full">
+          <span className="text-gray-600">Déjà un compte ?</span>{" "}
+          <a
+            href="/login"
+            className="text-nodea-sage underline hover:text-nodea-sage-dark"
+          >
+            Se connecter
+          </a>
+        </div>
       </div>
-    </Layout>
+    </div>
   );
 }

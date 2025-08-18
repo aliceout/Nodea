@@ -3,8 +3,7 @@ import pb from "../services/pocketbase";
 import { useNavigate } from "react-router-dom";
 import { useMainKey } from "../hooks/useMainKey";
 import { deriveKeyArgon2, decryptAESGCM } from "../services/webcrypto";
-import Layout from "../components/layout/LayoutMiddle";
-import NodeaLongLogo from "../components/common/NodeaLongLogo.jsx";
+import Logo from "../components/common/LogoLong.jsx";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import FormError from "../components/common/FormError";
@@ -58,47 +57,49 @@ export default function LoginPage() {
       }
 
       setMainKey(mainKey);
-      navigate("/journal");
+      navigate("/");
     } catch (err) {
       setError("Identifiants invalides");
     }
   };
 
   return (
-    <Layout>
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
-      >
-        <NodeaLongLogo className="mx-auto mb-3 w-1/2" />
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          required
-        />
-        <Input
-          label="Mot de passe"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Mot de passe"
-          required
-        />
-        <Button type="submit">Se connecter</Button>
-        {error && <FormError message={error} />}
-      </form>
-      <div className="mt-6 text-center w-full">
-        <span className="text-gray-600">Pas de compte ?</span>{" "}
-        <a
-          href="/register"
-          className="text-nodea-sage underline hover:text-nodea-sage-dark"
+    <div className="w-full min-h-screen bg-white">
+      <div className="w-full min-h-screen flex flex-col justify-center items-center">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
         >
-          Créer un compte
-        </a>
+          <Logo className="mx-auto mb-3 w-1/2" />
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            required
+          />
+          <Input
+            label="Mot de passe"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe"
+            required
+          />
+          <Button type="submit">Se connecter</Button>
+          {error && <FormError message={error} />}
+        </form>
+        <div className="mt-6 text-center w-full">
+          <span className="text-gray-600">Pas de compte ?</span>{" "}
+          <a
+            href="/register"
+            className="text-nodea-sage underline hover:text-nodea-sage-dark"
+          >
+            Créer un compte
+          </a>
+        </div>
       </div>
-    </Layout>
+    </div>
   );
 }

@@ -1,31 +1,44 @@
 @theme {
   /* Principal, highlights, logo, boutons */
-  --color-nodea-sage-light: #bcd7c9;   /* Plus clair */
+  --color-nodea-sage-lighter: #d7e7df;
+  --color-nodea-sage-light: #bcd7c9;
   --color-nodea-sage: #90b6a2;
-  --color-nodea-sage-dark: #587568;    /* Plus foncé */
+  --color-nodea-sage-dark: #587568;
+  --color-nodea-sage-darker: #3e5448;
 
   /* Fond principal, background, cartes */
-  --color-nodea-sand-light: #ffffff;   /* Plus clair */
+  --color-nodea-sand-lighter: #ffffff;
+  /* déjà au max (identique à -light) */
+  --color-nodea-sand-light: #ffffff;
   --color-nodea-sand: #f7f4ef;
-  --color-nodea-sand-dark: #e5ded5;    /* Plus foncé */
+  --color-nodea-sand-dark: #e5ded5;
+  --color-nodea-sand-darker: #d1c7bb;
 
   /* Accent, secondary bg, notifications */
-  --color-nodea-lavender-light: #eee3f5;  /* Plus clair */
+  --color-nodea-lavender-lighter: #f6eefb;
+  --color-nodea-lavender-light: #eee3f5;
   --color-nodea-lavender: #d8c7e4;
-  --color-nodea-lavender-dark: #9f8db0;   /* Plus foncé */
+  --color-nodea-lavender-dark: #9f8db0;
+  --color-nodea-lavender-darker: #7f6c97;
 
   /* Accent, alertes, tags, hover */
-  --color-nodea-blush-light: #f8ecec;   /* Plus clair */
+  --color-nodea-blush-lighter: #fcf4f4;
+  --color-nodea-blush-light: #f8ecec;
   --color-nodea-blush: #f4d8d9;
-  --color-nodea-blush-dark: #c98995;    /* Plus foncé */
+  --color-nodea-blush-dark: #c98995;
+  --color-nodea-blush-darker: #a56571;
 
   /* Liens, hover, graphes */
-  --color-nodea-sky-light: #d0edf6;     /* Plus clair */
+  --color-nodea-sky-lighter: #eaf8fc;
+  --color-nodea-sky-light: #d0edf6;
   --color-nodea-sky: #a9d6e5;
-  --color-nodea-sky-dark: #53899d;      /* Plus foncé */
+  --color-nodea-sky-dark: #53899d;
+  --color-nodea-sky-darker: #3f6b7a;
 
   /* Texte principal, titres */
-  --color-nodea-slate-light: #7a7c7e;   /* Plus clair (gris moyen) */
+  --color-nodea-slate-lighter: #a2a5a8;
+  --color-nodea-slate-light: #7a7c7e;
   --color-nodea-slate: #2b2d2f;
-  --color-nodea-slate-dark: #18191a;    /* Plus foncé */
+  --color-nodea-slate-dark: #18191a;
+  --color-nodea-slate-darker: #0c0d0d;
 }

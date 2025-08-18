@@ -1,7 +1,9 @@
+// src/modules/Settings/Account/ExportData.jsx
 import React, { useState, useEffect } from "react";
 import pb from "../../../services/pocketbase";
 import { useMainKey } from "../../../hooks/useMainKey";
-import { encryptAESGCM } from "../../../services/webcrypto";
+import { decryptAESGCM } from "../../../services/webcrypto";
+import KeyMissingMessage from "../../../components/common/KeyMissingMessage";
 
 export default function ExportDataSection({ user }) {
   const { mainKey } = useMainKey();
@@ -10,7 +12,6 @@ export default function ExportDataSection({ user }) {
   const [loading, setLoading] = useState(false);
   const [cryptoKey, setCryptoKey] = useState(null);
 
-  // Prépare la CryptoKey WebCrypto à partir de mainKey
   useEffect(() => {
     if (mainKey) {
       window.crypto.subtle
@@ -19,10 +20,11 @@ export default function ExportDataSection({ user }) {
           "decrypt",
         ])
         .then(setCryptoKey);
+    } else {
+      setCryptoKey(null);
     }
   }, [mainKey]);
 
-  // Déchiffre un champ chiffré {iv, data}
   const decryptField = async (field) => {
     if (!cryptoKey || !field) return "";
     try {
@@ -36,7 +38,6 @@ export default function ExportDataSection({ user }) {
     setSuccess("");
     setError("");
     setLoading(true);
-
     try {
       const entries = await pb.collection("journal_entries").getFullList({
         filter: `user="${user.id}"`,
@@ -50,7 +51,6 @@ export default function ExportDataSection({ user }) {
         return;
       }
 
-      // On attend tous les decryptions (asynchrone)
       const decrypted = await Promise.all(
         entries.map(async (e) => ({
           id: e.id,
@@ -69,39 +69,70 @@ export default function ExportDataSection({ user }) {
       const data = JSON.stringify(decrypted, null, 2);
       const blob = new Blob([data], { type: "application/json" });
       const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
-      a.download = `export_${user.username || user.email}.json`;
+      a.download = `export_${user?.username || user?.email || "nodea"}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
 
       setSuccess("Export terminé");
-    } catch (e) {
+    } catch {
       setError("Erreur lors de l’export");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user || !cryptoKey) return null;
+  const ready = Boolean(user && cryptoKey);
+
+  // 👉 Pas de bouton ni de texte explicatif si la clé n'est pas là
+  if (!ready) {
+    return (
+      <section>
+        <KeyMissingMessage context="exporter des données" />
+      </section>
+    );
+  }
+
   return (
-    <section className="p-4 shadow bg-white rounded flex flex-col">
-      <label className="block mb-1 font-semibold">
-        Exporter les données du compte
-      </label>
-      <button
-        className="px-4 py-2 rounded bg-green-400 hover:bg-green-500 text-white w-full"
-        onClick={handleExport}
-        type="button"
-        disabled={loading}
-      >
-        {loading ? "Chargement…" : "Exporter"}
-      </button>
-      {success && <div className="text-green-600 mt-2">{success}</div>}
-      {error && <div className="text-red-500 mt-2">{error}</div>}
+    <section>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={loading}
+            className="inline-flex items-center rounded-md bg-nodea-lavender-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-lavender-darker disabled:opacity-60"
+          >
+            {loading ? "Chargement…" : "Exporter les données"}
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500">
+          Exporte un fichier JSON (non chiffré) des données.
+        </p>
+
+        {success && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700"
+          >
+            {success}
+          </div>
+        )}
+        {error && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+          >
+            {error}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

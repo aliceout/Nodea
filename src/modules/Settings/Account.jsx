@@ -1,5 +1,4 @@
 import React from "react";
-import Layout from "../../components/layout/LayoutTop";
 import UsernameSection from "./Account/ChangeUsername";
 import PasswordResetSection from "./Account/PasswordReset";
 import EmailSection from "./Account/ChangeEmail";
@@ -11,7 +10,7 @@ import pb from "../../services/pocketbase";
 export default function AccountPage() {
   const user = pb.authStore.model;
   return (
-    <Layout>
+    <>
       <div className="w-full max-w-4xl mx-auto p-8 rounded-lg">
         <h1 className="text-2xl font-bold text-center mb-8">Mon compte</h1>
         <div className="flex flex-col md:flex-row gap-8">
@@ -29,6 +28,6 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

@@ -1,57 +1,36 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import ProtectedRoute from "./components/common/ProtectedRoute";
-
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Layout from "./components/layout/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Form from "./modules/Mood/Form";
-import History from "./modules/Mood/History";
-import Graph from "./modules/Mood/Graph";
-import Admin from "./modules/Settings/Admin";
-import Account from "./modules/Settings/Account";
+import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
-import ChangePasswordPage from "./pages/ChangePassword";
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import { StoreProvider } from "./store/StoreProvider"; // <—
 
-import Navbar from "./components/layout/navbar/Navbar";
-
-// Tableau de routes protégées
-const protectedRoutes = [
-  { path: "/journal", element: <Form /> },
-  { path: "/history", element: <History /> },
-  { path: "/graph", element: <Graph /> },
-  { path: "/account", element: <Account /> },
-  { path: "/change-password", element: <ChangePasswordPage /> },
-  { path: "/admin", element: <Admin />, adminOnly: true },
-];
-
-function App() {
+export default function App() {
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar />
-        <div className="flex-1 flex flex-col">
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            {/* Routes protégées via mapping */}
-            {protectedRoutes.map(({ path, element, adminOnly }) => (
-              <Route
-                key={path}
-                path={path}
-                element={
-                  <ProtectedRoute adminOnly={adminOnly}>
-                    {element}
-                  </ProtectedRoute>
-                }
-              />
-            ))}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-      </div>
-    </Router>
+    <BrowserRouter>
+      <StoreProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/flow" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="flow" element={<div />} /> {/* plus de <Content /> */}
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </StoreProvider>
+    </BrowserRouter>
   );
 }
-
-export default App;

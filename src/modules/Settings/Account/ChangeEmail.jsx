@@ -12,10 +12,12 @@ export default function EmailSection({ user }) {
     e.preventDefault();
     setEmailError("");
     setEmailSuccess("");
+
     if (!newEmail) {
       setEmailError("Renseigne un nouvel email");
       return;
     }
+
     try {
       await pb.collection("users").requestEmailChange(newEmail);
       setEmailSuccess(
@@ -27,38 +29,56 @@ export default function EmailSection({ user }) {
       }, 6000);
       setNewEmail("");
     } catch (err) {
-      if (err.data?.email) {
+      if (err?.data?.email) {
         setEmailError("Cet email est déjà utilisé.");
       } else {
-        setEmailError("Erreur lors de la demande");
+        setEmailError("Erreur lors de la demande.");
       }
     }
   };
 
   return (
-    <section className="rounded p-4 shadow bg-white">
-      <form onSubmit={handleEmail}>
-        <label className="block mb-1 font-semibold">Changer l'email</label>
-        <input
-          type="email"
-          placeholder="Nouvel email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          className="w-full mb-2 p-2 border rounded"
-          required
-        />
-        {emailSuccess && <div className="text-green-600">{emailSuccess}</div>}
-        {emailError && <div className="text-red-500">{emailError}</div>}
-        <div className="flex items-center justify-between mt-2">
+    <section>
+      <form onSubmit={handleEmail} className="flex flex-col gap-3">
+        <div>
+          <input
+            id="newEmail"
+            type="email"
+            placeholder="Nouvel email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            className="mt-1 block w-1/2 rounded-md border-slate-300 shadow-sm focus:border-slate-900 focus:ring-slate-900 text-sm placeholder:text-sm placeholder:text"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Tu recevras un mail de confirmation pour valider ce changement.
+          </p>
+        </div>
+        {emailSuccess && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700"
+          >
+            {emailSuccess}
+          </div>
+        )}
+        {emailError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+          >
+            {emailError}
+          </div>
+        )}
+        <div className="flex items-center">
           <button
             type="submit"
-            className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700 basis-4/10"
+            className="inline-flex items-center rounded-md bg-nodea-sage px-4 py-2 text-sm font-medium text-white hover:bg-nodea-sage-dark"
           >
-            Modifier l'email
+            Modifier l’email
           </button>
-          <span className="text-gray-500 text-xs basis-6/10 text-left ml-3">
-            Tu vas recevoir un mail de confirmation pour valider ce changement.
-          </span>
         </div>
       </form>
     </section>
