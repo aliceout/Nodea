@@ -2,15 +2,13 @@
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import useAuth from "../../hooks/useAuth";
 import { useStore } from "../../store/StoreProvider";
-import { selectCurrentTab } from "../../store/selectors";
 import { setTab, openMobile } from "../../store/actions";
-import { nav } from "./Navigation";
 
+import Logo from "../common/LogoLong.jsx";
 import UserAvatar from "./components/UserAvatar";
 
 export default function Header() {
@@ -18,16 +16,7 @@ export default function Header() {
   const { user, logout } = useAuth();
 
   const store = useStore();
-  const state = store?.state ?? store?.[0];
   const dispatch = store?.dispatch ?? store?.[1];
-
-  const current = selectCurrentTab(state);
-
-  // Titre basé sur la nav + l’onglet courant
-  const title = useMemo(() => {
-    return nav.find((t) => t.id === current)?.title ?? "";
-  }, [current]);
-
   const username = user?.username || "Utilisateur·rice";
 
   const handleMenuClick = () => dispatch(openMobile());
@@ -42,7 +31,7 @@ export default function Header() {
 
   return (
     <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Left: mobile hamburger + titre */}
           <div className="flex items-center gap-2">
@@ -54,8 +43,10 @@ export default function Header() {
             >
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
+          <div className="flex items-center h-8">
+            <Logo className="max-h-full w-auto" />
           </div>
-
+          </div>
           {/* Right: menu utilisateur */}
           <div className="flex items-center justify-end gap-x-4 lg:gap-x-6">
             <Menu as="div" className="relative">
@@ -75,7 +66,7 @@ export default function Header() {
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-2.5 w-44 origin-top-right rounded-md bg-white py-2 shadow-lg outline-1 outline-gray-900/5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-100 data-leave:duration-75"
+                className="absolute right-0 z-50 mt-2.5 w-44 origin-top-right rounded-md bg-white py-2 shadow-lg outline-1 outline-gray-900/5 data-closed:scale-95 data-closed:opacity-0 data-enter:duration-100 data-leave:duration-75"
               >
                 <MenuItem>
                   {({ focus }) => (

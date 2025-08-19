@@ -5,24 +5,20 @@ import { selectCurrentTab } from "../../store/selectors";
 import { useStore } from "../../store/StoreProvider";
 import { nav } from "./Navigation";
 
-
-
-
 export default function Subheader({
   tabs = [], // [{ id, label, active }]
   onTabSelect, // (id) => void
   cta, // { label, onClick, disabled? }
   className,
 }) {
+  const store = useStore();
+  const state = store?.state ?? store?.[0];
+  const current = selectCurrentTab(state);
 
-const store = useStore();
-const state = store?.state ?? store?.[0];
-const current = selectCurrentTab(state);
-
-// Titre basé sur la nav + l’onglet courant
-const title = useMemo(() => {
-  return nav.find((t) => t.id === current)?.title ?? "";
-}, [current]);
+  // Titre basé sur la nav + l’onglet courant
+  const title = useMemo(() => {
+    return nav.find((t) => t.id === current)?.title ?? "";
+  }, [current]);
 
   return (
     <div
