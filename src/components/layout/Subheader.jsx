@@ -27,7 +27,7 @@ export default function Subheader({
         className
       )}
     >
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
+      <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-start gap-12">
         {title ? (
           <h1 className="text-base font-semibold leading-6 text-gray-900">
             {title}
@@ -52,21 +52,6 @@ export default function Subheader({
             ))}
           </nav>
         </div>
-        {cta && (
-          <button
-            type="button"
-            onClick={cta.onClick}
-            disabled={cta.disabled}
-            className={clsx(
-              "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ",
-              cta.disabled
-                ? "bg-white border-1 text-slate-400 cursor-not-allowed"
-                : "bg-nodea-sage-lighter  text-nodea-sage-dark hover:bg-nodea-sage hover:text-white transition-colors"
-            )}
-          >
-            {cta.label}
-          </button>
-        )}
       </div>
     </div>
   );

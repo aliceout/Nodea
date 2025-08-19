@@ -11,6 +11,7 @@ export default function MoodIndex() {
 
   const tabs = useMemo(
     () => [
+      { id: "form", label: "Nouvelle entrée", active: active === "form" },
       { id: "history", label: "Historique", active: active === "history" },
       { id: "graph", label: "Graphique", active: active === "graph" },
     ],
