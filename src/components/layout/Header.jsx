@@ -31,8 +31,8 @@ export default function Header() {
   };
 
   return (
-    <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto w-full px-4">
+    <header className="sticky w-screen top z-40 flex h-16 items-center  border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8">
+      <div className="mx-auto w-full">
         <div className="flex h-16 items-center justify-between">
           {/* Left: mobile hamburger + logo */}
           <div className="flex items-end b-0 gap-4">
@@ -45,13 +45,15 @@ export default function Header() {
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
             {/* Nav modules desktop */}
-            <div className="flex items-center h-8">
+            <div className="hidden md:flex items-center h-8">
               <Logo className="max-h-full w-auto" />
             </div>
             {/* Nav modules desktop */}
             <ModuleNav />
+          </div>{" "}
+          <div className="flex md:hidden items-center h-8">
+            <Logo className="max-h-full w-auto" />
           </div>
-
           {/* Right: menu utilisateur (factorisé) */}
           <div className="flex items-center justify-end gap-x-4 lg:gap-x-6">
             <UserMenu

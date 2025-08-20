@@ -29,7 +29,7 @@ export default function MoodIndex() {
         }}
       />
 
-      <div className="flex-1 pt-4 bg-white">
+      <div className="flex-1 pt-4 bg-white px-4 sm:px-6 lg:px-8">
         {active === "history" && <MoodHistory />}
         {active === "graph" && <MoodGraph />}
         {active === "form" && <MoodForm />}

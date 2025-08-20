@@ -8,7 +8,6 @@ import { nav } from "./Navigation";
 export default function Subheader({
   tabs = [], // [{ id, label, active }]
   onTabSelect, // (id) => void
-  cta, // { label, onClick, disabled? }
   className,
 }) {
   const store = useStore();
@@ -23,17 +22,17 @@ export default function Subheader({
   return (
     <div
       className={clsx(
-        "sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200",
+        "sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200 ",
         className
       )}
     >
-      <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-start gap-12">
+      <div className="mx-auto  px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-start gap-12">
         {title ? (
           <h1 className="text-base font-semibold leading-6 text-gray-900">
             {title}
           </h1>
         ) : null}
-        <div className="flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-4">
           <nav className="flex items-center gap-1" aria-label={`${title} tabs`}>
             {tabs.map((t) => (
               <button

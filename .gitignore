@@ -22,7 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-/package-lock.json
-/.env
-/export.md
-/eslint.config.js
+package-lock.json
+.env
+export.md
+eslint.config.js

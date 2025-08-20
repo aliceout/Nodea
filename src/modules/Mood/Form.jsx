@@ -140,7 +140,7 @@ export default function JournalEntryPage() {
     <>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-4xl mx-auto rounded-lg px-5 md:px-0"
+        className="w-full max-w-4xl mx-auto "
       >
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">

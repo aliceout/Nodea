@@ -17,13 +17,13 @@ export default function Layout() {
   }, [current]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar et Header lisent le store eux‑mêmes */}
+    <div className="min-h-screen bg-slate-50 flex ">
       <Sidebar />
-      {/* ❌ retiré lg:pl-64 pour ne plus réserver de place à droite en desktop */}
       <div className="flex flex-col flex-1">
         <Header />
-        <main className="flex-1 bg-white">{ActiveView}</main>
+        <main className="flex-1 bg-white">
+          {ActiveView}
+        </main>
       </div>
     </div>
   );
