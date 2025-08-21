@@ -13,13 +13,13 @@ export default function ModuleNav() {
 
   return (
     <nav className="hidden lg:block ml-4">
-      <ul className="flex items-center justify-end gap-6 group">
+      <ul className="flex items-center justify-end gap-6 group px-4">
         {modules.map((item) => (
           <li key={item.id} className="relative group/item">
             <button
               type="button"
               onClick={() => dispatch(setTab(item.id))}
-              className="flex flex-col items-center"
+              className="flex flex-col items-center group/nav "
               aria-current={current === item.id ? "page" : undefined}
             >
               <item.icon
@@ -27,9 +27,15 @@ export default function ModuleNav() {
                   current === item.id
                     ? "text-nodea-sage"
                     : "text-nodea-sage-dark"
-                } group-hover:h-5 group-hover:w-5 group-hover:mb-1`}
+                } group-hover/nav:h-5 group-hover/nav:w-5 group-hover:mb-1 group-hover/nav:text-nodea-sage-light`}
               />
-              <span className="absolute top-6 text-[10px] leading-none text-nodea-sage-dark opacity-0 group-hover/item:opacity-100 transition-opacity">
+              <span
+                className={`absolute top-6 text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${
+                  current === item.id
+                    ? "text-nodea-sage"
+                    : "text-nodea-sage-dark"
+                } group/nav-hover:text-nodea-sage-light`}
+              >
                 {item.label}
               </span>
             </button>
