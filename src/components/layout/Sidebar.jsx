@@ -19,9 +19,8 @@ export default function Sidebar() {
 
   const current = selectCurrentTab(state);
   const open = selectMobileOpen(state);
-
-  const topItems = nav.filter((item) => item.position === "top");
-  const bottomItems = nav.filter((item) => item.position === "bottom");
+  const modules = nav.filter((m) => m.display);
+  
 
   const handleSelect = (id) => {
     dispatch(setTab(id));
@@ -63,21 +62,7 @@ export default function Sidebar() {
                   <nav className="mt-4 flex flex-1 flex-col justify-between">
                     {/* Top items */}
                     <ul role="list" className="space-y-1">
-                      {topItems.map((item) => (
-                        <li key={item.id}>
-                          <Link
-                            icon={item.icon}
-                            label={item.label}
-                            active={current === item.id}
-                            onClick={() => handleSelect(item.id)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Bottom items */}
-                    <ul role="list" className="mt-6 space-y-1">
-                      {bottomItems.map((item) => (
+                      {modules.map((item) => (
                         <li key={item.id}>
                           <Link
                             icon={item.icon}
