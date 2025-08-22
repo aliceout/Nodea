@@ -45,7 +45,7 @@ export const nav = [
     display: true,
   },
   {
-    id: "settings",
+    id: "account",
     label: "Mon compte",
     title: "Mon compte",
     icon: Cog6ToothIcon,

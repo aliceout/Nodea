@@ -15,7 +15,7 @@ export default function Header() {
   const username = user?.username || "Utilisateur·rice";
   
   const handleMenuClick = () => dispatch(openMobile());
-  const handleGoSettings = () => dispatch(setTab("settings"));
+  const handleGoAccount = () => dispatch(setTab("account"));
   const handleSignOut = async () => {
     try {
       await logout();
@@ -35,7 +35,7 @@ export default function Header() {
               className="lg:hidden -m-2.5 p-2.5 text-gray-700"
               onClick={handleMenuClick}
               aria-label="Ouvrir le menu"
-              >
+            >
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
             {/* Nav modules desktop */}
@@ -52,9 +52,9 @@ export default function Header() {
           <div className="flex items-center justify-end gap-x-4 lg:gap-x-6">
             <UserMenu
               username={username}
-              onGoSettings={handleGoSettings}
+              onGoAccount={handleGoAccount}
               onSignOut={handleSignOut}
-              />
+            />
           </div>
         </div>
       </div>
