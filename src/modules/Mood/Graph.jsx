@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import pb from "../../services/pocketbase";
-import GraphChart from "./components/GraphChart";
 import { useMainKey } from "../../hooks/useMainKey";
 import { decryptAESGCM } from "../../services/webcrypto";
-import KeyMissingMessage from "../../components/common/KeyMissingMessage";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);
@@ -11,22 +9,22 @@ export default function GraphPage() {
   const [error, setError] = useState("");
   const { mainKey } = useMainKey();
   const [cryptoKey, setCryptoKey] = useState(null);
-
+  
   // Prépare la CryptoKey à partir de mainKey
   useEffect(() => {
     if (mainKey) {
       window.crypto.subtle
-        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
-          "encrypt",
-          "decrypt",
-        ])
-        .then(setCryptoKey)
-        .catch(() => setCryptoKey(null));
+      .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
+        "encrypt",
+        "decrypt",
+      ])
+      .then(setCryptoKey)
+      .catch(() => setCryptoKey(null));
     } else {
       setCryptoKey(null);
     }
   }, [mainKey]);
-
+  
   // Fonction de déchiffrement pour les champs du graphique
   const decryptField = async (field) => {
     if (!cryptoKey || !field) return "";
@@ -36,7 +34,7 @@ export default function GraphPage() {
       return "[Erreur de déchiffrement]";
     }
   };
-
+  
   // Fetch quand la clé est prête
   useEffect(() => {
     const fetchData = async () => {
@@ -56,7 +54,7 @@ export default function GraphPage() {
           const entryDate = new Date(entry.date);
           return entryDate >= sixMonthsAgo && entryDate <= now;
         });
-
+        
         // Déchiffrement
         const decrypted = [];
         for (let entry of filtered) {
@@ -75,21 +73,24 @@ export default function GraphPage() {
         setLoading(false);
       }
     };
-
+    
     if (cryptoKey) fetchData();
   }, [cryptoKey]);
-
+  
   // ── Ordre des retours : d’abord l’absence de clé, ensuite loading/erreurs/données
-if (!mainKey)
-  return <KeyMissingMessage context="afficher le graphique" className="m-5" />;
-
+  if (!mainKey)
+    return <KeyMissingMessage context="afficher le graphique" className="m-5" />;
+  
   if (!cryptoKey) {
     return <div className="p-8">Chargement de la clé…</div>;
   }
-
+  
   if (loading) return <div className="p-8">Chargement...</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!data.length) return <div className="p-8">Aucune donnée.</div>;
-
+  
   return <GraphChart data={data} />;
 }
+
+import GraphChart from "./components/GraphChart";
+import KeyMissingMessage from "../../components/common/KeyMissingMessage";

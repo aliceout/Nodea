@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function JournalComment({ comment, setComment }) {
   return (
     <div className="flex flex-col justify-center gap-1">

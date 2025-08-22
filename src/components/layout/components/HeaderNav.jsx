@@ -1,4 +1,3 @@
-// src/components/layout/components/ModuleNav.jsx
 import { useStore } from "../../../store/StoreProvider";
 import { setTab } from "../../../store/actions";
 import { selectCurrentTab } from "../../../store/selectors";
@@ -13,13 +12,13 @@ export default function ModuleNav() {
 
   return (
     <nav className="hidden lg:block ml-4">
-      <ul className="flex items-center justify-end gap-6 group px-4">
+      <ul className="flex items-center justify-end gap-5 group px-4">
         {modules.map((item) => (
           <li key={item.id} className="relative group/item">
             <button
               type="button"
               onClick={() => dispatch(setTab(item.id))}
-              className="flex flex-col items-center group/nav "
+              className="flex flex-col items-center group/nav px-1 "
               aria-current={current === item.id ? "page" : undefined}
             >
               <item.icon
@@ -27,7 +26,7 @@ export default function ModuleNav() {
                   current === item.id
                     ? "text-nodea-sage"
                     : "text-nodea-sage-dark"
-                } group-hover/nav:h-5 group-hover/nav:w-5 group-hover:mb-1 group-hover/nav:text-nodea-sage-light`}
+                }  group-hover:mb-1 group-hover/nav:text-nodea-sage-light`}
               />
               <span
                 className={`absolute top-6 text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${

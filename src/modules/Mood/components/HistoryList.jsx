@@ -1,6 +1,3 @@
-import React from "react";
-import HistoryEntry from "./HistoryEntry";
-
 export default function HistoryList({ entries, onDelete, decryptField }) {
   if (entries.length === 0) {
     return (
@@ -15,8 +12,10 @@ export default function HistoryList({ entries, onDelete, decryptField }) {
           entry={entry}
           onDelete={onDelete}
           decryptField={decryptField}
-        />
-      ))}
+          />
+        ))}
     </ul>
   );
 }
+
+import HistoryEntry from "./HistoryEntry";
