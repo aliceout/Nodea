@@ -5,7 +5,7 @@ export default function HistoryList({ entries, onDelete, decryptField }) {
     );
   }
   return (
-    <ul className="flex flex-wrap gap-8 w-full px-10 ">
+    <ul className="flex flex-wrap gap-8 w-full md:px-10 ">
       {entries.map((entry) => (
         <HistoryEntry
           key={entry.id}
