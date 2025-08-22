@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import pb from "../../services/pocketbase";
 import { useMainKey } from "../../hooks/useMainKey";
-import PositivePoint from "./components/FormPositives";
-import MoodSelector from "./components/FormMood";
-import QuestionBlock from "./components/FormQuestion";
-import CommentBlock from "./components/FormComment";
-import Button from "../../components/common/Button";
 import questions from "../../data/questions.json";
 
 import { encryptAESGCM } from "../../services/webcrypto";
@@ -138,10 +133,7 @@ export default function JournalEntryPage() {
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-4xl mx-auto rounded-lg px-5 md:px-0"
-      >
+      <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto ">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
           <h1 className="text-2xl font-bold text-center md:text-left">
@@ -201,3 +193,9 @@ export default function JournalEntryPage() {
     </>
   );
 }
+
+import PositivePoint from "./components/FormPositives";
+import MoodSelector from "./components/FormMood";
+import QuestionBlock from "./components/FormQuestion";
+import CommentBlock from "./components/FormComment";
+import Button from "../../components/common/Button";

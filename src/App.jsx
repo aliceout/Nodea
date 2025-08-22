@@ -1,9 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./components/layout/Layout";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ChangePassword from "./pages/ChangePassword";
-import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import { StoreProvider } from "./store/StoreProvider"; // <—
 
@@ -24,7 +19,7 @@ export default function App() {
                 <Layout />
               </ProtectedRoute>
             }
-          >
+            >
             <Route path="flow" element={<div />} /> {/* plus de <Content /> */}
           </Route>
 
@@ -34,3 +29,9 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
+import Layout from "./components/layout/Layout";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ChangePassword from "./pages/ChangePassword";
+import NotFound from "./pages/NotFound";

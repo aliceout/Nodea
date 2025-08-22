@@ -1,6 +1,3 @@
-// src/modules/Mood/Index.jsx
-import Subheader from "../components/layout/Subheader";
-
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-full">
@@ -10,3 +7,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+import Subheader from "../components/layout/Subheader";

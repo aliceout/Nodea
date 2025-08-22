@@ -1,17 +1,8 @@
 import useAuth from "../../hooks/useAuth";
-import SettingsCard from "./components/SettingsCard";
-
-// contenus SANS cadre interne
-import ChangeEmail from "./Account/ChangeEmail";
-import ChageUsername from "./Account/ChangeUsername";
-import PasswordReset from "./Account/PasswordReset";
-import ImportData from "./Account/ImportData";
-import ExportData from "./Account/ExportData";
-import DeleteAccount from "./Account/DeleteAccount";
 
 export default function SettingsIndex() {
   const { user } = useAuth();
-
+  
   return (
     <div className="py-6 flex flex-col gap-4 ">
       <SettingsCard title="Changer l’email">
@@ -40,3 +31,11 @@ export default function SettingsIndex() {
     </div>
   );
 }
+
+import ChangeEmail from "./Account/ChangeEmail";
+import ChageUsername from "./Account/ChangeUsername";
+import PasswordReset from "./Account/PasswordReset";
+import ImportData from "./Account/ImportData";
+import ExportData from "./Account/ExportData";
+import DeleteAccount from "./Account/DeleteAccount";
+import SettingsCard from "./components/SettingsCard";

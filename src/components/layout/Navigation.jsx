@@ -1,37 +1,55 @@
-// src/components/layout/Navigation.jsx (extrait)
 import {
   SparklesIcon,
-  Cog6ToothIcon,
   HomeIcon,
+  CheckCircleIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import Home from "../../modules/Homepage";
+import MoodIndex from "../../modules/Mood";
+import GoalsIndex from "../../modules/Mood";
+import ReviewIndex from "../../modules/Mood";
 import Settings from "../../modules/Settings";
-import MoodIndex from "../../modules/Mood"; // 👈 orchestrateur unique
 
 export const nav = [
   {
     id: "home",
     label: "Home",
-    icon: HomeIcon,
     title: "Accueil",
-    position: "top",
+    icon: HomeIcon,
     element: <Home />,
+    display: true,
   },
-  // 👇 Un seul item pour Mood
   {
     id: "mood",
     label: "Mood",
-    icon: SparklesIcon,
     title: "Mood",
-    position: "top",
+    icon: SparklesIcon,
     element: <MoodIndex />,
+    display: true,
+  },
+  {
+    id: "goals",
+    label: "Goals",
+    title: "Goals",
+    icon: CheckCircleIcon,
+    element: <GoalsIndex />,
+    display: true,
+  },
+  {
+    id: "review",
+    label: "Review",
+    title: "Review",
+    icon: ChartBarIcon,
+    element: <ReviewIndex />,
+    display: true,
   },
   {
     id: "settings",
-    label: "Settings",
+    label: "Mon compte",
+    title: "Mon compte",
     icon: Cog6ToothIcon,
-    title: "Settings",
-    position: "bottom",
     element: <Settings />,
+    display: false,
   },
 ];

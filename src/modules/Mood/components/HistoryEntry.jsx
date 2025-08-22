@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function HistoryEntry({ entry, onDelete, decryptField }) {
   const dateObj = new Date(entry.date);
   const jours = [

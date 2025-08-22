@@ -1,7 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./theme/index.css";
-import App from "./App.jsx";
 import { MainKeyProvider } from "./hooks/useMainKey";
 
 createRoot(document.getElementById("root")).render(
@@ -11,3 +10,5 @@ createRoot(document.getElementById("root")).render(
     </MainKeyProvider>
   </StrictMode>
 );
+
+import App from "./App.jsx";

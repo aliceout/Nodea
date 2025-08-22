@@ -1,6 +1,3 @@
-import React from "react";
-import HistoryEntry from "./HistoryEntry";
-
 export default function HistoryList({ entries, onDelete, decryptField }) {
   if (entries.length === 0) {
     return (
@@ -8,15 +5,17 @@ export default function HistoryList({ entries, onDelete, decryptField }) {
     );
   }
   return (
-    <ul className="flex flex-wrap gap-8 w-full px-10 ">
+    <ul className="flex flex-wrap gap-8 w-full md:px-10 ">
       {entries.map((entry) => (
         <HistoryEntry
           key={entry.id}
           entry={entry}
           onDelete={onDelete}
           decryptField={decryptField}
-        />
-      ))}
+          />
+        ))}
     </ul>
   );
 }
+
+import HistoryEntry from "./HistoryEntry";
