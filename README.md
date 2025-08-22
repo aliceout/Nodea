@@ -99,12 +99,10 @@ Toutes les données sont **chiffrées côté client** avant d’être envoyées 
 
 ---
 
-## Améliorations possibles
+## Roadmap
 
-- Import data
-- Passage à WebCrypto et Argon2 pour un chiffrement/dérivation de clé encore plus robuste
-- Fonction “bilan” ou export analytique
-- Application mobile dédiée
+- Module **Goals** de suivi des objectifs annuels
+- Module **Review** qui s'inspire du projet [YearCompass](https://yearcompass.com)
 
 ---
 
