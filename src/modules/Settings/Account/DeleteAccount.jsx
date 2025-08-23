@@ -17,11 +17,11 @@ export default function DeleteAccountSection({ user }) {
       return;
     }
     try {
-      const journals = await pb.collection("journal_entries").getFullList({
+      const journals = await pb.collection("mood_entries").getFullList({
         filter: `user="${user.id}"`,
       });
       for (const entry of journals) {
-        await pb.collection("journal_entries").delete(entry.id);
+        await pb.collection("mood_entries").delete(entry.id);
       }
       await pb.collection("users").delete(user.id);
       pb.authStore.clear();

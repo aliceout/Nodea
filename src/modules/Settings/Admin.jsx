@@ -53,11 +53,11 @@ export default function AdminPage() {
     )
       return;
     try {
-      const journals = await pb.collection("journal_entries").getFullList({
+      const journals = await pb.collection("mood_entries").getFullList({
         filter: `user="${userId}"`,
       });
       for (const entry of journals) {
-        await pb.collection("journal_entries").delete(entry.id);
+        await pb.collection("mood_entries").delete(entry.id);
       }
       await pb.collection("users").delete(userId);
       setUsers(users.filter((u) => u.id !== userId));

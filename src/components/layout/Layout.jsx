@@ -1,6 +1,6 @@
 // src/components/layout/Layout.jsx
 import { useMemo } from "react";
-import { nav } from "./Navigation";
+import { nav } from "../Navigation";
 
 import { useStore } from "../../store/StoreProvider";
 import { selectCurrentTab } from "../../store/selectors";

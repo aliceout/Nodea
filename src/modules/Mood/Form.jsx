@@ -50,7 +50,7 @@ export default function JournalEntryPage() {
         const sinceStr = since.toISOString().slice(0, 10);
 
         // Prend les entrées du user sur les 30 derniers jours
-        const entries = await pb.collection("journal_entries").getFullList({
+        const entries = await pb.collection("mood_entries").getFullList({
           filter: `user="${pb.authStore.model.id}" && date >= "${sinceStr}"`,
         });
         const alreadyUsedQuestions = entries.map((e) => e.question);
@@ -105,7 +105,7 @@ export default function JournalEntryPage() {
       return;
     }
     try {
-      await pb.collection("journal_entries").create({
+      await pb.collection("mood_entries").create({
         user: pb.authStore.model.id,
         date,
         positive1: await encryptField(positive1),
@@ -152,7 +152,7 @@ export default function JournalEntryPage() {
 
         <div className="flex flex-col md:flex-row gap-8 mb-4">
           <div className="flex flex-col w-full md:w-1/2">
-            <PositivePoint
+            <PositivesBlock
               positive1={positive1}
               setPositive1={setPositive1}
               positive2={positive2}
@@ -163,7 +163,7 @@ export default function JournalEntryPage() {
             />
           </div>
           <div className="flex flex-col w-full md:w-1/2 gap-4">
-            <MoodSelector
+            <MoodBlock
               moodScore={moodScore}
               setMoodScore={setMoodScore}
               moodEmoji={moodEmoji}
@@ -194,8 +194,8 @@ export default function JournalEntryPage() {
   );
 }
 
-import PositivePoint from "./components/FormPositives";
-import MoodSelector from "./components/FormMood";
+import PositivesBlock from "./components/FormPositives";
+import MoodBlock from "./components/FormMood";
 import QuestionBlock from "./components/FormQuestion";
 import CommentBlock from "./components/FormComment";
 import Button from "../../components/common/Button";

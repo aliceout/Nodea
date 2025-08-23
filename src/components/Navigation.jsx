@@ -5,11 +5,11 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
-import Home from "../../modules/Homepage";
-import MoodIndex from "../../modules/Mood";
-import GoalsIndex from "../../modules/Mood";
-import ReviewIndex from "../../modules/Mood";
-import Settings from "../../modules/Settings";
+import Home from "../modules/Homepage";
+import MoodIndex from "../modules/Mood";
+import GoalsIndex from "../modules/Goals";
+import ReviewIndex from "../modules/Mood";
+import Settings from "../modules/Settings";
 
 export const nav = [
   {
