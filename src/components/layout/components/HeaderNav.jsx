@@ -1,7 +1,7 @@
 import { useStore } from "../../../store/StoreProvider";
 import { setTab } from "../../../store/actions";
 import { selectCurrentTab } from "../../../store/selectors";
-import { nav } from "../Navigation"; // table de modules (home, mood, etc.)
+import { nav } from "../../Navigation"; // table de modules (home, mood, etc.)
 
 export default function ModuleNav() {
   const { state, dispatch } = useStore();

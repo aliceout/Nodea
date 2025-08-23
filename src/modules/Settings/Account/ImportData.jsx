@@ -41,13 +41,11 @@ export default function ImportData({ user }) {
       if (!Array.isArray(imported))
         throw new Error("Fichier invalide (tableau attendu)");
 
-      const existingEntries = await pb
-        .collection("journal_entries")
-        .getFullList({
-          filter: `user="${user.id}"`,
-          fields: "date",
-          $autoCancel: false,
-        });
+      const existingEntries = await pb.collection("mood_entries").getFullList({
+        filter: `user="${user.id}"`,
+        fields: "date",
+        $autoCancel: false,
+      });
       const existingDates = new Set(
         existingEntries.map((e) => e.date.slice(0, 10))
       );
@@ -91,7 +89,7 @@ export default function ImportData({ user }) {
           ),
         };
 
-        await pb.collection("journal_entries").create(encrypted);
+        await pb.collection("mood_entries").create(encrypted);
         importedCount++;
       }
 

@@ -6,7 +6,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useStore } from "../../store/StoreProvider";
 import { selectCurrentTab, selectMobileOpen } from "../../store/selectors";
 import { closeMobile, setTab } from "../../store/actions";
-import { nav } from "./Navigation";
+import { nav } from "../Navigation";
 
 export default function Sidebar() {
   // Lecture du store ici (plus de props open/current/onSelect/onClose)

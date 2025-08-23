@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import { useStore } from "../../store/StoreProvider";
 import { selectCurrentTab } from "../../store/selectors";
-import { nav } from "./Navigation";
+import { nav } from "../Navigation";
 
 import SubNavDesktop from "./components/SubNavDesktop";
 import SubNavMobile from "./components/SubNavMobile";

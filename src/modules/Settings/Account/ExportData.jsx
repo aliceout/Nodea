@@ -39,7 +39,7 @@ export default function ExportDataSection({ user }) {
     setError("");
     setLoading(true);
     try {
-      const entries = await pb.collection("journal_entries").getFullList({
+      const entries = await pb.collection("mood_entries").getFullList({
         filter: `user="${user.id}"`,
         sort: "date",
         $autoCancel: false,
