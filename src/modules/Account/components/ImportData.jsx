@@ -1,9 +1,9 @@
 // src/modules/Settings/Account/ImportData.jsx
 import React, { useState, useEffect } from "react";
-import pb from "../../../services/pocketbase";
-import { useMainKey } from "../../../hooks/useMainKey";
-import { encryptAESGCM } from "../../../services/webcrypto";
-import KeyMissingMessage from "../../../components/common/KeyMissingMessage";
+import pb from "@/services/pocketbase";
+import { useMainKey } from "@/hooks/useMainKey";
+import { encryptAESGCM } from "@/services/webcrypto";
+import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 export default function ImportData({ user }) {
   const { mainKey } = useMainKey();

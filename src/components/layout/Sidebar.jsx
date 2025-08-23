@@ -8,7 +8,7 @@ import { selectCurrentTab, selectMobileOpen } from "@/store/selectors";
 import { closeMobile, setTab } from "@/store/actions";
 
 import { MODULES } from "@/config/modules_list";
-import Logo from "./common/LogoLong.jsx";
+import Logo from "../common/LogoLong.jsx";
 import Link from "./components/SideLinks.jsx";
 
 export default function Sidebar() {
