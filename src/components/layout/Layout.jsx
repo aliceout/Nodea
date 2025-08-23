@@ -1,12 +1,11 @@
-// src/components/layout/Layout.jsx
 import { useMemo } from "react";
-import { nav } from "../Navigation";
+import { nav } from "./Navigation";
 
 import { useStore } from "../../store/StoreProvider";
 import { selectCurrentTab } from "../../store/selectors";
 
 export default function Layout() {
-  // Le layout ne passe plus de props au Header/Sidebar : il se contente d'orchestrer la vue active
+  // Le layout ne passe pas de props au Header/Sidebar : il se contente d'orchestrer la vue active
   const store = useStore();
   const state = store?.state ?? store?.[0];
 

@@ -1,14 +1,15 @@
-import { useStore } from "../../../store/StoreProvider";
-import { setTab } from "../../../store/actions";
-import { selectCurrentTab } from "../../../store/selectors";
-import { nav } from "../../Navigation"; // table de modules (home, mood, etc.)
+// src/components/layout/components/ModuleNav.jsx
+import { MODULES } from "@/config/modules_list";
+import { useStore } from "@/store/StoreProvider";
+import { selectCurrentTab } from "@/store/selectors";
+import { setTab } from "@/store/actions";
 
-export default function ModuleNav() {
+export default function HeadearNav() {
   const { state, dispatch } = useStore();
   const current = selectCurrentTab(state);
 
-  // on limite aux modules principaux (home + mood pour l’instant)
-  const modules = nav.filter((m) => m.display);
+  // On ne montre que les modules marqués display=true
+  const modules = MODULES.filter((m) => m.display);
 
   return (
     <nav className="hidden lg:block ml-4">
@@ -21,13 +22,15 @@ export default function ModuleNav() {
               className="flex flex-col items-center group/nav px-1 "
               aria-current={current === item.id ? "page" : undefined}
             >
-              <item.icon
-                className={`transition-all duration-150 h-6 w-6 ${
-                  current === item.id
-                    ? "text-nodea-sage"
-                    : "text-nodea-sage-dark"
-                }  group-hover:mb-1 group-hover/nav:text-nodea-sage-light`}
-              />
+              {item.icon ? (
+                <item.icon
+                  className={`transition-all duration-150 h-6 w-6 ${
+                    current === item.id
+                      ? "text-nodea-sage"
+                      : "text-nodea-sage-dark"
+                  }  group-hover:mb-1 group-hover/nav:text-nodea-sage-light`}
+                />
+              ) : null}
               <span
                 className={`absolute top-6 text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity ${
                   current === item.id
