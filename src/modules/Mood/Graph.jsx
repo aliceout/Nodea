@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import pb from "../../services/pocketbase";
-import { useMainKey } from "../../hooks/useMainKey";
-import { decryptAESGCM } from "../../services/webcrypto";
+import pb from "@/services/pocketbase";
+import { useMainKey } from "@/hooks/useMainKey";
+import { decryptAESGCM } from "@/services/webcrypto";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);

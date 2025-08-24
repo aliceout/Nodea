@@ -5,6 +5,7 @@ import UserAvatar from "../components/UserAvatar";
 export default function UserMenu({
   username = "Utilisateur·rice",
   onGoAccount = () => {},
+  onGoSettings = () => {},
   onSignOut = () => {},
 }) {
   return (
@@ -45,7 +46,7 @@ export default function UserMenu({
           {({ focus }) => (
             <button
               type="button"
-              onClick={onGoAccount}
+              onClick={onGoSettings}
               className={`block w-full px-3 py-1.5 text-left text-sm text-gray-900 ${
                 focus ? "bg-gray-50" : ""
               }`}

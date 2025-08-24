@@ -4,17 +4,23 @@ import { useStore } from "@/store/StoreProvider";
 import { selectCurrentTab } from "@/store/selectors";
 import { setTab } from "@/store/actions";
 
+import { useModulesRuntime, isModuleEnabled } from "@/store/modulesRuntime";
+
 export default function HeadearNav() {
   const { state, dispatch } = useStore();
   const current = selectCurrentTab(state);
+  const modulesRuntime = useModulesRuntime();
 
   // On ne montre que les modules marqués display=true
-  const modules = MODULES.filter((m) => m.display);
-
+const visibleNav = (MODULES || []).filter((i) => {
+  if (i.display === false) return false;
+  if (!i.to_toggle) return true;
+  return isModuleEnabled(modulesRuntime, i.id);
+});
   return (
     <nav className="hidden lg:block ml-4">
       <ul className="flex items-center justify-end gap-5 group px-4">
-        {modules.map((item) => (
+        {visibleNav.map((item) => (
           <li key={item.id} className="relative group/item">
             <button
               type="button"

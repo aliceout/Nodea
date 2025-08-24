@@ -1,3 +1,4 @@
+// src/modules/Settings/components/ModulesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { MODULES } from "@/config/modules_list";
 import {
@@ -7,28 +8,21 @@ import {
   setModuleEntry,
 } from "@/services/modules-config";
 import { generateModuleUserId, makeGuard } from "@/services/crypto-utils";
+import pb from "@/services/pocketbase";
+import { useMainKey } from "@/hooks/useMainKey";
 
-import { usePb } from "@/services/usePb";
-import { useAuth } from "@/services/useAuth";
-import { useMainKey } from "@/services/useMainKey";
-
-function Note({ children }) {
-  return <div style={{ fontSize: "0.9em", opacity: 0.9 }}>{children}</div>;
-}
+// ⬇️ nouvel import
+import { setModulesState } from "@/store/modulesRuntime";
 
 export default function ModulesManager() {
-  const pb = usePb();
-  const { user } = useAuth();
   const { mainKey } = useMainKey();
-
   const [loading, setLoading] = useState(true);
   const [cfg, setCfg] = useState({});
   const [busy, setBusy] = useState(null);
-  const [hasDataMap, setHasDataMap] = useState({});
+  const [error, setError] = useState("");
 
-  // Ne garder que les modules désactivables
   const rows = useMemo(
-    () => MODULES.filter((m) => m.to_toogle && !!m.collection),
+    () => MODULES.filter((m) => m.to_toggle === true && !!m.id),
     []
   );
 
@@ -36,201 +30,122 @@ export default function ModulesManager() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const c = await loadModulesConfig(pb, user.id, mainKey);
-      if (mounted) {
-        setCfg(c || {});
-        setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [pb, user.id, mainKey]);
+      setError("");
+      try {
+        const user = pb?.authStore?.model;
+        if (!user) throw new Error("Utilisateur non connecté");
 
-  useEffect(() => {
-    let stop = false;
-    (async () => {
-      const map = {};
-      for (const m of rows) {
-        const entry = getModuleEntry(cfg, m.id);
-        const sid = entry?.module_user_id || null;
-        if (!sid) {
-          map[m.id] = false;
-          continue;
-        }
+        const c = await loadModulesConfig(pb, user.id, mainKey); // déchiffré
+        let nextCfg = c || {};
 
-        try {
-          const url = `${pb.baseUrl}/api/collections/${
-            m.collection
-          }/records?sid=${encodeURIComponent(sid)}&perPage=1`;
-          const res = await fetch(url, {
-            headers: pb.authStore?.token
-              ? { Authorization: pb.authStore.token }
-              : {},
-          });
-          if (!res.ok) {
-            map[m.id] = false;
-            continue;
+        // seed par défaut: tout activé
+        for (const m of rows) {
+          const entry = getModuleEntry(nextCfg, m.id);
+          if (!entry) {
+            nextCfg = setModuleEntry(nextCfg, m.id, {
+              enabled: true,
+              module_user_id: generateModuleUserId("g_"),
+              delete_secret: makeGuard(),
+              algo: "v1",
+            });
           }
-          const data = await res.json();
-          map[m.id] = (data?.items?.length || 0) > 0;
-        } catch {
-          map[m.id] = false;
+        }
+
+        if (JSON.stringify(nextCfg) !== JSON.stringify(c || {})) {
+          await saveModulesConfig(pb, user.id, mainKey, nextCfg);
+        }
+
+        if (mounted) {
+          setCfg(nextCfg);
+          // ⬇️ alimente le store runtime à l’ouverture de la page
+          setModulesState(nextCfg);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn(e);
+        if (mounted) {
+          setError("Impossible de charger vos réglages.");
+          setLoading(false);
         }
       }
-      if (!stop) setHasDataMap(map);
     })();
-    return () => {
-      stop = true;
-    };
-  }, [pb, rows, cfg]);
+    return () => { mounted = false; };
+  }, [mainKey, rows]);
 
   if (loading) return <div>Chargement…</div>;
 
   const toggleModule = async (moduleId, nextEnabled) => {
     setBusy(moduleId);
+    setError("");
     try {
       const current = getModuleEntry(cfg, moduleId) || {
-        enabled: false,
-        module_user_id: null,
-        guard: null,
+        enabled: true,
+        module_user_id: generateModuleUserId("g_"),
+        delete_secret: makeGuard(),
         algo: "v1",
       };
 
-      let next = { ...current, enabled: nextEnabled };
-      if (nextEnabled) {
-        if (!next.module_user_id)
-          next.module_user_id = generateModuleUserId("g_");
-        if (!next.guard) next.guard = makeGuard();
-      }
-
-      const updated = setModuleEntry(cfg, moduleId, next);
-      await saveModulesConfig(pb, user.id, mainKey, updated);
-      setCfg(updated);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const hardDeleteData = async (moduleId) => {
-    const mod = rows.find((r) => r.id === moduleId);
-    const current = getModuleEntry(cfg, moduleId);
-    if (!mod || !current?.module_user_id || !current?.guard) return;
-
-    const ok = window.confirm(
-      `Suppression définitive des données du module "${mod.label}".\n` +
-        `Cette action est IRRÉVERSIBLE.\n\nContinuer ?`
-    );
-    if (!ok) return;
-
-    setBusy(moduleId);
-    try {
-      const sid = current.module_user_id;
-      const d = current.guard;
-
-      let page = 1;
-      let ids = [];
-      while (true) {
-        const url = `${pb.baseUrl}/api/collections/${
-          mod.collection
-        }/records?sid=${encodeURIComponent(sid)}&page=${page}&perPage=50`;
-        const res = await fetch(url, {
-          headers: pb.authStore?.token
-            ? { Authorization: pb.authStore.token }
-            : {},
-        });
-        if (!res.ok) break;
-        const data = await res.json();
-        for (const it of data.items || []) ids.push(it.id);
-        if (!data.items || data.items.length < 50) break;
-        page += 1;
-      }
-
-      for (const id of ids) {
-        const delUrl = `${pb.baseUrl}/api/collections/${
-          mod.collection
-        }/records/${id}?sid=${encodeURIComponent(sid)}&d=${encodeURIComponent(
-          d
-        )}`;
-        await fetch(delUrl, {
-          method: "DELETE",
-          headers: pb.authStore?.token
-            ? { Authorization: pb.authStore.token }
-            : {},
-        });
-      }
-
       const next = {
-        enabled: false,
-        module_user_id: null,
-        guard: null,
-        algo: current.algo || "v1",
+        ...current,
+        enabled: nextEnabled,
+        module_user_id:
+          current.module_user_id || (nextEnabled ? generateModuleUserId("g_") : null),
+        delete_secret: current.delete_secret || makeGuard(),
       };
+
       const updated = setModuleEntry(cfg, moduleId, next);
+      const user = pb?.authStore?.model;
+
       await saveModulesConfig(pb, user.id, mainKey, updated);
+
+      // ⬇️ maj store runtime après save
+      setModulesState(updated);
+
       setCfg(updated);
-      setHasDataMap((prev) => ({ ...prev, [moduleId]: false }));
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn(e);
+      setError("Impossible d’enregistrer vos réglages.");
     } finally {
       setBusy(null);
     }
   };
+
+  if (rows.length === 0) {
+    return (
+      <div className="text-sm text-gray-600">
+        Aucun module n’est actuellement configurable.
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2>Modules</h2>
-      <Note>
-        Rappel: list/view → <code>?sid=module_user_id</code> ; update/delete →{" "}
-        <code>&d=guard</code>.
-      </Note>
+    <div className="space-y-4">
+      {rows.map((m) => {
+        const entry = getModuleEntry(cfg, m.id);
+        const checked = !!entry?.enabled;
 
-      <div style={{ marginTop: 12 }}>
-        {rows.map((m) => {
-          const entry = getModuleEntry(cfg, m.id) || {
-            enabled: false,
-            module_user_id: null,
-            guard: null,
-          };
-          const enabled = !!entry.enabled;
-          const hasData = !!hasDataMap[m.id];
-
-          return (
-            <div
-              key={m.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "8px 0",
-              }}
-            >
-              <div style={{ minWidth: 140, fontWeight: 600 }}>{m.label}</div>
-              <div style={{ opacity: 0.8, flex: 1 }}>
-                {m.description || null}
-              </div>
-
-              <button
-                disabled={busy === m.id}
-                onClick={() => toggleModule(m.id, !enabled)}
-                aria-pressed={enabled}
-                title={enabled ? "Désactiver le module" : "Activer le module"}
-              >
-                {enabled ? "Activé" : "Désactivé"}
-              </button>
-
-              {hasData && (
-                <button
-                  disabled={busy === m.id}
-                  onClick={() => hardDeleteData(m.id)}
-                  style={{ color: "red" }}
-                  title="Suppression définitive des données de ce module"
-                >
-                  Supprimer les données
-                </button>
-              )}
+        return (
+          <label
+            key={m.id}
+            className="flex items-start justify-between rounded-lg border border-gray-200 p-4"
+          >
+            <div className="pr-4">
+              <div className="text-sm font-medium text-gray-900">{m.label}</div>
+              {m.description ? (
+                <div className="mt-1 text-sm text-gray-600">{m.description}</div>
+              ) : null}
             </div>
-          );
-        })}
-      </div>
+            <input
+              type="checkbox"
+              className="h-5 w-5 rounded border-gray-300"
+              checked={checked}
+              onChange={(e) => toggleModule(m.id, e.target.checked)}
+              disabled={!!busy}
+            />
+          </label>
+        );
+      })}
+      {error && <div className="text-sm text-red-600">{error}</div>}
     </div>
   );
 }

@@ -1,144 +1,125 @@
-// -------------------------------------------------------------
-// Primitives WebCrypto + Argon2id (hash-wasm), compatibles avec
-// l’API déjà utilisée par tes pages (encryptAESGCM(data, key),
-// decryptAESGCM(payload, key) -> base64 string).
-// -------------------------------------------------------------
+// src/services/webcrypto.js
+import Argon2 from "argon2-wasm";
 
-import { argon2id } from "hash-wasm";
-
-const subtle = globalThis.crypto?.subtle;
-if (!subtle) throw new Error("WebCrypto indisponible : crypto.subtle requis.");
-
-const te = new TextEncoder();
-const td = new TextDecoder();
-
-/** ---------------- Encoding helpers ---------------- **/
-export function toBase64url(bytes) {
-  let s = btoa(String.fromCharCode(...bytes));
-  s = s.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-  return s;
-}
-export function fromBase64url(s) {
-  if (typeof s !== "string") throw new Error("fromBase64url: string attendu");
-  s = s.replaceAll("-", "+").replaceAll("_", "/");
-  while (s.length % 4) s += "=";
-  const bin = atob(s);
-  return new Uint8Array([...bin].map((c) => c.charCodeAt(0)));
-}
-export const textToBytes = (s) => te.encode(s);
-export const bytesToText = (u8) => td.decode(u8);
-
-/** ---------------- Secure randomness ---------------- **/
-export function randomBytes(n = 32) {
-  const b = new Uint8Array(n);
-  crypto.getRandomValues(b);
-  return b;
-}
-
-/** ---------------- Hash & HMAC ---------------- **/
-export async function hashSHA256(input) {
-  const bytes = input instanceof Uint8Array ? input : te.encode(input);
-  const digest = await subtle.digest("SHA-256", bytes);
-  return toBase64url(new Uint8Array(digest));
-}
-export async function hmac(secretBytes, message, algo = "SHA-256") {
-  const key = await subtle.importKey(
-    "raw",
-    secretBytes,
-    { name: "HMAC", hash: algo },
-    false,
-    ["sign"]
-  );
-  const msg = message instanceof Uint8Array ? message : te.encode(message);
-  const sig = await subtle.sign("HMAC", key, msg);
-  return toBase64url(new Uint8Array(sig));
-}
-
-/** ---------------- Argon2id (hash-wasm) ---------------- **/
 /**
- * Dérive une clé depuis un mot de passe + sel.
- * - password: string | Uint8Array
- * - salt: Uint8Array | base64url string (auto-décodé si string)
- * Retour: Uint8Array (32 octets par défaut)
+ * Dérive 32 octets (Uint8Array) via Argon2id à partir d'un mot de passe + salt.
+ * Accepte un salt en base64, utf8, ou Uint8Array.
  */
-export async function deriveKeyArgon2(password, salt, options = {}) {
-  const {
-    memoryCost = 64 * 1024, // KiB (64 MiB)
-    timeCost = 3,
-    parallelism = 1,
-    hashLength = 32,
-  } = options;
+export async function deriveKeyArgon2(password, salt) {
+  let saltBytes;
+  if (typeof salt === "string") {
+    // essaie base64, sinon utf8
+    try {
+      saltBytes = Uint8Array.from(atob(salt), (c) => c.charCodeAt(0));
+    } catch {
+      saltBytes = new TextEncoder().encode(salt);
+    }
+  } else {
+    saltBytes = salt;
+  }
 
-  const saltBytes =
-    typeof salt === "string"
-      ? fromBase64url(salt)
-      : salt instanceof Uint8Array
-      ? salt
-      : textToBytes(String(salt));
-
-  const out = await argon2id({
-    password,
+  await Argon2.ready;
+  const { hash } = await Argon2.hash({
+    pass: password,
     salt: saltBytes,
-    parallelism,
-    iterations: timeCost,
-    memorySize: memoryCost, // KiB
-    hashLength,
-    outputType: "binary", // => Uint8Array
+    type: "Argon2id", // lib attend la string "Argon2id"
+    hashLen: 32, // 256 bits pour AES-256
+    time: 3,
+    mem: 64 * 1024, // 64 MB
+    parallelism: 1,
+    raw: true,
   });
 
-  return out;
+  return new Uint8Array(hash);
 }
 
-/** ---------------- AES-GCM (compat API) ---------------- **/
-async function ensureAesKey(keyOrRaw) {
-  if (keyOrRaw?.type === "secret" && keyOrRaw?.algorithm?.name === "AES-GCM") {
-    // CryptoKey déjà importé
-    return keyOrRaw;
+/** Importe 32 octets "raw" en CryptoKey AES-GCM 256 (non extractable). */
+export function importAesKeyFromBytes(bytes32) {
+  return window.crypto.subtle.importKey(
+    "raw",
+    bytes32,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+/** Petits helpers base64 <-> ArrayBuffer/bytes */
+function arrayBufferToBase64(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+function base64ToArrayBuffer(base64) {
+  const bin = atob(base64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8.buffer;
+}
+export function bytesToBase64(u8) {
+  return btoa(String.fromCharCode(...u8));
+}
+export function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+
+/** Normalise une clé fournie: CryptoKey ou Uint8Array -> CryptoKey */
+async function ensureCryptoKey(keyOrBytes) {
+  if (
+    keyOrBytes &&
+    typeof keyOrBytes === "object" &&
+    keyOrBytes.type === "secret"
+  ) {
+    // déjà une CryptoKey
+    return keyOrBytes;
   }
-  // Uint8Array ou ArrayBuffer -> import
-  const raw =
-    keyOrRaw instanceof Uint8Array
-      ? keyOrRaw
-      : keyOrRaw instanceof ArrayBuffer
-      ? new Uint8Array(keyOrRaw)
-      : (() => {
-          throw new Error("Clé AES attendue (CryptoKey ou Uint8Array)");
-        })();
-
-  return subtle.importKey("raw", raw, { name: "AES-GCM" }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
+  // sinon on considère que c'est un Uint8Array de 32 octets
+  return importAesKeyFromBytes(keyOrBytes);
 }
 
 /**
- * encryptAESGCM(data, keyOrRaw) -> { iv, data }
- * - data: string | Uint8Array
- * - keyOrRaw: CryptoKey AES-GCM OU Uint8Array (clé brute)
- * Retourne:
- *   { iv: base64url, data: base64url }  // NOTE: 'data' == ciphertext
+ * Chiffre une chaîne en AES-GCM.
+ * @param {string} plaintext - texte clair (UTF-8)
+ * @param {CryptoKey|Uint8Array} keyOrBytes - CryptoKey AES-GCM OU 32 octets "raw"
+ * @returns {{iv:string, data:string}} base64
  */
-export async function encryptAESGCM(data, keyOrRaw) {
-  const key = await ensureAesKey(keyOrRaw);
-  const iv = randomBytes(12);
-  const plaintext = data instanceof Uint8Array ? data : te.encode(String(data));
-  const ct = await subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
-  // compat: 'data' (et non 'cipher')
-  return { iv: toBase64url(iv), data: toBase64url(new Uint8Array(ct)) };
+export async function encryptAESGCM(plaintext, keyOrBytes) {
+  const key = await ensureCryptoKey(keyOrBytes);
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const ciphertext = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    encoded
+  );
+  return {
+    iv: arrayBufferToBase64(iv),
+    data: arrayBufferToBase64(ciphertext),
+  };
 }
 
 /**
- * decryptAESGCM(payload, keyOrRaw) -> base64String
- * - payload: { iv: base64url, data: base64url }
- * - keyOrRaw: CryptoKey AES-GCM OU Uint8Array (clé brute)
- * Retourne la **string base64** du plaintext (compat Login.jsx)
+ * Déchiffre un objet {iv,data} (base64) en texte clair (UTF-8).
+ * @param {{iv:string, data:string}} encrypted
+ * @param {CryptoKey|Uint8Array} keyOrBytes - CryptoKey AES-GCM OU 32 octets "raw"
+ * @returns {Promise<string>}
  */
-export async function decryptAESGCM(payload, keyOrRaw) {
-  const key = await ensureAesKey(keyOrRaw);
-  const iv = fromBase64url(payload.iv);
-  const cipher = fromBase64url(payload.data);
-  const pt = await subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
-  // compat: renvoyer du base64 (non url-safe) car Login.jsx fait atob(...)
-  const bytes = new Uint8Array(pt);
-  return btoa(String.fromCharCode(...bytes));
+export async function decryptAESGCM(encrypted, keyOrBytes) {
+  const key = await ensureCryptoKey(keyOrBytes);
+  const iv = new Uint8Array(base64ToArrayBuffer(encrypted.iv));
+  const data = base64ToArrayBuffer(encrypted.data);
+  const plaintextBuffer = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    data
+  );
+  return new TextDecoder().decode(plaintextBuffer);
+}
+
+/** Génère des octets aléatoires (utile pour clé principale & salt). */
+export function randomBytes(length) {
+  const u8 = new Uint8Array(length);
+  window.crypto.getRandomValues(u8);
+  return u8;
 }

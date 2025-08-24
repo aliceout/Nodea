@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import pb from "../../services/pocketbase";
-import { useMainKey } from "../../hooks/useMainKey";
+import pb from "@/services/pocketbase";
+import { useMainKey } from "@/hooks/useMainKey";
 import questions from "../../data/questions.json";
 
 import { encryptAESGCM } from "../../services/webcrypto";

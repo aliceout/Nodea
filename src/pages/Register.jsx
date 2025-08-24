@@ -1,9 +1,21 @@
 import React, { useState } from "react";
-import { deriveKeyArgon2, encryptAESGCM } from "../services/webcrypto";
-import pb from "../services/pocketbase";
+import { deriveKeyArgon2, encryptAESGCM } from "@/services/webcrypto";
+import pb from "@/services/pocketbase";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import FormFeedback from "../components/common/FormError";
+
+// Utils base64 <-> Uint8Array (sans changer tes styles)
+function toB64(u8) {
+  return btoa(String.fromCharCode(...u8));
+}
+function fromB64(b64) {
+  return new Uint8Array(
+    atob(b64)
+      .split("")
+      .map((c) => c.charCodeAt(0))
+  );
+}
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -24,7 +36,7 @@ export default function RegisterPage() {
       return;
     }
 
-    // 1. Vérification du code d'invitation
+    // 1) Vérification du code d'invitation
     try {
       const codeResult = await pb.collection("invites_codes").getFullList({
         filter: `code="${inviteCode}"`,
@@ -38,49 +50,41 @@ export default function RegisterPage() {
       return;
     }
 
-    // 2. Création du compte + suppression du code
+    // 2) Création du compte (nouvelle logique crypto alignée)
     try {
-      // --- NOUVELLE LOGIQUE CHIFFREMENT ---
-
-      // 1. Générer la clé principale aléatoire (32 bytes)
+      // (a) Génère la clé principale (Uint8Array(32))
       const mainKeyRaw = window.crypto.getRandomValues(new Uint8Array(32));
-      // 2. Générer un salt aléatoire (16 bytes, encodé en base64)
+
+      // (b) Génère le salt (Uint8Array(16)) et encode en base64 pour la DB
       const saltRaw = window.crypto.getRandomValues(new Uint8Array(16));
-      const saltB64 = btoa(String.fromCharCode(...saltRaw));
+      const saltB64 = toB64(saltRaw);
 
-      // 3. Dériver la clé de chiffrement à partir du mot de passe + salt
-      const protectionKeyRaw = await deriveKeyArgon2(password, saltB64);
+      // (c) Dérive la clé de protection (Uint8Array(32)) depuis password+salt
+      const protectionKeyBytes32 = await deriveKeyArgon2(password, saltB64); // retourne Uint8Array(32)
 
-      // 4. Importer la clé dérivée dans WebCrypto
-      const protectionKey = await window.crypto.subtle.importKey(
-        "raw",
-        protectionKeyRaw,
-        { name: "AES-GCM" },
-        false,
-        ["encrypt", "decrypt"]
-      );
+      // (d) Chiffre la clé principale brute avec AES-GCM en passant la clé dérivée **bytes**
+      const encrypted = await encryptAESGCM(mainKeyRaw, protectionKeyBytes32); // {iv: Uint8Array, data: Uint8Array}
 
-      // 5. Chiffrer la clé principale (on encode la clé principale en base64 pour la stocker comme texte)
-      const encrypted = await encryptAESGCM(
-        btoa(String.fromCharCode(...mainKeyRaw)),
-        protectionKey
-      );
-      // encrypted = { iv, data } (base64 tous deux)
+      // (e) Prépare l'objet {iv, data} encodé en base64 pour stockage texte
+      const encryptedForDB = JSON.stringify({
+        iv: toB64(encrypted.iv),
+        data: toB64(encrypted.data),
+      });
 
-      // 6. Préparer l'objet utilisateur à envoyer
+      // (f) Envoi au backend : encrypted_key non vide + salt
       const userObj = {
         username,
         email,
         password,
         passwordConfirm,
         role: "user",
-        encrypted_key: JSON.stringify(encrypted), // {iv, data} en JSON
-        encryption_salt: saltB64,
+        encrypted_key: encryptedForDB, // texte JSON {iv,data} (base64)
+        encryption_salt: saltB64, // texte base64
       };
 
       await pb.collection("users").create(userObj);
 
-      // Suppression du code d'invitation après usage
+      // 3) Suppression du code d’invitation après usage (comme avant)
       try {
         const codeRecord = await pb
           .collection("invites_codes")
@@ -88,9 +92,8 @@ export default function RegisterPage() {
         if (codeRecord && codeRecord.id) {
           await pb.collection("invites_codes").delete(codeRecord.id);
         }
-      } catch (e) {
-        // On log, mais on n'affiche rien à l'utilisateur·ice
-        console.warn("Erreur suppression code invitation :", e);
+      } catch (_) {
+        console.warn("Erreur suppression code invitation");
       }
 
       setSuccess("Utilisateur créé avec succès");
@@ -100,6 +103,7 @@ export default function RegisterPage() {
       setPassword("");
       setPasswordConfirm("");
     } catch (err) {
+      console.error("[Register] create error:", err);
       setError("Erreur lors de la création du compte");
     }
   };

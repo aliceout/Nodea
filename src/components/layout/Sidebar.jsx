@@ -7,9 +7,11 @@ import { useStore } from "@/store/StoreProvider";
 import { selectCurrentTab, selectMobileOpen } from "@/store/selectors";
 import { closeMobile, setTab } from "@/store/actions";
 
-import { MODULES } from "@/config/modules_list";
 import Logo from "../common/LogoLong.jsx";
 import Link from "./components/SideLinks.jsx";
+
+import { useModulesRuntime, isModuleEnabled } from "@/store/modulesRuntime";
+import { MODULES } from "@/config/modules_list"; // tu l’avais déjà
 
 export default function Sidebar() {
   const store = useStore();
@@ -19,8 +21,13 @@ export default function Sidebar() {
   const current = selectCurrentTab(state);
   const open = selectMobileOpen(state);
 
-  const modules = MODULES.filter((m) => m.display);
-
+  const modulesRuntime = useModulesRuntime();
+  const visibleItems = (MODULES || []).filter((i) => {
+    if (i.display === false) return false; // respect 'display'
+    if (!i.to_toggle) return true; // non-toggleables: toujours visibles
+    return isModuleEnabled(modulesRuntime, i.id); // toggleables: visible seulement si activé
+  });
+  
   const handleSelect = (id) => {
     dispatch(setTab(id));
     dispatch(closeMobile());
@@ -60,7 +67,7 @@ export default function Sidebar() {
 
                   <nav className="mt-4 flex flex-1 flex-col justify-between">
                     <ul role="list" className="space-y-1">
-                      {modules.map((item) => (
+                      {visibleItems.map((item) => (
                         <li key={item.id}>
                           <Link
                             icon={item.icon}

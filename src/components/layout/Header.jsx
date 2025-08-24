@@ -14,8 +14,10 @@ export default function Header() {
   const dispatch = store?.dispatch ?? store?.[1];
   const username = user?.username || "Utilisateur·rice";
   
+  
   const handleMenuClick = () => dispatch(openMobile());
   const handleGoAccount = () => dispatch(setTab("account"));
+  const handleGoSettings = () => dispatch(setTab("settings"));
   const handleSignOut = async () => {
     try {
       await logout();
@@ -53,6 +55,7 @@ export default function Header() {
             <UserMenu
               username={username}
               onGoAccount={handleGoAccount}
+              onGoSettings={handleGoSettings}
               onSignOut={handleSignOut}
             />
           </div>
