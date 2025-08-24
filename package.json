@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "kill-port": "kill-port 8089",
-    "pb": "..\\Backend\\pocketbase.exe serve --http=\"127.0.0.1:8090\"",
-    "dev": "npm run kill-port && concurrently \"npm:pb\" \"vite\"",
+    "dev": "npm run kill-port && vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

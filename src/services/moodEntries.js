@@ -1,36 +1,36 @@
 // src/services/moodEntries.js
-import { decryptAESGCM } from "@/services/webcrypto";
+import { encryptAESGCM } from "@/services/webcrypto";
+import { makeGuard } from "@/services/crypto-utils";
 
-// Normalise mainKey -> CryptoKey
-export async function toAesKey(mainKey) {
-  if (mainKey instanceof CryptoKey) return mainKey;
-  return window.crypto.subtle.importKey(
-    "raw",
-    mainKey,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-// Déchiffre une entrée mood_entries (gère anciens/nouveaux formats)
-export async function decryptMoodEntry(entry, aesKey) {
-  // Cas A : nouveau format séparé
-  if (
-    entry?.cipher_iv &&
-    typeof entry?.payload === "string" &&
-    !entry.payload.trim().startsWith("{")
-  ) {
-    const obj = { iv: entry.cipher_iv, data: entry.payload };
-    const clear = await decryptAESGCM(obj, aesKey);
-    return JSON.parse(clear);
+/**
+ * @param {object} params
+ * @param {import('pocketbase').default} params.pb
+ * @param {string} params.moduleUserId
+ * @param {CryptoKey|Uint8Array} params.mainKey
+ * @param {object} params.payload - objet clair (date, mood_score, etc.)
+ */
+export async function createMoodEntry({ pb, moduleUserId, mainKey, payload }) {
+  // s’assurer d’avoir une CryptoKey AES-GCM
+  let cryptoKey = mainKey;
+  if (!(cryptoKey instanceof CryptoKey)) {
+    cryptoKey = await window.crypto.subtle.importKey(
+      "raw",
+      mainKey,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
   }
 
-  // Cas B : payload JSON {iv, data}
-  const packed =
-    typeof entry.payload === "string"
-      ? JSON.parse(entry.payload)
-      : entry.payload;
-  const clear = await decryptAESGCM(packed, aesKey);
-  return JSON.parse(clear);
+  // chiffrer le JSON
+  const plaintext = JSON.stringify(payload);
+  const { iv, data } = await encryptAESGCM(plaintext, cryptoKey);
+
+  // écrire au schéma v2
+  return pb.collection("mood_entries").create({
+    module_user_id: moduleUserId,
+    payload: data,
+    cipher_iv: iv,
+    guard: makeGuard(),
+  });
 }

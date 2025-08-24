@@ -1,9 +1,11 @@
+// src/modules/Mood/Form.jsx
 import React, { useState, useEffect, useRef } from "react";
 import pb from "@/services/pocketbase";
 import questions from "@/data/questions.json";
-import { useMainKey } from "@/hooks/useMainKey";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { encryptAESGCM } from "@/services/webcrypto";
+import { useMainKey } from "@/hooks/useMainKey";
+import { makeGuard } from "@/services/crypto-utils";
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -19,33 +21,43 @@ export default function JournalEntryPage() {
   const [error, setError] = useState("");
   const [randomQuestion, setRandomQuestion] = useState("");
   const [loadingQuestion, setLoadingQuestion] = useState(true);
+
   const { mainKey } = useMainKey();
+  const modules = useModulesRuntime();
+  const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
+
   const [showPicker, setShowPicker] = useState(false);
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
-  const modules = useModulesRuntime();
-  const moduleUserId = modules?.mood?.module_user_id;
-  
+
   // Import CryptoKey WebCrypto dès que mainKey dispo
   const [cryptoKey, setCryptoKey] = useState(null);
   useEffect(() => {
     if (!mainKey) return;
+    // si mainKey est déjà une CryptoKey (selon ton contexte), tu peux la détecter
+    if (typeof mainKey === "object" && mainKey?.type === "secret") {
+      return;
+    }
     window.crypto.subtle
-    .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
-    .then(setCryptoKey);
+      .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
+      .then((key) => {
+        setCryptoKey(key);
+      })
+      .catch(() => setCryptoKey(null));
   }, [mainKey]);
-  
-useEffect(() => {
-  // Choix aléatoire simple pour l’instant (on réintégrera l’historique plus tard)
-  const q = questions[Math.floor(Math.random() * questions.length)];
-  setRandomQuestion(q);
-  setLoadingQuestion(false);
-}, []);
-  
+
+  // Choix aléatoire simple pour l’instant
+  useEffect(() => {
+    const q = questions[Math.floor(Math.random() * questions.length)];
+    setRandomQuestion(q);
+    setLoadingQuestion(false);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
     if (!cryptoKey) {
       setError(
         "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
@@ -64,11 +76,13 @@ useEffect(() => {
       setError("Merci de choisir un emoji.");
       return;
     }
+    if (!moduleUserId) {
+      setError("Module 'Humeur' non configuré (id manquant).");
+      return;
+    }
+
     try {
-      if (!moduleUserId) {
-        setError("Module manquant");
-        return;
-      }
+      // 1) Payload clair (clés attendues côté lecture)
       const payloadObj = {
         date,
         positive1,
@@ -81,20 +95,30 @@ useEffect(() => {
         answer,
       };
 
-      // On chiffre le payload clair avec la mainKey (déjà importée en cryptoKey)
+      // 2) Chiffrement AES‑GCM (retourne { iv, data } en base64)
       const { data, iv } = await encryptAESGCM(
         JSON.stringify(payloadObj),
         cryptoKey
       );
 
-      // ⚠️ champs attendus par la collection `mood_entries`
-      await pb.collection("mood_entries").create({
-        module_user_id: moduleUserId, // requis
-        payload: data, // requis (ciphertext base64)
-        cipher_iv: iv, // requis (IV base64)
-        guard: modules?.mood?.guard, // requis (secret g_... stocké dans users.modules)
+      // 3) Écriture PocketBase v2 (guard = secret par entrée)
+      const guard = makeGuard();
+      if (!/^g_[a-z0-9]{32,}$/.test(guard || "")) {
+        setError("Guard invalide (format)");
+        return;
+      }
+      // Construire un record “propre” (tout en string) pour éviter qu’un undefined soit droppé
+      const record = {
+        module_user_id: String(moduleUserId),
+        payload: String(data),
+        cipher_iv: String(iv),
+        guard: String(guard),
+      };
+      await pb.send("/api/collections/mood_entries/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(record),
       });
-      
       setSuccess("Entrée enregistrée !");
       setPositive1("");
       setPositive2("");
@@ -107,7 +131,7 @@ useEffect(() => {
       setError("Erreur lors de l’enregistrement : " + (err?.message || ""));
     }
   };
-  
+
   return (
     <>
       <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto ">
@@ -123,7 +147,7 @@ useEffect(() => {
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="border rounded p-2 w-full"
-              />
+            />
           </div>
         </div>
 
@@ -137,7 +161,7 @@ useEffect(() => {
               positive3={positive3}
               setPositive3={setPositive3}
               required
-              />
+            />
           </div>
           <div className="flex flex-col w-full md:w-1/2 gap-4">
             <MoodBlock
@@ -159,7 +183,7 @@ useEffect(() => {
             answer={answer}
             setAnswer={setAnswer}
             loading={loadingQuestion}
-            />
+          />
           <Button type="submit" className="w-full md:w-1/2">
             Enregistrer
           </Button>
