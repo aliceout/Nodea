@@ -35,47 +35,12 @@ export default function JournalEntryPage() {
     .then(setCryptoKey);
   }, [mainKey]);
   
-  useEffect(() => {
-    // Aller chercher les questions utilisées sur les 30 derniers jours
-    const fetchQuestion = async () => {
-      setLoadingQuestion(true);
-      try {
-        const since = new Date();
-        since.setDate(since.getDate() - 30);
-        const sinceStr = since.toISOString().slice(0, 10);
-        
-        // Prend les entrées du user sur les 30 derniers jours
-        const entries = await pb.collection("mood_entries").getFullList({
-          filter: `user="${pb.authStore.model.id}" && date >= "${sinceStr}"`,
-        });
-        const alreadyUsedQuestions = entries.map((e) => e.question);
-        
-        // Filtre les questions jamais (ou pas récemment) posées
-        const availableQuestions = questions.filter(
-          (q) => !alreadyUsedQuestions.includes(q)
-        );
-        let chosen = "";
-        if (availableQuestions.length > 0) {
-          chosen =
-          availableQuestions[
-            Math.floor(Math.random() * availableQuestions.length)
-          ];
-        } else {
-          // fallback : prend n’importe quelle question au hasard
-          chosen = questions[Math.floor(Math.random() * questions.length)];
-        }
-        setRandomQuestion(chosen);
-      } catch {
-        // fallback
-        setRandomQuestion(
-          questions[Math.floor(Math.random() * questions.length)]
-        );
-      } finally {
-        setLoadingQuestion(false);
-      }
-    };
-    fetchQuestion();
-  }, []);
+useEffect(() => {
+  // Choix aléatoire simple pour l’instant (on réintégrera l’historique plus tard)
+  const q = questions[Math.floor(Math.random() * questions.length)];
+  setRandomQuestion(q);
+  setLoadingQuestion(false);
+}, []);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,7 +69,7 @@ export default function JournalEntryPage() {
         setError("Module manquant");
         return;
       }
-      const payload = {
+      const payloadObj = {
         date,
         positive1,
         positive2,
@@ -115,12 +80,19 @@ export default function JournalEntryPage() {
         question: randomQuestion,
         answer,
       };
-      const encrypted = await encryptAESGCM(JSON.stringify(payload), cryptoKey);
+
+      // On chiffre le payload clair avec la mainKey (déjà importée en cryptoKey)
+      const { data, iv } = await encryptAESGCM(
+        JSON.stringify(payloadObj),
+        cryptoKey
+      );
+
+      // ⚠️ champs attendus par la collection `mood_entries`
       await pb.collection("mood_entries").create({
-        module_user_id: moduleUserId,
-        payload: encrypted.data, // ← voir point 3
-        cipher_iv: encrypted.iv, // ← voir point 3
-        guard: "init",
+        module_user_id: moduleUserId, // requis
+        payload: data, // requis (ciphertext base64)
+        cipher_iv: iv, // requis (IV base64)
+        guard: modules?.mood?.guard, // requis (secret g_... stocké dans users.modules)
       });
       
       setSuccess("Entrée enregistrée !");
