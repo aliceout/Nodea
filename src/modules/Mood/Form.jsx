@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import pb from "@/services/pocketbase";
+import questions from "@/data/questions.json";
 import { useMainKey } from "@/hooks/useMainKey";
-import questions from "../../data/questions.json";
-
-import { encryptAESGCM } from "../../services/webcrypto";
+import { useModulesRuntime } from "@/store/modulesRuntime";
+import { encryptAESGCM } from "@/services/webcrypto";
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -23,23 +23,18 @@ export default function JournalEntryPage() {
   const [showPicker, setShowPicker] = useState(false);
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
-
+  const modules = useModulesRuntime();
+  const moduleUserId = modules?.mood?.module_user_id;
+  
   // Import CryptoKey WebCrypto dès que mainKey dispo
   const [cryptoKey, setCryptoKey] = useState(null);
   useEffect(() => {
     if (!mainKey) return;
     window.crypto.subtle
-      .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
-      .then(setCryptoKey);
+    .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
+    .then(setCryptoKey);
   }, [mainKey]);
-
-  function encryptField(value) {
-    if (!cryptoKey) return ""; // Sécurité, cas anormal
-    return encryptAESGCM(value, cryptoKey).then((encrypted) =>
-      JSON.stringify(encrypted)
-    );
-  }
-
+  
   useEffect(() => {
     // Aller chercher les questions utilisées sur les 30 derniers jours
     const fetchQuestion = async () => {
@@ -48,13 +43,13 @@ export default function JournalEntryPage() {
         const since = new Date();
         since.setDate(since.getDate() - 30);
         const sinceStr = since.toISOString().slice(0, 10);
-
+        
         // Prend les entrées du user sur les 30 derniers jours
         const entries = await pb.collection("mood_entries").getFullList({
           filter: `user="${pb.authStore.model.id}" && date >= "${sinceStr}"`,
         });
         const alreadyUsedQuestions = entries.map((e) => e.question);
-
+        
         // Filtre les questions jamais (ou pas récemment) posées
         const availableQuestions = questions.filter(
           (q) => !alreadyUsedQuestions.includes(q)
@@ -62,9 +57,9 @@ export default function JournalEntryPage() {
         let chosen = "";
         if (availableQuestions.length > 0) {
           chosen =
-            availableQuestions[
-              Math.floor(Math.random() * availableQuestions.length)
-            ];
+          availableQuestions[
+            Math.floor(Math.random() * availableQuestions.length)
+          ];
         } else {
           // fallback : prend n’importe quelle question au hasard
           chosen = questions[Math.floor(Math.random() * questions.length)];
@@ -81,7 +76,7 @@ export default function JournalEntryPage() {
     };
     fetchQuestion();
   }, []);
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -105,19 +100,29 @@ export default function JournalEntryPage() {
       return;
     }
     try {
-      await pb.collection("mood_entries").create({
-        user: pb.authStore.model.id,
+      if (!moduleUserId) {
+        setError("Module manquant");
+        return;
+      }
+      const payload = {
         date,
-        positive1: await encryptField(positive1),
-        positive2: await encryptField(positive2),
-        positive3: await encryptField(positive3),
-        mood_score: await encryptField(String(moodScore)), // Chiffré
-        mood_emoji: await encryptField(moodEmoji), // Chiffré
-        comment: await encryptField(comment),
-        question: await encryptField(randomQuestion), // Chiffré
-        answer: await encryptField(answer), // Chiffré
+        positive1,
+        positive2,
+        positive3,
+        mood_score: String(moodScore),
+        mood_emoji: moodEmoji,
+        comment,
+        question: randomQuestion,
+        answer,
+      };
+      const encrypted = await encryptAESGCM(JSON.stringify(payload), cryptoKey);
+      await pb.collection("mood_entries").create({
+        module_user_id: moduleUserId,
+        payload: encrypted.data, // ← voir point 3
+        cipher_iv: encrypted.iv, // ← voir point 3
+        guard: "init",
       });
-
+      
       setSuccess("Entrée enregistrée !");
       setPositive1("");
       setPositive2("");
@@ -130,7 +135,7 @@ export default function JournalEntryPage() {
       setError("Erreur lors de l’enregistrement : " + (err?.message || ""));
     }
   };
-
+  
   return (
     <>
       <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto ">
@@ -146,7 +151,7 @@ export default function JournalEntryPage() {
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="border rounded p-2 w-full"
-            />
+              />
           </div>
         </div>
 
@@ -160,7 +165,7 @@ export default function JournalEntryPage() {
               positive3={positive3}
               setPositive3={setPositive3}
               required
-            />
+              />
           </div>
           <div className="flex flex-col w-full md:w-1/2 gap-4">
             <MoodBlock
@@ -182,7 +187,7 @@ export default function JournalEntryPage() {
             answer={answer}
             setAnswer={setAnswer}
             loading={loadingQuestion}
-          />
+            />
           <Button type="submit" className="w-full md:w-1/2">
             Enregistrer
           </Button>
@@ -198,4 +203,5 @@ import PositivesBlock from "./components/FormPositives";
 import MoodBlock from "./components/FormMood";
 import QuestionBlock from "./components/FormQuestion";
 import CommentBlock from "./components/FormComment";
-import Button from "../../components/common/Button";
+import Button from "@/components/common/Button";
+import FormError from "@/components/common/FormError";
