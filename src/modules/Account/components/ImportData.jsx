@@ -12,8 +12,6 @@ export default function ImportData({ user }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  console.log("ImportData rendered, mainKey:", mainKey);
-
   useEffect(() => {
     if (mainKey) {
       window.crypto.subtle

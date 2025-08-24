@@ -39,7 +39,6 @@ export default function RotatedFrame({
       const r = hostRef.current.getBoundingClientRect();
       const w = Math.max(1, Math.floor(r.width));
       const h = Math.max(1, Math.floor(r.height));
-      console.log("Measure container:", { w, h });
       setBox({ w, h });
     };
     measure();
@@ -55,8 +54,6 @@ export default function RotatedFrame({
   }, []);
 
   const { w, h } = box;
-  console.log("Render:", { w, h, isMobile });
-
   if (!w || !h)
     return <div ref={hostRef} className="w-full h-full overflow-hidden" />;
 
@@ -79,13 +76,6 @@ export default function RotatedFrame({
   // Dimensions AVANT rotation (swap)
   const preRotateWidth = visibleHeight; // deviendra la HAUTEUR visible
   const preRotateHeight = visibleWidth; // deviendra la LARGEUR visible
-
-
-  console.log("Mobile calc:", {
-    container: { w, h },
-    visible: { width: visibleWidth, height: visibleHeight },
-    preRotate: { width: preRotateWidth, height: preRotateHeight },
-  });
 
   return (
     <div ref={hostRef} className="relative w-full h-full overflow-hidden">

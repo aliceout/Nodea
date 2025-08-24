@@ -9,12 +9,6 @@ const MainKeyContext = createContext({ mainKey: null, setMainKey: () => {} });
 export function MainKeyProvider({ children }) {
   const [mainKey, setMainKey] = useState(null);
 
-  // Debug optionnel — commente si tu veux
-  if (import.meta?.env?.DEV) {
-    // eslint-disable-next-line no-console
-    console.log("[MainKeyProvider] mainKey:", mainKey?.byteLength ?? null);
-  }
-
   const value = useMemo(() => ({ mainKey, setMainKey }), [mainKey]);
   return (
     <MainKeyContext.Provider value={value}>{children}</MainKeyContext.Provider>

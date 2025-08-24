@@ -23,9 +23,6 @@ export default function useBootstrapModulesRuntime() {
         const cfg = await loadModulesConfig(pb, user.id, mainKey); // objet DÉCHIFFRÉ
         if (!cancelled) {
           setModulesState(cfg || {});
-          if (import.meta.env.DEV) {
-            console.log("[ModulesBootstrap] state initial (déchiffré):", cfg);
-          }
         }
       } catch (e) {
         if (import.meta.env.DEV)
