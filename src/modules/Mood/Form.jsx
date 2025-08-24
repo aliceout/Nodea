@@ -6,10 +6,6 @@ import { useModulesRuntime } from "@/store/modulesRuntime";
 import { encryptAESGCM } from "@/services/webcrypto";
 import { useMainKey } from "@/hooks/useMainKey";
 
-// Debug helper (désactive en prod si besoin)
-const DEBUG = true; // ou: import.meta.env.DEV
-const dbg = (...args) => DEBUG && console.log("[Mood/Form]", ...args);
-
 // --- Helpers HMAC (dérivation du guard) ---
 const te = new TextEncoder();
 function toHex(buf) {
@@ -67,14 +63,12 @@ export default function JournalEntryPage() {
     if (!mainKey) return;
     // si mainKey est déjà une CryptoKey (selon ton contexte), on ne peut pas la réutiliser pour AES ici
     if (typeof mainKey === "object" && mainKey?.type === "secret") {
-      dbg("CryptoKey déjà prête (secret) — attention: HMAC attend du 'raw'");
       return;
     }
     window.crypto.subtle
       .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
       .then((key) => {
         setCryptoKey(key);
-        dbg("CryptoKey importée (AES-GCM)");
       })
       .catch(() => setCryptoKey(null));
   }, [mainKey]);
@@ -116,6 +110,8 @@ export default function JournalEntryPage() {
 
     try {
       // 1) Payload clair (clés attendues côté lecture)
+      // -> n'ajoute question/answer que si une réponse a été saisie
+      const includeQA = !!answer.trim();
       const payloadObj = {
         date,
         positive1,
@@ -124,35 +120,15 @@ export default function JournalEntryPage() {
         mood_score: String(moodScore),
         mood_emoji: moodEmoji,
         comment,
-        question: randomQuestion,
-        answer,
+        ...(includeQA ? { question: randomQuestion, answer: answer } : {}),
       };
 
-      dbg("Pré-chiffrement | moduleUserId:", moduleUserId, {
-        date,
-        mood_score: String(moodScore),
-        mood_emoji: moodEmoji,
-        positive1_len: positive1?.length || 0,
-        positive2_len: positive2?.length || 0,
-        positive3_len: positive3?.length || 0,
-        comment_len: comment?.length || 0,
-        answer_len: answer?.length || 0,
-        question_preview:
-          String(randomQuestion).slice(0, 40) +
-          (String(randomQuestion).length > 40 ? "…" : ""),
-      });
 
       // 2) Chiffrement AES-GCM (retourne { iv, data } en base64url)
       const { data, iv } = await encryptAESGCM(
         JSON.stringify(payloadObj),
         cryptoKey
       );
-
-      dbg("Post-chiffrement", {
-        payload_b64_len: (data || "").length,
-        iv_b64: iv,
-        iv_len: (iv || "").length,
-      });
 
       // 3) CREATE (étape A) : POST avec guard="init"
       const recordCreate = {
@@ -161,7 +137,6 @@ export default function JournalEntryPage() {
         cipher_iv: String(iv),
         guard: "init",
       };
-      dbg("POST create (init) /mood_entries", recordCreate);
 
       const created = await pb.send("/api/collections/mood_entries/records", {
         method: "POST",
@@ -186,7 +161,6 @@ export default function JournalEntryPage() {
       }
 
       const guard = await deriveGuard(mainKey, moduleUserId, created.id);
-      dbg("PATCH promote guard", { id: created.id, guard_len: guard.length });
 
       await pb.send(
         `/api/collections/mood_entries/records/${encodeURIComponent(

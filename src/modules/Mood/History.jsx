@@ -5,8 +5,6 @@ import { useModulesRuntime } from "@/store/modulesRuntime";
 import { useMainKey } from "@/hooks/useMainKey";
 import { decryptAESGCM } from "@/services/webcrypto";
 import FormError from "@/components/common/FormError";
-import HistoryFilters from "./components/HistoryFilters";
-import HistoryList from "./components/HistoryList";
 
 // --- Helpers HMAC (dérivation du guard) ---
 // On duplique ici pour limiter les refactos (pas de nouveau module).
@@ -44,19 +42,19 @@ export default function MoodHistory() {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1); // 1..12
   const [year, setYear] = useState(today.getFullYear());
-
+  
   const [allEntries, setAllEntries] = useState([]); // déchiffrées
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+  
   // Charger + déchiffrer
   useEffect(() => {
     let cancelled = false;
-
+    
     async function run() {
       setLoading(true);
       setError("");
-
+      
       if (!moduleUserId) {
         setError("Module 'Humeur' non configuré.");
         setLoading(false);
@@ -107,45 +105,45 @@ export default function MoodHistory() {
         if (!cancelled) setLoading(false);
       }
     }
-
+    
     run();
     return () => {
       cancelled = true;
     };
   }, [moduleUserId, mainKey]);
-
+  
   // Années disponibles pour le select
   const years = useMemo(() => {
     const set = new Set(
       allEntries
-        .map((e) => (e.date || "").slice(0, 4))
-        .filter((y) => /^\d{4}$/.test(y))
-        .map((y) => Number(y))
+      .map((e) => (e.date || "").slice(0, 4))
+      .filter((y) => /^\d{4}$/.test(y))
+      .map((y) => Number(y))
     );
     const arr = Array.from(set).sort((a, b) => b - a);
     return arr.length ? arr : [today.getFullYear()];
   }, [allEntries]);
-
+  
   // Filtrage local par mois/année
   const entries = useMemo(() => {
     const mm = String(month).padStart(2, "0");
     const yy = String(year);
     return allEntries.filter((e) => (e.date || "").startsWith(`${yy}-${mm}-`));
   }, [allEntries, month, year]);
-
+  
   // Suppression : on calcule le guard (HMAC) à la volée
   async function handleDelete(id) {
     setError("");
-
+    
     if (!moduleUserId || !mainKey) {
       setError("Contexte invalide (clé ou module).");
       return;
     }
-
+    
     // eslint-disable-next-line no-alert
     const ok = window.confirm("Supprimer définitivement cette entrée ?");
     if (!ok) return;
-
+    
     try {
       const guard = await deriveGuard(mainKey, moduleUserId, id);
       await deleteMoodEntry(id, moduleUserId, guard);
@@ -154,11 +152,11 @@ export default function MoodHistory() {
       setError(err?.message || "Suppression impossible.");
     }
   }
-
+  
   if (loading) {
     return <div className="w-full max-w-4xl mx-auto py-6">Chargement…</div>;
   }
-
+  
   return (
     <div className="w-full max-w-5xl mx-auto py-6">
       <h1 className="text-2xl font-bold mb-4">Historique</h1>
@@ -177,3 +175,6 @@ export default function MoodHistory() {
     </div>
   );
 }
+
+import HistoryFilters from "./components/HistoryFilters";
+import HistoryList from "./components/HistoryList";
