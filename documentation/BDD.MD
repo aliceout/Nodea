@@ -1,43 +1,147 @@
+Voici **le fichier complet `BDD.md`** (version HMAC + création en 2 temps). Tu peux le coller tel quel.
+
+`md
 # BDD.md
 
-## Table `users`
+Description de la **structure PocketBase** utilisée par l’app.  
+Les contraintes d’accès (rules) et le protocole crypto sont détaillés dans `SECURITY.md`.  
+Le contrat UI/Backend par module est détaillé dans `MODULES.md`.
 
-| Champ            | Type       | Description                                                                                 |
-|------------------|------------|---------------------------------------------------------------------------------------------|
-| `id`             | string     | ID auto-généré par PocketBase                                                               |
-| `username`       | string     | Nom d’utilisateur·rice                                                                      |
-| `email`          | string     | Email de connexion                                                                          |
-| `role`           | string     | `admin` ou `user`                                                                           |
-| `encrypted_key`  | string     | Clé chiffrée de l’utilisateur·rice (clé AES chiffrée avec son mot de passe via Argon2id)    |
-| `encryption_salt`| string     | Salt utilisée pour dériver la clé avec Argon2id                                             |
-| `modules`        | string (JSON chiffré) | Contient la configuration des modules (activés ou non, avec ID secondaire)       |
+---
 
-### Exemple de champ `modules` après déchiffrement :
-```json
+## 0) Conventions
+
+- Toutes les tables d’entrées suivent le schéma commun :  
+  `module_user_id` (clé secondaire), `payload` (chiffré), `cipher_iv`, `guard` (hidden), `created`, `updated`.
+- `guard` est **hidden** et **requis**. Il est **dérivé par HMAC** côté client puis **stocké**.  
+  Création en **2 temps** : `POST guard="init"` → **PATCH de promotion** (voir `SECURITY.md`).
+- Préfixes d’identifiants secondaires : `m_…` (Mood), `g_…` (Goals), etc.
+
+---
+
+## 1) `users` (auth)
+
+- **Type**: `auth`  
+- **Accès**: `list/view/update/delete` autorisés pour l’`id` courant ou rôle `admin`.
+
+| Champ              | Type     | Requis | Hidden | Contraintes / Notes                                            |
+|--------------------|----------|--------|--------|----------------------------------------------------------------|
+| `id`               | text PK  | yes    | no     | Généré PB (`[a-z0-9]{15}`)                                     |
+| `username`         | text     | yes    | no     |                                                                |
+| `email`            | email    | yes    | no     | système PB                                                     |
+| `verified`         | bool     | no     | no     | système PB                                                     |
+| `role`             | select   | no     | no     | `admin` \| `user`                                              |
+| `encrypted_key`    | text     | yes    | no     | **blob chiffré** (scellé avec la clé dérivée du mot de passe) |
+| `encryption_salt`  | text     | yes    | no     | sel pour Argon2id                                              |
+| `modules`          | text     | no     | no     | **blob chiffré**: état des modules (enabled, module_user_id)  |
+| `created`          | autodate | auto   | no     |                                                                |
+| `updated`          | autodate | auto   | no     |                                                                |
+
+**Indexes principaux**
+- uniques PB par défaut (`email`, `tokenKey`).
+
+---
+
+## 2) `invites_codes`
+
+- **Type**: `base`  
+- **Accès**: création par `admin`, lecture publique (via `viewRule` existante).
+
+| Champ     | Type     | Requis | Hidden | Notes         |
+|-----------|----------|--------|--------|---------------|
+| `id`      | text PK  | yes    | no     | PB            |
+| `code`    | text     | yes    | no     |               |
+| `created` | autodate | auto   | no     |               |
+| `updated` | autodate | auto   | no     |               |
+
+---
+
+## 3) `mood_entries`
+
+- **Type**: `base`  
+- **Accès** (règles côté PB) :  
+  - `list/view` : `record.module_user_id = @request.query.sid`  
+  - `update/delete` : idem **et** `record.guard = @request.query.d`
+
+| Champ            | Type     | Requis | Hidden | Contraintes / Notes                                                                                                   |
+|------------------|----------|--------|--------|-----------------------------------------------------------------------------------------------------------------------|
+| `id`             | text PK  | yes    | no     | PB                                                                                                                    |
+| `module_user_id` | text     | yes    | no     | `^[a-z0-9_\\-]{16,}$` (id secondaire opaque, ex. `m_…`)                                                               |
+| `payload`        | text     | yes    | no     | **Base64URL** d’un blob **AES-GCM**                                                                                   |
+| `cipher_iv`      | text     | yes    | no     | **Base64URL** (IV AES-GCM)                                                                                            |
+| `guard`          | text     | yes    | **yes**| **Hidden**. Pattern **`^(g_[a-z0-9]{32,}|init)$`**. Création en 2 temps : POST `"init"` → PATCH de promotion (HMAC). |
+| `created`        | autodate | auto   | no     |                                                                                                                       |
+| `updated`        | autodate | auto   | no     |                                                                                                                       |
+
+**Index**
+- `CREATE INDEX idx_mood_entries_sid ON mood_entries(module_user_id);`
+
+**Payload clair attendu (référence)**  
+_Stocké chiffré dans `payload` (voir `MODULES.md` pour le contrat exact)._
+json
 {
-  "mood": {
-    "enabled": true,
-    "id": "m_abc123"
-  },
-  "goals": {
-    "enabled": false,
-    "id": "g_deadbeef"
-  }
+  "date": "YYYY-MM-DD",
+  "mood_score": "<-2..+2|string|number>",
+  "mood_emoji": "🙂",
+  "positive1": "string",
+  "positive2": "string",
+  "positive3": "string",
+  "comment": "string|optional",
+  "question": "string|optional",
+  "answer": "string|optional"
 }
-```
+`
 
-## Tables `*_entries` (ex : `goals_entries`, `mood_entries`, etc.)
+---
 
-| Champ            | Type                | Description                                                                |
-|------------------|---------------------|----------------------------------------------------------------------------|
-| `id`             | `string`            | ID unique de l’entrée (généré par PocketBase)                              |
-| `module_user_id` | `string`            | Identifiant secondaire (lié au champ `id` de `users.modules`)              |
-| `payload`        | `string` (chiffré)  | Données chiffrées en AES-GCM (contenu propre au module)                    |
-| `cipher_iv`      | `string`            | IV (initialisation vector) utilisé pour chiffrer `payload`                 |
-| `guard`          | `string`            | Secret unique requis pour modifier ou supprimer l’entrée (`?d=guard`)      |
+## 4) `goals_entries`
+
+* **Type**: `base`
+* **Accès** (règles PB) : identiques à `mood_entries`.
+
+| Champ            | Type     | Requis | Hidden  | Contraintes / Notes                                     |                                                                               |
+| ---------------- | -------- | ------ | ------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `id`             | text PK  | yes    | no      | PB                                                      |                                                                               |
+| `module_user_id` | text     | yes    | no      | `^[a-z0-9_\\-]{16,}$` (id secondaire opaque, ex. `g_…`) |                                                                               |
+| `payload`        | text     | yes    | no      | **Base64URL** d’un blob **AES-GCM**                     |                                                                               |
+| `cipher_iv`      | text     | yes    | no      | **Base64URL** (IV AES-GCM)                              |                                                                               |
+| `guard`          | text     | yes    | **yes** | **Hidden**. Pattern \*\*\`^(g\_\[a-z0-9]{32,}           | init)\$`**. Création en 2 temps : POST `"init"\` → PATCH de promotion (HMAC). |
+| `created`        | autodate | auto   | no      |                                                         |                                                                               |
+| `updated`        | autodate | auto   | no      |                                                         |                                                                               |
+
+**Index**
+
+* `CREATE INDEX idx_goals_entries_sid ON goals_entries(module_user_id);`
+
+**Payload clair attendu (référence)**
+
+json
+{
+  "date": "YYYY-MM-DD",
+  "title": "string",
+  "note": "string|optional",
+  "status": "open|done|wip"
+}
 
 
-## Notes :
-- Le lien entre un utilisateur·rice et ses entrées se fait uniquement via le champ module_user_id.
-- Le champ guard est exigé dans toutes les requêtes DELETE ou PATCH, et doit correspondre à celui stocké dans l’entrée.
-- Aucune relation n’est déclarée entre users.id et les entrées : le lien est purement implicite et chiffré.
+---
+
+## 5) Notes générales
+
+* **Hidden** : les champs `guard` n’apparaissent **jamais** dans les réponses API.
+* **Création en 2 temps** :
+
+  * POST avec `guard="init"` (le hook serveur recopie la valeur dans le champ hidden),
+  * PATCH de promotion avec `?sid=<module_user_id>&d=init` pour écrire la valeur HMAC finale.
+* **Update/Delete** : nécessitent `?sid=<module_user_id>&d=<guard>` (égalité stricte côté PB).
+* **Aucune donnée en clair** n’est stockée : seul `payload` (chiffré) + `cipher_iv` sont persistés.
+
+---
+
+## 6) Évolution / Migration
+
+* Passage depuis l’ancien modèle (guard aléatoire stocké côté client) :
+
+  * Mettre à jour le **pattern** de `guard` en `^(g_[a-z0-9]{32,}|init)$`.
+  * UI : implémenter la **promotion HMAC** (`POST init` → `PATCH` HMAC).
+  * Plus de stockage local du guard : recalcul à la volée via HMAC.

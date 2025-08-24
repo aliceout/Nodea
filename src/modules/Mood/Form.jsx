@@ -5,7 +5,38 @@ import questions from "@/data/questions.json";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { encryptAESGCM } from "@/services/webcrypto";
 import { useMainKey } from "@/hooks/useMainKey";
-import { makeGuard } from "@/services/crypto-utils";
+
+// Debug helper (désactive en prod si besoin)
+const DEBUG = true; // ou: import.meta.env.DEV
+const dbg = (...args) => DEBUG && console.log("[Mood/Form]", ...args);
+
+// --- Helpers HMAC (dérivation du guard) ---
+const te = new TextEncoder();
+function toHex(buf) {
+  const b = new Uint8Array(buf || []);
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
+  return s;
+}
+async function hmacSha256(keyRaw, messageUtf8) {
+  // keyRaw: ArrayBuffer|Uint8Array (mainKey ou guardKey)
+  const key = await window.crypto.subtle.importKey(
+    "raw",
+    keyRaw,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
+}
+async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
+  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
+  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
+  // guard  = "g_" + HEX( HMAC(guardKey, record.id) )
+  const tag = await hmacSha256(guardKeyBytes, String(recordId));
+  const hex = toHex(tag);
+  return "g_" + hex; // 64 hex chars → ok avec le pattern ^(g_[a-z0-9]{32,}|init)$
+}
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -22,7 +53,7 @@ export default function JournalEntryPage() {
   const [randomQuestion, setRandomQuestion] = useState("");
   const [loadingQuestion, setLoadingQuestion] = useState(true);
 
-  const { mainKey } = useMainKey();
+  const { mainKey } = useMainKey(); // attendu: bytes (pas CryptoKey)
   const modules = useModulesRuntime();
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
@@ -30,18 +61,20 @@ export default function JournalEntryPage() {
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
 
-  // Import CryptoKey WebCrypto dès que mainKey dispo
+  // Import CryptoKey WebCrypto dès que mainKey dispo pour AES-GCM
   const [cryptoKey, setCryptoKey] = useState(null);
   useEffect(() => {
     if (!mainKey) return;
-    // si mainKey est déjà une CryptoKey (selon ton contexte), tu peux la détecter
+    // si mainKey est déjà une CryptoKey (selon ton contexte), on ne peut pas la réutiliser pour AES ici
     if (typeof mainKey === "object" && mainKey?.type === "secret") {
+      dbg("CryptoKey déjà prête (secret) — attention: HMAC attend du 'raw'");
       return;
     }
     window.crypto.subtle
       .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
       .then((key) => {
         setCryptoKey(key);
+        dbg("CryptoKey importée (AES-GCM)");
       })
       .catch(() => setCryptoKey(null));
   }, [mainKey]);
@@ -95,30 +128,77 @@ export default function JournalEntryPage() {
         answer,
       };
 
-      // 2) Chiffrement AES‑GCM (retourne { iv, data } en base64)
+      dbg("Pré-chiffrement | moduleUserId:", moduleUserId, {
+        date,
+        mood_score: String(moodScore),
+        mood_emoji: moodEmoji,
+        positive1_len: positive1?.length || 0,
+        positive2_len: positive2?.length || 0,
+        positive3_len: positive3?.length || 0,
+        comment_len: comment?.length || 0,
+        answer_len: answer?.length || 0,
+        question_preview:
+          String(randomQuestion).slice(0, 40) +
+          (String(randomQuestion).length > 40 ? "…" : ""),
+      });
+
+      // 2) Chiffrement AES-GCM (retourne { iv, data } en base64url)
       const { data, iv } = await encryptAESGCM(
         JSON.stringify(payloadObj),
         cryptoKey
       );
 
-      // 3) Écriture PocketBase v2 (guard = secret par entrée)
-      const guard = makeGuard();
-      if (!/^g_[a-z0-9]{32,}$/.test(guard || "")) {
-        setError("Guard invalide (format)");
-        return;
-      }
-      // Construire un record “propre” (tout en string) pour éviter qu’un undefined soit droppé
-      const record = {
+      dbg("Post-chiffrement", {
+        payload_b64_len: (data || "").length,
+        iv_b64: iv,
+        iv_len: (iv || "").length,
+      });
+
+      // 3) CREATE (étape A) : POST avec guard="init"
+      const recordCreate = {
         module_user_id: String(moduleUserId),
         payload: String(data),
         cipher_iv: String(iv),
-        guard: String(guard),
+        guard: "init",
       };
-      await pb.send("/api/collections/mood_entries/records", {
+      dbg("POST create (init) /mood_entries", recordCreate);
+
+      const created = await pb.send("/api/collections/mood_entries/records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(record),
+        body: JSON.stringify(recordCreate),
       });
+
+      if (!created?.id) {
+        throw new Error("Création incomplète (id manquant).");
+      }
+
+      // 4) Promotion (étape B) : calcul HMAC du guard et PATCH ?d=init
+      if (
+        typeof mainKey === "object" &&
+        mainKey?.type === "secret" &&
+        !("buffer" in mainKey)
+      ) {
+        // mainKey CryptoKey non extractible → scénario non supporté ici
+        throw new Error(
+          "MainKey non exploitable pour HMAC. Reconnecte-toi pour récupérer la clé brute."
+        );
+      }
+
+      const guard = await deriveGuard(mainKey, moduleUserId, created.id);
+      dbg("PATCH promote guard", { id: created.id, guard_len: guard.length });
+
+      await pb.send(
+        `/api/collections/mood_entries/records/${encodeURIComponent(
+          created.id
+        )}?sid=${encodeURIComponent(moduleUserId)}&d=init`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guard }),
+        }
+      );
+
       setSuccess("Entrée enregistrée !");
       setPositive1("");
       setPositive2("");
@@ -188,6 +268,9 @@ export default function JournalEntryPage() {
             Enregistrer
           </Button>
           {error && <FormError message={error} />}
+          {success && (
+            <div className="text-green-700 text-sm mt-2">{success}</div>
+          )}
         </div>
         <div className="flex justify-center"></div>
       </form>

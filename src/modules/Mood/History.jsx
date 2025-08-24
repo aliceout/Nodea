@@ -1,201 +1,179 @@
 // src/modules/Mood/History.jsx
-import { useEffect, useMemo, useState } from "react";
-import pb from "@/services/pocketbase";
-import  useAuth  from "@/hooks/useAuth";
+import React, { useEffect, useMemo, useState } from "react";
+import { listMoodEntries, deleteMoodEntry } from "@/services/moodEntries";
+import { useModulesRuntime } from "@/store/modulesRuntime";
 import { useMainKey } from "@/hooks/useMainKey";
-import { loadModulesConfig, getModuleEntry } from "@/services/modules-config";
 import { decryptAESGCM } from "@/services/webcrypto";
-
+import FormError from "@/components/common/FormError";
 import HistoryFilters from "./components/HistoryFilters";
 import HistoryList from "./components/HistoryList";
-import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
-export default function HistoryPage() {
-  // --- filtres mois / année (inchangés visuellement) ---
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
+// --- Helpers HMAC (dérivation du guard) ---
+// On duplique ici pour limiter les refactos (pas de nouveau module).
+const te = new TextEncoder();
+function toHex(buf) {
+  const b = new Uint8Array(buf || []);
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
+  return s;
+}
+async function hmacSha256(keyRaw, messageUtf8) {
+  const key = await window.crypto.subtle.importKey(
+    "raw",
+    keyRaw,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
+}
+async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
+  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
+  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
+  // guard    = "g_" + HEX( HMAC(guardKey, record.id) )
+  const tag = await hmacSha256(guardKeyBytes, String(recordId));
+  const hex = toHex(tag);
+  return "g_" + hex; // 64 hex chars
+}
 
-  // --- état de page ---
-  const [items, setItems] = useState([]); // entrées prêtes à afficher
+export default function MoodHistory() {
+  const { mainKey } = useMainKey(); // attendu: bytes (pas CryptoKey)
+  const modules = useModulesRuntime();
+  const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
+
+  const today = new Date();
+  const [month, setMonth] = useState(today.getMonth() + 1); // 1..12
+  const [year, setYear] = useState(today.getFullYear());
+
+  const [allEntries, setAllEntries] = useState([]); // déchiffrées
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // --- contextes / clés ---
-  const { user } = useAuth();
-  const { mainKey } = useMainKey(); // peut être Uint8Array(32) ou CryptoKey
-  const [cryptoKey, setCryptoKey] = useState(null);
-
-  // 1) Prépare une CryptoKey WebCrypto (si mainKey est Uint8Array)
+  // Charger + déchiffrer
   useEffect(() => {
     let cancelled = false;
 
-    async function ensureCryptoKey() {
+    async function run() {
+      setLoading(true);
+      setError("");
+
+      if (!moduleUserId) {
+        setError("Module 'Humeur' non configuré.");
+        setLoading(false);
+        return;
+      }
       if (!mainKey) {
-        setCryptoKey(null);
+        setError("Clé de chiffrement absente. Reconnecte-toi.");
+        setLoading(false);
         return;
       }
-      // Déjà une CryptoKey ?
-      if (typeof mainKey === "object" && mainKey?.type === "secret") {
-        if (!cancelled) setCryptoKey(mainKey);
-        return;
-      }
+
       try {
-        const k = await window.crypto.subtle.importKey(
-          "raw",
-          mainKey, // Uint8Array(32)
-          { name: "AES-GCM" },
-          false,
-          ["decrypt"]
+        const items = await listMoodEntries(moduleUserId);
+        const parsed = await Promise.all(
+          items.map(async (r) => {
+            try {
+              const plaintext = await decryptAESGCM(
+                { iv: r.cipher_iv, data: r.payload },
+                mainKey
+              );
+              const obj = JSON.parse(plaintext || "{}");
+              return {
+                id: r.id,
+                created: r.created,
+                date: obj.date || (r.created ? r.created.slice(0, 10) : ""),
+                mood_score: obj.mood_score ?? "",
+                mood_emoji: obj.mood_emoji ?? "",
+                positive1: obj.positive1 ?? "",
+                positive2: obj.positive2 ?? "",
+                positive3: obj.positive3 ?? "",
+                comment: obj.comment ?? "",
+                question: obj.question ?? "",
+                answer: obj.answer ?? "",
+              };
+            } catch {
+              // entrée illisible → on la masque
+              return null;
+            }
+          })
         );
-        if (!cancelled) setCryptoKey(k);
-      } catch {
-        if (!cancelled) setCryptoKey(null);
+
+        if (!cancelled) {
+          setAllEntries(parsed.filter(Boolean));
+        }
+      } catch (err) {
+        if (!cancelled) setError(err?.message || "Erreur de chargement.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
-    ensureCryptoKey();
+    run();
     return () => {
       cancelled = true;
     };
-  }, [mainKey]);
+  }, [moduleUserId, mainKey]);
 
-  // 2) Charge config des modules -> module_user_id du module "mood" -> fetch des entrées -> déchiffre
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      if (!user?.id || !cryptoKey) return;
-      try {
-        setLoading(true);
-        setError("");
-
-        // a) récupère la config déchiffrée
-        const cfg = await loadModulesConfig(pb, user.id, cryptoKey);
-        const moodEntry = getModuleEntry(cfg, "mood");
-        const sid = moodEntry?.module_user_id;
-        if (!sid) {
-          if (mounted) {
-            setItems([]);
-            setLoading(false);
-            setError("Module 'mood' inactif ou non configuré.");
-          }
-          return;
-        }
-
-        // b) récupère les lignes pour ce module_user_id
-        const rows = await pb.collection("mood_entries").getFullList({
-          filter: `module_user_id = "${sid}"`,
-          sort: "-created",
-          $autoCancel: false,
-        });
-
-        // c) déchiffre chaque payload et normalise pour l'UI
-        const out = [];
-        for (const r of rows) {
-          try {
-            const plaintext = await decryptAESGCM(
-              { iv: r.cipher_iv, data: r.payload },
-              cryptoKey
-            );
-            // On stocke JSON dans payload ; on parse
-            const p = JSON.parse(plaintext);
-
-            // Normalisation soft vers ce que ton HistoryList attendait
-            out.push({
-              id: r.id,
-              created: r.created,
-              updated: r.updated,
-
-              // champs d’affichage historiques (les noms que tes composants utilisent)
-              date: p.dateISO || p.date || r.created, // fallback
-              mood_score:
-                typeof p.moodScore === "number"
-                  ? p.moodScore
-                  : Number(p.mood_score) || null,
-              mood_emoji: p.moodEmoji || p.mood_emoji || "",
-              positive1: p.pos1 ?? p.positive1 ?? "",
-              positive2: p.pos2 ?? p.positive2 ?? "",
-              positive3: p.pos3 ?? p.positive3 ?? "",
-              question: p.question ?? "",
-              answer: p.answer ?? "",
-              comment: p.comment ?? "",
-            });
-          } catch {
-            // ignore la ligne illisible
-          }
-        }
-
-        if (mounted) {
-          setItems(out);
-          setLoading(false);
-        }
-      } catch (e) {
-        if (mounted) {
-          setError("Impossible de charger l'historique.");
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id, cryptoKey]);
-
-  // 3) Dérive la liste des années pour le sélecteur (sur items déjà déchiffrés)
+  // Années disponibles pour le select
   const years = useMemo(() => {
     const set = new Set(
-      items.map((e) => new Date(e.date).getFullYear()).filter((y) => !isNaN(y))
+      allEntries
+        .map((e) => (e.date || "").slice(0, 4))
+        .filter((y) => /^\d{4}$/.test(y))
+        .map((y) => Number(y))
     );
-    return [...set].sort((a, b) => b - a);
-  }, [items]);
+    const arr = Array.from(set).sort((a, b) => b - a);
+    return arr.length ? arr : [today.getFullYear()];
+  }, [allEntries]);
 
-  // 4) Applique le filtre mois/année
-  const filtered = useMemo(() => {
-    return items.filter((entry) => {
-      const d = new Date(entry.date);
-      if (isNaN(d)) return false;
-      return (
-        d.getMonth() + 1 === Number(month) && d.getFullYear() === Number(year)
-      );
-    });
-  }, [items, month, year]);
+  // Filtrage local par mois/année
+  const entries = useMemo(() => {
+    const mm = String(month).padStart(2, "0");
+    const yy = String(year);
+    return allEntries.filter((e) => (e.date || "").startsWith(`${yy}-${mm}-`));
+  }, [allEntries, month, year]);
 
-  // 5) Suppression (identique au comportement d’avant)
-  const handleDelete = async (id) => {
-    if (!window.confirm("Supprimer cette entrée ?")) return;
-    try {
-      await pb.collection("mood_entries").delete(id);
-      setItems((prev) => prev.filter((e) => e.id !== id));
-    } catch (err) {
-      alert("Erreur lors de la suppression : " + (err?.message || ""));
+  // Suppression : on calcule le guard (HMAC) à la volée
+  async function handleDelete(id) {
+    setError("");
+
+    if (!moduleUserId || !mainKey) {
+      setError("Contexte invalide (clé ou module).");
+      return;
     }
-  };
 
-  // --- états d’affichage (inchangés côté style) ---
-  if (!mainKey)
-    return (
-      <KeyMissingMessage context="afficher l’historique" className="m-5" />
-    );
-  if (!cryptoKey) return <div className="p-8">Chargement de la clé…</div>;
-  if (loading) return <div className="p-8">Chargement...</div>;
-  if (error) return <div className="p-8 text-red-500">{error}</div>;
+    // eslint-disable-next-line no-alert
+    const ok = window.confirm("Supprimer définitivement cette entrée ?");
+    if (!ok) return;
+
+    try {
+      const guard = await deriveGuard(mainKey, moduleUserId, id);
+      await deleteMoodEntry(id, moduleUserId, guard);
+      setAllEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setError(err?.message || "Suppression impossible.");
+    }
+  }
+
+  if (loading) {
+    return <div className="w-full max-w-4xl mx-auto py-6">Chargement…</div>;
+  }
 
   return (
-    <>
+    <div className="w-full max-w-5xl mx-auto py-6">
+      <h1 className="text-2xl font-bold mb-4">Historique</h1>
+
+      {error ? <FormError message={error} /> : null}
+
       <HistoryFilters
         month={month}
-        setMonth={setMonth}
+        setMonth={(v) => setMonth(Number(v))}
         year={year}
-        setYear={setYear}
+        setYear={(v) => setYear(Number(v))}
         years={years}
       />
-      <HistoryList
-        entries={filtered}
-        onDelete={handleDelete}
-        // compat: plus besoin de decryptField, tout est déchiffré en amont
-        decryptField={() => ""}
-      />
-    </>
+
+      <HistoryList entries={entries} onDelete={handleDelete} />
+    </div>
   );
 }
