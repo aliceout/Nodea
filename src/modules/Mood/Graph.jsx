@@ -1,93 +1,93 @@
+// src/modules/Mood/Graph.jsx
 import React, { useEffect, useState } from "react";
-import pb from "@/services/pocketbase";
 import { useMainKey } from "@/hooks/useMainKey";
+import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptAESGCM } from "@/services/webcrypto";
+import { listMoodEntries } from "@/services/moodEntries";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false); // ← démarre à false
+  const [loading, setLoading] = useState(true); // démarre à true
   const [error, setError] = useState("");
+
   const { mainKey } = useMainKey();
-  const [cryptoKey, setCryptoKey] = useState(null);
+  const modules = useModulesRuntime();
+  const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
-  // Prépare la CryptoKey à partir de mainKey
   useEffect(() => {
-    if (mainKey) {
-      window.crypto.subtle
-        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
-          "encrypt",
-          "decrypt",
-        ])
-        .then(setCryptoKey)
-        .catch(() => setCryptoKey(null));
-    } else {
-      setCryptoKey(null);
-    }
-  }, [mainKey]);
+    let cancelled = false;
 
-  // Fonction de déchiffrement pour les champs du graphique
-  const decryptField = async (field) => {
-    if (!cryptoKey || !field) return "";
-    try {
-      return await decryptAESGCM(JSON.parse(field), cryptoKey);
-    } catch {
-      return "[Erreur de déchiffrement]";
-    }
-  };
-
-  // Fetch quand la clé est prête
-  useEffect(() => {
-    const fetchData = async () => {
+    async function run() {
       setLoading(true);
       setError("");
+
       try {
-        const result = await pb.collection("mood_entries").getFullList({
-          filter: `user="${pb.authStore.model.id}"`,
-          sort: "date",
-          $autoCancel: false,
-        });
+        if (!mainKey)
+          throw new Error("Clé de chiffrement absente. Reconnecte-toi.");
+        if (!moduleUserId) throw new Error("Module 'Humeur' non configuré.");
 
-        // Filtrer sur les 6 derniers mois glissants
-        const now = new Date();
-        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        const filtered = result.filter((entry) => {
-          const entryDate = new Date(entry.date);
-          return entryDate >= sixMonthsAgo && entryDate <= now;
-        });
+        // 1) Récupère les entrées chiffrées (triées -created par le service)
+        const items = await listMoodEntries(moduleUserId);
 
-        // Déchiffrement
-        const decrypted = [];
-        for (let entry of filtered) {
-          const mood_score = await decryptField(entry.mood_score);
-          const mood_emoji = await decryptField(entry.mood_emoji);
-          decrypted.push({
-            date: entry.date,
-            mood: Number(mood_score),
-            emoji: mood_emoji,
-          });
+        // 2) Déchiffre chaque payload et extrait ce dont le graph a besoin
+        const rows = [];
+        for (const r of items) {
+          try {
+            const plaintext = await decryptAESGCM(
+              { iv: r.cipher_iv, data: r.payload },
+              mainKey
+            );
+            const obj = JSON.parse(plaintext || "{}");
+
+            const d =
+              obj.date || (r.created ? String(r.created).slice(0, 10) : "");
+            const s = Number(obj.mood_score);
+            const e = obj.mood_emoji || "";
+
+            if (!d || Number.isNaN(s)) continue;
+            rows.push({ date: d, mood: s, emoji: e });
+          } catch {
+            // entrée illisible → on ignore
+          }
         }
-        setData(decrypted);
+
+        // 3) Filtre : 6 derniers mois glissants
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        const inRange = rows.filter((r) => {
+          const dd = new Date(r.date);
+          return dd >= start && dd <= now;
+        });
+
+        // 4) Tri par date ascendante pour la courbe
+        inRange.sort((a, b) => a.date.localeCompare(b.date));
+
+        if (!cancelled) setData(inRange);
       } catch (err) {
-        setError("Erreur de chargement : " + (err?.message || ""));
+        if (!cancelled)
+          setError("Erreur de chargement : " + (err?.message || ""));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    }
+
+    run();
+    return () => {
+      cancelled = true;
     };
+  }, [mainKey, moduleUserId]);
 
-    if (cryptoKey) fetchData();
-  }, [cryptoKey]);
-
-  // ── Ordre des retours : d’abord l’absence de clé, ensuite loading/erreurs/données
+  // ── Ordre des retours : d’abord l’absence de clé/module, ensuite loading/erreurs/données
   if (!mainKey)
     return (
       <KeyMissingMessage context="afficher le graphique" className="m-5" />
     );
+  if (!moduleUserId)
+    return (
+      <div className="p-8">Module &laquo; Humeur &raquo; non configuré.</div>
+    );
 
-  if (!cryptoKey) {
-    return <div className="p-8">Chargement de la clé…</div>;
-  }
-
-  if (loading) return <div className="p-8">Chargement...</div>;
+  if (loading) return <div className="p-8">Chargement…</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!data.length) return <div className="p-8">Aucune donnée.</div>;
 
