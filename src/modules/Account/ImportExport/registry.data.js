@@ -1,39 +1,40 @@
-// src/modules/Account/components/registry.data.js
-// Table de routage (lazy) moduleId → loader Import/Export du module.
-// Chaque module exporte par défaut un objet { meta, importHandler, exportQuery, exportSerialize }.
+// src/modules/Account/ImportExport/registry.data.js
 
-const DATA_REGISTRY = {
-  mood: () => import("@/modules/Mood/data/ImportExport.jsx"),
-  // goals: () => import("@/modules/Goals/data/ImportExport.jsx"),
-  // … ajoute d'autres modules ici
+// Chargeurs dynamiques par module (lazy import)
+const loaders = {
+  mood: () => import("@/modules/Mood/data/ImportExport"),
+  // goals: () => import("@/modules/Goals/data/ImportExport"), // à décommenter quand prêt
 };
 
+// Cache pour éviter de recharger les plugins
+const cache = new Map();
+
 /**
- * getDataPlugin(moduleId)
- * Charge dynamiquement le plugin "données" du module.
- * Retourne l'export par défaut (ou le module entier si pas de default).
+ * Retourne le plugin "data" d'un module (objet exporté, idéalement le default)
+ * @param {string} moduleKey - ex: "mood"
+ * @returns {Promise<object>} plugin du module (expose importHandler, exportQuery, exportSerialize, etc.)
  */
-export async function getDataPlugin(moduleId) {
-  const loader = DATA_REGISTRY[moduleId];
-  if (!loader) {
-    throw new Error(`Module inconnu: ${moduleId}`);
+export async function getDataPlugin(moduleKey) {
+  const key = String(moduleKey || "").toLowerCase();
+  if (!key || !loaders[key]) {
+    throw new Error(`Module inconnu ou non configuré: "${moduleKey}"`);
   }
-  const mod = await loader();
-  return mod.default ?? mod;
+  if (cache.has(key)) return cache.get(key);
+
+  const mod = await loaders[key]();
+  const plugin = mod?.default ?? mod;
+  cache.set(key, plugin);
+  return plugin;
 }
 
-/**
- * hasModule(moduleId)
- * Vérifie si un module est enregistré (utile côté UI).
- */
-export function hasModule(moduleId) {
-  return Boolean(DATA_REGISTRY[moduleId]);
+/** Liste des modules connus (facultatif) */
+export function knownModules() {
+  return Object.keys(loaders);
 }
 
-/**
- * listModules()
- * Liste des moduleIds connus (utile pour UI/exports multi-modules).
- */
-export function listModules() {
-  return Object.keys(DATA_REGISTRY);
+/** Test d’existence (facultatif) */
+export function hasModule(moduleKey) {
+  return !!loaders[String(moduleKey || "").toLowerCase()];
 }
+
+export default { getDataPlugin, knownModules, hasModule };

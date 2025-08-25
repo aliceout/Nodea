@@ -1,7 +1,7 @@
 // src/modules/Mood/data/ImportExport.jsx
 /**
  * Logique d'import/export du module "Mood" (headless).
- * - Minimaliste : on garde l’API existante { meta, importHandler, exportQuery, exportSerialize }.
+ * - Minimaliste : API { meta, importHandler, exportQuery, exportSerialize } + hooks de dédoublonnage.
  * - Pas d’UI ici.
  *
  * Contrat (voir MODULES.md / SECURITY.md) :
@@ -34,7 +34,6 @@ function toHex(buf) {
   return s;
 }
 async function hmacSha256(keyRaw, messageUtf8) {
-  // keyRaw: ArrayBuffer|Uint8Array
   const key = await window.crypto.subtle.importKey(
     "raw",
     keyRaw,
@@ -67,12 +66,59 @@ function normalizePayload(input) {
   return out;
 }
 
+/* ======================= Hooks de dédoublonnage (Mood) ====================== */
+/** Clé naturelle d'une entrée Mood (1/jour) */
+export function getNaturalKey(payload) {
+  return payload?.date ? String(payload.date).slice(0, 10) : null;
+}
+
+/** Liste les clés déjà présentes (via ?sid + déchiffrement local) */
+export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
+  if (!sid || !mainKey)
+    throw new Error("listExistingKeys: sid/mainKey manquant");
+  const client = pbClient || pb;
+
+  // pagination simple
+  let page = 1;
+  const perPage = 200;
+  const keys = new Set();
+
+  for (;;) {
+    const res = await client
+      .collection(meta.collection)
+      .getList(page, perPage, {
+        query: { sid, sort: "-created" },
+        fields: "id,payload,cipher_iv",
+      });
+    const items = res?.items || [];
+    if (!items.length) break;
+
+    for (const it of items) {
+      try {
+        const clear = await decryptAESGCM(
+          { iv: it.cipher_iv, data: it.payload },
+          mainKey
+        );
+        const payload = JSON.parse(clear || "{}");
+        const k = getNaturalKey(payload);
+        if (k) keys.add(k);
+      } catch {
+        // ignore
+      }
+    }
+    if (page * perPage >= (res?.totalItems || 0)) break;
+    page++;
+  }
+
+  return keys;
+}
+
 /* ================================= IMPORT ================================== */
 /**
  * importHandler
  * Appelé par l’orchestrateur d’import (Account/ImportData).
- * Signature conservée : importHandler({ payload, ctx })
- * - payload : objet clair pour le module (cf. MODULES.md §5.1 Mood)
+ * Signature : importHandler({ payload, ctx })
+ * - payload : objet clair pour le module (cf. MODULES.md §Mood)
  * - ctx : { moduleUserId, mainKey }
  */
 export async function importHandler({ payload, ctx }) {
@@ -85,7 +131,7 @@ export async function importHandler({ payload, ctx }) {
   // 2) Chiffrer localement (AES-GCM) → { iv, data } en base64
   const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
 
-  // 3) CREATE (étape A) : POST avec guard="init" (copié par le hook dans le champ hidden)
+  // 3) CREATE (étape A) : POST avec guard="init"
   const created = await pb.send(`/api/collections/${meta.collection}/records`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,7 +143,7 @@ export async function importHandler({ payload, ctx }) {
     }),
   });
 
-  // 4) Promotion HMAC (étape B) : calcule le guard déterministe et PATCH avec ?sid=<sid>&d=init
+  // 4) Promotion HMAC (étape B) : calcule le guard et PATCH avec ?sid=<sid>&d=init
   const guard = await deriveGuard(mainKey, moduleUserId, created?.id);
   await pb.send(
     `/api/collections/${meta.collection}/records/${
@@ -174,6 +220,9 @@ const MoodImportExport = {
   importHandler,
   exportQuery,
   exportSerialize,
+  // hooks de dédoublonnage
+  getNaturalKey,
+  listExistingKeys,
 };
 
 export default MoodImportExport;
