@@ -2,6 +2,7 @@
 import pb from "@/services/pocketbase";
 import { encryptAESGCM } from "@/services/webcrypto";
 
+
 /* ------------------------- Helpers HMAC (local) ------------------------- */
 
 const te = new TextEncoder();

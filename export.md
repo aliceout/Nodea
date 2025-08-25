@@ -1,6 +1,10 @@
 # Project Structure
 
 ```
+config_pb/
+  pb_hooks/
+    _boot.pb.js
+    mood_guard.pb.js
 documentation/
   BDD.MD
   export.json
@@ -128,6 +132,73 @@ package-lock.json
 package.json
 README.md
 vite.config.js
+```
+
+
+## config_pb\pb_hooks\_boot.pb.js
+
+```js
+onBootstrap((e) => {
+  console.log("[pb_hooks] loaded");
+  return e.next();
+});
+```
+
+
+## config_pb\pb_hooks\mood_guard.pb.js
+
+```js
+// pb_hooks/mood_guard.pb.js
+// Gestion du champ hidden "guard" (HMAC) pour *_entries
+// - Create: copie "guard" du body -> record.guard (accepte "init" ou g_...)
+// - Update: autorise uniquement la promotion init -> g_... (puis fige le guard)
+
+const targets = ["mood_entries", "goals_entries"];
+
+targets.forEach((name) => {
+  // CREATE: accepte "init" (étape A) ou un g_... déjà calculé
+  onRecordCreateRequest((e) => {
+    const model = new DynamicModel({ guard: "" });
+    e.bindBody(model); // JSON / form-data / x-www-form-urlencoded
+
+    const g = String(model.guard || "");
+    const ok = g === "init" || /^g_[a-z0-9]{32,}$/.test(g);
+    if (!ok) {
+      throw new BadRequestError("Missing or invalid guard.");
+    }
+
+    // Champ hidden: on l'injecte dans le record avant validation
+    e.record.set("guard", g);
+    return e.next();
+  }, name);
+
+  // UPDATE: promotion uniquement si record.guard == "init"
+  onRecordUpdateRequest((e) => {
+    const current = String(e.record.get("guard") || "");
+
+    // lire éventuellement un guard proposé dans le body
+    const model = new DynamicModel({ guard: "" });
+    e.bindBody(model);
+    const g = String(model.guard || "");
+
+    // Pas de champ guard dans le body -> update normal (la rule PB checkera ?d=)
+    if (!g) return e.next();
+
+    // Si déjà promu, on interdit tout changement (sauf no-op)
+    if (current !== "init") {
+      if (g === current) return e.next(); // no-op
+      throw new BadRequestError("Guard change not allowed.");
+    }
+
+    // Promotion init -> g_...
+    if (!/^g_[a-z0-9]{32,}$/.test(g)) {
+      throw new BadRequestError("Invalid guard for promotion.");
+    }
+
+    e.record.set("guard", g);
+    return e.next();
+  }, name);
+});
 ```
 
 
@@ -3509,21 +3580,21 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useMainKey } from "@/hooks/useMainKey";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptAESGCM } from "@/services/webcrypto";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "./registry.data";
 
 export default function ImportData() {
-  const { mainKey } = useMainKey(); // Uint8Array
-  const modulesState = useModulesRuntime(); // { mood: { enabled, id:"m_..." }, ... }
-  const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id;
+  const { mainKey } = useMainKey();                 // Uint8Array
+  const modulesState = useModulesRuntime();         // { mood: { enabled, id:"m_..." }, ... }
 
+  const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id; // compat legacy
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Préconditions actuelles : clé + (au moins) Mood configuré pour les chemins legacy/NDJSON
   const ready = Boolean(mainKey && sidMood);
 
   function finish(inputEl) {
@@ -3531,53 +3602,56 @@ export default function ImportData() {
     if (inputEl) inputEl.value = ""; // pouvoir réimporter le même nom
   }
 
-  // Helper commun : charge et indexe les dates déjà présentes pour Mood
-  async function getExistingMoodDates(pbClient, key, moduleUserId) {
-    const page = await pbClient.collection("mood_entries").getList(1, 200, {
-      query: { sid: moduleUserId, sort: "-created" }, // list/view via sid
-    });
-    const set = new Set();
-    for (const rec of page.items || []) {
-      try {
-        const txt = await decryptAESGCM(
-          { iv: rec.cipher_iv, data: rec.payload },
-          key
-        );
-        const obj = JSON.parse(txt || "{}");
-        if (obj?.date) set.add(String(obj.date));
-      } catch {
-        // on ignore les entrées illisibles
-      }
-    }
-    return set;
+  // Util: récupère le sid d'un module activé
+  function getSid(moduleKey) {
+    const cfg = modulesState?.[moduleKey];
+    return cfg?.enabled ? (cfg.id || cfg.module_user_id) : null;
   }
 
   // --- Import tableau legacy: [ {date, mood_score, ...}, ... ] ---
+  // (Compat historique : considéré comme "mood" uniquement)
   async function importLegacyArray(array, inputEl) {
     try {
-      if (!Array.isArray(array))
-        throw new Error("Format JSON inattendu (array requis).");
+      if (!Array.isArray(array)) throw new Error("Format JSON inattendu (array requis).");
+      const moduleKey = "mood";
+      const moduleSid = getSid(moduleKey);
+      if (!moduleSid) throw new Error("Module 'Mood' non configuré.");
 
-      // 1) Index des dates déjà présentes
-      const existingDates = await getExistingMoodDates(pb, mainKey, sidMood);
+      const plugin = await getDataPlugin(moduleKey);
 
-      // 2) Charge le plugin "mood" pour créer en 2 temps (POST init -> PATCH promotion)
-      const moodPlugin = await getDataPlugin("mood");
-      let created = 0;
+      // Set des clés déjà présentes (si le plugin sait le faire)
+      const existing =
+        typeof plugin.listExistingKeys === "function"
+          ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
+          : new Set();
+
+      const seenInFile = new Set();
+      let created = 0, skipped = 0;
+
       for (const payload of array) {
-        const date = payload?.date && String(payload.date);
-        if (!date || existingDates.has(date)) continue; // skip doublon
-        await moodPlugin.importHandler({
+        const key =
+          typeof plugin.getNaturalKey === "function"
+            ? plugin.getNaturalKey(payload)
+            : null;
+
+        if (key && (existing.has(key) || seenInFile.has(key))) {
+          skipped++; // doublon
+          continue;
+        }
+
+        await plugin.importHandler({
           payload,
-          ctx: { pb, moduleUserId: sidMood, mainKey },
+          ctx: { pb, moduleUserId: moduleSid, mainKey },
         });
-        existingDates.add(date);
+
+        if (key) {
+          existing.add(key);
+          seenInFile.add(key);
+        }
         created++;
       }
 
-      setSuccess(
-        `Import terminé : ${created} nouvelle(s) entrée(s) ajoutée(s).`
-      );
+      setSuccess(`Import terminé : ${created} ajout(s), ${skipped} doublon(s) ignoré(s).`);
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
@@ -3594,45 +3668,48 @@ export default function ImportData() {
 
       const results = [];
       for (const [moduleKey, items] of Object.entries(root.modules)) {
-        const moduleCfg = modulesState?.[moduleKey];
-        if (!moduleCfg?.enabled || !Array.isArray(items) || !items.length)
-          continue;
+        if (!Array.isArray(items) || !items.length) continue;
+
+        const moduleSid = getSid(moduleKey);
+        if (!moduleSid) continue; // module non activé → ignore
 
         const plugin = await getDataPlugin(moduleKey);
-        const moduleSid = moduleCfg.id || moduleCfg.module_user_id;
 
-        // Dédoublonnage Mood par date (clé naturelle du payload)
-        let existingDates = null;
-        if (moduleKey === "mood") {
-          existingDates = await getExistingMoodDates(pb, mainKey, moduleSid);
-        }
+        // Set des clés déjà présentes (si dispo), + set intra-fichier
+        const existing =
+          typeof plugin.listExistingKeys === "function"
+            ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
+            : new Set();
+        const seenInFile = new Set();
 
-        let created = 0;
+        let created = 0, skipped = 0;
         for (const payload of items) {
-          if (moduleKey === "mood") {
-            const date = payload?.date && String(payload.date);
-            if (!date || existingDates.has(date)) continue; // skip doublon
-            await plugin.importHandler({
-              payload,
-              ctx: { pb, moduleUserId: moduleSid, mainKey },
-            });
-            existingDates.add(date);
-            created++;
-          } else {
-            // autres modules : comportement inchangé (pas de clé naturelle définie ici)
-            await plugin.importHandler({
-              payload,
-              ctx: { pb, moduleUserId: moduleSid, mainKey },
-            });
-            created++;
+          const key =
+            typeof plugin.getNaturalKey === "function"
+              ? plugin.getNaturalKey(payload)
+              : null;
+
+          if (key && (existing.has(key) || seenInFile.has(key))) {
+            skipped++; // doublon
+            continue;
           }
+
+          await plugin.importHandler({
+            payload,
+            ctx: { pb, moduleUserId: moduleSid, mainKey },
+          });
+
+          if (key) {
+            existing.add(key);
+            seenInFile.add(key);
+          }
+          created++;
         }
-        results.push(`${moduleKey}: ${created}`);
+
+        results.push(`${moduleKey}: ${created} ajout(s), ${skipped} doublon(s)`);
       }
 
-      setSuccess(
-        `Import terminé ${results.length ? `(${results.join(", ")})` : ""}.`
-      );
+      setSuccess(`Import terminé${results.length ? ` (${results.join(" ; ")})` : ""}.`);
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
@@ -3641,38 +3718,91 @@ export default function ImportData() {
   }
 
   // --- Fallback NDJSON (une entrée JSON par ligne) ---
+  // Accepte soit {module, version, payload}, soit un payload "mood" nu (legacy)
   async function importNdjson(text, inputEl) {
     try {
-      const plugin = await getDataPlugin("mood");
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-      // index des dates existantes pour Mood
-      const existingDates = await getExistingMoodDates(pb, mainKey, sidMood);
+      // caches par module
+      const pluginCache = new Map();     // moduleKey -> plugin
+      const existingByModule = new Map(); // moduleKey -> Set(keys)
+      const seenByModule = new Map();     // moduleKey -> Set(keys) dans ce fichier
+      const counters = new Map();         // moduleKey -> {created, skipped}
 
-      const lines = text
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      let created = 0;
       for (const line of lines) {
         if (!line.startsWith("{")) continue;
-        let payload;
-        try {
-          payload = JSON.parse(line);
-        } catch {
+
+        let obj;
+        try { obj = JSON.parse(line); } catch { continue; }
+
+        let moduleKey, payload;
+
+        if (obj && typeof obj === "object" && "module" in obj && "payload" in obj) {
+          moduleKey = obj.module;
+          payload = obj.payload;
+        } else {
+          // legacy NDJSON mood
+          moduleKey = "mood";
+          payload = obj;
+        }
+
+        const moduleSid = getSid(moduleKey);
+        if (!moduleSid) continue; // module non activé → ignore
+
+        // plugin
+        let plugin = pluginCache.get(moduleKey);
+        if (!plugin) {
+          plugin = await getDataPlugin(moduleKey);
+          pluginCache.set(moduleKey, plugin);
+        }
+
+        // sets
+        if (!existingByModule.has(moduleKey)) {
+          const existing =
+            typeof plugin.listExistingKeys === "function"
+              ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
+              : new Set();
+          existingByModule.set(moduleKey, existing);
+        }
+        if (!seenByModule.has(moduleKey)) {
+          seenByModule.set(moduleKey, new Set());
+        }
+        if (!counters.has(moduleKey)) {
+          counters.set(moduleKey, { created: 0, skipped: 0 });
+        }
+
+        const existing = existingByModule.get(moduleKey);
+        const seen = seenByModule.get(moduleKey);
+        const stats = counters.get(moduleKey);
+
+        const key =
+          typeof plugin.getNaturalKey === "function"
+            ? plugin.getNaturalKey(payload)
+            : null;
+
+        if (key && (existing.has(key) || seen.has(key))) {
+          stats.skipped++;
           continue;
         }
-        const date = payload?.date && String(payload.date);
-        if (!date || existingDates.has(date)) continue; // skip doublon
 
         await plugin.importHandler({
           payload,
-          ctx: { pb, moduleUserId: sidMood, mainKey },
+          ctx: { pb, moduleUserId: moduleSid, mainKey },
         });
-        existingDates.add(date);
-        created++;
+
+        if (key) {
+          existing.add(key);
+          seen.add(key);
+        }
+        stats.created++;
       }
-      setSuccess(`Import terminé : ${created} entrée(s).`);
+
+      // message récap
+      const parts = [];
+      for (const [k, { created, skipped }] of counters.entries()) {
+        parts.push(`${k}: ${created} ajout(s), ${skipped} doublon(s)`);
+      }
+      setSuccess(`Import terminé${parts.length ? ` (${parts.join(" ; ")})` : ""}.`);
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import NDJSON : " + (err?.message || ""));
@@ -3700,7 +3830,7 @@ export default function ImportData() {
         const root = JSON.parse(trimmed);
         await importRootJson(root, inputEl);
       } else if (trimmed.startsWith("[")) {
-        // Export legacy tableau pour Mood
+        // Export legacy tableau (mood)
         const arr = JSON.parse(trimmed);
         await importLegacyArray(arr, inputEl);
       } else {
@@ -3716,7 +3846,7 @@ export default function ImportData() {
   if (!ready) {
     return (
       <section className="p-4">
-        <KeyMissingMessage context="importer des données d'humeur" />
+        <KeyMissingMessage context="importer des données" />
       </section>
     );
   }
@@ -3766,8 +3896,11 @@ export default function ImportData() {
         )}
 
         <p className="text-xs text-slate-500">
-          Seules les dates absentes seront ajoutées. Type de fichier attendu :
-          JSON.
+          Les doublons (selon la clé métier de chaque module) sont ignorés
+          automatiquement. Types acceptés :
+          <span className="font-mono"> {"{ meta, modules }"} </span>, NDJSON
+          <span className="font-mono"> {"{module,version,payload}"} </span> ou
+          legacy tableau (mood).
         </p>
       </div>
     </section>
@@ -3874,45 +4007,46 @@ self.onmessageerror = (e) => {
 ## src\modules\Account\ImportExport\registry.data.js
 
 ```js
-// src/modules/Account/components/registry.data.js
-// Table de routage (lazy) moduleId → loader Import/Export du module.
-// Chaque module exporte par défaut un objet { meta, importHandler, exportQuery, exportSerialize }.
+// src/modules/Account/ImportExport/registry.data.js
 
-const DATA_REGISTRY = {
-  mood: () => import("@/modules/Mood/data/ImportExport.jsx"),
-  // goals: () => import("@/modules/Goals/data/ImportExport.jsx"),
-  // … ajoute d'autres modules ici
+// Chargeurs dynamiques par module (lazy import)
+const loaders = {
+  mood: () => import("@/modules/Mood/data/ImportExport"),
+  // goals: () => import("@/modules/Goals/data/ImportExport"), // à décommenter quand prêt
 };
 
+// Cache pour éviter de recharger les plugins
+const cache = new Map();
+
 /**
- * getDataPlugin(moduleId)
- * Charge dynamiquement le plugin "données" du module.
- * Retourne l'export par défaut (ou le module entier si pas de default).
+ * Retourne le plugin "data" d'un module (objet exporté, idéalement le default)
+ * @param {string} moduleKey - ex: "mood"
+ * @returns {Promise<object>} plugin du module (expose importHandler, exportQuery, exportSerialize, etc.)
  */
-export async function getDataPlugin(moduleId) {
-  const loader = DATA_REGISTRY[moduleId];
-  if (!loader) {
-    throw new Error(`Module inconnu: ${moduleId}`);
+export async function getDataPlugin(moduleKey) {
+  const key = String(moduleKey || "").toLowerCase();
+  if (!key || !loaders[key]) {
+    throw new Error(`Module inconnu ou non configuré: "${moduleKey}"`);
   }
-  const mod = await loader();
-  return mod.default ?? mod;
+  if (cache.has(key)) return cache.get(key);
+
+  const mod = await loaders[key]();
+  const plugin = mod?.default ?? mod;
+  cache.set(key, plugin);
+  return plugin;
 }
 
-/**
- * hasModule(moduleId)
- * Vérifie si un module est enregistré (utile côté UI).
- */
-export function hasModule(moduleId) {
-  return Boolean(DATA_REGISTRY[moduleId]);
+/** Liste des modules connus (facultatif) */
+export function knownModules() {
+  return Object.keys(loaders);
 }
 
-/**
- * listModules()
- * Liste des moduleIds connus (utile pour UI/exports multi-modules).
- */
-export function listModules() {
-  return Object.keys(DATA_REGISTRY);
+/** Test d’existence (facultatif) */
+export function hasModule(moduleKey) {
+  return !!loaders[String(moduleKey || "").toLowerCase()];
 }
+
+export default { getDataPlugin, knownModules, hasModule };
 ```
 
 
@@ -4812,7 +4946,7 @@ import HistoryEntry from "./HistoryEntry";
 // src/modules/Mood/data/ImportExport.jsx
 /**
  * Logique d'import/export du module "Mood" (headless).
- * - Minimaliste : on garde l’API existante { meta, importHandler, exportQuery, exportSerialize }.
+ * - Minimaliste : API { meta, importHandler, exportQuery, exportSerialize } + hooks de dédoublonnage.
  * - Pas d’UI ici.
  *
  * Contrat (voir MODULES.md / SECURITY.md) :
@@ -4845,7 +4979,6 @@ function toHex(buf) {
   return s;
 }
 async function hmacSha256(keyRaw, messageUtf8) {
-  // keyRaw: ArrayBuffer|Uint8Array
   const key = await window.crypto.subtle.importKey(
     "raw",
     keyRaw,
@@ -4878,12 +5011,59 @@ function normalizePayload(input) {
   return out;
 }
 
+/* ======================= Hooks de dédoublonnage (Mood) ====================== */
+/** Clé naturelle d'une entrée Mood (1/jour) */
+export function getNaturalKey(payload) {
+  return payload?.date ? String(payload.date).slice(0, 10) : null;
+}
+
+/** Liste les clés déjà présentes (via ?sid + déchiffrement local) */
+export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
+  if (!sid || !mainKey)
+    throw new Error("listExistingKeys: sid/mainKey manquant");
+  const client = pbClient || pb;
+
+  // pagination simple
+  let page = 1;
+  const perPage = 200;
+  const keys = new Set();
+
+  for (;;) {
+    const res = await client
+      .collection(meta.collection)
+      .getList(page, perPage, {
+        query: { sid, sort: "-created" },
+        fields: "id,payload,cipher_iv",
+      });
+    const items = res?.items || [];
+    if (!items.length) break;
+
+    for (const it of items) {
+      try {
+        const clear = await decryptAESGCM(
+          { iv: it.cipher_iv, data: it.payload },
+          mainKey
+        );
+        const payload = JSON.parse(clear || "{}");
+        const k = getNaturalKey(payload);
+        if (k) keys.add(k);
+      } catch {
+        // ignore
+      }
+    }
+    if (page * perPage >= (res?.totalItems || 0)) break;
+    page++;
+  }
+
+  return keys;
+}
+
 /* ================================= IMPORT ================================== */
 /**
  * importHandler
  * Appelé par l’orchestrateur d’import (Account/ImportData).
- * Signature conservée : importHandler({ payload, ctx })
- * - payload : objet clair pour le module (cf. MODULES.md §5.1 Mood)
+ * Signature : importHandler({ payload, ctx })
+ * - payload : objet clair pour le module (cf. MODULES.md §Mood)
  * - ctx : { moduleUserId, mainKey }
  */
 export async function importHandler({ payload, ctx }) {
@@ -4896,7 +5076,7 @@ export async function importHandler({ payload, ctx }) {
   // 2) Chiffrer localement (AES-GCM) → { iv, data } en base64
   const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
 
-  // 3) CREATE (étape A) : POST avec guard="init" (copié par le hook dans le champ hidden)
+  // 3) CREATE (étape A) : POST avec guard="init"
   const created = await pb.send(`/api/collections/${meta.collection}/records`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -4908,7 +5088,7 @@ export async function importHandler({ payload, ctx }) {
     }),
   });
 
-  // 4) Promotion HMAC (étape B) : calcule le guard déterministe et PATCH avec ?sid=<sid>&d=init
+  // 4) Promotion HMAC (étape B) : calcule le guard et PATCH avec ?sid=<sid>&d=init
   const guard = await deriveGuard(mainKey, moduleUserId, created?.id);
   await pb.send(
     `/api/collections/${meta.collection}/records/${
@@ -4985,6 +5165,9 @@ const MoodImportExport = {
   importHandler,
   exportQuery,
   exportSerialize,
+  // hooks de dédoublonnage
+  getNaturalKey,
+  listExistingKeys,
 };
 
 export default MoodImportExport;
@@ -7369,6 +7552,10 @@ export default defineConfig([
 # Project Structure
 
 ```
+config_pb/
+  pb_hooks/
+    _boot.pb.js
+    mood_guard.pb.js
 documentation/
   BDD.MD
   export.json
@@ -7496,6 +7683,73 @@ package-lock.json
 package.json
 README.md
 vite.config.js
+```
+
+
+## config_pb\pb_hooks\_boot.pb.js
+
+```js
+onBootstrap((e) => {
+  console.log("[pb_hooks] loaded");
+  return e.next();
+});
+```
+
+
+## config_pb\pb_hooks\mood_guard.pb.js
+
+```js
+// pb_hooks/mood_guard.pb.js
+// Gestion du champ hidden "guard" (HMAC) pour *_entries
+// - Create: copie "guard" du body -> record.guard (accepte "init" ou g_...)
+// - Update: autorise uniquement la promotion init -> g_... (puis fige le guard)
+
+const targets = ["mood_entries", "goals_entries"];
+
+targets.forEach((name) => {
+  // CREATE: accepte "init" (étape A) ou un g_... déjà calculé
+  onRecordCreateRequest((e) => {
+    const model = new DynamicModel({ guard: "" });
+    e.bindBody(model); // JSON / form-data / x-www-form-urlencoded
+
+    const g = String(model.guard || "");
+    const ok = g === "init" || /^g_[a-z0-9]{32,}$/.test(g);
+    if (!ok) {
+      throw new BadRequestError("Missing or invalid guard.");
+    }
+
+    // Champ hidden: on l'injecte dans le record avant validation
+    e.record.set("guard", g);
+    return e.next();
+  }, name);
+
+  // UPDATE: promotion uniquement si record.guard == "init"
+  onRecordUpdateRequest((e) => {
+    const current = String(e.record.get("guard") || "");
+
+    // lire éventuellement un guard proposé dans le body
+    const model = new DynamicModel({ guard: "" });
+    e.bindBody(model);
+    const g = String(model.guard || "");
+
+    // Pas de champ guard dans le body -> update normal (la rule PB checkera ?d=)
+    if (!g) return e.next();
+
+    // Si déjà promu, on interdit tout changement (sauf no-op)
+    if (current !== "init") {
+      if (g === current) return e.next(); // no-op
+      throw new BadRequestError("Guard change not allowed.");
+    }
+
+    // Promotion init -> g_...
+    if (!/^g_[a-z0-9]{32,}$/.test(g)) {
+      throw new BadRequestError("Invalid guard for promotion.");
+    }
+
+    e.record.set("guard", g);
+    return e.next();
+  }, name);
+});
 ```
 
 
@@ -10877,21 +11131,21 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useMainKey } from "@/hooks/useMainKey";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptAESGCM } from "@/services/webcrypto";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "./registry.data";
 
 export default function ImportData() {
-  const { mainKey } = useMainKey(); // Uint8Array
-  const modulesState = useModulesRuntime(); // { mood: { enabled, id:"m_..." }, ... }
-  const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id;
+  const { mainKey } = useMainKey();                 // Uint8Array
+  const modulesState = useModulesRuntime();         // { mood: { enabled, id:"m_..." }, ... }
 
+  const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id; // compat legacy
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Préconditions actuelles : clé + (au moins) Mood configuré pour les chemins legacy/NDJSON
   const ready = Boolean(mainKey && sidMood);
 
   function finish(inputEl) {
@@ -10899,53 +11153,56 @@ export default function ImportData() {
     if (inputEl) inputEl.value = ""; // pouvoir réimporter le même nom
   }
 
-  // Helper commun : charge et indexe les dates déjà présentes pour Mood
-  async function getExistingMoodDates(pbClient, key, moduleUserId) {
-    const page = await pbClient.collection("mood_entries").getList(1, 200, {
-      query: { sid: moduleUserId, sort: "-created" }, // list/view via sid
-    });
-    const set = new Set();
-    for (const rec of page.items || []) {
-      try {
-        const txt = await decryptAESGCM(
-          { iv: rec.cipher_iv, data: rec.payload },
-          key
-        );
-        const obj = JSON.parse(txt || "{}");
-        if (obj?.date) set.add(String(obj.date));
-      } catch {
-        // on ignore les entrées illisibles
-      }
-    }
-    return set;
+  // Util: récupère le sid d'un module activé
+  function getSid(moduleKey) {
+    const cfg = modulesState?.[moduleKey];
+    return cfg?.enabled ? (cfg.id || cfg.module_user_id) : null;
   }
 
   // --- Import tableau legacy: [ {date, mood_score, ...}, ... ] ---
+  // (Compat historique : considéré comme "mood" uniquement)
   async function importLegacyArray(array, inputEl) {
     try {
-      if (!Array.isArray(array))
-        throw new Error("Format JSON inattendu (array requis).");
+      if (!Array.isArray(array)) throw new Error("Format JSON inattendu (array requis).");
+      const moduleKey = "mood";
+      const moduleSid = getSid(moduleKey);
+      if (!moduleSid) throw new Error("Module 'Mood' non configuré.");
 
-      // 1) Index des dates déjà présentes
-      const existingDates = await getExistingMoodDates(pb, mainKey, sidMood);
+      const plugin = await getDataPlugin(moduleKey);
 
-      // 2) Charge le plugin "mood" pour créer en 2 temps (POST init -> PATCH promotion)
-      const moodPlugin = await getDataPlugin("mood");
-      let created = 0;
+      // Set des clés déjà présentes (si le plugin sait le faire)
+      const existing =
+        typeof plugin.listExistingKeys === "function"
+          ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
+          : new Set();
+
+      const seenInFile = new Set();
+      let created = 0, skipped = 0;
+
       for (const payload of array) {
-        const date = payload?.date && String(payload.date);
-        if (!date || existingDates.has(date)) continue; // skip doublon
-        await moodPlugin.importHandler({
+        const key =
+          typeof plugin.getNaturalKey === "function"
+            ? plugin.getNaturalKey(payload)
+            : null;
+
+        if (key && (existing.has(key) || seenInFile.has(key))) {
+          skipped++; // doublon
+          continue;
+        }
+
+        await plugin.importHandler({
           payload,
-          ctx: { pb, moduleUserId: sidMood, mainKey },
+          ctx: { pb, moduleUserId: moduleSid, mainKey },
         });
-        existingDates.add(date);
+
+        if (key) {
+          existing.add(key);
+          seenInFile.add(key);
+        }
         created++;
       }
 
-      setSuccess(
-        `Import terminé : ${created} nouvelle(s) entrée(s) ajoutée(s).`
-      );
+      setSuccess(`Import terminé : ${created} ajout(s), ${skipped} doublon(s) ignoré(s).`);
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
@@ -10962,45 +11219,48 @@ export default function ImportData() {
 
       const results = [];
       for (const [moduleKey, items] of Object.entries(root.modules)) {
-        const moduleCfg = modulesState?.[moduleKey];
-        if (!moduleCfg?.enabled || !Array.isArray(items) || !items.length)
-          continue;
+        if (!Array.isArray(items) || !items.length) continue;
+
+        const moduleSid = getSid(moduleKey);
+        if (!moduleSid) continue; // module non activé → ignore
 
         const plugin = await getDataPlugin(moduleKey);
-        const moduleSid = moduleCfg.id || moduleCfg.module_user_id;
 
-        // Dédoublonnage Mood par date (clé naturelle du payload)
-        let existingDates = null;
-        if (moduleKey === "mood") {
-          existingDates = await getExistingMoodDates(pb, mainKey, moduleSid);
-        }
+        // Set des clés déjà présentes (si dispo), + set intra-fichier
+        const existing =
+          typeof plugin.listExistingKeys === "function"
+            ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
+            : new Set();
+        const seenInFile = new Set();
 
-        let created = 0;
+        let created = 0, skipped = 0;
         for (const payload of items) {
-          if (moduleKey === "mood") {
-            const date = payload?.date && String(payload.date);
-            if (!date || existingDates.has(date)) continue; // skip doublon
-            await plugin.importHandler({
-              payload,
-              ctx: { pb, moduleUserId: moduleSid, mainKey },
-            });
-            existingDates.add(date);
-            created++;
-          } else {
-            // autres modules : comportement inchangé (pas de clé naturelle définie ici)
-            await plugin.importHandler({
-              payload,
-              ctx: { pb, moduleUserId: moduleSid, mainKey },
-            });
-            created++;
+          const key =
+            typeof plugin.getNaturalKey === "function"
+              ? plugin.getNaturalKey(payload)
+              : null;
+
+          if (key && (existing.has(key) || seenInFile.has(key))) {
+            skipped++; // doublon
+            continue;
           }
+
+          await plugin.importHandler({
+            payload,
+            ctx: { pb, moduleUserId: moduleSid, mainKey },
+          });
+
+          if (key) {
+            existing.add(key);
+            seenInFile.add(key);
+          }
+          created++;
         }
-        results.push(`${moduleKey}: ${created}`);
+
+        results.push(`${moduleKey}: ${created} ajout(s), ${skipped} doublon(s)`);
       }
 
-      setSuccess(
-        `Import terminé ${results.length ? `(${results.join(", ")})` : ""}.`
-      );
+      setSuccess(`Import terminé${results.length ? ` (${results.join(" ; ")})` : ""}.`);
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
@@ -11009,38 +11269,91 @@ export default function ImportData() {
   }
 
   // --- Fallback NDJSON (une entrée JSON par ligne) ---
+  // Accepte soit {module, version, payload}, soit un payload "mood" nu (legacy)
   async function importNdjson(text, inputEl) {
     try {
-      const plugin = await getDataPlugin("mood");
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-      // index des dates existantes pour Mood
-      const existingDates = await getExistingMoodDates(pb, mainKey, sidMood);
+      // caches par module
+      const pluginCache = new Map();     // moduleKey -> plugin
+      const existingByModule = new Map(); // moduleKey -> Set(keys)
+      const seenByModule = new Map();     // moduleKey -> Set(keys) dans ce fichier
+      const counters = new Map();         // moduleKey -> {created, skipped}
 
-      const lines = text
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      let created = 0;
       for (const line of lines) {
         if (!line.startsWith("{")) continue;
-        let payload;
-        try {
-          payload = JSON.parse(line);
-        } catch {
+
+        let obj;
+        try { obj = JSON.parse(line); } catch { continue; }
+
+        let moduleKey, payload;
+
+        if (obj && typeof obj === "object" && "module" in obj && "payload" in obj) {
+          moduleKey = obj.module;
+          payload = obj.payload;
+        } else {
+          // legacy NDJSON mood
+          moduleKey = "mood";
+          payload = obj;
+        }
+
+        const moduleSid = getSid(moduleKey);
+        if (!moduleSid) continue; // module non activé → ignore
+
+        // plugin
+        let plugin = pluginCache.get(moduleKey);
+        if (!plugin) {
+          plugin = await getDataPlugin(moduleKey);
+          pluginCache.set(moduleKey, plugin);
+        }
+
+        // sets
+        if (!existingByModule.has(moduleKey)) {
+          const existing =
+            typeof plugin.listExistingKeys === "function"
+              ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
+              : new Set();
+          existingByModule.set(moduleKey, existing);
+        }
+        if (!seenByModule.has(moduleKey)) {
+          seenByModule.set(moduleKey, new Set());
+        }
+        if (!counters.has(moduleKey)) {
+          counters.set(moduleKey, { created: 0, skipped: 0 });
+        }
+
+        const existing = existingByModule.get(moduleKey);
+        const seen = seenByModule.get(moduleKey);
+        const stats = counters.get(moduleKey);
+
+        const key =
+          typeof plugin.getNaturalKey === "function"
+            ? plugin.getNaturalKey(payload)
+            : null;
+
+        if (key && (existing.has(key) || seen.has(key))) {
+          stats.skipped++;
           continue;
         }
-        const date = payload?.date && String(payload.date);
-        if (!date || existingDates.has(date)) continue; // skip doublon
 
         await plugin.importHandler({
           payload,
-          ctx: { pb, moduleUserId: sidMood, mainKey },
+          ctx: { pb, moduleUserId: moduleSid, mainKey },
         });
-        existingDates.add(date);
-        created++;
+
+        if (key) {
+          existing.add(key);
+          seen.add(key);
+        }
+        stats.created++;
       }
-      setSuccess(`Import terminé : ${created} entrée(s).`);
+
+      // message récap
+      const parts = [];
+      for (const [k, { created, skipped }] of counters.entries()) {
+        parts.push(`${k}: ${created} ajout(s), ${skipped} doublon(s)`);
+      }
+      setSuccess(`Import terminé${parts.length ? ` (${parts.join(" ; ")})` : ""}.`);
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import NDJSON : " + (err?.message || ""));
@@ -11068,7 +11381,7 @@ export default function ImportData() {
         const root = JSON.parse(trimmed);
         await importRootJson(root, inputEl);
       } else if (trimmed.startsWith("[")) {
-        // Export legacy tableau pour Mood
+        // Export legacy tableau (mood)
         const arr = JSON.parse(trimmed);
         await importLegacyArray(arr, inputEl);
       } else {
@@ -11084,7 +11397,7 @@ export default function ImportData() {
   if (!ready) {
     return (
       <section className="p-4">
-        <KeyMissingMessage context="importer des données d'humeur" />
+        <KeyMissingMessage context="importer des données" />
       </section>
     );
   }
@@ -11134,8 +11447,11 @@ export default function ImportData() {
         )}
 
         <p className="text-xs text-slate-500">
-          Seules les dates absentes seront ajoutées. Type de fichier attendu :
-          JSON.
+          Les doublons (selon la clé métier de chaque module) sont ignorés
+          automatiquement. Types acceptés :
+          <span className="font-mono"> {"{ meta, modules }"} </span>, NDJSON
+          <span className="font-mono"> {"{module,version,payload}"} </span> ou
+          legacy tableau (mood).
         </p>
       </div>
     </section>
@@ -11242,45 +11558,46 @@ self.onmessageerror = (e) => {
 ## src\modules\Account\ImportExport\registry.data.js
 
 ```js
-// src/modules/Account/components/registry.data.js
-// Table de routage (lazy) moduleId → loader Import/Export du module.
-// Chaque module exporte par défaut un objet { meta, importHandler, exportQuery, exportSerialize }.
+// src/modules/Account/ImportExport/registry.data.js
 
-const DATA_REGISTRY = {
-  mood: () => import("@/modules/Mood/data/ImportExport.jsx"),
-  // goals: () => import("@/modules/Goals/data/ImportExport.jsx"),
-  // … ajoute d'autres modules ici
+// Chargeurs dynamiques par module (lazy import)
+const loaders = {
+  mood: () => import("@/modules/Mood/data/ImportExport"),
+  // goals: () => import("@/modules/Goals/data/ImportExport"), // à décommenter quand prêt
 };
 
+// Cache pour éviter de recharger les plugins
+const cache = new Map();
+
 /**
- * getDataPlugin(moduleId)
- * Charge dynamiquement le plugin "données" du module.
- * Retourne l'export par défaut (ou le module entier si pas de default).
+ * Retourne le plugin "data" d'un module (objet exporté, idéalement le default)
+ * @param {string} moduleKey - ex: "mood"
+ * @returns {Promise<object>} plugin du module (expose importHandler, exportQuery, exportSerialize, etc.)
  */
-export async function getDataPlugin(moduleId) {
-  const loader = DATA_REGISTRY[moduleId];
-  if (!loader) {
-    throw new Error(`Module inconnu: ${moduleId}`);
+export async function getDataPlugin(moduleKey) {
+  const key = String(moduleKey || "").toLowerCase();
+  if (!key || !loaders[key]) {
+    throw new Error(`Module inconnu ou non configuré: "${moduleKey}"`);
   }
-  const mod = await loader();
-  return mod.default ?? mod;
+  if (cache.has(key)) return cache.get(key);
+
+  const mod = await loaders[key]();
+  const plugin = mod?.default ?? mod;
+  cache.set(key, plugin);
+  return plugin;
 }
 
-/**
- * hasModule(moduleId)
- * Vérifie si un module est enregistré (utile côté UI).
- */
-export function hasModule(moduleId) {
-  return Boolean(DATA_REGISTRY[moduleId]);
+/** Liste des modules connus (facultatif) */
+export function knownModules() {
+  return Object.keys(loaders);
 }
 
-/**
- * listModules()
- * Liste des moduleIds connus (utile pour UI/exports multi-modules).
- */
-export function listModules() {
-  return Object.keys(DATA_REGISTRY);
+/** Test d’existence (facultatif) */
+export function hasModule(moduleKey) {
+  return !!loaders[String(moduleKey || "").toLowerCase()];
 }
+
+export default { getDataPlugin, knownModules, hasModule };
 ```
 
 
@@ -12180,7 +12497,7 @@ import HistoryEntry from "./HistoryEntry";
 // src/modules/Mood/data/ImportExport.jsx
 /**
  * Logique d'import/export du module "Mood" (headless).
- * - Minimaliste : on garde l’API existante { meta, importHandler, exportQuery, exportSerialize }.
+ * - Minimaliste : API { meta, importHandler, exportQuery, exportSerialize } + hooks de dédoublonnage.
  * - Pas d’UI ici.
  *
  * Contrat (voir MODULES.md / SECURITY.md) :
@@ -12213,7 +12530,6 @@ function toHex(buf) {
   return s;
 }
 async function hmacSha256(keyRaw, messageUtf8) {
-  // keyRaw: ArrayBuffer|Uint8Array
   const key = await window.crypto.subtle.importKey(
     "raw",
     keyRaw,
@@ -12246,12 +12562,59 @@ function normalizePayload(input) {
   return out;
 }
 
+/* ======================= Hooks de dédoublonnage (Mood) ====================== */
+/** Clé naturelle d'une entrée Mood (1/jour) */
+export function getNaturalKey(payload) {
+  return payload?.date ? String(payload.date).slice(0, 10) : null;
+}
+
+/** Liste les clés déjà présentes (via ?sid + déchiffrement local) */
+export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
+  if (!sid || !mainKey)
+    throw new Error("listExistingKeys: sid/mainKey manquant");
+  const client = pbClient || pb;
+
+  // pagination simple
+  let page = 1;
+  const perPage = 200;
+  const keys = new Set();
+
+  for (;;) {
+    const res = await client
+      .collection(meta.collection)
+      .getList(page, perPage, {
+        query: { sid, sort: "-created" },
+        fields: "id,payload,cipher_iv",
+      });
+    const items = res?.items || [];
+    if (!items.length) break;
+
+    for (const it of items) {
+      try {
+        const clear = await decryptAESGCM(
+          { iv: it.cipher_iv, data: it.payload },
+          mainKey
+        );
+        const payload = JSON.parse(clear || "{}");
+        const k = getNaturalKey(payload);
+        if (k) keys.add(k);
+      } catch {
+        // ignore
+      }
+    }
+    if (page * perPage >= (res?.totalItems || 0)) break;
+    page++;
+  }
+
+  return keys;
+}
+
 /* ================================= IMPORT ================================== */
 /**
  * importHandler
  * Appelé par l’orchestrateur d’import (Account/ImportData).
- * Signature conservée : importHandler({ payload, ctx })
- * - payload : objet clair pour le module (cf. MODULES.md §5.1 Mood)
+ * Signature : importHandler({ payload, ctx })
+ * - payload : objet clair pour le module (cf. MODULES.md §Mood)
  * - ctx : { moduleUserId, mainKey }
  */
 export async function importHandler({ payload, ctx }) {
@@ -12264,7 +12627,7 @@ export async function importHandler({ payload, ctx }) {
   // 2) Chiffrer localement (AES-GCM) → { iv, data } en base64
   const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
 
-  // 3) CREATE (étape A) : POST avec guard="init" (copié par le hook dans le champ hidden)
+  // 3) CREATE (étape A) : POST avec guard="init"
   const created = await pb.send(`/api/collections/${meta.collection}/records`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -12276,7 +12639,7 @@ export async function importHandler({ payload, ctx }) {
     }),
   });
 
-  // 4) Promotion HMAC (étape B) : calcule le guard déterministe et PATCH avec ?sid=<sid>&d=init
+  // 4) Promotion HMAC (étape B) : calcule le guard et PATCH avec ?sid=<sid>&d=init
   const guard = await deriveGuard(mainKey, moduleUserId, created?.id);
   await pb.send(
     `/api/collections/${meta.collection}/records/${
@@ -12353,6 +12716,9 @@ const MoodImportExport = {
   importHandler,
   exportQuery,
   exportSerialize,
+  // hooks de dédoublonnage
+  getNaturalKey,
+  listExistingKeys,
 };
 
 export default MoodImportExport;
@@ -14733,7 +15099,7 @@ export default defineConfig([
 
 ## export.md
 
-File is too large to process (1494646 bytes)
+File is too large to process (1495926 bytes)
 
 
 ## index.html
