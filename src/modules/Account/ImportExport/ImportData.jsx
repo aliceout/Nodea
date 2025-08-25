@@ -25,40 +25,47 @@ export default function ImportData() {
     if (inputEl) inputEl.value = ""; // pouvoir réimporter le même nom
   }
 
+  // Helper commun : charge et indexe les dates déjà présentes pour Mood
+  async function getExistingMoodDates(pbClient, key, moduleUserId) {
+    const page = await pbClient.collection("mood_entries").getList(1, 200, {
+      query: { sid: moduleUserId, sort: "-created" }, // list/view via sid
+    });
+    const set = new Set();
+    for (const rec of page.items || []) {
+      try {
+        const txt = await decryptAESGCM(
+          { iv: rec.cipher_iv, data: rec.payload },
+          key
+        );
+        const obj = JSON.parse(txt || "{}");
+        if (obj?.date) set.add(String(obj.date));
+      } catch {
+        // on ignore les entrées illisibles
+      }
+    }
+    return set;
+  }
+
   // --- Import tableau legacy: [ {date, mood_score, ...}, ... ] ---
   async function importLegacyArray(array, inputEl) {
     try {
       if (!Array.isArray(array))
         throw new Error("Format JSON inattendu (array requis).");
 
-      // 1) Index des dates déjà présentes (lecture via ?sid + déchiffrement)
-      const page = await pb.collection("mood_entries").getList(1, 200, {
-        query: { sid: sidMood, sort: "-created" }, // list/view via sid
-      });
-      const existingDates = new Set();
-      for (const rec of page.items || []) {
-        try {
-          const txt = await decryptAESGCM(
-            { iv: rec.cipher_iv, data: rec.payload },
-            mainKey
-          );
-          const obj = JSON.parse(txt || "{}");
-          if (obj?.date) existingDates.add(String(obj.date));
-        } catch {
-          // on ignore les entrées illisibles
-        }
-      }
+      // 1) Index des dates déjà présentes
+      const existingDates = await getExistingMoodDates(pb, mainKey, sidMood);
 
       // 2) Charge le plugin "mood" pour créer en 2 temps (POST init -> PATCH promotion)
       const moodPlugin = await getDataPlugin("mood");
       let created = 0;
       for (const payload of array) {
         const date = payload?.date && String(payload.date);
-        if (!date || existingDates.has(date)) continue;
+        if (!date || existingDates.has(date)) continue; // skip doublon
         await moodPlugin.importHandler({
           payload,
           ctx: { pb, moduleUserId: sidMood, mainKey },
         });
+        existingDates.add(date);
         created++;
       }
 
@@ -87,13 +94,32 @@ export default function ImportData() {
 
         const plugin = await getDataPlugin(moduleKey);
         const moduleSid = moduleCfg.id || moduleCfg.module_user_id;
+
+        // Dédoublonnage Mood par date (clé naturelle du payload)
+        let existingDates = null;
+        if (moduleKey === "mood") {
+          existingDates = await getExistingMoodDates(pb, mainKey, moduleSid);
+        }
+
         let created = 0;
         for (const payload of items) {
-          await plugin.importHandler({
-            payload,
-            ctx: { pb, moduleUserId: moduleSid, mainKey },
-          });
-          created++;
+          if (moduleKey === "mood") {
+            const date = payload?.date && String(payload.date);
+            if (!date || existingDates.has(date)) continue; // skip doublon
+            await plugin.importHandler({
+              payload,
+              ctx: { pb, moduleUserId: moduleSid, mainKey },
+            });
+            existingDates.add(date);
+            created++;
+          } else {
+            // autres modules : comportement inchangé (pas de clé naturelle définie ici)
+            await plugin.importHandler({
+              payload,
+              ctx: { pb, moduleUserId: moduleSid, mainKey },
+            });
+            created++;
+          }
         }
         results.push(`${moduleKey}: ${created}`);
       }
@@ -112,10 +138,15 @@ export default function ImportData() {
   async function importNdjson(text, inputEl) {
     try {
       const plugin = await getDataPlugin("mood");
+
+      // index des dates existantes pour Mood
+      const existingDates = await getExistingMoodDates(pb, mainKey, sidMood);
+
       const lines = text
         .split(/\r?\n/)
         .map((l) => l.trim())
         .filter(Boolean);
+
       let created = 0;
       for (const line of lines) {
         if (!line.startsWith("{")) continue;
@@ -125,10 +156,14 @@ export default function ImportData() {
         } catch {
           continue;
         }
+        const date = payload?.date && String(payload.date);
+        if (!date || existingDates.has(date)) continue; // skip doublon
+
         await plugin.importHandler({
           payload,
           ctx: { pb, moduleUserId: sidMood, mainKey },
         });
+        existingDates.add(date);
         created++;
       }
       setSuccess(`Import terminé : ${created} entrée(s).`);
