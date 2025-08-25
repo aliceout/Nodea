@@ -3,8 +3,8 @@
 // Chaque module exporte par défaut un objet { meta, importHandler, exportQuery, exportSerialize }.
 
 const DATA_REGISTRY = {
-  mood: () => import("@/modules/Mood/ImportExport.jsx"),
-  // goals: () => import("@/modules/Goals/ImportExport.jsx"),
+  mood: () => import("@/modules/Mood/data/ImportExport.jsx"),
+  // goals: () => import("@/modules/Goals/data/ImportExport.jsx"),
   // … ajoute d'autres modules ici
 };
 

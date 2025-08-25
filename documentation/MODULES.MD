@@ -71,6 +71,22 @@ Toutes les tables d’entrées partagent le même contrat minimal :
 
 - **Pattern `guard`** en schéma : `^(g_[a-z0-9]{32,}|init)$`.
 
+
+### 3.1 Format d’export commun
+- Racine :
+``` json
+{
+  "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
+  "modules": {
+    "mood": [ <payload clair Mood> ... ],
+    "goals": [ <payload clair Goals> ... ]
+  }
+}
+```
+- Chaque tableau de modules.<module> contient exactement les payloads clairs définis en §5.* de ce fichier.
+- Exclus de l’export : payload chiffré, cipher_iv, guard, id.
+- Import : re‑chiffrement local, POST guard:"init" puis PATCH de promotion ?d=init (voir SECURITY.md).
+- 
 ---
 
 ## 4) Flux côté UI (référence développeur)

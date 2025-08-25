@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "kill-port": "kill-port 8089",
-    "dev": "npm run kill-port && vite",
+    "pb": "..\\Backend\\pocketbase.exe serve --hooksDir ..\\Backend\\pb_hooks",
+    "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

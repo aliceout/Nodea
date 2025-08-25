@@ -42,7 +42,7 @@ Toutes les données sont **chiffrées côté client** avant d’être envoyées 
 - **Entrée quotidienne** (3 positifs, humeur, question, commentaire)
 - **Historique** : filtrage, suppression d’entrées
 - **Graphique** : humeur sur 6 mois glissants
-- **Export** : téléchargement de toutes tes données en JSON
+- **Export** : Export multi‑modules : téléchargement en JSON canonique (Mood, Goals, …) avec en‑tête meta (version, date d’export, app). Les données sont déchiffrées localement avant export ; aucun champ technique (guard, cipher_iv, payload) n’est exporté.
 - **Gestion du compte** : email, mot de passe, suppression, export
 - **Admin** : gestion utilisateurs et invitations
 

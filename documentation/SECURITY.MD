@@ -110,6 +110,15 @@ Objectif : ne rien stocker côté client, tout en pouvant toujours recalculer le
 4. **UI** : re-scelle la `mainKey` avec cette nouvelle clé.  
 5. **UI → serveur** : met à jour `users.encrypted_key` et `users.encryption_salt`.
 
+3.8 Import/Export (clair côté client)
+
+- **Export** : produit un JSON clair par module (structure commune), précédé d’un bloc meta : { version, exported_at, app }.
+Jamais exportés : payload chiffré, cipher_iv, guard, id.
+- **Import** : l’UI recrée chaque entrée en suivant le flux de création en 2 temps : 
+  - chiffrement local (nouvel iv) → POST { module_user_id, payload, cipher_iv, guard:"init" },
+  - calcul HMAC → PATCH de promotion avec ?sid=<module_user_id>&d=init pour écrire le guard final.
+- module_user_id : généré/choisi côté client d’après les modules activés (cf. users.modules). L’export n’en dépend pas.
+- **Intégrité/confidentialité**: rien de sensible côté serveur ; tout est (re)chiffré localement à l’import.
 ---
 
 ## 4. Rôles : qui fait quoi ?
@@ -135,6 +144,7 @@ Objectif : ne rien stocker côté client, tout en pouvant toujours recalculer le
 - **Argon2id** : empêche le brute-force des mots de passe.  
 - **AES-GCM** : assure confidentialité + intégrité des données.  
 - **HMAC (guard)** : suppression/modif sans stockage local, recalcul à la demande.
+- L’import/export n’expose jamais guard, cipher_iv ni payload chiffré ; seul le contenu clair des modules est sérialisé, puis re‑chiffré à l’import.
 
 ---
 

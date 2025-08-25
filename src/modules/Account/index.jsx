@@ -1,13 +1,12 @@
-// src/modules/Settings/SettingsIndex.jsx
 import useAuth from "@/hooks/useAuth"; // si tu n'as pas d'alias "@", remplace par "../../hooks/useAuth"
 
 import ChangeEmail from "./components/ChangeEmail";
 import ChangeUsername from "./components/ChangeUsername";
 import ChangePassword from "./components/PasswordReset";
-import ImportData from "./components/ImportData";
-import ExportData from "./components/ExportData";
 import DeleteAccount from "./components/DeleteAccount";
 import SettingsCard from "./components/SettingsCard";
+import ImportData from "./ImportExport/ImportData";
+import ExportData from "./ImportExport/ExportData";
 
 export default function SettingsIndex() {
   const { user } = useAuth();

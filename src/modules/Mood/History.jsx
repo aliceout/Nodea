@@ -1,6 +1,6 @@
 // src/modules/Mood/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { listMoodEntries, deleteMoodEntry } from "@/services/moodEntries";
+import { listMoodEntries, deleteMoodEntry } from "./data/moodEntries";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { useMainKey } from "@/hooks/useMainKey";
 import { decryptAESGCM } from "@/services/webcrypto";

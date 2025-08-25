@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useMainKey } from "@/hooks/useMainKey";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptAESGCM } from "@/services/webcrypto";
-import { listMoodEntries } from "@/services/moodEntries";
+import { listMoodEntries } from "./data/moodEntries";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);

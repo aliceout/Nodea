@@ -1,6 +1,3 @@
-Voici **le fichier complet `BDD.md`** (version HMAC + création en 2 temps). Tu peux le coller tel quel.
-
-`md
 # BDD.md
 
 Description de la **structure PocketBase** utilisée par l’app.  
@@ -135,6 +132,15 @@ json
   * PATCH de promotion avec `?sid=<module_user_id>&d=init` pour écrire la valeur HMAC finale.
 * **Update/Delete** : nécessitent `?sid=<module_user_id>&d=<guard>` (égalité stricte côté PB).
 * **Aucune donnée en clair** n’est stockée : seul `payload` (chiffré) + `cipher_iv` sont persistés.
+* **Export JSON (référence)**
+- Le fichier d’export regroupe les payloads clairs par module dans modules.<nomDuModule>[].
+- Non inclus : payload (blob chiffré), cipher_iv, guard, id.
+- Exemple de racine :
+``` json
+{ "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
+  "modules": { "mood": [ … ], "goals": [ … ] } }
+```
+- L’import utilise le flux create en 2 temps décrit dans SECURITY.md (promotion HMAC).
 
 ---
 

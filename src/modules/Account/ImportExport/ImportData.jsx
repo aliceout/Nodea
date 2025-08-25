@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useMainKey } from "@/hooks/useMainKey";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptAESGCM } from "@/services/webcrypto";
-import { listMoodEntries, createMoodEntry } from "@/services/moodEntries";
+import { listMoodEntries, createMoodEntry } from "@/modules/Mood/data/moodEntries";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 // Ajout orchestration plugins (lazy) + worker NDJSON
