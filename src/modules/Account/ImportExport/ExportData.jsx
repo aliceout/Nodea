@@ -1,98 +1,86 @@
-// src/modules/Settings/Account/ExportData.jsx
-import React, { useState, useEffect } from "react";
+// src/modules/Account/ImportExport/ExportData.jsx
+import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useMainKey } from "@/hooks/useMainKey";
+import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptAESGCM } from "@/services/webcrypto";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
-export default function ExportDataSection({ user }) {
-  const { mainKey } = useMainKey();
+export default function ExportDataSection() {
+  const { mainKey } = useMainKey(); // clé binaire (Uint8Array)
+  const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
+  const sid = modules?.mood?.id || modules?.mood?.module_user_id;
+
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [cryptoKey, setCryptoKey] = useState(null);
 
-  useEffect(() => {
-    if (mainKey) {
-      window.crypto.subtle
-        .importKey("raw", mainKey, { name: "AES-GCM" }, false, [
-          "encrypt",
-          "decrypt",
-        ])
-        .then(setCryptoKey);
-    } else {
-      setCryptoKey(null);
-    }
-  }, [mainKey]);
-
-  const decryptField = async (field) => {
-    if (!cryptoKey || !field) return "";
-    try {
-      return await decryptAESGCM(JSON.parse(field), cryptoKey);
-    } catch {
-      return "[Erreur de déchiffrement]";
-    }
-  };
-
-  const handleExport = async () => {
+  async function handleExport() {
     setSuccess("");
     setError("");
     setLoading(true);
     try {
-      const entries = await pb.collection("mood_entries").getFullList({
-        filter: `user="${user.id}"`,
-        sort: "date",
-        $autoCancel: false,
+      if (!mainKey) throw new Error("Clé de chiffrement absente");
+      if (!sid) throw new Error("Module 'Mood' non configuré");
+
+      // Lecture via règle ?sid, puis déchiffrement du payload
+      const page = await pb.collection("mood_entries").getList(1, 200, {
+        query: { sid, sort: "-created" },
       });
 
-      if (entries.length === 0) {
+      const items = page?.items || [];
+      if (!items.length) {
         setError("Aucune donnée à exporter");
         setLoading(false);
         return;
       }
 
-      const decrypted = await Promise.all(
-        entries.map(async (e) => ({
-          id: e.id,
-          date: e.date,
-          mood_score: await decryptField(e.mood_score),
-          mood_emoji: await decryptField(e.mood_emoji),
-          positive1: await decryptField(e.positive1),
-          positive2: await decryptField(e.positive2),
-          positive3: await decryptField(e.positive3),
-          question: await decryptField(e.question),
-          answer: await decryptField(e.answer),
-          comment: await decryptField(e.comment),
-        }))
+      const plain = await Promise.all(
+        items.map(async (rec) => {
+          const txt = await decryptAESGCM(
+            { iv: rec.cipher_iv, data: rec.payload },
+            mainKey
+          );
+          return JSON.parse(txt || "{}");
+        })
       );
 
-      const data = JSON.stringify(decrypted, null, 2);
-      const blob = new Blob([data], { type: "application/json" });
-      const url = window.URL.createObjectURL(blob);
+      // Format d'export commun
+      const out = {
+        meta: {
+          version: 1,
+          exported_at: new Date().toISOString(),
+          app: "Nodea",
+        },
+        modules: { mood: plain },
+      };
+
+      const blob = new Blob([JSON.stringify(out, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `export_${user?.username || user?.email || "nodea"}.json`;
-      document.body.appendChild(a);
+      a.download = `nodea_export_${new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")}.json`;
       a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+      URL.revokeObjectURL(url);
 
       setSuccess("Export terminé");
-    } catch {
-      setError("Erreur lors de l’export");
+    } catch (e) {
+      setError(String(e?.message || e));
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const ready = Boolean(user && cryptoKey);
-
-  // 👉 Pas de bouton ni de texte explicatif si la clé n'est pas là
-  if (!ready) {
+  if (!mainKey) {
     return (
-      <section>
-        <KeyMissingMessage context="exporter des données" />
-      </section>
+      <KeyMissingMessage
+        label="Exporter mes données"
+        help="Connecte-toi à nouveau pour récupérer la clé de chiffrement."
+      />
     );
   }
 
@@ -103,8 +91,8 @@ export default function ExportDataSection({ user }) {
           <button
             type="button"
             onClick={handleExport}
-            disabled={loading}
-            className="inline-flex items-center rounded-md bg-nodea-lavender-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-lavender-darker disabled:opacity-60"
+            disabled={loading || !sid}
+            className="inline-flex items-center rounded-md bg-nodea-sky-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-sky-darker disabled:opacity-50"
           >
             {loading ? "Chargement…" : "Exporter les données"}
           </button>
@@ -130,6 +118,11 @@ export default function ExportDataSection({ user }) {
             className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
           >
             {error}
+          </div>
+        )}
+        {!sid && (
+          <div className="text-xs text-amber-700">
+            Module “Mood” non configuré.
           </div>
         )}
       </div>

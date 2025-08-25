@@ -1,212 +1,171 @@
-// src/modules/Account/components/ImportData.jsx
+// src/modules/Account/ImportExport/ImportData.jsx
 import React, { useState } from "react";
+import pb from "@/services/pocketbase";
 import { useMainKey } from "@/hooks/useMainKey";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptAESGCM } from "@/services/webcrypto";
-import { listMoodEntries, createMoodEntry } from "@/modules/Mood/data/moodEntries";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
-// Ajout orchestration plugins (lazy) + worker NDJSON
-import { getDataPlugin, hasModule } from "./registry.data";
+// Orchestration plugins par module (ex. Mood)
+import { getDataPlugin } from "./registry.data";
 
 export default function ImportData() {
-  const { mainKey } = useMainKey(); // clé brute attendue (Uint8Array)
-  const modules = useModulesRuntime();
-  const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
+  const { mainKey } = useMainKey(); // Uint8Array
+  const modulesState = useModulesRuntime(); // { mood: { enabled, id:"m_..." }, ... }
+  const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id;
 
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const ready = Boolean(mainKey && moduleUserId);
+  const ready = Boolean(mainKey && sidMood);
 
-  // --- Helpers UI (inchangés) ---
   function finish(inputEl) {
     setLoading(false);
     if (inputEl) inputEl.value = ""; // pouvoir réimporter le même nom
   }
 
+  // --- Import tableau legacy: [ {date, mood_score, ...}, ... ] ---
   async function importLegacyArray(array, inputEl) {
-    // 2) Construire l'index des dates déjà présentes (via LIST + déchiffrement)
-    const existingItems = await listMoodEntries(moduleUserId);
-    const existingDates = new Set();
-    for (const r of existingItems) {
-      try {
-        const plaintext = await decryptAESGCM(
-          { iv: r.cipher_iv, data: r.payload },
-          mainKey
-        );
-        const obj = JSON.parse(plaintext || "{}");
-        const d = (
-          obj.date || (r.created ? String(r.created).slice(0, 10) : "")
-        ).slice(0, 10);
-        if (d) existingDates.add(d);
-      } catch {
-        // ignore entrées illisibles
-      }
-    }
+    try {
+      if (!Array.isArray(array))
+        throw new Error("Format JSON inattendu (array requis).");
 
-    // 3) Importer en dédupliquant par date (si déjà présente => ignore)
-    let ignored = 0;
-    let importedCount = 0;
-
-    for (const entry of array) {
-      const date = String(entry?.date || "").slice(0, 10);
-      if (!date) {
-        ignored++;
-        continue;
-      }
-      if (existingDates.has(date)) {
-        ignored++;
-        continue;
-      }
-
-      // Construire le payload clair attendu par le module Mood
-      // (on n'embarque question/answer QUE si answer non-vide)
-      const includeQA = !!String(entry?.answer || "").trim();
-
-      const payload = {
-        date,
-        mood_score: String(entry?.mood_score ?? ""),
-        mood_emoji: String(entry?.mood_emoji ?? ""),
-        positive1: String(entry?.positive1 ?? ""),
-        positive2: String(entry?.positive2 ?? ""),
-        positive3: String(entry?.positive3 ?? ""),
-        comment: String(entry?.comment ?? ""),
-        ...(includeQA
-          ? {
-              question: String(entry?.question ?? ""),
-              answer: String(entry?.answer ?? ""),
-            }
-          : {}),
-      };
-
-      // Sanity minimale : note et 3 positifs requis (comme dans Form)
-      if (
-        payload.mood_score === "" ||
-        !payload.positive1.trim() ||
-        !payload.positive2.trim() ||
-        !payload.positive3.trim() ||
-        !payload.mood_emoji
-      ) {
-        ignored++;
-        continue;
-      }
-
-      // Création 2 temps (POST "init" + PATCH HMAC) via le service
-      await createMoodEntry({
-        moduleUserId,
-        mainKey,
-        payload,
+      // 1) Index des dates déjà présentes (lecture via ?sid + déchiffrement)
+      const page = await pb.collection("mood_entries").getList(1, 200, {
+        query: { sid: sidMood, sort: "-created" }, // list/view via sid
       });
+      const existingDates = new Set();
+      for (const rec of page.items || []) {
+        try {
+          const txt = await decryptAESGCM(
+            { iv: rec.cipher_iv, data: rec.payload },
+            mainKey
+          );
+          const obj = JSON.parse(txt || "{}");
+          if (obj?.date) existingDates.add(String(obj.date));
+        } catch {
+          // on ignore les entrées illisibles
+        }
+      }
 
-      existingDates.add(date);
-      importedCount++;
+      // 2) Charge le plugin "mood" pour créer en 2 temps (POST init -> PATCH promotion)
+      const moodPlugin = await getDataPlugin("mood");
+      let created = 0;
+      for (const payload of array) {
+        const date = payload?.date && String(payload.date);
+        if (!date || existingDates.has(date)) continue;
+        await moodPlugin.importHandler({
+          payload,
+          ctx: { pb, moduleUserId: sidMood, mainKey },
+        });
+        created++;
+      }
+
+      setSuccess(
+        `Import terminé : ${created} nouvelle(s) entrée(s) ajoutée(s).`
+      );
+      finish(inputEl);
+    } catch (err) {
+      setError("Erreur lors de l’import : " + (err?.message || ""));
+      finish(inputEl);
     }
-
-    setSuccess(
-      `Import terminé : ${importedCount} entrée(s) ajoutée(s), ${ignored} ignorée(s).`
-    );
-    finish(inputEl);
   }
 
-  async function importNdjsonViaWorker(file, inputEl) {
-    // Orchestration "plugins" + NDJSON (multi-modules)
-    const pluginCache = new Map();
-    let ok = 0;
-    let ko = 0;
-
-    await new Promise((resolve) => {
-      const worker = new Worker(new URL("./importWorker.js", import.meta.url), {
-        type: "module",
-      });
-
-      worker.onmessage = async (e) => {
-        const { type, data, error } = e.data || {};
-        if (type === "error") {
-          setError(error || "Erreur pendant le parsing");
-          return;
-        }
-        if (type === "chunk") {
-          // Attendu: { module, version, payload }
-          const moduleId = data?.module;
-          if (!moduleId) {
-            // Pas de module → on ignore (ou on pourrait router vers legacy si besoin)
-            ko++;
-            return;
-          }
-          try {
-            if (!hasModule(moduleId)) {
-              ko++;
-              return;
-            }
-            let plugin = pluginCache.get(moduleId);
-            if (!plugin) {
-              plugin = await getDataPlugin(moduleId);
-              pluginCache.set(moduleId, plugin);
-            }
-            if (!plugin.importHandler) {
-              ko++;
-              return;
-            }
-            // Contexte minimal ; le plugin peut ignorer ce qu’il n’utilise pas
-            const ctx = { moduleUserId, mainKey };
-            await plugin.importHandler({ payload: data.payload, ctx });
-            ok++;
-          } catch (err) {
-            ko++;
-          }
-          return;
-        }
-        if (type === "eof") {
-          worker.terminate();
-          resolve();
-        }
-      };
-
-      // Transfert du Blob vers le worker
-      try {
-        worker.postMessage({ file }, [file]);
-      } catch {
-        worker.postMessage({ file });
+  // --- Import racine moderne: { meta, modules: { mood:[...], goals:[...] } } ---
+  async function importRootJson(root, inputEl) {
+    try {
+      if (!root?.modules || typeof root.modules !== "object") {
+        throw new Error("Format JSON invalide (modules manquant).");
       }
-    });
 
-    setSuccess(
-      `Import terminé : ${ok} entrée(s) ajoutée(s), ${ko} ignorée(s).`
-    );
-    finish(inputEl);
+      const results = [];
+      for (const [moduleKey, items] of Object.entries(root.modules)) {
+        const moduleCfg = modulesState?.[moduleKey];
+        if (!moduleCfg?.enabled || !Array.isArray(items) || !items.length)
+          continue;
+
+        const plugin = await getDataPlugin(moduleKey);
+        const moduleSid = moduleCfg.id || moduleCfg.module_user_id;
+        let created = 0;
+        for (const payload of items) {
+          await plugin.importHandler({
+            payload,
+            ctx: { pb, moduleUserId: moduleSid, mainKey },
+          });
+          created++;
+        }
+        results.push(`${moduleKey}: ${created}`);
+      }
+
+      setSuccess(
+        `Import terminé ${results.length ? `(${results.join(", ")})` : ""}.`
+      );
+      finish(inputEl);
+    } catch (err) {
+      setError("Erreur lors de l’import : " + (err?.message || ""));
+      finish(inputEl);
+    }
   }
 
-  async function handleImport(e) {
+  // --- Fallback NDJSON (une entrée JSON par ligne) ---
+  async function importNdjson(text, inputEl) {
+    try {
+      const plugin = await getDataPlugin("mood");
+      const lines = text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      let created = 0;
+      for (const line of lines) {
+        if (!line.startsWith("{")) continue;
+        let payload;
+        try {
+          payload = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        await plugin.importHandler({
+          payload,
+          ctx: { pb, moduleUserId: sidMood, mainKey },
+        });
+        created++;
+      }
+      setSuccess(`Import terminé : ${created} entrée(s).`);
+      finish(inputEl);
+    } catch (err) {
+      setError("Erreur lors de l’import NDJSON : " + (err?.message || ""));
+      finish(inputEl);
+    }
+  }
+
+  // --- Handler principal (sélection fichier) ---
+  async function handleImport(evt) {
+    const inputEl = evt?.target;
+    const file = inputEl?.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
     setError("");
     setSuccess("");
-    setLoading(true);
-
-    const inputEl = e.target;
-    const file = inputEl.files?.[0];
-    if (!file) {
-      setError("Aucun fichier sélectionné.");
-      setLoading(false);
-      return;
-    }
 
     try {
-      // Tentative 1 : compat JSON tableau (ton format actuel)
+      if (!ready) throw new Error("Préconditions manquantes (clé ou module).");
       const text = await file.text();
-      try {
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed)) {
-          await importLegacyArray(parsed, inputEl);
-          return;
-        }
-        // si ce n'est pas un tableau → on bascule NDJSON/plugins
-      } catch {
-        // JSON.parse a échoué → NDJSON/plugins
-      }
+      const trimmed = text.trim();
 
-      // Tentative 2 : NDJSON + plugins (streaming worker)
-      await importNdjsonViaWorker(file, inputEl);
+      if (trimmed.startsWith("{")) {
+        // Export moderne { meta, modules }
+        const root = JSON.parse(trimmed);
+        await importRootJson(root, inputEl);
+      } else if (trimmed.startsWith("[")) {
+        // Export legacy tableau pour Mood
+        const arr = JSON.parse(trimmed);
+        await importLegacyArray(arr, inputEl);
+      } else {
+        // NDJSON (une entrée par ligne)
+        await importNdjson(trimmed, inputEl);
+      }
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
       finish(inputEl);
@@ -222,12 +181,12 @@ export default function ImportData() {
   }
 
   return (
-    <section className="p-4">
+    <section>
       <div className="flex flex-col gap-3">
         <div className="flex items-center">
           <label
             htmlFor="import-json"
-            className="inline-flex items-center justify-center rounded-md bg-nodea-lavender-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-lavender-darker cursor-pointer"
+            className="inline-flex items-center rounded-md bg-nodea-sky-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-sky-darker disabled:opacity-50"
             style={{ display: loading ? "none" : "inline-flex" }}
           >
             Sélectionner le fichier
@@ -267,7 +226,7 @@ export default function ImportData() {
 
         <p className="text-xs text-slate-500">
           Seules les dates absentes seront ajoutées. Type de fichier attendu :
-          JSON (voir format ci-dessous).
+          JSON.
         </p>
       </div>
     </section>

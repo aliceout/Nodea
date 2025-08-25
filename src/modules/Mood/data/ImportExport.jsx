@@ -1,168 +1,173 @@
+// src/modules/Mood/data/ImportExport.jsx
 /**
- * Mood/ImportExport.jsx
- * Logique d'import/export du module "mood" (headless).
- * - Pas d'UI ni de style ici.
- * - À appeler depuis tes orchestratrices ImportData / ExportData.
+ * Logique d'import/export du module "Mood" (headless).
+ * - Minimaliste : on garde l’API existante { meta, importHandler, exportQuery, exportSerialize }.
+ * - Pas d’UI ici.
  *
- * Hypothèses (adapte si besoin) :
- * - Collection PocketBase : "mood_entries"
- * - Clé naturelle : (module_user_id, date) → 1 entrée par date exacte
- * - Payload import/export : { date: ISOString, mood_score: 0..10, note?: string }
- * - ctx attendu : { pb, moduleUserId, guard } (mainKey si tu chiffrages en amont côté service)
+ * Contrat (voir MODULES.md / SECURITY.md) :
+ * - Table: mood_entries (payload chiffré + cipher_iv + guard hidden)
+ * - LIST/VIEW: GET …/mood_entries?sid=<module_user_id>
+ * - CREATE (2 temps):
+ *     A) POST { module_user_id, payload, cipher_iv, guard:"init" }
+ *     B) PATCH /{id}?sid=<module_user_id>&d=init  body { guard: "g_<HMAC>" }
+ * - Export: on déchiffre localement puis on sérialise { module, version, payload }
  */
 
-export const meta = { id: "mood", version: "1.0.0" };
+import pb from "@/services/pocketbase";
+import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
 
-/* ============================
- * VALIDATION & UTILS
- * ============================ */
+export const meta = { id: "mood", version: 1, collection: "mood_entries" };
+
+/* ----------------------------- Helpers Généraux ----------------------------- */
+
 function assertCtx(ctx) {
-  if (!ctx?.pb) throw new Error("ctx.pb manquant");
-  if (!ctx?.moduleUserId) throw new Error("ctx.moduleUserId manquant");
-  if (!ctx?.guard) throw new Error("ctx.guard manquant");
+  if (!ctx) throw new Error("ctx manquant");
+  if (!ctx.moduleUserId) throw new Error("moduleUserId manquant dans ctx");
+  if (!ctx.mainKey) throw new Error("mainKey manquante (clé AES) dans ctx");
 }
 
-function validatePayload(payload) {
-  if (!payload || typeof payload !== "object")
-    throw new Error("payload invalide");
-  const { date, mood_score } = payload;
-
-  // date ISO
-  if (typeof date !== "string")
-    throw new Error("payload.date doit être une chaîne ISO");
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) throw new Error("payload.date ISO invalide");
-
-  // mood_score 0..10 entier
-  if (typeof mood_score !== "number" || !Number.isFinite(mood_score)) {
-    throw new Error("payload.mood_score doit être un nombre");
-  }
-  if (mood_score % 1 !== 0)
-    throw new Error("payload.mood_score doit être entier");
-  if (mood_score < 0 || mood_score > 10)
-    throw new Error("payload.mood_score ∈ [0,10]");
+const te = new TextEncoder();
+function toHex(buf) {
+  const b = new Uint8Array(buf || []);
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
+  return s;
+}
+async function hmacSha256(keyRaw, messageUtf8) {
+  // keyRaw: ArrayBuffer|Uint8Array
+  const key = await window.crypto.subtle.importKey(
+    "raw",
+    keyRaw,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
+}
+async function deriveGuard(mainKey, moduleUserId, recordId) {
+  const guardKeyBytes = await hmacSha256(mainKey, `guard:${moduleUserId}`);
+  const mac = await hmacSha256(guardKeyBytes, String(recordId));
+  return `g_${toHex(mac)}`;
 }
 
-function sanitizeNote(note) {
-  if (note == null) return undefined;
-  if (typeof note !== "string") return String(note);
-  return note;
+/** Normalise très légèrement le payload importé (tolérant) */
+function normalizePayload(input) {
+  const p = input || {};
+  const out = {
+    date: String(p.date || ""),
+    mood_score: p.mood_score ?? "",
+    mood_emoji: p.mood_emoji ?? "",
+    positive1: p.positive1 ?? "",
+    positive2: p.positive2 ?? "",
+    positive3: p.positive3 ?? "",
+  };
+  if (p.comment) out.comment = String(p.comment);
+  if (p.question) out.question = String(p.question);
+  if (p.answer) out.answer = String(p.answer);
+  return out;
 }
 
-function esc(str) {
-  // Échappe les guillemets pour les filtres PB
-  return String(str).replace(/"/g, '\\"');
-}
-
-/* ============================
- * IMPORT
- * ============================ */
-
+/* ================================= IMPORT ================================== */
 /**
  * importHandler
- * - Idempotent par (module_user_id, date)
- * - Si une entrée existe à la même date → update ; sinon → create
- * - Retourne { action: 'created'|'updated', id }
+ * Appelé par l’orchestrateur d’import (Account/ImportData).
+ * Signature conservée : importHandler({ payload, ctx })
+ * - payload : objet clair pour le module (cf. MODULES.md §5.1 Mood)
+ * - ctx : { moduleUserId, mainKey }
  */
 export async function importHandler({ payload, ctx }) {
   assertCtx(ctx);
-  validatePayload(payload);
+  const { moduleUserId, mainKey } = ctx;
 
-  const { pb, moduleUserId, guard } = ctx;
-  const { date, mood_score } = payload;
-  const note = sanitizeNote(payload.note);
+  // 1) Normaliser le payload clair
+  const clear = normalizePayload(payload);
 
-  // 1) cherche une entrée existante sur la même date (clé naturelle)
-  const filter = `module_user_id = "${esc(moduleUserId)}" && date = "${esc(
-    date
-  )}"`;
+  // 2) Chiffrer localement (AES-GCM) → { iv, data } en base64
+  const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
 
-  let existing = null;
-  try {
-    existing = await pb.collection("mood_entries").getFirstListItem(filter, {
-      fields: "id",
-    });
-  } catch {
-    existing = null; // not found → on créera
-  }
+  // 3) CREATE (étape A) : POST avec guard="init" (copié par le hook dans le champ hidden)
+  const created = await pb.send(`/api/collections/${meta.collection}/records`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      module_user_id: String(moduleUserId),
+      payload: String(data),
+      cipher_iv: String(iv),
+      guard: "init",
+    }),
+  });
 
-  // 2) upsert
-  if (existing?.id) {
-    const id = existing.id;
-    await pb.collection("mood_entries").update(id, {
-      date,
-      mood_score,
-      note,
-      guard, // si la règle serveur l’exige
-    });
-    return { action: "updated", id };
-  } else {
-    const rec = await pb.collection("mood_entries").create({
-      module_user_id: moduleUserId,
-      date,
-      mood_score,
-      note,
-      guard,
-    });
-    return { action: "created", id: rec.id };
-  }
+  // 4) Promotion HMAC (étape B) : calcule le guard déterministe et PATCH avec ?sid=<sid>&d=init
+  const guard = await deriveGuard(mainKey, moduleUserId, created?.id);
+  await pb.send(
+    `/api/collections/${meta.collection}/records/${
+      created.id
+    }?sid=${encodeURIComponent(moduleUserId)}&d=init`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guard }),
+    }
+  );
+
+  return { action: "created", id: created.id };
 }
 
-/* ============================
- * EXPORT
- * ============================ */
-
+/* ================================= EXPORT ================================== */
 /**
  * exportQuery
- * - range?: { start?: ISOString, end?: ISOString }
- * - Retourne un itérateur async de records PB (bruts, déjà filtrés).
- *   Usage : for await (const rec of exportQuery({ range, ctx })) { ... }
+ * - Retourne un itérateur asynchrone de payloads CLAIRS (déjà déchiffrés).
+ * - range?: { start?: ISOString, end?: ISOString } (filtré côté client car la date est dans le payload).
  */
-export async function* exportQuery({ range, ctx, pageSize = 50 }) {
+export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
   assertCtx(ctx);
-  const { pb, moduleUserId } = ctx;
+  const { mainKey, moduleUserId } = ctx;
 
-  // Filtre de base
-  const parts = [`module_user_id = "${esc(moduleUserId)}"`];
-  if (range?.start) parts.push(`date >= "${esc(range.start)}"`);
-  if (range?.end) parts.push(`date <= "${esc(range.end)}"`);
-
-  const filter = parts.join(" && ");
-
-  // Pagination
   let page = 1;
   for (;;) {
-    const list = await pb.collection("mood_entries").getList(page, pageSize, {
-      filter,
-      sort: "+date", // plus ancien → plus récent
-      fields: "id,date,mood_score,note",
-    });
-    for (const item of list.items) yield item;
-    if (page * pageSize >= list.totalItems) break;
+    const url = `/api/collections/${
+      meta.collection
+    }/records?page=${page}&perPage=${pageSize}&sort=+created&sid=${encodeURIComponent(
+      moduleUserId
+    )}`;
+    const list = await pb.send(url, { method: "GET" });
+    const items = list?.items || [];
+    if (items.length === 0) break;
+
+    for (const r of items) {
+      const plaintext = await decryptAESGCM(
+        { iv: r.cipher_iv, data: r.payload },
+        mainKey
+      );
+      const obj = JSON.parse(plaintext || "{}");
+
+      // Filtrage optionnel par date (payload clair)
+      if (range?.start || range?.end) {
+        const d = obj?.date ? new Date(obj.date) : null;
+        if (range?.start && (!d || d < new Date(range.start))) continue;
+        if (range?.end && (!d || d > new Date(range.end))) continue;
+      }
+
+      yield obj;
+    }
+
+    if (page * pageSize >= (list?.totalItems || 0)) break;
     page += 1;
   }
 }
 
 /**
  * exportSerialize
- * - Transforme un record PB en ligne NDJSON standardisée
- * - Sortie : { module, version, payload }
+ * - Transforme un payload clair en ligne NDJSON standard { module, version, payload }
+ * - (Le payload est déjà clair car exportQuery a déchiffré).
  */
-export function exportSerialize(record) {
+export function exportSerialize(plainPayload) {
   return {
     module: meta.id,
     version: meta.version,
-    payload: {
-      date: record.date,
-      mood_score: record.mood_score,
-      ...(record.note ? { note: record.note } : {}),
-    },
+    payload: plainPayload,
   };
 }
-
-/* ============================
- * API DE FAÇADE (option)
- * ============================ */
 
 const MoodImportExport = {
   meta,
