@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar/Link.jsx
 import classNames from "classnames";
 
 export default function Link({ icon: Icon, label, active, onClick }) {

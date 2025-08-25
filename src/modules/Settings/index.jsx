@@ -1,41 +1,20 @@
-import useAuth from "../../hooks/useAuth";
+import Subheader from "@/components/layout/Subheader.jsx";
+import ModulesManager from "./components/ModulesManager.jsx";
 
-export default function SettingsIndex() {
-  const { user } = useAuth();
-  
+export default function Settings() {
   return (
-    <div className="py-6 flex flex-col gap-4 ">
-      <SettingsCard title="Changer l’email">
-        <ChangeEmail user={user} />
-      </SettingsCard>
+    <div className="h-full">
+      <Subheader />
+      <div className="mx-auto max-w-3xl p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-gray-900">Paramètres</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Active ou désactive les modules disponibles.
+          </p>
+        </div>
 
-      <SettingsCard title="Changer le nom d'utilisateur.ice">
-        <ChageUsername />
-      </SettingsCard>
-
-      <SettingsCard title="Changer le mot de passe">
-        <PasswordReset />
-      </SettingsCard>
-
-      <SettingsCard title="Importer des données">
-        <ImportData user={user} />
-      </SettingsCard>
-
-      <SettingsCard title="Exporter mes données">
-        <ExportData user={user} />
-      </SettingsCard>
-
-      <SettingsCard title="Supprimer mon compte">
-        <DeleteAccount user={user} />
-      </SettingsCard>
+        <ModulesManager />
+      </div>
     </div>
   );
 }
-
-import ChangeEmail from "./Account/ChangeEmail";
-import ChageUsername from "./Account/ChangeUsername";
-import PasswordReset from "./Account/PasswordReset";
-import ImportData from "./Account/ImportData";
-import ExportData from "./Account/ExportData";
-import DeleteAccount from "./Account/DeleteAccount";
-import SettingsCard from "./components/SettingsCard";

@@ -1,9 +1,38 @@
+// src/modules/Mood/Form.jsx
 import React, { useState, useEffect, useRef } from "react";
-import pb from "../../services/pocketbase";
-import { useMainKey } from "../../hooks/useMainKey";
-import questions from "../../data/questions.json";
+import pb from "@/services/pocketbase";
+import questions from "@/data/questions.json";
+import { useModulesRuntime } from "@/store/modulesRuntime";
+import { encryptAESGCM } from "@/services/webcrypto";
+import { useMainKey } from "@/hooks/useMainKey";
 
-import { encryptAESGCM } from "../../services/webcrypto";
+// --- Helpers HMAC (dérivation du guard) ---
+const te = new TextEncoder();
+function toHex(buf) {
+  const b = new Uint8Array(buf || []);
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
+  return s;
+}
+async function hmacSha256(keyRaw, messageUtf8) {
+  // keyRaw: ArrayBuffer|Uint8Array (mainKey ou guardKey)
+  const key = await window.crypto.subtle.importKey(
+    "raw",
+    keyRaw,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
+}
+async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
+  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
+  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
+  // guard  = "g_" + HEX( HMAC(guardKey, record.id) )
+  const tag = await hmacSha256(guardKeyBytes, String(recordId));
+  const hex = toHex(tag);
+  return "g_" + hex; // 64 hex chars → ok avec le pattern ^(g_[a-z0-9]{32,}|init)$
+}
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -19,73 +48,43 @@ export default function JournalEntryPage() {
   const [error, setError] = useState("");
   const [randomQuestion, setRandomQuestion] = useState("");
   const [loadingQuestion, setLoadingQuestion] = useState(true);
-  const { mainKey } = useMainKey();
+
+  const { mainKey } = useMainKey(); // attendu: bytes (pas CryptoKey)
+  const modules = useModulesRuntime();
+  const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
+
   const [showPicker, setShowPicker] = useState(false);
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
 
-  // Import CryptoKey WebCrypto dès que mainKey dispo
+  // Import CryptoKey WebCrypto dès que mainKey dispo pour AES-GCM
   const [cryptoKey, setCryptoKey] = useState(null);
   useEffect(() => {
     if (!mainKey) return;
+    // si mainKey est déjà une CryptoKey (selon ton contexte), on ne peut pas la réutiliser pour AES ici
+    if (typeof mainKey === "object" && mainKey?.type === "secret") {
+      return;
+    }
     window.crypto.subtle
       .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
-      .then(setCryptoKey);
+      .then((key) => {
+        setCryptoKey(key);
+      })
+      .catch(() => setCryptoKey(null));
   }, [mainKey]);
 
-  function encryptField(value) {
-    if (!cryptoKey) return ""; // Sécurité, cas anormal
-    return encryptAESGCM(value, cryptoKey).then((encrypted) =>
-      JSON.stringify(encrypted)
-    );
-  }
-
+  // Choix aléatoire simple pour l’instant
   useEffect(() => {
-    // Aller chercher les questions utilisées sur les 30 derniers jours
-    const fetchQuestion = async () => {
-      setLoadingQuestion(true);
-      try {
-        const since = new Date();
-        since.setDate(since.getDate() - 30);
-        const sinceStr = since.toISOString().slice(0, 10);
-
-        // Prend les entrées du user sur les 30 derniers jours
-        const entries = await pb.collection("mood_entries").getFullList({
-          filter: `user="${pb.authStore.model.id}" && date >= "${sinceStr}"`,
-        });
-        const alreadyUsedQuestions = entries.map((e) => e.question);
-
-        // Filtre les questions jamais (ou pas récemment) posées
-        const availableQuestions = questions.filter(
-          (q) => !alreadyUsedQuestions.includes(q)
-        );
-        let chosen = "";
-        if (availableQuestions.length > 0) {
-          chosen =
-            availableQuestions[
-              Math.floor(Math.random() * availableQuestions.length)
-            ];
-        } else {
-          // fallback : prend n’importe quelle question au hasard
-          chosen = questions[Math.floor(Math.random() * questions.length)];
-        }
-        setRandomQuestion(chosen);
-      } catch {
-        // fallback
-        setRandomQuestion(
-          questions[Math.floor(Math.random() * questions.length)]
-        );
-      } finally {
-        setLoadingQuestion(false);
-      }
-    };
-    fetchQuestion();
+    const q = questions[Math.floor(Math.random() * questions.length)];
+    setRandomQuestion(q);
+    setLoadingQuestion(false);
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
     if (!cryptoKey) {
       setError(
         "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
@@ -104,19 +103,75 @@ export default function JournalEntryPage() {
       setError("Merci de choisir un emoji.");
       return;
     }
+    if (!moduleUserId) {
+      setError("Module 'Humeur' non configuré (id manquant).");
+      return;
+    }
+
     try {
-      await pb.collection("mood_entries").create({
-        user: pb.authStore.model.id,
+      // 1) Payload clair (clés attendues côté lecture)
+      // -> n'ajoute question/answer que si une réponse a été saisie
+      const includeQA = !!answer.trim();
+      const payloadObj = {
         date,
-        positive1: await encryptField(positive1),
-        positive2: await encryptField(positive2),
-        positive3: await encryptField(positive3),
-        mood_score: await encryptField(String(moodScore)), // Chiffré
-        mood_emoji: await encryptField(moodEmoji), // Chiffré
-        comment: await encryptField(comment),
-        question: await encryptField(randomQuestion), // Chiffré
-        answer: await encryptField(answer), // Chiffré
+        positive1,
+        positive2,
+        positive3,
+        mood_score: String(moodScore),
+        mood_emoji: moodEmoji,
+        comment,
+        ...(includeQA ? { question: randomQuestion, answer: answer } : {}),
+      };
+
+
+      // 2) Chiffrement AES-GCM (retourne { iv, data } en base64url)
+      const { data, iv } = await encryptAESGCM(
+        JSON.stringify(payloadObj),
+        cryptoKey
+      );
+
+      // 3) CREATE (étape A) : POST avec guard="init"
+      const recordCreate = {
+        module_user_id: String(moduleUserId),
+        payload: String(data),
+        cipher_iv: String(iv),
+        guard: "init",
+      };
+
+      const created = await pb.send("/api/collections/mood_entries/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(recordCreate),
       });
+
+      if (!created?.id) {
+        throw new Error("Création incomplète (id manquant).");
+      }
+
+      // 4) Promotion (étape B) : calcul HMAC du guard et PATCH ?d=init
+      if (
+        typeof mainKey === "object" &&
+        mainKey?.type === "secret" &&
+        !("buffer" in mainKey)
+      ) {
+        // mainKey CryptoKey non extractible → scénario non supporté ici
+        throw new Error(
+          "MainKey non exploitable pour HMAC. Reconnecte-toi pour récupérer la clé brute."
+        );
+      }
+
+      const guard = await deriveGuard(mainKey, moduleUserId, created.id);
+
+      await pb.send(
+        `/api/collections/mood_entries/records/${encodeURIComponent(
+          created.id
+        )}?sid=${encodeURIComponent(moduleUserId)}&d=init`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guard }),
+        }
+      );
 
       setSuccess("Entrée enregistrée !");
       setPositive1("");
@@ -187,6 +242,9 @@ export default function JournalEntryPage() {
             Enregistrer
           </Button>
           {error && <FormError message={error} />}
+          {success && (
+            <div className="text-green-700 text-sm mt-2">{success}</div>
+          )}
         </div>
         <div className="flex justify-center"></div>
       </form>
@@ -198,4 +256,5 @@ import PositivesBlock from "./components/FormPositives";
 import MoodBlock from "./components/FormMood";
 import QuestionBlock from "./components/FormQuestion";
 import CommentBlock from "./components/FormComment";
-import Button from "../../components/common/Button";
+import Button from "@/components/common/Button";
+import FormError from "@/components/common/FormError";

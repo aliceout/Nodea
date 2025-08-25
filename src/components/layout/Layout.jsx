@@ -1,12 +1,13 @@
-// src/components/layout/Layout.jsx
 import { useMemo } from "react";
-import { nav } from "../Navigation";
-
-import { useStore } from "../../store/StoreProvider";
-import { selectCurrentTab } from "../../store/selectors";
+import { nav } from "./Navigation";
+import { Outlet } from "react-router-dom";
+import { useStore } from "@/store/StoreProvider";
+import { selectCurrentTab } from "@/store/selectors";
+import useBootstrapModulesRuntime from "@/hooks/useBootstrapModulesRuntime";
 
 export default function Layout() {
-  // Le layout ne passe plus de props au Header/Sidebar : il se contente d'orchestrer la vue active
+  useBootstrapModulesRuntime();
+  // Le layout ne passe pas de props au Header/Sidebar : il se contente d'orchestrer la vue active
   const store = useStore();
   const state = store?.state ?? store?.[0];
 
@@ -21,9 +22,7 @@ export default function Layout() {
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Header />
-        <main className="flex-1 bg-white">
-          {ActiveView}
-        </main>
+        <main className="flex-1 bg-white">{ActiveView}</main>
       </div>
     </div>
   );

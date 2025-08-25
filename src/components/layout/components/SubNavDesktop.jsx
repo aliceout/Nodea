@@ -1,4 +1,3 @@
-// src/components/layout/components/SubNavDesktop.jsx
 import clsx from "clsx";
 
 export default function SubNavDesktop({ title, tabs = [], onTabSelect }) {

@@ -19,7 +19,7 @@ export default function App() {
                 <Layout />
               </ProtectedRoute>
             }
-            >
+          >
             <Route path="flow" element={<div />} /> {/* plus de <Content /> */}
           </Route>
 

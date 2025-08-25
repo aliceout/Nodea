@@ -1,13 +1,17 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useMemo } from "react";
 
-const MainKeyContext = createContext();
+/**
+ * mainKey: Uint8Array(32) | null
+ * setMainKey: (Uint8Array(32) | null) => void
+ */
+const MainKeyContext = createContext({ mainKey: null, setMainKey: () => {} });
 
 export function MainKeyProvider({ children }) {
   const [mainKey, setMainKey] = useState(null);
+
+  const value = useMemo(() => ({ mainKey, setMainKey }), [mainKey]);
   return (
-    <MainKeyContext.Provider value={{ mainKey, setMainKey }}>
-      {children}
-    </MainKeyContext.Provider>
+    <MainKeyContext.Provider value={value}>{children}</MainKeyContext.Provider>
   );
 }
 

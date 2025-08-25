@@ -1,4 +1,3 @@
-// src/components/layout/components/SubNavMobile.jsx
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
 

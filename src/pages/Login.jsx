@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import pb from "../services/pocketbase";
 import { useNavigate } from "react-router-dom";
-import { useMainKey } from "../hooks/useMainKey";
-import { deriveKeyArgon2, decryptAESGCM } from "../services/webcrypto";
+import { useStore } from "@/store/StoreProvider";
+import { setTab } from "@/store/actions";
+import pb from "@/services/pocketbase";
+import { useMainKey } from "@/hooks/useMainKey";
+import { deriveKeyArgon2 } from "@/services/webcrypto";
 import Logo from "../components/common/LogoLong.jsx";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
@@ -14,50 +16,36 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const { setMainKey } = useMainKey();
   const navigate = useNavigate();
+  const store = useStore();
+  const dispatch = store?.dispatch ?? store?.[1];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     try {
+      // 1) Auth PocketBase
       await pb.collection("users").authWithPassword(email, password);
 
+      // 2) Récupération du user et du salt (mêmes champs qu'avant)
       const user = pb.authStore.model;
-      const encryptedKey = user.encrypted_key;
-      const salt = user.encryption_salt;
+      const salt =
+        user?.encryption_salt ?? user?.profile?.salt ?? user?.salt ?? "";
 
-      // 1. Dérive la clé de protection avec Argon2id
-      const protectionKeyRaw = await deriveKeyArgon2(password, salt);
-
-      // 2. Importe la clé pour WebCrypto
-      const protectionKey = await window.crypto.subtle.importKey(
-        "raw",
-        protectionKeyRaw,
-        { name: "AES-GCM" },
-        false,
-        ["encrypt", "decrypt"]
-      );
-
-      // 3. Déchiffre la clé principale
-      let mainKey;
-      try {
-        const encryptedObj = JSON.parse(encryptedKey); // {iv, data}
-        const mainKeyB64 = await decryptAESGCM(encryptedObj, protectionKey);
-        // Décoder la clé principale (base64 -> Uint8Array)
-        const mainKeyRaw = new Uint8Array(
-          atob(mainKeyB64)
-            .split("")
-            .map((c) => c.charCodeAt(0))
-        );
-        mainKey = mainKeyRaw;
-      } catch (e) {
-        setError(
-          "Erreur de déchiffrement de la clé (mot de passe incorrect ou données corrompues)"
-        );
+      if (!salt) {
+        setError("Aucun 'salt' sur le profil utilisateur.");
         return;
       }
 
-      setMainKey(mainKey);
-      navigate("/");
+      // 3) Dérivation Argon2id -> Uint8Array(32)
+      const mainKeyBytes = await deriveKeyArgon2(password, salt);
+
+      // 4) Place la clé brute (32 octets) dans le contexte (mémoire uniquement)
+      setMainKey(mainKeyBytes);
+
+      // 5) Navigate
+      dispatch(setTab("home"));
+      navigate("/", { replace: true });
     } catch (err) {
       setError("Identifiants invalides");
     }
