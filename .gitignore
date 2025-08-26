@@ -28,3 +28,4 @@ package-lock.json
 ./export.md
 .eslint.config.js
 export.md
+/node_modules
