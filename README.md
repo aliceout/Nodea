@@ -1,19 +1,22 @@
+# 🍃 Nodea — Suivi personnel chiffré
 
- # 🍃 Nodea — Suivi personnel chiffré
- 
- **Nodea** est une application web pour suivre sa propre vie, ses envies, ses objectifs, son humeur, etc
- Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : toi seul·e peux les lire, même l’admin n’y a jamais accès.
- 
- ---
- 
- ## Principes
- 
- - **Confidentialité réelle** : chiffrement de bout en bout, personne d’autre que toi ne peut lire tes écrits.
- - **Journal quotidien** : trois points positifs obligatoires, humeur (score  emoji), question du jour aléatoire, commentaire libre.
- - **Aucune analyse automatique, aucun tracking, aucun partage des données** : tu restes propriétaire de tout ce que tu écris.
- - **Interface minimaliste, rapide et accessible.**
- 
- ---
+**Nodea** est une application web pour suivre sa propre vie, ses envies, ses objectifs, son humeur, ses habitudes ou encore ses lectures.  
+Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : toi seul·e peux les lire, même l’admin n’y a jamais accès.
+
+---
+
+## Principes
+
+- **Confidentialité réelle** : chiffrement de bout en bout, personne d’autre que toi ne peut lire tes écrits.  
+- **Modules complémentaires** :  
+  - **Mood** → journal quotidien (3 positifs, humeur, question, commentaire).  
+  - **Goals** → suivi des objectifs annuels.  
+  - **Habits** → suivi des habitudes (occurrences datées, heatmap).  
+  - **Library** → livres, films, séries, avec fiches de lecture.  
+  - **Review** → bilan annuel complet, inspiré de YearCompass.  
+- **Aucune analyse automatique, aucun tracking, aucun partage** : tu restes propriétaire de tout ce que tu écris.  
+- **Interface minimaliste** : rapide, accessible, pensée pour l’usage personnel et auto-hébergé.  
+
  
  ## Stack technique
  
