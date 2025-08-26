@@ -25,4 +25,6 @@ dist-ssr
 package-lock.json
 .env
 .export.md
+./export.md
 .eslint.config.js
+export.md

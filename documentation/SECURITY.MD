@@ -1,188 +1,144 @@
-# SECURITY.md
+# SECURITY
 
-## 🔐 Sécurité & Chiffrement
+Ce document décrit les mécanismes de sécurité de Nodea.  
+Il explique les choix faits, leur rôle, et le fonctionnement attendu côté client et serveur.
 
-Ce document décrit **tout le protocole de sécurité** de l’application : gestion des clés, modules, entrées, et les étapes suivies par l’UI (client) et le serveur.
+## 1. Principes fondamentaux
 
----
+- **Chiffrement de bout en bout (E2E)**  
+  Toutes les données utilisateurs sont chiffrées **avant** d’être envoyées au serveur.  
+  Le serveur **ne voit jamais** le contenu clair. Il ne stocke que des blobs chiffrés (`payload`) et les métadonnées nécessaires pour la synchronisation.
 
-## 1. Fichiers de chiffrement
+- **Séparation des clés**  
+  - Chaque utilisateur possède une **mainKey**, dérivée de son mot de passe.  
+  - Chaque module activé génère un **module_user_id** (clé secondaire opaque).  
+  - Le serveur ne connaît ni la mainKey ni les clés dérivées.
 
-- `src/services/crypto.js`
-  - Chiffrement symétrique AES-GCM (`seal` / `open`).
-  - Helpers aléatoires (`randomBytes`).
-  - PBKDF2 (legacy, à éviter sauf compatibilité).
+- **Intégrité**  
+  Les modifications et suppressions sont protégées par un **guard** (HMAC) que seul le client peut calculer, car il nécessite la mainKey.  
+  → Cela empêche tout tiers (y compris l’admin serveur) de modifier ou supprimer des entrées sans la clé de l’utilisateur.
 
-- `src/services/webcrypto.js`
-  - Dérivation de clé robuste avec Argon2id.
-  - Hash SHA-256, HMAC.
-  - Encodage base64url, génération aléatoire sécurisée.
 
-- `src/services/crypto-utils.js`
-  - Helpers métiers :
-    - `generateModuleUserId` (identifiant secondaire),
-    - `hmac` (utilisé pour la dérivation de `guard`).
+## 2. Dérivation des clés
 
----
+- **Entrée utilisateur** : email + mot de passe.  
+- **Sel (salt)** : généré et stocké lors de la création du compte (champ `encryption_salt` côté serveur).  
+- **Dérivation** :  
+  - Utilisation d’Argon2id via WebCrypto.  
+  - Paramètres choisis pour résister au brute force (mémoire, itérations).  
+  - Résultat : une **mainKey** 256 bits.
 
-## 2. Concepts clés
+Cette mainKey n’est jamais transmise au serveur. Elle reste en mémoire uniquement côté client.
 
-- **mainKey** : clé AES unique par utilisateur·rice, jamais stockée en clair côté serveur.  
-- **modules** : configuration chiffrée, stockée dans `users.modules`.  
-- **module_user_id** : identifiant secondaire, opaque, sert à grouper les entrées d’un module.  
-- **guard** : valeur **dérivée par HMAC** (déterministe) pour chaque entrée (`*_entries`), utilisée comme preuve de capacité pour modification/suppression. Le serveur ne recalcule rien : il stocke le `guard` (champ hidden) et vérifie l’égalité avec `?d=` sur UPDATE/DELETE.  
-- **payload** : données métier (mood, goals, etc.), toujours chiffrées côté client.  
-- **cipher_iv** : vecteur d’initialisation unique par payload.
 
-### Dérivation HMAC du `guard`
+## 3. Chiffrement des données
 
-Objectif : ne rien stocker côté client, tout en pouvant toujours recalculer le secret pour une entrée donnée.
+Chaque enregistrement (entrée d’un module) contient :  
+- `payload` : JSON clair (dépend du module) → chiffré avec AES-GCM et encodé en base64url.  
+- `cipher_iv` : vecteur d’initialisation aléatoire (12 octets).  
+- `module_user_id` : identifiant secondaire (lié à l’utilisateur, mais opaque).  
 
-- **Clé par module (côté client)** :  
-  `guardKey = HMAC_SHA256(mainKey, "guard:" + module_user_id)`  
-  *(via WebCrypto/HMAC)*
+**Algorithme** :  
+- AES-256-GCM, clé dérivée de la mainKey.  
+- IV généré aléatoirement à chaque chiffrement.  
+- Auth tag intégré (GCM).  
 
-- **Guard d’une entrée** (déterministe) :  
-  `guard = "g_" + HEX( HMAC_SHA256(guardKey, record.id) )`  
-  (HEX sur 32 octets → 64 caractères, préfixés par `g_`)
+**Important** : tout le contenu métier (titres, notes, catégories, etc.) est dans `payload` chiffré.  
+Le serveur ne voit que : `{ id, module_user_id, payload (opaque), cipher_iv, guard (hidden), created, updated }`.
 
-- **Flux de création en 2 temps** :  
-  1) **POST create** avec `guard="init"` (placeholder).  
-     Un **hook PocketBase** copie le `guard` reçu dans le **champ hidden** de l’enregistrement (le client ne peut pas écrire un champ hidden).  
-  2) Le client reçoit `id`, calcule le `guard` (HMAC ci-dessus), puis **PATCH** l’entrée pour remplacer `"init"` par la vraie valeur, en passant `?sid=<module_user_id>&d=init` (autorisé car la valeur actuelle est `"init"`).
 
-- **Update/Delete ultérieurs** :  
-  le client recalcule à la volée `guard = "g_" + HEX(HMAC_SHA256(guardKey, id))` et appelle  
-  `...?sid=<module_user_id>&d=<guard>`.
+## 4. Guard (intégrité et autorisations)
 
-👉 Résultat : **pas de stockage local** du `guard` ; suppression/modif toujours possibles tant que `mainKey` et `module_user_id` sont connus.
+Chaque entrée possède un champ `guard`.  
+- C’est un **HMAC déterministe**, caché côté serveur (champ hidden).  
+- Calcul :  
 
----
+``` json
+guard = "g\_" + HMAC( HMAC(mainKey, "guard:" + module\_user\_id), id )
+```
 
-## 3. Processus détaillés
+- Utilité :  
+- **Création** : se fait en deux temps. On poste avec `guard:"init"`, puis on “promote” en calculant le vrai guard.  
+- **Update/Delete** : requièrent le passage de `?sid=<module_user_id>&d=<guard>`.  
+  → Si le guard calculé côté client ne correspond pas à celui stocké, l’opération est rejetée.
 
-### 3.1 Création de compte
-1. L’utilisateur choisit un mot de passe.  
-2. **UI** : génère un `salt` aléatoire.  
-3. **UI** : dérive une clé de protection avec Argon2id(password, salt).  
-4. **UI** : génère une `mainKey` aléatoire (AES).  
-5. **UI** : chiffre la `mainKey` avec la clé de protection (`seal`).  
-6. **UI → serveur** : envoie `{ encrypted_key, encryption_salt }`.  
-7. **Serveur** : stocke dans `users.encrypted_key` et `users.encryption_salt`.
+Le serveur ne renvoie jamais le champ `guard`. Seul le client peut le recalculer.
 
-### 3.2 Connexion / déverrouillage
-1. L’utilisateur entre son mot de passe.  
-2. **UI** : récupère `encrypted_key` + `encryption_salt` depuis `users`.  
-3. **UI** : dérive la clé de protection avec Argon2id(password, salt).  
-4. **UI** : déchiffre `encrypted_key` pour retrouver la `mainKey`.  
-5. La `mainKey` reste uniquement en mémoire côté client.
 
-### 3.3 Activation d’un module
-1. **UI** : génère un `module_user_id` (aléatoire, base64url).  
-2. **UI** : construit un objet `{ enabled: true, id: module_user_id }`.  
-3. **UI** : chiffre l’objet complet `modules` avec la `mainKey` (`seal`).  
-4. **UI → serveur** : met à jour `users.modules`.
+## 5. Flux d’opérations
 
-### 3.4 Création d’une entrée (2 temps)
-1. **UI** : prépare `payloadObj`.  
-2. **UI** : chiffre avec la `mainKey` → obtient `{ payload, cipher_iv }`.  
-3. **UI → serveur (A)** : `POST /<module>_entries` avec `{ module_user_id, payload, cipher_iv, guard: "init" }`.  
-   - Hook PB : copie `"init"` vers le champ **hidden** `guard`.  
-4. **UI ← serveur** : reçoit `record.id`.  
-5. **UI** : dérive `guardKey = HMAC_SHA256(mainKey, "guard:" + module_user_id)` puis  
-   `guard = "g_" + HEX(HMAC_SHA256(guardKey, record.id))`.  
-6. **UI → serveur (B)** : **PATCH de promotion** de l’entrée avec `?sid=<module_user_id>&d=init` et body `{ guard: <guard dérivé> }`.
+### Création (2 temps)
+1. **POST init**  
 
-### 3.5 Lecture d’une entrée
-1. **UI → serveur** : `GET /<module>_entries?sid=<module_user_id>`.  
-2. **Serveur** : renvoie les entrées chiffrées (payload + iv, **sans** `guard`).  
-3. **UI** : déchiffre chaque `payload` avec la `mainKey`.
+``` json
+POST /<module>\_entries
+{ module\_user\_id, payload, cipher\_iv, guard:"init" }
+```
+→ crée une entrée provisoire.
 
-### 3.6 Modification / suppression
-1. **UI** : recalcule `guard` à partir de `mainKey`, `module_user_id` et `record.id`.  
-2. **UI → serveur** : `PATCH`/**`DELETE`** `/.../{id}?sid=<module_user_id>&d=<guard>`.  
-3. **PocketBase** : vérifie `module_user_id` ET `guard` (égalité stricte) avant d’accepter.
+2. **PATCH promotion**  
+3. 
 
-### 3.7 Changement de mot de passe
-1. **UI** : demande l’ancien + le nouveau mot de passe.  
-2. **UI** : redérive la `mainKey` avec l’ancien mot de passe (comme connexion).  
-3. **UI** : dérive une nouvelle clé de protection (Argon2id) avec le nouveau mot de passe.  
-4. **UI** : re-scelle la `mainKey` avec cette nouvelle clé.  
-5. **UI → serveur** : met à jour `users.encrypted_key` et `users.encryption_salt`.
+``` json
+PATCH /<module>\_entries/<id>?sid=\<module\_user\_id>\&d=init
+{ guard: "\<guard\_calculé>" }
+```
 
-3.8 Import/Export (clair côté client)
+→ remplace `init` par le vrai guard calculé côté client.
 
-- **Export** : produit un JSON clair par module (structure commune), précédé d’un bloc meta : { version, exported_at, app }.
-Jamais exportés : payload chiffré, cipher_iv, guard, id.
-- **Import** : l’UI recrée chaque entrée en suivant le flux de création en 2 temps : 
-  - chiffrement local (nouvel iv) → POST { module_user_id, payload, cipher_iv, guard:"init" },
-  - calcul HMAC → PATCH de promotion avec ?sid=<module_user_id>&d=init pour écrire le guard final.
-- module_user_id : généré/choisi côté client d’après les modules activés (cf. users.modules). L’export n’en dépend pas.
-- **Intégrité/confidentialité**: rien de sensible côté serveur ; tout est (re)chiffré localement à l’import.
----
+### Lecture
+- `GET /<module>_entries?sid=<module_user_id>`  
+- Retourne : `id, payload (chiffré), cipher_iv, created, updated`.  
+- Ne retourne jamais : guard, mainKey, clair.
 
-## 4. Rôles : qui fait quoi ?
+### Mise à jour
+- `PATCH /<module>_entries/<id>?sid=<sid>&d=<guard>`  
+- Requiert : le bon `guard` calculé par le client.
 
-- **UI (client)**  
-  - Génère les secrets (`mainKey`, `module_user_id`, `iv`).  
-  - Dérive `guardKey` et `guard` via HMAC (déterministe).  
-  - Chiffre/déchiffre tous les `payloads`.  
-  - Envoie uniquement des données chiffrées au serveur.
+### Suppression
+- `DELETE /<module>_entries/<id>?sid=<sid>&d=<guard>`  
+- Même principe : sans guard correct → rejet.
 
-- **Serveur (PocketBase)**  
-  - Stocke les blobs chiffrés (`encrypted_key`, `modules`, `payloads`).  
-  - Stocke le `guard` (champ hidden) et applique les règles d’accès (`module_user_id` + `guard`).  
-  - Ne connaît jamais les clés réelles.
 
----
+## 6. Export / Import
 
-## 5. Résumé sécurité
+### Export
+- Produit côté client, en clair, lisible.  
+- Format commun :
 
-- **End-to-end** : le serveur ne voit jamais les données déchiffrées.  
-- **Capability-based** : l’accès dépend uniquement de `module_user_id` + `guard`.  
-- **Pas de lien direct avec user.id** : empêche la corrélation entre données chiffrées et utilisateurs.  
-- **Argon2id** : empêche le brute-force des mots de passe.  
-- **AES-GCM** : assure confidentialité + intégrité des données.  
-- **HMAC (guard)** : suppression/modif sans stockage local, recalcul à la demande.
-- L’import/export n’expose jamais guard, cipher_iv ni payload chiffré ; seul le contenu clair des modules est sérialisé, puis re‑chiffré à l’import.
+```json
+{
+ "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
+ "modules": {
+   "<module>": [ ...payloads clairs... ]
+ }
+}
+```
+* Exporte uniquement les payloads clairs.
+* N’exporte jamais : `id`, `cipher_iv`, `guard`.
 
----
+### Import
 
-## 6. FAQ technique
+* Lit le JSON clair.
+* Pour chaque entrée :
 
-**Que se passe-t-il si l’utilisateur ouvre un autre onglet ou redémarre l’app ?**  
-La `mainKey` est volatile. Elle est dérivée du mot de passe à chaque session via Argon2id et **n’est jamais persistée**. Aucune donnée n’est accessible tant que `mainKey` n’est pas disponible en mémoire.
+  * Chiffre localement avec mainKey → payload + cipher\_iv.
+  * Crée avec `guard:"init"`.
+  * Promote en 2 temps pour recalculer le guard.
 
-**Peut-on précharger les modules automatiquement après connexion ?**  
-Oui. Une fois la `mainKey` dérivée, l’UI peut décrypter `users.modules` et initialiser les modules actifs.
 
----
+## 7. Invariants transverses
 
-## 7. Règles d’accès PocketBase (résumé)
+* **Confidentialité** : tout est chiffré côté client, serveur ignorant.
+* **Intégrité** : toute modification/suppression nécessite un guard correct, donc la mainKey.
+* **Portabilité** : export clair lisible et réimportable.
+* **Homogénéité** : tous les modules (Mood, Goals, Habits, Library, Review) utilisent la même logique.
 
-- **list/view** :  
-  `request.query.sid != ""` **et** `record.module_user_id = request.query.sid`
 
-- **update/delete** :  
-  `request.query.sid != ""` **et** `request.query.d != ""` **et**  
-  `record.module_user_id = request.query.sid` **et** `record.guard = request.query.d`
+## 8. Points d’attention pour les devs
 
-*(En création, le hook autorise `guard="init"` puis le PATCH de promotion avec `?d=init`.)*
-
----
-
-## 8. Glossaire rapide
-
-- `module_user_id` : identifiant secondaire unique par module  
-- `payload` : contenu chiffré  
-- `guard` : preuve HMAC requise pour update/delete (champ hidden côté serveur)  
-- `mainKey` : clé AES propre à l’utilisateur·rice
-
----
-
-## 9. Convention de nommage
-
-- Préfixes d’`id` : `m_` pour Mood, `g_` pour Goals, etc.  
-- Tables PB : `<module>_entries`  
-- Stores frontend : `modulesState`  
-- Clés JSON de `users.modules` = noms de modules dans le code
+* Toujours générer un **IV unique** pour chaque chiffrement.
+* Ne jamais logguer ou stocker en clair les payloads.
+* `guard` doit rester caché : il ne sort jamais du serveur.
+* Les erreurs d’update/delete viennent souvent d’un `guard` incorrect (mauvaise clé, mauvais sid, ou id non trouvé).
+* À l’import, vérifier la version (`meta.version`) pour compatibilité.
