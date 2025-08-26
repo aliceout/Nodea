@@ -1,21 +1,16 @@
 # 🍃 Nodea — Suivi personnel chiffré
 
 **Nodea** est une application web pour suivre sa propre vie, ses envies, ses objectifs, son humeur, ses habitudes ou encore ses lectures.  
-Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : toi seul·e peux les lire, même l’admin n’y a jamais accès.
+Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : seul·e l'utilisateur·ice peux les lire, même l’admin n’y a jamais accès.
 
 ---
 
 ## Principes
 
-- **Confidentialité réelle** : chiffrement de bout en bout, personne d’autre que toi ne peut lire tes écrits.  
-- **Modules complémentaires** :  
-  - **Mood** → journal quotidien (3 positifs, humeur, question, commentaire).  
-  - **Goals** → suivi des objectifs annuels.  
-  - **Habits** → suivi des habitudes (occurrences datées, heatmap).  
-  - **Library** → livres, films, séries, avec fiches de lecture.  
-  - **Review** → bilan annuel complet, inspiré de YearCompass.  
-- **Aucune analyse automatique, aucun tracking, aucun partage** : tu restes propriétaire de tout ce que tu écris.  
-- **Interface minimaliste** : rapide, accessible, pensée pour l’usage personnel et auto-hébergé.  
+- **Confidentialité réelle** : chiffrement de bout en bout, personne d’autre que l'utilisateur·ice ne peut lire les écrits.  
+- **Système modulaire** : Des modules ayant chacun une fonction défini (humeur, lecture, etc), sont activable à la demande
+- **Aucune analyse automatique, aucun tracking, aucun partage** : l'utilisateur·ice reste propriétaire de tout ce qu'iel écrit.  
+- **Interface minimaliste** : rapide, accessible, pensée pour l’usage personnel et auto-hébergable.  
 
  
  ## Stack technique
@@ -24,7 +19,7 @@ Toutes les données sont **chiffrées côté client** avant d’être envoyées 
  - **Backend** : PocketBase auto-hébergé
 - **Chiffrement** :  *(voir [Security.md](documentation/Security.md))*  
    - AES-GCM (WebCrypto), avec dérivation de clé via Argon2.
-   - Tous les contenus sensibles sont chiffrés côté client : positifs, humeur, emoji, question/réponse, commentaire.
+   - Tous les contenus sensibles sont chiffrés côté client, ien ne transite en clair
    - La clé principale est dérivée du mot de passe et stockée chiffrée avec un salt unique. Aucune donnée sensible ne circule ou n’est stockée en clair.
  - **Pas de tracking, pas d’export admin, ni d’API publique.**
  
@@ -48,7 +43,7 @@ Ces modules suivent tous la même structure de base (`<module>_entries`) décrit
  - Le chiffrement utilise l’API WebCrypto en mode AES-GCM.
  - La clé est dérivée via Argon2 à partir du mot de passe utilisateur·ice et d’un salt unique.
  - La clé principale sert à chiffrer/déchiffrer les données du journal. Elle est elle-même stockée chiffrée côté serveur.
- - Même l’admin n’a jamais accès à tes données, même avec un dump complet de la base.
+ - Même l’admin n’a jamais accès aux données, même avec un dump complet de la base.
  - L’export se fait localement en données déchiffrées, à la demande.
  
 Pour les détails (E2E, HMAC *guard*, création en 2 temps, export/import), consulte [Security.md](documentation/Security.md). 
