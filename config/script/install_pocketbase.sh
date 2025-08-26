@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PB_BIN="$ROOT/services/pocketbase/pocketbase"
 mkdir -p "$ROOT/services/pocketbase"
+
+# Lecture de la variable POCKETBASE_DATA_DIR depuis .env si présente
+ENV_PATH="$ROOT/config/.env"
+if [ -f "$ENV_PATH" ]; then
+  set -a; source "$ENV_PATH"; set +a
+fi
+DATA_DIR="${POCKETBASE_DATA_DIR:-data}"
+mkdir -p "$ROOT/$DATA_DIR"
 
 # Détection OS
 UNAME_S="$(uname -s | tr '[:upper:]' '[:lower:]')"

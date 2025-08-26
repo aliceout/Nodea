@@ -1,73 +1,109 @@
-#!/usr/bin/env node
+// Fonction utilitaire pour question/réponse interactive
+function ask(question) {
+  return new Promise((resolve) => rl.question(question, resolve));
+}
+
 import fs from "fs";
 import path from "path";
+
 import "dotenv/config";
 import readline from "readline";
 import promptSync from "prompt-sync";
-
-let PB_URL = process.argv[2] || null;
-if (!PB_URL) {
-  // tiny .env loader (pas de dépendance)
-  try {
-    const envPath = path.resolve(
-      path.dirname(new URL(import.meta.url).pathname),
-      "..",
-      "config",
-      ".env"
-    );
-    const raw = fs.readFileSync(envPath, "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-      if (!m) continue;
-      const k = m[1];
-      let v = m[2].replace(/^['"]|['"]$/g, ""); // strip quotes
-      if (!process.env[k]) process.env[k] = v;
-    }
-    const host = process.env.PB_HOST || "127.0.0.1";
-    const port = process.env.POCKETBASE_PORT || "8090"; // port depuis .env
-    PB_URL = `http://${host}:${port}`;
-  } catch (_) {
-    PB_URL = "http://127.0.0.1:8090";
-  }
-}
-const ROOT = path.resolve(
-  path.dirname(new URL(import.meta.url).pathname),
-  ".."
-);
-const SCHEMA_DIR = path.join(ROOT, "config", "schema");
-const COLLECTIONS_FILE = path.join(SCHEMA_DIR, "collections.json");
-const RULES_FILE = path.join(SCHEMA_DIR, "rules.json");
-
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-const prompt = promptSync({ sigint: true });
-const ask = (q, silent = false) => {
-  // Affichage en clair pour contrôle
-  return new Promise((res) => rl.question(q, (ans) => res(ans)));
-};
 
-async function adminLogin(email, password) {
-  const r = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ identity: email, password }),
-  });
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error(`Auth failed: ${r.status} ${t}`);
-  }
-  return r.json(); // { token, admin }
-}
-
+// Récupère la liste des noms de collections PocketBase
 async function getCollections(token) {
-  const r = await fetch(`${PB_URL}/api/collections`, {
+  const res = await fetch(`${PB_URL}/api/collections`, {
     headers: { Authorization: token },
   });
-  if (!r.ok) throw new Error(`GET collections failed: ${r.status}`);
-  const j = await r.json();
-  return j?.items?.map((c) => c.name) || [];
+  if (!res.ok) {
+    throw new Error(
+      `Get collections failed: ${res.status} ${await res.text()}`
+    );
+  }
+  const data = await res.json();
+  return (data.items || []).map((c) => c.name);
+}
+// Définir PB_URL, COLLECTIONS_FILE et RULES_FILE
+const PB_URL =
+  process.env.PB_URL ||
+  process.env.VITE_PB_URL ||
+  `http://${process.env.PB_HOST || "127.0.0.1"}:${
+    process.env.POCKETBASE_PORT || "8090"
+  }`;
+const COLLECTIONS_FILE = path.resolve("config/schema/collections.json");
+const RULES_FILE = path.resolve("config/schema/rules.json");
+
+console.log(`🔗 PB_URL: ${PB_URL}`);
+
+// Fonction d'authentification admin (POST /api/admins/auth-with-password)
+async function adminLogin(identity, password) {
+  const r = await fetch(
+    `${PB_URL}/api/collections/_superusers/auth-with-password`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ identity, password }),
+    }
+  );
+  if (!r.ok) {
+    throw new Error(`Admin login failed: ${r.status} ${await r.text()}`);
+  }
+  const { token } = await r.json();
+  return { token };
+}
+
+async function main() {
+  await waitForPocketBaseReady(PB_URL);
+  // Utilise les identifiants admin API passés en argument, sinon demande en interactif
+  let identity = process.argv[3];
+  let password = process.argv[4];
+  const prompt = promptSync();
+  if (!identity) identity = await ask("Admin email: ");
+  if (!password) password = prompt("Admin password: ", { echo: "*" });
+
+  const { token } = await adminLogin(identity, password);
+
+  // 1. Créer les collections manquantes (sauf 'users')
+  const collectionsData = JSON.parse(fs.readFileSync(COLLECTIONS_FILE, "utf8"));
+  const existingCollections = await getCollections(token);
+  for (const col of collectionsData) {
+    if (col.name === "users") continue; // Ne jamais créer la collection système
+    if (!existingCollections.includes(col.name)) {
+      console.log(`➕ create collection: ${col.name}`);
+      const res = await fetch(`${PB_URL}/api/collections`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: token,
+        },
+        body: JSON.stringify(col),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`Create ${col.name} failed: ${res.status} ${t}`);
+      }
+    } else {
+      console.log(`✔︎ exists: ${col.name}`);
+    }
+  }
+
+  // 2. Appliquer les rules (y compris pour 'users')
+  if (fs.existsSync(RULES_FILE)) {
+    const rules = JSON.parse(fs.readFileSync(RULES_FILE, "utf8"));
+    for (const [name, rulesObj] of Object.entries(rules)) {
+      console.log(`⚙︎ rules → ${name}`);
+      await patchRules(token, name, rulesObj);
+    }
+  } else {
+    console.log("ℹ️  Aucun rules.json trouvé — étape ignorée.");
+  }
+
+  rl.close();
+  console.log("✅ Schéma appliqué.");
 }
 
 async function createCollection(token, name) {
@@ -135,72 +171,6 @@ async function waitForPocketBaseReady(url, maxTries = 40, delayMs = 250) {
     await new Promise((res) => setTimeout(res, delayMs));
   }
   throw new Error("PocketBase n'est pas prêt après attente.");
-}
-
-async function main() {
-  console.log(`🔗 PocketBase: ${PB_URL}`);
-  await waitForPocketBaseReady(PB_URL);
-  // Vérification directe de la table _superusers en Node.js
-  try {
-    const sqlite3 = (await import("sqlite3")).default;
-    const dbPath = "data/data.db";
-    await new Promise((resolve) => {
-      const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
-        if (err) {
-          console.error(
-            `[WARN] Impossible d'ouvrir la base SQLite : ${err.message}`
-          );
-          resolve();
-        }
-      });
-      db.all("SELECT * FROM _superusers", (err, rows) => {
-        if (err) {
-          console.error(
-            `[WARN] Erreur lors de la lecture de _superusers : ${err.message}`
-          );
-        }
-        db.close();
-        resolve();
-      });
-    });
-  } catch (e) {
-    console.error(`[WARN] Erreur import sqlite3 : ${e.message}`);
-    if (e.stderr) console.error(`[WARN] stderr : ${e.stderr}`);
-  }
-  // Utilise les identifiants admin API passés en argument, sinon demande en interactif
-  let email = process.argv[3];
-  let password = process.argv[4];
-  if (!email) email = await ask("Admin email: ");
-  if (!password) password = await ask("Admin password: ");
-  const { token } = await adminLogin(email, password);
-
-  // collections attendues
-  const wanted = JSON.parse(fs.readFileSync(COLLECTIONS_FILE, "utf8"));
-  const existing = await getCollections(token);
-
-  // création si manquantes
-  for (const name of wanted) {
-    if (!existing.includes(name)) {
-      console.log(`➕ create collection: ${name}`);
-      await createCollection(token, name);
-    } else {
-      console.log(`✔︎ exists: ${name}`);
-    }
-  }
-
-  // appliquer rules si présentes
-  if (fs.existsSync(RULES_FILE)) {
-    const rules = JSON.parse(fs.readFileSync(RULES_FILE, "utf8"));
-    for (const [name, rulesObj] of Object.entries(rules)) {
-      console.log(`⚙︎ rules → ${name}`);
-      await patchRules(token, name, rulesObj);
-    }
-  } else {
-    console.log("ℹ️  Aucun rules.json trouvé — étape ignorée.");
-  }
-
-  rl.close();
-  console.log("✅ Schéma appliqué.");
 }
 
 main().catch((e) => {
