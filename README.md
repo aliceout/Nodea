@@ -101,11 +101,15 @@ Pour les détails (E2E, HMAC *guard*, création en 2 temps, export/import), cons
 
 ## Documentation
 
-- **Vue d’ensemble des modules** : [Modules.md](documentation/Modules.md) :contentReference[oaicite:9]{index=9}  
-- **Structure de la base (PocketBase)** : [Database.md](documentation/Database.md) :contentReference[oaicite:10]{index=10}  
-- **Sécurité (E2E, guard HMAC, 2-temps, export/import)** : [Security.md](documentation/Security.md) :contentReference[oaicite:11]{index=11}  
+- **Vue d’ensemble des modules** : [Modules.md](documentation/Modules.md) 
+- **Structure de la base (PocketBase)** : [Database.md](documentation/Database.md) 
+- **Sécurité (E2E, guard HMAC, 2-temps, export/import)** : [Security.md](documentation/Security.md)
 - **Fiches détaillées** : `documentation/Modules/` →  
-  - [Mood.md](documentation/Modules/Mood.md) · [Goals.md](documentation/Modules/Goals.md) · [Habits.md](documentation/Modules/Habits.md) · [Library.md](documentation/Modules/Library.md) · [Review.md](documentation/Modules/Review.md)
+  - [Mood.md](documentation/Modules/Mood.md)
+  - [Goals.md](documentation/Modules/Goals.md)
+  - [Habits.md](documentation/Modules/Habits.md)
+  - [Library.md](documentation/Modules/Library.md)
+  - [Review.md](documentation/Modules/Review.md)
 
  ---
  
