@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import "dotenv/config";
 import readline from "readline";
+import promptSync from "prompt-sync";
 
 let PB_URL = process.argv[2] || null;
 if (!PB_URL) {
@@ -41,33 +42,11 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-const ask = (q, silent = false) =>
-  new Promise((res) => {
-    if (!silent) return rl.question(q, (ans) => res(ans));
-    // mot de passe masqué
-    const stdin = process.openStdin();
-    process.stdout.write(q);
-    let input = "";
-    const onData = (char) => {
-      char = char + "";
-      switch (char) {
-        case "\n":
-        case "\r":
-        case "\u0004":
-          stdin.removeListener("data", onData);
-          process.stdout.write("\n");
-          res(input);
-          break;
-        case "\u0003":
-          process.exit();
-        default:
-          if (char !== "*") process.stdout.write("*");
-          input += char;
-          break;
-      }
-    };
-    stdin.on("data", onData);
-  });
+const prompt = promptSync({ sigint: true });
+const ask = (q, silent = false) => {
+  // Affichage en clair pour contrôle
+  return new Promise((res) => rl.question(q, (ans) => res(ans)));
+};
 
 async function adminLogin(email, password) {
   const r = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
@@ -161,8 +140,38 @@ async function waitForPocketBaseReady(url, maxTries = 40, delayMs = 250) {
 async function main() {
   console.log(`🔗 PocketBase: ${PB_URL}`);
   await waitForPocketBaseReady(PB_URL);
-  const email = await ask("Admin email: ");
-  const password = await ask("Admin password: ", true);
+  // Vérification directe de la table _superusers en Node.js
+  try {
+    const sqlite3 = (await import("sqlite3")).default;
+    const dbPath = "data/data.db";
+    await new Promise((resolve) => {
+      const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
+        if (err) {
+          console.error(
+            `[WARN] Impossible d'ouvrir la base SQLite : ${err.message}`
+          );
+          resolve();
+        }
+      });
+      db.all("SELECT * FROM _superusers", (err, rows) => {
+        if (err) {
+          console.error(
+            `[WARN] Erreur lors de la lecture de _superusers : ${err.message}`
+          );
+        }
+        db.close();
+        resolve();
+      });
+    });
+  } catch (e) {
+    console.error(`[WARN] Erreur import sqlite3 : ${e.message}`);
+    if (e.stderr) console.error(`[WARN] stderr : ${e.stderr}`);
+  }
+  // Utilise les identifiants admin API passés en argument, sinon demande en interactif
+  let email = process.argv[3];
+  let password = process.argv[4];
+  if (!email) email = await ask("Admin email: ");
+  if (!password) password = await ask("Admin password: ");
   const { token } = await adminLogin(email, password);
 
   // collections attendues
