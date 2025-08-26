@@ -1,10 +1,8 @@
 
- # 🍃 Nodea — Journal positif chiffré
+ # 🍃 Nodea — Suivi personnel chiffré
  
- **Nodea** est une application web pour écrire chaque jour trois points positifs, noter son humeur et répondre à une question originale.  
+ **Nodea** est une application web pour suivre sa propre vie, ses envies, ses objectifs, son humeur, etc
  Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : toi seul·e peux les lire, même l’admin n’y a jamais accès.
- 
-> Note : Nodea ne se limite plus au journal quotidien. L’app inclut aussi **Goals**, **Habits**, **Library** et **Review**, qui partagent la même architecture (E2E côté client  tables `<module>_entries` dans PocketBase). Voir la doc ci-dessous. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2}
  
  ---
  
@@ -21,23 +19,23 @@
  
  - **Frontend** : React, TailwindCSS
  - **Backend** : PocketBase auto-hébergé
--- **Chiffrement** :  
 - **Chiffrement** :  *(voir [Security.md](documentation/Security.md))*  
    - AES-GCM (WebCrypto), avec dérivation de clé via Argon2.
    - Tous les contenus sensibles sont chiffrés côté client : positifs, humeur, emoji, question/réponse, commentaire.
    - La clé principale est dérivée du mot de passe et stockée chiffrée avec un salt unique. Aucune donnée sensible ne circule ou n’est stockée en clair.
- - **Pas de tracking, pas d’export CSV ni d’API publique.**
+ - **Pas de tracking, pas d’export admin, ni d’API publique.**
  
 ---
 
 ## Modules (en plus du journal)
 
+- **Mood** : suivi de positivités journalière
 - **Goals** : objectifs annuels (liste simple, statut)  
 - **Habits** : habitudes  occurrences datées (pour une heatmap locale)  
 - **Library** : œuvres (livres/films/séries)  fiches de lecture datées  
 - **Review** : bilan annuel type YearCompass (parcours guidé)
 
-Ces modules suivent tous la même structure de base (`<module>_entries`) décrite dans [Modules.md](documentation/Modules.md) et [Database.md](documentation/Database.md). :contentReference[oaicite:3]{index=3} :contentReference[oaicite:4]{index=4}
+Ces modules suivent tous la même structure de base (`<module>_entries`) décrite dans [Modules.md](documentation/Modules.md) et [Database.md](documentation/Database.md). 
 
  ---
  
@@ -50,22 +48,8 @@ Ces modules suivent tous la même structure de base (`<module>_entries`) décrit
  - Même l’admin n’a jamais accès à tes données, même avec un dump complet de la base.
  - L’export se fait localement en données déchiffrées, à la demande.
  
-Pour les détails (E2E, HMAC *guard*, création en 2 temps, export/import), consulte [Security.md](documentation/Security.md). :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7}
+Pour les détails (E2E, HMAC *guard*, création en 2 temps, export/import), consulte [Security.md](documentation/Security.md). 
 
- ---
- 
- ## Fonctionnalités
- 
- - **Entrée quotidienne** (3 positifs, humeur, question, commentaire)
- - **Historique** : filtrage, suppression d’entrées
- - **Graphique** : humeur sur 6 mois glissants
- - **Export** : téléchargement de toutes tes données en JSON
- - **Gestion du compte** : email, mot de passe, suppression, export
- - **Admin** : gestion utilisateurs et invitations
- 
-Les modules complémentaires (Goals, Habits, Library, Review) ont chacun leur fiche dédiée dans `documentation/Modules/`. :contentReference[oaicite:8]{index=8}
-
- ---
  
  ## Installation
 
@@ -92,8 +76,6 @@ Les modules complémentaires (Goals, Habits, Library, Review) ont chacun leur fi
    ```bash
    ./pocketbase serve
    ```
-
-
 4. **Configurer l’environnement**
 - Créer un fichier .env à la racine avec :
    ```ini
@@ -104,16 +86,16 @@ Les modules complémentaires (Goals, Habits, Library, Review) ont chacun leur fi
    npm run dev
    ```
 6. **Ouvrir dans ton navigateur**
-
+   ``` url
    http://localhost:5173
-
+   ```
    ---
  ## Sécurité et limites
  
- - **La sécurité dépend de la force de ton mot de passe**.
+ - **La sécurité dépend de la force du mot de passe**.
  - **Perte du mot de passe = perte irrémédiable des données** (aucune récupération possible).
- - **Aucune sauvegarde serveur** : exporte régulièrement tes données si besoin.
- - **Pas d’application mobile native** pour l’instant, mais utilisable sur mobile via navigateur.
+ - **Aucune sauvegarde serveur** : exporter régulièrement tes données si besoin.
+ - **Pas d’application mobile native** mais utilisable sur mobile via navigateur.
  
 ---
 
