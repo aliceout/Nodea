@@ -5,14 +5,66 @@ if ! npm ls dotenv >/dev/null 2>&1; then
 fi
 set -euo pipefail
 
+
 ROOT="$(pwd)"
 PB_BIN="services/pocketbase/pocketbase"
 START="config/script/start_pocketbase.sh"
 
 echo "🍃 Nodea — install"
 
-# 0) Configuration .env (interactif, AVANT tout lancement)
-bash "$ROOT/config/script/setup_env.sh"
+# 0) Choix du mode d'installation
+read -rp "Mode d'installation ? (dev/prod) : " INSTALL_MODE
+INSTALL_MODE=${INSTALL_MODE:-dev}
+
+if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
+  # Mode DEV
+  read -rp "Laisser toutes les options par défaut ? (O/n) : " DEFAULT_OPTIONS
+  DEFAULT_OPTIONS=${DEFAULT_OPTIONS:-O}
+  if [[ "$DEFAULT_OPTIONS" =~ ^[oOyY]$ ]]; then
+    PB_HOST="127.0.0.1"
+    POCKETBASE_PORT="8090"
+    POCKETBASE_DATA_DIR="data"
+  else
+    read -rp "Adresse PocketBase (127.0.0.1 par défaut) : " PB_HOST
+    PB_HOST=${PB_HOST:-127.0.0.1}
+    read -rp "Port PocketBase (8090 par défaut) : " POCKETBASE_PORT
+    POCKETBASE_PORT=${POCKETBASE_PORT:-8090}
+    read -rp "Dossier des données (data par défaut) : " POCKETBASE_DATA_DIR
+    POCKETBASE_DATA_DIR=${POCKETBASE_DATA_DIR:-data}
+  fi
+else
+  # Mode PROD
+  read -rp "URL de PocketBase (ex: https://api.monsite.com) : " PB_URL
+  PB_HOST=$(echo "$PB_URL" | sed -E 's#^https?://([^:/]+).*#\1#')
+  POCKETBASE_PORT=$(echo "$PB_URL" | sed -E 's#^https?://[^:/]+:([0-9]+).*#\1#')
+  if [ -z "$POCKETBASE_PORT" ]; then POCKETBASE_PORT="8090"; fi
+  read -rp "Dossier des données (data par défaut) : " POCKETBASE_DATA_DIR
+  POCKETBASE_DATA_DIR=${POCKETBASE_DATA_DIR:-data}
+
+  # Vérification manuelle puis technique de l'accessibilité
+  read -rp "PocketBase est-il déjà accessible à cette adresse ? (O/n) : " PB_ACCESSIBLE
+  PB_ACCESSIBLE=${PB_ACCESSIBLE:-O}
+  if [[ ! "$PB_ACCESSIBLE" =~ ^[oOyY]$ ]]; then
+    echo "⛔ Veuillez d'abord rendre PocketBase accessible à l'URL indiquée, puis relancez ce script."
+    exit 1
+  fi
+  echo "🔎 Vérification technique de l'accessibilité de PocketBase à l'URL : $PB_URL ..."
+  if ! curl --max-time 5 -s "$PB_URL" >/dev/null; then
+    echo "❌ PocketBase n'est pas accessible à l'adresse $PB_URL."
+    echo "Vérifiez la configuration de nginx ou équivalent, puis relancez ce script."
+    exit 1
+  fi
+  echo "✅ PocketBase est accessible."
+fi
+
+# Export pour la suite
+export PB_HOST POCKETBASE_PORT POCKETBASE_DATA_DIR
+
+
+# 0bis) Configuration .env (interactif, AVANT tout lancement)
+if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
+  bash "$ROOT/config/script/setup_env.sh"
+fi
 
 # 1) Charger .env
 ENV_PATH="config/.env"
