@@ -1,6 +1,5 @@
 {
   "dependencies": {
     "dotenv": "^17.2.1",
-    "prompt-sync": "^4.2.0"
   }
 }
