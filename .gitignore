@@ -32,3 +32,4 @@ export.md
 /config/.superadmin_cache
 /config/.env
 /pb_migrations
+/frontend/eslint.config.js
