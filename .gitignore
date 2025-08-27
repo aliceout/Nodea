@@ -31,3 +31,4 @@ export.md
 /services/pocketbase/*
 /config/.superadmin_cache
 /config/.env
+/pb_migrations
