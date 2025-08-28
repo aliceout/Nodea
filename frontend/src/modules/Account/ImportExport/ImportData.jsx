@@ -3,14 +3,13 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "./registry.data";
 
 export default function ImportData() {
-  const { mainKey } = useStore();                 // Uint8Array
-  const modulesState = useModulesRuntime();         // { mood: { enabled, id:"m_..." }, ... }
+  const { mainKey } = useStore(); // Uint8Array
+  const modulesState = useModulesRuntime(); // { mood: { enabled, id:"m_..." }, ... }
 
   const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id; // compat legacy
   const [success, setSuccess] = useState("");
@@ -28,14 +27,15 @@ export default function ImportData() {
   // Util: récupère le sid d'un module activé
   function getSid(moduleKey) {
     const cfg = modulesState?.[moduleKey];
-    return cfg?.enabled ? (cfg.id || cfg.module_user_id) : null;
+    return cfg?.enabled ? cfg.id || cfg.module_user_id : null;
   }
 
   // --- Import tableau legacy: [ {date, mood_score, ...}, ... ] ---
   // (Compat historique : considéré comme "mood" uniquement)
   async function importLegacyArray(array, inputEl) {
     try {
-      if (!Array.isArray(array)) throw new Error("Format JSON inattendu (array requis).");
+      if (!Array.isArray(array))
+        throw new Error("Format JSON inattendu (array requis).");
       const moduleKey = "mood";
       const moduleSid = getSid(moduleKey);
       if (!moduleSid) throw new Error("Module 'Mood' non configuré.");
@@ -49,7 +49,8 @@ export default function ImportData() {
           : new Set();
 
       const seenInFile = new Set();
-      let created = 0, skipped = 0;
+      let created = 0,
+        skipped = 0;
 
       for (const payload of array) {
         const key =
@@ -74,7 +75,9 @@ export default function ImportData() {
         created++;
       }
 
-      setSuccess(`Import terminé : ${created} ajout(s), ${skipped} doublon(s) ignoré(s).`);
+      setSuccess(
+        `Import terminé : ${created} ajout(s), ${skipped} doublon(s) ignoré(s).`
+      );
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
@@ -105,7 +108,8 @@ export default function ImportData() {
             : new Set();
         const seenInFile = new Set();
 
-        let created = 0, skipped = 0;
+        let created = 0,
+          skipped = 0;
         for (const payload of items) {
           const key =
             typeof plugin.getNaturalKey === "function"
@@ -129,10 +133,14 @@ export default function ImportData() {
           created++;
         }
 
-        results.push(`${moduleKey}: ${created} ajout(s), ${skipped} doublon(s)`);
+        results.push(
+          `${moduleKey}: ${created} ajout(s), ${skipped} doublon(s)`
+        );
       }
 
-      setSuccess(`Import terminé${results.length ? ` (${results.join(" ; ")})` : ""}.`);
+      setSuccess(
+        `Import terminé${results.length ? ` (${results.join(" ; ")})` : ""}.`
+      );
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import : " + (err?.message || ""));
@@ -144,23 +152,35 @@ export default function ImportData() {
   // Accepte soit {module, version, payload}, soit un payload "mood" nu (legacy)
   async function importNdjson(text, inputEl) {
     try {
-      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const lines = text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
 
       // caches par module
-      const pluginCache = new Map();     // moduleKey -> plugin
+      const pluginCache = new Map(); // moduleKey -> plugin
       const existingByModule = new Map(); // moduleKey -> Set(keys)
-      const seenByModule = new Map();     // moduleKey -> Set(keys) dans ce fichier
-      const counters = new Map();         // moduleKey -> {created, skipped}
+      const seenByModule = new Map(); // moduleKey -> Set(keys) dans ce fichier
+      const counters = new Map(); // moduleKey -> {created, skipped}
 
       for (const line of lines) {
         if (!line.startsWith("{")) continue;
 
         let obj;
-        try { obj = JSON.parse(line); } catch { continue; }
+        try {
+          obj = JSON.parse(line);
+        } catch {
+          continue;
+        }
 
         let moduleKey, payload;
 
-        if (obj && typeof obj === "object" && "module" in obj && "payload" in obj) {
+        if (
+          obj &&
+          typeof obj === "object" &&
+          "module" in obj &&
+          "payload" in obj
+        ) {
           moduleKey = obj.module;
           payload = obj.payload;
         } else {
@@ -225,7 +245,9 @@ export default function ImportData() {
       for (const [k, { created, skipped }] of counters.entries()) {
         parts.push(`${k}: ${created} ajout(s), ${skipped} doublon(s)`);
       }
-      setSuccess(`Import terminé${parts.length ? ` (${parts.join(" ; ")})` : ""}.`);
+      setSuccess(
+        `Import terminé${parts.length ? ` (${parts.join(" ; ")})` : ""}.`
+      );
       finish(inputEl);
     } catch (err) {
       setError("Erreur lors de l’import NDJSON : " + (err?.message || ""));
@@ -269,7 +291,16 @@ export default function ImportData() {
   if (!ready) {
     return (
       <section className="p-4">
-        <KeyMissingMessage context="importer des données" />
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 text-center"
+        >
+          <p className="font-medium">Clé de chiffrement absente du cache</p>
+          <p className="mt-1">
+            Connecte-toi à nouveau pour importer des données.
+          </p>
+        </div>
       </section>
     );
   }

@@ -81,7 +81,16 @@ export default function GraphPage() {
   // ── Ordre des retours : d’abord l’absence de clé/module, ensuite loading/erreurs/données
   if (!mainKey)
     return (
-      <KeyMissingMessage context="afficher le graphique" className="m-5" />
+      <div
+        role="alert"
+        aria-live="polite"
+        className="m-5 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 text-center"
+      >
+        <p className="font-medium">Clé de chiffrement absente du cache</p>
+        <p className="mt-1">
+          Connecte-toi à nouveau pour afficher le graphique.
+        </p>
+      </div>
     );
   if (!moduleUserId)
     return (
@@ -96,4 +105,3 @@ export default function GraphPage() {
 }
 
 import GraphChart from "./components/GraphChart";
-import KeyMissingMessage from "../../components/common/KeyMissingMessage";

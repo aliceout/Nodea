@@ -4,7 +4,6 @@ import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
-import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 export default function ExportDataSection() {
   const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)
@@ -78,10 +77,16 @@ export default function ExportDataSection() {
 
   if (!mainKey) {
     return (
-      <KeyMissingMessage
-        label="Exporter mes données"
-        help="Connecte-toi à nouveau pour récupérer la clé de chiffrement."
-      />
+      <div
+        role="alert"
+        aria-live="polite"
+        className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 text-center"
+      >
+        <p className="font-medium">Clé de chiffrement absente du cache</p>
+        <p className="mt-1">
+          Connecte-toi à nouveau pour exporter tes données.
+        </p>
+      </div>
     );
   }
 
