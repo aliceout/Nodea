@@ -4,6 +4,8 @@ import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
+import Button from "../../../components/common/Button";
+import SettingsCard from "../components/SettingsCard";
 
 export default function ExportDataSection() {
   const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)
@@ -77,42 +79,52 @@ export default function ExportDataSection() {
 
   if (!mainKey) {
     return (
-      <div
-        role="alert"
-        aria-live="polite"
-        className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 text-center"
-      >
-        <p className="font-medium">Clé de chiffrement absente du cache</p>
-        <p className="mt-1">
-          Connecte-toi à nouveau pour exporter tes données.
-        </p>
+      <div className="rounded-lg border border-gray-200 p-6 mb-6 bg-white flex flex-col items-stretch">
+        <div className="mb-4 w-full">
+          <div className="text-base font-semibold text-gray-900 mb-1">
+            Exporter mes données
+          </div>
+          <div className="text-sm text-gray-600">
+            Connecte-toi à nouveau pour exporter tes données.
+          </div>
+        </div>
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center mb-2"
+        >
+          <p className="font-medium">Clé de chiffrement absente du cache</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <section>
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center">
-          <button
+    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+      <div className="mb-4 w-full">
+        <div className="text-base font-semibold text-gray-900 mb-1">
+          Exporter mes données
+        </div>
+        <div className="text-sm text-gray-600">
+          Exporte un fichier JSON (non chiffré) des données.
+        </div>
+      </div>
+      <form className="w-full flex flex-col gap-6 items-stretch">
+        <div className="flex flex-col gap-4">
+          <Button
             type="button"
             onClick={handleExport}
             disabled={loading || !sid}
-            className="inline-flex items-center rounded-md bg-nodea-sky-dark px-4 py-2 text-sm font-medium text-white hover:bg-nodea-sky-darker disabled:opacity-50"
+            className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker disabled:opacity-50"
           >
             {loading ? "Chargement…" : "Exporter les données"}
-          </button>
+          </Button>
         </div>
-
-        <p className="text-xs text-slate-500">
-          Exporte un fichier JSON (non chiffré) des données.
-        </p>
-
         {success && (
           <div
             role="status"
             aria-live="polite"
-            className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 w-full text-center"
           >
             {success}
           </div>
@@ -121,17 +133,17 @@ export default function ExportDataSection() {
           <div
             role="alert"
             aria-live="polite"
-            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center"
           >
             {error}
           </div>
         )}
         {!sid && (
-          <div className="text-xs text-amber-700">
+          <div className="text-xs text-amber-700 w-full text-center">
             Module “Mood” non configuré.
           </div>
         )}
-      </div>
-    </section>
+      </form>
+    </SettingsCard>
   );
 }

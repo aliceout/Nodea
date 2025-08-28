@@ -1,6 +1,8 @@
-export default function SettingsCard({ title, children }) {
+export default function SettingsCard({ title, children, className = "" }) {
   return (
-    <section className=" bg-white p-4 sm:p-5 border-b border-gray-300 px-4 sm:px-6 lg:px-8">
+    <section
+      className={`transition-colors border-b rounded-lg border p-6 mb-6 flex flex-col items-stretch ${className}`}
+    >
       {title ? (
         <label className="text-sm font-semibold text-slate-900">{title}</label>
       ) : null}

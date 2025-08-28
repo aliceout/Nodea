@@ -238,7 +238,10 @@ export default function JournalEntryPage() {
             setAnswer={setAnswer}
             loading={loadingQuestion}
           />
-          <Button type="submit" className="w-full md:w-1/2">
+          <Button
+            type="submit"
+            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker "
+          >
             Enregistrer
           </Button>
           {error && <FormError message={error} />}

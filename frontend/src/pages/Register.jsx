@@ -161,7 +161,10 @@ export default function RegisterPage() {
             className="mb-4 w-full"
           />
 
-          <Button type="submit" className="w-full">
+          <Button
+            type="submit"
+            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker "
+          >
             Créer le compte
           </Button>
         </form>

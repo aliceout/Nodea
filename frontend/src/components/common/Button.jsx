@@ -9,11 +9,7 @@ export default function Button({
   return (
     <button
       type={type}
-      className={
-        `w-full bg-nodea-sage text-nodea-sand py-3 rounded hover:bg-nodea-sage-dark hover:text-nodea-sand font-display font-semibold transition ` +
-        className
-      }
-      {...props}
+      className={`min-w-50 w-2/6 text-nodea-sand py-2.5 px-6 rounded hover:text-nodea-sand font-display font-semibold transition text-sm ${className}`}
     >
       {children}
     </button>

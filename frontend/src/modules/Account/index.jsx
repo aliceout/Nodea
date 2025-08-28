@@ -17,30 +17,37 @@ export default function SettingsIndex() {
   }
 
   return (
-    <div className="py-6 flex flex-col gap-4">
-      <SettingsCard title="Changer l’email">
-        <ChangeEmail user={user} />
-      </SettingsCard>
+    <div className="h-full ">
+      <div className="mx-auto max-w-3xl p-6 flex flex-col gap-4">
 
-      <SettingsCard title="Changer le nom d’utilisateur·ice">
-        <ChangeUsername user={user} />
-      </SettingsCard>
 
-      <SettingsCard title="Changer le mot de passe">
-        <ChangePassword user={user} />
-      </SettingsCard>
+        {/* Section infos personnelles */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">
+            Informations personnelles
+          </h2>
+          <div className="flex flex-col gap-2">
+            <ChangeEmail user={user} />
+            <ChangeUsername user={user} />
+            <ChangePassword user={user} />
+          </div>
+        </div>
 
-      <SettingsCard title="Importer des données">
-        <ImportData user={user} />
-      </SettingsCard>
+        {/* Section données */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">Données</h2>
+          <div className="flex flex-col gap-2">
+            <ImportData user={user} />
+            <ExportData user={user} />
+          </div>
+        </div>
 
-      <SettingsCard title="Exporter mes données">
-        <ExportData user={user} />
-      </SettingsCard>
-
-      <SettingsCard title="Supprimer mon compte">
-        <DeleteAccount user={user} />
-      </SettingsCard>
+        {/* Section suppression */}
+        <div>
+          <h2 className="text-lg font-semibold text-rose-700 mb-3">Danger</h2>
+          <DeleteAccount user={user} />
+        </div>
+      </div>
     </div>
   );
 }

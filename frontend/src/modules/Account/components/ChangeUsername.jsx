@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import pb from "../../../services/pocketbase";
+import SettingsCard from "./SettingsCard";
 
 export default function UsernameSection({ user }) {
   const [username, setUsername] = useState(user?.username || "");
@@ -20,52 +21,55 @@ export default function UsernameSection({ user }) {
   };
 
   return (
-    <section>
-      <form onSubmit={handleUsername} className="flex flex-col gap-3">
-        <div>
+    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+      <div className="mb-4 w-full">
+        <div className="text-base font-semibold text-gray-900 mb-1">
+          Changer le nom d’utilisateur·ice
+        </div>
+        <div className="text-sm text-gray-600">
+          Ton identifiant public dans l’appli.
+        </div>
+      </div>
+      <form
+        onSubmit={handleUsername}
+        className="w-full flex flex-col gap-6 items-stretch"
+      >
+        <div className="w-full flex flex-col md:flex-row gap-8 items-stretch justify-between">
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md bg-nodea-sage px-6 py-2 text-sm font-medium text-white hover:bg-nodea-sage-dark whitespace-nowrap md:self-end"
+          >
+            Modifier
+          </button>
           <input
             id="username"
             type="text"
             placeholder="Nouveau nom d’utilisateur"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="mt-1 block w-1/2 rounded-md border-slate-300 shadow-sm focus:border-slate-900 focus:ring-slate-900 text-sm placeholder:text-sm placeholder:text"
+            className="block w-full border-0 border-b-2 border-slate-300 focus:border-slate-500 focus:ring-0 focus:outline-none bg-transparent text-sm placeholder:text-sm transition-colors"
             required
           />
-          <p className="mt-1 text-xs text-slate-500">
-            Ton identifiant public dans l’appli.
-          </p>
         </div>
-
         {usernameSuccess && (
           <div
             role="status"
             aria-live="polite"
-            className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700"
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 w-full text-center"
           >
             {usernameSuccess}
           </div>
         )}
-
         {usernameError && (
           <div
             role="alert"
             aria-live="polite"
-            className="rounded-md border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700"
+            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center"
           >
             {usernameError}
           </div>
         )}
-
-        <div className="flex items-center">
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-nodea-sage px-4 py-2 text-sm font-medium text-white hover:bg-nodea-sage-dark"
-          >
-            Modifier
-          </button>
-        </div>
       </form>
-    </section>
+    </SettingsCard>
   );
 }

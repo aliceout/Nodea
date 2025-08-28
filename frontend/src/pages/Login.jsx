@@ -74,7 +74,12 @@ export default function LoginPage() {
             placeholder="Mot de passe"
             required
           />
-          <Button type="submit">Se connecter</Button>
+          <Button
+            type="submit"
+            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker "
+          >
+            Se connecter
+          </Button>
           {error && <FormError message={error} />}
         </form>
         <div className="mt-6 text-center w-full">
