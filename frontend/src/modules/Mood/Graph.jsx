@@ -1,8 +1,8 @@
 // src/modules/Mood/Graph.jsx
 import React, { useEffect, useState } from "react";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptAESGCM } from "@/services/webcrypto";
+import { decryptWithRetry } from "@/services/decryptWithRetry";
 import { listMoodEntries } from "./data/moodEntries";
 
 export default function GraphPage() {
@@ -10,7 +10,7 @@ export default function GraphPage() {
   const [loading, setLoading] = useState(true); // démarre à true
   const [error, setError] = useState("");
 
-  const { mainKey } = useMainKey();
+  const { mainKey, markMissing } = useStore();
   const modules = useModulesRuntime();
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
@@ -33,10 +33,11 @@ export default function GraphPage() {
         const rows = [];
         for (const r of items) {
           try {
-            const plaintext = await decryptAESGCM(
-              { iv: r.cipher_iv, data: r.payload },
-              mainKey
-            );
+            const plaintext = await decryptWithRetry({
+              encrypted: { iv: r.cipher_iv, data: r.payload },
+              key: mainKey,
+              markMissing,
+            });
             const obj = JSON.parse(plaintext || "{}");
 
             const d =

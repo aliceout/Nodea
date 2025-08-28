@@ -4,7 +4,7 @@ import pb from "@/services/pocketbase";
 import questions from "@/data/questions.json";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { encryptAESGCM } from "@/services/webcrypto";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 
 // --- Helpers HMAC (dérivation du guard) ---
 const te = new TextEncoder();
@@ -49,7 +49,7 @@ export default function JournalEntryPage() {
   const [randomQuestion, setRandomQuestion] = useState("");
   const [loadingQuestion, setLoadingQuestion] = useState(true);
 
-  const { mainKey } = useMainKey(); // attendu: bytes (pas CryptoKey)
+  const { mainKey } = useStore(); // attendu: bytes (pas CryptoKey)
   const modules = useModulesRuntime();
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 

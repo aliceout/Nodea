@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import pb from "../services/pocketbase";
-import { useMainKey } from "../hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 import {
   deriveKeyArgon2,
   encryptAESGCM,
@@ -13,7 +13,7 @@ export default function ChangePasswordPage() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const { setMainKey } = useMainKey();
+  const { dispatch } = useStore();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -81,7 +81,7 @@ export default function ChangePasswordPage() {
         oldPassword: oldPassword,
       });
 
-      setMainKey(decryptedMainKey);
+  dispatch({ type: "key/set", payload: decryptedMainKey });
       setSuccess("Mot de passe changé avec succès.");
       // Optionnel : rediriger après succès
       // navigate("/journal");

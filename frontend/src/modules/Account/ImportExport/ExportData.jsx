@@ -1,13 +1,13 @@
 // src/modules/Account/ImportExport/ExportData.jsx
 import React, { useState } from "react";
 import pb from "@/services/pocketbase";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptAESGCM } from "@/services/webcrypto";
+import { decryptWithRetry } from "@/services/decryptWithRetry";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
 export default function ExportDataSection() {
-  const { mainKey } = useMainKey(); // clé binaire (Uint8Array)
+  const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)
   const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
   const sid = modules?.mood?.id || modules?.mood?.module_user_id;
 
@@ -37,10 +37,11 @@ export default function ExportDataSection() {
 
       const plain = await Promise.all(
         items.map(async (rec) => {
-          const txt = await decryptAESGCM(
-            { iv: rec.cipher_iv, data: rec.payload },
-            mainKey
-          );
+          const txt = await decryptWithRetry({
+            encrypted: { iv: rec.cipher_iv, data: rec.payload },
+            key: mainKey,
+            markMissing,
+          });
           return JSON.parse(txt || "{}");
         })
       );

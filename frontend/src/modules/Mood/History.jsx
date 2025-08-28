@@ -2,8 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { listMoodEntries, deleteMoodEntry } from "./data/moodEntries";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { useMainKey } from "@/hooks/useMainKey";
-import { decryptAESGCM } from "@/services/webcrypto";
+import { useStore } from "@/store/StoreProvider";
+import { decryptWithRetry } from "@/services/decryptWithRetry";
 import FormError from "@/components/common/FormError";
 
 // --- Helpers HMAC (dérivation du guard) ---
@@ -35,7 +35,7 @@ async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
 }
 
 export default function MoodHistory() {
-  const { mainKey } = useMainKey(); // attendu: bytes (pas CryptoKey)
+  const { mainKey, markMissing } = useStore(); // attendu: bytes (pas CryptoKey)
   const modules = useModulesRuntime();
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
@@ -71,10 +71,11 @@ export default function MoodHistory() {
         const parsed = await Promise.all(
           items.map(async (r) => {
             try {
-              const plaintext = await decryptAESGCM(
-                { iv: r.cipher_iv, data: r.payload },
-                mainKey
-              );
+              const plaintext = await decryptWithRetry({
+                encrypted: { iv: r.cipher_iv, data: r.payload },
+                key: mainKey,
+                markMissing,
+              });
               const obj = JSON.parse(plaintext || "{}");
               return {
                 id: r.id,

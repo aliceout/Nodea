@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "@/store/StoreProvider";
 import { setTab } from "@/store/actions";
 import pb from "@/services/pocketbase";
-import { useMainKey } from "@/hooks/useMainKey";
 import { deriveKeyArgon2 } from "@/services/webcrypto";
 import Logo from "../components/common/LogoLong.jsx";
 import Button from "../components/common/Button";
@@ -14,10 +13,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { setMainKey } = useMainKey();
+  const { dispatch } = useStore();
   const navigate = useNavigate();
-  const store = useStore();
-  const dispatch = store?.dispatch ?? store?.[1];
+  // ...existing code...
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +39,8 @@ export default function LoginPage() {
       const mainKeyBytes = await deriveKeyArgon2(password, salt);
 
       // 4) Place la clé brute (32 octets) dans le contexte (mémoire uniquement)
-      setMainKey(mainKeyBytes);
+      dispatch({ type: "key/set", payload: mainKeyBytes });
+      dispatch({ type: "key/status", payload: "ready" });
 
       // 5) Navigate
       dispatch(setTab("home"));

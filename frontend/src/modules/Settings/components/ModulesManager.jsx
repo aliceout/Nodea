@@ -9,13 +9,13 @@ import {
 } from "@/services/modules-config";
 import { generateModuleUserId, makeGuard } from "@/services/crypto-utils";
 import pb from "@/services/pocketbase";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 
 // ⬇️ nouvel import
 import { setModulesState } from "@/store/modulesRuntime";
 
 export default function ModulesManager() {
-  const { mainKey } = useMainKey();
+  const { mainKey } = useStore();
   const [loading, setLoading] = useState(true);
   const [cfg, setCfg] = useState({});
   const [busy, setBusy] = useState(null);

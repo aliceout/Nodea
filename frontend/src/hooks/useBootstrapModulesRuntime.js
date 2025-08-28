@@ -3,14 +3,14 @@ import { useEffect } from "react";
 import pb from "@/services/pocketbase";
 import { loadModulesConfig } from "@/services/modules-config";
 import { setModulesState } from "@/store/modulesRuntime";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 
 /**
  * Monte la config modules déchiffrée dans le store runtime
  * dès que l'utilisateur est connecté et que mainKey est dispo.
  */
 export default function useBootstrapModulesRuntime() {
-  const { mainKey } = useMainKey();
+  const { mainKey } = useStore();
 
   useEffect(() => {
     let cancelled = false;

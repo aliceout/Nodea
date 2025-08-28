@@ -1,7 +1,7 @@
 // src/modules/Account/ImportExport/ImportData.jsx
 import React, { useState } from "react";
 import pb from "@/services/pocketbase";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 
@@ -9,7 +9,7 @@ import KeyMissingMessage from "@/components/common/KeyMissingMessage";
 import { getDataPlugin } from "./registry.data";
 
 export default function ImportData() {
-  const { mainKey } = useMainKey();                 // Uint8Array
+  const { mainKey } = useStore();                 // Uint8Array
   const modulesState = useModulesRuntime();         // { mood: { enabled, id:"m_..." }, ... }
 
   const sidMood = modulesState?.mood?.id || modulesState?.mood?.module_user_id; // compat legacy
