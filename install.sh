@@ -92,18 +92,7 @@ fi
 
   if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
     # Mode DEV
-    read -rp "Laisser toutes les options par défaut ? (O/n) : " DEFAULT_OPTIONS
-    DEFAULT_OPTIONS=${DEFAULT_OPTIONS:-O}
-    PB_URL_ORIG="$PB_URL"
-    PB_HOST=$(echo "$PB_URL_ORIG" | sed -E 's#^https?://([^:/]+).*#\1#')
-    PB_PORT_EXTRACT=$(echo "$PB_URL_ORIG" | sed -nE 's#^https?://[^:/]+:([0-9]+).*#\1#p')
-    if [ -z "$PB_PORT_EXTRACT" ]; then POCKETBASE_PORT="8090"; fi
-    POCKETBASE_PORT="$PB_PORT_EXTRACT"
-      read -rp "Port PocketBase (8090 par défaut) : " POCKETBASE_PORT
-      POCKETBASE_PORT=${POCKETBASE_PORT:-8090}
-      read -rp "Dossier des données (data par défaut) : " POCKETBASE_DATA_DIR
-      POCKETBASE_DATA_DIR=${POCKETBASE_DATA_DIR:-data}
-    fi
+  # Doublon supprimé, rien à faire ici
 
 # Construction de PB_URL selon le mode
 if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
