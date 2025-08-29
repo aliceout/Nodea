@@ -18,6 +18,7 @@ export default function Admin() {
   const [copySuccess, setCopySuccess] = useState("");
   const [lastCode, setLastCode] = useState("");
 
+  // Chargement des utilisateurs
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
@@ -37,6 +38,7 @@ export default function Admin() {
     fetchUsers();
   }, []);
 
+  // Chargement des codes d'invitation
   useEffect(() => {
     const fetchCodes = async () => {
       try {
@@ -49,6 +51,16 @@ export default function Admin() {
     };
     fetchCodes();
   }, [generating, lastCode]);
+
+  // Suppression d'un code d'invitation
+  const handleDeleteInviteCode = async (codeId) => {
+    try {
+      await pb.collection("invites_codes").delete(codeId);
+      setInviteCodes(inviteCodes.filter((c) => c.id !== codeId));
+    } catch (err) {
+      alert("Erreur suppression code : " + (err?.message || ""));
+    }
+  };
 
   // Suppression user + ses entrées journal
   const handleDelete = async (userId) => {
@@ -125,7 +137,6 @@ export default function Admin() {
 
   return (
     <div className="h-full">
-
       <Subheader />
       <div className="mx-auto max-w-3xl p-6 flex flex-col gap-8">
         <section>
@@ -149,6 +160,7 @@ export default function Admin() {
             onGenerate={handleGenerateCode}
             copySuccess={copySuccess}
             onCopy={handleCopy}
+            onDelete={handleDeleteInviteCode}
           />
         </section>
       </div>
