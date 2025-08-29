@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function Layout() {
   useBootstrapModulesRuntime();
   const { state, keyStatus, logout } = useStore();
@@ -5,10 +7,33 @@ export default function Layout() {
   const ActiveView = useMemo(() => {
     return nav.find((t) => t.id === current)?.element ?? null;
   }, [current]);
+  const modulesRuntime = useModulesRuntime();
+  const enabled = enabledModules(modulesRuntime);
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    // Ajoute un délai pour éviter le flash de la modale au login
+    let timer = setTimeout(() => setReady(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (!ready) return;
+    if (enabled.length === 0) setShowOnboarding(true);
+    // Ne pas fermer la modale automatiquement si un module est activé
+    // La fermeture se fait uniquement sur le bouton "Continuer" dans la modale
+  }, [enabled.length, ready]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex ">
       {keyStatus === "missing" && <KeyMissingModal onLogout={logout} />}
+      {keyStatus !== "missing" && showOnboarding && ready && (
+        <ModulesOnboardingModal
+          open={true}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Header />
@@ -19,6 +44,8 @@ export default function Layout() {
 }
 
 import KeyMissingModal from "@/components/common/KeyMissingModal";
+import ModulesOnboardingModal from "@/components/common/ModulesOnboardingModal";
+import { useModulesRuntime, enabledModules } from "@/store/modulesRuntime";
 import { nav } from "./Navigation";
 import { useMemo } from "react";
 import { selectCurrentTab } from "@/store/selectors";
