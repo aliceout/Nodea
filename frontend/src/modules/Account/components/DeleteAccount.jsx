@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { MODULES } from "@/config/modules_list";
 import { loadModulesConfig } from "@/services/modules-config";
-import { deriveGuard } from "@/modules/Mood/data/moodEntries";
+import { deleteAllMoodEntries } from "@/modules/Mood/data/deleteAllMoodEntries";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/common/Button";
 import SettingsCard from "@/components/common/SettingsCard";
@@ -73,6 +73,11 @@ export default function DeleteAccountSection({ user }) {
             }
           }
         }
+      }
+      // Suppression spécifique pour Mood
+      const moodEntry = moduleConfig["mood"];
+      if (moodEntry && moodEntry.module_user_id) {
+        await deleteAllMoodEntries(moodEntry.module_user_id, window.mainKey);
       }
       // 3. Supprimer l'utilisateur
       await pb.collection("users").delete(user.id);
