@@ -159,21 +159,27 @@ fi
 fi
 
 # 6) Import des collections et des règles PocketBase
-SCHEMA_DIR="config/schema"
-COLLECTIONS_FILE="$SCHEMA_DIR/collections.json"
-RULES_FILE="$SCHEMA_DIR/rules.json"
-echo "⏳ Import des collections ($COLLECTIONS_FILE) et des règles ($RULES_FILE) PocketBase..."
-set +e
-node "config/script/apply_schema.mjs" "$PB_URL" "$SUPERUSER_EMAIL" "$SUPERUSER_PASS"
-IMPORT_EXIT=$?
-set -e
-if [ $IMPORT_EXIT -eq 0 ]; then
-  echo "✅ Import réussi : les collections ($COLLECTIONS_FILE) et règles ($RULES_FILE) PocketBase ont été appliquées."
-  echo "🏁 Import terminée."
+read -rp "Importer les collections et règles PocketBase ? (O/n) : " DO_IMPORT
+DO_IMPORT=${DO_IMPORT:-O}
+if [[ "$DO_IMPORT" =~ ^[oOyY]$ ]]; then
+  SCHEMA_DIR="config/schema"
+  COLLECTIONS_FILE="$SCHEMA_DIR/collections.json"
+  RULES_FILE="$SCHEMA_DIR/rules.json"
+  echo "⏳ Import des collections ($COLLECTIONS_FILE) et des règles ($RULES_FILE) PocketBase..."
+  set +e
+  node "config/script/apply_schema.mjs" "$PB_URL" "$SUPERUSER_EMAIL" "$SUPERUSER_PASS"
+  IMPORT_EXIT=$?
+  set -e
+  if [ $IMPORT_EXIT -eq 0 ]; then
+    echo "✅ Import réussi : les collections ($COLLECTIONS_FILE) et règles ($RULES_FILE) PocketBase ont été appliquées."
+    echo "🏁 Import terminée."
+  else
+    echo "❌ Échec de l'authentification ou de l'import des collections/règles PocketBase."
+    echo "Fichiers utilisés :"
+    echo "  - Collections : $COLLECTIONS_FILE"
+    echo "  - Règles      : $RULES_FILE"
+    echo "Vérifiez l'email et le mot de passe du superuser, ou la validité des fichiers de schéma."
+  fi
 else
-  echo "❌ Échec de l'authentification ou de l'import des collections/règles PocketBase."
-  echo "Fichiers utilisés :"
-  echo "  - Collections : $COLLECTIONS_FILE"
-  echo "  - Règles      : $RULES_FILE"
-  echo "Vérifiez l'email et le mot de passe du superuser, ou la validité des fichiers de schéma."
+  echo "⏩ Import des collections/règles PocketBase ignoré."
 fi
