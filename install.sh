@@ -156,6 +156,7 @@ else
   cat /tmp/check_superadmin.log
   # On ne stoppe pas sur erreur, on continue
 fi
+fi
 
 # 6) Import des collections et des règles PocketBase
 SCHEMA_DIR="config/schema"
