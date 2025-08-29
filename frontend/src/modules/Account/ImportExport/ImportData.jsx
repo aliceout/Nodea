@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import SettingsCard from "../components/SettingsCard";
+import SettingsCard from "@/components/common/SettingsCard";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "./registry.data";

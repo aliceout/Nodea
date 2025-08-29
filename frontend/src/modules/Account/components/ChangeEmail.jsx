@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import pb from "../../../services/pocketbase";
+import pb from "@/services/pocketbase";
 import { useNavigate } from "react-router-dom";
 
-import SettingsCard from "./SettingsCard";
+import SettingsCard from "@/components/common/SettingsCard";
 
 export default function EmailSection({ user }) {
   const [newEmail, setNewEmail] = useState("");

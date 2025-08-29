@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import pb from "../../../services/pocketbase";
-import SettingsCard from "./SettingsCard";
+import pb from "@/services/pocketbase";
+import SettingsCard from "@/components/common/SettingsCard";
 
 export default function UsernameSection({ user }) {
   const [username, setUsername] = useState(user?.username || "");

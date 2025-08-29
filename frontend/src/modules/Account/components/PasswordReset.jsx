@@ -1,8 +1,8 @@
 // src/modules/Settings/Account/PasswordReset.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import Button from "../../../components/common/Button";
-import SettingsCard from "./SettingsCard";
+import Button from "@/components/common/Button";
+import SettingsCard from "@/components/common/SettingsCard";
 
 export default function PasswordResetSection() {
   const navigate = useNavigate();

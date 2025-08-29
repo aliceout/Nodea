@@ -4,8 +4,8 @@ import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
-import Button from "../../../components/common/Button";
-import SettingsCard from "../components/SettingsCard";
+import Button from "@/components/common/Button";
+import SettingsCard from "@/components/common/SettingsCard";
 
 export default function ExportDataSection() {
   const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)

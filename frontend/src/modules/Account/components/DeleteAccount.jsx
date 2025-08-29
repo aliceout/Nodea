@@ -1,9 +1,9 @@
 // src/modules/Settings/Account/DeleteAccount.jsx
 import React, { useState } from "react";
-import pb from "../../../services/pocketbase";
+import pb from "@/services/pocketbase";
 import { useNavigate } from "react-router-dom";
-import Button from "../../../components/common/Button";
-import SettingsCard from "../components/SettingsCard";
+import Button from "@/components/common/Button";
+import SettingsCard from "@/components/common/SettingsCard";
 
 export default function DeleteAccountSection({ user }) {
   const [deleteError, setDeleteError] = useState("");
