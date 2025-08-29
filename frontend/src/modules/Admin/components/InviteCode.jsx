@@ -8,15 +8,15 @@ export default function InviteCodeManager({
   onCopy,
 }) {
   return (
-    <div className="mt-8 px-12">
-      <div className="flex gap-3 items-center justify-center">
-        <button
+    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+      <div className="flex gap-3 items-center justify-start">
+        <Button
           onClick={onGenerate}
-          className="bg-sky-700 text-white px-4 py-2 rounded hover:bg-sky-800"
+          className="bg-nodea-sky-dark text-white px-4 py-2 rounded hover:bg-nodea-sky-darker"
           disabled={generating}
         >
-          {generating ? "Génération..." : "Générer un code d’invitation"}
-        </button>
+          {generating ? "Génération..." : "Générer un code"}
+        </Button>
       </div>
       {copySuccess && (
         <div className="mt-2 text-green-600 font-medium">{copySuccess}</div>
@@ -42,6 +42,9 @@ export default function InviteCodeManager({
           </ul>
         </div>
       )}
-    </div>
+    </SettingsCard>
   );
 }
+
+import Button from "@/components/common/Button";
+import SettingsCard from "@/components/common/SettingsCard";

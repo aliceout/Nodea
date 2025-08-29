@@ -2,13 +2,13 @@ import React from "react";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
   return (
-    <div className="rounded-lg overflow-hidden border border-gray-50">
+    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
       <table className="w-full table-auto">
         <thead>
           <tr>
             <th className="px-3 py-3 text-left">Username</th>
             <th className="px-3 py-3 text-left hidden md:table-cell">Rôle</th>
-            <th className="px-3 py-3">Supprimer</th>
+            <th className="px-3 py-3">Supprimer compte</th>
           </tr>
         </thead>
         <tbody>
@@ -21,9 +21,9 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
             >
               <td className="px-3 py-3 font-medium">{user.username}</td>
               <td className="px-3 py-3 hidden md:table-cell">{user.role}</td>
-              <td className="px-3 py-3">
+              <td className="px-3 py-3 text-center">
                 <button
-                  className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 text-sm"
+                  className=" text-red-600 hover:text-red-700 px-3 py-1 rounded text-sm"
                   onClick={() => onDelete(user.id)}
                 >
                   Supprimer
@@ -33,6 +33,8 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </SettingsCard>
   );
 }
+
+import SettingsCard from "@/components/common/SettingsCard";
