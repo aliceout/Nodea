@@ -52,6 +52,12 @@ if [ "$OS" = "windows" ]; then
   if [ ! -f "$ROOT/services/pocketbase/pocketbase.exe" ]; then
     echo "❌ Erreur: pocketbase.exe non trouvé après extraction."
     exit 1
+    fi
+  else
+    if [ ! -f "$ROOT/services/pocketbase/pocketbase" ]; then
+      echo "❌ Erreur: pocketbase non trouvé après extraction."
+      exit 1
+    fi
   fi
 else
   chmod +x "$PB_BIN"
@@ -60,14 +66,16 @@ fi
   PB_SIZE=$(stat -c %s "$ROOT/services/pocketbase/pocketbase.exe" 2>/dev/null || wc -c < "$ROOT/services/pocketbase/pocketbase.exe")
   if [ "$PB_SIZE" -lt 100000 ]; then
     echo "❌ Erreur: le fichier pocketbase.exe est trop petit ($PB_SIZE octets)."
-    echo "--- Début du fichier téléchargé ---"
-    head -20 "$ROOT/services/pocketbase/pocketbase.exe"
-    echo "-----------------------------------"
-    echo "Vérifie l'URL ou ta connexion réseau."
-    exit 1
+      echo "❌ Erreur: le fichier $(basename "$PB_BIN_CHECK") est trop petit ($PB_SIZE octets)."
+      exit 1
   fi
-  chmod +x "$ROOT/services/pocketbase/pocketbase.exe"
-  echo "✅ PocketBase téléchargé et installé à $ROOT/services/pocketbase/pocketbase.exe"
+    if [ "$OS" = "windows" ]; then
+      chmod +x "$ROOT/services/pocketbase/pocketbase.exe"
+      echo "✅ PocketBase téléchargé et installé à $ROOT/services/pocketbase/pocketbase.exe"
+    else
+      chmod +x "$PB_BIN"
+      echo "✅ PocketBase téléchargé et installé à $PB_BIN"
+    fi
 else
   PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/$PB_LATEST/pocketbase_${OS}_${ARCH}${EXT}.zip"
   TMP_ZIP="$ROOT/services/pocketbase/pb_dl.zip"
