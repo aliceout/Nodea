@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState } from "react";
 import pb from "@/services/pocketbase";
 import UserTable from "./components/UserTable";
 import InviteCodeManager from "./components/InviteCode";
+import Subheader from "@/components/layout/Subheader";
 
 export default function Admin() {
   const user = pb.authStore.model;
@@ -112,32 +112,46 @@ export default function Admin() {
     try {
       await navigator.clipboard.writeText(code);
       setCopySuccess(`Code copié : ${code}`);
-  setTimeout(() => setCopySuccess(""), 2000);
+      setTimeout(() => setCopySuccess(""), 2000);
     } catch {
       setCopySuccess("Erreur lors de la copie");
     }
   };
 
-  if (loading) return <div className="p-8">Chargement...</div>;
-  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (loading)
+    return <div className="py-12 text-center text-gray-500">Chargement...</div>;
+  if (error)
+    return <div className="py-12 text-center text-red-500">{error}</div>;
 
   return (
-    <>
-      <h1 className="text-2xl font-bold mt-10 mb-6">
-        Gestion des utilisateur·ice·s
-      </h1>
-      <UserTable
-        users={users}
-        onDelete={handleDelete}
-        onResetPassword={handleResetPassword}
-      />
-      <InviteCodeManager
-        inviteCodes={inviteCodes}
-        generating={generating}
-        onGenerate={handleGenerateCode}
-        copySuccess={copySuccess}
-        onCopy={handleCopy}
-      />
-    </>
+    <div className="h-full">
+
+      <Subheader />
+      <div className="mx-auto max-w-3xl p-6 flex flex-col gap-8">
+        <section>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+            Utilisateurs
+          </h2>
+          <UserTable
+            users={users}
+            onDelete={handleDelete}
+            onResetPassword={handleResetPassword}
+          />
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+            Codes d’invitation
+          </h2>
+          <InviteCodeManager
+            inviteCodes={inviteCodes}
+            generating={generating}
+            onGenerate={handleGenerateCode}
+            copySuccess={copySuccess}
+            onCopy={handleCopy}
+          />
+        </section>
+      </div>
+    </div>
   );
 }
