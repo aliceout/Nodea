@@ -200,7 +200,7 @@ export default function JournalEntryPage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="border rounded p-2 w-full"
+              className="border border-gray-400 hover:border-gray-500 rounded p-2 w-full"
             />
           </div>
         </div>

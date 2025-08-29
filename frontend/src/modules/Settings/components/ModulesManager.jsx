@@ -129,7 +129,7 @@ export default function ModulesManager() {
             key={m.id}
             className="flex items-start justify-between rounded-lg border border-gray-200 p-4"
           >
-            <div className="pr-4">
+            <div className="pr-4 text-left">
               <div className="text-sm font-medium text-gray-900">{m.label}</div>
               {m.description ? (
                 <div className="mt-1 text-sm text-gray-600">{m.description}</div>

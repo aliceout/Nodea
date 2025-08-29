@@ -6,7 +6,7 @@ import Button from "@/components/common/Button";
 // Modale bloquante, focus-trap, backdrop, fermeture uniquement via logout
 export default function KeyMissingModal({ onLogout, open = true }) {
   return (
-    <Modal open={open} disableClose backdropClass="bg-nodea-slate/50 backdrop-blur-xs" className="bg-white/40">
+    <Modal open={open} disableClose backdropClass="bg-nodea-slate/40 backdrop-blur-xs" className="bg-white">
       <h2 className="text-xl font-bold mb-4">Clé de chiffrement manquante</h2>
       <p className="mb-6">
         La clé de chiffrement n’est plus disponible<br />

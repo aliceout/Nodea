@@ -3,7 +3,7 @@ import Modal from "@/components/common/Modal";
 import ModulesManager from "@/modules/Settings/components/ModulesManager";
 import { useModulesRuntime, enabledModules } from "@/store/modulesRuntime";
 
-export default function ModulesOnboardingModal({ open, onClose }) {
+export default function OnboardingModal({ open, onClose }) {
   const modulesRuntime = useModulesRuntime();
   const enabled = enabledModules(modulesRuntime);
 

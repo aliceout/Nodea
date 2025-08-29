@@ -20,21 +20,19 @@ export default function Layout() {
 
   React.useEffect(() => {
     if (!ready) return;
-    // Attendre que la clé soit présente avant de vérifier les modules activés
     if (!mainKey) return;
-    if (enabled.length === 0) setShowOnboarding(true);
+    // Attendre que le store modules soit peuplé (au moins une clé)
+    const modulesLoaded = Object.keys(modulesRuntime).length > 0;
+    if (modulesLoaded && enabled.length === 0) setShowOnboarding(true);
     // Ne pas fermer la modale automatiquement si un module est activé
     // La fermeture se fait uniquement sur le bouton "Continuer" dans la modale
-  }, [enabled.length, ready, mainKey]);
+  }, [enabled.length, ready, mainKey, modulesRuntime]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex ">
       {keyStatus === "missing" && <KeyMissingModal onLogout={logout} />}
       {keyStatus !== "missing" && showOnboarding && ready && (
-        <ModulesOnboardingModal
-          open={true}
-          onClose={() => setShowOnboarding(false)}
-        />
+        <OnboardingModal open={true} onClose={() => setShowOnboarding(false)} />
       )}
       <Sidebar />
       <div className="flex flex-col flex-1">
@@ -46,7 +44,7 @@ export default function Layout() {
 }
 
 import KeyMissingModal from "@/components/shared/KeyMissingModal";
-import ModulesOnboardingModal from "@/components/shared/ModulesOnboardingModal";
+import OnboardingModal from "@/components/shared/OnboardingModal";
 import { useModulesRuntime, enabledModules } from "@/store/modulesRuntime";
 import { nav } from "./Navigation";
 import { useMemo } from "react";

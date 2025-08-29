@@ -17,7 +17,7 @@ export default function JournalMood({
           <span>Résumé</span>
           <button
             type="button"
-            className="text-2xl border rounded h-10 w-10 flex items-center justify-center"
+            className="text-2xl border rounded border-gray-400 hover:border-gray-500 h-10 w-10 flex items-center justify-center"
             ref={emojiBtnRef}
             onClick={() => setShowPicker(!showPicker)}
             style={{ lineHeight: 1 }}
@@ -43,7 +43,7 @@ export default function JournalMood({
           <select
             value={moodScore}
             onChange={(e) => setMoodScore(Number(e.target.value))}
-            className="p-1 h-10 border rounded text-base"
+            className="p-1 h-10 border border-gray-400 hover:border-gray-500 rounded text-base"
             required
           >
             <option value="" disabled>

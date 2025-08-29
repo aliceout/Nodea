@@ -167,7 +167,7 @@ export default function MoodHistory() {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-6">
+    <div className="w-full px-10 mx-auto py-6">
       <h1 className="text-2xl font-bold mb-4">Historique</h1>
 
       {error ? <FormError message={error} /> : null}

@@ -1,3 +1,4 @@
+import Textarea from "@/components/common/Textarea";
 export default function JournalQuestion({
   question,
   answer,
@@ -10,10 +11,10 @@ export default function JournalQuestion({
       <div className="mb-2 italic text-gray-800 text-sm">
         {loading ? <span className="opacity-50">Chargement…</span> : question}
       </div>
-      <textarea
+      <Textarea
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
-        className="w-full mb-0 p-3 border rounded min-h-18 resize-none align-top"
+        className="mb-0"
         rows={2}
         placeholder="Réponse optionnelle"
         disabled={loading}
