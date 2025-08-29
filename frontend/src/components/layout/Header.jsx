@@ -65,5 +65,5 @@ export default function Header() {
 }
 
 import HeaderNav from "./components/HeaderNav";
-import Logo from "../LogoLong.jsx";
+import Logo from "@/components/shared/LogoLong.jsx";
 import UserMenu from "./components/UserMenu.jsx";

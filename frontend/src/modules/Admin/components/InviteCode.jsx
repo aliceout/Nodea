@@ -94,5 +94,5 @@ export default function InviteCodeManager({
   );
 }
 
-import Button from "@/components/generic/Button";
-import SettingsCard from "@/components/common/SettingsCard";
+import Button from "@/components/common/Button";
+import SettingsCard from "@/components/shared/SettingsCard";

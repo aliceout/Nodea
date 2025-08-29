@@ -5,7 +5,7 @@ import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/common/ProtectedRoute";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 import { StoreProvider, useStore } from "./store/StoreProvider";
 
 import Admin from "./modules/Admin";

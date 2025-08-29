@@ -2,7 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/common/Button";
-import SettingsCard from "@/components/common/SettingsCard";
+import SettingsCard from "@/components/shared/SettingsCard";
 
 export default function PasswordResetSection() {
   const navigate = useNavigate();

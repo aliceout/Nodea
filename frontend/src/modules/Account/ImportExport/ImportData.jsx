@@ -3,11 +3,11 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import SettingsCard from "@/components/common/SettingsCard";
+import SettingsCard from "@/components/shared/SettingsCard";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "./registry.data";
-import Button from "../../../components/common/Button";
+import Button from "@/components/common/Button";
 
 export default function ImportData() {
   const { mainKey } = useStore(); // Uint8Array

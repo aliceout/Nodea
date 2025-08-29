@@ -5,7 +5,7 @@ import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
 import Button from "@/components/common/Button";
-import SettingsCard from "@/components/common/SettingsCard";
+import SettingsCard from "@/components/shared/SettingsCard";
 
 export default function ExportDataSection() {
   const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)

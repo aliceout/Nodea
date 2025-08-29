@@ -37,4 +37,4 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
   );
 }
 
-import SettingsCard from "@/components/common/SettingsCard";
+import SettingsCard from "@/components/shared/SettingsCard";

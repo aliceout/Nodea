@@ -7,7 +7,7 @@ import { useStore } from "@/store/StoreProvider";
 import { selectCurrentTab, selectMobileOpen } from "@/store/selectors";
 import { closeMobile, setTab } from "@/store/actions";
 
-import Logo from "../LogoLong.jsx";
+import Logo from "@/components/shared/LogoLong.jsx";
 import Link from "./components/SideLinks.jsx";
 
 import { useModulesRuntime, isModuleEnabled } from "@/store/modulesRuntime";

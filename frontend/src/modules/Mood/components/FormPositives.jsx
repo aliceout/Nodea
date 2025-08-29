@@ -1,4 +1,4 @@
-import Textarea from "@/components/generic/Textarea";
+import Textarea from "@/components/common/Textarea";
 export default function JournalPositives({
   positive1,
   setPositive1,

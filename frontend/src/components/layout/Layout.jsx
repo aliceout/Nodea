@@ -45,8 +45,8 @@ export default function Layout() {
   );
 }
 
-import KeyMissingModal from "@/components/common/KeyMissingModal";
-import ModulesOnboardingModal from "@/components/common/ModulesOnboardingModal";
+import KeyMissingModal from "@/components/shared/KeyMissingModal";
+import ModulesOnboardingModal from "@/components/shared/ModulesOnboardingModal";
 import { useModulesRuntime, enabledModules } from "@/store/modulesRuntime";
 import { nav } from "./Navigation";
 import { useMemo } from "react";

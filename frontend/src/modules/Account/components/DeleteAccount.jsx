@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import pb from "@/services/pocketbase";
-import SettingsCard from "@/components/common/SettingsCard";
+import SettingsCard from "@/components/shared/SettingsCard";
 import Button from "@/components/common/Button";
 import { MODULES } from "@/config/modules_list";
 import { loadModulesConfig } from "@/services/modules-config";
