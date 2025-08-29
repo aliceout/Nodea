@@ -1,3 +1,4 @@
+import Textarea from "@/components/generic/Textarea";
 export default function JournalPositives({
   positive1,
   setPositive1,
@@ -13,11 +14,9 @@ export default function JournalPositives({
         <label className="text-sm font-semibold">
           Premier point positif du jour :
         </label>
-        <textarea
+        <Textarea
           value={positive1}
           onChange={(e) => setPositive1(e.target.value)}
-          className="w-full p-3 border rounded min-h-18 resize-none align-top"
-          rows={2}
           required={required}
         />
       </div>
@@ -25,11 +24,9 @@ export default function JournalPositives({
         <label className="text-sm font-semibold">
           Deuxième point positif du jour :
         </label>
-        <textarea
+        <Textarea
           value={positive2}
           onChange={(e) => setPositive2(e.target.value)}
-          className="w-full p-3 border rounded min-h-18 resize-none align-top"
-          rows={2}
           required={required}
         />
       </div>
@@ -37,11 +34,9 @@ export default function JournalPositives({
         <label className="text-sm font-semibold">
           Troisième point positif du jour :
         </label>
-        <textarea
+        <Textarea
           value={positive3}
           onChange={(e) => setPositive3(e.target.value)}
-          className="w-full p-3 border rounded min-h-18 resize-none align-top"
-          rows={2}
           required={required}
         />
       </div>

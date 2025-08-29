@@ -7,7 +7,7 @@ import { useStore } from "@/store/StoreProvider";
 import { selectCurrentTab, selectMobileOpen } from "@/store/selectors";
 import { closeMobile, setTab } from "@/store/actions";
 
-import Logo from "../common/LogoLong.jsx";
+import Logo from "../LogoLong.jsx";
 import Link from "./components/SideLinks.jsx";
 
 import { useModulesRuntime, isModuleEnabled } from "@/store/modulesRuntime";
@@ -27,7 +27,7 @@ export default function Sidebar() {
     if (!i.to_toggle) return true; // non-toggleables: toujours visibles
     return isModuleEnabled(modulesRuntime, i.id); // toggleables: visible seulement si activé
   });
-  
+
   const handleSelect = (id) => {
     dispatch(setTab(id));
     dispatch(closeMobile());

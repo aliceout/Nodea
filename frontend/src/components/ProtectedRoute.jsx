@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import pb from "../../services/pocketbase";
+import pb from "../services/pocketbase";
 
 export default function ProtectedRoute({ children, adminOnly = false }) {
   const user = pb.authStore.model;

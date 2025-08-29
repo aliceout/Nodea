@@ -9,12 +9,11 @@ import { setTab, openMobile } from "../../store/actions";
 export default function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  
+
   const store = useStore();
   const dispatch = store?.dispatch ?? store?.[1];
   const username = user?.username || "Utilisateur·rice";
-  
-  
+
   const handleMenuClick = () => dispatch(openMobile());
   const handleGoAccount = () => dispatch(setTab("account"));
   const handleGoSettings = () => dispatch(setTab("settings"));
@@ -25,7 +24,7 @@ export default function Header() {
       navigate("/login", { replace: true });
     }
   };
-  
+
   return (
     <header className="sticky w-screen top z-40 flex h-16 items-center  border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8">
       <div className="mx-auto w-full">
@@ -66,5 +65,5 @@ export default function Header() {
 }
 
 import HeaderNav from "./components/HeaderNav";
-import Logo from "../common/LogoLong.jsx";
+import Logo from "../LogoLong.jsx";
 import UserMenu from "./components/UserMenu.jsx";

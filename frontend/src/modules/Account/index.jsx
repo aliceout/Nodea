@@ -30,7 +30,7 @@ export default function SettingsIndex() {
         {/* Section données */}
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-3">Données</h2>
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
             <ImportData user={user} />
             <ExportData user={user} />
           </div>

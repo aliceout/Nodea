@@ -34,9 +34,33 @@ export default function InviteCodeManager({
                   title="Copier le code"
                   style={{ lineHeight: 0 }}
                 >
-                  <svg width="25" height="25" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="7" y="7" width="10" height="10" rx="2" fill="#fff" stroke="#3182ce" strokeWidth="2"/>
-                    <rect x="3" y="3" width="10" height="10" rx="2" fill="#e6f0fa" stroke="#3182ce" strokeWidth="1.5"/>
+                  <svg
+                    width="25"
+                    height="25"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="7"
+                      y="7"
+                      width="10"
+                      height="10"
+                      rx="2"
+                      fill="#fff"
+                      stroke="#3182ce"
+                      strokeWidth="2"
+                    />
+                    <rect
+                      x="3"
+                      y="3"
+                      width="10"
+                      height="10"
+                      rx="2"
+                      fill="#e6f0fa"
+                      stroke="#3182ce"
+                      strokeWidth="1.5"
+                    />
                   </svg>
                 </button>
                 <span className="font-mono">{c.code}</span>
@@ -46,8 +70,19 @@ export default function InviteCodeManager({
                   title="Supprimer ce code"
                   style={{ lineHeight: 0 }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6 6L16 16M16 6L6 16" stroke="#e53e3e" strokeWidth="2.5" strokeLinecap="round"/>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M6 6L16 16M16 6L6 16"
+                      stroke="#e53e3e"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
                   </svg>
                 </button>
               </li>
@@ -59,5 +94,5 @@ export default function InviteCodeManager({
   );
 }
 
-import Button from "@/components/common/Button";
+import Button from "@/components/generic/Button";
 import SettingsCard from "@/components/common/SettingsCard";
