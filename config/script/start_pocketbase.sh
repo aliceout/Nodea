@@ -9,10 +9,17 @@ if [[ "$(uname -s | tr '[:upper:]' '[:lower:]')" =~ msys|mingw|cygwin|windowsnt 
 fi
 PID_FILE="services/pocketbase/pb.pid"
 DATA_DIR="${POCKETBASE_DATA_DIR:-data}"
-HOST="${1:-${PB_HOST:-127.0.0.1}}"
-PORT="${2:-${POCKETBASE_PORT:-8090}}"
-PB_URL="http://$HOST:$PORT"
-## ...existing code...
+if [[ "$1" =~ ^https?:// ]]; then
+  PB_URL="$1"
+  # Extraire host et port de l'URL pour le démarrage du binaire
+  HOST=$(echo "$1" | sed -E 's#^https?://([^:/]+).*#\1#')
+  PORT=$(echo "$1" | sed -nE 's#^https?://[^:/]+:([0-9]+).*#\1#p')
+  if [ -z "$PORT" ]; then PORT="8090"; fi
+else
+  HOST="${1:-${PB_HOST:-127.0.0.1}}"
+  PORT="${2:-${POCKETBASE_PORT:-8090}}"
+  PB_URL="http://$HOST:$PORT"
+fi
 
 if [ ! -x "$PB_BIN" ]; then
   echo "❌ Binaire PocketBase introuvable : $PB_BIN"

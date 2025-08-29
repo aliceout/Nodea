@@ -19,7 +19,7 @@ export const MODULES = [
     collection: null,
     element: <Home />,
     to_toggle: false,
-  description: "Vue d’ensemble, accès rapide à vos modules et infos du jour.",
+    description: "Vue d’ensemble, accès rapide à vos modules et infos du jour.",
     icon: HomeIcon,
     display: true,
   },
@@ -29,7 +29,8 @@ export const MODULES = [
     collection: "mood_entries",
     element: <Mood />,
     to_toggle: true,
-  description: "Notez trois données positives ou fiertés chaque jour et donnez une note à votre journée.",
+    description:
+      "Notez trois données positives ou fiertés chaque jour et donnez une note à votre journée.",
     icon: SparklesIcon,
     display: true,
   },
@@ -39,7 +40,8 @@ export const MODULES = [
     collection: "goals_entries",
     element: <Goals />,
     to_toggle: true,
-  description: "Célébrez vos réussites et faites-en le suivi sur le temps long.",
+    description:
+      "Célébrez vos réussites et faites-en le suivi sur le temps long.",
     icon: CheckCircleIcon,
     display: true,
   },
@@ -49,7 +51,8 @@ export const MODULES = [
     collection: null,
     element: <Account />,
     to_toggle: false,
-  description: "Gérez vos informations personnelles, sécurité et préférences du compte.",
+    description:
+      "Gérez vos informations personnelles, sécurité et préférences du compte.",
     icon: Cog6ToothIcon,
     display: false,
   },
@@ -59,7 +62,8 @@ export const MODULES = [
     collection: null,
     element: <Settings />,
     to_toggle: false,
-  description: "Activez ou désactivez les modules, personnalisez votre expérience Nodea.",
+    description:
+      "Activez ou désactivez les modules, personnalisez votre expérience Nodea.",
     icon: Cog6ToothIcon,
     display: false,
   },
@@ -69,7 +73,8 @@ export const MODULES = [
     collection: null,
     element: <Admin />,
     to_toggle: false,
-  description: "Outils d’administration : gestion des utilisateurs, codes d’invitation et supervision.",
+    description:
+      "Outils d’administration : gestion des utilisateurs, codes d’invitation et supervision.",
     icon: Cog6ToothIcon,
     display: false,
   },

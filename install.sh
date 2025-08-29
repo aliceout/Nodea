@@ -35,9 +35,14 @@ if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
 else
   # Mode PROD
   read -rp "URL de PocketBase (ex: https://api.monsite.com) : " PB_URL
+  # Extraction correcte du host et du port
   PB_HOST=$(echo "$PB_URL" | sed -E 's#^https?://([^:/]+).*#\1#')
-  POCKETBASE_PORT=$(echo "$PB_URL" | sed -E 's#^https?://[^:/]+:([0-9]+).*#\1#')
-  if [ -z "$POCKETBASE_PORT" ]; then POCKETBASE_PORT="8090"; fi
+  PB_PORT_EXTRACT=$(echo "$PB_URL" | sed -nE 's#^https?://[^:/]+:([0-9]+).*#\1#p')
+  if [ -z "$PB_PORT_EXTRACT" ]; then
+    POCKETBASE_PORT="8090"
+  else
+    POCKETBASE_PORT="$PB_PORT_EXTRACT"
+  fi
   read -rp "Dossier des données (data par défaut) : " POCKETBASE_DATA_DIR
   POCKETBASE_DATA_DIR=${POCKETBASE_DATA_DIR:-data}
 
@@ -49,7 +54,7 @@ else
     exit 1
   fi
   echo "🔎 Vérification technique de l'accessibilité de PocketBase à l'URL : $PB_URL ..."
-  if ! curl --max-time 5 -s "$PB_URL" >/dev/null; then
+  if ! curl --max-time 5 -s -o /dev/null "$PB_URL"; then
     echo "❌ PocketBase n'est pas accessible à l'adresse $PB_URL."
     echo "Vérifiez la configuration de nginx ou équivalent, puis relancez ce script."
     exit 1
@@ -66,6 +71,7 @@ if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
   bash "$ROOT/config/script/setup_env.sh"
 fi
 
+
 # 1) Charger .env
 ENV_PATH="config/.env"
 if [ -f "$ENV_PATH" ]; then
@@ -73,9 +79,6 @@ if [ -f "$ENV_PATH" ]; then
 fi
 
 # 2) Vérifier et installer PocketBase si nécessaire
-PB_HOST_RESOLVED="${PB_HOST:-127.0.0.1}"
-PB_PORT_RESOLVED="${POCKETBASE_PORT:-8090}"
-PB_URL="http://${PB_HOST_RESOLVED}:${PB_PORT_RESOLVED}"
 PB_BIN_PATH="services/pocketbase/pocketbase"
 if [[ "$(uname -s | tr '[:upper:]' '[:lower:]')" =~ msys|mingw|cygwin|windowsnt ]]; then
   PB_BIN_PATH="services/pocketbase/pocketbase.exe"
@@ -85,6 +88,29 @@ if [ ! -f "$PB_BIN_PATH" ]; then
   echo "▶️  Installation automatique du binaire PocketBase..."
   bash "config/script/install_pocketbase.sh"
 fi
+
+  if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
+    # Mode DEV
+    read -rp "Laisser toutes les options par défaut ? (O/n) : " DEFAULT_OPTIONS
+    DEFAULT_OPTIONS=${DEFAULT_OPTIONS:-O}
+    PB_URL_ORIG="$PB_URL"
+    PB_HOST=$(echo "$PB_URL_ORIG" | sed -E 's#^https?://([^:/]+).*#\1#')
+    PB_PORT_EXTRACT=$(echo "$PB_URL_ORIG" | sed -nE 's#^https?://[^:/]+:([0-9]+).*#\1#p')
+    if [ -z "$PB_PORT_EXTRACT" ]; then POCKETBASE_PORT="8090"; fi
+    POCKETBASE_PORT="$PB_PORT_EXTRACT"
+      read -rp "Port PocketBase (8090 par défaut) : " POCKETBASE_PORT
+      POCKETBASE_PORT=${POCKETBASE_PORT:-8090}
+      read -rp "Dossier des données (data par défaut) : " POCKETBASE_DATA_DIR
+      POCKETBASE_DATA_DIR=${POCKETBASE_DATA_DIR:-data}
+    fi
+
+# Construction de PB_URL selon le mode
+if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
+  PB_HOST_RESOLVED="${PB_HOST:-127.0.0.1}"
+  PB_PORT_RESOLVED="${POCKETBASE_PORT}"
+  PB_URL="http://${PB_HOST_RESOLVED}:${PB_PORT_RESOLVED}"
+fi
+
 
 
 # 3) Vérifier si la base existe AVANT démarrage
@@ -96,7 +122,12 @@ if [ -f "$DB_PATH" ]; then
 fi
 
 # 4) Démarrer PocketBase
-bash "config/script/start_pocketbase.sh" "$PB_HOST_RESOLVED" "$PB_PORT_RESOLVED"
+if [[ "$INSTALL_MODE" =~ ^[dD] ]]; then
+  bash "config/script/start_pocketbase.sh" "$PB_HOST_RESOLVED" "$PB_PORT_RESOLVED"
+else
+  # En mode prod, on passe l'URL telle que saisie
+  bash "config/script/start_pocketbase.sh" "$PB_URL"
+fi
 
 # 5) Gestion du superuser selon existence de la base
 SUPERUSER_EMAIL="${SUPERUSER_EMAIL:-}"
