@@ -8,8 +8,9 @@ import {
 import Home from "../modules/Homepage";
 import Mood from "../modules/Mood";
 import Goals from "../modules/Goals";
-import Account from "../modules/Account"
+import Account from "../modules/Account";
 import Settings from "../modules/Settings";
+import Admin from "../modules/Admin";
 
 export const MODULES = [
   {
@@ -59,6 +60,16 @@ export const MODULES = [
     element: <Settings />,
     to_toggle: false,
     description: "Paramètres des modules",
+    icon: Cog6ToothIcon,
+    display: false,
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    collection: null,
+    element: <Admin />,
+    to_toggle: false,
+    description: "Administration",
     icon: Cog6ToothIcon,
     display: false,
   },

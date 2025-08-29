@@ -26,7 +26,7 @@ export default function PasswordResetSection() {
             onClick={handleClick}
             className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker"
           >
-            Changer mon mot de passe
+            Changer mot de passe
           </Button>
         </div>
       </form>

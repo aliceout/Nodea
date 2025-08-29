@@ -1,5 +1,4 @@
 import React from "react";
-import ExportUserData from "./ExportUserData";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
   return (

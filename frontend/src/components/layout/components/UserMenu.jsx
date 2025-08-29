@@ -1,6 +1,9 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import UserAvatar from "../components/UserAvatar";
+import pb from "@/services/pocketbase";
+import { useStore } from "@/store/StoreProvider";
+import { setTab } from "@/store/actions";
 
 export default function UserMenu({
   username = "Utilisateur·rice",
@@ -8,11 +11,14 @@ export default function UserMenu({
   onGoSettings = () => {},
   onSignOut = () => {},
 }) {
+  const user = pb.authStore.model;
+  const isAdmin = user?.role === "admin";
+  const { dispatch } = useStore();
+
   return (
     <Menu as="div" className="relative">
       <MenuButton className="relative flex items-center">
         <span className="sr-only">Ouvrir le menu utilisateur</span>
-        {/* On garde exactement seed + size comme dans le code existant */}
         <UserAvatar seed={username} size={32} />
         <span className="hidden lg:flex lg:items-center">
           <span className="ml-4 text-sm font-semibold text-gray-900">
@@ -55,6 +61,21 @@ export default function UserMenu({
             </button>
           )}
         </MenuItem>
+        {isAdmin && (
+          <MenuItem>
+            {({ focus }) => (
+              <button
+                type="button"
+                onClick={() => dispatch(setTab("admin"))}
+                className={`block w-full px-3 py-1.5 text-left text-sm text-gray-900 ${
+                  focus ? "bg-gray-50" : ""
+                }`}
+              >
+                Admin
+              </button>
+            )}
+          </MenuItem>
+        )}
         <MenuItem>
           {({ focus }) => (
             <button

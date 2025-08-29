@@ -7,7 +7,8 @@ import NotFound from "./pages/NotFound";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import { StoreProvider, useStore } from "./store/StoreProvider";
-import KeyMissingModal from "./components/common/KeyMissingModal";
+
+import Admin from "./modules/Admin";
 
 function AppWithKeyModal() {
   return (
@@ -25,6 +26,14 @@ function AppWithKeyModal() {
         }
       >
         <Route path="flow" element={<div />} /> {/* plus de <Content /> */}
+        <Route
+          path="admin"
+          element={
+            <ProtectedRoute adminOnly>
+              <Admin />
+            </ProtectedRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

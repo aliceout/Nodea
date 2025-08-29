@@ -4,7 +4,7 @@ import ChangeEmail from "./components/ChangeEmail";
 import ChangeUsername from "./components/ChangeUsername";
 import ChangePassword from "./components/PasswordReset";
 import DeleteAccount from "./components/DeleteAccount";
-import SettingsCard from "./components/SettingsCard";
+import SettingsCard from "@/components/common/SettingsCard";
 import ImportData from "./ImportExport/ImportData";
 import ExportData from "./ImportExport/ExportData";
 
