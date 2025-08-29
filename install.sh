@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 ## Installation automatique de dotenv si absent
 if ! npm ls dotenv >/dev/null 2>&1; then
   echo "📦 Installation de dotenv (npm)..."
