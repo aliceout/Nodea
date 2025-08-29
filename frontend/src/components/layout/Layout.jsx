@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Layout() {
   useBootstrapModulesRuntime();
-  const { state, keyStatus, logout } = useStore();
+  const { state, keyStatus, logout, mainKey } = useStore();
   const current = selectCurrentTab(state);
   const ActiveView = useMemo(() => {
     return nav.find((t) => t.id === current)?.element ?? null;
@@ -20,10 +20,12 @@ export default function Layout() {
 
   React.useEffect(() => {
     if (!ready) return;
+    // Attendre que la clé soit présente avant de vérifier les modules activés
+    if (!mainKey) return;
     if (enabled.length === 0) setShowOnboarding(true);
     // Ne pas fermer la modale automatiquement si un module est activé
     // La fermeture se fait uniquement sur le bouton "Continuer" dans la modale
-  }, [enabled.length, ready]);
+  }, [enabled.length, ready, mainKey]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex ">

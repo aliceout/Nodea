@@ -1,20 +1,67 @@
-// src/modules/Settings/Account/DeleteAccount.jsx
+// frontend/src/modules/Account/components/DeleteAccount.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import pb from "@/services/pocketbase";
+import SettingsCard from "@/components/common/SettingsCard";
+import Button from "@/components/common/Button";
 import { MODULES } from "@/config/modules_list";
 import { loadModulesConfig } from "@/services/modules-config";
-import { deleteAllMoodEntries } from "@/modules/Mood/data/deleteAllMoodEntries";
-import { useNavigate } from "react-router-dom";
-import Button from "@/components/common/Button";
-import SettingsCard from "@/components/common/SettingsCard";
+import { deriveGuard } from "@/modules/Mood/data/moodEntries";
+import { useStore } from "@/store/StoreProvider";
+import { useModulesRuntime } from "@/store/modulesRuntime";
+import { useMainKey } from "@/hooks/useMainKey";
+
+/**
+ * Helper: liste toutes les entrées d'une collection pour un sid donné,
+ * en respectant la listRule: @request.query.sid = module_user_id.
+ * (On DOIT passer par pb.send pour injecter ?sid=… dans l'URL.)
+ */
+async function listAllBySid(collection, sid, perPage = 200) {
+  const items = [];
+  let page = 1;
+
+  while (true) {
+    const url =
+      `/api/collections/${collection}/records` +
+      `?page=${page}&perPage=${perPage}&sort=+created&sid=${encodeURIComponent(
+        sid
+      )}`;
+    const res = await pb.send(url, { method: "GET" });
+    const batch = res?.items || [];
+    if (batch.length === 0) break;
+    items.push(...batch);
+    const total = res?.totalItems ?? items.length;
+    if (page * perPage >= total) break;
+    page += 1;
+  }
+  return items;
+}
+
+/**
+ * Helper: supprime 1 record avec guard calculé ; retry d=init si nécessaire.
+ * deleteRule: @request.query.sid = module_user_id && @request.query.d = guard
+ * (guard = g_… ou, cas legacy non-promu, "init")
+ */
+async function deleteOneWithGuard(collection, sid, id, guard) {
+  const url =
+    `/api/collections/${collection}/records/${encodeURIComponent(id)}` +
+    `?sid=${encodeURIComponent(sid)}&d=${encodeURIComponent(guard)}`;
+  const res = await pb.send(url, { method: "DELETE" });
+  // pb.send renvoie généralement {} avec status 204 côté SDK; on tolère l'absence de body
+  return res;
+}
 
 export default function DeleteAccountSection({ user }) {
-  const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
+  const { mainKey, markMissing } = useStore();
+  const modules = useModulesRuntime();
+  const sid = modules?.mood?.id || modules?.mood?.module_user_id;
 
   const handleDelete = async () => {
     setDeleteError("");
+
     if (
       !window.confirm(
         "Attention : cette action est irréversible. Supprimer définitivement ce compte et toutes les données associées ?"
@@ -22,69 +69,80 @@ export default function DeleteAccountSection({ user }) {
     ) {
       return;
     }
+
     setDeleting(true);
     try {
-      // 1. Charger la config modules pour récupérer les ids secondaires
-      let moduleConfig = {};
-      try {
-        moduleConfig = await loadModulesConfig(pb, user.id, window.mainKey);
-      } catch {}
+      // 1) Préconditions
+      const effectiveKey = mainKey || window.mainKey || null; // fallback si le hook n'a pas encore fourni la clé
+      if (!effectiveKey) {
+        throw new Error(
+          "Clé principale manquante : impossible de calculer les guards."
+        );
+      }
+      const currentUser = pb?.authStore?.model;
+      if (!currentUser?.id || currentUser.id !== user?.id) {
+        throw new Error("Utilisateur non authentifié.");
+      }
 
-      // 2. Pour chaque module avec une collection, supprimer toutes les entrées liées
+      // 2) Charger la config modules -> récupérer module_user_id (sid) par module
+      let modulesCfg = {};
+      try {
+        modulesCfg = await loadModulesConfig(pb, user.id, effectiveKey);
+      } catch (e) {
+        // On continue même si la config est partielle — on purgera ce qui est connu
+        console.warn("[DeleteAccount] loadModulesConfig failed:", e);
+      }
+
+      // 3) Purge module par module (uniquement ceux listés dans MODULES avec collection définie)
       for (const mod of MODULES) {
-        if (!mod.collection) continue;
-        // Supprimer par module_user_id si présent
-        const entry = moduleConfig[mod.id];
-        if (entry && entry.module_user_id) {
-          const entriesByModuleId = await pb
-            .collection(mod.collection)
-            .getFullList({
-              filter: `module_user_id="${entry.module_user_id}"`,
-            });
-          for (const e of entriesByModuleId) {
-            // Suppression avec guard si possible
+        if (!mod?.collection || !mod?.id) continue;
+
+        const modCfg = modulesCfg[mod.id];
+        const sid = modCfg?.module_user_id;
+        if (!sid) continue; // module pas activé pour cet utilisateur
+
+        // 3.a) Lister toutes les entrées pour ce sid (OBLIGATOIRE: via ?sid=…)
+        const records = await listAllBySid(mod.collection, sid);
+
+        // 3.b) Supprimer chaque record avec d=<guard> (retry d=init si besoin)
+        for (const r of records) {
+          // guard normal g_… calculé à partir (effectiveKey, sid, id)
+          const g = await deriveGuard(effectiveKey, sid, r.id);
+          try {
+            await deleteOneWithGuard(mod.collection, sid, r.id, g);
+          } catch (e) {
+            // fallback legacy : record resté en "init" (créé mais non promu)
             try {
-              const guard = await deriveGuard(
-                window.mainKey,
-                entry.module_user_id,
-                e.id
+              await deleteOneWithGuard(mod.collection, sid, r.id, "init");
+            } catch (e2) {
+              console.error(
+                `[DeleteAccount] DELETE failed for ${mod.collection}/${r.id}`,
+                e2
               );
-              const url = `/api/collections/${
-                mod.collection
-              }/records/${encodeURIComponent(e.id)}?sid=${encodeURIComponent(
-                entry.module_user_id
-              )}&d=${encodeURIComponent(guard)}`;
-              const res = await pb.send(url, { method: "DELETE" });
-              if (res?.status && res.status !== 204) {
-                console.error(
-                  `Suppression échouée pour ${mod.collection} id=${e.id} status=${res.status}`
-                );
-              }
-            } catch (err) {
-              // fallback: suppression brute si le module n'utilise pas le guard
-              try {
-                await pb.collection(mod.collection).delete(e.id);
-              } catch (err2) {
-                console.error(
-                  `Suppression brute échouée pour ${mod.collection} id=${e.id}`,
-                  err2
-                );
-              }
+              throw e2;
             }
           }
         }
+
+        // 3.c) Sanity-check: plus rien pour ce sid
+        const remaining = await listAllBySid(mod.collection, sid);
+        if (remaining.length !== 0) {
+          throw new Error(
+            `Purge incomplète dans ${mod.collection} (sid=${sid}): ${remaining.length} restant(s)`
+          );
+        }
       }
-      // Suppression spécifique pour Mood
-      const moodEntry = moduleConfig["mood"];
-      if (moodEntry && moodEntry.module_user_id) {
-        await deleteAllMoodEntries(moodEntry.module_user_id, window.mainKey);
-      }
-      // 3. Supprimer l'utilisateur
+
+      // 4) Supprime l'utilisateur (EN DERNIER)
       await pb.collection("users").delete(user.id);
       pb.authStore.clear();
       navigate("/login");
-    } catch {
-      setDeleteError("Erreur lors de la suppression");
+    } catch (err) {
+      console.error("Delete account failed:", err);
+      setDeleteError(
+        err?.message ||
+          "Erreur lors de la suppression du compte et des données."
+      );
     } finally {
       setDeleting(false);
     }
@@ -97,13 +155,12 @@ export default function DeleteAccountSection({ user }) {
           Supprimer mon compte
         </div>
         <div className="text-sm text-rose-700">
-          La suppression est <strong>définitive</strong> et cette action est non
-          réversible.
-          <br />
-          Toutes les données associées à ce compte seront perdues.
+          La suppression est <strong>définitive</strong>. Toutes les données
+          associées à ce compte seront perdues.
         </div>
       </div>
-      <form className="w-full flex flex-col gap-6">
+
+      <form className="w-full flex  gap-6">
         <div className="flex flex-col gap-4">
           <Button
             type="button"
@@ -114,6 +171,7 @@ export default function DeleteAccountSection({ user }) {
             {deleting ? "Suppression en cours…" : "Supprimer mon compte"}
           </Button>
         </div>
+
         {deleteError && (
           <div
             role="alert"
