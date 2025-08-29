@@ -1,35 +1,87 @@
 // src/modules/Settings/Account/DeleteAccount.jsx
 import React, { useState } from "react";
 import pb from "@/services/pocketbase";
+import { MODULES } from "@/config/modules_list";
+import { loadModulesConfig } from "@/services/modules-config";
+import { deriveGuard } from "@/modules/Mood/data/moodEntries";
 import { useNavigate } from "react-router-dom";
 import Button from "@/components/common/Button";
 import SettingsCard from "@/components/common/SettingsCard";
 
 export default function DeleteAccountSection({ user }) {
   const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   const handleDelete = async () => {
     setDeleteError("");
     if (
       !window.confirm(
-        "Attention : cette action est irréversible. Supprimer définitivement ce compte ?"
+        "Attention : cette action est irréversible. Supprimer définitivement ce compte et toutes les données associées ?"
       )
     ) {
       return;
     }
+    setDeleting(true);
     try {
-      const journals = await pb.collection("mood_entries").getFullList({
-        filter: `user="${user.id}"`,
-      });
-      for (const entry of journals) {
-        await pb.collection("mood_entries").delete(entry.id);
+      // 1. Charger la config modules pour récupérer les ids secondaires
+      let moduleConfig = {};
+      try {
+        moduleConfig = await loadModulesConfig(pb, user.id, window.mainKey);
+      } catch {}
+
+      // 2. Pour chaque module avec une collection, supprimer toutes les entrées liées
+      for (const mod of MODULES) {
+        if (!mod.collection) continue;
+        // Supprimer par module_user_id si présent
+        const entry = moduleConfig[mod.id];
+        if (entry && entry.module_user_id) {
+          const entriesByModuleId = await pb
+            .collection(mod.collection)
+            .getFullList({
+              filter: `module_user_id="${entry.module_user_id}"`,
+            });
+          for (const e of entriesByModuleId) {
+            // Suppression avec guard si possible
+            try {
+              const guard = await deriveGuard(
+                window.mainKey,
+                entry.module_user_id,
+                e.id
+              );
+              const url = `/api/collections/${
+                mod.collection
+              }/records/${encodeURIComponent(e.id)}?sid=${encodeURIComponent(
+                entry.module_user_id
+              )}&d=${encodeURIComponent(guard)}`;
+              const res = await pb.send(url, { method: "DELETE" });
+              if (res?.status && res.status !== 204) {
+                console.error(
+                  `Suppression échouée pour ${mod.collection} id=${e.id} status=${res.status}`
+                );
+              }
+            } catch (err) {
+              // fallback: suppression brute si le module n'utilise pas le guard
+              try {
+                await pb.collection(mod.collection).delete(e.id);
+              } catch (err2) {
+                console.error(
+                  `Suppression brute échouée pour ${mod.collection} id=${e.id}`,
+                  err2
+                );
+              }
+            }
+          }
+        }
       }
+      // 3. Supprimer l'utilisateur
       await pb.collection("users").delete(user.id);
       pb.authStore.clear();
       navigate("/login");
     } catch {
       setDeleteError("Erreur lors de la suppression");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -52,8 +104,9 @@ export default function DeleteAccountSection({ user }) {
             type="button"
             onClick={handleDelete}
             className="bg-nodea-blush-dark !important font-semibold hover:bg-nodea-blush-darker !important"
+            disabled={deleting}
           >
-            Supprimer mon compte
+            {deleting ? "Suppression en cours…" : "Supprimer mon compte"}
           </Button>
         </div>
         {deleteError && (

@@ -8,11 +8,19 @@ export default function ModulesOnboardingModal({ open, onClose }) {
   const enabled = enabledModules(modulesRuntime);
 
   return (
-    <Modal open={open} onClose={null} backdropClass="bg-black/30 backdrop-blur-sm" className="max-w-lg">
+    <Modal
+      open={open}
+      onClose={null}
+      backdropClass="bg-black/30 backdrop-blur-sm"
+      className="max-w-lg"
+    >
       <div className="p-6 flex flex-col gap-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-2 text-center">Bienvenue !</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-2 text-center">
+          Bienvenue !
+        </h2>
         <p className="text-base text-gray-600 text-center mb-4">
-          Choisissez au moins un module à activer pour commencer à utiliser Nodea.
+          Choisissez au moins un module à activer pour commencer à utiliser
+          Nodea.
         </p>
         <ModulesManager />
         <button
