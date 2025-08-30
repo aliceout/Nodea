@@ -82,3 +82,5 @@ rm -f "$PB_BIN_DIR/$FILENAME"
 chmod +x "$PB_BIN"
 
 ok "PocketBase installé dans $PB_BIN"
+
+

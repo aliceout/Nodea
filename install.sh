@@ -154,3 +154,6 @@ echo "  Local API : ${LOCAL_BASE}"
 if [[ "$ENV_MODE" == "prod" ]]; then
   echo "  Public API : ${API_BASE}"
 fi
+
+info "Arrêt de Pocketbase"
+bash ./config/script/stop_pocketbase.sh
