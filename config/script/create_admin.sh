@@ -43,41 +43,27 @@ if [[ -z "$ADMIN_PASSWORD" ]]; then
 fi
 [[ -n "$ADMIN_EMAIL" && -n "$ADMIN_PASSWORD" ]] || die "ADMIN_EMAIL / ADMIN_PASSWORD requis."
 
-BASE_URL="http://127.0.0.1:${PB_PORT}" # on force toujours 127.0.0.1
-
 require_cmd() { command -v "$1" >/dev/null 2>&1 || die "Commande requise manquante : $1"; }
-require_cmd curl
 
-
-# --- 2) Création via API uniquement (PocketBase >= 0.29) ---
-if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
-  info "Serveur accessible, tentative de création via API…"
-  create_payload=$(printf '{"email":"%s","password":"%s"}' "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
-
-  http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
-    -H 'Content-Type: application/json' \
-    -d "$create_payload" \
-    "${BASE_URL}/api/admins" || echo 000)"
-
-  case "$http_code" in
-    200|204)
-      ok "Superadmin créé via /api/admins."
-      exit 0
-      ;;
-    401)
-      ok "Un superadmin existe déjà (401)."
-      exit 0
-      ;;
-    404)
-      die "L’API /api/admins est introuvable (404). Vérifie la version de PocketBase (>=0.29 requise)."
-      ;;
-    000)
-      die "Échec réseau pendant l’appel API. Vérifie que PocketBase est bien démarré sur ${BASE_URL}."
-      ;;
-    *)
-      die "API /api/admins a répondu HTTP $http_code. Création impossible."
-      ;;
-  esac
-else
-  die "Serveur PocketBase non joignable sur ${BASE_URL}/api/health. Démarre-le avant de créer le superadmin."
+# --- Création via CLI uniquement (PocketBase >= 0.29) ---
+PB_BIN="$BIN_DIR/pocketbase"
+# Ajustement Windows (Git Bash)
+if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
+  if [[ -f "${PB_BIN}.exe" ]]; then
+    PB_BIN="${PB_BIN}.exe"
+  fi
 fi
+[[ -x "$PB_BIN" ]] || die "Binaire PocketBase manquant ou non exécutable: $PB_BIN (exécute ./install_pocketbase.sh)"
+
+info "Création du superadmin via CLI…"
+set +e
+"$PB_BIN" --dir "$PB_DATA_DIR" admin create "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+code=$?
+set -e
+
+if [[ $code -eq 0 ]]; then
+  ok "Superadmin créé via CLI."
+  exit 0
+fi
+
+die "Échec de la création via CLI (code $code). Si le serveur tourne, arrête-le (./stop_pocketbase.sh) puis relance create_admin.sh."
