@@ -23,7 +23,7 @@ else
   die "$ENV_FILE introuvable. Lance d’abord ./setup_env.sh."
 fi
 
-PB_VERSION="0.22.8"
+PB_VERSION="0.29.3"
 
 PB_BIN_DIR="$REPO_ROOT/services/pocketbase"
 PB_BIN="$PB_BIN_DIR/pocketbase"
