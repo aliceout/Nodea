@@ -11,7 +11,7 @@ REPO_ROOT="$here"
 die() { echo "❌ $*" >&2; exit 1; }
 ok()  { echo "✅ $*"; }
 info() { echo "ℹ️  $*"; }
-ask() { echo "❓ $*"; }
+ask() { echo "❔ $*"; }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Commande requise manquante : $1"
@@ -22,6 +22,15 @@ require_cmd curl
 
 # --- 1) Charger config/.env ou déclencher setup si insuffisant ---
 ENV_FILE="$REPO_ROOT/config/.env"
+
+if [[ -f "$ENV_FILE" ]]; then
+  ask ".env déjà présent. Voulez-vous le réécrire ? (y/N)"
+  read -r ans
+  ans="${ans:-N}"
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    bash ./config/script/setup_env.sh
+  fi
+fi
 
 load_env() {
   if [[ -f "$ENV_FILE" ]]; then
@@ -38,8 +47,9 @@ load_env
 
 if ! has_core_env; then
   info "Variables requises absentes"
-ask "Lancer ./setup_env.sh maintenant ? (Y/n)"
-read -r ans  ans="${ans:-Y}"
+  ask "Lancer ./setup_env.sh maintenant ? (Y/n)"
+  read -r ans
+  ans="${ans:-Y}"
   if [[ "$ans" =~ ^[Yy]$ ]]; then
     bash ./config/script/setup_env.sh
     load_env
@@ -137,10 +147,10 @@ fi
 
 echo
 ok "Installation terminée."
-info echo "Résumé :"
+info "Résumé :"
 echo "  ENV=$ENV_MODE"
 echo "  PB_DATA_DIR=$PB_DATA_DIR"
 echo "  Local API : ${LOCAL_BASE}"
 if [[ "$ENV_MODE" == "prod" ]]; then
-  echo "  Public API (si configurée) : ${API_BASE}"
+  echo "  Public API : ${API_BASE}"
 fi
