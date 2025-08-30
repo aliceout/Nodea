@@ -37,7 +37,7 @@ if [[ -z "$ADMIN_EMAIL" ]]; then
   read -r ADMIN_EMAIL
 fi
 if [[ -z "$ADMIN_PASSWORD" ]]; then
-  ask "Mot de passe du superadmin : "
+  ask "Mot de passe du superadmin -saisie masquée): "
   read -rs ADMIN_PASSWORD
   echo
 fi
