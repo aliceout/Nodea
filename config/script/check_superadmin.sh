@@ -1,70 +1,60 @@
 #!/usr/bin/env bash
+# check_superadmin.sh — vérifie l'existence d'un superadmin
+# - Lecture seule
+# - Lit la config dans config/.env
+# - Utilise l'API locale PocketBase (http://127.0.0.1:PB_PORT)
+# - Exit codes: 0 = existe, 1 = absent, 2+ = erreur/indéterminé
+
 set -euo pipefail
 
-# Chemin vers le binaire PocketBase
-PB_BIN="services/pocketbase/pocketbase"
-if [[ "$(uname -s | tr '[:upper:]' '[:lower:]')" =~ msys|mingw|cygwin|windowsnt ]]; then
-	PB_BIN="services/pocketbase/pocketbase.exe"
-fi
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$(dirname "$here")")"
 
+die() { echo "❌ $*" >&2; exit 1; }
+ok()  { echo "✅ $*"; }
+info() { echo "ℹ️  $*"; }
+err()  { echo "❌ $*" >&2; }
+ask() { echo "❔ $*"; }
 
-# Lecture de la variable POCKETBASE_DATA_DIR depuis .env si présente
-ENV_PATH="config/.env"
-if [ -f "$ENV_PATH" ]; then
-	set -a; source "$ENV_PATH"; set +a
-fi
-DATA_DIR="${POCKETBASE_DATA_DIR:-data}"
-DB_PATH="$DATA_DIR/data.db"
+ENV_FILE="$REPO_ROOT/config/.env"
+BIN_DIR="$REPO_ROOT/services/pocketbase"
 
+# --- 1) Charger env ---
+[[ -f "$ENV_FILE" ]] || die "$ENV_FILE introuvable. Lance d’abord ./setup_env.sh."
 
-# Email et mot de passe superuser
-SUPERUSER_EMAIL="${SUPERUSER_EMAIL:-$1}"
-SUPERUSER_PASS="${SUPERUSER_PASS:-$2}"
+source "$ENV_FILE"
 
-# Vérification stricte du mot de passe (PocketBase >= v0.29 : min 8 caractères)
-if [[ -z "$SUPERUSER_EMAIL" || -z "$SUPERUSER_PASS" ]]; then
-	echo "Usage: $0 <email> <password> (ou variables d'environnement SUPERUSER_EMAIL/SUPERUSER_PASS)"
-	exit 1
-fi
-if [[ ${#SUPERUSER_PASS} -lt 8 ]]; then
-	echo "❌ Mot de passe trop court (min 8 caractères pour PocketBase)."
-	exit 1
-fi
+PB_HOST="${PB_HOST:-127.0.0.1}"
+PB_PORT="${PB_PORT:-8090}"
+BASE_URL="http://127.0.0.1:${PB_PORT}"  # toujours forcer 127.0.0.1
 
+# --- 2) Sanity check: service up? ---
 
-# Verbose : affichage des paramètres
-echo "[VERBOSE] DB_PATH='$DB_PATH' PB_BIN='$PB_BIN' SUPERUSER_EMAIL='$SUPERUSER_EMAIL'"
-# Vérifie si la table _superusers existe et si l'email existe déjà
-HAS_SUPERUSER=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM _superusers;" 2>/dev/null || echo "0")
-echo "[VERBOSE] Nombre de superusers en base : $HAS_SUPERUSER"
-EMAIL_EXISTS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM _superusers WHERE email='$SUPERUSER_EMAIL';" 2>/dev/null || echo "0")
-echo "[VERBOSE] Email '$SUPERUSER_EMAIL' existe déjà : $EMAIL_EXISTS"
+# Nouvelle logique : si data.db existe, demander à l'utilisateur s'il veut créer un superadmin
+PB_DATA_DIR="${PB_DATA_DIR:-}"
+DATA_DB="$PB_DATA_DIR/data.db"
 
-if [[ "$EMAIL_EXISTS" -gt 0 ]]; then
-	echo "⚠️  Un superuser avec cet email existe déjà."
-	exit 0
-fi
-
-if [[ "$HAS_SUPERUSER" -gt 0 ]]; then
-	echo "✅ Un superuser existe déjà (mais pas cet email)."
-	exit 0
-fi
-
-echo "➕ Aucun superuser trouvé, création via CLI..."
-CREATE_OUTPUT=""
-CREATE_EXIT=1
-if CREATE_OUTPUT=$("$PB_BIN" --dir "$DATA_DIR" superuser create "$SUPERUSER_EMAIL" "$SUPERUSER_PASS" 2>&1); then
-	CREATE_EXIT=0
+if [[ -f "$DATA_DB" ]]; then
+  info echo "La base de données existe déjà."
+  ask "Créer un superadmin ? (y/N)"
+  read -r ans
+  ans="${ans:-N}"
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    PB_BIN="$BIN_DIR/pocketbase"
+    if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
+      if [[ -f "${PB_BIN}.exe" ]]; then
+        PB_BIN="${PB_BIN}.exe"
+      fi
+    fi
+    [[ -x "$PB_BIN" ]] || die "Binaire PocketBase manquant ou non exécutable: $PB_BIN (exécute ./install_pocketbase.sh)"
+    echo "Lancement de la création du superadmin..."
+    bash "$REPO_ROOT/config/script/create_admin.sh"
+    exit $?
+  else
+    info "Création du superadmin ignorée."
+    exit 0
+  fi
 else
-	CREATE_EXIT=$?
-fi
-echo "[VERBOSE] Résultat création superuser : code=$CREATE_EXIT"
-if [[ $CREATE_EXIT -eq 0 ]]; then
-	echo "$CREATE_OUTPUT"
-	echo "✅ Superuser créé."
-else
-	# Extraction du message d'erreur PocketBase
-	echo "$CREATE_OUTPUT" | grep -E "(error|Error|must be unique|password|invalid|failed|too short|already exists)" || echo "$CREATE_OUTPUT"
-	echo "❌ Échec création superuser. Vérifiez que l'email est unique et le mot de passe valide."
-	exit 1
+  info "data.db non présente, étape suivante."
+  exit 0
 fi

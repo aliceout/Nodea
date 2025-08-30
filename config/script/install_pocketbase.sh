@@ -1,88 +1,84 @@
 #!/usr/bin/env bash
+# install_pocketbase.sh — Télécharge et installe le binaire PocketBase
+# Rôle unique : gérer le binaire (pas d’admin, pas de schéma, pas de start).
+# Lit ses variables dans config/.env (PB_DATA_DIR, PB_PORT, PB_HOST)
+
 set -euo pipefail
 
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$(dirname "$here")")"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PB_BIN="$ROOT/services/pocketbase/pocketbase"
-mkdir -p "$ROOT/services/pocketbase"
+die() { echo "❌ $*" >&2; exit 1; }
+ok()  { echo "✅ $*"; }
+info() { echo "ℹ️  $*"; }
+ask() { echo "❔ $*"; }
 
-# Lecture de la variable POCKETBASE_DATA_DIR depuis .env si présente
-ENV_PATH="$ROOT/config/.env"
-if [ -f "$ENV_PATH" ]; then
-  set -a; source "$ENV_PATH"; set +a
+ENV_FILE="$REPO_ROOT/config/.env"
+
+# --- Charger config/.env ---
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+else
+  die "$ENV_FILE introuvable. Lance d’abord ./setup_env.sh."
 fi
-DATA_DIR="${POCKETBASE_DATA_DIR:-data}"
-mkdir -p "$ROOT/$DATA_DIR"
 
-# Détection OS
-UNAME_S="$(uname -s | tr '[:upper:]' '[:lower:]')"
+PB_VERSION="0.22.8"
+
+PB_BIN_DIR="$REPO_ROOT/services/pocketbase"
+PB_BIN="$PB_BIN_DIR/pocketbase"
+
+mkdir -p "$PB_BIN_DIR"
+
+# Vérifier si le binaire existe déjà
+if [[ -f "$PB_BIN" || -f "$PB_BIN.exe" ]]; then
+  info echo "PocketBase est déjà présent dans services/pocketbase"
+  ask "Retélécharger le binaire PocketBase ? (y/N)"
+  read -r ans
+  ans="${ans:-N}"
+  if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+    ok "Binaire PocketBase déjà présent, téléchargement ignoré."
+    exit 0
+  fi
+fi
+
+# --- Déterminer OS/arch ---
+OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
+
 case "$ARCH" in
-  x86_64|amd64) ARCH="amd64" ;;
-  aarch64|arm64) ARCH="arm64" ;;
-  *) echo "Architecture non supportée: $ARCH"; exit 1 ;;
-esac
-case "$UNAME_S" in
-  linux) OS="linux" ; EXT="" ;;
-  darwin) OS="macos" ; EXT="" ;;
-  msys*|mingw*|cygwin*|windowsnt) OS="windows" ; EXT=".exe" ;;
-  *) echo "OS non supporté: $UNAME_S"; exit 1 ;;
+  x86_64) ARCH="amd64" ;;
+  aarch64 | arm64) ARCH="arm64" ;;
+  *) die "Architecture non supportée : $ARCH" ;;
 esac
 
-PB_LATEST=$(curl -s https://api.github.com/repos/pocketbase/pocketbase/releases/latest | grep 'tag_name' | cut -d '"' -f4)
-if [ -z "$PB_LATEST" ]; then PB_LATEST="v0.22.3"; fi # fallback version
-if [ "$OS" = "windows" ]; then
-  PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/$PB_LATEST/pocketbase_${PB_LATEST#v}_windows_${ARCH}.zip"
-elif [ "$OS" = "linux" ] && [ "$ARCH" = "amd64" ]; then
-  PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/$PB_LATEST/pocketbase_${PB_LATEST#v}_linux_amd64.zip"
-elif [ "$OS" = "linux" ] && [ "$ARCH" = "arm64" ]; then
-  PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/$PB_LATEST/pocketbase_${PB_LATEST#v}_linux_arm64.zip"
-elif [ "$OS" = "macos" ]; then
-  PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/$PB_LATEST/pocketbase_${PB_LATEST#v}_macos_amd64.zip"
-else
-  echo "OS/architecture non supporté pour le téléchargement PocketBase."
-  exit 1
-fi
-TMP_ZIP="$ROOT/services/pocketbase/pb_dl.zip"
-echo "Téléchargement: $PB_URL_DL"
-curl -L "$PB_URL_DL" -o "$TMP_ZIP"
-unzip -o "$TMP_ZIP" -d "$ROOT/services/pocketbase/"
-rm "$TMP_ZIP"
-if [ "$OS" = "windows" ]; then
-  if [ ! -f "$ROOT/services/pocketbase/pocketbase.exe" ]; then
-    echo "❌ Erreur: pocketbase.exe non trouvé après extraction."
-    exit 1
-    fi
-  else
-    if [ ! -f "$ROOT/services/pocketbase/pocketbase" ]; then
-      echo "❌ Erreur: pocketbase non trouvé après extraction."
-      exit 1
-    fi
-  fi
-else
-  chmod +x "$PB_BIN"
-  echo "✅ PocketBase téléchargé et installé à $PB_BIN"
-fi
-  PB_SIZE=$(stat -c %s "$ROOT/services/pocketbase/pocketbase.exe" 2>/dev/null || wc -c < "$ROOT/services/pocketbase/pocketbase.exe")
-  if [ "$PB_SIZE" -lt 100000 ]; then
-    echo "❌ Erreur: le fichier pocketbase.exe est trop petit ($PB_SIZE octets)."
-      echo "❌ Erreur: le fichier $(basename "$PB_BIN_CHECK") est trop petit ($PB_SIZE octets)."
-      exit 1
-  fi
-    if [ "$OS" = "windows" ]; then
-      chmod +x "$ROOT/services/pocketbase/pocketbase.exe"
-      echo "✅ PocketBase téléchargé et installé à $ROOT/services/pocketbase/pocketbase.exe"
-    else
-      chmod +x "$PB_BIN"
-      echo "✅ PocketBase téléchargé et installé à $PB_BIN"
-    fi
-else
-  PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/$PB_LATEST/pocketbase_${OS}_${ARCH}${EXT}.zip"
-  TMP_ZIP="$ROOT/services/pocketbase/pb_dl.zip"
-  echo "Téléchargement: $PB_URL_DL"
-  curl -L "$PB_URL_DL" -o "$TMP_ZIP"
-  unzip -o "$TMP_ZIP" -d "$ROOT/services/pocketbase/"
-  rm "$TMP_ZIP"
-  chmod +x "$PB_BIN"
-  echo "✅ PocketBase téléchargé et installé à $PB_BIN"
-fi
+# Mapping OS
+case "$OS" in
+  linux)  OS="linux" ;;
+  darwin) OS="darwin" ;; # macOS
+  msys*|cygwin*|mingw*) OS="windows" ;;
+  *) die "OS non supporté : $OS" ;;
+esac
+
+FILENAME="pocketbase_${PB_VERSION}_${OS}_${ARCH}.zip"
+URL="https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/${FILENAME}"
+
+# Création des dossiers nécessaires
+mkdir -p "$REPO_ROOT/services" 
+mkdir -p "$REPO_ROOT/services/pocketbase"
+
+# --- Télécharger ---
+info "Téléchargement de PocketBase v${PB_VERSION} pour ${OS}/${ARCH}…"
+curl -sSL -o "$PB_BIN_DIR/$FILENAME" "$URL" || die "Échec du téléchargement"
+
+# --- Décompresser ---
+info "Décompression…"
+unzip -o "$PB_BIN_DIR/$FILENAME" -d "$PB_BIN_DIR" >/dev/null
+
+# --- Nettoyage ---
+rm -f "$PB_BIN_DIR/$FILENAME"
+
+# --- Droits d’exécution ---
+chmod +x "$PB_BIN"
+
+ok "PocketBase installé dans $PB_BIN"
