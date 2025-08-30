@@ -52,7 +52,7 @@ require_cmd curl
 if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
   info "Serveur accessible, tentative de création via API…"
 
-  # V0.22.x: endpoint public si aucun admin: POST /api/admins/create
+  # V0.29.x: endpoint public si aucun admin: POST /api/admins/
   # Réponses attendues:
   # - 200/204 => créé
   # - 401     => déjà un admin (ou besoin token) => on considère "existe"
@@ -62,11 +62,11 @@ if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
   http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
     -H 'Content-Type: application/json' \
     -d "$create_payload" \
-    "${BASE_URL}/api/admins/create" || echo 000)"
+    "${BASE_URL}/api/admins" || echo 000)"
 
   case "$http_code" in
     200|204)
-      ok "Superadmin créé via /api/admins/create."
+      ok "Superadmin créé via /api/admins."
       exit 0
       ;;
     401)
