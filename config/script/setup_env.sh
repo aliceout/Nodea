@@ -90,11 +90,6 @@ fi
 # --- 7) Résumé ---
 echo
 ok "Configuration terminée."
-echo "  PB_DATA_DIR=$data_dir"
-echo "  PB_PORT=$port"
-echo "  PB_HOST=$PB_HOST"
-echo "  ENV=$env_mode"
-echo "  VITE_API_URL=$VITE_API_URL"
 
 # On ne lance pas PocketBase ici.
 # C’est install.sh qui prendra le relais.

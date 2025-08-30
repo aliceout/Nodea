@@ -51,12 +51,10 @@ require_cmd curl
 # --- 2) Si serveur répond, tenter l’API (idempotent) ---
 if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
   info "Serveur accessible, tentative de création via API…"
-
-  # V0.29.x: endpoint public si aucun admin: POST /api/admins/
-  # Réponses attendues:
+  # PocketBase >=0.29 : création du superadmin via POST /api/admins
+  # Réponses attendues :
   # - 200/204 => créé
   # - 401     => déjà un admin (ou besoin token) => on considère "existe"
-  # - 404     => endpoint inconnu => on essaie /api/admins (autres versions)
   create_payload=$(printf '{"email":"%s","password":"%s"}' "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
 
   http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
@@ -71,36 +69,6 @@ if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
       ;;
     401)
       ok "Un superadmin existe déjà (401)."
-      exit 0
-      ;;
-    404|405)
-      info "Endpoint /api/admins/create indisponible, tentative /api/admins…"
-      ;;
-    000)
-      warn "Échec réseau pendant l’appel API, on bascule sur la CLI."
-      ;;
-    *)
-      warn "API /api/admins/create a répondu HTTP $http_code. On tente une alternative."
-      ;;
-  esac
-
-  # Alternative: POST /api/admins (selon versions)
-  http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
-    -H 'Content-Type: application/json' \
-    -d "$create_payload" \
-    "${BASE_URL}/api/admins" || echo 000)"
-
-  case "$http_code" in
-    200|204)
-      ok "Superadmin créé via /api/admins."
-      exit 0
-      ;;
-    401)
-      ok "Un superadmin existe déjà (401)."
-      exit 0
-      ;;
-    409)
-      ok "Conflit/duplication: le superadmin existe déjà (409)."
       exit 0
       ;;
     000)
