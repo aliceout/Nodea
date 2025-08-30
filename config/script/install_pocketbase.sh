@@ -32,7 +32,7 @@ mkdir -p "$PB_BIN_DIR"
 
 # Vérifier si le binaire existe déjà
 if [[ -f "$PB_BIN" || -f "$PB_BIN.exe" ]]; then
-  info echo "PocketBase est déjà présent dans services/pocketbase"
+  info "PocketBase est déjà présent dans services/pocketbase"
   ask "Retélécharger le binaire PocketBase ? (y/N)"
   read -r ans
   ans="${ans:-N}"
