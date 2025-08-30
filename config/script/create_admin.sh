@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # create_admin.sh — crée le superadmin PocketBase s'il n'existe pas
 # - Lit la config dans config/.env
-# - Priorité: création via API (POST /api/admins/create) si le serveur tourne
-# - Fallback: CLI `pocketbase admin create EMAIL PASSWORD` (peut échouer si DB verrouillée)
+# - Priorité: création via API (POST /api/admins) si le serveur tourne
+# - Si l’API échoue, affiche une erreur explicite (PocketBase >= 0.29 n’a plus de CLI admin)
 # - N'orchestre pas start/stop. Rôle unique: création.
 
 set -euo pipefail
@@ -48,13 +48,10 @@ BASE_URL="http://127.0.0.1:${PB_PORT}" # on force toujours 127.0.0.1
 require_cmd() { command -v "$1" >/dev/null 2>&1 || die "Commande requise manquante : $1"; }
 require_cmd curl
 
-# --- 2) Si serveur répond, tenter l’API (idempotent) ---
+
+# --- 2) Création via API uniquement (PocketBase >= 0.29) ---
 if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
   info "Serveur accessible, tentative de création via API…"
-  # PocketBase >=0.29 : création du superadmin via POST /api/admins
-  # Réponses attendues :
-  # - 200/204 => créé
-  # - 401     => déjà un admin (ou besoin token) => on considère "existe"
   create_payload=$(printf '{"email":"%s","password":"%s"}' "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
 
   http_code="$(curl -sS -o /dev/null -w '%{http_code}' \
@@ -71,36 +68,16 @@ if curl -sSf "${BASE_URL}/api/health" >/dev/null 2>&1; then
       ok "Un superadmin existe déjà (401)."
       exit 0
       ;;
+    404)
+      die "L’API /api/admins est introuvable (404). Vérifie la version de PocketBase (>=0.29 requise)."
+      ;;
     000)
-      warn "Échec réseau pendant l’appel API, on bascule sur la CLI."
+      die "Échec réseau pendant l’appel API. Vérifie que PocketBase est bien démarré sur ${BASE_URL}."
       ;;
     *)
-      warn "API /api/admins a répondu HTTP $http_code. On tente la CLI."
+      die "API /api/admins a répondu HTTP $http_code. Création impossible."
       ;;
   esac
 else
-  info "Serveur non joignable sur ${BASE_URL}/api/health — on tente la CLI directe."
+  die "Serveur PocketBase non joignable sur ${BASE_URL}/api/health. Démarre-le avant de créer le superadmin."
 fi
-
-# --- 3) Fallback CLI: pocketbase admin create EMAIL PASSWORD ---
-PB_BIN="$BIN_DIR/pocketbase"
-# Ajustement Windows (Git Bash)
-if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
-  if [[ -f "${PB_BIN}.exe" ]]; then
-    PB_BIN="${PB_BIN}.exe"
-  fi
-fi
-[[ -x "$PB_BIN" ]] || die "Binaire PocketBase manquant ou non exécutable: $PB_BIN (exécute ./install_pocketbase.sh)"
-
-info "Tentative de création via CLI (peut échouer si la DB est verrouillée par un server en cours)…"
-set +e
-"$PB_BIN" --dir "$PB_DATA_DIR" admin create "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
-code=$?
-set -e
-
-if [[ $code -eq 0 ]]; then
-  ok "Superadmin créé via CLI."
-  exit 0
-fi
-
-die "Échec de la création via CLI (code $code). Si le serveur tourne, arrête-le (./stop_pocketbase.sh) puis relance create_admin.sh."
