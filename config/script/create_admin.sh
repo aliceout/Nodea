@@ -21,6 +21,17 @@ BIN_DIR="$REPO_ROOT/services/pocketbase"
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
+# Normaliser CRLF -> LF sur email/mdp
+ADMIN_EMAIL="${ADMIN_EMAIL%$'\r'}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD%$'\r'}"
+
+# Absolutiser PB_DATA_DIR pour éviter d’écrire dans le mauvais dossier
+case "$PB_DATA_DIR" in
+  /*) PB_DATA_DIR_ABS="$PB_DATA_DIR" ;;                 # Unix abs
+  [A-Za-z]:/*) PB_DATA_DIR_ABS="$PB_DATA_DIR" ;;        # Windows abs (C:/...)
+  *) PB_DATA_DIR_ABS="$REPO_ROOT/${PB_DATA_DIR#./}" ;;  # relatif -> absolu
+esac
+
 PB_HOST="${PB_HOST:-127.0.0.1}"
 PB_PORT="${PB_PORT:-8090}"
 PB_DATA_DIR="${PB_DATA_DIR:-./data}"
@@ -34,8 +45,8 @@ if [[ -z "$ADMIN_EMAIL" ]]; then
   read -r ADMIN_EMAIL
 fi
 if [[ -z "$ADMIN_PASSWORD" ]]; then
-  ask "Mot de passe du superadmin -saisie masquée): "
-  read -rs ADMIN_PASSWORD
+  ask "Mot de passe du superadmin (saisie masquée): "
+  read -r ADMIN_PASSWORD
   echo
 fi
 [[ -n "$ADMIN_EMAIL" && -n "$ADMIN_PASSWORD" ]] || die "ADMIN_EMAIL / ADMIN_PASSWORD requis."
@@ -54,7 +65,7 @@ fi
 
 info "Création/upsert du superadmin via CLI…"
 set +e
-"$PB_BIN" --dir "$PB_DATA_DIR" superuser upsert "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+"$PB_BIN" --dir "$PB_DATA_DIR_ABS" superuser upsert "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
 code=$?
 set -e
 
