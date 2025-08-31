@@ -35,7 +35,7 @@ if [[ -z "$ADMIN_EMAIL" ]]; then
 fi
 if [[ -z "$ADMIN_PASSWORD" ]]; then
   ask "Mot de passe du superadmin (saisie masquée): "
-  read -r ADMIN_PASSWORD
+  read -rs ADMIN_PASSWORD
   echo
 fi
 [[ -n "$ADMIN_EMAIL" && -n "$ADMIN_PASSWORD" ]] || die "ADMIN_EMAIL / ADMIN_PASSWORD requis."
@@ -54,7 +54,7 @@ fi
 
 info "Création/upsert du superadmin via CLI…"
 set +e
-"$PB_BIN" --dir "$PB_DATA_DIR" superuser create "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+"$PB_BIN" --dir "$PB_DATA_DIR" superuser upsert  "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
 code=$?
 set -e
 
