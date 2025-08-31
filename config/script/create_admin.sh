@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# create_admin.sh — crée le superadmin PocketBase s'il n'existe pas
-# - Lit la config dans config/.env
-# - Priorité: création via API (POST /api/admins) si le serveur tourne
-# - Si l’API échoue, affiche une erreur explicite (PocketBase >= 0.29 n’a plus de CLI admin)
+# - Création du superadmin via CLI `superuser upsert` (idempotent, recommandé v0.23+)
 # - N'orchestre pas start/stop. Rôle unique: création.
 
 set -euo pipefail
@@ -55,15 +52,15 @@ if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]];
 fi
 [[ -x "$PB_BIN" ]] || die "Binaire PocketBase manquant ou non exécutable: $PB_BIN (exécute ./install_pocketbase.sh)"
 
-info "Création du superadmin via CLI…"
+info "Création/upsert du superadmin via CLI…"
 set +e
-"$PB_BIN" --dir "$PB_DATA_DIR" admin create "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+"$PB_BIN" --dir "$PB_DATA_DIR" superuser upsert "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
 code=$?
 set -e
 
 if [[ $code -eq 0 ]]; then
-  ok "Superadmin créé via CLI."
+  ok "Superadmin créé ou mis à jour via CLI (upsert)."
   exit 0
 fi
 
-die "Échec de la création via CLI (code $code). Si le serveur tourne, arrête-le (./stop_pocketbase.sh) puis relance create_admin.sh."
+die "Échec de la création/mise à jour via CLI (code $code). Si le serveur tourne, arrête-le (./stop_pocketbase.sh) puis relance create_admin.sh."

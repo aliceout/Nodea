@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PID_FILE="$ROOT/services/pocketbase/pb.pid"
+PID_FILE="$ROOT/services/pocketbase/run/pocketbase.pid"
 if [ -f "$ROOT/config/.env" ]; then set -a; source "$ROOT/config/.env"; set +a; fi
 
 if [ ! -f "$PID_FILE" ]; then
@@ -15,7 +15,7 @@ if ps -p "$PID" >/dev/null 2>&1; then
   echo "⏹️  Arrêt PocketBase (pid $PID)..."
   kill "$PID" || true
   sleep 1
-  if ps -p "$PID" >/devnull 2>&1; then
+  if ps -p "$PID" >/dev/null 2>&1; then
     echo "⚠️  Toujours vivant, kill -9"
     kill -9 "$PID" || true
   fi
