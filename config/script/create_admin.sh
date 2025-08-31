@@ -54,7 +54,7 @@ fi
 
 info "Création/upsert du superadmin via CLI…"
 set +e
-"$PB_BIN" --dir "$PB_DATA_DIR" superuser upsert "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+"$PB_BIN" --dir "$PB_DATA_DIR" superuser create "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
 code=$?
 set -e
 
