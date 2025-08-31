@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PID_FILE="$ROOT/services/pocketbase/run/pocketbase.pid"
-if [ -f "$ROOT/config/.env" ]; then set -a; source "$ROOT/config/.env"; set +a; fi
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$(dirname "$here")")"
+PID_FILE="$REPO_ROOT/services/pocketbase/run/pocketbase.pid"
+
+if [ -f "$REPO_ROOT/config/.env" ]; then set -a; source "$REPO_ROOT/config/.env"; set +a; fi
 
 if [ ! -f "$PID_FILE" ]; then
   echo "ℹ️  Aucun PID file trouvé ($PID_FILE). PB est peut-être déjà arrêté."
