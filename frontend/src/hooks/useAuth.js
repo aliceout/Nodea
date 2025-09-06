@@ -30,7 +30,6 @@ export default function useAuth() {
 
   // --- Exposition des champs d’onboarding (lecture) ---
   const onboardingStatus = user?.onboarding_status ?? null;
-  // ⚠️ plus besoin de onboardingVersion ici
 
   // --- Helpers d’update serveur (écriture) ---
   const finishOnboarding = async () => {

@@ -1,4 +1,3 @@
-// frontend/src/components/layout/Layout.jsx
 import React, { useMemo } from "react";
 import KeyMissingModal from "@/components/shared/KeyMissingModal";
 import OnboardingModal from "@/components/shared/OnboardingModal";

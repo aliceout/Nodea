@@ -1,6 +1,16 @@
 import React from "react";
+import SettingsCard from "@/components/shared/SettingsCard";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
+  const confirmDelete = (user) => {
+    const ok = window.confirm(
+      `Supprimer le compte “${user.username}” ?\n\n` +
+        `⚠️ Seul le compte sera supprimé.\n` +
+        `Les données chiffrées liées resteront orphelines et inaccessibles.`
+    );
+    if (ok) onDelete(user.id);
+  };
+
   return (
     <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
       <table className="w-full table-auto">
@@ -8,7 +18,7 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
           <tr>
             <th className="px-3 py-3 text-left">Username</th>
             <th className="px-3 py-3 text-left hidden md:table-cell">Rôle</th>
-            <th className="px-3 py-3">Supprimer compte</th>
+            <th className="px-3 py-3">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -23,8 +33,9 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
               <td className="px-3 py-3 hidden md:table-cell">{user.role}</td>
               <td className="px-3 py-3 text-center">
                 <button
-                  className=" text-red-600 hover:text-red-700 px-3 py-1 rounded text-sm"
-                  onClick={() => onDelete(user.id)}
+                  className="text-red-600 hover:text-red-700 px-3 py-1 rounded text-sm"
+                  title="Supprime uniquement le compte. Les entrées chiffrées restent orphelines."
+                  onClick={() => confirmDelete(user)}
                 >
                   Supprimer
                 </button>
@@ -36,5 +47,3 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
     </SettingsCard>
   );
 }
-
-import SettingsCard from "@/components/shared/SettingsCard";

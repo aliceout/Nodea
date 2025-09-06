@@ -1,4 +1,4 @@
-// src/modules/Settings/components/ModulesManager.jsx
+// frontend/src/modules/Settings/components/ModulesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { MODULES } from "@/config/modules_list";
 import {
@@ -69,7 +69,9 @@ export default function ModulesManager() {
         }
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [mainKey, rows]);
 
   if (loading) return <div>Chargement…</div>;
@@ -89,7 +91,8 @@ export default function ModulesManager() {
         ...current,
         enabled: nextEnabled,
         module_user_id:
-          current.module_user_id || (nextEnabled ? generateModuleUserId("g_") : null),
+          current.module_user_id ||
+          (nextEnabled ? generateModuleUserId("g_") : null),
         delete_secret: current.delete_secret || makeGuard(),
       };
 
@@ -123,6 +126,7 @@ export default function ModulesManager() {
       {rows.map((m) => {
         const entry = getModuleEntry(cfg, m.id);
         const checked = !!entry?.enabled;
+        const isBusy = busy === m.id;
 
         return (
           <label
@@ -132,16 +136,49 @@ export default function ModulesManager() {
             <div className="pr-4 text-left">
               <div className="text-sm font-medium text-gray-900">{m.label}</div>
               {m.description ? (
-                <div className="mt-1 text-sm text-gray-600">{m.description}</div>
+                <div className="mt-1 text-sm text-gray-600">
+                  {m.description}
+                </div>
               ) : null}
             </div>
-            <input
-              type="checkbox"
-              className="h-5 w-5 rounded border-gray-300"
-              checked={checked}
-              onChange={(e) => toggleModule(m.id, e.target.checked)}
-              disabled={!!busy}
-            />
+
+            {/* --- TOGGLE (remplace l'input checkbox) --- */}
+            <div
+              className={[
+                "relative inline-flex h-5 w-10 shrink-0 items-center justify-center rounded-full",
+                busy === m.id ? "opacity-50 pointer-events-none" : "",
+              ].join(" ")}
+            >
+              {/* rail */}
+              <span
+                className={[
+                  "absolute mx-auto h-4 w-9 rounded-full transition-colors duration-200 ease-in-out",
+                  checked
+                    ? "bg-nodea-sky-darker " // bleu en clair ET en sombre
+                    : "bg-gray-200 dark:bg-gray-800/50", // gris en clair ET en sombre
+                ].join(" ")}
+                aria-hidden="true"
+              />
+              {/* thumb */}
+              <span
+                className={[
+                  "absolute left-0 size-5 rounded-full border border-gray-300 bg-white shadow-xs transition-transform duration-200 ease-in-out",
+                  checked ? "translate-x-5" : "",
+                  "dark:shadow-none",
+                ].join(" ")}
+                aria-hidden="true"
+              />
+              {/* input accessible */}
+              <input
+                name={`module_${m.id}`}
+                type="checkbox"
+                aria-label={`Activer ${m.label}`}
+                className="absolute inset-0 appearance-none cursor-pointer focus:outline-hidden"
+                checked={checked}
+                onChange={(e) => toggleModule(m.id, e.target.checked)}
+                disabled={busy === m.id}
+              />
+            </div>
           </label>
         );
       })}
