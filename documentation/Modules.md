@@ -16,6 +16,15 @@ Tous les modules suivent le même modèle :
 
 Le contenu clair attendu (payload) est défini dans les fiches dédiées de chaque module.
 
+### Onboarding et modules
+
+⚠️ L’ouverture de la modale d’onboarding ne dépend **pas** de la présence de données dans les modules.  
+Tous les `payload` sont chiffrés et les tables ont une structure homogène, il est donc impossible de « détecter » l’usage d’un module côté serveur.
+
+La décision d’ouvrir l’onboarding repose uniquement sur les champs `users.onboarding_status` et `users.onboarding_version`.  
+Les flux des modules (`POST guard:"init" → PATCH promotion`, `update/delete ?sid&d`) restent inchangés.
+
+
 ---
 
 ## 2. Modules

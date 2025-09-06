@@ -18,6 +18,18 @@ Toutes les collections de modules suivent le même schéma technique :
 
 Le contenu du `payload` dépend du module (voir les fiches dédiées).
 
+### Utilisateurs (métadonnées onboarding)
+
+En plus des champs techniques existants chaque user possède des champs non sensibles servant uniquement à piloter la modale d’onboarding :
+
+- `onboarding_status` (string) : `"needed"` (par défaut) ou `"done"`.
+- `onboarding_version` (int) : version courante de l’onboarding (ex. `1`).
+
+Ces champs :
+- ne sont **pas chiffrés**, ils sont considérés comme métadonnées techniques.  
+- n’interfèrent pas avec la `mainKey`, les `module_user_id` ou les `guard`.  
+- sont accessibles en lecture/écriture uniquement par l’utilisateur sur son propre compte.
+
 ---
 
 ## 2. Tables par module

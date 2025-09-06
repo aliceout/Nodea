@@ -142,3 +142,18 @@ PATCH /<module>\_entries/<id>?sid=\<module\_user\_id>\&d=init
 * `guard` doit rester caché : il ne sort jamais du serveur.
 * Les erreurs d’update/delete viennent souvent d’un `guard` incorrect (mauvaise clé, mauvais sid, ou id non trouvé).
 * À l’import, vérifier la version (`meta.version`) pour compatibilité.
+
+## 8. Métadonnées non sensibles (onboarding)
+
+En plus des blobs chiffrés, le serveur peut stocker des **métadonnées techniques non sensibles** pour l’expérience utilisateur, notamment les champs d’onboarding dans `users` :
+
+- `onboarding_status`
+- `onboarding_version`
+
+Ces champs :
+- n’exposent aucun contenu utilisateur, aucune clé et aucun guard.  
+- ne sont pas concernés par le chiffrement E2E.  
+- servent uniquement à piloter l’UX de connexion (affichage ou non de la modale d’onboarding).
+
+⚠️ Le modèle E2E et les invariants de sécurité restent inchangés :  
+le serveur n’a jamais accès aux données en clair, ni aux clés.
