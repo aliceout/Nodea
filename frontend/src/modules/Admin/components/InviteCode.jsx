@@ -35,8 +35,8 @@ export default function InviteCodeManager({
                   style={{ lineHeight: 0 }}
                 >
                   <svg
-                    width="25"
-                    height="25"
+                    width="24"
+                    height="24"
                     viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
@@ -63,7 +63,7 @@ export default function InviteCodeManager({
                     />
                   </svg>
                 </button>
-                <span className="font-mono">{c.code}</span>
+                <span className="font-mono text-sm">{c.code}</span>
                 <button
                   className="rounded hover:bg-red-100 focus:outline-none"
                   onClick={() => onDelete(c.id)}
