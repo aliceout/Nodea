@@ -22,6 +22,7 @@ export default function PassageHistory() {
   const [error, setError] = useState("");
   const [decryptHint, setDecryptHint] = useState("");
   const [loading, setLoading] = useState(true);
+  const [hashtagFilter, setHashtagFilter] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -84,58 +85,68 @@ export default function PassageHistory() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Historique</h1>
+      <div className="flex items-baseline justify-start gap-4 ">
+        <h1 className="text-2xl font-bold mb-2">Historique</h1>{" "}
+        {/* Filtre par hashtag */}
+        <div className="mb-6 flex items-center gap-2">
+          <select
+            id="hashtagFilter"
+            value={hashtagFilter}
+            onChange={(e) => setHashtagFilter(e.target.value)}
+            className="border border-nodea-slate-light rounded px-2 py-1 text-xs"
+          >
+            <option value="">Tous</option>
+            {groups.map(([thread]) => (
+              <option key={thread} value={thread}>
+                {thread}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       {error ? <FormError message={error} /> : null}
       {loading ? (
         <div className="text-sm text-gray-600">Chargement…</div>
       ) : null}
-
       {!loading && groups.length === 0 ? (
         <div className="text-sm text-gray-600">
-          Aucune entrée. S’il y a des données en base mais rien n’apparaît ici :
-          <ul className="list-disc ml-5">
-            <li>
-              vérifie le <em>sid</em> du module Passage
-            </li>
-            <li>
-              ou ajoute/édite les entrées pour leur donner un <em>hashtag</em>
-            </li>
-          </ul>
+          Aucune entrée à afficher
         </div>
       ) : null}
-
       <div className="space-y-6">
-        {groups.map(([thread, entries]) => (
-          <section key={thread} className="border border-gray-200 rounded">
-            <header className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-              <h2 className="font-semibold">
-                {thread}
-                <span className="ml-2 text-xs text-gray-500">
-                  ({entries.length})
-                </span>
-              </h2>
-            </header>
-            <ul className="divide-y divide-gray-100">
-              {entries.map((it) => {
-                const date = (it.created || "").slice(0, 10);
-                const title = it.payload?.title || "(sans titre)";
-                return (
-                  <li key={it.id} className="px-4 py-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{title}</div>
-                      <div className="text-xs text-gray-500">{date}</div>
-                    </div>
-                    {it.payload?.content ? (
-                      <p className="text-sm text-gray-700 mt-1 line-clamp-2">
-                        {it.payload.content}
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+        {groups
+          .filter(([thread]) => !hashtagFilter || thread === hashtagFilter)
+          .map(([thread, entries]) => (
+            <section key={thread} className="border border-gray-200 rounded">
+              <header className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                <h2 className="font-semibold">
+                  {thread}
+                  <span className="ml-2 text-xs text-gray-500">
+                    ({entries.length})
+                  </span>
+                </h2>
+              </header>
+              <ul className="divide-y divide-gray-100">
+                {entries.map((it) => {
+                  const date = (it.created || "").slice(0, 10);
+                  const title = it.payload?.title || "(sans titre)";
+                  return (
+                    <li key={it.id} className="px-4 py-2">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">{title}</div>
+                        <div className="text-xs text-gray-500">{date}</div>
+                      </div>
+                      {it.payload?.content ? (
+                        <p className="text-sm text-gray-700 mt-1 line-clamp-2">
+                          {it.payload.content}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
       </div>
     </div>
   );
