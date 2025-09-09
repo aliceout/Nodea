@@ -2,12 +2,12 @@
 import {
   HomeIcon,
   SparklesIcon,
-  CheckCircleIcon,
+  ArrowsRightLeftIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import Home from "../modules/Homepage";
 import Mood from "../modules/Mood";
-import Goals from "../modules/Goals";
+import Passage from "../modules/Passage";
 import Account from "../modules/Account";
 import Settings from "../modules/Settings";
 import Admin from "../modules/Admin";
@@ -35,14 +35,14 @@ export const MODULES = [
     display: true,
   },
   {
-    id: "goals",
-    label: "Goals",
-    collection: "goals_entries",
-    element: <Goals />,
+    id: "passage",
+    label: "Passage",
+    collection: "passage_entries",
+    element: <Passage />,
     to_toggle: true,
     description:
-      "Célébrez vos réussites et faites-en le suivi sur le temps long.",
-    icon: CheckCircleIcon,
+      "Garder une trace de vos moments de transition de vie",
+    icon: ArrowsRightLeftIcon,
     display: true,
   },
   {
