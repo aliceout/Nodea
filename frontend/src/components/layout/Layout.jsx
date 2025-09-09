@@ -65,7 +65,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex ">
+    <div className="min-h-screen bg-slate-50 flex mb-10">
       {keyStatus === "missing" && <KeyMissingModal onLogout={logout} />}
 
       {/* Ouverture contrôlée par users.onboarding_status */}

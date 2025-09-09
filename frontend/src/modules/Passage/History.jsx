@@ -83,7 +83,7 @@ export default function PassageHistory() {
   }, [items]);
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-2">Historique</h1>
       {error ? <FormError message={error} /> : null}
       {loading ? (
