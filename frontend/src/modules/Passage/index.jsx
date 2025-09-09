@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import Subheader from "@/components/layout/Subheader";
 import PassageForm from "./Form";
+import PassageHistory from "./History";
 
 export default function PassageIndex() {
   const [active, setActive] = useState("form");
@@ -14,7 +15,12 @@ export default function PassageIndex() {
         active: active === "form",
         mobile: true,
       },
-      // Historique/Graph viendront ensuite si besoin
+      {
+        id: "history",
+        label: "Historique",
+        active: active === "history",
+        mobile: true,
+      },
     ],
     [active]
   );
@@ -28,6 +34,7 @@ export default function PassageIndex() {
       />
       <div className="flex-1 pt-4 bg-white px-4 sm:px-6 lg:px-8">
         {active === "form" && <PassageForm />}
+        {active === "history" && <PassageHistory />}
       </div>
     </div>
   );

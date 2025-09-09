@@ -150,3 +150,75 @@ export async function deletePassageEntry(id, moduleUserId, mainKey) {
     return res2;
   }
 }
+
+
+/**
+ * Déchiffre une entrée brute en { id, created, updated, payloadObj }
+ * attend un record avec fields: { id, payload, cipher_iv, created, updated }
+ */
+export async function decryptPassageRecord(rec, mainKey) {
+  if (!rec?.payload || !rec?.cipher_iv) return null;
+  const plaintext = await decryptAESGCM(rec.payload, rec.cipher_iv, mainKey);
+  const obj = JSON.parse(plaintext || "{}");
+  return {
+    id: rec.id,
+    created: rec.created,
+    updated: rec.updated,
+    payload: obj,
+  };
+}
+
+/**
+ * Retourne la liste des threads distincts (strings) pour un sid donné.
+ * Pagination simple (2 pages * 100 par défaut) pour rester léger.
+ */
+export async function listDistinctThreads(
+  moduleUserId,
+  mainKey,
+  { pages = 2, perPage = 100, sort = "-created" } = {}
+) {
+  const set = new Set();
+  for (let p = 1; p <= pages; p++) {
+    const pageItems = await listPassageEntries(moduleUserId, {
+      page: p,
+      perPage,
+      sort,
+    });
+    for (const rec of pageItems) {
+      try {
+        const dec = await decryptPassageRecord(rec, mainKey);
+        const th = dec?.payload?.thread;
+        if (th && typeof th === "string") set.add(th);
+      } catch (_) {}
+    }
+    if (!pageItems?.length) break;
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Liste toutes les entrées (déchiffrées) d'un sid (pagination limitée).
+ * Utile pour l'historique groupé par thread.
+ */
+export async function listPassageDecrypted(
+  moduleUserId,
+  mainKey,
+  { pages = 3, perPage = 100, sort = "-created" } = {}
+) {
+  const out = [];
+  for (let p = 1; p <= pages; p++) {
+    const pageItems = await listPassageEntries(moduleUserId, {
+      page: p,
+      perPage,
+      sort,
+    });
+    if (!pageItems?.length) break;
+    for (const rec of pageItems) {
+      try {
+        const dec = await decryptPassageRecord(rec, mainKey);
+        if (dec) out.push(dec);
+      } catch (_) {}
+    }
+  }
+  return out;
+}
