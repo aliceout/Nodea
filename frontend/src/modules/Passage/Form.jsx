@@ -96,8 +96,8 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
 
   return (
     <form className="max-w-2xl space-y-3" onSubmit={handleSubmit}>
+      <h1 className="text-2xl font-bold mb-4">Nouvelle entrée</h1>
       {error ? <FormError message={error} /> : null}{" "}
-      <h1 className="text-2xl font-bold mb-4">Nouvelles entrée</h1>
       <div className="space-y-1">
         <label
           htmlFor="passage-thread"

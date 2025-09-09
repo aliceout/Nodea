@@ -84,21 +84,7 @@ export default function PassageHistory() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold mb-2">Historique — Passage</h1>
-      {decryptHint ? (
-        <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mb-3">
-          {decryptHint}
-        </div>
-      ) : null}
-      {/* Bandeau debug léger */}
-      <div className="text-xs text-gray-500 mb-3">
-        sid:{" "}
-        <code className="px-1 py-0.5 bg-gray-100 rounded">
-          {moduleUserId || "(vide)"}
-        </code>{" "}
-        · brut: {rawCount} · déchiffré: {items.length}
-      </div>
-
+      <h1 className="text-2xl font-bold mb-2">Historique</h1>
       {error ? <FormError message={error} /> : null}
       {loading ? (
         <div className="text-sm text-gray-600">Chargement…</div>
