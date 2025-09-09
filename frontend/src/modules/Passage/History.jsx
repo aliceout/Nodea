@@ -1,9 +1,12 @@
 // frontend/src/modules/Passage/History.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useMainKey } from "@/hooks/useMainKey";
-import { useModulesRuntime } from "@/store/modulesRuntime";
-import { listPassageDecrypted } from "./data/passageEntries";
 import FormError from "@/components/common/FormError";
+import { useStore } from "@/store/StoreProvider";
+import { useModulesRuntime } from "@/store/modulesRuntime";
+import {
+  listPassageEntries,
+  listPassageDecrypted,
+} from "./data/passageEntries";
 
 function usePassageSid() {
   const modules = useModulesRuntime();
@@ -11,11 +14,13 @@ function usePassageSid() {
 }
 
 export default function PassageHistory() {
-  const { mainKey } = useMainKey();
+  const { mainKey } = useStore();
   const moduleUserId = usePassageSid();
 
-  const [items, setItems] = useState([]); // [{id, created, payload:{thread,title,...}}]
+  const [rawCount, setRawCount] = useState(0); // items bruts (chiffrés)
+  const [items, setItems] = useState([]); // items déchiffrés
   const [error, setError] = useState("");
+  const [decryptHint, setDecryptHint] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,11 +31,23 @@ export default function PassageHistory() {
       try {
         if (!mainKey || !moduleUserId) {
           setItems([]);
+          setRawCount(0);
           return;
         }
+
+        // Compte brut (sans déchiffrement) pour diagnostic sid
+        const page1 = await listPassageEntries(moduleUserId, {
+          page: 1,
+          perPage: 200,
+          sort: "-created",
+        });
+        if (!cancelled) setRawCount(Array.isArray(page1) ? page1.length : 0);
+
+        // Liste déchiffrée (quelques pages)
         const list = await listPassageDecrypted(moduleUserId, mainKey, {
           pages: 5,
           perPage: 100,
+          sort: "-created",
         });
         if (!cancelled) setItems(list);
       } catch (e) {
@@ -45,12 +62,11 @@ export default function PassageHistory() {
     };
   }, [mainKey, moduleUserId]);
 
-  // Grouper par thread
+  // Grouper par thread (inclure ceux sans thread)
   const groups = useMemo(() => {
     const map = new Map();
     for (const it of items) {
-      const th = (it?.payload?.thread || "").trim();
-      if (!th) continue; // ignore les entrées sans thread (on n’en crée plus normalement)
+      const th = (it?.payload?.thread || "").trim() || "(sans thread)";
       if (!map.has(th)) map.set(th, []);
       map.get(th).push(it);
     }
@@ -58,20 +74,48 @@ export default function PassageHistory() {
     for (const [, arr] of map) {
       arr.sort((a, b) => (a.created < b.created ? 1 : -1));
     }
-    // liste triée par nom de thread
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    // liste triée par nom de thread (place “(sans thread)” en dernier)
+    return Array.from(map.entries()).sort((a, b) => {
+      if (a[0] === "(sans thread)") return 1;
+      if (b[0] === "(sans thread)") return -1;
+      return a[0].localeCompare(b[0]);
+    });
   }, [items]);
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold mb-4">Historique</h1>
+      <h1 className="text-2xl font-bold mb-2">Historique — Passage</h1>
+      {decryptHint ? (
+        <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mb-3">
+          {decryptHint}
+        </div>
+      ) : null}
+      {/* Bandeau debug léger */}
+      <div className="text-xs text-gray-500 mb-3">
+        sid:{" "}
+        <code className="px-1 py-0.5 bg-gray-100 rounded">
+          {moduleUserId || "(vide)"}
+        </code>{" "}
+        · brut: {rawCount} · déchiffré: {items.length}
+      </div>
+
       {error ? <FormError message={error} /> : null}
       {loading ? (
         <div className="text-sm text-gray-600">Chargement…</div>
       ) : null}
 
       {!loading && groups.length === 0 ? (
-        <div className="text-sm text-gray-600">Aucune entrée.</div>
+        <div className="text-sm text-gray-600">
+          Aucune entrée. S’il y a des données en base mais rien n’apparaît ici :
+          <ul className="list-disc ml-5">
+            <li>
+              vérifie le <em>sid</em> du module Passage
+            </li>
+            <li>
+              ou ajoute/édite les entrées pour leur donner un <em>hashtag</em>
+            </li>
+          </ul>
+        </div>
       ) : null}
 
       <div className="space-y-6">
