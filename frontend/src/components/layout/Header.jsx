@@ -2,9 +2,9 @@
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
-import useAuth from "../../hooks/useAuth";
-import { useStore } from "../../store/StoreProvider";
-import { setTab, openMobile } from "../../store/actions";
+import useAuth from "@/hooks/useAuth";
+import { useStore } from "@/store/StoreProvider";
+import { setTab, openMobile } from "@/store/actions";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky w-screen top z-40 flex h-16 items-center  border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8">
+    <header className="sticky w-screen top-0 z-40 flex h-16 items-center  border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8">
       <div className="mx-auto w-full">
         <div className="flex h-16 items-center justify-between">
           {/* Left: mobile hamburger + logo */}

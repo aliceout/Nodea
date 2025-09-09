@@ -21,7 +21,7 @@ export default function Subheader({ tabs = [], onTabSelect, className }) {
   return (
     <div
       className={clsx(
-        "sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200",
+        "sticky top-16 z-30 bg-white/80 backdrop-blur border-b border-slate-200",
         className
       )}
     >
