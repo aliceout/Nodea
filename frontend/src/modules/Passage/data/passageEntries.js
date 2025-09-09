@@ -91,7 +91,7 @@ export async function createPassageEntry(moduleUserId, mainKey, payloadObj) {
   await pb.send(
     `/api/collections/${COLLECTION}/records/${encodeURIComponent(
       id
-    )}?sid=${encodeURIComponent(moduleUserId)}`,
+    )}?sid=${encodeURIComponent(moduleUserId)}&d=init`,
     {
       method: "PATCH",
       headers: { "content-type": "application/json" },
