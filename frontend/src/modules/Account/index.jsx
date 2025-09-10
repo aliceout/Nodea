@@ -51,5 +51,5 @@ import ChangeEmail from "./components/ChangeEmail";
 import ChangeUsername from "./components/ChangeUsername";
 import ChangePassword from "./components/PasswordReset";
 import DeleteAccount from "./components/DeleteAccount";
-import ImportData from "./ImportExport/ImportData";
-import ExportData from "./ImportExport/ExportData";
+import ImportData from "./components/ImportData";
+import ExportData from "./components/ExportData";

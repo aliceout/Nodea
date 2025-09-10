@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import SettingsCard from "@/components/shared/SettingsCard";
+import Button from "@/components/common/Button";
 
 export default function UsernameSection({ user }) {
   const [username, setUsername] = useState(user?.username || "");
@@ -35,12 +36,12 @@ export default function UsernameSection({ user }) {
         className="w-full flex flex-col gap-6 items-stretch"
       >
         <div className="w-full flex flex-col md:flex-row gap-8 items-stretch justify-between">
-          <button
+          <Button
             type="submit"
-            className="inline-flex items-center rounded-md bg-nodea-sage px-6 py-2 text-sm font-medium text-white hover:bg-nodea-sage-dark whitespace-nowrap md:self-end"
+            className="bg-nodea-sage  hover:bg-nodea-sage-dark "
           >
             Modifier
-          </button>
+          </Button>
           <input
             id="username"
             type="text"

@@ -5,7 +5,7 @@ import { useModulesRuntime } from "@/store/modulesRuntime";
 import SettingsCard from "@/components/shared/SettingsCard";
 
 // Orchestration plugins par module (ex. Mood)
-import { getDataPlugin } from "./registry.data";
+import { getDataPlugin } from "@/services/ImportExport/registry.data.js";
 import Button from "@/components/common/Button";
 
 export default function ImportData() {
