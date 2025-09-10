@@ -1,7 +1,7 @@
 // Chargeurs dynamiques par module (lazy import)
 const loaders = {
-  mood: () => import("@/services/ImportExport/Mood"),
-  // goals: () => import("@/modules/Goals/data/ImportExport"), // à décommenter quand prêt
+  mood: () => import("./Mood"),
+  passage: () => import("./Passage"),
 };
 
 // Cache pour éviter de recharger les plugins
