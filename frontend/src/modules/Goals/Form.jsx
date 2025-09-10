@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMainKey } from "@/hooks/useMainKey";
 import Button from "@/components/common/Button";
+import Input from "@/components/common/Input";
+import Textarea from "@/components/common/Textarea";
+import FormError from "@/components/common/FormError";
 import {
   getGoalById,
   createGoal,
@@ -31,7 +34,7 @@ export default function GoalsForm() {
 
   const isEdit = useMemo(() => Boolean(id), [id]);
 
-  // 👉 Fix: si création (pas d'id), on ne bloque pas l'affichage
+  // 👉 si création (pas d'id), pas de blocage d’affichage
   const [loading, setLoading] = useState(isEdit);
   const [initialEntry, setInitialEntry] = useState(null);
   const [form, setForm] = useState({
@@ -39,7 +42,7 @@ export default function GoalsForm() {
     title: "",
     note: "",
     status: "open",
-    categoriesText: "", // Edition sous forme "tag1, tag2"
+    categoriesText: "", // Edition "tag1, tag2"
   });
   const [error, setError] = useState("");
 
@@ -47,12 +50,11 @@ export default function GoalsForm() {
   useEffect(() => {
     let mounted = true;
     async function load() {
-      // En édition, on attend mainKey ; en création on ne charge rien
       if (!isEdit) {
         if (mounted) setLoading(false);
         return;
       }
-      if (!mainKey) return; // on attend la clé, mais on ne rend pas null pour autant
+      if (!mainKey) return;
 
       try {
         const entry = await getGoalById(mainKey, id);
@@ -137,45 +139,38 @@ export default function GoalsForm() {
     }
   };
 
-  // 👉 On n'occulte plus le rendu quand ça charge : on affiche le form,
-  // et on désactive les actions si besoin.
+  // On affiche le form même si ça charge : on désactive juste les actions.
   const disabled = isEdit && loading;
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
+    <form className="space-y-3 max-w-2xl mx-auto" onSubmit={handleSubmit}>
+      {error ? <FormError message={error} /> : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-gray-600">Titre</label>
-          <input
-            type="text"
-            value={form.title}
-            onChange={onChange("title")}
-            className="border rounded px-3 py-2"
-            placeholder="Ex. Lancer un blog"
-            required
-            disabled={disabled}
-          />
-        </div>
+      <div className="grid grid-cols-1 gap-3 max-w-2xl space-y-3 mx-auto">
+        <Input
+          label="Titre"
+          type="text"
+          value={form.title}
+          onChange={onChange("title")}
+          placeholder="Ex. Lancer un blog"
+          required
+          disabled={disabled}
+        />
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-gray-600">Date</label>
-          <input
-            type="date"
-            value={form.date}
-            onChange={onChange("date")}
-            className="border rounded px-3 py-2"
-            disabled={disabled}
-          />
-        </div>
+        <Input
+          label="Date"
+          type="date"
+          value={form.date}
+          onChange={onChange("date")}
+          disabled={disabled}
+        />
 
         <div className="flex flex-col gap-1">
           <label className="text-sm text-gray-600">Statut</label>
           <select
             value={form.status}
             onChange={onChange("status")}
-            className="border rounded px-3 py-2"
+            className="border rounded px-3 py-2 text-sm"
             disabled={disabled}
           >
             <option value="open">Ouvert</option>
@@ -184,35 +179,36 @@ export default function GoalsForm() {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-gray-600">Catégories</label>
-          <input
-            type="text"
-            value={form.categoriesText}
-            onChange={onChange("categoriesText")}
-            className="border rounded px-3 py-2"
-            placeholder="Ex. travail, santé, perso"
-            disabled={disabled}
-          />
-          <p className="text-xs text-gray-500">
-            Sépare par des virgules (ex. <i>travail, santé</i>).
-          </p>
-        </div>
+        <Input
+          label="Catégories"
+          type="text"
+          value={form.categoriesText}
+          onChange={onChange("categoriesText")}
+          placeholder="Ex. travail, santé, perso"
+          disabled={disabled}
+        />
+        <p className="text-xs text-gray-500">
+          Sépare par des virgules (ex. <i>travail, santé</i>).
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">
         <label className="text-sm text-gray-600">Note</label>
-        <textarea
+        <Textarea
           value={form.note}
           onChange={onChange("note")}
-          className="border rounded px-3 py-2 min-h-[120px]"
+          className="min-h-[120px]"
           placeholder="Détails éventuels…"
           disabled={disabled}
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <Button className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker" type="submit" disabled={disabled}>
+        <Button
+          className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker"
+          type="submit"
+          disabled={disabled}
+        >
           {isEdit ? (loading ? "Chargement…" : "Mettre à jour") : "Enregistrer"}
         </Button>
         <Button

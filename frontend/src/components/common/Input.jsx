@@ -23,7 +23,7 @@ export default function Input({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className={`w-full p-2 border rounded focus:outline-none placeholder:text-sm ${className} focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark ${className}`}
+        className={`w-full p-2 border rounded text-sm focus:outline-none placeholder:text-sm ${className} focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark ${className}`}
         {...props}
       />
     </div>
