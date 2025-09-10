@@ -19,7 +19,7 @@ const visibleNav = (MODULES || []).filter((i) => {
 });
   return (
     <nav className="hidden lg:block ml-4">
-      <ul className="flex items-center justify-end gap-5 group px-4">
+      <ul className="flex items-start justify-end gap-5 group">
         {visibleNav.map((item) => (
           <li key={item.id} className="relative group/item">
             <button
