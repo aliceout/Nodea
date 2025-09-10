@@ -37,7 +37,17 @@ Les flux des modules (`POST guard:"init" → PATCH promotion`, `update/delete ?s
 
 ---
 
-### 2.2 Goals
+### 2.2 Passage
+- **But** : garder une trace des période de passage marquantes d'une vie (deuil, rupture, naissance, etc)  
+- **Table** : `passage_entries`  
+- **Notes** : une entrée = une pensée.  
+- Voir fiche `documentation/modules/Passage.md`.
+
+---
+
+---
+
+### 2.3 Goals
 - **But** : suivi des objectifs annuels.  
 - **Table** : `goals_entries`  
 - **Notes** : une entrée = un objectif.  
@@ -45,7 +55,7 @@ Les flux des modules (`POST guard:"init" → PATCH promotion`, `update/delete ?s
 
 ---
 
-### 2.3 Habits
+### 2.4 Habits
 - **But** : suivi des habitudes (ex. sport, méditation).  
 - **Tables** :  
   - `habits_items_entries` (définition d’une habitude)  
@@ -55,7 +65,7 @@ Les flux des modules (`POST guard:"init" → PATCH promotion`, `update/delete ?s
 
 ---
 
-### 2.4 Library
+### 2.5 Library
 - **But** : suivi des lectures / visionnages (livres, films, séries, docs).  
 - **Tables** :  
   - `library_items_entries` (une œuvre)  
@@ -65,7 +75,7 @@ Les flux des modules (`POST guard:"init" → PATCH promotion`, `update/delete ?s
 
 ---
 
-### 2.5 Review
+### 2.6 Review
 - **But** : bilan annuel et planification (inspiré YearCompass).  
 - **Table** : `review_entries`  
 - **Notes** : une entrée = une année complète.  
