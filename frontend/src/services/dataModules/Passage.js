@@ -1,4 +1,3 @@
-// frontend/src/modules/Passage/data/passageEntries.js
 import pb from "@/services/pocketbase";
 import { encryptAESGCM } from "@/services/webcrypto";
 import { decryptWithRetry } from "@/services/decryptWithRetry";

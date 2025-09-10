@@ -1,14 +1,14 @@
-import Layout from "./components/layout/Layout";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ChangePassword from "./pages/ChangePassword";
-import NotFound from "./pages/NotFound";
+import Layout from "./layout/Layout";
+import Login from "../pages/Login";
+import Register from "../pages/Register";
+import ChangePassword from "../pages/ChangePassword";
+import NotFound from "../pages/NotFound";
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/shared/ProtectedRoute";
-import { StoreProvider, useStore } from "./store/StoreProvider";
+import { StoreProvider, useStore } from "../store/StoreProvider";
 
-import Admin from "./modules/Admin";
+import Admin from "../modules/Admin";
 
 function AppWithKeyModal() {
   return (
