@@ -1,4 +1,3 @@
-// src/modules/Mood/data/ImportExport.jsx
 /**
  * Logique d'import/export du module "Mood" (headless).
  * - Minimaliste : API { meta, importHandler, exportQuery, exportSerialize } + hooks de dédoublonnage.

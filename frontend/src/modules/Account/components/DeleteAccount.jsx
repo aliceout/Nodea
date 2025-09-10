@@ -6,7 +6,7 @@ import SettingsCard from "@/components/shared/SettingsCard";
 import Button from "@/components/common/Button";
 import { MODULES } from "@/config/modules_list";
 import { loadModulesConfig } from "@/services/modules-config";
-import { deriveGuard } from "@/modules/Mood/data/moodEntries";
+import { deriveGuard } from "@/services/dataModules/Mood";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { useMainKey } from "@/hooks/useMainKey";

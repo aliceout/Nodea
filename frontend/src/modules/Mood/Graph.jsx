@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
-import { listMoodEntries } from "./data/moodEntries";
+import { listMoodEntries } from "@/services/dataModules/Mood";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);

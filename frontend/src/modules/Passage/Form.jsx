@@ -7,7 +7,7 @@ import FormError from "@/components/common/FormError";
 
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { createPassageEntry, listDistinctThreads } from "./data/passageEntries";
+import { createPassageEntry, listDistinctThreads } from "@/services/dataModules/Passage";
 
 // Récupère le sid (module_user_id) du module Passage depuis le runtime
 function usePassageSid() {

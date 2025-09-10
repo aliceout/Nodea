@@ -7,7 +7,7 @@ import { useModulesRuntime } from "@/store/modulesRuntime";
 import {
   listPassageEntries,
   listPassageDecrypted,
-} from "./data/passageEntries";
+} from "@/services/dataModules/Passage";
 
 function usePassageSid() {
   const modules = useModulesRuntime();

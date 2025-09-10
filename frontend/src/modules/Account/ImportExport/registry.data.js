@@ -1,8 +1,6 @@
-// src/modules/Account/ImportExport/registry.data.js
-
 // Chargeurs dynamiques par module (lazy import)
 const loaders = {
-  mood: () => import("@/modules/Mood/data/ImportExport"),
+  mood: () => import("@/services/ImportExport/Mood"),
   // goals: () => import("@/modules/Goals/data/ImportExport"), // à décommenter quand prêt
 };
 
