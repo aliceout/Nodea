@@ -1,5 +1,6 @@
 // frontend/src/modules/Passage/History.jsx
 import { useEffect, useMemo, useState } from "react";
+import EditDeleteActions from "@/components/common/EditDeleteActions";
 import FormError from "@/components/common/FormError";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
@@ -83,6 +84,53 @@ export default function PassageHistory() {
     });
   }, [items]);
 
+  // Gestion édition et suppression
+  const [editId, setEditId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [localItems, setLocalItems] = useState([]);
+
+  // Sync localItems avec items
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
+  // Lance édition
+  const startEdit = (entry) => {
+    setEditId(entry.id);
+    setEditTitle(entry.payload?.title || "");
+    setEditContent(entry.payload?.content || "");
+  };
+  // Annule édition
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditTitle("");
+    setEditContent("");
+  };
+  // Sauve édition
+  const saveEdit = (id) => {
+    setLocalItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? {
+              ...it,
+              payload: {
+                ...it.payload,
+                title: editTitle,
+                content: editContent,
+              },
+            }
+          : it
+      )
+    );
+    cancelEdit();
+  };
+  // Supprime entrée
+  const deleteEntry = (id) => {
+    setLocalItems((prev) => prev.filter((it) => it.id !== id));
+    if (editId === id) cancelEdit();
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-baseline justify-start gap-4 ">
@@ -109,9 +157,7 @@ export default function PassageHistory() {
         <div className="text-sm text-gray-600">Chargement…</div>
       ) : null}
       {!loading && groups.length === 0 ? (
-        <div className="text-sm text-gray-600">
-          Aucune entrée à afficher
-        </div>
+        <div className="text-sm text-gray-600">Aucune entrée à afficher</div>
       ) : null}
       <div className="space-y-6">
         {groups
@@ -126,19 +172,50 @@ export default function PassageHistory() {
                   </span>
                 </h2>
               </header>
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100 pt-2">
                 {entries.map((it) => {
                   const date = (it.created || "").slice(0, 10);
                   const title = it.payload?.title || "(sans titre)";
+                  // Cherche dans localItems pour édition/suppression
+                  const localEntry =
+                    localItems.find((e) => e.id === it.id) || it;
+                  const isEditing = editId === it.id;
                   return (
-                    <li key={it.id} className="px-4 py-2">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{title}</div>
+                    <li key={it.id} className="px-4 pt-1 pb-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="font-medium border rounded px-2 py-1 w-full mb-1"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                            />
+                          ) : (
+                            <div className="font-medium">
+                              {localEntry.payload?.title || "(sans titre)"}
+                            </div>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">{date}</div>
+                        <EditDeleteActions
+                          isEditing={isEditing}
+                          onEdit={() => startEdit(localEntry)}
+                          onDelete={() => deleteEntry(it.id)}
+                          onSave={() => saveEdit(it.id)}
+                          onCancel={cancelEdit}
+                        />
                       </div>
-                      {it.payload?.content ? (
-                        <p className="text-sm text-gray-700 mt-1 line-clamp-2">
-                          {it.payload.content}
+                      {isEditing ? (
+                        <textarea
+                          className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w-full"
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          rows={3}
+                        />
+                      ) : localEntry.payload?.content ? (
+                        <p className="text-sm text-gray-700 mt-1">
+                          {localEntry.payload.content}
                         </p>
                       ) : null}
                     </li>
