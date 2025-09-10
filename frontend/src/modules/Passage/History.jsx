@@ -1,5 +1,5 @@
 // frontend/src/modules/Passage/History.jsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import EditDeleteActions from "@/components/common/EditDeleteActions";
 import FormError from "@/components/common/FormError";
 import { useStore } from "@/store/StoreProvider";
@@ -13,8 +13,31 @@ function usePassageSid() {
   const modules = useModulesRuntime();
   return modules?.passage?.id || modules?.passage?.module_user_id || "";
 }
-
 export default function PassageHistory() {
+  // Hooks d'état placés en tout début du composant
+  // ...existing code...
+  const [editId, setEditId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [localItems, setLocalItems] = useState([]);
+
+  // Refs pour textarea auto-resize par entrée
+  const contentRefs = React.useRef({});
+
+  // Fonction utilitaire pour auto-resize textarea
+  const autoResize = (el) => {
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  };
+
+  // Auto-resize dès le passage en édition
+  useEffect(() => {
+    if (editId !== null && contentRefs.current[editId]) {
+      autoResize(contentRefs.current[editId]);
+    }
+  }, [editId, editContent]);
   const { mainKey } = useStore();
   const moduleUserId = usePassageSid();
 
@@ -24,6 +47,8 @@ export default function PassageHistory() {
   const [decryptHint, setDecryptHint] = useState("");
   const [loading, setLoading] = useState(true);
   const [hashtagFilter, setHashtagFilter] = useState("");
+  // Gestion édition et suppression
+  // ...existing code...
 
   useEffect(() => {
     let cancelled = false;
@@ -31,12 +56,6 @@ export default function PassageHistory() {
       setLoading(true);
       setError("");
       try {
-        if (!mainKey || !moduleUserId) {
-          setItems([]);
-          setRawCount(0);
-          return;
-        }
-
         // Compte brut (sans déchiffrement) pour diagnostic sid
         const page1 = await listPassageEntries(moduleUserId, {
           page: 1,
@@ -85,10 +104,7 @@ export default function PassageHistory() {
   }, [items]);
 
   // Gestion édition et suppression
-  const [editId, setEditId] = useState(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [localItems, setLocalItems] = useState([]);
+  // ...existing code...
 
   // Sync localItems avec items
   useEffect(() => {
@@ -187,7 +203,7 @@ export default function PassageHistory() {
                           {isEditing ? (
                             <input
                               type="text"
-                              className="font-medium border rounded px-2 py-1 w-full mb-1"
+                              className="font-medium text-sm border rounded px-2 py-1 w-full mb-1"
                               value={editTitle}
                               onChange={(e) => setEditTitle(e.target.value)}
                             />
@@ -208,10 +224,21 @@ export default function PassageHistory() {
                       </div>
                       {isEditing ? (
                         <textarea
-                          className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w-full"
+                          ref={(el) => {
+                            contentRefs.current[it.id] = el;
+                            if (el) autoResize(el);
+                          }}
+                          className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w-full resize-y"
                           value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
+                          onChange={(e) => {
+                            setEditContent(e.target.value);
+                            autoResize(contentRefs.current[it.id]);
+                          }}
+                          onFocus={(e) =>
+                            autoResize(contentRefs.current[it.id])
+                          }
                           rows={3}
+                          style={{ overflow: "hidden" }}
                         />
                       ) : localEntry.payload?.content ? (
                         <p className="text-sm text-gray-700 mt-1">

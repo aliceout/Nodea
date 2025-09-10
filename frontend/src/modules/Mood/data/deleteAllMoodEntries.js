@@ -9,7 +9,6 @@ import { listMoodEntries, deleteMoodEntry, deriveGuard } from "./moodEntries";
  */
 export async function deleteAllMoodEntries(moduleUserId, mainKey) {
   const moodEntries = await listMoodEntries(moduleUserId);
-  console.log(`[deleteAllMoodEntries] Mood: module_user_id=`, moduleUserId);
   for (const entry of moodEntries) {
     try {
       const guard = await deriveGuard(mainKey, moduleUserId, entry.id);

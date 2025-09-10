@@ -17,13 +17,10 @@ export default function ExportDataSection() {
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
-    console.log("Export bouton cliqué");
     setSuccess("");
     setError("");
     setLoading(true);
     try {
-      console.log("mainKey:", mainKey);
-      console.log("sid:", sid);
       if (!mainKey) throw new Error("Clé de chiffrement absente");
       if (!sid) throw new Error("Module 'Mood' non configuré");
 
@@ -117,7 +114,6 @@ export default function ExportDataSection() {
           <Button
             type="button"
             onClick={(e) => {
-              console.log("Clic bouton Export");
               handleExport(e);
             }}
             disabled={loading || !sid}

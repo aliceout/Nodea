@@ -34,7 +34,7 @@ export default function HistoryEntry({ entry, onDelete, decryptField }) {
       if (positive2Ref.current) autoResize(positive2Ref.current);
       if (positive3Ref.current) autoResize(positive3Ref.current);
       if (answerRef.current) autoResize(answerRef.current);
-  if (commentRef.current) autoResize(commentRef.current);
+      if (commentRef.current) autoResize(commentRef.current);
     }
   }, [isEditing]);
 
@@ -219,13 +219,13 @@ export default function HistoryEntry({ entry, onDelete, decryptField }) {
                 ref={commentRef}
                 className="font-normal text-gray-700 italic border rounded px-2 py-1 w-full mt-1 resize-y"
                 value={editComment}
-                onChange={e => {
+                onChange={(e) => {
                   setEditComment(e.target.value);
                   autoResize(e.target);
                 }}
-                onFocus={e => autoResize(e.target)}
+                onFocus={(e) => autoResize(e.target)}
                 rows={2}
-                style={{overflow: 'hidden'}}
+                style={{ overflow: "hidden" }}
               />
             ) : (
               <span className="font-normal text-gray-700 italic">
