@@ -31,7 +31,7 @@ export default function Textarea({
       {label && (
         <label
           className={
-            "block mb-1 font-semibold text-nodea-sage-dark " + labelClassName
+            "block mb-1 font-semibold text-nodea-sage-dark text-sm " + labelClassName
           }
         >
           {label}
@@ -40,7 +40,7 @@ export default function Textarea({
       <textarea
         value={value}
         onChange={onChange}
-  className={`w-full p-2 border border-nodea-slate-light hover:border-nodea-slate rounded min-h-18 resize-y align-top focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
+        className={`w-full p-2 border border-nodea-slate-lighter hover:border-nodea-slate rounded min-h-9 resize-y align-top focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
         rows={rows}
         required={required}
         {...props}
