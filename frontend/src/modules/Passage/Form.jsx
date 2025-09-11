@@ -126,7 +126,6 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
             required
             label="Hashtag / histoire"
             legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
-            className="mb-2"
           />
           <Button
             className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"

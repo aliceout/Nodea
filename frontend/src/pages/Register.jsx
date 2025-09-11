@@ -113,31 +113,34 @@ export default function RegisterPage() {
       <div className="w-full min-h-screen flex flex-col justify-center items-center">
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
+          className="flex flex-col items-center gap-3 w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
         >
           <h1 className="text-2xl font-bold mb-6 text-center w-full">
             Créer un compte
           </h1>
-          <Input
-            placeholder="Nom d'utilisateur"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <Input
-            placeholder="Code d’invitation"
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
-            required
-            className="mb-2"
-          />
+          <div className="flex flex-row gap-2 justify-between w-full">
+            <Input
+              placeholder="Nom d'utilisateur"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="w-full"
+            />
+            <Input
+              placeholder="Code d’invitation"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
           <Input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="mb-2"
+            className="w-full my-2"
           />
           <Input
             type="password"
@@ -145,6 +148,7 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="w-full"
           />
           <Input
             type="password"
@@ -152,23 +156,19 @@ export default function RegisterPage() {
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
             required
-            className="mb-2"
+            className="w-full"
           />
-          <FormFeedback message={error} type="error" className="mb-4 w-full" />
-          <FormFeedback
-            message={success}
-            type="success"
-            className="mb-4 w-full"
-          />
+          <FormFeedback message={error} type="error" className="w-full" />
+          <FormFeedback message={success} type="success" className="w-full" />
 
           <Button
             type="submit"
-            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker "
+            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"
           >
             Créer le compte
           </Button>
         </form>
-        <div className="mt-6 text-center w-full">
+        <div className="mt-6 text-center w-full flex flex-col justify-center">
           <span className="text-gray-600">Déjà un compte ?</span>{" "}
           <a
             href="/login"
