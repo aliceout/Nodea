@@ -4,10 +4,11 @@ import EditDeleteActions from "@/components/common/EditDeleteActions";
 import FormError from "@/components/common/FormError";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import {
-  listPassageEntries,
-  listPassageDecrypted,
-} from "@/services/dataModules/Passage";
+ import {
+   listPassageEntries,
+   listPassageDecrypted,
+   deletePassageEntry,
+ } from "@/services/dataModules/Passage";
 
 function usePassageSid() {
   const modules = useModulesRuntime();
@@ -142,10 +143,23 @@ export default function PassageHistory() {
     cancelEdit();
   };
   // Supprime entrée
-  const deleteEntry = (id) => {
-    setLocalItems((prev) => prev.filter((it) => it.id !== id));
-    if (editId === id) cancelEdit();
-  };
+ // Supprime entrée (optimiste + rollback si erreur)
+ const deleteEntry = async (id) => {
+   const prevItems = items;
+   const prevLocal = localItems;
+   // UI optimiste
+   setItems((cur) => cur.filter((it) => it.id !== id));
+   setLocalItems((cur) => cur.filter((it) => it.id !== id));
+   if (editId === id) cancelEdit();
+   try {
+     await deletePassageEntry(id, moduleUserId, mainKey);
+   } catch (e) {
+     // rollback + message
+     setItems(prevItems);
+     setLocalItems(prevLocal);
+     setError("Suppression impossible.");
+   }
+ };
 
   return (
     <div className="max-w-3xl mx-auto">
