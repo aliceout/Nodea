@@ -1,6 +1,12 @@
+// frontend/src/modules/Goals/Form.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMainKey } from "@/hooks/useMainKey";
+
+// 🔐 Clé principale depuis le store global (bytes attendus, pas CryptoKey)
+import { useStore } from "@/store/StoreProvider";
+// ⚙️ Récupération du module_user_id comme dans Passage/Mood
+import { useModulesRuntime } from "@/store/modulesRuntime";
+
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Textarea from "@/components/common/Textarea";
@@ -8,6 +14,7 @@ import Select from "@/components/common/Select";
 import SuggestInput from "@/components/common/SuggestInput";
 import FormError from "@/components/common/FormError";
 import DateMonthPicker from "@/components/common/DateMonthPicker";
+
 import {
   getGoalById,
   createGoal,
@@ -18,28 +25,30 @@ import {
 /**
  * Formulaire Goals
  * - Crée ou édite une entrée (une entrée = un objectif)
- * - Champs payload (clair, chiffré ensuite côté service) :
+ * - Champs payload (clair → chiffré côté service) :
  *   { date, title, note?, status, categories[] }
  * - Statuts : open | wip | done
  *
- * Dépendances côté services :
- *   - getGoalById(mainKey, id)
- *   - createGoal(mainKey, payload)
- *   - updateGoal(mainKey, id, prevEntry, payload)
- *   - deleteGoal(mainKey, id, prevEntry)
- *
- * Style conservé.
+ * Signatures service (alignées sur Passage) :
+ *   - getGoalById(moduleUserId, mainKey, id)
+ *   - createGoal(moduleUserId, mainKey, payload)
+ *   - updateGoal(moduleUserId, mainKey, id, prevEntry, payload)
+ *   - deleteGoal(moduleUserId, mainKey, id, prevEntry)
  */
 export default function GoalsForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { mainKey } = useMainKey();
-  const [tags, setTags] = useState([]); // tes options (à remplir)
-  const [thread, setThread] = useState(""); // la valeur de l'input
+
+  const { mainKey } = useStore();
+  const modules = useModulesRuntime();
+  const moduleUserId =
+    modules?.goals?.id || modules?.goals?.module_user_id || "";
+
+  const [tags, setTags] = useState([]); // options pour SuggestInput (si tu renseignes)
+  const [thread, setThread] = useState(""); // valeur sélectionnée (info UX, non stockée ici)
 
   const isEdit = useMemo(() => Boolean(id), [id]);
 
-  // 👉 si création (pas d'id), pas de blocage d’affichage
   const [loading, setLoading] = useState(isEdit);
   const [initialEntry, setInitialEntry] = useState(null);
   const [form, setForm] = useState({
@@ -47,22 +56,24 @@ export default function GoalsForm() {
     title: "",
     note: "",
     status: "open",
-    categoriesText: "", // Edition "tag1, tag2"
+    categoriesText: "", // édition via "tag1, tag2"
   });
   const [error, setError] = useState("");
 
   // Charger l'entrée si édition
   useEffect(() => {
     let mounted = true;
+
     async function load() {
       if (!isEdit) {
         if (mounted) setLoading(false);
         return;
       }
-      if (!mainKey) return;
+      // On attend la mainKey + le sid comme sur Passage
+      if (!mainKey || !moduleUserId) return;
 
       try {
-        const entry = await getGoalById(mainKey, id);
+        const entry = await getGoalById(moduleUserId, mainKey, id);
         if (!mounted) return;
         setInitialEntry(entry);
         setForm({
@@ -74,16 +85,17 @@ export default function GoalsForm() {
         });
       } catch (e) {
         console.error(e);
-        setError("Impossible de charger l'objectif.");
+        setError("Impossible de charger l’objectif.");
       } finally {
         if (mounted) setLoading(false);
       }
     }
+
     load();
     return () => {
       mounted = false;
     };
-  }, [mainKey, id, isEdit]);
+  }, [isEdit, id, mainKey, moduleUserId]);
 
   const onChange = (key) => (e) => {
     setForm((s) => ({ ...s, [key]: e.target.value }));
@@ -105,9 +117,22 @@ export default function GoalsForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     const msg = validate();
     if (msg) {
       setError(msg);
+      return;
+    }
+
+    // Gardes-fous (mêmes messages que les autres modules)
+    if (!mainKey) {
+      setError(
+        "Erreur : clé de chiffrement absente. Recharge la page ou reconnecte-toi, puis réessaie."
+      );
+      return;
+    }
+    if (!moduleUserId) {
+      setError("Module 'Goals' non configuré (id manquant).");
       return;
     }
 
@@ -121,9 +146,9 @@ export default function GoalsForm() {
 
     try {
       if (isEdit) {
-        await updateGoal(mainKey, id, initialEntry, payload);
+        await updateGoal(moduleUserId, mainKey, id, initialEntry, payload);
       } else {
-        await createGoal(mainKey, payload);
+        await createGoal(moduleUserId, mainKey, payload);
       }
       navigate("..");
     } catch (e2) {
@@ -135,8 +160,20 @@ export default function GoalsForm() {
   const handleDelete = async () => {
     if (!isEdit) return;
     setError("");
+
+    if (!mainKey) {
+      setError(
+        "Erreur : clé de chiffrement absente. Recharge la page ou reconnecte-toi."
+      );
+      return;
+    }
+    if (!moduleUserId) {
+      setError("Module 'Goals' non configuré (id manquant).");
+      return;
+    }
+
     try {
-      await deleteGoal(mainKey, id, initialEntry);
+      await deleteGoal(moduleUserId, mainKey, id, initialEntry);
       navigate("..");
     } catch (e) {
       console.error(e);
@@ -144,16 +181,20 @@ export default function GoalsForm() {
     }
   };
 
-  // On affiche le form même si ça charge : on désactive juste les actions.
-  const disabled = isEdit && loading;
+  // Affiche le form même si ça charge : on désactive juste les actions.
+  const disabled = (isEdit && loading) || !moduleUserId;
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 max-w-2xl  mx-auto"
+      className="grid grid-cols-1 gap-4 max-w-2xl mx-auto"
       onSubmit={handleSubmit}
     >
-      <h1 className="text-2xl font-bold">Nouvelle entrée</h1>
+      <h1 className="text-2xl font-bold">
+        {isEdit ? "Modifier l’objectif" : "Nouvelle entrée"}
+      </h1>
+
       {error ? <FormError message={error} /> : null}
+
       <Input
         label="Titre"
         type="text"
@@ -163,6 +204,7 @@ export default function GoalsForm() {
         required
         disabled={disabled}
       />
+
       <div className="flex justify-between gap-4 flex-col lg:flex-row">
         <DateMonthPicker
           label="Date"
@@ -188,6 +230,9 @@ export default function GoalsForm() {
           <option value="done">Terminé</option>
         </Select>
       </div>
+
+      {/* UX : champ libre de regroupement, comme Passage.
+          ⚠️ Non stocké dans payload ici (pas défini dans la fiche Goals). */}
       <SuggestInput
         label="Hashtag / histoire"
         placeholder="ex: #SortieJob ou #Deuil…"
@@ -196,6 +241,7 @@ export default function GoalsForm() {
         options={tags}
         legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
       />
+
       <Textarea
         label="Note"
         value={form.note}
@@ -204,14 +250,15 @@ export default function GoalsForm() {
         placeholder="Détails éventuels…"
         disabled={disabled}
       />
+
       <Button
-        className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker"
+        className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"
         type="submit"
         disabled={disabled}
       >
         {isEdit ? (loading ? "Chargement…" : "Mettre à jour") : "Enregistrer"}
       </Button>
-      {/* Annuler button removed as requested */}
+
       {isEdit ? (
         <Button
           type="button"

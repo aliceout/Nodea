@@ -45,8 +45,7 @@ export default function GoalsHistory() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button onClick={() => navigate("new")}>Nouvel objectif</Button>
+      <div className="flex gap-2 justify-center">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}

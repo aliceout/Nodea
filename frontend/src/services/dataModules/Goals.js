@@ -1,170 +1,301 @@
 // frontend/src/services/dataModules/Goals.js
-// Module Goals — service data (à l’économie, même flux que Mood/Passage)
+// Service CRUD du module Goals — aligné Mood/Passage (création 2 temps + guard HMAC)
 
 import pb from "@/services/pocketbase";
-import { loadModulesConfig } from "@/services/modules-config";
-// On réutilise le helper existant qui suit la spec SECURITY.md
-import { deriveGuard } from "@/services/guards";
-// Chiffrement E2E commun (déjà utilisé côté app)
 import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
+import { deriveGuard } from "@/services/guards";
 
 const COLLECTION = "goals_entries";
+// Pattern du schéma PB: "^[a-z0-9_\\-]{16,}$"
+const SID_REGEX = /^[a-z0-9_\-]{16,}$/;
 
-/** Récupère le module_user_id (sid) du module Goals. */
-async function getSid() {
-  const cfg = await loadModulesConfig();
-  const sid = cfg?.goals?.module_user_id;
-  if (!sid)
-    throw new Error("Module 'Goals' non configuré (module_user_id manquant).");
-  return sid;
+// -----------------------------------------------------------------------------
+// Helpers internes
+// -----------------------------------------------------------------------------
+
+function assertMainKey(mainKey) {
+  if (!mainKey) throw new Error("Clé principale manquante.");
 }
 
-/** Helper: déchiffre un record PocketBase -> payload clair fusionné + métadonnées utiles. */
-async function toEntry(mainKey, rec) {
-  const { id, payload, cipher_iv, created, updated } = rec;
-  const clear = await decryptAESGCM(mainKey, payload, cipher_iv);
-  let data;
-  try {
-    data = JSON.parse(clear);
-  } catch (e) {
-    console.error("Payload JSON invalide (Goals):", e);
-    data = {};
+function assertSid(moduleUserId) {
+  if (!moduleUserId) {
+    throw new Error("Module 'Goals' non configuré (module_user_id manquant).");
   }
+  if (!SID_REGEX.test(String(moduleUserId))) {
+    throw new Error("module_user_id invalide (format sid).");
+  }
+}
+
+function pbError(e, fallback = "PocketBase error") {
+  const msg =
+    e?.data?.message || e?.response?.message || e?.message || fallback;
+  const details = e?.data?.data ? ` ${JSON.stringify(e.data.data)}` : "";
+  return new Error(`${msg}${details}`);
+}
+
+async function decryptRecord(mainKey, record) {
+  if (!record) throw new Error("Record introuvable.");
+  const plain = await decryptAESGCM(
+    String(record.payload),
+    String(record.cipher_iv),
+    mainKey
+  );
+  const payload = JSON.parse(plain || "{}");
   return {
-    id,
-    created,
-    updated,
-    // Champs métier (cf. documentation/modules/Goals.md)
-    date: data.date || "",
-    title: data.title || "",
-    note: data.note || "",
-    status: data.status || "open",
-    categories: Array.isArray(data.categories) ? data.categories : [],
-    // on ne renvoie jamais guard
+    id: record.id,
+    created: record.created,
+    updated: record.updated,
+    ...payload, // { date, title, note, status, categories[] }
   };
 }
 
-/** Helper: chiffre un payload clair {date,title,note?,status,categories[]} */
-async function fromPayload(mainKey, payloadObj) {
-  const clear = JSON.stringify(payloadObj ?? {});
-  const { payload, iv } = await encryptAESGCM(mainKey, clear);
-  return { payload, cipher_iv: iv };
+async function encryptPayload(mainKey, payloadObj) {
+  const { data, iv } = await encryptAESGCM(
+    JSON.stringify(payloadObj || {}),
+    mainKey
+  );
+  // encryptAESGCM renvoie base64url → on reste en string
+  return { data: String(data), iv: String(iv) };
 }
 
-/** LIST — renvoie toutes les entrées déchiffrées du module Goals. */
-export async function listGoals(mainKey, { perPage = 200 } = {}) {
-  const sid = await getSid();
+// -----------------------------------------------------------------------------
+// LIST
+// -----------------------------------------------------------------------------
 
-  // On passe par pb.send pour injecter ?sid=...
-  const res = await pb.send(
-    `/api/collections/${COLLECTION}/records?sid=${encodeURIComponent(
-      sid
-    )}&perPage=${perPage}`,
-    { method: "GET" }
-  );
+/**
+ * Liste simple (entrées déchiffrées), tri par défaut -created.
+ */
+export async function listGoals(
+  moduleUserId,
+  mainKey,
+  { page = 1, perPage = 50, sort = "-created" } = {}
+) {
+  const res = await listGoalsPaged(moduleUserId, mainKey, {
+    page,
+    perPage,
+    sort,
+  });
+  return res.items;
+}
+
+/**
+ * Liste paginée (métadonnées PocketBase incluses).
+ */
+export async function listGoalsPaged(
+  moduleUserId,
+  mainKey,
+  { page = 1, perPage = 50, sort = "-created" } = {}
+) {
+  assertSid(moduleUserId);
+
+  const url = `/api/collections/${COLLECTION}/records?sid=${encodeURIComponent(
+    moduleUserId
+  )}&page=${page}&perPage=${perPage}&sort=${encodeURIComponent(sort)}`;
+
+  let res;
+  try {
+    res = await pb.send(url, { method: "GET" });
+  } catch (e) {
+    throw pbError(e, "Échec de la liste goals_entries.");
+  }
 
   const items = Array.isArray(res?.items) ? res.items : [];
-  const out = [];
-  for (const rec of items) {
-    out.push(await toEntry(mainKey, rec));
-  }
-  return out;
-}
+  const decrypted = mainKey
+    ? await Promise.all(items.map((r) => decryptRecord(mainKey, r)))
+    : items;
 
-/** GET by id — lit une entrée et la déchiffre. */
-export async function getGoalById(mainKey, id) {
-  const sid = await getSid();
-
-  const rec = await pb.send(
-    `/api/collections/${COLLECTION}/records/${encodeURIComponent(
-      id
-    )}?sid=${encodeURIComponent(sid)}`,
-    { method: "GET" }
-  );
-
-  return toEntry(mainKey, rec);
-}
-
-/** CREATE — création en 2 temps (guard:"init" → PATCH promotion). */
-export async function createGoal(mainKey, payload) {
-  const sid = await getSid();
-
-  const { payload: enc, cipher_iv } = await fromPayload(mainKey, payload);
-
-  // 1) POST init
-  const created = await pb.send(`/api/collections/${COLLECTION}/records`, {
-    method: "POST",
-    body: {
-      module_user_id: sid,
-      payload: enc,
-      cipher_iv,
-      guard: "init",
-    },
-  });
-
-  // 2) PATCH promotion (calcul guard selon SECURITY.md)
-  const guard = await deriveGuard(mainKey, sid, created.id);
-  await pb.send(
-    `/api/collections/${COLLECTION}/records/${
-      created.id
-    }?sid=${encodeURIComponent(sid)}&d=init`,
-    {
-      method: "PATCH",
-      body: { guard },
-    }
-  );
-
-  // Retourne l’entrée déchiffrée
-  return toEntry(mainKey, created);
-}
-
-/** UPDATE — met à jour une entrée (payload complet) avec ?sid & d=<guard>. */
-export async function updateGoal(mainKey, id, prevEntry, payload) {
-  const sid = await getSid();
-
-  const { payload: enc, cipher_iv } = await fromPayload(mainKey, payload);
-  const guard = await deriveGuard(mainKey, sid, id);
-
-  const rec = await pb.send(
-    `/api/collections/${COLLECTION}/records/${encodeURIComponent(
-      id
-    )}?sid=${encodeURIComponent(sid)}&d=${encodeURIComponent(guard)}`,
-    {
-      method: "PATCH",
-      body: {
-        payload: enc,
-        cipher_iv,
-      },
-    }
-  );
-
-  return toEntry(mainKey, rec);
-}
-
-/** UPDATE status — helper fin: open/doing/done/archived */
-export async function updateGoalStatus(mainKey, id, prevEntry, nextStatus) {
-  // On reconstruit un payload complet minimal, pour éviter de "perdre" des champs
-  const payload = {
-    date: prevEntry.date || "",
-    title: prevEntry.title || "",
-    note: prevEntry.note || "",
-    status: nextStatus,
-    categories: Array.isArray(prevEntry.categories) ? prevEntry.categories : [],
+  return {
+    items: decrypted,
+    page: res?.page ?? page,
+    perPage: res?.perPage ?? perPage,
+    totalItems: res?.totalItems ?? decrypted.length,
+    totalPages: res?.totalPages ?? 1,
   };
-  return updateGoal(mainKey, id, prevEntry, payload);
 }
 
-/** DELETE — supprime une entrée avec ?sid & d=<guard>. */
-export async function deleteGoal(mainKey, id /*, prevEntry */) {
-  const sid = await getSid();
-  const guard = await deriveGuard(mainKey, sid, id);
+// -----------------------------------------------------------------------------
+// READ ONE
+// -----------------------------------------------------------------------------
 
-  await pb.send(
-    `/api/collections/${COLLECTION}/records/${encodeURIComponent(
-      id
-    )}?sid=${encodeURIComponent(sid)}&d=${encodeURIComponent(guard)}`,
-    { method: "DELETE" }
+/**
+ * GET /goals_entries/<id>?sid=<sid>
+ */
+export async function getGoalById(moduleUserId, mainKey, id) {
+  assertMainKey(mainKey);
+  assertSid(moduleUserId);
+  if (!id) throw new Error("id manquant.");
+
+  let rec;
+  try {
+    rec = await pb.send(
+      `/api/collections/${COLLECTION}/records/${encodeURIComponent(
+        id
+      )}?sid=${encodeURIComponent(moduleUserId)}`,
+      { method: "GET" }
+    );
+  } catch (e) {
+    throw pbError(e, "Échec de la lecture de l’objectif.");
+  }
+  return decryptRecord(mainKey, rec);
+}
+
+// -----------------------------------------------------------------------------
+// CREATE (2 temps)
+// -----------------------------------------------------------------------------
+
+/**
+ * 1) POST { guard:"init" } (createRule: @request.auth.id != "")
+ * 2) PATCH promotion ?sid=...&d=init { guard }
+ */
+export async function createGoal(moduleUserId, mainKey, payload) {
+  assertMainKey(mainKey);
+  assertSid(moduleUserId);
+
+  const { data, iv } = await encryptPayload(mainKey, payload);
+
+  // Etape A — création init (sans ?sid, conforme à ton schéma)
+  let created;
+  try {
+    created = await pb.send(`/api/collections/${COLLECTION}/records`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        module_user_id: String(moduleUserId),
+        payload: data,
+        cipher_iv: iv,
+        guard: "init",
+      }),
+    });
+  } catch (e) {
+    throw pbError(e, "Failed to create record.");
+  }
+
+  if (!created?.id) throw new Error("Création incomplète (id manquant).");
+
+  // Etape B — promotion guard
+  const guard = await deriveGuard(
+    mainKey,
+    String(moduleUserId),
+    String(created.id)
   );
+  try {
+    await pb.send(
+      `/api/collections/${COLLECTION}/records/${encodeURIComponent(
+        created.id
+      )}?sid=${encodeURIComponent(moduleUserId)}&d=init`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guard }),
+      }
+    );
+  } catch (e) {
+    throw pbError(e, "Failed to promote guard.");
+  }
 
-  return true;
+  return { id: created.id };
+}
+
+// -----------------------------------------------------------------------------
+// UPDATE
+// -----------------------------------------------------------------------------
+
+/**
+ * PATCH /<id>?sid=<sid>&d=<guard>
+ * Rechiffre le payload complet.
+ */
+export async function updateGoal(
+  moduleUserId,
+  mainKey,
+  id,
+  _prevEntry,
+  payload
+) {
+  assertMainKey(mainKey);
+  assertSid(moduleUserId);
+  if (!id) throw new Error("id manquant.");
+
+  const { data, iv } = await encryptPayload(mainKey, payload);
+  const guard = await deriveGuard(mainKey, String(moduleUserId), String(id));
+
+  try {
+    await pb.send(
+      `/api/collections/${COLLECTION}/records/${encodeURIComponent(
+        id
+      )}?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(
+        guard
+      )}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payload: data,
+          cipher_iv: iv,
+        }),
+      }
+    );
+  } catch (e) {
+    throw pbError(e, "Échec de la mise à jour.");
+  }
+
+  return { id };
+}
+
+// -----------------------------------------------------------------------------
+// DELETE
+// -----------------------------------------------------------------------------
+
+/**
+ * DELETE /<id>?sid=<sid>&d=<guard>
+ */
+export async function deleteGoal(moduleUserId, mainKey, id, _prevEntry) {
+  assertMainKey(mainKey);
+  assertSid(moduleUserId);
+  if (!id) throw new Error("id manquant.");
+
+  const guard = await deriveGuard(mainKey, String(moduleUserId), String(id));
+
+  try {
+    await pb.send(
+      `/api/collections/${COLLECTION}/records/${encodeURIComponent(
+        id
+      )}?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(
+        guard
+      )}`,
+      { method: "DELETE" }
+    );
+  } catch (e) {
+    throw pbError(e, "Échec de la suppression.");
+  }
+
+  return { id };
+}
+
+// -----------------------------------------------------------------------------
+// Helper optionnel: changer uniquement le statut
+// -----------------------------------------------------------------------------
+
+export async function updateGoalStatus(
+  moduleUserId,
+  mainKey,
+  id,
+  nextStatus,
+  prevEntry /* optionnel */
+) {
+  if (!["open", "wip", "done"].includes(nextStatus)) {
+    throw new Error("Statut invalide.");
+  }
+  const base = prevEntry || (await getGoalById(moduleUserId, mainKey, id));
+  if (!base) throw new Error("Entrée introuvable.");
+  if (base.status === nextStatus) return { id, noChange: true };
+
+  const payload = {
+    date: base.date || "",
+    title: base.title || "",
+    note: base.note || "",
+    status: nextStatus,
+    categories: Array.isArray(base.categories) ? base.categories : [],
+  };
+
+  return updateGoal(moduleUserId, mainKey, id, base, payload);
 }
