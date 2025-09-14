@@ -1,3 +1,6 @@
+// src/services/dataModules/Passage.js
+// Service Passage — version alignée sur l’avant-refacto (fonctionnel avec History actuel)
+
 import pb from "@/services/pocketbase";
 import { encryptAESGCM } from "@/services/webcrypto";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
@@ -6,35 +9,13 @@ import {
   getEntryGuard,
   deleteEntryGuard,
 } from "@/services/guards";
+// On prend deriveGuard centralisé (guards.js) pour rester cohérent avec SECURITY.md
+import { deriveGuard } from "@/services/guards";
 
 const COLLECTION = "passage_entries";
 
-/* ------------------------- Helpers HMAC (aligné Mood) ------------------------- */
-const te = new TextEncoder();
-
-function toHex(buf) {
-  const b = new Uint8Array(buf || []);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
-  return s;
-}
-async function hmacSha256(keyRaw, messageUtf8) {
-  const key = await window.crypto.subtle.importKey(
-    "raw",
-    keyRaw,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
-}
-/** mainKeyRaw = Uint8Array (pas CryptoKey) */
-export async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
-  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
-  const tag = await hmacSha256(guardKeyBytes, String(recordId));
-  return "g_" + toHex(tag);
-}
-/** force en Uint8Array (requis pour HMAC) */
+/* ------------------------- Helpers clés (comme Mood) ------------------------- */
+/** force en Uint8Array (requis pour HMAC dérivé côté guards) */
 function toRawBytes(mk) {
   if (mk instanceof Uint8Array) return mk;
   if (mk?.buffer) return new Uint8Array(mk.buffer);
@@ -57,14 +38,16 @@ function toRawBytes(mk) {
  * Crée une entrée Passage (payload chiffré), POST guard:"init", puis PATCH promotion guard.
  * @param {string} moduleUserId - sid
  * @param {Uint8Array|CryptoKey} mainKey
- * @param {object} payloadObj - { type, date, thread, title?, content, ... }
+ * @param {object} payloadObj - { date, thread, title?, content, ... }
  */
 export async function createPassageEntry(moduleUserId, mainKey, payloadObj) {
+  if (!moduleUserId) throw new Error("module_user_id manquant");
+
   // 1) chiffrer le payload
   const plaintext = JSON.stringify(payloadObj || {});
   const sealed = await encryptAESGCM(plaintext, mainKey); // -> { iv, data }
 
-  // 2) CREATE avec guard:"init"
+  // 2) CREATE avec guard:"init" (on passe par pb.send pour injecter ?sid)
   const res = await pb.send(
     `/api/collections/${COLLECTION}/records?sid=${encodeURIComponent(
       moduleUserId
@@ -100,7 +83,7 @@ export async function createPassageEntry(moduleUserId, mainKey, payloadObj) {
 
   // garder localement (optimise update/delete)
   setEntryGuard(COLLECTION, id, guard);
-  return { id, guard };
+  return created;
 }
 
 /* ---------------------------------- LIST ----------------------------------- */
@@ -111,27 +94,35 @@ export async function listPassageEntries(
   moduleUserId,
   { page = 1, perPage = 50, sort = "-created" } = {}
 ) {
-  const url = `/api/collections/${COLLECTION}/records?page=${page}&perPage=${perPage}&sort=${encodeURIComponent(
-    sort
-  )}&sid=${encodeURIComponent(moduleUserId)}`;
+  if (!moduleUserId) throw new Error("module_user_id manquant");
+  const url =
+    `/api/collections/${COLLECTION}/records` +
+    `?page=${page}&perPage=${perPage}&sort=${encodeURIComponent(sort)}` +
+    `&sid=${encodeURIComponent(moduleUserId)}`;
   const list = await pb.send(url, { method: "GET" });
   const data = list?.json || list;
   return data?.items || [];
 }
 
 /**
- * Déchiffre 1 record (signature identique à Mood : {iv,data} → decryptWithRetry).
+ * Déchiffre 1 record — **on renvoie payload imbriqué** (comme avant, pour History).
  */
 export async function decryptPassageRecord(rec, mainKey) {
   if (!rec?.payload || !rec?.cipher_iv) return null;
 
-  // IMPORTANT: aligné Mood → decryptWithRetry attend { iv, data } + key
+  // decryptWithRetry attend { iv, data } + key
   const encrypted = { iv: rec.cipher_iv, data: rec.payload };
-
-  // comme Mood: passe par decryptWithRetry (gère clé manquante, etc.)
   const plaintext = await decryptWithRetry({ encrypted, key: mainKey });
-  const obj = JSON.parse(plaintext || "{}");
 
+  let obj = {};
+  try {
+    obj = JSON.parse(plaintext || "{}");
+  } catch (e) {
+    console.warn("[Passage] JSON invalide pour record", rec?.id, e);
+    obj = {};
+  }
+
+  // IMPORTANT: on garde la forme { payload: {...} } (History lit payload.title/thread)
   return {
     id: rec.id,
     created: rec.created,
@@ -148,6 +139,7 @@ export async function listPassageDecrypted(
   mainKey,
   { pages = 3, perPage = 100, sort = "-created" } = {}
 ) {
+  if (!moduleUserId) throw new Error("module_user_id manquant");
   const out = [];
   let firstError = null;
 
@@ -168,10 +160,9 @@ export async function listPassageDecrypted(
     }
   }
 
-  if (firstError) out._firstError = firstError; // ← c’est ce que ton History lit
+  if (firstError) out._firstError = firstError; // lu par History pour afficher un warning
   return out;
 }
-
 
 /**
  * Extrait la liste distincte des "threads" (hashtags / histoires) existants (déchiffrés).
@@ -207,6 +198,9 @@ export async function updatePassageEntry(
   mainKey,
   payloadObj
 ) {
+  if (!id) throw new Error("id manquant");
+  if (!moduleUserId) throw new Error("module_user_id manquant");
+
   // retrouver/préparer le guard
   const gLocal = getEntryGuard(COLLECTION, id);
   const guard =
@@ -215,9 +209,9 @@ export async function updatePassageEntry(
   // re-chiffrer
   const sealed = await encryptAESGCM(JSON.stringify(payloadObj || {}), mainKey);
 
-  const url = `/api/collections/${COLLECTION}/records/${encodeURIComponent(
-    id
-  )}?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(guard)}`;
+  const url =
+    `/api/collections/${COLLECTION}/records/${encodeURIComponent(id)}` +
+    `?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(guard)}`;
 
   const res = await pb.send(url, {
     method: "PATCH",
@@ -231,13 +225,16 @@ export async function updatePassageEntry(
 
 /* --------------------------------- DELETE ---------------------------------- */
 export async function deletePassageEntry(id, moduleUserId, mainKey) {
+  if (!id) throw new Error("id manquant");
+  if (!moduleUserId) throw new Error("module_user_id manquant");
+
   const gLocal = getEntryGuard(COLLECTION, id);
   const guard =
     gLocal || (await deriveGuard(toRawBytes(mainKey), moduleUserId, id));
 
-  const url = `/api/collections/${COLLECTION}/records/${encodeURIComponent(
-    id
-  )}?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(guard)}`;
+  const url =
+    `/api/collections/${COLLECTION}/records/${encodeURIComponent(id)}` +
+    `?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(guard)}`;
 
   try {
     const res = await pb.send(url, { method: "DELETE" });
@@ -245,9 +242,9 @@ export async function deletePassageEntry(id, moduleUserId, mainKey) {
     return res?.json || res;
   } catch (_e) {
     // fallback ultime: tentative avec d=init (si l’entrée n’a jamais été promue)
-    const urlInit = `/api/collections/${COLLECTION}/records/${encodeURIComponent(
-      id
-    )}?sid=${encodeURIComponent(moduleUserId)}&d=init`;
+    const urlInit =
+      `/api/collections/${COLLECTION}/records/${encodeURIComponent(id)}` +
+      `?sid=${encodeURIComponent(moduleUserId)}&d=init`;
     const res2 = await pb.send(urlInit, { method: "DELETE" });
     deleteEntryGuard(COLLECTION, id);
     return res2?.json || res2;

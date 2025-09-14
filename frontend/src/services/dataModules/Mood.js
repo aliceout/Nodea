@@ -40,37 +40,7 @@ export async function deleteAllMoodEntries(moduleUserId, mainKey) {
 // src/services/moodEntries.js
 import pb from "@/services/pocketbase";
 import { encryptAESGCM } from "@/services/webcrypto";
-
-/* ------------------------- Helpers HMAC (local) ------------------------- */
-
-const te = new TextEncoder();
-
-function toHex(buf) {
-  const b = new Uint8Array(buf || []);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
-  return s;
-}
-
-async function hmacSha256(keyRaw, messageUtf8) {
-  // keyRaw: ArrayBuffer|Uint8Array (clé brute, pas CryptoKey)
-  const key = await window.crypto.subtle.importKey(
-    "raw",
-    keyRaw,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
-}
-
-async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
-  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
-  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
-  // guard    = "g_" + HEX( HMAC(guardKey, record.id) )
-  const tag = await hmacSha256(guardKeyBytes, String(recordId));
-  return "g_" + toHex(tag);
-}
+import { deriveGuard } from "@/services/guards";
 
 /* ------------------------------ CREATE (2 temps, HMAC) ------------------------------ */
 /**
@@ -94,9 +64,9 @@ export async function createMoodEntry({
 
   const client = pbOverride || pb;
 
-  // 1) Prépare la clé AES-GCM pour chiffrer le payload
+  // 1) Si mainKey est en bytes, on importe juste pour chiffrer (HMAC utilisera la clé brute plus tard)
   let aesKey = mainKey;
-  if (!(aesKey instanceof CryptoKey)) {
+  if (!(mainKey && typeof mainKey === "object" && mainKey.type === "secret")) {
     aesKey = await window.crypto.subtle.importKey(
       "raw",
       mainKey,
@@ -155,18 +125,15 @@ export async function createMoodEntry({
 export async function listMoodEntries(moduleUserId) {
   if (!moduleUserId) throw new Error("module_user_id manquant");
   const url =
-    `/api/collections/mood_entries/records` +
+    "/api/collections/mood_entries/records" +
     `?sid=${encodeURIComponent(moduleUserId)}` +
-    `&sort=-created`;
-  const res = await pb.send(url, { method: "GET" });
-  return Array.isArray(res?.items) ? res.items : [];
+    `&sort=-created&perPage=200`;
+  const page = await pb.send(url, { method: "GET" });
+  return Array.isArray(page?.items) ? page.items : [];
 }
 
 /* ---------------------------------- DELETE ---------------------------------- */
-/**
- * Supprime une entrée par id en fournissant la preuve HMAC (guard).
- * Le guard doit être dérivé côté client (cf. deriveGuard) ou fournis en paramètre.
- */
+/** Supprime une entrée Mood par id, via ?sid & d=guard */
 export async function deleteMoodEntry(id, moduleUserId, guard) {
   if (!id) throw new Error("id manquant");
   if (!moduleUserId) throw new Error("module_user_id manquant");
