@@ -5,7 +5,9 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Textarea from "@/components/common/Textarea";
 import Select from "@/components/common/Select";
+import SuggestInput from "@/components/common/SuggestInput";
 import FormError from "@/components/common/FormError";
+import DateMonthPicker from "@/components/common/DateMonthPicker";
 import {
   getGoalById,
   createGoal,
@@ -32,6 +34,8 @@ export default function GoalsForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { mainKey } = useMainKey();
+  const [tags, setTags] = useState([]); // tes options (à remplir)
+  const [thread, setThread] = useState(""); // la valeur de l'input
 
   const isEdit = useMemo(() => Boolean(id), [id]);
 
@@ -159,35 +163,38 @@ export default function GoalsForm() {
         required
         disabled={disabled}
       />
-      <Input
-        label="Date"
-        type="date"
-        value={form.date}
-        onChange={onChange("date")}
-        disabled={disabled}
-      />
-      <Select
-        label="Statut"
-        value={form.status}
-        onChange={onChange("status")}
-        disabled={disabled}
-      >
-        <option value="open">Ouvert</option>
-        <option value="wip">En cours</option>
-        <option value="done">Terminé</option>
-      </Select>
-      <Input
-        label="Catégories"
-        type="text"
-        value={form.categoriesText}
-        onChange={onChange("categoriesText")}
-        placeholder="Ex. travail, santé, perso"
-        disabled={disabled}
-        legend={
-          <>
-            Sépare par des virgules (ex. <i>travail, santé</i>).
-          </>
-        }
+      <div className="flex justify-between gap-4 flex-col lg:flex-row">
+        <DateMonthPicker
+          label="Date"
+          value={form.date}
+          onChange={onChange("date")}
+          disabled={disabled}
+          className="lg:w-1/2"
+          legend={
+            <>
+              Choisis le mois et l'année (ex. <i>2025-09</i>).
+            </>
+          }
+        />
+        <Select
+          label="Statut"
+          value={form.status}
+          onChange={onChange("status")}
+          disabled={disabled}
+          className="lg:w-1/2"
+        >
+          <option value="open">Ouvert</option>
+          <option value="wip">En cours</option>
+          <option value="done">Terminé</option>
+        </Select>
+      </div>
+      <SuggestInput
+        label="Hashtag / histoire"
+        placeholder="ex: #SortieJob ou #Deuil…"
+        value={thread}
+        onChange={setThread}
+        options={tags}
+        legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
       />
       <Textarea
         label="Note"

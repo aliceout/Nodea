@@ -24,7 +24,6 @@ export default function SuggestInput({
   placeholder,
   required,
   label,
-  labelClassName,
   legend,
   className = "",
   inputClassName = "",
@@ -48,7 +47,7 @@ export default function SuggestInput({
       {label && (
         <label
           htmlFor={id}
-          className={`block mb-1 font-semibold text-nodea-sage-dark text-sm ${labelClassName}`}
+          className="block mb-1 font-semibold text-nodea-sage-dark"
         >
           {label}
         </label>
