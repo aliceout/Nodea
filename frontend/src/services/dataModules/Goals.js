@@ -4,7 +4,7 @@
 import pb from "@/services/pocketbase";
 import { loadModulesConfig } from "@/services/modules-config";
 // On réutilise le helper existant qui suit la spec SECURITY.md
-import { deriveGuard } from "@/services/dataModules/Mood";
+import { deriveGuard } from "@/services/guards";
 // Chiffrement E2E commun (déjà utilisé côté app)
 import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
 
@@ -14,11 +14,8 @@ const COLLECTION = "goals_entries";
 async function getSid() {
   const cfg = await loadModulesConfig();
   const sid = cfg?.goals?.module_user_id;
-  if (!sid) {
-    throw new Error(
-      "Module 'Goals' non configuré (module_user_id manquant). Lis users.modules."
-    );
-  }
+  if (!sid)
+    throw new Error("Module 'Goals' non configuré (module_user_id manquant).");
   return sid;
 }
 
@@ -144,9 +141,9 @@ export async function updateGoal(mainKey, id, prevEntry, payload) {
   return toEntry(mainKey, rec);
 }
 
-/** UPDATE STATUS — bascule rapide du statut sans toucher aux autres champs. */
+/** UPDATE status — helper fin: open/doing/done/archived */
 export async function updateGoalStatus(mainKey, id, prevEntry, nextStatus) {
-  // Reconstruit un payload complet en ne changeant que 'status'
+  // On reconstruit un payload complet minimal, pour éviter de "perdre" des champs
   const payload = {
     date: prevEntry.date || "",
     title: prevEntry.title || "",
