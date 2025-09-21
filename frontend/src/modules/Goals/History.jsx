@@ -31,6 +31,7 @@ export default function GoalsHistory() {
   const [statusFilter, setStatusFilter] = useState("");
   const [threadFilter, setThreadFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
+  const [groupBy, setGroupBy] = useState("thread");
 
   useEffect(() => {
     if (!moduleUserId) {
@@ -98,6 +99,19 @@ export default function GoalsHistory() {
     );
   });
 
+  // Grouping: by thread (default) or by year
+  const groupsMap = new Map();
+  const makeKey = (e) =>
+    groupBy === "year" ? (e.date || "").slice(0, 4) || "—" : e.thread || "—";
+  for (const e of filtered) {
+    const key = makeKey(e);
+    if (!groupsMap.has(key)) groupsMap.set(key, []);
+    groupsMap.get(key).push(e);
+  }
+  const groups = Array.from(groupsMap.entries()).sort((a, b) =>
+    String(a[0]).localeCompare(String(b[0]))
+  );
+
   return (
     <div className="space-y-4 max-w-3xl mx-auto px-4">
       <HistoFilters
@@ -109,28 +123,37 @@ export default function GoalsHistory() {
         setYearFilter={setYearFilter}
         allThreads={allThreads}
         years={years}
+        groupBy={groupBy}
+        setGroupBy={setGroupBy}
       />
-      <HistoList
-        entries={filtered}
-        renderView={(e, onEdit) => (
-          <HistoCard
-            entry={e}
-            onEdit={onEdit}
-            deleteGoal={handleDeleteGoal}
-            toggleStatus={toggleStatus}
+      {groups.map(([label, items]) => (
+        <section key={label} className="space-y-2">
+          <h3 className="text-sm font-semibold text-nodea-sage-dark">
+            {groupBy === "year" ? `Année: ${label}` : `Thread: ${label}`}
+          </h3>
+          <HistoList
+            entries={items}
+            renderView={(e, onEdit) => (
+              <HistoCard
+                entry={e}
+                onEdit={onEdit}
+                deleteGoal={handleDeleteGoal}
+                toggleStatus={toggleStatus}
+              />
+            )}
+            renderEdit={(e, onCancel) => (
+              <HistoEditCard
+                entry={e}
+                updateGoal={updateGoal}
+                moduleUserId={moduleUserId}
+                mainKey={mainKey}
+                setEntries={setEntries}
+                onCancel={onCancel}
+              />
+            )}
           />
-        )}
-        renderEdit={(e, onCancel) => (
-          <HistoEditCard
-            entry={e}
-            updateGoal={updateGoal}
-            moduleUserId={moduleUserId}
-            mainKey={mainKey}
-            setEntries={setEntries}
-            onCancel={onCancel}
-          />
-        )}
-      />
+        </section>
+      ))}
     </div>
   );
 }

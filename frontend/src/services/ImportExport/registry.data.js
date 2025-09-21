@@ -2,6 +2,7 @@
 const loaders = {
   mood: () => import("./Mood"),
   passage: () => import("./Passage"),
+  goals: () => import("./Goals"),
 };
 
 // Cache pour éviter de recharger les plugins
