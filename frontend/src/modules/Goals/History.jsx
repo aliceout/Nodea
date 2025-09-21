@@ -9,14 +9,16 @@ import {
 } from "@/services/dataModules/Goals";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import GoalsFilters from "./components/GoalsFilters";
-import GoalsList from "./components/GoalsList";
+import HistoFilters from "./components/HistoFilters";
+import HistoList from "./components/HistoList";
+import HistoEditCard from "./components/HistoEditCard";
+import HistoCard from "./components/HistoCard";
 
 /**
  * Liste des objectifs (Goals)
  * - Lecture via listGoals(moduleUserId, mainKey)  ← sid explicit
  * - Bascule rapide du statut (open/wip/done)
- * - Filtres basiques par status et catégories
+ * - Filtres basiques par status, thread et année
  */
 export default function GoalsHistory() {
   const navigate = useNavigate();
@@ -27,7 +29,7 @@ export default function GoalsHistory() {
 
   const [entries, setEntries] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [threadFilter, setThreadFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
 
   useEffect(() => {
@@ -83,39 +85,51 @@ export default function GoalsHistory() {
     new Set(entries.map((e) => e.date?.slice(0, 4)).filter(Boolean))
   );
 
-  // Récupère toutes les catégories existantes
-  const allCategories = Array.from(
-    new Set(entries.flatMap((e) => e.categories || []).filter(Boolean))
+  // Récupère tous les threads existants (valeur unique par entrée)
+  const allThreads = Array.from(
+    new Set(entries.map((e) => e.thread).filter(Boolean))
   );
 
   const filtered = entries.filter((e) => {
     return (
       (!statusFilter || e.status === statusFilter) &&
-      (!categoryFilter || (e.categories || []).includes(categoryFilter)) &&
+      (!threadFilter || e.thread === threadFilter) &&
       (!yearFilter || (e.date || "").startsWith(yearFilter))
     );
   });
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto px-4">
-      <GoalsFilters
+      <HistoFilters
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
+        threadFilter={threadFilter}
+        setThreadFilter={setThreadFilter}
         yearFilter={yearFilter}
         setYearFilter={setYearFilter}
-        allCategories={allCategories}
+        allThreads={allThreads}
         years={years}
       />
-      <GoalsList
+      <HistoList
         entries={filtered}
-        toggleStatus={toggleStatus}
-        updateGoal={updateGoal}
-        deleteGoal={handleDeleteGoal}
-        moduleUserId={moduleUserId}
-        mainKey={mainKey}
-        setEntries={setEntries}
+        renderView={(e, onEdit) => (
+          <HistoCard
+            entry={e}
+            onEdit={onEdit}
+            deleteGoal={handleDeleteGoal}
+            toggleStatus={toggleStatus}
+          />
+        )}
+        renderEdit={(e, onCancel) => (
+          <HistoEditCard
+            entry={e}
+            updateGoal={updateGoal}
+            moduleUserId={moduleUserId}
+            mainKey={mainKey}
+            setEntries={setEntries}
+            onCancel={onCancel}
+          />
+        )}
       />
     </div>
   );

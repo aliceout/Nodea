@@ -26,7 +26,7 @@ import {
  * Formulaire Goals
  * - Crée ou édite une entrée (une entrée = un objectif)
  * - Champs payload (clair → chiffré côté service) :
- *   { date, title, note?, status, categories[] }
+ *   { date, title, note?, status, thread }
  * - Statuts : open | wip | done
  *
  * Signatures service (alignées sur Passage) :
@@ -55,8 +55,7 @@ export default function GoalsForm() {
     date: "",
     title: "",
     note: "",
-    status: "open",
-    categoriesText: "", // édition via "tag1, tag2"
+    status: "done",
   });
   const [error, setError] = useState("");
 
@@ -80,8 +79,9 @@ export default function GoalsForm() {
           date: entry.date || "",
           title: entry.title || "",
           note: entry.note || "",
-          status: entry.status || "open",
+          status: entry.status || "done",
         });
+        setThread(entry.thread || "");
       } catch (e) {
         console.error(e);
         setError("Impossible de charger l’objectif.");
@@ -100,11 +100,7 @@ export default function GoalsForm() {
     setForm((s) => ({ ...s, [key]: e.target.value }));
   };
 
-  const parseCategories = () =>
-    form.categoriesText
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+  // plus de catégories: on utilise un champ unique `thread`
 
   const validate = () => {
     if (!form.title.trim()) return "Le titre est requis.";
@@ -143,8 +139,7 @@ export default function GoalsForm() {
       thread,
     };
 
-    // Ajoute ce log :
-    console.log("Payload envoyé à la BDD :", payload);
+    //
 
     try {
       if (isEdit) {
@@ -158,7 +153,6 @@ export default function GoalsForm() {
       setError("Échec de l’enregistrement.");
     }
   };
-
   const handleDelete = async () => {
     if (!isEdit) return;
     setError("");
@@ -181,20 +175,6 @@ export default function GoalsForm() {
       console.error(e);
       setError("Échec de la suppression.");
     }
-  };
-
-  const handleSave = async () => {
-    const categories = form.categoriesText
-      ? form.categoriesText
-          .split(",")
-          .map((c) => c.trim())
-          .filter(Boolean)
-      : [];
-    await saveGoal({
-      ...form,
-      categories,
-      // autres champs...
-    });
   };
 
   // Affiche le form même si ça charge : on désactive juste les actions.

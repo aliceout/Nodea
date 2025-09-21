@@ -45,7 +45,6 @@ async function decryptRecord(mainKey, record) {
     keyBytes = base64ToBytes(mainKey);
   }
 
-
   // Passe keyBytes à la crypto
   const plain = await decryptAESGCM(
     { iv: String(record.cipher_iv), data: String(record.payload) },
@@ -306,7 +305,7 @@ export async function updateGoalStatus(
     title: base.title || "",
     note: base.note || "",
     status: nextStatus,
-    categories: Array.isArray(base.categories) ? base.categories : [],
+    thread: base.thread || "",
   };
 
   return updateGoal(moduleUserId, mainKey, id, base, payload);

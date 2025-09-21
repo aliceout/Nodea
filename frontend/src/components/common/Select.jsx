@@ -28,7 +28,8 @@ export default function Select({
       {label && (
         <label
           className={
-            "block mb-1 font-semibold text-nodea-sage-dark text-sm " + labelClassName
+            "block mb-1 font-semibold text-nodea-sage-dark text-sm " +
+            labelClassName
           }
         >
           {label}
@@ -37,7 +38,7 @@ export default function Select({
       <select
         value={value}
         onChange={onChange}
-        className={`w-full p-2 border rounded border-nodea-slate-light hover:border-nodea-slate focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
+        className={`w-full p-2 border rounded border-nodea-slate-lighter hover:border-nodea-slate-light focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
         disabled={disabled}
         {...props}
       >
