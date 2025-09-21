@@ -1,10 +1,16 @@
 // frontend/src/modules/Goals/History.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { listGoals, updateGoalStatus } from "@/services/dataModules/Goals";
+import {
+  listGoals,
+  updateGoalStatus,
+  deleteGoal,
+  updateGoal,
+} from "@/services/dataModules/Goals";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import Button from "@/components/common/Button";
+import GoalsFilters from "./components/GoalsFilters";
+import GoalsList from "./components/GoalsList";
 
 /**
  * Liste des objectifs (Goals)
@@ -22,6 +28,7 @@ export default function GoalsHistory() {
   const [entries, setEntries] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
 
   useEffect(() => {
     if (!moduleUserId) {
@@ -58,52 +65,58 @@ export default function GoalsHistory() {
     } catch (err) {}
   };
 
+  const handleDeleteGoal = async (id) => {
+    const prev = entries;
+    // UI optimiste
+    setEntries((cur) => cur.filter((e) => e.id !== id));
+    try {
+      await deleteGoal(moduleUserId, mainKey, id);
+    } catch (err) {
+      setEntries(prev);
+      // Optionnel : affiche une erreur
+      // setError("Suppression impossible.");
+    }
+  };
+
+  // Récupère toutes les années présentes
+  const years = Array.from(
+    new Set(entries.map((e) => e.date?.slice(0, 4)).filter(Boolean))
+  );
+
+  // Récupère toutes les catégories existantes
+  const allCategories = Array.from(
+    new Set(entries.flatMap((e) => e.categories || []).filter(Boolean))
+  );
+
   const filtered = entries.filter((e) => {
     return (
       (!statusFilter || e.status === statusFilter) &&
-      (!categoryFilter || (e.categories || []).includes(categoryFilter))
+      (!categoryFilter || (e.categories || []).includes(categoryFilter)) &&
+      (!yearFilter || (e.date || "").startsWith(yearFilter))
     );
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2 justify-center">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border rounded px-2 py-1"
-        >
-          <option value="">Tous les statuts</option>
-          <option value="open">Ouverts</option>
-          <option value="wip">En cours</option>
-          <option value="done">Terminés</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Filtrer par catégorie"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="border rounded px-2 py-1"
-        />
-      </div>
-
-      <ul className="divide-y">
-        {filtered.map((e) => (
-          <li key={e.id} className="py-2 flex justify-between items-center">
-            <div>
-              <div className="font-medium">{e.title}</div>
-              <div className="text-sm text-gray-500">{e.note}</div>
-              <div className="text-xs text-gray-400">
-                {e.status} | {(e.categories || []).join(", ")}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={() => toggleStatus(e)}>⟳</Button>
-              <Button onClick={() => navigate(e.id)}>✎</Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-4 max-w-3xl mx-auto px-4">
+      <GoalsFilters
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        yearFilter={yearFilter}
+        setYearFilter={setYearFilter}
+        allCategories={allCategories}
+        years={years}
+      />
+      <GoalsList
+        entries={filtered}
+        toggleStatus={toggleStatus}
+        updateGoal={updateGoal}
+        deleteGoal={handleDeleteGoal}
+        moduleUserId={moduleUserId}
+        mainKey={mainKey}
+        setEntries={setEntries}
+      />
     </div>
   );
 }
