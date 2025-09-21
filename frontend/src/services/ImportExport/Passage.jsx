@@ -26,8 +26,14 @@ function normalizePayload(input) {
 /** Clé "naturelle" pour dédoublonner (date+thread) */
 export function getNaturalKey(plain) {
   const p = normalizePayload(plain);
-  // on reste simple : couple (date, thread) — cohérent avec l'usage de Passage
-  return `${p.date}::${p.thread}`;
+  const norm = (s) =>
+    String(s || "")
+      .normalize("NFKC")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, " ");
+  // Couple (date, thread) — avec normalisation pour une dédup plus robuste
+  return `${norm(p.date)}::${norm(p.thread)}`;
 }
 
 /**
@@ -122,8 +128,12 @@ export function exportSerialize(plainPayload) {
  * ctx = { moduleUserId, mainKey }
  * Retourne un Set<string> de `${date}::${thread}`
  */
-export async function listExistingKeys({ ctx }) {
-  const { moduleUserId, mainKey } = ctx || {};
+export async function listExistingKeys(args = {}) {
+  // Supporte { pb, sid, mainKey } et fallback { ctx:{ moduleUserId, mainKey } }
+  const ctx = args.ctx || {};
+  const moduleUserId = args.sid || ctx.moduleUserId;
+  const mainKey = args.mainKey || ctx.mainKey;
+  const client = args.pb || pb;
   const keys = new Set();
   if (!moduleUserId || !mainKey) return keys;
 
@@ -136,7 +146,7 @@ export async function listExistingKeys({ ctx }) {
     }/records?page=${page}&perPage=${perPage}&sort=-created&sid=${encodeURIComponent(
       moduleUserId
     )}`;
-    const res = await pb.send(url, { method: "GET" });
+    const res = await client.send(url, { method: "GET" });
     const data = res?.json || res;
     const items = data?.items || [];
     if (!items.length) break;

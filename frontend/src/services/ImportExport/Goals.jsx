@@ -3,6 +3,7 @@
 
 import pb from "@/services/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
+import { deriveGuard as deriveGuardShared } from "@/services/guards";
 
 export const meta = { id: "goals", version: 1, collection: "goals_entries" };
 
@@ -61,33 +62,8 @@ export async function importHandler({ payload, ctx }) {
     }),
   });
 
-  // Promotion guard avec ?sid & d=init (calcul du guard côté client → see Mood.jsx)
-  // On réutilise le même algorithme de dérivation que Mood.jsx ici pour la promotion.
-  const te = new TextEncoder();
-  const toHex = (buf) =>
-    Array.from(new Uint8Array(buf || []))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  async function hmacSha256(keyRaw, messageUtf8) {
-    const key = await window.crypto.subtle.importKey(
-      "raw",
-      keyRaw,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
-  }
-  async function deriveGuard(mainKeyRaw, moduleUserIdStr, recordId) {
-    const guardKeyBytes = await hmacSha256(
-      mainKeyRaw,
-      `guard:${moduleUserIdStr}`
-    );
-    const mac = await hmacSha256(guardKeyBytes, String(recordId));
-    return `g_${toHex(mac)}`;
-  }
-
-  const guard = await deriveGuard(mainKey, moduleUserId, created?.id);
+  // Promotion guard avec helper partagé (cohérence inter-modules)
+  const guard = await deriveGuardShared(mainKey, moduleUserId, created?.id);
   await pb.send(
     `/api/collections/${meta.collection}/records/${
       created.id
