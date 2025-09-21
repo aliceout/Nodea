@@ -29,11 +29,11 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
                 i % 2 === 1 ? "bg-gray-50" : "bg-white"
               } hover:bg-sky-50`}
             >
-              <td className="px-3 py-3 font-medium">{user.username}</td>
-              <td className="px-3 py-3 hidden md:table-cell">{user.role}</td>
+              <td className="px-3 py-3 text-sm font-medium">{user.username}</td>
+              <td className="px-3 py-3 text-sm hidden md:table-cell">{user.role}</td>
               <td className="px-3 py-3 text-center">
                 <button
-                  className="text-red-600 hover:text-red-700 px-3 py-1 rounded text-sm"
+                  className="cursor-pointer text-red-600 hover:text-red-700 px-3 py-1 text-sm"
                   title="Supprime uniquement le compte. Les entrées chiffrées restent orphelines."
                   onClick={() => confirmDelete(user)}
                 >

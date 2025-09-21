@@ -5,8 +5,14 @@ import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/decryptWithRetry";
 import Button from "@/components/common/Button";
 import SettingsCard from "@/components/shared/SettingsCard";
+// Orchestrate export via module plugins (pagination + decryption centralized)
+import { getDataPlugin } from "@/services/ImportExport/registry.data.js";
 
 export default function ExportDataSection() {
+  // Note: l'export s'appuie sur les plugins de chaque module (Mood/Goals/Passage)
+  // via getDataPlugin(moduleKey) et plugin.exportQuery({ ctx }) afin d'unifier
+  // pagination, déchiffrement et format. On construit un SEUL fichier JSON
+  // { meta, modules: { mood?, goals?, passage? } } sans changer l'UI.
   const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)
   const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
   const sidMood = modules?.mood?.id || modules?.mood?.module_user_id;
@@ -28,64 +34,40 @@ export default function ExportDataSection() {
           "Aucun module exportable configuré (Mood/Goals/Passage)"
         );
 
-      // Accumulateur par module
+      // Accumulateur par module (utilise les plugins d'export pour pagination + déchiffrement)
       const modulesOut = {};
+      const enabled = [
+        sidMood ? "mood" : null,
+        sidGoals ? "goals" : null,
+        sidPassage ? "passage" : null,
+      ].filter(Boolean);
 
-      // Mood
-      if (sidMood) {
-        const page = await pb.collection("mood_entries").getList(1, 200, {
-          query: { sid: sidMood, sort: "-created" },
-        });
-        const items = page?.items || [];
-        const plain = await Promise.all(
-          items.map(async (rec) => {
-            const txt = await decryptWithRetry({
-              encrypted: { iv: rec.cipher_iv, data: rec.payload },
-              key: mainKey,
-              markMissing,
-            });
-            return JSON.parse(txt || "{}");
-          })
-        );
-        if (plain.length) modulesOut.mood = plain;
-      }
+      for (const moduleKey of enabled) {
+        try {
+          const sid =
+            moduleKey === "mood"
+              ? sidMood
+              : moduleKey === "goals"
+              ? sidGoals
+              : sidPassage;
+          const plugin = await getDataPlugin(moduleKey);
+          const ctx = { moduleUserId: sid, mainKey, pb };
 
-      // Goals
-      if (sidGoals) {
-        const page = await pb.collection("goals_entries").getList(1, 200, {
-          query: { sid: sidGoals, sort: "-created" },
-        });
-        const items = page?.items || [];
-        const plain = await Promise.all(
-          items.map(async (rec) => {
-            const txt = await decryptWithRetry({
-              encrypted: { iv: rec.cipher_iv, data: rec.payload },
-              key: mainKey,
-              markMissing,
-            });
-            return JSON.parse(txt || "{}");
-          })
-        );
-        if (plain.length) modulesOut.goals = plain;
-      }
-
-      // Passage
-      if (sidPassage) {
-        const page = await pb.collection("passage_entries").getList(1, 200, {
-          query: { sid: sidPassage, sort: "-created" },
-        });
-        const items = page?.items || [];
-        const plain = await Promise.all(
-          items.map(async (rec) => {
-            const txt = await decryptWithRetry({
-              encrypted: { iv: rec.cipher_iv, data: rec.payload },
-              key: mainKey,
-              markMissing,
-            });
-            return JSON.parse(txt || "{}");
-          })
-        );
-        if (plain.length) modulesOut.passage = plain;
+          const items = [];
+          // On laisse le plugin gérer la pagination et le déchiffrement
+          // pageSize par défaut interne (certains plugins acceptent pageSize en option)
+          for await (const payload of plugin.exportQuery({
+            ctx,
+            pageSize: 200,
+          })) {
+            // payload est déjà en clair; si tu utilises NDJSON un jour: plugin.exportSerialize(payload)
+            items.push(payload);
+          }
+          if (items.length) modulesOut[moduleKey] = items;
+        } catch (err) {
+          // On continue les autres modules; l'erreur sera reflétée dans le message global
+          console.error(`Export ${moduleKey} échoué:`, err);
+        }
       }
 
       if (!Object.keys(modulesOut).length) {

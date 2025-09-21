@@ -1,6 +1,6 @@
 # Module Review 
 
-base sur le projet YearCompass)
+base sur le projet YearCompass
 ## 1. Table `review_entries`
 
 * **Type** : `base`

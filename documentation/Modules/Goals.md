@@ -28,7 +28,7 @@ Règles : lecture/écriture par `?sid=<module_user_id>` ; update/delete exigent 
   "title": "string",                   // intitulé de l’objectif
   "note": "string|optional",           // détails éventuels
   "status": "open|wip|done",           // état de progression
-  "categories": ["string"]             // tags libres définis par l’utilisateur·rice
+  "thread": ["string"]                 // tags libres définis par l’utilisateur·rice
 }
 ```
 
@@ -67,13 +67,13 @@ Règles : lecture/écriture par `?sid=<module_user_id>` ; update/delete exigent 
         "title": "Apprendre React",
         "note": "Faire un mini-projet perso",
         "status": "wip",
-        "categories": ["apprentissage", "dev"]
+        "thread": ["apprentissage", "dev"]
       },
       {
         "date": "2025-03-15",
         "title": "Tennis chaque semaine",
         "status": "open",
-        "categories": ["sport", "santé"]
+        "thread": ["sport", "santé"]
       }
     ]
   }
