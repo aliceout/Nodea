@@ -1,4 +1,12 @@
-// Shared crypto utilities (base64url, random, hash, HMAC, ids)
+// crypto-utils.js
+// -------------------------------------------------------------
+// Utilitaires crypto génériques côté client:
+// - Encodage base64url (sans =) pour IDs/URLs (compatible PocketBase)
+// - randomBytes / randomSecret: aléa crypto-sûr
+// - hashPayload: SHA-256 -> base64url
+// - hmac: HMAC(SHA-256) -> base64url
+// - generateModuleUserId / makeGuard: générateurs conformes aux patterns PB
+// -------------------------------------------------------------
 
 const subtle = globalThis.crypto?.subtle;
 if (!subtle) {
@@ -12,6 +20,7 @@ const td = new TextDecoder();
 
 /** ---------------- Encodage ---------------- **/
 
+/** Bytes -> Base64URL (sans =), adapté aux URLs et aux patterns PB. */
 export function toBase64url(bytes) {
   // bytes -> base64url (sans =) ; OK pour URL et patterns PB.
   let s = btoa(String.fromCharCode(...bytes));
@@ -19,6 +28,7 @@ export function toBase64url(bytes) {
   return s;
 }
 
+/** Base64URL -> Bytes */
 export function fromBase64url(s) {
   // base64url -> bytes
   s = s.replaceAll("-", "+").replaceAll("_", "/");
@@ -32,6 +42,7 @@ export const bytesToText = (u8) => td.decode(u8);
 
 /** ---------------- Aléa sécurisé ---------------- **/
 
+/** Génère n octets aléatoires via WebCrypto. */
 export function randomBytes(n = 32) {
   const b = new Uint8Array(n);
   crypto.getRandomValues(b);
@@ -43,6 +54,7 @@ export const randomSecret = (n = 32) => randomBytes(n);
 
 /** ---------------- Hash & HMAC (base64url) ---------------- **/
 
+/** SHA-256 d'un texte/objet/bytes -> base64url. */
 export async function hashPayload(input) {
   // input: string | Uint8Array | objet JSON
   const bytes =
@@ -56,6 +68,7 @@ export async function hashPayload(input) {
   return toBase64url(new Uint8Array(digest));
 }
 
+/** HMAC (algo par défaut SHA-256) -> base64url. */
 export async function hmac(secretBytes, message, algo = "SHA-256") {
   // secretBytes: Uint8Array ; message: string | Uint8Array
   const key = await subtle.importKey(
@@ -72,6 +85,7 @@ export async function hmac(secretBytes, message, algo = "SHA-256") {
 
 /** ---------------- IDs & tokens conformes au schéma PB ---------------- **/
 
+/** Génère un module_user_id conforme au schéma PB (préfixe optionnel). */
 export function generateModuleUserId(prefix = "g_") {
   // Schéma PB : ^[a-z0-9_\-]{16,}$
   // 12 octets -> 16 chars base64url ; on force en minuscules pour matcher le pattern.
@@ -80,10 +94,12 @@ export function generateModuleUserId(prefix = "g_") {
   return prefix ? prefix + id : id; // ex: "g_manctvf3kzv-tn72"
 }
 
+/** Bytes -> hex minuscule. */
 export function bytesToHex(u8) {
   return [...u8].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Génère un guard aléatoire (g_ + 32 hex) conforme au schéma PB. */
 export function makeGuard() {
   // Schéma PB : ^g_[a-z0-9]{32,}$
   // 16 octets -> 32 hex ; préfixe "g_"

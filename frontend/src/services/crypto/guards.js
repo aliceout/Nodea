@@ -63,6 +63,10 @@ function saveAll(obj) {
   localStorage.setItem(STORE_KEY, JSON.stringify(obj));
 }
 
+/**
+ * Stocke en localStorage le guard calculé pour un record.
+ * Persistant par navigateur ; clé: nodea.guards.v1 -> { [collection]: { [id]: guard } }
+ */
 export function setEntryGuard(collection, id, guard) {
   const all = loadAll();
   all[collection] = all[collection] || {};
@@ -70,11 +74,17 @@ export function setEntryGuard(collection, id, guard) {
   saveAll(all);
 }
 
+/**
+ * Récupère le guard en cache pour une entrée (ou chaîne vide si absent).
+ */
 export function getEntryGuard(collection, id) {
   const all = loadAll();
   return all?.[collection]?.[id] || "";
 }
 
+/**
+ * Supprime le guard en cache pour l'entrée donnée.
+ */
 export function deleteEntryGuard(collection, id) {
   const all = loadAll();
   if (all?.[collection]?.[id]) {

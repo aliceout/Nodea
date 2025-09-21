@@ -1,5 +1,7 @@
 // src/services/dataModules/Passage.js
-// Service Passage — version alignée sur l’avant-refacto (fonctionnel avec History actuel)
+// Services CRUD Passage — compatible avec History actuel
+// Flux: chiffre -> POST guard:"init" -> PATCH promotion -> cache local du guard
+// Public API: createPassageEntry, listPassageEntries, decryptPassageRecord, listPassageDecrypted, listDistinctThreads, updatePassageEntry, deletePassageEntry
 
 import pb from "@/services/pocketbase";
 import { encryptAESGCM } from "@/services/crypto/webcrypto";

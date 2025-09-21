@@ -1,15 +1,15 @@
 /**
- * Logique d'import/export du module "Mood" (headless).
- * - Minimaliste : API { meta, importHandler, exportQuery, exportSerialize } + hooks de dédoublonnage.
- * - Pas d’UI ici.
- *
- * Contrat (voir MODULES.md / SECURITY.md) :
- * - Table: mood_entries (payload chiffré + cipher_iv + guard hidden)
- * - LIST/VIEW: GET …/mood_entries?sid=<module_user_id>
- * - CREATE (2 temps):
- *     A) POST { module_user_id, payload, cipher_iv, guard:"init" }
- *     B) PATCH /{id}?sid=<module_user_id>&d=init  body { guard: "g_<HMAC>" }
- * - Export: on déchiffre localement puis on sérialise { module, version, payload }
+ * Import/Export plugin — Mood (headless)
+ * Contrat commun:
+ *   - Exports: { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
+ *   - meta: { id:"mood", version:1, collection:"mood_entries" }
+ *   - importHandler({ payload, ctx:{ moduleUserId, mainKey } }): chiffre local puis POST init + PATCH promotion
+ *   - exportQuery({ ctx, pageSize?, range? }): itère des payloads clairs (déchiffrés côté client)
+ *   - exportSerialize(obj): façonne un item standard { module, version, payload }
+ * Détails implémentation:
+ *   - LIST/VIEW: GET /mood_entries?sid=<sid>
+ *   - CREATE: POST { module_user_id, payload, cipher_iv, guard:"init" } puis PATCH guard { g_<HMAC> }
+ *   - Dédoublonnage: getNaturalKey(payload) et listExistingKeys(ctx) consultent le clair
  */
 
 import pb from "@/services/pocketbase";

@@ -9,6 +9,18 @@ import { deriveGuard } from "@/services/crypto/guards";
  * List records for a collection with sid, pagination, and optional fields sorting
  * Returns the raw JSON (items/totalItems) from pb.send or collection.getList shape.
  */
+/**
+ * Liste les enregistrements d'une collection avec pagination et sid.
+ *
+ * @param {string} collection - Nom de la collection PB (ex: "mood_entries").
+ * @param {object} [opts]
+ * @param {string} [opts.sid] - module_user_id (filtre serveur)
+ * @param {number} [opts.page=1]
+ * @param {number} [opts.perPage=200]
+ * @param {string} [opts.sort="-created"]
+ * @param {string} [opts.fields] - liste de champs (ex: "id,payload,cipher_iv")
+ * @returns {Promise<{items:any[],page:number,perPage:number,totalItems:number,totalPages:number}>}
+ */
 export async function listRecords(
   collection,
   { sid, page = 1, perPage = 200, sort = "-created", fields } = {}
@@ -29,6 +41,21 @@ export async function listRecords(
  * Create encrypted record then promote guard using shared deriveGuard.
  * inputs: { collection, moduleUserId, payloadString, iv, mainKey }
  * Returns created record id.
+ */
+/**
+ * Crée un record chiffré puis promeut le guard via HMAC partagé.
+ *
+ * Contrat PocketBase (hooks côté serveur):
+ *  - Étape A (POST): body { module_user_id, payload, cipher_iv, guard:"init" }
+ *  - Étape B (PATCH): /{id}?sid=<module_user_id>&d=init  body { guard: "g_<HMAC>" }
+ *
+ * @param {object} params
+ * @param {string} params.collection
+ * @param {string} params.moduleUserId - sid
+ * @param {string} params.payloadString - ciphertext base64 (data)
+ * @param {string} params.iv - IV AES-GCM base64
+ * @param {Uint8Array} params.mainKey - clé principale brute (pour deriveGuard)
+ * @returns {Promise<string>} id du record créé
  */
 export async function createEncryptedRecord({
   collection,
@@ -71,5 +98,22 @@ export async function createEncryptedRecord({
 
   return created?.id;
 }
+
+// --- Exemples d'utilisation ---
+// (1) Lister les records chiffrés d'une collection (payload/cipher_iv)
+//   const page = await listRecords("mood_entries", {
+//     sid: moduleUserId,
+//     fields: "id,payload,cipher_iv"
+//   });
+//
+// (2) Créer un record chiffré (après encryptAESGCM)
+//   const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
+//   const id = await createEncryptedRecord({
+//     collection: "mood_entries",
+//     moduleUserId,
+//     payloadString: data,
+//     iv,
+//     mainKey,
+//   });
 
 export default { listRecords, createEncryptedRecord };

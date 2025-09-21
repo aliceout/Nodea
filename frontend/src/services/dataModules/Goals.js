@@ -1,5 +1,6 @@
 // frontend/src/services/dataModules/Goals.js
-// Service CRUD du module Goals — aligné Mood/Passage (création 2 temps + guard HMAC)
+// Services CRUD pour Goals — création 2 temps + guard HMAC (aligné Mood/Passage)
+// Public API: listGoals, listGoalsPaged, getGoalById, createGoal, updateGoal, deleteGoal, updateGoalStatus
 
 import pb from "@/services/pocketbase";
 import {

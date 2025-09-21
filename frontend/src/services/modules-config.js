@@ -14,11 +14,21 @@
 import {
   encryptAESGCM,
   decryptAESGCM,
+  // bytesToBase64/base64ToBytes: utilitaires d'encodage binaire <-> base64.
+  // Note: ici on ne les utilise pas directement car encrypt/decrypt retournent
+  // et consomment déjà des strings base64 prêtes pour un JSON. On les laisse
+  // importés si jamais un appelant externe souhaite manipuler des clés/salts en base64.
   bytesToBase64,
   base64ToBytes,
 } from "@/services/crypto/webcrypto";
 
 // charge, déchiffre, retourne un objet JS
+/**
+ * Charge et déchiffre la configuration des modules stockée dans users.modules.
+ * - Lecture: users.modules est une string JSON contenant { iv, data } (base64)
+ * - Déchiffrement: via AES-GCM avec la clé principale (mainKey)
+ * - Retour: objet JS ({} si vide/format ancien)
+ */
 export async function loadModulesConfig(pb, userId, mainKey) {
   // 1) lire user
   const user = await pb.collection("users").getOne(userId);
@@ -39,7 +49,12 @@ export async function loadModulesConfig(pb, userId, mainKey) {
   }
 }
 
-// prend un objet JS, chiffre et sauvegarde
+/**
+ * Chiffre et sauvegarde la configuration des modules dans users.modules.
+ * - Entrée: objet JS quelconque (ex: { mood: {...}, goals: {...} })
+ * - Chiffrement: AES-GCM (encryptAESGCM) -> { iv, data } en base64
+ * - Persistance: JSON.stringify({ iv, data }) écrit dans users.modules
+ */
 export async function saveModulesConfig(pb, userId, mainKey, obj) {
   const plaintext = JSON.stringify(obj || {});
   const sealed = await encryptAESGCM(plaintext, mainKey); // => { iv, data }
@@ -47,11 +62,12 @@ export async function saveModulesConfig(pb, userId, mainKey, obj) {
   await pb.collection("users").update(userId, { modules: payload });
 }
 
-// helpers pour lire/écrire une entrée module
+/** Lecteur pratique d'une entrée de config module (ou null si absente). */
 export function getModuleEntry(cfg, moduleId) {
   return (cfg && cfg[moduleId]) || null;
 }
 
+/** Retourne une nouvelle config avec l'entrée module remplacée/ajoutée. */
 export function setModuleEntry(cfg, moduleId, entry) {
   const next = { ...(cfg || {}) };
   next[moduleId] = entry;

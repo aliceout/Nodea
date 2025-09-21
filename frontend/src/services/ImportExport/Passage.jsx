@@ -1,4 +1,6 @@
 // frontend/src/services/ImportExport/Passage.jsx
+// Import/Export pour "Passage" (contrat plugin identique à Mood/Goals)
+// Exporte: { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
 import pb from "@/services/pocketbase";
 import {
   createPassageEntry,

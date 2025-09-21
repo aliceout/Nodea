@@ -1,4 +1,15 @@
 /**
+ * dataModules/Mood.js — Services CRUD pour Mood
+ *
+ * Flux:
+ *  - CREATE: chiffre -> POST guard:"init" -> PATCH promotion avec deriveGuard
+ *  - LIST: GET ?sid, tri -created
+ *  - DELETE: DELETE /{id}?sid&d=<guard>
+ *  - Helpers: deleteAllMoodEntries, deriveGuard re-export
+ *
+ * Public API (principales): createMoodEntry, listMoodEntries, deleteMoodEntry
+ */
+/**
  * Supprime toutes les entrées Mood pour un module_user_id donné, avec logs détaillés.
  * @param {string} moduleUserId
  * @param {Uint8Array|CryptoKey} mainKey

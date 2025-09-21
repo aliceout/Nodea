@@ -1,5 +1,7 @@
 // frontend/src/services/ImportExport/Goals.jsx
-// Import/Export du module "Goals" (aligné Mood/Passage) – payload: { date, title, note?, status, thread }
+// Import/Export du module "Goals" (aligné Mood/Passage)
+// Contrat (plugins): { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
+// Payload clair: { date, title, note?, status, thread }
 
 import pb from "@/services/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/services/crypto/webcrypto";

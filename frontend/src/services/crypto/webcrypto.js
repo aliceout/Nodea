@@ -1,8 +1,30 @@
 import Argon2 from "argon2-wasm";
 
+// webcrypto.js
+// -------------------------------------------------------------
+// Primitives crypto côté client (WebCrypto):
+// - deriveKeyArgon2: dérivation de clé (Argon2id) à partir d'un mot de passe + salt
+// - importAesKeyFromBytes: import d'une clé AES-GCM 256 depuis 32 octets bruts
+// - encryptAESGCM / decryptAESGCM: chiffrement symétrique (AES-GCM)
+// - bytesToBase64 / base64ToBytes: encodage binaire <-> Base64 (standard)
+// - randomBytes: génération d'octets aléatoires crypto-sûrs
+// - decryptWithRetry + KeyMissingError: ergonomie de déchiffrement (retry + message clair)
+//
+// Notes:
+// - Base64 ici est la variante standard (avec +/ et =) adaptée au stockage JSON.
+// - Pour Base64URL (pour IDs, URLs), utiliser services/crypto/crypto-utils.js.
+// - deriveKeyArgon2 renvoie des octets bruts (Uint8Array) — idéal pour AES et HMAC côté client.
+// -------------------------------------------------------------
+
 /**
  * Dérive 32 octets (Uint8Array) via Argon2id à partir d'un mot de passe + salt.
  * Accepte un salt en base64, utf8, ou Uint8Array.
+ */
+/**
+ * Dérive 32 octets (Uint8Array) via Argon2id à partir d'un mot de passe + salt.
+ * @param {string} password - mot de passe en clair (UTF-8)
+ * @param {string|Uint8Array} salt - base64 ou UTF-8 ou bytes
+ * @returns {Promise<Uint8Array>} 32 octets (clé brute)
  */
 export async function deriveKeyArgon2(password, salt) {
   let saltBytes;
@@ -33,6 +55,7 @@ export async function deriveKeyArgon2(password, salt) {
 }
 
 /** Importe 32 octets "raw" en CryptoKey AES-GCM 256 (non extractable). */
+/** Importe 32 octets "raw" en CryptoKey AES-GCM 256 (non extractable). */
 export function importAesKeyFromBytes(bytes32) {
   return window.crypto.subtle.importKey(
     "raw",
@@ -53,9 +76,11 @@ function base64ToArrayBuffer(base64) {
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return u8.buffer;
 }
+/** Bytes -> Base64 (standard) */
 export function bytesToBase64(u8) {
   return btoa(String.fromCharCode(...u8));
 }
+/** Base64 (standard) -> Bytes */
 export function base64ToBytes(b64) {
   const bin = atob(b64);
   const u8 = new Uint8Array(bin.length);
@@ -63,6 +88,7 @@ export function base64ToBytes(b64) {
   return u8;
 }
 
+/** Normalise une clé fournie: CryptoKey ou Uint8Array -> CryptoKey */
 /** Normalise une clé fournie: CryptoKey ou Uint8Array -> CryptoKey */
 async function ensureCryptoKey(keyOrBytes) {
   if (
@@ -82,6 +108,12 @@ async function ensureCryptoKey(keyOrBytes) {
  * @param {string} plaintext - texte clair (UTF-8)
  * @param {CryptoKey|Uint8Array} keyOrBytes - CryptoKey AES-GCM OU 32 octets "raw"
  * @returns {{iv:string, data:string}} base64
+ */
+/**
+ * Chiffre une chaîne en AES-GCM.
+ * @param {string} plaintext - texte clair (UTF-8)
+ * @param {CryptoKey|Uint8Array} keyOrBytes - CryptoKey AES-GCM OU 32 octets "raw"
+ * @returns {{iv:string, data:string}} base64 standard
  */
 export async function encryptAESGCM(plaintext, keyOrBytes) {
   const key = await ensureCryptoKey(keyOrBytes);
@@ -104,6 +136,12 @@ export async function encryptAESGCM(plaintext, keyOrBytes) {
  * @param {CryptoKey|Uint8Array} keyOrBytes - CryptoKey AES-GCM OU 32 octets "raw"
  * @returns {Promise<string>}
  */
+/**
+ * Déchiffre un objet {iv,data} (base64) en texte clair (UTF-8).
+ * @param {{iv:string, data:string}} encrypted
+ * @param {CryptoKey|Uint8Array} keyOrBytes - CryptoKey AES-GCM OU 32 octets "raw"
+ * @returns {Promise<string>}
+ */
 export async function decryptAESGCM(encrypted, keyOrBytes) {
   const key = await ensureCryptoKey(keyOrBytes);
   const iv = new Uint8Array(base64ToArrayBuffer(encrypted.iv));
@@ -117,6 +155,7 @@ export async function decryptAESGCM(encrypted, keyOrBytes) {
 }
 
 /** Génère des octets aléatoires (utile pour clé principale & salt). */
+/** Génère des octets aléatoires (utile pour clé principale & salt). */
 export function randomBytes(length) {
   const u8 = new Uint8Array(length);
   window.crypto.getRandomValues(u8);
@@ -125,6 +164,10 @@ export function randomBytes(length) {
 
 /**
  * Erreur spécifique lorsque la clé principale est absente/incorrecte
+ */
+/**
+ * Erreur spécifique lorsque la clé principale est absente/incorrecte.
+ * Interprétée par l'UI pour signaler une session sans clé.
  */
 export class KeyMissingError extends Error {
   constructor(message = "Clé de chiffrement manquante ou invalide") {
@@ -136,6 +179,7 @@ export class KeyMissingError extends Error {
 /**
  * Détecte des erreurs typiques WebCrypto qui suggèrent une clé invalide
  */
+/** Détecte des erreurs typiques WebCrypto suggérant une clé invalide */
 function isCryptoError(err) {
   return (
     err &&
@@ -150,6 +194,11 @@ function isCryptoError(err) {
 /**
  * Déchiffre avec retry 1x sur erreur crypto, sinon jette immédiatement
  * @param {Object} args - { encrypted: {iv,data}, key, markMissing? }
+ * @returns {Promise<string>} texte clair
+ */
+/**
+ * Déchiffre avec retry 1x sur erreur crypto, sinon lève KeyMissingError.
+ * @param {{ encrypted:{iv:string,data:string}, key:CryptoKey|Uint8Array, markMissing?:Function }} args
  * @returns {Promise<string>} texte clair
  */
 export async function decryptWithRetry({ encrypted, key, markMissing }) {
