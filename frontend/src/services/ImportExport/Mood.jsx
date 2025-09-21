@@ -15,6 +15,7 @@
 import pb from "@/services/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
 import { normalizeKeyPart } from "@/services/ImportExport/utils";
+import { deriveGuard } from "@/services/guards";
 
 export const meta = { id: "mood", version: 1, collection: "mood_entries" };
 
@@ -24,29 +25,6 @@ function assertCtx(ctx) {
   if (!ctx) throw new Error("ctx manquant");
   if (!ctx.moduleUserId) throw new Error("moduleUserId manquant dans ctx");
   if (!ctx.mainKey) throw new Error("mainKey manquante (clé AES) dans ctx");
-}
-
-const te = new TextEncoder();
-function toHex(buf) {
-  const b = new Uint8Array(buf || []);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
-  return s;
-}
-async function hmacSha256(keyRaw, messageUtf8) {
-  const key = await window.crypto.subtle.importKey(
-    "raw",
-    keyRaw,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
-}
-async function deriveGuard(mainKey, moduleUserId, recordId) {
-  const guardKeyBytes = await hmacSha256(mainKey, `guard:${moduleUserId}`);
-  const mac = await hmacSha256(guardKeyBytes, String(recordId));
-  return `g_${toHex(mac)}`;
 }
 
 /** Normalise très légèrement le payload importé (tolérant) */
