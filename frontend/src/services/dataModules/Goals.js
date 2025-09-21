@@ -2,7 +2,11 @@
 // Service CRUD du module Goals — aligné Mood/Passage (création 2 temps + guard HMAC)
 
 import pb from "@/services/pocketbase";
-import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
+import {
+  encryptAESGCM,
+  decryptAESGCM,
+  base64ToBytes,
+} from "@/services/webcrypto";
 import { deriveGuard } from "@/services/guards";
 
 const COLLECTION = "goals_entries";
@@ -35,21 +39,36 @@ function pbError(e, fallback = "PocketBase error") {
 
 async function decryptRecord(mainKey, record) {
   if (!record) throw new Error("Record introuvable.");
+  // Force mainKey en Uint8Array
+  let keyBytes = mainKey;
+  if (typeof mainKey === "string") {
+    keyBytes = base64ToBytes(mainKey);
+  }
+  console.log(
+    "[Goals] decryptRecord - keyBytes:",
+    keyBytes,
+    "type:",
+    typeof keyBytes,
+    "instanceof Uint8Array:",
+    keyBytes instanceof Uint8Array
+  );
+
+  // Passe keyBytes à la crypto
   const plain = await decryptAESGCM(
-    String(record.payload),
-    String(record.cipher_iv),
-    mainKey
+    { iv: String(record.cipher_iv), data: String(record.payload) },
+    keyBytes
   );
   const payload = JSON.parse(plain || "{}");
   return {
     id: record.id,
     created: record.created,
     updated: record.updated,
-    ...payload, // { date, title, note, status, categories[] }
+    ...payload,
   };
 }
 
 async function encryptPayload(mainKey, payloadObj) {
+  // ✅ ORDRE Nodea: encryptAESGCM(plaintext, keyBytes)
   const { data, iv } = await encryptAESGCM(
     JSON.stringify(payloadObj || {}),
     mainKey
@@ -153,7 +172,7 @@ export async function createGoal(moduleUserId, mainKey, payload) {
 
   const { data, iv } = await encryptPayload(mainKey, payload);
 
-  // Etape A — création init (sans ?sid, conforme à ton schéma)
+  // Étape A — création init (sans ?sid, conforme au schéma)
   let created;
   try {
     created = await pb.send(`/api/collections/${COLLECTION}/records`, {
@@ -172,7 +191,7 @@ export async function createGoal(moduleUserId, mainKey, payload) {
 
   if (!created?.id) throw new Error("Création incomplète (id manquant).");
 
-  // Etape B — promotion guard
+  // Étape B — promotion guard
   const guard = await deriveGuard(
     mainKey,
     String(moduleUserId),
