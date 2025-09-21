@@ -11,6 +11,7 @@ export default function ExportDataSection() {
   const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
   const sidMood = modules?.mood?.id || modules?.mood?.module_user_id;
   const sidGoals = modules?.goals?.id || modules?.goals?.module_user_id;
+  const sidPassage = modules?.passage?.id || modules?.passage?.module_user_id;
 
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -22,8 +23,10 @@ export default function ExportDataSection() {
     setLoading(true);
     try {
       if (!mainKey) throw new Error("Clé de chiffrement absente");
-      if (!sidMood && !sidGoals)
-        throw new Error("Aucun module exportable configuré (Mood/Goals)");
+      if (!sidMood && !sidGoals && !sidPassage)
+        throw new Error(
+          "Aucun module exportable configuré (Mood/Goals/Passage)"
+        );
 
       // Accumulateur par module
       const modulesOut = {};
@@ -64,6 +67,25 @@ export default function ExportDataSection() {
           })
         );
         if (plain.length) modulesOut.goals = plain;
+      }
+
+      // Passage
+      if (sidPassage) {
+        const page = await pb.collection("passage_entries").getList(1, 200, {
+          query: { sid: sidPassage, sort: "-created" },
+        });
+        const items = page?.items || [];
+        const plain = await Promise.all(
+          items.map(async (rec) => {
+            const txt = await decryptWithRetry({
+              encrypted: { iv: rec.cipher_iv, data: rec.payload },
+              key: mainKey,
+              markMissing,
+            });
+            return JSON.parse(txt || "{}");
+          })
+        );
+        if (plain.length) modulesOut.passage = plain;
       }
 
       if (!Object.keys(modulesOut).length) {
@@ -141,7 +163,7 @@ export default function ExportDataSection() {
             onClick={(e) => {
               handleExport(e);
             }}
-            disabled={loading || (!sidMood && !sidGoals)}
+            disabled={loading || (!sidMood && !sidGoals && !sidPassage)}
             className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker disabled:opacity-50"
           >
             {loading ? "Chargement…" : "Exporter les données"}
@@ -165,9 +187,9 @@ export default function ExportDataSection() {
             {error}
           </div>
         )}
-        {!sidMood && !sidGoals && (
+        {!sidMood && !sidGoals && !sidPassage && (
           <div className="text-xs text-amber-700 w-full text-center">
-            Aucun module exportable n’est configuré (Mood/Goals).
+            Aucun module exportable n’est configuré (Mood/Goals/Passage).
           </div>
         )}
       </form>
