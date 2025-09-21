@@ -3,7 +3,7 @@
 // - Create: copie "guard" du body -> record.guard (accepte "init" ou g_...)
 // - Update: autorise uniquement la promotion init -> g_... (puis fige le guard)
 
-const targets = ["mood_entries", "passage_entries, goals_entries"];
+const targets = ["mood_entries", "passage_entries", "goals_entries"];
 
 targets.forEach((name) => {
   // CREATE: accepte "init" (étape A) ou un g_... déjà calculé
