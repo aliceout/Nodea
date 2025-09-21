@@ -4,6 +4,7 @@ import {
   createPassageEntry,
   decryptPassageRecord,
 } from "@/services/dataModules/Passage";
+import { normalizeKeyPart } from "@/services/ImportExport/utils";
 
 /** Métadonnées module (même pattern que Mood.jsx) */
 export const meta = {
@@ -26,14 +27,8 @@ function normalizePayload(input) {
 /** Clé "naturelle" pour dédoublonner (date+thread) */
 export function getNaturalKey(plain) {
   const p = normalizePayload(plain);
-  const norm = (s) =>
-    String(s || "")
-      .normalize("NFKC")
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, " ");
   // Couple (date, thread) — avec normalisation pour une dédup plus robuste
-  return `${norm(p.date)}::${norm(p.thread)}`;
+  return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(p.thread)}`;
 }
 
 /**

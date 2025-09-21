@@ -14,6 +14,7 @@
 
 import pb from "@/services/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
+import { normalizeKeyPart } from "@/services/ImportExport/utils";
 
 export const meta = { id: "mood", version: 1, collection: "mood_entries" };
 
@@ -68,7 +69,10 @@ function normalizePayload(input) {
 /* ======================= Hooks de dédoublonnage (Mood) ====================== */
 /** Clé naturelle d'une entrée Mood (1/jour) */
 export function getNaturalKey(payload) {
-  return payload?.date ? String(payload.date).slice(0, 10) : null;
+  if (!payload?.date) return null;
+  // Keep shape YYYY-MM-DD, then normalize just in case of stray spaces/unicode
+  const d = String(payload.date).slice(0, 10);
+  return normalizeKeyPart(d);
 }
 
 /** Liste les clés déjà présentes (via ?sid + déchiffrement local) */

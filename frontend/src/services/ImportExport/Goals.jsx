@@ -4,6 +4,7 @@
 import pb from "@/services/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
 import { deriveGuard as deriveGuardShared } from "@/services/guards";
+import { normalizeKeyPart } from "@/services/ImportExport/utils";
 
 export const meta = { id: "goals", version: 1, collection: "goals_entries" };
 
@@ -29,13 +30,9 @@ function normalizePayload(input) {
 // Cette clé évite des doublons évidents lors d’imports multiples.
 export function getNaturalKey(plain) {
   const p = normalizePayload(plain);
-  const norm = (s) =>
-    String(s || "")
-      .normalize("NFKC")
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, " ");
-  return `${norm(p.date)}::${norm(p.thread)}::${norm(p.title)}`;
+  return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(
+    p.thread
+  )}::${normalizeKeyPart(p.title)}`;
 }
 
 /* ---------------------------------- Import --------------------------------- */
