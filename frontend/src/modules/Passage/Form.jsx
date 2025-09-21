@@ -118,7 +118,6 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
         placeholder="Note ton cheminement, tes raisons, ce que tu observes…"
       />
       <div className="flex gap-2 items-center justify-between">
-        <div className="w-full">
           <SuggestInput
             value={thread}
             onChange={setThread}
@@ -136,7 +135,6 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
-        </div>
       </div>
       {/* La légende est maintenant gérée par SuggestInput */}
     </form>
