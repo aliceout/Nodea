@@ -4,13 +4,15 @@ import {
   SparklesIcon,
   ArrowsRightLeftIcon,
   Cog6ToothIcon,
+  FlagIcon,
 } from "@heroicons/react/24/outline";
-import Home from "../modules/Homepage";
-import Mood from "../modules/Mood";
-import Passage from "../modules/Passage";
-import Account from "../modules/Account";
-import Settings from "../modules/Settings";
-import Admin from "../modules/Admin";
+import Home from "@/modules/Homepage";
+import Mood from "@/modules/Mood";
+import Passage from "@/modules/Passage";
+import Goals from "@/modules/Goals";
+import Account from "@/modules/Account";
+import Settings from "@/modules/Settings";
+import Admin from "@/modules/Admin";
 
 export const MODULES = [
   {
@@ -40,9 +42,18 @@ export const MODULES = [
     collection: "passage_entries",
     element: <Passage />,
     to_toggle: true,
-    description:
-      "Garder une trace de vos moments de transition de vie",
+    description: "Garder une trace de vos moments de transition de vie",
     icon: ArrowsRightLeftIcon,
+    display: true,
+  },
+  {
+    id: "goals",
+    label: "Goals",
+    collection: "goals_entries",
+    element: <Goals />,
+    to_toggle: true,
+    description: "Suivre vos objectifs annuels",
+    icon: FlagIcon,
     display: true,
   },
   {
