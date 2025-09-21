@@ -11,7 +11,12 @@
 // }
 // -------------------------------------------------------------
 
-import { seal, open } from "@/services/crypto"; // tes fonctions existantes AES-GCM
+import {
+  encryptAESGCM,
+  decryptAESGCM,
+  bytesToBase64,
+  base64ToBytes,
+} from "@/services/crypto/webcrypto";
 
 // charge, déchiffre, retourne un objet JS
 export async function loadModulesConfig(pb, userId, mainKey) {
@@ -22,8 +27,12 @@ export async function loadModulesConfig(pb, userId, mainKey) {
 
   // raw = string JSON chiffré { cipher, iv }
   try {
-    const parsed = JSON.parse(raw);
-    return await open(parsed, mainKey); // => objet
+    const parsed = JSON.parse(raw); // { iv, data } en base64
+    const plaintext = await decryptAESGCM(
+      { iv: parsed.iv, data: parsed.data },
+      mainKey
+    );
+    return JSON.parse(plaintext || "{}");
   } catch {
     // si jamais l’ancien format ou vide
     return {};
@@ -32,7 +41,8 @@ export async function loadModulesConfig(pb, userId, mainKey) {
 
 // prend un objet JS, chiffre et sauvegarde
 export async function saveModulesConfig(pb, userId, mainKey, obj) {
-  const sealed = await seal(obj, mainKey); // => { cipher, iv }
+  const plaintext = JSON.stringify(obj || {});
+  const sealed = await encryptAESGCM(plaintext, mainKey); // => { iv, data }
   const payload = JSON.stringify(sealed);
   await pb.collection("users").update(userId, { modules: payload });
 }

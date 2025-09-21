@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import pb from "@/services/pocketbase";
 import questions from "@/data/questions.json";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { encryptAESGCM } from "@/services/webcrypto";
+import { encryptAESGCM } from "@/services/crypto/webcrypto";
 import { useStore } from "@/store/StoreProvider";
 
 // --- Helpers HMAC (dérivation du guard) ---
@@ -122,7 +122,6 @@ export default function JournalEntryPage() {
         comment,
         ...(includeQA ? { question: randomQuestion, answer: answer } : {}),
       };
-
 
       // 2) Chiffrement AES-GCM (retourne { iv, data } en base64url)
       const { data, iv } = await encryptAESGCM(

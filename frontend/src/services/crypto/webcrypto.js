@@ -1,4 +1,3 @@
-// src/services/webcrypto.js
 import Argon2 from "argon2-wasm";
 
 /**
@@ -122,4 +121,53 @@ export function randomBytes(length) {
   const u8 = new Uint8Array(length);
   window.crypto.getRandomValues(u8);
   return u8;
+}
+
+/**
+ * Erreur spécifique lorsque la clé principale est absente/incorrecte
+ */
+export class KeyMissingError extends Error {
+  constructor(message = "Clé de chiffrement manquante ou invalide") {
+    super(message);
+    this.name = "KeyMissingError";
+  }
+}
+
+/**
+ * Détecte des erreurs typiques WebCrypto qui suggèrent une clé invalide
+ */
+function isCryptoError(err) {
+  return (
+    err &&
+    (err.name === "DataError" ||
+      err.name === "OperationError" ||
+      err.name === "InvalidAccessError" ||
+      err.message?.includes("key") ||
+      err.message?.includes("CryptoKey"))
+  );
+}
+
+/**
+ * Déchiffre avec retry 1x sur erreur crypto, sinon jette immédiatement
+ * @param {Object} args - { encrypted: {iv,data}, key, markMissing? }
+ * @returns {Promise<string>} texte clair
+ */
+export async function decryptWithRetry({ encrypted, key, markMissing }) {
+  try {
+    return await decryptAESGCM(encrypted, key);
+  } catch (err) {
+    if (isCryptoError(err)) {
+      if (import.meta?.env?.DEV) console.warn("CRYPTO:retry", err);
+      try {
+        return await decryptAESGCM(encrypted, key);
+      } catch (err2) {
+        if (isCryptoError(err2)) {
+          if (typeof markMissing === "function") markMissing();
+          throw new KeyMissingError();
+        }
+        throw err2;
+      }
+    }
+    throw err;
+  }
 }

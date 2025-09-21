@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptWithRetry } from "@/services/decryptWithRetry";
+import { decryptWithRetry } from "@/services/crypto/webcrypto";
 import Button from "@/components/common/Button";
 import SettingsCard from "@/components/shared/SettingsCard";
 // Orchestrate export via module plugins (pagination + decryption centralized)

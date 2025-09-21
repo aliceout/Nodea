@@ -4,6 +4,7 @@ import {
   createPassageEntry,
   decryptPassageRecord,
 } from "@/services/dataModules/Passage";
+import { listRecords } from "@/services/pb-records";
 import { normalizeKeyPart } from "@/services/ImportExport/utils";
 
 /** Métadonnées module (même pattern que Mood.jsx) */
@@ -73,13 +74,12 @@ export async function* exportQuery({ ctx }) {
 
   let page = 1;
   while (true) {
-    const url = `/api/collections/${
-      meta.collection
-    }/records?page=${page}&perPage=${perPage}&sort=-created&sid=${encodeURIComponent(
-      moduleUserId
-    )}`;
-    const res = await pb.send(url, { method: "GET" });
-    const data = res?.json || res;
+    const data = await listRecords(meta.collection, {
+      sid: moduleUserId,
+      page,
+      perPage,
+      sort: "-created",
+    });
     const items = data?.items || [];
     if (!items.length) break;
 
@@ -136,13 +136,12 @@ export async function listExistingKeys(args = {}) {
   const perPage = 200;
 
   while (true) {
-    const url = `/api/collections/${
-      meta.collection
-    }/records?page=${page}&perPage=${perPage}&sort=-created&sid=${encodeURIComponent(
-      moduleUserId
-    )}`;
-    const res = await client.send(url, { method: "GET" });
-    const data = res?.json || res;
+    const data = await listRecords(meta.collection, {
+      sid: moduleUserId,
+      page,
+      perPage,
+      sort: "-created",
+    });
     const items = data?.items || [];
     if (!items.length) break;
 

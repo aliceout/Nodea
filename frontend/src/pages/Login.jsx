@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "@/store/StoreProvider";
 import { setTab } from "@/store/actions";
 import pb from "@/services/pocketbase";
-import { deriveKeyArgon2 } from "@/services/webcrypto";
+import { deriveKeyArgon2 } from "@/services/crypto/webcrypto";
 import Logo from "@/components/shared/LogoLong.jsx";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";

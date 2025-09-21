@@ -7,7 +7,10 @@ import {
   getModuleEntry,
   setModuleEntry,
 } from "@/services/modules-config";
-import { generateModuleUserId, makeGuard } from "@/services/crypto-utils";
+import {
+  generateModuleUserId,
+  makeGuard,
+} from "@/services/crypto/crypto-utils";
 import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 

@@ -6,8 +6,8 @@ import {
   encryptAESGCM,
   decryptAESGCM,
   base64ToBytes,
-} from "@/services/webcrypto";
-import { deriveGuard } from "@/services/guards";
+} from "@/services/crypto/webcrypto";
+import { deriveGuard } from "@/services/crypto/guards";
 
 const COLLECTION = "goals_entries";
 // Pattern du schéma PB: "^[a-z0-9_\\-]{16,}$"

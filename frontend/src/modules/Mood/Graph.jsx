@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptWithRetry } from "@/services/decryptWithRetry";
+import { decryptWithRetry } from "@/services/crypto/webcrypto";
 import { listMoodEntries } from "@/services/dataModules/Mood";
 
 export default function GraphPage() {

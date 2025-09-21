@@ -39,8 +39,8 @@ export async function deleteAllMoodEntries(moduleUserId, mainKey) {
 }
 // src/services/moodEntries.js
 import pb from "@/services/pocketbase";
-import { encryptAESGCM } from "@/services/webcrypto";
-import { deriveGuard } from "@/services/guards";
+import { encryptAESGCM } from "@/services/crypto/webcrypto";
+import { deriveGuard } from "@/services/crypto/guards";
 
 /* ------------------------------ CREATE (2 temps, HMAC) ------------------------------ */
 /**

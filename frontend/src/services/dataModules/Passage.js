@@ -2,15 +2,14 @@
 // Service Passage — version alignée sur l’avant-refacto (fonctionnel avec History actuel)
 
 import pb from "@/services/pocketbase";
-import { encryptAESGCM } from "@/services/webcrypto";
-import { decryptWithRetry } from "@/services/decryptWithRetry";
+import { encryptAESGCM } from "@/services/crypto/webcrypto";
+import { decryptWithRetry } from "@/services/crypto/webcrypto";
 import {
+  deriveGuard,
   setEntryGuard,
   getEntryGuard,
   deleteEntryGuard,
-} from "@/services/guards";
-// On prend deriveGuard centralisé (guards.js) pour rester cohérent avec SECURITY.md
-import { deriveGuard } from "@/services/guards";
+} from "@/services/crypto/guards";
 
 const COLLECTION = "passage_entries";
 

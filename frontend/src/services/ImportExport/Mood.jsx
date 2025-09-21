@@ -13,9 +13,9 @@
  */
 
 import pb from "@/services/pocketbase";
-import { encryptAESGCM, decryptAESGCM } from "@/services/webcrypto";
+import { encryptAESGCM, decryptAESGCM } from "@/services/crypto/webcrypto";
 import { normalizeKeyPart } from "@/services/ImportExport/utils";
-import { deriveGuard } from "@/services/guards";
+import { createEncryptedRecord, listRecords } from "@/services/pb-records";
 
 export const meta = { id: "mood", version: 1, collection: "mood_entries" };
 
@@ -57,21 +57,20 @@ export function getNaturalKey(payload) {
 export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
   if (!sid || !mainKey)
     throw new Error("listExistingKeys: sid/mainKey manquant");
-  const client = pbClient || pb;
-
-  // pagination simple
+  // pagination simple via helper
   let page = 1;
   const perPage = 200;
   const keys = new Set();
 
   for (;;) {
-    const res = await client
-      .collection(meta.collection)
-      .getList(page, perPage, {
-        query: { sid, sort: "-created" },
-        fields: "id,payload,cipher_iv",
-      });
-    const items = res?.items || [];
+    const data = await listRecords(meta.collection, {
+      sid,
+      page,
+      perPage,
+      sort: "-created",
+      fields: "id,payload,cipher_iv",
+    });
+    const items = data?.items || [];
     if (!items.length) break;
 
     for (const it of items) {
@@ -87,7 +86,7 @@ export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
         // ignore
       }
     }
-    if (page * perPage >= (res?.totalItems || 0)) break;
+    if (page * perPage >= (data?.totalItems || 0)) break;
     page++;
   }
 
@@ -112,32 +111,16 @@ export async function importHandler({ payload, ctx }) {
   // 2) Chiffrer localement (AES-GCM) → { iv, data } en base64
   const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
 
-  // 3) CREATE (étape A) : POST avec guard="init"
-  const created = await pb.send(`/api/collections/${meta.collection}/records`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      module_user_id: String(moduleUserId),
-      payload: String(data),
-      cipher_iv: String(iv),
-      guard: "init",
-    }),
+  // 3) CREATE + promotion via helper centralisé
+  const id = await createEncryptedRecord({
+    collection: meta.collection,
+    moduleUserId,
+    payloadString: String(data),
+    iv: String(iv),
+    mainKey,
   });
 
-  // 4) Promotion HMAC (étape B) : calcule le guard et PATCH avec ?sid=<sid>&d=init
-  const guard = await deriveGuard(mainKey, moduleUserId, created?.id);
-  await pb.send(
-    `/api/collections/${meta.collection}/records/${
-      created.id
-    }?sid=${encodeURIComponent(moduleUserId)}&d=init`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ guard }),
-    }
-  );
-
-  return { action: "created", id: created.id };
+  return { action: "created", id };
 }
 
 /* ================================= EXPORT ================================== */
@@ -152,13 +135,13 @@ export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
 
   let page = 1;
   for (;;) {
-    const url = `/api/collections/${
-      meta.collection
-    }/records?page=${page}&perPage=${pageSize}&sort=+created&sid=${encodeURIComponent(
-      moduleUserId
-    )}`;
-    const list = await pb.send(url, { method: "GET" });
-    const items = list?.items || [];
+    const data = await listRecords(meta.collection, {
+      sid: moduleUserId,
+      page,
+      perPage: pageSize,
+      sort: "+created",
+    });
+    const items = data?.items || [];
     if (items.length === 0) break;
 
     for (const r of items) {
@@ -178,7 +161,7 @@ export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
       yield obj;
     }
 
-    if (page * pageSize >= (list?.totalItems || 0)) break;
+    if (page * pageSize >= (data?.totalItems || 0)) break;
     page += 1;
   }
 }

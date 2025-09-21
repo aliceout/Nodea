@@ -5,7 +5,7 @@ import {
   deriveKeyArgon2,
   encryptAESGCM,
   decryptAESGCM,
-} from "../services/webcrypto";
+} from "@/services/crypto/webcrypto";
 
 export default function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState("");
@@ -81,7 +81,7 @@ export default function ChangePasswordPage() {
         oldPassword: oldPassword,
       });
 
-  dispatch({ type: "key/set", payload: decryptedMainKey });
+      dispatch({ type: "key/set", payload: decryptedMainKey });
       setSuccess("Mot de passe changé avec succès.");
       // Optionnel : rediriger après succès
       // navigate("/journal");

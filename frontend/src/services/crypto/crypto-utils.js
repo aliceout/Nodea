@@ -1,20 +1,4 @@
-// crypto-utils.js
-// -------------------------------------------------------------
-// Petit toolkit côté client, basé sur WebCrypto, pour :
-//   - encodage base64url
-//   - génération aléatoire sécurisée
-//   - hash (SHA-256) et HMAC
-//   - IDs et secrets conformes à ton schéma PocketBase
-//
-// Fonctions exposées :
-//   - toBase64url(bytes), fromBase64url(str)
-//   - textToBytes(str), bytesToText(u8)
-//   - randomBytes(n), randomSecret(n)
-//   - hashPayload(input)          -> base64url
-//   - hmac(secretBytes, message)  -> base64url
-//   - generateModuleUserId(prefix='g_') -> "g_" + [a-z0-9_-]{16,}
-//   - makeGuard() -> "g_" + 32 hex (pattern ^g_[a-z0-9]{32,}$)
-// -------------------------------------------------------------
+// Shared crypto utilities (base64url, random, hash, HMAC, ids)
 
 const subtle = globalThis.crypto?.subtle;
 if (!subtle) {
@@ -89,7 +73,7 @@ export async function hmac(secretBytes, message, algo = "SHA-256") {
 /** ---------------- IDs & tokens conformes au schéma PB ---------------- **/
 
 export function generateModuleUserId(prefix = "g_") {
-  // Schéma PB : ^[a-z0-9_\\-]{16,}$
+  // Schéma PB : ^[a-z0-9_\-]{16,}$
   // 12 octets -> 16 chars base64url ; on force en minuscules pour matcher le pattern.
   const raw = randomBytes(12);
   const id = toBase64url(raw).toLowerCase(); // [a-z0-9_-], pas de '='

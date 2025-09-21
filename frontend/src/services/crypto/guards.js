@@ -1,43 +1,5 @@
-// Stocke les guards par collection et par record.id en localStorage.
-// + Fournit deriveGuard(mainKeyRaw, moduleUserId, recordId) pour unifier l'usage
-// (extrait depuis Mood.js).
-
-const KEY = "nodea.guards.v1";
-
-function loadAll() {
-  try {
-    return JSON.parse(localStorage.getItem(KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function saveAll(obj) {
-  localStorage.setItem(KEY, JSON.stringify(obj));
-}
-
-export function setEntryGuard(collection, id, guard) {
-  const all = loadAll();
-  all[collection] = all[collection] || {};
-  all[collection][id] = String(guard || "");
-  saveAll(all);
-}
-
-export function getEntryGuard(collection, id) {
-  const all = loadAll();
-  return all?.[collection]?.[id] || "";
-}
-
-export function deleteEntryGuard(collection, id) {
-  const all = loadAll();
-  if (all?.[collection]?.[id]) {
-    delete all[collection][id];
-    saveAll(all);
-  }
-}
-
-/* ------------------------- deriveGuard (HMAC-SHA256) ------------------------- */
-// Implémentation centrale pour tous les modules, déplacée depuis Mood.js.
+// Centralized guard derivation (HMAC-SHA256)
+// Exported API: deriveGuard(mainKeyRaw, moduleUserId, recordId)
 
 const te = new TextEncoder();
 
@@ -85,3 +47,40 @@ export async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
   const tag = await hmacSha256(guardKeyBytes, String(recordId));
   return "g_" + toHex(tag);
 }
+
+// --- Local store for entry guards (per collection/record) ---
+const STORE_KEY = "nodea.guards.v1";
+
+function loadAll() {
+  try {
+    return JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAll(obj) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(obj));
+}
+
+export function setEntryGuard(collection, id, guard) {
+  const all = loadAll();
+  all[collection] = all[collection] || {};
+  all[collection][id] = String(guard || "");
+  saveAll(all);
+}
+
+export function getEntryGuard(collection, id) {
+  const all = loadAll();
+  return all?.[collection]?.[id] || "";
+}
+
+export function deleteEntryGuard(collection, id) {
+  const all = loadAll();
+  if (all?.[collection]?.[id]) {
+    delete all[collection][id];
+    saveAll(all);
+  }
+}
+
+export default { deriveGuard, setEntryGuard, getEntryGuard, deleteEntryGuard };

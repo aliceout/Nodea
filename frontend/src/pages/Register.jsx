@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { deriveKeyArgon2, encryptAESGCM } from "@/services/webcrypto";
+import { deriveKeyArgon2, encryptAESGCM } from "@/services/crypto/webcrypto";
 import pb from "@/services/pocketbase";
 import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
