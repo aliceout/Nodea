@@ -14,7 +14,9 @@ export default function JournalMood({
     <div className="mb-4">
       <div className="flex flex-row items-end justify-between">
         <div className="flex items-center gap-4">
-          <span>Résumé</span>
+          <label className="block font-semibold text-nodea-sage-dark text-sm ">
+            Résumé
+          </label>
           <button
             type="button"
             className="text-2xl border rounded border-gray-400 hover:border-gray-500 h-10 w-10 flex items-center justify-center"
@@ -39,11 +41,13 @@ export default function JournalMood({
           )}
         </div>
         <div className="flex items-center gap-4">
-          <span>Note</span>
+          <label className="block font-semibold text-nodea-sage-dark text-sm ">
+            Note
+          </label>{" "}
           <select
             value={moodScore}
             onChange={(e) => setMoodScore(Number(e.target.value))}
-            className="p-1 h-10 border border-gray-400 hover:border-gray-500 rounded text-base"
+            className="p-1 h-10 border border-gray-400 hover:border-gray-500 rounded text-sm"
             required
           >
             <option value="" disabled>

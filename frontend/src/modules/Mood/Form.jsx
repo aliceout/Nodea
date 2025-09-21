@@ -195,12 +195,12 @@ export default function JournalEntryPage() {
             Nouvelle entrée
           </h1>
           <div className="flex-shrink-0 flex items-center justify-center md:justify-end w-full md:w-85 mt-5">
-            <input
+            <Input
               id="journal-date"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="border border-gray-400 hover:border-gray-500 rounded p-2 w-full"
+              className="w-full text-sm"
             />
           </div>
         </div>
@@ -261,3 +261,4 @@ import QuestionBlock from "./components/FormQuestion";
 import CommentBlock from "./components/FormComment";
 import Button from "@/components/common/Button";
 import FormError from "@/components/common/FormError";
+import Input from "@/components/common/Input";

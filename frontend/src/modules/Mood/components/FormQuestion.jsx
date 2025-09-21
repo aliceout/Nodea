@@ -7,9 +7,13 @@ export default function JournalQuestion({
 }) {
   return (
     <div className="flex flex-col w-full basis-full md:basis-3/5 ">
-      <div className="text-sm font-semibold">Question du jour :</div>
-      <div className="mb-2 italic text-gray-800 text-sm">
-        {loading ? <span className="opacity-50">Chargement…</span> : question}
+      <div className="flex flex-row gap-x-2">
+        <span className="text-sm font-semibold text-nodea-sage-dark ">
+          Question du jour :
+        </span>
+        <span className="mb-2 text-nodea-slate italic text-sm">
+          {loading ? <span className="opacity-50">Chargement…</span> : question}
+        </span>
       </div>
       <Textarea
         value={answer}

@@ -193,7 +193,7 @@ export default function GoalsForm() {
         label="Note"
         value={form.note}
         onChange={onChange("note")}
-        className="min-h-[120px]"
+        inputClassName="min-h-[120px]"
         placeholder="Détails éventuels…"
         disabled={disabled}
       />
