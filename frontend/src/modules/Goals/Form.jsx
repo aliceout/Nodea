@@ -148,77 +148,73 @@ export default function GoalsForm() {
       className="grid grid-cols-1 gap-4 max-w-2xl  mx-auto"
       onSubmit={handleSubmit}
     >
+      <h1 className="text-2xl font-bold">Nouvelle entrée</h1>
       {error ? <FormError message={error} /> : null}
-
-        <Input
-          label="Titre"
-          type="text"
-          value={form.title}
-          onChange={onChange("title")}
-          placeholder="Ex. Lancer un blog"
-          required
-          disabled={disabled}
-        />
-
-        <Input
-          label="Date"
-          type="date"
-          value={form.date}
-          onChange={onChange("date")}
-          disabled={disabled}
-        />
-
-        <Select
-          label="Statut"
-          value={form.status}
-          onChange={onChange("status")}
-          disabled={disabled}
-        >
-          <option value="open">Ouvert</option>
-          <option value="wip">En cours</option>
-          <option value="done">Terminé</option>
-        </Select>
-
-        <Input
-          label="Catégories"
-          type="text"
-          value={form.categoriesText}
-          onChange={onChange("categoriesText")}
-          placeholder="Ex. travail, santé, perso"
-          disabled={disabled}
-          legend={
-            <>
-              Sépare par des virgules (ex. <i>travail, santé</i>).
-            </>
-          }
-        />
-
-        <Textarea
-          label="Note"
-          value={form.note}
-          onChange={onChange("note")}
-          className="min-h-[120px]"
-          placeholder="Détails éventuels…"
-          disabled={disabled}
-        />
+      <Input
+        label="Titre"
+        type="text"
+        value={form.title}
+        onChange={onChange("title")}
+        placeholder="Ex. Lancer un blog"
+        required
+        disabled={disabled}
+      />
+      <Input
+        label="Date"
+        type="date"
+        value={form.date}
+        onChange={onChange("date")}
+        disabled={disabled}
+      />
+      <Select
+        label="Statut"
+        value={form.status}
+        onChange={onChange("status")}
+        disabled={disabled}
+      >
+        <option value="open">Ouvert</option>
+        <option value="wip">En cours</option>
+        <option value="done">Terminé</option>
+      </Select>
+      <Input
+        label="Catégories"
+        type="text"
+        value={form.categoriesText}
+        onChange={onChange("categoriesText")}
+        placeholder="Ex. travail, santé, perso"
+        disabled={disabled}
+        legend={
+          <>
+            Sépare par des virgules (ex. <i>travail, santé</i>).
+          </>
+        }
+      />
+      <Textarea
+        label="Note"
+        value={form.note}
+        onChange={onChange("note")}
+        className="min-h-[120px]"
+        placeholder="Détails éventuels…"
+        disabled={disabled}
+      />
+      <Button
+        className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker"
+        type="submit"
+        disabled={disabled}
+      >
+        {isEdit ? (loading ? "Chargement…" : "Mettre à jour") : "Enregistrer"}
+      </Button>
+      {/* Annuler button removed as requested */}
+      {isEdit ? (
         <Button
-          className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker"
-          type="submit"
+          type="button"
+          variant="danger"
+          onClick={handleDelete}
           disabled={disabled}
         >
-          {isEdit ? (loading ? "Chargement…" : "Mettre à jour") : "Enregistrer"}
+          Supprimer
         </Button>
-        {/* Annuler button removed as requested */}
-        {isEdit ? (
-          <Button
-            type="button"
-            variant="danger"
-            onClick={handleDelete}
-            disabled={disabled}
-          >
-            Supprimer
-          </Button>
-        ) : null}
+      ) : null}
     </form>
   );
 }

@@ -55,7 +55,7 @@ export default function LoginPage() {
       <div className="w-full min-h-screen flex flex-col justify-center items-center">
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
+          className="flex flex-col gap-3 items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
         >
           <Logo className="mx-auto mb-3 w-1/2" />
           <Input
@@ -65,6 +65,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             required
+            className="w-full"
           />
           <Input
             label="Mot de passe"
@@ -73,16 +74,17 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mot de passe"
             required
+            className="w-full"
           />
           <Button
             type="submit"
-            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker "
+            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"
           >
             Se connecter
           </Button>
           {error && <FormError message={error} />}
         </form>
-        <div className="mt-6 text-center w-full">
+        <div className="mt-6 text-center w-full flex flex-col justify-center">
           <span className="text-gray-600">Pas de compte ?</span>{" "}
           <a
             href="/register"
