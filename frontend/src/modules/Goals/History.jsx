@@ -1,45 +1,82 @@
+// frontend/src/modules/Goals/History.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { listGoals, updateGoalStatus } from "@/services/dataModules/Goals";
-import { useMainKey } from "@/hooks/useMainKey";
+import { useStore } from "@/store/StoreProvider";
+import { useModulesRuntime } from "@/store/modulesRuntime";
 import Button from "@/components/common/Button";
 
 /**
  * Liste des objectifs (Goals)
- * - Lecture via listGoals()
+ * - Lecture via listGoals(moduleUserId, mainKey)  ← sid explicit
  * - Bascule rapide du statut (open/wip/done)
  * - Filtres basiques par status et catégories
  */
 export default function GoalsHistory() {
   const navigate = useNavigate();
-  const { mainKey } = useMainKey();
+  const { mainKey } = useStore(); // bytes (Uint8Array) en mémoire
+  const modules = useModulesRuntime();
+  const moduleUserId =
+    modules?.goals?.id || modules?.goals?.module_user_id || "";
 
   const [entries, setEntries] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
-    if (!mainKey) return;
-    listGoals(mainKey).then(setEntries).catch(console.error);
-  }, [mainKey]);
+    console.log("mainKey:", mainKey);
+    console.log("moduleUserId:", moduleUserId);
+
+    if (!moduleUserId) {
+      console.log("Pas de moduleUserId (sid), on ne charge pas les goals.");
+      return;
+    }
+    if (!mainKey) {
+      console.log(
+        "Pas de mainKey, on ne charge pas les goals (attente unlock)."
+      );
+      return;
+    }
+
+    listGoals(moduleUserId, mainKey)
+      .then((data) => {
+        console.log("Données reçues de listGoals:", data);
+        setEntries(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        const msg = String(err?.message || err || "");
+        if (msg.includes("autocancelled")) {
+          console.warn("listGoals autocancelled (double appel) — ignoré.");
+          return;
+        }
+        console.error("Erreur lors du chargement des goals:", err);
+      });
+  }, [mainKey, moduleUserId]);
 
   const toggleStatus = async (entry) => {
+    console.log("toggleStatus appelé pour:", entry);
     const next =
       entry.status === "open"
         ? "wip"
         : entry.status === "wip"
         ? "done"
         : "open";
-    await updateGoalStatus(mainKey, entry.id, entry, next);
-    setEntries((prev) =>
-      prev.map((e) => (e.id === entry.id ? { ...e, status: next } : e))
-    );
+    try {
+      // Contrat sid-explicite : (moduleUserId, mainKey, id, nextStatus, prevEntry)
+      await updateGoalStatus(moduleUserId, mainKey, entry.id, next, entry);
+      console.log("Statut mis à jour pour", entry.id, "->", next);
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, status: next } : e))
+      );
+    } catch (err) {
+      console.error("Erreur updateGoalStatus:", err);
+    }
   };
 
   const filtered = entries.filter((e) => {
     return (
       (!statusFilter || e.status === statusFilter) &&
-      (!categoryFilter || e.categories.includes(categoryFilter))
+      (!categoryFilter || (e.categories || []).includes(categoryFilter))
     );
   });
 
@@ -72,7 +109,7 @@ export default function GoalsHistory() {
               <div className="font-medium">{e.title}</div>
               <div className="text-sm text-gray-500">{e.note}</div>
               <div className="text-xs text-gray-400">
-                {e.status} | {e.categories.join(", ")}
+                {e.status} | {(e.categories || []).join(", ")}
               </div>
             </div>
             <div className="flex gap-2">
