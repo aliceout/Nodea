@@ -44,14 +44,7 @@ async function decryptRecord(mainKey, record) {
   if (typeof mainKey === "string") {
     keyBytes = base64ToBytes(mainKey);
   }
-  console.log(
-    "[Goals] decryptRecord - keyBytes:",
-    keyBytes,
-    "type:",
-    typeof keyBytes,
-    "instanceof Uint8Array:",
-    keyBytes instanceof Uint8Array
-  );
+
 
   // Passe keyBytes à la crypto
   const plain = await decryptAESGCM(

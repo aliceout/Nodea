@@ -24,37 +24,26 @@ export default function GoalsHistory() {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
-    console.log("mainKey:", mainKey);
-    console.log("moduleUserId:", moduleUserId);
-
     if (!moduleUserId) {
-      console.log("Pas de moduleUserId (sid), on ne charge pas les goals.");
       return;
     }
     if (!mainKey) {
-      console.log(
-        "Pas de mainKey, on ne charge pas les goals (attente unlock)."
-      );
       return;
     }
 
     listGoals(moduleUserId, mainKey)
       .then((data) => {
-        console.log("Données reçues de listGoals:", data);
         setEntries(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
         const msg = String(err?.message || err || "");
         if (msg.includes("autocancelled")) {
-          console.warn("listGoals autocancelled (double appel) — ignoré.");
           return;
         }
-        console.error("Erreur lors du chargement des goals:", err);
       });
   }, [mainKey, moduleUserId]);
 
   const toggleStatus = async (entry) => {
-    console.log("toggleStatus appelé pour:", entry);
     const next =
       entry.status === "open"
         ? "wip"
@@ -62,15 +51,11 @@ export default function GoalsHistory() {
         ? "done"
         : "open";
     try {
-      // Contrat sid-explicite : (moduleUserId, mainKey, id, nextStatus, prevEntry)
       await updateGoalStatus(moduleUserId, mainKey, entry.id, next, entry);
-      console.log("Statut mis à jour pour", entry.id, "->", next);
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, status: next } : e))
       );
-    } catch (err) {
-      console.error("Erreur updateGoalStatus:", err);
-    }
+    } catch (err) {}
   };
 
   const filtered = entries.filter((e) => {
