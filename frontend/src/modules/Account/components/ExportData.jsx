@@ -9,7 +9,8 @@ import SettingsCard from "@/components/shared/SettingsCard";
 export default function ExportDataSection() {
   const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)
   const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
-  const sid = modules?.mood?.id || modules?.mood?.module_user_id;
+  const sidMood = modules?.mood?.id || modules?.mood?.module_user_id;
+  const sidGoals = modules?.goals?.id || modules?.goals?.module_user_id;
 
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -21,39 +22,64 @@ export default function ExportDataSection() {
     setLoading(true);
     try {
       if (!mainKey) throw new Error("Clé de chiffrement absente");
-      if (!sid) throw new Error("Module 'Mood' non configuré");
+      if (!sidMood && !sidGoals)
+        throw new Error("Aucun module exportable configuré (Mood/Goals)");
 
-      // Lecture via règle ?sid, puis déchiffrement du payload
-      const page = await pb.collection("mood_entries").getList(1, 200, {
-        query: { sid, sort: "-created" },
-      });
+      // Accumulateur par module
+      const modulesOut = {};
 
-      const items = page?.items || [];
-      if (!items.length) {
+      // Mood
+      if (sidMood) {
+        const page = await pb.collection("mood_entries").getList(1, 200, {
+          query: { sid: sidMood, sort: "-created" },
+        });
+        const items = page?.items || [];
+        const plain = await Promise.all(
+          items.map(async (rec) => {
+            const txt = await decryptWithRetry({
+              encrypted: { iv: rec.cipher_iv, data: rec.payload },
+              key: mainKey,
+              markMissing,
+            });
+            return JSON.parse(txt || "{}");
+          })
+        );
+        if (plain.length) modulesOut.mood = plain;
+      }
+
+      // Goals
+      if (sidGoals) {
+        const page = await pb.collection("goals_entries").getList(1, 200, {
+          query: { sid: sidGoals, sort: "-created" },
+        });
+        const items = page?.items || [];
+        const plain = await Promise.all(
+          items.map(async (rec) => {
+            const txt = await decryptWithRetry({
+              encrypted: { iv: rec.cipher_iv, data: rec.payload },
+              key: mainKey,
+              markMissing,
+            });
+            return JSON.parse(txt || "{}");
+          })
+        );
+        if (plain.length) modulesOut.goals = plain;
+      }
+
+      if (!Object.keys(modulesOut).length) {
         setError("Aucune donnée à exporter");
         setLoading(false);
         return;
       }
 
-      const plain = await Promise.all(
-        items.map(async (rec) => {
-          const txt = await decryptWithRetry({
-            encrypted: { iv: rec.cipher_iv, data: rec.payload },
-            key: mainKey,
-            markMissing,
-          });
-          return JSON.parse(txt || "{}");
-        })
-      );
-
-      // Format d'export commun
+      // Format d'export commun (multi-modules)
       const out = {
         meta: {
           version: 1,
           exported_at: new Date().toISOString(),
           app: "Nodea",
         },
-        modules: { mood: plain },
+        modules: modulesOut,
       };
 
       const blob = new Blob([JSON.stringify(out, null, 2)], {
@@ -115,7 +141,7 @@ export default function ExportDataSection() {
             onClick={(e) => {
               handleExport(e);
             }}
-            disabled={loading || !sid}
+            disabled={loading || (!sidMood && !sidGoals)}
             className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker disabled:opacity-50"
           >
             {loading ? "Chargement…" : "Exporter les données"}
@@ -139,9 +165,9 @@ export default function ExportDataSection() {
             {error}
           </div>
         )}
-        {!sid && (
+        {!sidMood && !sidGoals && (
           <div className="text-xs text-amber-700 w-full text-center">
-            Module “Mood” non configuré.
+            Aucun module exportable n’est configuré (Mood/Goals).
           </div>
         )}
       </form>

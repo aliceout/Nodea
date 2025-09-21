@@ -13,8 +13,8 @@ export default function HistoCard({ entry, onEdit, deleteGoal, toggleStatus }) {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between items-center">
-          <span className="font-semibold text-base">{e.title}</span>{" "}
+        <div className="flex justify-between items-center">
+          <span className="font-semibold text-sm">{e.title}</span>{" "}
           <EditDeleteActions
             isEditing={false}
             onEdit={() => onEdit?.(e)}
