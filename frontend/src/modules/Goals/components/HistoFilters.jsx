@@ -1,24 +1,24 @@
 import React from "react";
 import Select from "@/components/common/Select";
 
-export default function GoalsFilters({
-  categoryFilter,
-  setCategoryFilter,
+export default function HistoFilters({
+  threadFilter,
+  setThreadFilter,
   yearFilter,
   setYearFilter,
-  allCategories,
+  allThreads,
   years,
 }) {
   return (
     <div className="flex gap-2 justify-center mb-4">
       <Select
-        value={categoryFilter}
-        onChange={(e) => setCategoryFilter(e.target.value)}
+        value={threadFilter}
+        onChange={(e) => setThreadFilter(e.target.value)}
       >
-        <option value="">Toutes les catégories</option>
-        {allCategories.map((cat) => (
-          <option key={cat} value={cat}>
-            {cat}
+        <option value="">Tous les threads</option>
+        {allThreads.map((thr) => (
+          <option key={thr} value={thr}>
+            {thr}
           </option>
         ))}
       </Select>
