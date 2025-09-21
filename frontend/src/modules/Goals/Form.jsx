@@ -81,7 +81,6 @@ export default function GoalsForm() {
           title: entry.title || "",
           note: entry.note || "",
           status: entry.status || "open",
-          categoriesText: (entry.categories || []).join(", "),
         });
       } catch (e) {
         console.error(e);
@@ -124,7 +123,7 @@ export default function GoalsForm() {
       return;
     }
 
-    // Gardes-fous (mêmes messages que les autres modules)
+    // Gardes-fous
     if (!mainKey) {
       setError(
         "Erreur : clé de chiffrement absente. Recharge la page ou reconnecte-toi, puis réessaie."
@@ -141,8 +140,11 @@ export default function GoalsForm() {
       title: form.title.trim(),
       note: form.note || "",
       status: form.status,
-      categories: parseCategories(),
+      thread,
     };
+
+    // Ajoute ce log :
+    console.log("Payload envoyé à la BDD :", payload);
 
     try {
       if (isEdit) {
@@ -179,6 +181,20 @@ export default function GoalsForm() {
       console.error(e);
       setError("Échec de la suppression.");
     }
+  };
+
+  const handleSave = async () => {
+    const categories = form.categoriesText
+      ? form.categoriesText
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean)
+      : [];
+    await saveGoal({
+      ...form,
+      categories,
+      // autres champs...
+    });
   };
 
   // Affiche le form même si ça charge : on désactive juste les actions.
@@ -231,8 +247,6 @@ export default function GoalsForm() {
         </Select>
       </div>
 
-      {/* UX : champ libre de regroupement, comme Passage.
-          ⚠️ Non stocké dans payload ici (pas défini dans la fiche Goals). */}
       <SuggestInput
         label="Hashtag / histoire"
         placeholder="ex: #SortieJob ou #Deuil…"

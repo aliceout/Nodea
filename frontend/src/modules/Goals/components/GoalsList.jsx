@@ -3,6 +3,7 @@ import Button from "@/components/common/Button";
 import EditDeleteActions from "@/components/common/EditDeleteActions";
 import Input from "@/components/common/Input";
 import Textarea from "@/components/common/Textarea";
+import Select from "@/components/common/Select";
 
 export default function GoalsList({
   entries,
@@ -16,6 +17,9 @@ export default function GoalsList({
   const [editId, setEditId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editNote, setEditNote] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editThread, setEditThread] = useState("");
   const textareaRefs = useRef({});
 
   useEffect(() => {
@@ -30,12 +34,18 @@ export default function GoalsList({
     setEditId(entry.id);
     setEditTitle(entry.title || "");
     setEditNote(entry.note || "");
+    setEditDate(entry.date || "");
+    setEditStatus(entry.status || "open");
+    setEditThread(entry.thread || "");
   };
 
   const cancelEdit = () => {
     setEditId(null);
     setEditTitle("");
     setEditNote("");
+    setEditDate("");
+    setEditStatus("");
+    setEditThread("");
   };
 
   const saveEdit = async (entry) => {
@@ -44,10 +54,22 @@ export default function GoalsList({
         ...entry,
         title: editTitle,
         note: editNote,
+        date: editDate,
+        status: editStatus,
+        thread: editThread,
       });
       setEntries((prev) =>
         prev.map((e) =>
-          e.id === entry.id ? { ...e, title: editTitle, note: editNote } : e
+          e.id === entry.id
+            ? {
+                ...e,
+                title: editTitle,
+                note: editNote,
+                date: editDate,
+                status: editStatus,
+                thread: editThread,
+              }
+            : e
         )
       );
       cancelEdit();
@@ -56,6 +78,8 @@ export default function GoalsList({
       alert("Erreur lors de la modification.");
     }
   };
+
+  console.log("Entries from DB:", entries);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -72,6 +96,30 @@ export default function GoalsList({
                 onChange={(ev) => setEditTitle(ev.target.value)}
                 className="text-sm"
                 required
+              />
+              <Input
+                label="Date"
+                type="date"
+                value={editDate}
+                onChange={(ev) => setEditDate(ev.target.value)}
+                className="text-sm"
+                required
+              />
+              <Select
+                label="Statut"
+                value={editStatus}
+                onChange={(ev) => setEditStatus(ev.target.value)}
+                className="text-sm"
+              >
+                <option value="open">Ouvert</option>
+                <option value="wip">En cours</option>
+                <option value="done">Terminé</option>
+              </Select>
+              <Input
+                label="Hashtag / histoire"
+                value={editThread}
+                onChange={(ev) => setEditThread(ev.target.value)}
+                className="text-sm"
               />
               <Textarea
                 label="Notes"
@@ -117,16 +165,9 @@ export default function GoalsList({
                 <div className="text-xs text-gray-500 mb-2">
                   {e.date || "—"}
                 </div>
-                {e.categories && e.categories.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {e.categories.map((cat) => (
-                      <span
-                        key={cat}
-                        className="inline-block bg-nodea-sage-light text-nodea-sage-dark px-2 py-0.5 rounded text-xs"
-                      >
-                        #{cat}
-                      </span>
-                    ))}
+                {e.thread && (
+                  <div className="text-xs text-nodea-sage-dark mb-2">
+                    Histoire : <span className="font-semibold">{e.thread}</span>
                   </div>
                 )}
                 {e.note && (
