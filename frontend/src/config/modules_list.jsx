@@ -4,7 +4,7 @@ import {
   SparklesIcon,
   ArrowsRightLeftIcon,
   Cog6ToothIcon,
-  FlagIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import Home from "@/modules/Homepage";
 import Mood from "@/modules/Mood";
@@ -53,7 +53,7 @@ export const MODULES = [
     element: <Goals />,
     to_toggle: true,
     description: "Suivre vos objectifs annuels",
-    icon: FlagIcon,
+    icon: CheckCircleIcon,
     display: true,
   },
   {

@@ -4,6 +4,7 @@ import { useMainKey } from "@/hooks/useMainKey";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Textarea from "@/components/common/Textarea";
+import Select from "@/components/common/Select";
 import FormError from "@/components/common/FormError";
 import {
   getGoalById,
@@ -143,10 +144,12 @@ export default function GoalsForm() {
   const disabled = isEdit && loading;
 
   return (
-    <form className="space-y-3 max-w-2xl mx-auto" onSubmit={handleSubmit}>
+    <form
+      className="grid grid-cols-1 gap-4 max-w-2xl  mx-auto"
+      onSubmit={handleSubmit}
+    >
       {error ? <FormError message={error} /> : null}
 
-      <div className="grid grid-cols-1 gap-3 max-w-2xl space-y-3 mx-auto">
         <Input
           label="Titre"
           type="text"
@@ -165,19 +168,16 @@ export default function GoalsForm() {
           disabled={disabled}
         />
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-gray-600">Statut</label>
-          <select
-            value={form.status}
-            onChange={onChange("status")}
-            className="border rounded px-3 py-2 text-sm"
-            disabled={disabled}
-          >
-            <option value="open">Ouvert</option>
-            <option value="wip">En cours</option>
-            <option value="done">Terminé</option>
-          </select>
-        </div>
+        <Select
+          label="Statut"
+          value={form.status}
+          onChange={onChange("status")}
+          disabled={disabled}
+        >
+          <option value="open">Ouvert</option>
+          <option value="wip">En cours</option>
+          <option value="done">Terminé</option>
+        </Select>
 
         <Input
           label="Catégories"
@@ -186,24 +186,21 @@ export default function GoalsForm() {
           onChange={onChange("categoriesText")}
           placeholder="Ex. travail, santé, perso"
           disabled={disabled}
+          legend={
+            <>
+              Sépare par des virgules (ex. <i>travail, santé</i>).
+            </>
+          }
         />
-        <p className="text-xs text-gray-500">
-          Sépare par des virgules (ex. <i>travail, santé</i>).
-        </p>
-      </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-gray-600">Note</label>
         <Textarea
+          label="Note"
           value={form.note}
           onChange={onChange("note")}
           className="min-h-[120px]"
           placeholder="Détails éventuels…"
           disabled={disabled}
         />
-      </div>
-
-      <div className="flex items-center gap-2">
         <Button
           className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker"
           type="submit"
@@ -211,13 +208,7 @@ export default function GoalsForm() {
         >
           {isEdit ? (loading ? "Chargement…" : "Mettre à jour") : "Enregistrer"}
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => navigate("..")}
-        >
-          Annuler
-        </Button>
+        {/* Annuler button removed as requested */}
         {isEdit ? (
           <Button
             type="button"
@@ -228,7 +219,6 @@ export default function GoalsForm() {
             Supprimer
           </Button>
         ) : null}
-      </div>
     </form>
   );
 }
