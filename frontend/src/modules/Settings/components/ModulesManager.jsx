@@ -12,6 +12,7 @@ import {
   makeGuard,
 } from "@/services/crypto/crypto-utils";
 import pb from "@/services/pocketbase";
+import { KeyMissingError } from "@/services/crypto/webcrypto";
 import { useStore } from "@/store/StoreProvider";
 
 // ⬇️ nouvel import
@@ -38,33 +39,36 @@ export default function ModulesManager() {
         const user = pb?.authStore?.model;
         if (!user) throw new Error("Utilisateur non connecté");
 
-        const c = await loadModulesConfig(pb, user.id, mainKey); // déchiffré
-        let nextCfg = c || {};
-
-        // seed par défaut: tout activé
-        for (const m of rows) {
-          const entry = getModuleEntry(nextCfg, m.id);
-          if (!entry) {
-            nextCfg = setModuleEntry(nextCfg, m.id, {
-              enabled: true,
-              module_user_id: generateModuleUserId("g_"),
-              delete_secret: makeGuard(),
-              algo: "v1",
-            });
-          }
-        }
-
-        if (JSON.stringify(nextCfg) !== JSON.stringify(c || {})) {
-          await saveModulesConfig(pb, user.id, mainKey, nextCfg);
-        }
+        const c = await loadModulesConfig(pb, user.id, mainKey); // déchiffré ou {}
+        let nextCfg = c && typeof c === "object" ? c : {};
 
         if (mounted) {
           setCfg(nextCfg);
-          // ⬇️ alimente le store runtime à l’ouverture de la page
-          setModulesState(nextCfg);
+          if (Object.keys(nextCfg).length > 0) setModulesState(nextCfg);
+          if (import.meta?.env?.DEV) {
+            const summary = Object.fromEntries(
+              Object.entries(nextCfg || {}).map(([k, v]) => [
+                k,
+                {
+                  enabled: !!v?.enabled,
+                  module_user_id: v?.module_user_id || null,
+                },
+              ])
+            );
+            console.log("[ModulesManager] Init config (DEV)", summary);
+          }
           setLoading(false);
         }
       } catch (e) {
+        if (e instanceof KeyMissingError) {
+          if (mounted) {
+            setError(
+              "Clé absente: reconnectez-vous pour déchiffrer vos réglages."
+            );
+            setLoading(false);
+          }
+          return;
+        }
         if (import.meta.env.DEV) console.warn(e);
         if (mounted) {
           setError("Impossible de charger vos réglages.");
@@ -83,34 +87,49 @@ export default function ModulesManager() {
     setBusy(moduleId);
     setError("");
     try {
-      const current = getModuleEntry(cfg, moduleId) || {
-        enabled: true,
-        module_user_id: generateModuleUserId("g_"),
-        delete_secret: makeGuard(),
-        algo: "v1",
-      };
+      if (!mainKey) {
+        throw new Error(
+          "Clé de chiffrement absente. Reconnectez-vous avant de modifier les modules."
+        );
+      }
+      const current = getModuleEntry(cfg, moduleId) || null;
+      const willEnable = !!nextEnabled;
 
-      const next = {
-        ...current,
-        enabled: nextEnabled,
-        module_user_id:
-          current.module_user_id ||
-          (nextEnabled ? generateModuleUserId("g_") : null),
-        delete_secret: current.delete_secret || makeGuard(),
-      };
+      const next = current
+        ? {
+            ...current,
+            enabled: willEnable,
+            module_user_id:
+              current.module_user_id ||
+              (willEnable ? generateModuleUserId("g_") : null),
+            delete_secret: current.delete_secret || makeGuard(),
+          }
+        : willEnable
+        ? {
+            enabled: true,
+            module_user_id: generateModuleUserId("g_"),
+            delete_secret: makeGuard(),
+            algo: "v1",
+          }
+        : { enabled: false };
 
       const updated = setModuleEntry(cfg, moduleId, next);
       const user = pb?.authStore?.model;
 
       await saveModulesConfig(pb, user.id, mainKey, updated);
 
-      // ⬇️ maj store runtime après save
       setModulesState(updated);
-
       setCfg(updated);
+      if (import.meta?.env?.DEV) {
+        const entry = updated[moduleId];
+        console.log("[ModulesManager] Toggle (DEV)", moduleId, {
+          enabled: !!entry?.enabled,
+          module_user_id: entry?.module_user_id || null,
+        });
+      }
     } catch (e) {
       if (import.meta.env.DEV) console.warn(e);
-      setError("Impossible d’enregistrer vos réglages.");
+      setError(e?.message || "Impossible d’enregistrer vos réglages.");
     } finally {
       setBusy(null);
     }

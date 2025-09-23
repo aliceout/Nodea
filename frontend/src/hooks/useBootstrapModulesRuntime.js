@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import pb from "@/services/pocketbase";
 import { loadModulesConfig } from "@/services/modules-config";
 import { setModulesState } from "@/store/modulesRuntime";
+import { KeyMissingError } from "@/services/crypto/webcrypto";
 import { useStore } from "@/store/StoreProvider";
 
 /**
@@ -21,10 +22,15 @@ export default function useBootstrapModulesRuntime() {
 
       try {
         const cfg = await loadModulesConfig(pb, user.id, mainKey); // objet DÉCHIFFRÉ
-        if (!cancelled) {
-          setModulesState(cfg || {});
+        if (!cancelled && cfg && Object.keys(cfg).length > 0) {
+          setModulesState(cfg);
         }
       } catch (e) {
+        if (e instanceof KeyMissingError) {
+          if (import.meta.env.DEV)
+            console.warn("[ModulesBootstrap] key missing; skip init");
+          return;
+        }
         if (import.meta.env.DEV)
           console.warn("[ModulesBootstrap] load error:", e);
       }
