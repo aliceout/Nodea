@@ -1,4 +1,4 @@
-// frontend/src/features/Passage/History.jsx
+// frontend/src/features/Passage/views/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import EditDeleteActions from "@/components/common/EditDeleteActions";
 import FormError from "@/components/common/FormError";

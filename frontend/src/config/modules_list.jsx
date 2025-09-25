@@ -7,12 +7,12 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import Home from "@/features/Homepage";
-import Mood from "@/features/Mood";
-import Passage from "@/features/Passage";
-import Goals from "@/features/Goals";
-import Account from "@/features/Account";
-import Settings from "@/features/Settings";
-import Admin from "@/features/Admin";
+import Mood from "@/features/Mood/Root";
+import Passage from "@/features/Passage/Root";
+import Goals from "@/features/Goals/Root";
+import Account from "@/features/Account/Root";
+import Settings from "@/features/Settings/Root";
+import Admin from "@/features/Admin/Root";
 
 export const MODULES = [
   {

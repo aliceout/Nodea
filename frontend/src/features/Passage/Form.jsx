@@ -1,4 +1,4 @@
-// frontend/src/features/Passage/Form.jsx
+// frontend/src/features/Passage/views/Form.jsx
 
 import { useState, useEffect } from "react";
 import Button from "@/components/common/Button";

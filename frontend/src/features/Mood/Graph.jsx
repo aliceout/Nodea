@@ -1,4 +1,4 @@
-// src/features/Mood/Graph.jsx
+// src/features/Mood/views/Graph.jsx
 import React, { useEffect, useState } from "react";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
