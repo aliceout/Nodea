@@ -104,4 +104,4 @@ export default function GraphPage() {
   return <GraphChart data={data} />;
 }
 
-import GraphChart from "./components/GraphChart";
+import GraphChart from "./components/Chart";

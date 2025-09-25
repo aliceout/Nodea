@@ -9,10 +9,10 @@ import {
 } from "@/services/dataModules/Goals";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import HistoFilters from "./components/HistoFilters";
-import HistoList from "./components/HistoList";
-import HistoEditCard from "./components/HistoEditCard";
-import HistoCard from "./components/HistoCard";
+import HistoFilters from "./components/Filters";
+import HistoList from "./components/List";
+import HistoEditCard from "./components/EditCard";
+import HistoCard from "./components/Card";
 
 /**
  * Liste des objectifs (Goals)

@@ -185,5 +185,5 @@ export default function MoodHistory() {
   );
 }
 
-import HistoryFilters from "./components/HistoryFilters";
-import HistoryList from "./components/HistoryList";
+import HistoryFilters from "./components/Filters";
+import HistoryList from "./components/List";

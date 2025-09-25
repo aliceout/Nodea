@@ -254,10 +254,10 @@ export default function JournalEntryPage() {
   );
 }
 
-import PositivesBlock from "./components/FormPositives";
-import MoodBlock from "./components/FormMood";
-import QuestionBlock from "./components/FormQuestion";
-import CommentBlock from "./components/FormComment";
+import PositivesBlock from "./components/Positives";
+import MoodBlock from "./components/Mood";
+import QuestionBlock from "./components/Question";
+import CommentBlock from "./components/Comment";
 import Button from "@/components/common/Button";
 import FormError from "@/components/common/FormError";
 import Input from "@/components/common/Input";
