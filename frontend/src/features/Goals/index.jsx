@@ -1,8 +1,8 @@
 // frontend/src/features/Goals/index.jsx
 import { useState, useMemo } from "react";
-import Subheader from "@/components/layout/Subheader";
-import GoalsForm from "./Form";
-import GoalsHistory from "./History";
+import Subheader from "@/ui/layout/Subheader";
+import GoalsForm from "./views/Form";
+import GoalsHistory from "./views/History";
 
 /**
  * Module Goals
@@ -45,5 +45,3 @@ export default function GoalsIndex() {
     </div>
   );
 }
-
-export { default } from "./Root";

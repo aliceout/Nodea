@@ -12,10 +12,10 @@ export default function HistoryList({ entries, onDelete, decryptField }) {
           entry={entry}
           onDelete={onDelete}
           decryptField={decryptField}
-          />
-        ))}
+        />
+      ))}
     </ul>
   );
 }
 
-import HistoryEntry from "./HistoryEntry";
+import HistoryEntry from "./Entry";

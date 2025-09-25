@@ -3,8 +3,8 @@ import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
 import { decryptWithRetry } from "@/services/crypto/webcrypto";
-import Button from "@/components/common/Button";
-import SettingsCard from "@/components/shared/SettingsCard";
+import Button from "@/ui/components/Button";
+import SettingsCard from "@/ui/feedback/SettingsCard";
 // Orchestrate export via module plugins (pagination + decryption centralized)
 import { getDataPlugin } from "@/services/ImportExport/registry.data.js";
 

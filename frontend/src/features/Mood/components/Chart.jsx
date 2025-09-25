@@ -1,7 +1,7 @@
-// src/modules/Mood/components/GraphChart.jsx
+// src/features/Mood/components/Chart.jsx
 import { ResponsiveContainer } from "recharts";
-import RotatedFrame from "./GraphFrame";
-import ChartBody from "./GraphChartBody";
+import RotatedFrame from "./Frame";
+import ChartBody from "./ChartBody";
 
 export default function GraphChart({ data }) {
   return (

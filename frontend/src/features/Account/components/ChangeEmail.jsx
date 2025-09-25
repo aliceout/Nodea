@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useNavigate } from "react-router-dom";
 
-import SettingsCard from "@/components/shared/SettingsCard";
-import Button from "@/components/common/Button";
+import SettingsCard from "@/ui/feedback/SettingsCard";
+import Button from "@/ui/components/Button";
 
 export default function EmailSection({ user }) {
   const [newEmail, setNewEmail] = useState("");

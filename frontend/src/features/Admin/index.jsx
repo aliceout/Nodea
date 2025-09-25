@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import pb from "@/services/pocketbase";
 import UserTable from "./components/UserTable";
 import InviteCodeManager from "./components/InviteCode";
-import Subheader from "@/components/layout/Subheader";
+import Subheader from "@/ui/layout/Subheader";
 
 export default function Admin() {
   const user = pb.authStore.model;
@@ -167,5 +167,3 @@ export default function Admin() {
     </div>
   );
 }
-
-export { default } from "./Root";

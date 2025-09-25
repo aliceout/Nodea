@@ -1,5 +1,5 @@
 import React from "react";
-import SettingsCard from "@/components/shared/SettingsCard";
+import SettingsCard from "@/ui/feedback/SettingsCard";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
   const confirmDelete = (user) => {
@@ -30,7 +30,9 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
               } hover:bg-sky-50`}
             >
               <td className="px-3 py-3 text-sm font-medium">{user.username}</td>
-              <td className="px-3 py-3 text-sm hidden md:table-cell">{user.role}</td>
+              <td className="px-3 py-3 text-sm hidden md:table-cell">
+                {user.role}
+              </td>
               <td className="px-3 py-3 text-center">
                 <button
                   className="cursor-pointer text-red-600 hover:text-red-700 px-3 py-1 text-sm"

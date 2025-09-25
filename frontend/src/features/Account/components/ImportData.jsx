@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import pb from "@/services/pocketbase";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
-import SettingsCard from "@/components/shared/SettingsCard";
+import SettingsCard from "@/ui/feedback/SettingsCard";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "@/services/ImportExport/registry.data.js";
-import Button from "@/components/common/Button";
+import Button from "@/ui/components/Button";
 
 export default function ImportData() {
   const { mainKey } = useStore(); // Uint8Array

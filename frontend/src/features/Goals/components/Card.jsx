@@ -24,16 +24,16 @@ export default function HistoCard({ entry, onEdit, deleteGoal, toggleStatus }) {
           />
         </div>
         <div className="text-xs text-gray-500 flex flex-row justify-between items-center">
-            {e.date || "—"}{" "}
+          {e.date || "—"}{" "}
           <span
             className={`text-xs px-2 py-1 rounded ${
-                e.status === "done"
+              e.status === "done"
                 ? "bg-green-100 text-green-700"
                 : e.status === "wip"
                 ? "bg-yellow-100 text-yellow-700"
                 : "bg-gray-100 text-gray-700"
             }`}
-            >
+          >
             {statusLabels[e.status] || e.status}
           </span>
         </div>

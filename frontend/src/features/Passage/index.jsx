@@ -1,8 +1,8 @@
 // frontend/src/features/Passage/index.jsx
 import { useState, useMemo } from "react";
-import Subheader from "@/components/layout/Subheader";
-import PassageForm from "./Form";
-import PassageHistory from "./History";
+import Subheader from "@/ui/layout/Subheader";
+import PassageForm from "./views/Form";
+import PassageHistory from "./views/History";
 
 export default function PassageIndex() {
   const [active, setActive] = useState("form");
@@ -39,5 +39,3 @@ export default function PassageIndex() {
     </div>
   );
 }
-
-export { default } from "./Root";

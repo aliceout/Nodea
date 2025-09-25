@@ -1,4 +1,4 @@
-import Subheader from "@/components/layout/Subheader.jsx";
+import Subheader from "@/ui/layout/Subheader.jsx";
 import ModulesManager from "./components/ModulesManager.jsx";
 
 export default function Settings() {
@@ -18,5 +18,3 @@ export default function Settings() {
     </div>
   );
 }
-
-export { default } from "./Root";
