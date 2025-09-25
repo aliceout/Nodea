@@ -1,4 +1,4 @@
-// frontend/src/modules/Account/components/DeleteAccount.jsx
+// frontend/src/features/Account/components/DeleteAccount.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import pb from "@/services/pocketbase";

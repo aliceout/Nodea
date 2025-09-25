@@ -1,4 +1,4 @@
-// frontend/src/modules/Goals/History.jsx
+// frontend/src/features/Goals/History.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {

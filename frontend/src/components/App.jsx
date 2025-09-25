@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/shared/ProtectedRoute";
 import { StoreProvider, useStore } from "../store/StoreProvider";
 
-import Admin from "../modules/Admin";
+import Admin from "../features/Admin";
 
 function AppWithKeyModal() {
   return (

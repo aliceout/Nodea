@@ -1,4 +1,4 @@
-// frontend/src/modules/Passage/Form.jsx
+// frontend/src/features/Passage/Form.jsx
 
 import { useState, useEffect } from "react";
 import Button from "@/components/common/Button";
@@ -118,22 +118,22 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
         placeholder="Note ton cheminement, tes raisons, ce que tu observes…"
       />
       <div className="flex gap-2 items-center justify-between">
-          <SuggestInput
-            value={thread}
-            onChange={setThread}
-            options={threadOptions}
-            placeholder="ex: #SortieJob ou #Deuil…"
-            required
-            label="Hashtag / histoire"
-            legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
-          />
-          <Button
-            className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"
-            type="submit"
-            disabled={saving}
-          >
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </Button>
+        <SuggestInput
+          value={thread}
+          onChange={setThread}
+          options={threadOptions}
+          placeholder="ex: #SortieJob ou #Deuil…"
+          required
+          label="Hashtag / histoire"
+          legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
+        />
+        <Button
+          className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"
+          type="submit"
+          disabled={saving}
+        >
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </Button>
       </div>
       {/* La légende est maintenant gérée par SuggestInput */}
     </form>

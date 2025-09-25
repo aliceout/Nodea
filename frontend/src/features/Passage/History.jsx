@@ -1,14 +1,14 @@
-// frontend/src/modules/Passage/History.jsx
+// frontend/src/features/Passage/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import EditDeleteActions from "@/components/common/EditDeleteActions";
 import FormError from "@/components/common/FormError";
 import { useStore } from "@/store/StoreProvider";
 import { useModulesRuntime } from "@/store/modulesRuntime";
- import {
-   listPassageEntries,
-   listPassageDecrypted,
-   deletePassageEntry,
- } from "@/services/dataModules/Passage";
+import {
+  listPassageEntries,
+  listPassageDecrypted,
+  deletePassageEntry,
+} from "@/services/dataModules/Passage";
 
 function usePassageSid() {
   const modules = useModulesRuntime();
@@ -143,23 +143,23 @@ export default function PassageHistory() {
     cancelEdit();
   };
   // Supprime entrée
- // Supprime entrée (optimiste + rollback si erreur)
- const deleteEntry = async (id) => {
-   const prevItems = items;
-   const prevLocal = localItems;
-   // UI optimiste
-   setItems((cur) => cur.filter((it) => it.id !== id));
-   setLocalItems((cur) => cur.filter((it) => it.id !== id));
-   if (editId === id) cancelEdit();
-   try {
-     await deletePassageEntry(id, moduleUserId, mainKey);
-   } catch (e) {
-     // rollback + message
-     setItems(prevItems);
-     setLocalItems(prevLocal);
-     setError("Suppression impossible.");
-   }
- };
+  // Supprime entrée (optimiste + rollback si erreur)
+  const deleteEntry = async (id) => {
+    const prevItems = items;
+    const prevLocal = localItems;
+    // UI optimiste
+    setItems((cur) => cur.filter((it) => it.id !== id));
+    setLocalItems((cur) => cur.filter((it) => it.id !== id));
+    if (editId === id) cancelEdit();
+    try {
+      await deletePassageEntry(id, moduleUserId, mainKey);
+    } catch (e) {
+      // rollback + message
+      setItems(prevItems);
+      setLocalItems(prevLocal);
+      setError("Suppression impossible.");
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto">

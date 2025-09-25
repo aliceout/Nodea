@@ -89,5 +89,5 @@ export default function OnboardingModal({
 }
 
 import Modal from "@/components/common/Modal";
-import ModulesManager from "@/modules/Settings/components/ModulesManager";
+import ModulesManager from "@/features/Settings/components/ModulesManager";
 import { useModulesRuntime, enabledModules } from "@/store/modulesRuntime";

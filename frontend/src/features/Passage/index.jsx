@@ -1,23 +1,17 @@
-// frontend/src/modules/Goals/index.jsx
+// frontend/src/features/Passage/index.jsx
 import { useState, useMemo } from "react";
 import Subheader from "@/components/layout/Subheader";
-import GoalsForm from "./Form";
-import GoalsHistory from "./History";
+import PassageForm from "./Form";
+import PassageHistory from "./History";
 
-/**
- * Module Goals
- * - Une entrée = un objectif
- * - UI calquée sur Passage : Subheader avec 2 onglets (form / history)
- * - Pas de changement de style
- */
-export default function GoalsIndex() {
+export default function PassageIndex() {
   const [active, setActive] = useState("form");
 
   const tabs = useMemo(
     () => [
       {
         id: "form",
-        label: "Nouvel objectif",
+        label: "Nouvelle entrée",
         active: active === "form",
         mobile: true,
       },
@@ -36,11 +30,11 @@ export default function GoalsIndex() {
       <Subheader
         tabs={tabs}
         onTabSelect={(id) => setActive(id)}
-        cta={{ label: "Nouvel objectif", onClick: () => setActive("form") }}
+        cta={{ label: "Nouvelle entrée", onClick: () => setActive("form") }}
       />
       <div className="flex-1 pt-4 bg-white px-4 sm:px-6 lg:px-8">
-        {active === "form" && <GoalsForm />}
-        {active === "history" && <GoalsHistory />}
+        {active === "form" && <PassageForm />}
+        {active === "history" && <PassageHistory />}
       </div>
     </div>
   );

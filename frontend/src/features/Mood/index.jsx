@@ -1,4 +1,4 @@
-// src/modules/Mood/Index.jsx
+// src/features/Mood/Index.jsx
 import { useState, useMemo } from "react";
 
 export default function MoodIndex() {
