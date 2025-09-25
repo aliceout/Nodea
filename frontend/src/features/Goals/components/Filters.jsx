@@ -1,5 +1,5 @@
 import React from "react";
-import Select from "@/components/common/Select";
+import Select from "@/ui/components/Select";
 
 export default function HistoFilters({
   threadFilter,

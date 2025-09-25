@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { deriveKeyArgon2, encryptAESGCM } from "@/services/crypto/webcrypto";
 import pb from "@/services/pocketbase";
-import Input from "@/components/common/Input";
-import Button from "@/components/common/Button";
-import FormFeedback from "@/components/common/FormError";
+import Input from "@/ui/components/Input";
+import Button from "@/ui/components/Button";
+import FormFeedback from "@/ui/components/FormError";
 
 // Utils base64 <-> Uint8Array (sans changer tes styles)
 function toB64(u8) {

@@ -1,4 +1,4 @@
-import Layout from "./layout/Layout";
+import Layout from "@/ui/layout/Layout";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ChangePassword from "../pages/ChangePassword";
@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/shared/ProtectedRoute";
 import { StoreProvider, useStore } from "../store/StoreProvider";
 
-import Admin from "../features/Admin/Root";
+import Admin from "../features/Admin";
 
 function AppWithKeyModal() {
   return (

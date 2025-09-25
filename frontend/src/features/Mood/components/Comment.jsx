@@ -1,4 +1,4 @@
-import Textarea from "@/components/common/Textarea";
+import Textarea from "@/ui/components/Textarea";
 export default function JournalComment({ comment, setComment }) {
   return (
     <div className="flex flex-col justify-center gap-1">

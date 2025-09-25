@@ -4,10 +4,10 @@ import { useStore } from "@/store/StoreProvider";
 import { setTab } from "@/store/actions";
 import pb from "@/services/pocketbase";
 import { deriveKeyArgon2 } from "@/services/crypto/webcrypto";
-import Logo from "@/components/shared/LogoLong.jsx";
-import Button from "@/components/common/Button";
-import Input from "@/components/common/Input";
-import FormError from "@/components/common/FormError";
+import Logo from "@/ui/branding/LogoLong.jsx";
+import Button from "@/ui/components/Button";
+import Input from "@/ui/components/Input";
+import FormError from "@/ui/components/FormError";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");

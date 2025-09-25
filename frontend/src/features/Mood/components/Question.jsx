@@ -1,4 +1,4 @@
-import Textarea from "@/components/common/Textarea";
+import Textarea from "@/ui/components/Textarea";
 export default function JournalQuestion({
   question,
   answer,

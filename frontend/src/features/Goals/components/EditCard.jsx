@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import Input from "@/components/common/Input";
-import Textarea from "@/components/common/Textarea";
-import Select from "@/components/common/Select";
-import DateMonthPicker from "@/components/common/DateMonthPicker";
-import EditDeleteActions from "@/components/common/EditDeleteActions";
+import Input from "@/ui/components/Input";
+import Textarea from "@/ui/components/Textarea";
+import Select from "@/ui/components/Select";
+import DateMonthPicker from "@/ui/components/DateMonthPicker";
+import EditDeleteActions from "@/ui/components/EditDeleteActions";
 
 export default function HistoEditCard({
   entry,

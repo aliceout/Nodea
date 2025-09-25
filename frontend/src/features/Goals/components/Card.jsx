@@ -1,6 +1,6 @@
 import React from "react";
-import Button from "@/components/common/Button";
-import EditDeleteActions from "@/components/common/EditDeleteActions";
+import Button from "@/ui/components/Button";
+import EditDeleteActions from "@/ui/components/EditDeleteActions";
 
 export default function HistoCard({ entry, onEdit, deleteGoal, toggleStatus }) {
   const statusLabels = {

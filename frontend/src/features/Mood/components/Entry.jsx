@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import EditDeleteActions from "@/components/common/EditDeleteActions";
+import EditDeleteActions from "@/ui/components/EditDeleteActions";
 
 export default function HistoryEntry({ entry, onDelete, decryptField }) {
   const commentRef = React.useRef();
