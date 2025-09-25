@@ -39,3 +39,5 @@ export default function PassageIndex() {
     </div>
   );
 }
+
+export { default } from "./Root";

@@ -53,3 +53,5 @@ import ChangePassword from "./components/PasswordReset";
 import DeleteAccount from "./components/DeleteAccount";
 import ImportData from "./components/ImportData";
 import ExportData from "./components/ExportData";
+
+export { default } from "./Root";

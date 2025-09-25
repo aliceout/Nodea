@@ -105,3 +105,4 @@ export default function GraphPage() {
 }
 
 import GraphChart from "./components/Chart";
+export { default } from "./views/Graph";

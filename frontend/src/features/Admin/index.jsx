@@ -167,3 +167,5 @@ export default function Admin() {
     </div>
   );
 }
+
+export { default } from "./Root";

@@ -1,4 +1,6 @@
 // src/features/Mood/Index.jsx
+export { default } from "./Root";
+
 import { useState, useMemo } from "react";
 
 export default function MoodIndex() {

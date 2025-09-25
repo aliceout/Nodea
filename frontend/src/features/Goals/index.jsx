@@ -45,3 +45,5 @@ export default function GoalsIndex() {
     </div>
   );
 }
+
+export { default } from "./Root";
