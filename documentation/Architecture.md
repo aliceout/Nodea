@@ -1,311 +1,193 @@
-# Architecture Frontend - Réorganisation proposée
+# Architecture Frontend – État ACTUEL (septembre 2025)
 
-## Vision générale
+Ce document reflète l'état réel du code après les réorganisations partielles et la « mise sous gel » décidée. Il remplace l'ancienne proposition (basée sur un dossier `features/`) qui n'a pas été totalement mise en œuvre. Aucune section ci‑dessous n'est spéculative : uniquement ce qui existe réellement dans le dépôt.
 
-Cette architecture propose une réorganisation du frontend actuel basée sur une séparation claire des responsabilités avec les dossiers `core`, `ui`, `app`, et `features`.
-
-## Structure proposée
+## Vue d'ensemble des couches
 
 ```
 frontend/src/
-├── core/                     # Logique métier et services de base
-│   ├── api/                  # Services d'API
+├── main.jsx
+├── core/                 # Services, logique transversale et runtime modules
+│   ├── api/
 │   │   ├── pocketbase.js
 │   │   ├── pb-records.js
-│   │   └── modules-config.js
-│   ├── auth/                 # Authentification
-│   │   ├── useAuth.js
-│   │   ├── guards.js
-│   │   └── ProtectedRoute.jsx
-│   ├── crypto/               # Services de cryptographie
+│   │   ├── modules-config.js
+│   │   └── modules/      # Services data chiffrés (Goals, Mood, Passage)
+│   │       ├── Goals.js
+│   │       ├── Mood.js
+│   │       └── Passage.js
+│   ├── auth/
+│   │   ├── ProtectedRoute.jsx
+│   │   └── useAuth.js
+│   ├── crypto/
 │   │   ├── crypto-utils.js
-│   │   ├── webcrypto.js
-│   │   └── guards.js
-│   ├── store/                # État global
+│   │   ├── guards.js
+│   │   └── webcrypto.js
+│   ├── hooks/
+│   │   ├── useBootstrapModulesRuntime.js
+│   │   └── useMainKey.jsx
+│   ├── store/
 │   │   ├── StoreProvider.jsx
 │   │   ├── actions.js
+│   │   ├── modulesRuntime.js
 │   │   ├── reducer.js
-│   │   ├── selectors.js
-│   │   └── modulesRuntime.js
-│   ├── hooks/                # Hooks personnalisés partagés
-│   │   ├── useMainKey.jsx
-│   │   ├── useUsers.js
-│   │   ├── useJournalEntries.js
-│   │   └── useBootstrapModulesRuntime.js
-│   ├── types/                # Types et interfaces (si TypeScript)
-│   └── utils/                # Utilitaires généraux
-│       ├── import-export.js
-│       └── validation.js
-├── ui/                       # Composants d'interface réutilisables
-│   ├── components/           # Composants de base
-│   │   ├── Button/
+│   │   └── selectors.js
+│   └── utils/
+│       └── ImportExport/
+│           ├── Goals.jsx
+│           ├── Mood.jsx
+│           ├── Passage.jsx
+│           ├── registry.data.js
+│           └── utils.js
+├── ui/                   # Composants UI (atomes & layout)
+│   ├── atoms/
+│   │   ├── base/         # Atomes génériques d'affichage
+│   │   │   ├── Alert.jsx
 │   │   │   ├── Button.jsx
-│   │   │   └── Button.module.css
-│   │   ├── Input/
-│   │   │   ├── Input.jsx
-│   │   │   ├── SuggestInput.jsx
-│   │   │   └── DateMonthPicker.jsx
-│   │   ├── Form/
+│   │   │   ├── Card.jsx
+│   │   │   └── Modal.jsx
+│   │   ├── form/         # Champs / éléments de formulaire
+│   │   │   ├── DateMonthPicker.jsx
 │   │   │   ├── FormError.jsx
+│   │   │   ├── Input.jsx
 │   │   │   ├── Select.jsx
+│   │   │   ├── SuggestInput.jsx
 │   │   │   └── Textarea.jsx
-│   │   ├── Display/
-│   │   │   ├── Card.jsx
-│   │   │   ├── Modal.jsx
-│   │   │   └── Alert.jsx
-│   │   └── Actions/
-│   │       └── EditDeleteActions.jsx
-│   ├── layout/               # Composants de layout
+│   │   ├── actions/
+│   │   │   └── EditDeleteActions.jsx
+│   │   └── specifics/    # Atomes contextuels (restés hors "features")
+│   │       ├── KeyMissingModal.jsx
+│   │       ├── OnboardingModal.jsx
+│   │       └── SettingsCard.jsx
+│   ├── branding/
+│   │   └── LogoLong.jsx
+│   ├── layout/
 │   │   ├── Layout.jsx
-│   │   ├── Header/
+│   │   ├── headers/
 │   │   │   ├── Header.jsx
-│   │   │   ├── HeaderNav.jsx
-│   │   │   ├── UserAvatar.jsx
-│   │   │   └── UserMenu.jsx
-│   │   ├── Sidebar/
-│   │   │   ├── Sidebar.jsx
-│   │   │   └── SideLinks.jsx
-│   │   ├── Navigation/
+│   │   │   └── Subheader.jsx
+│   │   ├── navigation/
 │   │   │   ├── Navigation.jsx
-│   │   │   ├── SubNavDesktop.jsx
-│   │   │   └── SubNavMobile.jsx
-│   │   └── Subheader.jsx
-│   ├── feedback/             # Composants de retour utilisateur
-│   │   ├── OnboardingModal.jsx
-│   │   ├── KeyMissingModal.jsx
-│   │   └── SettingsCard.jsx
-│   └── branding/             # Éléments de marque
-│       └── LogoLong.jsx
-├── app/                      # Configuration et point d'entrée
-│   ├── App.jsx               # Composant racine
-│   ├── router/               # Configuration du routage
-│   │   ├── routes.jsx
-│   │   └── guards.jsx
-│   ├── config/               # Configuration globale
-│   │   ├── modules_list.jsx
-│   │   ├── constants.js
-│   │   └── env.js
-│   ├── providers/            # Providers de contexte
-│   │   └── AppProviders.jsx
-│   └──                       # (pas de données locales ici — voir src/i18n pour les traductions)
-├── features/                 # Modules fonctionnels
-│   ├── auth/                 # Feature d'authentification
-│   │   ├── Root.jsx          # entrée de la feature (remplace index.jsx)
-│   │   ├── views/
-│   │   │   ├── Login.jsx
-│   │   │   ├── Register.jsx
-│   │   │   └── ChangePassword.jsx
-│   │   ├── components/
-│   │   └── hooks/
-│   ├── homepage/             # Page d'accueil
-│   │   ├── Root.jsx
-│   │   ├── views/
-│   │   │   └── Homepage.jsx
-│   │   └── components/
-│   ├── account/              # Gestion du compte
-│   │   ├── Root.jsx
-│   │   ├── views/
-│   │   │   └── AccountPage.jsx
-│   │   ├── components/
-│   │   │   ├── ChangeEmail.jsx
-│   │   │   ├── ChangeUsername.jsx
-│   │   │   ├── DeleteAccount.jsx
-│   │   │   ├── ExportData.jsx
-│   │   │   ├── ImportData.jsx
-│   │   │   └── PasswordReset.jsx
-│   │   └── hooks/
-│   ├── admin/                # Administration
-│   │   ├── Root.jsx
-│   │   ├── views/
-│   │   │   └── Admin.jsx
-│   │   ├── components/
-│   │   │   ├── InviteCode.jsx
-│   │   │   └── UserTable.jsx
-│   │   └── hooks/
-│   ├── settings/             # Paramètres
-│   │   ├── Root.jsx
-│   │   ├── views/
-│   │   │   └── Settings.jsx
-│   │   └── components/
-│   ├── mood/                 # Module Mood
-│   │   ├── Root.jsx
-│   │   ├── views/
-│   │   │   ├── Form.jsx
-│   │   │   ├── History.jsx
-│   │   │   ├── Graph.jsx
-│   │   ├── components/
-│   │   │   ├── Comment.jsx
-│   │   │   ├── Mood.jsx
-│   │   │   ├── Positives.jsx
-│   │   │   ├── Question.jsx
-│   │   │   ├── Chart.jsx
-│   │   │   ├── ChartBody.jsx
-│   │   │   ├── Frame.jsx
-│   │   │   ├── Entry.jsx
-│   │   │   ├── Filters.jsx
-│   │   │   └── List.jsx
-│   │   ├── services/
-│   │   │   └── Mood.js
-│   │   ├── importExport/
-│   │   │   └── Mood.jsx      # déplacé depuis services/ImportExport/Mood.jsx
-│   │   └── types/
-│   ├── goals/                # Module Goals
-│   │   ├── Root.jsx
-│   │   ├── views/
-│   │   │   ├── Form.jsx
-│   │   │   └── History.jsx
-│   │   ├── components/
-│   │   │   ├── Card.jsx
-│   │   │   ├── EditCard.jsx
-│   │   │   ├── Filters.jsx
-│   │   │   └── List.jsx
-│   │   ├── services/
-│   │   │   └── Goals.js
-│   │   ├── importExport/
-│   │   │   └── Goals.jsx     # déplacé depuis services/ImportExport/Goals.jsx
-│   │   └── types/
-│   └── passage/              # Module Passage
-│       ├── Root.jsx
-│       ├── views/
-│       │   ├── Form.jsx
-│       │   └── History.jsx
-│       ├── components/
-│       ├── services/
-│       │   └── Passage.js
-│       ├── importExport/
-│       │   └── Passage.jsx   # déplacé depuis services/ImportExport/Passage.jsx
-│       └── types/
-├── i18n/                     # Traductions (i18n)
-│   ├── fr/
-│   │   └── questions.json    # locale par défaut actuelle
-│   ├── en/
-│   │   └── questions.json
-│   ├── locales.js            # liste des locales supportées (optionnel)
-│   └── index.js              # utilitaire de chargement (optionnel)
-└── assets/                   # Ressources statiques
-    ├── images/
-    └── styles/
-        ├── global.css
-        ├── theme.css
-        └── index.css
+│   │   │   └── Sidebar.jsx
+│   │   └── components/   # Fragments de header/navigation
+│   │       ├── HeaderNav.jsx
+│   │       ├── SideLinks.jsx
+│   │       ├── SubNavDesktop.jsx
+│   │       ├── SubNavMobile.jsx
+│   │       ├── UserAvatar.jsx
+│   │       └── UserMenu.jsx
+│   └── theme/
+│       ├── global.css
+│       ├── index.css
+│       └── theme.css
+├── app/                  # Orchestration application & flux fonctionnels
+│   ├── App.jsx
+│   ├── config/
+│   │   └── modules_list.jsx
+│   ├── flow/             # (Remplace l'idée de /features pour l'instant)
+│   │   ├── Homepage/
+│   │   │   └── index.jsx
+│   │   ├── Account/
+│   │   │   ├── components/
+│   │   │   └── index.jsx
+│   │   ├── Admin/
+│   │   │   ├── components/
+│   │   │   └── index.jsx
+│   │   ├── Goals/
+│   │   │   ├── components/
+│   │   │   ├── views/
+│   │   │   └── index.jsx
+│   │   ├── Mood/
+│   │   │   ├── components/
+│   │   │   ├── views/
+│   │   │   └── index.jsx
+│   │   ├── Passage/
+│   │   │   ├── views/
+│   │   │   └── index.jsx
+│   │   └── Settings/
+│   │       ├── components/
+│   │       └── index.jsx
+│   └── pages/            # Pages transverses (auth / erreur)
+│       ├── ChangePassword.jsx
+│       ├── Login.jsx
+│       ├── NotFound.jsx
+│       └── Register.jsx
+└── i18n/
+    └── fr/
+        └── Mood/
+            └── questions.json
 ```
 
-## Principes de l'architecture
+## Différences majeures vs la proposition initiale
 
-### 1. Core - Logique métier centrale
-- **api/** : Services d'accès aux données (PocketBase, configuration modules)
-- **auth/** : Gestion de l'authentification et des routes protégées
-- **crypto/** : Services de chiffrement/déchiffrement
-- **store/** : État global de l'application (Redux/Context)
-- **hooks/** : Hooks personnalisés réutilisables dans toute l'app
-- **utils/** : Fonctions utilitaires générales
-    - inclut les utilitaires partagés d'import/export (ex. `core/utils/importExport/{utils.js, registry.data.js}`) déplacés depuis `services/ImportExport/`
+1. Pas de dossier `features/` : les flux fonctionnels sont concentrés dans `app/flow/`.
+2. Les services métier (Goals, Mood, Passage) sont centralisés dans `core/api/modules/` au lieu de dossiers dédiés par fonctionnalité.
+3. Les composants d'import/export (Goals, Mood, Passage) sont dans `core/utils/ImportExport/` et non rapprochés de leur logique d'affichage.
+4. Les modales spécifiques (KeyMissing, Onboarding) et `SettingsCard` restent classées comme atomes "specifics" faute de stratégie de rattachement feature finalisée.
+5. L'i18n est minimal (une seule locale `fr/Mood/questions.json`). Pas de mécanisme dynamique généralisé ni d'index d'agrégation.
 
-### 2. UI - Composants d'interface
-- **components/** : Composants réutilisables organisés par fonction
-- **layout/** : Structure et navigation de l'application
-- **feedback/** : Modales, alertes, notifications
-- **branding/** : Éléments visuels de marque
+## Organisation logique actuelle
 
-### 3. App - Configuration et orchestration
-- **App.jsx** : Point d'entrée principal
-- **router/** : Configuration des routes
-- **config/** : Variables de configuration, constantes
-- **providers/** : Providers de contexte globaux
+### core/
+Rassemble toutes les couches techniques partagées : accès PocketBase, cryptographie (clé principale, dérivation/guards), état global, runtime des modules chiffrés et utilitaires d'import/export (incluant registre et helpers). Cette centralisation vise la simplicité mais mélange encore logique pure et adaptations modules (voir `utils/ImportExport/*`).
 
-### 4. Features - Modules fonctionnels
-Chaque feature est organisée selon le même pattern :
-- **pages/** : Composants de page principaux
-- **components/** : Composants spécifiques à la feature
-- **hooks/** : Hooks métier spécifiques
-- **services/** : Logique business et API calls
-- **types/** : Types spécifiques (si TypeScript)
+### ui/
+Séparé en sous-niveaux :
+- atoms/base & atoms/form : découpage effectué pour clarifier les composants basiques vs formulaires.
+- atoms/actions : action group (édition/suppression).
+- atoms/specifics : éléments transverses restant dépendants de la sécurité (modales clé manquante / onboarding) ou d'une feature (SettingsCard) non encore isolés.
+- layout : structure visuelle et navigation (normalisée : `headers/`, `navigation/`, `components/`).
 
-### 5. i18n — Traductions
-- Dossier centralisé pour les traductions de l'application.
-- Fichiers par langue, ex. `src/i18n/fr/questions.json`, `src/i18n/en/questions.json` avec les mêmes clés.
-- Chargement recommandé via import dynamique selon la locale (ex. `import(\`../i18n/${locale}/questions.json\`)`) avec fallback sur une locale par défaut.
-- Optionnel: exposer `src/i18n/index.js` (loader qui gère le fallback) et `src/i18n/locales.js` (locales supportées).
+### app/
+Point d'entrée (`App.jsx`), configuration (`modules_list.jsx`) et répertoire `flow/` qui sert d'espace intermédiaire pour regrouper pages/ vues / composants de chaque domaine (Account, Admin, Goals, Mood, Passage, Settings, Homepage). Cette approche hybride remplace temporairement le concept de "feature modules".
 
-#### Nommage et emplacement
-- Nom du dossier: `i18n` plutôt que `data` car explicite et standard pour les traductions.
-- Emplacement: sous `src/` afin de bénéficier des imports statiques, du bundling (Vite), du HMR et d'éviter de mélanger les traductions avec des assets bruts.
+### i18n/
+Actuellement limité à `fr/Mood/questions.json`. Aucune abstraction de chargement. L'étendue réelle étant faible, la dette est maîtrisée mais documentée.
 
-## Avantages de cette architecture
+## Principes de structuration (tels qu'appliqués aujourd'hui)
 
-### 1. Séparation claire des responsabilités
-- **Core** : logique métier réutilisable
-- **UI** : composants découplés de la logique
-- **Features** : modules autonomes et maintenables
+1. Centralisation sécurité & data dans `core/` (crypto + services PB + store).
+2. UI atomisée avec un début de classification (base/form/actions/specifics) – pas encore totalement stabilisée.
+3. Flux fonctionnels regroupés sous `app/flow/` pour limiter la surface des refactors non finalisés.
+4. Imports uniformisés vers les alias `@/core`, `@/ui`, `@/app` (nettoyage des anciens chemins `@/services/*`).
+5. Aucun code mort conservé côté atoms (suppression des doubles exports par réexport interne qui causaient l'erreur Vite « Multiple exports with the same name 'default' »).
 
-### 2. Réutilisabilité et maintenabilité
-- Composants UI indépendants et testables
-- Services centralisés dans core/
-- Features modulaires et extensibles
+## Dette / Incohérences identifiées
 
-### 3. Évolutivité
-- Ajout facile de nouvelles features
-- Modification de l'UI sans impact sur la logique
-- Tests unitaires simplifiés
+| Sujet | État actuel | Risque | Piste future (optionnelle) |
+|-------|-------------|--------|-----------------------------|
+| Absence de `features/` | Flux dans `app/flow/` | Croissance difficile | Extraire progressivement chaque flux en `features/<nom>` |
+| ImportExport centralisé | Couplage modules ↔ core | Mélange couches | Déplacer chaque `<Module>.jsx` près de sa future feature |
+| atoms/specifics | Mélange UI + logique (clé manquante) | Difficulté test | Promouvoir en organisms/ ou rattacher aux features |
+| i18n minimal | 1 fichier FR isolé | Scalabilité faible | Introduire loader + structure locales/en/* |
+| services modules centralisés | Partage OK mais feature isolation absente | Refactor futur coûteux | Garder API stable avant extraction |
 
-### 4. Cohérence avec les principes du projet
-- Respect de la modularité (modules Mood, Goals, Passage)
-- Préservation de la sécurité (crypto/ centralisé)
-- Structure adaptée au système d'authentification et de chiffrement
+## Convention d'import (actuelle)
 
-## Migration progressive
+Exemples (réel) :
+```
+import pocketbase from "@/core/api/pocketbase";
+import { listGoals } from "@/core/api/modules/Goals";
+import Button from "@/ui/atoms/base/Button";
+import Layout from "@/ui/layout/Layout";
+import GoalsView from "@/app/flow/Goals/views/History";
+```
+Règle : ne plus utiliser d'anciens chemins `@/services/...` ni de doubles réexports locaux.
 
-Cette architecture peut être adoptée progressivement :
+## Lignes rouges actuelles (gel temporaire)
 
-1. **Phase 1** : Créer les nouveaux dossiers et migrer les services (core/)
-2. **Phase 2** : Réorganiser les composants UI selon la nouvelle structure
-3. **Phase 3** : Restructurer les modules en features autonomes
-4. **Phase 4** : Centraliser la configuration dans app/
-5. **Phase 5 (i18n)** : Déplacer `src/data/questions.json` (actuel) vers `src/i18n/fr/questions.json`, ajouter d'autres locales si besoin, et introduire un petit loader pour sélectionner la locale (avec fallback). Si `src/data/` n'existe pas encore, créer directement `src/i18n/fr/questions.json`.
+- Pas de création de `features/` sans décision explicite.
+- Pas de déplacement supplémentaire d'atomes sans justification (impact sur imports important).
+- Ne pas fragmenter `ImportExport/` tant que l'intégration chiffrée n'est pas revalidée test.
 
-Cette approche permet de maintenir l'application fonctionnelle pendant la migration tout en améliorant progressivement l'organisation du code.
+## Étapes futures (OPTIONNEL – hors périmètre immédiat)
 
-Note importante — portée de la réorganisation:
-- Cette réorga ne crée aucun nouveau fichier métier. Elle déplace uniquement l’existant.
-- En particulier: `frontend/src/services/dataModules/{Mood,Goals,Passage}.js` deviennent `frontend/src/features/{mood,goals,passage}/services/{Mood,Goals,Passage}.js`.
-- Les composants d’import/export sont déplacés dans chaque feature: `frontend/src/services/ImportExport/{Mood,Goals,Passage}.jsx` deviennent `frontend/src/features/{mood,goals,passage}/importExport/{Mood,Goals,Passage}.jsx`. Les utilitaires partagés `registry.data.js` et `utils.js` sont déplacés en `frontend/src/core/utils/importExport/`.
-- Aucun nouveau hook spécifique par feature n’est introduit à ce stade.
+1. Stabiliser tests d'intégrité (import/export + dérivation clé) avant tout refactor structurel additionnel.
+2. Introduire `features/` en migrant un flux pilote (ex: Mood) pour valider pattern.
+3. Déplacer ImportExport de Mood/Goals/Passage proche de leurs vues une fois les features extraites.
+4. Normaliser modales spécifiques (dossier `ui/organisms/` si pattern récurrent).
+5. Étendre i18n (en/, loader dynamique, fallback) si besoin produit.
 
-### Détails des déplacements (exhaustif)
+## Résumé
 
-Mood
-- Avant
-    - Vues: `frontend/src/modules/Mood/{Form.jsx,History.jsx,Graph.jsx}`
-    - Composants: `frontend/src/modules/Mood/components/{FormComment.jsx,FormMood.jsx,FormPositives.jsx,FormQuestion.jsx,GraphChart.jsx,GraphChartBody.jsx,GraphFrame.jsx,HistoryEntry.jsx,HistoryFilters.jsx,HistoryList.jsx}`
-    - Service: `frontend/src/services/dataModules/Mood.js`
-    - Import/Export: `frontend/src/services/ImportExport/Mood.jsx`
-- Après
-    - Vues: `frontend/src/features/mood/views/{Form.jsx,History.jsx,Graph.jsx}`
-    - Composants (noms simplifiés): `frontend/src/features/mood/components/{Comment.jsx,Mood.jsx,Positives.jsx,Question.jsx,Chart.jsx,ChartBody.jsx,Frame.jsx,Entry.jsx,Filters.jsx,List.jsx}`
-        - Renames: GraphChart→Chart, GraphChartBody→ChartBody, GraphFrame→Frame, HistoryEntry→Entry, HistoryFilters→Filters, HistoryList→List
-        - Renames: FormComment→Comment, FormMood→Mood, FormPositives→Positives, FormQuestion→Question
-    - Service: `frontend/src/features/mood/services/Mood.js`
-    - Import/Export: `frontend/src/features/mood/importExport/Mood.jsx`
-
-Goals
-- Avant
-    - Vues: `frontend/src/modules/Goals/{Form.jsx,History.jsx}`
-    - Composants: `frontend/src/modules/Goals/components/{HistoCard.jsx,HistoEditCard.jsx,HistoFilters.jsx,HistoList.jsx}`
-    - Service: `frontend/src/services/dataModules/Goals.js`
-    - Import/Export: `frontend/src/services/ImportExport/Goals.jsx`
-- Après
-    - Vues: `frontend/src/features/goals/views/{Form.jsx,History.jsx}`
-    - Composants (noms simplifiés): `frontend/src/features/goals/components/{Card.jsx,EditCard.jsx,Filters.jsx,List.jsx}`
-        - Renames: HistoCard→Card, HistoEditCard→EditCard, HistoFilters→Filters, HistoList→List
-    - Service: `frontend/src/features/goals/services/Goals.js`
-    - Import/Export: `frontend/src/features/goals/importExport/Goals.jsx`
-
-Passage
-- Avant
-    - Vues: `frontend/src/modules/Passage/{Form.jsx,History.jsx}`
-    - Service: `frontend/src/services/dataModules/Passage.js`
-    - Import/Export: `frontend/src/services/ImportExport/Passage.jsx`
-- Après
-    - Vues: `frontend/src/features/passage/views/{Form.jsx,History.jsx}`
-    - Service: `frontend/src/features/passage/services/Passage.js`
-    - Import/Export: `frontend/src/features/passage/importExport/Passage.jsx`
+Le code reflète une transition incomplète : logique consolidée dans `core/`, UI clarifiée, flux fonctionnels encore agrégés dans `app/flow/`. Ce document sert désormais de référence de vérité pour l'état présent (et remplace la version « proposition »). Toute évolution ultérieure devra partir de cette base.

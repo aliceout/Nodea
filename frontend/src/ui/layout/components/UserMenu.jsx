@@ -1,9 +1,9 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import UserAvatar from "../components/UserAvatar";
-import pb from "@/services/pocketbase";
-import { useStore } from "@/store/StoreProvider";
-import { setTab } from "@/store/actions";
+import pb from "@/core/api/pocketbase";
+import { useStore } from "@/core/store/StoreProvider";
+import { setTab } from "@/core/store/actions";
 
 export default function UserMenu({
   username = "Utilisateur·rice",

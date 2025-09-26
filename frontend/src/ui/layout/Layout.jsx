@@ -1,15 +1,15 @@
 import React, { useMemo } from "react";
-import KeyMissingModal from "@/ui/feedback/KeyMissingModal";
-import OnboardingModal from "@/ui/feedback/OnboardingModal";
-import { nav } from "./Navigation";
-import { selectCurrentTab } from "@/store/selectors";
-import { useStore } from "@/store/StoreProvider";
-import useBootstrapModulesRuntime from "@/hooks/useBootstrapModulesRuntime";
-import useAuth from "@/hooks/useAuth";
+import KeyMissingModal from "@/ui/atoms/specifics/KeyMissingModal";
+import OnboardingModal from "@/ui/atoms/specifics/OnboardingModal";
+import { nav } from "./navigation/Navigation";
+import { selectCurrentTab } from "@/core/store/selectors";
+import { useStore } from "@/core/store/StoreProvider";
+import useBootstrapModulesRuntime from "@/core/hooks/useBootstrapModulesRuntime";
+import useAuth from "@/core/auth/useAuth";
 
 // UI conteneurs
-import Header from "./Header";
-import Sidebar from "./Sidebar";
+import Header from "./headers/Header";
+import Sidebar from "./navigation/Sidebar";
 
 export default function Layout() {
   // Boot runtime modules (inchangé)
