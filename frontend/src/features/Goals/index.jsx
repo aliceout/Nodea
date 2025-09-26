@@ -1,6 +1,6 @@
 // frontend/src/features/Goals/index.jsx
 import { useState, useMemo } from "react";
-import Subheader from "@/ui/layout/Subheader";
+import Subheader from "@/ui/layout/headers/subheader/Subheader";
 import GoalsForm from "./views/Form";
 import GoalsHistory from "./views/History";
 
