@@ -88,6 +88,6 @@ export default function OnboardingModal({
   );
 }
 
-import Modal from "@/ui/components/Modal";
-import ModulesManager from "@/features/Settings/components/ModulesManager";
-import { useModulesRuntime, enabledModules } from "@/store/modulesRuntime";
+import Modal from "@/ui/atoms/base/Modal";
+import ModulesManager from "@/app/flow/Settings/components/ModulesManager";
+import { useModulesRuntime, enabledModules } from "@/core/store/modulesRuntime";
