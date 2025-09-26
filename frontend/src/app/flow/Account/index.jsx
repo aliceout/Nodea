@@ -1,4 +1,4 @@
-import useAuth from "@/core/hooks/useAuth";
+import useAuth from "@/core/auth/useAuth";
 import Subheader from "@/ui/layout/headers/Subheader";
 import ChangeEmail from "./components/ChangeEmail";
 import ChangeUsername from "./components/ChangeUsername";
