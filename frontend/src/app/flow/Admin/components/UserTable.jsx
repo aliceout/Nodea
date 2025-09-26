@@ -1,5 +1,5 @@
 import React from "react";
-import SettingsCard from "@/ui/feedback/SettingsCard";
+import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
   const confirmDelete = (user) => {
