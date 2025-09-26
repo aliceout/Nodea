@@ -1,6 +1,3 @@
-// Deprecated: use @/ui/atoms/form/Textarea
-// Atom canonical: @/ui/atoms/form/Textarea
-// (Removed legacy self re-export)
 import React from "react";
 
 /**

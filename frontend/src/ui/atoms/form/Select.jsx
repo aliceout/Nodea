@@ -1,6 +1,3 @@
-// Deprecated: use @/ui/atoms/form/Select
-// Atom canonical: @/ui/atoms/form/Select
-// (Removed legacy self re-export)
 import React from "react";
 
 /**
