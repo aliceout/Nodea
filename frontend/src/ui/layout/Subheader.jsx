@@ -2,12 +2,13 @@
 import clsx from "clsx";
 import { useMemo } from "react";
 
-import { useStore } from "@/store/StoreProvider";
-import { selectCurrentTab } from "@/store/selectors";
-import { MODULES } from "@/config/modules_list";
+import { useStore } from "@/core/store/StoreProvider";
+import { selectCurrentTab } from "@/core/store/selectors";
+import { MODULES } from "@/app/config/modules_list";
 
-import SubNavDesktop from "./components/SubNavDesktop";
-import SubNavMobile from "./components/SubNavMobile";
+// Adjusted paths: sub-navigation components live under headers/parts
+import SubNavDesktop from "./headers/parts/SubNavDesktop";
+import SubNavMobile from "./headers/parts/SubNavMobile";
 
 export default function Subheader({ tabs = [], onTabSelect, className }) {
   const store = useStore();

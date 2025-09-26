@@ -1,10 +1,13 @@
 // src/components/layout/components/ModuleNav.jsx
-import { MODULES } from "@/config/modules_list";
-import { useStore } from "@/store/StoreProvider";
-import { selectCurrentTab } from "@/store/selectors";
-import { setTab } from "@/store/actions";
+import { MODULES } from "@/app/config/modules_list";
+import { useStore } from "@/core/store/StoreProvider";
+import { selectCurrentTab } from "@/core/store/selectors";
+import { setTab } from "@/core/store/actions";
 
-import { useModulesRuntime, isModuleEnabled } from "@/store/modulesRuntime";
+import {
+  useModulesRuntime,
+  isModuleEnabled,
+} from "@/core/store/modulesRuntime";
 
 export default function HeadearNav() {
   const { state, dispatch } = useStore();
@@ -12,11 +15,11 @@ export default function HeadearNav() {
   const modulesRuntime = useModulesRuntime();
 
   // On ne montre que les modules marqués display=true
-const visibleNav = (MODULES || []).filter((i) => {
-  if (i.display === false) return false;
-  if (!i.to_toggle) return true;
-  return isModuleEnabled(modulesRuntime, i.id);
-});
+  const visibleNav = (MODULES || []).filter((i) => {
+    if (i.display === false) return false;
+    if (!i.to_toggle) return true;
+    return isModuleEnabled(modulesRuntime, i.id);
+  });
   return (
     <nav className="hidden lg:block ml-4">
       <ul className="flex items-start justify-end gap-5 group">

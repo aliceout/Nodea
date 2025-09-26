@@ -4,7 +4,7 @@
 // - exporte `nav` (array) que Header/Sidebar consomment
 // - conserve element/display/to pour le Layout
 // -------------------------------------------------------------
-import { MODULES } from "@/config/modules_list.jsx";
+import { MODULES } from "@/app/config/modules_list";
 
 // Ici on ne touche pas aux icônes : Header/Sidebar n’en ont pas besoin.
 // Si un jour tu en veux, ajoute "icon" côté MODULES et utilise-le là-bas.

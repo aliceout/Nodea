@@ -1,10 +1,10 @@
 // src/features/Mood/views/Form.jsx
 import React, { useState, useEffect, useRef } from "react";
-import pb from "@/services/pocketbase";
+import pb from "@/core/api/pocketbase";
 import questions from "@/data/questions.json";
-import { useModulesRuntime } from "@/store/modulesRuntime";
-import { encryptAESGCM } from "@/services/crypto/webcrypto";
-import { useStore } from "@/store/StoreProvider";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
+import { encryptAESGCM } from "@/core/crypto/webcrypto";
+import { useStore } from "@/core/store/StoreProvider";
 
 // --- Helpers HMAC (dérivation du guard) ---
 const te = new TextEncoder();
@@ -258,6 +258,6 @@ import PositivesBlock from "../components/Positives";
 import MoodBlock from "../components/Mood";
 import QuestionBlock from "../components/Question";
 import CommentBlock from "../components/Comment";
-import Button from "@/ui/components/Button";
-import FormError from "@/ui/components/FormError";
-import Input from "@/ui/components/Input";
+import Button from "@/ui/atoms/Button";
+import FormError from "@/ui/atoms/FormError";
+import Input from "@/ui/atoms/Input";

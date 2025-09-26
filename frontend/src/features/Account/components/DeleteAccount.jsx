@@ -1,15 +1,15 @@
 // frontend/src/features/Account/components/DeleteAccount.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import pb from "@/services/pocketbase";
-import SettingsCard from "@/ui/feedback/SettingsCard";
-import Button from "@/ui/components/Button";
-import { MODULES } from "@/config/modules_list";
-import { loadModulesConfig } from "@/services/modules-config";
-import { deriveGuard } from "@/services/dataModules/Mood";
-import { useStore } from "@/store/StoreProvider";
-import { useModulesRuntime } from "@/store/modulesRuntime";
-import { useMainKey } from "@/hooks/useMainKey";
+import pb from "@/core/api/pocketbase";
+import SettingsCard from "@/ui/molecules/SettingsCard";
+import Button from "@/ui/atoms/Button";
+import { MODULES } from "@/app/config/modules_list";
+import { loadModulesConfig } from "@/core/api/modules-config";
+import { deriveGuard } from "@/core/crypto/guards";
+import { useStore } from "@/core/store/StoreProvider";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
+import { useMainKey } from "@/core/hooks/useMainKey";
 
 /**
  * Helper: liste toutes les entrées d'une collection pour un sid donné,
