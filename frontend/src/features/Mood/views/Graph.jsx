@@ -1,9 +1,9 @@
 // src/features/Mood/views/Graph.jsx
 import React, { useEffect, useState } from "react";
-import { useStore } from "@/store/StoreProvider";
-import { useModulesRuntime } from "@/store/modulesRuntime";
-import { decryptWithRetry } from "@/services/crypto/webcrypto";
-import { listMoodEntries } from "@/services/dataModules/Mood";
+import { useStore } from "@/core/store/StoreProvider";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
+import { decryptWithRetry } from "@/core/crypto/webcrypto";
+import { listMoodEntries } from "@/core/api/modules/Mood";
 
 export default function GraphPage() {
   const [data, setData] = useState([]);

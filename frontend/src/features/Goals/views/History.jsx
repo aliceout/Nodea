@@ -6,9 +6,9 @@ import {
   updateGoalStatus,
   deleteGoal,
   updateGoal,
-} from "@/services/dataModules/Goals";
-import { useStore } from "@/store/StoreProvider";
-import { useModulesRuntime } from "@/store/modulesRuntime";
+} from "@/core/api/modules/Goals";
+import { useStore } from "@/core/store/StoreProvider";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import HistoFilters from "../components/Filters";
 import HistoList from "../components/List";
 import HistoEditCard from "../components/EditCard";

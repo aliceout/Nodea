@@ -1,13 +1,13 @@
 // frontend/src/services/ImportExport/Passage.jsx
 // Import/Export pour "Passage" (contrat plugin identique à Mood/Goals)
 // Exporte: { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
-import pb from "@/services/pocketbase";
+import pb from "@/core/api/pocketbase";
 import {
   createPassageEntry,
   decryptPassageRecord,
-} from "@/services/dataModules/Passage";
-import { listRecords } from "@/services/pb-records";
-import { normalizeKeyPart } from "@/services/ImportExport/utils";
+} from "@/core/api/modules/Passage";
+import { listRecords } from "@/core/api/pb-records";
+import { normalizeKeyPart } from "@/core/utils/importExport/utils";
 
 /** Métadonnées module (même pattern que Mood.jsx) */
 export const meta = {

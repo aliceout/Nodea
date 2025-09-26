@@ -20,7 +20,7 @@ import {
   createGoal,
   updateGoal,
   deleteGoal,
-} from "@/services/dataModules/Goals";
+} from "@/core/api/modules/Goals";
 
 export default function GoalsForm() {
   const { id } = useParams();

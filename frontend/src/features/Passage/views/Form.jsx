@@ -11,7 +11,7 @@ import { useModulesRuntime } from "@/store/modulesRuntime";
 import {
   createPassageEntry,
   listDistinctThreads,
-} from "@/services/dataModules/Passage";
+} from "@/core/api/modules/Passage";
 
 // Récupère le sid (module_user_id) du module Passage depuis le runtime
 function usePassageSid() {
