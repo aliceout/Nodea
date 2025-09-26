@@ -1,6 +1,6 @@
 // frontend/src/features/Passage/views/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import EditDeleteActions from "@/ui/molecules/EditDeleteActions";
+import EditDeleteActions from "@/ui/atoms/actions/EditDeleteActions";
 import FormError from "@/ui/atoms/form/FormError";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";

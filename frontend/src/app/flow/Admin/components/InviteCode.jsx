@@ -95,4 +95,4 @@ export default function InviteCodeManager({
 }
 
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/molecules/SettingsCard";
+import SettingsCard from "@/ui/atoms/specifics/SettingsCard";

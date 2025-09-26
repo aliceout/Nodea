@@ -3,7 +3,7 @@ import Input from "@/ui/atoms/form/Input";
 import Textarea from "@/ui/atoms/form/Textarea";
 import Select from "@/ui/atoms/form/Select";
 import DateMonthPicker from "@/ui/atoms/form/DateMonthPicker";
-import EditDeleteActions from "@/ui/molecules/EditDeleteActions";
+import EditDeleteActions from "@/ui/atoms/actions/EditDeleteActions";
 
 export default function HistoEditCard({
   entry,

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
-import SettingsCard from "@/ui/molecules/SettingsCard";
+import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "@/core/utils/importExport/registry.data.js";

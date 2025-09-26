@@ -4,7 +4,7 @@ import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import { decryptWithRetry } from "@/core/crypto/webcrypto";
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/molecules/SettingsCard";
+import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 // Orchestrate export via module plugins (pagination + decryption centralized)
 import { getDataPlugin } from "@/core/utils/importExport/registry.data.js";
 

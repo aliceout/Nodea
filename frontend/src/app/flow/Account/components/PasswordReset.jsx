@@ -2,7 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/molecules/SettingsCard";
+import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 
 export default function PasswordResetSection() {
   const navigate = useNavigate();
