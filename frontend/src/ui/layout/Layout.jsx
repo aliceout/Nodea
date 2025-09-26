@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
-import KeyMissingModal from "@/ui/organisms/KeyMissingModal";
-import OnboardingModal from "@/ui/organisms/OnboardingModal";
+import KeyMissingModal from "@/ui/atoms/specifics/KeyMissingModal";
+import OnboardingModal from "@/ui/atoms/specifics/OnboardingModal";
 import { nav } from "./navigation/Navigation";
 import { selectCurrentTab } from "@/core/store/selectors";
 import { useStore } from "@/core/store/StoreProvider";
 import useBootstrapModulesRuntime from "@/core/hooks/useBootstrapModulesRuntime";
-import useAuth from "@/core/hooks/useAuth";
+import useAuth from "@/core/auth/useAuth";
 
 // UI conteneurs
 import Header from "./headers/Header";
