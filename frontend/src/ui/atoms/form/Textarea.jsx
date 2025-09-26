@@ -1,5 +1,21 @@
+// Deprecated: use @/ui/atoms/form/Textarea
+export { default } from "./Textarea";
 import React from "react";
 
+/**
+ * Textarea
+ * Props :
+ *   - label: string (optionnel)
+ *   - labelClassName: string (optionnel, classes pour le label)
+ *   - value: string
+ *   - onChange: function
+ *   - className: string (optionnel, classes pour le conteneur)
+ *   - inputClassName: string (optionnel, classes pour le textarea)
+ *   - rows: number (optionnel)
+ *   - required: bool (optionnel)
+ *   - legend: string (optionnel)
+ *   - ...props
+ */
 export default function Textarea({
   label,
   labelClassName = "",

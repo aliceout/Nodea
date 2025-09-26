@@ -1,7 +1,20 @@
+// Deprecated: use @/ui/atoms/form/DateMonthPicker
+export { default } from "./DateMonthPicker";
 import React from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+/**
+ * DateMonthPicker
+ * Sélecteur visuel mois + année, réutilisable.
+ * Props :
+ * - label (optionnel)
+ * - value (format "YYYY-MM" ou "")
+ * - onChange (callback, reçoit "YYYY-MM" ou "")
+ * - disabled (optionnel)
+ * - className (optionnel, pour le conteneur)
+ * - inputClassName (optionnel, pour l'input)
+ */
 export default function DateMonthPicker({
   label,
   value,
@@ -11,7 +24,9 @@ export default function DateMonthPicker({
   inputClassName = "",
   legend,
 }) {
+  // Convertit la valeur "YYYY-MM" en Date JS
   const selectedDate = value ? new Date(value + "-01") : null;
+
   return (
     <div className={`flex flex-col ${className}`}>
       {label && (
@@ -22,7 +37,11 @@ export default function DateMonthPicker({
       <DatePicker
         selected={selectedDate}
         onChange={(date) =>
-          onChange({ target: { value: date ? date.toISOString().slice(0, 7) : "" } })
+          onChange({
+            target: {
+              value: date ? date.toISOString().slice(0, 7) : "",
+            },
+          })
         }
         dateFormat="yyyy-MM"
         showMonthYearPicker

@@ -1,3 +1,7 @@
+// Deprecated: use @/ui/atoms/base/Button
+export { default } from "./Button";
+// src/components/common/Button.jsx
+
 export default function Button({
   type = "button",
   className = "",
@@ -6,8 +10,7 @@ export default function Button({
   ...props
 }) {
   const commonProps = {
-    className:
-      `min-w-50 w-3/12 text-nodea-sand py-2 px-4 rounded hover:text-nodea-sand  text-center font-display font-semibold transition text-sm ${className}`,
+    className: `min-w-50 w-3/12 text-nodea-sand py-2 px-4 rounded hover:text-nodea-sand  text-center font-display font-semibold transition text-sm ${className}`,
     ...props,
   };
   if (as === "label") {

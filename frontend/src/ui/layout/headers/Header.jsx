@@ -64,6 +64,6 @@ export default function Header() {
   );
 }
 
-import HeaderNav from "./components/HeaderNav";
+import HeaderNav from "../components/HeaderNav.jsx";
 import Logo from "@/ui/branding/LogoLong.jsx";
-import UserMenu from "./components/UserMenu.jsx";
+import UserMenu from "../components/UserMenu.jsx";

@@ -1,6 +1,24 @@
+// Deprecated: use @/ui/atoms/form/SuggestInput
+export { default } from "./SuggestInput";
 import React, { useRef, useState, useEffect } from "react";
 import Input from "./Input";
 
+/**
+ * SuggestInput
+ * Input avec suggestions (dropdown) pour sélectionner ou créer une valeur.
+ * Props :
+ *   - value: string
+ *   - onChange: (string) => void
+ *   - options: string[] (suggestions)
+ *   - placeholder: string
+ *   - required: bool
+ *   - label: string (optionnel)
+ *   - legend: string | ReactNode (optionnel)
+ *   - className: string (optionnel, classes du conteneur)
+ *   - inputClassName: string (optionnel, classes de l'<input>)
+ *   - id: string (optionnel)
+ *   - ...props (autres props passés à l'<input>)
+ */
 export default function SuggestInput({
   value,
   onChange,
@@ -36,11 +54,12 @@ export default function SuggestInput({
           {label}
         </label>
       )}
+      {/* Wrapper strict autour de l'input pour positionner la flèche et le menu */}
       <div className="relative">
         <Input
           id={id}
           ref={inputRef}
-            value={value}
+          value={value}
           onChange={(e) => {
             onChange(e.target.value);
             setOpen(true);
@@ -50,11 +69,13 @@ export default function SuggestInput({
           placeholder={placeholder}
           required={required}
           autoComplete="off"
-          inputClassName={`text-sm pr-12 ${inputClassName}`}
+          inputClassName={`text-sm pr-12 ${inputClassName}`} // padding à droite pour la flèche
           aria-haspopup="listbox"
           aria-expanded={open}
           {...props}
         />
+
+        {/* Flèche positionnée DANS le wrapper (pas dans l'input) */}
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
           <svg
             className="h-4 w-4 text-gray-400"
@@ -71,6 +92,8 @@ export default function SuggestInput({
             />
           </svg>
         </span>
+
+        {/* Dropdown */}
         {open && filtered.length > 0 && (
           <ul
             role="listbox"
@@ -93,6 +116,7 @@ export default function SuggestInput({
           </ul>
         )}
       </div>
+
       {legend && <p className="text-xs text-gray-500 mt-1">{legend}</p>}
     </div>
   );

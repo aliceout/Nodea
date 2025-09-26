@@ -1,5 +1,18 @@
+// Deprecated: use @/ui/atoms/form/Select
+export { default } from "./Select";
 import React from "react";
 
+/**
+ * Composant Select réutilisable
+ * Props :
+ * - label (optionnel)
+ * - value
+ * - onChange
+ * - children (option tags)
+ * - className (optionnel)
+ * - disabled (optionnel)
+ * - ...props (autres props natifs)
+ */
 export default function Select({
   label,
   labelClassName = "",

@@ -1,4 +1,4 @@
-// Centralized guard derivation (HMAC-SHA256)
+// Centralized ./guards6)
 // Exported API: deriveGuard(mainKeyRaw, moduleUserId, recordId)
 
 const te = new TextEncoder();
