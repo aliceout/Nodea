@@ -6,13 +6,13 @@ import {
   Cog6ToothIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
-import Home from "@/features/Homepage";
-import Mood from "@/features/Mood";
-import Passage from "@/features/Passage";
-import Goals from "@/features/Goals";
-import Account from "@/features/Account";
-import Settings from "@/features/Settings";
-import Admin from "@/features/Admin";
+import Home from "../flow/Homepage";
+import Mood from "../flow/Mood";
+import Passage from "../flow/Passage";
+import Goals from "../flow/Goals";
+import Account from "../flow/Account";
+import Settings from "../flow/Settings";
+import Admin from "../flow/Admin";
 
 export const MODULES = [
   {
