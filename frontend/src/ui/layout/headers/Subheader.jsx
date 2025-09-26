@@ -7,8 +7,8 @@ import { selectCurrentTab } from "@/core/store/selectors";
 import { MODULES } from "@/app/config/modules_list";
 
 // Adjusted paths: sub-navigation components live under headers/parts
-import SubNavDesktop from "./headers/parts/SubNavDesktop";
-import SubNavMobile from "./headers/parts/SubNavMobile";
+import SubNavDesktop from "../components/SubNavDesktop";
+import SubNavMobile from "../components/SubNavMobile";
 
 export default function Subheader({ tabs = [], onTabSelect, className }) {
   const store = useStore();
