@@ -1,9 +1,9 @@
 // Chargeurs dynamiques par module (lazy import)
 // MAJ: anciens chemins '@/services/ImportExport/*' remplacés par l'emplacement actuel des plugins
 const loaders = {
-  mood: () => import("@/core/utils/importExport/plugins/Mood.jsx"),
-  passage: () => import("@/core/utils/importExport/plugins/Passage.jsx"),
-  goals: () => import("@/core/utils/importExport/plugins/Goals.jsx"),
+  mood: () => import("@/core/utils/ImportExport/Mood.jsx"),
+  passage: () => import("@/core/utils/ImportExport/Passage.jsx"),
+  goals: () => import("@/core/utils/ImportExport/Goals.jsx"),
 };
 
 // Cache pour éviter de recharger les plugins
