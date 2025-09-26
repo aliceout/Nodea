@@ -1,3 +1,5 @@
+// Deprecated: use @/ui/atoms/base/Button
+export { default } from "./base/Button";
 // src/components/common/Button.jsx
 
 export default function Button({

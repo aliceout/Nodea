@@ -1,3 +1,5 @@
+// Deprecated: use @/ui/atoms/form/Textarea
+export { default } from "./form/Textarea";
 import React from "react";
 
 /**

@@ -1,3 +1,5 @@
+// Deprecated: use @/ui/atoms/base/Alert
+export { default } from "./base/Alert";
 // src/components/common/Alert.jsx
 
 export default function Alert({ type = "info", children, className = "" }) {

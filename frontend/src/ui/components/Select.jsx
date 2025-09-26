@@ -1,3 +1,5 @@
+// Deprecated: use @/ui/atoms/form/Select
+export { default } from "./form/Select";
 import React from "react";
 
 /**

@@ -1,3 +1,5 @@
+// Deprecated: use @/ui/atoms/form/FormError
+export { default } from "./form/FormError";
 // src/components/common/FormFeedback.jsx
 
 export default function FormFeedback({
