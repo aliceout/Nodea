@@ -1,5 +1,5 @@
 import React from "react";
-import Select from "@/ui/components/Select";
+import Select from "@/ui/atoms/form/Select";
 
 export default function HistoFilters({
   threadFilter,

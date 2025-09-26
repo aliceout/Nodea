@@ -1,13 +1,13 @@
 // frontend/src/features/Passage/views/Form.jsx
 
 import { useState, useEffect } from "react";
-import Button from "@/ui/components/Button";
-import Input from "@/ui/components/Input";
-import Textarea from "@/ui/components/Textarea";
-import FormError from "@/ui/components/FormError";
-import SuggestInput from "@/ui/components/SuggestInput";
-import { useStore } from "@/store/StoreProvider";
-import { useModulesRuntime } from "@/store/modulesRuntime";
+import Button from "@/ui/atoms/base/Button";
+import Input from "@/ui/atoms/form/Input";
+import Textarea from "@/ui/atoms/form/Textarea";
+import FormError from "@/ui/atoms/form/FormError";
+import SuggestInput from "@/ui/atoms/form/SuggestInput";
+import { useStore } from "@/core/store/StoreProvider";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import {
   createPassageEntry,
   listDistinctThreads,

@@ -3,17 +3,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 // 🔐 Clé principale depuis le store global (bytes attendus, pas CryptoKey)
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/core/store/StoreProvider";
 // ⚙️ Récupération du module_user_id comme dans Passage/Mood
-import { useModulesRuntime } from "@/store/modulesRuntime";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
 
-import Button from "@/ui/components/Button";
-import Input from "@/ui/components/Input";
-import Textarea from "@/ui/components/Textarea";
-import Select from "@/ui/components/Select";
-import SuggestInput from "@/ui/components/SuggestInput";
-import FormError from "@/ui/components/FormError";
-import DateMonthPicker from "@/ui/components/DateMonthPicker";
+import Button from "@/ui/atoms/base/Button";
+import Input from "@/ui/atoms/form/Input";
+import Textarea from "@/ui/atoms/form/Textarea";
+import Select from "@/ui/atoms/form/Select";
+import SuggestInput from "@/ui/atoms/form/SuggestInput";
+import FormError from "@/ui/atoms/form/FormError";
+import DateMonthPicker from "@/ui/atoms/form/DateMonthPicker";
 
 import {
   getGoalById,

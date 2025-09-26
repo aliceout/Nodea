@@ -94,5 +94,5 @@ export default function InviteCodeManager({
   );
 }
 
-import Button from "@/ui/components/Button";
-import SettingsCard from "@/ui/feedback/SettingsCard";
+import Button from "@/ui/atoms/base/Button";
+import SettingsCard from "@/ui/molecules/SettingsCard";

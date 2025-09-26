@@ -1,14 +1,14 @@
 // frontend/src/features/Passage/views/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import EditDeleteActions from "@/ui/components/EditDeleteActions";
-import FormError from "@/ui/components/FormError";
-import { useStore } from "@/store/StoreProvider";
-import { useModulesRuntime } from "@/store/modulesRuntime";
+import EditDeleteActions from "@/ui/molecules/EditDeleteActions";
+import FormError from "@/ui/atoms/form/FormError";
+import { useStore } from "@/core/store/StoreProvider";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import {
   listPassageEntries,
   listPassageDecrypted,
   deletePassageEntry,
-} from "@/services/dataModules/Passage";
+} from "@/core/api/modules/Passage";
 
 function usePassageSid() {
   const modules = useModulesRuntime();

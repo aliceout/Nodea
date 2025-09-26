@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import pb from "@/core/api/pocketbase";
 import SettingsCard from "@/ui/molecules/SettingsCard";
-import Button from "@/ui/atoms/Button";
+import Button from "@/ui/atoms/base/Button";
 import { MODULES } from "@/app/config/modules_list";
 import { loadModulesConfig } from "@/core/api/modules-config";
 import { deriveGuard } from "@/core/crypto/guards";

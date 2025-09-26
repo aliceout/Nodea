@@ -1,4 +1,4 @@
-import Textarea from "@/ui/components/Textarea";
+import Textarea from "@/ui/atoms/form/Textarea";
 export default function JournalComment({ comment, setComment }) {
   return (
     <div className="flex flex-col justify-center gap-1">

@@ -1,6 +1,6 @@
 import React from "react";
-import Modal from "@/ui/components/Modal";
-import Button from "@/ui/components/Button";
+import Modal from "@/ui/atoms/Modal";
+import Button from "@/ui/atoms/base/Button";
 // Modale bloquante, focus-trap, backdrop, fermeture uniquement via logout
 export default function KeyMissingModal({ onLogout, open = true }) {
   return (

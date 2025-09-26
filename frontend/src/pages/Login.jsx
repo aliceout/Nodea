@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store/StoreProvider";
-import { setTab } from "@/store/actions";
-import pb from "@/services/pocketbase";
-import { deriveKeyArgon2 } from "@/services/crypto/webcrypto";
-import Logo from "@/ui/branding/LogoLong.jsx";
-import Button from "@/ui/components/Button";
-import Input from "@/ui/components/Input";
-import FormError from "@/ui/components/FormError";
+import { useStore } from "@/core/store/StoreProvider";
+import { setTab } from "@/core/store/actions";
+import pb from "@/core/api/pocketbase";
+import { deriveKeyArgon2 } from "@/core/crypto/webcrypto";
+import Logo from "@ui/branding/LogoLong.jsx";
+import Button from "@/ui/atoms/base/Button";
+import Input from "@/ui/atoms/form/Input";
+import FormError from "@/ui/atoms/form/FormError";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,34 +15,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const { dispatch } = useStore();
   const navigate = useNavigate();
-  // ...existing code...
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
     try {
-      // 1) Auth PocketBase
       await pb.collection("users").authWithPassword(email, password);
-
-      // 2) Récupération du user et du salt (mêmes champs qu'avant)
       const user = pb.authStore.model;
       const salt =
         user?.encryption_salt ?? user?.profile?.salt ?? user?.salt ?? "";
-
       if (!salt) {
         setError("Aucun 'salt' sur le profil utilisateur.");
         return;
       }
-
-      // 3) Dérivation Argon2id -> Uint8Array(32)
       const mainKeyBytes = await deriveKeyArgon2(password, salt);
-
-      // 4) Place la clé brute (32 octets) dans le contexte (mémoire uniquement)
       dispatch({ type: "key/set", payload: mainKeyBytes });
       dispatch({ type: "key/status", payload: "ready" });
-
-      // 5) Navigate
       dispatch(setTab("home"));
       navigate("/", { replace: true });
     } catch (err) {

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import pb from "@/services/pocketbase";
-import SettingsCard from "@/ui/feedback/SettingsCard";
-import Button from "@/ui/components/Button";
+import pb from "@/core/api/pocketbase";
+import SettingsCard from "@/ui/molecules/SettingsCard";
+import Button from "@/ui/atoms/base/Button";
 
 export default function UsernameSection({ user }) {
   const [username, setUsername] = useState(user?.username || "");

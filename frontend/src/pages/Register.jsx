@@ -1,20 +1,12 @@
 import React, { useState } from "react";
-import { deriveKeyArgon2, encryptAESGCM } from "@/services/crypto/webcrypto";
-import pb from "@/services/pocketbase";
-import Input from "@/ui/components/Input";
-import Button from "@/ui/components/Button";
-import FormFeedback from "@/ui/components/FormError";
+import { deriveKeyArgon2, encryptAESGCM } from "@/core/crypto/webcrypto";
+import pb from "@/core/api/pocketbase";
+import Input from "@/ui/atoms/form/Input";
+import Button from "@/ui/atoms/base/Button";
+import FormFeedback from "@/ui/atoms/form/FormError";
 
-// Utils base64 <-> Uint8Array (sans changer tes styles)
 function toB64(u8) {
   return btoa(String.fromCharCode(...u8));
-}
-function fromB64(b64) {
-  return new Uint8Array(
-    atob(b64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
-  );
 }
 
 export default function RegisterPage() {
@@ -30,13 +22,10 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
-
     if (password !== passwordConfirm) {
       setError("Les mots de passe ne correspondent pas");
       return;
     }
-
-    // 1) Vérification du code d'invitation
     try {
       const codeResult = await pb.collection("invites_codes").getFullList({
         filter: `code="${inviteCode}"`,
@@ -49,42 +38,26 @@ export default function RegisterPage() {
       setError("Erreur lors de la vérification du code");
       return;
     }
-
-    // 2) Création du compte (nouvelle logique crypto alignée)
     try {
-      // (a) Génère la clé principale (Uint8Array(32))
       const mainKeyRaw = window.crypto.getRandomValues(new Uint8Array(32));
-
-      // (b) Génère le salt (Uint8Array(16)) et encode en base64 pour la DB
       const saltRaw = window.crypto.getRandomValues(new Uint8Array(16));
       const saltB64 = toB64(saltRaw);
-
-      // (c) Dérive la clé de protection (Uint8Array(32)) depuis password+salt
-      const protectionKeyBytes32 = await deriveKeyArgon2(password, saltB64); // retourne Uint8Array(32)
-
-      // (d) Chiffre la clé principale brute avec AES-GCM en passant la clé dérivée **bytes**
-      const encrypted = await encryptAESGCM(mainKeyRaw, protectionKeyBytes32); // {iv: Uint8Array, data: Uint8Array}
-
-      // (e) Prépare l'objet {iv, data} encodé en base64 pour stockage texte
+      const protectionKeyBytes32 = await deriveKeyArgon2(password, saltB64);
+      const encrypted = await encryptAESGCM(mainKeyRaw, protectionKeyBytes32);
       const encryptedForDB = JSON.stringify({
         iv: toB64(encrypted.iv),
         data: toB64(encrypted.data),
       });
-
-      // (f) Envoi au backend : encrypted_key non vide + salt
       const userObj = {
         username,
         email,
         password,
         passwordConfirm,
         role: "user",
-        encrypted_key: encryptedForDB, // texte JSON {iv,data} (base64)
-        encryption_salt: saltB64, // texte base64
+        encrypted_key: encryptedForDB,
+        encryption_salt: saltB64,
       };
-
       await pb.collection("users").create(userObj);
-
-      // 3) Suppression du code d’invitation après usage (comme avant)
       try {
         const codeRecord = await pb
           .collection("invites_codes")
@@ -95,7 +68,6 @@ export default function RegisterPage() {
       } catch (_) {
         console.warn("Erreur suppression code invitation");
       }
-
       setSuccess("Utilisateur créé avec succès");
       setUsername("");
       setInviteCode("");
@@ -160,7 +132,6 @@ export default function RegisterPage() {
           />
           <FormFeedback message={error} type="error" className="w-full" />
           <FormFeedback message={success} type="success" className="w-full" />
-
           <Button
             type="submit"
             className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"

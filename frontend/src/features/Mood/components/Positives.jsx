@@ -1,4 +1,4 @@
-import Textarea from "@/ui/components/Textarea";
+import Textarea from "@/ui/atoms/form/Textarea";
 export default function JournalPositives({
   positive1,
   setPositive1,

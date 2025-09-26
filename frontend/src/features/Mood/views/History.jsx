@@ -1,10 +1,10 @@
 // src/features/Mood/views/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { listMoodEntries, deleteMoodEntry } from "@/services/dataModules/Mood";
-import { useModulesRuntime } from "@/store/modulesRuntime";
-import { useStore } from "@/store/StoreProvider";
-import { decryptWithRetry } from "@/services/crypto/webcrypto";
-import FormError from "@/ui/components/FormError";
+import { listMoodEntries, deleteMoodEntry } from "@/core/api/modules/Mood";
+import { useModulesRuntime } from "@/core/store/modulesRuntime";
+import { useStore } from "@/core/store/StoreProvider";
+import { decryptWithRetry } from "@/core/crypto/webcrypto";
+import FormError from "@/ui/atoms/form/FormError";
 
 // --- Helpers HMAC (dérivation du guard) ---
 // On duplique ici pour limiter les refactos (pas de nouveau module).
