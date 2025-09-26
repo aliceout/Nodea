@@ -1,4 +1,3 @@
-// src/features/Mood/views/Form.jsx
 import React, { useState, useEffect, useRef } from "react";
 import pb from "@/core/api/pocketbase";
 import questions from "@/i18n/fr/Mood/questions.json";

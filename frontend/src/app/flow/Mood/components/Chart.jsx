@@ -1,4 +1,3 @@
-// src/features/Mood/components/Chart.jsx
 import { ResponsiveContainer } from "recharts";
 import RotatedFrame from "./Frame";
 import ChartBody from "./ChartBody";

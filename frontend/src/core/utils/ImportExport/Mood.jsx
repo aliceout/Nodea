@@ -12,10 +12,10 @@
  *   - Dédoublonnage: getNaturalKey(payload) et listExistingKeys(ctx) consultent le clair
  */
 
-import pb from "@/services/pocketbase";
-import { encryptAESGCM, decryptAESGCM } from "@/services/crypto/webcrypto";
-import { normalizeKeyPart } from "@/services/ImportExport/utils";
-import { createEncryptedRecord, listRecords } from "@/services/pb-records";
+import pb from "@/core/api/pocketbase";
+import { encryptAESGCM, decryptAESGCM } from "@/core/crypto/webcrypto";
+import { normalizeKeyPart } from "@/core/utils/importExport/utils";
+import { createEncryptedRecord, listRecords } from "@/core/api/pb-records";
 
 export const meta = { id: "mood", version: 1, collection: "mood_entries" };
 

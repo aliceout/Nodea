@@ -1,4 +1,3 @@
-// src/features/Settings/Account/PasswordReset.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "@/ui/atoms/base/Button";

@@ -21,7 +21,7 @@ import {
   bytesToBase64,
   base64ToBytes,
   KeyMissingError,
-} from "@/services/crypto/webcrypto";
+} from "@/core/crypto/webcrypto";
 
 // charge, déchiffre, retourne un objet JS
 /**

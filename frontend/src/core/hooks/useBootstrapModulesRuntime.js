@@ -1,10 +1,9 @@
-// src/hooks/useBootstrapModulesRuntime.js
 import { useEffect } from "react";
-import pb from "@/services/pocketbase";
-import { loadModulesConfig } from "@/services/modules-config";
-import { setModulesState } from "@/store/modulesRuntime";
-import { KeyMissingError } from "@/services/crypto/webcrypto";
-import { useStore } from "@/store/StoreProvider";
+import pb from "@/core/api/pocketbase";
+import { loadModulesConfig } from "@/core/api/modules-config";
+import { setModulesState } from "@/core/store/modulesRuntime";
+import { KeyMissingError } from "@/core/crypto/webcrypto";
+import { useStore } from "@/core/store/StoreProvider";
 
 /**
  * Monte la config modules déchiffrée dans le store runtime

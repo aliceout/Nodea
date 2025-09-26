@@ -1,4 +1,3 @@
-// src/components/layout/Subheader.jsx
 import clsx from "clsx";
 import { useMemo } from "react";
 

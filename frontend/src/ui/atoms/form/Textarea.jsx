@@ -1,5 +1,6 @@
 // Deprecated: use @/ui/atoms/form/Textarea
-export { default } from "./Textarea";
+// Atom canonical: @/ui/atoms/form/Textarea
+// (Removed legacy self re-export)
 import React from "react";
 
 /**
@@ -33,7 +34,8 @@ export default function Textarea({
       {label && (
         <label
           className={
-            "block mb-1 font-semibold text-nodea-sage-dark text-sm " + labelClassName
+            "block mb-1 font-semibold text-nodea-sage-dark text-sm " +
+            labelClassName
           }
         >
           {label}

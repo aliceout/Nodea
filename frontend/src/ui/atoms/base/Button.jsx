@@ -1,6 +1,5 @@
-// Deprecated: use @/ui/atoms/base/Button
-export { default } from "./Button";
-// src/components/common/Button.jsx
+// Atom canonical: @/ui/atoms/base/Button
+// (Removed legacy self re-export to avoid duplicate default export)
 
 export default function Button({
   type = "button",

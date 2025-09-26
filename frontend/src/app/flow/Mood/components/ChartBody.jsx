@@ -1,4 +1,3 @@
-// src/modules/Mood/components/ChartBody.jsx
 import {
   LineChart,
   Line,

@@ -2,8 +2,8 @@
 // - listRecords: uniform GET with sid/pagination
 // - createEncryptedRecord: POST guard:"init" then PATCH promotion with deriveGuard
 
-import pb from "@/services/pocketbase";
-import { deriveGuard } from "@/services/crypto/guards";
+import pb from "@/core/api/pocketbase";
+import { deriveGuard } from "@/core/crypto/guards";
 
 /**
  * List records for a collection with sid, pagination, and optional fields sorting

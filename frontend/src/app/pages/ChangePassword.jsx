@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import pb from "../services/pocketbase";
-import { useStore } from "@/store/StoreProvider";
+import pb from "@/core/api/pocketbase";
+import { useStore } from "@/core/store/StoreProvider";
 import {
   deriveKeyArgon2,
   encryptAESGCM,
   decryptAESGCM,
-} from "@/services/crypto/webcrypto";
+} from "@/core/crypto/webcrypto";
 
 export default function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState("");

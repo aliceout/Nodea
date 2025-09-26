@@ -1,17 +1,16 @@
-// src/services/dataModules/Passage.js
 // Services CRUD Passage — compatible avec History actuel
 // Flux: chiffre -> POST guard:"init" -> PATCH promotion -> cache local du guard
 // Public API: createPassageEntry, listPassageEntries, decryptPassageRecord, listPassageDecrypted, listDistinctThreads, updatePassageEntry, deletePassageEntry
 
-import pb from "@/services/pocketbase";
-import { encryptAESGCM } from "@/services/crypto/webcrypto";
-import { decryptWithRetry } from "@/services/crypto/webcrypto";
+import pb from "@/core/api/pocketbase";
+import { encryptAESGCM } from "@/core/crypto/webcrypto";
+import { decryptWithRetry } from "@/core/crypto/webcrypto";
 import {
   deriveGuard,
   setEntryGuard,
   getEntryGuard,
   deleteEntryGuard,
-} from "@/services/crypto/guards";
+} from "@/core/crypto/guards";
 
 const COLLECTION = "passage_entries";
 

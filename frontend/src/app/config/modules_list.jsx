@@ -1,4 +1,3 @@
-// src/config/modules_list.js
 import {
   HomeIcon,
   SparklesIcon,

@@ -1,6 +1,5 @@
-// Deprecated: use @/ui/atoms/base/Alert
-export { default } from "./Alert";
-// src/components/common/Alert.jsx
+// Atom canonical: @/ui/atoms/base/Alert
+// (Removed legacy self re-export)
 
 export default function Alert({ type = "info", children, className = "" }) {
   // Choix couleur selon le type

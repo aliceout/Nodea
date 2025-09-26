@@ -1,4 +1,3 @@
-// src/features/Mood/views/History.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { listMoodEntries, deleteMoodEntry } from "@/core/api/modules/Mood";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";

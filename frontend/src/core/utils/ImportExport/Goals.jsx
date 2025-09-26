@@ -3,10 +3,10 @@
 // Contrat (plugins): { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
 // Payload clair: { date, title, note?, status, thread }
 
-import pb from "@/services/pocketbase";
-import { encryptAESGCM, decryptAESGCM } from "@/services/crypto/webcrypto";
-import { normalizeKeyPart } from "@/services/ImportExport/utils";
-import { createEncryptedRecord, listRecords } from "@/services/pb-records";
+import pb from "@/core/api/pocketbase";
+import { encryptAESGCM, decryptAESGCM } from "@/core/crypto/webcrypto";
+import { normalizeKeyPart } from "@/core/utils/importExport/utils";
+import { createEncryptedRecord, listRecords } from "@/core/api/pb-records";
 
 export const meta = { id: "goals", version: 1, collection: "goals_entries" };
 

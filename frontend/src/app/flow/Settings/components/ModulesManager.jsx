@@ -1,22 +1,19 @@
 // frontend/src/features/Settings/components/ModulesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { MODULES } from "@/config/modules_list";
+import { MODULES } from "@/app/config/modules_list";
 import {
   loadModulesConfig,
   saveModulesConfig,
   getModuleEntry,
   setModuleEntry,
-} from "@/services/modules-config";
-import {
-  generateModuleUserId,
-  makeGuard,
-} from "@/services/crypto/crypto-utils";
-import pb from "@/services/pocketbase";
-import { KeyMissingError } from "@/services/crypto/webcrypto";
-import { useStore } from "@/store/StoreProvider";
+} from "@/core/api/modules-config";
+import { generateModuleUserId, makeGuard } from "@/core/crypto/crypto-utils";
+import pb from "@/core/api/pocketbase";
+import { KeyMissingError } from "@/core/crypto/webcrypto";
+import { useStore } from "@/core/store/StoreProvider";
 
 // ⬇️ nouvel import
-import { setModulesState } from "@/store/modulesRuntime";
+import { setModulesState } from "@/core/store/modulesRuntime";
 
 export default function ModulesManager() {
   const { mainKey } = useStore();

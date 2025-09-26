@@ -1,10 +1,9 @@
-// src/components/layout/Header.jsx
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
-import useAuth from "@/hooks/useAuth";
-import { useStore } from "@/store/StoreProvider";
-import { setTab, openMobile } from "@/store/actions";
+import useAuth from "@/core/auth/useAuth";
+import { useStore } from "@/core/store/StoreProvider";
+import { setTab, openMobile } from "@/core/store/actions";
 
 export default function Header() {
   const navigate = useNavigate();

@@ -1,5 +1,5 @@
-// Deprecated: use @/ui/atoms/form/DateMonthPicker
-export { default } from "./DateMonthPicker";
+// Atom canonical: @/ui/atoms/form/DateMonthPicker
+// (Removed legacy self re-export)
 import React from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";

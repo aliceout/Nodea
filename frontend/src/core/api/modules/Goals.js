@@ -2,13 +2,13 @@
 // Services CRUD pour Goals — création 2 temps + guard HMAC (aligné Mood/Passage)
 // Public API: listGoals, listGoalsPaged, getGoalById, createGoal, updateGoal, deleteGoal, updateGoalStatus
 
-import pb from "@/services/pocketbase";
+import pb from "@/core/api/pocketbase";
 import {
   encryptAESGCM,
   decryptAESGCM,
   base64ToBytes,
-} from "@/services/crypto/webcrypto";
-import { deriveGuard } from "@/services/crypto/guards";
+} from "@/core/crypto/webcrypto";
+import { deriveGuard } from "@/core/crypto/guards";
 
 const COLLECTION = "goals_entries";
 // Pattern du schéma PB: "^[a-z0-9_\\-]{16,}$"

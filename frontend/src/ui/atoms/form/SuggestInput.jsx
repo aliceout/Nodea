@@ -1,5 +1,5 @@
-// Deprecated: use @/ui/atoms/form/SuggestInput
-export { default } from "./SuggestInput";
+// Atom canonical: @/ui/atoms/form/SuggestInput
+// (Removed legacy self re-export)
 import React, { useRef, useState, useEffect } from "react";
 import Input from "./Input";
 

@@ -13,42 +13,42 @@ import React from "react";
  * - ...props (attributs natifs)
  */
 export default function Input({
-	label,
-	labelClassName = "",
-	type = "text",
-	value,
-	onChange,
-	placeholder = "",
-	disabled = false,
-	required = false,
-	className = "",
-	inputClassName = "",
-	legend,
-	...props
+  label,
+  labelClassName = "",
+  type = "text",
+  value,
+  onChange,
+  placeholder = "",
+  disabled = false,
+  required = false,
+  className = "",
+  inputClassName = "",
+  legend,
+  ...props
 }) {
-	return (
-		<div className={"flex flex-col " + className}>
-			{label && (
-				<label
-					className={
-						"block mb-1 font-semibold text-nodea-sage-dark text-sm " +
-						labelClassName
-					}
-				>
-					{label}
-				</label>
-			)}
-			<input
-				type={type}
-				value={value}
-				onChange={onChange}
-				placeholder={placeholder}
-				disabled={disabled}
-				required={required}
-				className={`w-full p-2 border rounded border-nodea-slate-lighter hover:border-nodea-slate-light focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
-				{...props}
-			/>
-			{legend && <p className="text-xs text-gray-500 mt-1">{legend}</p>}
-		</div>
-	);
+  return (
+    <div className={"flex flex-col " + className}>
+      {label && (
+        <label
+          className={
+            "block mb-1 font-semibold text-nodea-sage-dark text-sm " +
+            labelClassName
+          }
+        >
+          {label}
+        </label>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        required={required}
+        className={`w-full p-2 border rounded border-nodea-slate-lighter hover:border-nodea-slate-light focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
+        {...props}
+      />
+      {legend && <p className="text-xs text-gray-500 mt-1">{legend}</p>}
+    </div>
+  );
 }

@@ -1,4 +1,3 @@
-// src/components/layout/Navigation.jsx
 // -------------------------------------------------------------
 // Adapte le manifeste MODULES pour l’UI existante :
 // - exporte `nav` (array) que Header/Sidebar consomment

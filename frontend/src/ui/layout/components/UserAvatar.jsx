@@ -1,4 +1,3 @@
-// src/components/common/UserAvatar.jsx
 import Avatar from "boring-avatars";
 
 export default function UserAvatar({

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import pb from "@/services/pocketbase";
+import pb from "@/core/api/pocketbase";
 import UserTable from "./components/UserTable";
 import InviteCodeManager from "./components/InviteCode";
 import Subheader from "@/ui/layout/headers/Subheader";

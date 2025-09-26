@@ -1,4 +1,3 @@
-// src/modules/Mood/components/RotatedFrame.jsx
 import { useEffect, useRef, useState } from "react";
 
 /**

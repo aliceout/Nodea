@@ -1,6 +1,5 @@
-// Deprecated: use @/ui/atoms/form/FormError
-export { default } from "./FormError";
-// src/components/common/FormFeedback.jsx
+// Atom canonical: @/ui/atoms/form/FormError
+// (Removed legacy self re-export to avoid duplicate default export)
 
 export default function FormFeedback({
   message,
@@ -13,8 +12,6 @@ export default function FormFeedback({
     type === "success" ? "text-nodea-sage" : "text-nodea-blush-dark"; // rouge si error, vert si success
 
   return (
-    <div className={`mt-2 text-center ${color} ${className}`}>
-      {message}
-    </div>
+    <div className={`mt-2 text-center ${color} ${className}`}>{message}</div>
   );
 }

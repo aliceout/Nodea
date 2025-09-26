@@ -1,4 +1,3 @@
-// src/components/layout/components/ModuleNav.jsx
 import { MODULES } from "@/app/config/modules_list";
 import { useStore } from "@/core/store/StoreProvider";
 import { selectCurrentTab } from "@/core/store/selectors";
