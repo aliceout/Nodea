@@ -8,7 +8,7 @@ import { selectCurrentTab, selectMobileOpen } from "@/core/store/selectors";
 import { closeMobile, setTab } from "@/core/store/actions";
 
 import Logo from "@/ui/branding/LogoLong.jsx";
-import Link from "./headers/parts/SideLinks.jsx";
+import Link from "../components/SideLinks.jsx";
 
 import {
   useModulesRuntime,
