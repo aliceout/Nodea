@@ -10,4 +10,4 @@ export default function HomePage() {
   );
 }
 
-import Subheader from "@/ui/layout/headers/subheader/Subheader";
+import Subheader from "@/ui/layout/headers/Subheader";

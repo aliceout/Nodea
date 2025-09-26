@@ -1,6 +1,6 @@
 // src/features/Mood/Index.jsx
 import { useState, useMemo } from "react";
-import Subheader from "@/ui/layout/headers/subheader/Subheader";
+import Subheader from "@/ui/layout/headers/Subheader";
 import MoodForm from "./views/Form";
 import MoodHistory from "./views/History";
 import MoodGraph from "./views/Graph";

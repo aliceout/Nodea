@@ -1,6 +1,6 @@
 // frontend/src/features/Passage/index.jsx
 import { useState, useMemo } from "react";
-import Subheader from "@/ui/layout/headers/subheader/Subheader";
+import Subheader from "@/ui/layout/headers/Subheader";
 import PassageForm from "./views/Form";
 import PassageHistory from "./views/History";
 

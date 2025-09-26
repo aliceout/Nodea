@@ -1,4 +1,4 @@
-import Subheader from "@/ui/layout/headers/subheader/Subheader.jsx";
+import Subheader from "@/ui/layout/headers/Subheader.jsx";
 import ModulesManager from "./components/ModulesManager.jsx";
 
 export default function Settings() {

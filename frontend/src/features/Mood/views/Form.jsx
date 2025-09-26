@@ -1,7 +1,7 @@
 // src/features/Mood/views/Form.jsx
 import React, { useState, useEffect, useRef } from "react";
 import pb from "@/core/api/pocketbase";
-import questions from "@/data/questions.json";
+import questions from "@/i18n/locales/fr/mood/questions.json";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import { encryptAESGCM } from "@/core/crypto/webcrypto";
 import { useStore } from "@/core/store/StoreProvider";
