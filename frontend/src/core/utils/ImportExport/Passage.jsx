@@ -7,7 +7,7 @@ import {
   decryptPassageRecord,
 } from "@/core/api/modules/Passage";
 import { listRecords } from "@/core/api/pb-records";
-import { normalizeKeyPart } from "@/core/utils/importExport/utils"; // unchanged path (confirm)
+import { normalizeKeyPart } from "@/core/utils/ImportExport/utils"; // unchanged path (confirm)
 
 /** Métadonnées module (même pattern que Mood.jsx) */
 export const meta = {

@@ -5,7 +5,7 @@
 
 import pb from "@/core/api/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/core/crypto/webcrypto";
-import { normalizeKeyPart } from "@/core/utils/importExport/utils";
+import { normalizeKeyPart } from "@/core/utils/ImportExport/utils";
 import { createEncryptedRecord, listRecords } from "@/core/api/pb-records";
 
 export const meta = { id: "goals", version: 1, collection: "goals_entries" };
