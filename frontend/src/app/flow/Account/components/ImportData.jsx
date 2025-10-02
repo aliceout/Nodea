@@ -5,7 +5,7 @@ import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 
 // Orchestration plugins par module (ex. Mood)
-import { getDataPlugin } from "@/core/utils/importExport/registry.data.js";
+import { getDataPlugin } from "@/core/utils/ImportExport/registry.data.js";
 import Button from "@/ui/atoms/base/Button";
 
 export default function ImportData() {
