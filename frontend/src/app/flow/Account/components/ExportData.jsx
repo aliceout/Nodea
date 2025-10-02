@@ -6,7 +6,7 @@ import { decryptWithRetry } from "@/core/crypto/webcrypto";
 import Button from "@/ui/atoms/base/Button";
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 // Orchestrate export via module plugins (pagination + decryption centralized)
-import { getDataPlugin } from "@/core/utils/importExport/registry.data.js";
+import { getDataPlugin } from "@/core/utils/ImportExport/registry.data.js";
 
 export default function ExportDataSection() {
   // Note: l'export s'appuie sur les plugins de chaque module (Mood/Goals/Passage)
