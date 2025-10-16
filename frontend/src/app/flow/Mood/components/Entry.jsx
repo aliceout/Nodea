@@ -122,7 +122,7 @@ export default function HistoryEntry({ entry, onDelete, decryptField }) {
         />
       </div>
       {/* Contenu blanc */}
-      <div className="p-4">
+      <div className="p-4 text-justify">
         {/* Positives */}
         <div className="mb-1 text-sm break-words hyphens-auto">
           {isEditing ? (

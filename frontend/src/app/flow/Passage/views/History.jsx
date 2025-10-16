@@ -255,7 +255,7 @@ export default function PassageHistory() {
                           style={{ overflow: "hidden" }}
                         />
                       ) : localEntry.payload?.content ? (
-                        <p className="text-sm text-gray-700 mt-1">
+                        <p className="text-sm text-gray-700 mt-1 text-justify">
                           {localEntry.payload.content}
                         </p>
                       ) : null}
