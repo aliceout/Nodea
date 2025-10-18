@@ -39,15 +39,13 @@ export default function RegisterPage() {
       return;
     }
     try {
-      const mainKeyRaw = window.crypto.getRandomValues(new Uint8Array(32));
-      const saltRaw = window.crypto.getRandomValues(new Uint8Array(16));
-      const saltB64 = toB64(saltRaw);
+      const mainKeyBytes = window.crypto.getRandomValues(new Uint8Array(32));
+      const mainKeyB64 = toB64(mainKeyBytes);
+      const saltBytes = window.crypto.getRandomValues(new Uint8Array(16));
+      const saltB64 = toB64(saltBytes);
       const protectionKeyBytes32 = await deriveKeyArgon2(password, saltB64);
-      const encrypted = await encryptAESGCM(mainKeyRaw, protectionKeyBytes32);
-      const encryptedForDB = JSON.stringify({
-        iv: toB64(encrypted.iv),
-        data: toB64(encrypted.data),
-      });
+      const encrypted = await encryptAESGCM(mainKeyB64, protectionKeyBytes32);
+      const encryptedForDB = JSON.stringify(encrypted);
       const userObj = {
         username,
         email,
