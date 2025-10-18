@@ -1,48 +1,49 @@
 import {
   createContext,
-  useContext,
-  useReducer,
-  useMemo,
   useCallback,
+  useContext,
   useEffect,
+  useMemo,
+  useReducer,
   useRef,
 } from "react";
+import pb from "@/core/api/pocketbase";
 import { reducer, initialState } from "./reducer";
-// import { useNavigate } from "react-router-dom";
+import { setModulesState } from "./modulesRuntime";
 
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Throttle partagé pour les checks (60s)
+  // Shared throttle for key presence checks (60s)
   const lastCheckRef = useRef(0);
   const THROTTLE_MS = 60000;
 
-  // Méthode synchrone : la clé est-elle présente ?
-  const hasKey = useCallback(() => {
-    return !!state.mainKey;
-  }, [state.mainKey]);
+  const hasKey = useCallback(() => !!state.mainKey, [state.mainKey]);
 
-  // Marque la clé comme manquante et notifie l'UI
   const markMissing = useCallback(() => {
     dispatch({ type: "key/status", payload: "missing" });
-    // Log dev
     if (process.env.NODE_ENV === "development") {
       console.warn("KEY:missing");
     }
   }, [dispatch]);
 
-  // Logout : nettoie la mémoire et redirige vers /login
+  // Logout: clear key material, invalidate PB session and redirect
   const logout = useCallback(async () => {
+    try {
+      pb.authStore?.clear?.();
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("PB logout failed", err);
+      }
+    }
     dispatch({ type: "key/set", payload: null });
     dispatch({ type: "key/status", payload: "ready" });
-    // TODO: retirer timers/listeners ici si besoin
-    // Redirection via window.location pour éviter le contexte Router
+    setModulesState({});
     window.location.href = "/login";
   }, [dispatch]);
 
-  // Listener global : vérifie la présence de la clé
   useEffect(() => {
     function checkKeyPresence(reason) {
       const now = Date.now();
@@ -56,7 +57,6 @@ export function StoreProvider({ children }) {
       }
     }
 
-    // Liste des événements à surveiller
     const events = [
       ["visibilitychange", () => document.visibilityState === "visible"],
       ["focus", () => true],
@@ -64,19 +64,20 @@ export function StoreProvider({ children }) {
       ["online", () => true],
     ];
 
-    function handler(e) {
-      const type = e.type;
-      const shouldCheck = events.find(([evt, cond]) => evt === type)?.[1];
-      if (shouldCheck && shouldCheck()) checkKeyPresence(type);
+    function handler(event) {
+      const shouldCheck = events.find(([name]) => name === event.type)?.[1];
+      if (shouldCheck && shouldCheck()) {
+        checkKeyPresence(event.type);
+      }
     }
 
-    for (const [evt] of events) {
-      window.addEventListener(evt, handler, true);
+    for (const [name] of events) {
+      window.addEventListener(name, handler, true);
     }
 
     return () => {
-      for (const [evt] of events) {
-        window.removeEventListener(evt, handler, true);
+      for (const [name] of events) {
+        window.removeEventListener(name, handler, true);
       }
     };
   }, [hasKey, markMissing]);
@@ -101,6 +102,8 @@ export function StoreProvider({ children }) {
 
 export function useStore() {
   const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error("useStore must be used within StoreProvider");
+  if (!ctx) {
+    throw new Error("useStore must be used within StoreProvider");
+  }
   return ctx;
 }
