@@ -5,11 +5,7 @@ import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-// Utilise maintenant la version centralisée dans core/auth
 import ProtectedRoute from "@/core/auth/ProtectedRoute";
-import { StoreProvider } from "@/core/store/StoreProvider";
-
-// Flux fonctionnels (anciennement "features")
 
 function AppWithKeyModal() {
   return (
@@ -35,9 +31,7 @@ function AppWithKeyModal() {
 export default function App() {
   return (
     <BrowserRouter>
-      <StoreProvider>
-        <AppWithKeyModal />
-      </StoreProvider>
+      <AppWithKeyModal />
     </BrowserRouter>
   );
 }
