@@ -311,3 +311,26 @@ export async function updateGoalStatus(
 
   return updateGoal(moduleUserId, mainKey, id, base, payload);
 }
+// -----------------------------------------------------------------------------
+// DISTINCT THREADS
+// -----------------------------------------------------------------------------
+
+export async function listDistinctThreads(moduleUserId, mainKey) {
+  try {
+    const entries = await listGoals(moduleUserId, mainKey, {
+      page: 1,
+      perPage: 200,
+    });
+    const set = new Set(
+      entries
+        .map((entry) => (entry.thread || "").trim())
+        .filter(Boolean)
+    );
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  } catch (err) {
+    if (import.meta?.env?.DEV) {
+      console.warn("[Goals] listDistinctThreads error:", err);
+    }
+    return [];
+  }
+}

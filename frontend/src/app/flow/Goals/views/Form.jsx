@@ -20,6 +20,7 @@ import {
   createGoal,
   updateGoal,
   deleteGoal,
+  listDistinctThreads,
 } from "@/core/api/modules/Goals";
 
 export default function GoalsForm() {
@@ -69,9 +70,17 @@ export default function GoalsForm() {
           status: entry.status || "done",
         });
         setThread(entry.thread || "");
+        if (entry.thread) {
+          const normalized = entry.thread.trim();
+          if (normalized) {
+            setTags((prev) =>
+              prev.includes(normalized) ? prev : [...prev, normalized]
+            );
+          }
+        }
       } catch (e) {
         console.error(e);
-        setError("Impossible de charger l’objectif.");
+        setError("Impossible de charger l'objectif.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -82,6 +91,23 @@ export default function GoalsForm() {
       mounted = false;
     };
   }, [isEdit, id, mainKey, moduleUserId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTags() {
+      if (!mainKey || !moduleUserId) return;
+      try {
+        const list = await listDistinctThreads(moduleUserId, mainKey);
+        if (!cancelled) setTags(list);
+      } catch (err) {
+        if (!cancelled) setTags([]);
+      }
+    }
+    loadTags();
+    return () => {
+      cancelled = true;
+    };
+  }, [mainKey, moduleUserId]);
 
   const onChange = (key) => (e) => {
     setForm((s) => ({ ...s, [key]: e.target.value }));
