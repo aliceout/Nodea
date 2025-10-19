@@ -242,7 +242,7 @@ export default function PassageHistory() {
                             contentRefs.current[it.id] = el;
                             if (el) autoResize(el);
                           }}
-                          className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w_full resize-y"
+                          className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w-full resize-y"
                           value={editContent}
                           onChange={(e) => {
                             setEditContent(e.target.value);

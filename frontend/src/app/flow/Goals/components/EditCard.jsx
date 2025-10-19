@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import Input from "@/ui/atoms/form/Input";
 import Textarea from "@/ui/atoms/form/Textarea";
 import Select from "@/ui/atoms/form/Select";
-import DateMonthPicker from "@/ui/atoms/form/DateMonthPicker";
 import EditDeleteActions from "@/ui/atoms/actions/EditDeleteActions";
 
 export default function HistoEditCard({
@@ -54,50 +53,64 @@ export default function HistoEditCard({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <Input
-        label="Titre"
-        value={title}
-        onChange={(ev) => setTitle(ev.target.value)}
-        className="text-sm"
-        required
-      />
-      <DateMonthPicker
-        label="Date"
-        value={date}
-        onChange={(ev) => setDate(ev.target.value)}
-      />
-      <Select
-        label="Statut"
-        value={status}
-        onChange={(ev) => setStatus(ev.target.value)}
-        className="text-sm"
-      >
-        <option value="open">Ouvert</option>
-        <option value="wip">En cours</option>
-        <option value="done">Terminé</option>
-      </Select>
-      <Input
-        label="Hashtag / histoire"
-        value={thread}
-        onChange={(ev) => setThread(ev.target.value)}
-        className="text-sm"
-      />
-      <Textarea
-        label="Notes"
-        value={note}
-        onChange={(ev) => setNote(ev.target.value)}
-        className="text-sm"
-        style={{ minHeight: "40px", resize: "none", overflow: "hidden" }}
-        ref={textareaRef}
-      />
-      <div className="flex items-center justify-end gap-2 mt-2">
+    <div className="flex h-full flex-col justify-between gap-3 text-sm text-gray-700">
+      <div className="space-y-3">
+        <Input
+          label=""
+          value={title}
+          onChange={(ev) => setTitle(ev.target.value)}
+          placeholder="Titre"
+          inputClassName="text-sm font-semibold"
+          required
+        />
+
+        <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+          <Input
+            label=""
+            type="month"
+            value={date}
+            onChange={(ev) => setDate(ev.target.value)}
+            className="w-full max-w-[120px]"
+            inputClassName="text-xs px-2 py-1"
+          />
+          <Select
+            label=""
+            value={status}
+            onChange={(ev) => setStatus(ev.target.value)}
+            className="w-full max-w-[140px]"
+            inputClassName="text-xs px-2 py-1"
+          >
+            <option value="open">Ouvert</option>
+            <option value="wip">En cours</option>
+            <option value="done">Terminé</option>
+          </Select>
+        </div>
+
+        <Input
+          label=""
+          value={thread}
+          onChange={(ev) => setThread(ev.target.value)}
+          placeholder="#hashtag"
+          className="text-xs"
+          inputClassName="text-xs"
+        />
+
+        <Textarea
+          label=""
+          value={note}
+          onChange={(ev) => setNote(ev.target.value)}
+          className="text-sm"
+          inputClassName="text-sm"
+          rows={4}
+          ref={textareaRef}
+        />
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
         <EditDeleteActions
           isEditing={true}
           onSave={onSave}
           onCancel={onCancel}
-          editClassName="text-xs px-2 py-1"
-          deleteClassName="text-xs px-2 py-1"
         />
       </div>
     </div>
