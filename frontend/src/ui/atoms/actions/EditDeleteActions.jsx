@@ -1,4 +1,6 @@
 import React from "react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
+import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
 
 export default function EditDeleteActions({
   isEditing,
@@ -13,7 +15,7 @@ export default function EditDeleteActions({
   className = "",
 }) {
   return (
-    <div className={`flex gap-2 items-center ${className}`}>
+    <div className={`flex items-center ${className}`}>
       {isEditing ? (
         <>
           <button
@@ -57,49 +59,45 @@ export default function EditDeleteActions({
           </button>
         </>
       ) : (
-        <>
-          <button
-            title={editLabel}
-            className="p-1 hover:bg-blue-50 rounded"
-            onClick={onEdit}
+        <Menu as="div" className="relative inline-flex">
+          <MenuButton
+            title="Actions"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 transition focus-visible:outline-none"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-blue-700"
-            >
-              <path d="M12.5 5.5l2 2M4 13.5V16h2.5l7.1-7.1a1.5 1.5 0 0 0-2.1-2.1L4 13.5z" />
-            </svg>
-          </button>
-          <button
-            title={deleteLabel}
-            className="p-1 hover:bg-red-50 rounded"
-            onClick={onDelete}
+            <EllipsisVerticalIcon className="h-4 w-4" />
+          </MenuButton>
+          <MenuItems
+            transition
+            className="absolute right-0 z-30 mt-2 w-32 origin-top-right rounded-lg bg-white/95 p-1 text-xs shadow-md shadow-emerald-900/10 backdrop-blur data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-red-700"
-            >
-              <rect x="6" y="8" width="8" height="8" rx="2" />
-              <line x1="9" y1="11" x2="9" y2="15" />
-              <line x1="13" y1="11" x2="13" y2="15" />
-              <path d="M10 5h4a1 1 0 0 1 1 1v2H5V6a1 1 0 0 1 1-1h4z" />
-            </svg>
-          </button>
-        </>
+            <MenuItem>
+              {({ active }) => (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className={`w-full rounded-md px-3 py-2 text-left transition ${
+                    active ? "bg-sky-50 text-slate-600" : "text-slate-600"
+                  }`}
+                >
+                  {editLabel}
+                </button>
+              )}
+            </MenuItem>
+            <MenuItem>
+              {({ active }) => (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className={`w-full rounded-md px-3 py-2 text-left transition ${
+                    active ? "bg-rose-50 text-rose-600" : "text-rose-600"
+                  }`}
+                >
+                  {deleteLabel}
+                </button>
+              )}
+            </MenuItem>
+          </MenuItems>
+        </Menu>
       )}
     </div>
   );
