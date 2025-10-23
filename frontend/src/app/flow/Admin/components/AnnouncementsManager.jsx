@@ -5,6 +5,9 @@ import {
   deleteAnnouncement,
   listAnnouncements,
 } from "@/core/api/announcements";
+import Input from "@/ui/atoms/form/Input";
+import Textarea from "@/ui/atoms/form/Textarea";
+import Button from "@/ui/atoms/base/Button";
 
 const INITIAL_FORM = {
   title: "",
@@ -113,41 +116,25 @@ export default function AnnouncementsManager() {
         onSubmit={handleSubmit}
         className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
       >
-        <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium text-slate-700"
-          >
-            Titre
-          </label>
-          <input
-            id="title"
-            name="title"
-            value={form.title}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/40"
-            maxLength={120}
-            placeholder="Nouveau module disponible"
-          />
-        </div>
+        <Input
+          id="title"
+          name="title"
+          label="Titre"
+          value={form.title}
+          onChange={handleChange}
+          placeholder="Nouveau module disponible"
+          maxLength={120}
+        />
 
-        <div>
-          <label
-            htmlFor="message"
-            className="block text-sm font-medium text-slate-700"
-          >
-            Message
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            rows={4}
-            value={form.message}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/40"
-            placeholder="Nous avons ajoute ..."
-          />
-        </div>
+        <Textarea
+          id="message"
+          name="message"
+          label="Message"
+          rows={4}
+          value={form.message}
+          onChange={handleChange}
+          placeholder="Nous avons ajoute ..."
+        />
 
         <div className="flex items-center justify-between">
           {error ? (
@@ -157,13 +144,14 @@ export default function AnnouncementsManager() {
               Publie directement l&apos;annonce sur la page d&apos;accueil.
             </span>
           )}
-          <button
+          <Button
             type="submit"
             disabled={!canSubmit}
+            unstyled
             className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             {saving ? "Publication..." : "Publier"}
-          </button>
+          </Button>
         </div>
       </form>
 

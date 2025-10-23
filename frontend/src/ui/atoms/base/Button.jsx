@@ -6,12 +6,18 @@ export default function Button({
   className = "",
   as = "button",
   children,
+  unstyled = false,
   ...props
 }) {
+  const baseClass = unstyled
+    ? className
+    : `min-w-50 w-3/12 text-nodea-sand py-2 px-4 rounded hover:text-nodea-sand text-center font-display font-semibold transition text-sm ${className}`;
+
   const commonProps = {
-    className: `min-w-50 w-3/12 text-nodea-sand py-2 px-4 rounded hover:text-nodea-sand  text-center font-display font-semibold transition text-sm ${className}`,
+    className: baseClass,
     ...props,
   };
+
   if (as === "label") {
     return <label {...commonProps}>{children}</label>;
   }

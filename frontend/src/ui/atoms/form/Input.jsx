@@ -9,7 +9,7 @@ import React from "react";
  * - type, value, onChange, placeholder
  * - disabled, required
  * - className (wrapper), inputClassName (élément input)
- * - legend (texte d’aide sous champ)
+ * - legend (texte d'aide sous champ)
  * - ...props (attributs natifs)
  */
 export default function Input({
@@ -26,14 +26,13 @@ export default function Input({
   legend,
   ...props
 }) {
+  const inputId = props.id;
   return (
-    <div className={"flex flex-col " + className}>
+    <div className={`flex flex-col ${className}`}>
       {label && (
         <label
-          className={
-            "block mb-1 font-semibold text-nodea-sage-dark text-sm " +
-            labelClassName
-          }
+          htmlFor={inputId}
+          className={`block text-sm font-medium text-slate-700 ${labelClassName}`}
         >
           {label}
         </label>
@@ -45,10 +44,10 @@ export default function Input({
         placeholder={placeholder}
         disabled={disabled}
         required={required}
-        className={`w-full p-2 border rounded border-nodea-slate-lighter hover:border-nodea-slate-light focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
+        className={`mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/40 placeholder:text-slate-400 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 ${inputClassName}`}
         {...props}
       />
-      {legend && <p className="text-xs text-gray-500 mt-1">{legend}</p>}
+      {legend && <p className="mt-1 text-xs text-slate-500">{legend}</p>}
     </div>
   );
 }
