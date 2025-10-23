@@ -12,9 +12,7 @@ import {
   useModulesRuntime,
 } from "@/core/store/modulesRuntime";
 import useMoodTrend from "@/app/flow/Mood/hooks/useMoodTrend";
-import MoodChartBody, {
-  formatDDMM,
-} from "@/app/flow/Mood/components/ChartBody";
+import MoodChartBody from "@/app/flow/Mood/components/ChartBody";
 import useLatestAnnouncement from "@/core/hooks/useLatestAnnouncement";
 
 function getPreferredName(user) {
@@ -108,21 +106,15 @@ function AnnouncementSpotlight() {
   return null;
 }
 
-function MiniMoodChartCard({ module, onNavigate }) {
+function MiniMoodChartCard({ module }) {
   const Icon = module?.icon;
   const { status, data, error } = useMoodTrend({ months: 1 });
 
-  const latest = useMemo(
-    () => (data.length ? data[data.length - 1] : null),
-    [data]
-  );
   const average = useMemo(() => {
     if (!data.length) return null;
     const total = data.reduce((sum, item) => sum + Number(item.mood || 0), 0);
     return Number.isFinite(total) ? total / data.length : null;
   }, [data]);
-
-  const lastLabel = latest ? formatDDMM(latest.date) : "";
   const averageLabel =
     average !== null ? average.toFixed(1).replace(/\.0$/, "") : "--";
 
@@ -139,7 +131,7 @@ function MiniMoodChartCard({ module, onNavigate }) {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {Icon ? (
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
@@ -148,43 +140,15 @@ function MiniMoodChartCard({ module, onNavigate }) {
           ) : null}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Mood rapide
+              Apercu rapide
             </p>
             <h3 className="text-lg font-semibold text-slate-900">
               {module?.label || "Mood"}
             </h3>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onNavigate("mood")}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-        >
-          Ouvrir
-          <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
 
-      <div className="mt-6 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            Dernier releve
-          </p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-semibold text-slate-900">
-              {latest ? latest.mood : "--"}
-            </span>
-            {latest?.emoji ? (
-              <span className="text-2xl" aria-hidden="true">
-                {latest.emoji}
-              </span>
-            ) : null}
-          </div>
-          {lastLabel ? (
-            <p className="mt-1 text-xs text-slate-500">Releve du {lastLabel}</p>
-          ) : null}
-        </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <p className="text-xs uppercase tracking-wide text-slate-500">
             Moyenne mois en cours
           </p>
@@ -194,7 +158,7 @@ function MiniMoodChartCard({ module, onNavigate }) {
         </div>
       </div>
 
-      <div className="mt-6 h-40">
+      <div className="mt-5 h-40">
         {showChart ? (
           <ResponsiveContainer width="100%" height="100%">
             <MoodChartBody data={data} />
@@ -292,12 +256,7 @@ export default function HomePage() {
             </div>
           </section>
 
-          {moodModule ? (
-            <MiniMoodChartCard
-              module={moodModule}
-              onNavigate={handleNavigate}
-            />
-          ) : null}
+          {moodModule ? <MiniMoodChartCard module={moodModule} /> : null}
 
           {enabledModules.length > 0 ? (
             <section className="space-y-3">
