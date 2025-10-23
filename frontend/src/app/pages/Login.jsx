@@ -8,6 +8,7 @@ import {
   decryptAESGCM,
   base64ToBytes,
 } from "@/core/crypto/webcrypto";
+import { clearGuardsCache } from "@/core/crypto/guards";
 import Logo from "@ui/branding/LogoLong.jsx";
 import Button from "@/ui/atoms/base/Button";
 import Input from "@/ui/atoms/form/Input";
@@ -19,6 +20,18 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const { dispatch } = useStore();
   const navigate = useNavigate();
+
+  const clearAuthAndAbort = (message) => {
+    try {
+      pb.authStore?.clear?.();
+    } catch (err) {
+      console.warn("[Login] failed to clear auth store", err);
+    }
+    clearGuardsCache();
+    dispatch({ type: "key/set", payload: null });
+    dispatch({ type: "key/status", payload: "missing" });
+    setError(message);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,11 +51,15 @@ export default function LoginPage() {
       try {
         sealed = JSON.parse(user?.encrypted_key || "");
       } catch {
-        setError("Clé chiffrée invalide sur le profil utilisateur.");
+        clearAuthAndAbort(
+          "Clé chiffrée invalide sur le profil utilisateur. Reconnectez-vous."
+        );
         return;
       }
       if (!sealed?.iv || !sealed?.data) {
-        setError("Clé chiffrée manquante sur le profil utilisateur.");
+        clearAuthAndAbort(
+          "Clé chiffrée manquante sur le profil utilisateur. Reconnectez-vous."
+        );
         return;
       }
 
@@ -51,7 +68,9 @@ export default function LoginPage() {
         mainKeyPlain = await decryptAESGCM(sealed, protectionKeyBytes);
       } catch (err) {
         console.error("[Login] decrypt mainKey error", err);
-        setError("Impossible de déchiffrer la clé de chiffrement.");
+        clearAuthAndAbort(
+          "Impossible de déchiffrer la clé de chiffrement. Reconnectez-vous."
+        );
         return;
       }
 
@@ -60,12 +79,15 @@ export default function LoginPage() {
         mainKeyBytes = base64ToBytes(mainKeyPlain);
       } catch (err) {
         console.error("[Login] decode mainKey error", err);
-        setError("Clé de chiffrement corrompue.");
+        clearAuthAndAbort(
+          "Clé de chiffrement corrompue. Reconnectez-vous."
+        );
         return;
       }
 
       dispatch({ type: "key/set", payload: mainKeyBytes });
       dispatch({ type: "key/status", payload: "ready" });
+      clearGuardsCache();
       dispatch(setTab("home"));
       navigate("/", { replace: true });
     } catch (err) {

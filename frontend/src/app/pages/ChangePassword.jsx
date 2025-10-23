@@ -45,7 +45,7 @@ export default function ChangePasswordPage() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const { dispatch, mainKey: cachedMainKey } = useStore();
+  const { dispatch } = useStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -67,91 +67,73 @@ export default function ChangePasswordPage() {
       const user = pb.authStore.model;
       const salt = user.encryption_salt;
 
-      let effectiveMainKeyBytes =
-        cachedMainKey instanceof Uint8Array ? cachedMainKey : null;
-
-      if (!effectiveMainKeyBytes) {
-        const encryptedKeyRaw = user?.encrypted_key;
-        if (!encryptedKeyRaw) {
-          setError(
-            "Clé principale introuvable dans votre profil. Reconnectez-vous puis réessayez."
-          );
-          return;
-        }
-
-        let encryptedKey;
-        try {
-          encryptedKey = JSON.parse(encryptedKeyRaw);
-        } catch {
-          setError("Format de clé chiffrée invalide.");
-          return;
-        }
-
-        const oldProtectionKey = await deriveKeyArgon2(oldPassword, salt);
-        const oldCryptoKey = await window.crypto.subtle.importKey(
-          "raw",
-          oldProtectionKey,
-          { name: "AES-GCM" },
-          false,
-          ["decrypt"]
+      if (!user?.encrypted_key) {
+        setError(
+          "Clé principale introuvable dans votre profil. Reconnectez-vous puis réessayez."
         );
-
-        let decrypted;
-        try {
-          decrypted = await decryptAESGCM(encryptedKey, oldCryptoKey);
-        } catch {
-          const legacyIv = maybeUnwrapDoubleBase64(encryptedKey.iv);
-          const legacyData = maybeUnwrapDoubleBase64(encryptedKey.data);
-
-          if (!legacyIv || !legacyData) {
-            setError("Ancien mot de passe incorrect.");
-            return;
-          }
-
-          try {
-            decrypted = await decryptAESGCM(
-              { iv: legacyIv, data: legacyData },
-              oldCryptoKey
-            );
-          } catch {
-            setError("Ancien mot de passe incorrect.");
-            return;
-          }
-        }
-
-        effectiveMainKeyBytes = isProbablyBase64(decrypted)
-          ? base64ToBytes(decrypted)
-          : utf8ToBytes(decrypted);
+        return;
       }
 
-      if (!effectiveMainKeyBytes) {
+      let sealed;
+      try {
+        sealed = JSON.parse(user.encrypted_key);
+      } catch {
+        setError("Format de clé chiffrée invalide.");
+        return;
+      }
+
+      const oldProtectionKey = await deriveKeyArgon2(oldPassword, salt);
+
+      let decrypted;
+      try {
+        decrypted = await decryptAESGCM(sealed, oldProtectionKey);
+      } catch {
+        const legacyIv = maybeUnwrapDoubleBase64(sealed.iv);
+        const legacyData = maybeUnwrapDoubleBase64(sealed.data);
+        if (!legacyIv || !legacyData) {
+          setError("Ancien mot de passe incorrect.");
+          return;
+        }
+        try {
+          decrypted = await decryptAESGCM(
+            { iv: legacyIv, data: legacyData },
+            oldProtectionKey
+          );
+        } catch {
+          setError("Ancien mot de passe incorrect.");
+          return;
+        }
+      }
+
+      const effectiveMainKeyBytes = isProbablyBase64(decrypted)
+        ? base64ToBytes(decrypted)
+        : utf8ToBytes(decrypted);
+
+      if (!(effectiveMainKeyBytes instanceof Uint8Array)) {
         setError(
           "Impossible de récupérer votre clé de chiffrement. Reconnectez-vous puis réessayez."
         );
         return;
       }
 
-      const normalizedMainKeyB64 = bytesToBase64(effectiveMainKeyBytes);
-
       const newProtectionKey = await deriveKeyArgon2(newPassword, salt);
-      const newCryptoKey = await window.crypto.subtle.importKey(
-        "raw",
-        newProtectionKey,
-        { name: "AES-GCM" },
-        false,
-        ["encrypt"]
+      const normalizedMainKeyB64 = bytesToBase64(effectiveMainKeyBytes);
+      const sealedForNewPassword = await encryptAESGCM(
+        normalizedMainKeyB64,
+        newProtectionKey
       );
+      const newEncryptedKey = JSON.stringify(sealedForNewPassword);
 
-      const newEncryptedKey = JSON.stringify(
-        await encryptAESGCM(normalizedMainKeyB64, newCryptoKey)
-      );
-
-      await pb.collection("users").update(user.id, {
+      const updated = await pb.collection("users").update(user.id, {
         encrypted_key: newEncryptedKey,
         password: newPassword,
         passwordConfirm: newPassword,
         oldPassword: oldPassword,
       });
+
+      if (updated) {
+        pb.authStore.model = { ...pb.authStore.model, ...updated };
+      }
 
       dispatch({ type: "key/set", payload: effectiveMainKeyBytes });
       setSuccess("Mot de passe changé avec succès.");

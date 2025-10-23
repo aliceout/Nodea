@@ -10,6 +10,7 @@ import {
 import pb from "@/core/api/pocketbase";
 import { reducer, initialState } from "./reducer";
 import { setModulesState } from "./modulesRuntime";
+import { clearGuardsCache } from "@/core/crypto/guards";
 
 const StoreContext = createContext(null);
 
@@ -38,6 +39,7 @@ export function StoreProvider({ children }) {
         console.warn("PB logout failed", err);
       }
     }
+    clearGuardsCache();
     dispatch({ type: "key/set", payload: null });
     dispatch({ type: "key/status", payload: "ready" });
     setModulesState({});

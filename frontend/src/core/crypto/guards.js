@@ -64,6 +64,17 @@ function saveAll(obj) {
 }
 
 /**
+ * Efface tout le cache local des guards.
+ */
+export function clearGuardsCache() {
+  try {
+    localStorage.removeItem(STORE_KEY);
+  } catch {
+    // ignore storage cleanup errors
+  }
+}
+
+/**
  * Stocke en localStorage le guard calculé pour un record.
  * Persistant par navigateur ; clé: nodea.guards.v1 -> { [collection]: { [id]: guard } }
  */
@@ -93,4 +104,10 @@ export function deleteEntryGuard(collection, id) {
   }
 }
 
-export default { deriveGuard, setEntryGuard, getEntryGuard, deleteEntryGuard };
+export default {
+  deriveGuard,
+  setEntryGuard,
+  getEntryGuard,
+  deleteEntryGuard,
+  clearGuardsCache,
+};

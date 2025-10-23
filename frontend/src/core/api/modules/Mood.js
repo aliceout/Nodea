@@ -16,13 +16,9 @@
  */
 export async function deleteAllMoodEntries(moduleUserId, mainKey) {
   const entries = await listMoodEntries(moduleUserId);
-  console.log(`[deleteAllMoodEntries] Mood: module_user_id=`, moduleUserId);
   for (const entry of entries) {
     try {
       const guard = await deriveGuard(mainKey, moduleUserId, entry.id);
-      console.log(
-        `[deleteAllMoodEntries] Try deleteMoodEntry id=${entry.id} guard=${guard}`
-      );
       const res = await deleteMoodEntry(entry.id, moduleUserId, guard);
       console.log(
         `[deleteAllMoodEntries] deleteMoodEntry status:`,
