@@ -37,26 +37,33 @@ function ModuleCard({ module, onNavigate }) {
     <button
       type="button"
       onClick={() => onNavigate(module.id)}
-      className="group h-full w-full rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+      className="group h-full w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
     >
-      <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+      <div className="flex items-start gap-3">
+        <span className="hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
           {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
         </span>
-        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-          Module actif
-        </span>
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 sm:hidden items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
+              </span>
+              <p className="text-sm font-semibold text-slate-900">
+                {module.label}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              Module actif
+            </span>
+          </div>
+          <p className="text-xs leading-5 text-slate-600">{module.description}</p>
+        </div>
+        <ArrowRightIcon
+          className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500"
+          aria-hidden="true"
+        />
       </div>
-      <h3 className="mt-4 text-base font-semibold text-slate-900">
-        {module.label}
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600">
-        {module.description}
-      </p>
-      <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-slate-900 transition group-hover:gap-1.5">
-        Ouvrir le module
-        <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-      </span>
     </button>
   );
 }
