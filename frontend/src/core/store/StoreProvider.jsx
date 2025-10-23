@@ -21,17 +21,8 @@ export function StoreProvider({ children }) {
   const lastCheckRef = useRef(0);
   const THROTTLE_MS = 60000;
 
-  const hasKey = useCallback(() => !!state.mainKey, [state.mainKey]);
-
-  const markMissing = useCallback(() => {
-    dispatch({ type: "key/status", payload: "missing" });
-    if (process.env.NODE_ENV === "development") {
-      console.warn("KEY:missing");
-    }
-  }, [dispatch]);
-
   // Logout: clear key material, invalidate PB session and redirect
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
     try {
       pb.authStore?.clear?.();
     } catch (err) {
@@ -45,6 +36,18 @@ export function StoreProvider({ children }) {
     setModulesState({});
     window.location.href = "/login";
   }, [dispatch]);
+
+  const hasKey = useCallback(() => !!state.mainKey, [state.mainKey]);
+
+  const markMissing = useCallback(() => {
+    dispatch({ type: "key/status", payload: "missing" });
+    if (process.env.NODE_ENV === "development") {
+      console.warn("KEY:missing");
+    }
+    if (pb.authStore?.isValid) {
+      logout();
+    }
+  }, [dispatch, logout]);
 
   useEffect(() => {
     function checkKeyPresence(reason) {
