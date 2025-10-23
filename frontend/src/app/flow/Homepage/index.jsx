@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { ArrowRightIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { ResponsiveContainer } from "recharts";
 
 import Subheader from "@/ui/layout/headers/Subheader";
 import { MODULES } from "@/app/config/modules_list";
@@ -10,6 +11,11 @@ import {
   isModuleEnabled,
   useModulesRuntime,
 } from "@/core/store/modulesRuntime";
+import useMoodTrend from "@/app/flow/Mood/hooks/useMoodTrend";
+import MoodChartBody, {
+  formatDDMM,
+} from "@/app/flow/Mood/components/ChartBody";
+import useLatestAnnouncement from "@/core/hooks/useLatestAnnouncement";
 
 function getPreferredName(user) {
   if (!user) return "";
@@ -57,6 +63,152 @@ function ModuleCard({ module, onNavigate }) {
   );
 }
 
+function AnnouncementSpotlight() {
+  const { status, announcement } = useLatestAnnouncement();
+
+  if (status === "ready" && announcement) {
+    const title = announcement.title || "Actualite Nodea";
+    const message = announcement.message || "";
+    const date = announcement.published_at || announcement.created;
+    const formattedDate = date
+      ? new Intl.DateTimeFormat("fr-FR", {
+          day: "numeric",
+          month: "long",
+        }).format(new Date(date))
+      : null;
+
+    return (
+      <aside className="w-full max-w-sm rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 text-white shadow-inner backdrop-blur">
+        <p className="text-xs uppercase tracking-wide text-slate-300">
+          Nouveaute
+        </p>
+        <h3 className="mt-2 text-lg font-semibold">{title}</h3>
+        {formattedDate ? (
+          <p className="mt-1 text-xs text-slate-200/80">
+            Publie le {formattedDate}
+          </p>
+        ) : null}
+        {message ? (
+          <p className="mt-3 text-sm leading-relaxed text-slate-100/90">
+            {message}
+          </p>
+        ) : null}
+      </aside>
+    );
+  }
+
+  if (status === "loading") {
+    return (
+      <aside className="w-full max-w-sm rounded-2xl border border-slate-700/40 bg-slate-800/30 p-5 text-white shadow-inner backdrop-blur">
+        <p className="text-sm text-slate-200">Chargement des nouveautes...</p>
+      </aside>
+    );
+  }
+
+  return null;
+}
+
+function MiniMoodChartCard({ module, onNavigate }) {
+  const Icon = module?.icon;
+  const { status, data, error } = useMoodTrend({ months: 1 });
+
+  const latest = useMemo(
+    () => (data.length ? data[data.length - 1] : null),
+    [data]
+  );
+  const average = useMemo(() => {
+    if (!data.length) return null;
+    const total = data.reduce((sum, item) => sum + Number(item.mood || 0), 0);
+    return Number.isFinite(total) ? total / data.length : null;
+  }, [data]);
+
+  const lastLabel = latest ? formatDDMM(latest.date) : "";
+  const averageLabel =
+    average !== null ? average.toFixed(1).replace(/\.0$/, "") : "--";
+
+  let message = "";
+  if (status === "loading") message = "Chargement...";
+  else if (status === "missing-key")
+    message = "Reconnexion requise pour afficher le graphique.";
+  else if (status === "missing-module")
+    message = "Active le module Mood pour afficher le graphique.";
+  else if (status === "error") message = error;
+  else if (!data.length) message = "Aucune donnee pour le moment.";
+
+  const showChart = status === "ready" && data.length > 0;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {Icon ? (
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <Icon className="h-5 w-5" aria-hidden="true" />
+            </span>
+          ) : null}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Mood rapide
+            </p>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {module?.label || "Mood"}
+            </h3>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("mood")}
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+        >
+          Ouvrir
+          <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="mt-6 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Dernier releve
+          </p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-semibold text-slate-900">
+              {latest ? latest.mood : "--"}
+            </span>
+            {latest?.emoji ? (
+              <span className="text-2xl" aria-hidden="true">
+                {latest.emoji}
+              </span>
+            ) : null}
+          </div>
+          {lastLabel ? (
+            <p className="mt-1 text-xs text-slate-500">Releve du {lastLabel}</p>
+          ) : null}
+        </div>
+        <div className="text-right">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Moyenne mois en cours
+          </p>
+          <p className="mt-2 text-xl font-semibold text-slate-900">
+            {averageLabel}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 h-40">
+        {showChart ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <MoodChartBody data={data} />
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500">
+            {message}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   const { dispatch } = useStore();
   const { user } = useAuth();
@@ -100,11 +252,10 @@ export default function HomePage() {
     [modules]
   );
 
-  const primaryModule = useMemo(() => {
-    if (enabledModules.length === 0) return null;
-    const mood = enabledModules.find((module) => module.id === "mood");
-    return mood || enabledModules[0];
-  }, [enabledModules]);
+  const moodModule = useMemo(
+    () => enabledModules.find((module) => module.id === "mood") || null,
+    [enabledModules]
+  );
 
   const handleNavigate = useCallback(
     (moduleId) => {
@@ -137,33 +288,16 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3">
-                {primaryModule ? (
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate(primaryModule.id)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-                  >
-                    Continuer avec {primaryModule.label}
-                    <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate("settings")}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-                  >
-                    Configurer mes modules
-                    <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                )}
-                <span className="text-xs text-slate-300">
-                  Astuce : vous pouvez activer ou masquer des modules dans les
-                  parametres.
-                </span>
-              </div>
+              <AnnouncementSpotlight />
             </div>
           </section>
+
+          {moodModule ? (
+            <MiniMoodChartCard
+              module={moodModule}
+              onNavigate={handleNavigate}
+            />
+          ) : null}
 
           {enabledModules.length > 0 ? (
             <section className="space-y-3">

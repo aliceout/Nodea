@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import pb from "@/core/api/pocketbase";
 import UserTable from "./components/UserTable";
 import InviteCodeManager from "./components/InviteCode";
+import AnnouncementsManager from "./components/AnnouncementsManager";
 import Subheader from "@/ui/layout/headers/Subheader";
 
 export default function Admin() {
@@ -139,6 +140,13 @@ export default function Admin() {
     <div className="h-full">
       <Subheader />
       <div className="mx-auto max-w-3xl p-6 flex flex-col gap-8">
+        <section>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+            Annonces
+          </h2>
+          <AnnouncementsManager />
+        </section>
+
         <section>
           <h2 className="text-lg font-semibold text-gray-800 mb-2">
             Utilisateurs
