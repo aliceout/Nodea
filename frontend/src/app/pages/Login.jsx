@@ -3,7 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "@/core/store/StoreProvider";
 import { setTab } from "@/core/store/actions";
 import pb from "@/core/api/pocketbase";
-import { deriveKeyArgon2 } from "@/core/crypto/webcrypto";
+import {
+  deriveKeyArgon2,
+  decryptAESGCM,
+  base64ToBytes,
+} from "@/core/crypto/webcrypto";
 import Logo from "@ui/branding/LogoLong.jsx";
 import Button from "@/ui/atoms/base/Button";
 import Input from "@/ui/atoms/form/Input";
@@ -28,7 +32,38 @@ export default function LoginPage() {
         setError("Aucun 'salt' sur le profil utilisateur.");
         return;
       }
-      const mainKeyBytes = await deriveKeyArgon2(password, salt);
+      const protectionKeyBytes = await deriveKeyArgon2(password, salt);
+
+      let sealed;
+      try {
+        sealed = JSON.parse(user?.encrypted_key || "");
+      } catch {
+        setError("Clé chiffrée invalide sur le profil utilisateur.");
+        return;
+      }
+      if (!sealed?.iv || !sealed?.data) {
+        setError("Clé chiffrée manquante sur le profil utilisateur.");
+        return;
+      }
+
+      let mainKeyPlain;
+      try {
+        mainKeyPlain = await decryptAESGCM(sealed, protectionKeyBytes);
+      } catch (err) {
+        console.error("[Login] decrypt mainKey error", err);
+        setError("Impossible de déchiffrer la clé de chiffrement.");
+        return;
+      }
+
+      let mainKeyBytes;
+      try {
+        mainKeyBytes = base64ToBytes(mainKeyPlain);
+      } catch (err) {
+        console.error("[Login] decode mainKey error", err);
+        setError("Clé de chiffrement corrompue.");
+        return;
+      }
+
       dispatch({ type: "key/set", payload: mainKeyBytes });
       dispatch({ type: "key/status", payload: "ready" });
       dispatch(setTab("home"));
