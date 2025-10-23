@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # install.sh — Orchestrateur minimal
 # Enchaîne : install binaire → start → check/create admin → apply schema → health check
-# Ne mélange pas les responsabilités des sous-scripts.
 
 set -euo pipefail
 
