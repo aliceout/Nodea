@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import { decryptWithRetry } from "@/core/crypto/webcrypto";
 import { listMoodEntries } from "@/core/api/modules/Mood";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 
 const MONTHS_DEFAULT = 6;
 
@@ -29,7 +29,7 @@ export default function useMoodTrend(options = {}) {
   });
 
   useEffect(() => {
-    if (!mainKey) {
+    if (!hasMainKeyMaterial(mainKey)) {
       setState({ status: "missing-key", data: [], error: "" });
       return;
     }

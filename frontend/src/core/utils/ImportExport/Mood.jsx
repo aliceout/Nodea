@@ -1,33 +1,19 @@
-/**
- * Import/Export plugin — Mood (headless)
- * Contrat commun:
- *   - Exports: { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
- *   - meta: { id:"mood", version:1, collection:"mood_entries" }
- *   - importHandler({ payload, ctx:{ moduleUserId, mainKey } }): chiffre local puis POST init + PATCH promotion
- *   - exportQuery({ ctx, pageSize?, range? }): itère des payloads clairs (déchiffrés côté client)
- *   - exportSerialize(obj): façonne un item standard { module, version, payload }
- * Détails implémentation:
- *   - LIST/VIEW: GET /mood_entries?sid=<sid>
- *   - CREATE: POST { module_user_id, payload, cipher_iv, guard:"init" } puis PATCH guard { g_<HMAC> }
- *   - Dédoublonnage: getNaturalKey(payload) et listExistingKeys(ctx) consultent le clair
- */
-
 import pb from "@/core/api/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/core/crypto/webcrypto";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 import { normalizeKeyPart } from "@/core/utils/ImportExport/utils";
 import { createEncryptedRecord, listRecords } from "@/core/api/pb-records";
 
 export const meta = { id: "mood", version: 1, collection: "mood_entries" };
 
-/* ----------------------------- Helpers Généraux ----------------------------- */
-
-function assertCtx(ctx) {
+function ensureContext(ctx) {
   if (!ctx) throw new Error("ctx manquant");
   if (!ctx.moduleUserId) throw new Error("moduleUserId manquant dans ctx");
-  if (!ctx.mainKey) throw new Error("mainKey manquante (clé AES) dans ctx");
+  if (!hasMainKeyMaterial(ctx.mainKey)) {
+    throw new Error("mainKey manquante ou invalide dans ctx");
+  }
 }
 
-/** Normalise très légèrement le payload importé (tolérant) */
 function normalizePayload(input) {
   const p = input || {};
   const out = {
@@ -44,23 +30,22 @@ function normalizePayload(input) {
   return out;
 }
 
-/* ======================= Hooks de dédoublonnage (Mood) ====================== */
-/** Clé naturelle d'une entrée Mood (1/jour) */
 export function getNaturalKey(payload) {
   if (!payload?.date) return null;
-  // Keep shape YYYY-MM-DD, then normalize just in case of stray spaces/unicode
   const d = String(payload.date).slice(0, 10);
   return normalizeKeyPart(d);
 }
 
-/** Liste les clés déjà présentes (via ?sid + déchiffrement local) */
 export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
-  if (!sid || !mainKey)
-    throw new Error("listExistingKeys: sid/mainKey manquant");
-  // pagination simple via helper
+  if (!sid) throw new Error("listExistingKeys: sid manquant");
+  if (!hasMainKeyMaterial(mainKey)) {
+    throw new Error("listExistingKeys: mainKey manquante");
+  }
+
+  const client = pbClient || pb;
+  const keys = new Set();
   let page = 1;
   const perPage = 200;
-  const keys = new Set();
 
   for (;;) {
     const data = await listRecords(meta.collection, {
@@ -80,38 +65,27 @@ export async function listExistingKeys({ pb: pbClient, sid, mainKey }) {
           mainKey
         );
         const payload = JSON.parse(clear || "{}");
-        const k = getNaturalKey(payload);
-        if (k) keys.add(k);
+        const key = getNaturalKey(payload);
+        if (key) keys.add(key);
       } catch {
         // ignore
       }
     }
+
     if (page * perPage >= (data?.totalItems || 0)) break;
-    page++;
+    page += 1;
   }
 
   return keys;
 }
 
-/* ================================= IMPORT ================================== */
-/**
- * importHandler
- * Appelé par l’orchestrateur d’import (Account/ImportData).
- * Signature : importHandler({ payload, ctx })
- * - payload : objet clair pour le module (cf. MODULES.md §Mood)
- * - ctx : { moduleUserId, mainKey }
- */
 export async function importHandler({ payload, ctx }) {
-  assertCtx(ctx);
+  ensureContext(ctx);
   const { moduleUserId, mainKey } = ctx;
 
-  // 1) Normaliser le payload clair
   const clear = normalizePayload(payload);
-
-  // 2) Chiffrer localement (AES-GCM) → { iv, data } en base64
   const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
 
-  // 3) CREATE + promotion via helper centralisé
   const id = await createEncryptedRecord({
     collection: meta.collection,
     moduleUserId,
@@ -123,14 +97,8 @@ export async function importHandler({ payload, ctx }) {
   return { action: "created", id };
 }
 
-/* ================================= EXPORT ================================== */
-/**
- * exportQuery
- * - Retourne un itérateur asynchrone de payloads CLAIRS (déjà déchiffrés).
- * - range?: { start?: ISOString, end?: ISOString } (filtré côté client car la date est dans le payload).
- */
 export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
-  assertCtx(ctx);
+  ensureContext(ctx);
   const { mainKey, moduleUserId } = ctx;
 
   let page = 1;
@@ -142,7 +110,7 @@ export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
       sort: "+created",
     });
     const items = data?.items || [];
-    if (items.length === 0) break;
+    if (!items.length) break;
 
     for (const r of items) {
       const plaintext = await decryptAESGCM(
@@ -151,7 +119,6 @@ export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
       );
       const obj = JSON.parse(plaintext || "{}");
 
-      // Filtrage optionnel par date (payload clair)
       if (range?.start || range?.end) {
         const d = obj?.date ? new Date(obj.date) : null;
         if (range?.start && (!d || d < new Date(range.start))) continue;
@@ -166,11 +133,6 @@ export async function* exportQuery({ ctx, pageSize = 50, range } = {}) {
   }
 }
 
-/**
- * exportSerialize
- * - Transforme un payload clair en ligne NDJSON standard { module, version, payload }
- * - (Le payload est déjà clair car exportQuery a déchiffré).
- */
 export function exportSerialize(plainPayload) {
   return {
     module: meta.id,
@@ -184,7 +146,6 @@ const MoodImportExport = {
   importHandler,
   exportQuery,
   exportSerialize,
-  // hooks de dédoublonnage
   getNaturalKey,
   listExistingKeys,
 };

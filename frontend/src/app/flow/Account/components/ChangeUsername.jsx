@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 import Button from "@/ui/atoms/base/Button";

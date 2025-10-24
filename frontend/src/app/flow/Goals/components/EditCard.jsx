@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Input from "@/ui/atoms/form/Input";
 import Textarea from "@/ui/atoms/form/Textarea";
 import Select from "@/ui/atoms/form/Select";
@@ -26,7 +26,7 @@ export default function HistoEditCard({
     setDate(entry.date || "");
     setStatus(entry.status || "open");
     setThread(entry.thread || "");
-  }, [entry?.id]);
+  }, [entry]);
 
   useEffect(() => {
     if (textareaRef.current) {

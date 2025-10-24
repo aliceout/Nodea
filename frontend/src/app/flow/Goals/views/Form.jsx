@@ -1,11 +1,9 @@
 // frontend/src/features/Goals/views/Form.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
-// 🔐 Clé principale depuis le store global (bytes attendus, pas CryptoKey)
 import { useStore } from "@/core/store/StoreProvider";
-// ⚙️ Récupération du module_user_id comme dans Passage/Mood
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 
 import Button from "@/ui/atoms/base/Button";
 import Input from "@/ui/atoms/form/Input";
@@ -23,17 +21,19 @@ import {
   listDistinctThreads,
 } from "@/core/api/modules/Goals";
 
+const STATUS_VALUES = ["open", "wip", "done"];
+
 export default function GoalsForm() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { mainKey } = useStore();
+  const { mainKey, markMissing } = useStore();
   const modules = useModulesRuntime();
   const moduleUserId =
     modules?.goals?.id || modules?.goals?.module_user_id || "";
 
-  const [tags, setTags] = useState([]); // options pour SuggestInput (si tu renseignes)
-  const [thread, setThread] = useState(""); // valeur sélectionnée (info UX, non stockée ici)
+  const [tags, setTags] = useState([]);
+  const [thread, setThread] = useState("");
 
   const isEdit = useMemo(() => Boolean(id), [id]);
 
@@ -47,7 +47,6 @@ export default function GoalsForm() {
   });
   const [error, setError] = useState("");
 
-  // Charger l'entrée si édition
   useEffect(() => {
     let mounted = true;
 
@@ -56,11 +55,12 @@ export default function GoalsForm() {
         if (mounted) setLoading(false);
         return;
       }
-      // On attend la mainKey + le sid comme sur Passage
-      if (!mainKey || !moduleUserId) return;
+      if (!hasMainKeyMaterial(mainKey) || !moduleUserId) return;
 
       try {
-        const entry = await getGoalById(moduleUserId, mainKey, id);
+        const entry = await getGoalById(moduleUserId, mainKey, id, {
+          markMissing,
+        });
         if (!mounted) return;
         setInitialEntry(entry);
         setForm({
@@ -70,17 +70,19 @@ export default function GoalsForm() {
           status: entry.status || "done",
         });
         setThread(entry.thread || "");
-        if (entry.thread) {
-          const normalized = entry.thread.trim();
-          if (normalized) {
-            setTags((prev) =>
-              prev.includes(normalized) ? prev : [...prev, normalized]
-            );
-          }
+        const normalizedThread = (entry.thread || "").trim();
+        if (normalizedThread) {
+          setTags((prev) =>
+            prev.includes(normalizedThread)
+              ? prev
+              : [...prev, normalizedThread]
+          );
         }
-      } catch (e) {
-        console.error(e);
-        setError("Impossible de charger l'objectif.");
+      } catch (err) {
+        console.error(err);
+        if (mounted) {
+          setError("Impossible de charger l'objectif.");
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -90,64 +92,67 @@ export default function GoalsForm() {
     return () => {
       mounted = false;
     };
-  }, [isEdit, id, mainKey, moduleUserId]);
+  }, [id, isEdit, mainKey, moduleUserId, markMissing]);
 
   useEffect(() => {
     let cancelled = false;
+
     async function loadTags() {
-      if (!mainKey || !moduleUserId) return;
+      if (!hasMainKeyMaterial(mainKey) || !moduleUserId) return;
       try {
-        const list = await listDistinctThreads(moduleUserId, mainKey);
+        const list = await listDistinctThreads(moduleUserId, mainKey, {
+          markMissing,
+        });
         if (!cancelled) setTags(list);
       } catch (err) {
+        console.warn("[GoalsForm] listDistinctThreads failed", err);
         if (!cancelled) setTags([]);
       }
     }
+
     loadTags();
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId]);
+  }, [mainKey, moduleUserId, markMissing]);
 
-  const onChange = (key) => (e) => {
-    setForm((s) => ({ ...s, [key]: e.target.value }));
+  const onChange = (key) => (event) => {
+    setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
   const validate = () => {
     if (!form.title.trim()) return "Le titre est requis.";
-    if (!["open", "wip", "done"].includes(form.status))
-      return "Statut invalide.";
+    if (!STATUS_VALUES.includes(form.status)) return "Statut invalide.";
     return "";
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError("");
 
-    const msg = validate();
-    if (msg) {
-      setError(msg);
-      return;
-    }
-
-    // Gardes-fous
-    if (!mainKey) {
+    if (!hasMainKeyMaterial(mainKey)) {
       setError(
-        "Erreur : clé de chiffrement absente. Recharge la page ou reconnecte-toi, puis réessaie."
+        "Erreur : cle de chiffrement absente. Recharge la page ou reconnecte-toi."
       );
       return;
     }
     if (!moduleUserId) {
-      setError("Module 'Goals' non configuré (id manquant).");
+      setError("Module 'Goals' non configure (id manquant).");
+      return;
+    }
+
+    const validationMessage = validate();
+    if (validationMessage) {
+      setError(validationMessage);
       return;
     }
 
     const payload = {
       date: form.date || "",
       title: form.title.trim(),
-      note: form.note || "",
+      note: form.note,
       status: form.status,
-      thread,
+      thread: thread.trim(),
     };
 
     try {
@@ -157,37 +162,38 @@ export default function GoalsForm() {
         await createGoal(moduleUserId, mainKey, payload);
       }
       navigate("..");
-    } catch (e2) {
-      console.error(e2);
-      setError("Échec de l’enregistrement.");
+    } catch (err) {
+      console.error(err);
+      setError("Echec de l'enregistrement.");
     }
   };
+
   const handleDelete = async () => {
     if (!isEdit) return;
     setError("");
 
-    if (!mainKey) {
+    if (!hasMainKeyMaterial(mainKey)) {
       setError(
-        "Erreur : clé de chiffrement absente. Recharge la page ou reconnecte-toi."
+        "Erreur : cle de chiffrement absente. Recharge la page ou reconnecte-toi."
       );
       return;
     }
     if (!moduleUserId) {
-      setError("Module 'Goals' non configuré (id manquant).");
+      setError("Module 'Goals' non configure (id manquant).");
       return;
     }
 
     try {
       await deleteGoal(moduleUserId, mainKey, id, initialEntry);
       navigate("..");
-    } catch (e) {
-      console.error(e);
-      setError("Échec de la suppression.");
+    } catch (err) {
+      console.error(err);
+      setError("Echec de la suppression.");
     }
   };
 
-  // Affiche le form même si ça charge : on désactive juste les actions.
-  const disabled = (isEdit && loading) || !moduleUserId;
+  const disabled =
+    (isEdit && loading) || !moduleUserId || !hasMainKeyMaterial(mainKey);
 
   return (
     <form
@@ -195,7 +201,7 @@ export default function GoalsForm() {
       onSubmit={handleSubmit}
     >
       <h1 className="text-2xl font-bold">
-        {isEdit ? "Modifier l’objectif" : "Nouvelle entrée"}
+        {isEdit ? "Modifier l'objectif" : "Nouvelle entree"}
       </h1>
 
       {error ? <FormError message={error} /> : null}
@@ -219,7 +225,7 @@ export default function GoalsForm() {
           className="lg:w-1/2"
           legend={
             <>
-              Choisis le mois et l'année (ex. <i>2025-09</i>).
+              Choisis le mois et l'annee (ex. <i>2025-09</i>).
             </>
           }
         />
@@ -232,17 +238,17 @@ export default function GoalsForm() {
         >
           <option value="open">Ouvert</option>
           <option value="wip">En cours</option>
-          <option value="done">Terminé</option>
+          <option value="done">Termine</option>
         </Select>
       </div>
 
       <SuggestInput
         label="Hashtag / histoire"
-        placeholder="ex: #SortieJob ou #Deuil…"
+        placeholder="ex: #SortieJob ou #Deuil"
         value={thread}
         onChange={setThread}
         options={tags}
-        legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
+        legend="Choisis un hashtag existant ou cree-en un nouveau. Il sert a regrouper les entrees."
       />
 
       <Textarea
@@ -250,7 +256,7 @@ export default function GoalsForm() {
         value={form.note}
         onChange={onChange("note")}
         inputClassName="min-h-[120px]"
-        placeholder="Détails éventuels…"
+        placeholder="Details eventuels..."
         disabled={disabled}
       />
 
@@ -259,7 +265,7 @@ export default function GoalsForm() {
         type="submit"
         disabled={disabled}
       >
-        {isEdit ? (loading ? "Chargement…" : "Mettre à jour") : "Enregistrer"}
+        {isEdit ? (loading ? "Chargement..." : "Mettre a jour") : "Enregistrer"}
       </Button>
 
       {isEdit ? (

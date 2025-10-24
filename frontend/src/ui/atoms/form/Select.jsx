@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Composant Select réutilisable
  * Props :

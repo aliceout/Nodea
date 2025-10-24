@@ -1,4 +1,3 @@
-import React from "react";
 import Button from "@/ui/atoms/base/Button";
 import EditDeleteActions from "@/ui/atoms/actions/EditDeleteActions";
 

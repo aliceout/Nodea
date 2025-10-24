@@ -1,5 +1,5 @@
 // frontend/src/features/Account/components/DeleteAccount.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import pb from "@/core/api/pocketbase";
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
@@ -8,13 +8,10 @@ import { MODULES } from "@/app/config/modules_list";
 import { loadModulesConfig } from "@/core/api/modules-config";
 import { deriveGuard } from "@/core/crypto/guards";
 import { useStore } from "@/core/store/StoreProvider";
-import { useModulesRuntime } from "@/core/store/modulesRuntime";
-import { useMainKey } from "@/core/hooks/useMainKey";
 
 /**
  * Helper: liste toutes les entrées d'une collection pour un sid donné,
  * en respectant la listRule: @request.query.sid = module_user_id.
- * (On DOIT passer par pb.send pour injecter ?sid=… dans l'URL.)
  */
 async function listAllBySid(collection, sid, perPage = 200) {
   const items = [];
@@ -28,7 +25,7 @@ async function listAllBySid(collection, sid, perPage = 200) {
       )}`;
     const res = await pb.send(url, { method: "GET" });
     const batch = res?.items || [];
-    if (batch.length === 0) break;
+    if (!batch.length) break;
     items.push(...batch);
     const total = res?.totalItems ?? items.length;
     if (page * perPage >= total) break;
@@ -39,41 +36,31 @@ async function listAllBySid(collection, sid, perPage = 200) {
 
 /**
  * Helper: supprime 1 record avec guard calculé ; retry d=init si nécessaire.
- * deleteRule: @request.query.sid = module_user_id && @request.query.d = guard
- * (guard = g_… ou, cas legacy non-promu, "init")
  */
 async function deleteOneWithGuard(collection, sid, id, guard) {
   const url =
     `/api/collections/${collection}/records/${encodeURIComponent(id)}` +
     `?sid=${encodeURIComponent(sid)}&d=${encodeURIComponent(guard)}`;
-  const res = await pb.send(url, { method: "DELETE" });
-  // pb.send renvoie généralement {} avec status 204 côté SDK; on tolère l'absence de body
-  return res;
+  return pb.send(url, { method: "DELETE" });
 }
 
 export default function DeleteAccountSection({ user }) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
-  const { mainKey, markMissing } = useStore();
-  const modules = useModulesRuntime();
-  const sid = modules?.mood?.id || modules?.mood?.module_user_id;
+  const { mainKey } = useStore();
 
   const handleDelete = async () => {
     setDeleteError("");
 
-    if (
-      !window.confirm(
-        "Attention : cette action est irréversible. Supprimer définitivement ce compte et toutes les données associées ?"
-      )
-    ) {
-      return;
-    }
+    const confirmed = window.confirm(
+      "Attention : cette action est irréversible. Supprimer définitivement ce compte et toutes les données associées ?"
+    );
+    if (!confirmed) return;
 
     setDeleting(true);
     try {
-      // 1) Préconditions
-      const effectiveKey = mainKey || window.mainKey || null; // fallback si le hook n'a pas encore fourni la clé
+      const effectiveKey = mainKey || window.mainKey || null;
       if (!effectiveKey) {
         throw new Error(
           "Clé principale manquante : impossible de calculer les guards."
@@ -84,47 +71,39 @@ export default function DeleteAccountSection({ user }) {
         throw new Error("Utilisateur non authentifié.");
       }
 
-      // 2) Charger la config modules -> récupérer module_user_id (sid) par module
       let modulesCfg = {};
       try {
         modulesCfg = await loadModulesConfig(pb, user.id, effectiveKey);
-      } catch (e) {
-        // On continue même si la config est partielle — on purgera ce qui est connu
-        console.warn("[DeleteAccount] loadModulesConfig failed:", e);
+      } catch (error) {
+        console.warn("[DeleteAccount] loadModulesConfig failed:", error);
       }
 
-      // 3) Purge module par module (uniquement ceux listés dans MODULES avec collection définie)
       for (const mod of MODULES) {
         if (!mod?.collection || !mod?.id) continue;
 
         const modCfg = modulesCfg[mod.id];
         const sid = modCfg?.module_user_id;
-        if (!sid) continue; // module pas activé pour cet utilisateur
+        if (!sid) continue;
 
-        // 3.a) Lister toutes les entrées pour ce sid (OBLIGATOIRE: via ?sid=…)
         const records = await listAllBySid(mod.collection, sid);
 
-        // 3.b) Supprimer chaque record avec d=<guard> (retry d=init si besoin)
-        for (const r of records) {
-          // guard normal g_… calculé à partir (effectiveKey, sid, id)
-          const g = await deriveGuard(effectiveKey, sid, r.id);
+        for (const record of records) {
+          const guard = await deriveGuard(effectiveKey, sid, record.id);
           try {
-            await deleteOneWithGuard(mod.collection, sid, r.id, g);
-          } catch (e) {
-            // fallback legacy : record resté en "init" (créé mais non promu)
+            await deleteOneWithGuard(mod.collection, sid, record.id, guard);
+          } catch (_guardErr) {
             try {
-              await deleteOneWithGuard(mod.collection, sid, r.id, "init");
-            } catch (e2) {
+              await deleteOneWithGuard(mod.collection, sid, record.id, "init");
+            } catch (fallbackErr) {
               console.error(
-                `[DeleteAccount] DELETE failed for ${mod.collection}/${r.id}`,
-                e2
+                `[DeleteAccount] DELETE failed for ${mod.collection}/${record.id}`,
+                fallbackErr
               );
-              throw e2;
+              throw fallbackErr;
             }
           }
         }
 
-        // 3.c) Sanity-check: plus rien pour ce sid
         const remaining = await listAllBySid(mod.collection, sid);
         if (remaining.length !== 0) {
           throw new Error(
@@ -133,7 +112,6 @@ export default function DeleteAccountSection({ user }) {
         }
       }
 
-      // 4) Supprime l'utilisateur (EN DERNIER)
       await pb.collection("users").delete(user.id);
       pb.authStore.clear();
       navigate("/login");
@@ -160,7 +138,7 @@ export default function DeleteAccountSection({ user }) {
         </div>
       </div>
 
-      <form className="w-full flex  gap-6">
+      <form className="w-full flex gap-6">
         <div className="flex flex-col gap-4">
           <Button
             type="button"
@@ -168,7 +146,7 @@ export default function DeleteAccountSection({ user }) {
             className="bg-nodea-blush-dark !important font-semibold hover:bg-nodea-blush-darker !important"
             disabled={deleting}
           >
-            {deleting ? "Suppression en cours…" : "Supprimer mon compte"}
+            {deleting ? "Suppression en cours..." : "Supprimer mon compte"}
           </Button>
         </div>
 

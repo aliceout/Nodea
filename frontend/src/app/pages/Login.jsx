@@ -1,14 +1,11 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/core/store/StoreProvider";
 import { setTab } from "@/core/store/actions";
 import pb from "@/core/api/pocketbase";
-import {
-  deriveKeyArgon2,
-  decryptAESGCM,
-  base64ToBytes,
-} from "@/core/crypto/webcrypto";
+import { deriveKeyArgon2, decryptAESGCM } from "@/core/crypto/webcrypto";
 import { clearGuardsCache } from "@/core/crypto/guards";
+import { createMainKeyMaterialFromBase64 } from "@/core/crypto/main-key";
 import Logo from "@ui/branding/LogoLong.jsx";
 import Button from "@/ui/atoms/base/Button";
 import Input from "@/ui/atoms/form/Input";
@@ -52,13 +49,13 @@ export default function LoginPage() {
         sealed = JSON.parse(user?.encrypted_key || "");
       } catch {
         clearAuthAndAbort(
-          "Clé chiffrée invalide sur le profil utilisateur. Reconnectez-vous."
+          "ClÃ© chiffrÃ©e invalide sur le profil utilisateur. Reconnectez-vous."
         );
         return;
       }
       if (!sealed?.iv || !sealed?.data) {
         clearAuthAndAbort(
-          "Clé chiffrée manquante sur le profil utilisateur. Reconnectez-vous."
+          "ClÃ© chiffrÃ©e manquante sur le profil utilisateur. Reconnectez-vous."
         );
         return;
       }
@@ -69,23 +66,23 @@ export default function LoginPage() {
       } catch (err) {
         console.error("[Login] decrypt mainKey error", err);
         clearAuthAndAbort(
-          "Impossible de déchiffrer la clé de chiffrement. Reconnectez-vous."
+          "Impossible de dÃ©chiffrer la clÃ© de chiffrement. Reconnectez-vous."
         );
         return;
       }
 
-      let mainKeyBytes;
+      let mainKeyMaterial;
       try {
-        mainKeyBytes = base64ToBytes(mainKeyPlain);
+        mainKeyMaterial = await createMainKeyMaterialFromBase64(mainKeyPlain);
       } catch (err) {
-        console.error("[Login] decode mainKey error", err);
+        console.error("[Login] build mainKey material error", err);
         clearAuthAndAbort(
-          "Clé de chiffrement corrompue. Reconnectez-vous."
+          "ClÃ© de chiffrement corrompue. Reconnectez-vous."
         );
         return;
       }
 
-      dispatch({ type: "key/set", payload: mainKeyBytes });
+      dispatch({ type: "key/set", payload: mainKeyMaterial });
       dispatch({ type: "key/status", payload: "ready" });
       clearGuardsCache();
       dispatch(setTab("home"));
@@ -130,15 +127,17 @@ export default function LoginPage() {
           {error && <FormError message={error} />}
         </form>
         <div className="mt-6 text-center w-full flex flex-col justify-center">
-          <span className="text-gray-600">Pas de compte ?</span>{" "}
+          <span className="text-gray-600">Pas de compteâ€¯?</span>{" "}
           <a
             href="/register"
             className="text-nodea-sage underline hover:text-nodea-sage-dark"
           >
-            Créer un compte
+            CrÃ©er un compte
           </a>
         </div>
       </div>
     </div>
   );
 }
+
+

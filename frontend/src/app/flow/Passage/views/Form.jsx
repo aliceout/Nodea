@@ -1,5 +1,3 @@
-// frontend/src/features/Passage/views/Form.jsx
-
 import { useState, useEffect } from "react";
 import Button from "@/ui/atoms/base/Button";
 import Input from "@/ui/atoms/form/Input";
@@ -12,15 +10,15 @@ import {
   createPassageEntry,
   listDistinctThreads,
 } from "@/core/api/modules/Passage";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 
-// Récupère le sid (module_user_id) du module Passage depuis le runtime
 function usePassageSid() {
   const modules = useModulesRuntime();
   return modules?.passage?.id || modules?.passage?.module_user_id || "";
 }
 
 export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
-  const { mainKey } = useStore();
+  const { mainKey, markMissing } = useStore();
   const runtimeSid = usePassageSid();
   const moduleUserId = moduleUserIdProp || runtimeSid;
 
@@ -32,18 +30,18 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
   const [error, setError] = useState("");
   const [threadOptions, setThreadOptions] = useState([]);
 
-  // Charger suggestions de threads existants (si mainKey + sid présents)
   useEffect(() => {
     let cancelled = false;
     async function loadThreads() {
-      if (!mainKey || !moduleUserId) return;
+      if (!hasMainKeyMaterial(mainKey) || !moduleUserId) return;
       try {
         const list = await listDistinctThreads(moduleUserId, mainKey, {
           pages: 2,
           perPage: 100,
+          markMissing,
         });
         if (!cancelled) setThreadOptions(list);
-      } catch (_) {
+      } catch {
         if (!cancelled) setThreadOptions([]);
       }
     }
@@ -57,9 +55,9 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
     e.preventDefault();
     setError("");
 
-    if (!mainKey) {
+    if (!hasMainKeyMaterial(mainKey)) {
       setError(
-        "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
+        "Erreur : cle de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
       );
       return;
     }
@@ -79,7 +77,7 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
     const payload = {
       type: "passage.entry",
       date: new Date().toISOString(),
-      thread: thread.trim(), // ← OBLIGATOIRE
+      thread: thread.trim(),
       title: title.trim() || null,
       content: content.trim(),
     };
@@ -87,12 +85,10 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
     setSaving(true);
     try {
       await createPassageEntry(moduleUserId, mainKey, payload);
-      // reset minimal
       setTitle("");
       setContent("");
-      // garder thread sélectionné pour enchaîner plusieurs entrées
     } catch (err) {
-      setError("Erreur lors de l’enregistrement : " + (err?.message || ""));
+      setError("Erreur lors de l'enregistrement : " + (err?.message || ""));
     } finally {
       setSaving(false);
     }
@@ -103,39 +99,38 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
       className="flex flex-col max-w-2xl gap-5 mx-auto"
       onSubmit={handleSubmit}
     >
-      <h1 className="text-2xl font-bold">Nouvelle entrée</h1>
+      <h1 className="text-2xl font-bold">Nouvelle entree</h1>
       {error ? <FormError message={error} /> : null}
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="ex: Jour 3 — pourquoi c'était juste"
+        placeholder="ex: Jour 3 - pourquoi c'etait juste"
       />
       <Textarea
         label="Texte"
         rows={8}
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Note ton cheminement, tes raisons, ce que tu observes…"
+        placeholder="Note ton cheminement, tes raisons, ce que tu observes..."
       />
       <div className="flex gap-2 items-center justify-between">
         <SuggestInput
           value={thread}
           onChange={setThread}
           options={threadOptions}
-          placeholder="ex: #SortieJob ou #Deuil…"
+          placeholder="ex: #SortieJob ou #Deuil"
           required
           label="Hashtag / histoire"
-          legend="Choisis un hashtag existant ou crée-en un nouveau. Il sert à regrouper les entrées."
+          legend="Choisis un hashtag existant ou cree-en un nouveau. Il sert a regrouper les entrees."
         />
         <Button
           className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"
           type="submit"
           disabled={saving}
         >
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? "Enregistrement..." : "Enregistrer"}
         </Button>
       </div>
-      {/* La légende est maintenant gérée par SuggestInput */}
     </form>
   );
 }

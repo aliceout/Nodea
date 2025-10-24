@@ -11,6 +11,10 @@ import pb from "@/core/api/pocketbase";
 import { reducer, initialState } from "./reducer";
 import { setModulesState } from "./modulesRuntime";
 import { clearGuardsCache } from "@/core/crypto/guards";
+import {
+  hasMainKeyMaterial,
+  wipeMainKeyMaterial,
+} from "@/core/crypto/main-key";
 
 const StoreContext = createContext(null);
 
@@ -31,13 +35,17 @@ export function StoreProvider({ children }) {
       }
     }
     clearGuardsCache();
+    wipeMainKeyMaterial(state.mainKey);
     dispatch({ type: "key/set", payload: null });
     dispatch({ type: "key/status", payload: "ready" });
     setModulesState({});
     window.location.href = "/login";
-  }, [dispatch]);
+  }, [dispatch, state.mainKey]);
 
-  const hasKey = useCallback(() => !!state.mainKey, [state.mainKey]);
+  const hasKey = useCallback(
+    () => hasMainKeyMaterial(state.mainKey),
+    [state.mainKey]
+  );
 
   const markMissing = useCallback(() => {
     dispatch({ type: "key/status", payload: "missing" });

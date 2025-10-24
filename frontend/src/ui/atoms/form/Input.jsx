@@ -1,6 +1,5 @@
 // Atom canonical: @/ui/atoms/form/Input
 // Implémentation rétablie (l’ancienne ligne de self re-export a été supprimée)
-import React from "react";
 
 /**
  * Input générique

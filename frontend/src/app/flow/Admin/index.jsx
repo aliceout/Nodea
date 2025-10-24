@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import pb from "@/core/api/pocketbase";
 import UserTable from "./components/UserTable";
 import InviteCodeManager from "./components/InviteCode";
@@ -6,11 +6,6 @@ import AnnouncementsManager from "./components/AnnouncementsManager";
 import Subheader from "@/ui/layout/headers/Subheader";
 
 export default function Admin() {
-  const user = pb.authStore.model;
-  if (user?.role !== "admin") {
-    return <div className="p-8 text-red-500">Accès réservé aux admins.</div>;
-  }
-
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,9 +14,15 @@ export default function Admin() {
   const [copySuccess, setCopySuccess] = useState("");
   const [lastCode, setLastCode] = useState("");
 
-  // Chargement des utilisateurs
+  const user = pb.authStore.model;
+  const isAdmin = user?.role === "admin";
+
   useEffect(() => {
-    const fetchUsers = async () => {
+    if (!isAdmin) return;
+
+    let cancelled = false;
+
+    async function fetchUsers() {
       setLoading(true);
       setError("");
       try {
@@ -29,48 +30,66 @@ export default function Admin() {
           sort: "email",
           $autoCancel: false,
         });
-        setUsers(result);
+        if (!cancelled) {
+          setUsers(result);
+        }
       } catch (err) {
-        setError("Erreur chargement users: " + (err?.message || ""));
+        if (!cancelled) {
+          setError("Erreur chargement users: " + (err?.message || ""));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    };
-    fetchUsers();
-  }, []);
+    }
 
-  // Chargement des codes d'invitation
+    fetchUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
   useEffect(() => {
-    const fetchCodes = async () => {
+    if (!isAdmin) return;
+
+    let cancelled = false;
+
+    async function fetchCodes() {
       try {
         const result = await pb.collection("invites_codes").getFullList({
           sort: "-created",
           $autoCancel: false,
         });
-        setInviteCodes(result);
-      } catch (err) {}
-    };
-    fetchCodes();
-  }, [generating, lastCode]);
+        if (!cancelled) {
+          setInviteCodes(result);
+        }
+      } catch (err) {
+        console.warn("[Admin] fetchCodes failed:", err);
+      }
+    }
 
-  // Suppression d'un code d'invitation
+    fetchCodes();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, generating, lastCode]);
+
   const handleDeleteInviteCode = async (codeId) => {
     try {
       await pb.collection("invites_codes").delete(codeId);
-      setInviteCodes(inviteCodes.filter((c) => c.id !== codeId));
+      setInviteCodes((prev) => prev.filter((code) => code.id !== codeId));
     } catch (err) {
       alert("Erreur suppression code : " + (err?.message || ""));
     }
   };
 
-  // Suppression user + ses entrées journal
   const handleDelete = async (userId) => {
-    if (
-      !window.confirm(
-        "Supprimer cet utilisateur ? Toutes ses entrées journal seront aussi supprimées."
-      )
-    )
-      return;
+    const confirmed = window.confirm(
+      "Supprimer cet utilisateur ? Toutes ses entrées journal seront aussi supprimées."
+    );
+    if (!confirmed) return;
+
     try {
       const journals = await pb.collection("mood_entries").getFullList({
         filter: `user="${userId}"`,
@@ -79,14 +98,14 @@ export default function Admin() {
         await pb.collection("mood_entries").delete(entry.id);
       }
       await pb.collection("users").delete(userId);
-      setUsers(users.filter((u) => u.id !== userId));
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (err) {
       alert("Erreur suppression : " + (err?.message || ""));
     }
   };
 
-  const handleResetPassword = async (user) => {
-    const email = user.email;
+  const handleResetPassword = async (targetUser) => {
+    const email = targetUser.email;
     if (!window.confirm(`Envoyer un mail de reset à ${email} ?`)) return;
     try {
       await pb.collection("users").requestPasswordReset(email);
@@ -96,7 +115,6 @@ export default function Admin() {
     }
   };
 
-  // Code d'invitation
   function randomCode(len = 8) {
     return Math.random()
       .toString(36)
@@ -112,8 +130,8 @@ export default function Admin() {
     try {
       const record = await pb.collection("invites_codes").create({ code });
       setLastCode(code);
-      setInviteCodes([record, ...inviteCodes]);
-      setCopySuccess("");
+      setInviteCodes((prev) => [record, ...prev]);
+      setCopySuccess(`Code généré : ${code}`);
     } catch (err) {
       setCopySuccess("Erreur lors de la création du code");
     } finally {
@@ -126,15 +144,22 @@ export default function Admin() {
       await navigator.clipboard.writeText(code);
       setCopySuccess(`Code copié : ${code}`);
       setTimeout(() => setCopySuccess(""), 2000);
-    } catch {
+    } catch (err) {
+      console.warn("[Admin] clipboard error:", err);
       setCopySuccess("Erreur lors de la copie");
     }
   };
 
-  if (loading)
+  if (!isAdmin) {
+    return <div className="p-8 text-red-500">Accès réservé aux admins.</div>;
+  }
+
+  if (loading) {
     return <div className="py-12 text-center text-gray-500">Chargement...</div>;
-  if (error)
+  }
+  if (error) {
     return <div className="py-12 text-center text-red-500">{error}</div>;
+  }
 
   return (
     <div className="h-full">
@@ -160,7 +185,7 @@ export default function Admin() {
 
         <section>
           <h2 className="text-lg font-semibold text-gray-800 mb-2">
-            Codes d’invitation
+            Codes d'invitation
           </h2>
           <InviteCodeManager
             inviteCodes={inviteCodes}

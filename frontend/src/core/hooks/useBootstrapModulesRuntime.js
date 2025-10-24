@@ -4,6 +4,7 @@ import { loadModulesConfig } from "@/core/api/modules-config";
 import { setModulesState } from "@/core/store/modulesRuntime";
 import { KeyMissingError } from "@/core/crypto/webcrypto";
 import { useStore } from "@/core/store/StoreProvider";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 
 /**
  * Monte la config modules déchiffrée dans le store runtime
@@ -17,7 +18,7 @@ export default function useBootstrapModulesRuntime() {
 
     async function run() {
       const user = pb?.authStore?.model;
-      if (!user || !mainKey) return;
+      if (!user || !hasMainKeyMaterial(mainKey)) return;
 
       try {
         const cfg = await loadModulesConfig(pb, user.id, mainKey); // objet DÉCHIFFRÉ

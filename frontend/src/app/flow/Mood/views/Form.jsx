@@ -1,37 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import pb from "@/core/api/pocketbase";
 import questions from "@/i18n/fr/Mood/questions.json";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import { encryptAESGCM } from "@/core/crypto/webcrypto";
+import { deriveGuard } from "@/core/crypto/guards";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 import { useStore } from "@/core/store/StoreProvider";
 
-// --- Helpers HMAC (dérivation du guard) ---
-const te = new TextEncoder();
-function toHex(buf) {
-  const b = new Uint8Array(buf || []);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
-  return s;
-}
-async function hmacSha256(keyRaw, messageUtf8) {
-  // keyRaw: ArrayBuffer|Uint8Array (mainKey ou guardKey)
-  const key = await window.crypto.subtle.importKey(
-    "raw",
-    keyRaw,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
-}
-async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
-  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
-  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
-  // guard  = "g_" + HEX( HMAC(guardKey, record.id) )
-  const tag = await hmacSha256(guardKeyBytes, String(recordId));
-  const hex = toHex(tag);
-  return "g_" + hex; // 64 hex chars → ok avec le pattern ^(g_[a-z0-9]{32,}|init)$
-}
+import PositivesBlock from "../components/Positives";
+import MoodBlock from "../components/Mood";
+import QuestionBlock from "../components/Question";
+import CommentBlock from "../components/Comment";
+import Button from "@/ui/atoms/base/Button";
+import FormError from "@/ui/atoms/form/FormError";
+import Input from "@/ui/atoms/form/Input";
 
 export default function JournalEntryPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -48,7 +30,7 @@ export default function JournalEntryPage() {
   const [randomQuestion, setRandomQuestion] = useState("");
   const [loadingQuestion, setLoadingQuestion] = useState(true);
 
-  const { mainKey } = useStore(); // attendu: bytes (pas CryptoKey)
+  const { mainKey } = useStore();
   const modules = useModulesRuntime();
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
@@ -56,26 +38,9 @@ export default function JournalEntryPage() {
   const emojiBtnRef = useRef(null);
   const pickerRef = useRef(null);
 
-  // Import CryptoKey WebCrypto dès que mainKey dispo pour AES-GCM
-  const [cryptoKey, setCryptoKey] = useState(null);
   useEffect(() => {
-    if (!mainKey) return;
-    // si mainKey est déjà une CryptoKey (selon ton contexte), on ne peut pas la réutiliser pour AES ici
-    if (typeof mainKey === "object" && mainKey?.type === "secret") {
-      return;
-    }
-    window.crypto.subtle
-      .importKey("raw", mainKey, { name: "AES-GCM" }, false, ["encrypt"])
-      .then((key) => {
-        setCryptoKey(key);
-      })
-      .catch(() => setCryptoKey(null));
-  }, [mainKey]);
-
-  // Choix aléatoire simple pour l’instant
-  useEffect(() => {
-    const q = questions[Math.floor(Math.random() * questions.length)];
-    setRandomQuestion(q);
+    const question = questions[Math.floor(Math.random() * questions.length)];
+    setRandomQuestion(question);
     setLoadingQuestion(false);
   }, []);
 
@@ -84,10 +49,14 @@ export default function JournalEntryPage() {
     setError("");
     setSuccess("");
 
-    if (!cryptoKey) {
+    if (!hasMainKeyMaterial(mainKey)) {
       setError(
-        "Erreur : clé de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
+        "Erreur : cle de chiffrement absente. Reconnecte-toi pour pouvoir enregistrer."
       );
+      return;
+    }
+    if (!moduleUserId) {
+      setError("Module 'Humeur' non configure (id manquant).");
       return;
     }
     if (!positive1.trim() || !positive2.trim() || !positive3.trim()) {
@@ -102,14 +71,8 @@ export default function JournalEntryPage() {
       setError("Merci de choisir un emoji.");
       return;
     }
-    if (!moduleUserId) {
-      setError("Module 'Humeur' non configuré (id manquant).");
-      return;
-    }
 
     try {
-      // 1) Payload clair (clés attendues côté lecture)
-      // -> n'ajoute question/answer que si une réponse a été saisie
       const includeQA = !!answer.trim();
       const payloadObj = {
         date,
@@ -119,43 +82,27 @@ export default function JournalEntryPage() {
         mood_score: String(moodScore),
         mood_emoji: moodEmoji,
         comment,
-        ...(includeQA ? { question: randomQuestion, answer: answer } : {}),
+        ...(includeQA ? { question: randomQuestion, answer } : {}),
       };
 
-      // 2) Chiffrement AES-GCM (retourne { iv, data } en base64url)
       const { data, iv } = await encryptAESGCM(
         JSON.stringify(payloadObj),
-        cryptoKey
+        mainKey
       );
-
-      // 3) CREATE (étape A) : POST avec guard="init"
-      const recordCreate = {
-        module_user_id: String(moduleUserId),
-        payload: String(data),
-        cipher_iv: String(iv),
-        guard: "init",
-      };
 
       const created = await pb.send("/api/collections/mood_entries/records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(recordCreate),
+        body: JSON.stringify({
+          module_user_id: String(moduleUserId),
+          payload: String(data),
+          cipher_iv: String(iv),
+          guard: "init",
+        }),
       });
 
       if (!created?.id) {
-        throw new Error("Création incomplète (id manquant).");
-      }
-
-      // 4) Promotion (étape B) : calcul HMAC du guard et PATCH ?d=init
-      if (
-        typeof mainKey === "object" &&
-        mainKey?.type === "secret" &&
-        !("buffer" in mainKey)
-      ) {
-        // mainKey CryptoKey non extractible → scénario non supporté ici
-        throw new Error(
-          "MainKey non exploitable pour HMAC. Reconnecte-toi pour récupérer la clé brute."
-        );
+        throw new Error("Creation incomplete (id manquant).");
       }
 
       const guard = await deriveGuard(mainKey, moduleUserId, created.id);
@@ -171,7 +118,7 @@ export default function JournalEntryPage() {
         }
       );
 
-      setSuccess("Entrée enregistrée !");
+      setSuccess("Entree enregistree !");
       setPositive1("");
       setPositive2("");
       setPositive3("");
@@ -180,17 +127,16 @@ export default function JournalEntryPage() {
       setComment("");
       setAnswer("");
     } catch (err) {
-      setError("Erreur lors de l’enregistrement : " + (err?.message || ""));
+      setError("Erreur lors de l'enregistrement : " + (err?.message || ""));
     }
   };
 
   return (
     <>
       <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto ">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-2">
           <h1 className="text-2xl font-bold text-center md:text-left">
-            Nouvelle entrée
+            Nouvelle entree
           </h1>
           <div className="flex-shrink-0 flex items-center justify-center md:justify-end w-full md:w-85 mt-5">
             <Input
@@ -253,10 +199,5 @@ export default function JournalEntryPage() {
   );
 }
 
-import PositivesBlock from "../components/Positives";
-import MoodBlock from "../components/Mood";
-import QuestionBlock from "../components/Question";
-import CommentBlock from "../components/Comment";
-import Button from "@/ui/atoms/base/Button";
-import FormError from "@/ui/atoms/form/FormError";
-import Input from "@/ui/atoms/form/Input";
+
+

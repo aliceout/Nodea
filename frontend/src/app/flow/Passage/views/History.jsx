@@ -1,11 +1,11 @@
 // frontend/src/features/Passage/views/History.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import EditDeleteActions from "@/ui/atoms/actions/EditDeleteActions";
 import FormError from "@/ui/atoms/form/FormError";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 import {
-  listPassageEntries,
   listPassageDecrypted,
   deletePassageEntry,
 } from "@/core/api/modules/Passage";
@@ -14,89 +14,164 @@ function usePassageSid() {
   const modules = useModulesRuntime();
   return modules?.passage?.id || modules?.passage?.module_user_id || "";
 }
+
 export default function PassageHistory() {
-  // Hooks d'état placés en tout début du composant
-  // ...existing code...
+  const { mainKey, markMissing } = useStore();
+  const moduleUserId = usePassageSid();
+
+  const [items, setItems] = useState([]);
+  const [localItems, setLocalItems] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
-  const [localItems, setLocalItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [hashtagFilter, setHashtagFilter] = useState("");
 
-  // Refs pour textarea auto-resize par entrée
-  const contentRefs = React.useRef({});
+  const contentRefs = useRef({});
 
-  // Fonction utilitaire pour auto-resize textarea
-  const autoResize = (el) => {
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = el.scrollHeight + "px";
-    }
+  const autoResize = (element) => {
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
   };
 
-  // Auto-resize dès le passage en édition
   useEffect(() => {
-    if (editId !== null && contentRefs.current[editId]) {
-      autoResize(contentRefs.current[editId]);
-    }
+    if (editId === null) return;
+    const ref = contentRefs.current[editId];
+    if (ref) autoResize(ref);
   }, [editId, editContent]);
-  const { mainKey } = useStore();
-  const moduleUserId = usePassageSid();
-
-  const [rawCount, setRawCount] = useState(0); // items bruts (chiffrés)
-  const [items, setItems] = useState([]); // items déchiffrés
-  const [error, setError] = useState("");
-  const [decryptHint, setDecryptHint] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [hashtagFilter, setHashtagFilter] = useState("");
-  // Gestion édition et suppression
-  // ...existing code...
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
       setError("");
-      try {
-        // Compte brut (sans déchiffrement) pour diagnostic sid
-        const page1 = await listPassageEntries(moduleUserId, {
-          page: 1,
-          perPage: 200,
-          sort: "-created",
-        });
-        if (!cancelled) setRawCount(Array.isArray(page1) ? page1.length : 0);
 
-        // Liste déchiffrée (quelques pages)
+      if (!moduleUserId) {
+        if (!cancelled) {
+          setItems([]);
+          setLocalItems([]);
+          setError("Module 'Passage' non configure.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (!hasMainKeyMaterial(mainKey)) {
+        if (!cancelled) {
+          setItems([]);
+          setLocalItems([]);
+          setError(
+            "Cle de chiffrement absente. Reconnecte-toi pour continuer."
+          );
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
         const list = await listPassageDecrypted(moduleUserId, mainKey, {
           pages: 5,
           perPage: 100,
           sort: "-created",
+          markMissing,
         });
-        if (!cancelled) setItems(list);
-      } catch (e) {
-        if (!cancelled) setError("Chargement impossible.");
+        if (!cancelled) {
+          setItems(list);
+          setLocalItems(list);
+        }
+      } catch (err) {
+        console.error("[PassageHistory] listPassageDecrypted failed", err);
+        if (!cancelled) {
+          setItems([]);
+          setLocalItems([]);
+          setError("Chargement impossible.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     load();
     return () => {
       cancelled = true;
     };
   }, [mainKey, moduleUserId]);
 
-  // Grouper par thread (inclure ceux sans thread)
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
+
+  const startEdit = (entry) => {
+    setEditId(entry.id);
+    setEditTitle(entry.payload?.title || "");
+    setEditContent(entry.payload?.content || "");
+  };
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditTitle("");
+    setEditContent("");
+  };
+
+  const saveEdit = (id) => {
+    setLocalItems((prev) =>
+      prev.map((entry) =>
+        entry.id === id
+          ? {
+              ...entry,
+              payload: {
+                ...entry.payload,
+                title: editTitle,
+                content: editContent,
+              },
+            }
+          : entry
+      )
+    );
+    cancelEdit();
+  };
+
+  const deleteEntry = async (id) => {
+    if (!moduleUserId || !hasMainKeyMaterial(mainKey)) {
+      setError(
+        "Suppression impossible sans cle de chiffrement valide ou module configure."
+      );
+      return;
+    }
+
+    const prevItems = items;
+    const prevLocal = localItems;
+
+    setItems((current) => current.filter((entry) => entry.id !== id));
+    setLocalItems((current) => current.filter((entry) => entry.id !== id));
+    if (editId === id) cancelEdit();
+
+    try {
+      await deletePassageEntry(id, moduleUserId, mainKey);
+    } catch (err) {
+      console.error("[PassageHistory] deletePassageEntry failed", err);
+      setItems(prevItems);
+      setLocalItems(prevLocal);
+      setError("Suppression impossible.");
+    }
+  };
+
   const groups = useMemo(() => {
     const map = new Map();
-    for (const it of items) {
-      const th = (it?.payload?.thread || "").trim() || "(sans thread)";
-      if (!map.has(th)) map.set(th, []);
-      map.get(th).push(it);
+    for (const entry of items) {
+      const thread =
+        (entry?.payload?.thread || "").trim() || "(sans thread)";
+      if (!map.has(thread)) map.set(thread, []);
+      map.get(thread).push(entry);
     }
-    // tri interne par created décroissant
-    for (const [, arr] of map) {
-      arr.sort((a, b) => (a.created < b.created ? 1 : -1));
+
+    for (const [, entries] of map) {
+      entries.sort((a, b) => (a.created < b.created ? 1 : -1));
     }
-    // liste triée par nom de thread (place “(sans thread)” en dernier)
+
     return Array.from(map.entries()).sort((a, b) => {
       if (a[0] === "(sans thread)") return 1;
       if (b[0] === "(sans thread)") return -1;
@@ -104,73 +179,20 @@ export default function PassageHistory() {
     });
   }, [items]);
 
-  // Gestion édition et suppression
-  // ...existing code...
-
-  // Sync localItems avec items
-  useEffect(() => {
-    setLocalItems(items);
-  }, [items]);
-
-  // Lance édition
-  const startEdit = (entry) => {
-    setEditId(entry.id);
-    setEditTitle(entry.payload?.title || "");
-    setEditContent(entry.payload?.content || "");
-  };
-  // Annule édition
-  const cancelEdit = () => {
-    setEditId(null);
-    setEditTitle("");
-    setEditContent("");
-  };
-  // Sauve édition
-  const saveEdit = (id) => {
-    setLocalItems((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? {
-              ...it,
-              payload: {
-                ...it.payload,
-                title: editTitle,
-                content: editContent,
-              },
-            }
-          : it
-      )
-    );
-    cancelEdit();
-  };
-  // Supprime entrée
-  // Supprime entrée (optimiste + rollback si erreur)
-  const deleteEntry = async (id) => {
-    const prevItems = items;
-    const prevLocal = localItems;
-    // UI optimiste
-    setItems((cur) => cur.filter((it) => it.id !== id));
-    setLocalItems((cur) => cur.filter((it) => it.id !== id));
-    if (editId === id) cancelEdit();
-    try {
-      await deletePassageEntry(id, moduleUserId, mainKey);
-    } catch (e) {
-      // rollback + message
-      setItems(prevItems);
-      setLocalItems(prevLocal);
-      setError("Suppression impossible.");
-    }
-  };
+  const visibleGroups = useMemo(() => {
+    if (!hashtagFilter) return groups;
+    return groups.filter(([thread]) => thread === hashtagFilter);
+  }, [groups, hashtagFilter]);
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-baseline justify-start gap-4 ">
-        <h1 className="text-2xl font-bold mb-2">Historique</h1>{" "}
-        {/* Filtre par hashtag */}
+      <div className="flex items-baseline justify-start gap-4">
+        <h1 className="text-2xl font-bold mb-2">Historique</h1>
         <div className="mb-6 flex items-center gap-2">
           <select
             id="hashtagFilter"
             value={hashtagFilter}
-            onChange={(e) => setHashtagFilter(e.target.value)}
+            onChange={(event) => setHashtagFilter(event.target.value)}
             className="border border-nodea-slate-light rounded px-2 py-1 text-xs"
           >
             <option value="">Tous</option>
@@ -182,89 +204,88 @@ export default function PassageHistory() {
           </select>
         </div>
       </div>
+
       {error ? <FormError message={error} /> : null}
       {loading ? (
-        <div className="text-sm text-gray-600">Chargement…</div>
+        <div className="text-sm text-gray-600">Chargement...</div>
       ) : null}
-      {!loading && groups.length === 0 ? (
-        <div className="text-sm text-gray-600">Aucune entrée à afficher</div>
+      {!loading && visibleGroups.length === 0 ? (
+        <div className="text-sm text-gray-600">Aucune entree a afficher.</div>
       ) : null}
+
       <div className="space-y-6">
-        {groups
-          .filter(([thread]) => !hashtagFilter || thread === hashtagFilter)
-          .map(([thread, entries]) => (
-            <section key={thread} className="border border-gray-200 rounded">
-              <header className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                <h2 className="font-semibold">
-                  {thread}
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({entries.length})
-                  </span>
-                </h2>
-              </header>
-              <ul className="divide-y divide-gray-100 pt-2">
-                {entries.map((it) => {
-                  const date = (it.created || "").slice(0, 10);
-                  const title = it.payload?.title || "(sans titre)";
-                  // Cherche dans localItems pour édition/suppression
-                  const localEntry =
-                    localItems.find((e) => e.id === it.id) || it;
-                  const isEditing = editId === it.id;
-                  return (
-                    <li key={it.id} className="px-4 pt-1 pb-5">
-                      <div className="flex items-center justify_between gap-2">
-                        <div className="flex-1">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              className="font-medium text-sm border rounded px-2 py-1 w-full mb-1"
-                              value={editTitle}
-                              onChange={(e) => setEditTitle(e.target.value)}
-                            />
-                          ) : (
-                            <div className="font-medium">
-                              {localEntry.payload?.title || "(sans titre)"}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">{date}</div>
-                        <EditDeleteActions
-                          isEditing={isEditing}
-                          onEdit={() => startEdit(localEntry)}
-                          onDelete={() => deleteEntry(it.id)}
-                          onSave={() => saveEdit(it.id)}
-                          onCancel={cancelEdit}
-                        />
+        {visibleGroups.map(([thread, entries]) => (
+          <section key={thread} className="border border-gray-200 rounded">
+            <header className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+              <h2 className="font-semibold">
+                {thread}
+                <span className="ml-2 text-xs text-gray-500">
+                  ({entries.length})
+                </span>
+              </h2>
+            </header>
+            <ul className="divide-y divide-gray-100 pt-2">
+              {entries.map((entry) => {
+                const date = (entry.created || "").slice(0, 10);
+                const localEntry =
+                  localItems.find((it) => it.id === entry.id) || entry;
+                const isEditing = editId === entry.id;
+
+                return (
+                  <li key={entry.id} className="px-4 pt-1 pb-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            className="font-medium text-sm border rounded px-2 py-1 w-full mb-1"
+                            value={editTitle}
+                            onChange={(event) =>
+                              setEditTitle(event.target.value)
+                            }
+                          />
+                        ) : (
+                          <div className="font-medium">
+                            {localEntry.payload?.title || "(sans titre)"}
+                          </div>
+                        )}
                       </div>
-                      {isEditing ? (
-                        <textarea
-                          ref={(el) => {
-                            contentRefs.current[it.id] = el;
-                            if (el) autoResize(el);
-                          }}
-                          className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w-full resize-y"
-                          value={editContent}
-                          onChange={(e) => {
-                            setEditContent(e.target.value);
-                            autoResize(contentRefs.current[it.id]);
-                          }}
-                          onFocus={(e) =>
-                            autoResize(contentRefs.current[it.id])
-                          }
-                          rows={3}
-                          style={{ overflow: "hidden" }}
-                        />
-                      ) : localEntry.payload?.content ? (
-                        <p className="text-sm text-gray-700 mt-1 text-justify">
-                          {localEntry.payload.content}
-                        </p>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                      <div className="text-xs text-gray-500">{date}</div>
+                      <EditDeleteActions
+                        isEditing={isEditing}
+                        onEdit={() => startEdit(localEntry)}
+                        onDelete={() => deleteEntry(entry.id)}
+                        onSave={() => saveEdit(entry.id)}
+                        onCancel={cancelEdit}
+                      />
+                    </div>
+                    {isEditing ? (
+                      <textarea
+                        ref={(element) => {
+                          contentRefs.current[entry.id] = element;
+                          autoResize(element);
+                        }}
+                        className="text-sm text-gray-700 mt-1 border rounded px-2 py-1 w-full resize-y"
+                        value={editContent}
+                        onChange={(event) => {
+                          setEditContent(event.target.value);
+                          const ref = contentRefs.current[entry.id];
+                          if (ref) autoResize(ref);
+                        }}
+                        rows={3}
+                        style={{ overflow: "hidden" }}
+                      />
+                    ) : localEntry.payload?.content ? (
+                      <p className="text-sm text-gray-700 mt-1 text-justify">
+                        {localEntry.payload.content}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
       </div>
     </div>
   );

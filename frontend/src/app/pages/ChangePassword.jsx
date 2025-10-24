@@ -13,6 +13,7 @@ import {
   base64ToBytes,
   bytesToBase64,
 } from "@/core/crypto/webcrypto";
+import { createMainKeyMaterialFromBase64 } from "@/core/crypto/main-key";
 
 const BASE64_REGEX = /^[A-Za-z0-9+/=]+$/;
 
@@ -105,11 +106,17 @@ export default function ChangePasswordPage() {
         }
       }
 
-      const effectiveMainKeyBytes = isProbablyBase64(decrypted)
-        ? base64ToBytes(decrypted)
-        : utf8ToBytes(decrypted);
+      let normalizedMainKeyB64 = "";
+      let workingMainKeyBytes = null;
+      if (isProbablyBase64(decrypted)) {
+        normalizedMainKeyB64 = decrypted;
+        workingMainKeyBytes = base64ToBytes(decrypted);
+      } else {
+        workingMainKeyBytes = utf8ToBytes(decrypted);
+        normalizedMainKeyB64 = bytesToBase64(workingMainKeyBytes);
+      }
 
-      if (!(effectiveMainKeyBytes instanceof Uint8Array)) {
+      if (!normalizedMainKeyB64) {
         setError(
           "Impossible de récupérer votre clé de chiffrement. Reconnectez-vous puis réessayez."
         );
@@ -117,7 +124,6 @@ export default function ChangePasswordPage() {
       }
 
       const newProtectionKey = await deriveKeyArgon2(newPassword, salt);
-      const normalizedMainKeyB64 = bytesToBase64(effectiveMainKeyBytes);
       const sealedForNewPassword = await encryptAESGCM(
         normalizedMainKeyB64,
         newProtectionKey
@@ -135,7 +141,22 @@ export default function ChangePasswordPage() {
         pb.authStore.model = { ...pb.authStore.model, ...updated };
       }
 
-      dispatch({ type: "key/set", payload: effectiveMainKeyBytes });
+      let mainKeyMaterial;
+      try {
+        mainKeyMaterial = await createMainKeyMaterialFromBase64(
+          normalizedMainKeyB64
+        );
+      } catch (err) {
+        console.error("[ChangePassword] rebuild mainKey material error", err);
+        setError("Clé de chiffrement invalide après re-encodage.");
+        return;
+      } finally {
+        if (workingMainKeyBytes instanceof Uint8Array) {
+          workingMainKeyBytes.fill(0);
+        }
+      }
+
+      dispatch({ type: "key/set", payload: mainKeyMaterial });
       setSuccess("Mot de passe changé avec succès.");
     } catch (err) {
       setError(

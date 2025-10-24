@@ -1,54 +1,44 @@
-// Centralized ./guards6)
-// Exported API: deriveGuard(mainKeyRaw, moduleUserId, recordId)
+import { ensureHmacKey } from "./main-key";
 
-const te = new TextEncoder();
+const textEncoder = new TextEncoder();
 
-function toHex(buf) {
-  const b = new Uint8Array(buf || []);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
-  return s;
+function toHex(bytes) {
+  const view = new Uint8Array(bytes || []);
+  let out = "";
+  for (let i = 0; i < view.length; i += 1) {
+    out += view[i].toString(16).padStart(2, "0");
+  }
+  return out;
 }
 
-async function hmacSha256(keyRaw, messageUtf8) {
-  // keyRaw: ArrayBuffer|Uint8Array (clé brute, pas CryptoKey)
-  const key = await window.crypto.subtle.importKey(
-    "raw",
-    keyRaw,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
+async function importHmacKey(material) {
+  if (material && material.type === "secret" && material.algorithm?.name === "HMAC") {
+    return material;
+  }
+  return ensureHmacKey(material);
+}
+
+async function hmacSha256(keyMaterial, message) {
+  const key = await importHmacKey(keyMaterial);
+  const data =
+    typeof message === "string" ? textEncoder.encode(message) : new Uint8Array(message || []);
+  const signature = await window.crypto.subtle.sign("HMAC", key, data);
+  return new Uint8Array(signature);
 }
 
 /**
- * Dérive le guard stable (prefixé "g_") pour une entrée.
- * @param {Uint8Array|ArrayBuffer} mainKeyRaw - 32 octets "bruts" (pas CryptoKey)
- * @param {string} moduleUserId
- * @param {string|number} recordId
+ * Calcule le guard stable (préfixe "g_") pour un enregistrement.
  */
-export async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
-  if (
-    mainKeyRaw &&
-    typeof mainKeyRaw === "object" &&
-    mainKeyRaw.type === "secret"
-  ) {
-    throw new Error(
-      "deriveGuard attend la clé principale brute (Uint8Array). CryptoKey non supportée."
-    );
-  }
+export async function deriveGuard(mainKeyMaterial, moduleUserId, recordId) {
   if (!moduleUserId) throw new Error("module_user_id manquant");
   if (recordId == null) throw new Error("recordId manquant");
 
-  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
-  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
-  // guard    = "g_" + HEX( HMAC(guardKey, record.id) )
+  const guardKeyBytes = await hmacSha256(mainKeyMaterial, `guard:${moduleUserId}`);
   const tag = await hmacSha256(guardKeyBytes, String(recordId));
-  return "g_" + toHex(tag);
+  return `g_${toHex(tag)}`;
 }
 
-// --- Local store for entry guards (per collection/record) ---
+// --- Cache local des guards (per collection/record) ---
 const STORE_KEY = "nodea.guards.v1";
 
 function loadAll() {
@@ -63,21 +53,14 @@ function saveAll(obj) {
   localStorage.setItem(STORE_KEY, JSON.stringify(obj));
 }
 
-/**
- * Efface tout le cache local des guards.
- */
 export function clearGuardsCache() {
   try {
     localStorage.removeItem(STORE_KEY);
   } catch {
-    // ignore storage cleanup errors
+    // ignore
   }
 }
 
-/**
- * Stocke en localStorage le guard calculé pour un record.
- * Persistant par navigateur ; clé: nodea.guards.v1 -> { [collection]: { [id]: guard } }
- */
 export function setEntryGuard(collection, id, guard) {
   const all = loadAll();
   all[collection] = all[collection] || {};
@@ -85,17 +68,11 @@ export function setEntryGuard(collection, id, guard) {
   saveAll(all);
 }
 
-/**
- * Récupère le guard en cache pour une entrée (ou chaîne vide si absent).
- */
 export function getEntryGuard(collection, id) {
   const all = loadAll();
   return all?.[collection]?.[id] || "";
 }
 
-/**
- * Supprime le guard en cache pour l'entrée donnée.
- */
 export function deleteEntryGuard(collection, id) {
   const all = loadAll();
   if (all?.[collection]?.[id]) {
@@ -111,3 +88,4 @@ export default {
   deleteEntryGuard,
   clearGuardsCache,
 };
+

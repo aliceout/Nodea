@@ -1,53 +1,37 @@
-// Services CRUD Passage — compatible avec History actuel
-// Flux: chiffre -> POST guard:"init" -> PATCH promotion -> cache local du guard
-// Public API: createPassageEntry, listPassageEntries, decryptPassageRecord, listPassageDecrypted, listDistinctThreads, updatePassageEntry, deletePassageEntry
-
 import pb from "@/core/api/pocketbase";
-import { encryptAESGCM } from "@/core/crypto/webcrypto";
-import { decryptWithRetry } from "@/core/crypto/webcrypto";
+import { encryptAESGCM, decryptWithRetry } from "@/core/crypto/webcrypto";
 import {
   deriveGuard,
   setEntryGuard,
   getEntryGuard,
   deleteEntryGuard,
 } from "@/core/crypto/guards";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 
 const COLLECTION = "passage_entries";
 
-/* ------------------------- Helpers clés (comme Mood) ------------------------- */
-/** force en Uint8Array (requis pour HMAC dérivé côté guards) */
-function toRawBytes(mk) {
-  if (mk instanceof Uint8Array) return mk;
-  if (mk?.buffer) return new Uint8Array(mk.buffer);
-  // Si mk est une CryptoKey non-extractible → on ne peut pas dériver un guard
-  if (
-    mk &&
-    typeof mk === "object" &&
-    mk.type === "secret" &&
-    !("buffer" in mk)
-  ) {
-    throw new Error(
-      "MainKey non exploitable pour HMAC (clé non-extractible). Reconnecte-toi."
-    );
+function assertMainKey(mainKey) {
+  if (!hasMainKeyMaterial(mainKey)) {
+    throw new Error("Cle principale manquante.");
   }
-  return new Uint8Array(mk || []);
 }
 
-/* --------------------------------- CREATE ---------------------------------- */
+function assertModuleUserId(moduleUserId) {
+  if (!moduleUserId) {
+    throw new Error("module_user_id manquant");
+  }
+}
+
 /**
- * Crée une entrée Passage (payload chiffré), POST guard:"init", puis PATCH promotion guard.
- * @param {string} moduleUserId - sid
- * @param {Uint8Array|CryptoKey} mainKey
- * @param {object} payloadObj - { date, thread, title?, content, ... }
+ * Cree une entree Passage (payload chiffre), POST guard:"init", puis PATCH promotion guard.
  */
 export async function createPassageEntry(moduleUserId, mainKey, payloadObj) {
-  if (!moduleUserId) throw new Error("module_user_id manquant");
+  assertModuleUserId(moduleUserId);
+  assertMainKey(mainKey);
 
-  // 1) chiffrer le payload
   const plaintext = JSON.stringify(payloadObj || {});
-  const sealed = await encryptAESGCM(plaintext, mainKey); // -> { iv, data }
+  const sealed = await encryptAESGCM(plaintext, mainKey);
 
-  // 2) CREATE avec guard:"init" (on passe par pb.send pour injecter ?sid)
   const res = await pb.send(
     `/api/collections/${COLLECTION}/records?sid=${encodeURIComponent(
       moduleUserId
@@ -66,10 +50,9 @@ export async function createPassageEntry(moduleUserId, mainKey, payloadObj) {
 
   const created = res?.json || res;
   const id = created?.id;
-  if (!id) throw new Error("Création Passage: id manquant");
+  if (!id) throw new Error("Creation Passage: id manquant");
 
-  // 3) Promotion guard init -> g_...
-  const guard = await deriveGuard(toRawBytes(mainKey), moduleUserId, id);
+  const guard = await deriveGuard(mainKey, moduleUserId, id);
   await pb.send(
     `/api/collections/${COLLECTION}/records/${encodeURIComponent(
       id
@@ -81,20 +64,18 @@ export async function createPassageEntry(moduleUserId, mainKey, payloadObj) {
     }
   );
 
-  // garder localement (optimise update/delete)
   setEntryGuard(COLLECTION, id, guard);
   return created;
 }
 
-/* ---------------------------------- LIST ----------------------------------- */
 /**
- * Liste brute (non déchiffrée) de la collection Passage.
+ * Liste brute (non dechiffree) de la collection Passage.
  */
 export async function listPassageEntries(
   moduleUserId,
   { page = 1, perPage = 50, sort = "-created" } = {}
 ) {
-  if (!moduleUserId) throw new Error("module_user_id manquant");
+  assertModuleUserId(moduleUserId);
   const url =
     `/api/collections/${COLLECTION}/records` +
     `?page=${page}&perPage=${perPage}&sort=${encodeURIComponent(sort)}` +
@@ -105,24 +86,26 @@ export async function listPassageEntries(
 }
 
 /**
- * Déchiffre 1 record — **on renvoie payload imbriqué** (comme avant, pour History).
+ * Dechiffre un record Passage (retourne payload imbrique).
  */
-export async function decryptPassageRecord(rec, mainKey) {
+export async function decryptPassageRecord(rec, mainKey, { markMissing } = {}) {
   if (!rec?.payload || !rec?.cipher_iv) return null;
+  assertMainKey(mainKey);
 
-  // decryptWithRetry attend { iv, data } + key
   const encrypted = { iv: rec.cipher_iv, data: rec.payload };
-  const plaintext = await decryptWithRetry({ encrypted, key: mainKey });
+  const plaintext = await decryptWithRetry({
+    encrypted,
+    key: mainKey,
+    markMissing,
+  });
 
   let obj = {};
   try {
     obj = JSON.parse(plaintext || "{}");
   } catch (e) {
     console.warn("[Passage] JSON invalide pour record", rec?.id, e);
-    obj = {};
   }
 
-  // IMPORTANT: on garde la forme { payload: {...} } (History lit payload.title/thread)
   return {
     id: rec.id,
     created: rec.created,
@@ -132,18 +115,18 @@ export async function decryptPassageRecord(rec, mainKey) {
 }
 
 /**
- * Liste paginée + déchiffrée (conserve l’ordre du tri backend).
+ * Liste paginee + dechiffree (conserve l'ordre du tri backend).
  */
 export async function listPassageDecrypted(
   moduleUserId,
   mainKey,
-  { pages = 3, perPage = 100, sort = "-created" } = {}
+  { pages = 3, perPage = 100, sort = "-created", markMissing } = {}
 ) {
-  if (!moduleUserId) throw new Error("module_user_id manquant");
+  assertModuleUserId(moduleUserId);
   const out = [];
   let firstError = null;
 
-  for (let p = 1; p <= pages; p++) {
+  for (let p = 1; p <= pages; p += 1) {
     const pageItems = await listPassageEntries(moduleUserId, {
       page: p,
       perPage,
@@ -152,28 +135,28 @@ export async function listPassageDecrypted(
     if (!pageItems?.length) break;
     for (const rec of pageItems) {
       try {
-        const dec = await decryptPassageRecord(rec, mainKey);
+        const dec = await decryptPassageRecord(rec, mainKey, { markMissing });
         if (dec) out.push(dec);
-      } catch (e) {
-        if (!firstError) firstError = e; // mémorise la 1ère erreur
+      } catch (err) {
+        if (!firstError) firstError = err;
       }
     }
   }
 
-  if (firstError) out._firstError = firstError; // lu par History pour afficher un warning
+  if (firstError) out._firstError = firstError;
   return out;
 }
 
 /**
- * Extrait la liste distincte des "threads" (hashtags / histoires) existants (déchiffrés).
+ * Extrait la liste distincte des threads existants (dechiffres).
  */
 export async function listDistinctThreads(
   moduleUserId,
   mainKey,
-  { pages = 2, perPage = 100, sort = "-created" } = {}
+  { pages = 2, perPage = 100, sort = "-created", markMissing } = {}
 ) {
   const set = new Set();
-  for (let p = 1; p <= pages; p++) {
+  for (let p = 1; p <= pages; p += 1) {
     const pageItems = await listPassageEntries(moduleUserId, {
       page: p,
       perPage,
@@ -182,16 +165,17 @@ export async function listDistinctThreads(
     if (!pageItems?.length) break;
     for (const rec of pageItems) {
       try {
-        const dec = await decryptPassageRecord(rec, mainKey);
+        const dec = await decryptPassageRecord(rec, mainKey, { markMissing });
         const th = dec?.payload?.thread;
         if (th && typeof th === "string") set.add(th);
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
-/* --------------------------------- UPDATE ---------------------------------- */
 export async function updatePassageEntry(
   id,
   moduleUserId,
@@ -199,14 +183,13 @@ export async function updatePassageEntry(
   payloadObj
 ) {
   if (!id) throw new Error("id manquant");
-  if (!moduleUserId) throw new Error("module_user_id manquant");
+  assertModuleUserId(moduleUserId);
+  assertMainKey(mainKey);
 
-  // retrouver/préparer le guard
   const gLocal = getEntryGuard(COLLECTION, id);
   const guard =
-    gLocal || (await deriveGuard(toRawBytes(mainKey), moduleUserId, id));
+    gLocal || (await deriveGuard(mainKey, moduleUserId, id));
 
-  // re-chiffrer
   const sealed = await encryptAESGCM(JSON.stringify(payloadObj || {}), mainKey);
 
   const url =
@@ -223,14 +206,14 @@ export async function updatePassageEntry(
   return res?.json || res;
 }
 
-/* --------------------------------- DELETE ---------------------------------- */
 export async function deletePassageEntry(id, moduleUserId, mainKey) {
   if (!id) throw new Error("id manquant");
-  if (!moduleUserId) throw new Error("module_user_id manquant");
+  assertModuleUserId(moduleUserId);
+  assertMainKey(mainKey);
 
   const gLocal = getEntryGuard(COLLECTION, id);
   const guard =
-    gLocal || (await deriveGuard(toRawBytes(mainKey), moduleUserId, id));
+    gLocal || (await deriveGuard(mainKey, moduleUserId, id));
 
   const url =
     `/api/collections/${COLLECTION}/records/${encodeURIComponent(id)}` +
@@ -241,7 +224,6 @@ export async function deletePassageEntry(id, moduleUserId, mainKey) {
     deleteEntryGuard(COLLECTION, id);
     return res?.json || res;
   } catch (_e) {
-    // fallback ultime: tentative avec d=init (si l’entrée n’a jamais été promue)
     const urlInit =
       `/api/collections/${COLLECTION}/records/${encodeURIComponent(id)}` +
       `?sid=${encodeURIComponent(moduleUserId)}&d=init`;

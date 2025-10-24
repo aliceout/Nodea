@@ -1,20 +1,19 @@
-// frontend/src/services/ImportExport/Goals.jsx
-// Import/Export du module "Goals" (aligné Mood/Passage)
-// Contrat (plugins): { meta, importHandler, exportQuery, exportSerialize, getNaturalKey, listExistingKeys }
-// Payload clair: { date, title, note?, status, thread }
-
-import pb from "@/core/api/pocketbase";
 import { encryptAESGCM, decryptAESGCM } from "@/core/crypto/webcrypto";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 import { normalizeKeyPart } from "@/core/utils/ImportExport/utils";
 import { createEncryptedRecord, listRecords } from "@/core/api/pb-records";
 
 export const meta = { id: "goals", version: 1, collection: "goals_entries" };
 
-/* ------------------------------ Normalisation ------------------------------ */
+function ensureMainKey(mainKey) {
+  if (!hasMainKeyMaterial(mainKey)) {
+    throw new Error("Cle principale manquante pour le module Goals.");
+  }
+}
+
 function normalizePayload(input) {
   const p = input || {};
   const out = {
-    // Dans l’UI on saisit au format "YYYY-MM"; on ne force pas le jour ici
     date: String(p.date || ""),
     title: String(p.title || ""),
     status: ["open", "wip", "done"].includes(p.status) ? p.status : "done",
@@ -24,12 +23,6 @@ function normalizePayload(input) {
   return out;
 }
 
-/* ---------------------------- Clé naturelle (dedup) ---------------------------- */
-// Hypothèse raisonnable (documentée) : une entrée Goal est identifiée par (date + title + thread).
-// - date: "YYYY-MM" (mois de l’objectif)
-// - title: texte libre
-// - thread: hashtag libre (regroupement)
-// Cette clé évite des doublons évidents lors d’imports multiples.
 export function getNaturalKey(plain) {
   const p = normalizePayload(plain);
   return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(
@@ -37,35 +30,31 @@ export function getNaturalKey(plain) {
   )}::${normalizeKeyPart(p.title)}`;
 }
 
-/* ---------------------------------- Import --------------------------------- */
-// Contrat identique à Mood/Passage: importHandler({ payload, ctx:{ moduleUserId, mainKey } })
 export async function importHandler({ payload, ctx }) {
-  if (!ctx?.moduleUserId || !ctx?.mainKey)
-    throw new Error("Goals.import: contexte incomplet (moduleUserId/mainKey).");
+  if (!ctx?.moduleUserId) {
+    throw new Error("Goals.import: moduleUserId manquant.");
+  }
+  ensureMainKey(ctx.mainKey);
 
-  const { moduleUserId, mainKey } = ctx;
   const clear = normalizePayload(payload);
+  const { iv, data } = await encryptAESGCM(JSON.stringify(clear), ctx.mainKey);
 
-  // Chiffrement local (AES-GCM)
-  const { iv, data } = await encryptAESGCM(JSON.stringify(clear), mainKey);
-
-  // Création + promotion via helper centralisé
   const id = await createEncryptedRecord({
     collection: meta.collection,
-    moduleUserId,
+    moduleUserId: ctx.moduleUserId,
     payloadString: String(data),
     iv: String(iv),
-    mainKey,
+    mainKey: ctx.mainKey,
   });
 
   return { action: "created", id };
 }
 
-/* ---------------------------------- Export --------------------------------- */
-// exportQuery: génére des payloads CLAIRS déjà déchiffrés
 export async function* exportQuery({ ctx, pageSize = 200 } = {}) {
-  const { moduleUserId, mainKey } = ctx || {};
-  if (!moduleUserId || !mainKey) return;
+  const moduleUserId = ctx?.moduleUserId;
+  const mainKey = ctx?.mainKey;
+  if (!moduleUserId) return;
+  if (!hasMainKeyMaterial(mainKey)) return;
 
   let page = 1;
   while (true) {
@@ -85,15 +74,14 @@ export async function* exportQuery({ ctx, pageSize = 200 } = {}) {
           mainKey
         );
         const obj = normalizePayload(JSON.parse(plaintext || "{}"));
-        // On émet seulement le clair attendu
         yield obj;
       } catch {
-        // ignore entrée indéchiffrable
+        // ignore entries that cannot be decrypted
       }
     }
 
     if (!data.items || data.items.length < pageSize) break;
-    page++;
+    page += 1;
   }
 }
 
@@ -101,17 +89,13 @@ export function exportSerialize(plainPayload) {
   return { module: meta.id, version: meta.version, payload: plainPayload };
 }
 
-// Déduplication: récupère les clés naturelles déjà présentes
 export async function listExistingKeys(args = {}) {
-  // Supporte deux signatures: ({ pb, sid, mainKey }) [utilisé par ImportData]
-  // et ({ ctx: { moduleUserId, mainKey } }) [style Passage]
   const ctx = args.ctx || {};
   const moduleUserId = args.sid || ctx.moduleUserId;
   const mainKey = args.mainKey || ctx.mainKey;
-  const client = args.pb || pb;
 
   const keys = new Set();
-  if (!moduleUserId || !mainKey) return keys;
+  if (!moduleUserId || !hasMainKeyMaterial(mainKey)) return keys;
 
   let page = 1;
   const perPage = 200;
@@ -135,12 +119,12 @@ export async function listExistingKeys(args = {}) {
         const k = getNaturalKey(obj);
         if (k) keys.add(k);
       } catch {
-        // ignore
+        // ignore errors
       }
     }
 
     if (!data.items || data.items.length < perPage) break;
-    page++;
+    page += 1;
   }
 
   return keys;

@@ -3,38 +3,15 @@ import { listMoodEntries, deleteMoodEntry } from "@/core/api/modules/Mood";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import { useStore } from "@/core/store/StoreProvider";
 import { decryptWithRetry } from "@/core/crypto/webcrypto";
+import { deriveGuard } from "@/core/crypto/guards";
+import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 import FormError from "@/ui/atoms/form/FormError";
 
-// --- Helpers HMAC (dérivation du guard) ---
-// On duplique ici pour limiter les refactos (pas de nouveau module).
-const te = new TextEncoder();
-function toHex(buf) {
-  const b = new Uint8Array(buf || []);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
-  return s;
-}
-async function hmacSha256(keyRaw, messageUtf8) {
-  const key = await window.crypto.subtle.importKey(
-    "raw",
-    keyRaw,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  return window.crypto.subtle.sign("HMAC", key, te.encode(messageUtf8));
-}
-async function deriveGuard(mainKeyRaw, moduleUserId, recordId) {
-  // guardKey = HMAC(mainKey, "guard:"+module_user_id)
-  const guardKeyBytes = await hmacSha256(mainKeyRaw, "guard:" + moduleUserId);
-  // guard    = "g_" + HEX( HMAC(guardKey, record.id) )
-  const tag = await hmacSha256(guardKeyBytes, String(recordId));
-  const hex = toHex(tag);
-  return "g_" + hex; // 64 hex chars
-}
+import HistoryFilters from "../components/Filters";
+import HistoryList from "../components/List";
 
 export default function MoodHistory() {
-  const { mainKey, markMissing } = useStore(); // attendu: bytes (pas CryptoKey)
+  const { mainKey, markMissing } = useStore();
   const modules = useModulesRuntime();
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
@@ -42,11 +19,10 @@ export default function MoodHistory() {
   const [month, setMonth] = useState(today.getMonth() + 1); // 1..12
   const [year, setYear] = useState(today.getFullYear());
 
-  const [allEntries, setAllEntries] = useState([]); // déchiffrées
+  const [allEntries, setAllEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Charger + déchiffrer
   useEffect(() => {
     let cancelled = false;
 
@@ -55,12 +31,12 @@ export default function MoodHistory() {
       setError("");
 
       if (!moduleUserId) {
-        setError("Module 'Humeur' non configuré.");
+        setError("Module 'Humeur' non configure.");
         setLoading(false);
         return;
       }
-      if (!mainKey) {
-        setError("Clé de chiffrement absente. Reconnecte-toi.");
+      if (!hasMainKeyMaterial(mainKey)) {
+        setError("Cle de chiffrement absente. Reconnecte-toi.");
         setLoading(false);
         return;
       }
@@ -68,18 +44,18 @@ export default function MoodHistory() {
       try {
         const items = await listMoodEntries(moduleUserId);
         const parsed = await Promise.all(
-          items.map(async (r) => {
+          items.map(async (record) => {
             try {
               const plaintext = await decryptWithRetry({
-                encrypted: { iv: r.cipher_iv, data: r.payload },
+                encrypted: { iv: record.cipher_iv, data: record.payload },
                 key: mainKey,
                 markMissing,
               });
               const obj = JSON.parse(plaintext || "{}");
               return {
-                id: r.id,
-                created: r.created,
-                date: obj.date || (r.created ? r.created.slice(0, 10) : ""),
+                id: record.id,
+                created: record.created,
+                date: obj.date || (record.created ? record.created.slice(0, 10) : ""),
                 mood_score: obj.mood_score ?? "",
                 mood_emoji: obj.mood_emoji ?? "",
                 positive1: obj.positive1 ?? "",
@@ -90,7 +66,6 @@ export default function MoodHistory() {
                 answer: obj.answer ?? "",
               };
             } catch {
-              // entrée illisible → on la masque
               return null;
             }
           })
@@ -110,13 +85,12 @@ export default function MoodHistory() {
     return () => {
       cancelled = true;
     };
-  }, [moduleUserId, mainKey]);
+  }, [moduleUserId, mainKey, markMissing]);
 
-  // Années disponibles pour le select (basé sur la date du payload)
   const years = useMemo(() => {
     const set = new Set(
       allEntries
-        .map((e) => (e.date || "").slice(0, 4))
+        .map((entry) => (entry.date || "").slice(0, 4))
         .filter((y) => /^\d{4}$/.test(y))
         .map((y) => Number(y))
     );
@@ -124,14 +98,12 @@ export default function MoodHistory() {
     return arr.length ? arr : [today.getFullYear()];
   }, [allEntries]);
 
-  // Filtrage local par mois/année + tri par date du payload (du plus récent au plus ancien)
   const entries = useMemo(() => {
     const mm = String(month).padStart(2, "0");
     const yy = String(year);
     return allEntries
-      .filter((e) => (e.date || "").startsWith(`${yy}-${mm}-`))
+      .filter((entry) => (entry.date || "").startsWith(`${yy}-${mm}-`))
       .sort((a, b) => {
-        // Tri décroissant par date du payload
         if (!a.date && !b.date) return 0;
         if (!a.date) return 1;
         if (!b.date) return -1;
@@ -139,30 +111,29 @@ export default function MoodHistory() {
       });
   }, [allEntries, month, year]);
 
-  // Suppression : on calcule le guard (HMAC) à la volée
   async function handleDelete(id) {
     setError("");
 
-    if (!moduleUserId || !mainKey) {
-      setError("Contexte invalide (clé ou module).");
+    if (!moduleUserId || !hasMainKeyMaterial(mainKey)) {
+      setError("Contexte invalide (cle ou module).");
       return;
     }
 
     // eslint-disable-next-line no-alert
-    const ok = window.confirm("Supprimer définitivement cette entrée ?");
+    const ok = window.confirm("Supprimer definitivement cette entree ?");
     if (!ok) return;
 
     try {
       const guard = await deriveGuard(mainKey, moduleUserId, id);
       await deleteMoodEntry(id, moduleUserId, guard);
-      setAllEntries((prev) => prev.filter((e) => e.id !== id));
+      setAllEntries((prev) => prev.filter((entry) => entry.id !== id));
     } catch (err) {
       setError(err?.message || "Suppression impossible.");
     }
   }
 
   if (loading) {
-    return <div className="w-full max-w-4xl mx-auto py-6">Chargement…</div>;
+    return <div className="w-full max-w-4xl mx-auto py-6">Chargement...</div>;
   }
 
   return (
@@ -184,5 +155,4 @@ export default function MoodHistory() {
   );
 }
 
-import HistoryFilters from "../components/Filters";
-import HistoryList from "../components/List";
+

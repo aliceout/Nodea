@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
-import { decryptWithRetry } from "@/core/crypto/webcrypto";
 import Button from "@/ui/atoms/base/Button";
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 // Orchestrate export via module plugins (pagination + decryption centralized)
@@ -13,7 +12,7 @@ export default function ExportDataSection() {
   // via getDataPlugin(moduleKey) et plugin.exportQuery({ ctx }) afin d'unifier
   // pagination, déchiffrement et format. On construit un SEUL fichier JSON
   // { meta, modules: { mood?, goals?, passage? } } sans changer l'UI.
-  const { mainKey, markMissing } = useStore(); // clé binaire (Uint8Array)
+  const { mainKey } = useStore(); // clé binaire (Uint8Array)
   const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
   const sidMood = modules?.mood?.id || modules?.mood?.module_user_id;
   const sidGoals = modules?.goals?.id || modules?.goals?.module_user_id;
@@ -142,8 +141,8 @@ export default function ExportDataSection() {
         <div className="flex flex-col gap-4">
           <Button
             type="button"
-            onClick={(e) => {
-              handleExport(e);
+            onClick={() => {
+              handleExport();
             }}
             disabled={loading || (!sidMood && !sidGoals && !sidPassage)}
             className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker disabled:opacity-50"

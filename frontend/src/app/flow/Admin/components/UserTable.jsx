@@ -1,4 +1,3 @@
-import React from "react";
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
@@ -34,13 +33,25 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
                 {user.role}
               </td>
               <td className="px-3 py-3 text-center">
-                <button
-                  className="cursor-pointer text-red-600 hover:text-red-700 px-3 py-1 text-sm"
-                  title="Supprime uniquement le compte. Les entrées chiffrées restent orphelines."
-                  onClick={() => confirmDelete(user)}
-                >
-                  Supprimer
-                </button>
+                <div className="flex flex-col items-center gap-1">
+                  {typeof onResetPassword === "function" ? (
+                    <button
+                      className="text-sky-700 hover:text-sky-900 text-sm"
+                      type="button"
+                      onClick={() => onResetPassword(user)}
+                    >
+                      Réinitialiser le mot de passe
+                    </button>
+                  ) : null}
+                  <button
+                    className="cursor-pointer text-red-600 hover:text-red-700 px-3 py-1 text-sm"
+                    title="Supprime uniquement le compte. Les entrées chiffrées restent orphelines."
+                    type="button"
+                    onClick={() => confirmDelete(user)}
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

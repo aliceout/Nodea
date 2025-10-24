@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useNavigate } from "react-router-dom";
 
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 import Button from "@/ui/atoms/base/Button";
 
-export default function EmailSection({ user }) {
+export default function EmailSection() {
   const [newEmail, setNewEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailSuccess, setEmailSuccess] = useState("");
