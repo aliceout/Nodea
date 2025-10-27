@@ -11,7 +11,7 @@ export default function Button({
 }) {
   const baseClass = unstyled
     ? className
-    : `min-w-50 w-3/12 text-nodea-sand py-2 px-4 rounded hover:text-nodea-sand text-center font-display font-semibold transition text-sm ${className}`;
+    : `min-w-50 w-3/12 text-nodea-sand py-2 px-4 rounded hover:text-nodea-sand text-center font-display font-semibold transition text-sm cursor-pointer disabled:cursor-not-allowed ${className}`;
 
   const commonProps = {
     className: baseClass,

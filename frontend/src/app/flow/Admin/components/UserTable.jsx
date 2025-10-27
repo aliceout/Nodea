@@ -1,4 +1,5 @@
 import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 export default function UserTable({ users, onDelete, onResetPassword }) {
   const confirmDelete = (user) => {
@@ -33,23 +34,26 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
                 {user.role}
               </td>
               <td className="px-3 py-3 text-center">
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center justify-center gap-2">
                   {typeof onResetPassword === "function" ? (
                     <button
-                      className="text-sky-700 hover:text-sky-900 text-sm"
+                      className="text-sky-700 hover:text-sky-900 inline-flex items-center justify-center rounded-full p-1.5 cursor-pointer"
                       type="button"
                       onClick={() => onResetPassword(user)}
+                      aria-label="Réinitialiser le mot de passe"
+                      title="Réinitialiser le mot de passe"
                     >
-                      Réinitialiser le mot de passe
+                      <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
                     </button>
                   ) : null}
                   <button
-                    className="cursor-pointer text-red-600 hover:text-red-700 px-3 py-1 text-sm"
-                    title="Supprime uniquement le compte. Les entrées chiffrées restent orphelines."
+                    className="text-red-600 hover:text-red-700 inline-flex items-center justify-center rounded-full p-1.5 cursor-pointer"
                     type="button"
                     onClick={() => confirmDelete(user)}
+                    aria-label="Supprimer l'utilisateur"
+                    title="Supprimer l'utilisateur"
                   >
-                    Supprimer
+                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               </td>

@@ -19,7 +19,7 @@ export default function EditDeleteActions({
         <>
           <button
             title={saveLabel}
-            className="p-1 hover:bg-green-50 rounded"
+            className="p-1 hover:bg-green-50 rounded cursor-pointer"
             onClick={onSave}
           >
             <svg
@@ -38,7 +38,7 @@ export default function EditDeleteActions({
           </button>
           <button
             title={cancelLabel}
-            className="p-1 hover:bg-gray-50 rounded"
+            className="p-1 hover:bg-gray-50 rounded cursor-pointer"
             onClick={onCancel}
           >
             <svg
@@ -61,7 +61,7 @@ export default function EditDeleteActions({
         <Menu as="div" className="relative inline-flex">
           <MenuButton
             title="Actions"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 transition focus-visible:outline-none"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 transition focus-visible:outline-none cursor-pointer"
           >
             <EllipsisVerticalIcon className="h-4 w-4" />
           </MenuButton>
@@ -74,7 +74,7 @@ export default function EditDeleteActions({
                 <button
                   type="button"
                   onClick={onEdit}
-                  className={`w-full rounded-md px-3 py-2 text-left transition ${
+                  className={`w-full rounded-md px-3 py-2 text-left transition cursor-pointer ${
                     active ? "bg-sky-50 text-slate-600" : "text-slate-600"
                   }`}
                 >
@@ -87,7 +87,7 @@ export default function EditDeleteActions({
                 <button
                   type="button"
                   onClick={onDelete}
-                  className={`w-full rounded-md px-3 py-2 text-left transition ${
+                  className={`w-full rounded-md px-3 py-2 text-left transition cursor-pointer ${
                     active ? "bg-rose-50 text-rose-600" : "text-rose-600"
                   }`}
                 >
