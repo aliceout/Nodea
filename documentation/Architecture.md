@@ -129,7 +129,13 @@ frontend/src/
 ## Organisation logique actuelle
 
 ### core/
-Rassemble toutes les couches techniques partagées : accès PocketBase, cryptographie (clé principale, dérivation/guards), état global, runtime des modules chiffrés et utilitaires d'import/export (incluant registre et helpers). Cette centralisation vise la simplicité mais mélange encore logique pure et adaptations modules (voir `utils/ImportExport/*`).
+Rassemble toutes les couches techniques partagées : accès PocketBase, cryptographie (clé maîtresse, CryptoKey non extractibles, dérivation de guards), état global, runtime des modules chiffrés et utilitaires d'import/export (incluant registre et helpers).  
+Fichiers clés :
+- `core/crypto/main-key.js` → import/wipe de la clé maîtresse (CryptoKey AES/HMAC).  
+- `core/crypto/guards.js` → deriveGuard + cache local (purge login/logout).  
+- `core/crypto/webcrypto.js` → primitives (Argon2id, AES-GCM, `decryptWithRetry`).  
+- `core/store/StoreProvider.jsx` → détient `state.mainKey`, gère `markMissing()` (logout immédiat).  
+Cette centralisation vise la simplicité mais mélange encore logique pure et adaptations modules (voir `utils/ImportExport/*`).
 
 ### ui/
 Séparé en sous-niveaux :

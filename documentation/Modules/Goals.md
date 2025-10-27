@@ -1,65 +1,48 @@
-# Mdodule Goals (`goals_entries`)
+# Module Goals (`goals_entries`)
 
-## Description
+## Description fonctionnelle
 
-Module pour définir et suivre des **objectifs annuels**.
+Suivi des objectifs annuels (ou pluri-annuels).  
+- Une entrée = un objectif.  
+- Possibilité de grouper par thread (tag libre) et de filtrer par statut (`open` → `wip` → `done`).  
+- Pas de logs automatiques : l’historique se limite aux champs `created/updated` PocketBase.
 
-* Une **entrée = un objectif** (pas de suivi quotidien).
-* Données chiffrées **côté client** ; le serveur ne voit jamais le clair. Accès/MAJ via `sid` (module\_user\_id) + `guard` HMAC, **création en 2 temps** (POST `guard:"init"` → PATCH de promotion)  .
-* Export/Import en **clair structuré** côté client (jamais `guard`, `cipher_iv`, ni `id` dans l’export) .
-
----
-
-## Structure BDD (rappel commun)
-
-Collection `goals_entries` avec le schéma commun :
-`module_user_id` (clé secondaire), `payload` (chiffré), `cipher_iv`, `guard` (**hidden**, required, pattern `^(g_[a-z0-9]{32,}|init)$`), `created`, `updated` .
-Règles : lecture/écriture par `?sid=<module_user_id>` ; update/delete exigent aussi `?d=<guard>` (guard non retourné par l’API) .
-
----
-
-## Payload clair attendu (stocké chiffré dans `payload`)
-
-> Les catégories sont **libres** (tags saisis par l’utilisateur·rice).
+## Payload clair attendu
 
 ```json
 {
-  "date": "YYYY-MM-DD",                // date de création ou d’échéance (selon ton usage)
-  "title": "string",                   // intitulé de l’objectif
-  "note": "string|optional",           // détails éventuels
-  "status": "open|wip|done",           // état de progression
-  "thread": ["string"]                 // tags libres définis par l’utilisateur·rice
+  "date": "YYYY-MM-DD",        // date de référence (création, échéance…)
+  "title": "string",           // intitulé
+  "note": "string|optional",   // description libre
+  "status": "open|wip|done",   // progression
+  "thread": "string"           // tag / groupe libre (optionnel)
 }
 ```
 
-* **Pourquoi tags libres ?** Simplicité et souplesse, sans nouvelle table ; tout reste chiffré, aucune agrégation cross-users possible (modèle Nodea) .
-* Si un jour tu veux un référentiel perso de catégories, tu pourras l’ajouter dans `users.modules` chiffré (comme tes autres “capabilities” : `module_user_id`, etc.) sans changer `goals_entries` .
+- `title` et `status` sont obligatoires.  
+- `thread` est utilisé par l’historique et pour l’autocomplétion côté formulaire.
 
----
+## Sécurité
 
-## Flux UI/API attendu (rappel)
-
-* **List** : `GET /goals_entries?sid=<module_user_id>` → déchiffrer chaque `payload` côté client avec `mainKey` .
-* **Create (2 temps)** :
-
-  1. `POST { module_user_id, payload, cipher_iv, guard:"init" }`
-  2. `PATCH …?sid=<sid>&d=init` avec `guard = "g_"+HEX(HMAC(HMAC(mainKey,"guard:sid"), id))` (promotion) .
-* **Update/Delete** : passer `?sid=<sid>` **et** `?d=<guard>` ; `guard` reste **hidden** (jamais renvoyé) .
-
----
+- Chiffrement AES-GCM avec la clé maîtresse (CryptoKey non extractible).  
+- Guard HMAC dérivé de la clé maîtresse (`deriveGuard(mainKey, sid, id)`).  
+- Création en deux temps (`POST init` → `PATCH` promotion).  
+- Update/Delete : `?sid=<sid>&d=<guard>` obligatoire (fallback `d=init` géré côté client).  
+- `StoreProvider` purge les guards au logout pour éviter toute réutilisation post-session.
 
 ## Export / Import
 
-### Export (clair côté client)
+- Export clair : `modules.goals[]`.  
+- Import : re-chiffre localement puis rejoue le flux POST/PATCH.  
+- Le plugin `core/utils/ImportExport/Goals.jsx` :  
+  - utilise `thread/date/title` comme clé « naturelle » (`getNaturalKey`) pour détecter les doublons,  
+  - pagine les lectures et ignore les enregistrements illisibles,  
+  - expose un `legend` UI indiquant les données manquantes si besoin.
 
-* Format racine : `{ meta, modules: { goals:[ … ] } }` (un tableau d’items) .
-* On n’exporte **que** le payload clair (jamais `guard`, `cipher_iv`, `id`) .
-
-**Exemple**
+### Exemple d’export
 
 ```json
 {
-  "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
   "modules": {
     "goals": [
       {
@@ -67,28 +50,22 @@ Règles : lecture/écriture par `?sid=<module_user_id>` ; update/delete exigent 
         "title": "Apprendre React",
         "note": "Faire un mini-projet perso",
         "status": "wip",
-        "thread": ["apprentissage", "dev"]
+        "thread": "#apprentissage"
       },
       {
         "date": "2025-03-15",
         "title": "Tennis chaque semaine",
         "status": "open",
-        "thread": ["sport", "santé"]
+        "thread": "#sport"
       }
     ]
   }
 }
 ```
 
-### Import
+## Points clés
 
-* Côté client : lire `modules.goals[]`, **chiffrer** chaque entrée, puis Create en 2 temps (POST `guard:"init"` → PATCH promotion) comme pour tous les modules  .
-
----
-
-## Points clés (fonctionnels)
-
-* **Affichage** : liste groupable/filtrable par `status` et par **catégories** (tags libres).
-* **Édition rapide** : bascule `status` (`open` ↔ `wip` ↔ `done`) sans forcer de note.
-* **Léger et durable** : pas de sous-objets, pas de logs ; si un jour tu veux historiser, on ajoutera une table `goals_logs_entries` séparée, sans casser l’existant.
-* **Conformité Nodea** : schéma commun, `guard` hidden, deux temps, et export clair (pour onboarding dev : lire `BDD.md` / `MODULES.md` / `SECURITY.md`)  .
+1. Interface : formulaire détaillé (date, statut, tags) + historique filtrable / groupable.  
+2. Les mutations rapides (toggle de statut) utilisent les guards HMAC calculés localement.  
+3. Serveur aveugle : les objectifs sont entièrement chiffrés ; seules les métadonnées PocketBase sont visibles.  
+4. Export/Import respectent la même structure que les payloads métier, facilitant l’archivage utilisateur.

@@ -1,49 +1,50 @@
-# Module Passage
+# Module Passage (`passage_entries`)
 
-## But
-Suivi des **périodes de transition** (ruptures, deuil, changements de vie…).  
-Chaque entrée est rattachée à un **hashtag obligatoire** (ex. `#Rupture2025`, `#Deuil`) pour regrouper les notes d’une même histoire.
+## Objet
 
-## Table
-- **Collection** : `passage_entries`
-- **Schéma technique** : identique aux autres modules  
-  (`id`, `module_user_id`, `payload`, `cipher_iv`, `guard` caché, `created`, `updated`).
+Consigner des périodes de transition (deuil, rupture, reconversion, etc.).  
+Chaque entrée appartient à un **thread** (`#Hashtag`) qui permet de regrouper les notes d’une même histoire et de les consulter chronologiquement.
 
 ## Payload clair attendu
+
 ```json
 {
   "type": "passage.entry",
   "date": "2025-09-10T14:21:00.000Z",
-  "thread": "#Rupture2025",                // obligatoire : identifiant d’histoire/hashtag
-  "title": "Jour 3 — pourquoi c'était juste", // optionnel
+  "thread": "#Rupture2025",                // obligatoire
+  "title": "Jour 3 – pourquoi c'était juste", // optionnel
   "content": "Texte libre sur le cheminement" // requis
 }
 ```
 
-## Flux
-- Création : en 2 temps
-    POST avec guard:"init".
-    PATCH …?sid=<module_user_id>&d=init avec le guard calculé (HMAC).
-- Lecture :
-    GET /passage_entries?sid=<module_user_id> → renvoie payload chiffré + métadonnées.
-- Mise à jour / suppression :
-    PATCH ou DELETE …?sid=<module_user_id>&d=<guard>.
+- `thread` (obligatoire) sert de clé fonctionnelle et de filtre principal dans l’historique.  
+- `title` est facultatif ; `content` est requis.
+
+## Sécurité
+
+- Chiffrement AES-GCM avec la clé maîtresse (CryptoKey non extractible).  
+- Guard HMAC dérivé de `mainKey + module_user_id + recordId`.  
+- Création en deux temps (`POST` → `PATCH` promotion).  
+- `deletePassageEntry` gère le fallback `d=init` si le guard n’a jamais été promu.  
+- L’historique (`listPassageDecrypted`) utilise `decryptWithRetry`; en cas d’échec, `markMissing()` force le logout.
 
 ## Export / Import
-Export clair = tableau modules.passage[] dans export.json.
-Import = re-chiffrement local + flux création en 2 temps.
-Jamais exportés : payload chiffré, cipher_iv, guard, id.
 
-Exemple d’export clair :
+- Export clair : `modules.passage[]`.  
+- Import : normalise les champs, chiffre localement, gère les doublons via (`thread + date` éventuels) et rejoue le flux POST/PATCH.  
+- `core/utils/ImportExport/Passage.jsx` filtre les payloads incomplets (thread ou content manquants).  
+- Les threads existants sont listés via `listDistinctThreads` (paginé) avec propagation `markMissing`.
 
-``` json
+### Exemple d’export
+
+```json
 {
   "modules": {
     "passage": [
       {
-        "date": "2025-09-10",
+        "date": "2025-09-10T14:21:00.000Z",
         "thread": "#Rupture2025",
-        "title": "Jour 3 — pourquoi c'était juste",
+        "title": "Jour 3 – pourquoi c'était juste",
         "content": "Texte libre sur le cheminement"
       }
     ]
@@ -51,10 +52,9 @@ Exemple d’export clair :
 }
 ```
 
-## Notes
-Le champ thread est obligatoire et sert à regrouper les entrées dans l’historique.
-L’historique est affiché par thread, avec un tri antichronologique à l’intérieur de chaque groupe.
-Comme pour tous les modules :
-- Les données sont chiffrées côté client (AES-GCM).
-- Le guard assure l’intégrité (jamais renvoyé).
-- L’export ne contient que les payloads clairs (jamais id, cipher_iv, guard).
+## Points clés
+
+1. Historique affiché par thread, trié de la plus récente à la plus ancienne.  
+2. Un thread peut contenir des entrées longues ; l’édition inline gère l’auto‑resize des zones de texte.  
+3. Serveur aveugle : seules les métadonnées minimalistes sont visibles (`thread` n’est connu qu’après déchiffrement local).  
+4. Les gardes sont nettoyés au logout pour éviter toute manipulation hors session.

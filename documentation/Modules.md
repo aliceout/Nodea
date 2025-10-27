@@ -1,100 +1,109 @@
 # MODULES
 
-## 1. Structure commune
-Tous les modules suivent le même modèle :
-- Une table dédiée : `<module>_entries`
-- Champs communs :  
-  - `id` (PocketBase)  
-  - `module_user_id` (clé secondaire opaque)  
-  - `payload` (contenu chiffré côté client, AES-GCM)  
-  - `cipher_iv` (IV AES-GCM)  
-  - `guard` (HMAC caché, utilisé pour update/delete, jamais renvoyé)  
-  - `created`, `updated`
-- Flux :  
-  - Création en **2 temps** (`POST guard:"init"` → `PATCH` avec `guard` calculé)  
-  - `update/delete` nécessitent `?sid=<module_user_id>&d=<guard>`
-
-Le contenu clair attendu (payload) est défini dans les fiches dédiées de chaque module.
-
-### Onboarding et modules
-
-⚠️ L’ouverture de la modale d’onboarding ne dépend **pas** de la présence de données dans les modules.  
-Tous les `payload` sont chiffrés et les tables ont une structure homogène, il est donc impossible de « détecter » l’usage d’un module côté serveur.
-
-La décision d’ouvrir l’onboarding repose uniquement sur les champs `users.onboarding_status` et `users.onboarding_version`.  
-Les flux des modules (`POST guard:"init" → PATCH promotion`, `update/delete ?sid&d`) restent inchangés.
-
+Ce document décrit les conventions communes à tous les modules chiffrés et résume les fiches détaillées (`documentation/Modules/*.md`).  
+Pour la gestion de la clé maîtresse et des guards, se référer également à `documentation/Security.md`.
 
 ---
 
-## 2. Modules
+## 1. Structure commune (`<module>_entries`)
 
-### 2.1 Mood
-- **But** : suivi quotidien de l’humeur et des éléments positifs.  
-- **Table** : `mood_entries`  
-- **Notes** : une entrée = une journée.  
-- Voir fiche `documentation/modules/Mood.md` pour le détail.
+| Champ            | Description                                                                 |
+|------------------|-----------------------------------------------------------------------------|
+| `id`             | Identifiant PocketBase.                                                     |
+| `module_user_id` | Identifiant secondaire opaque, généré lors de l’activation du module.       |
+| `payload`        | Contenu JSON chiffré AES-GCM (base64).                                      |
+| `cipher_iv`      | IV 96 bits (base64) utilisé pour le chiffrement AES-GCM.                   |
+| `guard`          | HMAC caché (champ hidden), calculé à partir de la clé maîtresse.           |
+| `created/updated`| Timestamps PocketBase.                                                     |
 
----
+- **Création** : toujours en **deux temps** (`POST guard:"init"` puis `PATCH` promotion).  
+- **Update/Delete** : exigent `?sid=<module_user_id>&d=<guard>` (guard HMAC).  
+- **Lecture** : `GET /<module>_entries?sid=<module_user_id>` retourne uniquement les données chiffrées.
 
-### 2.2 Passage
-- **But** : garder une trace des période de passage marquantes d'une vie (deuil, rupture, naissance, etc)  
-- **Table** : `passage_entries`  
-- **Notes** : une entrée = une pensée.  
-- Voir fiche `documentation/modules/Passage.md`.
-
----
-
----
-
-### 2.3 Goals
-- **But** : suivi des objectifs annuels.  
-- **Table** : `goals_entries`  
-- **Notes** : une entrée = un objectif.  
-- Voir fiche `documentation/modules/Goals.md`.
+Le serveur ne voit jamais le contenu clair. Toute logique métier s’opère après déchiffrement côté client.
 
 ---
 
-### 2.4 Habits
-- **But** : suivi des habitudes (ex. sport, méditation).  
-- **Tables** :  
-  - `habits_items_entries` (définition d’une habitude)  
-  - `habits_logs_entries` (occurrence d’une habitude à une date)  
-- **Notes** : structure items + logs.  
-- Voir fiche `documentation/modules/Habits.md`.
+## 2. Gestion de la clé maîtresse (rappel)
+
+1. Clé maîtresse aléatoire (32 octets) générée à l’inscription.  
+2. Stockée chiffrée dans `users.encrypted_key` (protection Argon2id).  
+3. Au login, déchiffrement côté client puis import de deux CryptoKey non extractibles (AES/HMAC).  
+4. `markMissing()` déclenche un logout immédiat si la clé disparaît ou ne peut être déchiffrée.  
+5. Le cache local des guards (`nodea.guards.v1`) est purgé au login et au logout.
+
+Ces invariants sont détaillés dans `documentation/Security.md`. Les fiches module supposent qu’une clé maîtresse valide est disponible dans le store (`state.mainKey`).  
 
 ---
 
-### 2.5 Library
-- **But** : suivi des lectures / visionnages (livres, films, séries, docs).  
-- **Tables** :  
-  - `library_items_entries` (une œuvre)  
-  - `library_reviews_entries` (une note ou fiche datée sur une œuvre)  
-- **Notes** : séparation œuvres vs. notes.  
-- Voir fiche `documentation/modules/Library.md`.
+## 3. Guards et intégrité
+
+- `guard = "g_" + hex( HMAC( HMAC(mainKey, "guard:"+sid), recordId ) )`.  
+- Le champ `guard` n’est jamais renvoyé par l’API.  
+- Les services modules (Mood/Goals/Passage/…) utilisent :  
+  - `deriveGuard(mainKey, sid, recordId)` pour calculer le guard.  
+  - `deleteEntryGuard`, `setEntryGuard`, `clearGuardsCache` pour gérer le cache local.  
+- Suppression ou mise à jour : fallback `d=init` prévu pour les enregistrements legacy non promus.
 
 ---
 
-### 2.6 Review
-- **But** : bilan annuel et planification (inspiré YearCompass).  
-- **Table** : `review_entries`  
-- **Notes** : une entrée = une année complète.  
-- Voir fiche `documentation/modules/Review.md`.
+## 4. Import / Export
 
----
-
-## 3. Export / Import
-- Chaque module exporte uniquement ses **payloads clairs** (jamais `id`, `guard`, `cipher_iv`).  
-- Format commun :  
-
+Format commun export :
 ```json
 {
   "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
   "modules": {
-    "<module>": [ ... ]
+    "<module>": [ ...payloads clairs... ]
   }
 }
 ```
 
-* Import : côté client → chiffrage local → flux création en 2 temps.
-* Détails par module : voir les fiches correspondantes.
+- Export : pagination (200 éléments) + déchiffrement local via les plugins `core/utils/ImportExport/*.jsx`.  
+- Import : re-chiffre localement puis rejoue le flux POST/PATCH. Les plugins gèrent la déduplication via `listExistingKeys`/`getNaturalKey` quand c’est pertinent.  
+- Formats acceptés : export Nodea v1, tableau legacy (Mood), NDJSON (une ligne par payload).
+
+---
+
+## 5. Fiches module
+
+| Module  | Fiche                                        | Notes principales |
+|---------|----------------------------------------------|-------------------|
+| Mood    | `documentation/Modules/Mood.md`              | Humeur quotidienne, positifs, question/réponse. |
+| Passage | `documentation/Modules/Passage.md`           | Entrées longues (thread, titre, contenu).       |
+| Goals   | `documentation/Modules/Goals.md`             | Objectifs annuels (statuts open/wip/done).      |
+| Review  | `documentation/Modules/Review.md`            | Bilan annuel, structure question/réponse.       |
+| Habits  | `documentation/Modules/Habits.md`            | Items + logs (habitude + occurrences).          |
+| Library | `documentation/Modules/Library.md`           | Items + reviews (œuvres, notes).                |
+
+Chaque fiche précise :
+- le payload clair attendu (schéma JSON),  
+- les règles fonctionnelles (cardinalité, champs obligatoires),  
+- les particularités d’export/import (déduplication, clés naturelles).  
+
+---
+
+## 6. Suppression de compte
+
+Le flux de suppression client supprime l’utilisateur **après** avoir :
+1. Rechargé la configuration modules (`loadModulesConfig`).  
+2. Pour chaque module activé :  
+   - listé toutes les entrées (`listAllBySid`),  
+   - supprimé chaque enregistrement avec dérivation du guard HMAC,  
+   - vérifié qu’aucune entrée ne reste (`remaining.length === 0`).  
+3. Supprimé l’utilisateur sur PocketBase puis vidé la session locale.
+
+Cela garantit qu’aucune donnée chiffrée n’est laissée orpheline avec un guard actif.
+
+---
+
+## 7. Résumé des invariants
+
+1. **Clé maîtresse uniquement côté client** (aleatoire, stockée chiffrée + CryptoKey non extractible).  
+2. **Création en deux temps** (POST init → PATCH guard).  
+3. **Accès lecture** via `sid` uniquement, sans guard, mais retour chiffré.  
+4. **Mutations** nécessitant guard + sid (intégrité forte).  
+5. **Import/Export** toujours chiffré/déchiffré localement.  
+6. **Logout forcé** à la moindre perte de clé.
+
+Ces règles valent pour tous les modules actuels et futurs. Toute nouvelle fonctionnalité doit s’aligner sur ces conventions pour préserver le modèle E2E.

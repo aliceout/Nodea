@@ -1,39 +1,47 @@
 # Module Mood (`mood_entries`)
 
-## Description
+## Description fonctionnelle
 
-Module quotidien pour suivre ton **humeur** et noter des **éléments positifs**.
-→ Fréquence : 1 entrée par jour (mais pas obligatoire).
-→ UI : formulaire simple avec score, emoji, 3 points positifs, commentaire facultatif.
-→ Sécurité : comme tous les modules → chiffrement côté client, guard HMAC, création en 2 temps.
-
----
+Module quotidien pour suivre l’humeur et consigner trois éléments positifs.  
+- Rythme idéal : une entrée par jour (facultatif).  
+- UI : score d’humeur (−2 à +2), emoji, trois positifs, commentaire facultatif, éventuellement une question/réponse d’introspection.
 
 ## Payload clair attendu
 
 ```json
 {
   "date": "YYYY-MM-DD",
-  "mood_score": "<-2..+2|string|number>", // humeur globale (-2 = très négatif, +2 = très positif)
-  "mood_emoji": "🙂",                     // un emoji pour représenter l’état
-  "positive1": "string",                  // élément positif #1
-  "positive2": "string",                  // élément positif #2
-  "positive3": "string",                  // élément positif #3
-  "comment": "string|optional",           // texte libre
-  "question": "string|optional",          // question posée ce jour-là (ex. introspection)
-  "answer": "string|optional"             // réponse à la question
+  "mood_score": "<-2..+2|string|number>",
+  "mood_emoji": "🙂",
+  "positive1": "string",
+  "positive2": "string",
+  "positive3": "string",
+  "comment": "string|optional",
+  "question": "string|optional",
+  "answer": "string|optional"
 }
 ```
 
----
+Les champs `positive1..3` sont requis (objectif « gratitude »). `question`/`answer` alimentent les modules d’analyse ultérieurs.
+
+## Sécurité
+
+- Chiffrement AES-GCM avec la clé maîtresse (CryptoKey non extractible).  
+- Guard HMAC dérivé de la clé maîtresse + `module_user_id + id`.  
+- Création en deux temps (`POST guard:"init"` puis `PATCH` promotion).  
+- Update/Delete nécessitent `?sid=<module_user_id>&d=<guard>`.  
+- Le cache de guards (`nodea.guards.v1`) est purgé au login/logout.
 
 ## Export / Import
 
-* Export clair = tableau `modules.mood[]` dans `export.json`.
-* Import = re-chiffrement local + flux création en 2 temps.
-* Jamais exportés : `payload` chiffré, `cipher_iv`, `guard`, `id`.
+- Export clair : tableau `modules.mood[]` dans `export.json`.  
+- Import : re-chiffre localement puis rejoue `POST` + promotion.  
+- Les plugins `core/utils/ImportExport/Mood.jsx` :  
+  - détectent les doublons via `date` (`getNaturalKey`).  
+  - paginent les lectures (`perPage=200`).  
+  - ignorent les payloads illisibles (log local uniquement).  
 
-**Exemple d’export clair :**
+### Exemple d’export
 
 ```json
 {
@@ -55,12 +63,9 @@ Module quotidien pour suivre ton **humeur** et noter des **éléments positifs**
 }
 ```
 
----
-
 ## Points clés
 
-* **Rythme** : une entrée = une journée, mais optionnel (pas de contrainte stricte).
-* **Clair** : champ date, score, emoji + 3 positifs (structurés pour encourager la gratitude).
-* **Libre** : zone commentaire + couple question/réponse (pour introspection).
-* **Sécurité** : serveur ne voit jamais le clair (tout est chiffré AES-GCM côté client, guard HMAC côté serveur pour update/delete).
-* **Export** : simple et lisible, comme Goals/Review.
+1. Une entrée = une journée (mais pas obligatoire).  
+2. Serveur aveugle : le contenu clair n’existe qu’après déchiffrement dans le navigateur.  
+3. Les guards empêchent toute modification serveur sans la clé maîtresse.  
+4. L’export clair est lisible et réimportable sans perte.

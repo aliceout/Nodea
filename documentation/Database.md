@@ -18,17 +18,24 @@ Toutes les collections de modules suivent le même schéma technique :
 
 Le contenu du `payload` dépend du module (voir les fiches dédiées).
 
-### Utilisateurs (métadonnées onboarding)
+### Utilisateurs (`users`)
 
-En plus des champs techniques existants chaque user possède des champs non sensibles servant uniquement à piloter la modale d’onboarding :
+Champs sensibles / techniques :
 
-- `onboarding_status` (string) : `"needed"` (par défaut) ou `"done"`.
-- `onboarding_version` (int) : version courante de l’onboarding (ex. `1`).
+| Champ              | Description |
+|--------------------|-------------|
+| `encrypted_key`    | Clé maîtresse chiffrée (AES-GCM) avec la dérivation Argon2id du mot de passe. |
+| `encryption_salt`  | Sel aléatoire utilisé pour Argon2id. |
+| `profile`          | Sous-document (peut contenir des métadonnées publiques). |
 
-Ces champs :
-- ne sont **pas chiffrés**, ils sont considérés comme métadonnées techniques.  
-- n’interfèrent pas avec la `mainKey`, les `module_user_id` ou les `guard`.  
-- sont accessibles en lecture/écriture uniquement par l’utilisateur sur son propre compte.
+Méta UX (non sensibles) :
+- `onboarding_status` (`"needed"` \| `"done"`).  
+- `onboarding_version` (entier).
+
+Ces champs:
+- `encrypted_key` / `encryption_salt` sont nécessaires pour reconstruire la clé maîtresse côté client.  
+- Les champs d’onboarding restent en clair et n’interfèrent pas avec la clé maîtresse ni les guards.  
+- L’accès en écriture est limité à l’utilisateur authentifié (PocketBase rules).
 
 ---
 
