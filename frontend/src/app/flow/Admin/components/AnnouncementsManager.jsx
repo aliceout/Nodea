@@ -8,6 +8,7 @@ import {
 import Input from "@/ui/atoms/form/Input";
 import Textarea from "@/ui/atoms/form/Textarea";
 import Button from "@/ui/atoms/base/Button";
+import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
 
 const INITIAL_FORM = {
   title: "",
@@ -112,48 +113,47 @@ export default function AnnouncementsManager() {
 
   return (
     <div className="space-y-6">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-      >
-        <Input
-          id="title"
-          name="title"
-          label="Titre"
-          value={form.title}
-          onChange={handleChange}
-          placeholder="Nouveau module disponible"
-          maxLength={120}
-        />
+      <SettingsCard className="border-gray-200 hover:border-gray-300 bg-white">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            id="title"
+            name="title"
+            label="Titre"
+            value={form.title}
+            onChange={handleChange}
+            placeholder="Nouveau module disponible"
+            maxLength={120}
+          />
 
-        <Textarea
-          id="message"
-          name="message"
-          label="Message"
-          rows={4}
-          value={form.message}
-          onChange={handleChange}
-          placeholder="Nous avons ajoute ..."
-        />
+          <Textarea
+            id="message"
+            name="message"
+            label="Message"
+            rows={4}
+            value={form.message}
+            onChange={handleChange}
+            placeholder="Nous avons ajoute ..."
+          />
 
-        <div className="flex items-center justify-between">
-          {error ? (
-            <p className="text-sm text-red-500">{error}</p>
-          ) : (
-            <span className="text-xs text-slate-500">
-              Publie directement l&apos;annonce sur la page d&apos;accueil.
-            </span>
-          )}
-          <Button
-            type="submit"
-            disabled={!canSubmit}
-            unstyled
-            className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            {saving ? "Publication..." : "Publier"}
-          </Button>
-        </div>
-      </form>
+          <div className="flex items-center justify-between">
+            {error ? (
+              <p className="text-sm text-red-500">{error}</p>
+            ) : (
+              <span className="text-xs text-slate-500">
+                Publie directement l&apos;annonce sur la page d&apos;accueil.
+              </span>
+            )}
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              unstyled
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {saving ? "Publication..." : "Publier"}
+            </Button>
+          </div>
+        </form>
+      </SettingsCard>
 
       <div className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -169,7 +169,7 @@ export default function AnnouncementsManager() {
             {items.map((item) => (
               <li
                 key={item.id}
-                className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-gray-300"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>

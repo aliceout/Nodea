@@ -36,7 +36,7 @@ export default function Select({
       <select
         value={value}
         onChange={onChange}
-        className={`w-full p-2 border rounded border-nodea-slate-lighter hover:border-nodea-slate-light focus:ring-1 focus:ring-nodea-sage-dark focus:border-nodea-sage-dark text-sm placeholder:text-sm disabled:bg-nodea-slate-light disabled:text-gray-400 disabled:border-nodea-slate-light ${inputClassName}`}
+        className={`w-full px-3 py-2 border rounded-lg border-gray-200 text-sm transition-colors focus:border-gray-300 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-300/40 placeholder:text-sm disabled:bg-slate-100 disabled:text-gray-400 disabled:border-gray-200 ${inputClassName}`}
         disabled={disabled}
         {...props}
       >

@@ -12,7 +12,7 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
   };
 
   return (
-    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+    <SettingsCard className="border-gray-200 hover:border-gray-300 bg-white">
       <table className="w-full table-auto">
         <thead>
           <tr>

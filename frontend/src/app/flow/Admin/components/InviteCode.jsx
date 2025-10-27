@@ -10,7 +10,7 @@ export default function InviteCodeManager({
   onDelete,
 }) {
   return (
-    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+    <SettingsCard className="border-gray-200 hover:border-gray-300 bg-white">
       <div className="flex flex-col gap-3">
         <div className="flex gap-3 items-center justify-start">
           <Button
