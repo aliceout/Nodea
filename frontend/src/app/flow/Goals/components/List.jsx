@@ -12,11 +12,11 @@ export default function HistoList({ entries, renderView, renderEdit }) {
   const [editId, setEditId] = useState(null);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {entries.map((e) => (
         <div
           key={e.id}
-          className="bg-white rounded-lg shadow-sm p-4 flex flex-col justify-between h-full"
+          className="flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900/70"
         >
           {editId === e.id
             ? renderEdit(e, () => setEditId(null))

@@ -10,7 +10,7 @@ export default function InviteCodeManager({
   onDelete,
 }) {
   return (
-    <SurfaceCard className="border-gray-200 hover:border-gray-300 bg-white">
+    <SurfaceCard className="border-gray-200 bg-white hover:border-gray-300 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex flex-col gap-3">
         <div className="flex gap-3 items-center justify-start">
           <Button
@@ -22,20 +22,24 @@ export default function InviteCodeManager({
           </Button>
         </div>
         {copySuccess ? (
-          <span className="text-xs text-emerald-600">{copySuccess}</span>
+          <span className="text-xs text-emerald-600 dark:text-emerald-300">
+            {copySuccess}
+          </span>
         ) : null}
       </div>
       {inviteCodes.length > 0 && (
         <div className="mt-4">
-          <div className="font-semibold mb-2">Codes d'invitation valides :</div>
+          <div className="font-semibold mb-2 text-slate-700 dark:text-slate-200">
+            Codes d'invitation valides :
+          </div>
           <ul className="flex flex-wrap gap-3">
             {inviteCodes.map((c) => (
               <li
                 key={c.id || c.code}
-                className="bg-gray-100 px-3 py-2 rounded flex items-center gap-1.5"
+                className="flex items-center gap-1.5 rounded border border-gray-200 bg-gray-100 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/60"
               >
                 <button
-                  className="rounded hover:bg-sky-100 focus:outline-none px-1 py-1"
+                  className="rounded px-1 py-1 hover:bg-sky-100 focus:outline-none dark:hover:bg-slate-700/80"
                   onClick={() => onCopy(c.code)}
                   title="Copier le code"
                   type="button"
@@ -69,9 +73,11 @@ export default function InviteCodeManager({
                     />
                   </svg>
                 </button>
-                <span className="font-mono text-sm">{c.code}</span>
+                <span className="font-mono text-sm text-slate-700 dark:text-slate-200">
+                  {c.code}
+                </span>
                 <button
-                  className="rounded hover:bg-red-100 focus:outline-none px-1 py-1"
+                  className="rounded px-1 py-1 hover:bg-red-100 focus:outline-none dark:hover:bg-red-500/20"
                   onClick={() => onDelete(c.id)}
                   title="Supprimer ce code"
                   type="button"

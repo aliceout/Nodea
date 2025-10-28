@@ -10,12 +10,13 @@ import ExportData from "./components/ExportData";
 export default function AccountIndex() {
   const { user } = useAuth();
   if (!user) return <div className="py-6">Chargement du compte…</div>;
+
   return (
-    <div className="h-full">
+    <div className="h-full bg-slate-50 transition-colors dark:bg-slate-900">
       <Subheader />
-      <div className="mx-auto max-w-3xl p-6 flex flex-col gap-4">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">
+          <h2 className="mb-3 text-lg font-semibold text-gray-800 dark:text-slate-100">
             Informations personnelles
           </h2>
           <div className="flex flex-col gap-2">
@@ -25,14 +26,18 @@ export default function AccountIndex() {
           </div>
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Données</h2>
-          <div className="flex flex-col md:flex-row gap-2">
+          <h2 className="mb-3 text-lg font-semibold text-gray-800 dark:text-slate-100">
+            Données
+          </h2>
+          <div className="flex flex-col gap-2 md:flex-row">
             <ImportData user={user} />
             <ExportData user={user} />
           </div>
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-rose-700 mb-3">Danger</h2>
+          <h2 className="mb-3 text-lg font-semibold text-rose-700 dark:text-rose-300">
+            Danger
+          </h2>
           <DeleteAccount user={user} />
         </div>
       </div>

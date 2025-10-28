@@ -15,6 +15,10 @@ import {
   hasMainKeyMaterial,
   wipeMainKeyMaterial,
 } from "@/core/crypto/main-key";
+import {
+  applyTheme,
+  watchSystemThemeChanges,
+} from "@/core/theme/themeManager";
 
 const StoreContext = createContext(null);
 
@@ -107,6 +111,21 @@ export function StoreProvider({ children }) {
     }),
     [state, dispatch, hasKey, markMissing, logout]
   );
+
+  useEffect(() => {
+    const preference = state.ui.theme || "system";
+    applyTheme(preference);
+
+    if (preference !== "system") {
+      return undefined;
+    }
+
+    const unsubscribe = watchSystemThemeChanges(() => {
+      applyTheme("system");
+    });
+
+    return unsubscribe;
+  }, [state.ui.theme]);
 
   return (
     <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

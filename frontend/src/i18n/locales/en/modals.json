@@ -1,1 +1,18 @@
-{}
+{
+  "onboarding": {
+    "titleInitial": "Welcome!",
+    "titleUpdate": "Onboarding update",
+    "subtitleInitial": "Pick at least one module to start using Nodea.",
+    "subtitleUpdate": "We've simplified onboarding. Review your settings and confirm to continue.",
+    "sections": {
+      "language": "Language",
+      "theme": "Appearance",
+      "modules": "Modules"
+    },
+    "actions": {
+      "finish": "Finish",
+      "snooze": "Later",
+      "close": "Close"
+    }
+  }
+}

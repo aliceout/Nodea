@@ -23,13 +23,13 @@ export default function Subheader({ tabs = [], onTabSelect, className }) {
   return (
     <div
       className={clsx(
-        "sticky top-16 z-30 bg-white/80 backdrop-blur border-b border-slate-200",
+        "sticky top-16 z-30 border-b border-slate-200 bg-white/80 backdrop-blur transition-colors dark:border-slate-700 dark:bg-slate-900/80",
         className
       )}
     >
-      <div className="mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center gap-4">
+      <div className="mx-auto flex h-12 items-center gap-4 px-4 sm:px-6 lg:px-8">
         {title ? (
-          <h1 className="shrink-0 text-base lg:text-center font-semibold leading-6 text-gray-900  lg:w-[106px]">
+          <h1 className="shrink-0 text-base font-semibold leading-6 text-gray-900 dark:text-slate-100 lg:w-[106px] lg:text-center">
             {title}
           </h1>
         ) : null}

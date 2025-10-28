@@ -1,1 +1,18 @@
-{}
+{
+  "onboarding": {
+    "titleInitial": "Bienvenue !",
+    "titleUpdate": "Mise à jour de l'onboarding",
+    "subtitleInitial": "Choisis au moins un module à activer pour commencer à utiliser Nodea.",
+    "subtitleUpdate": "Nous avons simplifié l'onboarding. Vérifie tes réglages et confirme pour continuer.",
+    "sections": {
+      "language": "Langue",
+      "theme": "Apparence",
+      "modules": "Modules"
+    },
+    "actions": {
+      "finish": "Terminer",
+      "snooze": "Plus tard",
+      "close": "Fermer"
+    }
+  }
+}

@@ -1,66 +1,161 @@
-/* global.css (ou équivalent) */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 transition-colors;
+    --chart-axis-color: #475569;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
+    --chart-axis-color: #cbd5f5;
+  }
+}
+
+@layer utilities {
+  .dark .bg-white {
+    @apply bg-slate-900;
+  }
+
+  .dark .bg-white\/60 {
+    @apply bg-slate-900/70;
+  }
+
+  .dark .bg-gray-50 {
+    @apply bg-slate-800/70;
+  }
+
+  .dark .bg-gray-100 {
+    @apply bg-slate-800/80;
+  }
+
+  .dark .border-gray-200 {
+    @apply border-slate-700;
+  }
+
+  .dark .border-slate-300 {
+    @apply border-slate-600;
+  }
+
+  .dark .text-gray-900,
+  .dark .text-gray-800,
+  .dark .text-slate-900,
+  .dark .text-slate-800 {
+    @apply text-slate-100;
+  }
+
+  .dark .text-gray-600,
+  .dark .text-slate-500,
+  .dark .text-slate-600 {
+    @apply text-slate-400;
+  }
+
+  .dark .text-rose-700 {
+    @apply text-rose-300;
+  }
+
+  .dark .text-emerald-700,
+  .dark .text-emerald-600 {
+    @apply text-emerald-300;
+  }
+
+  .dark .bg-emerald-50 {
+    @apply bg-emerald-500/10;
+  }
+
+  .dark .border-emerald-200 {
+    @apply border-emerald-500/40;
+  }
+
+  .dark .bg-rose-50 {
+    @apply bg-rose-500/10;
+  }
+
+  .dark .border-rose-200 {
+    @apply border-rose-500/40;
+  }
+
+  .dark .bg-amber-50 {
+    @apply bg-amber-500/10;
+  }
+
+  .dark .border-amber-200 {
+    @apply border-amber-500/40;
+  }
+
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-sky-50:hover {
+    @apply bg-slate-800/60;
+  }
+}
+
+.dark [class*="bg-white/"] {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+}
+
 .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 input:focus,
 textarea:focus,
 select:focus,
 button:focus {
-    outline: none;
-    box-shadow: none;
+  outline: none;
+  box-shadow: none;
 }
 
-/* Surcharger le style du calendrier */
 .react-datepicker {
-    font-size: 0.95rem;
-    border-radius: 0.5rem;
-    border-color: #b7c2b7;
-    background: #f6f8f6;
-    color: #2d3a2d;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  font-size: 0.95rem;
+  border-radius: 0.5rem;
+  border-color: #b7c2b7;
+  background: #f6f8f6;
+  color: #2d3a2d;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .react-datepicker__navigation {
-    top: 25px !important;
-    /* Ajuste cette valeur selon la hauteur de ton header */
-    transform: translateY(-50%);
+  top: 25px !important;
+  transform: translateY(-50%);
 }
 
 .react-datepicker__header {
-    background: #e6ede6;
-    border-bottom: 1px solid #b7c2b7;display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
+  background: #e6ede6;
+  border-bottom: 1px solid #b7c2b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
 .react-datepicker__month-container {
-    padding: 0.5rem;
+  padding: 0.5rem;
 }
 
 .react-datepicker__current-month {
-    color: #2d3a2d;
-    font-weight: bold;flex: 1;
-        text-align: center;
+  color: #2d3a2d;
+  font-weight: bold;
+  flex: 1;
+  text-align: center;
 }
 
 .react-datepicker__month-wrapper {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.react-datepicker__month-text--selected, .react-datepicker__month-text--keyboard-selected, .react-datepicker__month-text {
-    padding: 0.5rem;
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--keyboard-selected,
+.react-datepicker__month-text {
+  padding: 0.5rem;
 }
 
-.react-datepicker__month-text--selected, .react-datepicker__month-text--keyboard-selected {
-    background: #7bbf7b;
-    color: white;
-    border-radius: 0.25rem;
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--keyboard-selected {
+  background: #7bbf7b;
+  color: white;
+  border-radius: 0.25rem;
 }

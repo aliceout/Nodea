@@ -146,8 +146,8 @@ export default function ModulesManager() {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 sm:p-6 space-y-4">
-      <p className="text-sm text-gray-600">
+    <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 sm:p-6 space-y-4 dark:border-slate-700 dark:bg-slate-800/60">
+      <p className="text-sm text-gray-600 dark:text-slate-300">
         {t("settings.modules.description")}
       </p>
       {rows.map((m) => {
@@ -167,9 +167,13 @@ export default function ModulesManager() {
             bodyClassName="flex flex-col gap-4 text-left sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="space-y-1 sm:max-w-lg">
-              <p className="text-sm font-semibold text-slate-900">{label}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {label}
+              </p>
               {description ? (
-                <p className="text-sm text-slate-600">{description}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {description}
+                </p>
               ) : null}
             </div>
 
@@ -192,7 +196,7 @@ export default function ModulesManager() {
                 className={[
                   "absolute left-0 size-5 rounded-full border border-gray-300 bg-white shadow-xs transition-transform duration-200 ease-in-out",
                   checked ? "translate-x-5" : "",
-                  "dark:shadow-none",
+                  "dark:border-slate-600 dark:bg-slate-200 dark:shadow-none",
                 ].join(" ")}
                 aria-hidden="true"
               />
@@ -209,7 +213,9 @@ export default function ModulesManager() {
           </SurfaceCard>
         );
       })}
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
+      {error ? (
+        <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+      ) : null}
     </div>
   );
 }

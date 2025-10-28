@@ -6,6 +6,16 @@
     "description": "Choisis la langue affichée dans l'interface.",
     "selectLabel": "Langue"
   },
+  "theme": {
+    "title": "Apparence",
+    "description": "Sélectionne le thème qui convient le mieux à ton confort visuel.",
+    "ariaLabel": "Choisir le thème",
+    "options": {
+      "light": "Clair",
+      "system": "Système",
+      "dark": "Sombre"
+    }
+  },
   "modules": {
     "loading": "Chargement des modules...",
     "none": "Aucun module n’est actuellement configurable.",

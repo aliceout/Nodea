@@ -43,28 +43,32 @@ function ModuleCard({ module, onNavigate }) {
     <button
       type="button"
       onClick={() => onNavigate(module.id)}
-      className="group h-full w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+      className="group h-full w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-slate-600 dark:hover:bg-slate-900/80 dark:focus-visible:outline-slate-500"
     >
       <div className="flex items-start gap-3">
-        <span className="hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:inline-flex">
           {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
         </span>
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 sm:hidden items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:hidden">
                 {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
               </span>
-              <p className="text-sm font-semibold text-slate-900">{label}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {label}
+              </p>
             </div>
-            <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+            <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
               Module actif
             </span>
           </div>
-          <p className="text-xs leading-5 text-slate-600">{description}</p>
+          <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
+            {description}
+          </p>
         </div>
         <ArrowRightIcon
-          className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500"
+          className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400"
           aria-hidden="true"
         />
       </div>
@@ -145,29 +149,29 @@ function MiniMoodChartCard({ module }) {
   const showChart = status === "ready" && data.length > 0;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {Icon ? (
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
           ) : null}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Apercu rapide
             </p>
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {moduleLabel}
             </h3>
           </div>
         </div>
 
         <div className="text-left sm:text-right">
-          <p className="text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Moyenne mois en cours
           </p>
-          <p className="mt-2 text-xl font-semibold text-slate-900">
+          <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
             {averageLabel}
           </p>
         </div>
@@ -179,7 +183,7 @@ function MiniMoodChartCard({ module }) {
             <MoodChartBody data={data} />
           </ResponsiveContainer>
         ) : (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
             {message}
           </div>
         )}
@@ -245,7 +249,7 @@ export default function HomePage() {
   );
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50">
+    <div className="flex min-h-full flex-col bg-slate-50 transition-colors dark:bg-slate-950">
       <Subheader />
 
       <div className="flex-1 pt-4">
@@ -277,10 +281,10 @@ export default function HomePage() {
           {enabledModules.length > 0 ? (
             <section className="space-y-3">
               <header>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                   Actions rapides
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Accedez directement aux modules actifs que vous utilisez le
                   plus souvent.
                 </p>
@@ -299,11 +303,11 @@ export default function HomePage() {
           ) : null}
 
           {disabledModules.length > 0 ? (
-            <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+            <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 dark:border-slate-600 dark:bg-slate-900/60">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Modules disponibles
               </h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Activez de nouveaux espaces pour enrichir votre accompagnement.
               </p>
 
@@ -314,7 +318,7 @@ export default function HomePage() {
                   return (
                     <span
                       key={module.id}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600"
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-300"
                     >
                       {Icon ? (
                         <Icon className="h-4 w-4" aria-hidden="true" />
@@ -328,7 +332,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => handleNavigate("settings")}
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500"
               >
                 Ouvrir les parametres
                 <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />

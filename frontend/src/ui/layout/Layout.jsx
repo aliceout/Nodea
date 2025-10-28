@@ -65,7 +65,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors">
       {keyStatus === "missing" && <KeyMissingModal onLogout={logout} />}
 
       {/* Ouverture contrôlée par users.onboarding_status */}
@@ -79,9 +79,11 @@ export default function Layout() {
       )}
 
       <Sidebar />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 bg-slate-50 dark:bg-slate-950 transition-colors">
         <Header />
-        <main className="flex-1 bg-white">{ActiveView}</main>
+        <main className="flex-1 bg-white dark:bg-slate-900 transition-colors">
+          {ActiveView}
+        </main>
       </div>
     </div>
   );

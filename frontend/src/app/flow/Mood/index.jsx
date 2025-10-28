@@ -32,14 +32,14 @@ export default function MoodIndex() {
   );
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex min-h-full flex-col bg-slate-50 transition-colors dark:bg-slate-950">
       <Subheader
         tabs={tabs}
         onTabSelect={(id) => setActive(id)}
         cta={{ label: "Nouvelle entrée", onClick: () => setActive("form") }}
       />
 
-      <div className="flex-1 pt-4 bg-white px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 bg-white px-4 pt-4 transition-colors dark:bg-slate-900 sm:px-6 lg:px-8">
         {active === "history" && <MoodHistory />}
         {active === "graph" && <MoodGraph />}
         {active === "form" && <MoodForm />}

@@ -151,27 +151,41 @@ export default function Admin() {
   };
 
   if (!isAdmin) {
-    return <div className="p-8 text-red-500">Accès réservé aux admins.</div>;
+    return (
+      <div className="bg-slate-50 p-8 text-red-500 dark:bg-slate-900 dark:text-red-300">
+        Accès réservé aux admins.
+      </div>
+    );
   }
 
   if (loading) {
-    return <div className="py-12 text-center text-gray-500">Chargement...</div>;
+    return (
+      <div className="bg-slate-50 py-12 text-center text-gray-500 dark:bg-slate-900 dark:text-slate-400">
+        Chargement...
+      </div>
+    );
   }
   if (error) {
-    return <div className="py-12 text-center text-red-500">{error}</div>;
+    return (
+      <div className="bg-slate-50 py-12 text-center text-red-500 dark:bg-slate-900 dark:text-red-300">
+        {error}
+      </div>
+    );
   }
 
   return (
-    <div className="h-full bg-slate-50">
+    <div className="h-full bg-slate-50 transition-colors dark:bg-slate-900">
       <Subheader />
-      <div className="mx-auto max-w-3xl p-6 flex flex-col gap-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Annonces</h2>
+          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
+            Annonces
+          </h2>
           <AnnouncementsManager />
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
             Utilisateurs
           </h2>
           <UserTable
@@ -182,7 +196,7 @@ export default function Admin() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
             Codes d'invitation
           </h2>
           <InviteCodeManager

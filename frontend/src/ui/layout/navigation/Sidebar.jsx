@@ -56,12 +56,12 @@ export default function Sidebar() {
               leaveTo="-translate-x-full"
             >
               <DialogPanel className="relative mr-16 flex w/full max-w-xs flex-1">
-                <div className="flex grow flex-col overflow-y-auto bg-white px-4 pb-4 border-r border-gray-200">
+                <div className="flex grow flex-col overflow-y-auto border-r border-gray-200 bg-white px-4 pb-4 transition-colors dark:border-slate-700 dark:bg-slate-900">
                   <div className="flex h-16 items-center justify-between pr-2">
                     <Logo className="w-1/2" />
                     <button
                       type="button"
-                      className="-m-2.5 p-2.5 text-gray-700"
+                      className="-m-2.5 p-2.5 text-gray-700 transition-colors dark:text-slate-200"
                       onClick={handleClose}
                       aria-label={t("layout.sidebar.closeMenu")}
                     >
