@@ -115,32 +115,24 @@ export default function LanguagePreferences({ showStatus = true } = {}) {
         {t("settings.language.description")}
       </p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,160px)_1fr] sm:items-center sm:gap-6">
-        <label
-          htmlFor="settings-language"
-          className="text-sm font-medium text-slate-700"
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <Select
+          id="settings-language"
+          value={language}
+          onChange={handleChange}
+          className="w-full sm:w-72"
+          inputClassName="text-sm text-slate-800"
+          disabled={isSaving}
         >
-          {t("settings.language.selectLabel")}
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <Select
-            id="settings-language"
-            value={language}
-            onChange={handleChange}
-            className="w-full sm:max-w-md"
-            inputClassName="text-sm text-slate-800"
-            disabled={isSaving}
-          >
-            {availableLanguages.map((lang) => (
-              <option key={lang.id} value={lang.id}>
-                {lang.label}
-              </option>
-            ))}
-          </Select>
-          {showStatus ? (
-            <div className="min-h-[1.5rem]">{message}</div>
-          ) : null}
-        </div>
+          {availableLanguages.map((lang) => (
+            <option key={lang.id} value={lang.id}>
+              {lang.label}
+            </option>
+          ))}
+        </Select>
+        {showStatus ? (
+          <div className="min-h-[1.5rem]">{message}</div>
+        ) : null}
       </div>
     </SurfaceCard>
   );
