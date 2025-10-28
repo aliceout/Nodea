@@ -16,7 +16,7 @@ export default function LanguagePreferences() {
   };
 
   return (
-    <SurfaceCard title={t("settings.language.title")}>
+    <SurfaceCard >
       <p className="text-sm text-slate-600">
         {t("settings.language.description")}
       </p>

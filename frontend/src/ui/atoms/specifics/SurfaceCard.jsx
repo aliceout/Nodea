@@ -11,7 +11,7 @@ export default function SurfaceCard({
   return (
     <Component
       className={clsx(
-        "flex flex-col rounded-xl border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300",
+        "flex flex-col rounded-xl border border-gray-200 bg-white/50 p-6 transition-colors hover:border-gray-300 hover:bg-white/60",
         className
       )}
       {...props}

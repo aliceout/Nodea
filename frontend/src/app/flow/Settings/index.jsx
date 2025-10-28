@@ -10,23 +10,18 @@ export default function Settings() {
     <div className="h-full bg-slate-50">
       <Subheader />
       <div className="mx-auto max-w-3xl p-6 space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-lg font-semibold text-gray-900">
-            {t("settings.title")}
-          </h1>
-          <p className="text-sm text-gray-600">{t("settings.description")}</p>
-        </header>
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+            {t("settings.language.title")}
+          </h2>
+          <LanguagePreferences />
+        </section>
 
-        <LanguagePreferences />
-
-        <section className="space-y-4">
+        <section className="space-y-3">
           <header className="space-y-1">
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
               {t("settings.modules.title")}
             </h2>
-            <p className="text-sm text-gray-600">
-              {t("settings.modules.description")}
-            </p>
           </header>
 
           <ModulesManager />

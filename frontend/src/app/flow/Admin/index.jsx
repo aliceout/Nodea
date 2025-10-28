@@ -162,13 +162,11 @@ export default function Admin() {
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full bg-slate-50">
       <Subheader />
       <div className="mx-auto max-w-3xl p-6 flex flex-col gap-8">
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
-            Annonces
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Annonces</h2>
           <AnnouncementsManager />
         </section>
 
