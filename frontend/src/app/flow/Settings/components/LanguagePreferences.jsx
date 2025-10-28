@@ -63,7 +63,7 @@ export default function LanguagePreferences() {
   }, [user?.id, mainKey, markMissing, setLanguage, t]);
 
   const persistLanguage = useCallback(
-    async (nextLanguage) => {
+    async (nextLanguage, fallbackLanguage) => {
       if (!user?.id || !mainKey) return;
       setIsSaving(true);
       setErrorMessage("");
@@ -77,7 +77,11 @@ export default function LanguagePreferences() {
           markMissing?.();
           setErrorMessage(t("settings.language.errors.missingKey"));
         } else {
+          console.error("[LanguagePreferences] save error", error);
           setErrorMessage(t("settings.language.errors.save"));
+        }
+        if (fallbackLanguage) {
+          setLanguage(fallbackLanguage);
         }
       } finally {
         setIsSaving(false);
@@ -89,8 +93,9 @@ export default function LanguagePreferences() {
   const handleChange = (event) => {
     const next = event.target.value;
     if (!next || next === language) return;
+    const previous = language;
     setLanguage(next);
-    persistLanguage(next);
+    persistLanguage(next, previous);
   };
 
   const message =

@@ -58,10 +58,11 @@ export async function saveUserPreferences(pb, userId, mainKey, preferences) {
     .collection("users")
     .update(userId, { preferences: payload });
 
-  if (pb?.authStore?.model) {
-    pb.authStore.model = { ...pb.authStore.model, preferences: payload };
+  const token = pb?.authStore?.token ?? null;
+  const currentModel = pb?.authStore?.model ?? null;
+  if (token && currentModel) {
+    pb.authStore.save(token, { ...currentModel, preferences: payload });
   }
 
   return updated;
 }
-
