@@ -1,5 +1,6 @@
 import { useState } from "react";
 import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
+import Select from "@/ui/atoms/form/Select.jsx";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function LanguagePreferences() {
@@ -20,30 +21,31 @@ export default function LanguagePreferences() {
         {t("settings.language.description")}
       </p>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <label
-          htmlFor="settings-language"
-          className="text-sm font-medium text-slate-700"
-        >
+      <div className="mt-4 gap-3 flex sm:flex-row sm:items-center sm:gap-6">
+        <label htmlFor="settings-language" className="text-sm font-medium text-slate-700">
           {t("settings.language.selectLabel")}
         </label>
-        <select
-          id="settings-language"
-          value={language}
-          onChange={handleChange}
-          className="w-full max-w-xs rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
-        >
-          {availableLanguages.map((lang) => (
-            <option key={lang.id} value={lang.id}>
-              {lang.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <Select
+            id="settings-language"
+            value={language}
+            onChange={handleChange}
+            className="w-full sm:max-w-md"
+            inputClassName="text-sm text-slate-800"
+          >
+            {availableLanguages.map((lang) => (
+              <option key={lang.id} value={lang.id}>
+                {lang.label}
+              </option>
+            ))}
+          </Select>
+          {feedback ? (
+            <span className="text-sm font-medium text-emerald-600 sm:whitespace-nowrap">
+              {feedback}
+            </span>
+          ) : null}
+        </div>
       </div>
-
-      {feedback ? (
-        <p className="mt-3 text-sm font-medium text-emerald-600">{feedback}</p>
-      ) : null}
     </SurfaceCard>
   );
 }

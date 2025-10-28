@@ -148,7 +148,7 @@ export default function ModulesManager() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 sm:p-6 space-y-4">
       {rows.map((m) => {
         const entry = getModuleEntry(cfg, m.id);
         const checked = !!entry?.enabled;
