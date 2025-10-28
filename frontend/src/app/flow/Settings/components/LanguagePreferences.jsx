@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 import Select from "@/ui/atoms/form/Select.jsx";
+import FormField from "@/ui/atoms/form/FormField.jsx";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 import { useUserPreferences } from "@/core/preferences/useUserPreferences";
 
@@ -30,18 +31,13 @@ export default function LanguagePreferences() {
   };
 
   return (
-    <SurfaceCard>
-      <p className="text-sm text-slate-600 dark:text-slate-300">
-        {t("settings.language.description")}
-      </p>
-
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+    <SurfaceCard tone="base" border="default" padding="md">
+      <FormField label={t("settings.language.selectLabel")} htmlFor="settings-language">
         <Select
           id="settings-language"
           value={language}
           onChange={handleChange}
           className="w-full sm:w-72"
-          inputClassName="text-sm text-slate-800 dark:text-slate-100"
           disabled={isSaving}
         >
           {availableLanguages.map((lang) => (
@@ -50,8 +46,7 @@ export default function LanguagePreferences() {
             </option>
           ))}
         </Select>
-      </div>
+      </FormField>
     </SurfaceCard>
   );
 }
-

@@ -1,1 +1,22 @@
-{}
+{
+  "announcement": {
+    "label": "Update",
+    "publishedOn": "Published on {date}",
+    "loading": "Loading announcements…"
+  },
+  "mood": {
+    "quickView": "Quick glance",
+    "monthAverage": "Current month average"
+  },
+  "sections": {
+    "actions": {
+      "title": "Quick actions",
+      "description": "Jump straight to the modules you use the most."
+    },
+    "available": {
+      "title": "Available modules",
+      "description": "Enable new spaces to enrich your guidance.",
+      "cta": "Open settings"
+    }
+  }
+}

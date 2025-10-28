@@ -4,6 +4,8 @@ import UserTable from "./components/UserTable";
 import InviteCodeManager from "./components/InviteCode";
 import AnnouncementsManager from "./components/AnnouncementsManager";
 import Subheader from "@/ui/layout/headers/Subheader";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
+import SectionHeader from "@/ui/atoms/typography/SectionHeader.jsx";
 
 export default function Admin() {
   const [users, setUsers] = useState([]);
@@ -14,6 +16,7 @@ export default function Admin() {
   const [copySuccess, setCopySuccess] = useState("");
   const [lastCode, setLastCode] = useState("");
 
+  const { t } = useI18n();
   const user = pb.authStore.model;
   const isAdmin = user?.role === "admin";
 
@@ -153,7 +156,7 @@ export default function Admin() {
   if (!isAdmin) {
     return (
       <div className="bg-slate-50 p-8 text-red-500 dark:bg-slate-900 dark:text-red-300">
-        Accès réservé aux admins.
+        {t("admin.sections.restricted")}
       </div>
     );
   }
@@ -161,14 +164,14 @@ export default function Admin() {
   if (loading) {
     return (
       <div className="bg-slate-50 py-12 text-center text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-        Chargement...
+        {t("admin.states.loading")}
       </div>
     );
   }
   if (error) {
     return (
       <div className="bg-slate-50 py-12 text-center text-red-500 dark:bg-slate-900 dark:text-red-300">
-        {error}
+        {error || t("admin.states.error")}
       </div>
     );
   }
@@ -178,16 +181,18 @@ export default function Admin() {
       <Subheader />
       <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-            Annonces
-          </h2>
+          <SectionHeader
+            title={t("admin.sections.announcements.title")}
+            description={t("admin.sections.announcements.description")}
+          />
           <AnnouncementsManager />
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-            Utilisateurs
-          </h2>
+          <SectionHeader
+            title={t("admin.sections.users.title")}
+            description={t("admin.sections.users.description")}
+          />
           <UserTable
             users={users}
             onDelete={handleDelete}
@@ -196,9 +201,10 @@ export default function Admin() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-            Codes d'invitation
-          </h2>
+          <SectionHeader
+            title={t("admin.sections.invites.title")}
+            description={t("admin.sections.invites.description")}
+          />
           <InviteCodeManager
             inviteCodes={inviteCodes}
             generating={generating}

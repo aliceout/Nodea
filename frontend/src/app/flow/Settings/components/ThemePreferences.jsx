@@ -6,13 +6,8 @@ export default function ThemePreferences() {
   const { t } = useI18n();
 
   return (
-    <SurfaceCard>
-      <p className="text-sm text-slate-600 dark:text-slate-300">
-        {t("settings.theme.description")}
-      </p>
-      <div className="mt-4">
-        <ThemeSelector variant="card" className="w-full sm:w-auto" />
-      </div>
+    <SurfaceCard tone="base" border="default" padding="md">
+      <ThemeSelector variant="card" className="w-full sm:w-auto" />
     </SurfaceCard>
   );
 }

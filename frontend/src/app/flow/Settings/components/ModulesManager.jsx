@@ -1,5 +1,6 @@
 // frontend/src/features/Settings/components/ModulesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import clsx from "clsx";
 import { MODULES } from "@/app/config/modules_list";
 import {
   loadModulesConfig,
@@ -12,7 +13,9 @@ import pb from "@/core/api/pocketbase";
 import { KeyMissingError } from "@/core/crypto/webcrypto";
 import { useStore } from "@/core/store/StoreProvider";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
+import Surface from "@/ui/atoms/layout/Surface.jsx";
 import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
+import Badge from "@/ui/atoms/feedback/Badge.jsx";
 
 // �������<���? nouvel import
 import { setModulesState } from "@/core/store/modulesRuntime";
@@ -139,17 +142,22 @@ export default function ModulesManager() {
 
   if (rows.length === 0) {
     return (
-      <div className="text-sm text-gray-600">
-        {t("settings.modules.none")}
-      </div>
+      <Surface tone="muted" border="default" padding="md">
+        <p className="text-sm text-[var(--text-muted)]">
+          {t("settings.modules.none")}
+        </p>
+      </Surface>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white/60 p-4 sm:p-6 space-y-4 dark:border-slate-700 dark:bg-slate-800/60">
-      <p className="text-sm text-gray-600 dark:text-slate-300">
-        {t("settings.modules.description")}
-      </p>
+    <Surface
+      tone="muted"
+      border="default"
+      padding="lg"
+      shadow="none"
+      className="space-y-4"
+    >
       {rows.map((m) => {
         const entry = getModuleEntry(cfg, m.id);
         const checked = !!entry?.enabled;
@@ -159,63 +167,72 @@ export default function ModulesManager() {
           ? t(m.description, { defaultValue: m.description })
           : "";
 
+        const badgeTone = checked ? "success" : "neutral";
+        const badgeLabel = checked
+          ? t("settings.modules.badges.active")
+          : t("settings.modules.badges.inactive");
+
         return (
           <SurfaceCard
             as="label"
             key={m.id}
-            className="cursor-pointer p-4 sm:p-5"
+            tone="base"
+            border="default"
+            padding="md"
+            interactive
+            className="cursor-pointer"
             bodyClassName="flex flex-col gap-4 text-left sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="space-y-1 sm:max-w-lg">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
                 {label}
               </p>
               {description ? (
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {description}
-                </p>
+                <p className="text-sm text-[var(--text-muted)]">{description}</p>
               ) : null}
             </div>
 
-            <div
-              className={[
-                "relative inline-flex h-5 w-10 shrink-0 items-center justify-center rounded-full",
-                isBusy ? "pointer-events-none opacity-50" : "",
-              ].join(" ")}
-            >
-              <span
-                className={[
-                  "absolute mx-auto h-4 w-9 rounded-full transition-colors duration-200 ease-in-out",
-                  checked
-                    ? "bg-nodea-sky-darker "
-                    : "bg-gray-200 dark:bg-gray-800/50",
-                ].join(" ")}
-                aria-hidden="true"
-              />
-              <span
-                className={[
-                  "absolute left-0 size-5 rounded-full border border-gray-300 bg-white shadow-xs transition-transform duration-200 ease-in-out",
-                  checked ? "translate-x-5" : "",
-                  "dark:border-slate-600 dark:bg-slate-200 dark:shadow-none",
-                ].join(" ")}
-                aria-hidden="true"
-              />
-              <input
-                name={`module_${m.id}`}
-                type="checkbox"
-                aria-label={t("settings.modules.toggle", { module: label })}
-                className="absolute inset-0 appearance-none cursor-pointer focus:outline-hidden"
-                checked={checked}
-                onChange={(e) => toggleModule(m.id, e.target.checked)}
-                disabled={isBusy}
-              />
+            <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Badge tone={badgeTone}>{badgeLabel}</Badge>
+              <div
+                className={clsx(
+                  "relative inline-flex h-6 w-11 shrink-0 items-center",
+                  isBusy && "pointer-events-none opacity-60"
+                )}
+              >
+                <span
+                  className={clsx(
+                    "absolute inset-0 rounded-full transition-colors duration-150 ease-out",
+                    checked
+                      ? "bg-[var(--accent-primary-strong)]"
+                      : "bg-[var(--border-default)]"
+                  )}
+                  aria-hidden="true"
+                />
+                <span
+                  className={clsx(
+                    "absolute left-0 top-0 h-6 w-6 rounded-full border border-[var(--border-default)] bg-[var(--surface-default)] shadow-[var(--shadow-xs)] transition-transform duration-150 ease-out",
+                    checked ? "translate-x-5" : ""
+                  )}
+                  aria-hidden="true"
+                />
+                <input
+                  name={`module_${m.id}`}
+                  type="checkbox"
+                  aria-label={t("settings.modules.toggle", { module: label })}
+                  className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden"
+                  checked={checked}
+                  onChange={(e) => toggleModule(m.id, e.target.checked)}
+                  disabled={isBusy}
+                />
+              </div>
             </div>
           </SurfaceCard>
         );
       })}
       {error ? (
-        <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+        <div className="text-sm text-[var(--accent-danger)]">{error}</div>
       ) : null}
-    </div>
+    </Surface>
   );
 }
