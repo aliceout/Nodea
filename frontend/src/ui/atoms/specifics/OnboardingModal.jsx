@@ -1,5 +1,6 @@
-import Modal from "@/ui/atoms/base/Modal";
+﻿import Modal from "@/ui/atoms/base/Modal";
 import ModulesManager from "@/app/flow/Settings/components/ModulesManager";
+import LanguagePreferences from "@/app/flow/Settings/components/LanguagePreferences";
 import { useModulesRuntime, enabledModules } from "@/core/store/modulesRuntime";
 
 export default function OnboardingModal({
@@ -32,16 +33,28 @@ export default function OnboardingModal({
       open={open}
       onClose={null}
       backdropClass="bg-black/30 backdrop-blur-sm"
-      className="max-w-xl"
+      className="w-full max-w-3xl sm:max-w-4xl"
     >
-      <div className="p-6 flex flex-col gap-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-2 text-center">
+      <div className="p-6 sm:p-8 flex flex-col gap-6">
+        <h2 className="text-lg font-bold text-gray-900 text-center">
           {title}
         </h2>
 
-        <p className="text-base text-gray-600 text-center mb-4">{subtitle}</p>
+        <p className="text-base text-gray-600 text-center">{subtitle}</p>
 
-        <ModulesManager />
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 text-left">
+            Langue
+          </h3>
+          <LanguagePreferences showStatus={false} />
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 text-left">
+            Modules
+          </h3>
+          <ModulesManager />
+        </section>
 
         <div className="mt-2 flex items-center justify-center gap-3">
           <button

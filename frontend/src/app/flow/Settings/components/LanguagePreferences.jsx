@@ -11,7 +11,7 @@ import {
 } from "@/core/api/user-preferences";
 import { KeyMissingError } from "@/core/crypto/webcrypto";
 
-export default function LanguagePreferences() {
+export default function LanguagePreferences({ showStatus = true } = {}) {
   const { t, language, setLanguage, availableLanguages } = useI18n();
   const { mainKey, markMissing } = useStore();
   const { user } = useAuth();
@@ -137,7 +137,9 @@ export default function LanguagePreferences() {
               </option>
             ))}
           </Select>
-          <div className="min-h-[1.5rem]">{message}</div>
+          {showStatus ? (
+            <div className="min-h-[1.5rem]">{message}</div>
+          ) : null}
         </div>
       </div>
     </SurfaceCard>

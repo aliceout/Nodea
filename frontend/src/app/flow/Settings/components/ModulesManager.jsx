@@ -1,4 +1,4 @@
-// frontend/src/features/Settings/components/ModulesManager.jsx
+﻿// frontend/src/features/Settings/components/ModulesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { MODULES } from "@/app/config/modules_list";
 import {
@@ -14,7 +14,7 @@ import { useStore } from "@/core/store/StoreProvider";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 
-// ��΋�? nouvel import
+// �������<���? nouvel import
 import { setModulesState } from "@/core/store/modulesRuntime";
 
 export default function ModulesManager() {
@@ -37,9 +37,9 @@ export default function ModulesManager() {
       setError("");
       try {
         const user = pb?.authStore?.model;
-        if (!user) throw new Error("Utilisateur non connectǸ");
+        if (!user) throw new Error("Utilisateur non connecté");
 
-        const c = await loadModulesConfig(pb, user.id, mainKey); // dǸchiffrǸ ou {}
+        const c = await loadModulesConfig(pb, user.id, mainKey); // déchiffré ou {}
         const nextCfg = c && typeof c === "object" ? c : {};
 
         if (mounted) {
@@ -131,9 +131,7 @@ export default function ModulesManager() {
       }
     } catch (e) {
       if (import.meta.env.DEV) console.warn(e);
-      setError(
-        e?.message || t("settings.modules.errors.saveFailed")
-      );
+      setError(e?.message || t("settings.modules.errors.saveFailed"));
     } finally {
       setBusy(null);
     }
@@ -165,11 +163,15 @@ export default function ModulesManager() {
           <SurfaceCard
             as="label"
             key={m.id}
-            title={label}
             className="cursor-pointer p-4 sm:p-5"
-            bodyClassName="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            bodyClassName="flex flex-col gap-4 text-left sm:flex-row sm:items-center sm:justify-between"
           >
-            <p className="text-sm text-slate-600 sm:max-w-lg">{description}</p>
+            <div className="space-y-1 sm:max-w-lg">
+              <p className="text-sm font-semibold text-slate-900">{label}</p>
+              {description ? (
+                <p className="text-sm text-slate-600">{description}</p>
+              ) : null}
+            </div>
 
             <div
               className={[
