@@ -1,1 +1,20 @@
-{}
+{
+  "title": "Paramètres",
+  "description": "Active ou désactive les modules disponibles et personnalise ton expérience.",
+  "language": {
+    "title": "Langue de l'application",
+    "description": "Choisis la langue affichée dans l'interface.",
+    "selectLabel": "Langue",
+    "saved": "Langue mise à jour."
+  },
+  "modules": {
+    "loading": "Chargement des modules...",
+    "none": "Aucun module n’est actuellement configurable.",
+    "errors": {
+      "missingKey": "Clé absente : reconnecte-toi pour retrouver tes réglages.",
+      "loadFailed": "Impossible de charger tes réglages.",
+      "keyMissingAction": "Clé de chiffrement absente. Reconnecte-toi avant de modifier les modules.",
+      "saveFailed": "Impossible d’enregistrer tes réglages."
+    }
+  }
+}

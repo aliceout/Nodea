@@ -61,16 +61,14 @@ export default function ModulesManager() {
       } catch (e) {
         if (e instanceof KeyMissingError) {
           if (mounted) {
-            setError(
-              "ClǸ absente: reconnectez-vous pour dǸchiffrer vos rǸglages."
-            );
+            setError(t("settings.modules.errors.missingKey"));
             setLoading(false);
           }
           return;
         }
         if (import.meta.env.DEV) console.warn(e);
         if (mounted) {
-          setError("Impossible de charger vos rǸglages.");
+          setError(t("settings.modules.errors.loadFailed"));
           setLoading(false);
         }
       }
@@ -80,16 +78,20 @@ export default function ModulesManager() {
     };
   }, [mainKey, rows]);
 
-  if (loading) return <div>Chargement�?�</div>;
+  if (loading) {
+    return (
+      <div className="text-sm text-gray-600">
+        {t("settings.modules.loading")}
+      </div>
+    );
+  }
 
   const toggleModule = async (moduleId, nextEnabled) => {
     setBusy(moduleId);
     setError("");
     try {
       if (!mainKey) {
-        throw new Error(
-          "ClǸ de chiffrement absente. Reconnectez-vous avant de modifier les modules."
-        );
+        throw new Error(t("settings.modules.errors.keyMissingAction"));
       }
       const current = getModuleEntry(cfg, moduleId) || null;
       const willEnable = !!nextEnabled;
@@ -128,7 +130,9 @@ export default function ModulesManager() {
       }
     } catch (e) {
       if (import.meta.env.DEV) console.warn(e);
-      setError(e?.message || "Impossible d�?Tenregistrer vos rǸglages.");
+      setError(
+        e?.message || t("settings.modules.errors.saveFailed")
+      );
     } finally {
       setBusy(null);
     }
@@ -137,7 +141,7 @@ export default function ModulesManager() {
   if (rows.length === 0) {
     return (
       <div className="text-sm text-gray-600">
-        Aucun module n�?Test actuellement configurable.
+        {t("settings.modules.none")}
       </div>
     );
   }
