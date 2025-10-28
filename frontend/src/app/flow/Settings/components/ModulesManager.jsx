@@ -1,4 +1,4 @@
-﻿// frontend/src/features/Settings/components/ModulesManager.jsx
+// frontend/src/features/Settings/components/ModulesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { MODULES } from "@/app/config/modules_list";
 import {

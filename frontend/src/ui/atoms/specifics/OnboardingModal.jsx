@@ -1,4 +1,4 @@
-﻿import Modal from "@/ui/atoms/base/Modal";
+import Modal from "@/ui/atoms/base/Modal";
 import ModulesManager from "@/app/flow/Settings/components/ModulesManager";
 import LanguagePreferences from "@/app/flow/Settings/components/LanguagePreferences";
 import { useModulesRuntime, enabledModules } from "@/core/store/modulesRuntime";
@@ -46,7 +46,7 @@ export default function OnboardingModal({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 text-left">
             Langue
           </h3>
-          <LanguagePreferences showStatus={false} />
+          <LanguagePreferences />
         </section>
 
         <section className="space-y-3">
@@ -87,3 +87,4 @@ export default function OnboardingModal({
     </Modal>
   );
 }
+

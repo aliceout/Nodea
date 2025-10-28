@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 import Select from "@/ui/atoms/form/Select.jsx";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
@@ -11,24 +11,13 @@ import {
 } from "@/core/api/user-preferences";
 import { KeyMissingError } from "@/core/crypto/webcrypto";
 
-export default function LanguagePreferences({ showStatus = true } = {}) {
+export default function LanguagePreferences() {
   const { t, language, setLanguage, availableLanguages } = useI18n();
   const { mainKey, markMissing } = useStore();
   const { user } = useAuth();
 
   const [preferences, setPreferences] = useState({});
-  const [feedback, setFeedback] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const feedbackTimerRef = useRef(null);
-
-  const writeFeedback = useCallback((message) => {
-    if (feedbackTimerRef.current) {
-      clearTimeout(feedbackTimerRef.current);
-    }
-    setFeedback(message);
-    feedbackTimerRef.current = setTimeout(() => setFeedback(""), 2500);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,8 +35,6 @@ export default function LanguagePreferences({ showStatus = true } = {}) {
       } catch (error) {
         if (error instanceof KeyMissingError) {
           markMissing?.();
-        } else if (!cancelled) {
-          setErrorMessage(t("settings.language.errors.load"));
         }
       }
     }
@@ -56,29 +43,22 @@ export default function LanguagePreferences({ showStatus = true } = {}) {
 
     return () => {
       cancelled = true;
-      if (feedbackTimerRef.current) {
-        clearTimeout(feedbackTimerRef.current);
-      }
     };
-  }, [user?.id, mainKey, markMissing, setLanguage, t]);
+  }, [user?.id, mainKey, markMissing, setLanguage, language]);
 
   const persistLanguage = useCallback(
     async (nextLanguage, fallbackLanguage) => {
       if (!user?.id || !mainKey) return;
       setIsSaving(true);
-      setErrorMessage("");
       try {
         const nextPreferences = { ...(preferences || {}), language: nextLanguage };
         await saveUserPreferences(pb, user.id, mainKey, nextPreferences);
         setPreferences(nextPreferences);
-        writeFeedback(t("settings.language.saved"));
       } catch (error) {
         if (error instanceof KeyMissingError) {
           markMissing?.();
-          setErrorMessage(t("settings.language.errors.missingKey"));
         } else {
           console.error("[LanguagePreferences] save error", error);
-          setErrorMessage(t("settings.language.errors.save"));
         }
         if (fallbackLanguage) {
           setLanguage(fallbackLanguage);
@@ -87,7 +67,7 @@ export default function LanguagePreferences({ showStatus = true } = {}) {
         setIsSaving(false);
       }
     },
-    [mainKey, markMissing, preferences, t, user?.id, writeFeedback]
+    [mainKey, markMissing, preferences, setLanguage, user?.id]
   );
 
   const handleChange = (event) => {
@@ -97,17 +77,6 @@ export default function LanguagePreferences({ showStatus = true } = {}) {
     setLanguage(next);
     persistLanguage(next, previous);
   };
-
-  const message =
-    errorMessage || feedback ? (
-      <span
-        className={`text-sm font-medium sm:whitespace-nowrap ${
-          errorMessage ? "text-rose-600" : "text-emerald-600"
-        }`}
-      >
-        {errorMessage || feedback}
-      </span>
-    ) : null;
 
   return (
     <SurfaceCard>
@@ -130,9 +99,6 @@ export default function LanguagePreferences({ showStatus = true } = {}) {
             </option>
           ))}
         </Select>
-        {showStatus ? (
-          <div className="min-h-[1.5rem]">{message}</div>
-        ) : null}
       </div>
     </SurfaceCard>
   );

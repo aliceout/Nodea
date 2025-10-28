@@ -1,16 +1,10 @@
-﻿{
+{
   "title": "Paramètres",
   "description": "Active ou désactive les modules disponibles et personnalise ton expérience.",
   "language": {
     "title": "Langue de l'application",
     "description": "Choisis la langue affichée dans l'interface.",
-    "selectLabel": "Langue",
-    "saved": "Langue mise à jour.",
-    "errors": {
-      "load": "Impossible de charger tes préférences.",
-      "save": "Impossible d’enregistrer tes préférences.",
-      "missingKey": "Clé de chiffrement absente. Reconnecte-toi pour enregistrer tes préférences."
-    }
+    "selectLabel": "Langue"
   },
   "modules": {
     "loading": "Chargement des modules...",
