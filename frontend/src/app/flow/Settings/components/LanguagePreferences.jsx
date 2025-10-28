@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function LanguagePreferences() {
@@ -14,17 +15,12 @@ export default function LanguagePreferences() {
   };
 
   return (
-    <section className="mb-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <header className="mb-4 space-y-1">
-        <h2 className="text-base font-semibold text-slate-900">
-          {t("settings.language.title")}
-        </h2>
-        <p className="text-sm text-slate-600">
-          {t("settings.language.description")}
-        </p>
-      </header>
+    <SurfaceCard title={t("settings.language.title")}>
+      <p className="text-sm text-slate-600">
+        {t("settings.language.description")}
+      </p>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <label
           htmlFor="settings-language"
           className="text-sm font-medium text-slate-700"
@@ -48,7 +44,6 @@ export default function LanguagePreferences() {
       {feedback ? (
         <p className="mt-3 text-sm font-medium text-emerald-600">{feedback}</p>
       ) : null}
-    </section>
+    </SurfaceCard>
   );
 }
-

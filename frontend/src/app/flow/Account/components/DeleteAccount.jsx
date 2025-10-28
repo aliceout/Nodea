@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import pb from "@/core/api/pocketbase";
-import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 import Button from "@/ui/atoms/base/Button";
 import { MODULES } from "@/app/config/modules_list";
 import { loadModulesConfig } from "@/core/api/modules-config";
@@ -127,7 +127,7 @@ export default function DeleteAccountSection({ user }) {
   };
 
   return (
-    <SettingsCard className="bg-rose-50 border-rose-300">
+    <SurfaceCard className="bg-rose-50 border-rose-300">
       <div className="mb-4 w-full">
         <div className="text-base font-semibold text-rose-700 mb-1">
           Supprimer mon compte
@@ -160,6 +160,6 @@ export default function DeleteAccountSection({ user }) {
           </div>
         )}
       </form>
-    </SettingsCard>
+    </SurfaceCard>
   );
 }

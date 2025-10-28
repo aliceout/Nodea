@@ -18,9 +18,20 @@ export default function Settings() {
         </header>
 
         <LanguagePreferences />
-        <ModulesManager />
+
+        <section className="space-y-4">
+          <header className="space-y-1">
+            <h2 className="text-base font-semibold text-gray-900">
+              {t("settings.modules.title")}
+            </h2>
+            <p className="text-sm text-gray-600">
+              {t("settings.modules.description")}
+            </p>
+          </header>
+
+          <ModulesManager />
+        </section>
       </div>
     </div>
   );
 }
-

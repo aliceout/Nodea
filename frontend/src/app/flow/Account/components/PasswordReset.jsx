@@ -1,14 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 
 export default function PasswordResetSection() {
   const navigate = useNavigate();
   const handleClick = () => navigate("/change-password");
 
   return (
-    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+    <SurfaceCard className="border-gray-200 hover:border-gray-300">
       <div className="mb-4 w-full">
         <div className="text-base font-semibold text-gray-900 mb-1">
           Changer le mot de passe
@@ -29,6 +29,6 @@ export default function PasswordResetSection() {
           </Button>
         </div>
       </form>
-    </SettingsCard>
+    </SurfaceCard>
   );
 }

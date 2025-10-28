@@ -15,6 +15,9 @@
       "loadFailed": "Unable to load your settings.",
       "keyMissingAction": "Encryption key missing. Sign in again before changing modules.",
       "saveFailed": "Unable to save your settings."
-    }
+    },
+    "title": "Module activation",
+    "description": "Choose which spaces remain available in Nodea.",
+    "toggle": "Toggle the {module} module"
   }
 }

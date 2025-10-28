@@ -8,7 +8,7 @@ import {
 import Input from "@/ui/atoms/form/Input";
 import Textarea from "@/ui/atoms/form/Textarea";
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 
 const INITIAL_FORM = {
   title: "",
@@ -113,7 +113,7 @@ export default function AnnouncementsManager() {
 
   return (
     <div className="space-y-6">
-      <SettingsCard className="border-gray-200 hover:border-gray-300 bg-white">
+      <SurfaceCard className="border-gray-200 hover:border-gray-300 bg-white">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             id="title"
@@ -153,7 +153,7 @@ export default function AnnouncementsManager() {
             </Button>
           </div>
         </form>
-      </SettingsCard>
+      </SurfaceCard>
 
       <div className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">

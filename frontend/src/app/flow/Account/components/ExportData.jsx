@@ -3,7 +3,7 @@ import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 // Orchestrate export via module plugins (pagination + decryption centralized)
 import { getDataPlugin } from "@/core/utils/ImportExport/registry.data.js";
 
@@ -128,7 +128,7 @@ export default function ExportDataSection() {
   }
 
   return (
-    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+    <SurfaceCard className="border-gray-200 hover:border-gray-300">
       <div className="mb-4 w-full">
         <div className="text-base font-semibold text-gray-900 mb-1">
           Exporter mes données
@@ -174,6 +174,6 @@ export default function ExportDataSection() {
           </div>
         )}
       </form>
-    </SettingsCard>
+    </SurfaceCard>
   );
 }

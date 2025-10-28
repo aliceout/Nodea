@@ -1,6 +1,6 @@
 import { useState } from "react";
 import pb from "@/core/api/pocketbase";
-import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 import Button from "@/ui/atoms/base/Button";
 
 export default function UsernameSection({ user }) {
@@ -22,7 +22,7 @@ export default function UsernameSection({ user }) {
   };
 
   return (
-    <SettingsCard className=" border-gray-200 hover:border-gray-300 ">
+    <SurfaceCard className="border-gray-200 hover:border-gray-300">
       <div className="mb-4 w-full">
         <div className="text-base font-semibold text-gray-900 mb-1">
           Changer le nom d’utilisateur·ice
@@ -71,6 +71,6 @@ export default function UsernameSection({ user }) {
           </div>
         )}
       </form>
-    </SettingsCard>
+    </SurfaceCard>
   );
 }

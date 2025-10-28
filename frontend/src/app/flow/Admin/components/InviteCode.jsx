@@ -1,5 +1,5 @@
 import Button from "@/ui/atoms/base/Button";
-import SettingsCard from "@/ui/atoms/specifics/SettingsCard";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 
 export default function InviteCodeManager({
   inviteCodes,
@@ -10,7 +10,7 @@ export default function InviteCodeManager({
   onDelete,
 }) {
   return (
-    <SettingsCard className="border-gray-200 hover:border-gray-300 bg-white">
+    <SurfaceCard className="border-gray-200 hover:border-gray-300 bg-white">
       <div className="flex flex-col gap-3">
         <div className="flex gap-3 items-center justify-start">
           <Button
@@ -96,6 +96,6 @@ export default function InviteCodeManager({
           </ul>
         </div>
       )}
-    </SettingsCard>
+    </SurfaceCard>
   );
 }

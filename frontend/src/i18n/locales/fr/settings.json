@@ -15,6 +15,9 @@
       "loadFailed": "Impossible de charger tes réglages.",
       "keyMissingAction": "Clé de chiffrement absente. Reconnecte-toi avant de modifier les modules.",
       "saveFailed": "Impossible d’enregistrer tes réglages."
-    }
+    },
+    "title": "Activation des modules",
+    "description": "Choisis les espaces que tu souhaites rendre accessibles dans Nodea.",
+    "toggle": "Basculer le module {module}"
   }
 }

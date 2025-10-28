@@ -12,6 +12,7 @@ import pb from "@/core/api/pocketbase";
 import { KeyMissingError } from "@/core/crypto/webcrypto";
 import { useStore } from "@/core/store/StoreProvider";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
 
 // ��΋�? nouvel import
 import { setModulesState } from "@/core/store/modulesRuntime";
@@ -158,25 +159,21 @@ export default function ModulesManager() {
           : "";
 
         return (
-          <label
+          <SurfaceCard
+            as="label"
             key={m.id}
-            className="flex items-start justify-between rounded-lg border border-gray-200 p-4"
+            title={label}
+            className="cursor-pointer p-4 sm:p-5"
+            bodyClassName="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="pr-4 text-left">
-              <div className="text-sm font-medium text-gray-900">{label}</div>
-              {description ? (
-                <div className="mt-1 text-sm text-gray-600">{description}</div>
-              ) : null}
-            </div>
+            <p className="text-sm text-slate-600 sm:max-w-lg">{description}</p>
 
-            {/* --- TOGGLE (remplace l'input checkbox) --- */}
             <div
               className={[
                 "relative inline-flex h-5 w-10 shrink-0 items-center justify-center rounded-full",
-                busy === m.id ? "opacity-50 pointer-events-none" : "",
+                isBusy ? "pointer-events-none opacity-50" : "",
               ].join(" ")}
             >
-              {/* rail */}
               <span
                 className={[
                   "absolute mx-auto h-4 w-9 rounded-full transition-colors duration-200 ease-in-out",
@@ -186,7 +183,6 @@ export default function ModulesManager() {
                 ].join(" ")}
                 aria-hidden="true"
               />
-              {/* thumb */}
               <span
                 className={[
                   "absolute left-0 size-5 rounded-full border border-gray-300 bg-white shadow-xs transition-transform duration-200 ease-in-out",
@@ -195,21 +191,20 @@ export default function ModulesManager() {
                 ].join(" ")}
                 aria-hidden="true"
               />
-              {/* input accessible */}
               <input
                 name={`module_${m.id}`}
                 type="checkbox"
-                aria-label={`Activer ${label}`}
+                aria-label={t("settings.modules.toggle", { module: label })}
                 className="absolute inset-0 appearance-none cursor-pointer focus:outline-hidden"
                 checked={checked}
                 onChange={(e) => toggleModule(m.id, e.target.checked)}
-                disabled={busy === m.id}
+                disabled={isBusy}
               />
             </div>
-          </label>
+          </SurfaceCard>
         );
       })}
-      {error && <div className="text-sm text-red-600">{error}</div>}
+      {error ? <div className="text-sm text-red-600">{error}</div> : null}
     </div>
   );
 }

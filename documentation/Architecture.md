@@ -58,7 +58,7 @@ frontend/src/
 │   │   └── specifics/    # Atomes contextuels (restés hors "features")
 │   │       ├── KeyMissingModal.jsx
 │   │       ├── OnboardingModal.jsx
-│   │       └── SettingsCard.jsx
+│   │       └── SurfaceCard.jsx
 │   ├── branding/
 │   │   └── LogoLong.jsx
 │   ├── layout/
@@ -123,7 +123,7 @@ frontend/src/
 1. Pas de dossier `features/` : les flux fonctionnels sont concentrés dans `app/flow/`.
 2. Les services métier (Goals, Mood, Passage) sont centralisés dans `core/api/modules/` au lieu de dossiers dédiés par fonctionnalité.
 3. Les composants d'import/export (Goals, Mood, Passage) sont dans `core/utils/ImportExport/` et non rapprochés de leur logique d'affichage.
-4. Les modales spécifiques (KeyMissing, Onboarding) et `SettingsCard` restent classées comme atomes "specifics" faute de stratégie de rattachement feature finalisée.
+4. Les modales spécifiques (KeyMissing, Onboarding) et `SurfaceCard` restent classées comme atomes "specifics" faute de stratégie de rattachement feature finalisée.
 5. L'i18n est minimal (une seule locale `fr/Mood/questions.json`). Pas de mécanisme dynamique généralisé ni d'index d'agrégation.
 
 ## Organisation logique actuelle
@@ -141,7 +141,7 @@ Cette centralisation vise la simplicité mais mélange encore logique pure et ad
 Séparé en sous-niveaux :
 - atoms/base & atoms/form : découpage effectué pour clarifier les composants basiques vs formulaires.
 - atoms/actions : action group (édition/suppression).
-- atoms/specifics : éléments transverses restant dépendants de la sécurité (modales clé manquante / onboarding) ou d'une feature (SettingsCard) non encore isolés.
+- atoms/specifics : éléments transverses restant dépendants de la sécurité (modales clé manquante / onboarding) ou d'une feature (SurfaceCard) non encore isolés.
 - layout : structure visuelle et navigation (normalisée : `headers/`, `navigation/`, `components/`).
 
 ### app/
