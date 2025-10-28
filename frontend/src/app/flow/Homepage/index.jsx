@@ -15,6 +15,11 @@ import useMoodTrend from "@/app/flow/Mood/hooks/useMoodTrend";
 import MoodChartBody from "@/app/flow/Mood/components/ChartBody";
 import useLatestAnnouncement from "@/core/hooks/useLatestAnnouncement";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
+import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
+import Badge from "@/ui/atoms/feedback/Badge.jsx";
+import SectionHeader from "@/ui/atoms/typography/SectionHeader.jsx";
+import Surface from "@/ui/atoms/layout/Surface.jsx";
+import Button from "@/ui/atoms/base/Button.jsx";
 
 function getPreferredName(user) {
   if (!user) return "";
@@ -40,44 +45,47 @@ function ModuleCard({ module, onNavigate }) {
     : "";
 
   return (
-    <button
+    <SurfaceCard
+      as="button"
       type="button"
       onClick={() => onNavigate(module.id)}
-      className="group h-full w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-slate-600 dark:hover:bg-slate-900/80 dark:focus-visible:outline-slate-500"
+      tone="base"
+      border="default"
+      padding="md"
+      interactive
+      className="h-full w-full text-left"
+      bodyClassName="flex items-start gap-3"
     >
-      <div className="flex items-start gap-3">
-        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:inline-flex">
-          {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
-        </span>
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:hidden">
-                {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
-              </span>
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {label}
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
-              Module actif
+      <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)] sm:inline-flex">
+        {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
+      </span>
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)] sm:hidden">
+              {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
             </span>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">
+              {label}
+            </p>
           </div>
-          <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
-            {description}
-          </p>
+          <Badge tone="success">{t("settings.modules.badges.active")}</Badge>
         </div>
-        <ArrowRightIcon
-          className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400"
-          aria-hidden="true"
-        />
+        <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+          {description}
+        </p>
       </div>
-    </button>
+      <ArrowRightIcon
+        className="mt-1 h-4 w-4 shrink-0 text-[var(--text-muted)] transition group-hover:text-[var(--text-secondary)]"
+        aria-hidden="true"
+      />
+    </SurfaceCard>
   );
 }
 
 function AnnouncementSpotlight() {
   const { status, announcement } = useLatestAnnouncement();
+  const { t } = useI18n();
 
   if (status === "ready" && announcement) {
     const title = announcement.title || "Actualite Nodea";
@@ -91,30 +99,55 @@ function AnnouncementSpotlight() {
       : null;
 
     return (
-      <aside className="w-full max-w-sm rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 text-white shadow-inner backdrop-blur">
-        <p className="text-xs uppercase tracking-wide text-slate-300">
-          Nouveaute
+      <Surface
+        as="aside"
+        tone="inverse"
+        border="minimal"
+        padding="md"
+        radius="lg"
+        shadow="sm"
+        className="w-full max-w-sm gap-3"
+      >
+        <p className="text-xs uppercase tracking-wide text-[var(--text-inverse)]/70">
+          {t("home.announcement.label", { defaultValue: "Nouvelle" })}
         </p>
-        <h3 className="mt-2 text-lg font-semibold">{title}</h3>
+        <h3 className="text-lg font-semibold text-[var(--text-inverse)]">
+          {title}
+        </h3>
         {formattedDate ? (
-          <p className="mt-1 text-xs text-slate-200/80">
-            Publie le {formattedDate}
+          <p className="text-xs text-[var(--text-inverse)]/70">
+            {t("home.announcement.publishedOn", {
+              defaultValue: "Publié le {date}",
+              values: { date: formattedDate },
+            })}
           </p>
         ) : null}
         {message ? (
-          <p className="mt-3 text-sm leading-relaxed text-slate-100/90">
+          <p className="text-sm leading-relaxed text-[var(--text-inverse)]/90">
             {message}
           </p>
         ) : null}
-      </aside>
+      </Surface>
     );
   }
 
   if (status === "loading") {
     return (
-      <aside className="w-full max-w-sm rounded-2xl border border-slate-700/40 bg-slate-800/30 p-5 text-white shadow-inner backdrop-blur">
-        <p className="text-sm text-slate-200">Chargement des nouveautes...</p>
-      </aside>
+      <Surface
+        as="aside"
+        tone="inverse"
+        border="minimal"
+        padding="md"
+        radius="lg"
+        shadow="sm"
+        className="w-full max-w-sm gap-2 opacity-80"
+      >
+        <p className="text-sm text-[var(--text-inverse)]/80">
+          {t("home.announcement.loading", {
+            defaultValue: "Chargement des nouveautés…",
+          })}
+        </p>
+      </Surface>
     );
   }
 
@@ -149,29 +182,31 @@ function MiniMoodChartCard({ module }) {
   const showChart = status === "ready" && data.length > 0;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+    <SurfaceCard tone="base" border="default" padding="lg">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {Icon ? (
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)]">
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
           ) : null}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Apercu rapide
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+              {t("home.mood.quickView", { defaultValue: "Aperçu rapide" })}
             </p>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">
               {moduleLabel}
             </h3>
           </div>
         </div>
 
         <div className="text-left sm:text-right">
-          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Moyenne mois en cours
+          <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
+            {t("home.mood.monthAverage", {
+              defaultValue: "Moyenne mois en cours",
+            })}
           </p>
-          <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
+          <p className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
             {averageLabel}
           </p>
         </div>
@@ -183,12 +218,12 @@ function MiniMoodChartCard({ module }) {
             <MoodChartBody data={data} />
           </ResponsiveContainer>
         ) : (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--surface-subtle)] px-4 text-center text-sm text-[var(--text-muted)]">
             {message}
           </div>
         )}
       </div>
-    </section>
+    </SurfaceCard>
   );
 }
 
@@ -279,16 +314,16 @@ export default function HomePage() {
           {moodModule ? <MiniMoodChartCard module={moodModule} /> : null}
 
           {enabledModules.length > 0 ? (
-            <section className="space-y-3">
-              <header>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                  Actions rapides
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Accedez directement aux modules actifs que vous utilisez le
-                  plus souvent.
-                </p>
-              </header>
+            <section className="space-y-4">
+              <SectionHeader
+                title={t("home.sections.actions.title", {
+                  defaultValue: "Actions rapides",
+                })}
+                description={t("home.sections.actions.description", {
+                  defaultValue:
+                    "Accède directement aux modules que tu utilises le plus souvent.",
+                })}
+              />
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {enabledModules.map((module) => (
@@ -303,41 +338,44 @@ export default function HomePage() {
           ) : null}
 
           {disabledModules.length > 0 ? (
-            <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 dark:border-slate-600 dark:bg-slate-900/60">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                Modules disponibles
-              </h3>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Activez de nouveaux espaces pour enrichir votre accompagnement.
-              </p>
+            <Surface tone="muted" border="default" padding="lg" className="space-y-4">
+              <SectionHeader
+                title={t("home.sections.available.title", {
+                  defaultValue: "Modules disponibles",
+                })}
+                description={t("home.sections.available.description", {
+                  defaultValue:
+                    "Active de nouveaux espaces pour enrichir ton accompagnement.",
+                })}
+              />
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {disabledModules.map((module) => {
                   const Icon = module.icon;
                   const label = t(module.label, { defaultValue: module.label });
                   return (
                     <span
                       key={module.id}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-300"
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--surface-subtle)] px-3 py-1 text-sm text-[var(--text-secondary)]"
                     >
-                      {Icon ? (
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      ) : null}
+                      {Icon ? <Icon className="h-4 w-4" aria-hidden="true" /> : null}
                       {label}
                     </span>
                   );
                 })}
               </div>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => handleNavigate("settings")}
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500"
+                className="inline-flex items-center gap-2 self-start"
               >
-                Ouvrir les parametres
+                {t("home.sections.available.cta", {
+                  defaultValue: "Ouvrir les paramètres",
+                })}
                 <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </section>
+              </Button>
+            </Surface>
           ) : null}
         </div>
       </div>

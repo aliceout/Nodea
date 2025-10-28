@@ -27,6 +27,10 @@
     },
     "title": "Activation des modules",
     "description": "Choisis les espaces que tu souhaites rendre accessibles dans Nodea.",
-    "toggle": "Basculer le module {module}"
+    "toggle": "Basculer le module {module}",
+    "badges": {
+      "active": "Module actif",
+      "inactive": "Module inactif"
+    }
   }
 }

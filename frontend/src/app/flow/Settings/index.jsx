@@ -3,6 +3,7 @@ import ModulesManager from "./components/ModulesManager.jsx";
 import LanguagePreferences from "./components/LanguagePreferences.jsx";
 import ThemePreferences from "./components/ThemePreferences.jsx";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
+import SectionHeader from "@/ui/atoms/typography/SectionHeader.jsx";
 
 export default function Settings() {
   const { t } = useI18n();
@@ -12,26 +13,26 @@ export default function Settings() {
       <Subheader />
       <div className="mx-auto max-w-3xl p-6 space-y-6">
         <section className="space-y-3">
-          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-            {t("settings.theme.title")}
-          </h2>
+          <SectionHeader
+            title={t("settings.theme.title")}
+            description={t("settings.theme.description")}
+          />
           <ThemePreferences />
         </section>
 
         <section className="space-y-3">
-          <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-            {t("settings.language.title")}
-          </h2>
+          <SectionHeader
+            title={t("settings.language.title")}
+            description={t("settings.language.description")}
+          />
           <LanguagePreferences />
         </section>
 
         <section className="space-y-3">
-          <header className="space-y-1">
-            <h2 className="mb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-              {t("settings.modules.title")}
-            </h2>
-          </header>
-
+          <SectionHeader
+            title={t("settings.modules.title")}
+            description={t("settings.modules.description")}
+          />
           <ModulesManager />
         </section>
       </div>

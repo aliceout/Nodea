@@ -27,6 +27,10 @@
     },
     "title": "Module activation",
     "description": "Choose which spaces remain available in Nodea.",
-    "toggle": "Toggle the {module} module"
+    "toggle": "Toggle the {module} module",
+    "badges": {
+      "active": "Module enabled",
+      "inactive": "Module disabled"
+    }
   }
 }

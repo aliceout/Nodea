@@ -31,7 +31,7 @@ export default function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className={`block text-sm font-medium text-slate-700 ${labelClassName}`}
+          className={`block text-sm font-medium text-[var(--text-secondary)] ${labelClassName}`}
         >
           {label}
         </label>
@@ -44,10 +44,10 @@ export default function Input({
         placeholder={placeholder}
         disabled={disabled}
         required={required}
-        className={`mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-gray-300 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-300/40 placeholder:text-slate-400 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-slate-100 ${inputClassName}`}
+        className={`mt-1 w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors focus:border-[var(--accent-primary-strong)] focus:outline-none focus:ring-2 focus:ring-[rgba(144,182,162,0.35)] placeholder:text-[var(--text-muted)] hover:border-[var(--accent-primary)] disabled:cursor-not-allowed disabled:border-[var(--border-default)]/70 disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-muted)] ${inputClassName}`}
         {...props}
       />
-      {legend && <p className="mt-1 text-xs text-slate-500">{legend}</p>}
+      {legend && <p className="mt-1 text-xs text-[var(--text-muted)]">{legend}</p>}
     </div>
   );
 }

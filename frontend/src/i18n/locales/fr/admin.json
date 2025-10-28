@@ -1,1 +1,21 @@
-{}
+{
+  "sections": {
+    "announcements": {
+      "title": "Annonces",
+      "description": "Publie les messages mis en avant sur la page d'accueil."
+    },
+    "users": {
+      "title": "Utilisateurs",
+      "description": "Gère les comptes, les rôles et les accès."
+    },
+    "invites": {
+      "title": "Codes d'invitation",
+      "description": "Crée et partage des codes pour inviter des membres."
+    },
+    "restricted": "Accès réservé aux administrateurs."
+  },
+  "states": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue."
+  }
+}

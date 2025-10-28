@@ -1,1 +1,22 @@
-{}
+{
+  "announcement": {
+    "label": "Nouvelle",
+    "publishedOn": "Publié le {date}",
+    "loading": "Chargement des nouveautés…"
+  },
+  "mood": {
+    "quickView": "Aperçu rapide",
+    "monthAverage": "Moyenne mois en cours"
+  },
+  "sections": {
+    "actions": {
+      "title": "Actions rapides",
+      "description": "Accède directement aux modules actifs que tu utilises le plus souvent."
+    },
+    "available": {
+      "title": "Modules disponibles",
+      "description": "Active de nouveaux espaces pour enrichir ton accompagnement.",
+      "cta": "Ouvrir les paramètres"
+    }
+  }
+}

@@ -1,1 +1,21 @@
-{}
+{
+  "sections": {
+    "announcements": {
+      "title": "Announcements",
+      "description": "Publish spotlight messages on the homepage."
+    },
+    "users": {
+      "title": "Users",
+      "description": "Manage accounts, roles, and access."
+    },
+    "invites": {
+      "title": "Invitation codes",
+      "description": "Create and share access codes for new members."
+    },
+    "restricted": "Administrator access only."
+  },
+  "states": {
+    "loading": "Loading…",
+    "error": "Something went wrong."
+  }
+}
