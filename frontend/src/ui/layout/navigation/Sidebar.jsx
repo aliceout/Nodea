@@ -14,11 +14,13 @@ import {
   isModuleEnabled,
 } from "@/core/store/modulesRuntime";
 import { MODULES } from "@/app/config/modules_list"; // corrected path
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function Sidebar() {
   const store = useStore();
   const state = store?.state ?? store?.[0];
   const dispatch = store?.dispatch ?? store?.[1];
+  const { t } = useI18n();
 
   const current = selectCurrentTab(state);
   const open = selectMobileOpen(state);
@@ -61,7 +63,7 @@ export default function Sidebar() {
                       type="button"
                       className="-m-2.5 p-2.5 text-gray-700"
                       onClick={handleClose}
-                      aria-label="Fermer le menu"
+                      aria-label={t("layout.sidebar.closeMenu")}
                     >
                       <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                     </button>
@@ -73,7 +75,7 @@ export default function Sidebar() {
                         <li key={item.id}>
                           <Link
                             icon={item.icon}
-                            label={item.label}
+                            label={t(item.label)}
                             active={current === item.id}
                             onClick={() => handleSelect(item.id)}
                           />

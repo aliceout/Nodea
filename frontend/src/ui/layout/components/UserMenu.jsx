@@ -4,9 +4,10 @@ import UserAvatar from "../components/UserAvatar";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { setTab } from "@/core/store/actions";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function UserMenu({
-  username = "Utilisateur·rice",
+  username,
   onGoAccount = () => {},
   onGoSettings = () => {},
   onSignOut = () => {},
@@ -14,15 +15,17 @@ export default function UserMenu({
   const user = pb.authStore.model;
   const isAdmin = user?.role === "admin";
   const { dispatch } = useStore();
+  const { t } = useI18n();
+  const displayName = username || t("layout.header.defaultUsername");
 
   return (
     <Menu as="div" className="relative">
       <MenuButton className="relative flex items-center">
-        <span className="sr-only">Ouvrir le menu utilisateur</span>
-        <UserAvatar seed={username} size={32} />
+        <span className="sr-only">{t("layout.userMenu.open")}</span>
+        <UserAvatar seed={displayName} size={32} />
         <span className="hidden lg:flex lg:items-center">
           <span className="ml-4 text-sm font-semibold text-gray-900">
-            {username}
+            {displayName}
           </span>
           <ChevronDownIcon
             aria-hidden="true"
@@ -44,7 +47,7 @@ export default function UserMenu({
                 focus ? "bg-gray-50" : ""
               }`}
             >
-              Votre profil
+              {t("layout.userMenu.profile")}
             </button>
           )}
         </MenuItem>
@@ -57,7 +60,7 @@ export default function UserMenu({
                 focus ? "bg-gray-50" : ""
               }`}
             >
-              Paramètres
+              {t("layout.userMenu.settings")}
             </button>
           )}
         </MenuItem>
@@ -71,7 +74,7 @@ export default function UserMenu({
                   focus ? "bg-gray-50" : ""
                 }`}
               >
-                Admin
+                {t("layout.userMenu.admin")}
               </button>
             )}
           </MenuItem>
@@ -85,7 +88,7 @@ export default function UserMenu({
                 focus ? "bg-gray-50" : ""
               }`}
             >
-              Déconnexion
+              {t("layout.userMenu.signOut")}
             </button>
           )}
         </MenuItem>

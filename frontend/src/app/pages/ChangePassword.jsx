@@ -14,6 +14,7 @@ import {
   bytesToBase64,
 } from "@/core/crypto/webcrypto";
 import { createMainKeyMaterialFromBase64 } from "@/core/crypto/main-key";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 const BASE64_REGEX = /^[A-Za-z0-9+/=]+$/;
 
@@ -48,6 +49,7 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState("");
   const { dispatch } = useStore();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,12 +57,12 @@ export default function ChangePasswordPage() {
     setSuccess("");
 
     if (newPassword !== newPasswordConfirm) {
-      setError("Les nouveaux mots de passe ne correspondent pas.");
+      setError(t("auth.changePassword.errors.passwordMismatch"));
       return;
     }
 
     if (!pb.authStore.isValid) {
-      setError("Vous devez être connecté·e.");
+      setError(t("auth.changePassword.errors.notAuthenticated"));
       return;
     }
 
@@ -69,9 +71,7 @@ export default function ChangePasswordPage() {
       const salt = user.encryption_salt;
 
       if (!user?.encrypted_key) {
-        setError(
-          "Clé principale introuvable dans votre profil. Reconnectez-vous puis réessayez."
-        );
+        setError(t("auth.changePassword.errors.missingEncryptedKey"));
         return;
       }
 
@@ -79,7 +79,7 @@ export default function ChangePasswordPage() {
       try {
         sealed = JSON.parse(user.encrypted_key);
       } catch {
-        setError("Format de clé chiffrée invalide.");
+        setError(t("auth.changePassword.errors.invalidEncryptedKey"));
         return;
       }
 
@@ -92,7 +92,7 @@ export default function ChangePasswordPage() {
         const legacyIv = maybeUnwrapDoubleBase64(sealed.iv);
         const legacyData = maybeUnwrapDoubleBase64(sealed.data);
         if (!legacyIv || !legacyData) {
-          setError("Ancien mot de passe incorrect.");
+          setError(t("auth.changePassword.errors.wrongOldPassword"));
           return;
         }
         try {
@@ -101,7 +101,7 @@ export default function ChangePasswordPage() {
             oldProtectionKey
           );
         } catch {
-          setError("Ancien mot de passe incorrect.");
+          setError(t("auth.changePassword.errors.wrongOldPassword"));
           return;
         }
       }
@@ -117,9 +117,7 @@ export default function ChangePasswordPage() {
       }
 
       if (!normalizedMainKeyB64) {
-        setError(
-          "Impossible de récupérer votre clé de chiffrement. Reconnectez-vous puis réessayez."
-        );
+        setError(t("auth.changePassword.errors.missingMainKey"));
         return;
       }
 
@@ -148,7 +146,7 @@ export default function ChangePasswordPage() {
         );
       } catch (err) {
         console.error("[ChangePassword] rebuild mainKey material error", err);
-        setError("Clé de chiffrement invalide après re-encodage.");
+        setError(t("auth.changePassword.errors.invalidMainKey"));
         return;
       } finally {
         if (workingMainKeyBytes instanceof Uint8Array) {
@@ -157,10 +155,13 @@ export default function ChangePasswordPage() {
       }
 
       dispatch({ type: "key/set", payload: mainKeyMaterial });
-      setSuccess("Mot de passe changé avec succès.");
+      setSuccess(t("auth.changePassword.success"));
     } catch (err) {
+      const message = err?.message || err;
       setError(
-        "Erreur lors du changement de mot de passe : " + (err.message || err)
+        t("auth.changePassword.errors.generic", {
+          values: { message },
+        })
       );
     }
   };
@@ -177,34 +178,36 @@ export default function ChangePasswordPage() {
           onSubmit={handleSubmit}
           className="flex flex-col items-center w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
         >
-          <h1 className="text-2xl font-bold mb-6">Changer de mot de passe</h1>
+          <h1 className="text-2xl font-bold mb-6">
+            {t("auth.changePassword.title")}
+          </h1>
 
           <Input
-            label="Ancien mot de passe"
+            label={t("auth.changePassword.oldPasswordLabel")}
             type="password"
             value={oldPassword}
             onChange={(e) => setOldPassword(e.target.value)}
             required
             className="w-full mb-4"
-            placeholder="Ancien mot de passe"
+            placeholder={t("auth.changePassword.oldPasswordPlaceholder")}
           />
           <Input
-            label="Nouveau mot de passe"
+            label={t("auth.changePassword.newPasswordLabel")}
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
             className="w-full mb-4"
-            placeholder="Nouveau mot de passe"
+            placeholder={t("auth.changePassword.newPasswordPlaceholder")}
           />
           <Input
-            label="Confirmez le nouveau mot de passe"
+            label={t("auth.changePassword.confirmPasswordLabel")}
             type="password"
             value={newPasswordConfirm}
             onChange={(e) => setNewPasswordConfirm(e.target.value)}
             required
             className="w-full mb-6"
-            placeholder="Confirmez le nouveau mot de passe"
+            placeholder={t("auth.changePassword.confirmPasswordPlaceholder")}
           />
 
           <FormFeedback message={error} type="error" className="w-full" />
@@ -214,14 +217,14 @@ export default function ChangePasswordPage() {
             type="submit"
             className="w-full bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-2"
           >
-            Valider
+            {t("auth.changePassword.submit")}
           </Button>
           <Button
             type="button"
             onClick={handleBackToAccount}
             className="w-full mt-3 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50"
           >
-            Retourner à mon compte
+            {t("auth.changePassword.backToAccount")}
           </Button>
         </form>
       </div>

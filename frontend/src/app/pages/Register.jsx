@@ -4,6 +4,7 @@ import pb from "@/core/api/pocketbase";
 import Input from "@/ui/atoms/form/Input";
 import Button from "@/ui/atoms/base/Button";
 import FormFeedback from "@/ui/atoms/form/FormError";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 function toB64(u8) {
   return btoa(String.fromCharCode(...u8));
@@ -17,13 +18,14 @@ export default function RegisterPage() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { t } = useI18n();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     if (password !== passwordConfirm) {
-      setError("Les mots de passe ne correspondent pas");
+      setError(t("auth.register.errors.passwordMismatch"));
       return;
     }
     try {
@@ -31,11 +33,11 @@ export default function RegisterPage() {
         filter: `code="${inviteCode}"`,
       });
       if (!codeResult.length) {
-        setError("Code d’invitation invalide ou déjà utilisé");
+        setError(t("auth.register.errors.invalidInvite"));
         return;
       }
     } catch (err) {
-      setError("Erreur lors de la vérification du code");
+      setError(t("auth.register.errors.inviteCheckFailed"));
       return;
     }
     try {
@@ -66,7 +68,7 @@ export default function RegisterPage() {
       } catch (_) {
         console.warn("Erreur suppression code invitation");
       }
-      setSuccess("Utilisateur créé avec succès");
+      setSuccess(t("auth.register.success"));
       setUsername("");
       setInviteCode("");
       setEmail("");
@@ -74,7 +76,7 @@ export default function RegisterPage() {
       setPasswordConfirm("");
     } catch (err) {
       console.error("[Register] create error:", err);
-      setError("Erreur lors de la création du compte");
+      setError(t("auth.register.errors.creationFailed"));
     }
   };
 
@@ -86,18 +88,18 @@ export default function RegisterPage() {
           className="flex flex-col items-center gap-3 w-full max-w-md mx-auto p-8 bg-white rounded-lg md:shadow-lg"
         >
           <h1 className="text-2xl font-bold mb-6 text-center w-full">
-            Créer un compte
+            {t("auth.register.title")}
           </h1>
           <div className="flex flex-row gap-2 justify-between w-full">
             <Input
-              placeholder="Nom d'utilisateur"
+              placeholder={t("auth.register.usernamePlaceholder")}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full"
             />
             <Input
-              placeholder="Code d’invitation"
+              placeholder={t("auth.register.invitePlaceholder")}
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
               required
@@ -106,7 +108,7 @@ export default function RegisterPage() {
           </div>
           <Input
             type="email"
-            placeholder="Email"
+            placeholder={t("auth.register.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -114,7 +116,7 @@ export default function RegisterPage() {
           />
           <Input
             type="password"
-            placeholder="Mot de passe"
+            placeholder={t("auth.register.passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -122,7 +124,7 @@ export default function RegisterPage() {
           />
           <Input
             type="password"
-            placeholder="Confirme le mot de passe"
+            placeholder={t("auth.register.passwordConfirmPlaceholder")}
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
             required
@@ -134,16 +136,16 @@ export default function RegisterPage() {
             type="submit"
             className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"
           >
-            Créer le compte
+            {t("auth.register.submit")}
           </Button>
         </form>
         <div className="mt-6 text-center w-full flex flex-col justify-center">
-          <span className="text-gray-600">Déjà un compte ?</span>{" "}
+          <span className="text-gray-600">{t("auth.register.hasAccount")}</span>{" "}
           <a
             href="/login"
             className="text-nodea-sage underline hover:text-nodea-sage-dark"
           >
-            Se connecter
+            {t("auth.register.goToLogin")}
           </a>
         </div>
       </div>

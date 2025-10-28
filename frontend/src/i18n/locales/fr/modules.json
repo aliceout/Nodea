@@ -1,0 +1,30 @@
+{
+  "home": {
+    "label": "Accueil",
+    "description": "Vue d’ensemble, accès rapide à vos modules et infos du jour."
+  },
+  "mood": {
+    "label": "Mood",
+    "description": "Notez trois données positives ou fiertés chaque jour et donnez une note à votre journée."
+  },
+  "passage": {
+    "label": "Passage",
+    "description": "Gardez une trace de vos moments de transition de vie."
+  },
+  "goals": {
+    "label": "Goals",
+    "description": "Suivez vos objectifs annuels."
+  },
+  "account": {
+    "label": "Mon compte",
+    "description": "Gérez vos informations personnelles, sécurité et préférences du compte."
+  },
+  "settings": {
+    "label": "Paramètres",
+    "description": "Activez ou désactivez les modules, personnalisez votre expérience Nodea."
+  },
+  "admin": {
+    "label": "Admin",
+    "description": "Outils d’administration : gestion des utilisateurs, codes d’invitation et supervision."
+  }
+}

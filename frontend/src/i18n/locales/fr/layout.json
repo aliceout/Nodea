@@ -1,0 +1,21 @@
+{
+  "header": {
+    "openMenu": "Ouvrir le menu",
+    "defaultUsername": "Utilisateur·rice"
+  },
+  "sidebar": {
+    "closeMenu": "Fermer le menu"
+  },
+  "userMenu": {
+    "open": "Ouvrir le menu utilisateur",
+    "profile": "Votre profil",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "signOut": "Déconnexion"
+  },
+  "subnav": {
+    "sectionsAria": "Onglets {title}",
+    "sectionsFallback": "Sections",
+    "mobileMenuLabel": "Liens de la section"
+  }
+}

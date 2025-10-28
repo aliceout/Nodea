@@ -14,6 +14,7 @@ import {
 import useMoodTrend from "@/app/flow/Mood/hooks/useMoodTrend";
 import MoodChartBody from "@/app/flow/Mood/components/ChartBody";
 import useLatestAnnouncement from "@/core/hooks/useLatestAnnouncement";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 function getPreferredName(user) {
   if (!user) return "";
@@ -32,6 +33,11 @@ function getPreferredName(user) {
 
 function ModuleCard({ module, onNavigate }) {
   const Icon = module.icon;
+  const { t } = useI18n();
+  const label = t(module.label, { defaultValue: module.label });
+  const description = module.description
+    ? t(module.description, { defaultValue: module.description })
+    : "";
 
   return (
     <button
@@ -49,15 +55,13 @@ function ModuleCard({ module, onNavigate }) {
               <span className="inline-flex h-9 w-9 sm:hidden items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                 {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
               </span>
-              <p className="text-sm font-semibold text-slate-900">
-                {module.label}
-              </p>
+              <p className="text-sm font-semibold text-slate-900">{label}</p>
             </div>
             <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
               Module actif
             </span>
           </div>
-          <p className="text-xs leading-5 text-slate-600">{module.description}</p>
+          <p className="text-xs leading-5 text-slate-600">{description}</p>
         </div>
         <ArrowRightIcon
           className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500"
@@ -116,6 +120,10 @@ function AnnouncementSpotlight() {
 function MiniMoodChartCard({ module }) {
   const Icon = module?.icon;
   const { status, data, error } = useMoodTrend({ months: 1 });
+  const { t } = useI18n();
+  const moduleLabel = module
+    ? t(module.label, { defaultValue: module.label })
+    : t("modules.mood.label", { defaultValue: "Mood" });
 
   const average = useMemo(() => {
     if (!data.length) return null;
@@ -150,7 +158,7 @@ function MiniMoodChartCard({ module }) {
               Apercu rapide
             </p>
             <h3 className="text-lg font-semibold text-slate-900">
-              {module?.label || "Mood"}
+              {moduleLabel}
             </h3>
           </div>
         </div>
@@ -181,6 +189,7 @@ function MiniMoodChartCard({ module }) {
 }
 
 export default function HomePage() {
+  const { t } = useI18n();
   const { dispatch } = useStore();
   const { user } = useAuth();
   const modulesRuntime = useModulesRuntime();
@@ -301,6 +310,7 @@ export default function HomePage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {disabledModules.map((module) => {
                   const Icon = module.icon;
+                  const label = t(module.label, { defaultValue: module.label });
                   return (
                     <span
                       key={module.id}
@@ -309,7 +319,7 @@ export default function HomePage() {
                       {Icon ? (
                         <Icon className="h-4 w-4" aria-hidden="true" />
                       ) : null}
-                      {module.label}
+                      {label}
                     </span>
                   );
                 })}

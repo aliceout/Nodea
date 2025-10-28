@@ -11,12 +11,14 @@ import { generateModuleUserId, makeGuard } from "@/core/crypto/crypto-utils";
 import pb from "@/core/api/pocketbase";
 import { KeyMissingError } from "@/core/crypto/webcrypto";
 import { useStore } from "@/core/store/StoreProvider";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
-// ⬇️ nouvel import
+// ��΋�? nouvel import
 import { setModulesState } from "@/core/store/modulesRuntime";
 
 export default function ModulesManager() {
   const { mainKey } = useStore();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [cfg, setCfg] = useState({});
   const [busy, setBusy] = useState(null);
@@ -34,10 +36,10 @@ export default function ModulesManager() {
       setError("");
       try {
         const user = pb?.authStore?.model;
-        if (!user) throw new Error("Utilisateur non connecté");
+        if (!user) throw new Error("Utilisateur non connectǸ");
 
-        const c = await loadModulesConfig(pb, user.id, mainKey); // déchiffré ou {}
-        let nextCfg = c && typeof c === "object" ? c : {};
+        const c = await loadModulesConfig(pb, user.id, mainKey); // dǸchiffrǸ ou {}
+        const nextCfg = c && typeof c === "object" ? c : {};
 
         if (mounted) {
           setCfg(nextCfg);
@@ -60,7 +62,7 @@ export default function ModulesManager() {
         if (e instanceof KeyMissingError) {
           if (mounted) {
             setError(
-              "Clé absente: reconnectez-vous pour déchiffrer vos réglages."
+              "ClǸ absente: reconnectez-vous pour dǸchiffrer vos rǸglages."
             );
             setLoading(false);
           }
@@ -68,7 +70,7 @@ export default function ModulesManager() {
         }
         if (import.meta.env.DEV) console.warn(e);
         if (mounted) {
-          setError("Impossible de charger vos réglages.");
+          setError("Impossible de charger vos rǸglages.");
           setLoading(false);
         }
       }
@@ -78,7 +80,7 @@ export default function ModulesManager() {
     };
   }, [mainKey, rows]);
 
-  if (loading) return <div>Chargement…</div>;
+  if (loading) return <div>Chargement�?�</div>;
 
   const toggleModule = async (moduleId, nextEnabled) => {
     setBusy(moduleId);
@@ -86,7 +88,7 @@ export default function ModulesManager() {
     try {
       if (!mainKey) {
         throw new Error(
-          "Clé de chiffrement absente. Reconnectez-vous avant de modifier les modules."
+          "ClǸ de chiffrement absente. Reconnectez-vous avant de modifier les modules."
         );
       }
       const current = getModuleEntry(cfg, moduleId) || null;
@@ -126,7 +128,7 @@ export default function ModulesManager() {
       }
     } catch (e) {
       if (import.meta.env.DEV) console.warn(e);
-      setError(e?.message || "Impossible d’enregistrer vos réglages.");
+      setError(e?.message || "Impossible d�?Tenregistrer vos rǸglages.");
     } finally {
       setBusy(null);
     }
@@ -135,7 +137,7 @@ export default function ModulesManager() {
   if (rows.length === 0) {
     return (
       <div className="text-sm text-gray-600">
-        Aucun module n’est actuellement configurable.
+        Aucun module n�?Test actuellement configurable.
       </div>
     );
   }
@@ -146,6 +148,10 @@ export default function ModulesManager() {
         const entry = getModuleEntry(cfg, m.id);
         const checked = !!entry?.enabled;
         const isBusy = busy === m.id;
+        const label = t(m.label, { defaultValue: m.label });
+        const description = m.description
+          ? t(m.description, { defaultValue: m.description })
+          : "";
 
         return (
           <label
@@ -153,11 +159,9 @@ export default function ModulesManager() {
             className="flex items-start justify-between rounded-lg border border-gray-200 p-4"
           >
             <div className="pr-4 text-left">
-              <div className="text-sm font-medium text-gray-900">{m.label}</div>
-              {m.description ? (
-                <div className="mt-1 text-sm text-gray-600">
-                  {m.description}
-                </div>
+              <div className="text-sm font-medium text-gray-900">{label}</div>
+              {description ? (
+                <div className="mt-1 text-sm text-gray-600">{description}</div>
               ) : null}
             </div>
 
@@ -173,8 +177,8 @@ export default function ModulesManager() {
                 className={[
                   "absolute mx-auto h-4 w-9 rounded-full transition-colors duration-200 ease-in-out",
                   checked
-                    ? "bg-nodea-sky-darker " // bleu en clair ET en sombre
-                    : "bg-gray-200 dark:bg-gray-800/50", // gris en clair ET en sombre
+                    ? "bg-nodea-sky-darker "
+                    : "bg-gray-200 dark:bg-gray-800/50",
                 ].join(" ")}
                 aria-hidden="true"
               />
@@ -191,7 +195,7 @@ export default function ModulesManager() {
               <input
                 name={`module_${m.id}`}
                 type="checkbox"
-                aria-label={`Activer ${m.label}`}
+                aria-label={`Activer ${label}`}
                 className="absolute inset-0 appearance-none cursor-pointer focus:outline-hidden"
                 checked={checked}
                 onChange={(e) => toggleModule(m.id, e.target.checked)}

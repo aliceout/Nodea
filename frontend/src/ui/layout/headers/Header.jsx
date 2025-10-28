@@ -8,13 +8,15 @@ import { setTab, openMobile } from "@/core/store/actions";
 import HeaderNav from "../components/HeaderNav.jsx";
 import Logo from "@/ui/branding/LogoLong.jsx";
 import UserMenu from "../components/UserMenu.jsx";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function Header() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { dispatch, logout: logoutStore } = useStore();
+  const { t } = useI18n();
 
-  const username = user?.username || "Utilisateur.rice";
+  const username = user?.username || t("layout.header.defaultUsername");
 
   const handleMenuClick = () => dispatch(openMobile());
   const handleGoAccount = () => dispatch(setTab("account"));
@@ -33,7 +35,7 @@ export default function Header() {
               type="button"
               className="lg:hidden -m-2.5 p-2.5 text-gray-700"
               onClick={handleMenuClick}
-              aria-label="Ouvrir le menu"
+              aria-label={t("layout.header.openMenu")}
             >
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>

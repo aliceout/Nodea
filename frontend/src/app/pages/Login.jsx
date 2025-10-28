@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/core/store/StoreProvider";
 import { setTab } from "@/core/store/actions";
@@ -10,6 +10,7 @@ import Logo from "@ui/branding/LogoLong.jsx";
 import Button from "@/ui/atoms/base/Button";
 import Input from "@/ui/atoms/form/Input";
 import FormError from "@/ui/atoms/form/FormError";
+import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const { dispatch } = useStore();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const clearAuthAndAbort = (message) => {
     try {
@@ -39,7 +41,7 @@ export default function LoginPage() {
       const salt =
         user?.encryption_salt ?? user?.profile?.salt ?? user?.salt ?? "";
       if (!salt) {
-        setError("Aucun 'salt' sur le profil utilisateur.");
+        setError(t("auth.login.errors.missingSalt"));
         return;
       }
       const protectionKeyBytes = await deriveKeyArgon2(password, salt);
@@ -48,15 +50,11 @@ export default function LoginPage() {
       try {
         sealed = JSON.parse(user?.encrypted_key || "");
       } catch {
-        clearAuthAndAbort(
-          "ClÃ© chiffrÃ©e invalide sur le profil utilisateur. Reconnectez-vous."
-        );
+        clearAuthAndAbort(t("auth.login.errors.invalidEncryptedKey"));
         return;
       }
       if (!sealed?.iv || !sealed?.data) {
-        clearAuthAndAbort(
-          "ClÃ© chiffrÃ©e manquante sur le profil utilisateur. Reconnectez-vous."
-        );
+        clearAuthAndAbort(t("auth.login.errors.missingEncryptedKey"));
         return;
       }
 
@@ -65,9 +63,7 @@ export default function LoginPage() {
         mainKeyPlain = await decryptAESGCM(sealed, protectionKeyBytes);
       } catch (err) {
         console.error("[Login] decrypt mainKey error", err);
-        clearAuthAndAbort(
-          "Impossible de dÃ©chiffrer la clÃ© de chiffrement. Reconnectez-vous."
-        );
+        clearAuthAndAbort(t("auth.login.errors.decryptFailure"));
         return;
       }
 
@@ -76,9 +72,7 @@ export default function LoginPage() {
         mainKeyMaterial = await createMainKeyMaterialFromBase64(mainKeyPlain);
       } catch (err) {
         console.error("[Login] build mainKey material error", err);
-        clearAuthAndAbort(
-          "ClÃ© de chiffrement corrompue. Reconnectez-vous."
-        );
+        clearAuthAndAbort(t("auth.login.errors.corruptedKey"));
         return;
       }
 
@@ -88,7 +82,7 @@ export default function LoginPage() {
       dispatch(setTab("home"));
       navigate("/", { replace: true });
     } catch (err) {
-      setError("Identifiants invalides");
+      setError(t("auth.login.errors.invalidCredentials"));
     }
   };
 
@@ -101,20 +95,20 @@ export default function LoginPage() {
         >
           <Logo className="mx-auto mb-3 w-1/2" />
           <Input
-            label="Email"
+            label={t("auth.login.emailLabel")}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder={t("auth.login.emailPlaceholder")}
             required
             className="w-full"
           />
           <Input
-            label="Mot de passe"
+            label={t("auth.login.passwordLabel")}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mot de passe"
+            placeholder={t("auth.login.passwordPlaceholder")}
             required
             className="w-full"
           />
@@ -122,22 +116,20 @@ export default function LoginPage() {
             type="submit"
             className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"
           >
-            Se connecter
+            {t("auth.login.submit")}
           </Button>
           {error && <FormError message={error} />}
         </form>
         <div className="mt-6 text-center w-full flex flex-col justify-center">
-          <span className="text-gray-600">Pas de compteâ€¯?</span>{" "}
+          <span className="text-gray-600">{t("auth.login.noAccount")}</span>{" "}
           <a
             href="/register"
             className="text-nodea-sage underline hover:text-nodea-sage-dark"
           >
-            CrÃ©er un compte
+            {t("auth.login.createAccount")}
           </a>
         </div>
       </div>
     </div>
   );
 }
-
-

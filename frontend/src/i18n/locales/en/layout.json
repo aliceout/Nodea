@@ -1,0 +1,21 @@
+{
+  "header": {
+    "openMenu": "Open menu",
+    "defaultUsername": "User"
+  },
+  "sidebar": {
+    "closeMenu": "Close menu"
+  },
+  "userMenu": {
+    "open": "Open user menu",
+    "profile": "Your profile",
+    "settings": "Settings",
+    "admin": "Admin",
+    "signOut": "Sign out"
+  },
+  "subnav": {
+    "sectionsAria": "{title} tabs",
+    "sectionsFallback": "Sections",
+    "mobileMenuLabel": "Section links"
+  }
+}
