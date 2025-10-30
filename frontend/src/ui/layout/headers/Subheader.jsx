@@ -8,6 +8,8 @@ import SubNavDesktop from "../components/SubNavDesktop";
 import SubNavMobile from "../components/SubNavMobile";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
+import "./Subheader.css";
+
 export default function Subheader({ tabs = [], onTabSelect, className }) {
   const store = useStore();
   const state = store?.state ?? store?.[0];
@@ -23,16 +25,12 @@ export default function Subheader({ tabs = [], onTabSelect, className }) {
   return (
     <div
       className={clsx(
-        "sticky top-16 z-30 border-b border-slate-200 bg-white/80 backdrop-blur transition-colors dark:border-slate-700 dark:bg-slate-900/80",
+        "subheader sticky top-16 z-30 backdrop-blur transition-colors",
         className
       )}
     >
-      <div className="mx-auto flex h-12 items-center gap-4 px-4 sm:px-6 lg:px-8">
-        {title ? (
-          <h1 className="shrink-0 text-base font-semibold leading-6 text-gray-900 dark:text-slate-100 lg:w-[106px] lg:text-center">
-            {title}
-          </h1>
-        ) : null}
+      <div className="subheader__inner">
+        {title ? <h1 className="subheader__title">{title}</h1> : null}
 
         <SubNavDesktop tabs={tabs} onTabSelect={onTabSelect} title={title} />
         <SubNavMobile tabs={tabs} onTabSelect={onTabSelect} />
