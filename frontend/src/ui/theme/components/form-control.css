@@ -1,0 +1,23 @@
+@layer components {
+  .form-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-control__label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .form-control__hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .form-control__error {
+    font-size: 0.8rem;
+    color: var(--accent-danger);
+  }
+}

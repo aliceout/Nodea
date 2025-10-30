@@ -1,0 +1,40 @@
+@layer components {
+  .table-shell {
+    --table-border-color: var(--border-default);
+    --table-header-bg: var(--surface-muted);
+    --table-alt-row-bg: var(--surface-subtle);
+    --table-hover-row-bg: var(--surface-muted);
+
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--table-border-color);
+    background-color: var(--surface-default);
+  }
+
+  .table-shell table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table-shell thead {
+    background-color: var(--table-header-bg);
+    color: var(--text-secondary);
+  }
+
+  .table-shell th,
+  .table-shell td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--table-border-color);
+  }
+
+  .table-shell tbody tr:nth-child(even) {
+    background-color: var(--table-alt-row-bg);
+  }
+
+  .table-shell tbody tr:hover {
+    background-color: var(--table-hover-row-bg);
+  }
+}

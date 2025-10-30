@@ -1,0 +1,97 @@
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Surface palette */
+    --surface-default: #ffffff;
+    --surface-subtle: #f7f4ef;
+    --surface-muted: #eef2ef;
+    --surface-inverse: #111827;
+    --surface-overlay: rgba(17, 24, 39, 0.85);
+
+    /* Borders */
+    --border-default: #d9dfd7;
+    --border-strong: #b6c0b8;
+    --border-inverse: rgba(255, 255, 255, 0.18);
+
+    /* Text */
+    --text-primary: #2b2d2f;
+    --text-secondary: #4d5650;
+    --text-muted: #6b736d;
+    --text-inverse: #f8fafc;
+
+    /* Accents */
+    --accent-primary: #90b6a2;
+    --accent-primary-strong: #587568;
+    --accent-info: #a9d6e5;
+    --accent-success: #7bbf7b;
+    --accent-warning: #f6c453;
+    --accent-danger: #e07a7a;
+    --accent-primary-glow: rgba(144, 182, 162, 0.35);
+
+    /* Elevation */
+    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.08);
+    --shadow-md: 0 16px 32px rgba(15, 23, 42, 0.12);
+
+    /* Radius */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+
+    /* Spacing */
+    --surface-padding-sm: 0.75rem;
+    --surface-padding-md: 1.25rem;
+    --surface-padding-lg: 1.75rem;
+
+    --surface-gap-sm: 0.75rem;
+    --surface-gap-md: 1rem;
+    --surface-gap-lg: 1.5rem;
+
+    --chart-axis-color: #475569;
+
+    /* Motion */
+    --transition-surface: background-color 150ms ease, border-color 150ms ease,
+      box-shadow 150ms ease, color 150ms ease;
+    --transition-focus-ring: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --surface-default: #1f2937;
+    --surface-subtle: #111827;
+    --surface-muted: #374151;
+    --surface-inverse: #f0f0f0;
+    --surface-overlay: rgba(17, 24, 39, 0.85);
+
+    --border-default: rgba(249, 250, 251, 0.08);
+    --border-strong: rgba(249, 250, 251, 0.18);
+    --border-inverse: rgba(17, 24, 39, 0.55);
+
+    --text-primary: #f9fafb;
+    --text-secondary: #e5e7eb;
+    --text-muted: #9ca3af;
+    --text-inverse: #1a1a1a;
+
+    --accent-primary: #1a7a90;
+    --accent-primary-strong: #004d61;
+    --accent-info: #3ea7c4;
+    --accent-success: #3e5641;
+    --accent-warning: #d9a441;
+    --accent-danger: #822659;
+    --accent-primary-glow: rgba(26, 122, 144, 0.45);
+
+    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.35);
+    --shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.45);
+    --shadow-md: 0 18px 40px rgba(15, 23, 42, 0.6);
+
+    --chart-axis-color: #9ca3af;
+  }
+
+  body {
+    background-color: var(--surface-subtle);
+    color: var(--text-primary);
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+}

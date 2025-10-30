@@ -1,0 +1,90 @@
+@layer components {
+  .surface {
+    --surface-bg: var(--surface-default);
+    --surface-color: var(--text-primary);
+    --surface-border-color: var(--border-default);
+    --surface-radius: var(--radius-lg);
+    --surface-gap-size: var(--surface-gap-md);
+    --surface-padding-size: var(--surface-padding-md);
+    --surface-shadow-level: var(--shadow-xs);
+    --surface-hover-shadow: var(--shadow-sm);
+
+    background-color: var(--surface-bg);
+    border: 1px solid var(--surface-border-color);
+    border-radius: var(--surface-radius);
+    box-shadow: var(--surface-shadow-level);
+    color: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--surface-gap-size);
+    padding: var(--surface-padding-size);
+    transition: var(--transition-surface);
+  }
+
+  .surface[data-tone="muted"] {
+    --surface-bg: var(--surface-muted);
+  }
+
+  .surface[data-tone="subtle"] {
+    --surface-bg: var(--surface-subtle);
+  }
+
+  .surface[data-tone="inverse"] {
+    --surface-bg: var(--surface-inverse);
+    --surface-color: var(--text-inverse);
+    --surface-border-color: var(--border-inverse);
+  }
+
+  .surface[data-shadow="none"] {
+    --surface-shadow-level: none;
+    --surface-hover-shadow: none;
+  }
+
+  .surface[data-shadow="md"] {
+    --surface-shadow-level: var(--shadow-md);
+    --surface-hover-shadow: var(--shadow-md);
+  }
+
+  .surface[data-radius="sm"] {
+    --surface-radius: var(--radius-sm);
+  }
+
+  .surface[data-radius="md"] {
+    --surface-radius: var(--radius-md);
+  }
+
+  .surface[data-padding="none"] {
+    --surface-padding-size: 0;
+    --surface-gap-size: 0;
+  }
+
+  .surface[data-padding="sm"] {
+    --surface-padding-size: var(--surface-padding-sm);
+    --surface-gap-size: var(--surface-gap-sm);
+  }
+
+  .surface[data-padding="lg"] {
+    --surface-padding-size: var(--surface-padding-lg);
+    --surface-gap-size: var(--surface-gap-lg);
+  }
+
+  .surface[data-border="strong"] {
+    --surface-border-color: var(--border-strong);
+  }
+
+  .surface[data-border="minimal"] {
+    --surface-border-color: transparent;
+    --surface-shadow-level: none;
+    --surface-hover-shadow: none;
+  }
+
+  .surface[data-interactive="true"] {
+    cursor: pointer;
+    transition: var(--transition-surface), transform 120ms ease;
+  }
+
+  .surface[data-interactive="true"]:hover {
+    box-shadow: var(--surface-hover-shadow);
+    transform: translateY(-1px);
+  }
+}
