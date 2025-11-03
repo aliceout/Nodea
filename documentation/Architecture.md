@@ -137,6 +137,8 @@ Fichiers clés :
 - `core/store/StoreProvider.jsx` → détient `state.mainKey`, gère `markMissing()` (logout immédiat).  
 Cette centralisation vise la simplicité mais mélange encore logique pure et adaptations modules (voir `utils/ImportExport/*`).
 
+> **Note état global.** Aucun store Redux n'est conservé : toute la gestion d'état passe par `StoreProvider` (Context + `useReducer`). Les bibliothèques `@reduxjs/toolkit` / `react-redux` visibles dans le `package-lock` proviennent uniquement de dépendances transitives de `recharts` et ne sont ni importées ni configurées dans l'application.
+
 ### ui/
 Séparé en sous-niveaux :
 - atoms/base & atoms/form : découpage effectué pour clarifier les composants basiques vs formulaires.
