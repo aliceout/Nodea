@@ -10,11 +10,11 @@ export default function FormField({
   children,
 }) {
   return (
-    <div className={clsx("form-control", className)}>
+    <div className={clsx("flex flex-col gap-1.5", className)}>
       {label ? (
         <label
           htmlFor={htmlFor}
-          className="form-control__label"
+          className="text-[0.9rem] font-semibold text-[var(--text-secondary)]"
         >
           {label}
           {required ? <span className="ml-1 text-[var(--accent-danger)]">*</span> : null}
@@ -24,10 +24,14 @@ export default function FormField({
       {children}
 
       {hint && !error ? (
-        <p className="form-control__hint">{hint}</p>
+        <p className="text-xs text-[var(--text-muted)]">{hint}</p>
       ) : null}
 
-      {error ? <p className="form-control__error">{error}</p> : null}
+      {error ? (
+        <p className="text-xs font-medium text-[var(--accent-danger)]">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

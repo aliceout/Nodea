@@ -184,7 +184,7 @@ export default function JournalEntryPage() {
           />
           <Button
             type="submit"
-            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker "
+            variant="primary"
           >
             Enregistrer
           </Button>

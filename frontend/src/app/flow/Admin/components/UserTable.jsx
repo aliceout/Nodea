@@ -14,23 +14,26 @@ export default function UserTable({ users, onDelete, onResetPassword }) {
   return (
     <TableShell tone="base" border="default" padding="none">
       <table className="w-full table-auto">
-        <thead>
+        <thead className="bg-[var(--surface-muted)] text-[var(--text-secondary)]">
           <tr>
-            <th className="px-3 py-3 text-left text-[var(--text-muted)]">Username</th>
-            <th className="hidden px-3 py-3 text-left text-[var(--text-muted)] md:table-cell">Rôle</th>
-            <th className="px-3 py-3 text-center text-[var(--text-muted)]">Action</th>
+            <th className="border-b border-[var(--border-default)] px-3 py-3 text-left">Username</th>
+            <th className="hidden border-b border-[var(--border-default)] px-3 py-3 text-left md:table-cell">Rôle</th>
+            <th className="border-b border-[var(--border-default)] px-3 py-3 text-center">Action</th>
           </tr>
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.id}>
-              <td className="px-3 py-3 text-sm font-medium text-[var(--text-primary)]">
+            <tr
+              key={user.id}
+              className="transition-colors even:bg-[var(--surface-subtle)] hover:bg-[var(--surface-muted)]"
+            >
+              <td className="border-b border-[var(--border-default)] px-3 py-3 text-sm font-medium text-[var(--text-primary)]">
                 {user.username}
               </td>
-              <td className="hidden px-3 py-3 text-sm text-[var(--text-secondary)] md:table-cell">
+              <td className="hidden border-b border-[var(--border-default)] px-3 py-3 text-sm text-[var(--text-secondary)] md:table-cell">
                 {user.role}
               </td>
-              <td className="px-3 py-3">
+              <td className="border-b border-[var(--border-default)] px-3 py-3">
                 <div className="flex items-center justify-center gap-2">
                   {typeof onResetPassword === "function" ? (
                     <button

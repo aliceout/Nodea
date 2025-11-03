@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
@@ -17,33 +17,33 @@ export default function ImportData() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Préconditions actuelles : clé + (au moins) Mood configuré pour les chemins legacy/NDJSON
+  // PrÃ©conditions actuelles : clÃ© + (au moins) Mood configurÃ© pour les chemins legacy/NDJSON
   const ready = Boolean(mainKey && sidMood);
 
   function finish(inputEl) {
     setLoading(false);
-    if (inputEl) inputEl.value = ""; // pouvoir réimporter le même nom
+    if (inputEl) inputEl.value = ""; // pouvoir rÃ©importer le mÃªme nom
   }
 
-  // Util: récupère le sid d'un module activé
+  // Util: rÃ©cupÃ¨re le sid d'un module activÃ©
   function getSid(moduleKey) {
     const cfg = modulesState?.[moduleKey];
     return cfg?.enabled ? cfg.id || cfg.module_user_id : null;
   }
 
   // --- Import tableau legacy: [ {date, mood_score, ...}, ... ] ---
-  // (Compat historique : considéré comme "mood" uniquement)
+  // (Compat historique : considÃ©rÃ© comme "mood" uniquement)
   async function importLegacyArray(array, inputEl) {
     try {
       if (!Array.isArray(array))
         throw new Error("Format JSON inattendu (array requis).");
       const moduleKey = "mood";
       const moduleSid = getSid(moduleKey);
-      if (!moduleSid) throw new Error("Module 'Mood' non configuré.");
+      if (!moduleSid) throw new Error("Module 'Mood' non configurÃ©.");
 
       const plugin = await getDataPlugin(moduleKey);
 
-      // Set des clés déjà présentes (si le plugin sait le faire)
+      // Set des clÃ©s dÃ©jÃ  prÃ©sentes (si le plugin sait le faire)
       const existing =
         typeof plugin.listExistingKeys === "function"
           ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
@@ -77,11 +77,11 @@ export default function ImportData() {
       }
 
       setSuccess(
-        `Import terminé : ${created} ajout(s), ${skipped} doublon(s) ignoré(s).`
+        `Import terminÃ© : ${created} ajout(s), ${skipped} doublon(s) ignorÃ©(s).`
       );
       finish(inputEl);
     } catch (err) {
-      setError("Erreur lors de l’import : " + (err?.message || ""));
+      setError("Erreur lors de lâ€™import : " + (err?.message || ""));
       finish(inputEl);
     }
   }
@@ -98,11 +98,11 @@ export default function ImportData() {
         if (!Array.isArray(items) || !items.length) continue;
 
         const moduleSid = getSid(moduleKey);
-        if (!moduleSid) continue; // module non activé → ignore
+        if (!moduleSid) continue; // module non activÃ© â†’ ignore
 
         const plugin = await getDataPlugin(moduleKey);
 
-        // Set des clés déjà présentes (si dispo), + set intra-fichier
+        // Set des clÃ©s dÃ©jÃ  prÃ©sentes (si dispo), + set intra-fichier
         const existing =
           typeof plugin.listExistingKeys === "function"
             ? await plugin.listExistingKeys({ pb, sid: moduleSid, mainKey })
@@ -140,16 +140,16 @@ export default function ImportData() {
       }
 
       setSuccess(
-        `Import terminé${results.length ? ` (${results.join(" ; ")})` : ""}.`
+        `Import terminÃ©${results.length ? ` (${results.join(" ; ")})` : ""}.`
       );
       finish(inputEl);
     } catch (err) {
-      setError("Erreur lors de l’import : " + (err?.message || ""));
+      setError("Erreur lors de lâ€™import : " + (err?.message || ""));
       finish(inputEl);
     }
   }
 
-  // --- Fallback NDJSON (une entrée JSON par ligne) ---
+  // --- Fallback NDJSON (une entrÃ©e JSON par ligne) ---
   // Accepte soit {module, version, payload}, soit un payload "mood" nu (legacy)
   async function importNdjson(text, inputEl) {
     try {
@@ -191,7 +191,7 @@ export default function ImportData() {
         }
 
         const moduleSid = getSid(moduleKey);
-        if (!moduleSid) continue; // module non activé → ignore
+        if (!moduleSid) continue; // module non activÃ© â†’ ignore
 
         // plugin
         let plugin = pluginCache.get(moduleKey);
@@ -241,22 +241,22 @@ export default function ImportData() {
         stats.created++;
       }
 
-      // message récap
+      // message rÃ©cap
       const parts = [];
       for (const [k, { created, skipped }] of counters.entries()) {
         parts.push(`${k}: ${created} ajout(s), ${skipped} doublon(s)`);
       }
       setSuccess(
-        `Import terminé${parts.length ? ` (${parts.join(" ; ")})` : ""}.`
+        `Import terminÃ©${parts.length ? ` (${parts.join(" ; ")})` : ""}.`
       );
       finish(inputEl);
     } catch (err) {
-      setError("Erreur lors de l’import NDJSON : " + (err?.message || ""));
+      setError("Erreur lors de lâ€™import NDJSON : " + (err?.message || ""));
       finish(inputEl);
     }
   }
 
-  // --- Handler principal (sélection fichier) ---
+  // --- Handler principal (sÃ©lection fichier) ---
   async function handleImport(evt) {
     const inputEl = evt?.target;
     const file = inputEl?.files?.[0];
@@ -267,7 +267,7 @@ export default function ImportData() {
     setSuccess("");
 
     try {
-      if (!ready) throw new Error("Préconditions manquantes (clé ou module).");
+      if (!ready) throw new Error("PrÃ©conditions manquantes (clÃ© ou module).");
       const text = await file.text();
       const trimmed = text.trim();
 
@@ -280,11 +280,11 @@ export default function ImportData() {
         const arr = JSON.parse(trimmed);
         await importLegacyArray(arr, inputEl);
       } else {
-        // NDJSON (une entrée par ligne)
+        // NDJSON (une entrÃ©e par ligne)
         await importNdjson(trimmed, inputEl);
       }
     } catch (err) {
-      setError("Erreur lors de l’import : " + (err?.message || ""));
+      setError("Erreur lors de lâ€™import : " + (err?.message || ""));
       finish(inputEl);
     }
   }
@@ -294,10 +294,10 @@ export default function ImportData() {
       <div className="rounded-lg border border-gray-200 p-6 mb-6 bg-white flex flex-col items-stretch">
         <div className="mb-4 w-full">
           <div className="text-base font-semibold text-gray-900 mb-1">
-            Importer des données
+            Importer des donnÃ©es
           </div>
           <div className="text-sm text-gray-600">
-            Connecte-toi à nouveau pour importer des données.
+            Connecte-toi Ã  nouveau pour importer des donnÃ©es.
           </div>
         </div>
         <div
@@ -305,7 +305,7 @@ export default function ImportData() {
           aria-live="polite"
           className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center mb-2"
         >
-          <p className="font-medium">Clé de chiffrement absente du cache</p>
+          <p className="font-medium">ClÃ© de chiffrement absente du cache</p>
         </div>
       </div>
     );
@@ -315,20 +315,21 @@ export default function ImportData() {
     <SurfaceCard className="border-gray-200 hover:border-gray-300">
       <div className="mb-4 w-full">
         <div className="text-base font-semibold text-gray-900 mb-1">
-          Importer des données
+          Importer des donnÃ©es
         </div>
         <div className="text-sm text-gray-600">
-          Les doublons seront ignorés automatiquement.
+          Les doublons seront ignorÃ©s automatiquement.
         </div>
       </div>
       <form className="w-full flex flex-col gap-6 items-stretch">
         <div className="flex flex-col gap-4">
           <Button
             type="button"
-            className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker disabled:opacity-50"
             as="label"
+            variant="info"
+            className="disabled:opacity-50"
           >
-            Sélectionner le fichier
+            SÃ©lectionner le fichier
             <input
               id="import-json"
               type="file"
@@ -341,7 +342,7 @@ export default function ImportData() {
         </div>
         {loading && (
           <span className="text-sm ml-2 opacity-70 w-full text-center">
-            Import en cours…
+            Import en coursâ€¦
           </span>
         )}
         {success && (
@@ -366,3 +367,4 @@ export default function ImportData() {
     </SurfaceCard>
   );
 }
+

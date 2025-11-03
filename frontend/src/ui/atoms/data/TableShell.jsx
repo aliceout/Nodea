@@ -1,3 +1,4 @@
+import { Children, cloneElement, isValidElement } from "react";
 import clsx from "clsx";
 import Surface from "@/ui/atoms/layout/Surface.jsx";
 
@@ -36,8 +37,25 @@ export default function TableShell({
         </div>
       )}
 
-      <div className="table-shell">
-        {children}
+      <div className="overflow-x-auto">
+        <div className="w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-default)]">
+          {Children.map(children, (child) => {
+            if (!isValidElement(child)) {
+              return child;
+            }
+
+            if (typeof child.type === "string" && child.type === "table") {
+              return cloneElement(child, {
+                className: clsx(
+                  "w-full border-collapse text-left text-sm text-[var(--text-secondary)]",
+                  child.props.className
+                ),
+              });
+            }
+
+            return child;
+          })}
+        </div>
       </div>
     </Surface>
   );

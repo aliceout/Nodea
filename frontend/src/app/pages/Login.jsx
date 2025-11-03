@@ -112,10 +112,7 @@ export default function LoginPage() {
             required
             className="w-full"
           />
-          <Button
-            type="submit"
-            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"
-          >
+          <Button type="submit" variant="primary" className="mt-4">
             {t("auth.login.submit")}
           </Button>
           {error && <FormError message={error} />}

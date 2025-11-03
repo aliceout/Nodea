@@ -124,7 +124,7 @@ export default function PassageForm({ moduleUserId: moduleUserIdProp }) {
           legend="Choisis un hashtag existant ou cree-en un nouveau. Il sert a regrouper les entrees."
         />
         <Button
-          className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"
+          variant="primary"
           type="submit"
           disabled={saving}
         >

@@ -261,7 +261,7 @@ export default function GoalsForm() {
       />
 
       <Button
-        className="bg-nodea-sage-dark hover:bg-nodea-sage-darker"
+        variant="primary"
         type="submit"
         disabled={disabled}
       >

@@ -145,7 +145,8 @@ export default function ExportDataSection() {
               handleExport();
             }}
             disabled={loading || (!sidMood && !sidGoals && !sidPassage)}
-            className=" bg-nodea-sky-dark hover:bg-nodea-sky-darker disabled:opacity-50"
+            variant="info"
+            className="disabled:opacity-50"
           >
             {loading ? "Chargement…" : "Exporter les données"}
           </Button>

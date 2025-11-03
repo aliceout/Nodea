@@ -151,8 +151,8 @@ export default function AnnouncementsManager() {
             <Button
               type="submit"
               disabled={!canSubmit}
-              unstyled
-              className="inline-flex items-center justify-center rounded-full bg-[var(--accent-primary-strong)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-primary)] disabled:cursor-not-allowed disabled:bg-[var(--accent-primary)]/60"
+              variant="accent"
+              className="rounded-full"
             >
               {saving ? "Publication..." : "Publier"}
             </Button>
@@ -201,8 +201,9 @@ export default function AnnouncementsManager() {
                 <Button
                   type="button"
                   onClick={() => handleDelete(item.id)}
-                  unstyled
-                  className="text-xs font-semibold text-[var(--accent-danger)] transition hover:text-[var(--accent-danger)]/80"
+                  variant="ghostDanger"
+                  size="sm"
+                  className="text-xs"
                 >
                   Supprimer
                 </Button>
