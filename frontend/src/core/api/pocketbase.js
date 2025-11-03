@@ -1,9 +1,10 @@
+/**
+ * Centralised PocketBase client shared across the app. The base URL is resolved with
+ * the following priority: `VITE_API_URL` → `VITE_PB_URL` → `window.location.origin`.
+ * Callers can import the default `pb` instance or rely on the helper utilities below.
+ */
 import PocketBase from "pocketbase";
-// Client PocketBase centralisé
-// - Base URL résolue par priorité: VITE_API_URL > VITE_PB_URL > window.location.origin
-// - Exporte: instance pb, getCurrentUser(), updateUser(partial)
 
-// VITE_API_URL prioritaire, puis VITE_PB_URL, sinon origin
 const baseUrl = (
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_PB_URL ||
@@ -13,10 +14,22 @@ const baseUrl = (
 const pb = new PocketBase(baseUrl);
 export default pb;
 
+/**
+ * Retrieve the authenticated user model from the shared PocketBase client.
+ *
+ * @returns {import("pocketbase").RecordModel | null} The current user or null when unauthenticated.
+ */
 export function getCurrentUser() {
   return pb.authStore.model;
 }
 
+/**
+ * Patch the authenticated user record with the provided partial payload.
+ *
+ * @param {Record<string, any>} partial - Fields to update on the user document.
+ * @returns {Promise<import("pocketbase").RecordModel>} The updated user record.
+ * @throws {Error} When no user is authenticated.
+ */
 export async function updateUser(partial) {
   const user = getCurrentUser();
   if (!user?.id) throw new Error("No authenticated user");
