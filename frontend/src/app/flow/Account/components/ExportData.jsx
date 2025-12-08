@@ -1,18 +1,20 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
 import Button from "@/ui/atoms/base/Button";
-import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
+import AccountSettingsCard from "@/ui/atoms/specifics/AccountSettingsCard.jsx";
+import EncryptedActionGate from "@/ui/atoms/specifics/EncryptedActionGate.jsx";
+import StatusBanner from "@/ui/atoms/feedback/StatusBanner.jsx";
 // Orchestrate export via module plugins (pagination + decryption centralized)
 import { getDataPlugin } from "@/core/utils/ImportExport/registry.data.js";
 
 export default function ExportDataSection() {
   // Note: l'export s'appuie sur les plugins de chaque module (Mood/Goals/Passage)
   // via getDataPlugin(moduleKey) et plugin.exportQuery({ ctx }) afin d'unifier
-  // pagination, déchiffrement et format. On construit un SEUL fichier JSON
+  // pagination, d├®chiffrement et format. On construit un SEUL fichier JSON
   // { meta, modules: { mood?, goals?, passage? } } sans changer l'UI.
-  const { mainKey } = useStore(); // clé binaire (Uint8Array)
+  const { mainKey } = useStore(); // cl├® binaire (Uint8Array)
   const modules = useModulesRuntime(); // { mood: { enabled, id: "m_..." } }
   const sidMood = modules?.mood?.id || modules?.mood?.module_user_id;
   const sidGoals = modules?.goals?.id || modules?.goals?.module_user_id;
@@ -27,13 +29,13 @@ export default function ExportDataSection() {
     setError("");
     setLoading(true);
     try {
-      if (!mainKey) throw new Error("Clé de chiffrement absente");
+      if (!mainKey) throw new Error("Cl├® de chiffrement absente");
       if (!sidMood && !sidGoals && !sidPassage)
         throw new Error(
-          "Aucun module exportable configuré (Mood/Goals/Passage)"
+          "Aucun module exportable configur├® (Mood/Goals/Passage)"
         );
 
-      // Accumulateur par module (utilise les plugins d'export pour pagination + déchiffrement)
+      // Accumulateur par module (utilise les plugins d'export pour pagination + d├®chiffrement)
       const modulesOut = {};
       const enabled = [
         sidMood ? "mood" : null,
@@ -53,24 +55,24 @@ export default function ExportDataSection() {
           const ctx = { moduleUserId: sid, mainKey, pb };
 
           const items = [];
-          // On laisse le plugin gérer la pagination et le déchiffrement
-          // pageSize par défaut interne (certains plugins acceptent pageSize en option)
+          // On laisse le plugin g├®rer la pagination et le d├®chiffrement
+          // pageSize par d├®faut interne (certains plugins acceptent pageSize en option)
           for await (const payload of plugin.exportQuery({
             ctx,
             pageSize: 200,
           })) {
-            // payload est déjà en clair; si tu utilises NDJSON un jour: plugin.exportSerialize(payload)
+            // payload est d├®j├á en clair; si tu utilises NDJSON un jour: plugin.exportSerialize(payload)
             items.push(payload);
           }
           if (items.length) modulesOut[moduleKey] = items;
         } catch (err) {
-          // On continue les autres modules; l'erreur sera reflétée dans le message global
-          console.error(`Export ${moduleKey} échoué:`, err);
+          // On continue les autres modules; l'erreur sera refl├®t├®e dans le message global
+          console.error(`Export ${moduleKey} ├®chou├®:`, err);
         }
       }
 
       if (!Object.keys(modulesOut).length) {
-        setError("Aucune donnée à exporter");
+        setError("Aucune donn├®e ├á exporter");
         setLoading(false);
         return;
       }
@@ -97,7 +99,7 @@ export default function ExportDataSection() {
       a.click();
       URL.revokeObjectURL(url);
 
-      setSuccess("Export terminé");
+      setSuccess("Export termin├®");
     } catch (e) {
       setError(String(e?.message || e));
     } finally {
@@ -105,39 +107,30 @@ export default function ExportDataSection() {
     }
   }
 
-  if (!mainKey) {
+    if (!mainKey) {
     return (
-      <div className="rounded-lg border border-gray-200 p-6 mb-6 bg-white flex flex-col items-stretch">
-        <div className="mb-4 w-full">
-          <div className="text-base font-semibold text-gray-900 mb-1">
-            Exporter mes données
-          </div>
-          <div className="text-sm text-gray-600">
-            Connecte-toi à nouveau pour exporter tes données.
-          </div>
-        </div>
-        <div
-          role="alert"
-          aria-live="polite"
-          className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center mb-2"
-        >
-          <p className="font-medium">Clé de chiffrement absente du cache</p>
-        </div>
-      </div>
+      <EncryptedActionGate
+        title="Exporter mes données"
+        description="Connecte-toi à nouveau pour exporter tes données."
+        hint="Clé de chiffrement absente du cache"
+      />
     );
   }
 
   return (
-    <SurfaceCard className="border-gray-200 hover:border-gray-300">
+    <AccountSettingsCard
+      title="Exporter mes données"
+      description="Exporte un fichier JSON (non chiffré) des données."
+    > className="border-gray-200 hover:border-gray-300">
       <div className="mb-4 w-full">
         <div className="text-base font-semibold text-gray-900 mb-1">
-          Exporter mes données
+          Exporter mes donn├®es
         </div>
         <div className="text-sm text-gray-600">
-          Exporte un fichier JSON (non chiffré) des données.
+          Exporte un fichier JSON (non chiffr├®) des donn├®es.
         </div>
       </div>
-      <form className="w-full flex flex-col gap-6 items-stretch">
+      <form className="flex flex-col gap-6 items-stretch">
         <div className="flex flex-col gap-4">
           <Button
             type="button"
@@ -148,33 +141,22 @@ export default function ExportDataSection() {
             variant="info"
             className="disabled:opacity-50"
           >
-            {loading ? "Chargement…" : "Exporter les données"}
+            {loading ? "ChargementÔÇª" : "Exporter les donn├®es"}
           </Button>
         </div>
-        {success && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 w-full text-center"
-          >
-            {success}
-          </div>
-        )}
-        {error && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center"
-          >
-            {error}
-          </div>
-        )}
+        {success ? (
+          <StatusBanner tone="success">{success}</StatusBanner>
+        ) : null}
+        {error ? (
+          <StatusBanner tone="error">{error}</StatusBanner>
+        ) : null}
         {!sidMood && !sidGoals && !sidPassage && (
           <div className="text-xs text-amber-700 w-full text-center">
-            Aucun module exportable n’est configuré (Mood/Goals/Passage).
+            Aucun module exportable nÔÇÖest configur├® (Mood/Goals/Passage).
           </div>
         )}
       </form>
-    </SurfaceCard>
+    </AccountSettingsCard>
   );
 }
+

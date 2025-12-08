@@ -2,7 +2,9 @@
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
 import { useModulesRuntime } from "@/core/store/modulesRuntime";
-import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
+import AccountSettingsCard from "@/ui/atoms/specifics/AccountSettingsCard.jsx";
+import EncryptedActionGate from "@/ui/atoms/specifics/EncryptedActionGate.jsx";
+import StatusBanner from "@/ui/atoms/feedback/StatusBanner.jsx";
 
 // Orchestration plugins par module (ex. Mood)
 import { getDataPlugin } from "@/core/utils/ImportExport/registry.data.js";
@@ -289,39 +291,22 @@ export default function ImportData() {
     }
   }
 
-  if (!ready) {
+    if (!ready) {
     return (
-      <div className="rounded-lg border border-gray-200 p-6 mb-6 bg-white flex flex-col items-stretch">
-        <div className="mb-4 w-full">
-          <div className="text-base font-semibold text-gray-900 mb-1">
-            Importer des donnÃ©es
-          </div>
-          <div className="text-sm text-gray-600">
-            Connecte-toi Ã  nouveau pour importer des donnÃ©es.
-          </div>
-        </div>
-        <div
-          role="alert"
-          aria-live="polite"
-          className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center mb-2"
-        >
-          <p className="font-medium">ClÃ© de chiffrement absente du cache</p>
-        </div>
-      </div>
+      <EncryptedActionGate
+        title="Importer des données"
+        description="Connecte-toi à nouveau pour importer des données."
+        hint="Clé de chiffrement absente du cache"
+      />
     );
   }
 
   return (
-    <SurfaceCard className="border-gray-200 hover:border-gray-300">
-      <div className="mb-4 w-full">
-        <div className="text-base font-semibold text-gray-900 mb-1">
-          Importer des donnÃ©es
-        </div>
-        <div className="text-sm text-gray-600">
-          Les doublons seront ignorÃ©s automatiquement.
-        </div>
-      </div>
-      <form className="w-full flex flex-col gap-6 items-stretch">
+    <AccountSettingsCard
+      title="Importer des données"
+      description="Les doublons seront ignorés automatiquement."
+    >
+      <form className="flex flex-col gap-6 items-stretch">
         <div className="flex flex-col gap-4">
           <Button
             type="button"
@@ -329,7 +314,7 @@ export default function ImportData() {
             variant="info"
             className="disabled:opacity-50"
           >
-            SÃ©lectionner le fichier
+            Sélectionner le fichier
             <input
               id="import-json"
               type="file"
@@ -342,29 +327,25 @@ export default function ImportData() {
         </div>
         {loading && (
           <span className="text-sm ml-2 opacity-70 w-full text-center">
-            Import en coursâ€¦
+            Import en cours…
           </span>
         )}
-        {success && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 w-full text-center"
-          >
-            {success}
-          </div>
-        )}
-        {error && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center"
-          >
-            {error}
-          </div>
-        )}
+        {success ? (
+          <StatusBanner tone="success">{success}</StatusBanner>
+        ) : null}
+        {error ? (
+          <StatusBanner tone="error">{error}</StatusBanner>
+        ) : null}
       </form>
-    </SurfaceCard>
+    </AccountSettingsCard>
   );
 }
+
+
+
+
+
+
+
+
 

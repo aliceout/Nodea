@@ -2,8 +2,9 @@ import { useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useNavigate } from "react-router-dom";
 
-import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
+import AccountSettingsCard from "@/ui/atoms/specifics/AccountSettingsCard.jsx";
 import Button from "@/ui/atoms/base/Button";
+import StatusBanner from "@/ui/atoms/feedback/StatusBanner.jsx";
 
 export default function EmailSection() {
   const [newEmail, setNewEmail] = useState("");
@@ -41,19 +42,11 @@ export default function EmailSection() {
   };
 
   return (
-    <SurfaceCard className="border-gray-200 hover:border-gray-300">
-      <div className="mb-4 w-full">
-        <div className="text-base font-semibold text-gray-900 mb-1">
-          Changer l’email
-        </div>
-        <div className="text-sm text-gray-600">
-          Tu recevras un mail de confirmation pour valider ce changement.
-        </div>
-      </div>
-      <form
-        onSubmit={handleEmail}
-        className="w-full flex flex-col gap-6 items-stretch"
-      >
+    <AccountSettingsCard
+      title="Changer l’email"
+      description="Tu recevras un mail de confirmation pour valider ce changement."
+    >
+      <form onSubmit={handleEmail} className="flex flex-col gap-6 items-stretch">
         <div className="w-full flex flex-col md:flex-row gap-8 items-stretch justify-between">
           <Button type="submit" variant="primarySoft">
             Modifier l’email
@@ -68,25 +61,13 @@ export default function EmailSection() {
             required
           />
         </div>
-        {emailSuccess && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 w-full text-center"
-          >
-            {emailSuccess}
-          </div>
-        )}
-        {emailError && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 w-full text-center"
-          >
-            {emailError}
-          </div>
-        )}
+        {emailSuccess ? (
+          <StatusBanner tone="success">{emailSuccess}</StatusBanner>
+        ) : null}
+        {emailError ? (
+          <StatusBanner tone="error">{emailError}</StatusBanner>
+        ) : null}
       </form>
-    </SurfaceCard>
+    </AccountSettingsCard>
   );
 }
