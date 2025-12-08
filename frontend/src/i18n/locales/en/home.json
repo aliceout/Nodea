@@ -6,7 +6,7 @@
   },
   "mood": {
     "quickView": "Quick glance",
-    "monthAverage": "Current month average"
+    "recentAverage": "Average (last {count} entries)"
   },
   "sections": {
     "actions": {

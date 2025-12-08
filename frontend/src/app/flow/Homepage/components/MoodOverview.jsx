@@ -4,9 +4,13 @@ import useMoodTrend from "@/app/flow/Mood/hooks/useMoodTrend";
 import MoodChartBody from "@/app/flow/Mood/components/ChartBody";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
+const RECENT_ENTRIES_LIMIT = 20;
+
 export default function MoodOverview({ module }) {
   const Icon = module?.icon;
-  const { status, data, error } = useMoodTrend({ months: 1 });
+  const { status, data, error } = useMoodTrend({
+    latestEntries: RECENT_ENTRIES_LIMIT,
+  });
   const { t } = useI18n();
   const moduleLabel = module
     ? t(module.label, { defaultValue: module.label })
@@ -56,8 +60,9 @@ export default function MoodOverview({ module }) {
 
         <div className="text-left sm:text-right">
           <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t("home.mood.monthAverage", {
-              defaultValue: "Moyenne mois en cours",
+            {t("home.mood.recentAverage", {
+              defaultValue: `Moyenne (${RECENT_ENTRIES_LIMIT} dernières entrées)`,
+              count: RECENT_ENTRIES_LIMIT,
             })}
           </p>
           <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
