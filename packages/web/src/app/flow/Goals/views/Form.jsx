@@ -157,7 +157,7 @@ export default function GoalsForm() {
 
     try {
       if (isEdit) {
-        await updateGoal(moduleUserId, mainKey, id, initialEntry, payload);
+        await updateGoal(moduleUserId, mainKey, id, payload);
       } else {
         await createGoal(moduleUserId, mainKey, payload);
       }
@@ -184,7 +184,7 @@ export default function GoalsForm() {
     }
 
     try {
-      await deleteGoal(moduleUserId, mainKey, id, initialEntry);
+      await deleteGoal(moduleUserId, mainKey, id);
       navigate("..");
     } catch (err) {
       console.error(err);

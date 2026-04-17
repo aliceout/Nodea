@@ -1,4 +1,9 @@
 {
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening"
+  },
   "announcement": {
     "label": "Update",
     "publishedOn": "Published on {date}",

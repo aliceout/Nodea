@@ -70,11 +70,11 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 - [ ] **MOYENNE** — No URL-based routing for modules (Phase 8)
 - [ ] **MOYENNE** — No React Error Boundary (Phase 8)
 - [ ] **MOYENNE** — Inconsistent README install (Phase 10)
-- [ ] **MOYENNE** — Dead imports in `modules-config.js` (Phase 5)
-- [ ] **FAIBLE** — `_prevEntry` unused parameter (Phase 6)
-- [ ] **FAIBLE** — Two date libs + two chart libs (Phase 8)
-- [ ] **FAIBLE** — FR hardcoded in Homepage (Phase 6)
-- [ ] **FAIBLE** — Dead `getPreferredName` fields (Phase 6)
+- [x] **MOYENNE** — Dead imports in `modules-config.js` (Phase 5) — verified in source: all three imports (`encryptAESGCM`, `decryptAESGCM`, `KeyMissingError`) are actively used; finding is a no-op under current code (possibly closed by an upstream refactor before migration started)
+- [x] **FAIBLE** — `_prevEntry` unused parameter (Phase 6) — removed from `updateGoal` / `deleteGoal` signatures, JSX callers updated
+- [x] **FAIBLE** — Two date libs + two chart libs (Phase 8, done early) — `date-fns`, `dayjs`, `chart.js`, `react-chartjs-2` were all zombies (zero imports in src); all four removed. Only `recharts` remains (used).
+- [x] **FAIBLE** — FR hardcoded in Homepage (Phase 6) — greetings moved to `home.greeting.{morning,afternoon,evening}` i18n keys (fr + en), `Intl.DateTimeFormat` uses the active language tag
+- [x] **FAIBLE** — Dead `getPreferredName` fields (Phase 6) — dropped the PB-era `firstname` / `lastname` / `name` branches; `username` → email local-part is the only fallback now
 - [ ] **FAIBLE** — `listDistinctThreads` loads 200 entries (Phase 6)
 - [x] **FAIBLE** — Zombie deps in `package.json` (`crypto-js`, `argon2-browser`) (Phase 1)
 - [ ] **INFO** — Silent plaintext module config (Phase 5)

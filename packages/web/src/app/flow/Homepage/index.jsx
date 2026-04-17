@@ -20,11 +20,6 @@ import AvailableModules from "./components/AvailableModules.jsx";
 
 function getPreferredName(user) {
   if (!user) return "";
-  if (user.firstname && user.lastname) {
-    return `${user.firstname} ${user.lastname}`.trim();
-  }
-  if (user.firstname) return user.firstname;
-  if (user.name) return user.name;
   if (user.username) return user.username;
   if (user.email) {
     const [localPart] = user.email.split("@");
@@ -37,28 +32,30 @@ export default function HomePage() {
   const { dispatch } = useStore();
   const { user } = useAuth();
   const modulesRuntime = useModulesRuntime();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   const name = useMemo(() => getPreferredName(user), [user]);
 
   const { greeting, formattedDate } = useMemo(() => {
     const now = new Date();
     const hour = now.getHours();
-    let currentGreeting = "Bonjour";
-    if (hour >= 18) currentGreeting = "Bonsoir";
-    else if (hour >= 12) currentGreeting = "Bon après-midi";
+    let greetingKey = "home.greeting.morning";
+    if (hour >= 18) greetingKey = "home.greeting.evening";
+    else if (hour >= 12) greetingKey = "home.greeting.afternoon";
 
-    const formatter = new Intl.DateTimeFormat("fr-FR", {
+    // Map the i18n language ("fr" / "en") to a BCP 47 tag for Intl.
+    const localeTag = language === "en" ? "en-US" : "fr-FR";
+    const formatter = new Intl.DateTimeFormat(localeTag, {
       weekday: "long",
       day: "numeric",
       month: "long",
     });
 
     return {
-      greeting: currentGreeting,
+      greeting: t(greetingKey),
       formattedDate: formatter.format(now),
     };
-  }, []);
+  }, [t, language]);
 
   const modules = useMemo(() => {
     return MODULES.filter((module) => module.id !== "home" && module.display !== false).map((module) => ({

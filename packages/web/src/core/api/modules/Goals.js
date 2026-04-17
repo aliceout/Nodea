@@ -219,7 +219,6 @@ export async function createGoal(moduleUserId, mainKey, payload) {
  * @param {string} moduleUserId - Module scoped SID.
  * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for encryption.
  * @param {string} id - Record identifier.
- * @param {Record<string, any>} _prevEntry - Previously decrypted entry (unused placeholder).
  * @param {Record<string, any>} payload - New payload to persist.
  * @returns {Promise<{id: string}>}
  */
@@ -227,7 +226,6 @@ export async function updateGoal(
   moduleUserId,
   mainKey,
   id,
-  _prevEntry,
   payload
 ) {
   assertMainKey(mainKey);
@@ -264,10 +262,9 @@ export async function updateGoal(
  * @param {string} moduleUserId - Module scoped SID.
  * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for guard derivation.
  * @param {string} id - Record identifier.
- * @param {Record<string, any>} _prevEntry - Previously decrypted entry (unused placeholder).
  * @returns {Promise<{id: string}>}
  */
-export async function deleteGoal(moduleUserId, mainKey, id, _prevEntry) {
+export async function deleteGoal(moduleUserId, mainKey, id) {
   assertMainKey(mainKey);
   assertSid(moduleUserId);
   if (!id) throw new Error("id manquant.");

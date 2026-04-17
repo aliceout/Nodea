@@ -39,7 +39,7 @@ export default function HistoEditCard({
   const onSave = async () => {
     try {
       const payload = { date, title, note, status, thread };
-      await updateGoal(moduleUserId, mainKey, entry.id, entry, payload);
+      await updateGoal(moduleUserId, mainKey, entry.id, payload);
       setEntries((prev) =>
         prev.map((e) =>
           e.id === entry.id ? { ...e, title, note, date, status, thread } : e
