@@ -1,4 +1,4 @@
-﻿# Normalisation de l’interface Nodea
+# Normalisation de l’interface Nodea
 
 ## Design tokens
 - Surfaces `--surface-default`, `--surface-muted`, `--surface-inverse`, etc. gèrent les fonds light/dark.
@@ -22,12 +22,15 @@
   - Encapsule une table HTML et applique bordures/hover/espacement cohérent.
 - `FormField` (wrapper) + `Input`/`Textarea`
   - Les champs utilisent désormais les tokens; toujours envelopper dans un `Surface` ou un formulaire pour conserver les espacements.
+- `Button` (`@/ui/atoms/base/Button.jsx`)
+  - Variantes : `primary`, `primarySoft`, `info`, `accent`, `danger`, `secondary`, `ghost`, `ghostDanger`, `link`.
+  - Prop `size` (`sm | md | lg`) et `variant` déterminent l’apparence; `className` ne doit servir qu’à la mise en page, pas aux couleurs.
 
 ## Patterns de composition
 - Une page = `Surface` globale (ou fond `bg-surface-subtle` via body) + `Subheader`.
 - Chaque section débute par `SectionHeader`, suivi d’un ou plusieurs `SurfaceCard`.
 - Les listes de cartes (modules, annonces, etc.) utilisent `SurfaceCard interactive` pour gérer les hover uniformes.
-- Les tables s’appuient sur `TableShell`; les boutons d’action à l’intérieur utilisent `Button` en mode `unstyled` + classes tokens.
+- Les tables s’appuient sur `TableShell`; les boutons d’action à l’intérieur utilisent les variantes `Button` (`secondary`/`ghost` selon le contexte).
 - Les badges de statut (module actif/inactif) passent par `Badge`.
 
 ## Règles d’usage
@@ -39,5 +42,4 @@
 
 ## À faire / suivi
 - Étendre la normalisation à tous les formulaires (ChangePassword, Import/Export) avec `FormField`.
-- Harmoniser les boutons (`Button`) autour d’un futur jeu de variantes (`primary`, `secondary`, `ghost`).
 - Ajouter un Storybook ou un catalogue minimal pour visualiser les atomes.

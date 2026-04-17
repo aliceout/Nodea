@@ -16,7 +16,7 @@ export default function MoodHistory() {
   const moduleUserId = modules?.mood?.id || modules?.mood?.module_user_id;
 
   const today = new Date();
-  const [month, setMonth] = useState(today.getMonth() + 1); // 1..12
+  const [month, setMonth] = useState(null); // null = last 6 months
   const [year, setYear] = useState(today.getFullYear());
 
   const [allEntries, setAllEntries] = useState([]);
@@ -99,16 +99,31 @@ export default function MoodHistory() {
   }, [allEntries]);
 
   const entries = useMemo(() => {
+    const sorted = [...allEntries].sort((a, b) => {
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return b.date.localeCompare(a.date);
+    });
+
+    if (month === null) {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+      return sorted.filter((entry) => {
+        if (!entry.date) return false;
+        const candidate = new Date(entry.date);
+        if (Number.isNaN(candidate.getTime())) return false;
+        return candidate >= start && candidate <= now;
+      });
+    }
+
     const mm = String(month).padStart(2, "0");
     const yy = String(year);
-    return allEntries
-      .filter((entry) => (entry.date || "").startsWith(`${yy}-${mm}-`))
-      .sort((a, b) => {
-        if (!a.date && !b.date) return 0;
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        return b.date.localeCompare(a.date);
-      });
+
+    return sorted.filter((entry) =>
+      (entry.date || "").startsWith(`${yy}-${mm}-`)
+    );
   }, [allEntries, month, year]);
 
   async function handleDelete(id) {
@@ -144,7 +159,7 @@ export default function MoodHistory() {
 
       <HistoryFilters
         month={month}
-        setMonth={(v) => setMonth(Number(v))}
+        setMonth={setMonth}
         year={year}
         setYear={(v) => setYear(Number(v))}
         years={years}

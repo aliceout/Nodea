@@ -15,11 +15,7 @@ export default function KeyMissingModal({ onLogout, open = true }) {
         <br />
         Merci de bien vouloir vous reconnecter
       </p>
-      <Button
-        className="bg-nodea-sage-dark text-white px-6 py-2 rounded font-semibold focus:outline-none focus:ring w-auto hover:bg-nodea-sage-darker"
-        onClick={onLogout}
-        autoFocus
-      >
+      <Button variant="primary" className="px-6" onClick={onLogout} autoFocus>
         Se déconnecter
       </Button>
     </Modal>

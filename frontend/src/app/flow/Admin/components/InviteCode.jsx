@@ -15,7 +15,7 @@ export default function InviteCodeManager({
         <div className="flex gap-3 items-center justify-start">
           <Button
             onClick={onGenerate}
-            className="bg-nodea-sky-dark text-white px-4 py-2 rounded hover:bg-nodea-sky-darker"
+            variant="info"
             disabled={generating}
           >
             {generating ? "Génération..." : "Générer un code"}

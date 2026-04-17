@@ -8,20 +8,30 @@ export default function SectionHeader({
   align = "start", // start | center
   spacing = "default", // default | tight
 }) {
-  const containerClass = clsx(
-    "section-header",
-    actions ? "section-header--with-actions" : "",
-    align === "center" ? "text-center sm:text-left" : "",
-    spacing === "tight" ? "gap-1.5" : "",
-    className
-  );
+  const baseGap = spacing === "tight" ? "gap-1.5" : "gap-2";
 
   return (
-    <div className={containerClass}>
-      <div className="flex flex-col gap-2">
-        {title ? <h2 className="section-header__title">{title}</h2> : null}
+    <div
+      className={clsx(
+        "flex flex-col",
+        baseGap,
+        actions
+          ? "sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+          : "",
+        align === "center" ? "text-center sm:text-left" : "",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-1.5">
+        {title ? (
+          <h2 className="text-lg font-semibold leading-tight text-[var(--text-primary)]">
+            {title}
+          </h2>
+        ) : null}
         {description ? (
-          <p className="section-header__description">{description}</p>
+          <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+            {description}
+          </p>
         ) : null}
       </div>
       {actions ? (

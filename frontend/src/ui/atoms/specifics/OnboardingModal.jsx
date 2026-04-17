@@ -1,4 +1,5 @@
 import Modal from "@/ui/atoms/base/Modal";
+import Button from "@/ui/atoms/base/Button";
 import ModulesManager from "@/app/flow/Settings/components/ModulesManager";
 import LanguagePreferences from "@/app/flow/Settings/components/LanguagePreferences";
 import ThemePreferences from "@/app/flow/Settings/components/ThemePreferences";
@@ -71,30 +72,29 @@ export default function OnboardingModal({
         </section>
 
         <div className="mt-2 flex items-center justify-center gap-3">
-          <button
-            className="mt-4 rounded bg-nodea-sky-dark px-6 py-2 font-semibold text-white transition-colors disabled:opacity-50 dark:bg-slate-600"
+          <Button
+            variant="info"
+            className="mt-4 px-6"
             disabled={enabled.length === 0}
             onClick={handleFinish}
           >
             {t("modals.onboarding.actions.finish")}
-          </button>
+          </Button>
 
           {typeof onSnooze === "function" ? (
-            <button
-              className="mt-4 rounded border border-gray-300 px-4 py-2 font-semibold text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            <Button
+              variant="secondary"
+              className="mt-4"
               onClick={handleSnooze}
             >
               {t("modals.onboarding.actions.snooze")}
-            </button>
+            </Button>
           ) : null}
 
           {typeof onClose === "function" ? (
-            <button
-              className="mt-4 rounded px-4 py-2 font-semibold text-gray-500 transition-colors hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              onClick={onClose}
-            >
+            <Button variant="ghost" className="mt-4" onClick={onClose}>
               {t("modals.onboarding.actions.close")}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>

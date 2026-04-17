@@ -132,10 +132,7 @@ export default function RegisterPage() {
           />
           <FormFeedback message={error} type="error" className="w-full" />
           <FormFeedback message={success} type="success" className="w-full" />
-          <Button
-            type="submit"
-            className=" bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-4"
-          >
+          <Button type="submit" variant="primary" className="mt-4">
             {t("auth.register.submit")}
           </Button>
         </form>

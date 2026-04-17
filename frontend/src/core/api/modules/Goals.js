@@ -1,6 +1,8 @@
-// Services CRUD pour Goals - creation 2 temps + guard HMAC (aligne Mood/Passage)
-// Public API: listGoals, listGoalsPaged, getGoalById, createGoal, updateGoal, deleteGoal, updateGoalStatus
-
+/**
+ * Goals module service layer.
+ * Handles encrypted CRUD operations backed by PocketBase and maintains guard integrity.
+ * Public API: listGoals, listGoalsPaged, getGoalById, createGoal, updateGoal, deleteGoal, updateGoalStatus, listDistinctThreads.
+ */
 import pb from "@/core/api/pocketbase";
 import { encryptAESGCM, decryptWithRetry } from "@/core/crypto/webcrypto";
 import { deriveGuard } from "@/core/crypto/guards";
@@ -61,6 +63,14 @@ async function encryptPayload(mainKey, payloadObj) {
   return { data: String(data), iv: String(iv) };
 }
 
+/**
+ * Convenience wrapper returning only the entries for the requested page.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for decryption.
+ * @param {{page?: number, perPage?: number, sort?: string, markMissing?: () => void}} [options] - Pagination arguments.
+ * @returns {Promise<Array<Record<string, any>>>}
+ */
 export async function listGoals(
   moduleUserId,
   mainKey,
@@ -75,6 +85,14 @@ export async function listGoals(
   return res.items;
 }
 
+/**
+ * List encrypted goal entries with pagination metadata.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for decryption.
+ * @param {{page?: number, perPage?: number, sort?: string, markMissing?: () => void}} [options] - Pagination options.
+ * @returns {Promise<{items: Array<Record<string, any>>, page: number, perPage: number, totalItems: number, totalPages: number}>}
+ */
 export async function listGoalsPaged(
   moduleUserId,
   mainKey,
@@ -109,6 +127,15 @@ export async function listGoalsPaged(
   };
 }
 
+/**
+ * Retrieve and decrypt a goal entry by id.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for decryption.
+ * @param {string} id - Record identifier.
+ * @param {{markMissing?: () => void}} [options] - Optional callback when the key is missing.
+ * @returns {Promise<Record<string, any>>}
+ */
 export async function getGoalById(
   moduleUserId,
   mainKey,
@@ -133,6 +160,15 @@ export async function getGoalById(
   return decryptRecord(mainKey, rec, { markMissing });
 }
 
+/**
+ * Create a new encrypted goal entry and promote its guard.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for encryption.
+ * @param {Record<string, any>} payload - Goal payload.
+ * @param {{markMissing?: () => void}} [options] - Optional callback when the key is missing.
+ * @returns {Promise<Record<string, any>>} Newly created record (includes id and timestamps).
+ */
 export async function createGoal(moduleUserId, mainKey, payload) {
   assertMainKey(mainKey);
   assertSid(moduleUserId);
@@ -177,6 +213,16 @@ export async function createGoal(moduleUserId, mainKey, payload) {
   return created;
 }
 
+/**
+ * Update an existing goal entry with a new payload.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for encryption.
+ * @param {string} id - Record identifier.
+ * @param {Record<string, any>} _prevEntry - Previously decrypted entry (unused placeholder).
+ * @param {Record<string, any>} payload - New payload to persist.
+ * @returns {Promise<{id: string}>}
+ */
 export async function updateGoal(
   moduleUserId,
   mainKey,
@@ -212,6 +258,15 @@ export async function updateGoal(
   return { id };
 }
 
+/**
+ * Delete a goal entry by id.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for guard derivation.
+ * @param {string} id - Record identifier.
+ * @param {Record<string, any>} _prevEntry - Previously decrypted entry (unused placeholder).
+ * @returns {Promise<{id: string}>}
+ */
 export async function deleteGoal(moduleUserId, mainKey, id, _prevEntry) {
   assertMainKey(mainKey);
   assertSid(moduleUserId);
@@ -233,6 +288,16 @@ export async function deleteGoal(moduleUserId, mainKey, id, _prevEntry) {
   return { id };
 }
 
+/**
+ * Update only the status attribute of a goal entry.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for encryption.
+ * @param {string} id - Record identifier.
+ * @param {"open"|"wip"|"done"} nextStatus - New status value.
+ * @param {Record<string, any>} prevEntry - Optional cached entry to avoid refetch.
+ * @returns {Promise<{id: string, noChange?: boolean}>}
+ */
 export async function updateGoalStatus(
   moduleUserId,
   mainKey,
@@ -258,6 +323,14 @@ export async function updateGoalStatus(
   return updateGoal(moduleUserId, mainKey, id, base, payload);
 }
 
+/**
+ * Collect the distinct thread labels used across all goal entries.
+ *
+ * @param {string} moduleUserId - Module scoped SID.
+ * @param {CryptoKey | Uint8Array} mainKey - Symmetric key for decryption.
+ * @param {{markMissing?: () => void}} [options] - Optional callback when the key is missing.
+ * @returns {Promise<string[]>} Alphabetically sorted unique thread names.
+ */
 export async function listDistinctThreads(
   moduleUserId,
   mainKey,
