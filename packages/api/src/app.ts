@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
 import { adminRoutes } from './routes/admin.ts';
@@ -10,6 +11,24 @@ import type { AuthVariables } from './middleware/require-user.ts';
 /** Build a fresh Hono app. Exported so tests can assemble an app without side-effects. */
 export function buildApp() {
   const app = new Hono<{ Variables: AuthVariables }>();
+
+  // CORS for the dev web origin. In prod the web is served behind the
+  // same origin as the API so CORS is a no-op. `credentials: true` is
+  // required so the browser forwards the session cookie.
+  app.use(
+    '*',
+    cors({
+      origin: (origin) => {
+        if (!origin) return '';
+        // Accept any localhost / 127.0.0.1 dev origin
+        if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin;
+        return '';
+      },
+      credentials: true,
+      allowHeaders: ['content-type'],
+      allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    }),
+  );
 
   app.use('*', logger());
 

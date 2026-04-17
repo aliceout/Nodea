@@ -34,7 +34,7 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 | 2 | Back : DB, auth, sessions, invitations | done | Drizzle schema (users/sessions/invites), argon2id + zxcvbn policy, signed session cookies, 6 auth routes, admin invite mint, invite atomic consumption via `SELECT FOR UPDATE`, rate limiting, 15/15 integration tests green against real Postgres. |
 | 3 | Back : modules CRUD + guards | done | 8 entry tables + `modules_config`, single `createCollectionRoutes` factory driven by typed `COLLECTIONS` registry, `requireGuard` middleware with timing-safe compare and `init → g_…` promotion. `guard` field stripped from every read response; cross-user reads proven isolated. 32/32 integration tests green. |
 | 4 | Front : refonte du noyau crypto | done (new TS modules) | `base64`, `hkdf`, `aes`, `hmac`, `key-material`, `guard-derivation`, `argon2` rewritten in TS with branded types. HKDF domain separation (`nodea:aes` / `nodea:hmac`) replaces the raw-bytes double-import. `wipeMainKeyMaterial` placebo gone → honest `wipeRawBytes`. Guards cache moved to in-memory Map. 39/39 Vitest tests green. Legacy `*.js` modules left in place to not break JSX callers until Phases 5–6 migrate them. |
-| 5 | Front : store unifié + flows auth | pending | |
+| 5 | Front : store unifié + flows auth | done (new TS, not yet wired into App.jsx) | Zustand store (`nodea-store.ts`) unifies auth + crypto + modules-runtime in one source. Typed API client (`client.ts`) with shared Zod schemas + `credentials: include`. `useSession` hook on the new back (`apiMe` → store). TSX pages `pages/next/Login`, `Register`, `ChangePassword` use React Hook Form + Zod + zxcvbn strength. CORS on the API for dev. 51/51 web Vitest tests green. Legacy JSX kept active until Phase 6 wires the new pages into the router. |
 | 6 | Front : câblage Mood, Goals, Passage | pending | |
 | 7 | Modules manquants (Habits, Library, Review) | pending | |
 | 8 | Routing, lazy, Error Boundaries, nettoyage libs | pending | |
@@ -54,16 +54,16 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 - [x] **HAUTE** — Invite code enumeration (Phase 2) — no public check endpoint, codes hashed, rate limit on `/auth/register`
 - [x] **HAUTE** — AES/HMAC key reuse — upgraded from MOYENNE (Phase 4) — HKDF-SHA-256 with distinct labels `nodea:aes` / `nodea:hmac`; sub-key separation proven by tests
 - [x] **MOYENNE** — Guards cached in localStorage (Phase 4) — new cache is an in-memory Map cleared on logout
-- [x] **MOYENNE** — No password policy (Phase 2 back; front in Phase 5) — zxcvbn ≥ 3 + min length 12, enforced on register and change-password
+- [x] **MOYENNE** — No password policy (Phase 2 back; front in Phase 5) — zxcvbn ≥ 3 + min length 12, enforced on register and change-password (TSX forms show live strength)
 - [ ] **FAIBLE** — `decryptWithRetry` — evaluate via tests (Phase 4)
 - [x] **FAIBLE** — Legacy double-base64 fallback (Phase 4) — new modules expose only the standard base64/base64url helpers, no legacy branch
-- [ ] **INFO** — Verbose production logs (Phase 5)
+- [x] **INFO** — Verbose production logs (Phase 5) — TSX pages gate debug logs to `import.meta.env.DEV`
 
 ### Global audit
 
 - [ ] **HAUTE** — No tests in the project (Phase 9, seeded in Phase 4)
 - [x] **HAUTE** — Duplicate base64 implementations (2 sources) + `randomBytes` doublon (Phase 4) — new `base64.ts` is the single source for base64, base64url and `randomBytes`. Legacy `.js` modules stay until their JSX callers migrate in Phases 5–6.
-- [ ] **HAUTE** — Two parallel state systems (Phase 5)
+- [x] **HAUTE** — Two parallel state systems (Phase 5) — new Zustand store unifies auth/crypto/modules-runtime in one source. Legacy `StoreProvider.jsx` + `modulesRuntime.js` will be deleted once JSX callers migrate (Phase 6+).
 - [ ] **HAUTE** — Documented modules not implemented (Phase 7)
 - [x] **HAUTE** — `guard.pb.js` doesn't cover all collections (Phase 3) — route factory mounts all 8 collections from one typed registry; adding a collection without guard is structurally impossible
 - [ ] **MOYENNE** — JSX instantiated at import (Phase 8)

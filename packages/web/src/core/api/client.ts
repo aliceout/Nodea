@@ -1,0 +1,137 @@
+/**
+ * Typed HTTP client for the new Nodea API.
+ *
+ * Uses the shared Zod schemas in `@nodea/shared` so request/response
+ * shapes stay in lock-step with the server. A thin wrapper over `fetch`
+ * that:
+ *   - sets credentials: "include" so the session cookie flows back
+ *   - serialises JSON bodies
+ *   - translates non-2xx to a typed `ApiError`
+ *
+ * Note: we deliberately do not use `hono/client`'s `hc<AppType>` inference
+ * here. The Hono app is assembled via `app.route(...)` mounts which
+ * break through-typing without refactor; doing that refactor is not in
+ * Phase 5's scope. Shared Zod schemas give us the same guarantees at
+ * the payload level.
+ */
+import {
+  AuthMeResponseSchema,
+  type AuthMeResponse,
+  type LoginBody,
+  type RegisterBody,
+  type ChangePasswordBody,
+} from '@nodea/shared';
+
+/**
+ * Base URL for the new API. Read from `VITE_API_URL`, falls back to the
+ * dev port. Resolved per call so tests can stub `import.meta.env`.
+ */
+function apiBase(): string {
+  return (
+    (import.meta.env as Record<string, string | undefined>).VITE_API_URL ??
+    'http://127.0.0.1:3000'
+  );
+}
+
+export interface ApiError {
+  status: number;
+  error: string;
+  reason?: string;
+}
+
+async function request<T = unknown>(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT',
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const init: RequestInit = {
+    method,
+    credentials: 'include',
+    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  };
+
+  const res = await fetch(`${apiBase()}${path}`, init);
+  const text = await res.text();
+  const payload: unknown = text ? safeJson(text) : null;
+
+  if (!res.ok) {
+    const err: ApiError = {
+      status: res.status,
+      error:
+        isRecord(payload) && typeof payload.error === 'string'
+          ? payload.error
+          : res.statusText,
+    };
+    if (isRecord(payload) && typeof payload.reason === 'string') {
+      err.reason = payload.reason;
+    }
+    throw err;
+  }
+  return payload as T;
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+// --- Auth endpoints ----------------------------------------------------
+
+export async function apiRegister(body: RegisterBody): Promise<{ id: string }> {
+  return request<{ id: string }>('POST', '/auth/register', body);
+}
+
+export async function apiLogin(body: LoginBody): Promise<{ id: string }> {
+  return request<{ id: string }>('POST', '/auth/login', body);
+}
+
+export async function apiLogout(): Promise<void> {
+  await request<void>('POST', '/auth/logout');
+}
+
+export async function apiMe(): Promise<AuthMeResponse | null> {
+  try {
+    const raw = await request<unknown>('GET', '/auth/me');
+    return AuthMeResponseSchema.parse(raw);
+  } catch (err) {
+    if (isApiError(err) && err.status === 401) return null;
+    throw err;
+  }
+}
+
+export async function apiChangePassword(body: ChangePasswordBody): Promise<void> {
+  await request<void>('POST', '/auth/change-password', body);
+}
+
+// --- Modules config endpoints ------------------------------------------
+
+export interface ModulesConfigResponse {
+  cipher_iv: string | null;
+  payload: string | null;
+  updated_at?: string;
+}
+
+export async function apiGetModulesConfig(): Promise<ModulesConfigResponse> {
+  return request<ModulesConfigResponse>('GET', '/modules-config');
+}
+
+export async function apiPutModulesConfig(body: {
+  cipher_iv: string;
+  payload: string;
+}): Promise<ModulesConfigResponse> {
+  return request<ModulesConfigResponse>('PUT', '/modules-config', body);
+}
+
+// --- Error helpers -----------------------------------------------------
+
+export function isApiError(value: unknown): value is ApiError {
+  return isRecord(value) && typeof value.status === 'number' && typeof value.error === 'string';
+}
