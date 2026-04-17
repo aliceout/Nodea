@@ -1,5 +1,5 @@
 import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
-import ThemeSelector from '@/ui/atoms/specifics/ThemeSelector.jsx';
+import ThemeSelector from '@/ui/atoms/specifics/ThemeSelector';
 
 /**
  * Thin wrapper around the legacy `ThemeSelector` primitive. All the

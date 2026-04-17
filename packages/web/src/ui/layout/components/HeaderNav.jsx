@@ -1,23 +1,19 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { MODULES } from "@/app/config/modules_list";
-import {
-  useModulesRuntime,
-  isModuleEnabled,
-} from "@/core/store/modulesRuntime";
+import { useNodeaStore, selectModules } from "@/core/store/nodea-store";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function HeadearNav() {
   const navigate = useNavigate();
   const { moduleId } = useParams();
   const current = moduleId ?? "home";
-  const modulesRuntime = useModulesRuntime();
+  const modules = useNodeaStore(selectModules);
   const { t } = useI18n();
 
-  // On ne montre que les modules marqués display=true
   const visibleNav = (MODULES || []).filter((i) => {
     if (i.display === false) return false;
     if (!i.to_toggle) return true;
-    return isModuleEnabled(modulesRuntime, i.id);
+    return Boolean(modules[i.id]?.enabled);
   });
   return (
     <nav className="hidden lg:block ml-4">

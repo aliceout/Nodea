@@ -2,7 +2,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useNavigate } from "react-router-dom";
 import UserAvatar from "../components/UserAvatar";
-import pb from "@/core/api/pocketbase";
+import { useNodeaStore, selectUser } from "@/core/store/nodea-store";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function UserMenu({
@@ -11,11 +11,11 @@ export default function UserMenu({
   onGoSettings = () => {},
   onSignOut = () => {},
 }) {
-  const user = pb.authStore.model;
+  const user = useNodeaStore(selectUser);
   const isAdmin = user?.role === "admin";
   const navigate = useNavigate();
   const { t } = useI18n();
-  const displayName = username || t("layout.header.defaultUsername");
+  const displayName = username || t("layout.header.defaultUsername", { defaultValue: "moi" });
 
   return (
     <Menu as="div" className="relative">

@@ -1,5 +1,5 @@
 /**
- * Ambient declarations for legacy JSX modules consumed by TSX code.
+ * Ambient declarations for legacy JSX modules still consumed by TSX code.
  *
  * Each entry exists because TS (with `allowJs: false`) can't resolve a
  * bare `@/…` import to a `.jsx` file. Declaring them here keeps the
@@ -11,41 +11,7 @@
  */
 
 /* --------------------------------------------------------------------
- * Flow module entry points (lazy-loaded from modules_list.tsx)
- * ------------------------------------------------------------------ */
-declare module '@/app/flow/Homepage' {
-  import type { ComponentType } from 'react';
-  const Home: ComponentType<Record<string, unknown>>;
-  export default Home;
-}
-declare module '@/app/flow/Mood' {
-  import type { ComponentType } from 'react';
-  const Mood: ComponentType<Record<string, unknown>>;
-  export default Mood;
-}
-declare module '@/app/flow/Passage' {
-  import type { ComponentType } from 'react';
-  const Passage: ComponentType<Record<string, unknown>>;
-  export default Passage;
-}
-declare module '@/app/flow/Goals' {
-  import type { ComponentType } from 'react';
-  const Goals: ComponentType<Record<string, unknown>>;
-  export default Goals;
-}
-declare module '@/app/flow/Account' {
-  import type { ComponentType } from 'react';
-  const Account: ComponentType<Record<string, unknown>>;
-  export default Account;
-}
-declare module '@/app/flow/Settings' {
-  import type { ComponentType } from 'react';
-  const Settings: ComponentType<Record<string, unknown>>;
-  export default Settings;
-}
-
-/* --------------------------------------------------------------------
- * UI primitives (legacy JSX, gradually being migrated to TSX)
+ * UI primitives (still JSX)
  * ------------------------------------------------------------------ */
 declare module '@/ui/atoms/base/Button' {
   import type { ComponentType, ReactNode } from 'react';

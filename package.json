@@ -11,9 +11,6 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },
-  "dependencies": {
-    "dotenv": "^17.2.1"
-  },
   "devDependencies": {
     "typescript": "^5.7.3"
   },

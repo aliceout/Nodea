@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Button from '@/ui/atoms/base/Button';
-import AccountSettingsCard from '@/ui/atoms/specifics/AccountSettingsCard.jsx';
+import AccountSettingsCard from '@/ui/atoms/specifics/AccountSettingsCard';
 
 /**
  * "Password reset" is misnamed — there is no reset flow (the server has

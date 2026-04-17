@@ -77,6 +77,10 @@ export interface NodeaState {
   pushToast(n: Omit<ToastNotification, 'id'>): void;
   dismissToast(id: string): void;
 
+  // --- UI: mobile sidebar drawer ---
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen(open: boolean): void;
+
   // --- reset (on logout) ---
   resetAll(): void;
 }
@@ -126,12 +130,16 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
   dismissToast: (id) =>
     set((state) => ({ notifications: state.notifications.filter((t) => t.id !== id) })),
 
+  mobileMenuOpen: false,
+  setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
+
   resetAll: () =>
     set({
       auth: emptyAuth,
       crypto: emptyCrypto,
       modules: {},
       notifications: [],
+      mobileMenuOpen: false,
     }),
 }));
 
@@ -143,6 +151,7 @@ export const selectIsAuthenticated = (s: NodeaState) => s.auth.status === 'authe
 export const selectMainKey = (s: NodeaState) => s.crypto.main;
 export const selectKeyStatus = (s: NodeaState) => s.crypto.status;
 export const selectModules = (s: NodeaState) => s.modules;
+export const selectMobileMenuOpen = (s: NodeaState) => s.mobileMenuOpen;
 export const selectEnabledModules = (s: NodeaState) =>
   Object.entries(s.modules)
     .filter(([, v]) => v.enabled)
