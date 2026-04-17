@@ -1,5 +1,8 @@
 # Roadmap de migration — Nodea
 
+> **Note de révision** — Ce document a été relu et ajusté après vérification du code réel.
+> Corrections principales : base64 a 2 implémentations (pas 4), `crypto-js` et `argon2-browser` sont des deps zombies (à nettoyer Phase 1), la réutilisation de clé AES/HMAC est bumpée de MOYENNE à HAUTE (violation directe de séparation de domaine dans [webcrypto.js:115](../frontend/src/core/crypto/webcrypto.js#L115)), `wipeMainKeyMaterial` est supprimé plutôt que documenté, `decryptWithRetry` est évalué via tests avant suppression.
+
 ## Principes directeurs
 
 - **Parallèle, pas en place** : le nouveau back vit à côté de PocketBase jusqu'à la bascule. Pas de cohabitation au niveau données.
@@ -82,7 +85,7 @@ Phase 10 Déploiement Docker + extinction PocketBase
 
 **Livrables**
 
-- Branche `claude/docker-postgres-setup-uTsnZ` créée
+- Branche dédiée créée pour la migration (ex. `migration/self-hosted`)
 - Fichier `MIGRATION.md` à la racine avec : principes, périmètre, checklist de findings
 - Décision formelle : **aucune feature nouvelle** sur le code PocketBase existant pendant la migration
 
@@ -117,6 +120,10 @@ Phase 10 Déploiement Docker + extinction PocketBase
 - Déplacer `frontend/` → `packages/web/` (conserve `.jsx` pour l'instant, `allowJs: true`)
 - Installer `typescript`, `tsx`, `@tsconfig/strictest`, `@typescript-eslint/*`, `vite-tsconfig-paths`
 - Rebrancher les alias `@/core`, `@/ui`, `@/app` via `tsconfig.base.json` paths
+- **Nettoyage des dépendances zombies immédiatement** (vérifié : zéro usage dans `src/`) :
+  - Supprimer `crypto-js` (jamais importé)
+  - Supprimer `argon2-browser` (le code utilise `argon2-wasm` via [webcrypto.js:5](../frontend/src/core/crypto/webcrypto.js#L5))
+  - `pnpm remove crypto-js argon2-browser` — risque nul, autant faire le ménage avant de déménager
 - Poser le `shared/` avec les premiers branded types crypto :
 
 ```ts
@@ -147,7 +154,11 @@ export type EncryptedBlob = Base64;
 }
 ```
 
-**Findings corrigés** : aucun encore.
+**Findings corrigés**
+
+| Finding | Correctif |
+|---|---|
+| GLOBAL FAIBLE — Deps zombies (`crypto-js`, `argon2-browser`) | Retirées de `package.json`, vérifié zéro usage |
 
 **Critère de sortie** : `pnpm -r build` vert, `pnpm --filter web dev` démarre l'app existante intacte.
 
@@ -215,6 +226,7 @@ review_entries
 Toutes avec : `id, user_id FK, module_user_id, cipher_iv, payload, guard, created_at, updated_at`. Index `(user_id, module_user_id)`.
 
 - Middleware `requireUser` (session → `c.set('user', ...)`)
+- **`modules_config` n'a pas besoin de guard** : la table est keyée PK sur `user_id`, donc `requireUser` suffit (aucun `module_user_id` à valider). À documenter explicitement pour éviter la confusion.
 - Middleware `requireGuard` générique paramétrable par collection :
   - Vérifie `sid` et `d` en query
   - Vérifie que `module_user_id` appartient bien à `user_id`
@@ -242,32 +254,41 @@ Toutes avec : `id, user_id FK, module_user_id, cipher_iv, payload, guard, create
 
 **Objectif** : réécrire `core/crypto/` en TS strict, branded types, corriger tous les findings crypto front. Cette phase ne touche pas encore à PocketBase, elle refait le noyau isolé.
 
+**Ordre interne recommandé** (les deux premiers points sont bloquants car corrigent des risques crypto directs) :
+
+1. **Séparation AES/HMAC via HKDF** (voir ci-dessous) — violation la plus directe de séparation de domaine
+2. **Tests Vitest round-trip sur l'ancien code** avant toute suppression, pour pouvoir comparer
+3. Puis le reste (base64, branded types, guards, nettoyage)
+
 **Livrables (tous en TS)**
 
 - `core/crypto/base64.ts` : une seule source pour `bytesToBase64`, `base64ToBytes`, `bytesToBase64Url`, `base64UrlToBytes`, `randomBytes`. Typage avec branded types.
-- `core/crypto/argon2.ts` : wrapper typé sur `hash-wasm` (virer `argon2-browser`)
+  - **État actuel constaté** : 2 implémentations (pas 4) — `toBase64url`/`fromBase64url` dans [crypto-utils.js](../frontend/src/core/crypto/crypto-utils.js) et `bytesToBase64`/`base64ToBytes`/`arrayBufferToBase64`/`base64ToArrayBuffer` dans [webcrypto.js](../frontend/src/core/crypto/webcrypto.js). À unifier en une source.
+- `core/crypto/argon2.ts` : wrapper typé sur `hash-wasm` (la lib `argon2-browser` est déjà zombie, nettoyée en Phase 1)
 - `core/crypto/aes.ts` : `encryptAESGCM`, `decryptAESGCM`, `AesMainKey` branded
 - `core/crypto/hmac.ts` : `HmacMainKey` branded, `sign`
 - `core/crypto/hkdf.ts` : dérivation HKDF avec domain separation
 - `core/crypto/main-key.ts` :
   - `createMainKeyMaterial(rawBytes: Uint8Array): Promise<MainKeyMaterial>`
-  - Dérive via HKDF deux sous-clés distinctes : labels = `"nodea:aes"` et `"nodea:hmac"`
-  - Importe en `CryptoKey` non extractibles séparées
-  - `wipeMainKeyMaterial()` : ne prétend plus effacer les `CryptoKey`, commente la limitation, efface uniquement les refs en mémoire
+  - **Violation actuelle** : [webcrypto.js:115](../frontend/src/core/crypto/webcrypto.js#L115) (`createMainKeyMaterialFromBase64`) importe les **mêmes 32 octets** en `CryptoKey` AES-GCM **et** HMAC-SHA-256. Aucune séparation de domaine.
+  - Correctif : dérive via HKDF deux sous-clés distinctes, labels = `"nodea:aes"` et `"nodea:hmac"`, importées en `CryptoKey` non extractibles séparées.
+  - `wipeMainKeyMaterial()` : **supprimé plutôt que maintenu en placebo**. Le code actuel teste des `digest()` vides et n'efface que des strings — c'est du théâtre sécuritaire. Remplacer par `bytes.fill(0)` sur les buffers sources uniquement, et documenter que les `CryptoKey` ne peuvent pas être effacées (seul un reload complet le ferait). Si un appelant veut vraiment purger, il appelle `location.reload()`.
 - `core/crypto/guards.ts` :
   - Calcul à la volée, plus de cache localStorage (on supprime `nodea.guards.v1`)
   - Cache optionnel en mémoire (Map) seulement, purgé au logout
+- `decryptWithRetry` : **existe et est utilisé dans 5+ fichiers** (Mood, Goals, Passage). **Ne pas supprimer aveuglément** — d'abord écrire les tests round-trip, puis tenter de retirer la retry pour voir si des tests échouent. Si la retry papier-masque une vraie race condition, il faut la diagnostiquer avant de l'enlever.
+- Fallback double-base64 legacy : à supprimer (aucune donnée legacy à préserver, confirmé).
 
 **Findings corrigés**
 
 | Finding | Correctif |
 |---|---|
-| GLOBAL HAUTE — 4 implémentations base64 | Une seule source, `base64.ts` |
+| SEC HAUTE — Réutilisation clé AES/HMAC (upgradée de MOYENNE) | HKDF avec labels distincts — priorité 1 de la phase |
+| GLOBAL HAUTE — Implémentations base64 dupliquées (2 sources, pas 4) | Une seule source, `base64.ts` |
 | GLOBAL HAUTE — `randomBytes` en doublon | Une seule fonction exportée |
-| SEC MOYENNE — Réutilisation clé AES/HMAC | HKDF avec labels distincts |
-| SEC HAUTE — `wipeMainKeyMaterial` inefficace | Ne prétend plus le faire, documentation honnête, suggestion de reload si critique |
+| SEC HAUTE — `wipeMainKeyMaterial` inefficace | Fonction supprimée, remplacée par `bytes.fill(0)` honnête + doc de limitation |
 | SEC MOYENNE — Guards en localStorage | Cache mémoire uniquement, purge au logout |
-| SEC FAIBLE — `decryptWithRetry` inutile | Supprimé |
+| SEC FAIBLE — `decryptWithRetry` | Évalué via tests, retiré seulement si non nécessaire |
 | SEC FAIBLE — Fallback double-base64 legacy | Supprimé (pas de data legacy à supporter) |
 
 **Critère de sortie** : suite de tests Vitest couvrant :
@@ -276,6 +297,7 @@ Toutes avec : `id, user_id FK, module_user_id, cipher_iv, payload, guard, create
 - `deriveGuard` déterministe
 - HKDF : clés AES et HMAC différentes à partir de la même mainKey
 - Round-trip base64 / base64url / bytes
+- Test explicite : une sous-clé AES ne peut pas vérifier un HMAC produit avec la sous-clé HMAC (séparation de domaine vérifiée)
 
 ---
 
@@ -481,10 +503,10 @@ web           (multi-stage: vite build → nginx servant le static + proxy /api)
 | Réutilisation code invitation | HAUTE | 2 |
 | `wipeMainKeyMaterial` inefficace | HAUTE | 4 |
 | Énumération codes invitation | HAUTE | 2 |
-| Réutilisation clé AES/HMAC | MOYENNE | 4 |
+| Réutilisation clé AES/HMAC (upgradée) | HAUTE | 4 |
 | Guards en localStorage | MOYENNE | 4 |
 | Pas de politique mot de passe | MOYENNE | 2 (back) + 5 (front) |
-| `decryptWithRetry` sans effet | FAIBLE | 4 |
+| `decryptWithRetry` (à évaluer) | FAIBLE | 4 |
 | Fallback double-base64 legacy | FAIBLE | 4 |
 | Logs verbeux en prod | INFO | 5 |
 
@@ -493,7 +515,8 @@ web           (multi-stage: vite build → nginx servant le static + proxy /api)
 | Finding | Sévérité | Corrigé en phase |
 |---|---|---|
 | Aucun test | HAUTE | 9 (amorcé dès 4) |
-| 4 implémentations base64 + randomBytes doublon | HAUTE | 4 |
+| Implémentations base64 dupliquées (2 sources) + randomBytes doublon | HAUTE | 4 |
+| Deps zombies dans `package.json` (`crypto-js`, `argon2-browser`) | FAIBLE | 1 |
 | Deux systèmes d'état parallèles | HAUTE | 5 |
 | Modules documentés absents du front | HAUTE | 7 |
 | `guard.pb.js` ne couvre pas toutes collections | HAUTE | 3 |
@@ -509,7 +532,7 @@ web           (multi-stage: vite build → nginx servant le static + proxy /api)
 | `listDistinctThreads` charge 200 entrées | FAIBLE | 6 |
 | Config modules plaintext silencieuse | INFO | 5 |
 
-**Total : 27 findings, 100% couverts.**
+**Total : 28 findings, 100% couverts** (27 initiaux + 1 ajouté lors de la relecture code : deps zombies).
 
 ---
 
