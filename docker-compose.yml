@@ -1,0 +1,25 @@
+# docker-compose for Nodea — migration target stack.
+# Phase 1: Postgres only (dev). The api/web services will be added in Phase 10
+# when their Dockerfiles land.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nodea-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nodea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nodea_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-nodea}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-nodea} -d ${POSTGRES_DB:-nodea}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
