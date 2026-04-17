@@ -60,10 +60,14 @@ export default function DeleteAccountSection({ user }) {
 
     setDeleting(true);
     try {
-      const effectiveKey = mainKey || window.mainKey || null;
+      // SECURITY: do not fall back to `window.mainKey` — that global was a
+      // back door that let any script on the page inject a key. The only
+      // accepted source is the in-memory store. If it's absent, the user
+      // must log back in so the key is derived freshly.
+      const effectiveKey = mainKey || null;
       if (!effectiveKey) {
         throw new Error(
-          "Clé principale manquante : impossible de calculer les guards."
+          "Clé principale manquante : reconnecte-toi pour recharger la clé avant de supprimer le compte."
         );
       }
       const currentUser = pb?.authStore?.model;

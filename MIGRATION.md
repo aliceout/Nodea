@@ -35,7 +35,7 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 | 3 | Back : modules CRUD + guards | done | 8 entry tables + `modules_config`, single `createCollectionRoutes` factory driven by typed `COLLECTIONS` registry, `requireGuard` middleware with timing-safe compare and `init → g_…` promotion. `guard` field stripped from every read response; cross-user reads proven isolated. 32/32 integration tests green. |
 | 4 | Front : refonte du noyau crypto | done (new TS modules) | `base64`, `hkdf`, `aes`, `hmac`, `key-material`, `guard-derivation`, `argon2` rewritten in TS with branded types. HKDF domain separation (`nodea:aes` / `nodea:hmac`) replaces the raw-bytes double-import. `wipeMainKeyMaterial` placebo gone → honest `wipeRawBytes`. Guards cache moved to in-memory Map. 39/39 Vitest tests green. Legacy `*.js` modules left in place to not break JSX callers until Phases 5–6 migrate them. |
 | 5 | Front : store unifié + flows auth | done (new TS, not yet wired into App.jsx) | Zustand store (`nodea-store.ts`) unifies auth + crypto + modules-runtime in one source. Typed API client (`client.ts`) with shared Zod schemas + `credentials: include`. `useSession` hook on the new back (`apiMe` → store). TSX pages `pages/next/Login`, `Register`, `ChangePassword` use React Hook Form + Zod + zxcvbn strength. CORS on the API for dev. 51/51 web Vitest tests green. Legacy JSX kept active until Phase 6 wires the new pages into the router. |
-| 6 | Front : câblage Mood, Goals, Passage | pending | |
+| 6 | Front : câblage Mood, Goals, Passage | done (partial — see notes) | Shared `MoodPayloadSchema`, `GoalsPayloadSchema`, `PassagePayloadSchema` in `@nodea/shared`. Generic `createCollectionClient(name, schema)` handles encrypt → POST → promote → list → decrypt → update → delete for any module. Mood/Goals/Passage TS services wire the generic to the new back. `window.mainKey` back door removed from `DeleteAccount.jsx` (SEC CRITIQUE closed). 4 end-to-end tests on real Postgres prove the full encrypted round-trip, including "no guard leak" contract. **Deferred to Phase 6b/8:** port the JSX module UIs (forms/history/graph) to TSX and swap their imports from the legacy `.js` services to these TS clients. The back is ready; the UI swap is the last carpentry step. |
 | 7 | Modules manquants (Habits, Library, Review) | pending | |
 | 8 | Routing, lazy, Error Boundaries, nettoyage libs | pending | |
 | 9 | Tests & CI | pending | |
@@ -47,7 +47,7 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 
 ### Security audit
 
-- [ ] **CRITIQUE** — `window.mainKey` fallback (Phase 6)
+- [x] **CRITIQUE** — `window.mainKey` fallback (Phase 6) — removed from `DeleteAccount.jsx`; only the in-memory store is accepted. If the key is absent the user must log back in rather than have a back door injected from any script.
 - [x] **HAUTE** — Invite code filter injection (Phase 2) — Drizzle `eq()` parameterized
 - [x] **HAUTE** — Invite code reuse (Phase 2) — atomic `SELECT ... FOR UPDATE` inside tx
 - [x] **HAUTE** — `wipeMainKeyMaterial` ineffective (Phase 4) — removed, replaced with honest `wipeRawBytes(bytes)` that zeroes raw buffers only; CryptoKey limitation documented
