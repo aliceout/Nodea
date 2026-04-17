@@ -36,13 +36,19 @@ export type MoodPayload = z.infer<typeof MoodPayloadSchema>;
 // Goals
 // ---------------------------------------------------------------------
 
-export const GOAL_STATUS_VALUES = ['active', 'done', 'archived'] as const;
+/**
+ * Goal lifecycle — matches the legacy tri-state cycle that the history
+ * view toggles through: open → wip → done → open.
+ * `active` / `archived` are accepted as legacy archive aliases for
+ * forwards-compat with older import files.
+ */
+export const GOAL_STATUS_VALUES = ['open', 'wip', 'done', 'active', 'archived'] as const;
 export const GoalsPayloadSchema = z
   .object({
     date: z.string().default(''),
     title: z.string().min(1),
     note: z.string().default(''),
-    status: z.enum(GOAL_STATUS_VALUES).default('active'),
+    status: z.enum(GOAL_STATUS_VALUES).default('open'),
     thread: z.string().default(''),
   })
   .passthrough();

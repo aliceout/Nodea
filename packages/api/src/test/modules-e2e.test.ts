@@ -145,7 +145,7 @@ describe('Goals module — full encrypted round-trip', () => {
       date: '2026-04-17',
       title: 'Ship Phase 6',
       note: 'end-to-end encrypted',
-      status: 'active',
+      status: 'open',
       thread: 'nodea',
     };
 
@@ -160,7 +160,7 @@ describe('Goals module — full encrypted round-trip', () => {
       list.records[0]!.payload,
     );
     expect(got.title).toBe('Ship Phase 6');
-    expect(got.status).toBe('active');
+    expect(got.status).toBe('open');
   });
 });
 

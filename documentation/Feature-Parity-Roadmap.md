@@ -56,7 +56,8 @@ fonctionnelle — pas avant.
 ```
 R1   ExportData + ImportData (archive chiffrée)                  ✅ d0d1970
 R2   users.username + ChangeUsername                             ✅ de2eec7
-R3   Mood — features complètes (chart, emoji picker, positives, questions)  ✅ (current)
+R3   Mood — features complètes (chart, emoji picker, positives, questions)  ✅ e4dc450
+R4   Goals — features complètes (Card/EditCard/Filters/List + thread autosuggest)  ✅ (current)
 R4   Goals — features complètes (inline edit, autosuggest thread)
 R5   Passage — features complètes (thread view)
 R6   Habits — features complètes (heatmap, target, archive, durée)

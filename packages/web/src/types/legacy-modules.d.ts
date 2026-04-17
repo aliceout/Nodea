@@ -56,6 +56,11 @@ declare module '@/app/flow/Mood' {
   const MoodIndex: ComponentType;
   export default MoodIndex;
 }
+declare module '@/app/flow/Goals' {
+  import type { ComponentType } from 'react';
+  const GoalsIndex: ComponentType;
+  export default GoalsIndex;
+}
 
 /* --------------------------------------------------------------------
  * i18n provider — named `useI18n` hook consumed from TSX
