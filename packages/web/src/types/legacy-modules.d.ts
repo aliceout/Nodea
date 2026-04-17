@@ -95,7 +95,8 @@ declare module '@/i18n/I18nProvider.jsx' {
   export interface I18nValue {
     language: string;
     setLanguage: (lang: string) => void;
-    availableLanguages: Array<{ code: string; label: string }>;
+    /** Legacy shape: `{ id, label }` per the JSX provider implementation. */
+    availableLanguages: Array<{ id: string; label: string }>;
     t: (key: string, options?: I18nTranslateOptions) => string;
   }
 
