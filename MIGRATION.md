@@ -31,7 +31,7 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 |---|---|---|---|
 | 0 | Préparation & gel de portée | done | This document |
 | 1 | Bootstrap monorepo TypeScript | done | pnpm workspaces, `packages/{api,web,shared}`, `tsconfig.base.json`, `docker-compose.yml`, zombie deps cleanup. `pnpm -r build` and `pnpm -r typecheck` green. |
-| 2 | Back : DB, auth, sessions, invitations | pending | |
+| 2 | Back : DB, auth, sessions, invitations | done | Drizzle schema (users/sessions/invites), argon2id + zxcvbn policy, signed session cookies, 6 auth routes, admin invite mint, invite atomic consumption via `SELECT FOR UPDATE`, rate limiting, 15/15 integration tests green against real Postgres. |
 | 3 | Back : modules CRUD + guards | pending | |
 | 4 | Front : refonte du noyau crypto | pending | HKDF AES/HMAC separation is the highest-priority fix |
 | 5 | Front : store unifié + flows auth | pending | |
@@ -48,13 +48,13 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 ### Security audit
 
 - [ ] **CRITIQUE** — `window.mainKey` fallback (Phase 6)
-- [ ] **HAUTE** — Invite code filter injection (Phase 2)
-- [ ] **HAUTE** — Invite code reuse (Phase 2)
+- [x] **HAUTE** — Invite code filter injection (Phase 2) — Drizzle `eq()` parameterized
+- [x] **HAUTE** — Invite code reuse (Phase 2) — atomic `SELECT ... FOR UPDATE` inside tx
 - [ ] **HAUTE** — `wipeMainKeyMaterial` ineffective (Phase 4)
-- [ ] **HAUTE** — Invite code enumeration (Phase 2)
+- [x] **HAUTE** — Invite code enumeration (Phase 2) — no public check endpoint, codes hashed, rate limit on `/auth/register`
 - [ ] **HAUTE** — AES/HMAC key reuse — upgraded from MOYENNE (Phase 4)
 - [ ] **MOYENNE** — Guards cached in localStorage (Phase 4)
-- [ ] **MOYENNE** — No password policy (Phase 2 back + Phase 5 front)
+- [x] **MOYENNE** — No password policy (Phase 2 back; front in Phase 5) — zxcvbn ≥ 3 + min length 12, enforced on register and change-password
 - [ ] **FAIBLE** — `decryptWithRetry` — evaluate via tests (Phase 4)
 - [ ] **FAIBLE** — Legacy double-base64 fallback (Phase 4)
 - [ ] **INFO** — Verbose production logs (Phase 5)
