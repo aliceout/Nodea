@@ -111,6 +111,50 @@ export async function apiChangePassword(body: ChangePasswordBody): Promise<void>
   await request<void>('POST', '/auth/change-password', body);
 }
 
+// --- Admin endpoints ---------------------------------------------------
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+  onboardingStatus: 'pending' | 'complete';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminInviteRow {
+  id: string;
+  createdBy: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export async function apiAdminListUsers(): Promise<AdminUserRow[]> {
+  const { users } = await request<{ users: AdminUserRow[] }>('GET', '/admin/users');
+  return users;
+}
+
+export async function apiAdminDeleteUser(userId: string): Promise<void> {
+  await request<void>('DELETE', `/admin/users/${encodeURIComponent(userId)}`);
+}
+
+export async function apiAdminListInvites(): Promise<AdminInviteRow[]> {
+  const { invites } = await request<{ invites: AdminInviteRow[] }>('GET', '/admin/invites');
+  return invites;
+}
+
+export async function apiAdminCreateInvite(expiresAt?: string): Promise<{ id: string; code: string }> {
+  return request<{ id: string; code: string }>(
+    'POST',
+    '/admin/invites',
+    expiresAt ? { expiresAt } : {},
+  );
+}
+
+export async function apiAdminDeleteInvite(inviteId: string): Promise<void> {
+  await request<void>('DELETE', `/admin/invites/${encodeURIComponent(inviteId)}`);
+}
+
 // --- Modules config endpoints ------------------------------------------
 
 export interface ModulesConfigResponse {
