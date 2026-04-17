@@ -1,0 +1,271 @@
+import { describe, it, expect } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { buildApp } from '../app.ts';
+import { db } from '../db/client.ts';
+import { moodEntries } from '../db/schema.ts';
+import { COLLECTIONS } from '../collections/registry.ts';
+import { seedUser, TEST_PASSWORD, extractCookie } from './helpers.ts';
+
+const app = buildApp();
+
+async function authFor(email: string): Promise<string> {
+  await seedUser(email);
+  const res = await app.request('/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password: TEST_PASSWORD }),
+  });
+  return extractCookie(res)!;
+}
+
+const FAKE_GUARD = 'g_' + 'a'.repeat(64);
+
+function jsonBody(body: unknown, cookie: string): RequestInit {
+  return {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie },
+    body: JSON.stringify(body),
+  };
+}
+
+describe('Collection routes — Mood used as the representative', () => {
+  it('goes through the full create → promote → update → list → delete flow', async () => {
+    const cookie = await authFor('flow@example.com');
+    const sid = 'sid-flow-1';
+
+    // CREATE (guard must be "init")
+    const created = await app.request('/mood/records', {
+      ...jsonBody(
+        {
+          sid,
+          cipher_iv: 'iv-v1',
+          payload: 'cipher-v1',
+          guard: 'init',
+        },
+        cookie,
+      ),
+    });
+    expect(created.status).toBe(201);
+    const createdBody = (await created.json()) as Record<string, unknown>;
+    expect(createdBody).not.toHaveProperty('guard');
+    const entryId = createdBody.id as string;
+
+    // PROMOTE init → g_...
+    const promoted = await app.request(`/mood/records/${entryId}?sid=${sid}&d=init`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ guard: FAKE_GUARD }),
+    });
+    expect(promoted.status).toBe(200);
+    const promotedBody = (await promoted.json()) as Record<string, unknown>;
+    expect(promotedBody).not.toHaveProperty('guard');
+
+    // UPDATE content with the real guard
+    const updated = await app.request(
+      `/mood/records/${entryId}?sid=${sid}&d=${FAKE_GUARD}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ cipher_iv: 'iv-v2', payload: 'cipher-v2' }),
+      },
+    );
+    expect(updated.status).toBe(200);
+    const updatedBody = (await updated.json()) as Record<string, unknown>;
+    expect(updatedBody.cipher_iv).toBe('iv-v2');
+    expect(updatedBody).not.toHaveProperty('guard');
+
+    // LIST
+    const list = await app.request(`/mood/records?sid=${sid}`, { headers: { cookie } });
+    expect(list.status).toBe(200);
+    const listBody = (await list.json()) as { records: Record<string, unknown>[] };
+    expect(listBody.records).toHaveLength(1);
+    expect(listBody.records[0]).not.toHaveProperty('guard');
+    expect(listBody.records[0]?.cipher_iv).toBe('iv-v2');
+
+    // DELETE
+    const deleted = await app.request(
+      `/mood/records/${entryId}?sid=${sid}&d=${FAKE_GUARD}`,
+      { method: 'DELETE', headers: { cookie } },
+    );
+    expect(deleted.status).toBe(200);
+
+    const [row] = await db.select().from(moodEntries).where(eq(moodEntries.id, entryId));
+    expect(row).toBeUndefined();
+  });
+
+  it('rejects PATCH without the guard params (?d=)', async () => {
+    const cookie = await authFor('noguard@example.com');
+    const sid = 'sid-noguard';
+
+    const created = await app.request('/mood/records', {
+      ...jsonBody(
+        { sid, cipher_iv: 'iv', payload: 'c', guard: 'init' },
+        cookie,
+      ),
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    // Missing ?d= → must be rejected before the handler runs.
+    const res = await app.request(`/mood/records/${id}?sid=${sid}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ cipher_iv: 'iv2' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects PATCH with a wrong guard (403, not 404)', async () => {
+    const cookie = await authFor('wrongguard@example.com');
+    const sid = 'sid-wrong';
+
+    const created = await app.request('/mood/records', {
+      ...jsonBody(
+        { sid, cipher_iv: 'iv', payload: 'c', guard: 'init' },
+        cookie,
+      ),
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const res = await app.request(`/mood/records/${id}?sid=${sid}&d=init-wrong`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ cipher_iv: 'iv2' }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('refuses to re-promote a guard that was already promoted', async () => {
+    const cookie = await authFor('nore@example.com');
+    const sid = 'sid-nore';
+
+    const created = await app.request('/mood/records', {
+      ...jsonBody({ sid, cipher_iv: 'iv', payload: 'c', guard: 'init' }, cookie),
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    await app.request(`/mood/records/${id}?sid=${sid}&d=init`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ guard: FAKE_GUARD }),
+    });
+
+    const again = await app.request(
+      `/mood/records/${id}?sid=${sid}&d=${FAKE_GUARD}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ guard: 'g_' + 'b'.repeat(64) }),
+      },
+    );
+    expect(again.status).toBe(400);
+  });
+
+  it('never returns rows belonging to another user', async () => {
+    const cookieA = await authFor('alice@example.com');
+    const cookieB = await authFor('bob@example.com');
+    const sid = 'sid-shared-by-coincidence';
+
+    // Both users happen to pick the same sid (allowed — sids are scoped per user).
+    await app.request('/mood/records', {
+      ...jsonBody({ sid, cipher_iv: 'A-iv', payload: 'A', guard: 'init' }, cookieA),
+    });
+    await app.request('/mood/records', {
+      ...jsonBody({ sid, cipher_iv: 'B-iv', payload: 'B', guard: 'init' }, cookieB),
+    });
+
+    const list = await app.request(`/mood/records?sid=${sid}`, { headers: { cookie: cookieA } });
+    const body = (await list.json()) as { records: Array<{ payload: string }> };
+    expect(body.records).toHaveLength(1);
+    expect(body.records[0]?.payload).toBe('A');
+  });
+
+  it('requires authentication on every route', async () => {
+    const unauthed = await Promise.all([
+      app.request('/mood/records?sid=x'),
+      app.request('/mood/records', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }),
+      app.request('/mood/records/anything?sid=x&d=init', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }),
+      app.request('/mood/records/anything?sid=x&d=init', { method: 'DELETE' }),
+    ]);
+    for (const res of unauthed) expect(res.status).toBe(401);
+  });
+});
+
+describe('Every registered collection is mounted and guard-protected', () => {
+  it.each(COLLECTIONS.map((c) => c.name))('%s exposes the 4 CRUD routes', async (name) => {
+    const cookie = await authFor(`user-${name.replace(/-/g, '_')}@example.com`);
+
+    // CREATE
+    const create = await app.request(`/${name}/records`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ sid: 'sid-x', cipher_iv: 'iv', payload: 'c', guard: 'init' }),
+    });
+    expect(create.status).toBe(201);
+    const { id } = (await create.json()) as { id: string };
+
+    // Guard missing → 400
+    const badPatch = await app.request(`/${name}/records/${id}?sid=sid-x`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ cipher_iv: 'iv2' }),
+    });
+    expect(badPatch.status).toBe(400);
+
+    // Correct guard → 200
+    const goodPatch = await app.request(`/${name}/records/${id}?sid=sid-x&d=init`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ cipher_iv: 'iv2' }),
+    });
+    expect(goodPatch.status).toBe(200);
+  });
+});
+
+describe('/modules-config (no guard)', () => {
+  it('returns an empty shape for a fresh user', async () => {
+    const cookie = await authFor('cfg1@example.com');
+    const res = await app.request('/modules-config', { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { cipher_iv: string | null };
+    expect(body.cipher_iv).toBeNull();
+  });
+
+  it('upserts via PUT and reads it back', async () => {
+    const cookie = await authFor('cfg2@example.com');
+
+    const put = await app.request('/modules-config', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ cipher_iv: 'iv-cfg', payload: 'blob-1' }),
+    });
+    expect(put.status).toBe(200);
+
+    const get = await app.request('/modules-config', { headers: { cookie } });
+    const body = (await get.json()) as Record<string, unknown>;
+    expect(body.cipher_iv).toBe('iv-cfg');
+    expect(body.payload).toBe('blob-1');
+
+    // Second PUT overwrites.
+    await app.request('/modules-config', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ cipher_iv: 'iv-cfg-2', payload: 'blob-2' }),
+    });
+    const get2 = await app.request('/modules-config', { headers: { cookie } });
+    const body2 = (await get2.json()) as Record<string, unknown>;
+    expect(body2.payload).toBe('blob-2');
+  });
+
+  it('requires authentication', async () => {
+    const a = await app.request('/modules-config');
+    expect(a.status).toBe(401);
+  });
+});

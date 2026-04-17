@@ -8,6 +8,13 @@
       "when": 1776431290788,
       "tag": "0000_mixed_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776435436942,
+      "tag": "0001_wandering_angel",
+      "breakpoints": true
     }
   ]
 }

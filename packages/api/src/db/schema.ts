@@ -50,10 +50,6 @@ export const sessions = pgTable(
 /**
  * Invites — single-use registration codes. Stored hashed (never in clear).
  * Consumption is atomic via transaction + `SELECT ... FOR UPDATE`.
- *
- * `used_by` + `used_at` keep an audit trail after consumption; the row is
- * kept (not deleted) so admins can see who redeemed what. A non-null
- * `used_by` means the invite cannot be redeemed again.
  */
 export const invites = pgTable(
   'invites',
@@ -69,9 +65,79 @@ export const invites = pgTable(
   (t) => [uniqueIndex('invites_code_hash_unique').on(t.codeHash)],
 );
 
+/**
+ * Factory for per-module entry tables. Every module stores its records
+ * with the same shape: an opaque encrypted payload + a HMAC guard
+ * computed by the client from its main key + the record id.
+ *
+ * Using a single factory guarantees structural uniformity across
+ * collections — middleware can treat any entry table interchangeably.
+ */
+function createEntryTable(name: string) {
+  return pgTable(
+    name,
+    {
+      id: text('id').primaryKey(),
+      userId: text('user_id')
+        .notNull()
+        .references(() => users.id, { onDelete: 'cascade' }),
+      /**
+       * `module_user_id` is an anonymous per-module sub-identifier chosen
+       * by the client. Two modules can never collide because the
+       * (user_id, module_user_id) tuple scopes queries, and the sid is
+       * derived from module-specific entropy client-side.
+       */
+      moduleUserId: text('module_user_id').notNull(),
+      cipherIv: text('cipher_iv').notNull(),
+      payload: text('payload').notNull(),
+      /**
+       * HMAC guard. `"init"` on creation (client doesn't yet know the
+       * record id), then promoted once to `g_<64 hex>` and frozen.
+       * Never exposed in read responses.
+       */
+      guard: text('guard').notNull(),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+      updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [index(`${name}_user_sid_idx`).on(t.userId, t.moduleUserId)],
+  );
+}
+
+export const moodEntries = createEntryTable('mood_entries');
+export const goalsEntries = createEntryTable('goals_entries');
+export const passageEntries = createEntryTable('passage_entries');
+export const habitsItemsEntries = createEntryTable('habits_items_entries');
+export const habitsLogsEntries = createEntryTable('habits_logs_entries');
+export const libraryItemsEntries = createEntryTable('library_items_entries');
+export const libraryReviewsEntries = createEntryTable('library_reviews_entries');
+export const reviewEntries = createEntryTable('review_entries');
+
+/**
+ * Shared type alias. All entry tables are structurally identical and can
+ * be used interchangeably in generic helpers (middleware, factories).
+ */
+export type EntryTable = typeof moodEntries;
+
+/**
+ * Per-user module configuration (which modules are active, per-module
+ * settings). Keyed on user_id (1:1) so `requireUser` is sufficient — no
+ * guard validation. This is documented here and in the route handler.
+ */
+export const modulesConfig = pgTable('modules_config', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  cipherIv: text('cipher_iv').notNull(),
+  payload: text('payload').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type Invite = typeof invites.$inferSelect;
 export type NewInvite = typeof invites.$inferInsert;
+export type EntryRow = typeof moodEntries.$inferSelect;
+export type NewEntryRow = typeof moodEntries.$inferInsert;
+export type ModulesConfig = typeof modulesConfig.$inferSelect;

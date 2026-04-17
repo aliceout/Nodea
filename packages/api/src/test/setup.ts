@@ -13,8 +13,24 @@ if (!process.env.DATABASE_URL) {
 }
 
 beforeEach(async () => {
-  // TRUNCATE ... CASCADE wipes all three tables and resets FK state in one
-  // round-trip. Much faster than DROP + migrate.
-  await sql`TRUNCATE TABLE sessions, invites, users RESTART IDENTITY CASCADE`;
+  // TRUNCATE ... CASCADE wipes every entry table, modules_config, invites,
+  // sessions and users in one round-trip and resets FK state. Much faster
+  // than DROP + migrate between tests.
+  await sql`
+    TRUNCATE TABLE
+      mood_entries,
+      goals_entries,
+      passage_entries,
+      habits_items_entries,
+      habits_logs_entries,
+      library_items_entries,
+      library_reviews_entries,
+      review_entries,
+      modules_config,
+      sessions,
+      invites,
+      users
+    RESTART IDENTITY CASCADE
+  `;
   __resetRateLimits();
 });

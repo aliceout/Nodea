@@ -32,7 +32,7 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 | 0 | Préparation & gel de portée | done | This document |
 | 1 | Bootstrap monorepo TypeScript | done | pnpm workspaces, `packages/{api,web,shared}`, `tsconfig.base.json`, `docker-compose.yml`, zombie deps cleanup. `pnpm -r build` and `pnpm -r typecheck` green. |
 | 2 | Back : DB, auth, sessions, invitations | done | Drizzle schema (users/sessions/invites), argon2id + zxcvbn policy, signed session cookies, 6 auth routes, admin invite mint, invite atomic consumption via `SELECT FOR UPDATE`, rate limiting, 15/15 integration tests green against real Postgres. |
-| 3 | Back : modules CRUD + guards | pending | |
+| 3 | Back : modules CRUD + guards | done | 8 entry tables + `modules_config`, single `createCollectionRoutes` factory driven by typed `COLLECTIONS` registry, `requireGuard` middleware with timing-safe compare and `init → g_…` promotion. `guard` field stripped from every read response; cross-user reads proven isolated. 32/32 integration tests green. |
 | 4 | Front : refonte du noyau crypto | pending | HKDF AES/HMAC separation is the highest-priority fix |
 | 5 | Front : store unifié + flows auth | pending | |
 | 6 | Front : câblage Mood, Goals, Passage | pending | |
@@ -65,7 +65,7 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 - [ ] **HAUTE** — Duplicate base64 implementations (2 sources) + `randomBytes` doublon (Phase 4)
 - [ ] **HAUTE** — Two parallel state systems (Phase 5)
 - [ ] **HAUTE** — Documented modules not implemented (Phase 7)
-- [ ] **HAUTE** — `guard.pb.js` doesn't cover all collections (Phase 3)
+- [x] **HAUTE** — `guard.pb.js` doesn't cover all collections (Phase 3) — route factory mounts all 8 collections from one typed registry; adding a collection without guard is structurally impossible
 - [ ] **MOYENNE** — JSX instantiated at import (Phase 8)
 - [ ] **MOYENNE** — No URL-based routing for modules (Phase 8)
 - [ ] **MOYENNE** — No React Error Boundary (Phase 8)
