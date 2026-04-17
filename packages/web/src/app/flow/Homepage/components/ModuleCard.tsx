@@ -1,15 +1,22 @@
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import SurfaceCard from "@/ui/atoms/specifics/SurfaceCard.jsx";
-import Badge from "@/ui/atoms/feedback/Badge.jsx";
-import { useI18n } from "@/i18n/I18nProvider.jsx";
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
+import Badge from '@/ui/atoms/feedback/Badge.jsx';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import type { ModuleDef } from '@/app/config/modules_list';
 
-export default function ModuleCard({ module, onNavigate, badgeLabel }) {
+export interface ModuleCardProps {
+  module: ModuleDef;
+  onNavigate(moduleId: string): void;
+  badgeLabel?: string;
+}
+
+export default function ModuleCard({ module, onNavigate, badgeLabel }: ModuleCardProps) {
   const Icon = module.icon;
   const { t } = useI18n();
   const label = t(module.label, { defaultValue: module.label });
   const description = module.description
     ? t(module.description, { defaultValue: module.description })
-    : "";
+    : '';
 
   return (
     <SurfaceCard
@@ -32,23 +39,18 @@ export default function ModuleCard({ module, onNavigate, badgeLabel }) {
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)] sm:hidden">
               {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
             </span>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">
-              {label}
-            </p>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
           </div>
           {badgeLabel ? <Badge tone="success">{badgeLabel}</Badge> : null}
         </div>
         {description ? (
-          <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-            {description}
-          </p>
+          <p className="text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
         ) : null}
       </div>
       <ArrowRightIcon
-        className="mt-1 h-4 w-4 shrink-0 text-[var(--text-muted)] transition group-hover:text-[var(--text-secondary)]"
+        className="mt-1 h-4 w-4 shrink-0 text-[var(--text-muted)] transition"
         aria-hidden="true"
       />
     </SurfaceCard>
   );
 }
-

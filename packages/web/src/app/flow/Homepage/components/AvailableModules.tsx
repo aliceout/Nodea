@@ -1,19 +1,25 @@
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { useI18n } from "@/i18n/I18nProvider.jsx";
-import Surface from "@/ui/atoms/layout/Surface.jsx";
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Surface from '@/ui/atoms/layout/Surface.jsx';
+import type { ModuleDef } from '@/app/config/modules_list';
 
-export default function AvailableModules({ modules, onNavigate }) {
+export interface AvailableModulesProps {
+  modules: ModuleDef[];
+  onNavigate(moduleId: string): void;
+}
+
+export default function AvailableModules({ modules, onNavigate }: AvailableModulesProps) {
   const { t } = useI18n();
   if (!modules.length) return null;
 
   return (
     <Surface tone="muted" border="default" padding="lg" className="space-y-4">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-        {t("home.sections.available.title", { defaultValue: "Modules disponibles" })}
+        {t('home.sections.available.title', { defaultValue: 'Modules disponibles' })}
       </h3>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {t("home.sections.available.description", {
-          defaultValue: "Active de nouveaux espaces pour enrichir ton accompagnement.",
+        {t('home.sections.available.description', {
+          defaultValue: 'Active de nouveaux espaces pour enrichir ton accompagnement.',
         })}
       </p>
 
@@ -35,13 +41,12 @@ export default function AvailableModules({ modules, onNavigate }) {
 
       <button
         type="button"
-        onClick={() => onNavigate("settings")}
+        onClick={() => onNavigate('settings')}
         className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500"
       >
-        {t("home.sections.available.cta", { defaultValue: "Ouvrir les paramètres" })}
+        {t('home.sections.available.cta', { defaultValue: 'Ouvrir les paramètres' })}
         <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
       </button>
     </Surface>
   );
 }
-

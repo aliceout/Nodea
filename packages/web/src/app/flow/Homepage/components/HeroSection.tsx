@@ -1,17 +1,24 @@
-import clsx from "clsx";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import clsx from 'clsx';
+import { CalendarDaysIcon } from '@heroicons/react/24/outline';
+
+export interface HeroSectionProps {
+  greeting: string;
+  name: string;
+  formattedDate: string;
+  className?: string;
+}
 
 export default function HeroSection({
   greeting,
   name,
   formattedDate,
-  className = "",
-}) {
+  className = '',
+}: HeroSectionProps) {
   return (
     <section
       className={clsx(
-        "relative overflow-hidden rounded-2xl border border-slate-900/10 bg-slate-900 text-white",
-        className
+        'relative overflow-hidden rounded-2xl border border-slate-900/10 bg-slate-900 text-white',
+        className,
       )}
     >
       <div className="absolute -right-16 top-1/2 hidden h-48 w-48 -translate-y-1/2 rounded-full bg-slate-700/40 blur-3xl md:block" />
@@ -24,8 +31,8 @@ export default function HeroSection({
           {name ? `${greeting}, ${name}` : `${greeting} !`}
         </h2>
         <p className="text-sm leading-relaxed text-slate-200 sm:text-base">
-          Retrouvez vos espaces Nodea en un clin d’œil. Choisissez un module pour
-          poursuivre votre routine ou découvrir de nouvelles pistes.
+          Retrouvez vos espaces Nodea en un clin d’œil. Choisissez un module pour poursuivre votre
+          routine ou découvrir de nouvelles pistes.
         </p>
       </div>
     </section>
