@@ -3,19 +3,16 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import ChangeEmail from './components/ChangeEmail';
 import PasswordReset from './components/PasswordReset';
 import DeleteAccount from './components/DeleteAccount';
+import ImportData from './components/ImportData.jsx';
+import ExportData from './components/ExportData.jsx';
 
 /**
- * Account page.
+ * Account page — identité / données / danger.
  *
- * Two sections on the new stack:
- *   - Identité (email, password)
- *   - Danger (suppression du compte)
- *
- * ChangeUsername was removed: the new users table has no username
- * column (email is the canonical identifier).
- * Import / Export were legacy JSX that depended on the PB record APIs
- * + the old crypto chain; both have been removed pending a proper TSX
- * rewrite on top of the generic collection client.
+ * Import / Export sont réactivés (R1) : ils passent désormais par les
+ * nouveaux clients typés (`moodClient`, `goalsClient`, etc.) et couvrent
+ * les six modules (mood, goals, passage, habits_items, habits_logs,
+ * library_items, library_reviews, review).
  */
 export default function AccountPage() {
   const user = useNodeaStore(selectUser);
@@ -32,6 +29,14 @@ export default function AccountPage() {
           <div className="flex flex-col gap-2">
             <ChangeEmail />
             <PasswordReset />
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-gray-800 dark:text-slate-100">Données</h2>
+          <div className="flex flex-col gap-2 md:flex-row">
+            <ImportData />
+            <ExportData />
           </div>
         </section>
 
