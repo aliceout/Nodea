@@ -1,6 +1,18 @@
-# docker-compose for Nodea — migration target stack.
-# Phase 1: Postgres only (dev). The api/web services will be added in Phase 10
-# when their Dockerfiles land.
+# docker-compose for Nodea — full stack.
+#
+# Three services:
+#   - postgres : data store
+#   - api      : Hono backend (auto-migrates on start)
+#   - web      : static SPA behind nginx, reverse-proxies /api/* to `api`
+#
+# Quick start:
+#   cp .env.example .env
+#   # edit COOKIE_SECRET (≥ 32 chars) + set COOKIE_SECURE=true behind TLS
+#   docker compose up -d --build
+#
+#   # one-time: create the first admin
+#   docker compose exec api \
+#     sh -c 'ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=changeme pnpm seed:admin'
 
 services:
   postgres:
@@ -12,7 +24,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nodea_dev}
       POSTGRES_DB: ${POSTGRES_DB:-nodea}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '${POSTGRES_PORT:-5433}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,6 +32,38 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: nodea-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgres://${POSTGRES_USER:-nodea}:${POSTGRES_PASSWORD:-nodea_dev}@postgres:5432/${POSTGRES_DB:-nodea}
+      COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required (≥ 32 chars)}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-2592000}
+    expose:
+      - '3000'
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    container_name: nodea-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${WEB_PORT:-8080}:80'
 
 volumes:
   pgdata:

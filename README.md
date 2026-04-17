@@ -1,118 +1,189 @@
 # 🍃 Nodea — Suivi personnel chiffré
 
-**Nodea** est une application web pour suivre sa propre vie, ses envies, ses objectifs, son humeur, ses habitudes ou encore ses lectures.  
-Toutes les données sont **chiffrées côté client** avant d’être envoyées au serveur : seul·e l'utilisateur·ice peux les lire, même l’admin n’y a jamais accès.
+**Nodea** est une application web auto-hébergée pour suivre sa vie, ses envies,
+ses objectifs, son humeur, ses habitudes, ses lectures.
+
+Toutes les données sont **chiffrées dans le navigateur** avant d'arriver au
+serveur. Personne d'autre que toi — pas même l'admin qui héberge
+l'instance — ne peut les lire.
 
 ---
 
 ## Principes
 
-- **Confidentialité réelle** : chiffrement de bout en bout, personne d’autre que l'utilisateur·ice ne peut lire les écrits.  
-- **Système modulaire** : Des modules ayant chacun une fonction défini (humeur, lecture, etc), sont activable à la demande
-- **Aucune analyse automatique, aucun tracking, aucun partage** : l'utilisateur·ice reste propriétaire de tout ce qu'iel écrit.  
-- **Interface minimaliste** : rapide, accessible, pensée pour l’usage personnel et auto-hébergable.  
+- **Chiffrement de bout en bout** — AES-GCM + HMAC, clés dérivées via
+  Argon2id côté client. Le serveur ne voit que du ciphertext opaque.
+- **Séparation cryptographique stricte** — HKDF avec labels distincts
+  (`nodea:aes`, `nodea:hmac`) pour que la clé AES et la clé HMAC ne partagent
+  aucun secret.
+- **Modules activables** — Mood / Goals / Passage / Habits / Library / Review
+  s'allument à la demande. Chaque entrée est référencée par un
+  `module_user_id` opaque, sans lien direct avec ton compte.
+- **Zéro tracking, zéro analytics, zéro partage.**
+- **Auto-hébergeable en une commande** — `docker compose up -d --build`.
 
- 
- ## Stack technique
- 
- - **Frontend** : React, TailwindCSS
- - **Backend** : PocketBase auto-hébergé
-- **Chiffrement** :  *(voir [Security.md](documentation/Security.md))*  
-   - AES-GCM (WebCrypto), avec dérivation de clé via Argon2.
-   - Tous les contenus sensibles sont chiffrés côté client, ien ne transite en clair
-   - La clé principale est dérivée du mot de passe et stockée chiffrée avec un salt unique. Aucune donnée sensible ne circule ou n’est stockée en clair.
- - **Pas de tracking, pas d’export admin, ni d’API publique.**
- 
 ---
 
-## Modules (en plus du journal)
+## Stack
 
-- **Mood** : suivi de positivités journalière
-- **Goals** : objectifs annuels (liste simple, statut)  
-- **Habits** : habitudes  occurrences datées (pour une heatmap locale)  
-- **Library** : œuvres (livres/films/séries)  fiches de lecture datées  
-- **Review** : bilan annuel type YearCompass (parcours guidé)
+- **Backend** : Node 22, [Hono](https://hono.dev), Drizzle ORM, PostgreSQL 16,
+  argon2id, Zod. Sessions cookies signées (pas de JWT).
+- **Frontend** : React 19, Vite, TypeScript strict, Tailwind, React Router v7,
+  Zustand, React Hook Form + Zod, WebCrypto + `hash-wasm`.
+- **Monorepo** : pnpm workspaces (`packages/api`, `packages/web`,
+  `packages/shared`).
+- **Tests** : Vitest (90+ tests, dont intégration sur vraie Postgres).
+- **CI** : GitHub Actions (typecheck + build + tests à chaque push).
 
-Ces modules suivent tous la même structure de base (`<module>_entries`) décrite dans [Modules.md](documentation/Modules.md) et [Database.md](documentation/Database.md). 
+---
 
- ---
- 
- ## Fonctionnement du chiffrement
- 
- - Toutes les données sont chiffrées localement dans le navigateur, avant envoi.
- - Le chiffrement utilise l’API WebCrypto en mode AES-GCM.
- - La clé est dérivée via Argon2 à partir du mot de passe utilisateur·ice et d’un salt unique.
- - La clé principale sert à chiffrer/déchiffrer les données du journal. Elle est elle-même stockée chiffrée côté serveur.
- - Même l’admin n’a jamais accès aux données, même avec un dump complet de la base.
- - L’export se fait localement en données déchiffrées, à la demande.
- 
-Pour les détails (E2E, HMAC *guard*, création en 2 temps, export/import), consulte [Security.md](documentation/Security.md). 
+## Modules
 
- 
- ## Installation
+| Module  | Description                                                          |
+| ------- | -------------------------------------------------------------------- |
+| Mood    | Humeur quotidienne (score, emoji, commentaire, positives)             |
+| Goals   | Objectifs (titre, statut, thread, note)                               |
+| Passage | Journal libre — entrées datées avec thread optionnel                  |
+| Habits  | Habitudes (items + logs datés, base d'une heatmap locale)             |
+| Library | Livres / films / docs + fiches de lecture                             |
+| Review  | Bilan annuel inspiré de YearCompass (parcours guidé)                  |
+
+Spécifications détaillées dans [`documentation/Modules/`](documentation/Modules/).
+
+---
+
+## Installation — auto-hébergement via Docker
 
 ### Prérequis
 
-- Node.js >= 18
-- PocketBase (serveur à installer localement ou sur un serveur dédié)
+- Docker + Docker Compose v2
 
-### Déploiement local
+### Démarrage
 
-1. **Cloner le repo**  
+1. **Cloner le repo**
+
    ```bash
    git clone https://github.com/aliceout/Nodea.git
    cd Nodea
    ```
-2. **Installer les dépendances**
-    Installer les dépendances
+
+2. **Configurer l'environnement**
+
    ```bash
-   npm install
+   cp .env.example .env
+   # Édite .env :
+   #  - COOKIE_SECRET : 32+ caractères aléatoires (obligatoire)
+   #  - COOKIE_SECURE : true derrière TLS, false en dev local
    ```
-3. **Installer et lancer PocketBase**
-- Télécharger PocketBase depuis pocketbase.io
-- Lancer PocketBase sur le port 8090
+
+   Pour générer un `COOKIE_SECRET` fort :
+
    ```bash
-   ./pocketbase serve
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
-4. **Configurer l’environnement**
-- Créer un fichier .env à la racine avec :
-   ```ini
-   VITE_PB_URL=<Adress of pocketbase>
-   ```
-5. **Lancer l’application**
+
+3. **Lancer la stack**
+
    ```bash
-   npm run dev
+   docker compose up -d --build
    ```
-6. **Ouvrir dans ton navigateur**
-   ``` url
-   http://localhost:5173
+
+   La base Postgres se provisionne au premier démarrage, l'API applique ses
+   migrations automatiquement, le front sert sur `http://localhost:8080`
+   (modifiable via `WEB_PORT` dans `.env`).
+
+4. **Créer le premier admin**
+
+   ```bash
+   docker compose exec api sh -c 'ADMIN_EMAIL=toi@exemple.com ADMIN_PASSWORD=change-moi pnpm seed:admin'
    ```
-   ---
- ## Sécurité et limites
- 
- - **La sécurité dépend de la force du mot de passe**.
- - **Perte du mot de passe = perte irrémédiable des données** (aucune récupération possible).
- - **Aucune sauvegarde serveur** : exporter régulièrement tes données si besoin.
- - **Pas d’application mobile native** mais utilisable sur mobile via navigateur.
- 
+
+5. **Se connecter**
+
+   Ouvre `http://localhost:8080`. Le premier compte peut générer des codes
+   d'invitation via `Paramètres → Admin` — les utilisateur·ice·s suivant·e·s
+   s'inscrivent avec ce code.
+
+### Mise à jour
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Les nouvelles migrations sont appliquées automatiquement au démarrage.
+
+---
+
+## Développement local (sans Docker pour le front)
+
+Si tu veux hacker sur le code :
+
+```bash
+# 1. Postgres en Docker, le reste via pnpm
+docker compose up -d postgres
+
+# 2. Install + env API
+pnpm install
+cp packages/api/.env.example packages/api/.env   # ajuste COOKIE_SECRET
+
+# 3. Migrations + API + Web en watch
+pnpm --filter @nodea/api db:migrate
+pnpm dev:api   # port 3000
+pnpm dev:web   # port 5173
+```
+
+Le client web en dev tape directement l'API sur `http://127.0.0.1:3000`
+(voir `VITE_API_URL`).
+
+---
+
+## Tests
+
+```bash
+# API (intégration + Postgres service container)
+pnpm --filter @nodea/api test
+
+# Web (unitaires : crypto, store, client)
+pnpm --filter @nodea/web test
+
+# Ou tout d'un coup
+pnpm -r test
+```
+
+La CI GitHub Actions fait la même chose à chaque push/PR.
+
+---
+
+## Sécurité
+
+- **La sécurité dépend de la force du mot de passe.**
+- **Perte du mot de passe = perte irréversible des données.** Pas de
+  récupération possible — c'est la conséquence directe de l'E2E.
+- **Pas de sauvegarde serveur automatisée.** Pense à backup le volume
+  `pgdata` régulièrement (via `docker compose exec postgres pg_dump`), ou
+  utilise l'export chiffré par utilisateur·ice.
+- **Le serveur ne stocke que du ciphertext** : un dump complet de la DB
+  ne révèle aucune donnée utilisateur·ice en clair. L'email et le sel
+  d'enveloppe sont les seules métadonnées identifiantes.
+
+Plus de détails dans [`documentation/Security.md`](documentation/Security.md).
+
 ---
 
 ## Documentation
 
-- **Vue d’ensemble des modules** : [Modules.md](documentation/Modules.md) 
-- **Structure de la base (PocketBase)** : [Database.md](documentation/Database.md) 
-- **Sécurité (E2E, guard HMAC, 2-temps, export/import)** : [Security.md](documentation/Security.md)
-- **Fiches détaillées** : `documentation/Modules/` →  
-  - [Mood.md](documentation/Modules/Mood.md)
-  - [Goals.md](documentation/Modules/Goals.md)
-  - [Habits.md](documentation/Modules/Habits.md)
-  - [Library.md](documentation/Modules/Library.md)
-  - [Review.md](documentation/Modules/Review.md)
+- [`documentation/Architecture.md`](documentation/Architecture.md) — structure
+- [`documentation/Database.md`](documentation/Database.md) — schéma
+- [`documentation/Security.md`](documentation/Security.md) — chiffrement,
+  guards HMAC, flux d'enregistrement, export
+- [`documentation/Modules.md`](documentation/Modules.md) + fiches par module
+- [`documentation/Migration-Roadmap.md`](documentation/Migration-Roadmap.md)
+  et [`MIGRATION.md`](MIGRATION.md) — historique de la migration PB → Hono
 
- ---
+---
 
- 
- ## Crédits
- 
- Développé par aliceout
- Projet open source, sous licence Mozilla Public License 2.0
+## Crédits
+
+Projet open source par [@aliceout](https://github.com/aliceout), sous licence
+Mozilla Public License 2.0.

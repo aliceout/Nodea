@@ -5,17 +5,17 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "dev": "tsx --env-file=.env watch src/index.ts",
-    "start": "node --env-file=.env --import tsx/esm src/index.ts",
+    "dev": "tsx --env-file-if-exists=.env watch src/index.ts",
+    "start": "node --env-file-if-exists=.env --import tsx/esm src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint: pending Phase 9' && exit 0",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "seed:admin": "tsx --env-file=.env src/seed.ts"
+    "seed:admin": "tsx --env-file-if-exists=.env src/seed.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

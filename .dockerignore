@@ -1,0 +1,29 @@
+# Keep Docker's build context fast and deterministic by never shipping
+# host-only artefacts. pnpm rebuilds node_modules from the lockfile
+# inside the image; the build emits its own dist/.
+**/node_modules
+**/dist
+**/.vite
+
+# VCS and IDE.
+.git
+.github
+.idea
+.vscode
+
+# Tests + docs aren't needed at build time.
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+documentation
+MIGRATION.md
+AGENTS.md
+CLAUDE.md
+
+# Local env files — each service reads env from docker-compose.
+.env
+packages/*/.env
+*.log
+
+# Export artefact in the repo root — big file, irrelevant to the image.
+export.md
