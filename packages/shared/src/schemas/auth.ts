@@ -40,6 +40,19 @@ export const ChangePasswordBodySchema = z.object({
 });
 export type ChangePasswordBody = z.infer<typeof ChangePasswordBodySchema>;
 
+/** Change the authenticated user's email. Current password required. */
+export const ChangeEmailBodySchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newEmail: z.string().email().max(254),
+});
+export type ChangeEmailBody = z.infer<typeof ChangeEmailBodySchema>;
+
+/** Self-delete the authenticated user. Current password required. */
+export const DeleteSelfBodySchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+});
+export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
+
 /** Admin-only payload to mint a new invite code. */
 export const CreateInviteBodySchema = z.object({
   expiresAt: z.string().datetime().optional(),

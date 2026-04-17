@@ -20,6 +20,8 @@ import {
   type LoginBody,
   type RegisterBody,
   type ChangePasswordBody,
+  type ChangeEmailBody,
+  type DeleteSelfBody,
 } from '@nodea/shared';
 
 /**
@@ -109,6 +111,14 @@ export async function apiMe(): Promise<AuthMeResponse | null> {
 
 export async function apiChangePassword(body: ChangePasswordBody): Promise<void> {
   await request<void>('POST', '/auth/change-password', body);
+}
+
+export async function apiChangeEmail(body: ChangeEmailBody): Promise<void> {
+  await request<void>('PATCH', '/auth/email', body);
+}
+
+export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {
+  await request<void>('DELETE', '/auth/me', body);
 }
 
 // --- Admin endpoints ---------------------------------------------------

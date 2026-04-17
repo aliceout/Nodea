@@ -283,3 +283,102 @@ describe('POST /admin/invites', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('PATCH /auth/email', () => {
+  const newEmail = 'renamed@example.com';
+
+  it('updates the email when the current password is correct', async () => {
+    await seedUser('rename@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'rename@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ currentPassword: TEST_PASSWORD, newEmail }),
+    });
+    expect(res.status).toBe(200);
+
+    const me = await app.request('/auth/me', { headers: { cookie } });
+    const meBody = (await me.json()) as { email: string };
+    expect(meBody.email).toBe(newEmail);
+  });
+
+  it('rejects a wrong current password (401)', async () => {
+    await seedUser('rename2@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'rename2@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ currentPassword: 'wrong', newEmail }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('409 when the new email is already taken', async () => {
+    await seedUser('occupant@example.com');
+    await seedUser('mover@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'mover@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({
+        currentPassword: TEST_PASSWORD,
+        newEmail: 'occupant@example.com',
+      }),
+    });
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('DELETE /auth/me', () => {
+  it('removes the user and cascades sessions + entries', async () => {
+    await seedUser('suicide@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'suicide@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/auth/me', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ currentPassword: TEST_PASSWORD }),
+    });
+    expect(res.status).toBe(200);
+
+    // Subsequent /auth/me with the same cookie returns 401 — the user
+    // (and the session row they owned) is gone.
+    const me = await app.request('/auth/me', { headers: { cookie } });
+    expect(me.status).toBe(401);
+  });
+
+  it('rejects a wrong current password (401)', async () => {
+    await seedUser('survivor@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'survivor@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/auth/me', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ currentPassword: 'not-the-one' }),
+    });
+    expect(res.status).toBe(401);
+  });
+});

@@ -5,6 +5,8 @@ import {
   RegisterBodySchema,
   LoginBodySchema,
   ChangePasswordBodySchema,
+  ChangeEmailBodySchema,
+  DeleteSelfBodySchema,
   type AuthMeResponse,
 } from '@nodea/shared/schemas/auth';
 import { db } from '../db/client.ts';
@@ -154,5 +156,65 @@ authRoutes.post('/change-password', requireUser, async (c) => {
   const session = await createSession(user.id);
   await setSessionCookie(c, session.id, session.expiresAt);
 
+  return c.json({ ok: true });
+});
+
+/**
+ * Change the authenticated user's email.
+ *
+ * Password-gated. The encrypted envelope doesn't change (the email is
+ * not part of the KEK derivation), so only the `email` column is
+ * updated. The unique index on `email` lets the server reject duplicates
+ * via the DB error path.
+ */
+authRoutes.patch('/email', requireUser, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = ChangeEmailBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+  const user = c.get('user');
+
+  const currentOk = await verifyPassword(user.passwordHash, body.currentPassword);
+  if (!currentOk) return c.json({ error: 'invalid_credentials' }, 401);
+
+  const newEmail = body.newEmail.toLowerCase();
+  if (newEmail === user.email) return c.json({ ok: true });
+
+  try {
+    await db
+      .update(users)
+      .set({ email: newEmail, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('users_email_unique')) {
+      return c.json({ error: 'email_taken' }, 409);
+    }
+    throw err;
+  }
+
+  return c.json({ ok: true });
+});
+
+/**
+ * Self-delete the authenticated user. Password-gated.
+ *
+ * Every row owned by this user is removed by the FK ON DELETE CASCADE
+ * chain: sessions, modules_config, and every *_entries. Invites the
+ * user created keep their row with `created_by` set to NULL.
+ *
+ * After the delete the session row is gone; the cookie is also
+ * explicitly cleared in the response so the browser forgets it.
+ */
+authRoutes.delete('/me', requireUser, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = DeleteSelfBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
+
+  const currentOk = await verifyPassword(user.passwordHash, parsed.data.currentPassword);
+  if (!currentOk) return c.json({ error: 'invalid_credentials' }, 401);
+
+  await db.delete(users).where(eq(users.id, user.id));
+  clearSessionCookie(c);
   return c.json({ ok: true });
 });
