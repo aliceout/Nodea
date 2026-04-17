@@ -6,8 +6,8 @@
 // Elles évitent de dupliquer la logique d'accès au state
 // dans les composants.
 
-// Onglet courant (id de l'onglet actif dans la navigation)
-export const selectCurrentTab = (state) => state.nav.currentTab;
+// Phase 8b: `selectCurrentTab` removed — the active module is derived
+// from the URL (`useParams`), not from the store.
 
 // État d'ouverture du menu mobile (true = ouvert, false = fermé)
 export const selectMobileOpen = (state) => state.ui.mobileOpen;

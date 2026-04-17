@@ -1,17 +1,15 @@
 import clsx from "clsx";
 import { useMemo } from "react";
+import { useParams } from "react-router-dom";
 
-import { useStore } from "@/core/store/StoreProvider";
-import { selectCurrentTab } from "@/core/store/selectors";
 import { MODULES } from "@/app/config/modules_list";
 import SubNavDesktop from "../components/SubNavDesktop";
 import SubNavMobile from "../components/SubNavMobile";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function Subheader({ tabs = [], onTabSelect, className }) {
-  const store = useStore();
-  const state = store?.state ?? store?.[0];
-  const current = selectCurrentTab(state);
+  const { moduleId } = useParams();
+  const current = moduleId ?? "home";
   const { t } = useI18n();
 
   const title = useMemo(() => {

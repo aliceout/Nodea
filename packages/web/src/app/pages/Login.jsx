@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/core/store/StoreProvider";
-import { setTab } from "@/core/store/actions";
 import pb from "@/core/api/pocketbase";
 import { deriveKeyArgon2, decryptAESGCM } from "@/core/crypto/webcrypto";
 import { clearGuardsCache } from "@/core/crypto/guards";
@@ -79,8 +78,7 @@ export default function LoginPage() {
       dispatch({ type: "key/set", payload: mainKeyMaterial });
       dispatch({ type: "key/status", payload: "ready" });
       clearGuardsCache();
-      dispatch(setTab("home"));
-      navigate("/", { replace: true });
+      navigate("/flow/home", { replace: true });
     } catch (err) {
       setError(t("auth.login.errors.invalidCredentials"));
     }

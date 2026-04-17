@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
-import { setTab } from "@/core/store/actions";
 import Input from "@/ui/atoms/form/Input";
 import Button from "@/ui/atoms/base/Button";
 import FormFeedback from "@/ui/atoms/form/FormError";
@@ -167,8 +166,7 @@ export default function ChangePasswordPage() {
   };
 
   const handleBackToAccount = () => {
-    dispatch(setTab("account"));
-    navigate("/flow", { replace: true });
+    navigate("/flow/account", { replace: true });
   };
 
   return (

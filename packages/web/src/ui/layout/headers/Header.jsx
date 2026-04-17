@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import useAuth from "@/core/auth/useAuth";
 import { useStore } from "@/core/store/StoreProvider";
-import { setTab, openMobile } from "@/core/store/actions";
+import { openMobile } from "@/core/store/actions";
 
 import HeaderNav from "../components/HeaderNav.jsx";
 import Logo from "@/ui/branding/LogoLong.jsx";
@@ -20,8 +20,8 @@ export default function Header() {
   const username = user?.username || t("layout.header.defaultUsername");
 
   const handleMenuClick = () => dispatch(openMobile());
-  const handleGoAccount = () => dispatch(setTab("account"));
-  const handleGoSettings = () => dispatch(setTab("settings"));
+  const handleGoAccount = () => navigate("/flow/account");
+  const handleGoSettings = () => navigate("/flow/settings");
   const handleSignOut = async () => {
     await logoutStore();
     navigate("/login", { replace: true });

@@ -1,9 +1,8 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { useNavigate } from "react-router-dom";
 import UserAvatar from "../components/UserAvatar";
 import pb from "@/core/api/pocketbase";
-import { useStore } from "@/core/store/StoreProvider";
-import { setTab } from "@/core/store/actions";
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function UserMenu({
@@ -14,7 +13,7 @@ export default function UserMenu({
 }) {
   const user = pb.authStore.model;
   const isAdmin = user?.role === "admin";
-  const { dispatch } = useStore();
+  const navigate = useNavigate();
   const { t } = useI18n();
   const displayName = username || t("layout.header.defaultUsername");
 
@@ -69,7 +68,7 @@ export default function UserMenu({
             {({ focus }) => (
               <button
                 type="button"
-                onClick={() => dispatch(setTab("admin"))}
+                onClick={() => navigate("/flow/admin")}
                 className={`block w-full px-3 py-1.5 text-left text-sm text-gray-900 ${
                   focus ? "bg-gray-50" : ""
                 }`}

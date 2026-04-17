@@ -4,9 +4,9 @@
 // C'est la forme par défaut du store global.
 // Chaque clé est un "sous-état" géré par le reducer.
 export const initialState = {
-  nav: {
-    currentTab: "home",
-  },
+  // Phase 8b: `nav.currentTab` removed — the active module is driven by
+  // the URL (`/flow/:moduleId`) via React Router's `useParams`. Nothing
+  // in the store tracks it anymore.
   ui: {
     mobileOpen: false,
     theme: "system",
@@ -27,7 +27,6 @@ export const initialState = {
 // Chaque type correspond à une modification précise du store.
 // Le nom est en "namespace/action" pour éviter les collisions.
 export const types = {
-  NAV_SET_TAB: "nav/setTab",
   UI_OPEN_MOBILE: "ui/openMobile",
   UI_CLOSE_MOBILE: "ui/closeMobile",
   UI_TOGGLE_MOBILE: "ui/toggleMobile",
@@ -51,8 +50,6 @@ export const types = {
 // Chaque `case` gère un type d’action.
 export function reducer(state, action) {
   switch (action.type) {
-    case types.NAV_SET_TAB:
-      return { ...state, nav: { ...state.nav, currentTab: action.payload } };
     case types.UI_OPEN_MOBILE:
       return { ...state, ui: { ...state.ui, mobileOpen: true } };
     case types.UI_CLOSE_MOBILE:

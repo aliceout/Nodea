@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Subheader from "@/ui/layout/headers/Subheader";
 import SectionHeader from "@/ui/atoms/typography/SectionHeader.jsx";
 import { MODULES } from "@/app/config/modules_list";
-import { useStore } from "@/core/store/StoreProvider";
-import { setTab } from "@/core/store/actions";
 import useAuth from "@/core/auth/useAuth";
 import {
   isModuleEnabled,
@@ -29,7 +28,7 @@ function getPreferredName(user) {
 }
 
 export default function HomePage() {
-  const { dispatch } = useStore();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const modulesRuntime = useModulesRuntime();
   const { t, language } = useI18n();
@@ -80,9 +79,9 @@ export default function HomePage() {
 
   const handleNavigate = useCallback(
     (moduleId) => {
-      dispatch(setTab(moduleId));
+      navigate(`/flow/${moduleId}`);
     },
-    [dispatch]
+    [navigate]
   );
 
   const quickActionsLabel = t("home.sections.actions.title", {

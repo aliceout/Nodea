@@ -1,8 +1,5 @@
+import { useNavigate, useParams } from "react-router-dom";
 import { MODULES } from "@/app/config/modules_list";
-import { useStore } from "@/core/store/StoreProvider";
-import { selectCurrentTab } from "@/core/store/selectors";
-import { setTab } from "@/core/store/actions";
-
 import {
   useModulesRuntime,
   isModuleEnabled,
@@ -10,8 +7,9 @@ import {
 import { useI18n } from "@/i18n/I18nProvider.jsx";
 
 export default function HeadearNav() {
-  const { state, dispatch } = useStore();
-  const current = selectCurrentTab(state);
+  const navigate = useNavigate();
+  const { moduleId } = useParams();
+  const current = moduleId ?? "home";
   const modulesRuntime = useModulesRuntime();
   const { t } = useI18n();
 
@@ -30,7 +28,7 @@ export default function HeadearNav() {
             <li key={item.id} className="relative group/item">
               <button
                 type="button"
-                onClick={() => dispatch(setTab(item.id))}
+                onClick={() => navigate(`/flow/${item.id}`)}
                 className="flex flex-col items-center group/nav px-1 "
                 aria-current={current === item.id ? "page" : undefined}
               >

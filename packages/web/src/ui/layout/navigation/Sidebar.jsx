@@ -1,10 +1,11 @@
 import { Dialog, DialogPanel, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useStore } from "@/core/store/StoreProvider";
-import { selectCurrentTab, selectMobileOpen } from "@/core/store/selectors";
-import { closeMobile, setTab } from "@/core/store/actions";
+import { selectMobileOpen } from "@/core/store/selectors";
+import { closeMobile } from "@/core/store/actions";
 
 import Logo from "@/ui/branding/LogoLong.jsx";
 import Link from "../components/SideLinks.jsx";
@@ -21,8 +22,9 @@ export default function Sidebar() {
   const state = store?.state ?? store?.[0];
   const dispatch = store?.dispatch ?? store?.[1];
   const { t } = useI18n();
-
-  const current = selectCurrentTab(state);
+  const navigate = useNavigate();
+  const { moduleId } = useParams();
+  const current = moduleId ?? "home";
   const open = selectMobileOpen(state);
 
   const modulesRuntime = useModulesRuntime();
@@ -33,7 +35,7 @@ export default function Sidebar() {
   });
 
   const handleSelect = (id) => {
-    dispatch(setTab(id));
+    navigate(`/flow/${id}`);
     dispatch(closeMobile());
   };
 

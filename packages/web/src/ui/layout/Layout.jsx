@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
+import { Navigate, useParams } from "react-router-dom";
 import KeyMissingModal from "@/ui/atoms/specifics/KeyMissingModal";
 import OnboardingModal from "@/ui/atoms/specifics/OnboardingModal";
 import { nav } from "./navigation/Navigation";
-import { selectCurrentTab } from "@/core/store/selectors";
 import { useStore } from "@/core/store/StoreProvider";
 import useBootstrapModulesRuntime from "@/core/hooks/useBootstrapModulesRuntime";
 import useAuth from "@/core/auth/useAuth";
@@ -15,14 +15,22 @@ export default function Layout() {
   // Boot runtime modules (inchangé)
   useBootstrapModulesRuntime();
 
-  // Store global (inchangé)
-  const { state, keyStatus, logout } = useStore();
-  const current = selectCurrentTab(state);
+  // Phase 8b: the active module is driven by the URL (/flow/:moduleId).
+  // Replaces the previous `currentTab` store field.
+  const { moduleId } = useParams();
+  const current = moduleId ?? "home";
 
-  // Vue active (inchangé)
   const ActiveView = useMemo(() => {
     return nav.find((t) => t.id === current)?.element ?? null;
   }, [current]);
+
+  const moduleKnown = useMemo(
+    () => nav.some((t) => t.id === current),
+    [current]
+  );
+
+  // Store global (onboarding + key status)
+  const { keyStatus, logout } = useStore();
 
   // --- Pilotage onboarding par champs users (sans version) ---
   const {
@@ -63,6 +71,11 @@ export default function Layout() {
     await finishOnboarding(); // { onboarding_status: "done" }
     setShowOnboarding(false);
   };
+
+  // Unknown module id in the URL → send the user home.
+  if (!moduleKnown) {
+    return <Navigate to="/flow/home" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors">

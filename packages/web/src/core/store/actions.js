@@ -1,14 +1,5 @@
 import { types } from "./reducer";
 
-/**
- * Définit l'onglet actif (ex: "home", "journal", "settings", etc.)
- * @param {string} id - L'identifiant de l'onglet à afficher.
- */
-export const setTab = (id) => ({
-  type: types.NAV_SET_TAB,
-  payload: id,
-});
-
 /*** Ouvre le menu latéral en mode mobile. */
 export const openMobile = () => ({
   type: types.UI_OPEN_MOBILE,
