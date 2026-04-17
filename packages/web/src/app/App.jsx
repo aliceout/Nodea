@@ -1,19 +1,35 @@
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/ui/layout/Layout";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ChangePassword from "./pages/ChangePassword";
+import ProtectedRoute from "@/core/auth/ProtectedRoute";
+import { ErrorBoundary } from "@/ui/atoms/feedback/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "@/core/auth/ProtectedRoute";
+// Auth pages are lazy-loaded so their deps (react-hook-form, zod,
+// @zxcvbn-ts, argon2id wasm) stay out of the initial chunk.
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ChangePassword = lazy(() => import("./pages/ChangePassword"));
+
+function lazyPage(node) {
+  return (
+    <ErrorBoundary>
+      <Suspense
+        fallback={<div className="p-6 text-center opacity-60">Chargement…</div>}
+      >
+        {node}
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 
 function AppWithKeyModal() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/flow/home" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/change-password" element={<ChangePassword />} />
+      <Route path="/login" element={lazyPage(<Login />)} />
+      <Route path="/register" element={lazyPage(<Register />)} />
+      <Route path="/change-password" element={lazyPage(<ChangePassword />)} />
       <Route path="/flow" element={<Navigate to="/flow/home" replace />} />
       <Route
         path="/flow/:moduleId"
