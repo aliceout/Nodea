@@ -37,7 +37,7 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 | 5 | Front : store unifié + flows auth | done (new TS, not yet wired into App.jsx) | Zustand store (`nodea-store.ts`) unifies auth + crypto + modules-runtime in one source. Typed API client (`client.ts`) with shared Zod schemas + `credentials: include`. `useSession` hook on the new back (`apiMe` → store). TSX pages `pages/next/Login`, `Register`, `ChangePassword` use React Hook Form + Zod + zxcvbn strength. CORS on the API for dev. 51/51 web Vitest tests green. Legacy JSX kept active until Phase 6 wires the new pages into the router. |
 | 6 | Front : câblage Mood, Goals, Passage | done (partial — see notes) | Shared `MoodPayloadSchema`, `GoalsPayloadSchema`, `PassagePayloadSchema` in `@nodea/shared`. Generic `createCollectionClient(name, schema)` handles encrypt → POST → promote → list → decrypt → update → delete for any module. Mood/Goals/Passage TS services wire the generic to the new back. `window.mainKey` back door removed from `DeleteAccount.jsx` (SEC CRITIQUE closed). 4 end-to-end tests on real Postgres prove the full encrypted round-trip, including "no guard leak" contract. **Deferred to Phase 6b/8:** port the JSX module UIs (forms/history/graph) to TSX and swap their imports from the legacy `.js` services to these TS clients. The back is ready; the UI swap is the last carpentry step. |
 | 7 | Modules manquants (Habits, Library, Review) | pending | |
-| 8 | Routing, lazy, Error Boundaries, nettoyage libs | pending | |
+| 8 | Routing, lazy, Error Boundaries, nettoyage libs | partial (8a done) | ErrorBoundary class in TSX, installed at `main.jsx` root. `modules_list` migrated to TSX with `React.lazy` + `<Suspense>` + per-module ErrorBoundary — bundle now code-splits (initial chunk 531 kB gzip 173, down from 1.4 MB). Zombie libs (chart.js/react-chartjs-2/date-fns/dayjs) removed earlier. **Deferred to 8b:** URL routing `/flow/:module` (requires Layout+Navigation rewrite); README docker-compose update stays in Phase 10. |
 | 9 | Tests & CI | pending | |
 | 10 | Déploiement Docker + extinction PocketBase | pending | |
 
@@ -66,9 +66,9 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 - [x] **HAUTE** — Two parallel state systems (Phase 5) — new Zustand store unifies auth/crypto/modules-runtime in one source. Legacy `StoreProvider.jsx` + `modulesRuntime.js` will be deleted once JSX callers migrate (Phase 6+).
 - [ ] **HAUTE** — Documented modules not implemented (Phase 7)
 - [x] **HAUTE** — `guard.pb.js` doesn't cover all collections (Phase 3) — route factory mounts all 8 collections from one typed registry; adding a collection without guard is structurally impossible
-- [ ] **MOYENNE** — JSX instantiated at import (Phase 8)
+- [x] **MOYENNE** — JSX instantiated at import (Phase 8) — `modules_list.tsx` now uses `React.lazy` + `Suspense` per module; each ships as its own chunk
 - [ ] **MOYENNE** — No URL-based routing for modules (Phase 8)
-- [ ] **MOYENNE** — No React Error Boundary (Phase 8)
+- [x] **MOYENNE** — No React Error Boundary (Phase 8) — TSX `ErrorBoundary` class installed at app root (`main.jsx`) + wrapped around every lazy-loaded module
 - [ ] **MOYENNE** — Inconsistent README install (Phase 10)
 - [x] **MOYENNE** — Dead imports in `modules-config.js` (Phase 5) — verified in source: all three imports (`encryptAESGCM`, `decryptAESGCM`, `KeyMissingError`) are actively used; finding is a no-op under current code (possibly closed by an upstream refactor before migration started)
 - [x] **FAIBLE** — `_prevEntry` unused parameter (Phase 6) — removed from `updateGoal` / `deleteGoal` signatures, JSX callers updated
