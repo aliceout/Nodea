@@ -29,8 +29,8 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 
 | Phase | Title | Status | Notes |
 |---|---|---|---|
-| 0 | Préparation & gel de portée | in progress | This document |
-| 1 | Bootstrap monorepo TypeScript | pending | pnpm workspaces, `packages/{api,web,shared}`, `tsconfig.base.json`, `docker-compose.yml`, zombie deps cleanup |
+| 0 | Préparation & gel de portée | done | This document |
+| 1 | Bootstrap monorepo TypeScript | done | pnpm workspaces, `packages/{api,web,shared}`, `tsconfig.base.json`, `docker-compose.yml`, zombie deps cleanup. `pnpm -r build` and `pnpm -r typecheck` green. |
 | 2 | Back : DB, auth, sessions, invitations | pending | |
 | 3 | Back : modules CRUD + guards | pending | |
 | 4 | Front : refonte du noyau crypto | pending | HKDF AES/HMAC separation is the highest-priority fix |
@@ -76,7 +76,7 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 - [ ] **FAIBLE** — FR hardcoded in Homepage (Phase 6)
 - [ ] **FAIBLE** — Dead `getPreferredName` fields (Phase 6)
 - [ ] **FAIBLE** — `listDistinctThreads` loads 200 entries (Phase 6)
-- [ ] **FAIBLE** — Zombie deps in `package.json` (`crypto-js`, `argon2-browser`) (Phase 1)
+- [x] **FAIBLE** — Zombie deps in `package.json` (`crypto-js`, `argon2-browser`) (Phase 1)
 - [ ] **INFO** — Silent plaintext module config (Phase 5)
 
 **Total: 28 findings.**
