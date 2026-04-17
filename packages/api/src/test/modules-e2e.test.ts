@@ -8,7 +8,16 @@ import {
   simDecryptPayload,
   simDeriveGuard,
 } from './client-simulator.ts';
-import type { MoodPayload, GoalsPayload, PassagePayload } from '@nodea/shared';
+import type {
+  MoodPayload,
+  GoalsPayload,
+  PassagePayload,
+  HabitsItemPayload,
+  HabitsLogPayload,
+  LibraryItemPayload,
+  LibraryReviewPayload,
+  ReviewPayload,
+} from '@nodea/shared';
 
 const app = buildApp();
 
@@ -198,5 +207,142 @@ describe('Passage module — full encrypted round-trip', () => {
     const listRes = await app.request(`/passage/records?sid=${sid}`, { headers: { cookie } });
     const list = (await listRes.json()) as { records: unknown[] };
     expect(list.records[0]).not.toHaveProperty('guard');
+  });
+});
+
+// ---------------------------------------------------------------------
+// Phase 7 — Habits / Library / Review
+// ---------------------------------------------------------------------
+
+describe('Habits — items and logs encrypted round-trip', () => {
+  it('creates an item, logs two occurrences, lists them decrypted', async () => {
+    const cookie = await authCookie('habits@example.com');
+    const keys = await freshMainKeys();
+    const itemSid = 'sid-habits-items';
+    const logSid = 'sid-habits-logs';
+
+    const itemPayload: HabitsItemPayload = {
+      title: 'Tennis',
+      category: 'sport',
+      frequency: 'weekly',
+      target: 1,
+      started_at: '2025-08-01',
+      archived: false,
+    };
+    const item = await createPromoted(cookie, 'habits-items', keys, itemSid, itemPayload);
+
+    const log1: HabitsLogPayload = { date: '2025-08-05', item_rid: item.id, done: true };
+    const log2: HabitsLogPayload = { date: '2025-08-12', item_rid: item.id, done: true };
+    await createPromoted(cookie, 'habits-logs', keys, logSid, log1);
+    await createPromoted(cookie, 'habits-logs', keys, logSid, log2);
+
+    const listRes = await app.request(`/habits-logs/records?sid=${logSid}`, { headers: { cookie } });
+    const list = (await listRes.json()) as { records: RawRecord[] };
+    expect(list.records).toHaveLength(2);
+
+    const decrypted = await Promise.all(
+      list.records.map((r) =>
+        simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipher_iv, r.payload),
+      ),
+    );
+    const dates = decrypted.map((d) => d.date).sort();
+    expect(dates).toEqual(['2025-08-05', '2025-08-12']);
+    expect(decrypted.every((d) => d.item_rid === item.id)).toBe(true);
+  });
+});
+
+describe('Library — items and reviews encrypted round-trip', () => {
+  it('creates a book + two reading notes, lists them decrypted', async () => {
+    const cookie = await authCookie('library@example.com');
+    const keys = await freshMainKeys();
+    const itemSid = 'sid-library-items';
+    const reviewSid = 'sid-library-reviews';
+
+    const book: LibraryItemPayload = {
+      type: 'book',
+      provider: 'openlibrary',
+      external_id: 'OL123M',
+      title: 'Exemple de livre',
+      creators: ['Autrice Inconnue'],
+      year: 2022,
+      language: 'fr',
+      status: 'in_progress',
+      creators_count: 1, // passthrough tolerated
+      tags: ['roman'],
+    } as LibraryItemPayload;
+    const item = await createPromoted(cookie, 'library-items', keys, itemSid, book);
+
+    const r1: LibraryReviewPayload = {
+      date: '2025-08-20',
+      item_rid: item.id,
+      note: 'Passage marquant',
+      page: 54,
+    };
+    const r2: LibraryReviewPayload = {
+      date: '2025-08-22',
+      item_rid: item.id,
+      note: 'Fin du livre, super conclusion.',
+    };
+    await createPromoted(cookie, 'library-reviews', keys, reviewSid, r1);
+    await createPromoted(cookie, 'library-reviews', keys, reviewSid, r2);
+
+    const listRes = await app.request(`/library-reviews/records?sid=${reviewSid}`, {
+      headers: { cookie },
+    });
+    const list = (await listRes.json()) as { records: RawRecord[] };
+    expect(list.records).toHaveLength(2);
+    const notes = await Promise.all(
+      list.records.map((r) =>
+        simDecryptPayload<LibraryReviewPayload>(keys.aesKey, r.cipher_iv, r.payload),
+      ),
+    );
+    const byDate = notes.sort((a, b) => a.date.localeCompare(b.date));
+    expect(byDate[0]!.page).toBe(54);
+    expect(byDate[1]!.note).toMatch(/conclusion/);
+  });
+});
+
+describe('Review — yearly deep payload encrypted round-trip', () => {
+  it('creates and retrieves a full YearCompass-shape payload', async () => {
+    const cookie = await authCookie('review@example.com');
+    const keys = await freshMainKeys();
+    const sid = 'sid-review-2025';
+
+    const payload: ReviewPayload = {
+      year: 2025,
+      last_year: {
+        agenda_review: ['séjour à Tana', 'départ mission'],
+        life_areas: {
+          family: ['plus proche de ma sœur'],
+          work: ['terminé un projet'],
+        },
+        best_moments: ['soirée plage'],
+        three_challenges: ['burnout'],
+      },
+      next_year: {
+        dream_big: 'poste qui me correspond',
+        word_of_year: 'ancrage',
+      },
+      closing: {
+        letter_to_self: 'courage pour toi future Alice…',
+        signature: 'Alice',
+        date: '2025-08-25',
+      },
+    };
+
+    await createPromoted(cookie, 'review', keys, sid, payload);
+
+    const listRes = await app.request(`/review/records?sid=${sid}`, { headers: { cookie } });
+    const list = (await listRes.json()) as { records: RawRecord[] };
+    expect(list.records).toHaveLength(1);
+    const got = await simDecryptPayload<ReviewPayload>(
+      keys.aesKey,
+      list.records[0]!.cipher_iv,
+      list.records[0]!.payload,
+    );
+    expect(got.year).toBe(2025);
+    expect(got.next_year).toBeDefined();
+    const nextYear = got.next_year as Record<string, unknown>;
+    expect(nextYear.word_of_year).toBe('ancrage');
   });
 });
