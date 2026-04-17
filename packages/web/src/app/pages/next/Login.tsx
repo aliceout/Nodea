@@ -34,7 +34,7 @@ export default function LoginPage() {
     setServerError(null);
     try {
       await session.login(values);
-      window.location.href = '/';
+      window.location.href = '/flow/home';
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
         setServerError('E-mail ou mot de passe incorrect.');

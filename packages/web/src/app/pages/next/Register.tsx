@@ -1,16 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
-import { RegisterBodySchema, type RegisterBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
-import { randomBytes, bytesToBase64 } from '@/core/crypto/base64';
-import { deriveKeyArgon2 } from '@/core/crypto/argon2';
-import { deriveMainKeys } from '@/core/crypto/key-material';
-import { encryptAESGCM } from '@/core/crypto/aes';
-import type { AesMainKey } from '@nodea/shared';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -18,24 +13,17 @@ zxcvbnOptions.setOptions({
 });
 
 /**
- * Registration page (new back, TSX).
- *
- * The form generates the crypto envelope client-side:
- *   - Fresh 16-byte salt (base64)
- *   - Fresh 32-byte main key (base64 of the raw bytes)
- *   - KEK = argon2id(password, salt)
- *   - encryptedKey = AES-GCM(KEK wraps the main-key bytes)
- *
- * The server only ever sees `encryption_salt` and `encrypted_key` as
- * opaque strings — it cannot decrypt without the password.
- *
- * Differences vs. legacy `Register.jsx`:
- *   - No preliminary `invites_codes` lookup. The code is only verified
- *     inside `/auth/register`, which eliminates the enumeration vector
- *     and the string-interpolation filter injection.
- *   - zxcvbn strength + length feedback surfaced live.
- *   - No verbose logs in prod.
+ * Form-only schema — the real RegisterBody (email/password/invite +
+ * encryption envelope) is built by `useSession.register()` which
+ * wraps the freshly generated main key before POSTing.
  */
+const RegisterFormSchema = z.object({
+  email: z.string().email().max(254),
+  password: z.string().min(12).max(200),
+  inviteCode: z.string().min(1).max(128),
+});
+type RegisterForm = z.infer<typeof RegisterFormSchema>;
+
 export default function RegisterPage() {
   const session = useSession();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -51,55 +39,16 @@ export default function RegisterPage() {
     register: field,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterBody>({
-    resolver: zodResolver(RegisterBodySchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      inviteCode: '',
-      encryptionSalt: '',
-      encryptedKey: '',
-    },
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(RegisterFormSchema),
+    defaultValues: { email: '', password: '', inviteCode: '' },
   });
 
-  async function onSubmit(values: RegisterBody): Promise<void> {
+  async function onSubmit(values: RegisterForm): Promise<void> {
     setServerError(null);
     try {
-      // Build the crypto envelope locally.
-      const salt = randomBytes(16);
-      const mainKey = randomBytes(32);
-      const kekBytes = await deriveKeyArgon2({ password: values.password, salt });
-
-      // Wrap the main key: import KEK as AES-GCM, encrypt the mainKey bytes.
-      const kekCryptoKey = (await crypto.subtle.importKey(
-        'raw',
-        kekBytes as BufferSource,
-        { name: 'AES-GCM' },
-        false,
-        ['encrypt'],
-      )) as AesMainKey;
-      const wrapped = await encryptAESGCM(bytesToBase64(mainKey), kekCryptoKey);
-
-      // Zero the in-memory copies. The wrapped blob is what we ship.
-      kekBytes.fill(0);
-      mainKey.fill(0);
-
-      const envelope: RegisterBody = {
-        email: values.email,
-        password: values.password,
-        inviteCode: values.inviteCode,
-        encryptionSalt: bytesToBase64(salt),
-        // We concatenate iv:data into a single string since that's the
-        // legacy shape the rest of the codebase expects. Phase 6 may
-        // adjust to a structured object once all callers are migrated.
-        encryptedKey: `${wrapped.iv}.${wrapped.data}`,
-      };
-      await session.register(envelope);
-      // Derive the main key live for the session so the next page can
-      // decrypt module data. Phase 6 will move this into a dedicated
-      // post-auth hook.
-      await deriveMainKeys(mainKey);
-      window.location.href = '/';
+      await session.register(values);
+      window.location.href = '/flow/home';
     } catch (err) {
       if (isApiError(err) && err.status === 400) {
         setServerError(err.reason ?? 'Échec de l’inscription.');

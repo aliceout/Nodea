@@ -2,30 +2,56 @@
  * Session hook for the new back.
  *
  * Replaces the legacy `useAuth.js` (PB authStore). Keeps the Zustand
- * store in sync with `/auth/me` — on mount, on route focus, and after
- * any login/register/logout/change-password call.
+ * store in sync with `/auth/me` — on mount, and after any
+ * login/register/logout/change-password call — and manages the
+ * lifetime of the in-memory `MainKeyMaterial`:
  *
- * This hook never stores crypto material. Deriving and hydrating the
- * main key from the user's `encryptedKey` is a separate concern handled
- * in a dedicated hook in Phase 6 (when the KEK unwrap UX lands).
+ *   - login : derive it from the user's password + stored envelope
+ *   - register : derive it from the freshly generated main-key bytes
+ *   - changePassword : rewrap under the new password then re-derive
+ *   - logout : wiped by `resetAll()`
+ *
+ * On a cold page load, the session cookie survives but the main key
+ * does not (it cannot — the client doesn't have the password). The UI
+ * surfaces a "key missing" prompt until the user re-authenticates.
  */
 import { useEffect } from 'react';
 import { useNodeaStore, selectAuthStatus, selectUser } from '../store/nodea-store.ts';
-import { apiLogin, apiLogout, apiMe, apiRegister, apiChangePassword } from '../api/client.ts';
-import type {
-  LoginBody,
-  RegisterBody,
-  ChangePasswordBody,
-} from '@nodea/shared';
+import {
+  apiLogin,
+  apiLogout,
+  apiMe,
+  apiRegister,
+  apiChangePassword,
+} from '../api/client.ts';
+import { randomBytes } from '../crypto/base64.ts';
+import { deriveMainKeys } from '../crypto/key-material.ts';
+import { unwrapMainKeyBytes, wrapMainKey } from '../crypto/envelope.ts';
+import type { LoginBody, RegisterBody } from '@nodea/shared';
+
+export interface SessionRegisterInput {
+  email: string;
+  password: string;
+  inviteCode: string;
+}
+
+export interface SessionChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
 
 export function useSession() {
   const status = useNodeaStore(selectAuthStatus);
   const user = useNodeaStore(selectUser);
   const setAuth = useNodeaStore((s) => s.setAuth);
   const setAuthLoading = useNodeaStore((s) => s.setAuthLoading);
+  const setMainKey = useNodeaStore((s) => s.setMainKey);
+  const markKeyMissing = useNodeaStore((s) => s.markKeyMissing);
   const resetAll = useNodeaStore((s) => s.resetAll);
 
-  // Initial hydration on mount.
+  // Initial hydration on mount. The session cookie may be valid; the
+  // main key, however, isn't recoverable without the password — we
+  // mark it missing so the UI can prompt.
   useEffect(() => {
     let cancelled = false;
     setAuthLoading();
@@ -33,6 +59,7 @@ export function useSession() {
       .then((me) => {
         if (cancelled) return;
         setAuth(me);
+        if (me) markKeyMissing();
       })
       .catch(() => {
         if (!cancelled) setAuth(null);
@@ -40,18 +67,53 @@ export function useSession() {
     return () => {
       cancelled = true;
     };
-  }, [setAuth, setAuthLoading]);
+  }, [setAuth, setAuthLoading, markKeyMissing]);
 
   async function login(body: LoginBody): Promise<void> {
     await apiLogin(body);
     const me = await apiMe();
+    if (!me) throw new Error('login succeeded but /auth/me returned null');
     setAuth(me);
+
+    // Derive the main key from the password + the server's envelope.
+    const rawBytes = await unwrapMainKeyBytes(
+      body.password,
+      me.encryptionSalt,
+      me.encryptedKey,
+    );
+    try {
+      const material = await deriveMainKeys(rawBytes);
+      setMainKey(material);
+    } finally {
+      rawBytes.fill(0);
+    }
   }
 
-  async function register(body: RegisterBody): Promise<void> {
-    await apiRegister(body);
-    const me = await apiMe();
-    setAuth(me);
+  async function register(input: SessionRegisterInput): Promise<void> {
+    // Generate a fresh 32-byte main key client-side and wrap it under
+    // the password-derived KEK before shipping the envelope.
+    const rawMainKey = randomBytes(32);
+    try {
+      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
+
+      const body: RegisterBody = {
+        email: input.email,
+        password: input.password,
+        inviteCode: input.inviteCode,
+        encryptionSalt,
+        encryptedKey,
+      };
+      await apiRegister(body);
+
+      const me = await apiMe();
+      if (!me) throw new Error('register succeeded but /auth/me returned null');
+      setAuth(me);
+
+      const material = await deriveMainKeys(rawMainKey);
+      setMainKey(material);
+    } finally {
+      rawMainKey.fill(0);
+    }
   }
 
   async function logout(): Promise<void> {
@@ -62,10 +124,34 @@ export function useSession() {
     }
   }
 
-  async function changePassword(body: ChangePasswordBody): Promise<void> {
-    await apiChangePassword(body);
-    const me = await apiMe();
-    setAuth(me);
+  async function changePassword(input: SessionChangePasswordInput): Promise<void> {
+    if (!user) throw new Error('changePassword: no authenticated user');
+
+    // Unwrap under the CURRENT password first — throws on wrong password
+    // (AES-GCM auth-tag check) before we touch the server.
+    const rawMainKey = await unwrapMainKeyBytes(
+      input.currentPassword,
+      user.encryptionSalt,
+      user.encryptedKey,
+    );
+    try {
+      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.newPassword, rawMainKey);
+      await apiChangePassword({
+        currentPassword: input.currentPassword,
+        newPassword: input.newPassword,
+        encryptionSalt,
+        encryptedKey,
+      });
+
+      const me = await apiMe();
+      if (!me) throw new Error('change-password succeeded but /auth/me returned null');
+      setAuth(me);
+
+      const material = await deriveMainKeys(rawMainKey);
+      setMainKey(material);
+    } finally {
+      rawMainKey.fill(0);
+    }
   }
 
   return { status, user, login, register, logout, changePassword };
