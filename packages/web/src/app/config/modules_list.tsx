@@ -5,6 +5,9 @@ import {
   ArrowsRightLeftIcon,
   Cog6ToothIcon,
   CheckCircleIcon,
+  FireIcon,
+  BookOpenIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
 
@@ -19,6 +22,9 @@ const Home = lazy(() => import('@/app/flow/Homepage'));
 const Mood = lazy(() => import('@/app/flow/Mood'));
 const Passage = lazy(() => import('@/app/flow/Passage'));
 const Goals = lazy(() => import('@/app/flow/Goals'));
+const Habits = lazy(() => import('@/app/flow/Habits'));
+const Library = lazy(() => import('@/app/flow/Library'));
+const Review = lazy(() => import('@/app/flow/Review'));
 const Account = lazy(() => import('@/app/flow/Account'));
 const Settings = lazy(() => import('@/app/flow/Settings'));
 const Admin = lazy(() => import('@/app/flow/Admin'));
@@ -87,6 +93,36 @@ export const MODULES: readonly ModuleDef[] = [
     to_toggle: true,
     description: 'modules.goals.description',
     icon: CheckCircleIcon,
+    display: true,
+  },
+  {
+    id: 'habits',
+    label: 'modules.habits.label',
+    collection: 'habits_items_entries',
+    element: lazyModule('habits', Habits),
+    to_toggle: true,
+    description: 'modules.habits.description',
+    icon: FireIcon,
+    display: true,
+  },
+  {
+    id: 'library',
+    label: 'modules.library.label',
+    collection: 'library_items_entries',
+    element: lazyModule('library', Library),
+    to_toggle: true,
+    description: 'modules.library.description',
+    icon: BookOpenIcon,
+    display: true,
+  },
+  {
+    id: 'review',
+    label: 'modules.review.label',
+    collection: 'review_entries',
+    element: lazyModule('review', Review),
+    to_toggle: true,
+    description: 'modules.review.description',
+    icon: CalendarIcon,
     display: true,
   },
   {
