@@ -54,8 +54,8 @@ fonctionnelle — pas avant.
 ## Vue d'ensemble des phases
 
 ```
-R1   ExportData + ImportData (archive chiffrée)
-R2   users.username + ChangeUsername
+R1   ExportData + ImportData (archive chiffrée)                  ✅ d0d1970
+R2   users.username + ChangeUsername                             ✅ (current)
 R3   Mood — features complètes (chart, emoji picker, positives, questions)
 R4   Goals — features complètes (inline edit, autosuggest thread)
 R5   Passage — features complètes (thread view)

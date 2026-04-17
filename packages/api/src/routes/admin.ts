@@ -75,6 +75,7 @@ adminRoutes.get('/users', async (c) => {
     .select({
       id: users.id,
       email: users.email,
+      username: users.username,
       role: users.role,
       onboardingStatus: users.onboardingStatus,
       createdAt: users.createdAt,
@@ -86,6 +87,7 @@ adminRoutes.get('/users', async (c) => {
     users: rows.map((r) => ({
       id: r.id,
       email: r.email,
+      username: r.username ?? null,
       role: r.role,
       onboardingStatus: r.onboardingStatus,
       createdAt: r.createdAt.toISOString(),

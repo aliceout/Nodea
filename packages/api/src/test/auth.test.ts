@@ -344,6 +344,75 @@ describe('PATCH /auth/email', () => {
   });
 });
 
+describe('PATCH /auth/username', () => {
+  it('sets, rejects duplicates (409), and clears with null', async () => {
+    await seedUser('u1@example.com');
+    await seedUser('u2@example.com');
+
+    const loginU1 = await app.request(
+      '/auth/login',
+      json({ email: 'u1@example.com', password: TEST_PASSWORD }),
+    );
+    const cookieU1 = extractCookie(loginU1)!;
+
+    const set1 = await app.request('/auth/username', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie: cookieU1 },
+      body: JSON.stringify({ username: 'alice' }),
+    });
+    expect(set1.status).toBe(200);
+
+    const me1 = await app.request('/auth/me', { headers: { cookie: cookieU1 } });
+    const me1Body = (await me1.json()) as { username: string | null };
+    expect(me1Body.username).toBe('alice');
+
+    // u2 cannot claim the same name → 409.
+    const loginU2 = await app.request(
+      '/auth/login',
+      json({ email: 'u2@example.com', password: TEST_PASSWORD }),
+    );
+    const cookieU2 = extractCookie(loginU2)!;
+
+    const collide = await app.request('/auth/username', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie: cookieU2 },
+      body: JSON.stringify({ username: 'alice' }),
+    });
+    expect(collide.status).toBe(409);
+
+    // null clears, then u2 can take the freed slot.
+    const clear = await app.request('/auth/username', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie: cookieU1 },
+      body: JSON.stringify({ username: null }),
+    });
+    expect(clear.status).toBe(200);
+
+    const claim = await app.request('/auth/username', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie: cookieU2 },
+      body: JSON.stringify({ username: 'alice' }),
+    });
+    expect(claim.status).toBe(200);
+  });
+
+  it('rejects an invalid shape (400)', async () => {
+    await seedUser('u3@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'u3@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/auth/username', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ username: 'a' }), // too short
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('DELETE /auth/me', () => {
   it('removes the user and cascades sessions + entries', async () => {
     await seedUser('suicide@example.com');

@@ -13,8 +13,8 @@ import ThemeSelector from '@/ui/atoms/specifics/ThemeSelector';
 /**
  * Top header.
  *
- * - Email local-part is the default display name (the new users table
- *   has no username column).
+ * - Display name preference: `users.username` if set, else the email
+ *   local-part. Users can pick a public username from Account.
  * - Mobile-menu drawer open/close now lives in the Zustand store
  *   (`mobileMenuOpen` + `setMobileMenuOpen`). Sidebar reads the same
  *   slice.
@@ -29,6 +29,7 @@ export default function Header() {
   const { t } = useI18n();
 
   const username =
+    user?.username ||
     user?.email?.split('@')[0] ||
     t('layout.header.defaultUsername', { defaultValue: 'moi' });
 

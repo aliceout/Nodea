@@ -1,6 +1,7 @@
 import Subheader from '@/ui/layout/headers/Subheader';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import ChangeEmail from './components/ChangeEmail';
+import ChangeUsername from './components/ChangeUsername';
 import PasswordReset from './components/PasswordReset';
 import DeleteAccount from './components/DeleteAccount';
 import ImportData from './components/ImportData.jsx';
@@ -27,6 +28,7 @@ export default function AccountPage() {
             Informations personnelles
           </h2>
           <div className="flex flex-col gap-2">
+            <ChangeUsername />
             <ChangeEmail />
             <PasswordReset />
           </div>

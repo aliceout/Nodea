@@ -23,6 +23,8 @@ export type AuthStatus = 'unauthenticated' | 'loading' | 'authenticated';
 export interface SessionUser {
   id: string;
   email: string;
+  /** Optional public display name. `null` until the user sets one. */
+  username: string | null;
   role: 'user' | 'admin';
   onboardingStatus: 'pending' | 'complete';
   onboardingVersion: string;

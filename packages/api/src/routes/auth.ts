@@ -6,6 +6,7 @@ import {
   LoginBodySchema,
   ChangePasswordBodySchema,
   ChangeEmailBodySchema,
+  ChangeUsernameBodySchema,
   DeleteSelfBodySchema,
   type AuthMeResponse,
 } from '@nodea/shared/schemas/auth';
@@ -118,6 +119,7 @@ authRoutes.get('/me', requireUser, (c) => {
   const body: AuthMeResponse = {
     id: user.id,
     email: user.email,
+    username: user.username ?? null,
     role: user.role,
     onboardingStatus: user.onboardingStatus,
     onboardingVersion: user.onboardingVersion,
@@ -188,6 +190,38 @@ authRoutes.patch('/email', requireUser, async (c) => {
   } catch (err) {
     if (err instanceof Error && err.message.includes('users_email_unique')) {
       return c.json({ error: 'email_taken' }, 409);
+    }
+    throw err;
+  }
+
+  return c.json({ ok: true });
+});
+
+/**
+ * Change the authenticated user's public display name.
+ *
+ * Not password-gated — a username is a public identifier, not a
+ * credential (see `ChangeUsernameBodySchema` comment). Pass `null` to
+ * clear the current value. The partial unique index rejects collisions
+ * and we surface those as 409.
+ */
+authRoutes.patch('/username', requireUser, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = ChangeUsernameBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
+  const newUsername = parsed.data.username;
+
+  if ((user.username ?? null) === newUsername) return c.json({ ok: true });
+
+  try {
+    await db
+      .update(users)
+      .set({ username: newUsername, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('users_username_unique')) {
+      return c.json({ error: 'username_taken' }, 409);
     }
     throw err;
   }

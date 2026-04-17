@@ -4,6 +4,7 @@ import { useNodeaStore, type SessionUser } from './nodea-store.ts';
 const sampleUser: SessionUser = {
   id: 'u-1',
   email: 'alice@example.com',
+  username: null,
   role: 'user',
   onboardingStatus: 'complete',
   onboardingVersion: '1',

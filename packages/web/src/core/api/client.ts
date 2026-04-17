@@ -21,6 +21,7 @@ import {
   type RegisterBody,
   type ChangePasswordBody,
   type ChangeEmailBody,
+  type ChangeUsernameBody,
   type DeleteSelfBody,
 } from '@nodea/shared';
 
@@ -117,6 +118,10 @@ export async function apiChangeEmail(body: ChangeEmailBody): Promise<void> {
   await request<void>('PATCH', '/auth/email', body);
 }
 
+export async function apiChangeUsername(body: ChangeUsernameBody): Promise<void> {
+  await request<void>('PATCH', '/auth/username', body);
+}
+
 export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {
   await request<void>('DELETE', '/auth/me', body);
 }
@@ -126,6 +131,7 @@ export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {
 export interface AdminUserRow {
   id: string;
   email: string;
+  username: string | null;
   role: 'user' | 'admin';
   onboardingStatus: 'pending' | 'complete';
   createdAt: string;

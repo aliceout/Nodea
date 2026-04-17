@@ -66,6 +66,7 @@ describe('API client', () => {
     mockFetchOnce({
       id: 'u1',
       email: 'a@b.co',
+      username: null,
       role: 'user',
       onboardingStatus: 'complete',
       onboardingVersion: '1',

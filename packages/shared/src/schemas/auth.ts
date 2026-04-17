@@ -47,6 +47,26 @@ export const ChangeEmailBodySchema = z.object({
 });
 export type ChangeEmailBody = z.infer<typeof ChangeEmailBodySchema>;
 
+/**
+ * Shape rules for the public display name. Letters (incl. accents),
+ * digits, underscores, hyphens and periods. 2–32 chars.
+ */
+const UsernameField = z
+  .string()
+  .min(2)
+  .max(32)
+  .regex(/^[\p{L}\p{N}_.\-]+$/u, 'invalid_username');
+
+/**
+ * Change the authenticated user's username. Not password-gated — a
+ * username is a public identifier, not a credential. Pass `null` to
+ * unset.
+ */
+export const ChangeUsernameBodySchema = z.object({
+  username: UsernameField.nullable(),
+});
+export type ChangeUsernameBody = z.infer<typeof ChangeUsernameBodySchema>;
+
 /** Self-delete the authenticated user. Current password required. */
 export const DeleteSelfBodySchema = z.object({
   currentPassword: z.string().min(1).max(200),
@@ -63,6 +83,7 @@ export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
 export const AuthMeResponseSchema = z.object({
   id: z.string(),
   email: z.string().email(),
+  username: z.string().nullable(),
   role: z.enum(['user', 'admin']),
   onboardingStatus: z.enum(['pending', 'complete']),
   onboardingVersion: z.string(),

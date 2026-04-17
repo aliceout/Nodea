@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * Users — owners of encrypted data.
@@ -13,6 +14,12 @@ export const users = pgTable(
   {
     id: text('id').primaryKey(),
     email: text('email').notNull(),
+    /**
+     * Public display name. Optional — users can register without setting
+     * one. Uniqueness is enforced via a partial unique index so multiple
+     * rows with NULL stay allowed.
+     */
+    username: text('username'),
     passwordHash: text('password_hash').notNull(),
     encryptionSalt: text('encryption_salt').notNull(),
     encryptedKey: text('encrypted_key').notNull(),
@@ -26,7 +33,12 @@ export const users = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('users_email_unique').on(t.email)],
+  (t) => [
+    uniqueIndex('users_email_unique').on(t.email),
+    uniqueIndex('users_username_unique')
+      .on(t.username)
+      .where(sql`${t.username} IS NOT NULL`),
+  ],
 );
 
 /**

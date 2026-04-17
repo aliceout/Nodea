@@ -18,8 +18,9 @@ export interface UserTableProps {
  */
 export default function UserTable({ users, currentUserId, onDelete }: UserTableProps) {
   const confirmDelete = (user: AdminUserRow): void => {
+    const label = user.username ?? user.email;
     const ok = window.confirm(
-      `Supprimer le compte « ${user.email} » ?\n\n` +
+      `Supprimer le compte « ${label} » ?\n\n` +
         'Le compte, ses sessions et toutes ses données chiffrées seront supprimés (cascade FK).',
     );
     if (ok) onDelete(user.id);
@@ -30,7 +31,12 @@ export default function UserTable({ users, currentUserId, onDelete }: UserTableP
       <table className="w-full table-auto">
         <thead className="bg-[var(--surface-muted)] text-[var(--text-secondary)]">
           <tr>
-            <th className="border-b border-[var(--border-default)] px-3 py-3 text-left">E-mail</th>
+            <th className="border-b border-[var(--border-default)] px-3 py-3 text-left">
+              Utilisateur·ice
+            </th>
+            <th className="hidden border-b border-[var(--border-default)] px-3 py-3 text-left md:table-cell">
+              E-mail
+            </th>
             <th className="hidden border-b border-[var(--border-default)] px-3 py-3 text-left md:table-cell">
               Rôle
             </th>
@@ -44,6 +50,9 @@ export default function UserTable({ users, currentUserId, onDelete }: UserTableP
               className="transition-colors even:bg-[var(--surface-subtle)] hover:bg-[var(--surface-muted)]"
             >
               <td className="border-b border-[var(--border-default)] px-3 py-3 text-sm font-medium text-[var(--text-primary)]">
+                {user.username ?? <span className="italic opacity-60">—</span>}
+              </td>
+              <td className="hidden border-b border-[var(--border-default)] px-3 py-3 text-sm text-[var(--text-secondary)] md:table-cell">
                 {user.email}
               </td>
               <td className="hidden border-b border-[var(--border-default)] px-3 py-3 text-sm text-[var(--text-secondary)] md:table-cell">

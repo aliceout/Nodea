@@ -15,6 +15,13 @@
       "when": 1776435436942,
       "tag": "0001_wandering_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776452279636,
+      "tag": "0002_good_meteorite",
+      "breakpoints": true
     }
   ]
 }
