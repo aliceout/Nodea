@@ -48,6 +48,16 @@ declare module '@/ui/layout/headers/Subheader' {
 }
 
 /* --------------------------------------------------------------------
+ * Legacy module entry points — imported lazily from `modules_list.tsx`.
+ * Vite resolves the `.jsx`; TS (allowJs: false) needs the shape stub.
+ * ------------------------------------------------------------------ */
+declare module '@/app/flow/Mood' {
+  import type { ComponentType } from 'react';
+  const MoodIndex: ComponentType;
+  export default MoodIndex;
+}
+
+/* --------------------------------------------------------------------
  * i18n provider — named `useI18n` hook consumed from TSX
  * ------------------------------------------------------------------ */
 declare module '@/i18n/I18nProvider.jsx' {
