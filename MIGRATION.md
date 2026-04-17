@@ -33,7 +33,7 @@ Status document for the ongoing migration from PocketBase (current stack) to a s
 | 1 | Bootstrap monorepo TypeScript | done | pnpm workspaces, `packages/{api,web,shared}`, `tsconfig.base.json`, `docker-compose.yml`, zombie deps cleanup. `pnpm -r build` and `pnpm -r typecheck` green. |
 | 2 | Back : DB, auth, sessions, invitations | done | Drizzle schema (users/sessions/invites), argon2id + zxcvbn policy, signed session cookies, 6 auth routes, admin invite mint, invite atomic consumption via `SELECT FOR UPDATE`, rate limiting, 15/15 integration tests green against real Postgres. |
 | 3 | Back : modules CRUD + guards | done | 8 entry tables + `modules_config`, single `createCollectionRoutes` factory driven by typed `COLLECTIONS` registry, `requireGuard` middleware with timing-safe compare and `init → g_…` promotion. `guard` field stripped from every read response; cross-user reads proven isolated. 32/32 integration tests green. |
-| 4 | Front : refonte du noyau crypto | pending | HKDF AES/HMAC separation is the highest-priority fix |
+| 4 | Front : refonte du noyau crypto | done (new TS modules) | `base64`, `hkdf`, `aes`, `hmac`, `key-material`, `guard-derivation`, `argon2` rewritten in TS with branded types. HKDF domain separation (`nodea:aes` / `nodea:hmac`) replaces the raw-bytes double-import. `wipeMainKeyMaterial` placebo gone → honest `wipeRawBytes`. Guards cache moved to in-memory Map. 39/39 Vitest tests green. Legacy `*.js` modules left in place to not break JSX callers until Phases 5–6 migrate them. |
 | 5 | Front : store unifié + flows auth | pending | |
 | 6 | Front : câblage Mood, Goals, Passage | pending | |
 | 7 | Modules manquants (Habits, Library, Review) | pending | |
@@ -50,19 +50,19 @@ Mark each finding `[x]` when the code change is merged to `refacto` and tests (w
 - [ ] **CRITIQUE** — `window.mainKey` fallback (Phase 6)
 - [x] **HAUTE** — Invite code filter injection (Phase 2) — Drizzle `eq()` parameterized
 - [x] **HAUTE** — Invite code reuse (Phase 2) — atomic `SELECT ... FOR UPDATE` inside tx
-- [ ] **HAUTE** — `wipeMainKeyMaterial` ineffective (Phase 4)
+- [x] **HAUTE** — `wipeMainKeyMaterial` ineffective (Phase 4) — removed, replaced with honest `wipeRawBytes(bytes)` that zeroes raw buffers only; CryptoKey limitation documented
 - [x] **HAUTE** — Invite code enumeration (Phase 2) — no public check endpoint, codes hashed, rate limit on `/auth/register`
-- [ ] **HAUTE** — AES/HMAC key reuse — upgraded from MOYENNE (Phase 4)
-- [ ] **MOYENNE** — Guards cached in localStorage (Phase 4)
+- [x] **HAUTE** — AES/HMAC key reuse — upgraded from MOYENNE (Phase 4) — HKDF-SHA-256 with distinct labels `nodea:aes` / `nodea:hmac`; sub-key separation proven by tests
+- [x] **MOYENNE** — Guards cached in localStorage (Phase 4) — new cache is an in-memory Map cleared on logout
 - [x] **MOYENNE** — No password policy (Phase 2 back; front in Phase 5) — zxcvbn ≥ 3 + min length 12, enforced on register and change-password
 - [ ] **FAIBLE** — `decryptWithRetry` — evaluate via tests (Phase 4)
-- [ ] **FAIBLE** — Legacy double-base64 fallback (Phase 4)
+- [x] **FAIBLE** — Legacy double-base64 fallback (Phase 4) — new modules expose only the standard base64/base64url helpers, no legacy branch
 - [ ] **INFO** — Verbose production logs (Phase 5)
 
 ### Global audit
 
 - [ ] **HAUTE** — No tests in the project (Phase 9, seeded in Phase 4)
-- [ ] **HAUTE** — Duplicate base64 implementations (2 sources) + `randomBytes` doublon (Phase 4)
+- [x] **HAUTE** — Duplicate base64 implementations (2 sources) + `randomBytes` doublon (Phase 4) — new `base64.ts` is the single source for base64, base64url and `randomBytes`. Legacy `.js` modules stay until their JSX callers migrate in Phases 5–6.
 - [ ] **HAUTE** — Two parallel state systems (Phase 5)
 - [ ] **HAUTE** — Documented modules not implemented (Phase 7)
 - [x] **HAUTE** — `guard.pb.js` doesn't cover all collections (Phase 3) — route factory mounts all 8 collections from one typed registry; adding a collection without guard is structurally impossible
