@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "dev": "tsx --env-file-if-exists=.env watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "start": "node --env-file-if-exists=.env --import tsx/esm src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
