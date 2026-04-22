@@ -59,7 +59,8 @@ R2   users.username + ChangeUsername                             ✅ de2eec7
 R3   Mood — features complètes (chart, emoji picker, positives, questions)  ✅ e4dc450
 R4   Goals — features complètes (Card/EditCard/Filters/List + thread autosuggest)  ✅ ae15988
 R5   Passage — features complètes (vue par thread + autosuggest thread)  ✅ b556444
-R6   Habits — features complètes (target/duration/archive, heatmap, taux de régularité)  ✅ (current)
+R6   Habits — features complètes (target/duration/archive, heatmap, taux de régularité)  ✅ a1cbfa3
+R7   Library — features complètes (grille, couvertures, rating, fiches, providers opt-in)  ✅ (current)
 R4   Goals — features complètes (inline edit, autosuggest thread)
 R5   Passage — features complètes (thread view)
 R6   Habits — features complètes (heatmap, target, archive, durée)
