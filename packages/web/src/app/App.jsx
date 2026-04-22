@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
+const RequestReset = lazy(() => import("./pages/RequestReset"));
+const Reset = lazy(() => import("./pages/Reset"));
 
 function lazyPage(node) {
   return (
@@ -30,6 +32,8 @@ function AppWithKeyModal() {
       <Route path="/login" element={lazyPage(<Login />)} />
       <Route path="/register" element={lazyPage(<Register />)} />
       <Route path="/change-password" element={lazyPage(<ChangePassword />)} />
+      <Route path="/request-reset" element={lazyPage(<RequestReset />)} />
+      <Route path="/reset" element={lazyPage(<Reset />)} />
       <Route path="/flow" element={<Navigate to="/flow/home" replace />} />
       <Route
         path="/flow/:moduleId"

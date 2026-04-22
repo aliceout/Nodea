@@ -73,6 +73,32 @@ export const DeleteSelfBodySchema = z.object({
 });
 export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
 
+/**
+ * Ask for a password-reset email. Anonymous route — the response is
+ * always 200 whether or not the email matches a user, to avoid
+ * enumeration via response shape / latency.
+ */
+export const RequestResetBodySchema = z.object({
+  email: z.string().email().max(254),
+});
+export type RequestResetBody = z.infer<typeof RequestResetBodySchema>;
+
+/**
+ * Consume a reset token. The client must generate a fresh main key
+ * locally before calling this endpoint (resetting the password means
+ * the old AES envelope is unreadable) and ships the new
+ * `encryptionSalt` + `encryptedKey` alongside. The server atomically
+ * purges every user-owned encrypted row before rotating the
+ * credentials — see the handler for the full list.
+ */
+export const ResetPasswordBodySchema = z.object({
+  token: z.string().min(16).max(256),
+  newPassword: z.string().min(12).max(200),
+  encryptionSalt: Base64ish,
+  encryptedKey: Base64ish,
+});
+export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
+
 /** Admin-only payload to mint a new invite code. */
 export const CreateInviteBodySchema = z.object({
   expiresAt: z.string().datetime().optional(),

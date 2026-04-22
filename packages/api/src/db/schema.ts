@@ -78,6 +78,38 @@ export const invites = pgTable(
 );
 
 /**
+ * Password-reset tokens. Stored hashed (same pattern as invites) with
+ * a short expiry. Consuming a token is atomic:
+ *   - the row is looked up by `token_hash`
+ *   - the transaction purges every user-owned encrypted row (see
+ *     `/auth/reset` handler) because resetting the password means the
+ *     user lost their main key — old ciphertexts become unreadable
+ *   - the password hash + envelope are replaced with fresh values
+ *   - `used_at` is set so the token can't be replayed.
+ *
+ * Rate limiting on the public request route protects against email
+ * enumeration; the route itself always returns 200 whether or not the
+ * email belongs to a user.
+ */
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('password_reset_tokens_token_hash_unique').on(t.tokenHash),
+    index('password_reset_tokens_user_id_idx').on(t.userId),
+  ],
+);
+
+/**
  * Announcements — server-side public feed curated by admins. Content
  * is not E2E encrypted: the whole point is to be readable by every
  * logged-in user without needing their main key. `created_by` is kept
@@ -193,5 +225,7 @@ export type EntryRow = typeof moodEntries.$inferSelect;
 export type NewEntryRow = typeof moodEntries.$inferInsert;
 export type ModulesConfig = typeof modulesConfig.$inferSelect;
 export type UserPreferences = typeof userPreferences.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type Announcement = typeof announcements.$inferSelect;
 export type NewAnnouncement = typeof announcements.$inferInsert;

@@ -29,6 +29,7 @@ beforeEach(async () => {
       modules_config,
       user_preferences,
       announcements,
+      password_reset_tokens,
       sessions,
       invites,
       users

@@ -25,11 +25,13 @@
     "@zxcvbn-ts/language-common": "^3.0.4",
     "drizzle-orm": "^0.38.3",
     "hono": "^4.6.14",
+    "nodemailer": "^8.0.5",
     "postgres": "^3.4.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.0",
     "drizzle-kit": "^0.30.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

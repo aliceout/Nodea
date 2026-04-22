@@ -8,10 +8,25 @@ import {
   ChangeEmailBodySchema,
   ChangeUsernameBodySchema,
   DeleteSelfBodySchema,
+  RequestResetBodySchema,
+  ResetPasswordBodySchema,
   type AuthMeResponse,
 } from '@nodea/shared/schemas/auth';
 import { db } from '../db/client.ts';
-import { users } from '../db/schema.ts';
+import {
+  users,
+  passwordResetTokens,
+  modulesConfig,
+  userPreferences,
+  moodEntries,
+  goalsEntries,
+  passageEntries,
+  habitsItemsEntries,
+  habitsLogsEntries,
+  libraryItemsEntries,
+  libraryReviewsEntries,
+  reviewEntries,
+} from '../db/schema.ts';
 import { hashPassword, verifyPassword } from '../auth/password.ts';
 import { checkPasswordPolicy } from '../auth/password-policy.ts';
 import { consumeInviteAndCreateUser } from '../auth/invites.ts';
@@ -24,6 +39,9 @@ import {
   clearSessionCookie,
   setSessionCookie,
 } from '../auth/cookies.ts';
+import { createResetToken, findActiveResetToken } from '../auth/reset-tokens.ts';
+import { sendMail } from '../auth/mailer.ts';
+import { getConfig } from '../config.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 
@@ -31,6 +49,14 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>();
 
 const registerLimiter = rateLimit({ max: 5, windowMs: 60_000, keyPrefix: 'register' });
 const loginLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'login' });
+/** 5 requests per hour per IP — matches the issue (#22) requirement. */
+const requestResetLimiter = rateLimit({
+  max: 5,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'request-reset',
+});
+/** Mild cap on reset consumption to slow any brute-force of stolen tokens. */
+const resetLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'reset' });
 
 authRoutes.post('/register', registerLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
@@ -111,6 +137,128 @@ authRoutes.post('/logout', requireUser, async (c) => {
   const sessionId = c.get('sessionId');
   await revokeSession(sessionId);
   clearSessionCookie(c);
+  return c.json({ ok: true });
+});
+
+/**
+ * Start a password-reset flow.
+ *
+ * Always responds 200 regardless of whether the email matches a user.
+ * The response shape leaks nothing; the only side-channel would be
+ * timing, which `verifyPassword` / mailer work mask poorly but
+ * `hashPassword` during register already accepts. Rate limited to
+ * 5 requests per IP per hour to blunt enumeration attempts.
+ */
+authRoutes.post('/request-reset', requestResetLimiter, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = RequestResetBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const email = parsed.data.email.toLowerCase();
+
+  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  if (user) {
+    const { token } = await createResetToken(user.id);
+    const base = getConfig().WEB_BASE_URL ?? '';
+    const link = base
+      ? `${base.replace(/\/$/, '')}/reset?token=${encodeURIComponent(token)}`
+      : `/reset?token=${encodeURIComponent(token)}`;
+    const text =
+      `Quelqu'un (toi ?) a demandé la réinitialisation de ton mot de passe Nodea.\n\n` +
+      `Ouvre ce lien dans l'heure pour continuer :\n${link}\n\n` +
+      `⚠ Attention : comme tes données sont chiffrées avec une clé dérivée de ton mot de passe, ` +
+      `réinitialiser le mot de passe entraîne la perte définitive de toutes tes entrées déjà enregistrées. ` +
+      `Si tu n'es pas à l'origine de la demande, ignore ce message — ton compte reste intact.`;
+    const html =
+      `<p>Quelqu'un (toi ?) a demandé la réinitialisation de ton mot de passe Nodea.</p>` +
+      `<p><a href="${link}">Cliquer ici pour continuer</a> (lien valable 1 heure).</p>` +
+      `<p><strong>⚠ Attention :</strong> comme tes données sont chiffrées avec une clé dérivée de ` +
+      `ton mot de passe, réinitialiser le mot de passe entraîne la perte définitive de toutes tes entrées ` +
+      `déjà enregistrées.</p>` +
+      `<p>Si tu n'es pas à l'origine de la demande, ignore ce message — ton compte reste intact.</p>`;
+    try {
+      await sendMail({ to: email, subject: 'Réinitialisation de ton mot de passe Nodea', text, html });
+    } catch (err) {
+      console.error('[auth] reset-password mailer failed', err);
+      // Never surface the failure to the caller — still 200 so an
+      // attacker can't distinguish "email exists but SMTP is down"
+      // from the happy path.
+    }
+  }
+
+  return c.json({ ok: true });
+});
+
+/**
+ * Consume a reset token.
+ *
+ * The client has already generated a fresh main key locally. We:
+ *   1. Look up the token (hashed) and check it's active.
+ *   2. In a transaction, PURGE every user-owned encrypted row
+ *      (entries + modules_config + user_preferences). The old
+ *      ciphertexts are unreadable without the lost main key —
+ *      keeping them around would be data garbage at best, and a
+ *      subtle attack surface at worst.
+ *   3. Rotate password hash + encryption envelope.
+ *   4. Mark the token used.
+ *   5. Revoke every existing session.
+ *
+ * Wrong / expired / already-used token → 400 (`invalid_token`). Weak
+ * new password → 400 (`weak_password`).
+ */
+authRoutes.post('/reset', resetLimiter, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = ResetPasswordBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+
+  const tokenRow = await findActiveResetToken(body.token);
+  if (!tokenRow) return c.json({ error: 'invalid_token' }, 400);
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, tokenRow.userId))
+    .limit(1);
+  if (!user) return c.json({ error: 'invalid_token' }, 400);
+
+  const policy = checkPasswordPolicy(body.newPassword, [user.email]);
+  if (!policy.ok) return c.json({ error: 'weak_password', reason: policy.reason }, 400);
+
+  const newHash = await hashPassword(body.newPassword);
+
+  await db.transaction(async (tx) => {
+    // Purge every user-owned encrypted row. FK cascade would also do
+    // this if we deleted the user, but we keep the user row (and its
+    // id) so invites they created keep their `created_by` foreign key.
+    await tx.delete(moodEntries).where(eq(moodEntries.userId, user.id));
+    await tx.delete(goalsEntries).where(eq(goalsEntries.userId, user.id));
+    await tx.delete(passageEntries).where(eq(passageEntries.userId, user.id));
+    await tx.delete(habitsItemsEntries).where(eq(habitsItemsEntries.userId, user.id));
+    await tx.delete(habitsLogsEntries).where(eq(habitsLogsEntries.userId, user.id));
+    await tx.delete(libraryItemsEntries).where(eq(libraryItemsEntries.userId, user.id));
+    await tx.delete(libraryReviewsEntries).where(eq(libraryReviewsEntries.userId, user.id));
+    await tx.delete(reviewEntries).where(eq(reviewEntries.userId, user.id));
+    await tx.delete(modulesConfig).where(eq(modulesConfig.userId, user.id));
+    await tx.delete(userPreferences).where(eq(userPreferences.userId, user.id));
+
+    await tx
+      .update(users)
+      .set({
+        passwordHash: newHash,
+        encryptionSalt: body.encryptionSalt,
+        encryptedKey: body.encryptedKey,
+        onboardingStatus: 'pending',
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, tokenRow.id));
+  });
+
+  await revokeAllUserSessions(user.id);
   return c.json({ ok: true });
 });
 

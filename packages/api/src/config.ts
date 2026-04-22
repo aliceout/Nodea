@@ -20,6 +20,33 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+
+  /**
+   * Base URL the web app is served from. Used to build absolute `reset`
+   * links in emails. No trailing slash. Example: `https://nodea.example.org`.
+   */
+  WEB_BASE_URL: z.string().url().optional(),
+
+  /**
+   * SMTP transport. All optional — when unset, the mailer falls back
+   * to a stderr "console transport" that logs the email instead of
+   * sending it. This keeps dev / test happy without a real SMTP
+   * server while still letting tests assert what would have been sent.
+   */
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /**
+   * "From" address on outgoing mail. Accepts both the bare address
+   * (`nodea@example.org`) and the full form (`Nodea <nodea@example.org>`).
+   * Default is intentionally non-routable so tests don't attempt a real send.
+   */
+  SMTP_FROM: z.string().min(1).default('nodea@localhost.invalid'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

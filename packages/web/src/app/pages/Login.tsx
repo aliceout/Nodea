@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
@@ -73,9 +74,14 @@ export default function LoginPage() {
 
       {serverError ? <p role="alert">{serverError}</p> : null}
 
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Connexion…' : 'Se connecter'}
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/request-reset" className="text-sm underline opacity-80">
+          Mot de passe oublié ?
+        </Link>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Connexion…' : 'Se connecter'}
+        </button>
+      </div>
     </form>
   );
 }

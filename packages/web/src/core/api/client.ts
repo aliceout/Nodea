@@ -23,6 +23,8 @@ import {
   type ChangeEmailBody,
   type ChangeUsernameBody,
   type DeleteSelfBody,
+  type RequestResetBody,
+  type ResetPasswordBody,
   type AnnouncementCreateBody,
   type AnnouncementUpdateBody,
   type AnnouncementResponse,
@@ -127,6 +129,14 @@ export async function apiChangeUsername(body: ChangeUsernameBody): Promise<void>
 
 export async function apiCompleteOnboarding(): Promise<void> {
   await request<void>('POST', '/auth/onboarding/complete');
+}
+
+export async function apiRequestPasswordReset(body: RequestResetBody): Promise<void> {
+  await request<void>('POST', '/auth/request-reset', body);
+}
+
+export async function apiResetPassword(body: ResetPasswordBody): Promise<void> {
+  await request<void>('POST', '/auth/reset', body);
 }
 
 export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {
