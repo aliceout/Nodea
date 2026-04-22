@@ -68,6 +68,34 @@ declare module '@/app/flow/Passage' {
 }
 
 /* --------------------------------------------------------------------
+ * Cross-module Mood leak-throughs (Homepage consumes these).
+ * ------------------------------------------------------------------ */
+declare module '@/app/flow/Mood/hooks/useMoodTrend' {
+  export interface MoodTrendRow {
+    date: string;
+    mood: number;
+    emoji: string;
+  }
+  export interface MoodTrendState {
+    status: 'idle' | 'loading' | 'ready' | 'error' | 'missing-key' | 'missing-module';
+    data: MoodTrendRow[];
+    error: string;
+    hasData: boolean;
+  }
+  export default function useMoodTrend(options?: {
+    months?: number;
+    latestEntries?: number;
+  }): MoodTrendState;
+}
+declare module '@/app/flow/Mood/components/ChartBody' {
+  import type { ComponentType } from 'react';
+  const ChartBody: ComponentType<{
+    data: Array<{ date: string; mood: number; emoji?: string }>;
+  }>;
+  export default ChartBody;
+}
+
+/* --------------------------------------------------------------------
  * i18n provider — named `useI18n` hook consumed from TSX
  * ------------------------------------------------------------------ */
 declare module '@/i18n/I18nProvider.jsx' {

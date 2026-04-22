@@ -14,6 +14,8 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import HeroSection from './components/HeroSection';
 import ModuleCard from './components/ModuleCard';
 import AvailableModules from './components/AvailableModules';
+import AnnouncementSpotlight from './components/AnnouncementSpotlight';
+import MoodOverview from './components/MoodOverview';
 
 /** Preferred display name: the part before `@` in the email. */
 function preferredName(email: string | undefined): string {
@@ -25,15 +27,14 @@ function preferredName(email: string | undefined): string {
 /**
  * Homepage (TSX).
  *
- * Drops two legacy sections from the JSX version:
- *   - AnnouncementSpotlight: the announcements feature lived in a
- *     PocketBase collection we didn't bring to the new back. It'll
- *     come back as its own feature when / if needed.
- *   - MoodOverview chart: the recharts preview pulled data via the
- *     legacy Mood pipeline. It returns when Mood is fully ported.
- *
- * What stays is the greeting hero, quick-action cards for enabled
- * modules, and the "available modules" suggestion strip.
+ * Restored composition:
+ *   - HeroSection (greeting)
+ *   - AnnouncementSpotlight — picks up `GET /announcements` when R10
+ *     lands; silent 404 until then (no UI tombstone).
+ *   - MoodOverview — 20-entry sparkline + rolling average via
+ *     `useMoodTrend` (Mood module, R3).
+ *   - Quick-action cards for enabled modules.
+ *   - AvailableModules — suggestion strip for the not-yet-active ones.
  */
 export default function HomePage() {
   const navigate = useNavigate();
@@ -72,6 +73,10 @@ export default function HomePage() {
 
   const enabledModules = useMemo(() => modules.filter((m) => m.enabled), [modules]);
   const disabledModules = useMemo(() => modules.filter((m) => !m.enabled), [modules]);
+  const moodModule = useMemo(
+    () => enabledModules.find((m) => m.id === 'mood'),
+    [enabledModules],
+  );
 
   const handleNavigate = useCallback(
     (moduleId: string) => {
@@ -93,7 +98,14 @@ export default function HomePage() {
 
       <div className="flex-1 pt-4">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-10 sm:px-6 lg:px-8">
-          <HeroSection greeting={greeting} name={name} formattedDate={formattedDate} />
+          <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
+            <div className="flex-1">
+              <HeroSection greeting={greeting} name={name} formattedDate={formattedDate} />
+            </div>
+            <AnnouncementSpotlight />
+          </div>
+
+          {moodModule ? <MoodOverview module={moodModule} /> : null}
 
           {enabledModules.length > 0 ? (
             <section className="space-y-4">
