@@ -26,6 +26,18 @@ declare module '@/ui/atoms/base/Button' {
   }>;
   export default Button;
 }
+declare module '@/ui/atoms/base/Modal' {
+  import type { ComponentType, ReactNode } from 'react';
+  const Modal: ComponentType<{
+    open: boolean;
+    onClose?: (() => void) | null;
+    children?: ReactNode;
+    className?: string;
+    backdropClass?: string;
+    disableClose?: boolean;
+  }>;
+  export default Modal;
+}
 declare module '@/ui/atoms/form/Input' {
   import type { ComponentType, InputHTMLAttributes } from 'react';
   const Input: ComponentType<InputHTMLAttributes<HTMLInputElement>>;

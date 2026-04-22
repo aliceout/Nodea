@@ -413,6 +413,43 @@ describe('PATCH /auth/username', () => {
   });
 });
 
+describe('POST /auth/onboarding/complete', () => {
+  it('flips onboardingStatus from pending to complete and is idempotent', async () => {
+    await seedUser('ob@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: 'ob@example.com', password: TEST_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const before = await app.request('/auth/me', { headers: { cookie } });
+    const beforeBody = (await before.json()) as { onboardingStatus: string };
+    expect(beforeBody.onboardingStatus).toBe('pending');
+
+    const first = await app.request('/auth/onboarding/complete', {
+      method: 'POST',
+      headers: { cookie },
+    });
+    expect(first.status).toBe(200);
+
+    const after = await app.request('/auth/me', { headers: { cookie } });
+    const afterBody = (await after.json()) as { onboardingStatus: string };
+    expect(afterBody.onboardingStatus).toBe('complete');
+
+    // Second call must be a no-op without error.
+    const second = await app.request('/auth/onboarding/complete', {
+      method: 'POST',
+      headers: { cookie },
+    });
+    expect(second.status).toBe(200);
+  });
+
+  it('returns 401 without a session cookie', async () => {
+    const res = await app.request('/auth/onboarding/complete', { method: 'POST' });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('DELETE /auth/me', () => {
   it('removes the user and cascades sessions + entries', async () => {
     await seedUser('suicide@example.com');

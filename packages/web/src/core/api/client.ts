@@ -125,6 +125,10 @@ export async function apiChangeUsername(body: ChangeUsernameBody): Promise<void>
   await request<void>('PATCH', '/auth/username', body);
 }
 
+export async function apiCompleteOnboarding(): Promise<void> {
+  await request<void>('POST', '/auth/onboarding/complete');
+}
+
 export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {
   await request<void>('DELETE', '/auth/me', body);
 }

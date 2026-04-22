@@ -230,6 +230,26 @@ authRoutes.patch('/username', requireUser, async (c) => {
 });
 
 /**
+ * Mark the authenticated user's onboarding as complete.
+ *
+ * Idempotent: calling it on a user that's already `complete` returns
+ * `ok: true` without touching the row. Flipping the flag is the only
+ * side-effect — actual onboarding choices (modules, preferences) are
+ * persisted through their own encrypted endpoints.
+ */
+authRoutes.post('/onboarding/complete', requireUser, async (c) => {
+  const user = c.get('user');
+  if (user.onboardingStatus === 'complete') return c.json({ ok: true });
+
+  await db
+    .update(users)
+    .set({ onboardingStatus: 'complete', updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  return c.json({ ok: true });
+});
+
+/**
  * Self-delete the authenticated user. Password-gated.
  *
  * Every row owned by this user is removed by the FK ON DELETE CASCADE

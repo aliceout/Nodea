@@ -1,38 +1,45 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal.jsx';
+import OnboardingModal from '@/ui/atoms/specifics/OnboardingModal';
 import { nav } from './navigation/Navigation';
 import {
   useNodeaStore,
   selectKeyStatus,
+  selectUser,
 } from '@/core/store/nodea-store';
 import { useSession } from '@/core/auth/use-session';
+import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
 import Header from './headers/Header';
 import Sidebar from './navigation/Sidebar.jsx';
 
 /**
  * Main authenticated layout.
  *
- * Drops every legacy dependency:
- *   - `useAuth` (PB authStore) → `useSession`
- *   - `useStore` (reducer + Context) → `useNodeaStore`
- *   - `useBootstrapModulesRuntime` (PB-driven runtime config) →
- *     Settings/ModulesManager populates the Zustand `modules` slice
- *     now.
- *   - Onboarding flow → parked (was PB-specific; will come back as a
- *     dedicated feature with a proper design).
+ * Crypto slice `status === 'missing'` blocks with `KeyMissingModal`
+ * (only escape is logout + fresh login, which re-derives the main key).
  *
- * If the Zustand crypto slice reports `status === 'missing'`
- * (page reload loses the main key even when the session cookie
- * persists), the blocking `KeyMissingModal` is rendered — the only
- * escape is logout + fresh login, which re-derives the main key
- * from the user's password.
+ * `auth.user.onboardingStatus === 'pending'` overlays `OnboardingModal`
+ * on top of the current route — it doesn't block navigation, just asks
+ * to pick language / theme / at least one module before letting the
+ * user snooze or finalise.
  */
 export default function Layout() {
   const { moduleId } = useParams();
   const current = moduleId ?? 'home';
   const keyStatus = useNodeaStore(selectKeyStatus);
+  const user = useNodeaStore(selectUser);
+  const setAuth = useNodeaStore((s) => s.setAuth);
   const session = useSession();
+  const [snoozed, setSnoozed] = useState(false);
+  const needsOnboarding =
+    !snoozed && user?.onboardingStatus === 'pending' && keyStatus !== 'missing';
+
+  async function finishOnboarding(): Promise<void> {
+    await apiCompleteOnboarding();
+    const me = await apiMe();
+    if (me) setAuth(me);
+  }
 
   const moduleKnown = useMemo(() => nav.some((t) => t.id === current), [current]);
   const ActiveView = useMemo(() => {
@@ -53,6 +60,13 @@ export default function Layout() {
           }}
         />
       ) : null}
+
+      <OnboardingModal
+        open={needsOnboarding}
+        onFinish={finishOnboarding}
+        onSnooze={() => setSnoozed(true)}
+      />
+
 
       <Sidebar />
       <div className="flex flex-col flex-1 bg-slate-50 dark:bg-slate-950 transition-colors">
