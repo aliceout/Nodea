@@ -89,41 +89,50 @@ export default function ResetPage() {
 
   if (!token) {
     return (
-      <div className="mx-auto max-w-md space-y-4 py-10">
-        <h1 className="text-xl font-semibold">Lien invalide</h1>
-        <p className="text-sm">
-          Ce lien de réinitialisation est incomplet. Redemande un email depuis la page
-          « mot de passe oublié ».
-        </p>
-        <p>
-          <Link to="/request-reset" className="text-sm underline">
-            ← Redemander un lien
-          </Link>
-        </p>
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
+        <div className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none">
+          <h1 className="text-center text-lg font-semibold">Lien invalide</h1>
+          <p className="text-sm">
+            Ce lien de réinitialisation est incomplet. Redemande un email depuis la page
+            « mot de passe oublié ».
+          </p>
+          <p className="text-center">
+            <Link to="/request-reset" className="text-sm underline">
+              ← Redemander un lien
+            </Link>
+          </p>
+        </div>
       </div>
     );
   }
 
   if (done) {
     return (
-      <div className="mx-auto max-w-md space-y-4 py-10">
-        <h1 className="text-xl font-semibold">Mot de passe réinitialisé</h1>
-        <p className="text-sm">
-          Tu peux te reconnecter avec ton nouveau mot de passe. Ton compte a été remis à
-          zéro — les entrées précédentes ont été supprimées.
-        </p>
-        <Link
-          to="/login"
-          className="inline-block rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
-        >
-          Se connecter
-        </Link>
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
+        <div className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none">
+          <h1 className="text-center text-lg font-semibold">Mot de passe réinitialisé</h1>
+          <p className="text-sm">
+            Tu peux te reconnecter avec ton nouveau mot de passe. Ton compte a été remis à
+            zéro — les entrées précédentes ont été supprimées.
+          </p>
+          <Link
+            to="/login"
+            className="mx-auto inline-block rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
+          >
+            Se connecter
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="mx-auto max-w-md space-y-4 py-10">
+    <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none"
+      >
       <h1 className="text-xl font-semibold">Nouveau mot de passe</h1>
 
       <div className="rounded border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
@@ -196,6 +205,7 @@ export default function ResetPage() {
           {submitting ? 'Réinitialisation…' : 'Réinitialiser et effacer mes données'}
         </button>
       </div>
-    </form>
+      </form>
+    </div>
   );
 }

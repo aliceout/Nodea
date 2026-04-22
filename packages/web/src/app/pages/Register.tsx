@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,6 +7,10 @@ import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
+import Input from '@/ui/atoms/form/Input';
+import Button from '@/ui/atoms/base/Button';
+import FormError from '@/ui/atoms/form/FormError';
+import Logo from '@/ui/branding/LogoLong.jsx';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -60,43 +65,72 @@ export default function RegisterPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-      <h1 className="text-xl font-semibold">Inscription</h1>
+    <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
+      <div className="flex w-full max-w-md flex-col items-stretch gap-6">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+          className="flex flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none"
+        >
+          <Logo className="mx-auto mb-2 w-1/2" />
+          <h1 className="text-center text-lg font-semibold">Créer un compte</h1>
 
-      <label className="block">
-        <span>E-mail</span>
-        <input type="email" autoComplete="email" {...field('email')} className="w-full" />
-        {errors.email ? <p role="alert">{errors.email.message}</p> : null}
-      </label>
+          <Input label="E-mail" type="email" autoComplete="email" required {...field('email')} />
+          {errors.email ? (
+            <p role="alert" className="-mt-2 text-xs text-rose-600">
+              {errors.email.message}
+            </p>
+          ) : null}
 
-      <label className="block">
-        <span>Mot de passe</span>
-        <input
-          type="password"
-          autoComplete="new-password"
-          {...field('password', { onChange: (e) => setPassword(e.target.value) })}
-          className="w-full"
-        />
-        {errors.password ? <p role="alert">{errors.password.message}</p> : null}
-        {strength ? (
-          <p>
-            Force : {strength.score} / 4
-            {strength.warning ? ` — ${strength.warning}` : null}
-          </p>
-        ) : null}
-      </label>
+          <Input
+            label="Mot de passe (≥ 12 caractères)"
+            type="password"
+            autoComplete="new-password"
+            required
+            {...field('password', { onChange: (e) => setPassword(e.target.value) })}
+          />
+          {errors.password ? (
+            <p role="alert" className="-mt-2 text-xs text-rose-600">
+              {errors.password.message}
+            </p>
+          ) : null}
+          {strength ? (
+            <p
+              className={`-mt-2 text-xs ${
+                strength.score >= 3 ? 'text-emerald-700' : 'text-amber-700'
+              }`}
+            >
+              Force : {strength.score} / 4
+              {strength.warning ? ` — ${strength.warning}` : null}
+            </p>
+          ) : null}
 
-      <label className="block">
-        <span>Code d’invitation</span>
-        <input type="text" {...field('inviteCode')} className="w-full" />
-        {errors.inviteCode ? <p role="alert">{errors.inviteCode.message}</p> : null}
-      </label>
+          <Input
+            label="Code d'invitation"
+            type="text"
+            required
+            {...field('inviteCode')}
+          />
+          {errors.inviteCode ? (
+            <p role="alert" className="-mt-2 text-xs text-rose-600">
+              {errors.inviteCode.message}
+            </p>
+          ) : null}
 
-      {serverError ? <p role="alert">{serverError}</p> : null}
+          <Button type="submit" variant="primary" disabled={isSubmitting} className="mt-2">
+            {isSubmitting ? 'Inscription…' : 'Créer le compte'}
+          </Button>
 
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Inscription…' : 'Créer le compte'}
-      </button>
-    </form>
+          {serverError ? <FormError message={serverError} /> : null}
+        </form>
+
+        <p className="text-center text-sm">
+          <span className="opacity-70">Déjà un compte ?</span>{' '}
+          <Link to="/login" className="text-nodea-sage underline hover:text-nodea-sage-dark">
+            Se connecter
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 }

@@ -25,6 +25,11 @@ declare module '@/ui/layout/headers/Subheader' {
   }>;
   export default Subheader;
 }
+declare module '@/ui/branding/LogoLong.jsx' {
+  import type { ComponentType } from 'react';
+  const LogoLong: ComponentType<{ className?: string }>;
+  export default LogoLong;
+}
 
 /* --------------------------------------------------------------------
  * Legacy module entry points — imported lazily from `modules_list.tsx`.
