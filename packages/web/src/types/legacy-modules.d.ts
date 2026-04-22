@@ -61,6 +61,11 @@ declare module '@/app/flow/Goals' {
   const GoalsIndex: ComponentType;
   export default GoalsIndex;
 }
+declare module '@/app/flow/Passage' {
+  import type { ComponentType } from 'react';
+  const PassageIndex: ComponentType;
+  export default PassageIndex;
+}
 
 /* --------------------------------------------------------------------
  * i18n provider — named `useI18n` hook consumed from TSX
