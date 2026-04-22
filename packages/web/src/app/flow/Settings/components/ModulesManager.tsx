@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import Surface from '@/ui/atoms/layout/Surface.jsx';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
-import Badge from '@/ui/atoms/feedback/Badge.jsx';
+import Surface from '@/ui/atoms/layout/Surface';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
+import Badge from '@/ui/atoms/feedback/Badge';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { MODULES } from '@/app/config/modules_list';
 import {

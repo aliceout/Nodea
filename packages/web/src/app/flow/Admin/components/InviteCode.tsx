@@ -1,5 +1,5 @@
 import Button from '@/ui/atoms/base/Button';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
 import type { AdminInviteRow } from '@/core/api/client';
 
 /** A minted invite kept in component state after creation; the `code`

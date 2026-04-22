@@ -1,4 +1,4 @@
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
 import ThemeSelector from '@/ui/atoms/specifics/ThemeSelector';
 
 /**

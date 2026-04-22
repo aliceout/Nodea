@@ -1,5 +1,5 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
-import TableShell from '@/ui/atoms/data/TableShell.jsx';
+import TableShell from '@/ui/atoms/data/TableShell';
 import type { AdminUserRow } from '@/core/api/client';
 
 export interface UserTableProps {
@@ -27,7 +27,7 @@ export default function UserTable({ users, currentUserId, onDelete }: UserTableP
   };
 
   return (
-    <TableShell tone="base" border="default" padding="none">
+    <TableShell tone="base">
       <table className="w-full table-auto">
         <thead className="bg-[var(--surface-muted)] text-[var(--text-secondary)]">
           <tr>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Subheader from '@/ui/layout/headers/Subheader';
-import SectionHeader from '@/ui/atoms/typography/SectionHeader.jsx';
+import SectionHeader from '@/ui/atoms/typography/SectionHeader';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import {

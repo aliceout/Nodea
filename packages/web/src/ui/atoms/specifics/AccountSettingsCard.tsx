@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
 
 export interface AccountSettingsCardProps {
   title: string;
@@ -21,7 +21,7 @@ export default function AccountSettingsCard({
   className,
 }: AccountSettingsCardProps) {
   return (
-    <SurfaceCard tone="base" border="default" padding="md" className={className}>
+    <SurfaceCard tone="base" border="default" padding="md" className={className ?? ''}>
       <div className="mb-3 space-y-1">
         <h3 className="text-sm font-semibold">{title}</h3>
         {description ? <p className="text-xs opacity-70">{description}</p> : null}

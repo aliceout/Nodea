@@ -1,5 +1,5 @@
 import Subheader from '@/ui/layout/headers/Subheader';
-import SectionHeader from '@/ui/atoms/typography/SectionHeader.jsx';
+import SectionHeader from '@/ui/atoms/typography/SectionHeader';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import ModulesManager from './components/ModulesManager';
 import LanguagePreferences from './components/LanguagePreferences';

@@ -1,4 +1,15 @@
-import clsx from "clsx";
+import clsx from 'clsx';
+import type { ReactNode } from 'react';
+
+interface FormFieldProps {
+  label?: ReactNode;
+  htmlFor?: string;
+  hint?: ReactNode;
+  error?: ReactNode;
+  required?: boolean;
+  className?: string;
+  children?: ReactNode;
+}
 
 export default function FormField({
   label,
@@ -6,11 +17,11 @@ export default function FormField({
   hint,
   error,
   required = false,
-  className = "",
+  className = '',
   children,
-}) {
+}: FormFieldProps) {
   return (
-    <div className={clsx("flex flex-col gap-1.5", className)}>
+    <div className={clsx('flex flex-col gap-1.5', className)}>
       {label ? (
         <label
           htmlFor={htmlFor}
@@ -28,9 +39,7 @@ export default function FormField({
       ) : null}
 
       {error ? (
-        <p className="text-xs font-medium text-[var(--accent-danger)]">
-          {error}
-        </p>
+        <p className="text-xs font-medium text-[var(--accent-danger)]">{error}</p>
       ) : null}
     </div>
   );

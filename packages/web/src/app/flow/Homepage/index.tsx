@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Subheader from '@/ui/layout/headers/Subheader';
-import SectionHeader from '@/ui/atoms/typography/SectionHeader.jsx';
+import SectionHeader from '@/ui/atoms/typography/SectionHeader';
 import { MODULES, type ModuleDef } from '@/app/config/modules_list';
 import {
   useNodeaStore,

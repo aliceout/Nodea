@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNodeaStore, selectMainKey, selectModules } from "@/core/store/nodea-store";
 import Button from "@/ui/atoms/base/Button";
 import AccountSettingsCard from "@/ui/atoms/specifics/AccountSettingsCard";
-import EncryptedActionGate from "@/ui/atoms/specifics/EncryptedActionGate.jsx";
-import StatusBanner from "@/ui/atoms/feedback/StatusBanner.jsx";
+import EncryptedActionGate from "@/ui/atoms/specifics/EncryptedActionGate";
+import StatusBanner from "@/ui/atoms/feedback/StatusBanner";
 import {
   getDataPlugin,
   knownModules,

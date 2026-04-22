@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import Surface from '@/ui/atoms/layout/Surface.jsx';
+import Surface from '@/ui/atoms/layout/Surface';
 import type { ModuleDef } from '@/app/config/modules_list';
 
 export interface AvailableModulesProps {

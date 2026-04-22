@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal.jsx';
+import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal';
 import OnboardingModal from '@/ui/atoms/specifics/OnboardingModal';
 import { nav } from './navigation/Navigation';
 import {

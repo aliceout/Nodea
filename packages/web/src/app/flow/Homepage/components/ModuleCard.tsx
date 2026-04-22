@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
-import Badge from '@/ui/atoms/feedback/Badge.jsx';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
+import Badge from '@/ui/atoms/feedback/Badge';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import type { ModuleDef } from '@/app/config/modules_list';
 

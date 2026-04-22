@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
 import Button from '@/ui/atoms/base/Button';
 import { apiDeleteMe, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';

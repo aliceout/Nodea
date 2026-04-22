@@ -1,7 +1,7 @@
 import type { ChangeEvent } from 'react';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard.jsx';
-import Select from '@/ui/atoms/form/Select.jsx';
-import FormField from '@/ui/atoms/form/FormField.jsx';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
+import Select from '@/ui/atoms/form/Select';
+import FormField from '@/ui/atoms/form/FormField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 /**

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import AccountSettingsCard from '@/ui/atoms/specifics/AccountSettingsCard';
 import Button from '@/ui/atoms/base/Button';
-import StatusBanner from '@/ui/atoms/feedback/StatusBanner.jsx';
+import StatusBanner from '@/ui/atoms/feedback/StatusBanner';
 import { apiChangeEmail, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 

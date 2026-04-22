@@ -1,23 +1,25 @@
-// Atom canonical: @/ui/atoms/form/SuggestInput
-// (Removed legacy self re-export)
-import { useRef, useState, useEffect } from "react";
-import Input from "./Input";
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import Input from './Input';
+
+interface SuggestInputProps {
+  value: string;
+  onChange: (next: string) => void;
+  options?: string[];
+  placeholder?: string;
+  required?: boolean;
+  label?: ReactNode;
+  legend?: ReactNode;
+  /** Wrapper classes. */
+  className?: string;
+  /** Classes applied to the underlying `<input>`. */
+  inputClassName?: string;
+  id?: string;
+}
 
 /**
- * SuggestInput
- * Input avec suggestions (dropdown) pour sélectionner ou créer une valeur.
- * Props :
- *   - value: string
- *   - onChange: (string) => void
- *   - options: string[] (suggestions)
- *   - placeholder: string
- *   - required: bool
- *   - label: string (optionnel)
- *   - legend: string | ReactNode (optionnel)
- *   - className: string (optionnel, classes du conteneur)
- *   - inputClassName: string (optionnel, classes de l'<input>)
- *   - id: string (optionnel)
- *   - ...props (autres props passés à l'<input>)
+ * Free-text input with a dropdown of suggestions. Selecting a
+ * suggestion fills the value; typing anything else lets the caller
+ * pick a brand-new string. Used for hashtag / thread pickers.
  */
 export default function SuggestInput({
   value,
@@ -27,34 +29,30 @@ export default function SuggestInput({
   required,
   label,
   legend,
-  className = "",
-  inputClassName = "",
-  id = "suggest-input",
-  ...props
-}) {
+  className = '',
+  inputClassName = '',
+  id = 'suggest-input',
+}: SuggestInputProps) {
   const [open, setOpen] = useState(false);
-  const [filtered, setFiltered] = useState([]);
-  const inputRef = useRef(null);
+  const [filtered, setFiltered] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!value) setFiltered(options);
-    else
-      setFiltered(
-        options.filter((t) => t.toLowerCase().includes(value.toLowerCase()))
-      );
+    if (!value) {
+      setFiltered(options);
+      return;
+    }
+    const needle = value.toLowerCase();
+    setFiltered(options.filter((t) => t.toLowerCase().includes(needle)));
   }, [value, options]);
 
   return (
     <div className={className}>
-      {label && (
-        <label
-          htmlFor={id}
-          className="block mb-1 font-semibold text-nodea-sage-dark"
-        >
+      {label ? (
+        <label htmlFor={id} className="block mb-1 font-semibold text-nodea-sage-dark">
           {label}
         </label>
-      )}
-      {/* Wrapper strict autour de l'input pour positionner la flèche et le menu */}
+      ) : null}
       <div className="relative">
         <Input
           id={id}
@@ -66,16 +64,14 @@ export default function SuggestInput({
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder={placeholder}
-          required={required}
+          {...(placeholder !== undefined ? { placeholder } : {})}
+          {...(required !== undefined ? { required } : {})}
           autoComplete="off"
-          inputClassName={`text-sm pr-12 ${inputClassName}`} // padding à droite pour la flèche
+          inputClassName={`text-sm pr-12 ${inputClassName}`}
           aria-haspopup="listbox"
           aria-expanded={open}
-          {...props}
         />
 
-        {/* Flèche positionnée DANS le wrapper (pas dans l'input) */}
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
           <svg
             className="h-4 w-4 text-gray-400"
@@ -93,8 +89,7 @@ export default function SuggestInput({
           </svg>
         </span>
 
-        {/* Dropdown */}
-        {open && filtered.length > 0 && (
+        {open && filtered.length > 0 ? (
           <ul
             role="listbox"
             className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded shadow-lg text-xs max-h-48 overflow-auto"
@@ -103,21 +98,22 @@ export default function SuggestInput({
               <li
                 key={t}
                 role="option"
+                aria-selected={value === t}
                 className="px-3 py-2 text-gray-700 cursor-pointer hover:bg-nodea-sage-light"
                 onMouseDown={() => {
                   onChange(t);
                   setOpen(false);
-                  inputRef.current && inputRef.current.blur();
+                  inputRef.current?.blur();
                 }}
               >
                 {t}
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
       </div>
 
-      {legend && <p className="text-xs text-gray-500 mt-1">{legend}</p>}
+      {legend ? <p className="text-xs text-gray-500 mt-1">{legend}</p> : null}
     </div>
   );
 }

@@ -11,43 +11,10 @@
  */
 
 /* --------------------------------------------------------------------
- * UI primitives (still JSX)
+ * UI primitives still in JSX. All of `ui/atoms/**` now ships as TSX
+ * (#23 / R14) — the remaining legacy declarations here cover the
+ * layout shell (Subheader) and the per-module flow entrypoints.
  * ------------------------------------------------------------------ */
-declare module '@/ui/atoms/base/Button' {
-  import type { ComponentType, ReactNode } from 'react';
-  const Button: ComponentType<{
-    children?: ReactNode;
-    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-    type?: 'button' | 'submit' | 'reset';
-    variant?: string;
-    disabled?: boolean;
-    className?: string;
-    [k: string]: unknown;
-  }>;
-  export default Button;
-}
-declare module '@/ui/atoms/base/Modal' {
-  import type { ComponentType, ReactNode } from 'react';
-  const Modal: ComponentType<{
-    open: boolean;
-    onClose?: (() => void) | null;
-    children?: ReactNode;
-    className?: string;
-    backdropClass?: string;
-    disableClose?: boolean;
-  }>;
-  export default Modal;
-}
-declare module '@/ui/atoms/form/Input' {
-  import type { ComponentType, InputHTMLAttributes } from 'react';
-  const Input: ComponentType<InputHTMLAttributes<HTMLInputElement>>;
-  export default Input;
-}
-declare module '@/ui/atoms/form/FormError' {
-  import type { ComponentType, ReactNode } from 'react';
-  const FormError: ComponentType<{ children?: ReactNode; className?: string }>;
-  export default FormError;
-}
 declare module '@/ui/layout/headers/Subheader' {
   import type { ComponentType, ReactNode } from 'react';
   const Subheader: ComponentType<{
