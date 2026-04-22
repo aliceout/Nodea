@@ -1,10 +1,16 @@
 import { Hono } from 'hono';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import { CreateInviteBodySchema } from '@nodea/shared/schemas/auth';
+import {
+  AnnouncementCreateBodySchema,
+  AnnouncementUpdateBodySchema,
+} from '@nodea/shared/schemas/announcements';
 import { createInvite } from '../auth/invites.ts';
 import { db } from '../db/client.ts';
-import { invites, users } from '../db/schema.ts';
+import { announcements, invites, users } from '../db/schema.ts';
 import { requireUser, requireAdmin, type AuthVariables } from '../middleware/require-user.ts';
+import { serialize as serializeAnnouncement } from './announcements-serialize.ts';
 
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
 
@@ -115,6 +121,84 @@ adminRoutes.delete('/users/:id', async (c) => {
     .delete(users)
     .where(eq(users.id, id))
     .returning({ id: users.id });
+
+  if (result.length === 0) return c.json({ error: 'not_found' }, 404);
+  return c.json({ ok: true });
+});
+
+// --- Announcements ----------------------------------------------------
+
+/**
+ * List every announcement — including inactive and out-of-window ones.
+ * The public `/announcements` endpoint in `routes/announcements.ts`
+ * filters to the live ones for normal users.
+ */
+adminRoutes.get('/announcements', async (c) => {
+  const rows = await db
+    .select()
+    .from(announcements)
+    .orderBy(desc(announcements.createdAt));
+  return c.json({ announcements: rows.map(serializeAnnouncement) });
+});
+
+adminRoutes.post('/announcements', async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = AnnouncementCreateBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+
+  const admin = c.get('user');
+  const [row] = await db
+    .insert(announcements)
+    .values({
+      id: randomUUID(),
+      title: body.title,
+      body: body.body,
+      active: body.active,
+      startAt: body.startAt ? new Date(body.startAt) : null,
+      endAt: body.endAt ? new Date(body.endAt) : null,
+      createdBy: admin.id,
+    })
+    .returning();
+
+  if (!row) return c.json({ error: 'internal_error' }, 500);
+  return c.json(serializeAnnouncement(row), 201);
+});
+
+adminRoutes.patch('/announcements/:id', async (c) => {
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: 'missing_id' }, 400);
+
+  const raw = await c.req.json().catch(() => null);
+  const parsed = AnnouncementUpdateBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+
+  const patch: Partial<typeof announcements.$inferInsert> = { updatedAt: new Date() };
+  if (body.title !== undefined) patch.title = body.title;
+  if (body.body !== undefined) patch.body = body.body;
+  if (body.active !== undefined) patch.active = body.active;
+  if (body.startAt !== undefined) patch.startAt = body.startAt ? new Date(body.startAt) : null;
+  if (body.endAt !== undefined) patch.endAt = body.endAt ? new Date(body.endAt) : null;
+
+  const [row] = await db
+    .update(announcements)
+    .set(patch)
+    .where(eq(announcements.id, id))
+    .returning();
+
+  if (!row) return c.json({ error: 'not_found' }, 404);
+  return c.json(serializeAnnouncement(row));
+});
+
+adminRoutes.delete('/announcements/:id', async (c) => {
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: 'missing_id' }, 400);
+
+  const result = await db
+    .delete(announcements)
+    .where(eq(announcements.id, id))
+    .returning({ id: announcements.id });
 
   if (result.length === 0) return c.json({ error: 'not_found' }, 404);
   return c.json({ ok: true });

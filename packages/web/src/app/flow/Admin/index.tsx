@@ -14,14 +14,15 @@ import {
 } from '@/core/api/client';
 import UserTable from './components/UserTable';
 import InviteCodeManager, { type MintedInvite } from './components/InviteCode';
+import AnnouncementsManager from './components/AnnouncementsManager';
 
 /**
  * Admin page.
  *
- * Uses the new `/admin/*` endpoints exclusively. Announcements and
- * email-based password reset were PocketBase-specific features and
- * aren't ported — announcements will come back when the back grows a
- * table for them, reset when the api grows SMTP.
+ * Uses the new `/admin/*` endpoints exclusively. Announcements now have
+ * a dedicated table and CRUD surface (#19 / R10) — see
+ * `AnnouncementsManager`. Email-based password reset is still tracked
+ * in #22 / R13 (SMTP greenfield).
  */
 export default function AdminPage() {
   const { t } = useI18n();
@@ -173,6 +174,17 @@ export default function AdminPage() {
             onCopy={handleCopy}
             onDelete={handleDeleteInvite}
           />
+        </section>
+
+        <section>
+          <SectionHeader
+            title={t('admin.sections.announcements.title', { defaultValue: 'Annonces' })}
+            description={t('admin.sections.announcements.description', {
+              defaultValue:
+                'Messages publiés sur la page d’accueil. Non chiffrés — visibles par tout le monde.',
+            })}
+          />
+          <AnnouncementsManager />
         </section>
       </div>
     </div>

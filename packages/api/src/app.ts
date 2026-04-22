@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
 import { adminRoutes } from './routes/admin.ts';
+import { announcementsRoutes } from './routes/announcements.ts';
 import { modulesConfigRoutes } from './routes/modules-config.ts';
 import { createCollectionRoutes } from './routes/collection-factory.ts';
 import { COLLECTIONS } from './collections/registry.ts';
@@ -36,6 +37,7 @@ export function buildApp() {
 
   app.route('/auth', authRoutes);
   app.route('/admin', adminRoutes);
+  app.route('/announcements', announcementsRoutes);
   app.route('/modules-config', modulesConfigRoutes);
 
   // Every collection gets its 4 REST routes with requireUser + requireGuard

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -78,6 +78,29 @@ export const invites = pgTable(
 );
 
 /**
+ * Announcements — server-side public feed curated by admins. Content
+ * is not E2E encrypted: the whole point is to be readable by every
+ * logged-in user without needing their main key. `created_by` is kept
+ * as an audit trail; `active` toggles visibility without deleting the
+ * row; `startAt` / `endAt` carry optional scheduling windows.
+ */
+export const announcements = pgTable(
+  'announcements',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    active: boolean('active').notNull().default(true),
+    startAt: timestamp('start_at', { withTimezone: true }),
+    endAt: timestamp('end_at', { withTimezone: true }),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('announcements_active_idx').on(t.active, t.createdAt)],
+);
+
+/**
  * Factory for per-module entry tables. Every module stores its records
  * with the same shape: an opaque encrypted payload + a HMAC guard
  * computed by the client from its main key + the record id.
@@ -153,3 +176,5 @@ export type NewInvite = typeof invites.$inferInsert;
 export type EntryRow = typeof moodEntries.$inferSelect;
 export type NewEntryRow = typeof moodEntries.$inferInsert;
 export type ModulesConfig = typeof modulesConfig.$inferSelect;
+export type Announcement = typeof announcements.$inferSelect;
+export type NewAnnouncement = typeof announcements.$inferInsert;

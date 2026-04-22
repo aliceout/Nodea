@@ -23,6 +23,9 @@ import {
   type ChangeEmailBody,
   type ChangeUsernameBody,
   type DeleteSelfBody,
+  type AnnouncementCreateBody,
+  type AnnouncementUpdateBody,
+  type AnnouncementResponse,
 } from '@nodea/shared';
 
 /**
@@ -169,6 +172,37 @@ export async function apiAdminCreateInvite(expiresAt?: string): Promise<{ id: st
 
 export async function apiAdminDeleteInvite(inviteId: string): Promise<void> {
   await request<void>('DELETE', `/admin/invites/${encodeURIComponent(inviteId)}`);
+}
+
+// --- Announcements endpoints -------------------------------------------
+
+export async function apiAdminListAnnouncements(): Promise<AnnouncementResponse[]> {
+  const { announcements } = await request<{ announcements: AnnouncementResponse[] }>(
+    'GET',
+    '/admin/announcements',
+  );
+  return announcements;
+}
+
+export async function apiAdminCreateAnnouncement(
+  body: AnnouncementCreateBody,
+): Promise<AnnouncementResponse> {
+  return request<AnnouncementResponse>('POST', '/admin/announcements', body);
+}
+
+export async function apiAdminUpdateAnnouncement(
+  id: string,
+  body: AnnouncementUpdateBody,
+): Promise<AnnouncementResponse> {
+  return request<AnnouncementResponse>(
+    'PATCH',
+    `/admin/announcements/${encodeURIComponent(id)}`,
+    body,
+  );
+}
+
+export async function apiAdminDeleteAnnouncement(id: string): Promise<void> {
+  await request<void>('DELETE', `/admin/announcements/${encodeURIComponent(id)}`);
 }
 
 // --- Modules config endpoints ------------------------------------------
