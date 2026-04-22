@@ -1,174 +1,201 @@
-# SECURITY
+# Security
 
-Ce document décrit l’architecture de sécurité actuellement en production (octobre 2025).  
-Il synthétise la gestion des clés, les flux chiffrés et les invariants à respecter côté client et serveur.
-
----
-
-## 1. Principes fondamentaux
-
-- **Chiffrement de bout en bout (E2E)**  
-  Toutes les données métiers sont chiffrées **avant** d’être envoyées à PocketBase.  
-  Le serveur ne persiste que des blobs opaques (`payload`) et les métadonnées techniques indispensables.
-
-- **Clé maîtresse aléatoire**  
-  - À l’inscription, le client génère une clé maîtresse (`mainKey`) de 32 octets aléatoires.  
-  - Cette clé n’est jamais transmise en clair. Elle est stockée sous forme chiffrée dans `users.encrypted_key`.  
-  - Le chiffrement utilise une clé dérivée du mot de passe via Argon2id (`password + encryption_salt`).
-
-- **CryptoKey non extractibles**  
-  - Au login, la dérivation Argon2id sert uniquement à déchiffrer `encrypted_key`.  
-  - La clé maîtresse est immédiatement importée en deux CryptoKey WebCrypto non extractibles :  
-    - AES-256-GCM (`encrypt`/`decrypt`),  
-    - HMAC SHA-256 (`sign`).  
-  - Ces objets vivent en mémoire et sont effacés au logout.
-
-- **Intégrité / autorisations**  
-  Les updates et deletes exigent un guard HMAC calculé à partir de la clé maîtresse. Sans cette clé, aucune mutation n’est possible (même pour l’admin serveur).
-
-- **Session cohérente**  
-  En cas d’échec de déchiffrement ou de clé absente, la session PocketBase est immédiatement purgeée (`pb.authStore.clear()`) et l’utilisateur est redirigé vers `/login`.  
-  ➜ Aucun état « authentifié mais sans clé » n’est toléré.
+Architecture of the E2E crypto model as of the close of the `refacto`
+migration cycle. This replaces the PocketBase-era version; every
+paragraph below describes code that exists today in the repository.
 
 ---
 
-## 2. Cycle de vie de la clé maîtresse
+## 1. Guiding principles
 
-### 2.1 Inscription
-1. Génération d’un tableau `Uint8Array(32)` aléatoire.  
-2. Dérivation Argon2id (`password + encryption_salt`).  
-3. Chiffrement AES-GCM de la clé maîtresse → stockage dans `encrypted_key`.  
-4. Effacement local de la version en clair.
-
-### 2.2 Connexion
-1. Authentification PB (`authWithPassword`).  
-2. Dérivation Argon2id avec le sel utilisateur.  
-3. Déchiffrement de `encrypted_key`.  
-   - En cas d’échec → purge session + message d’erreur invitant à se reconnecter.  
-4. Import en CryptoKey non extractibles (`ensureAesKey`, `ensureHmacKey`).  
-5. Mise à disposition dans le store (`state.mainKey`).  
-   - `clearGuardsCache()` est appelé pour éviter toute fuite post-session.
-
-### 2.3 Utilisation courante
-- Tous les services (`encryptAESGCM`, `decryptWithRetry`, `deriveGuard`) consomment les CryptoKey.  
-- `markMissing()` (store) passe l’état clé à `missing` et déclenche un logout si la session PB est encore valide.
-
-### 2.4 Changement de mot de passe
-1. Déchiffre `encrypted_key` avec l’ancien mot de passe.  
-2. Ré-encode la clé maîtresse avec la dérivation du nouveau mot de passe.  
-3. Met à jour `encrypted_key` côté serveur puis reconstruit les CryptoKey.  
-➜ La clé maîtresse ne change pas : aucune donnée n’a besoin d’être ré-chiffrée.
-
-### 2.5 Logout
-- Efface les CryptoKey (`wipeMainKeyMaterial`), vide le cache `nodea.guards.v1`, nettoie la session PB et redirige vers `/login`.
-
----
-
-## 3. Données chiffrées
-
-Chaque enregistrement `<module>_entries` contient :
-
-| Champ           | Description |
-|-----------------|-------------|
-| `module_user_id` | Identifiant secondaire opaque (un par module activé). |
-| `payload`        | Contenu JSON chiffré AES-GCM (base64). |
-| `cipher_iv`      | IV de 96 bits aléatoire, base64. |
-| `guard`          | HMAC caché (champ hidden). |
-| `created/updated`| Timestamps PocketBase. |
-
-- Chiffrement : AES-256-GCM avec CryptoKey non extractible.  
-- `payload` et `cipher_iv` sont toujours encodés en base64 (standard PocketBase).  
-- Le serveur ne peut corréler que des métadonnées (date de création, tailles, …), jamais le contenu.
+- **End-to-end encryption.** Every user-owned record ships to the API
+  already encrypted. The server stores opaque blobs
+  (`cipher_iv`, `payload`) and the technical metadata required to route
+  the request (`user_id`, `module_user_id`, `guard`, timestamps).
+  Announcements are the single intentional exception (see Database.md).
+- **Random main key.** At register time the client generates 32 random
+  bytes. The raw key is never transmitted; it is wrapped under a KEK
+  derived from `password + encryption_salt` via **Argon2id** and stored
+  as `users.encrypted_key`. The server can read that blob but cannot
+  decrypt it.
+- **HKDF domain separation.** The raw main key is stretched into two
+  distinct sub-keys before import into WebCrypto:
+  - `aesKey` — HKDF label `"nodea:aes"`, AES-256-GCM, `encrypt`/`decrypt`.
+  - `hmacKey` — HKDF label `"nodea:hmac"`, HMAC-SHA-256, `sign`.
+  The same raw bytes are **never** imported under both primitives. See
+  [`packages/web/src/core/crypto/key-material.ts`](../packages/web/src/core/crypto/key-material.ts).
+- **Non-extractable CryptoKey.** Both derived keys are imported with
+  `extractable: false` and live only in memory. They are cleared at
+  logout and cannot be re-exported for logging or local persistence.
+- **Branded types.** `AesMainKey`, `HmacMainKey`, `Base64`, `CipherIV`,
+  `EncryptedBlob` from `@nodea/shared/crypto-types` prevent mixing
+  primitives at compile time.
+- **Session coherence.** Any decrypt failure flips the Zustand crypto
+  slice to `'missing'`, the `KeyMissingModal` blocks the layout, and
+  the only escape is logout + re-login (which re-derives the main key
+  from the password).
 
 ---
 
-## 4. Guards HMAC
+## 2. Main key lifecycle
+
+### 2.1 Register
+1. Generate 32 random bytes (`randomBytes(32)`).
+2. Derive a KEK via Argon2id from `password + encryption_salt`.
+3. Wrap the main key under the KEK with AES-GCM → `encrypted_key`.
+4. Zero the source bytes; send `{ encryption_salt, encrypted_key }` to
+   the server alongside the invite code and password.
+
+### 2.2 Login
+1. Server verifies the password (Argon2id on the stored hash), issues a
+   signed session cookie, and returns the user row via `/auth/me`.
+2. Client re-derives the KEK and decrypts `encrypted_key` →
+   `rawMainKey` (32 bytes).
+3. `deriveMainKeys(rawMainKey)` runs HKDF twice (labels `"nodea:aes"`
+   and `"nodea:hmac"`) and imports each output as a non-extractable
+   `CryptoKey`. The source bytes are zeroed in the `finally` block.
+4. The Zustand store caches the `MainKeyMaterial`. No main-key bytes
+   are written to disk.
+
+### 2.3 Steady-state
+- Every encrypted module consumes `key.aesKey` for AES-GCM and
+  `key.hmacKey` for guard derivation.
+- On a cold reload the session cookie survives but the main key does
+  not (there is no password in hand to re-derive it). The store flips
+  `crypto.status = 'missing'` and the layout blocks via
+  `KeyMissingModal` until the user logs in again.
+
+### 2.4 Change password
+1. Unwrap the main key under the **old** password (client-side). This
+   throws on wrong password via the AES-GCM auth-tag, before any
+   server call.
+2. Re-wrap the same main key under the new password → fresh
+   `{ encryption_salt, encrypted_key }`.
+3. POST `/auth/change-password` with the new envelope + both passwords.
+4. Server revokes every other session and issues a new one.
+5. Client re-derives the AES + HMAC sub-keys from the same raw bytes
+   (they're unchanged, so every existing ciphertext is still readable).
+
+### 2.5 Password reset (`/auth/request-reset` + `/auth/reset`)
+Because the main key was derived from the lost password, **it is
+unrecoverable**. The reset flow therefore treats the existing encrypted
+data as lost too:
+
+1. Client generates a **fresh** main key + envelope.
+2. Server validates the token, then inside a single transaction:
+   - deletes every row from all 8 `*_entries` tables,
+     `modules_config`, and `user_preferences` for this user;
+   - rotates `password_hash` + `encryption_salt` + `encrypted_key`;
+   - flips `onboarding_status` back to `pending`;
+   - marks the reset token `used_at`;
+   - revokes every session.
+
+The `/reset` page hard-gates submission behind a confirmation
+checkbox so the user acknowledges the data loss explicitly.
+
+### 2.6 Logout
+- `session.logout()` posts to `/auth/logout` (which deletes the
+  session row), then `resetAll()` drops the entire Zustand store. The
+  `CryptoKey` objects become garbage-collectable.
+- `wipeMainKeyMaterial` zeroes any raw-byte helpers still in scope.
+  Note: WebCrypto does not expose a way to wipe `CryptoKey` internals —
+  we rely on the non-extractable flag + process isolation. A full purge
+  requires a hard reload.
+
+---
+
+## 3. Encrypted records
+
+Every `<module>_entries` row has the shape:
+
+| Column           | Role                                                     |
+| ---------------- | -------------------------------------------------------- |
+| `user_id`        | Server-side ownership anchor. FK with CASCADE.           |
+| `module_user_id` | Opaque per-module sub-identifier (sid). Client-generated. |
+| `cipher_iv`      | 96-bit AES-GCM IV, base64.                               |
+| `payload`        | Base64 AES-GCM ciphertext of the decrypted JSON payload. |
+| `guard`          | HMAC-SHA-256 digest. Never returned in reads.            |
+| `created_at` / `updated_at` | Server-side timestamps.                          |
+
+The API response strips `guard` on reads. Update and delete take the
+guard as a **query parameter** (`?d=<guard>`), so the server compares
+but never learns the main key.
+
+---
+
+## 4. HMAC guards
 
 ```text
-guardSeed = HMAC(mainKey, `guard:${module_user_id}`)
-guard     = "g_" + hex( HMAC(guardSeed, recordId) )
+guard = "g_" + hex( HMAC(hmacKey, `${module_user_id}:${record_id}`) )
 ```
 
-- Création en deux temps : `POST guard:"init"` → `PATCH` promotion (avec `?sid=<sid>&d=init`).  
-- Update/Delete : `?sid=<sid>&d=<guard>` obligatoire. Le serveur compare et rejette si mismatch.  
-- Fallback `d=init` possible pour les enregistrements historiques qui n’ont jamais été promus.  
-- Le cache local des guards (`nodea.guards.v1`) est purgé au login et au logout.
+- **Two-phase creation.** On `POST /<collection>/records` the client
+  sends `guard: "init"` (it doesn't know the record id yet). The
+  server returns the `id`; the client immediately `PATCH`es with
+  `guard=init` in the query and the real `guard` in the body, and the
+  server promotes.
+- **Update / delete** require `?sid=<module_user_id>&d=<guard>`. The
+  server does a constant-time compare against the stored guard and
+  rejects on mismatch.
+- **Deterministic.** No cache, no network. Losing the main key means
+  losing the ability to mutate any existing record.
+
+The 1:1 tables (`modules_config`, `user_preferences`) skip the guard:
+there is no record id to authenticate, the user *is* the record, and
+`requireUser` + `user_id` scoping is sufficient.
 
 ---
 
-## 5. API : flux standards
+## 5. Server-side protections
 
-| Étape       | Requête                                              | Notes clés |
-|-------------|------------------------------------------------------|------------|
-| Création    | `POST /<module>_entries` (guard `"init"`)            | Nécessite `module_user_id`, `payload`, `cipher_iv`. |
-| Promotion   | `PATCH /<module>_entries/<id>?sid=<sid>&d=init`      | Envoie `guard` calculé localement. |
-| Lecture     | `GET /<module>_entries?sid=<sid>`                    | Retourne `payload` chiffré. Aucun guard ni clé. |
-| Mise à jour | `PATCH ...?sid=<sid>&d=<guard>`                      | Guard doit correspondre exactement. |
-| Suppression | `DELETE ...?sid=<sid>&d=<guard>`                     | Guard requis, fallback `d=init` pris en charge côté client. |
-
-Toute tentative échoue si la clé maîtresse est absente → `markMissing()` force le logout.
-
----
-
-## 6. Export / Import
-
-### Export (client)
-- Format commun :
-```json
-{
-  "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
-  "modules": {
-    "<module>": [ ...payloads clairs... ]
-  }
-}
-```
-- Les plugins (`core/utils/ImportExport/*.jsx`) itèrent paginé (`perPage` 200) via `pb.send`, déchiffrent localement (`decryptWithRetry`) et sérialisent les payloads en clair.
-
-### Import
-- Parse le JSON clair, normalise, chiffre localement puis rejoue le flux POST/PATCH.  
-- Les plugins gèrent :  
-  - `listExistingKeys` (déduplication),  
-  - `getNaturalKey` (clé fonctionnelle dérivée du payload),  
-  - gestion d’erreurs module par module (ex. log interne, message utilisateur).  
-- Importation possible depuis :  
-  - export moderne (`{ meta, modules }`),  
-  - tableau legacy (Mood),  
-  - NDJSON (1 payload / ligne).  
-  Le plugin choisit la stratégie adéquate.
+- **Argon2id** password hashing via `@node-rs/argon2`. Login verifies
+  even on unknown email (dummy hash) to keep timing constant.
+- **Parametrised queries** everywhere — Drizzle's `eq(x.field, value)`
+  etc. No string concatenation.
+- **Rate limits** on `/auth/register`, `/auth/login`,
+  `/auth/request-reset`, `/auth/reset`. In-process memory, keyed on IP.
+- **Invite atomicity**: `SELECT … FOR UPDATE` inside a transaction
+  guarantees each code is consumed at most once.
+- **Session cookies**: HttpOnly, Signed (`COOKIE_SECRET`, min 32
+  chars), `SameSite=Lax`, `Secure` in prod. Revoked via
+  `DELETE FROM sessions`.
+- **Admin endpoints** stack `requireAdmin` on top of `requireUser`
+  (403 for non-admins). An admin cannot delete their own account via
+  `/admin/users/:id` — the route refuses `self.id === id`.
+- **Response serialisation** never returns `guard` or another user's
+  `encrypted_key`.
 
 ---
 
-## 7. Invariants
+## 6. Invariants
 
-1. **Confidentialité** : la clé maîtresse reste côté client ; le serveur n’a jamais accès aux données en clair.  
-2. **Intégrité** : toute mutation nécessite un guard valide, donc la clé maîtresse.  
-3. **Portabilité** : export clair lisible et réimportable ; le format est versionné.  
-4. **Session cohérente** : aucune action n’est permise si la clé est absente → logout immédiat.  
-5. **Homogénéité** : tous les modules appliquent la même construction (POST init + PATCH guard).  
-6. **Auditabilité locale** : les actions de purge/suppression se font en listant puis supprimant chaque enregistrement avec son guard (cf. suppression de compte).
-
----
-
-## 8. Points d’attention pour les devs
-
-- Générer un IV unique par chiffrement (`crypto.getRandomValues`).  
-- Ne jamais logguer les payloads clairs, la clé maîtresse ni les guards.  
-- Nettoyer `nodea.guards.v1` au login/logout (`clearGuardsCache`).  
-- En cas d’erreur de déchiffrement (`decryptWithRetry`) :  
-  - Propager `markMissing()` (ce qui déclenche logout).  
-  - Informer l’utilisateur qu’un relogin est nécessaire.  
-- Lors d’un changement de mot de passe :  
-  - Réutiliser la même clé maîtresse (pas de régénération).  
-- Lors des imports massifs :  
-  - Coupler progress bar UI et pagination plugin (perPage 200) pour éviter les timeouts.  
-- Sur le serveur :  
-  - Ne jamais exposer `guard` ni `payload` via des hooks ou logs.  
-  - `encrypted_key` est opaque, ne pas tenter de le manipuler en dehors du client.
+1. **Confidentiality** — the main key never leaves the client. The
+   server stores ciphertext, the wrapped envelope, and metadata.
+2. **Integrity** — every mutation on an entry table requires a valid
+   guard, which requires the HMAC sub-key, which requires the main
+   key. No main key, no writes.
+3. **Domain separation** — HKDF produces AES and HMAC sub-keys from
+   distinct labels. A corruption of one domain cannot be replayed as
+   the other.
+4. **Session coherence** — no "authenticated without key" state:
+   decrypt failure or missing key triggers the `KeyMissingModal`.
+5. **Reset is destructive** — resetting the password purges the
+   user's encrypted data in the same transaction that rotates the
+   credentials. There is no orphaned ciphertext lying around.
 
 ---
 
-## 9. Métadonnées non sensibles
+## 7. Developer checklist
 
-Certaines informations (ex. `users.onboarding_status`, `users.onboarding_version`) restent en clair pour piloter l’UX. Elles n’ouvrent aucun accès aux données chiffrées ni aux clés.  
-
-Le modèle E2E repose sur deux piliers : **clé maîtresse aléatoire + CryptoKey non extractibles** et **guards HMAC**. Tant que ces invariants sont respectés, la confidentialité et l’intégrité des données utilisateur sont garanties.
+- Generate a fresh IV per AES-GCM encryption (`crypto.getRandomValues`).
+- Never log / persist a `CryptoKey`, raw main key, or `guard`.
+- Never add a second base64 encoder; use
+  [`core/crypto/base64.ts`](../packages/web/src/core/crypto/base64.ts).
+- When the Zustand `crypto.status` slice flips to `'missing'`, do not
+  attempt decrypt; surface the existing `KeyMissingModal`.
+- New modules must reuse `createCollectionClient`; do not reimplement
+  the POST/PATCH dance.
+- Server responses must never leak `guard` or another user's
+  `encrypted_key`. Keep the integration test that asserts this.
+- Crypto additions use branded types (`AesMainKey`, `HmacMainKey`, …)
+  so mixing primitives fails at compile time.

@@ -1,7 +1,16 @@
 # Roadmap de migration — Nodea
 
-> **Note de révision** — Ce document a été relu et ajusté après vérification du code réel.
-> Corrections principales : base64 a 2 implémentations (pas 4), `crypto-js` et `argon2-browser` sont des deps zombies (à nettoyer Phase 1), la réutilisation de clé AES/HMAC est bumpée de MOYENNE à HAUTE (violation directe de séparation de domaine dans [webcrypto.js:115](../frontend/src/core/crypto/webcrypto.js#L115)), `wipeMainKeyMaterial` est supprimé plutôt que documenté, `decryptWithRetry` est évalué via tests avant suppression.
+> **État — terminée.** Toutes les phases (0 → 10) ont été livrées sur
+> la branche `refacto`. Le stack cible (Hono + Drizzle + PostgreSQL 16
+> + TypeScript strict + pnpm workspaces + Docker) est en place. Le
+> cycle de restauration post-migration (R1 → R15) est suivi dans
+> [`Feature-Parity-Roadmap.md`](Feature-Parity-Roadmap.md) et dans le
+> tracker GitHub sous le label `roadmap` ; il est clos au moment de
+> la fermeture de #24.
+>
+> Le document ci-dessous est conservé comme référence historique —
+> les fichiers qu'il cite (`frontend/src/…`, `crypto-js`, PocketBase)
+> n'existent plus dans la branche courante.
 
 ## Principes directeurs
 

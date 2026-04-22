@@ -62,14 +62,14 @@ fonctionnelle — pas avant.
 | R5    | Passage — vue par thread + autosuggest thread                          | ✅ livré    | `b556444`     |
 | R6    | Habits — target/duration/archive, heatmap, taux de régularité          | ✅ livré    | `a1cbfa3`     |
 | R7    | Library — grille, couvertures, rating, fiches, providers opt-in        | ✅ livré    | `dd04d01`     |
-| R8    | Review — parcours YearCompass guidé (15 sections) — **greenfield**     | 🗂 tracked  | [#17][r8]     |
-| R9    | Homepage — AnnouncementSpotlight + MoodOverview                        | 🗂 tracked  | [#18][r9]     |
-| R10   | Admin — AnnouncementsManager + back (nouvelle table + routes)          | 🗂 tracked  | [#19][r10]    |
-| R11   | Onboarding flow (OnboardingModal + premier passage)                    | 🗂 tracked  | [#20][r11]    |
-| R12   | User preferences synchronisées (table chiffrée dédiée) — **greenfield**| 🗂 tracked  | [#21][r12]    |
-| R13   | SMTP + reset-password par email — **greenfield**                       | 🗂 tracked  | [#22][r13]    |
-| R14   | Ports UI atoms JSX → TSX (finition)                                    | 🗂 tracked  | [#23][r14]    |
-| R15   | Documentation (Architecture.md + Database.md) mise à jour              | 🗂 tracked  | [#24][r15]    |
+| R8    | Review — parcours YearCompass guidé (15 sections) — **greenfield**     | ✅ livré    | `ee795bd` ([#17][r8])  |
+| R9    | Homepage — AnnouncementSpotlight + MoodOverview                        | ✅ livré    | `b85f4b8` ([#18][r9])  |
+| R10   | Admin — AnnouncementsManager + back (nouvelle table + routes)          | ✅ livré    | `1bc9287` ([#19][r10]) |
+| R11   | Onboarding flow (OnboardingModal + premier passage)                    | ✅ livré    | `476c7d7` ([#20][r11]) |
+| R12   | User preferences synchronisées (table chiffrée dédiée) — **greenfield**| ✅ livré    | `f1b2ecc` ([#21][r12]) |
+| R13   | SMTP + reset-password par email — **greenfield**                       | ✅ livré    | `1a61f55` ([#22][r13]) |
+| R14   | Ports UI atoms JSX → TSX (finition)                                    | ✅ livré    | `3f27126` ([#23][r14]) |
+| R15   | Documentation (Architecture.md + Database.md) mise à jour              | ✅ livré    | (current) ([#24][r15]) |
 
 [r8]:  https://github.com/aliceout/Nodea/issues/17
 [r9]:  https://github.com/aliceout/Nodea/issues/18
@@ -85,9 +85,13 @@ R3–R7 indépendantes. R9 dépend de R10 pour `AnnouncementSpotlight`
 (R3 déjà livré → `MoodOverview` débloqué). R10 et R13 demandent une
 nouvelle table + nouvelles routes. R15 se fait en dernier.
 
-Les phases R1–R7 sont closes : la parité fonctionnelle avec le legacy
-est atteinte. Les phases R8–R15 vivent désormais dans le tracker
-GitHub (label `roadmap`) et seront traitées au fil de l'eau.
+**Cycle clos.** R1 à R15 livrées. Parité fonctionnelle atteinte ET
+dépassée (provider opt-in côté Library, heatmap Habits, reset email
+chiffré avec purge atomique, préférences synchronisées chiffrées).
+Ce document est conservé comme archive — les sections détaillées
+ci-dessous décrivent les spécifications initiales, pas forcément l'état
+final des livrables. Voir les commits et les issues GitHub
+(label `roadmap`) pour la trace de ce qui a été effectivement livré.
 
 ---
 
