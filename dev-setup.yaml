@@ -1,0 +1,28 @@
+# Dev Setup VS Code extension config.
+#
+# Fetches secrets from Infisical and writes them to the repo-root `.env`
+# when the workspace opens (or on the `Dev Setup: Fetch Secrets`
+# command). Docker-compose and the API scripts both consume that file
+# — it is the single canonical place for local secrets.
+#
+# Pre-requisites:
+#   1. Install the "Dev Setup" VS Code extension.
+#   2. Run `Dev Setup: Login to Infisical` and paste the Universal Auth
+#      Client ID / Client Secret of a Machine Identity that has read
+#      access to the project below.
+#
+# Edit `project:` / `batches:` to match your Infisical workspace.
+# `project:` accepts either the project slug (visible in the Infisical
+# dashboard URL) or a UUID project ID — the extension resolves a slug
+# to the id automatically.
+
+secrets:
+  provider: infisical
+  loader: dotenv
+  # TODO: replace with your Infisical project slug.
+  project: nodea
+  batches:
+    # Pulls every secret from the `dev` environment, root path.
+    # Split into folders (e.g. `dev/api`, `dev/web`) if you prefer a
+    # per-component layout in Infisical — see the extension README.
+    - dev
