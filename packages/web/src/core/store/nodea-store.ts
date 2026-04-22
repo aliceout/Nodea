@@ -16,6 +16,7 @@
  */
 import { create } from 'zustand';
 import type { MainKeyMaterial } from '../crypto/key-material.ts';
+import type { UserPreferencesPayload } from '@nodea/shared';
 
 export type AuthStatus = 'unauthenticated' | 'loading' | 'authenticated';
 
@@ -74,6 +75,11 @@ export interface NodeaState {
   setModules(next: ModulesRuntime): void;
   updateModule(id: string, partial: Partial<ModuleRuntimeEntry>): void;
 
+  // --- user preferences (E2E encrypted, synced via /user-preferences) ---
+  preferences: UserPreferencesPayload;
+  setPreferences(next: UserPreferencesPayload): void;
+  updatePreferences(partial: Partial<UserPreferencesPayload>): void;
+
   // --- UI notifications ---
   notifications: ToastNotification[];
   pushToast(n: Omit<ToastNotification, 'id'>): void;
@@ -121,6 +127,11 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
       },
     })),
 
+  preferences: {},
+  setPreferences: (next) => set({ preferences: next }),
+  updatePreferences: (partial) =>
+    set((state) => ({ preferences: { ...state.preferences, ...partial } })),
+
   notifications: [],
   pushToast: (n) =>
     set((state) => ({
@@ -140,6 +151,7 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
       auth: emptyAuth,
       crypto: emptyCrypto,
       modules: {},
+      preferences: {},
       notifications: [],
       mobileMenuOpen: false,
     }),
@@ -158,3 +170,4 @@ export const selectEnabledModules = (s: NodeaState) =>
   Object.entries(s.modules)
     .filter(([, v]) => v.enabled)
     .map(([k]) => k);
+export const selectPreferences = (s: NodeaState) => s.preferences;

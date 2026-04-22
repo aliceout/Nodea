@@ -1,48 +1,73 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { applyTheme, watchSystemThemeChanges } from './themeManager.ts';
+import { usePreferences } from '@/core/preferences/usePreferences';
+import type { ThemePreference } from '@nodea/shared';
 
-export type ThemePreference = 'light' | 'dark' | 'system';
+export type { ThemePreference };
 
 const STORAGE_KEY = 'nodea:theme';
 
-function readInitial(): ThemePreference {
+function isTheme(v: unknown): v is ThemePreference {
+  return v === 'light' || v === 'dark' || v === 'system';
+}
+
+function readCache(): ThemePreference {
   if (typeof window === 'undefined') return 'system';
   try {
     const v = window.localStorage.getItem(STORAGE_KEY);
-    if (v === 'light' || v === 'dark' || v === 'system') return v;
+    if (isTheme(v)) return v;
   } catch {
-    // ignore (private mode / storage disabled)
+    // storage disabled (private mode) — fall through
   }
   return 'system';
 }
 
+function writeCache(next: ThemePreference): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // ignore
+  }
+}
+
 /**
- * Lightweight theme hook — no Zustand, no PB persistence.
+ * Theme hook, backed by the encrypted user-preferences blob.
  *
- * State lives in `localStorage` (key `nodea:theme`) and is applied to
- * `<html>` via the existing `themeManager`. When the preference is
- * `system`, we subscribe to the OS colour scheme so toggling dark
- * mode at the OS level repaints Nodea without a reload.
+ * Authority chain:
+ *   1. The server-synced `preferences.theme` (decrypted into the
+ *      Zustand slice) wins once the user is authenticated and their
+ *      main key is derived.
+ *   2. `localStorage` ("nodea:theme") is a local cache so the initial
+ *      paint (pre-React) and any logged-out browsing don't flash the
+ *      wrong palette. It is NOT the source of truth.
+ *
+ * When the user toggles the theme, we write to both the encrypted blob
+ * (cross-device) AND the local cache (next cold start). The sync is
+ * debounced by `usePreferences` so rapid clicks collapse to a single
+ * PUT.
  */
 export function useTheme(): { theme: ThemePreference; setTheme: (next: ThemePreference) => void } {
-  const [theme, setThemeState] = useState<ThemePreference>(readInitial);
+  const { preferences, setPreferences } = usePreferences();
+  const theme: ThemePreference = isTheme(preferences.theme) ? preferences.theme : readCache();
 
   useEffect(() => {
     applyTheme(theme);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // ignore
-    }
+    writeCache(theme);
     if (theme !== 'system') return undefined;
     const unsubscribe = watchSystemThemeChanges(() => applyTheme('system'));
     return unsubscribe as () => void;
   }, [theme]);
 
-  const setTheme = useCallback((next: ThemePreference) => {
-    if (next !== 'light' && next !== 'dark' && next !== 'system') return;
-    setThemeState(next);
-  }, []);
+  const setTheme = useCallback(
+    (next: ThemePreference) => {
+      if (!isTheme(next)) return;
+      writeCache(next);
+      applyTheme(next);
+      // Fire-and-forget: usePreferences handles the encrypted PUT + store update.
+      void setPreferences({ theme: next });
+    },
+    [setPreferences],
+  );
 
   return { theme, setTheme };
 }

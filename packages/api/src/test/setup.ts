@@ -27,6 +27,7 @@ beforeEach(async () => {
       library_reviews_entries,
       review_entries,
       modules_config,
+      user_preferences,
       announcements,
       sessions,
       invites,

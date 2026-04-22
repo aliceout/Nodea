@@ -10,6 +10,7 @@ import {
 } from '@/core/store/nodea-store';
 import { useSession } from '@/core/auth/use-session';
 import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
+import { usePreferences } from '@/core/preferences/usePreferences';
 import Header from './headers/Header';
 import Sidebar from './navigation/Sidebar.jsx';
 
@@ -31,6 +32,9 @@ export default function Layout() {
   const user = useNodeaStore(selectUser);
   const setAuth = useNodeaStore((s) => s.setAuth);
   const session = useSession();
+  // Hydrate the encrypted user preferences slice as soon as the layout
+  // mounts — runs at most once per (session, mainKey) pair.
+  usePreferences();
   const [snoozed, setSnoozed] = useState(false);
   const needsOnboarding =
     !snoozed && user?.onboardingStatus === 'pending' && keyStatus !== 'missing';

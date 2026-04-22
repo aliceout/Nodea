@@ -138,18 +138,50 @@ function detectInitialLanguage() {
   return DEFAULT_LANGUAGE;
 }
 
+import { useNodeaStore } from "@/core/store/nodea-store";
+import { saveEncryptedPreferences } from "@/core/api/preferences-client";
+
 export function I18nProvider({ children }) {
   const [language, setLanguageState] = useState(detectInitialLanguage);
+
+  // When the preferences slice hydrates with a different language than
+  // what we detected from localStorage, adopt it (server wins once the
+  // user is signed in — that's the cross-device sync contract).
+  useEffect(() => {
+    const unsub = useNodeaStore.subscribe((state) => {
+      const next = state.preferences?.language;
+      if (next && SUPPORTED_LANGUAGES[next]) {
+        setLanguageState((prev) => (prev === next ? prev : next));
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, language);
   }, [language]);
 
-  const setLanguage = useCallback((nextLanguage) => {
+  const setLanguage = useCallback(async (nextLanguage) => {
     const normalized = String(nextLanguage || "").toLowerCase();
     if (!SUPPORTED_LANGUAGES[normalized]) return;
     setLanguageState(normalized);
+
+    // Persist to the encrypted blob — fire-and-forget. When the user
+    // isn't signed in yet (no main key), the localStorage effect above
+    // is the only store; server sync kicks in on next login.
+    try {
+      const state = useNodeaStore.getState();
+      const mainKey = state.crypto?.main;
+      if (!mainKey) return;
+      state.updatePreferences({ language: normalized });
+      await saveEncryptedPreferences(mainKey.aesKey, {
+        ...state.preferences,
+        language: normalized,
+      });
+    } catch {
+      // network / decrypt failure — local state is already updated
+    }
   }, []);
 
   const t = useCallback(

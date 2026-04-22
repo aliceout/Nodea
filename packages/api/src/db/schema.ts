@@ -167,6 +167,22 @@ export const modulesConfig = pgTable('modules_config', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * User preferences — theme, language, and any other cross-device
+ * personalisation. 1:1 on `user_id`, same E2E-encrypted envelope as
+ * `modules_config` (no `guard` needed; the user IS the record). Kept
+ * as a separate table so server-side admins can never accidentally
+ * read preferences while auditing modules, and vice versa.
+ */
+export const userPreferences = pgTable('user_preferences', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  cipherIv: text('cipher_iv').notNull(),
+  payload: text('payload').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
@@ -176,5 +192,6 @@ export type NewInvite = typeof invites.$inferInsert;
 export type EntryRow = typeof moodEntries.$inferSelect;
 export type NewEntryRow = typeof moodEntries.$inferInsert;
 export type ModulesConfig = typeof modulesConfig.$inferSelect;
+export type UserPreferences = typeof userPreferences.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type NewAnnouncement = typeof announcements.$inferInsert;
