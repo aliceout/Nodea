@@ -6,7 +6,7 @@
   },
   "mood": {
     "quickView": "Aperçu rapide",
-    "monthAverage": "Moyenne mois en cours"
+    "recentAverage": "Moyenne ({count} dernières entrées)"
   },
   "sections": {
     "actions": {

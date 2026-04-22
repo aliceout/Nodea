@@ -14,8 +14,25 @@ function normaliseMonths(months) {
   return Math.max(1, Math.floor(months));
 }
 
+function normaliseLatestEntries(limit) {
+  if (typeof limit !== "number" || Number.isNaN(limit)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(limit));
+}
+
+/**
+ * Load and decrypt mood entries before preparing chart-friendly rows.
+ * When `latestEntries` is provided, it overrides the `months` filtering window.
+ *
+ * @param {object} [options]
+ * @param {number} [options.months=6] Number of months to include when no explicit limit is provided.
+ * @param {number} [options.latestEntries=0] Restrict the dataset to the latest decrypted entries.
+ * @returns {{status: string, data: Array<{date: string, mood: number, emoji: string}>, error: string, hasData: boolean}}
+ */
 export default function useMoodTrend(options = {}) {
   const months = normaliseMonths(options.months ?? MONTHS_DEFAULT);
+  const latestEntries = normaliseLatestEntries(options.latestEntries ?? 0);
 
   const { mainKey, markMissing } = useStore();
   const modulesRuntime = useModulesRuntime();
@@ -77,15 +94,25 @@ export default function useMoodTrend(options = {}) {
           }
         }
 
-        const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
-        const filtered = rows.filter((row) => {
-          const candidate = new Date(row.date);
-          if (Number.isNaN(candidate.getTime())) return false;
-          return candidate >= start && candidate <= now;
-        });
-
-        filtered.sort((a, b) => a.date.localeCompare(b.date));
+        const sortedRows = [...rows].sort((a, b) =>
+          a.date.localeCompare(b.date)
+        );
+        let filtered;
+        if (latestEntries > 0) {
+          filtered = sortedRows.slice(-latestEntries);
+        } else {
+          const now = new Date();
+          const start = new Date(
+            now.getFullYear(),
+            now.getMonth() - (months - 1),
+            1
+          );
+          filtered = sortedRows.filter((row) => {
+            const candidate = new Date(row.date);
+            if (Number.isNaN(candidate.getTime())) return false;
+            return candidate >= start && candidate <= now;
+          });
+        }
 
         if (!cancelled) {
           setState({ status: "ready", data: filtered, error: "" });
@@ -106,7 +133,7 @@ export default function useMoodTrend(options = {}) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, markMissing, months]);
+  }, [mainKey, moduleUserId, markMissing, months, latestEntries]);
 
   return useMemo(
     () => ({

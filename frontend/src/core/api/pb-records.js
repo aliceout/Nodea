@@ -1,7 +1,18 @@
+/**
+ * Shared helpers to query and create encrypted records in PocketBase collections.
+ * Handles guard derivation and validation for module scoped records.
+ */
 import pb from "@/core/api/pocketbase";
 import { deriveGuard } from "@/core/crypto/guards";
 import { hasMainKeyMaterial } from "@/core/crypto/main-key";
 
+/**
+ * List PocketBase records for a collection with module scoping.
+ *
+ * @param {string} collection - PocketBase collection name.
+ * @param {{sid?: string, page?: number, perPage?: number, sort?: string, fields?: string}} [options] - Pagination and filtering options.
+ * @returns {Promise<any>} Raw response payload from PocketBase.
+ */
 export async function listRecords(
   collection,
   { sid, page = 1, perPage = 200, sort = "-created", fields } = {}
@@ -18,6 +29,18 @@ export async function listRecords(
   return res?.json || res;
 }
 
+/**
+ * Create an encrypted record and immediately derive its guard.
+ *
+ * @param {{
+ *   collection: string,
+ *   moduleUserId: string,
+ *   payloadString: string,
+ *   iv: string,
+ *   mainKey: CryptoKey | Uint8Array
+ * }} params - Record creation inputs.
+ * @returns {Promise<string | undefined>} Newly created record id.
+ */
 export async function createEncryptedRecord({
   collection,
   moduleUserId,

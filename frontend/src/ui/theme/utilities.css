@@ -1,0 +1,19 @@
+@layer utilities {
+  .surface + .surface {
+    margin-top: var(--surface-gap-md);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  :is(input, textarea, select, button):focus {
+    outline: none;
+    box-shadow: none;
+  }
+}

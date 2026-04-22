@@ -1,5 +1,15 @@
+/**
+ * CRUD helpers around the PocketBase `announcements` collection.
+ * Handles basic validation and consistent error conversion.
+ */
 import pb from "./pocketbase";
 
+/**
+ * Convert unknown error payloads into a human readable string.
+ *
+ * @param {unknown} error - Arbitrary error value.
+ * @returns {string} Safe error message.
+ */
 function ensureErrorMessage(error) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -10,6 +20,13 @@ function ensureErrorMessage(error) {
   }
 }
 
+/**
+ * Fetch a paginated list of announcements ordered by publication date.
+ *
+ * @param {{limit?: number, sort?: string, throwOnError?: boolean}} [options] - Query fine tuning.
+ * @returns {Promise<Array<Record<string, any>>>} PocketBase records (empty array on failure).
+ * @throws {Error} When `throwOnError` is true and the query fails.
+ */
 export async function listAnnouncements({
   limit = 5,
   sort = "-published_at,-created",
@@ -33,6 +50,12 @@ export async function listAnnouncements({
   }
 }
 
+/**
+ * Create a published announcement with sane defaults for missing fields.
+ *
+ * @param {{title?: string, message?: string, published?: boolean, publishedAt?: string}} input - Announcement fields.
+ * @returns {Promise<Record<string, any>>} The created PocketBase record.
+ */
 export async function createAnnouncement(input) {
   const payload = {
     title: input?.title ?? "",
@@ -49,6 +72,12 @@ export async function createAnnouncement(input) {
   }
 }
 
+/**
+ * Delete an announcement record.
+ *
+ * @param {string} id - PocketBase record identifier.
+ * @returns {Promise<void>}
+ */
 export async function deleteAnnouncement(id) {
   if (!id) throw new Error("id requis pour deleteAnnouncement");
   try {

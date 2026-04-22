@@ -1,3 +1,8 @@
+/**
+ * Hook + cache helpers used to hydrate, subscribe to and persist user-level preferences.
+ * The module keeps an in-memory cache per user and rebroadcasts updates across every
+ * component currently mounted for that user.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 import pb from "@/core/api/pocketbase";
 import { useStore } from "@/core/store/StoreProvider";
@@ -12,6 +17,12 @@ const preferencesCache = new Map();
 const inflightFetches = new Map();
 const subscribersByUser = new Map();
 
+/**
+ * Notify every subscriber attached to a given user that their preferences changed.
+ *
+ * @param {string|null} userId - PocketBase user identifier.
+ * @param {Record<string, any>} preferences - The preference payload to forward.
+ */
 function broadcastPreferences(userId, preferences) {
   if (!userId) return;
   const listeners = subscribersByUser.get(userId);
@@ -29,12 +40,24 @@ function broadcastPreferences(userId, preferences) {
   }
 }
 
+/**
+ * Safely read the cached preferences for the provided user id.
+ *
+ * @param {string|null} userId - PocketBase user identifier.
+ * @returns {Record<string, any>} A cloned preference object or an empty object.
+ */
 function getInitialPreferences(userId) {
   if (!userId) return {};
   const cached = preferencesCache.get(userId);
   return cached ? { ...cached } : {};
 }
 
+/**
+ * Store fresh preferences in the cache and broadcast them to listeners.
+ *
+ * @param {string} userId - PocketBase user identifier.
+ * @param {Record<string, any>} data - Preference payload fetched from the API.
+ */
 function finalizeFetch(userId, data) {
   if (!userId) return;
   const safe = data && typeof data === "object" ? { ...data } : {};
@@ -42,6 +65,19 @@ function finalizeFetch(userId, data) {
   broadcastPreferences(userId, safe);
 }
 
+/**
+ * React hook that exposes user preference state, loading flags and mutation helpers.
+ * The hook keeps its local state in sync with the shared cache so multiple mounts stay aligned.
+ *
+ * @returns {{
+ *   preferences: Record<string, any>,
+ *   isLoading: boolean,
+ *   isSaving: boolean,
+ *   setPreferences: (next: Record<string, any>, options?: {persist?: boolean}) => Promise<Record<string, any>>,
+ *   updatePreferences: (updater: ((prev: Record<string, any>) => Record<string, any>) | Record<string, any>) => Promise<Record<string, any>>,
+ *   refreshPreferences: () => Promise<Record<string, any>>
+ * }}
+ */
 export function useUserPreferences() {
   const { mainKey, markMissing } = useStore();
   const { user } = useAuth();
@@ -223,10 +259,22 @@ export function useUserPreferences() {
   };
 }
 
+/**
+ * Read the cached preferences synchronously without subscribing.
+ *
+ * @param {string|null} userId - PocketBase user identifier.
+ * @returns {Record<string, any>|null} The cached preferences clone or null when missing.
+ */
 export function getCachedUserPreferences(userId) {
   return userId ? preferencesCache.get(userId) || null : null;
 }
 
+/**
+ * Seed the per-user preference cache without triggering a network fetch.
+ *
+ * @param {string|null} userId - PocketBase user identifier.
+ * @param {Record<string, any>} preferences - Preference payload to cache.
+ */
 export function primeCachedUserPreferences(userId, preferences) {
   if (!userId) return;
   const safe =

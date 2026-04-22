@@ -143,7 +143,7 @@ export default function DeleteAccountSection({ user }) {
           <Button
             type="button"
             onClick={handleDelete}
-            className="bg-nodea-blush-dark !important font-semibold hover:bg-nodea-blush-darker !important"
+            variant="danger"
             disabled={deleting}
           >
             {deleting ? "Suppression en cours..." : "Supprimer mon compte"}

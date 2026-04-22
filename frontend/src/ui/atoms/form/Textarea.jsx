@@ -41,7 +41,7 @@ export default function Textarea({
         onChange={onChange}
         rows={rows}
         required={required}
-        className={`mt-1 w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors focus:border-[var(--accent-primary-strong)] hover:border-[var(--accent-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(144,182,162,0.35)] placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:border-[var(--border-default)]/70 disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-muted)] ${inputClassName}`}
+        className={`mt-1 w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors focus:border-[var(--accent-primary-strong)] hover:border-[var(--accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary-glow)] placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:border-[var(--border-default)]/70 disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-muted)] ${inputClassName}`}
         {...props}
       />
       {legend && <p className="mt-1 text-xs text-[var(--text-muted)]">{legend}</p>}

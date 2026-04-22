@@ -213,16 +213,14 @@ export default function ChangePasswordPage() {
           <FormFeedback message={error} type="error" className="w-full" />
           <FormFeedback message={success} type="success" className="w-full" />
 
-          <Button
-            type="submit"
-            className="w-full bg-nodea-sage-dark hover:bg-nodea-sage-darker mt-2"
-          >
+          <Button type="submit" variant="primary" className="w-full mt-2">
             {t("auth.changePassword.submit")}
           </Button>
           <Button
             type="button"
             onClick={handleBackToAccount}
-            className="w-full mt-3 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50"
+            variant="secondary"
+            className="w-full mt-3"
           >
             {t("auth.changePassword.backToAccount")}
           </Button>
