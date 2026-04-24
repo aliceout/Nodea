@@ -93,7 +93,16 @@ export interface NodeaState {
   resetAll(): void;
 }
 
-const emptyAuth: NodeaState['auth'] = { status: 'unauthenticated', user: null };
+/**
+ * Initial auth state. `loading` (not `unauthenticated`) so the first
+ * render of `ProtectedRoute` waits for the session hydration round-trip
+ * before deciding whether to redirect — otherwise a cold reload flashes
+ * `/login` before `/auth/me` has had a chance to answer.
+ * `resetAll()` flips it to `unauthenticated` because at that point we
+ * know for sure there's no session.
+ */
+const emptyAuth: NodeaState['auth'] = { status: 'loading', user: null };
+const loggedOutAuth: NodeaState['auth'] = { status: 'unauthenticated', user: null };
 const emptyCrypto: NodeaState['crypto'] = { status: 'idle', main: null };
 
 export const useNodeaStore = create<NodeaState>()((set) => ({
@@ -148,7 +157,7 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
 
   resetAll: () =>
     set({
-      auth: emptyAuth,
+      auth: loggedOutAuth,
       crypto: emptyCrypto,
       modules: {},
       preferences: {},
