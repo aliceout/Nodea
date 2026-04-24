@@ -40,6 +40,17 @@ export interface SessionChangePasswordInput {
   newPassword: string;
 }
 
+/**
+ * Module-level latch. Multiple components call `useSession()` across
+ * the app (ProtectedRoute, Layout, Login, …); we need exactly ONE
+ * hydration round-trip at app startup, not one per subscriber.
+ * Without this guard, a second mount's `setAuthLoading()` would
+ * race-reset the auth slice back to `loading` after an earlier one
+ * settled it — ProtectedRoute would then stay stuck on its
+ * null-render branch forever on a cold reload of `/flow/*`.
+ */
+let hydrationStarted = false;
+
 export function useSession() {
   const status = useNodeaStore(selectAuthStatus);
   const user = useNodeaStore(selectUser);
@@ -49,24 +60,22 @@ export function useSession() {
   const markKeyMissing = useNodeaStore((s) => s.markKeyMissing);
   const resetAll = useNodeaStore((s) => s.resetAll);
 
-  // Initial hydration on mount. The session cookie may be valid; the
+  // Initial hydration — runs ONCE per app lifetime (module-level
+  // `hydrationStarted` latch). The session cookie may be valid; the
   // main key, however, isn't recoverable without the password — we
   // mark it missing so the UI can prompt.
   useEffect(() => {
-    let cancelled = false;
+    if (hydrationStarted) return;
+    hydrationStarted = true;
     setAuthLoading();
     apiMe()
       .then((me) => {
-        if (cancelled) return;
         setAuth(me);
         if (me) markKeyMissing();
       })
       .catch(() => {
-        if (!cancelled) setAuth(null);
+        setAuth(null);
       });
-    return () => {
-      cancelled = true;
-    };
   }, [setAuth, setAuthLoading, markKeyMissing]);
 
   async function login(body: LoginBody): Promise<void> {
@@ -120,6 +129,9 @@ export function useSession() {
     try {
       await apiLogout();
     } finally {
+      // Reset the hydration latch so a subsequent login on the same
+      // React session re-runs the /auth/me round-trip.
+      hydrationStarted = false;
       resetAll();
     }
   }
