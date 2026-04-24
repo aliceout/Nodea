@@ -175,8 +175,18 @@ export const selectMainKey = (s: NodeaState) => s.crypto.main;
 export const selectKeyStatus = (s: NodeaState) => s.crypto.status;
 export const selectModules = (s: NodeaState) => s.modules;
 export const selectMobileMenuOpen = (s: NodeaState) => s.mobileMenuOpen;
-export const selectEnabledModules = (s: NodeaState) =>
-  Object.entries(s.modules)
-    .filter(([, v]) => v.enabled)
-    .map(([k]) => k);
+/**
+ * Count of currently-enabled modules. Exposed as a primitive (number)
+ * rather than an array so the selector returns a stable reference
+ * across renders — Zustand's default `Object.is` comparison would
+ * otherwise re-render every subscriber on every store update (see
+ * React's "getSnapshot should be cached" warning).
+ */
+export const selectEnabledModuleCount = (s: NodeaState): number => {
+  let n = 0;
+  for (const key in s.modules) {
+    if (s.modules[key]?.enabled) n += 1;
+  }
+  return n;
+};
 export const selectPreferences = (s: NodeaState) => s.preferences;

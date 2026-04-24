@@ -5,8 +5,7 @@ import LanguagePreferences from '@/app/flow/Settings/components/LanguagePreferen
 import ThemePreferences from '@/app/flow/Settings/components/ThemePreferences';
 import {
   useNodeaStore,
-  selectModules,
-  selectEnabledModules,
+  selectEnabledModuleCount,
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -40,8 +39,7 @@ export default function OnboardingModal({
   onClose,
 }: OnboardingModalProps) {
   const { t } = useI18n();
-  void useNodeaStore(selectModules); // subscribe: re-render when modules toggle
-  const enabled = useNodeaStore(selectEnabledModules);
+  const enabledCount = useNodeaStore(selectEnabledModuleCount);
 
   const title =
     variant === 'update'
@@ -93,7 +91,7 @@ export default function OnboardingModal({
           <Button
             variant="info"
             className="mt-4 px-6"
-            disabled={enabled.length === 0}
+            disabled={enabledCount === 0}
             onClick={() => {
               void onFinish?.();
             }}
