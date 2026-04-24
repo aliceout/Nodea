@@ -30,27 +30,24 @@ export default function ModuleCard({ module, onNavigate, badgeLabel }: ModuleCar
       className="h-full w-full text-left"
       bodyClassName="flex items-start gap-3"
     >
-      <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)] sm:inline-flex">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)]">
         {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
       </span>
-      <div className="flex flex-1 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)] sm:hidden">
-              {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
-            </span>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            {badgeLabel ? <Badge tone="success">{badgeLabel}</Badge> : null}
+            <ArrowRightIcon
+              className="h-4 w-4 text-[var(--text-muted)] transition"
+              aria-hidden="true"
+            />
           </div>
-          {badgeLabel ? <Badge tone="success">{badgeLabel}</Badge> : null}
         </div>
         {description ? (
           <p className="text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
         ) : null}
       </div>
-      <ArrowRightIcon
-        className="mt-1 h-4 w-4 shrink-0 text-[var(--text-muted)] transition"
-        aria-hidden="true"
-      />
     </SurfaceCard>
   );
 }
