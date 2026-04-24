@@ -9,6 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Read env files from the repo root so `VITE_API_URL` (and any other
+  // VITE_* var) stays in the single canonical `.env` written by Dev
+  // Setup / Infisical — no per-package duplicate.
+  envDir: path.resolve(__dirname, "../.."),
   server: {
     host: true,
     port: 8089,
