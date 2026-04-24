@@ -60,18 +60,24 @@ TOKEN="$(
 )"
 [[ -n "$TOKEN" ]] || die "infisical login returned an empty token"
 
-# 3. Pull every secret under /nodea as a dotenv bundle at the repo root.
-#    docker-compose reads it automatically via its ${VAR} substitutions.
-log "fetching /nodea secrets (env=$INFISICAL_ENV) → $ENV_FILE"
-infisical export \
-  --domain="$INFISICAL_API_URL" \
-  --projectId="$INFISICAL_PROJECT_ID" \
-  --env="$INFISICAL_ENV" \
-  --path=/nodea \
-  --format=dotenv \
-  --token="$TOKEN" \
-  > "$ENV_FILE"
+# 3. Pull the Nodea secrets into a dotenv bundle at the repo root.
+#    The self-hosted Infisical project is split per sub-service
+#    (prod/api, prod/postgres, prod/web) rather than flat — so we
+#    fetch each sub-path and concatenate. docker-compose reads the
+#    resulting `.env` automatically via its ${VAR} substitutions.
+: > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
+for subpath in api postgres web; do
+  log "fetching /$subpath secrets (env=$INFISICAL_ENV)"
+  infisical export \
+    --domain="$INFISICAL_API_URL" \
+    --projectId="$INFISICAL_PROJECT_ID" \
+    --env="$INFISICAL_ENV" \
+    --path="/$subpath" \
+    --format=dotenv \
+    --token="$TOKEN" \
+    >> "$ENV_FILE"
+done
 
 # Sanity check: COOKIE_SECRET is required, and we'd rather fail here with a
 # clear message than let docker-compose surface a cryptic variable error.
