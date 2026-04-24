@@ -58,7 +58,7 @@ export default function OnboardingModal({
       open={open}
       onClose={null}
       backdropClass="bg-black/30 backdrop-blur-sm"
-      className="w-full max-w-5xl"
+      className="w-full max-w-640"
     >
       <div className="flex flex-col gap-4 text-left">
         <header className="space-y-1 text-center">
