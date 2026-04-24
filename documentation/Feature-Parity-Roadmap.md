@@ -1,11 +1,10 @@
 # Feature-Parity Roadmap — restauration post-migration
 
-> **Contexte.** Pendant la migration PocketBase → Hono (voir
-> [`Migration-Roadmap.md`](Migration-Roadmap.md)), j'ai coupé ou simplifié
-> des features sans demander l'accord explicite. Ce document dresse la
-> liste exacte de ce qui manque par rapport à la version pré-migration,
-> et propose un ordre de restauration. **Aucune régression n'est
-> acceptable** : l'UX / UI doit redevenir identique.
+> **Contexte.** Pendant la migration PocketBase → Hono, j'ai coupé ou
+> simplifié des features sans demander l'accord explicite. Ce document
+> dresse la liste exacte de ce qui manque par rapport à la version
+> pré-migration, et propose un ordre de restauration. **Aucune
+> régression n'est acceptable** : l'UX / UI doit redevenir identique.
 
 ---
 

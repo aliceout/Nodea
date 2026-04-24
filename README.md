@@ -178,12 +178,10 @@ Plus de détails dans [`documentation/Security.md`](documentation/Security.md).
 - [`documentation/Security.md`](documentation/Security.md) — chiffrement,
   guards HMAC, flux d'enregistrement, export
 - [`documentation/Modules.md`](documentation/Modules.md) + fiches par module
-- [`documentation/Migration-Roadmap.md`](documentation/Migration-Roadmap.md)
-  et [`MIGRATION.md`](MIGRATION.md) — historique de la migration PB → Hono
 
 ---
 
 ## Crédits
 
 Projet open source par [@aliceout](https://github.com/aliceout), sous licence
-Mozilla Public License 2.0.
+GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).

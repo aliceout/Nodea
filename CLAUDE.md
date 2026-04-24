@@ -10,7 +10,7 @@ This file is read automatically by Claude Code at the start of every session. It
 
 Current modules: **Mood** · **Goals** · **Passage** (implemented). **Habits** · **Library** · **Review** (documented, not yet implemented).
 
-The project is currently in a **migration** from PocketBase to a self-hosted Node stack. See `documentation/Migration-Roadmap.md` — this is the ground truth for direction and priorities. The migration happens on the `refacto` branch.
+The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work lives on the `refacto` branch until it merges to `main`.
 
 ---
 
@@ -25,7 +25,6 @@ The project is currently in a **migration** from PocketBase to a self-hosted Nod
 
 | File | When to read |
 |---|---|
-| `documentation/Migration-Roadmap.md` | Before any refactoring or architectural change — it drives the current work |
 | `documentation/Architecture.md` | Code structure, runtime flow |
 | `documentation/Security.md` | Before touching anything crypto, auth, or guards |
 | `documentation/Database.md` | Before touching schema, collections, or guard validation |
@@ -42,7 +41,7 @@ The project is currently in a **migration** from PocketBase to a self-hosted Nod
 - **Frontend**: React 19 · Vite · Tailwind CSS · React Router v7 · JavaScript (JSX)
 - **Crypto**: WebCrypto (AES-GCM + HMAC-SHA-256) · `argon2-wasm` · `hash-wasm`
 
-### Target (per Migration-Roadmap.md)
+### Target (current stack)
 - **Backend**: Node 22 · Hono · Drizzle ORM · PostgreSQL 16 · Zod · Pino · session cookies (not JWT)
 - **Frontend**: React 19 · Vite · Tailwind · React Router v7 · **TypeScript strict** · TanStack Query · Zustand · React Hook Form + Zod
 - **Monorepo**: pnpm workspaces (`packages/api`, `packages/web`, `packages/shared`)
@@ -57,8 +56,8 @@ When writing new code, **target the target stack**. When modifying existing JSX/
 
 Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently break the security model.
 
-1. **Never log, persist, or expose a `CryptoKey` or raw key material.** No `console.log(mainKey)`, no localStorage, no `window.mainKey`. The fallback `window.mainKey` in [frontend/src/app/flow/Account/components/DeleteAccount.jsx](frontend/src/app/flow/Account/components/DeleteAccount.jsx) is a known critical finding — do not propagate the pattern.
-2. **AES and HMAC keys must be domain-separated via HKDF** with distinct labels (`"nodea:aes"` / `"nodea:hmac"`). Never import the same raw bytes as both AES-GCM and HMAC-SHA-256 — the current `createMainKeyMaterialFromBase64` in [frontend/src/core/crypto/webcrypto.js](frontend/src/core/crypto/webcrypto.js) does this and must be fixed as per Phase 4 of the roadmap.
+1. **Never log, persist, or expose a `CryptoKey` or raw key material.** No `console.log(mainKey)`, no localStorage, no `window.mainKey`. Any fallback that stashes the key on the global object is a critical regression — do not reintroduce one under any circumstance.
+2. **AES and HMAC keys must be domain-separated via HKDF** with distinct labels (`"nodea:aes"` / `"nodea:hmac"`). Never import the same raw bytes as both AES-GCM and HMAC-SHA-256 — each sub-key is derived separately and imported as a non-extractable `CryptoKey`.
 3. **One source for base64.** Do not add a new base64 encoder/decoder. Use the shared module. Same for `randomBytes`.
 4. **Guards are never persisted to localStorage.** In-memory cache only, purged at logout.
 5. **Use branded types for crypto primitives** (TypeScript only):
@@ -82,6 +81,7 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 6. **Multi-table writes wrapped in a transaction.** Invite atomicity (`SELECT ... FOR UPDATE` → create user → delete invite) is a hard requirement.
 7. **Response serialization never leaks `guard` or other users' `encrypted_key`.** Write an integration test that verifies this — once.
 8. **Argon2id** for password hashing. Zod + zxcvbn (score ≥ 3) for password policy enforcement on the server.
+9. **Measure before optimising.** Suspected N+1 queries get confirmed via Drizzle query logging first, then fixed with a join or batch — not pre-emptively eager-loaded. Optimisations without a before/after number don't land.
 
 ---
 
@@ -120,6 +120,15 @@ Before creating any component, check `packages/web/src/ui/` first. If something 
 
 If you see yourself copy-pasting a third inline variant, stop and factor it instead.
 
+### Accessibility
+Basic a11y is not optional — this app handles mental-health data and must be usable by anyone who needs it.
+
+- Every interactive element carries a label: native `<label htmlFor>`, `aria-label`, or visible text. No bare icon buttons.
+- Every form input has an error path wired to it: `aria-describedby` + a `role="alert"` live region, not just red border.
+- Keyboard: every clickable thing is focusable *and* has a visible focus ring (Tailwind `focus-visible:*`). No `onClick` on a `<div>`.
+- Colour contrast stays at WCAG AA. If a tone change makes that hard, swap the design token, not the local class.
+- Never build strings by concatenating HTML — pass children or i18n placeholders.
+
 ---
 
 ## Monorepo & shared types
@@ -148,10 +157,12 @@ If a shape is only used by one side, it stays local. As soon as both sides touch
 
 ## File management
 
+**Edit in place; don't delete and recreate.** Even for small content changes, update the file via your editor (or the `Edit` tool) rather than rewriting it from scratch. Delete+recreate wipes partial/pending changes, breaks git blame continuity, and hides the diff from reviewers.
+
 Moving a file = `git mv`, never delete + rewrite.
 
 ```bash
-git mv frontend/src/core/crypto/webcrypto.js packages/web/src/core/crypto/aes.ts
+git mv packages/web/src/core/crypto/old-name.ts packages/web/src/core/crypto/new-name.ts
 ```
 
 Deleting then recreating breaks git history and loses traceability of past changes.
@@ -164,6 +175,25 @@ Deleting then recreating breaks git history and loses traceability of past chang
 - **Auth flow requires integration tests**: register → login → change-password → logout → stale-cookie rejection.
 - **Invite atomicity** must be tested explicitly: the same code used twice — the second attempt must fail.
 - Aim for **≥ 90 % coverage on `core/crypto/`**.
+
+---
+
+## Error handling & logging
+
+- **Fail loud on developer errors** (bugs, misconfig, invariant violations). Throw early, let the global handler surface them in dev; don't catch-and-ignore to make the screen stop complaining.
+- **Fail soft on user input.** Zod validation errors become 4xx responses with actionable messages; they never reach the global error handler or a Pino `error` line.
+- **Never swallow errors silently.** If a `catch {}` is intentional, document *why* in a one-line comment (e.g. `// stale blob on logout — expected`). A silent catch without rationale is a code-review block.
+- **Structured logs** via Pino on the api. Include request id, user id when available, and the operation name. No secrets, tokens, session cookies, or raw crypto material in logs — not even at `debug`. If you need to log a key for debugging, log its presence (`hasMainKey: true`), never its value.
+
+---
+
+## Dependencies
+
+- **Prefer stdlib + workspace utils** before reaching for a new package. `packages/shared/` already holds most of what's shared; check it first.
+- **Justify every new dep in the PR description** (what it does, why the existing code can't, who maintains it, last release date). Kitchen-sink libs get rejected in favour of small focused ones.
+- **Pin versions** (no `^` / `~`) in the new stack. Upgrades are deliberate and go through their own PR.
+- **Crypto-adjacent deps — read the source before accepting.** Third-party crypto is where silent breakage hides. If the lib isn't audited or actively maintained, don't add it.
+- **Remove unused deps in the same commit** that removes their last caller. Dead `package.json` entries cost install time and audit noise.
 
 ---
 
@@ -180,7 +210,6 @@ Before marking a PR as ready:
 - [ ] Server responses never include `guard` or another user's `encrypted_key`
 - [ ] Rate limit in place for new `/auth/*` endpoints
 - [ ] Crypto additions: HKDF domain separation respected; branded types used
-- [ ] If a roadmap finding is touched, its entry in the Migration-Roadmap matrix is updated
 
 ---
 

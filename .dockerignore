@@ -16,8 +16,6 @@
 **/*.test.ts
 **/*.test.tsx
 documentation
-MIGRATION.md
-AGENTS.md
 CLAUDE.md
 
 # Local env files — each service reads env from docker-compose.
