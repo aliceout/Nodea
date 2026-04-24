@@ -20,7 +20,7 @@ secrets:
   provider: infisical
   loader: dotenv
   # TODO: replace with your Infisical project slug.
-  project: nodea
+  project: nodea-7k-u4
   batches:
     # Pulls every secret from the `dev` environment, root path.
     # Split into folders (e.g. `dev/api`, `dev/web`) if you prefer a

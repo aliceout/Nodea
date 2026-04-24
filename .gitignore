@@ -22,13 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.eslint.config.js
+
+# Secrets — single canonical location at the repo root, written by
+# the Dev Setup VS Code extension from Infisical (see `dev-setup.yaml`).
 .env
+
+# Misc
 export.md
-/node_modules
-/data/*
-/services/pocketbase/*
-/config/.superadmin_cache
-/config/.env
-/pb_migrations
-/frontend/eslint.config.js

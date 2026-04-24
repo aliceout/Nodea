@@ -1,18 +1,12 @@
 import { defineConfig } from 'vitest/config';
 
-// Load env before vitest spins up so DATABASE_URL / COOKIE_SECRET etc.
-// reach the test workers via process.env. We try both locations, in
-// priority order:
-//   1. repo-root `.env` — written by the Dev Setup VS Code extension
-//      from Infisical (see `dev-setup.yaml`).
-//   2. package-local `.env` — legacy / manual fallback.
-// The second file wins on key conflicts (explicit per-package override).
-for (const path of ['../../.env', './.env']) {
-  try {
-    process.loadEnvFile?.(path);
-  } catch {
-    // Missing file is fine — CI can pass vars directly through the env.
-  }
+// Load the repo-root `.env` (written by the Dev Setup VS Code
+// extension from Infisical — see `dev-setup.yaml`) so DATABASE_URL /
+// COOKIE_SECRET / … reach the test workers via `process.env`.
+try {
+  process.loadEnvFile?.('../../.env');
+} catch {
+  // Missing in CI — vars come straight from the environment instead.
 }
 
 export default defineConfig({
