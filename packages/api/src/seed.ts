@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID, webcrypto } from 'node:crypto';
 import { hashRaw } from '@node-rs/argon2';
 import { eq } from 'drizzle-orm';
+import { UsernameField } from '@nodea/shared';
 import { db, sql } from './db/client.ts';
 import { users } from './db/schema.ts';
 import { hashPassword } from './auth/password.ts';
@@ -83,6 +84,7 @@ async function wrapMainKey(
 async function main() {
   const email = process.env.ADMIN_EMAIL?.toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
+  const rawUsername = process.env.ADMIN_USERNAME?.trim();
   if (!email || !password) {
     console.error('ADMIN_EMAIL and ADMIN_PASSWORD must be set');
     process.exit(1);
@@ -90,6 +92,21 @@ async function main() {
   if (password.length < 12) {
     console.error('ADMIN_PASSWORD must be at least 12 characters');
     process.exit(1);
+  }
+
+  // Validate the username against the same schema the HTTP API enforces,
+  // so a seeded admin can later rename itself without hitting the 400
+  // that would fire on a malformed legacy value.
+  let username: string | null = null;
+  if (rawUsername) {
+    const parsed = UsernameField.safeParse(rawUsername);
+    if (!parsed.success) {
+      console.error(
+        'ADMIN_USERNAME is invalid — must be 2-32 chars of letters, digits, _, ., or -',
+      );
+      process.exit(1);
+    }
+    username = parsed.data;
   }
 
   const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -110,13 +127,16 @@ async function main() {
   await db.insert(users).values({
     id,
     email,
+    username,
     passwordHash,
     encryptionSalt,
     encryptedKey,
     role: 'admin',
     onboardingStatus: 'pending',
   });
-  console.log(`[seed] admin ${email} created (id=${id})`);
+  console.log(
+    `[seed] admin ${email} created (id=${id}${username ? `, username=${username}` : ''})`,
+  );
   await sql.end();
 }
 

@@ -17,8 +17,15 @@ import AvailableModules from './components/AvailableModules';
 import AnnouncementSpotlight from './components/AnnouncementSpotlight';
 import MoodOverview from './components/MoodOverview';
 
-/** Preferred display name: the part before `@` in the email. */
-function preferredName(email: string | undefined): string {
+/**
+ * Preferred display name: `username` when the user has set one, else
+ * the local-part of their email. Empty string if neither is available.
+ */
+function preferredName(user: { username?: string | null; email?: string } | null | undefined): string {
+  if (!user) return '';
+  const trimmed = user.username?.trim();
+  if (trimmed) return trimmed;
+  const email = user.email;
   if (!email) return '';
   const [local] = email.split('@');
   return local ?? '';
@@ -42,7 +49,7 @@ export default function HomePage() {
   const modulesRuntime = useNodeaStore(selectModules);
   const { t, language } = useI18n();
 
-  const name = useMemo(() => preferredName(user?.email), [user?.email]);
+  const name = useMemo(() => preferredName(user), [user]);
 
   const { greeting, formattedDate } = useMemo(() => {
     const now = new Date();

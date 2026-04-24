@@ -49,9 +49,11 @@ export type ChangeEmailBody = z.infer<typeof ChangeEmailBodySchema>;
 
 /**
  * Shape rules for the public display name. Letters (incl. accents),
- * digits, underscores, hyphens and periods. 2–32 chars.
+ * digits, underscores, hyphens and periods. 2–32 chars. Exported so
+ * out-of-band paths (seed scripts, admin tooling) validate usernames
+ * against the same contract as the HTTP API.
  */
-const UsernameField = z
+export const UsernameField = z
   .string()
   .min(2)
   .max(32)
