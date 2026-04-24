@@ -49,6 +49,16 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required (≥ 32 chars)}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-2592000}
+      WEB_BASE_URL: ${WEB_BASE_URL:-}
+      # SMTP — leave empty to log mails to stderr. For dev, run the
+      # optional `mailpit` service (`docker compose --profile dev up`)
+      # and set SMTP_HOST=mailpit SMTP_PORT=1025 in the root .env.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_FROM: ${SMTP_FROM:-nodea@localhost.invalid}
     expose:
       - '3000'
 
@@ -64,6 +74,25 @@ services:
       - api
     ports:
       - '${WEB_PORT:-8080}:80'
+
+  # Dev-only SMTP sink. Captures every email sent by the API (password
+  # reset, …) and exposes them in a web UI at http://localhost:8025 —
+  # nothing ever leaves the machine. Not started by default; bring it
+  # up explicitly with `docker compose --profile dev up -d mailpit`,
+  # or `docker compose --profile dev up` to launch the whole dev stack
+  # including the sink.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nodea-mailpit
+    restart: unless-stopped
+    profiles: ['dev']
+    ports:
+      # 1025 — SMTP, exposed for local dev so `pnpm --filter @nodea/api
+      # dev` running outside Docker can use SMTP_HOST=127.0.0.1.
+      # Containers on the same compose network reach it as `mailpit:1025`.
+      - '${MAILPIT_SMTP_PORT:-1025}:1025'
+      # 8025 — web UI.
+      - '${MAILPIT_UI_PORT:-8025}:8025'
 
 volumes:
   pgdata:
