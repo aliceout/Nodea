@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1776431290788,
+      "tag": "0000_mixed_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776435436942,
+      "tag": "0001_wandering_angel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776452279636,
+      "tag": "0002_good_meteorite",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776836298935,
+      "tag": "0003_peaceful_stephen_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776837385428,
+      "tag": "0004_smooth_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776838122742,
+      "tag": "0005_gray_red_hulk",
+      "breakpoints": true
+    }
+  ]
+}

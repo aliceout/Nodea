@@ -1,0 +1,42 @@
+{
+  "home": {
+    "label": "Home",
+    "description": "Overview, quick access to your modules and highlights of the day."
+  },
+  "mood": {
+    "label": "Mood",
+    "description": "Capture three positive facts each day and rate your overall mood."
+  },
+  "passage": {
+    "label": "Passage",
+    "description": "Keep track of your life transition moments."
+  },
+  "goals": {
+    "label": "Goals",
+    "description": "Follow up on your yearly objectives."
+  },
+  "habits": {
+    "label": "Habits",
+    "description": "Track daily habits with a year-long heatmap and a regularity rate."
+  },
+  "library": {
+    "label": "Library",
+    "description": "Your personal library — books, movies, documentaries — with reading notes."
+  },
+  "review": {
+    "label": "Review",
+    "description": "Guided yearly review inspired by YearCompass — 15 sections in three parts."
+  },
+  "account": {
+    "label": "My account",
+    "description": "Manage your personal information, security and account preferences."
+  },
+  "settings": {
+    "label": "Settings",
+    "description": "Enable or disable modules and tailor your Nodea experience."
+  },
+  "admin": {
+    "label": "Admin",
+    "description": "Administration tools: manage users, invitation codes and supervision."
+  }
+}

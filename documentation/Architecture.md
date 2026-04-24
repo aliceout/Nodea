@@ -1,199 +1,245 @@
-# Architecture Frontend – État ACTUEL (septembre 2025)
+# Architecture
 
-Ce document reflète l'état réel du code après les réorganisations partielles et la « mise sous gel » décidée. Il remplace l'ancienne proposition (basée sur un dossier `features/`) qui n'a pas été totalement mise en œuvre. Aucune section ci‑dessous n'est spéculative : uniquement ce qui existe réellement dans le dépôt.
+State of the codebase as of the close of the `refacto` migration cycle.
+Every paragraph below describes code that exists today in the repository.
 
-## Vue d'ensemble des couches
+The repository is a **pnpm workspaces** monorepo with three packages and a
+Docker-compose deployment bundle.
+
+---
+
+## 1. Workspace layout
 
 ```
-frontend/src/
-├── main.jsx
-├── core/                 # Services, logique transversale et runtime modules
-│   ├── api/
-│   │   ├── pocketbase.js
-│   │   ├── pb-records.js
-│   │   ├── modules-config.js
-│   │   └── modules/      # Services data chiffrés (Goals, Mood, Passage)
-│   │       ├── Goals.js
-│   │       ├── Mood.js
-│   │       └── Passage.js
-│   ├── auth/
-│   │   ├── ProtectedRoute.jsx
-│   │   └── useAuth.js
-│   ├── crypto/
-│   │   ├── crypto-utils.js
-│   │   ├── guards.js
-│   │   └── webcrypto.js
-│   ├── hooks/
-│   │   ├── useBootstrapModulesRuntime.js
-│   │   └── useMainKey.jsx
-│   ├── store/
-│   │   ├── StoreProvider.jsx
-│   │   ├── actions.js
-│   │   ├── modulesRuntime.js
-│   │   ├── reducer.js
-│   │   └── selectors.js
-│   └── utils/
-│       └── ImportExport/
-│           ├── Goals.jsx
-│           ├── Mood.jsx
-│           ├── Passage.jsx
-│           ├── registry.data.js
-│           └── utils.js
-├── ui/                   # Composants UI (atomes & layout)
-│   ├── atoms/
-│   │   ├── base/         # Atomes génériques d'affichage
-│   │   │   ├── Alert.jsx
-│   │   │   ├── Button.jsx
-│   │   │   ├── Card.jsx
-│   │   │   └── Modal.jsx
-│   │   ├── form/         # Champs / éléments de formulaire
-│   │   │   ├── DateMonthPicker.jsx
-│   │   │   ├── FormError.jsx
-│   │   │   ├── Input.jsx
-│   │   │   ├── Select.jsx
-│   │   │   ├── SuggestInput.jsx
-│   │   │   └── Textarea.jsx
-│   │   ├── actions/
-│   │   │   └── EditDeleteActions.jsx
-│   │   └── specifics/    # Atomes contextuels (restés hors "features")
-│   │       ├── KeyMissingModal.jsx
-│   │       ├── OnboardingModal.jsx
-│   │       └── SurfaceCard.jsx
-│   ├── branding/
-│   │   └── LogoLong.jsx
-│   ├── layout/
-│   │   ├── Layout.jsx
-│   │   ├── headers/
-│   │   │   ├── Header.jsx
-│   │   │   └── Subheader.jsx
-│   │   ├── navigation/
-│   │   │   ├── Navigation.jsx
-│   │   │   └── Sidebar.jsx
-│   │   └── components/   # Fragments de header/navigation
-│   │       ├── HeaderNav.jsx
-│   │       ├── SideLinks.jsx
-│   │       ├── SubNavDesktop.jsx
-│   │       ├── SubNavMobile.jsx
-│   │       ├── UserAvatar.jsx
-│   │       └── UserMenu.jsx
-│   └── theme/
-│       ├── global.css
-│       ├── index.css
-│       └── theme.css
-├── app/                  # Orchestration application & flux fonctionnels
-│   ├── App.jsx
-│   ├── config/
-│   │   └── modules_list.jsx
-│   ├── flow/             # (Remplace l'idée de /features pour l'instant)
-│   │   ├── Homepage/
-│   │   │   └── index.jsx
-│   │   ├── Account/
-│   │   │   ├── components/
-│   │   │   └── index.jsx
-│   │   ├── Admin/
-│   │   │   ├── components/
-│   │   │   └── index.jsx
-│   │   ├── Goals/
-│   │   │   ├── components/
-│   │   │   ├── views/
-│   │   │   └── index.jsx
-│   │   ├── Mood/
-│   │   │   ├── components/
-│   │   │   ├── views/
-│   │   │   └── index.jsx
-│   │   ├── Passage/
-│   │   │   ├── views/
-│   │   │   └── index.jsx
-│   │   └── Settings/
-│   │       ├── components/
-│   │       └── index.jsx
-│   └── pages/            # Pages transverses (auth / erreur)
-│       ├── ChangePassword.jsx
-│       ├── Login.jsx
-│       ├── NotFound.jsx
-│       └── Register.jsx
-└── i18n/
-    └── fr/
-        └── Mood/
-            └── questions.json
+/
+├── packages/
+│   ├── api/        # Node 22 · Hono · Drizzle · PostgreSQL 16
+│   ├── web/        # React 19 · Vite · Tailwind · Zustand · TypeScript strict
+│   └── shared/     # Zod schemas + branded crypto types, used by both sides
+├── documentation/  # This folder
+├── docker-compose.yml
+└── .env.example
 ```
 
-## Différences majeures vs la proposition initiale
+- `packages/shared` is the **keystone**. Every type or schema used on both
+  sides lives here — never duplicated. Zod schemas double as the source
+  of truth for request/response bodies and for React Hook Form
+  resolvers.
+- `packages/api` builds the Hono HTTP server and owns the DB schema +
+  migrations under `drizzle/`.
+- `packages/web` ships the SPA. Vite builds into a static bundle served
+  by nginx in production with a `/api/` reverse proxy to the API
+  container.
 
-1. Pas de dossier `features/` : les flux fonctionnels sont concentrés dans `app/flow/`.
-2. Les services métier (Goals, Mood, Passage) sont centralisés dans `core/api/modules/` au lieu de dossiers dédiés par fonctionnalité.
-3. Les composants d'import/export (Goals, Mood, Passage) sont dans `core/utils/ImportExport/` et non rapprochés de leur logique d'affichage.
-4. Les modales spécifiques (KeyMissing, Onboarding) et `SurfaceCard` restent classées comme atomes "specifics" faute de stratégie de rattachement feature finalisée.
-5. L'i18n est minimal (une seule locale `fr/Mood/questions.json`). Pas de mécanisme dynamique généralisé ni d'index d'agrégation.
+---
 
-## Organisation logique actuelle
+## 2. Backend (`packages/api`)
 
-### core/
-Rassemble toutes les couches techniques partagées : accès PocketBase, cryptographie (clé maîtresse, CryptoKey non extractibles, dérivation de guards), état global, runtime des modules chiffrés et utilitaires d'import/export (incluant registre et helpers).  
-Fichiers clés :
-- `core/crypto/main-key.js` → import/wipe de la clé maîtresse (CryptoKey AES/HMAC).  
-- `core/crypto/guards.js` → deriveGuard + cache local (purge login/logout).  
-- `core/crypto/webcrypto.js` → primitives (Argon2id, AES-GCM, `decryptWithRetry`).  
-- `core/store/StoreProvider.jsx` → détient `state.mainKey`, gère `markMissing()` (logout immédiat).  
-Cette centralisation vise la simplicité mais mélange encore logique pure et adaptations modules (voir `utils/ImportExport/*`).
+### Runtime
 
-### ui/
-Séparé en sous-niveaux :
-- atoms/base & atoms/form : découpage effectué pour clarifier les composants basiques vs formulaires.
-- atoms/actions : action group (édition/suppression).
-- atoms/specifics : éléments transverses restant dépendants de la sécurité (modales clé manquante / onboarding) ou d'une feature (SurfaceCard) non encore isolés.
-- layout : structure visuelle et navigation (normalisée : `headers/`, `navigation/`, `components/`).
+- **Hono** on `@hono/node-server`, Node 22 ESM.
+- **Drizzle ORM** against **PostgreSQL 16**. Schema:
+  [`packages/api/src/db/schema.ts`](../packages/api/src/db/schema.ts).
+  Migrations in [`packages/api/drizzle/`](../packages/api/drizzle/). Run
+  `pnpm --filter @nodea/api db:generate` then `db:migrate` to create
+  and apply.
+- **Zod** at every request boundary, sharing schemas with the web
+  package via `@nodea/shared`.
+- **Session cookies** (HttpOnly, Signed, `SameSite=Lax`, `Secure` in
+  prod). Backing `sessions` table; revoking a row kills the session
+  immediately.
+- **Argon2id** password hashing via `@node-rs/argon2`, server-side.
+- **Nodemailer** for transactional mail (password reset). Falls back to
+  a stderr logger when `SMTP_HOST` is unset (dev / tests).
 
-### app/
-Point d'entrée (`App.jsx`), configuration (`modules_list.jsx`) et répertoire `flow/` qui sert d'espace intermédiaire pour regrouper pages/ vues / composants de chaque domaine (Account, Admin, Goals, Mood, Passage, Settings, Homepage). Cette approche hybride remplace temporairement le concept de "feature modules".
+### Route mounts (`packages/api/src/app.ts`)
 
-### i18n/
-Actuellement limité à `fr/Mood/questions.json`. Aucune abstraction de chargement. L'étendue réelle étant faible, la dette est maîtrisée mais documentée.
-
-## Principes de structuration (tels qu'appliqués aujourd'hui)
-
-1. Centralisation sécurité & data dans `core/` (crypto + services PB + store).
-2. UI atomisée avec un début de classification (base/form/actions/specifics) – pas encore totalement stabilisée.
-3. Flux fonctionnels regroupés sous `app/flow/` pour limiter la surface des refactors non finalisés.
-4. Imports uniformisés vers les alias `@/core`, `@/ui`, `@/app` (nettoyage des anciens chemins `@/services/*`).
-5. Aucun code mort conservé côté atoms (suppression des doubles exports par réexport interne qui causaient l'erreur Vite « Multiple exports with the same name 'default' »).
-
-## Dette / Incohérences identifiées
-
-| Sujet | État actuel | Risque | Piste future (optionnelle) |
-|-------|-------------|--------|-----------------------------|
-| Absence de `features/` | Flux dans `app/flow/` | Croissance difficile | Extraire progressivement chaque flux en `features/<nom>` |
-| ImportExport centralisé | Couplage modules ↔ core | Mélange couches | Déplacer chaque `<Module>.jsx` près de sa future feature |
-| atoms/specifics | Mélange UI + logique (clé manquante) | Difficulté test | Promouvoir en organisms/ ou rattacher aux features |
-| i18n minimal | 1 fichier FR isolé | Scalabilité faible | Introduire loader + structure locales/en/* |
-| services modules centralisés | Partage OK mais feature isolation absente | Refactor futur coûteux | Garder API stable avant extraction |
-
-## Convention d'import (actuelle)
-
-Exemples (réel) :
 ```
-import pocketbase from "@/core/api/pocketbase";
-import { listGoals } from "@/core/api/modules/Goals";
-import Button from "@/ui/atoms/base/Button";
-import Layout from "@/ui/layout/Layout";
-import GoalsView from "@/app/flow/Goals/views/History";
+/healthz
+/auth              → routes/auth.ts
+/admin             → routes/admin.ts          (requireAdmin)
+/announcements     → routes/announcements.ts  (requireUser, public read)
+/modules-config    → routes/modules-config.ts (1:1 per user, encrypted blob)
+/user-preferences  → routes/user-preferences.ts (1:1 per user, encrypted blob)
+/{collection}      → routes/collection-factory.ts  (one per entry table)
 ```
-Règle : ne plus utiliser d'anciens chemins `@/services/...` ni de doubles réexports locaux.
 
-## Lignes rouges actuelles (gel temporaire)
+`/{collection}` is driven by `src/collections/registry.ts` — adding a
+new module = adding an entry in that array, which is the single source
+the factory loops over. There is nowhere to forget a guard.
 
-- Pas de création de `features/` sans décision explicite.
-- Pas de déplacement supplémentaire d'atomes sans justification (impact sur imports important).
-- Ne pas fragmenter `ImportExport/` tant que l'intégration chiffrée n'est pas revalidée test.
+### Middleware
 
-## Étapes futures (OPTIONNEL – hors périmètre immédiat)
+- `requireUser` — resolves the session cookie to a row on the `users`
+  table and `c.set('user', …)`.
+- `requireAdmin` — stacks on `requireUser` and 403s non-admin roles.
+- `requireGuard` — inside `collection-factory`, validates the HMAC
+  guard query parameter on update/delete operations.
+- `rateLimit` — in-memory sliding window, keyed on IP. Applied to
+  `/auth/register`, `/auth/login`, `/auth/request-reset`, `/auth/reset`.
 
-1. Stabiliser tests d'intégrité (import/export + dérivation clé) avant tout refactor structurel additionnel.
-2. Introduire `features/` en migrant un flux pilote (ex: Mood) pour valider pattern.
-3. Déplacer ImportExport de Mood/Goals/Passage proche de leurs vues une fois les features extraites.
-4. Normaliser modales spécifiques (dossier `ui/organisms/` si pattern récurrent).
-5. Étendre i18n (en/, loader dynamique, fallback) si besoin produit.
+### Auth flow
 
-## Résumé
+- **Register**: invite code atomically consumed
+  (`SELECT ... FOR UPDATE` in a transaction), password hashed, user row
+  created, session issued.
+- **Login**: always runs `verifyPassword` to keep timing identical
+  between "unknown email" and "wrong password". Dummy hash used when
+  the email doesn't match any row.
+- **Change password**: server expects a re-wrapped envelope
+  (`encryptionSalt` + `encryptedKey`) produced by the client under the
+  new password. Revokes every other session and issues a fresh one.
+- **Reset password** (R13 / `#22`): token 32-byte random, SHA-256
+  hashed, 1h TTL. Consuming a token runs a transaction that purges
+  every user-owned encrypted row (8 entry tables + `modules_config` +
+  `user_preferences`) before rotating credentials — the old envelope
+  is unreachable without the old password, so we refuse to keep dead
+  ciphertexts around.
 
-Le code reflète une transition incomplète : logique consolidée dans `core/`, UI clarifiée, flux fonctionnels encore agrégés dans `app/flow/`. Ce document sert désormais de référence de vérité pour l'état présent (et remplace la version « proposition »). Toute évolution ultérieure devra partir de cette base.
+### Tests
+
+Vitest against a real Postgres instance (Docker). Single fork,
+sequential to avoid row-level interference. Setup under
+[`packages/api/src/test/setup.ts`](../packages/api/src/test/setup.ts)
+runs `TRUNCATE … CASCADE` before each test. 78 integration tests at
+the time of writing, covering auth, admin CRUD, invite atomicity,
+collection round-trips, announcements, user preferences, password
+reset.
+
+---
+
+## 3. Frontend (`packages/web`)
+
+### Stack
+
+- **React 19** + **Vite 6** + **Tailwind 4** (via
+  `@tailwindcss/vite`).
+- **TypeScript strict**, `allowJs: false`,
+  `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`. A few
+  flow-module entrypoints remain in JSX (Mood, Goals, Passage —
+  restored verbatim from the legacy); their types are stubbed via
+  ambient declarations in
+  [`src/types/legacy-modules.d.ts`](../packages/web/src/types/legacy-modules.d.ts).
+- **Zustand** is the single application store, see
+  [`src/core/store/nodea-store.ts`](../packages/web/src/core/store/nodea-store.ts).
+  Slices: `auth`, `crypto`, `modules`, `preferences`, `notifications`,
+  `mobileMenuOpen`. There is **no** parallel singleton or Context
+  reducer.
+- **React Hook Form + Zod** for every form that ships to the server —
+  resolver built from the shared schema.
+- **Routing**: URL-driven (`/flow/:moduleId`). Every module is
+  `React.lazy()` so opening "Mood" for the first time fetches only
+  Mood's code chunk. Per-module `ErrorBoundary`.
+
+### State slices
+
+| Slice            | Source of truth                    | Wiped at logout |
+| ---------------- | ---------------------------------- | --------------- |
+| `auth`           | `GET /auth/me`                     | yes             |
+| `crypto.main`    | Derived from password at login     | yes             |
+| `modules`        | Encrypted `modules_config` payload | yes             |
+| `preferences`    | Encrypted `user_preferences`       | yes             |
+| `notifications`  | Local only (toast queue)           | yes             |
+| `mobileMenuOpen` | Local only (sidebar drawer)        | yes             |
+
+### Data access
+
+- **Typed REST client** at
+  [`src/core/api/client.ts`](../packages/web/src/core/api/client.ts) —
+  thin `fetch` wrapper that parses responses with the shared Zod
+  schemas. Ships the session cookie via `credentials: 'include'`.
+- **Collection client factory** at
+  [`src/core/api/modules/collection-client.ts`](../packages/web/src/core/api/modules/collection-client.ts).
+  Encapsulates the full E2E loop: encrypt → POST init → derive guard →
+  PATCH promote on create; decrypt on list; derive guard on update /
+  delete. Every module's data client is one line on top of this
+  factory.
+- **Legacy-shaped adapters** (`goals-legacy.js`, `passage-legacy.js`)
+  expose the PocketBase-style function signatures the restored JSX
+  modules were written against — they flatten the typed records into
+  the shape the view layer expects without a rewrite.
+
+### Crypto (`src/core/crypto/`)
+
+- **Base64 / randomBytes**: one central module
+  ([`base64.ts`](../packages/web/src/core/crypto/base64.ts)) — no other
+  encoder/decoder in the codebase.
+- **HKDF domain separation**: the raw 32-byte main key is stretched
+  into two distinct sub-keys (`"nodea:aes"` and `"nodea:hmac"`) via
+  HKDF before import into `CryptoKey`. AES and HMAC never share bytes.
+- **Branded types** (`AesMainKey`, `HmacMainKey`, `Base64`, `CipherIV`,
+  `EncryptedBlob`) from `@nodea/shared/crypto-types` prevent mixing
+  domains at compile time.
+- **Guard derivation** (`guard-derivation.ts`): deterministic
+  HMAC-SHA-256 over `moduleUserId || ':' || recordId` with the HMAC
+  sub-key. No network round-trip.
+- **Envelope** (`envelope.ts`): `wrapMainKey(password, raw) →
+  { encryptionSalt, encryptedKey }` and `unwrapMainKeyBytes` for login.
+  Argon2id via `hash-wasm`.
+
+### UI
+
+- `packages/web/src/ui/atoms/` is TSX-only as of #23 / R14. Small typed
+  primitives (Button, Modal, Input, Select, Textarea, Surface,
+  SurfaceCard, TableShell, …).
+- Per-module pages live at `src/app/flow/<Module>/`. Mood, Goals and
+  Passage kept their legacy JSX subtree (restored from `fb68d85`) — the
+  subtree as a whole is lazy-loaded and behind an ambient declaration
+  so TSX code sees a typed shape.
+
+### Tests
+
+Vitest + jsdom. Crypto round-trips (AES, HKDF, envelope, guard
+derivation), base64 encoders, the typed HTTP client (mocked fetch),
+and the Zustand store. 56 unit tests at the time of writing.
+
+---
+
+## 4. Shared (`packages/shared`)
+
+Zod schemas live under `src/schemas/`:
+
+- `auth.ts` — register/login/change-password/change-email/change-username
+  /delete-self/request-reset/reset-password bodies + `/auth/me`
+  response.
+- `entries.ts` — the generic 1:1 `modules_config` body wrapper.
+- `modules.ts` — decrypted payload schemas for each module (Mood,
+  Goals, Passage, Habits items + logs, Library items + reviews,
+  Review).
+- `announcements.ts` — create / update / response for the admin feed.
+- `preferences.ts` — `UserPreferencesBodySchema` wrapper +
+  `UserPreferencesPayloadSchema` (decrypted: theme, language, …).
+
+`crypto-types.ts` exports the branded types that travel across the API
+boundary (`Base64`, `CipherIV`, `EncryptedBlob`).
+
+---
+
+## 5. Docker deployment
+
+Single `docker-compose.yml` at the repo root:
+
+- `postgres` — PostgreSQL 16 image, data in a named volume.
+- `api` — Node image running `packages/api`. On boot it runs
+  `db:migrate` against the postgres service.
+- `web` — nginx serving the Vite build. Reverse proxy maps `/api/` →
+  `api:3000`, so the SPA and API share a single origin (no CORS in
+  prod).
+
+Config is driven by a single root `.env`; see `.env.example` for every
+knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
+
+---
+
+## 6. Conventions
+
+- TypeScript everywhere new. No `any`. `unknown` + narrowing when
+  needed.
+- Never duplicate a schema or type between web and api — move it to
+  `@nodea/shared`.
+- Every mutation on an entry table goes through the guard middleware.
+  The only 1:1 blobs that skip it (`modules_config`,
+  `user_preferences`) are keyed PK on `user_id` — `requireUser` is
+  sufficient, which is documented in the route files themselves.
+- Crypto additions respect HKDF domain separation and use branded
+  types.

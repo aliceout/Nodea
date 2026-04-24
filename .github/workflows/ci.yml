@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, refacto]
+  pull_request:
+    branches: [main, refacto]
+
+# Cancel older in-flight runs when a new commit lands on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: typecheck + build + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nodea
+          POSTGRES_PASSWORD: nodea_dev
+          POSTGRES_DB: nodea
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U nodea -d nodea"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+
+    env:
+      # Values that tests + migrations pick up via process.loadEnvFile('.env')
+      # or direct process.env reads. CI-only stubs — the COOKIE_SECRET is long
+      # enough to satisfy the 32-char min but has no value outside this run.
+      NODE_ENV: test
+      PORT: '3000'
+      DATABASE_URL: postgres://nodea:nodea_dev@127.0.0.1:5433/nodea
+      COOKIE_SECRET: ci_cookie_secret_change_me_in_production_please_32chars
+      COOKIE_SECURE: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        # Version is read from the repo's packageManager field (package.json);
+        # passing `version:` here would conflict with it.
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Write API .env for tests
+        run: |
+          cat > packages/api/.env <<EOF
+          NODE_ENV=test
+          PORT=3000
+          DATABASE_URL=${DATABASE_URL}
+          COOKIE_SECRET=${COOKIE_SECRET}
+          COOKIE_SECURE=false
+          EOF
+
+      - name: Apply DB migrations
+        run: pnpm --filter @nodea/api db:migrate
+
+      - name: Test
+        run: pnpm -r test

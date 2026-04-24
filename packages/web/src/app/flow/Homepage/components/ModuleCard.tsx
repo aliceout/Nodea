@@ -1,0 +1,53 @@
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
+import Badge from '@/ui/atoms/feedback/Badge';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import type { ModuleDef } from '@/app/config/modules_list';
+
+export interface ModuleCardProps {
+  module: ModuleDef;
+  onNavigate(moduleId: string): void;
+  badgeLabel?: string;
+}
+
+export default function ModuleCard({ module, onNavigate, badgeLabel }: ModuleCardProps) {
+  const Icon = module.icon;
+  const { t } = useI18n();
+  const label = t(module.label, { defaultValue: module.label });
+  const description = module.description
+    ? t(module.description, { defaultValue: module.description })
+    : '';
+
+  return (
+    <SurfaceCard
+      as="button"
+      type="button"
+      onClick={() => onNavigate(module.id)}
+      tone="base"
+      border="default"
+      padding="md"
+      interactive
+      className="h-full w-full text-left"
+      bodyClassName="flex items-start gap-3"
+    >
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)]">
+        {Icon ? <Icon className="h-5 w-5" aria-hidden="true" /> : null}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center justify-between gap-3">
+          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            {badgeLabel ? <Badge tone="success">{badgeLabel}</Badge> : null}
+            <ArrowRightIcon
+              className="h-4 w-4 text-[var(--text-muted)] transition"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+        {description ? (
+          <p className="text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
+        ) : null}
+      </div>
+    </SurfaceCard>
+  );
+}

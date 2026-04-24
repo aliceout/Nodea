@@ -1,0 +1,27 @@
+{
+  "greeting": {
+    "morning": "Bonjour",
+    "afternoon": "Bon après-midi",
+    "evening": "Bonsoir"
+  },
+  "announcement": {
+    "label": "Nouvelle",
+    "publishedOn": "Publié le {date}",
+    "loading": "Chargement des nouveautés…"
+  },
+  "mood": {
+    "quickView": "Aperçu rapide",
+    "recentAverage": "Moyenne ({count} dernières entrées)"
+  },
+  "sections": {
+    "actions": {
+      "title": "Actions rapides",
+      "description": "Accède directement aux modules actifs que tu utilises le plus souvent."
+    },
+    "available": {
+      "title": "Modules disponibles",
+      "description": "Active de nouveaux espaces pour enrichir ton accompagnement.",
+      "cta": "Ouvrir les paramètres"
+    }
+  }
+}
