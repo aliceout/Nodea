@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -31,6 +31,7 @@ type RegisterForm = z.infer<typeof RegisterFormSchema>;
 
 export default function RegisterPage() {
   const session = useSession();
+  const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
 
@@ -53,7 +54,9 @@ export default function RegisterPage() {
     setServerError(null);
     try {
       await session.register(values);
-      window.location.href = '/flow/home';
+      // Client-side nav so the freshly derived main key survives. See
+      // the matching comment in Login.tsx for the security rationale.
+      navigate('/flow/home', { replace: true });
     } catch (err) {
       if (isApiError(err) && err.status === 400) {
         setServerError(err.reason ?? 'Échec de l’inscription.');

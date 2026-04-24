@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
@@ -20,6 +20,7 @@ import Logo from '@/ui/branding/LogoLong.jsx';
  */
 export default function LoginPage() {
   const session = useSession();
+  const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -35,7 +36,12 @@ export default function LoginPage() {
     setServerError(null);
     try {
       await session.login(values);
-      window.location.href = '/flow/home';
+      // Client-side nav: stay in the same JS process so the main key
+      // we just derived survives. A full reload would wipe it and
+      // force the KeyMissingModal for no reason. Security contract is
+      // unchanged — the key is still only in non-extractable memory
+      // and any real cold reload (F5, tab close) will still lose it.
+      navigate('/flow/home', { replace: true });
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
         setServerError('E-mail ou mot de passe incorrect.');
