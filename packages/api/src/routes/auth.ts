@@ -47,6 +47,31 @@ import { rateLimit } from '../middleware/rate-limit.ts';
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>();
 
+/**
+ * Match a Postgres unique-constraint violation by SQLSTATE + constraint
+ * name. We used to string-match on `err.message`, but drizzle-orm 0.45
+ * no longer inlines the constraint name there; postgres.js always
+ * surfaces `code` (SQLSTATE `23505` = unique_violation) and
+ * `constraint_name` on the underlying error object.
+ */
+function isUniqueViolation(err: unknown, constraint: string): boolean {
+  // drizzle-orm 0.45+ wraps the underlying driver error in a
+  // `DrizzleQueryError` that exposes the real postgres.js error on
+  // `.cause`. Walk the chain so this helper keeps working regardless of
+  // which ORM layer caught the throw.
+  let e: unknown = err;
+  while (typeof e === 'object' && e !== null) {
+    const rec = e as { code?: unknown; constraint_name?: unknown; cause?: unknown };
+    if (rec.code === '23505' && rec.constraint_name === constraint) return true;
+    if (rec.cause && rec.cause !== e) {
+      e = rec.cause;
+      continue;
+    }
+    return false;
+  }
+  return false;
+}
+
 const registerLimiter = rateLimit({ max: 5, windowMs: 60_000, keyPrefix: 'register' });
 const loginLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'login' });
 /** 5 requests per hour per IP — matches the issue (#22) requirement. */
@@ -82,7 +107,7 @@ authRoutes.post('/register', registerLimiter, async (c) => {
     } catch (err) {
       // Unique constraint on email → rethrow as a tagged error so the outer
       // layer can distinguish it from generic failures.
-      if (err instanceof Error && err.message.includes('users_email_unique')) {
+      if (isUniqueViolation(err, 'users_email_unique')) {
         throw new EmailTakenError();
       }
       throw err;
@@ -336,7 +361,7 @@ authRoutes.patch('/email', requireUser, async (c) => {
       .set({ email: newEmail, updatedAt: new Date() })
       .where(eq(users.id, user.id));
   } catch (err) {
-    if (err instanceof Error && err.message.includes('users_email_unique')) {
+    if (isUniqueViolation(err, 'users_email_unique')) {
       return c.json({ error: 'email_taken' }, 409);
     }
     throw err;
@@ -368,7 +393,7 @@ authRoutes.patch('/username', requireUser, async (c) => {
       .set({ username: newUsername, updatedAt: new Date() })
       .where(eq(users.id, user.id));
   } catch (err) {
-    if (err instanceof Error && err.message.includes('users_username_unique')) {
+    if (isUniqueViolation(err, 'users_username_unique')) {
       return c.json({ error: 'username_taken' }, 409);
     }
     throw err;
