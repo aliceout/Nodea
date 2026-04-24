@@ -5,14 +5,21 @@
 #   - api      : Hono backend (auto-migrates on start)
 #   - web      : static SPA behind nginx, reverse-proxies /api/* to `api`
 #
-# Quick start:
+# Images: api + web each carry both an `image:` (GHCR) and a `build:` section.
+# `docker compose pull` resolves from GHCR; `docker compose build` / `up --build`
+# rebuilds locally and overwrites the same tag. Overridable via NODEA_IMAGE_TAG
+# (defaults to `main`).
+#
+# Quick start (local dev):
 #   cp .env.example .env
 #   # edit COOKIE_SECRET (≥ 32 chars) + set COOKIE_SECURE=true behind TLS
 #   docker compose up -d --build
 #
-#   # one-time: create the first admin
-#   docker compose exec api \
-#     sh -c 'ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=changeme pnpm seed:admin'
+# Prod deploy (VPS, images already pushed by the Docker build workflow):
+#   docker compose pull && docker compose up -d
+#
+# One-time admin seed (both flows):
+#   docker compose exec api pnpm --filter @nodea/api seed:admin
 
 services:
   postgres:
@@ -34,6 +41,7 @@ services:
       retries: 10
 
   api:
+    image: ghcr.io/aliceout/nodea-api:${NODEA_IMAGE_TAG:-main}
     build:
       context: .
       dockerfile: packages/api/Dockerfile
@@ -63,6 +71,7 @@ services:
       - '3000'
 
   web:
+    image: ghcr.io/aliceout/nodea-web:${NODEA_IMAGE_TAG:-main}
     build:
       context: .
       dockerfile: packages/web/Dockerfile

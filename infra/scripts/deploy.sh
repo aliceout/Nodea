@@ -85,12 +85,23 @@ set -a
 source "$ENV_FILE"
 set +a
 
-# 4. Build + start the stack. Mailpit stays down (it sits under
-#    `profiles: ['dev']` and we deliberately don't pass --profile dev).
+# 4. Pull the images built by the `Docker build` workflow (pushed to
+#    ghcr.io/aliceout/nodea-{api,web}) and start the stack.
+#    Mailpit stays down — it sits under `profiles: ['dev']` and we
+#    deliberately don't pass `--profile dev`.
+#
+#    By default we pin to the immutable `sha-<short>` tag of the
+#    current checkout — guarantees the deploy renders exactly the
+#    commit CI validated. Override with `NODEA_IMAGE_TAG=main` (or
+#    any other tag) before invoking this script to use a moving tag.
+#    Short form must match the docker-build workflow's metadata
+#    action (`type=sha,format=short,prefix=sha-` → 7 chars).
 cd "$DEPLOY_DIR"
-log "docker compose pull / up -d --build"
+export NODEA_IMAGE_TAG="${NODEA_IMAGE_TAG:-sha-$(git rev-parse --short=7 HEAD)}"
+log "pulling images (tag=$NODEA_IMAGE_TAG)"
 docker compose pull
-docker compose up -d --build
+log "docker compose up -d (no local build — images come from GHCR)"
+docker compose up -d
 
 # 5. Wait until the API is healthy. Drizzle migrations run in-container on
 #    boot, so the first healthy response means the schema is up to date.
