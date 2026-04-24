@@ -17,6 +17,16 @@ import {
   type ModulesRuntime,
 } from '@/core/store/nodea-store';
 
+export interface ModulesManagerProps {
+  /**
+   * `cards` (default) — one full Surface card per module, used on the
+   *   Settings page where we have room to breathe.
+   * `table` — dense grid (label · description · toggle) suitable for
+   *   cramped containers like the onboarding modal.
+   */
+  layout?: 'cards' | 'table';
+}
+
 /**
  * ModulesManager (TSX).
  *
@@ -28,13 +38,8 @@ import {
  * The Zustand `modules` slice is kept in sync so the rest of the app
  * (Homepage, flow router, module pages) sees enable/disable changes
  * immediately.
- *
- * Replaces the PB-driven ModulesManager.jsx which used
- * `loadModulesConfig(pb, userId, mainKey)` + a hand-rolled
- * `delete_secret`; that field was only ever written, never read, so
- * it is dropped here.
  */
-export default function ModulesManager() {
+export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps = {}) {
   const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const setModulesStore = useNodeaStore((s) => s.setModules);
@@ -148,6 +153,84 @@ export default function ModulesManager() {
     );
   }
 
+  function Toggle({ checked, isBusy, onChange, label }: {
+    checked: boolean;
+    isBusy: boolean;
+    onChange: (next: boolean) => void;
+    label: string;
+  }) {
+    return (
+      <div
+        className={clsx(
+          'relative inline-flex h-6 w-11 shrink-0 items-center',
+          isBusy && 'pointer-events-none opacity-60',
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={clsx(
+            'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
+            checked ? 'bg-emerald-500' : 'bg-slate-300',
+          )}
+        />
+        <span
+          aria-hidden="true"
+          className={clsx(
+            'absolute left-0 top-0 h-6 w-6 rounded-full border bg-white shadow transition-transform duration-150 ease-out',
+            checked ? 'translate-x-5' : '',
+          )}
+        />
+        <input
+          type="checkbox"
+          aria-label={t('settings.modules.toggle', {
+            defaultValue: `Activer ${label}`,
+            module: label,
+          })}
+          className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={isBusy}
+        />
+      </div>
+    );
+  }
+
+  if (layout === 'table') {
+    return (
+      <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+        {rows.map((m) => {
+          const entry = cfg[m.id];
+          const checked = !!entry?.enabled;
+          const isBusy = busy === m.id;
+          const label = t(m.label, { defaultValue: m.label });
+          const description = m.description
+            ? t(m.description, { defaultValue: m.description })
+            : '';
+          return (
+            <label
+              key={m.id}
+              className="flex cursor-pointer items-center gap-3 px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{label}</p>
+                {description ? (
+                  <p className="truncate text-xs opacity-70">{description}</p>
+                ) : null}
+              </div>
+              <Toggle
+                checked={checked}
+                isBusy={isBusy}
+                onChange={(next) => toggleModule(m.id, next)}
+                label={label}
+              />
+            </label>
+          );
+        })}
+        {error ? <div className="px-3 py-2 text-xs text-red-600">{error}</div> : null}
+      </div>
+    );
+  }
+
   return (
     <Surface tone="muted" border="default" padding="lg" shadow="none" className="space-y-4">
       {rows.map((m) => {
@@ -181,38 +264,12 @@ export default function ModulesManager() {
 
             <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
               <Badge tone={checked ? 'success' : 'neutral'}>{badgeLabel}</Badge>
-              <div
-                className={clsx(
-                  'relative inline-flex h-6 w-11 shrink-0 items-center',
-                  isBusy && 'pointer-events-none opacity-60',
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={clsx(
-                    'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
-                    checked ? 'bg-emerald-500' : 'bg-slate-300',
-                  )}
-                />
-                <span
-                  aria-hidden="true"
-                  className={clsx(
-                    'absolute left-0 top-0 h-6 w-6 rounded-full border bg-white shadow transition-transform duration-150 ease-out',
-                    checked ? 'translate-x-5' : '',
-                  )}
-                />
-                <input
-                  type="checkbox"
-                  aria-label={t('settings.modules.toggle', {
-                    defaultValue: `Activer ${label}`,
-                    module: label,
-                  })}
-                  className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden"
-                  checked={checked}
-                  onChange={(e) => toggleModule(m.id, e.target.checked)}
-                  disabled={isBusy}
-                />
-              </div>
+              <Toggle
+                checked={checked}
+                isBusy={isBusy}
+                onChange={(next) => toggleModule(m.id, next)}
+                label={label}
+              />
             </div>
           </SurfaceCard>
         );

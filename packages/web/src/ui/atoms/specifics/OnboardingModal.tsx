@@ -50,59 +50,54 @@ export default function OnboardingModal({
       ? t('modals.onboarding.subtitleUpdate')
       : t('modals.onboarding.subtitleInitial');
 
+  const sectionHeading =
+    'text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400';
+
   return (
     <Modal
       open={open}
       onClose={null}
       backdropClass="bg-black/30 backdrop-blur-sm"
-      className="w-full max-w-3xl sm:max-w-4xl"
+      className="w-full max-w-5xl"
     >
-      <div className="flex flex-col gap-6 p-6 sm:p-8">
-        <h2 className="text-center text-lg font-bold text-gray-900 dark:text-slate-100">
-          {title}
-        </h2>
+      <div className="flex flex-col gap-4 text-left">
+        <header className="space-y-1 text-center">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">{title}</h2>
+          <p className="text-sm text-gray-600 dark:text-slate-300">{subtitle}</p>
+        </header>
 
-        <p className="text-center text-base text-gray-600 dark:text-slate-300">
-          {subtitle}
-        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <section className="space-y-2">
+            <h3 className={sectionHeading}>
+              {t('modals.onboarding.sections.language')}
+            </h3>
+            <LanguagePreferences />
+          </section>
 
-        <section className="space-y-3">
-          <h3 className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t('modals.onboarding.sections.language')}
-          </h3>
-          <LanguagePreferences />
-        </section>
+          <section className="space-y-2">
+            <h3 className={sectionHeading}>
+              {t('modals.onboarding.sections.theme')}
+            </h3>
+            <ThemePreferences />
+          </section>
+        </div>
 
-        <section className="space-y-3">
-          <h3 className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t('modals.onboarding.sections.theme')}
-          </h3>
-          <ThemePreferences />
-        </section>
-
-        <section className="space-y-3">
-          <h3 className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <section className="space-y-2">
+          <h3 className={sectionHeading}>
             {t('modals.onboarding.sections.modules')}
           </h3>
-          <ModulesManager />
+          <ModulesManager layout="table" />
         </section>
 
-        <div className="mt-2 flex items-center justify-center gap-3">
-          <Button
-            variant="info"
-            className="mt-4 px-6"
-            disabled={enabledCount === 0}
-            onClick={() => {
-              void onFinish?.();
-            }}
-          >
-            {t('modals.onboarding.actions.finish')}
-          </Button>
-
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+          {onClose ? (
+            <Button variant="ghost" onClick={onClose}>
+              {t('modals.onboarding.actions.close')}
+            </Button>
+          ) : null}
           {onSnooze ? (
             <Button
               variant="secondary"
-              className="mt-4"
               onClick={() => {
                 void onSnooze();
               }}
@@ -110,12 +105,16 @@ export default function OnboardingModal({
               {t('modals.onboarding.actions.snooze')}
             </Button>
           ) : null}
-
-          {onClose ? (
-            <Button variant="ghost" className="mt-4" onClick={onClose}>
-              {t('modals.onboarding.actions.close')}
-            </Button>
-          ) : null}
+          <Button
+            variant="info"
+            className="px-6"
+            disabled={enabledCount === 0}
+            onClick={() => {
+              void onFinish?.();
+            }}
+          >
+            {t('modals.onboarding.actions.finish')}
+          </Button>
         </div>
       </div>
     </Modal>
