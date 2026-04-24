@@ -31,13 +31,18 @@ import {
 } from '@nodea/shared';
 
 /**
- * Base URL for the new API. Read from `VITE_API_URL`, falls back to the
- * dev port. Resolved per call so tests can stub `import.meta.env`.
+ * Base URL for the API. Defaults to the same-origin `/api` prefix so
+ * cookies flow without any cross-origin dance:
+ *   - dev : the Vite proxy (see `packages/web/vite.config.js`) routes
+ *     `/api/*` to the Hono dev server on :3000.
+ *   - prod: nginx reverse-proxies `/api/*` to the api container.
+ * Override via `VITE_API_URL` if you really need to hit a different
+ * origin — but beware `SameSite=Lax` will reject the session cookie.
+ * Resolved per call so tests can stub `import.meta.env`.
  */
 function apiBase(): string {
   return (
-    (import.meta.env as Record<string, string | undefined>).VITE_API_URL ??
-    'http://127.0.0.1:3000'
+    (import.meta.env as Record<string, string | undefined>).VITE_API_URL ?? '/api'
   );
 }
 

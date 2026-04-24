@@ -26,8 +26,7 @@ export interface AnnouncementState {
 
 function apiBase(): string {
   return (
-    (import.meta.env as Record<string, string | undefined>).VITE_API_URL ??
-    'http://127.0.0.1:3000'
+    (import.meta.env as Record<string, string | undefined>).VITE_API_URL ?? '/api'
   );
 }
 
