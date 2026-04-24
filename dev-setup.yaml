@@ -22,7 +22,9 @@ secrets:
   # TODO: replace with your Infisical project slug.
   project: nodea-7k-u4
   batches:
-    # Pulls every secret from the `dev` environment, root path.
-    # Split into folders (e.g. `dev/api`, `dev/web`) if you prefer a
-    # per-component layout in Infisical — see the extension README.
-    - dev
+    # Secrets live in three folders inside the `dev` env — pull each.
+    # Merge order: first wins on duplicate keys, so `api` takes
+    # precedence over `postgress` and `web` if the same key appears.
+    - dev/api
+    - dev/postgres
+    - dev/web
