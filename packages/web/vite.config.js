@@ -14,7 +14,16 @@ export default defineConfig({
     port: 8089,
     strictPort: true,
     proxy: {
-      "/api": { target: "http://localhost:8089", changeOrigin: true },
+      // Forward /api/* to the local Hono dev server so the SPA + API
+      // share the same origin in dev — browsers then send the session
+      // cookie natively and SameSite=Lax stays happy. Mirrors the
+      // production layout where nginx reverse-proxies /api to the
+      // api container.
+      "/api": {
+        target: "http://127.0.0.1:3000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
     },
   },
   resolve: {
