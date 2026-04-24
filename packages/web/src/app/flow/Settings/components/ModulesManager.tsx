@@ -1,18 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import Surface from '@/ui/atoms/layout/Surface';
 import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
 import Badge from '@/ui/atoms/feedback/Badge';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { MODULES } from '@/app/config/modules_list';
-import {
-  loadDecryptedModulesConfig,
-  saveEncryptedModulesConfig,
-} from '@/core/api/modules-config-client';
+import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
 import { generateModuleUserId } from '@/core/crypto/ids';
 import {
   useNodeaStore,
   selectMainKey,
+  selectModules,
   type ModuleRuntimeEntry,
   type ModulesRuntime,
 } from '@/core/store/nodea-store';
@@ -35,63 +33,29 @@ export interface ModulesManagerProps {
  * `moduleUserId` is generated — the opaque per-module sid used as the
  * `sid=` query parameter on every encrypted-entry route.
  *
- * The Zustand `modules` slice is kept in sync so the rest of the app
- * (Homepage, flow router, module pages) sees enable/disable changes
- * immediately.
+ * The Zustand `modules` slice is hydrated once per session by
+ * `useModulesHydration` (mounted in `Layout`), so this component reads
+ * straight from the store and only writes back on toggle.
  */
 export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps = {}) {
   const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
+  const cfg = useNodeaStore(selectModules);
   const setModulesStore = useNodeaStore((s) => s.setModules);
 
-  const [loading, setLoading] = useState(true);
-  const [cfg, setCfg] = useState<ModulesRuntime>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    mainKey
+      ? null
+      : t('settings.modules.errors.missingKey', {
+          defaultValue: 'Clé principale absente — reconnecte-toi.',
+        }),
+  );
 
   const rows = useMemo(
     () => MODULES.filter((m) => m.to_toggle === true && !!m.id),
     [],
   );
-
-  useEffect(() => {
-    if (!mainKey) {
-      setLoading(false);
-      setError(
-        t('settings.modules.errors.missingKey', {
-          defaultValue: 'Clé principale absente — reconnecte-toi.',
-        }),
-      );
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const decrypted = await loadDecryptedModulesConfig(mainKey.aesKey);
-        if (cancelled) return;
-        setCfg(decrypted);
-        setModulesStore(decrypted);
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            t('settings.modules.errors.loadFailed', {
-              defaultValue: 'Échec du chargement des modules.',
-            }),
-          );
-          if (import.meta.env.DEV) console.warn(err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mainKey, setModulesStore, t]);
 
   async function toggleModule(moduleId: string, nextEnabled: boolean): Promise<void> {
     if (!mainKey) {
@@ -119,7 +83,6 @@ export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps
 
       const updated: ModulesRuntime = { ...cfg, [moduleId]: nextEntry };
       await saveEncryptedModulesConfig(mainKey.aesKey, updated);
-      setCfg(updated);
       setModulesStore(updated);
     } catch (err) {
       setError(
@@ -133,14 +96,6 @@ export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps
     } finally {
       setBusy(null);
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="text-sm text-gray-600">
-        {t('settings.modules.loading', { defaultValue: 'Chargement…' })}
-      </div>
-    );
   }
 
   if (rows.length === 0) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   useNodeaStore,
   selectMainKey,
@@ -33,15 +33,16 @@ export function usePreferences(): {
   const preferences = useNodeaStore(selectPreferences);
   const setStore = useNodeaStore((s) => s.setPreferences);
   const update = useNodeaStore((s) => s.updatePreferences);
-  const hydrated = useRef<string | null>(null);
 
-  // Hydrate once per (user, key) pair. We dedupe via a ref because
-  // `mainKey` is a deep object and React re-renders would loop us.
+  // Hydrate when (isAuth, mainKey) becomes truthy. We deliberately do
+  // NOT dedup via a `useRef` sentinel: combined with React 18
+  // StrictMode's mount → cleanup → mount effect cycle, the sentinel
+  // would mark the slot as hydrated on the first (doomed-to-cancel)
+  // run and skip the second — leaving the store on its defaults. The
+  // effect deps already constrain how often we fetch; a double-fetch
+  // in dev is cheap and writes the same value.
   useEffect(() => {
     if (!isAuth || !mainKey) return;
-    const stamp = `${mainKey.aesKey ? 'k' : ''}`;
-    if (hydrated.current === stamp) return;
-    hydrated.current = stamp;
     let cancelled = false;
     loadDecryptedPreferences(mainKey.aesKey)
       .then((p) => {
@@ -54,11 +55,6 @@ export function usePreferences(): {
       cancelled = true;
     };
   }, [isAuth, mainKey, setStore]);
-
-  // Reset hydration when the session goes away so a later login re-hydrates.
-  useEffect(() => {
-    if (!isAuth) hydrated.current = null;
-  }, [isAuth]);
 
   const setPreferences = useCallback(
     async (partial: Partial<UserPreferencesPayload>): Promise<void> => {
