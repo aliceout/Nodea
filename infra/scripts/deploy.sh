@@ -124,10 +124,25 @@ done
 #    is idempotent on email — subsequent invocations log "already exists" and
 #    exit 0. Once you've confirmed the first admin is in, remove ADMIN_*
 #    from Infisical to avoid surfacing those values on every deploy.
+#
+#    We capture stdout+stderr and report them verbatim on non-zero exit so
+#    the real cause (missing env, DB error, bad password policy…) is visible
+#    in the webhook logs instead of being shadowed by a generic
+#    "already-seeded" hand-wave.
 if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
   log "running seed:admin"
-  docker compose exec -T api pnpm --filter @nodea/api seed:admin || \
-    log "seed:admin returned non-zero (likely already-seeded — safe to ignore)"
+  seed_rc=0
+  seed_out=$(docker compose exec -T api pnpm --filter @nodea/api seed:admin 2>&1) \
+    || seed_rc=$?
+  if [[ $seed_rc -eq 0 ]]; then
+    log "seed:admin OK"
+    printf '%s\n' "$seed_out"
+  else
+    log "seed:admin FAILED (exit $seed_rc) — output below"
+    printf '%s\n' "$seed_out" >&2
+    # Continue the deploy anyway: the stack is up, missing admin is a
+    # recoverable nice-to-have. Re-run manually once the cause is fixed.
+  fi
 fi
 
 log "deploy OK ($(date -Iseconds))"

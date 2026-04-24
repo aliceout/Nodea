@@ -67,6 +67,15 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_FROM: ${SMTP_FROM:-nodea@localhost.invalid}
+      # Seed admin — only consumed by `pnpm --filter @nodea/api seed:admin`
+      # invoked post-deploy. The service itself ignores them at runtime.
+      # Present here so `docker compose exec api seed:admin` sees them
+      # in `process.env` — docker-compose does NOT forward values from
+      # the root `.env` into containers unless they're listed on the
+      # service (that file is only read for `${VAR}` substitutions).
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
     expose:
       - '3000'
 
