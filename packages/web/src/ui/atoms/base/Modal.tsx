@@ -41,12 +41,12 @@ export default function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
       <div
-        className={`absolute inset-0 ${backdropClass || 'bg-black/40 backdrop-blur-xs'} z-0`}
+        className={`fixed inset-0 ${backdropClass || 'bg-black/40 backdrop-blur-xs'} z-0`}
       />
       <div
-        className={`relative rounded-lg shadow-lg p-8 max-w-md w-full text-center bg-white ${className}`}
+        className={`relative my-8 max-h-[calc(100vh-4rem)] w-full max-w-md overflow-y-auto rounded-lg bg-white p-8 text-center shadow-lg ${className}`}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}

@@ -15,6 +15,18 @@
     "label": "Goals",
     "description": "Follow up on your yearly objectives."
   },
+  "habits": {
+    "label": "Habits",
+    "description": "Track daily habits with a year-long heatmap and a regularity rate."
+  },
+  "library": {
+    "label": "Library",
+    "description": "Your personal library — books, movies, documentaries — with reading notes."
+  },
+  "review": {
+    "label": "Review",
+    "description": "Guided yearly review inspired by YearCompass — 15 sections in three parts."
+  },
   "account": {
     "label": "My account",
     "description": "Manage your personal information, security and account preferences."
