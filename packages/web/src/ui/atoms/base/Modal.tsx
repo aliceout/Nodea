@@ -46,7 +46,7 @@ export default function Modal({
         className={`fixed inset-0 ${backdropClass || 'bg-black/40 backdrop-blur-xs'} z-0`}
       />
       <div
-        className={`relative my-8 max-h-[calc(100vh-4rem)] overflow-y-auto rounded-lg bg-white p-8 text-center shadow-lg ${className || 'w-full max-w-md'}`}
+        className={`relative my-8 max-h-[calc(100vh-4rem)] overflow-y-auto rounded-lg bg-white p-8 text-center text-slate-900 shadow-lg dark:bg-slate-900 dark:text-slate-100 dark:shadow-black/50 ${className || 'w-full max-w-md'}`}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}

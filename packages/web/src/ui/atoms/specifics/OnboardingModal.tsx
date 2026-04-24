@@ -67,14 +67,14 @@ export default function OnboardingModal({
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <section className="flex items-center justify-between gap-3">
+          <section className="flex flex-wrap items-center gap-3">
             <h3 className={sectionHeading}>
               {t('modals.onboarding.sections.language')}
             </h3>
             <LanguageSelector />
           </section>
 
-          <section className="flex items-center justify-between gap-3">
+          <section className="flex flex-wrap items-center gap-3">
             <h3 className={sectionHeading}>
               {t('modals.onboarding.sections.theme')}
             </h3>
