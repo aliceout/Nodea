@@ -1,8 +1,8 @@
 import Modal from '@/ui/atoms/base/Modal';
 import Button from '@/ui/atoms/base/Button';
 import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
-import LanguagePreferences from '@/app/flow/Settings/components/LanguagePreferences';
-import ThemePreferences from '@/app/flow/Settings/components/ThemePreferences';
+import LanguageSelector from '@/ui/atoms/specifics/LanguageSelector';
+import ThemeSelector from '@/ui/atoms/specifics/ThemeSelector';
 import {
   useNodeaStore,
   selectEnabledModuleCount,
@@ -58,7 +58,7 @@ export default function OnboardingModal({
       open={open}
       onClose={null}
       backdropClass="bg-black/30 backdrop-blur-sm"
-      className="w-full max-w-640"
+      className="w-full max-w-4xl"
     >
       <div className="flex flex-col gap-4 text-left">
         <header className="space-y-1 text-center">
@@ -67,18 +67,18 @@ export default function OnboardingModal({
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <section className="space-y-2">
+          <section className="flex items-center justify-between gap-3">
             <h3 className={sectionHeading}>
               {t('modals.onboarding.sections.language')}
             </h3>
-            <LanguagePreferences />
+            <LanguageSelector />
           </section>
 
-          <section className="space-y-2">
+          <section className="flex items-center justify-between gap-3">
             <h3 className={sectionHeading}>
               {t('modals.onboarding.sections.theme')}
             </h3>
-            <ThemePreferences />
+            <ThemeSelector variant="card" />
           </section>
         </div>
 
