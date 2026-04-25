@@ -12,19 +12,18 @@ import { useSession } from '@/core/auth/use-session';
 import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
 import { usePreferences } from '@/core/preferences/usePreferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
-import Header from './headers/Header';
-import Sidebar from './navigation/Sidebar.jsx';
+import Sidebar from '@/ui/dirk/Sidebar';
 
 /**
- * Main authenticated layout.
+ * Direction K shell — fixed sidebar (240px) on `lg+`, slide-in
+ * drawer below. The previous Header / Subheader pair is gone:
+ * each page renders its own per-page topbar inside the main
+ * column to keep the visual rhythm of the handoff (per-page
+ * dates, page-level CTAs, custom hierarchies).
  *
- * Crypto slice `status === 'missing'` blocks with `KeyMissingModal`
- * (only escape is logout + fresh login, which re-derives the main key).
- *
- * `auth.user.onboardingStatus === 'pending'` overlays `OnboardingModal`
- * on top of the current route — it doesn't block navigation, just asks
- * to pick language / theme / at least one module before letting the
- * user snooze or finalise.
+ * Crypto status `missing` keeps blocking with `KeyMissingModal`.
+ * Pending onboarding still overlays `OnboardingModal` on top of
+ * the current route.
  */
 export default function Layout() {
   const { moduleId } = useParams();
@@ -58,7 +57,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors">
+    <div className="flex min-h-screen bg-bg text-ink">
       {keyStatus === 'missing' ? (
         <KeyMissingModal
           onLogout={() => {
@@ -74,12 +73,8 @@ export default function Layout() {
         onSnooze={() => setSnoozed(true)}
       />
 
-
       <Sidebar />
-      <div className="flex flex-col flex-1 bg-slate-50 dark:bg-slate-950 transition-colors">
-        <Header />
-        <main className="flex-1 bg-white dark:bg-slate-900 transition-colors">{ActiveView}</main>
-      </div>
+      <main className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
     </div>
   );
 }
