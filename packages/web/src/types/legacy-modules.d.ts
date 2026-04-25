@@ -35,48 +35,10 @@ declare module '@/ui/branding/LogoLong.jsx' {
  * Legacy module entry points — imported lazily from `modules_list.tsx`.
  * Vite resolves the `.jsx`; TS (allowJs: false) needs the shape stub.
  * ------------------------------------------------------------------ */
-declare module '@/app/flow/Mood' {
-  import type { ComponentType } from 'react';
-  const MoodIndex: ComponentType;
-  export default MoodIndex;
-}
 declare module '@/app/flow/Goals' {
   import type { ComponentType } from 'react';
   const GoalsIndex: ComponentType;
   export default GoalsIndex;
-}
-declare module '@/app/flow/Passage' {
-  import type { ComponentType } from 'react';
-  const PassageIndex: ComponentType;
-  export default PassageIndex;
-}
-
-/* --------------------------------------------------------------------
- * Cross-module Mood leak-throughs (Homepage consumes these).
- * ------------------------------------------------------------------ */
-declare module '@/app/flow/Mood/hooks/useMoodTrend' {
-  export interface MoodTrendRow {
-    date: string;
-    mood: number;
-    emoji: string;
-  }
-  export interface MoodTrendState {
-    status: 'idle' | 'loading' | 'ready' | 'error' | 'missing-key' | 'missing-module';
-    data: MoodTrendRow[];
-    error: string;
-    hasData: boolean;
-  }
-  export default function useMoodTrend(options?: {
-    months?: number;
-    latestEntries?: number;
-  }): MoodTrendState;
-}
-declare module '@/app/flow/Mood/components/ChartBody' {
-  import type { ComponentType } from 'react';
-  const ChartBody: ComponentType<{
-    data: Array<{ date: string; mood: number; emoji?: string }>;
-  }>;
-  export default ChartBody;
 }
 
 /* --------------------------------------------------------------------
