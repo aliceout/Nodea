@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import EmptyHomepage from './Empty';
 
 /**
  * Homepage — Direction K · Sauge.
@@ -20,7 +22,15 @@ import { cn } from '@/lib/utils';
 export default function HomePage() {
   const user = useNodeaStore(selectUser);
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
+  const openComposer = useNodeaStore((s) => s.openComposer);
   const { t, language } = useI18n();
+  const [searchParams] = useSearchParams();
+
+  // Until real entry-count data is wired through TanStack Query,
+  // `?empty=1` flips the page to its first-day variant so the design
+  // can be reviewed without faking store state. The condition will
+  // expand once the home dashboard reads from real collections.
+  const forceEmpty = searchParams.get('empty') === '1';
 
   const displayName = useMemo(() => preferredName(user), [user]);
 
@@ -40,11 +50,14 @@ export default function HomePage() {
     return `${formatter.format(now)} · jour ${dayOfYear}`;
   }, [language]);
 
+  if (forceEmpty) return <EmptyHomepage />;
+
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
         date={formattedDate}
         onOpenMenu={() => setMobileMenuOpen(true)}
+        onOpenComposer={() => openComposer()}
         searchLabel={t('home.topbar.search', { defaultValue: 'Recherche' })}
         newEntryLabel={t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
       />
@@ -77,9 +90,16 @@ interface TopbarProps {
   searchLabel: string;
   newEntryLabel: string;
   onOpenMenu: () => void;
+  onOpenComposer: () => void;
 }
 
-function Topbar({ date, searchLabel, newEntryLabel, onOpenMenu }: TopbarProps) {
+function Topbar({
+  date,
+  searchLabel,
+  newEntryLabel,
+  onOpenMenu,
+  onOpenComposer,
+}: TopbarProps) {
   return (
     <div className="flex h-[52px] items-center justify-between border-b border-hair px-6 sm:px-9">
       <div className="flex items-center gap-3">
@@ -97,6 +117,7 @@ function Topbar({ date, searchLabel, newEntryLabel, onOpenMenu }: TopbarProps) {
       <div className="flex items-center gap-1.5">
         <button
           type="button"
+          onClick={onOpenComposer}
           className="hidden items-center gap-2 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] text-ink-soft transition-colors hover:border-accent hover:text-ink sm:inline-flex"
         >
           <kbd className="rounded border border-hair bg-bg-2 px-1 py-px font-mono text-[10px] text-muted">
@@ -106,6 +127,7 @@ function Topbar({ date, searchLabel, newEntryLabel, onOpenMenu }: TopbarProps) {
         </button>
         <button
           type="button"
+          onClick={onOpenComposer}
           className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
         >
           {newEntryLabel}

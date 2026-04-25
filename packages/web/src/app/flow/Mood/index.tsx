@@ -17,10 +17,14 @@ import { cn } from '@/lib/utils';
  */
 export default function MoodPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
+  const openComposer = useNodeaStore((s) => s.openComposer);
 
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar onOpenMenu={() => setMobileMenuOpen(true)} />
+      <Topbar
+        onOpenMenu={() => setMobileMenuOpen(true)}
+        onNewEntry={() => openComposer('mood')}
+      />
 
       <div className="flex-1 overflow-hidden">
         <div className="grid h-full grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_320px]">
@@ -34,9 +38,10 @@ export default function MoodPage() {
 
 interface TopbarProps {
   onOpenMenu: () => void;
+  onNewEntry: () => void;
 }
 
-function Topbar({ onOpenMenu }: TopbarProps) {
+function Topbar({ onOpenMenu, onNewEntry }: TopbarProps) {
   return (
     <div className="flex h-[52px] items-center justify-between border-b border-hair px-6 sm:px-9">
       <div className="flex items-center gap-3">
@@ -53,6 +58,7 @@ function Topbar({ onOpenMenu }: TopbarProps) {
 
       <button
         type="button"
+        onClick={onNewEntry}
         className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
       >
         + Nouvelle entrée

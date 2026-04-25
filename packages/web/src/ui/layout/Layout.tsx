@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal';
 import OnboardingModal from '@/ui/atoms/specifics/OnboardingModal';
@@ -13,6 +13,7 @@ import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
 import { usePreferences } from '@/core/preferences/usePreferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
 import Sidebar from '@/ui/dirk/Sidebar';
+import ComposerModal from '@/ui/dirk/ComposerModal';
 
 /**
  * Direction K shell — fixed sidebar (240px) on `lg+`, slide-in
@@ -31,6 +32,9 @@ export default function Layout() {
   const keyStatus = useNodeaStore(selectKeyStatus);
   const user = useNodeaStore(selectUser);
   const setAuth = useNodeaStore((s) => s.setAuth);
+  const openComposer = useNodeaStore((s) => s.openComposer);
+  const closeComposer = useNodeaStore((s) => s.closeComposer);
+  const composerOpen = useNodeaStore((s) => s.composer.open);
   const session = useSession();
   // Hydrate the encrypted user preferences + modules-config slices as
   // soon as the layout mounts — each runs at most once per
@@ -38,6 +42,23 @@ export default function Layout() {
   usePreferences();
   useModulesHydration();
   const [snoozed, setSnoozed] = useState(false);
+
+  // ⌘K (or Ctrl+K) toggles the global composer from anywhere in the
+  // shell. Disabled when the key is missing — the blocking
+  // KeyMissingModal owns input focus until the user re-auths.
+  useEffect(() => {
+    if (keyStatus === 'missing') return undefined;
+    function handleKey(event: KeyboardEvent): void {
+      const isComposerHotkey =
+        (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+      if (!isComposerHotkey) return;
+      event.preventDefault();
+      if (composerOpen) closeComposer();
+      else openComposer();
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [keyStatus, composerOpen, openComposer, closeComposer]);
   const needsOnboarding =
     !snoozed && user?.onboardingStatus === 'pending' && keyStatus !== 'missing';
 
@@ -75,6 +96,8 @@ export default function Layout() {
 
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
+
+      <ComposerModal />
     </div>
   );
 }

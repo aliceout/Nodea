@@ -89,9 +89,26 @@ export interface NodeaState {
   mobileMenuOpen: boolean;
   setMobileMenuOpen(open: boolean): void;
 
+  // --- UI: ⌘K composer modal (Direction K) ---
+  composer: {
+    open: boolean;
+    type: ComposerType;
+  };
+  openComposer(type?: ComposerType): void;
+  closeComposer(): void;
+  setComposerType(type: ComposerType): void;
+
   // --- reset (on logout) ---
   resetAll(): void;
 }
+
+/**
+ * The five entry archetypes the global composer can capture. Mirrors
+ * the `K_Composer` type-picker in `Design/.../dir-k-extras.jsx`. The
+ * `note` variant is a free-form journal entry that doesn't bind to
+ * any specific module.
+ */
+export type ComposerType = 'mood' | 'pass' | 'goal' | 'habit' | 'note';
 
 /**
  * Initial auth state. `loading` (not `unauthenticated`) so the first
@@ -155,6 +172,16 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
   mobileMenuOpen: false,
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 
+  composer: { open: false, type: 'mood' },
+  openComposer: (type) =>
+    set((state) => ({
+      composer: { open: true, type: type ?? state.composer.type },
+    })),
+  closeComposer: () =>
+    set((state) => ({ composer: { ...state.composer, open: false } })),
+  setComposerType: (type) =>
+    set((state) => ({ composer: { ...state.composer, type } })),
+
   resetAll: () =>
     set({
       auth: loggedOutAuth,
@@ -163,6 +190,7 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
       preferences: {},
       notifications: [],
       mobileMenuOpen: false,
+      composer: { open: false, type: 'mood' },
     }),
 }));
 
