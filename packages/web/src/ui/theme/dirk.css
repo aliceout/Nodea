@@ -1,0 +1,129 @@
+/*
+ * dirk.css — Direction K · Sauge tokens.
+ *
+ * Maps the design handoff (Design/design_handoff_nodea/README.md) to
+ * Tailwind 4 utilities. All colours live in CSS vars on `:root`
+ * (light) and `.dark` (night-warm) so the theme manager's existing
+ * `<html class="dark">` toggle keeps working.
+ *
+ * `@theme inline` binds the vars to Tailwind so `bg-bg`, `text-ink`,
+ * `border-hair`, `text-accent`, `font-serif` etc. become available
+ * everywhere.  Keyframes are declared once; `@theme inline` exposes
+ * the matching `animate-*` utilities.
+ */
+
+:root {
+  /* Neutres — papier crème */
+  --color-k-bg: #fcfcfa;
+  --color-k-bg2: #f5f4f0;
+  --color-k-ink: #161614;
+  --color-k-ink-soft: #3a3a36;
+  --color-k-muted: #88857c;
+  --color-k-muted-soft: #bcb9b0;
+  --color-k-hair: #e7e5dd;
+
+  /* Sauge — accent unique */
+  --color-k-accent: #5a7a5e;
+  --color-k-accent-soft: #dde8de;
+  --color-k-accent-deep: #3d5641;
+  --color-k-sync: #7a9a7e;
+
+  /* Systémique */
+  --color-k-danger: #dc2626;
+}
+
+.dark {
+  /* Papier la nuit, jamais bleuté */
+  --color-k-bg: #1d1c18;
+  --color-k-bg2: #262520;
+  --color-k-ink: #ece9dc;
+  --color-k-ink-soft: #c5c2b3;
+  --color-k-muted: #7d7a6e;
+  --color-k-muted-soft: #4a4842;
+  --color-k-hair: #34322c;
+
+  /* Sauge clarifié pour contraster sur fond sombre */
+  --color-k-accent: #9bbf9f;
+  --color-k-accent-soft: #2e3a30;
+  --color-k-accent-deep: #bcd9bf;
+  --color-k-sync: #9bbf9f;
+
+  /* Le rouge système ne change pas — la zone rouge reste rouge */
+  --color-k-danger: #dc2626;
+}
+
+/* Keyframes — durées 180–450ms, easing cubic-bezier(.2,.7,.3,1).
+   Voir le tableau "Animations" du README pour la grille complète. */
+
+@keyframes k-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes k-slide {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes k-pulse {
+  0%   { box-shadow: 0 0 0 0 rgb(122 154 126 / 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgb(122 154 126 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(122 154 126 / 0); }
+}
+
+@keyframes k-bar {
+  from { width: 0; }
+}
+
+@keyframes k-cell {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes k-streak {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+/* Tailwind 4 token registration */
+@theme inline {
+  /* Couleurs — utilisables comme `bg-bg`, `text-ink`, `border-hair`,
+     `text-accent`, `bg-accent-soft`, `text-danger` etc. */
+  --color-bg: var(--color-k-bg);
+  --color-bg-2: var(--color-k-bg2);
+  --color-ink: var(--color-k-ink);
+  --color-ink-soft: var(--color-k-ink-soft);
+  --color-muted: var(--color-k-muted);
+  --color-muted-soft: var(--color-k-muted-soft);
+  --color-hair: var(--color-k-hair);
+  --color-accent: var(--color-k-accent);
+  --color-accent-soft: var(--color-k-accent-soft);
+  --color-accent-deep: var(--color-k-accent-deep);
+  --color-sync: var(--color-k-sync);
+  --color-danger: var(--color-k-danger);
+
+  /* Typographies — `font-sans` (UI), `font-serif` (citations,
+     contenu émotionnel), `font-mono` (kbd uniquement). */
+  --font-sans:
+    'Instrument Sans', 'Inter', 'SF Pro Text', system-ui,
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Instrument Serif', 'Newsreader', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Animations — `animate-fade-up`, `animate-slide-in`, etc. */
+  --animate-fade-up: k-fade 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-slide-in: k-slide 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-sync-pulse: k-pulse 2.4s infinite;
+  --animate-bar-fill: k-bar 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-cell-pop: k-cell 0.35s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-streak-pulse: k-streak 2.6s ease-in-out infinite;
+}
+
+/* Body baseline — sans en mode normal, papier crème en fond. Le
+   composant racine (Layout) peut surcharger via Tailwind. */
+html {
+  font-family: var(--font-sans);
+  background: var(--color-k-bg);
+  color: var(--color-k-ink);
+}

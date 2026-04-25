@@ -2,4 +2,5 @@
 
 @import "tailwindcss";
 @import "./theme.css";
+@import "./dirk.css";
 @import "./global.css"
