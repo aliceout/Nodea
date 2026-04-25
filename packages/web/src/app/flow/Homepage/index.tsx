@@ -62,11 +62,9 @@ export default function HomePage() {
         newEntryLabel={t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
       />
 
-      <div className="flex-1 overflow-hidden">
-        <div className="grid h-full grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-          <PrimaryColumn name={displayName} />
-          <SideColumn />
-        </div>
+      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
+        <PrimaryColumn name={displayName} />
+        <SideColumn />
       </div>
     </div>
   );
@@ -101,7 +99,7 @@ function Topbar({
   onOpenComposer,
 }: TopbarProps) {
   return (
-    <div className="flex h-[52px] items-center justify-between border-b border-hair px-6 sm:px-9">
+    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
       <div className="flex items-center gap-3">
         <button
           type="button"

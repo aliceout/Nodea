@@ -28,6 +28,14 @@
   --color-k-accent-deep: #3d5641;
   --color-k-sync: #7a9a7e;
 
+  /* Terracotta — tonalité « basse », pour lectures négatives
+     (note < 0). Choisie chaude/désaturée pour se marier avec le
+     sauge ; ne PAS confondre avec `--color-k-danger` (rouge
+     système réservé à la zone rouge / suppression). */
+  --color-k-low: #a85a47;
+  --color-k-low-soft: #ead8d2;
+  --color-k-low-deep: #5e2f25;
+
   /* Systémique */
   --color-k-danger: #dc2626;
 }
@@ -47,6 +55,11 @@
   --color-k-accent-soft: #2e3a30;
   --color-k-accent-deep: #bcd9bf;
   --color-k-sync: #9bbf9f;
+
+  /* Terracotta clarifié pour rester lisible sur le papier de nuit */
+  --color-k-low: #c8907d;
+  --color-k-low-soft: #3d2a23;
+  --color-k-low-deep: #d8a698;
 
   /* Le rouge système ne change pas — la zone rouge reste rouge */
   --color-k-danger: #dc2626;
@@ -100,6 +113,9 @@
   --color-accent-soft: var(--color-k-accent-soft);
   --color-accent-deep: var(--color-k-accent-deep);
   --color-sync: var(--color-k-sync);
+  --color-low: var(--color-k-low);
+  --color-low-soft: var(--color-k-low-soft);
+  --color-low-deep: var(--color-k-low-deep);
   --color-danger: var(--color-k-danger);
 
   /* Typographies — `font-sans` (UI), `font-serif` (citations,

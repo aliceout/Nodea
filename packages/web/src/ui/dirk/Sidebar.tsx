@@ -108,7 +108,7 @@ export default function Sidebar() {
 
 function SidebarShell({ children }: SidebarShellProps) {
   return (
-    <aside className="hidden w-[240px] shrink-0 border-r border-hair bg-bg-2 lg:flex lg:flex-col">
+    <aside className="hidden w-[240px] shrink-0 border-r border-hair bg-bg-2 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
       {children}
     </aside>
   );

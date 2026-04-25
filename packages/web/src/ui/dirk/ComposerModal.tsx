@@ -209,8 +209,8 @@ function MoodBody({ onSubmit }: MoodBodyProps) {
                   : 'bg-bg text-ink-soft border-hair hover:border-accent'
                 : numeric < 0
                   ? selected
-                    ? 'bg-ink text-bg border-ink'
-                    : 'bg-bg text-ink-soft border-hair hover:border-ink'
+                    ? 'bg-low text-white border-low'
+                    : 'bg-bg text-ink-soft border-hair hover:border-low'
                   : selected
                     ? 'bg-bg-2 text-ink border-ink-soft'
                     : 'bg-bg text-ink-soft border-hair hover:border-ink-soft';

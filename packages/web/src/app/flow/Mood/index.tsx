@@ -29,11 +29,9 @@ export default function MoodPage() {
         onNewEntry={() => openComposer('mood')}
       />
 
-      <div className="flex-1 overflow-hidden">
-        <div className="min-h-0 grid h-full grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-          <PrimaryColumn />
-          <SideColumn />
-        </div>
+      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
+        <PrimaryColumn />
+        <SideColumn />
       </div>
     </div>
   );
@@ -46,7 +44,7 @@ interface TopbarProps {
 
 function Topbar({ onOpenMenu, onNewEntry }: TopbarProps) {
   return (
-    <div className="flex h-[52px] items-center justify-between border-b border-hair px-6 sm:px-9">
+    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -151,7 +149,7 @@ const ENTRIES: MoodEntry[] = [
 
 function PrimaryColumn() {
   return (
-    <section className="flex min-h-0 min-w-0 flex-col">
+    <section className="flex min-w-0 flex-col">
       <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
         Mood
       </h1>
@@ -162,7 +160,7 @@ function PrimaryColumn() {
 
       <Chart />
 
-      <div className="min-h-0 flex-1 overflow-auto pr-1">
+      <div>
         {ENTRIES.map((entry) => (
           <EntryRow key={entry.date} entry={entry} />
         ))}
@@ -229,11 +227,13 @@ function Chart() {
         />
         {points.map((p, i) => {
           const cls = p.isToday
-            ? 'fill-accent'
+            ? p.score < 0
+              ? 'fill-low'
+              : 'fill-accent'
             : p.score > 0
               ? 'fill-accent-soft'
               : p.score < 0
-                ? 'fill-ink-soft'
+                ? 'fill-low'
                 : 'fill-muted-soft';
           return (
             <circle
@@ -298,8 +298,8 @@ const SCORE_TONE: Record<MoodScore, string> = {
   '2': 'bg-accent text-white',
   '1': 'bg-accent-soft text-accent-deep',
   '0': 'bg-bg-2 text-ink-soft',
-  '-1': 'bg-hair text-ink-soft',
-  '-2': 'bg-ink text-bg',
+  '-1': 'bg-low-soft text-low-deep',
+  '-2': 'bg-low text-white',
 };
 
 function NoteBadge({ score }: { score: MoodScore }) {
@@ -387,7 +387,7 @@ function ScoreDistribution() {
               <div
                 className={cn(
                   'h-full rounded-sm',
-                  Number(score) > 0 ? 'bg-accent' : Number(score) < 0 ? 'bg-ink-soft' : 'bg-muted-soft',
+                  Number(score) > 0 ? 'bg-accent' : Number(score) < 0 ? 'bg-low' : 'bg-muted-soft',
                 )}
                 style={{ width: `${pct}%` }}
               />

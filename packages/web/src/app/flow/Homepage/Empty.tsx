@@ -96,7 +96,7 @@ interface TopbarProps {
 
 function Topbar({ date, onOpenMenu, onNewEntry }: TopbarProps) {
   return (
-    <div className="flex h-[52px] items-center justify-between border-b border-hair px-6 sm:px-9">
+    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
       <div className="flex items-center gap-3">
         <button
           type="button"
