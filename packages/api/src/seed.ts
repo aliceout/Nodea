@@ -109,11 +109,36 @@ async function main() {
     username = parsed.data;
   }
 
-  const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  if (existing) {
-    console.log(`[seed] admin ${email} already exists (id=${existing.id}); no-op`);
+  const [existingByEmail] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existingByEmail) {
+    console.log(`[seed] admin ${email} already exists (id=${existingByEmail.id}); no-op`);
     await sql.end();
     return;
+  }
+
+  // Idempotency on username too — without this, a re-run with a
+  // changed ADMIN_EMAIL (but the same ADMIN_USERNAME) would trip the
+  // `users_username_unique` constraint instead of bailing politely.
+  if (username) {
+    const [existingByUsername] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    if (existingByUsername) {
+      console.log(
+        `[seed] username "${username}" is already taken by ${existingByUsername.email} (id=${existingByUsername.id}); no-op`,
+      );
+      console.log(
+        `[seed] tip: align ADMIN_EMAIL with the existing admin, or pick a different ADMIN_USERNAME, or drop that user first`,
+      );
+      await sql.end();
+      return;
+    }
   }
 
   // Generate a fresh random main key and wrap it under the password.
