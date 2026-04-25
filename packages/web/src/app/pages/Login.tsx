@@ -1,22 +1,21 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
-import Input from '@/ui/atoms/form/Input';
-import Button from '@/ui/atoms/base/Button';
-import FormError from '@/ui/atoms/form/FormError';
-import Logo from '@/ui/branding/LogoLong.jsx';
+import { cn } from '@/lib/utils';
 
 /**
- * Login page (new back, TSX).
+ * Login — Direction K · Sauge.
  *
- * Card-centred form with the same visual rhythm as the legacy JSX
- * version: Logo at the top, two labelled inputs, primary button,
- * forgot-password link, and a "create account" footer outside the
- * card.
+ * Pixel-precise port of `Design/design_handoff_nodea/source/dir-k.jsx
+ * → K_Login`. Two columns: marketing panel on `bg-bg-2` left,
+ * compact form on `bg-bg` right. The form uses the K house input
+ * directly — 1px hairline border that flips to accent on focus
+ * with a 3px accent-soft ring — rather than reaching for a
+ * primitive that would smother the design intent.
  */
 export default function LoginPage() {
   const session = useSession();
@@ -36,11 +35,6 @@ export default function LoginPage() {
     setServerError(null);
     try {
       await session.login(values);
-      // Client-side nav: stay in the same JS process so the main key
-      // we just derived survives. A full reload would wipe it and
-      // force the KeyMissingModal for no reason. Security contract is
-      // unchanged — the key is still only in non-extractable memory
-      // and any real cold reload (F5, tab close) will still lose it.
       navigate('/flow/home', { replace: true });
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
@@ -53,63 +47,130 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-      <div className="flex w-full max-w-md flex-col items-stretch gap-6">
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          className="flex flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none"
-        >
-          <Logo className="mx-auto mb-2 w-1/2" />
-          <h1 className="text-center text-lg font-semibold">Connexion</h1>
+    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
+      {/* Marketing panel */}
+      <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
+          <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
+        </div>
 
-          <Input
-            label="E-mail"
-            type="email"
-            autoComplete="email"
-            required
-            {...register('email')}
-          />
-          {errors.email ? (
-            <p role="alert" className="-mt-2 text-xs text-rose-600">
-              {errors.email.message}
-            </p>
-          ) : null}
+        <div className="animate-fade-up">
+          <h1 className="mb-[18px] text-[56px] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
+            Te revoilà.
+          </h1>
+          <p className="max-w-[460px] text-[18px] leading-[1.5] text-ink-soft">
+            Un carnet privé, hébergé par toi. Mood, passages, goals, habits, library, review —
+            chiffrés bout en bout, jamais visibles côté serveur.
+          </p>
+        </div>
 
-          <Input
-            label="Mot de passe"
-            type="password"
-            autoComplete="current-password"
-            required
-            {...register('password')}
-          />
-          {errors.password ? (
-            <p role="alert" className="-mt-2 text-xs text-rose-600">
-              {errors.password.message}
-            </p>
-          ) : null}
+        <div className="flex gap-3.5 text-[12px] text-muted">
+          <span>Chiffré bout en bout</span>
+          <span>·</span>
+          <span>Auto-hébergé</span>
+          <span>·</span>
+          <span>AGPL-3.0</span>
+        </div>
+      </aside>
 
-          <Button type="submit" variant="primary" disabled={isSubmitting} className="mt-2">
-            {isSubmitting ? 'Connexion…' : 'Se connecter'}
-          </Button>
+      {/* Form panel */}
+      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+        <div className="animate-fade-up w-full max-w-[360px]">
+          <p className="mb-1 text-[13px] text-muted">Connexion</p>
+          <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+            Entre dans ton carnet
+          </h2>
 
-          {serverError ? <FormError message={serverError} /> : null}
+          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+            <Field
+              label="E-mail"
+              type="email"
+              autoComplete="email"
+              error={errors.email?.message}
+              {...register('email')}
+            />
+            <Field
+              label="Mot de passe"
+              type="password"
+              autoComplete="current-password"
+              error={errors.password?.message}
+              {...register('password')}
+            />
 
-          <Link to="/request-reset" className="text-center text-xs underline opacity-70">
-            Mot de passe oublié ?
-          </Link>
-        </form>
+            {serverError ? (
+              <div
+                role="alert"
+                className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+              >
+                {serverError}
+              </div>
+            ) : null}
 
-        <p className="text-center text-sm">
-          <span className="opacity-70">Pas de compte ?</span>{' '}
-          <Link
-            to="/register"
-            className="text-nodea-sage underline hover:text-nodea-sage-dark"
-          >
-            Créer un compte
-          </Link>
-        </p>
-      </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? 'Connexion…' : 'Entrer'}
+            </button>
+
+            <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
+              <Link
+                to="/request-reset"
+                className="cursor-pointer transition-colors hover:text-ink"
+              >
+                Mot de passe oublié
+              </Link>
+              <Link
+                to="/register"
+                className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+              >
+                Créer un compte
+              </Link>
+            </div>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }
+
+interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
+  label: string;
+  error?: string | undefined;
+}
+
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { label, error, className, id, name, ...rest },
+  ref,
+) {
+  const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
+  return (
+    <div className="mb-3.5">
+      <label htmlFor={inputId} className="mb-[5px] block text-[12px] font-medium text-muted">
+        {label}
+      </label>
+      <input
+        id={inputId}
+        name={name}
+        ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+        className={cn(
+          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
+          'outline-none transition-[border-color,box-shadow]',
+          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
+        {...rest}
+      />
+      {error ? (
+        <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+});
