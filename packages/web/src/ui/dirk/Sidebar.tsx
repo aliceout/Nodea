@@ -11,6 +11,7 @@ import {
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import ThemeToggle from '@/ui/dirk/ThemeToggle';
 
 /**
  * Direction K · Sauge sidebar — replicates the handoff prototype
@@ -253,9 +254,17 @@ function SidebarSection({ title, children }: SidebarSectionProps) {
 
 function SidebarFooter() {
   return (
-    <div className="mt-3 flex items-center gap-2 border-t border-hair px-2.5 pt-2.5 text-[12px] text-muted">
-      <span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-sync animate-sync-pulse" />
-      Synchronisé · à l’instant
+    <div className="mt-3 flex flex-col gap-2 border-t border-hair px-2.5 pt-2.5">
+      <div className="flex items-center justify-between gap-2 text-[12px] text-muted">
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
+          />
+          Synchronisé · à l’instant
+        </span>
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

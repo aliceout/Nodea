@@ -1,8 +1,5 @@
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
-import Surface from '@/ui/atoms/layout/Surface';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
-import Badge from '@/ui/atoms/feedback/Badge';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { MODULES } from '@/app/config/modules_list';
 import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
@@ -14,6 +11,7 @@ import {
   type ModuleRuntimeEntry,
   type ModulesRuntime,
 } from '@/core/store/nodea-store';
+import { cn } from '@/lib/utils';
 
 export interface ModulesManagerProps {
   /**
@@ -100,20 +98,20 @@ export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps
 
   if (rows.length === 0) {
     return (
-      <Surface tone="muted" border="default" padding="md">
-        <p className="text-sm">
-          {t('settings.modules.none', { defaultValue: 'Aucun module configurable.' })}
-        </p>
-      </Surface>
+      <p className="border-b border-hair py-6 text-[13px] italic text-muted">
+        {t('settings.modules.none', { defaultValue: 'Aucun module configurable.' })}
+      </p>
     );
   }
 
-  function Toggle({ checked, isBusy, onChange, label }: {
+  function Toggle({ checked, isBusy, onChange, label, variant = 'legacy' }: {
     checked: boolean;
     isBusy: boolean;
     onChange: (next: boolean) => void;
     label: string;
+    variant?: 'legacy' | 'k';
   }) {
+    const isK = variant === 'k';
     return (
       <div
         className={clsx(
@@ -125,13 +123,20 @@ export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps
           aria-hidden="true"
           className={clsx(
             'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
-            checked ? 'bg-emerald-500' : 'bg-slate-300',
+            isK
+              ? checked
+                ? 'bg-accent'
+                : 'bg-hair'
+              : checked
+                ? 'bg-emerald-500'
+                : 'bg-slate-300',
           )}
         />
         <span
           aria-hidden="true"
           className={clsx(
-            'absolute left-0 top-0 h-6 w-6 rounded-full border bg-white shadow transition-transform duration-150 ease-out',
+            'absolute left-0.5 top-0.5 h-5 w-5 rounded-full transition-transform duration-150 ease-out',
+            isK ? 'border border-hair bg-bg' : 'border bg-white shadow',
             checked ? 'translate-x-5' : '',
           )}
         />
@@ -187,7 +192,7 @@ export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps
   }
 
   return (
-    <Surface tone="muted" border="default" padding="lg" shadow="none" className="space-y-4">
+    <div className="flex flex-col">
       {rows.map((m) => {
         const entry = cfg[m.id];
         const checked = !!entry?.enabled;
@@ -197,39 +202,43 @@ export default function ModulesManager({ layout = 'cards' }: ModulesManagerProps
           ? t(m.description, { defaultValue: m.description })
           : '';
 
-        const badgeLabel = checked
-          ? t('settings.modules.badges.active', { defaultValue: 'Actif' })
-          : t('settings.modules.badges.inactive', { defaultValue: 'Inactif' });
-
         return (
-          <SurfaceCard
-            as="label"
+          <label
             key={m.id}
-            tone="base"
-            border="default"
-            padding="md"
-            interactive
-            className="cursor-pointer"
-            bodyClassName="flex flex-col gap-4 text-left sm:flex-row sm:items-center sm:justify-between"
+            className="group flex cursor-pointer items-center gap-4 border-b border-hair py-3.5 last:border-b-0"
           >
-            <div className="space-y-1 sm:max-w-lg">
-              <p className="text-sm font-semibold">{label}</p>
-              {description ? <p className="text-sm opacity-70">{description}</p> : null}
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  'text-[14px] font-medium transition-colors',
+                  checked ? 'text-ink' : 'text-ink-soft',
+                )}
+              >
+                {label}
+              </p>
+              {description ? (
+                <p className="mt-0.5 text-[12.5px] text-muted">{description}</p>
+              ) : null}
             </div>
 
-            <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <Badge tone={checked ? 'success' : 'neutral'}>{badgeLabel}</Badge>
-              <Toggle
-                checked={checked}
-                isBusy={isBusy}
-                onChange={(next) => toggleModule(m.id, next)}
-                label={label}
-              />
-            </div>
-          </SurfaceCard>
+            <Toggle
+              checked={checked}
+              isBusy={isBusy}
+              onChange={(next) => toggleModule(m.id, next)}
+              label={label}
+              variant="k"
+            />
+          </label>
         );
       })}
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
-    </Surface>
+      {error ? (
+        <p
+          role="alert"
+          className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
