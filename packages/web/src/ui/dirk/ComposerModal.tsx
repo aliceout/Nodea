@@ -191,7 +191,7 @@ function MoodBody({ onSubmit }: MoodBodyProps) {
             placeholder={POSITIVE_PLACEHOLDERS[i] ?? ''}
             rows={1}
             autoFocus={i === 0}
-            className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[14.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+            className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
         ))}
       </div>
@@ -259,7 +259,7 @@ function MoodBody({ onSubmit }: MoodBodyProps) {
               onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
               placeholder="Réponse (optionnelle)"
               rows={2}
-              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[14px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
             />
           </div>
 
@@ -271,7 +271,7 @@ function MoodBody({ onSubmit }: MoodBodyProps) {
               onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
               placeholder="Ce qui ne tient pas dans les trois lignes du dessus."
               rows={3}
-              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[14px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
             />
           </div>
         </div>
