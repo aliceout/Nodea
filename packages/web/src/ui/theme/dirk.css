@@ -24,7 +24,12 @@
 
   /* Sauge — accent unique */
   --color-k-accent: #5a7a5e;
-  --color-k-accent-soft: #dde8de;
+  /* `-soft` is the pale tint used for `mood = +1` cells / legend
+     swatches / NoteBadge backgrounds. The original #dde8de read
+     too close to the neutral hair tone — bumped saturation so
+     the +1 / -1 tier is unambiguously coloured rather than
+     "barely off-grey". */
+  --color-k-accent-soft: #c5d8c9;
   --color-k-accent-deep: #3d5641;
   --color-k-sync: #7a9a7e;
 
@@ -33,7 +38,8 @@
      sauge ; ne PAS confondre avec `--color-k-danger` (rouge
      système réservé à la zone rouge / suppression). */
   --color-k-low: #a85a47;
-  --color-k-low-soft: #ead8d2;
+  /* See note above on `--color-k-accent-soft` — same logic. */
+  --color-k-low-soft: #ddc0b1;
   --color-k-low-deep: #5e2f25;
 
   /* Systémique */
@@ -52,13 +58,16 @@
 
   /* Sauge clarifié pour contraster sur fond sombre */
   --color-k-accent: #9bbf9f;
-  --color-k-accent-soft: #2e3a30;
+  /* See light-mode note — bumped saturation so `+1` cells stay
+     visibly green-tinted instead of merging into the neutral. */
+  --color-k-accent-soft: #36493b;
   --color-k-accent-deep: #bcd9bf;
   --color-k-sync: #9bbf9f;
 
   /* Terracotta clarifié pour rester lisible sur le papier de nuit */
   --color-k-low: #c8907d;
-  --color-k-low-soft: #3d2a23;
+  /* See light-mode note — same bump. */
+  --color-k-low-soft: #4d3329;
   --color-k-low-deep: #d8a698;
 
   /* Le rouge système ne change pas — la zone rouge reste rouge */
