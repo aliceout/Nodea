@@ -1,26 +1,32 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
+import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
 
 import {
   useNodeaStore,
   type ComposerType,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
+import questions from '@/i18n/fr/Mood/questions.json';
 
 /**
  * ComposerModal — Direction K · Sauge.
  *
- * Pixel-precise port of `Design/design_handoff_nodea/source/dir-k-extras.jsx
- * → K_Composer`. Top-positioned overlay (≈ 130 px from the top of
- * the viewport), 620 px wide on desktop, with a five-tab type
- * picker, a big Instrument-Serif textarea, conditional metadata
- * for the `mood` type (1-10 note grid + tag pills), and a footer
- * with `↵ envoyer` / `esc annuler` keyboard hints.
+ * Top-positioned overlay (≈ 130 px from the top of the viewport),
+ * 620 px wide on desktop, with a five-tab type picker. The body
+ * adapts to the selected type:
+ *
+ * - `mood`: structured form — 3 positives + note (-2..+2) + optional
+ *   "question du jour" + optional free comment. Mirrors the legacy
+ *   Mood entry shape (`MoodPayloadSchema`); emoji has been dropped
+ *   per the Direction K spec but is still tolerated on read.
+ * - other types: a single large Instrument-Serif textarea — quick
+ *   capture for passages, goals, habits, free notes.
  *
  * Dismissal is wired to `closeComposer()`. The "Enregistrer" CTA
- * is a no-op until the encrypted module pipelines accept entries
- * from this surface; opening the composer + cycling types + Esc
- * are already production-ready.
+ * is a no-op until each module's encryption pipeline accepts entries
+ * from this surface; opening, type-switching and Esc are already
+ * production-ready.
  */
 export default function ComposerModal() {
   const open = useNodeaStore((s) => s.composer.open);
@@ -43,7 +49,7 @@ export default function ComposerModal() {
           <div className="fixed inset-0 bg-ink/30" aria-hidden="true" />
         </Transition.Child>
 
-        <div className="fixed inset-0 flex items-start justify-center px-4 pt-[15vh] sm:pt-[130px]">
+        <div className="fixed inset-0 flex items-start justify-center px-4 pt-[12vh] sm:pt-[110px]">
           <Transition.Child
             as={Fragment}
             enter="transition ease-out duration-200"
@@ -55,7 +61,12 @@ export default function ComposerModal() {
           >
             <DialogPanel className="relative w-full max-w-[620px] overflow-hidden rounded-[12px] border border-hair bg-bg shadow-[0_24px_60px_rgba(0,0,0,0.18),0_4px_12px_rgba(0,0,0,0.08)]">
               <TypePicker active={type} onSelect={setComposerType} />
-              <ComposerBody type={type} onSubmit={closeComposer} />
+              {type === 'mood' ? (
+                <MoodBody onSubmit={closeComposer} />
+              ) : (
+                <SimpleBody type={type} onSubmit={closeComposer} />
+              )}
+              <Footer onSubmit={closeComposer} />
             </DialogPanel>
           </Transition.Child>
         </div>
@@ -102,121 +113,226 @@ function TypePicker({ active, onSelect }: TypePickerProps) {
   );
 }
 
-interface ComposerBodyProps {
-  type: ComposerType;
-  onSubmit: () => void;
-}
-
-const PLACEHOLDERS: Record<ComposerType, string> = {
-  mood: 'Une humeur, un moment, ce qui se dit dans la tête…',
+const SIMPLE_PLACEHOLDERS: Record<Exclude<ComposerType, 'mood'>, string> = {
   pass: 'Un extrait qui mérite d’être relu — citation entre guillemets, page et ouvrage en métadonnées.',
   goal: 'Une intention pour la semaine, le mois, l’année.',
   habit: 'Une habitude à suivre — quoi, à quel rythme.',
   note: 'Une note libre. Aucune contrainte.',
 };
 
-function ComposerBody({ type, onSubmit }: ComposerBodyProps) {
+interface SimpleBodyProps {
+  type: Exclude<ComposerType, 'mood'>;
+  onSubmit: () => void;
+}
+
+function SimpleBody({ type, onSubmit }: SimpleBodyProps) {
   const [text, setText] = useState('');
-  const [note, setNote] = useState<number | null>(null);
-  const [tags, setTags] = useState<string[]>(['café', 'travail', 'marche']);
+  return (
+    <div className="px-[22px] pt-3.5 pb-3">
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
+        placeholder={SIMPLE_PLACEHOLDERS[type]}
+        className="block min-h-[90px] w-full resize-none border-0 bg-transparent font-serif text-[19px] leading-[1.5] text-ink placeholder:text-muted-soft focus:outline-none"
+      />
+    </div>
+  );
+}
 
-  function toggleTag(tag: string): void {
-    setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
-  }
+const SCORE_LABELS: Record<MoodScore, string> = {
+  '-2': 'très bas',
+  '-1': 'bas',
+  '0': 'neutre',
+  '1': 'bon',
+  '2': 'très bon',
+};
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      onSubmit();
-    }
+interface MoodBodyProps {
+  onSubmit: () => void;
+}
+
+function MoodBody({ onSubmit }: MoodBodyProps) {
+  const [positives, setPositives] = useState<[string, string, string]>(['', '', '']);
+  const [score, setScore] = useState<MoodScore | null>(null);
+  const [answer, setAnswer] = useState('');
+  const [comment, setComment] = useState('');
+  const [optionalsOpen, setOptionalsOpen] = useState(false);
+
+  // Pick a random question once per Composer-mood mount so it stays
+  // stable while the user types — re-rolls only when the modal
+  // unmounts (Composer closed) and re-opens.
+  const question = useMemo<string>(() => {
+    const list = questions as readonly string[];
+    if (list.length === 0) return '';
+    const i = Math.floor(Math.random() * list.length);
+    return list[i] ?? '';
+  }, []);
+
+  function setPositive(idx: 0 | 1 | 2, value: string): void {
+    setPositives((prev) => {
+      const next: [string, string, string] = [prev[0], prev[1], prev[2]];
+      next[idx] = value;
+      return next;
+    });
   }
 
   return (
-    <>
-      <div className="px-[22px] pb-1 pt-3.5">
-        <textarea
-          autoFocus
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={PLACEHOLDERS[type]}
-          className="block min-h-[90px] w-full resize-none border-0 bg-transparent font-serif text-[19px] leading-[1.5] text-ink placeholder:text-muted-soft focus:outline-none"
-        />
+    <div className="space-y-3.5 px-[22px] pt-3.5 pb-3">
+      <div className="space-y-2">
+        <SectionLabel>Trois choses positives aujourd&rsquo;hui</SectionLabel>
+        {[0, 1, 2].map((i) => (
+          <textarea
+            key={i}
+            value={positives[i as 0 | 1 | 2]}
+            onChange={(e) => setPositive(i as 0 | 1 | 2, e.target.value)}
+            onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
+            placeholder={POSITIVE_PLACEHOLDERS[i] ?? ''}
+            rows={1}
+            autoFocus={i === 0}
+            className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[14.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+          />
+        ))}
       </div>
 
-      {type === 'mood' ? (
-        <div className="flex flex-wrap items-center gap-3.5 px-[22px] pb-3.5">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
-            Note
-          </span>
-          <div className="flex gap-1">
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
-              const selected = note === n;
-              const aboveThreshold = note != null && n <= note;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setNote(n)}
-                  className={cn(
-                    'flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-[4px] text-[11px] font-semibold tabular-nums transition-colors',
-                    aboveThreshold
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-2 text-muted hover:text-ink',
-                    selected && 'ring-2 ring-accent-deep ring-offset-1 ring-offset-bg',
-                  )}
-                  aria-pressed={selected}
-                >
-                  {n}
-                </button>
-              );
-            })}
-          </div>
-          <div className="ml-auto flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
+      <div>
+        <SectionLabel>Note du jour</SectionLabel>
+        <div className="grid grid-cols-5 gap-1.5">
+          {MOOD_SCORE_VALUES.map((value) => {
+            const selected = score === value;
+            const numeric = Number(value);
+            const tone =
+              numeric > 0
+                ? selected
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-bg text-ink-soft border-hair hover:border-accent'
+                : numeric < 0
+                  ? selected
+                    ? 'bg-ink text-bg border-ink'
+                    : 'bg-bg text-ink-soft border-hair hover:border-ink'
+                  : selected
+                    ? 'bg-bg-2 text-ink border-ink-soft'
+                    : 'bg-bg text-ink-soft border-hair hover:border-ink-soft';
+            return (
               <button
-                key={tag}
+                key={value}
                 type="button"
-                onClick={() => toggleTag(tag)}
-                className="cursor-pointer rounded-full bg-bg-2 px-2.5 py-[3px] text-[11px] text-ink-soft transition-colors hover:text-ink"
+                onClick={() => setScore(value)}
+                aria-pressed={selected}
+                className={cn(
+                  'flex flex-col items-center gap-0.5 rounded-md border px-2 py-1.5 text-[11px] transition-colors',
+                  tone,
+                )}
               >
-                {tag}
+                <span className="text-[14px] font-semibold tabular-nums">
+                  {numeric > 0 ? `+${value}` : value}
+                </span>
+                <span className="text-[10px] tracking-[0.02em]">{SCORE_LABELS[value]}</span>
               </button>
-            ))}
-            <button
-              type="button"
-              className="cursor-pointer rounded-full border border-dashed border-hair bg-transparent px-2.5 py-[3px] text-[11px] text-muted transition-colors hover:border-accent hover:text-ink"
-            >
-              + tag
-            </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOptionalsOpen((v) => !v)}
+        className="text-[12px] text-muted transition-colors hover:text-ink"
+        aria-expanded={optionalsOpen}
+      >
+        {optionalsOpen ? '− Replier' : '+ Question du jour & commentaire'}
+      </button>
+
+      {optionalsOpen ? (
+        <div className="space-y-3 pt-1">
+          <div>
+            <p className="mb-1 text-[12px] text-muted">
+              <span className="font-semibold tracking-[0.02em]">Question du jour : </span>
+              <span className="font-serif italic text-ink-soft">
+                {question || '—'}
+              </span>
+            </p>
+            <textarea
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
+              placeholder="Réponse (optionnelle)"
+              rows={2}
+              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[14px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <SectionLabel>Commentaire</SectionLabel>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
+              placeholder="Ce qui ne tient pas dans les trois lignes du dessus."
+              rows={3}
+              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[14px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+            />
           </div>
         </div>
       ) : null}
-
-      <div className="flex items-center justify-between gap-4 border-t border-hair bg-bg-2 px-3.5 py-2.5">
-        <div className="flex items-center gap-4 text-[11px] text-muted">
-          <span className="hidden items-center gap-1.5 sm:inline-flex">
-            <kbd className="rounded-[3px] border border-hair bg-bg px-1.5 py-px font-mono text-[10px] text-ink-soft">
-              ⌘↵
-            </kbd>
-            envoyer
-          </span>
-          <span className="hidden items-center gap-1.5 sm:inline-flex">
-            <kbd className="rounded-[3px] border border-hair bg-bg px-1.5 py-px font-mono text-[10px] text-ink-soft">
-              esc
-            </kbd>
-            annuler
-          </span>
-          <span>chiffré localement</span>
-        </div>
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
-        >
-          Enregistrer
-        </button>
-      </div>
-    </>
+    </div>
   );
+}
+
+const POSITIVE_PLACEHOLDERS: ReadonlyArray<string> = [
+  'Un premier moment qui a tenu la journée debout.',
+  'Un deuxième — plus discret peut-être.',
+  'Un troisième — même tout petit.',
+];
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
+      {children}
+    </div>
+  );
+}
+
+interface FooterProps {
+  onSubmit: () => void;
+}
+
+function Footer({ onSubmit }: FooterProps) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-t border-hair bg-bg-2 px-3.5 py-2.5">
+      <div className="flex items-center gap-4 text-[11px] text-muted">
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
+          <kbd className="rounded-[3px] border border-hair bg-bg px-1.5 py-px font-mono text-[10px] text-ink-soft">
+            ⌘↵
+          </kbd>
+          envoyer
+        </span>
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
+          <kbd className="rounded-[3px] border border-hair bg-bg px-1.5 py-px font-mono text-[10px] text-ink-soft">
+            esc
+          </kbd>
+          annuler
+        </span>
+        <span>chiffré localement</span>
+      </div>
+      <button
+        type="button"
+        onClick={onSubmit}
+        className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
+      >
+        Enregistrer
+      </button>
+    </div>
+  );
+}
+
+function submitOnCmdEnter(
+  e: React.KeyboardEvent<HTMLTextAreaElement>,
+  onSubmit: () => void,
+): void {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    onSubmit();
+  }
 }

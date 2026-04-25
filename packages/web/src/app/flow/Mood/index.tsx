@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
+import { type MoodScore } from '@nodea/shared';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
@@ -7,9 +7,12 @@ import { cn } from '@/lib/utils';
 /**
  * Mood — Direction K · Sauge.
  *
- * Pixel-precise port of `Design/design_handoff_nodea/source/dir-k-extras.jsx
- * → K_Mood`. Single detail view (no more tabs) with a 30-day bar
- * chart, an entries list, a tag filter rail and a Patterns block.
+ * Single detail view (no more tabs): a 30-day note timeline + the
+ * latest entries listed in the canonical Mood shape — three
+ * positives, a -2..+2 note, an optional "question du jour" answer
+ * and an optional free-form comment. Emoji has been dropped per
+ * the redesign; old entries that still carry one are read-tolerant
+ * via `MoodPayloadSchema.mood_emoji.optional()`.
  *
  * Data is mocked while the redesign settles — actual wiring to the
  * encrypted `mood_entries` collection happens in a follow-up commit
@@ -27,7 +30,7 @@ export default function MoodPage() {
       />
 
       <div className="flex-1 overflow-hidden">
-        <div className="grid h-full grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_320px]">
+        <div className="min-h-0 grid h-full grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
           <PrimaryColumn />
           <SideColumn />
         </div>
@@ -69,53 +72,80 @@ function Topbar({ onOpenMenu, onNewEntry }: TopbarProps) {
 
 interface MoodEntry {
   date: string;
-  note: number;
-  quote: string;
-  tags: string;
+  score: MoodScore;
+  positives: [string, string, string];
+  comment?: string;
+  question?: string;
+  answer?: string;
 }
 
 const ENTRIES: MoodEntry[] = [
   {
     date: 'Aujourd’hui',
-    note: 7.8,
-    quote: 'Café tranquille avec Sam, fin du chantier client, longue marche au bord du canal.',
-    tags: 'café · travail · marche',
+    score: '2',
+    positives: [
+      'Café tranquille avec Sam au matin.',
+      'Fin du chantier client envoyée, soulagement.',
+      'Longue marche au bord du canal.',
+    ],
+    question: 'Quelle petite victoire peux-tu célébrer ?',
+    answer: 'Avoir tenu une vraie pause sans ouvrir Slack.',
   },
   {
     date: 'Hier',
-    note: 6.2,
-    quote: 'Mauvais sommeil, tête lourde toute la matinée. Mieux après la pluie.',
-    tags: 'fatigue · pluie · lecture',
+    score: '-1',
+    positives: [
+      'Réveil un peu plus doux que prévu.',
+      'Un message d’Élise qui faisait plaisir.',
+      '',
+    ],
+    comment: 'Mauvais sommeil, tête lourde toute la matinée. Mieux après la pluie.',
   },
   {
     date: 'Mardi 22 avril',
-    note: 8.4,
-    quote: 'Anniversaire de Léa, dîner long. Riz brûlé, fou rire.',
-    tags: 'famille · soir',
+    score: '2',
+    positives: [
+      'Anniversaire de Léa.',
+      'Dîner long avec rires multiples.',
+      'Riz brûlé, fou rire derrière.',
+    ],
   },
   {
     date: 'Lundi 21 avril',
-    note: 5.9,
-    quote: 'Reprise difficile. Trop de Slack, pas assez d’air.',
-    tags: 'travail · saturé',
+    score: '-1',
+    positives: [
+      'Réussi à finir les notes du week-end.',
+      '',
+      '',
+    ],
+    comment: 'Reprise difficile. Trop de Slack, pas assez d’air.',
   },
   {
     date: 'Dimanche 20 avril',
-    note: 8.1,
-    quote: 'Marché au matin, sieste, livre commencé puis abandonné.',
-    tags: 'repos · marché',
+    score: '1',
+    positives: [
+      'Marché au matin, très calme.',
+      'Sieste posée.',
+      'Livre commencé puis abandonné, mais pas grave.',
+    ],
   },
   {
     date: 'Samedi 19 avril',
-    note: 7.0,
-    quote: 'Course longue dans le bois. Genou un peu raide.',
-    tags: 'sport · bois',
+    score: '1',
+    positives: [
+      'Course longue dans le bois.',
+      'Découverte d’un sentier nouveau.',
+      'Genou un peu raide mais ça tient.',
+    ],
   },
   {
     date: 'Vendredi 18 avril',
-    note: 6.5,
-    quote: 'Dîner annulé, finalement préféré rester chez moi.',
-    tags: 'solo · cuisine',
+    score: '0',
+    positives: [
+      'Dîner annulé, finalement préféré rester chez moi.',
+      'Soirée lecture.',
+      '',
+    ],
   },
 ];
 
@@ -127,7 +157,7 @@ function PrimaryColumn() {
       </h1>
       <p className="mt-1 mb-6 text-[14px] text-muted">
         116 entrées · moyenne mobile{' '}
-        <span className="font-semibold text-ink">7,2</span> sur 30 j
+        <span className="font-semibold text-ink">+0,8</span> sur 30 j (échelle −2 → +2)
       </p>
 
       <Chart />
@@ -141,99 +171,176 @@ function PrimaryColumn() {
   );
 }
 
+/**
+ * 30-day note sparkline. SVG line + dots over a faint zero baseline,
+ * mapping the −2..+2 scale to vertical position. Reads at a glance
+ * far better than centered bars on a 4-step axis: today's dot
+ * stays brighter, points above zero pick up the accent, points
+ * below the zero line stay muted.
+ */
 function Chart() {
+  // Mock: 30 days of -2..+2 notes, sinusoidal with a slight bias toward positives.
+  const series = Array.from({ length: 30 }, (_, i) => {
+    const raw = Math.sin(i * 0.6) * 1.4 + 0.4;
+    return Math.max(-2, Math.min(2, Math.round(raw)));
+  });
+
+  const W = 300;
+  const H = 72;
+  const padY = 10;
+  const innerH = H - padY * 2;
+  const stepX = W / series.length;
+  const yFor = (score: number): number =>
+    padY + (1 - (score + 2) / 4) * innerH;
+  const points = series.map((score, i) => ({
+    x: (i + 0.5) * stepX,
+    y: yFor(score),
+    score,
+    isToday: i === series.length - 1,
+  }));
+  const zeroY = yFor(0);
+
   return (
-    <div
-      aria-hidden="true"
-      className="mb-7 grid h-[60px] grid-cols-[repeat(30,minmax(0,1fr))] items-end gap-1"
-    >
-      {Array.from({ length: 30 }).map((_, i) => {
-        const v = 4 + (Math.sin(i * 0.6) + 1) * 2.5;
-        const heightPct = (v / 10) * 100;
-        const isToday = i === 29;
-        return (
-          <span
-            key={i}
-            className={cn(
-              'rounded-sm transition-colors',
-              isToday ? 'bg-accent' : 'bg-accent-soft',
-            )}
-            style={{ height: `${heightPct}%` }}
-          />
-        );
-      })}
+    <div className="mb-7 h-[72px] w-full" aria-hidden="true">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className="h-full w-full overflow-visible"
+        role="img"
+      >
+        <line
+          x1={0}
+          y1={zeroY}
+          x2={W}
+          y2={zeroY}
+          className="stroke-hair"
+          strokeWidth={1}
+          strokeDasharray="2 4"
+          vectorEffect="non-scaling-stroke"
+        />
+        <polyline
+          points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          className="stroke-accent-soft"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        {points.map((p, i) => {
+          const cls = p.isToday
+            ? 'fill-accent'
+            : p.score > 0
+              ? 'fill-accent-soft'
+              : p.score < 0
+                ? 'fill-ink-soft'
+                : 'fill-muted-soft';
+          return (
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r={p.isToday ? 3 : 2}
+              className={cls}
+              vectorEffect="non-scaling-stroke"
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 }
 
 function EntryRow({ entry }: { entry: MoodEntry }) {
-  const noteColor =
-    entry.note >= 7 ? 'text-accent-deep' : entry.note >= 6 ? 'text-ink-soft' : 'text-muted';
   return (
-    <div className="grid grid-cols-[110px_36px_1fr] items-baseline gap-4 border-b border-hair py-3.5">
+    <article className="grid grid-cols-[110px_44px_1fr] items-baseline gap-4 border-b border-hair py-4">
       <div className="text-[12px] tabular-nums text-muted">{entry.date}</div>
-      <div className={cn('text-[13px] font-bold tabular-nums', noteColor)}>
-        {entry.note.toString().replace('.', ',')}
+      <NoteBadge score={entry.score} />
+      <div className="min-w-0">
+        <ul className="space-y-0.5">
+          {entry.positives
+            .filter((p) => p.trim().length > 0)
+            .map((p, i) => (
+              <li
+                key={i}
+                className="flex items-baseline gap-2 text-[14px] leading-[1.5] text-ink"
+              >
+                <span aria-hidden="true" className="mt-0.5 text-[10px] text-muted">
+                  ·
+                </span>
+                <span>{p}</span>
+              </li>
+            ))}
+        </ul>
+        {entry.comment ? (
+          <p className="mt-1.5 text-[13px] italic leading-[1.5] text-ink-soft">
+            {entry.comment}
+          </p>
+        ) : null}
+        {entry.question ? (
+          <div className="mt-1.5 text-[12px] text-muted">
+            <span className="font-semibold tracking-[0.02em]">Q.</span>{' '}
+            <span className="italic">{entry.question}</span>
+            {entry.answer ? (
+              <>
+                {' — '}
+                <span className="text-ink">{entry.answer}</span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <div>
-        <div className="font-serif text-[15px] italic leading-[1.45] text-ink">
-          «&nbsp;{entry.quote}&nbsp;»
-        </div>
-        <div className="mt-1 text-[11px] text-muted">{entry.tags}</div>
-      </div>
-    </div>
+    </article>
   );
 }
 
-const FILTER_TAGS = [
-  'café',
-  'travail',
-  'marche',
-  'famille',
-  'soir',
-  'repos',
-  'sport',
-  'bois',
-  'cuisine',
-  'fatigue',
-];
+const SCORE_TONE: Record<MoodScore, string> = {
+  '2': 'bg-accent text-white',
+  '1': 'bg-accent-soft text-accent-deep',
+  '0': 'bg-bg-2 text-ink-soft',
+  '-1': 'bg-hair text-ink-soft',
+  '-2': 'bg-ink text-bg',
+};
+
+function NoteBadge({ score }: { score: MoodScore }) {
+  const numeric = Number(score);
+  const display = numeric > 0 ? `+${score}` : score;
+  return (
+    <span
+      className={cn(
+        'inline-flex h-[26px] min-w-[36px] items-center justify-center rounded-md px-1.5 text-[12px] font-semibold tabular-nums',
+        SCORE_TONE[score],
+      )}
+    >
+      {display}
+    </span>
+  );
+}
 
 interface Pattern {
   label: string;
   delta: string;
 }
 
+/**
+ * Patterns shown in the side column — every entry here must be
+ * derivable from `{date, score, positives[3], comment, question,
+ * answer}` alone. No external signals (sleep, calendar, weather…)
+ * because the app doesn't capture them; surfacing fake correlations
+ * undermines trust.
+ */
 const PATTERNS: Pattern[] = [
-  { label: 'Tu es plus heureuse les samedis', delta: '+1,4 vs moyenne' },
-  { label: 'Café & marche corrèlent', delta: 'r = 0,42' },
-  { label: 'Lundi est ton point bas', delta: '−1,1 vs moyenne' },
+  { label: 'Samedi est ton meilleur jour', delta: '+0,9 vs moyenne' },
+  { label: 'Lundi reste ton point bas', delta: '−0,7 vs moyenne' },
+  { label: '12 jours consécutifs ≥ 0', delta: 'meilleur streak du mois' },
 ];
 
 function SideColumn() {
-  const [activeTag, setActiveTag] = useState<string | null>('café');
-
   return (
     <aside className="flex min-w-0 flex-col gap-6">
       <section>
-        <SectionLabel>Filtres</SectionLabel>
-        <div className="-mb-1.5 flex flex-wrap">
-          {FILTER_TAGS.map((tag) => {
-            const active = activeTag === tag;
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => setActiveTag(active ? null : tag)}
-                className={cn(
-                  'mr-1 mb-1.5 cursor-pointer rounded-full px-2.5 py-1 text-[12px] transition-colors',
-                  active ? 'bg-accent text-white' : 'bg-bg-2 text-ink-soft hover:text-ink',
-                )}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
+        <SectionLabel>Distribution</SectionLabel>
+        <ScoreDistribution />
       </section>
 
       <section>
@@ -248,6 +355,48 @@ function SideColumn() {
         </ul>
       </section>
     </aside>
+  );
+}
+
+/**
+ * Stacked bar of how the last 30 entries split across the five
+ * note buckets. Mocked while the entries collection isn't wired —
+ * shape is intentionally trivial so it costs nothing to swap to a
+ * real selector later.
+ */
+function ScoreDistribution() {
+  const counts: Record<MoodScore, number> = {
+    '2': 9,
+    '1': 11,
+    '0': 5,
+    '-1': 3,
+    '-2': 2,
+  };
+  const total = 30;
+  const order: MoodScore[] = ['2', '1', '0', '-1', '-2'];
+
+  return (
+    <ul className="space-y-2">
+      {order.map((score) => {
+        const count = counts[score];
+        const pct = (count / total) * 100;
+        return (
+          <li key={score} className="flex items-center gap-3 text-[12px]">
+            <NoteBadge score={score} />
+            <div className="h-[6px] flex-1 overflow-hidden rounded-sm bg-bg-2">
+              <div
+                className={cn(
+                  'h-full rounded-sm',
+                  Number(score) > 0 ? 'bg-accent' : Number(score) < 0 ? 'bg-ink-soft' : 'bg-muted-soft',
+                )}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="w-6 text-right tabular-nums text-muted">{count}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

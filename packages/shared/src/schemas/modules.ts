@@ -17,11 +17,25 @@ import { z } from 'zod';
 // Mood
 // ---------------------------------------------------------------------
 
+/**
+ * Valid `mood_score` strings — Direction K · Sauge mood scale
+ * (`très bas → très bon`). Stored as a string for forwards-compat
+ * with legacy entries; the UI binds these to a 5-segment selector.
+ */
+export const MOOD_SCORE_VALUES = ['-2', '-1', '0', '1', '2'] as const;
+export type MoodScore = (typeof MOOD_SCORE_VALUES)[number];
+
 export const MoodPayloadSchema = z
   .object({
     date: z.string().min(1),
     mood_score: z.string(),
-    mood_emoji: z.string(),
+    /**
+     * Pre-Direction-K entries used to carry an emoji alongside the
+     * note. The Sauge redesign drops it from the form, but old
+     * records still hold a string here — kept optional + default
+     * so existing payloads decrypt cleanly.
+     */
+    mood_emoji: z.string().optional().default(''),
     positive1: z.string().default(''),
     positive2: z.string().default(''),
     positive3: z.string().default(''),
