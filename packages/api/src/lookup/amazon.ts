@@ -144,10 +144,24 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
   if (!res.ok) throw new Error(`amazon ${res.status} ${res.statusText}`);
   const html = await res.text();
 
-  // Bot-detection comes back as 200 with one of several distinctive
-  // markers. The first three are the CAPTCHA / "Sorry" page; the
-  // others catch the redirected anti-bot bounce (no search results,
-  // just hero banners) and the i18n preferences interstitial.
+  // AWS WAF JavaScript challenge: HTML 200 with `awsWafCookieDomainList`
+  // and `gokuProps` — these are the exact markers of the WAF bot
+  // detection puzzle that requires running JS to obtain an
+  // `aws-waf-token` cookie. We can't solve it from Node without a
+  // headless browser. Surface it as a distinct, accurate error so
+  // the operator knows it's not our parser at fault — it's Amazon
+  // requiring JS execution that this server can't provide.
+  if (
+    /window\.awsWafCookieDomainList/.test(html) ||
+    /window\.gokuProps/.test(html)
+  ) {
+    sessions.delete(tld);
+    throw new Error(
+      'amazon — challenge AWS WAF (JavaScript requis) ; ' +
+        'pour passer il faudrait un navigateur headless (Puppeteer/Playwright)',
+    );
+  }
+  // Older bot-detection layouts: CAPTCHA / "Sorry" / i18n interstitial.
   if (
     /api-services-support@amazon\.com/i.test(html) ||
     /Type the characters you see in this image/i.test(html) ||
@@ -155,7 +169,6 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
     /\bSorry, we just need to make sure\b/i.test(html) ||
     /To discuss automated access/i.test(html)
   ) {
-    // Burn the session — Amazon flagged it. Next call re-seeds.
     sessions.delete(tld);
     throw new Error('amazon — bot-detection / captcha (réessaie plus tard)');
   }
