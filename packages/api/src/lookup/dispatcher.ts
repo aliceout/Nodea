@@ -157,7 +157,15 @@ function mergeOnce(books: NormalisedBook[]): NormalisedBook | null {
     if (!merged.isbn13 && b.isbn13) merged.isbn13 = b.isbn13;
     if (!merged.isbn10 && b.isbn10) merged.isbn10 = b.isbn10;
     if (!merged.format && b.format) merged.format = b.format;
-    if (!merged.cover_url && b.cover_url) merged.cover_url = b.cover_url;
+    // Cover preference: Amazon wins if it has one (their images are
+    // higher resolution and more consistently present than OL's).
+    // Otherwise FIFO so the earliest provider with a cover gets to
+    // contribute.
+    if (b.source === 'amazon' && b.cover_url) {
+      merged.cover_url = b.cover_url;
+    } else if (!merged.cover_url && b.cover_url) {
+      merged.cover_url = b.cover_url;
+    }
     if (!merged.series && b.series) merged.series = b.series;
     else if (merged.series && b.series) {
       // Same series, fill gaps in position/of from a richer provider.
