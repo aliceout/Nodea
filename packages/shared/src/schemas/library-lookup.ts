@@ -25,7 +25,10 @@ export const NormalisedBookSchema = z.object({
   year: z.number().int().nullable().default(null),
   language: z.string().nullable().default(null),
   original_language: z.string().nullable().default(null),
-  page_count: z.number().int().positive().nullable().default(null),
+  // Accept any int (incl. 0/negative) so a provider returning sloppy
+  // data doesn't blow up the entire lookup response. Adapters
+  // already coerce 0 to null, but defensive parse stays lenient.
+  page_count: z.number().int().nullable().default(null),
   publisher: z.string().nullable().default(null),
   /** Collection éditoriale (e.g. "Folio classique"). */
   collection: z.string().nullable().default(null),

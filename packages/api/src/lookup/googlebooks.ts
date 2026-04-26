@@ -119,7 +119,10 @@ function volumeToNormalised(volume: GoogleBookVolume): NormalisedBook {
     year: extractYear(info.publishedDate ?? null),
     language: info.language ?? null,
     original_language: null,
-    page_count: info.pageCount ?? null,
+    page_count:
+      typeof info.pageCount === 'number' && info.pageCount > 0
+        ? info.pageCount
+        : null,
     publisher: info.publisher ?? null,
     collection: null,
     summary: info.description ?? null,

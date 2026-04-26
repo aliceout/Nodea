@@ -128,7 +128,7 @@ async function editionToNormalised(
     year: extractYear(edition.publish_date ?? null),
     language,
     original_language: null,
-    page_count: edition.number_of_pages ?? null,
+    page_count: positiveOrNull(edition.number_of_pages),
     publisher: edition.publishers?.[0] ?? null,
     collection: null,
     summary: description,
@@ -158,7 +158,7 @@ function searchDocToNormalised(doc: OpenLibrarySearchDoc): NormalisedBook {
     year: doc.first_publish_year ?? null,
     language: doc.language?.[0]?.slice(0, 2) ?? null,
     original_language: null,
-    page_count: doc.number_of_pages_median ?? null,
+    page_count: positiveOrNull(doc.number_of_pages_median),
     publisher: doc.publisher?.[0] ?? null,
     collection: null,
     summary: doc.first_sentence?.[0] ?? null,
@@ -172,6 +172,17 @@ function searchDocToNormalised(doc: OpenLibrarySearchDoc): NormalisedBook {
     providers: doc.key ? { openlibrary: doc.key } : {},
     source: 'openlibrary',
   };
+}
+
+/**
+ * Treat 0 / negative / undefined page counts as "unknown". Some
+ * OL records carry `number_of_pages: 0` as a placeholder for
+ * missing data, which would fail downstream validation that
+ * (correctly) refuses zero-page books.
+ */
+function positiveOrNull(n: number | undefined | null): number | null {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null;
+  return n;
 }
 
 /**
