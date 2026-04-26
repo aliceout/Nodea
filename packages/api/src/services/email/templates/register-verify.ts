@@ -1,46 +1,52 @@
-import type { SendMailParams } from '../types.ts';
+import { renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
- * Template for the inscription email verification code (Auth-Spec.md
- * §7.1 step 1). Localised in French — UTF-8 throughout, accents
- * preserved per CLAUDE.md.
+ * Email template — inscription verification code (Auth-Spec.md
+ * §7.1 step 1).
  *
- * Returns a partially-built `SendMailParams` object with subject + bodies
- * filled. The caller adds `to` and `tag`. Kept pure (no I/O) so tests
- * can assert on the rendered output without mocking the transport.
+ * Renders the per-template content (greeting, code call-out, expiry
+ * note) and hands it to `renderLayout()` for the standard Nodea
+ * shell (header + footer). Returns the `subject` / `text` / `html`
+ * trio ready for `EmailService.send()` — the caller adds `to` and
+ * `tag`.
+ *
+ * Pure function: no I/O, no env reads. Tests assert directly on the
+ * returned strings.
  */
 export function renderRegisterVerifyEmail(params: {
   code: string;
-  /** Minutes until the code expires. Default 10. */
+  /** Minutes until the code expires. Defaults to 10. */
   ttlMinutes?: number;
-}): Pick<SendMailParams, 'subject' | 'text' | 'html'> {
+}): RenderedEmailContent {
   const ttl = params.ttlMinutes ?? 10;
   const code = params.code;
+  const subject = `Ton code d'inscription Nodea : ${code}`;
 
-  const text = [
+  const bodyText = [
     `Bienvenue sur Nodea !`,
     ``,
     `Pour finaliser ton inscription, saisis ce code dans la page d'inscription :`,
     ``,
     `    ${code}`,
     ``,
-    `Le code expire dans ${ttl} minutes. Si tu ne te reconnais pas dans cette demande,`,
-    `tu peux ignorer ce message — aucun compte ne sera créé sans ce code.`,
-    ``,
-    `— L'équipe Nodea`,
+    `Le code expire dans ${ttl} minutes.`,
   ].join('\n');
 
-  const html = [
-    `<p>Bienvenue sur Nodea !</p>`,
-    `<p>Pour finaliser ton inscription, saisis ce code dans la page d'inscription :</p>`,
-    `<p style="font-family: ui-monospace, monospace; font-size: 1.4em; letter-spacing: 0.2em; padding: 0.5em 1em; background: #f3f4f6; border-radius: 6px; display: inline-block;">${code}</p>`,
-    `<p>Le code expire dans ${ttl} minutes. Si tu ne te reconnais pas dans cette demande, tu peux ignorer ce message — aucun compte ne sera créé sans ce code.</p>`,
-    `<p>— L'équipe Nodea</p>`,
+  const bodyHtml = [
+    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">Bienvenue sur Nodea !</h2>`,
+    `<p style="margin:0 0 16px 0;">Pour finaliser ton inscription, saisis ce code dans la page d'inscription&nbsp;:</p>`,
+    `<p style="margin:0 0 16px 0;text-align:center;">`,
+    `  <span style="display:inline-block;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:28px;font-weight:600;letter-spacing:0.3em;padding:16px 28px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;color:#111827;">${code}</span>`,
+    `</p>`,
+    `<p style="margin:0;color:#6b7280;font-size:13px;">Le code expire dans ${ttl} minutes.</p>`,
   ].join('\n');
 
-  return {
-    subject: `Ton code d'inscription Nodea : ${code}`,
-    text,
-    html,
-  };
+  const layout = renderLayout({
+    subject,
+    preheader: `Ton code d'inscription : ${code}. Expire dans ${ttl} minutes.`,
+    bodyText,
+    bodyHtml,
+  });
+
+  return { subject, text: layout.text, html: layout.html };
 }

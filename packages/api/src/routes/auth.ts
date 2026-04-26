@@ -41,6 +41,7 @@ import {
 } from '../auth/cookies.ts';
 import { createResetToken, findActiveResetToken } from '../auth/reset-tokens.ts';
 import { sendMail } from '../auth/mailer.ts';
+import { renderPasswordResetEmail } from '../services/email/templates/password-reset.ts';
 import { getConfig } from '../config.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
@@ -187,21 +188,14 @@ authRoutes.post('/request-reset', requestResetLimiter, async (c) => {
     const link = base
       ? `${base.replace(/\/$/, '')}/reset?token=${encodeURIComponent(token)}`
       : `/reset?token=${encodeURIComponent(token)}`;
-    const text =
-      `Quelqu'un (toi ?) a demandé la réinitialisation de ton mot de passe Nodea.\n\n` +
-      `Ouvre ce lien dans l'heure pour continuer :\n${link}\n\n` +
-      `⚠ Attention : comme tes données sont chiffrées avec une clé dérivée de ton mot de passe, ` +
-      `réinitialiser le mot de passe entraîne la perte définitive de toutes tes entrées déjà enregistrées. ` +
-      `Si tu n'es pas à l'origine de la demande, ignore ce message — ton compte reste intact.`;
-    const html =
-      `<p>Quelqu'un (toi ?) a demandé la réinitialisation de ton mot de passe Nodea.</p>` +
-      `<p><a href="${link}">Cliquer ici pour continuer</a> (lien valable 1 heure).</p>` +
-      `<p><strong>⚠ Attention :</strong> comme tes données sont chiffrées avec une clé dérivée de ` +
-      `ton mot de passe, réinitialiser le mot de passe entraîne la perte définitive de toutes tes entrées ` +
-      `déjà enregistrées.</p>` +
-      `<p>Si tu n'es pas à l'origine de la demande, ignore ce message — ton compte reste intact.</p>`;
+    const rendered = renderPasswordResetEmail({ link });
     try {
-      await sendMail({ to: email, subject: 'Réinitialisation de ton mot de passe Nodea', text, html });
+      await sendMail({
+        to: email,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+      });
     } catch (err) {
       console.error('[auth] reset-password mailer failed', err);
       // Never surface the failure to the caller — still 200 so an
