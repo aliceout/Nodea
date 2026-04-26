@@ -7,7 +7,7 @@
  *
  * Reference: https://www.w3.org/TR/sparql11-results-json/
  */
-import { Agent } from 'undici';
+import { Agent, request as undiciRequest } from 'undici';
 import { fetchWithTimeout } from './fetch-with-timeout.ts';
 
 export interface SparqlBinding {
@@ -43,22 +43,72 @@ export async function runSparql(
   query: string,
   options: { relaxTls?: boolean } = {},
 ): Promise<SparqlRow[]> {
-  // Use POST with form-urlencoded body — SPARQL queries can be longer
-  // than what fits in a GET URL on some endpoints (BNE in particular).
-  const res = await fetchWithTimeout(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/sparql-results+json',
-      'User-Agent': 'Nodea/0.1 (library-lookup)',
-    },
-    body: new URLSearchParams({ query }).toString(),
-    timeoutMs: 8000,
-    ...(options.relaxTls ? { dispatcher: relaxedTlsDispatcher } : {}),
-  });
-  if (!res.ok) throw new Error(`sparql ${endpoint} ${res.status}`);
-  const data = (await res.json()) as SparqlJson;
-  return data.results?.bindings ?? [];
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    Accept: 'application/sparql-results+json',
+    'User-Agent': 'Nodea/0.1 (library-lookup)',
+  };
+  const body = new URLSearchParams({ query }).toString();
+
+  // For relaxTls callers (BNE), use undici's `request` directly
+  // instead of Node's `fetch`. Node's `fetch` uses its own bundled
+  // undici and the dispatcher option doesn't always thread through
+  // cleanly when the userland `Agent` comes from a different copy
+  // of the package — calls failed with a generic `fetch failed`
+  // before ever reaching the network. `undici.request` keeps the
+  // Agent and the request on the same module, eliminates the
+  // ambiguity.
+  if (options.relaxTls) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const { statusCode, body: responseBody } = await undiciRequest(endpoint, {
+        method: 'POST',
+        headers,
+        body,
+        dispatcher: relaxedTlsDispatcher,
+        signal: controller.signal,
+      });
+      if (statusCode >= 400) {
+        throw new Error(`sparql ${endpoint} ${statusCode}`);
+      }
+      const text = await responseBody.text();
+      const data = JSON.parse(text) as SparqlJson;
+      return data.results?.bindings ?? [];
+    } catch (err) {
+      throw wrapSparqlError(endpoint, err);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // Standard path (BNF, Wikidata) — Node's fetch with timeout.
+  try {
+    const res = await fetchWithTimeout(endpoint, {
+      method: 'POST',
+      headers,
+      body,
+      timeoutMs: 8000,
+    });
+    if (!res.ok) throw new Error(`sparql ${endpoint} ${res.status}`);
+    const data = (await res.json()) as SparqlJson;
+    return data.results?.bindings ?? [];
+  } catch (err) {
+    throw wrapSparqlError(endpoint, err);
+  }
+}
+
+/** Surface the underlying cause of a `fetch failed` (DNS, TLS,
+ *  connection refused) so the admin "Sources" tab can show
+ *  something actionable instead of a generic error string. */
+function wrapSparqlError(endpoint: string, err: unknown): Error {
+  if (!(err instanceof Error)) return new Error(`sparql ${endpoint}: ${String(err)}`);
+  const cause = (err as Error & { cause?: { code?: string; message?: string } }).cause;
+  if (cause) {
+    const causeMsg = cause.code ?? cause.message ?? '';
+    return new Error(`sparql ${endpoint}: ${err.message}${causeMsg ? ` (${causeMsg})` : ''}`);
+  }
+  return err;
 }
 
 /** Pick a binding's value, or undefined if the variable is absent. */

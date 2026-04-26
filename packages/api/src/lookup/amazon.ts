@@ -141,7 +141,7 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
     },
     timeoutMs: 8000,
   });
-  if (!res.ok) throw new Error(`amazon ${res.status}`);
+  if (!res.ok) throw new Error(`amazon ${res.status} ${res.statusText}`);
   const html = await res.text();
 
   // Bot-detection comes back as 200 with one of several distinctive
@@ -159,7 +159,22 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
     sessions.delete(tld);
     throw new Error('amazon — bot-detection / captcha (réessaie plus tard)');
   }
-  return parseSearchHtml(html, limit);
+  const results = parseSearchHtml(html, limit);
+  // When parsing yields nothing, log a snippet of the HTML in dev
+  // so the operator can see what Amazon actually returned (homepage
+  // bounce? new layout? interstitial we don't recognise?). Stays
+  // out of prod logs — too noisy and contains user query terms.
+  if (results.length === 0 && process.env.NODE_ENV !== 'production') {
+    const titleMatch = /<title>([^<]+)<\/title>/i.exec(html);
+    const snippet = html.slice(0, 800).replace(/\s+/g, ' ');
+    console.warn(
+      `[library-lookup] amazon parser yielded 0 hits ` +
+        `for "${query}" on amazon.${tld}.\n` +
+        `  page <title>: ${titleMatch?.[1] ?? '(none)'}\n` +
+        `  first 800 chars: ${snippet}`,
+    );
+  }
+  return results;
 }
 
 /**
