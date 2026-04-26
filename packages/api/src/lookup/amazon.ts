@@ -63,7 +63,11 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
   // `&ref=nb_sb_noss` mimics the "submit search" navigation path.
   const url = `https://www.amazon.${tld}/s?k=${encodeURIComponent(query)}&i=stripbooks&ref=nb_sb_noss`;
 
-  const { html, finalUrl } = await fetchRendered(url, {
+  // 30 s for byQuery — free-text searches go through the WAF
+  // challenge AND a fully-rendered results page with many lazy-
+  // loaded blocks. ISBN searches return a smaller page. The
+  // network-idle wait cap is the real driver of latency here.
+  const { html, finalUrl, status } = await fetchRendered(url, {
     referer: `https://www.amazon.${tld}/`,
     acceptLanguage:
       tld === 'fr'
@@ -71,17 +75,17 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
         : tld === 'es'
           ? 'es-ES,es;q=0.9,en;q=0.8'
           : 'en-US,en;q=0.9',
-    timeoutMs: 20000,
+    timeoutMs: 30000,
   });
 
-  // Amazon sometimes redirects unauthenticated/foreign-locale
-  // visitors to a regional landing or a captcha interstitial.
-  // The headless browser passes the JS challenge automatically,
-  // but a redirect to an unrelated path means our parser will
-  // see no search-result tiles — surface that distinctly.
-  if (!finalUrl.includes('/s?')) {
+  // Amazon sometimes redirects unauthenticated visitors to a
+  // regional landing or interstitial. The path can be
+  // `/s?...`, `/s/...?...`, `/s/ref=...`, etc. — any URL on the
+  // /s path counts as "still on search". A redirect to e.g.
+  // `/gp/help/customer/display.html` means we got bounced.
+  if (!/\/s(\/|\?)/.test(finalUrl)) {
     throw new Error(
-      `amazon — la navigation a quitté la page de recherche (final URL: ${finalUrl})`,
+      `amazon — navigation hors page de recherche (final: ${finalUrl})`,
     );
   }
 
@@ -100,10 +104,25 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
   const results = parseSearchHtml(html, limit);
   if (results.length === 0 && process.env.NODE_ENV !== 'production') {
     const titleMatch = /<title>([^<]+)<\/title>/i.exec(html);
+    // Count any hint of search-result markup so we can tell apart
+    // "page loaded fine, parser regex is wrong" from "page didn't
+    // contain search results at all".
+    const tilesByDataType = (
+      html.match(/data-component-type="s-search-result"/g) ?? []
+    ).length;
+    const tilesByAsin = (html.match(/\bdata-asin="[^"]+"/g) ?? []).length;
+    const snippet = html
+      .slice(0, 400)
+      .replace(/\s+/g, ' ');
     console.warn(
       `[library-lookup] amazon parser yielded 0 hits for "${query}" on amazon.${tld}.\n` +
+        `  status: ${status}\n` +
         `  page <title>: ${titleMatch?.[1] ?? '(none)'}\n` +
-        `  final URL: ${finalUrl}`,
+        `  final URL: ${finalUrl}\n` +
+        `  html length: ${html.length}\n` +
+        `  tiles by data-component-type: ${tilesByDataType}\n` +
+        `  tiles by data-asin: ${tilesByAsin}\n` +
+        `  first 400 chars: ${snippet}`,
     );
   }
   return results;
