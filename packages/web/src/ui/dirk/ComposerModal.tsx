@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogPanel, Transition } from '@headlessui/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Modal } from '@/ui/atoms/layout/Modal';
 import {
   LIBRARY_FORMAT_VALUES,
   LIBRARY_REVIEW_KIND_VALUES,
@@ -13,12 +13,14 @@ import {
 } from '@nodea/shared';
 
 import {
+  apiLibraryFetchCover,
   apiLibraryLookupByIsbn,
-  apiLibraryLookupByQuery,
   isApiError,
+  streamLibraryLookupByQuery,
 } from '@/core/api/client';
 import { goalsClient } from '@/core/api/modules/goals';
 import {
+  libraryCoversClient,
   libraryItemsClient,
   libraryReviewsClient,
 } from '@/core/api/modules/library';
@@ -32,6 +34,11 @@ import {
   type ComposerType,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
+import DirkButton from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
+import DirkSelect from '@/ui/atoms/dirk/Select';
+import DirkTextarea from '@/ui/atoms/dirk/Textarea';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import questions from '@/i18n/fr/Mood/questions.json';
 
 const MONTH_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -76,50 +83,22 @@ export default function ComposerModal() {
   const closeComposer = useNodeaStore((s) => s.closeComposer);
 
   return (
-    <Transition show={open} as={Fragment} afterLeave={() => undefined}>
-      <Dialog className="relative z-50" onClose={closeComposer}>
-        <Transition.Child
-          as={Fragment}
-          enter="transition-opacity ease-out duration-200"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="transition-opacity ease-in duration-150"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-ink/30" aria-hidden="true" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 flex items-start justify-center px-4 pt-[12vh] sm:pt-[110px]">
-          <Transition.Child
-            as={Fragment}
-            enter="transition ease-out duration-200"
-            enterFrom="opacity-0 -translate-y-3 scale-[0.98]"
-            enterTo="opacity-100 translate-y-0 scale-100"
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100 translate-y-0 scale-100"
-            leaveTo="opacity-0 -translate-y-3 scale-[0.98]"
-          >
-            <DialogPanel className="relative w-full max-w-[620px] overflow-hidden rounded-[12px] border border-hair bg-bg shadow-[0_24px_60px_rgba(0,0,0,0.18),0_4px_12px_rgba(0,0,0,0.08)]">
-              <TypePicker active={type} onSelect={setComposerType} />
-              {type === 'mood' ? (
-                <MoodBody onClose={closeComposer} />
-              ) : type === 'goal' ? (
-                <GoalBody onClose={closeComposer} />
-              ) : type === 'journal' ? (
-                <JournalBody onClose={closeComposer} />
-              ) : type === 'library-item' ? (
-                <LibraryItemBody onClose={closeComposer} />
-              ) : type === 'library-review' ? (
-                <LibraryReviewBody onClose={closeComposer} />
-              ) : (
-                <SimpleBody type={type} onClose={closeComposer} />
-              )}
-            </DialogPanel>
-          </Transition.Child>
-        </div>
-      </Dialog>
-    </Transition>
+    <Modal open={open} onClose={closeComposer}>
+      <TypePicker active={type} onSelect={setComposerType} />
+      {type === 'mood' ? (
+        <MoodBody onClose={closeComposer} />
+      ) : type === 'goal' ? (
+        <GoalBody onClose={closeComposer} />
+      ) : type === 'journal' ? (
+        <JournalBody onClose={closeComposer} />
+      ) : type === 'library-item' ? (
+        <LibraryItemBody onClose={closeComposer} />
+      ) : type === 'library-review' ? (
+        <LibraryReviewBody onClose={closeComposer} />
+      ) : (
+        <SimpleBody type={type} onClose={closeComposer} />
+      )}
+    </Modal>
   );
 }
 
@@ -131,7 +110,6 @@ interface TypePickerProps {
 const TYPE_OPTIONS: Array<{ id: ComposerType; label: string }> = [
   { id: 'mood', label: 'Mood' },
   { id: 'journal', label: 'Journal' },
-  { id: 'pass', label: 'Passage' },
   { id: 'goal', label: 'Goal' },
   { id: 'habit', label: 'Habit' },
   { id: 'note', label: 'Note libre' },
@@ -148,7 +126,7 @@ function TypePicker({ active, onSelect }: TypePickerProps) {
             type="button"
             onClick={() => onSelect(opt.id)}
             className={cn(
-              'rounded-md px-2.5 py-1 text-[12px] transition-colors',
+              'rounded-sm px-2.5 py-1 text-[12px] transition-colors',
               isActive
                 ? 'bg-accent-soft font-semibold text-accent-deep'
                 : 'bg-transparent font-medium text-muted hover:text-ink',
@@ -168,7 +146,6 @@ type SimpleType = Exclude<
 >;
 
 const SIMPLE_PLACEHOLDERS: Record<SimpleType, string> = {
-  pass: 'Un extrait qui mérite d’être relu — citation entre guillemets, page et ouvrage en métadonnées.',
   habit: 'Une habitude à suivre — quoi, à quel rythme.',
   note: 'Une note libre. Aucune contrainte.',
 };
@@ -326,15 +303,13 @@ function MoodBody({ onClose }: MoodBodyProps) {
       <div className="space-y-2">
         <SectionLabel>Trois choses positives aujourd&rsquo;hui</SectionLabel>
         {[0, 1, 2].map((i) => (
-          <textarea
+          <DirkInput
             key={i}
             value={positives[i as 0 | 1 | 2]}
             onChange={(e) => setPositive(i as 0 | 1 | 2, e.target.value)}
             onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
             placeholder={POSITIVE_PLACEHOLDERS[i] ?? ''}
-            rows={1}
             autoFocus={i === 0}
-            className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
         ))}
       </div>
@@ -364,7 +339,7 @@ function MoodBody({ onClose }: MoodBodyProps) {
                 onClick={() => setScore(value)}
                 aria-pressed={selected}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 rounded-md border px-2 py-1.5 text-[11px] transition-colors',
+                  'flex flex-col items-center gap-0.5 rounded-sm border px-2 py-1.5 text-[11px] transition-colors',
                   tone,
                 )}
               >
@@ -396,25 +371,25 @@ function MoodBody({ onClose }: MoodBodyProps) {
                 {question || '—'}
               </span>
             </p>
-            <textarea
+            <DirkTextarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
               placeholder="Réponse (optionnelle)"
               rows={2}
-              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+              minHeightPx={56}
             />
           </div>
 
           <div>
             <SectionLabel>Commentaire</SectionLabel>
-            <textarea
+            <DirkTextarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
               placeholder="Ce qui ne tient pas dans les trois lignes du dessus."
               rows={3}
-              className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+              minHeightPx={84}
             />
           </div>
         </div>
@@ -558,25 +533,22 @@ function GoalBody({ onClose }: GoalBodyProps) {
   return (
     <>
     <div className="space-y-3 px-[22px] pt-3.5 pb-3">
-      <input
+      <DirkInput
         autoFocus
-        type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder="Titre — ex. Lancer un blog"
         disabled={submitting}
-        className="block h-9 w-full rounded-md border border-hair bg-bg px-3 text-[14.5px] font-medium text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
       />
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[200px_1fr]">
         <div className="grid grid-cols-2 gap-1.5">
-          <select
+          <DirkSelect
             value={month}
             onChange={(e) => setMonth(e.target.value)}
             aria-label="Mois"
             disabled={submitting}
-            className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-2 text-[12.5px] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
           >
             <option value="">— mois —</option>
             {MONTH_OPTIONS.map((m) => (
@@ -584,9 +556,8 @@ function GoalBody({ onClose }: GoalBodyProps) {
                 {m.label}
               </option>
             ))}
-          </select>
-          <input
-            type="text"
+          </DirkSelect>
+          <DirkInput
             inputMode="numeric"
             value={year}
             onChange={(e) => {
@@ -601,7 +572,7 @@ function GoalBody({ onClose }: GoalBodyProps) {
             maxLength={4}
             aria-label="Année (4 chiffres)"
             disabled={submitting}
-            className="block h-8 w-full rounded-md border border-hair bg-bg px-2 text-center text-[12.5px] tabular-nums text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+            align="center"
           />
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -615,7 +586,7 @@ function GoalBody({ onClose }: GoalBodyProps) {
                 aria-pressed={active}
                 disabled={submitting}
                 className={cn(
-                  'h-8 cursor-pointer rounded-md border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                  'h-8 cursor-pointer rounded-sm border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                   active
                     ? GOAL_STATUS_ACTIVE_TONE[s]
                     : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
@@ -628,24 +599,22 @@ function GoalBody({ onClose }: GoalBodyProps) {
         </div>
       </div>
 
-      <input
-        type="text"
+      <DirkInput
         value={thread}
         onChange={(e) => setThread(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder="Threads (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo"
         disabled={submitting}
-        className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
       />
 
-      <textarea
+      <DirkTextarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder="Note (optionnelle) — détails, contexte, échéance précise…"
         rows={3}
+        minHeightPx={84}
         disabled={submitting}
-        className="block w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
       />
     </div>
     <Footer
@@ -840,7 +809,7 @@ function MarkdownToggle({ value, onChange }: MarkdownToggleProps) {
       aria-pressed={value}
       title={value ? 'Repasser en édition visuelle' : 'Voir la source Markdown'}
       className={cn(
-        'cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+        'cursor-pointer rounded-sm px-2.5 py-1 text-[11px] font-medium transition-colors',
         value
           ? 'bg-accent-soft text-accent-deep'
           : 'text-muted hover:bg-bg-2 hover:text-ink',
@@ -891,6 +860,13 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['library']?.moduleUserId ?? null;
+  // The user's Nodea-app language (synced from encrypted preferences,
+  // falling back to localStorage / navigator on first paint). Passed
+  // to the lookup as a *soft boost*, not a filter — providers still
+  // return all languages, but the dispatcher reorders so books in the
+  // user's language float to the top. Bilingual users still see the
+  // alternatives below.
+  const { language: userLang } = useI18n();
   const bumpItemsVersion = useNodeaStore((s) => s.bumpLibraryItemsVersion);
   const editing = useNodeaStore((s) =>
     s.composer.editing && s.composer.editing.type === 'library-item'
@@ -916,6 +892,18 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     editingPayload?.series?.position ? String(editingPayload.series.position) : '',
   );
   const [summary, setSummary] = useState(editingPayload?.summary ?? '');
+  // Editor mode for the 4ᵉ de couv field: visual (Word-style
+  // contentEditable, default) or markdown source. Same pattern as
+  // the Journal Composer — gives non-technical users a formatted
+  // surface, while letting power users see / edit the raw markers.
+  const [summaryMode, setSummaryMode] = useState<'visual' | 'markdown'>('visual');
+  // Cover URL preview — populated when the user picks a search
+  // result (`applyResult`). Not persisted yet: the schema stores
+  // covers as encrypted blobs (`cover_rid`), so wiring the upload
+  // pipeline is its own story. For now this is a visual hint in
+  // the form so the user can confirm they picked the right book.
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverLoadFailed, setCoverLoadFailed] = useState(false);
   const [status, setStatus] = useState<LibraryStatus>(editingPayload?.status ?? 'planned');
   const [format, setFormat] = useState<LibraryFormat>(editingPayload?.format ?? 'unknown');
   const [tagsInput, setTagsInput] = useState((editingPayload?.tags ?? []).join(', '));
@@ -929,37 +917,78 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<NormalisedBook[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Default the search language to the user's Nodea app language —
+  // it's the right choice 99 % of the time, and the user can flip
+  // it via the `<select>` next to the search button. ISBN searches
+  // ignore this (a 13-digit code is unambiguous across languages).
+  const [searchLang, setSearchLang] = useState<string>(userLang);
+  // AbortController for the in-flight streaming search. We cancel
+  // the previous run when the user fires a new search before the
+  // old one finished — otherwise late snapshots from the old query
+  // would clobber the new results, and the API keeps doing wasted
+  // work on connections nobody reads from.
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const isEdit = editing !== null;
 
   /**
    * Run a metadata lookup. ISBN-shaped input goes through the
-   * dedicated by-isbn endpoint (one merged result); anything else
-   * goes through by-query and returns up to 15 candidates.
+   * dedicated by-isbn endpoint (one merged result, batch). Free-text
+   * goes through the NDJSON streaming endpoint: snapshots arrive as
+   * each provider settles (Google Books in ~1 s, Open Library in
+   * ~10 s, etc.) so the user sees results progressively rather than
+   * staring at a spinner for the slowest provider's full window.
    */
   async function runSearch(): Promise<void> {
     const q = searchInput.trim();
     if (!q) return;
+    // Cancel any prior stream — its late snapshots would otherwise
+    // overwrite our fresh results, and its `finally` would flip the
+    // spinner off mid-new-run.
+    searchAbortRef.current?.abort();
+    const ac = new AbortController();
+    searchAbortRef.current = ac;
     setSearchError(null);
     setSearching(true);
     setSearchOpen(true);
+    setSearchResults([]);
     try {
       const stripped = q.replace(/[\s-]/g, '');
       const isPossibleIsbn = /^\d{10}$|^\d{13}$|^\d{9}[\dX]$/i.test(stripped);
-      // Hard-coded to `fr` for now: Nodea is French-first, and an
-      // English-locale browser reaching this page would otherwise
-      // make GB / Amazon return amazon.com / English-only editions
-      // that don't match the user's actual library. To revisit
-      // when a per-user `library.searchLanguage` preference lands.
-      const lang = 'fr';
-      const response = isPossibleIsbn
-        ? await apiLibraryLookupByIsbn({ isbn: stripped })
-        : await apiLibraryLookupByQuery({ q, lang });
-      setSearchResults(response.results);
-      if (response.results.length === 0) {
+      if (isPossibleIsbn) {
+        // ISBN: a 13-digit code is unambiguous, no point streaming.
+        const response = await apiLibraryLookupByIsbn({ isbn: stripped });
+        if (searchAbortRef.current !== ac) return; // superseded
+        setSearchResults(response.results);
+        if (response.results.length === 0) {
+          setSearchError('Aucun résultat. Tu peux saisir manuellement.');
+        }
+        return;
+      }
+      // Free-text: stream snapshots in. Each snapshot is the full
+      // accumulated state, so we just replace.
+      let lastResults: NormalisedBook[] = [];
+      await streamLibraryLookupByQuery(
+        { q, lang: searchLang },
+        {
+          signal: ac.signal,
+          onSnapshot: (snap) => {
+            // Drop late snapshots from a superseded run.
+            if (searchAbortRef.current !== ac) return;
+            lastResults = snap.results;
+            setSearchResults(snap.results);
+          },
+        },
+      );
+      if (searchAbortRef.current !== ac) return; // superseded
+      if (lastResults.length === 0) {
         setSearchError('Aucun résultat. Tu peux saisir manuellement.');
       }
     } catch (err) {
+      // AbortError on stream cancellation is expected and not user-
+      // facing — happens when the user fires a new search.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (searchAbortRef.current !== ac) return; // superseded
       if (isApiError(err) && err.status === 429) {
         setSearchError('Trop de recherches récentes — patiente une minute.');
       } else {
@@ -967,7 +996,10 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         if (import.meta.env.DEV) console.warn('library lookup failed', err);
       }
     } finally {
-      setSearching(false);
+      // Only flip the spinner off if we're still the latest run —
+      // otherwise an aborted stream would clear the indicator out
+      // from under the new search that just started.
+      if (searchAbortRef.current === ac) setSearching(false);
     }
   }
 
@@ -985,16 +1017,29 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     if (book.format) setFormat(book.format);
     if (book.isbn13) setIsbn(book.isbn13);
     else if (book.isbn10) setIsbn(book.isbn10);
+    setCoverUrl(book.cover_url);
+    setCoverLoadFailed(false);
     setSearchOpen(false);
     setSearchResults([]);
     setSearchInput('');
   }
 
   function dismissSearch(): void {
+    searchAbortRef.current?.abort();
     setSearchOpen(false);
     setSearchResults([]);
     setSearchError(null);
+    setSearching(false);
   }
+
+  // Abort any in-flight stream when the body unmounts (modal closes
+  // mid-search). The fetch / reader stop cleanly, the API stops
+  // pushing snapshots into a connection nobody is reading.
+  useEffect(() => {
+    return () => {
+      searchAbortRef.current?.abort();
+    };
+  }, []);
 
   async function handleSave(): Promise<void> {
     if (submitting) return;
@@ -1068,9 +1113,74 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           : {}),
       };
       if (editing) {
+        // Edit path: cover swap mid-edit isn't wired (would need to
+        // delete the old encrypted blob row and create a new one).
+        // We just update the item, keeping the existing `cover_rid`
+        // from `basePayload`. If the user wants to add a cover to a
+        // book that didn't have one, that's still supported below.
         await libraryItemsClient.update(moduleUserId, mainKey, editing.id, payload);
+        if (coverUrl && !basePayload?.cover_rid) {
+          // Late-add a cover to an existing item: download via the
+          // proxy, store the encrypted blob, then patch the item to
+          // point at it. Best-effort — failure leaves the book without
+          // a cover but doesn't roll back the rest of the edit.
+          const fetched = await apiLibraryFetchCover(coverUrl);
+          if (fetched) {
+            try {
+              const newCover = await libraryCoversClient.create(
+                moduleUserId,
+                mainKey,
+                {
+                  item_rid: editing.id,
+                  mime: fetched.mime,
+                  blob_b64: fetched.blob_b64,
+                  fetched_from: coverUrl,
+                  fetched_at: new Date().toISOString(),
+                },
+              );
+              await libraryItemsClient.update(moduleUserId, mainKey, editing.id, {
+                ...payload,
+                cover_rid: newCover.id,
+              });
+            } catch (err) {
+              if (import.meta.env.DEV) console.warn('cover persist failed', err);
+            }
+          }
+        }
       } else {
-        await libraryItemsClient.create(moduleUserId, mainKey, payload);
+        // Create path: race the item insert and the cover download —
+        // they're independent (cover proxy lives on library-lookup,
+        // not on the encrypted-records pipeline). Total wall-clock
+        // is bounded by `max(itemCreate, coverFetch)` rather than
+        // their sum.
+        const [newItem, fetchedCover] = await Promise.all([
+          libraryItemsClient.create(moduleUserId, mainKey, payload),
+          coverUrl ? apiLibraryFetchCover(coverUrl) : Promise.resolve(null),
+        ]);
+        if (coverUrl && fetchedCover) {
+          // Cover save is best-effort on create: if the encrypted-blob
+          // round-trip fails we still keep the book record. Better
+          // than losing the typed-out form to a flaky cover proxy.
+          try {
+            const newCover = await libraryCoversClient.create(
+              moduleUserId,
+              mainKey,
+              {
+                item_rid: newItem.id,
+                mime: fetchedCover.mime,
+                blob_b64: fetchedCover.blob_b64,
+                fetched_from: coverUrl,
+                fetched_at: new Date().toISOString(),
+              },
+            );
+            await libraryItemsClient.update(moduleUserId, mainKey, newItem.id, {
+              ...newItem.payload,
+              cover_rid: newCover.id,
+            });
+          } catch (err) {
+            if (import.meta.env.DEV) console.warn('cover persist failed', err);
+          }
+        }
       }
       bumpItemsVersion();
       onClose();
@@ -1112,34 +1222,31 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           onApply={applyResult}
           onDismiss={dismissSearch}
           disabled={submitting}
+          lang={searchLang}
+          onLangChange={setSearchLang}
         />
       ) : null}
 
       {showFormFields ? (
       <>
-      <input
+      <DirkInput
         autoFocus={isEdit}
-        type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder="Titre — ex. Les Misérables"
         disabled={submitting}
-        className="block h-9 w-full rounded-md border border-hair bg-bg px-3 text-[14.5px] font-medium text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
       />
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
-        <input
-          type="text"
+        <DirkInput
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder="Auteur·rice — ex. Victor Hugo"
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
         />
-        <input
-          type="text"
+        <DirkInput
           inputMode="numeric"
           value={year}
           onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
@@ -1147,53 +1254,45 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           placeholder="Année"
           maxLength={4}
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-center text-[13px] tabular-nums text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          align="center"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr]">
-        <input
-          type="text"
+        <DirkInput
           value={isbn}
           onChange={(e) => setIsbn(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder="ISBN (optionnel)"
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] tabular-nums text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          className="tabular-nums"
         />
-        <input
-          type="text"
+        <DirkInput
           value={publisher}
           onChange={(e) => setPublisher(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder="Éditeur (optionnel)"
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
         />
       </div>
 
-      <input
-        type="text"
+      <DirkInput
         value={collection}
         onChange={(e) => setCollection(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder="Collection (optionnel) — ex. Folio classique, Babel"
         disabled={submitting}
-        className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
       />
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px]">
-        <input
-          type="text"
+        <DirkInput
           value={seriesName}
           onChange={(e) => setSeriesName(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder="Série (optionnel) — ex. Le Seigneur des Anneaux"
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
         />
-        <input
-          type="text"
+        <DirkInput
           inputMode="numeric"
           value={seriesPosition}
           onChange={(e) =>
@@ -1202,81 +1301,78 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder="Tome n°"
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-center text-[13px] tabular-nums text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          align="center"
         />
       </div>
 
-      <textarea
-        value={summary}
-        onChange={(e) => setSummary(e.target.value)}
-        onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-        placeholder="4ᵉ de couverture — généralement préremplie via la recherche."
-        rows={3}
-        disabled={submitting}
-        className="block min-h-[72px] w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
-      />
-
-      <div>
-        <SectionLabel>Statut</SectionLabel>
-        <div className="grid grid-cols-4 gap-1.5">
-          {LIBRARY_STATUS_VALUES.map((s) => {
-            const active = status === s;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatus(s)}
-                aria-pressed={active}
-                disabled={submitting}
-                className={cn(
-                  'h-8 cursor-pointer rounded-md border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-                  active
-                    ? 'border-accent bg-accent font-semibold text-white'
-                    : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
-                )}
-              >
-                {LIBRARY_STATUS_LABEL[s]}
-              </button>
-            );
-          })}
+      {/* 4ᵉ de couv + couverture côte à côte. L'éditeur prend toute
+          la largeur dispo (flex-1), la cover est fixe à droite avec
+          un ratio livre 2:3. Si la cover charge mal (URL morte côté
+          provider) on l'efface — pas envie d'afficher un cadre vide.
+          Le MarkdownEditor rend le wiki-markup `##title##` et le
+          markdown léger normalisés par le dispatcher (cleanSummary). */}
+      <div className="flex gap-3">
+        <div className="min-w-0 flex-1">
+          <MarkdownEditor
+            value={summary}
+            onChange={setSummary}
+            onSubmit={handleSave}
+            disabled={submitting}
+            mode={summaryMode}
+            onModeChange={setSummaryMode}
+            minHeightPx={240}
+          />
         </div>
+        {coverUrl && !coverLoadFailed ? (
+          <img
+            src={coverUrl}
+            alt=""
+            onError={() => setCoverLoadFailed(true)}
+            className="aspect-[2/3] w-[140px] flex-none self-start rounded-sm border border-hair bg-bg-2 object-cover"
+          />
+        ) : null}
       </div>
 
-      <div>
-        <SectionLabel>Format</SectionLabel>
-        <div className="grid grid-cols-4 gap-1.5">
-          {LIBRARY_FORMAT_VALUES.map((f) => {
-            const active = format === f;
-            return (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFormat(f)}
-                aria-pressed={active}
-                disabled={submitting}
-                className={cn(
-                  'h-8 cursor-pointer rounded-md border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-                  active
-                    ? 'border-accent-soft bg-accent-soft font-semibold text-accent-deep'
-                    : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
-                )}
-              >
-                {LIBRARY_FORMAT_LABEL[f]}
-              </button>
-            );
-          })}
-        </div>
+      {/* Status, Format, Tags compressés sur une seule ligne via
+          deux <select> + un <input> — gagne ~110 px de hauteur sur
+          le formulaire, ce qui laisse de la marge pour rajouter
+          des champs (collection, série, 4ᵉ de couv) sans pousser
+          la modale. La modale reste à sa hauteur fixe — l'espace
+          dégagé apparaît juste comme du whitespace en bas tant
+          qu'on n'a rien rajouté. */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_140px_1fr]">
+        <DirkSelect
+          value={status}
+          onChange={(e) => setStatus(e.target.value as LibraryStatus)}
+          aria-label="Statut"
+          disabled={submitting}
+        >
+          {LIBRARY_STATUS_VALUES.map((s) => (
+            <option key={s} value={s}>
+              {LIBRARY_STATUS_LABEL[s]}
+            </option>
+          ))}
+        </DirkSelect>
+        <DirkSelect
+          value={format}
+          onChange={(e) => setFormat(e.target.value as LibraryFormat)}
+          aria-label="Format"
+          disabled={submitting}
+        >
+          {LIBRARY_FORMAT_VALUES.map((f) => (
+            <option key={f} value={f}>
+              {LIBRARY_FORMAT_LABEL[f]}
+            </option>
+          ))}
+        </DirkSelect>
+        <DirkInput
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+          onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
+          placeholder="Tags (optionnel) — ex. classique, à offrir"
+          disabled={submitting}
+        />
       </div>
-
-      <input
-        type="text"
-        value={tagsInput}
-        onChange={(e) => setTagsInput(e.target.value)}
-        onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-        placeholder="Tags (optionnel) — séparés par une virgule, ex. classique, à offrir"
-        disabled={submitting}
-        className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
-      />
       </>
       ) : null}
     </div>
@@ -1333,7 +1429,29 @@ interface LookupBarProps {
   onApply: (book: NormalisedBook) => void;
   onDismiss: () => void;
   disabled: boolean;
+  /** BCP 47 2-letter code chosen by the user before searching.
+   * Used as a *hard filter* by the dispatcher (no soft boost / no
+   * post-search chip). Empty string disables the search button. */
+  lang: string;
+  onLangChange: (next: string) => void;
 }
+
+/**
+ * Languages exposed in the search-language `<select>`. Order matters —
+ * Français first since the app is FR-first, then English, then the
+ * other big book-publishing languages. Autonyms (each language name
+ * in its own language) make the dropdown self-explanatory regardless
+ * of the user's UI locale.
+ */
+const SEARCH_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
+  { code: 'fr', label: 'Français' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ja', label: '日本語' },
+];
 
 const PROVIDER_LABEL: Record<NormalisedBook['source'], string> = {
   openlibrary: 'OL',
@@ -1352,6 +1470,85 @@ const PROVIDER_ORDER: ReadonlyArray<NormalisedBook['source']> = [
   'bne',
   'amazon',
 ];
+
+interface FilterEntry<T> {
+  value: T;
+  label: string;
+  count: number;
+}
+
+interface FilterRowProps<T> {
+  /** Section label, e.g. "Langue". */
+  label: string;
+  /** Currently selected value, or null when "Tous" / no filter. */
+  active: T | null;
+  /** Distinct values harvested from results, with counts. */
+  entries: FilterEntry<T>[];
+  /** Setter — pass null to clear. */
+  onChange: (next: T | null) => void;
+}
+
+/**
+ * One row of filter chips (Langue / Format / Auteur·ice). The
+ * "Tous" chip clears the filter; clicking the active chip again
+ * also clears it. Only one selection per dimension at a time —
+ * picking a new chip in the same row replaces the previous.
+ */
+function FilterRow<T>({ label, active, entries, onChange }: FilterRowProps<T>) {
+  return (
+    <div className="flex items-center gap-1.5 overflow-hidden">
+      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.04em] text-muted">
+        {label}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        <FilterChip
+          isActive={active === null}
+          onClick={() => onChange(null)}
+        >
+          Tous
+        </FilterChip>
+        {entries.map((entry, i) => (
+          <FilterChip
+            key={i}
+            isActive={active === entry.value}
+            onClick={() =>
+              onChange(active === entry.value ? null : entry.value)
+            }
+          >
+            <span className="truncate">{entry.label}</span>
+            <span className="ml-1 text-[10px] tabular-nums opacity-70">
+              {entry.count}
+            </span>
+          </FilterChip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface FilterChipProps {
+  isActive: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function FilterChip({ isActive, onClick, children }: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isActive}
+      className={cn(
+        'inline-flex max-w-[180px] cursor-pointer items-center rounded-sm px-1.5 py-0.5 text-[11px] transition-colors',
+        isActive
+          ? 'bg-accent-soft font-semibold text-accent-deep'
+          : 'text-muted hover:bg-bg hover:text-ink',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 interface ProviderBadgesProps {
   /** The provider whose record won the merge (got top billing). */
@@ -1402,6 +1599,53 @@ const FORMAT_LABEL: Record<NonNullable<NormalisedBook['format']>, string> = {
 };
 
 /**
+ * Count facet values across results (e.g. how many books per
+ * language). Drops null/undefined extractions, returns descending
+ * counts so the most-populated chip renders first. Used to drive
+ * the filter chips below the lookup search bar.
+ */
+function countBy<T, K>(
+  items: ReadonlyArray<T>,
+  pick: (item: T) => K | null | undefined,
+): Array<{ value: K; count: number }> {
+  const map = new Map<K, number>();
+  for (const item of items) {
+    const v = pick(item);
+    if (v === null || v === undefined) continue;
+    map.set(v, (map.get(v) ?? 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Normalise the various language codes providers spit out
+ * (`fr`, `fre`, `fr-FR`, `eng`, `en`) into a 2-letter BCP 47 code
+ * for display + filtering. Returns null when the input doesn't
+ * look like a language at all.
+ */
+function shortLang(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const lc = raw.toLowerCase();
+  // 3-letter MARC codes Open Library still returns sometimes
+  const marcToBcp: Record<string, string> = {
+    fre: 'fr',
+    eng: 'en',
+    spa: 'es',
+    ger: 'de',
+    ita: 'it',
+    por: 'pt',
+    jpn: 'ja',
+    rus: 'ru',
+  };
+  if (marcToBcp[lc]) return marcToBcp[lc] ?? null;
+  // BCP 47 like `fr-FR` → first two letters
+  const m = /^([a-z]{2})(?:[-_].*)?$/.exec(lc);
+  return m ? m[1]! : null;
+}
+
+/**
  * Single search bar at the top of the create form. Detects ISBN
  * automatically (10/13 digits) and routes through the right
  * lookup endpoint. Results render inline below the bar; clicking
@@ -1421,22 +1665,84 @@ function LookupBar({
   onApply,
   onDismiss,
   disabled,
+  lang,
+  onLangChange,
 }: LookupBarProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter') {
       e.preventDefault();
-      void onSearch();
+      if (lang) void onSearch();
     } else if (e.key === 'Escape') {
       onDismiss();
     }
   }
+
+  // ---- Post-search filter state (chips below the bar) ----
+  // Two narrowers remain post-search:
+  //   - "Filtrer par": where the user's query string matched
+  //     (auteur·ice / titre). Cleaner than listing every author the
+  //     result set surfaced — for "Annie Ernaux" we'd see noisy
+  //     one-offs like "Sergio Villani 1" (a critic who wrote about
+  //     her) which doesn't help filter anything.
+  //   - "Format" (paper / ebook / audio).
+  // Both reset when a fresh result set arrives.
+  const [formatFilter, setFormatFilter] = useState<NormalisedBook['format']>(null);
+  const [matchFilter, setMatchFilter] = useState<'author' | 'title' | null>(null);
+  useEffect(() => {
+    setFormatFilter(null);
+    setMatchFilter(null);
+  }, [results]);
+
+  const formatCounts = useMemo(() => {
+    return countBy(results, (b) => b.format);
+  }, [results]);
+
+  // Counts for the match-field chips: how many results would each
+  // option keep? Computed *as if* the chip were active so the count
+  // shown alongside the chip is its actual size.
+  const matchCounts = useMemo(() => {
+    const q = value.trim().toLocaleLowerCase('fr');
+    if (!q) return { author: 0, title: 0 };
+    let authorMatches = 0;
+    let titleMatches = 0;
+    for (const b of results) {
+      if (b.creators.some((c) => c.name.toLocaleLowerCase('fr').includes(q))) {
+        authorMatches += 1;
+      }
+      if (b.title.toLocaleLowerCase('fr').includes(q)) {
+        titleMatches += 1;
+      }
+    }
+    return { author: authorMatches, title: titleMatches };
+  }, [results, value]);
+
+  const filteredResults = useMemo(() => {
+    const q = value.trim().toLocaleLowerCase('fr');
+    return results.filter((b) => {
+      if (formatFilter && b.format !== formatFilter) return false;
+      if (matchFilter === 'author') {
+        if (!q) return true;
+        return b.creators.some((c) => c.name.toLocaleLowerCase('fr').includes(q));
+      }
+      if (matchFilter === 'title') {
+        if (!q) return true;
+        return b.title.toLocaleLowerCase('fr').includes(q);
+      }
+      return true;
+    });
+  }, [results, formatFilter, matchFilter, value]);
+
+  const showFilters =
+    open &&
+    results.length > 0 &&
+    (formatCounts.length > 1 || matchCounts.author > 0 || matchCounts.title > 0);
 
   const expanded = open && results.length > 0;
 
   return (
     <div
       className={cn(
-        'rounded-md border border-hair bg-bg-2/60 p-2.5',
+        'rounded-sm border border-hair bg-bg-2/60 p-2.5',
         // When results are showing, the bar grows to fill the
         // remaining space in the modal so the list can stretch all
         // the way down — keeps the modal-tall layout filled
@@ -1445,33 +1751,47 @@ function LookupBar({
       )}
     >
       <div className="flex gap-2">
-        <input
-          type="text"
+        <DirkInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Rechercher par titre, auteur·rice ou ISBN…"
           disabled={disabled}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
         />
-        <button
-          type="button"
+        <DirkSelect
+          value={lang}
+          onChange={(e) => onLangChange(e.target.value)}
+          aria-label="Langue de la recherche"
+          disabled={disabled}
+          className="w-auto shrink-0"
+        >
+          <option value="" disabled>
+            Langue…
+          </option>
+          {SEARCH_LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
+          ))}
+        </DirkSelect>
+        <DirkButton
+          variant="primary"
           onClick={() => void onSearch()}
-          disabled={disabled || searching || value.trim().length < 2}
-          className="cursor-pointer shrink-0 rounded-md bg-accent px-3 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disabled || searching || value.trim().length < 2 || !lang}
+          title={!lang ? 'Choisis une langue avant de chercher' : undefined}
         >
           {searching ? '…' : 'Chercher'}
-        </button>
+        </DirkButton>
         {open ? (
-          <button
-            type="button"
+          <DirkButton
+            variant="secondary"
             onClick={onDismiss}
             aria-label="Fermer les résultats"
             title="Fermer (Esc)"
-            className="cursor-pointer shrink-0 rounded-md border border-hair bg-bg px-2 text-[12px] text-muted transition-colors hover:bg-bg-2 hover:text-ink"
+            className="px-2"
           >
             ✕
-          </button>
+          </DirkButton>
         ) : null}
       </div>
       {error ? (
@@ -1482,11 +1802,55 @@ function LookupBar({
           {error}
         </p>
       ) : null}
-      {open && results.length > 0 ? (
-        <ul className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border border-hair bg-bg">
-          {results.map((book, i) => {
+      {showFilters ? (
+        <div className="mt-2 flex flex-col gap-1">
+          {matchCounts.author > 0 || matchCounts.title > 0 ? (
+            <FilterRow<'author' | 'title'>
+              label="Filtrer par"
+              active={matchFilter}
+              onChange={setMatchFilter}
+              entries={[
+                ...(matchCounts.author > 0
+                  ? [
+                      {
+                        value: 'author' as const,
+                        label: 'Auteur·ice',
+                        count: matchCounts.author,
+                      },
+                    ]
+                  : []),
+                ...(matchCounts.title > 0
+                  ? [
+                      {
+                        value: 'title' as const,
+                        label: 'Titre',
+                        count: matchCounts.title,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          ) : null}
+          {formatCounts.length > 1 ? (
+            <FilterRow<NormalisedBook['format']>
+              label="Format"
+              active={formatFilter}
+              onChange={setFormatFilter}
+              entries={formatCounts.map((c) => ({
+                value: c.value,
+                label: c.value ? FORMAT_LABEL[c.value] : '—',
+                count: c.count,
+              }))}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      {open && filteredResults.length > 0 ? (
+        <ul className="mt-2 min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg">
+          {filteredResults.map((book, i) => {
             const isbn = book.isbn13 ?? book.isbn10;
             const formatLabel = book.format ? FORMAT_LABEL[book.format] : null;
+            const langCode = shortLang(book.language);
             const seriesLabel = book.series
               ? book.series.position
                 ? `${book.series.name}, t. ${book.series.position}`
@@ -1512,9 +1876,14 @@ function LookupBar({
                       {book.publisher ? <span className="ml-1.5">· {book.publisher}</span> : null}
                       {book.collection ? <span className="ml-1.5">· {book.collection}</span> : null}
                     </span>
-                    {(isbn || formatLabel || seriesLabel) ? (
+                    {(isbn || formatLabel || langCode || seriesLabel) ? (
                       <span className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-muted-soft">
                         {isbn ? <span className="tabular-nums">{isbn}</span> : null}
+                        {langCode ? (
+                          <span className="rounded bg-bg-2 px-1 py-px font-medium uppercase text-ink-soft">
+                            {langCode}
+                          </span>
+                        ) : null}
                         {formatLabel ? (
                           <span className="rounded bg-bg-2 px-1 py-px font-medium text-ink-soft">
                             {formatLabel}
@@ -1637,7 +2006,7 @@ function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
                 aria-pressed={active}
                 disabled={submitting}
                 className={cn(
-                  'h-8 cursor-pointer rounded-md border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                  'h-8 cursor-pointer rounded-sm border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                   active
                     ? 'border-accent bg-accent font-semibold text-white'
                     : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
@@ -1648,15 +2017,14 @@ function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
             );
           })}
         </div>
-        <input
-          type="text"
+        <DirkInput
           inputMode="numeric"
           value={page}
           onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 5))}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder="Page"
           disabled={submitting}
-          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-center text-[13px] tabular-nums text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          align="center"
         />
       </div>
 
@@ -1777,8 +2145,7 @@ function ThreadSuggestInput({
 
   return (
     <div ref={containerRef} className="relative">
-      <input
-        type="text"
+      <DirkInput
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
@@ -1794,13 +2161,12 @@ function ThreadSuggestInput({
         aria-autocomplete="list"
         aria-expanded={showDropdown}
         aria-controls="journal-thread-suggest"
-        className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
       />
       {showDropdown ? (
         <ul
           id="journal-thread-suggest"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-auto rounded-md border border-hair bg-bg py-1 shadow-[0_8px_20px_rgba(0,0,0,0.08)]"
+          className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-auto rounded-sm border border-hair bg-bg py-1 shadow-[0_8px_20px_rgba(0,0,0,0.08)]"
         >
           {suggestions.map((option, i) => {
             const isHighlighted = i === highlight;
@@ -1845,6 +2211,11 @@ interface MarkdownEditorProps {
   mode?: 'visual' | 'markdown';
   /** Called when the user flips the in-toolbar mode toggle. */
   onModeChange?: (next: 'visual' | 'markdown') => void;
+  /** Minimum height of the writing surface in pixels (defaults to
+   * 180). Lets a host module (e.g. Library Composer, where the form
+   * has a lot of fields above and a fixed-height modal) tune the
+   * editor to fill the available space. */
+  minHeightPx?: number;
 }
 
 /**
@@ -1879,6 +2250,7 @@ function MarkdownEditor({
   disabled,
   mode = 'visual',
   onModeChange,
+  minHeightPx = 180,
 }: MarkdownEditorProps) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const ceRef = useRef<HTMLDivElement | null>(null);
@@ -2077,8 +2449,9 @@ function MarkdownEditor({
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}
           onPaste={handleVisualPaste}
+          style={{ minHeight: `${minHeightPx}px` }}
           className={cn(
-            'journal-ce block min-h-[180px] w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink',
+            'journal-ce block w-full rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink',
             'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none',
             disabled ? 'pointer-events-none opacity-60' : '',
           )}
@@ -2092,7 +2465,8 @@ function MarkdownEditor({
           placeholder="Ce qui te traverse aujourd’hui — au long, sans contrainte."
           rows={8}
           disabled={disabled}
-          className="block min-h-[180px] w-full resize-none rounded-md border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          style={{ minHeight: `${minHeightPx}px` }}
+          className="block w-full resize-none rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
         />
       )}
     </div>
@@ -2126,7 +2500,7 @@ function ToolbarButton({
       aria-label={ariaLabel}
       title={title}
       disabled={disabled}
-      className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
     >
       {children}
     </button>
@@ -2193,7 +2567,7 @@ function Footer({
             type="button"
             onClick={onSubmit}
             disabled={submitting}
-            className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? submittingLabel : submitLabel}
           </button>

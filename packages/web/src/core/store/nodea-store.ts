@@ -137,7 +137,6 @@ export interface NodeaState {
  */
 export type ComposerType =
   | 'mood'
-  | 'pass'
   | 'goal'
   | 'habit'
   | 'note'

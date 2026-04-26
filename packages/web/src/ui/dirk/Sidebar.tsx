@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowRightOnRectangleIcon,
   BookOpenIcon,
@@ -23,6 +23,7 @@ import {
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import LanguageToggle from '@/ui/dirk/LanguageToggle';
 import ThemeToggle from '@/ui/dirk/ThemeToggle';
 
 /**
@@ -57,6 +58,25 @@ const MAIN_ITEMS: NavItem[] = [
   { id: 'habits', label: 'Habits', icon: FireIcon },
   { id: 'library', label: 'Library', icon: BookOpenIcon },
   { id: 'review', label: 'Review', icon: CalendarIcon },
+];
+
+/**
+ * Library splits into three lenses on the same data: the books
+ * themselves, the highlighted extracts (`reviews.kind === 'quote'`),
+ * and the freeform notes (`reviews.kind === 'note'`). All three
+ * routes resolve to `/flow/library` with a `?subview=` query param —
+ * we don't need a separate router branch since the LibraryPage
+ * already conditions its render on the param.
+ */
+interface LibrarySubItem {
+  /** Value of the `?subview=` query param. */
+  subview: 'livres' | 'extraits' | 'notes';
+  label: string;
+}
+const LIBRARY_SUB_ITEMS: readonly LibrarySubItem[] = [
+  { subview: 'livres', label: 'Livres' },
+  { subview: 'extraits', label: 'Extraits' },
+  { subview: 'notes', label: 'Notes' },
 ];
 
 interface SidebarShellProps {
@@ -123,6 +143,7 @@ interface SidebarBodyProps {
 
 function SidebarBody({ onNavigate }: SidebarBodyProps) {
   const { moduleId } = useParams();
+  const [searchParams] = useSearchParams();
   const current = moduleId ?? 'home';
   const modulesRuntime = useNodeaStore(selectModules);
 
@@ -137,24 +158,76 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
     (item) => item.id === 'home' || enabledIds.has(item.id),
   );
 
+  // The active Library sub-view tracks `?subview=` — defaults to
+  // `livres` when the user lands on `/flow/library` without a query
+  // string, matching the LibraryPage's own default.
+  const librarySubview = (searchParams.get('subview') ?? 'livres') as
+    | 'livres'
+    | 'extraits'
+    | 'notes';
+
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
       <SidebarHeader />
 
       <div className="flex flex-col gap-0.5">
         {mainVisible.map((item) => (
-          <SidebarItem
-            key={item.id}
-            item={item}
-            active={current === item.id}
-            onNavigate={onNavigate}
-          />
+          <Fragment key={item.id}>
+            <SidebarItem
+              item={item}
+              active={current === item.id}
+              onNavigate={onNavigate}
+            />
+            {item.id === 'library' && current === 'library' ? (
+              <LibrarySubNav
+                activeSubview={librarySubview}
+                onNavigate={onNavigate}
+              />
+            ) : null}
+          </Fragment>
         ))}
       </div>
 
       <div className="flex-1" />
       <SidebarFooter />
     </nav>
+  );
+}
+
+interface LibrarySubNavProps {
+  activeSubview: 'livres' | 'extraits' | 'notes';
+  onNavigate: () => void;
+}
+
+function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
+  const navigate = useNavigate();
+  return (
+    <ul className="ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
+      {LIBRARY_SUB_ITEMS.map((sub) => {
+        const active = activeSubview === sub.subview;
+        return (
+          <li key={sub.subview}>
+            <button
+              type="button"
+              onClick={() => {
+                navigate(`/flow/library?subview=${sub.subview}`);
+                onNavigate();
+              }}
+              data-active={active}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'block w-full rounded-md px-2 py-1 text-left text-[12.5px] transition-colors',
+                active
+                  ? 'bg-bg font-medium text-ink'
+                  : 'text-muted hover:bg-bg hover:text-ink',
+              )}
+            >
+              {sub.label}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -207,14 +280,21 @@ function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
 function SidebarFooter() {
   return (
     <div className="mt-3 flex flex-col gap-2 border-t border-hair px-2.5 pt-2.5">
-      <div className="flex items-center justify-between gap-2 text-[12px] text-muted">
-        <span className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
-          />
-          Synchronisé · à l’instant
-        </span>
+      {/* Top row: sync indicator alone, full-width. Status reads
+          first when the eye sweeps the footer top-to-bottom — that's
+          the layout the user asked for. */}
+      <div className="flex items-center gap-2 text-[12px] text-muted">
+        <span
+          aria-hidden="true"
+          className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
+        />
+        Synchronisé · à l’instant
+      </div>
+      {/* Bottom row: language select on the left, theme toggle on
+          the right. `justify-between` pins each to its own edge so
+          the two read as peer widgets rather than huddled. */}
+      <div className="flex items-center justify-between gap-1.5">
+        <LanguageToggle />
         <ThemeToggle />
       </div>
     </div>
