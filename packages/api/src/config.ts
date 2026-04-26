@@ -61,6 +61,24 @@ const EnvSchema = z.object({
    * (Infisical) and surface via `.env`.
    */
   LIBRARY_GOOGLE_BOOKS_API_KEY: z.string().min(1).optional(),
+
+  /**
+   * Toggle the Amazon scraping adapter. Amazon serves an AWS WAF
+   * JavaScript challenge to direct HTTP scrapers, so this adapter
+   * runs through a headless Chromium (Puppeteer) that executes the
+   * challenge JS in-browser — no manual puzzle solving needed,
+   * Chromium does it the way every browser does it.
+   *
+   * Cost: ~200 MB Chromium binary on disk (downloaded by pnpm at
+   * install time), ~120 MB RAM idle while the browser is alive,
+   * +2-5 s per lookup vs the direct fetch providers. Set to
+   * `false` to disable and skip the runtime browser entirely if
+   * you don't want the overhead.
+   */
+  LIBRARY_AMAZON_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
