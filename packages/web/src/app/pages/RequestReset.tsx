@@ -1,14 +1,21 @@
-import { useState, type FormEvent } from 'react';
+import { forwardRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
+import { cn } from '@/lib/utils';
 
 /**
- * Start a password-reset flow.
+ * Request-reset — Direction K · Sauge.
  *
- * The server always returns 200 to avoid enumeration (see `request-reset`
- * handler), so the success message is identical whether or not the
- * email is in the database. The response itself is our only confirmation
- * the request went through.
+ * Mirrors `LoginPage`'s two-column shell (marketing aside left,
+ * compact form right) so the auth surface stays one continuous
+ * design language. The "Avant d'aller plus loin" warning keeps its
+ * weight — losing the password loses the data — but it now reads in
+ * the K palette instead of the legacy amber callout.
+ *
+ * The server always returns 200 to avoid enumeration (see the
+ * `request-reset` handler), so the success view is identical
+ * whether or not the email is in the database. The response itself
+ * is our only confirmation the request went through.
  */
 export default function RequestResetPage() {
   const [email, setEmail] = useState('');
@@ -28,7 +35,7 @@ export default function RequestResetPage() {
       if (isApiError(err) && err.status === 429) {
         setError('Trop de demandes récentes. Réessaie dans une heure.');
       } else {
-        setError("Une erreur est survenue. Réessaie plus tard.");
+        setError('Une erreur est survenue. Réessaie plus tard.');
         if (import.meta.env.DEV) console.warn('request-reset failed', err);
       }
     } finally {
@@ -36,81 +43,198 @@ export default function RequestResetPage() {
     }
   }
 
-  if (sent) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none">
-          <h1 className="text-center text-lg font-semibold">Vérifie ta boîte mail</h1>
-          <p className="text-sm">
-            Si un compte Nodea est associé à <strong>{email}</strong>, un email avec un lien
-            de réinitialisation vient d'être envoyé. Le lien est valable 1 heure.
-          </p>
-          <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-semibold">⚠ Attention — perte de données</p>
-            <p className="mt-1">
-              Tes entrées sont chiffrées avec une clé dérivée de ton mot de passe. Réinitialiser
-              le mot de passe implique la suppression définitive de toutes tes données
-              existantes. Le lien dans l'email te redemandera de confirmer avant d'agir.
-            </p>
-          </div>
-          <p className="text-center">
-            <Link to="/login" className="text-sm underline">
-              ← Retour à la connexion
-            </Link>
+  return (
+    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
+      {/* Marketing panel */}
+      <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
+          <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
+        </div>
+
+        <div className="animate-fade-up">
+          <h1 className="mb-[18px] text-[56px] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
+            Récupère l’accès.
+          </h1>
+          <p className="max-w-[460px] text-[18px] leading-[1.5] text-ink-soft">
+            Le mot de passe est aussi la clé qui chiffre tes entrées. Le réinitialiser efface
+            les données existantes.
           </p>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-      <form
-        onSubmit={onSubmit}
-        noValidate
-        className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none"
-      >
-      <h1 className="text-xl font-semibold">Mot de passe oublié</h1>
-      <p className="text-sm opacity-80">
-        Indique ton email : on t'enverra un lien pour définir un nouveau mot de passe.
-      </p>
+        <div className="flex gap-3.5 text-[12px] text-muted">
+          <span>Chiffré bout en bout</span>
+          <span>·</span>
+          <span>Auto-hébergé</span>
+          <span>·</span>
+          <span>AGPL-3.0</span>
+        </div>
+      </aside>
 
-      <div className="rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-        <p className="font-semibold">⚠ Avant d'aller plus loin</p>
-        <p className="mt-1">
-          Nodea chiffre tes entrées avec une clé dérivée de ton mot de passe. Si tu l'oublies,
-          nous ne pouvons pas le récupérer — réinitialiser le mot de passe effacera toutes tes
-          données existantes.
-        </p>
-      </div>
-
-      <label className="block">
-        <span className="text-sm">E-mail</span>
-        <input
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
-        />
-      </label>
-
-      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/login" className="text-sm underline">
-          ← Retour à la connexion
-        </Link>
-        <button
-          type="submit"
-          disabled={submitting || !email.trim()}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
-        >
-          {submitting ? 'Envoi…' : "M'envoyer le lien"}
-        </button>
-      </div>
-      </form>
+      {/* Form panel */}
+      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+        <div className="animate-fade-up w-full max-w-[360px]">
+          {sent ? <SentView email={email} /> : (
+            <FormView
+              email={email}
+              onEmailChange={setEmail}
+              onSubmit={onSubmit}
+              submitting={submitting}
+              error={error}
+            />
+          )}
+        </div>
+      </main>
     </div>
   );
 }
+
+interface FormViewProps {
+  email: string;
+  onEmailChange: (next: string) => void;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  submitting: boolean;
+  error: string | null;
+}
+
+function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormViewProps) {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Réinitialisation</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Mot de passe oublié
+      </h2>
+      <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
+        Indique ton email — on t’enverra un lien pour définir un nouveau mot de passe.
+      </p>
+
+      <Warning title="Réinitialiser efface toutes tes données">
+        Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
+      </Warning>
+
+      <form onSubmit={onSubmit} noValidate className="mt-5">
+        <Field
+          label="E-mail"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          required
+        />
+
+        {error ? (
+          <div
+            role="alert"
+            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+          >
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={submitting || !email.trim()}
+          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? 'Envoi…' : 'M’envoyer le lien'}
+        </button>
+
+        <div className="mt-[18px] text-center text-[12.5px] text-muted">
+          <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
+            ← Retour à la connexion
+          </Link>
+        </div>
+      </form>
+    </>
+  );
+}
+
+function SentView({ email }: { email: string }) {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Lien envoyé</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Vérifie ta boîte mail
+      </h2>
+      <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
+        Si un compte Nodea est associé à <strong className="font-semibold text-ink">{email}</strong>,
+        un email avec un lien de réinitialisation vient d’être envoyé. Le lien est valable 1 heure.
+      </p>
+
+      <Warning title="Le lien effacera toutes tes données">
+        Confirme uniquement si tu acceptes une réinitialisation complète.
+      </Warning>
+
+      <div className="mt-5 text-center text-[12.5px] text-muted">
+        <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
+          ← Retour à la connexion
+        </Link>
+      </div>
+    </>
+  );
+}
+
+interface WarningProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+/**
+ * Hard warning callout for the reset flow — uses the system danger
+ * red (not the sauge-paired terracotta) because the consequence is
+ * irreversible data loss. Title carries the punchline so it reads
+ * at a glance; the body is one short sentence of context.
+ */
+function Warning({ title, children }: WarningProps) {
+  return (
+    <div
+      role="alert"
+      className="rounded-md border border-danger bg-danger/10 px-3.5 py-3 text-[12.5px] leading-[1.5] text-danger"
+    >
+      <p className="mb-1 flex items-center gap-1.5 font-semibold tracking-[0.01em]">
+        <span aria-hidden="true">⚠</span>
+        {title}
+      </p>
+      <p>{children}</p>
+    </div>
+  );
+}
+
+interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
+  label: string;
+  error?: string | undefined;
+}
+
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { label, error, className, id, name, ...rest },
+  ref,
+) {
+  const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
+  return (
+    <div className="mb-3.5">
+      <label htmlFor={inputId} className="mb-[5px] block text-[12px] font-medium text-muted">
+        {label}
+      </label>
+      <input
+        id={inputId}
+        name={name}
+        ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+        className={cn(
+          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
+          'outline-none transition-[border-color,box-shadow]',
+          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
+        {...rest}
+      />
+      {error ? (
+        <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+});

@@ -60,8 +60,8 @@ export default function LoginPage() {
             Te revoilà.
           </h1>
           <p className="max-w-[460px] text-[18px] leading-[1.5] text-ink-soft">
-            Un carnet privé, hébergé par toi. Mood, passages, goals, habits, library, review —
-            chiffrés bout en bout, jamais visibles côté serveur.
+            Un espace privé, hébergé par toi. Mood, journal, passages, goals, habits, library,
+            review — chiffrés bout en bout, jamais visibles côté serveur.
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export default function LoginPage() {
         <div className="animate-fade-up w-full max-w-[360px]">
           <p className="mb-1 text-[13px] text-muted">Connexion</p>
           <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-            Entre dans ton carnet
+            Entre dans ton espace
           </h2>
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
