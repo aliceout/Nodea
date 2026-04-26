@@ -5,7 +5,6 @@
 // le sid du module utilisateur courant).
 const loaders = {
   mood: () => import("@/core/utils/ImportExport/Mood.jsx"),
-  passage: () => import("@/core/utils/ImportExport/Passage.jsx"),
   goals: () => import("@/core/utils/ImportExport/Goals.jsx"),
   habits_items: () => import("@/core/utils/ImportExport/HabitsItems.jsx"),
   habits_logs: () => import("@/core/utils/ImportExport/HabitsLogs.jsx"),
