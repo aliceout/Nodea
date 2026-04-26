@@ -49,6 +49,21 @@ const EnvSchema = z.object({
   SMTP_FROM: z.string().min(1).default('nodea@localhost.invalid'),
 
   /**
+   * Picks which `EmailService` implementation is active at runtime.
+   * See `packages/api/src/services/email/types.ts` for the contract
+   * and Auth-Spec.md §10 for the design rationale.
+   *
+   *   - `smtp`      : real SMTP transport via nodemailer.
+   *                   Default — points at Mailpit in dev (SMTP_HOST=mailpit
+   *                   or 127.0.0.1, SMTP_PORT=1025) and Infomaniak in prod.
+   *   - `console`   : log to stdout. Fallback only — pick this when running
+   *                   without Docker (no Mailpit reachable).
+   *   - `recording` : in-memory store for Vitest fixtures. Never use in
+   *                   production — emails would never actually be sent.
+   */
+  EMAIL_SERVICE_IMPL: z.enum(['smtp', 'console', 'recording']).default('smtp'),
+
+  /**
    * Optional Google Books API key, shared by all users on this Nodea
    * instance. Phase 2 of the Library module uses it to fetch book
    * metadata via `/library/lookup`. When unset, the proxy still works
