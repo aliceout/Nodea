@@ -52,37 +52,25 @@ export const bnfAdapter: ProviderAdapter = {
     return groupRowsByWork(rows, stripped, kind);
   },
 
-  async byQuery(query, _lang): Promise<NormalisedBook[]> {
-    // BNF runs on Virtuoso, which exposes a full-text index via
-    // `bif:contains`. Way faster than `regex(str(?title), …)` —
-    // an FTS lookup is millisecond-range, the regex variant was
-    // a full-table scan that timed out at 8 s on common French
-    // queries (« Les origines républicaines de Vichy » etc.).
+  async byQuery(_query, _lang): Promise<NormalisedBook[]> {
+    // Free-text search on BNF is intentionally a no-op.
     //
-    // Stop words are stripped server-side, accents folded — we
-    // just pass the user input verbatim. Words are AND-combined
-    // by default in Virtuoso, which is what we want.
-    const fts = escapeLiteral(query);
-    const sparql = `
-      PREFIX dcterms: <http://purl.org/dc/terms/>
-      PREFIX bnf-onto: <http://data.bnf.fr/ontology/bnf-onto/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      SELECT DISTINCT ?work ?title ?authorName ?date ?publisher ?isbn ?language ?seriesName ?collectionName WHERE {
-        ?work dcterms:title ?title .
-        ?title bif:contains "${fts}" .
-        OPTIONAL { ?work dcterms:creator ?author . ?author foaf:name ?authorName . }
-        OPTIONAL { ?work dcterms:date ?date . }
-        OPTIONAL { ?work dcterms:publisher ?publisher . }
-        OPTIONAL { ?work bnf-onto:isbn ?isbn . }
-        OPTIONAL { ?work dcterms:language ?lang . ?lang rdf:value ?language . }
-        OPTIONAL { ?work dcterms:isPartOf ?series . ?series dcterms:title ?seriesName . }
-        OPTIONAL { ?work bnf-onto:collection ?collectionName . }
-      }
-      LIMIT 30
-    `;
-    const rows = await runSparql(ENDPOINT, sparql);
-    return groupRowsByWork(rows, null, null).slice(0, 10);
+    // Tried two SPARQL approaches, neither flies:
+    //   - `?title bif:contains "..."` returns 500 — BNF's Virtuoso
+    //     doesn't index `dcterms:title` for full-text search, so
+    //     the FTS function errors instead of falling back.
+    //   - `FILTER(regex(str(?title), …, "i"))` does a full-table
+    //     scan over millions of titles and times out at 8 s on
+    //     anything except pathologically rare strings.
+    //
+    // Free-text queries are well covered by Open Library, Google
+    // Books and Wikidata (the latter two work fine on French
+    // titles); BNF still pulls its weight on `byIsbn`, where
+    // `bnf-onto:isbn` IS indexed and lookups are instant. Adding
+    // the SRU XML catalog API (`catalogue.bnf.fr/api/SRU`) is the
+    // future direction for FR-specific full-text search; not done
+    // here because UNIMARC parsing isn't a small dependency.
+    return [];
   },
 };
 
@@ -147,6 +135,3 @@ function groupRowsByWork(
   return Array.from(map.values());
 }
 
-function escapeLiteral(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
