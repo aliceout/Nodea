@@ -39,6 +39,24 @@ paragraph below describes code that exists today in the repository.
 
 ## 2. Main key lifecycle
 
+> **⚠️ LEGACY — en cours de remplacement.** Cette section décrit le
+> modèle d'auth actuel (Argon2id direct sur le password, KEK dérivée
+> à chaque login depuis `password + encryption_salt`). Il est en
+> cours de remplacement par un modèle multi-facteurs basé sur
+> OPAQUE + WebAuthn PRF + TOTP, spécifié dans
+> [`Auth-Spec.md`](Auth-Spec.md).
+>
+> La migration suit le plan de [`Auth-Roadmap.md`](Auth-Roadmap.md)
+> en 9 phases. Pendant la transition, les deux modèles coexistent
+> (lazy migration au login, cf. Auth-Spec §12). Après livraison
+> Phase 8, cette section sera réécrite pour refléter le nouveau
+> modèle comme seule réalité, et les colonnes legacy
+> (`password_hash`, `encryption_salt`, `encrypted_key`) seront
+> droppées.
+>
+> Pour toute évolution crypto/auth pendant la migration : la spec
+> qui fait foi est `Auth-Spec.md`, pas cette section.
+
 ### 2.1 Register
 1. Generate 32 random bytes (`randomBytes(32)`).
 2. Derive a KEK via Argon2id from `password + encryption_salt`.
