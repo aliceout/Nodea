@@ -6,6 +6,7 @@ import { adminRoutes } from './routes/admin.ts';
 import { announcementsRoutes } from './routes/announcements.ts';
 import { modulesConfigRoutes } from './routes/modules-config.ts';
 import { userPreferencesRoutes } from './routes/user-preferences.ts';
+import { libraryLookupRoutes } from './routes/library-lookup.ts';
 import { createCollectionRoutes } from './routes/collection-factory.ts';
 import { COLLECTIONS } from './collections/registry.ts';
 import type { AuthVariables } from './middleware/require-user.ts';
@@ -41,6 +42,7 @@ export function buildApp() {
   app.route('/announcements', announcementsRoutes);
   app.route('/modules-config', modulesConfigRoutes);
   app.route('/user-preferences', userPreferencesRoutes);
+  app.route('/library/lookup', libraryLookupRoutes);
 
   // Every collection gets its 4 REST routes with requireUser + requireGuard
   // wired in by the factory. Adding a module = adding an entry in

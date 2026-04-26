@@ -72,6 +72,7 @@ export const COLLECTION_NAMES = [
   'habits-logs',
   'library-items',
   'library-reviews',
+  'library-covers',
   'review',
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];

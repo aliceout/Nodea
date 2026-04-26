@@ -43,6 +43,13 @@
       "when": 1776838122742,
       "tag": "0005_gray_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777184971768,
+      "tag": "0006_petite_gauntlet",
+      "breakpoints": true
     }
   ]
 }

@@ -123,49 +123,144 @@ export const HabitsLogPayloadSchema = z
 export type HabitsLogPayload = z.infer<typeof HabitsLogPayloadSchema>;
 
 // ---------------------------------------------------------------------
-// Library — two collections (items + reviews)
+// Library — three collections (items + reviews + covers)
 // ---------------------------------------------------------------------
 
-export const LIBRARY_TYPE_VALUES = ['book', 'movie', 'tv', 'doc'] as const;
-export const LIBRARY_PROVIDER_VALUES = ['openlibrary', 'googlebooks', 'tmdb'] as const;
+/**
+ * Library is **books only** (per design decision 2026-04-26 / Q1).
+ * The `type` discriminator stays on the item so a future audiovisual
+ * sibling module could share the schema, but Library itself only
+ * accepts `book`.
+ */
+export const LIBRARY_TYPE_VALUES = ['book'] as const;
+export type LibraryType = (typeof LIBRARY_TYPE_VALUES)[number];
+
 export const LIBRARY_STATUS_VALUES = [
   'planned',
   'in_progress',
   'finished',
   'abandoned',
 ] as const;
+export type LibraryStatus = (typeof LIBRARY_STATUS_VALUES)[number];
 
-/** A work in the library (book, movie, …). */
+export const LIBRARY_FORMAT_VALUES = ['paper', 'ebook', 'audio', 'unknown'] as const;
+export type LibraryFormat = (typeof LIBRARY_FORMAT_VALUES)[number];
+
+export const LIBRARY_REVIEW_KIND_VALUES = ['quote', 'note'] as const;
+export type LibraryReviewKind = (typeof LIBRARY_REVIEW_KIND_VALUES)[number];
+
+/**
+ * External-provider identity for a library item — used to fetch
+ * metadata and to dedupe at import time. Every key is optional;
+ * an item with all fields empty is fine (manual entry).
+ */
+export const LibraryProvidersSchema = z
+  .object({
+    openlibrary: z.string().optional(),
+    googlebooks: z.string().optional(),
+    amazon: z.string().optional(),
+    isbn13: z.string().optional(),
+    isbn10: z.string().optional(),
+  })
+  .passthrough();
+export type LibraryProviders = z.infer<typeof LibraryProvidersSchema>;
+
+/**
+ * Creator — author / translator / illustrator / etc. Convention for
+ * `name` is `<Prénom> <NOM en MAJUSCULES>` (validated 2026-04-26).
+ * `role` is left as a free-form string so we don't trip on imports
+ * with unusual roles ("préface", "postface", "illustrations").
+ */
+export const LibraryCreatorSchema = z
+  .object({
+    name: z.string().min(1),
+    role: z.string().default('author'),
+  })
+  .passthrough();
+export type LibraryCreator = z.infer<typeof LibraryCreatorSchema>;
+
+export const LibrarySeriesSchema = z
+  .object({
+    name: z.string().min(1),
+    position: z.number().int().positive().optional(),
+    of: z.number().int().positive().optional(),
+  })
+  .passthrough();
+export type LibrarySeries = z.infer<typeof LibrarySeriesSchema>;
+
+/**
+ * A book in the library. See `documentation/Modules/Library.md` §3.1
+ * for the field semantics.
+ */
 export const LibraryItemPayloadSchema = z
   .object({
-    type: z.enum(LIBRARY_TYPE_VALUES),
-    provider: z.enum(LIBRARY_PROVIDER_VALUES).optional(),
-    external_id: z.string().optional(),
+    type: z.enum(LIBRARY_TYPE_VALUES).default('book'),
     title: z.string().min(1),
-    creators: z.array(z.string()).default([]),
+
+    providers: LibraryProvidersSchema.optional(),
+
+    creators: z.array(LibraryCreatorSchema).default([]),
     year: z.number().int().optional(),
     language: z.string().optional(),
-    cover_url: z.string().optional(),
+    original_language: z.string().optional(),
+    page_count: z.number().int().positive().optional(),
+    publisher: z.string().optional(),
+    /** Collection éditoriale (e.g. "Folio classique", "Pléiade",
+     * "Babel"). Distinct from `series` which is a multi-volume work.
+     * BNF has the cleanest data on this. */
+    collection: z.string().optional(),
+    summary: z.string().optional(),
+    series: LibrarySeriesSchema.optional(),
+
+    /** rid of the matching `library_covers_entries` row, or null. */
+    cover_rid: z.string().nullable().default(null),
+
     status: z.enum(LIBRARY_STATUS_VALUES).default('planned'),
-    started_at: z.string().optional(),
-    finished_at: z.string().optional(),
-    rating: z.number().min(0).max(5).optional(),
+    format: z.enum(LIBRARY_FORMAT_VALUES).default('unknown'),
+    started_at: z.string().nullable().default(null),
+    finished_at: z.string().nullable().default(null),
+    current_page: z.number().int().nonnegative().nullable().default(null),
+    rating: z.number().min(0).max(5).nullable().default(null),
     tags: z.array(z.string()).default([]),
+    is_favorite: z.boolean().default(false),
   })
   .passthrough();
 export type LibraryItemPayload = z.infer<typeof LibraryItemPayloadSchema>;
 
-/** A reading note attached to a library_items record. */
+/**
+ * A note or extract attached to a library item. `kind: "quote"` is
+ * the heir of the old Passage module (passages copied from a book) ;
+ * `kind: "note"` covers everything else (in-progress reflection,
+ * fiche-bilan, impression…).
+ */
 export const LibraryReviewPayloadSchema = z
   .object({
-    date: z.string().min(1),
     item_rid: z.string().min(1),
-    note: z.string().min(1),
-    page: z.number().int().positive().optional(),
-    snippet: z.string().optional(),
+    date: z.string().min(1),
+    kind: z.enum(LIBRARY_REVIEW_KIND_VALUES).default('note'),
+    title: z.string().nullable().default(null),
+    content: z.string().min(1),
+    page: z.number().int().positive().nullable().default(null),
+    spoiler: z.boolean().default(false),
   })
   .passthrough();
 export type LibraryReviewPayload = z.infer<typeof LibraryReviewPayloadSchema>;
+
+/**
+ * Cover blob — stored in its own collection so the items payload
+ * stays small (a base64 cover can run 30–100 KB). The whole blob is
+ * encrypted client-side just like any other module payload.
+ */
+export const LibraryCoverPayloadSchema = z
+  .object({
+    item_rid: z.string().min(1),
+    mime: z.string().min(1),
+    blob_b64: z.string().min(1),
+    fetched_from: z.string().nullable().default(null),
+    fetched_at: z.string().nullable().default(null),
+  })
+  .passthrough();
+export type LibraryCoverPayload = z.infer<typeof LibraryCoverPayloadSchema>;
 
 // ---------------------------------------------------------------------
 // Review — one rich yearly entry (YearCompass-inspired)

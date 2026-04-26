@@ -11,6 +11,8 @@ import { db } from '../db/client.ts';
 import { announcements, invites, users } from '../db/schema.ts';
 import { requireUser, requireAdmin, type AuthVariables } from '../middleware/require-user.ts';
 import { serialize as serializeAnnouncement } from './announcements-serialize.ts';
+import { probeLibraryProviders } from '../lookup/dispatcher.ts';
+import type { AdminSourcesResponse } from '@nodea/shared';
 
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
 
@@ -202,4 +204,28 @@ adminRoutes.delete('/announcements/:id', async (c) => {
 
   if (result.length === 0) return c.json({ error: 'not_found' }, 404);
   return c.json({ ok: true });
+});
+
+// --- Sources health (admin "Sources" tab) ----------------------------
+//
+// Probes every external metadata provider used by the modules and
+// reports per-source status: configured (env var present), online
+// (endpoint responded ok), responseMs, testFoundResults (the probe
+// query returned at least one record), error (when relevant).
+//
+// `requireAdmin` is enforced at the parent route so non-admins
+// never reach here. Each call hits up to 5 providers in parallel,
+// bounded by their per-fetch timeout (~6–8 s) so the overall
+// response is also bounded.
+//
+// Phase 2 covers Library only; future modules with their own
+// providers (audio-visual when it lands) get an extra entry in the
+// response `modules` map without touching the route.
+adminRoutes.get('/sources', async (c) => {
+  const library = await probeLibraryProviders();
+  const response: AdminSourcesResponse = {
+    generatedAt: new Date().toISOString(),
+    modules: { library },
+  };
+  return c.json(response);
 });

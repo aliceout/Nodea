@@ -260,28 +260,40 @@ describe('Library — items and reviews encrypted round-trip', () => {
 
     const book: LibraryItemPayload = {
       type: 'book',
-      provider: 'openlibrary',
-      external_id: 'OL123M',
       title: 'Exemple de livre',
-      creators: ['Autrice Inconnue'],
+      providers: { openlibrary: 'OL123M' },
+      creators: [{ name: 'Inconnue AUTRICE', role: 'author' }],
       year: 2022,
       language: 'fr',
       status: 'in_progress',
-      creators_count: 1, // passthrough tolerated
+      format: 'paper',
+      cover_rid: null,
+      started_at: null,
+      finished_at: null,
+      current_page: null,
+      rating: null,
       tags: ['roman'],
-    } as LibraryItemPayload;
+      is_favorite: false,
+    };
     const item = await createPromoted(cookie, 'library-items', keys, itemSid, book);
 
     const r1: LibraryReviewPayload = {
-      date: '2025-08-20',
       item_rid: item.id,
-      note: 'Passage marquant',
+      date: '2025-08-20',
+      kind: 'quote',
+      title: null,
+      content: 'Passage marquant',
       page: 54,
+      spoiler: false,
     };
     const r2: LibraryReviewPayload = {
-      date: '2025-08-22',
       item_rid: item.id,
-      note: 'Fin du livre, super conclusion.',
+      date: '2025-08-22',
+      kind: 'note',
+      title: null,
+      content: 'Fin du livre, super conclusion.',
+      page: null,
+      spoiler: false,
     };
     await createPromoted(cookie, 'library-reviews', keys, reviewSid, r1);
     await createPromoted(cookie, 'library-reviews', keys, reviewSid, r2);
@@ -298,7 +310,9 @@ describe('Library — items and reviews encrypted round-trip', () => {
     );
     const byDate = notes.sort((a, b) => a.date.localeCompare(b.date));
     expect(byDate[0]!.page).toBe(54);
-    expect(byDate[1]!.note).toMatch(/conclusion/);
+    expect(byDate[0]!.kind).toBe('quote');
+    expect(byDate[1]!.content).toMatch(/conclusion/);
+    expect(byDate[1]!.kind).toBe('note');
   });
 });
 

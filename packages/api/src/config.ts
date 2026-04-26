@@ -47,6 +47,20 @@ const EnvSchema = z.object({
    * Default is intentionally non-routable so tests don't attempt a real send.
    */
   SMTP_FROM: z.string().min(1).default('nodea@localhost.invalid'),
+
+  /**
+   * Optional Google Books API key, shared by all users on this Nodea
+   * instance. Phase 2 of the Library module uses it to fetch book
+   * metadata via `/library/lookup`. When unset, the proxy still works
+   * — it just skips Google Books and falls back to Open Library / BNF
+   * / Wikidata / BNE (none of which require a key).
+   *
+   * Storing this server-side (instead of per-user) means Google sees
+   * "one Nodea instance" rather than "N individual users with N
+   * different metadata profiles". Provision via your secrets manager
+   * (Infisical) and surface via `.env`.
+   */
+  LIBRARY_GOOGLE_BOOKS_API_KEY: z.string().min(1).optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

@@ -16,7 +16,14 @@
  */
 import { create } from 'zustand';
 import type { MainKeyMaterial } from '../crypto/key-material.ts';
-import type { UserPreferencesPayload } from '@nodea/shared';
+import type {
+  GoalsPayload,
+  LibraryItemPayload,
+  LibraryReviewPayload,
+  MoodPayload,
+  PassagePayload,
+  UserPreferencesPayload,
+} from '@nodea/shared';
 
 export type AuthStatus = 'unauthenticated' | 'loading' | 'authenticated';
 
@@ -93,10 +100,30 @@ export interface NodeaState {
   composer: {
     open: boolean;
     type: ComposerType;
+    /** When set, the matching body prefills its form from the
+     * payload and switches its save flow from create → update. */
+    editing: ComposerEditing | null;
   };
-  openComposer(type?: ComposerType): void;
+  openComposer(type?: ComposerType, editing?: ComposerEditing): void;
   closeComposer(): void;
   setComposerType(type: ComposerType): void;
+
+  // --- Per-module mutation versions ---
+  // Bumped after a successful create / update / delete on a given
+  // module's collection. Pages include the matching version in their
+  // fetch useEffect deps so newly persisted entries appear without a
+  // page reload. A lightweight stand-in for TanStack Query's
+  // `invalidateQueries` until the workspace adopts it.
+  goalsVersion: number;
+  bumpGoalsVersion(): void;
+  moodVersion: number;
+  bumpMoodVersion(): void;
+  journalVersion: number;
+  bumpJournalVersion(): void;
+  libraryItemsVersion: number;
+  bumpLibraryItemsVersion(): void;
+  libraryReviewsVersion: number;
+  bumpLibraryReviewsVersion(): void;
 
   // --- reset (on logout) ---
   resetAll(): void;
@@ -108,7 +135,39 @@ export interface NodeaState {
  * `note` variant is a free-form journal entry that doesn't bind to
  * any specific module.
  */
-export type ComposerType = 'mood' | 'pass' | 'goal' | 'habit' | 'note';
+export type ComposerType =
+  | 'mood'
+  | 'pass'
+  | 'goal'
+  | 'habit'
+  | 'note'
+  | 'journal'
+  | 'library-item'
+  | 'library-review';
+
+/**
+ * Discriminated record passed to `openComposer` when editing an
+ * existing entry. Each body that supports edit reads the editing
+ * slot (narrowed on `type`) and prefills its form. Passages /
+ * Habits / Notes stay create-only for now — extend this union when
+ * each gets its own rich body + edit flow.
+ */
+export type ComposerEditing =
+  | { type: 'goal'; id: string; payload: GoalsPayload }
+  | { type: 'mood'; id: string; payload: MoodPayload }
+  | { type: 'journal'; id: string; payload: PassagePayload }
+  | { type: 'library-item'; id: string; payload: LibraryItemPayload }
+  | {
+      type: 'library-review';
+      id: string;
+      payload: LibraryReviewPayload;
+      /** When prefilling a brand-new review for a known item, the
+       * editing entry is omitted — but we may still need to know
+       * which item the review is being created against. The item
+       * version uses `id` for the existing review id when editing,
+       * and the body reads `payload.item_rid` from the prefilled
+       * payload to pin the relation. */
+    };
 
 /**
  * Initial auth state. `loading` (not `unauthenticated`) so the first
@@ -172,15 +231,35 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
   mobileMenuOpen: false,
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 
-  composer: { open: false, type: 'mood' },
-  openComposer: (type) =>
+  composer: { open: false, type: 'mood', editing: null },
+  openComposer: (type, editing) =>
     set((state) => ({
-      composer: { open: true, type: type ?? state.composer.type },
+      composer: {
+        open: true,
+        type: editing?.type ?? type ?? state.composer.type,
+        editing: editing ?? null,
+      },
     })),
   closeComposer: () =>
-    set((state) => ({ composer: { ...state.composer, open: false } })),
+    set((state) => ({
+      composer: { ...state.composer, open: false, editing: null },
+    })),
   setComposerType: (type) =>
-    set((state) => ({ composer: { ...state.composer, type } })),
+    set((state) => ({ composer: { ...state.composer, type, editing: null } })),
+
+  goalsVersion: 0,
+  bumpGoalsVersion: () => set((state) => ({ goalsVersion: state.goalsVersion + 1 })),
+  moodVersion: 0,
+  bumpMoodVersion: () => set((state) => ({ moodVersion: state.moodVersion + 1 })),
+  journalVersion: 0,
+  bumpJournalVersion: () =>
+    set((state) => ({ journalVersion: state.journalVersion + 1 })),
+  libraryItemsVersion: 0,
+  bumpLibraryItemsVersion: () =>
+    set((state) => ({ libraryItemsVersion: state.libraryItemsVersion + 1 })),
+  libraryReviewsVersion: 0,
+  bumpLibraryReviewsVersion: () =>
+    set((state) => ({ libraryReviewsVersion: state.libraryReviewsVersion + 1 })),
 
   resetAll: () =>
     set({
@@ -190,7 +269,12 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
       preferences: {},
       notifications: [],
       mobileMenuOpen: false,
-      composer: { open: false, type: 'mood' },
+      composer: { open: false, type: 'mood', editing: null },
+      goalsVersion: 0,
+      moodVersion: 0,
+      journalVersion: 0,
+      libraryItemsVersion: 0,
+      libraryReviewsVersion: 0,
     }),
 }));
 

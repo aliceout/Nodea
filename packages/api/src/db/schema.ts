@@ -177,6 +177,7 @@ export const habitsItemsEntries = createEntryTable('habits_items_entries');
 export const habitsLogsEntries = createEntryTable('habits_logs_entries');
 export const libraryItemsEntries = createEntryTable('library_items_entries');
 export const libraryReviewsEntries = createEntryTable('library_reviews_entries');
+export const libraryCoversEntries = createEntryTable('library_covers_entries');
 export const reviewEntries = createEntryTable('review_entries');
 
 /**

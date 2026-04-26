@@ -7,6 +7,7 @@ import {
   habitsLogsEntries,
   libraryItemsEntries,
   libraryReviewsEntries,
+  libraryCoversEntries,
   reviewEntries,
   type EntryTable,
 } from '../db/schema.ts';
@@ -36,5 +37,6 @@ export const COLLECTIONS: readonly CollectionDef[] = [
   { name: 'habits-logs', table: habitsLogsEntries },
   { name: 'library-items', table: libraryItemsEntries },
   { name: 'library-reviews', table: libraryReviewsEntries },
+  { name: 'library-covers', table: libraryCoversEntries },
   { name: 'review', table: reviewEntries },
 ];

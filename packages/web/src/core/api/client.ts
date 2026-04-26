@@ -15,8 +15,14 @@
  * the payload level.
  */
 import {
+  AdminSourcesResponseSchema,
   AuthMeResponseSchema,
+  LibraryLookupResponseSchema,
+  type AdminSourcesResponse,
   type AuthMeResponse,
+  type LibraryLookupByIsbnBody,
+  type LibraryLookupByQueryBody,
+  type LibraryLookupResponse,
   type LoginBody,
   type RegisterBody,
   type ChangePasswordBody,
@@ -148,6 +154,22 @@ export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {
   await request<void>('DELETE', '/auth/me', body);
 }
 
+// --- Library lookup (proxy) -------------------------------------------
+
+export async function apiLibraryLookupByIsbn(
+  body: LibraryLookupByIsbnBody,
+): Promise<LibraryLookupResponse> {
+  const raw = await request<unknown>('POST', '/library/lookup/by-isbn', body);
+  return LibraryLookupResponseSchema.parse(raw);
+}
+
+export async function apiLibraryLookupByQuery(
+  body: LibraryLookupByQueryBody,
+): Promise<LibraryLookupResponse> {
+  const raw = await request<unknown>('POST', '/library/lookup/by-query', body);
+  return LibraryLookupResponseSchema.parse(raw);
+}
+
 // --- Admin endpoints ---------------------------------------------------
 
 export interface AdminUserRow {
@@ -179,6 +201,18 @@ export async function apiAdminDeleteUser(userId: string): Promise<void> {
 export async function apiAdminListInvites(): Promise<AdminInviteRow[]> {
   const { invites } = await request<{ invites: AdminInviteRow[] }>('GET', '/admin/invites');
   return invites;
+}
+
+/**
+ * Probe every external metadata provider used by the modules and
+ * return per-source health (configured / online / responseMs / etc.).
+ * Triggers up to 5 outbound HTTP calls per request (the Library
+ * providers); rate-limited at the route level. Used by the admin
+ * "Sources" tab.
+ */
+export async function apiAdminSources(): Promise<AdminSourcesResponse> {
+  const raw = await request<unknown>('GET', '/admin/sources');
+  return AdminSourcesResponseSchema.parse(raw);
 }
 
 export async function apiAdminCreateInvite(expiresAt?: string): Promise<{ id: string; code: string }> {

@@ -2,9 +2,9 @@ import { lazy, Suspense, type ComponentType, type ReactElement } from 'react';
 import {
   HomeIcon,
   SparklesIcon,
-  ArrowsRightLeftIcon,
   Cog6ToothIcon,
   CheckCircleIcon,
+  DocumentTextIcon,
   FireIcon,
   BookOpenIcon,
   CalendarIcon,
@@ -20,7 +20,7 @@ import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
  */
 const Home = lazy(() => import('@/app/flow/Homepage'));
 const Mood = lazy(() => import('@/app/flow/Mood'));
-const Passage = lazy(() => import('@/app/flow/Passage'));
+const Journal = lazy(() => import('@/app/flow/Journal'));
 const Goals = lazy(() => import('@/app/flow/Goals'));
 const Habits = lazy(() => import('@/app/flow/Habits'));
 const Library = lazy(() => import('@/app/flow/Library'));
@@ -76,13 +76,20 @@ export const MODULES: readonly ModuleDef[] = [
     display: true,
   },
   {
-    id: 'passage',
-    label: 'modules.passage.label',
+    /**
+     * Free-form journal grouped by thread. Backed by the existing
+     * `passage_entries` table — the schema matches and no migration
+     * is needed. The legacy `passage` module that used the same
+     * table is gone; its quote-saving idea moved to Library reviews
+     * (`kind: "quote"`).
+     */
+    id: 'journal',
+    label: 'modules.journal.label',
     collection: 'passage_entries',
-    element: lazyModule('passage', Passage),
+    element: lazyModule('journal', Journal),
     to_toggle: true,
-    description: 'modules.passage.description',
-    icon: ArrowsRightLeftIcon,
+    description: 'modules.journal.description',
+    icon: DocumentTextIcon,
     display: true,
   },
   {
