@@ -162,12 +162,41 @@ export async function fetchRendered(
       timeout: options.timeoutMs ?? 15000,
     });
 
+    // Read the final HTML. AWS WAF challenges trigger an internal
+    // re-navigation right around when `networkidle2` fires, so
+    // `page.content()` occasionally races with the redirect and
+    // throws "Execution context was destroyed". Retry a few times
+    // with a short wait — by the second attempt the new page has
+    // settled. This is the standard Puppeteer mitigation for
+    // mid-navigation reads.
     return {
-      html: await page.content(),
+      html: await readContentWithRetry(page),
       finalUrl: page.url(),
       status: response?.status() ?? 0,
     };
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+async function readContentWithRetry(page: import('puppeteer').Page): Promise<string> {
+  const maxAttempts = 4;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await page.content();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (
+        attempt < maxAttempts - 1 &&
+        /Execution context was destroyed|Target closed/.test(message)
+      ) {
+        // Wait for the in-flight navigation to settle, then retry.
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Unreachable in practice — the loop either returns or throws.
+  return '';
 }

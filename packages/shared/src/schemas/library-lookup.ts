@@ -113,3 +113,30 @@ export const LibraryLookupResponseSchema = z.object({
   cached: z.boolean(),
 });
 export type LibraryLookupResponse = z.infer<typeof LibraryLookupResponseSchema>;
+
+/**
+ * Streaming lookup snapshot — emitted by the NDJSON streaming
+ * endpoint after each provider completes (success or failure).
+ * Each snapshot carries the *current accumulated state* (deduped +
+ * filtered), not just the new chunk, so the client can simply
+ * replace its render list on every event.
+ *
+ * The `done` flag is `true` on the final snapshot only — the
+ * client uses it to flip its loading indicator off. `errored`
+ * accumulates per-provider failures so the UI can hint which
+ * sources are down ("Open Library indisponible — réessaie").
+ */
+export const LibraryLookupStreamSnapshotSchema = z.object({
+  results: z.array(NormalisedBookSchema),
+  queried: z.array(
+    z.enum(['openlibrary', 'googlebooks', 'bnf', 'wikidata', 'bne', 'amazon']),
+  ),
+  errored: z.array(
+    z.object({
+      provider: z.enum(['openlibrary', 'googlebooks', 'bnf', 'wikidata', 'bne', 'amazon']),
+      message: z.string(),
+    }),
+  ),
+  done: z.boolean(),
+});
+export type LibraryLookupStreamSnapshot = z.infer<typeof LibraryLookupStreamSnapshotSchema>;

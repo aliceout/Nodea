@@ -44,19 +44,19 @@ export const amazonAdapter: ProviderAdapter = {
 
   async byIsbn(isbn): Promise<NormalisedBook[]> {
     const { stripped } = normaliseIsbn(isbn);
-    return search(stripped, pickTld('fr'), 1);
+    return search(stripped, 'fr', 1);
   },
 
-  async byQuery(query, lang): Promise<NormalisedBook[]> {
-    return search(query, pickTld(lang), 5);
+  async byQuery(query, _lang): Promise<NormalisedBook[]> {
+    // Always hit `amazon.fr` (see issue #38 — TLD will become
+    // user-locale-driven later). 30 covers a full first results
+    // page on amazon.fr (~16-24 tiles depending on layout) plus
+    // any spillover. Per-tile parse is cheap (regex), the cost is
+    // dominated by the Puppeteer round-trip itself which is fixed
+    // regardless of how many tiles we read.
+    return search(query, 'fr', 30);
   },
 };
-
-function pickTld(lang?: string): 'fr' | 'es' | 'com' {
-  if (lang?.startsWith('fr')) return 'fr';
-  if (lang?.startsWith('es')) return 'es';
-  return 'com';
-}
 
 async function search(query: string, tld: string, limit: number): Promise<NormalisedBook[]> {
   // `i=stripbooks` restricts the search to printed books;
@@ -156,7 +156,15 @@ function parseSearchHtml(html: string, limit: number): NormalisedBook[] {
         ? [{ name: normaliseAuthorName(author), role: 'author' }]
         : [],
       year,
-      language: null,
+      // Read the language off the tile's HTML when Amazon flags
+      // it explicitly via title suffixes ("(English Edition)",
+      // "(French Edition)", etc.) or a `[Lang]` badge in the
+      // metadata strip. Reading from the page beats hardcoding by
+      // TLD: amazon.fr sells EN/ES/DE editions too, and tagging
+      // every result as `fr` would mislabel them. Falls back to
+      // `null` when nothing in the tile names a language — the
+      // dispatcher's filter keeps `null` records on purpose.
+      language: extractLanguage(tile, title),
       original_language: null,
       page_count: null,
       publisher: null,
@@ -183,21 +191,30 @@ function extractTitle(block: string): string | null {
 
 function extractAuthor(block: string): string | null {
   // Amazon's tile has multiple `<a class="a-link-normal">` links —
-  // the previous "first match wins" approach was picking up the
-  // **rating count** ("(9)", "(2K)", "(1.4K)…") because the
-  // ratings block uses the same anchor class. We now look for
-  // explicit author markers:
+  // a naive "first match wins" approach picks up the rating count
+  // ("(9)", "(2K)") because the ratings anchor uses the same class.
+  // The "par"/"by" pattern was also flaky because Amazon often
+  // splits the byline across nested spans with `&nbsp;` separators
+  // that don't match the simple `\s*` in the regex.
   //
-  //   - "par <AUTHOR>" (FR locale) or "by <AUTHOR>" (US/UK locale),
-  //     either with the marker as a sibling text span or inline.
-  //   - As a fallback, "<AUTHOR>(Auteur)" / "<AUTHOR>(Author)".
-  //
-  // The candidate is then run through a guard that rejects
-  // anything starting with "(<digit>" or matching ratings shapes
-  // like "(2K)" / "(1,234)".
+  // The reliable signal is the byline link's URL: Amazon always
+  // routes "more by this author" through `field-author=` (or its
+  // search-refinement equivalent `rh=p_27%3A...`). Whatever else
+  // changes in the markup, that URL parameter sticks around because
+  // it's how the site itself navigates to author pages. We try it
+  // first, then fall back to the textual markers.
   const patterns: RegExp[] = [
-    // "par"/"by" before an `<a>` link with the author name
-    /(?:par|by)\s*(?:<\/span>)?\s*<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i,
+    // <a href="...field-author=..."> NAME </a> (the canonical byline)
+    /<a[^>]*\bhref="[^"]*[?&]field-author=[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i,
+    // <a href="...rh=p_27%3A..."> NAME </a> (refinement-style author link)
+    /<a[^>]*\bhref="[^"]*\brh=[^"]*p_27%3A[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i,
+    // <a href="/Author-Name/e/B0XYZ..."> NAME </a> (author entity page —
+    // Amazon's "follow this author" link, encoded as `/e/B[0-9A-Z]+`).
+    /<a[^>]*\bhref="\/[^"]*\/e\/[A-Z0-9]+[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i,
+    // "par"/"by" before an `<a>` link with the author name. `[\s\S]*?`
+    // (not just `\s*`) tolerates the closing-span / nbsp clutter
+    // Amazon stuffs between the marker and the link.
+    /(?:par|by)[\s\S]{0,40}?<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i,
     // <a>NAME</a><span>(Auteur|Author)</span>
     /<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>\s*<span[^>]*>\s*\((?:Auteur|Author)\)\s*<\/span>/i,
     // Fallback: first <a> wrapping a <span> name
@@ -209,6 +226,17 @@ function extractAuthor(block: string): string | null {
     const candidate = decodeHtml(m[1].trim()).replace(/<[^>]+>/g, '').trim();
     if (!isPlausibleAuthor(candidate)) continue;
     return candidate;
+  }
+  // Dev-only diagnostic: when every pattern fails, dump the byline-ish
+  // window so we can see what shape Amazon is using today and add a
+  // pattern. We slice around the first `<h2>` (title block) since the
+  // byline sits right after it; works whether the tile starts with a
+  // wrapper div or the title block directly.
+  if (process.env.NODE_ENV !== 'production') {
+    const titleEnd = block.search(/<\/h2>/i);
+    const start = titleEnd > 0 ? titleEnd : 0;
+    const snippet = block.slice(start, start + 800).replace(/\s+/g, ' ');
+    console.warn('[library-lookup] amazon: no author matched. Byline window:', snippet);
   }
   return null;
 }
@@ -222,6 +250,66 @@ function isPlausibleAuthor(s: string): boolean {
   if (/^\(?\d/.test(s)) return false; // "(9)", "9", "(1,234)"
   if (/^\(\d+(?:[.,]\d+)?\s*[Kk]?\)$/.test(s)) return false; // "(2K)"
   return true;
+}
+
+/**
+ * Best-effort language detection for an Amazon search-result tile.
+ *
+ * Two signals, in order of confidence:
+ *   1. The title suffix Amazon appends to non-default-locale editions:
+ *      `(English Edition)`, `(French Edition)`, `(Édition française)`,
+ *      `(Edición en español)`, etc. This is reliable when present —
+ *      Amazon uses it consistently to disambiguate translations.
+ *   2. A "Langue : XYZ" / "Language: XYZ" data line that occasionally
+ *      shows up in the tile's metadata strip.
+ *
+ * Returns `null` when neither signal is found. The dispatcher keeps
+ * `null`-language records on purpose (we don't drop on uncertainty),
+ * so untagged tiles still reach the user — they just won't display
+ * a language badge.
+ */
+function extractLanguage(tile: string, title: string): string | null {
+  // 1. Suffix patterns on the title — the cleanest signal.
+  const suffixMap: ReadonlyArray<readonly [RegExp, string]> = [
+    [/\(\s*english\s+edition\s*\)/i, 'en'],
+    [/\(\s*french\s+edition\s*\)/i, 'fr'],
+    [/\(\s*[ée]dition\s+fran[çc]aise\s*\)/i, 'fr'],
+    [/\(\s*version\s+fran[çc]aise\s*\)/i, 'fr'],
+    [/\(\s*spanish\s+edition\s*\)/i, 'es'],
+    [/\(\s*edici[óo]n\s+(?:en\s+)?espa[ñn]ol(?:a)?\s*\)/i, 'es'],
+    [/\(\s*german\s+edition\s*\)/i, 'de'],
+    [/\(\s*deutsche?\s+(?:ausgabe|edition)\s*\)/i, 'de'],
+    [/\(\s*italian\s+edition\s*\)/i, 'it'],
+    [/\(\s*edizione\s+italiana\s*\)/i, 'it'],
+    [/\(\s*portuguese\s+edition\s*\)/i, 'pt'],
+    [/\(\s*edi[çc][ãa]o\s+(?:em\s+)?portugu[êe]sa?\s*\)/i, 'pt'],
+    [/\(\s*japanese\s+edition\s*\)/i, 'ja'],
+  ];
+  for (const [re, code] of suffixMap) {
+    if (re.test(title)) return code;
+  }
+
+  // 2. Metadata line — looser signal, hunt only if the suffix didn't
+  // match. Amazon's locale labels for the language field:
+  //   FR: "Langue : Français"
+  //   EN: "Language: English"
+  //   ES: "Idioma: Español"
+  //   DE: "Sprache: Deutsch"
+  //   IT: "Lingua: Italiano"
+  //   PT: "Idioma: Português"
+  const metaPatterns: ReadonlyArray<readonly [RegExp, string]> = [
+    [/(?:Langue|Language|Idioma|Sprache|Lingua)\s*[:\s]\s*Fran[çc]ais\b/i, 'fr'],
+    [/(?:Langue|Language|Idioma|Sprache|Lingua)\s*[:\s]\s*English\b/i, 'en'],
+    [/(?:Langue|Language|Idioma|Sprache|Lingua)\s*[:\s]\s*Espa[ñn]ol\b/i, 'es'],
+    [/(?:Langue|Language|Idioma|Sprache|Lingua)\s*[:\s]\s*Deutsch\b/i, 'de'],
+    [/(?:Langue|Language|Idioma|Sprache|Lingua)\s*[:\s]\s*Italiano\b/i, 'it'],
+    [/(?:Langue|Language|Idioma|Sprache|Lingua)\s*[:\s]\s*Portugu[êe]s\b/i, 'pt'],
+  ];
+  for (const [re, code] of metaPatterns) {
+    if (re.test(tile)) return code;
+  }
+
+  return null;
 }
 
 function extractCover(block: string): string | null {

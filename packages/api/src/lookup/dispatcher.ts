@@ -1,5 +1,6 @@
 import type {
   LibraryLookupResponse,
+  LibraryLookupStreamSnapshot,
   NormalisedBook,
   SourceHealth,
 } from '@nodea/shared';
@@ -82,32 +83,108 @@ export async function lookupByIsbn(isbn: string): Promise<LibraryLookupResponse>
   return response;
 }
 
-export async function lookupByQuery(
+
+/**
+ * Streaming variant of {@link lookupByQuery}: yields a snapshot
+ * after each provider settles, so the front can render results
+ * progressively (Google Books usually arrives in 1 s, Open Library
+ * in 10–15 s — the user sees partial results immediately instead
+ * of staring at a spinner for the whole window).
+ *
+ * Each yielded snapshot carries the *current accumulated state*
+ * (deduped + language-filtered), not just the new chunk: the
+ * client can blindly replace its render list on every event,
+ * no merging logic needed. The final snapshot has `done: true`.
+ *
+ * Provider failures are caught per-adapter and emitted in the
+ * snapshot's `errored` list — one broken provider never cancels
+ * the whole stream.
+ *
+ * The lookup cache is consulted on entry: a cached response is
+ * yielded as a single `done: true` snapshot, no provider calls.
+ */
+export async function* streamLookupByQuery(
   query: string,
   lang?: string,
-): Promise<LibraryLookupResponse> {
+): AsyncGenerator<LibraryLookupStreamSnapshot, void, void> {
   const key = `q:${lang ?? '_'}:${query.toLowerCase().replace(/\s+/g, ' ').trim()}`;
   const cached = cache.get(key);
-  if (cached) return { ...cached, cached: true };
+  if (cached) {
+    yield {
+      results: cached.results,
+      queried: cached.queried,
+      errored: [],
+      done: true,
+    };
+    return;
+  }
 
   const adapters = reorderForLang(
     PROVIDERS.filter((a) => a.enabled),
     lang,
   );
-  const settled = await Promise.allSettled(adapters.map((a) => a.byQuery(query, lang)));
-  const collected = collectResults(adapters, settled);
-  // For free-text queries we don't merge into a single best-guess —
-  // the user wants alternatives. We dedupe by ISBN when present, by
-  // (title, first-author) otherwise, and keep the highest-priority
-  // version of each.
-  const deduped = dedupeAcrossProviders(collected.flatMap((r) => r.books));
-  const response: LibraryLookupResponse = {
-    results: deduped.slice(0, 15),
-    queried: adapters.map((a) => a.name),
+  if (adapters.length === 0) {
+    yield { results: [], queried: [], errored: [], done: true };
+    return;
+  }
+
+  // Each pending entry is keyed by adapter index so we can delete
+  // it from the map after `Promise.race` returns. The race always
+  // settles with the first-finished provider — we yield, remove,
+  // and loop. JS is single-threaded, so the read-mutate-yield
+  // sequence is atomic between awaits — no race hazard despite
+  // the name.
+  type Settled =
+    | { idx: number; ok: true; books: NormalisedBook[] }
+    | { idx: number; ok: false; error: unknown };
+  const pending = new Map<number, Promise<Settled>>();
+  for (let i = 0; i < adapters.length; i += 1) {
+    const a = adapters[i]!;
+    pending.set(
+      i,
+      a.byQuery(query, lang).then(
+        (books): Settled => ({ idx: i, ok: true, books }),
+        (error): Settled => ({ idx: i, ok: false, error }),
+      ),
+    );
+  }
+
+  const accumulator: NormalisedBook[] = [];
+  const queried: ProviderName[] = [];
+  const errored: { provider: ProviderName; message: string }[] = [];
+
+  while (pending.size > 0) {
+    const settled = await Promise.race(pending.values());
+    pending.delete(settled.idx);
+    const adapter = adapters[settled.idx]!;
+    queried.push(adapter.name);
+    if (settled.ok) {
+      accumulator.push(...settled.books);
+    } else {
+      const message =
+        settled.error instanceof Error ? settled.error.message : String(settled.error);
+      errored.push({ provider: adapter.name, message });
+      console.warn(`[library-lookup] ${adapter.name} failed:`, settled.error);
+    }
+    const deduped = dedupeAcrossProviders([...accumulator]);
+    const filtered = filterByLanguage(deduped, lang);
+    yield {
+      results: filtered,
+      queried: [...queried],
+      errored: [...errored],
+      done: pending.size === 0,
+    };
+  }
+
+  // Once the stream is fully drained, freeze the final result into
+  // the LRU cache so the next identical query is one round-trip.
+  const finalDeduped = dedupeAcrossProviders([...accumulator]);
+  const finalFiltered = filterByLanguage(finalDeduped, lang);
+  cache.set(key, {
+    results: finalFiltered,
+    queried,
     cached: false,
-  };
-  cache.set(key, response);
-  return response;
+  });
 }
 
 function collectResults(
@@ -179,37 +256,202 @@ function mergeOnce(books: NormalisedBook[]): NormalisedBook | null {
     if (b.creators.length > merged.creators.length) merged.creators = b.creators;
     merged.providers = { ...b.providers, ...merged.providers };
   }
+
+  // Second pass for the summary: the FIFO pick above grabs whatever
+  // provider landed first, which is almost always Google Books (1 s)
+  // — and GB's `description` is often EN even when the volume is
+  // tagged `language='fr'` (the publisher uploaded an EN blurb).
+  // Prefer a summary from a contributor whose language matches the
+  // merged book's language. Fall back to whatever FIFO already
+  // picked (better than nothing).
+  if (merged.language) {
+    const target = merged.language.slice(0, 2).toLowerCase();
+    const sameLang = books.find(
+      (b) =>
+        b.summary &&
+        b.language &&
+        b.language.slice(0, 2).toLowerCase() === target,
+    );
+    if (sameLang?.summary) merged.summary = sameLang.summary;
+  }
+
+  // Final pass: normalise the summary into the lightweight Markdown
+  // subset our front-end editor understands (`**bold**`, `*italic*`).
+  // Providers ship raw HTML (Google Books) and ad-hoc wiki markup
+  // (`##title##` for italicised titles, courtesy of OL imports from
+  // publisher catalogues). Without this pass the user sees literal
+  // `##La place##` in the textarea — see the screenshot in the chat
+  // log for an example.
+  if (merged.summary) {
+    merged.summary = cleanSummary(merged.summary);
+  }
+
   return merged;
 }
 
+/**
+ * Convert provider-specific summary markup into the light Markdown
+ * subset the Library Composer's `MarkdownEditor` understands.
+ *
+ * Transforms applied, in order:
+ *   1. HTML inline emphasis tags → Markdown markers
+ *      (`<b>`/`<strong>` → `**…**`, `<i>`/`<em>` → `*…*`).
+ *   2. `<br>` and `</p>` → newlines so paragraph breaks survive.
+ *   3. Strip any remaining HTML tags (links, headings, divs, etc.).
+ *      Their text content is preserved.
+ *   4. `##text##` → `*text*`. This double-hash convention shows up in
+ *      OL descriptions imported from publisher catalogues (Gallimard
+ *      especially) where it marks a referenced work title — exactly
+ *      what we'd render as italic.
+ *   5. Decode the small set of HTML entities that often slip through
+ *      (`&amp;`, `&nbsp;`, `&#39;`).
+ *   6. Collapse runs of 3+ newlines into a max of two (visual breath).
+ */
+function cleanSummary(raw: string): string {
+  return (
+    raw
+      // (1) HTML emphasis to Markdown markers.
+      .replace(/<\s*(?:b|strong)[^>]*>([\s\S]*?)<\s*\/\s*(?:b|strong)\s*>/gi, '**$1**')
+      .replace(/<\s*(?:i|em)[^>]*>([\s\S]*?)<\s*\/\s*(?:i|em)\s*>/gi, '*$1*')
+      // (2) Block separators to newlines.
+      .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+      .replace(/<\s*\/\s*p\s*>/gi, '\n\n')
+      // (3) Drop any remaining HTML tag, keep inner text.
+      .replace(/<[^>]+>/g, '')
+      // (4) Wiki-ish double-hash to italic.
+      .replace(/##([^#\n]+?)##/g, '*$1*')
+      // (5) Decode common entities (the rest survive but are rare).
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      // (6) Collapse 3+ newlines to 2.
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
+}
+
+/**
+ * Dedupe books across providers using *all* identity tokens at
+ * once (ISBN-13, ISBN-10, normalised title+first-author). The old
+ * approach picked a single key per book — XOR semantics — which
+ * meant a record carrying ISBN-X and a tag-less record with the
+ * same title+author landed in different groups and stayed split.
+ * Now that more providers (OL with `fields=*`, GB) expose ISBNs
+ * reliably, the cross-record overlap is more common and worth
+ * collapsing.
+ *
+ * Algorithm: each book contributes a list of tokens. Two books
+ * are the same iff they share at least one token. We merge groups
+ * iteratively until no two share a token (small N — at most a
+ * couple hundred records — so the O(N²) worst case is fine).
+ *
+ * Insertion order of the *first* contributor of each group is
+ * preserved, so the per-provider priority set by `reorderForLang`
+ * still drives which row appears at the top.
+ */
 function dedupeAcrossProviders(books: NormalisedBook[]): NormalisedBook[] {
-  // Group by best identity key — ISBN-13 if present, else (title,
-  // first-author normalised). Within a group, run `mergeOnce` so
-  // we keep the union of fields rather than picking blindly.
-  const groups = new Map<string, NormalisedBook[]>();
-  const order: string[] = [];
+  type Group = { tokens: Set<string>; books: NormalisedBook[] };
+  const groups: Group[] = [];
+
   for (const book of books) {
-    const key = identityKey(book);
-    if (!groups.has(key)) {
-      groups.set(key, []);
-      order.push(key);
+    const tokens = identityTokens(book);
+    if (tokens.length === 0) {
+      // Pathological: no title, no isbn — keep as its own group so
+      // we don't accidentally fold it into an unrelated record.
+      groups.push({ tokens: new Set(), books: [book] });
+      continue;
     }
-    groups.get(key)!.push(book);
+    const matches: number[] = [];
+    for (let i = 0; i < groups.length; i += 1) {
+      const g = groups[i]!;
+      if (tokens.some((t) => g.tokens.has(t))) {
+        matches.push(i);
+      }
+    }
+    if (matches.length === 0) {
+      groups.push({ tokens: new Set(tokens), books: [book] });
+      continue;
+    }
+    // Fold the new book + any extra matched groups into the first
+    // matching group. This handles the bridge case: book A has
+    // token X, book B has token Y, book C has tokens X+Y → C
+    // should merge A's and B's groups together.
+    const target = groups[matches[0]!]!;
+    for (const t of tokens) target.tokens.add(t);
+    target.books.push(book);
+    if (matches.length > 1) {
+      // Walk extras in reverse to splice safely.
+      for (let i = matches.length - 1; i >= 1; i -= 1) {
+        const idx = matches[i]!;
+        const extra = groups[idx]!;
+        for (const t of extra.tokens) target.tokens.add(t);
+        target.books.push(...extra.books);
+        groups.splice(idx, 1);
+      }
+    }
   }
+
   const out: NormalisedBook[] = [];
-  for (const key of order) {
-    const merged = mergeOnce(groups.get(key) ?? []);
+  for (const g of groups) {
+    const merged = mergeOnce(g.books);
     if (merged) out.push(merged);
   }
   return out;
 }
 
-function identityKey(book: NormalisedBook): string {
-  if (book.isbn13) return `isbn13:${book.isbn13}`;
-  if (book.isbn10) return `isbn10:${book.isbn10}`;
-  const author = book.creators[0]?.name?.toLocaleLowerCase('fr') ?? '';
-  const title = book.title.toLocaleLowerCase('fr').replace(/\s+/g, ' ').trim();
-  return `ta:${title}|${author}`;
+/**
+ * Identity tokens used by the dedupe — every token a record would
+ * "claim". Two records sharing any token are the same book.
+ *
+ * Title normalisation: lowercase + collapse whitespace + strip
+ * trailing edition tags (`(English Edition)`, `(Édition de poche)`,
+ * `(Folio classique)`) so the same book sold under multiple
+ * editions on Amazon doesn't split. We don't strip aggressively
+ * (no diacritic folding, no punctuation removal) — being too
+ * lenient would conflate genuinely different titles.
+ */
+function identityTokens(book: NormalisedBook): string[] {
+  const tokens: string[] = [];
+  if (book.isbn13) tokens.push(`isbn13:${book.isbn13}`);
+  if (book.isbn10) tokens.push(`isbn10:${book.isbn10}`);
+  const author = book.creators[0]?.name?.toLocaleLowerCase('fr').trim() ?? '';
+  const title = book.title
+    .toLocaleLowerCase('fr')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (title) tokens.push(`ta:${title}|${author}`);
+  return tokens;
+}
+
+/**
+ * Drop books whose `language` is set and different from `lang`.
+ * Books with `language === null` are kept on purpose — providers
+ * don't tag every record (niche / academic editions especially),
+ * and dropping nulls would over-prune the result set. If a kept
+ * `null`-language record turns out to be in another language, the
+ * user can re-search.
+ *
+ * No-op when `lang` is missing — that path is reserved for ISBN
+ * lookups (where the code is unambiguous and language doesn't
+ * gate the result).
+ *
+ * `lang` is normalised to its 2-letter prefix so `fr-FR` and `fr`
+ * both compare equal. Books carry their own language as a 2-letter
+ * BCP-47 code set by the adapters.
+ */
+function filterByLanguage(books: NormalisedBook[], lang?: string): NormalisedBook[] {
+  if (!lang) return books;
+  const target = lang.slice(0, 2).toLowerCase();
+  if (!target) return books;
+  return books.filter((b) => {
+    if (!b.language) return true;
+    return b.language.slice(0, 2).toLowerCase() === target;
+  });
 }
 
 /* ---- Health checks (admin "Sources" tab) ---------------------- */

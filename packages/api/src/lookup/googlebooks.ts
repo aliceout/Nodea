@@ -28,15 +28,38 @@ export const googleBooksAdapter: ProviderAdapter = {
   },
 
   async byQuery(query, lang): Promise<NormalisedBook[]> {
-    return runQuery(query, lang);
+    // Free-text first. GB's default ranking weights titles + authors
+    // together — usually fine, but for queries that *look* like a
+    // person's name (Annie Ernaux, Tolkien…) the free-text scoring
+    // tends to surface biographies / commentaries / "books about"
+    // rather than books *by* the author. When the free-text run is
+    // empty (often because `langRestrict` cut all the loosely-matched
+    // results), fall back to the explicit `inauthor:"<q>"` operator
+    // which targets the author field directly. Two round-trips at
+    // most, only when the cheap path failed.
+    const free = await runQuery(query, lang);
+    if (free.length > 0) return free;
+    return runQuery(`inauthor:"${query.replace(/"/g, '')}"`, lang);
   },
 };
 
 async function runQuery(q: string, lang?: string): Promise<NormalisedBook[]> {
   const key = getConfig().LIBRARY_GOOGLE_BOOKS_API_KEY;
   if (!key) return [];
-  const params = new URLSearchParams({ q, key, maxResults: '10', printType: 'books' });
-  if (lang) params.set('langRestrict', lang.slice(0, 2));
+  // `langRestrict`: hard-filter at the source when the user picked a
+  // language pre-search. Without it, GB ranks globally (heavy EN
+  // bias) and the dispatcher's downstream filter ends up dropping
+  // most of the response. Restricting at the API saves bandwidth
+  // and gives us 10 in-language hits instead of 10 mostly-EN ones.
+  // No-op when `lang` is missing (ISBN lookup path).
+  // maxResults=40 is GB's hard cap per request. Going wide here
+  // helps prolific authors — after `langRestrict` cuts non-FR
+  // hits, dedupe by ISBN, and the dispatcher's final slice(0, 30),
+  // we still want enough material upstream to fill the response.
+  const params = new URLSearchParams({ q, key, maxResults: '40', printType: 'books' });
+  if (lang) {
+    params.set('langRestrict', lang.slice(0, 2).toLowerCase());
+  }
   const res = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes?${params}`, {
     headers: { 'User-Agent': 'Nodea/0.1 (library-lookup)' },
     timeoutMs: 6000,
@@ -62,7 +85,7 @@ async function runQuery(q: string, lang?: string): Promise<NormalisedBook[]> {
     throw new Error(`googlebooks ${res.status}`);
   }
   const data = (await res.json()) as GoogleBooksRaw;
-  return (data.items ?? []).slice(0, 10).map(volumeToNormalised);
+  return (data.items ?? []).map(volumeToNormalised);
 }
 
 /* ---- Raw shapes (only what we use) ----------------------------- */
