@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
+import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { announcementsRoutes } from './routes/announcements.ts';
 import { modulesConfigRoutes } from './routes/modules-config.ts';
@@ -37,6 +38,12 @@ export function buildApp() {
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
+  // Multi-step register flow (Auth-Spec.md §7.1, Auth-Roadmap Phase 1B).
+  // Mounted BEFORE the legacy `authRoutes` so the more specific
+  // `/auth/register/start` etc. take precedence. Hono's router matches
+  // prefixes — `app.route('/auth', authRoutes)` catches everything else
+  // including the legacy `/auth/register` (single-shot).
+  app.route('/auth/register', authRegisterV2Routes);
   app.route('/auth', authRoutes);
   app.route('/admin', adminRoutes);
   app.route('/announcements', announcementsRoutes);
