@@ -71,24 +71,83 @@ const BROWSER_HEADERS: Record<string, string> = {
   'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
   'Sec-Ch-Ua-Mobile': '?0',
   'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
   'Upgrade-Insecure-Requests': '1',
 };
 
+/**
+ * Per-TLD session cookie cache. The Calibre-Web trick: hit Amazon's
+ * homepage once at startup-time of the search, harvest the
+ * Set-Cookie response (session-id / ubid-* / i18n-prefs / csm-hit),
+ * then send those cookies on the actual search request together
+ * with `Referer: https://www.amazon.<tld>/`. Amazon stops seeing a
+ * "first visit, no state, direct hit on /s" — which is the shape
+ * its anti-bot weighs heavily — and instead reads "user clicked
+ * from the homepage with an established session".
+ *
+ * Cached for 30 min; re-seeded automatically on expiry or after
+ * any anti-bot bounce.
+ */
+interface SessionState {
+  cookies: string;
+  expiresAt: number;
+}
+const sessions = new Map<string, SessionState>();
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+async function ensureSession(tld: string): Promise<string> {
+  const cached = sessions.get(tld);
+  if (cached && cached.expiresAt > Date.now()) return cached.cookies;
+
+  const res = await fetchWithTimeout(`https://www.amazon.${tld}/`, {
+    headers: { ...BROWSER_HEADERS, 'Sec-Fetch-Site': 'none' },
+    timeoutMs: 6000,
+  });
+  // `getSetCookie` returns each `Set-Cookie` header as a separate
+  // entry (the only correct way to read multi-Set-Cookie since the
+  // standard `get('set-cookie')` collapses them with a comma).
+  const setCookies = res.headers.getSetCookie?.() ?? [];
+  const cookies = setCookies
+    .map((c) => c.split(';')[0]) // keep only `name=value` from each
+    .filter((c): c is string => Boolean(c))
+    .join('; ');
+  const session: SessionState = {
+    cookies,
+    expiresAt: Date.now() + SESSION_TTL_MS,
+  };
+  sessions.set(tld, session);
+  return cookies;
+}
+
 async function search(query: string, tld: string, limit: number): Promise<NormalisedBook[]> {
+  // Seed (or reuse) a session before hitting the search endpoint.
+  // The cookies + Referer make the request look like a normal
+  // homepage→search navigation rather than a direct script call.
+  const cookies = await ensureSession(tld);
+
   // `i=stripbooks` restricts the search to printed books;
   // `&ref=nb_sb_noss` mimics the "submit search" path so Amazon
   // doesn't trigger an interstitial captcha.
   const url = `https://www.amazon.${tld}/s?k=${encodeURIComponent(query)}&i=stripbooks&ref=nb_sb_noss`;
   const res = await fetchWithTimeout(url, {
-    headers: BROWSER_HEADERS,
+    headers: {
+      ...BROWSER_HEADERS,
+      Referer: `https://www.amazon.${tld}/`,
+      'Sec-Fetch-Site': 'same-origin',
+      ...(cookies ? { Cookie: cookies } : {}),
+    },
     timeoutMs: 8000,
   });
   if (!res.ok) throw new Error(`amazon ${res.status}`);
   const html = await res.text();
+
   // Bot-detection comes back as 200 with one of several distinctive
   // markers. The first three are the CAPTCHA / "Sorry" page; the
-  // last is the homepage Amazon serves on a redirected anti-bot
-  // bounce (no search results, just hero banners).
+  // others catch the redirected anti-bot bounce (no search results,
+  // just hero banners) and the i18n preferences interstitial.
   if (
     /api-services-support@amazon\.com/i.test(html) ||
     /Type the characters you see in this image/i.test(html) ||
@@ -96,6 +155,8 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
     /\bSorry, we just need to make sure\b/i.test(html) ||
     /To discuss automated access/i.test(html)
   ) {
+    // Burn the session — Amazon flagged it. Next call re-seeds.
+    sessions.delete(tld);
     throw new Error('amazon — bot-detection / captcha (réessaie plus tard)');
   }
   return parseSearchHtml(html, limit);
