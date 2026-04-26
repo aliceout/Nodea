@@ -46,7 +46,11 @@ export const openLibraryAdapter: ProviderAdapter = {
     const params = new URLSearchParams({ q: query, limit: '10' });
     const res = await fetchWithTimeout(`https://openlibrary.org/search.json?${params}`, {
       headers: { 'User-Agent': 'Nodea/0.1 (library-lookup)' },
-      timeoutMs: 8000,
+      // 12 s — OL's full-text search is genuinely slow on common
+      // queries ("Annie Ernaux" hits 9-10 s on cold cache). 8 s
+      // was aborting too aggressively and wiping OL out of the
+      // result set entirely.
+      timeoutMs: 12000,
     });
     if (!res.ok) throw new Error(`openlibrary search ${res.status}`);
     const data = (await res.json()) as OpenLibrarySearchRaw;

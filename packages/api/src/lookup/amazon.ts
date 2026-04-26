@@ -182,14 +182,46 @@ function extractTitle(block: string): string | null {
 }
 
 function extractAuthor(block: string): string | null {
-  const m =
-    /<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*<span[^>]*>([^<]+)<\/span>\s*<\/a>/.exec(
-      block,
-    );
-  if (!m || !m[1]) return null;
-  const candidate = decodeHtml(m[1].trim());
-  if (!candidate || candidate.length > 80) return null;
-  return candidate;
+  // Amazon's tile has multiple `<a class="a-link-normal">` links —
+  // the previous "first match wins" approach was picking up the
+  // **rating count** ("(9)", "(2K)", "(1.4K)…") because the
+  // ratings block uses the same anchor class. We now look for
+  // explicit author markers:
+  //
+  //   - "par <AUTHOR>" (FR locale) or "by <AUTHOR>" (US/UK locale),
+  //     either with the marker as a sibling text span or inline.
+  //   - As a fallback, "<AUTHOR>(Auteur)" / "<AUTHOR>(Author)".
+  //
+  // The candidate is then run through a guard that rejects
+  // anything starting with "(<digit>" or matching ratings shapes
+  // like "(2K)" / "(1,234)".
+  const patterns: RegExp[] = [
+    // "par"/"by" before an `<a>` link with the author name
+    /(?:par|by)\s*(?:<\/span>)?\s*<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i,
+    // <a>NAME</a><span>(Auteur|Author)</span>
+    /<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>\s*<span[^>]*>\s*\((?:Auteur|Author)\)\s*<\/span>/i,
+    // Fallback: first <a> wrapping a <span> name
+    /<a[^>]*class="[^"]*a-link-normal[^"]*"[^>]*>\s*<span[^>]*>([^<]+)<\/span>\s*<\/a>/,
+  ];
+  for (const p of patterns) {
+    const m = p.exec(block);
+    if (!m || !m[1]) continue;
+    const candidate = decodeHtml(m[1].trim()).replace(/<[^>]+>/g, '').trim();
+    if (!isPlausibleAuthor(candidate)) continue;
+    return candidate;
+  }
+  return null;
+}
+
+/**
+ * Reject obvious non-author strings: rating counts ("(9)",
+ * "(2K)", "(1,234)"), bare numbers, empty/long blobs.
+ */
+function isPlausibleAuthor(s: string): boolean {
+  if (!s || s.length > 80) return false;
+  if (/^\(?\d/.test(s)) return false; // "(9)", "9", "(1,234)"
+  if (/^\(\d+(?:[.,]\d+)?\s*[Kk]?\)$/.test(s)) return false; // "(2K)"
+  return true;
 }
 
 function extractCover(block: string): string | null {

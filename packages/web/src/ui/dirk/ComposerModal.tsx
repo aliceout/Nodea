@@ -946,7 +946,12 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     try {
       const stripped = q.replace(/[\s-]/g, '');
       const isPossibleIsbn = /^\d{10}$|^\d{13}$|^\d{9}[\dX]$/i.test(stripped);
-      const lang = navigator.language?.slice(0, 2);
+      // Hard-coded to `fr` for now: Nodea is French-first, and an
+      // English-locale browser reaching this page would otherwise
+      // make GB / Amazon return amazon.com / English-only editions
+      // that don't match the user's actual library. To revisit
+      // when a per-user `library.searchLanguage` preference lands.
+      const lang = 'fr';
       const response = isPossibleIsbn
         ? await apiLibraryLookupByIsbn({ isbn: stripped })
         : await apiLibraryLookupByQuery({ q, lang });
