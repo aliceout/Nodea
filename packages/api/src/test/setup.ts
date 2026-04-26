@@ -5,6 +5,7 @@
 import { beforeEach } from 'vitest';
 import { sql } from '../db/client.ts';
 import { __resetRateLimits } from '../middleware/rate-limit.ts';
+import { __getRecordingEmailService } from '../services/email/index.ts';
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -36,4 +37,5 @@ beforeEach(async () => {
     RESTART IDENTITY CASCADE
   `;
   __resetRateLimits();
+  __getRecordingEmailService().reset();
 });

@@ -9,6 +9,14 @@ try {
   // Missing in CI — vars come straight from the environment instead.
 }
 
+// Force the recording EmailService impl in tests so suites can assert
+// on outgoing mail without spinning up Mailpit or stubbing nodemailer.
+// Overrides any `.env` value: dev defaults to `smtp` (Mailpit) and we
+// don't want test runs polluting that path. The recording singleton
+// is exposed via `__getRecordingEmailService()` from
+// `services/email/index.ts`.
+process.env.EMAIL_SERVICE_IMPL = 'recording';
+
 export default defineConfig({
   test: {
     environment: 'node',
