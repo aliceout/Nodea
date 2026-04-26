@@ -21,22 +21,16 @@ import {
   apiLogin,
   apiLogout,
   apiMe,
-  apiRegister,
-  apiRegisterSetPassword,
+  apiRegisterSubmit,
   apiChangePassword,
 } from '../api/client.ts';
 import { randomBytes } from '../crypto/base64.ts';
 import { deriveMainKeys } from '../crypto/key-material.ts';
 import { unwrapMainKeyBytes, wrapMainKey } from '../crypto/envelope.ts';
-import type { LoginBody, RegisterBody } from '@nodea/shared';
+import type { LoginBody } from '@nodea/shared';
 
 export interface SessionRegisterInput {
   email: string;
-  password: string;
-  inviteCode: string;
-}
-
-export interface SessionCompleteRegisterInput {
   password: string;
   inviteCode: string;
 }
@@ -104,66 +98,33 @@ export function useSession() {
     }
   }
 
-  async function register(input: SessionRegisterInput): Promise<void> {
-    // Generate a fresh 32-byte main key client-side and wrap it under
-    // the password-derived KEK before shipping the envelope.
+  /**
+   * Submit a new registration (Auth-Roadmap Phase 1 reworked).
+   *
+   * Generates a fresh main key client-side, wraps it under the
+   * password-derived KEK, and ships the envelope alongside the
+   * email + password + invite. Server creates the account in
+   * `email_verified_at = NULL` state and emails an activation link.
+   *
+   * Unlike the old `register()`: no session cookie is emitted, no
+   * /auth/me round-trip, no main-key caching. The user must click
+   * the magic link in their email and then log in normally — at
+   * which point `login()` re-derives the main key from the password
+   * the user types (we threw away the bytes we generated here, on
+   * purpose: keeping them in memory for an indefinite period
+   * between submit and activation is a leak surface).
+   */
+  async function submitRegistration(input: SessionRegisterInput): Promise<void> {
     const rawMainKey = randomBytes(32);
     try {
       const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
-
-      const body: RegisterBody = {
+      await apiRegisterSubmit({
         email: input.email,
         password: input.password,
         inviteCode: input.inviteCode,
         encryptionSalt,
         encryptedKey,
-      };
-      await apiRegister(body);
-
-      const me = await apiMe();
-      if (!me) throw new Error('register succeeded but /auth/me returned null');
-      setAuth(me);
-
-      const material = await deriveMainKeys(rawMainKey);
-      setMainKey(material);
-    } finally {
-      rawMainKey.fill(0);
-    }
-  }
-
-  /**
-   * Step 3 of the multi-step register flow (Auth-Roadmap Phase 1C).
-   *
-   * The user already verified their email and holds a `register`
-   * session cookie. This call hands them a freshly wrapped main key,
-   * the password (Argon2id-hashed server-side), and the invite they
-   * entered at step 1 (kept in wizard state). The server consumes the
-   * invite atomically, marks the user `complete`, replaces the
-   * register session by a full one. We then unwrap the main key
-   * locally so the rest of the app sees a normally-logged-in user.
-   *
-   * Mirrors `register()` above, except the email isn't sent (server
-   * gets it from the cookie's user). Replaced by the OPAQUE flow in
-   * Phase 2.
-   */
-  async function completeRegister(input: SessionCompleteRegisterInput): Promise<void> {
-    const rawMainKey = randomBytes(32);
-    try {
-      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
-
-      await apiRegisterSetPassword({
-        password: input.password,
-        inviteCode: input.inviteCode,
-        encryptionSalt,
-        encryptedKey,
       });
-
-      const me = await apiMe();
-      if (!me) throw new Error('set-password succeeded but /auth/me returned null');
-      setAuth(me);
-
-      const material = await deriveMainKeys(rawMainKey);
-      setMainKey(material);
     } finally {
       rawMainKey.fill(0);
     }
@@ -210,5 +171,5 @@ export function useSession() {
     }
   }
 
-  return { status, user, login, register, completeRegister, logout, changePassword };
+  return { status, user, login, submitRegistration, logout, changePassword };
 }

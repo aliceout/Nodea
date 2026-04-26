@@ -2,13 +2,11 @@ import { Hono } from 'hono';
 import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
-  RegisterStartBodySchema,
-  RegisterSetPasswordBodySchema,
-  VerifyEmailBodySchema,
-  type RegisterStateResponse,
+  RegisterSubmitBodySchema,
+  RegisterActivateBodySchema,
 } from '@nodea/shared/schemas/auth-register-v2';
 import { db } from '../db/client.ts';
-import { invites, sessions, users } from '../db/schema.ts';
+import { invites, users } from '../db/schema.ts';
 import { hashInviteCode } from '../auth/invites.ts';
 import { hashPassword } from '../auth/password.ts';
 import { checkPasswordPolicy } from '../auth/password-policy.ts';
@@ -17,94 +15,83 @@ import {
   createEmailVerification,
   invalidatePendingVerifications,
 } from '../auth/email-verifications.ts';
-import { createSession } from '../auth/session.ts';
-import {
-  clearRegisterCookie,
-  setRegisterCookie,
-  setSessionCookie,
-} from '../auth/cookies.ts';
-import {
-  requireRegisterSession,
-  type RegisterAuthVariables,
-} from '../middleware/require-register-session.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { getEmailService } from '../services/email/index.ts';
-import { renderRegisterVerifyEmail } from '../services/email/templates/register-verify.ts';
+import { renderRegisterActivateEmail } from '../services/email/templates/register-activate.ts';
+import { getConfig } from '../config.ts';
 
 /**
- * Multi-step register routes — Auth-Spec.md §7.1, Auth-Roadmap Phase 1B.
+ * Single-step register flow with post-submit magic-link activation
+ * (Auth-Roadmap Phase 1 simplified, replaces the 3-step wizard).
  *
- * Coexists with the legacy `POST /auth/register` (which stays for
- * back-compat / admin-created users). New frontend flows route
- * through this set instead.
+ * Two endpoints:
  *
- * Three endpoints:
+ *   - `POST /auth/register`         single submit (email + password +
+ *                                   invite + crypto envelope), creates
+ *                                   the user as inactive, emails the
+ *                                   activation link.
+ *   - `POST /auth/register/activate` magic-link target, flips
+ *                                   `email_verified_at` so the account
+ *                                   can log in.
  *
- *   - `POST /auth/register/start`        anonymous, send code, no cookie
- *   - `POST /auth/register/verify-email` anonymous, validate code,
- *                                        emits register cookie
- *   - `GET  /auth/register/state`        register cookie required,
- *                                        returns current state for resume
- *
- * Steps 3+ (set-password, recovery code, optional TOTP/passkey, finish)
- * land in Phase 2+ once OPAQUE is wired.
+ * The legacy single-shot `POST /auth/register` from `auth.ts` is
+ * SUPERSEDED by this route — Hono's `app.route('/auth/register', …)`
+ * mount catches `POST /auth/register` first, so the legacy handler
+ * (which created users immediately active) is no longer reachable
+ * via HTTP. Direct DB-based seeding (`pnpm seed:admin`) bypasses
+ * activation by setting `email_verified_at` at insert time.
  */
-export const authRegisterV2Routes = new Hono<{
-  Variables: RegisterAuthVariables;
-}>();
+export const authRegisterV2Routes = new Hono();
 
-// Auth-Spec.md §13: 5/h IP for /auth/register/*. We layer per-route
-// limits on top of this catch-all so /verify-email gets its own bucket.
-const startLimiter = rateLimit({
+const submitLimiter = rateLimit({
   max: 5,
   windowMs: 60 * 60_000,
-  keyPrefix: 'register-start',
+  keyPrefix: 'register-submit',
 });
-const verifyLimiter = rateLimit({
-  max: 10,
+
+const activateLimiter = rateLimit({
+  max: 20,
   windowMs: 60 * 60_000,
-  keyPrefix: 'register-verify',
+  keyPrefix: 'register-activate',
 });
 
 /**
- * Sentinel placeholder values for the legacy NOT NULL columns on the
- * `users` table. A `pre_register` row has no real password hash / KEK
- * envelope yet — those are populated in Phase 2 when OPAQUE wraps the
- * KEK at step 3 of the multi-step flow. The placeholders are deliberately
- * **non-verifiable** Argon2id-shaped strings: any login attempt against
- * such a user fails because `verifyPassword(placeholder, anyInput)`
- * returns false.
+ * `POST /auth/register` — submit step.
  *
- * When schema is relaxed in Phase 2 (the columns become nullable), these
- * placeholders go away and pre_register rows simply have NULL there.
+ * Always responds 200 (anti-enumeration). The actual side effects
+ * depend on the (email, invite) combo:
+ *
+ *   - Valid invite + new email → user row created with
+ *     `email_verified_at = NULL`, activation email sent.
+ *   - Valid invite + existing INACTIVE user with same email →
+ *     existing row reused, previous token invalidated, fresh email
+ *     sent. Lets a user retry without burning the invite or being
+ *     blocked by uniqueness.
+ *   - Valid invite + existing ACTIVE user with same email →
+ *     silent skip (no email, no row touch). The attacker can't tell
+ *     this case apart from the happy path.
+ *   - Invalid invite (unknown / used / expired) → silent skip.
+ *
+ * The invite is **looked up** here but not consumed. Consumption
+ * happens at activation — that way a retry via a fresh token (e.g.,
+ * after a typo'd email) keeps the invite redeemable.
  */
-const PRE_REGISTER_PLACEHOLDER_PASSWORD_HASH =
-  '$argon2id$v=19$m=19456,t=2,p=1$cGVuZGluZy1yZWdpc3Rlcg$cGVuZGluZy1yZWdpc3Rlci1ub3QtYS1yZWFsLWhhc2gh';
-const PRE_REGISTER_PLACEHOLDER_SALT = 'pending-register';
-const PRE_REGISTER_PLACEHOLDER_KEY = 'pending-register';
-
-/**
- * `POST /auth/register/start` — Step 1.
- *
- * Anonymous. Always responds 200 (anti-enumeration). On a valid invite +
- * never-used email, creates a `pre_register` users row, generates a
- * 6-digit code, sends it by email. The invite is **looked up** but not
- * consumed yet (consumption happens in step 2 on successful verify) —
- * this lets the user retry step 1 without burning the invite.
- *
- * Returning 200 even when the invite is invalid mirrors the
- * `request-reset` anti-enum trick: an attacker can't probe whether
- * a given invite code is valid without solving the rate limit.
- */
-authRegisterV2Routes.post('/start', startLimiter, async (c) => {
+authRegisterV2Routes.post('/', submitLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
-  const parsed = RegisterStartBodySchema.safeParse(raw);
+  const parsed = RegisterSubmitBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const email = body.email.toLowerCase();
 
-  // Step A — invite lookup (not consume). Hash side: timing-safe via
-  // SHA-256 + indexed unique constraint.
+  // Surface password policy violations BEFORE the silent-200 path so
+  // the user sees a real error. zxcvbn / rules check is a client-side
+  // input concern, not an enumeration vector.
+  const policy = checkPasswordPolicy(body.password, [email]);
+  if (!policy.ok) {
+    return c.json({ error: 'weak_password', reason: policy.reason }, 400);
+  }
+
+  // Step A — invite lookup. Anti-enum: don't leak.
   const codeHash = hashInviteCode(body.inviteCode);
   const now = new Date();
   const [invite] = await db
@@ -113,327 +100,155 @@ authRegisterV2Routes.post('/start', startLimiter, async (c) => {
     .where(eq(invites.codeHash, codeHash))
     .limit(1);
   const inviteOk =
-    invite &&
-    !invite.usedBy &&
-    (!invite.expiresAt || invite.expiresAt > now);
-
+    invite && !invite.usedBy && (!invite.expiresAt || invite.expiresAt > now);
   if (!inviteOk) {
-    // Don't leak invite validity. The user has the same UX as if the
-    // email was sent — they "won't" find it in their inbox and will
-    // wonder. Acceptable trade-off vs. enumeration of valid codes.
     return c.json({ ok: true });
   }
 
-  // Step B — email uniqueness. If a `complete` user already has this
-  // email, we silently skip creating anything (not even a pre_register
-  // shadow row). Anti-enum: same response either way.
+  // Step B — email uniqueness with reuse for inactive accounts.
   const [existing] = await db
-    .select({ id: users.id, registerState: users.registerState })
+    .select({
+      id: users.id,
+      emailVerifiedAt: users.emailVerifiedAt,
+    })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
 
-  if (existing && existing.registerState !== 'pre_register') {
-    // Email belongs to a real user — can't shadow with pre_register.
-    return c.json({ ok: true });
-  }
-
-  // Step C — find or create the pre_register row. Reusing an existing
-  // pre_register row (rather than insert-or-update dance) preserves the
-  // invite linkage from the previous start attempt and keeps the
-  // resume UX sane.
   let userId: string;
+
   if (existing) {
+    if (existing.emailVerifiedAt !== null) {
+      // Active user → silent skip.
+      return c.json({ ok: true });
+    }
+    // Inactive existing row → reuse, refresh credentials in case the
+    // user typed a different password the second time around.
     userId = existing.id;
+    const passwordHash = await hashPassword(body.password);
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        encryptionSalt: body.encryptionSalt,
+        encryptedKey: body.encryptedKey,
+      })
+      .where(eq(users.id, userId));
   } else {
+    // Fresh row.
     userId = randomUUID();
+    const passwordHash = await hashPassword(body.password);
     try {
       await db.insert(users).values({
         id: userId,
         email,
-        passwordHash: PRE_REGISTER_PLACEHOLDER_PASSWORD_HASH,
-        encryptionSalt: PRE_REGISTER_PLACEHOLDER_SALT,
-        encryptedKey: PRE_REGISTER_PLACEHOLDER_KEY,
-        registerState: 'pre_register',
+        passwordHash,
+        encryptionSalt: body.encryptionSalt,
+        encryptedKey: body.encryptedKey,
+        registerState: 'complete',
+        // emailVerifiedAt left NULL — activation will set it.
       });
-    } catch (err) {
-      // Concurrency race: someone else created the row between our
-      // SELECT and INSERT. Refetch and use what's there.
-      const [row] = await db
-        .select({ id: users.id, registerState: users.registerState })
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
-      if (!row || row.registerState !== 'pre_register') {
-        // Lost the race to a real registration — bail without leaking.
-        return c.json({ ok: true });
-      }
-      userId = row.id;
+    } catch {
+      // Race: another request inserted the same email between SELECT
+      // and INSERT. Bail anti-enum-style.
+      return c.json({ ok: true });
     }
   }
 
-  // Step D — invalidate any earlier pending verification (defensive),
-  // then issue a fresh code.
+  // Step C — invalidate any pending activation for this email and
+  // issue a fresh one.
   await invalidatePendingVerifications(email, 'register');
-  const { code } = await createEmailVerification({
+  const { token } = await createEmailVerification({
     userId,
     email,
     kind: 'register',
   });
 
-  // Step E — send. Wrap in try/catch so a transient SMTP failure
-  // doesn't leak via response shape; we still return 200.
+  // Step D — build the activation link and send. WEB_BASE_URL is the
+  // user-facing origin (no trailing slash); the frontend's
+  // /activate route reads ?token= from the URL.
+  const cfg = getConfig();
+  const base = (cfg.WEB_BASE_URL ?? '').replace(/\/$/, '');
+  const link = `${base}/activate?token=${encodeURIComponent(token)}`;
+
   try {
-    const rendered = renderRegisterVerifyEmail({ code });
+    const rendered = renderRegisterActivateEmail({ link });
     await getEmailService().send({
       to: email,
       subject: rendered.subject,
       text: rendered.text,
-      ...(rendered.html ? { html: rendered.html } : {}),
-      tag: 'register-verify',
+      html: rendered.html,
+      tag: 'register-activate',
     });
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('[auth/register/start] email send failed', err);
+    console.error('[auth/register] activation email send failed', err);
+    // Still 200 — the user can retry the submit, which reuses the row
+    // and fires a new email.
   }
 
   return c.json({ ok: true });
 });
 
 /**
- * `POST /auth/register/verify-email` — Step 2.
+ * `POST /auth/register/activate` — magic-link target.
  *
- * Anonymous (no cookie yet). Validates the 6-digit code, transitions
- * the users row to `register_state = 'email_verified'`, consumes the
- * invite atomically, and emits the register session cookie. From this
- * point on, the client uses `GET /register/state` and the upcoming
- * step-3+ routes with the cookie.
+ * Validates the token (hash, expiry, single-use) and sets
+ * `email_verified_at = now()` on the matching user. Returns the
+ * email so the UI can show a "Compte activé pour user@example.com"
+ * confirmation.
+ *
+ * No cookie is emitted: the user must log in normally afterwards.
+ * Rationale: activation is a passive "yes this is my email" check,
+ * not a credentials proof — an attacker who hijacks a single
+ * activation link should not get a session.
  */
-authRegisterV2Routes.post('/verify-email', verifyLimiter, async (c) => {
+authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
-  const parsed = VerifyEmailBodySchema.safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: 'invalid_body' }, 400);
-  }
-  const email = parsed.data.email.toLowerCase();
-  const code = parsed.data.code;
+  const parsed = RegisterActivateBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
 
-  // Validate code FIRST — gives us a constant-ish-time response shape
-  // regardless of whether the user/invite combo exists, since the
-  // hash compare runs every call.
-  const consumeResult = await consumeEmailVerification(email, 'register', code);
-  if (!consumeResult.ok) {
-    // Map internal reasons to HTTP status. All client-fixable failures
-    // are 401 with `reason` so the UI can localise; 410 for expired
-    // (semantically "gone").
-    if (consumeResult.reason === 'expired') {
-      return c.json({ error: 'verification_failed', reason: consumeResult.reason }, 410);
-    }
-    return c.json({ error: 'verification_failed', reason: consumeResult.reason }, 401);
+  const result = await consumeEmailVerification('register', parsed.data.token);
+  if (!result.ok) {
+    const status = result.reason === 'expired' ? 410 : 401;
+    return c.json({ error: 'activation_failed', reason: result.reason }, status);
   }
 
-  // Code OK — locate the pre_register user. The verification carries
-  // userId in nominal cases (set at step 1) but be defensive in case of
-  // schema drift or manual fixtures.
-  const userId = consumeResult.verification.userId;
-  if (!userId) {
-    // Verification succeeded but we have no user to graduate — log and
-    // fail soft. This is an internal invariant violation, not a user
-    // error.
+  const verification = result.verification;
+  if (!verification.userId) {
+    // Shouldn't happen — the submit route always sets it. Defensive.
     // eslint-disable-next-line no-console
     console.error(
-      '[auth/register/verify-email] verification consumed but userId is null',
-      { email, verificationId: consumeResult.verification.id },
+      '[auth/register/activate] verification consumed but userId is null',
+      { verificationId: verification.id },
     );
     return c.json({ error: 'internal' }, 500);
   }
 
-  // Atomic transition: graduate the user + consume the invite.
-  // We re-look the invite via the latest pending verification's owner
-  // because the invite link is implicit (the invite was looked up but
-  // not consumed in step 1). To stay simple in 1B we re-validate via
-  // codeHash — the user who started supplied a code we never persist
-  // post-step-1, so we can't re-check directly. Instead we accept that
-  // any pre_register user reaching verify-email already proved invite
-  // possession at step 1, and we just consume "any pending invite
-  // that was used by this email's pre_register row" — but invites are
-  // not yet linked to users until consumed. So in practice we don't
-  // need to consume the invite at this step: it was tracked at step 1
-  // by usedBy (no, we didn't set that). To keep step 2 self-sufficient
-  // and idempotent, we MARK the user as email_verified without
-  // consuming the invite here. The invite is consumed at step 3
-  // (set-password, Phase 2) which is the "real" registration moment.
-  //
-  // Net effect: for now, the invite stays redeemable until step 3.
-  // If the user abandons before step 3, the cleanup cron purges the
-  // pre_register row after 24h and the invite stays available.
-  const result = await db.transaction(async (tx) => {
-    const updateResult = await tx
-      .update(users)
-      .set({
-        emailVerifiedAt: new Date(),
-        registerState: 'email_verified',
-      })
-      .where(
-        and(
-          eq(users.id, userId),
-          eq(users.registerState, 'pre_register'),
-        ),
-      )
-      .returning({ id: users.id, email: users.email, registerState: users.registerState });
-    return updateResult[0] ?? null;
-  });
+  // Set the user's email_verified_at. The WHERE clause guards
+  // against a doubled activation (would be a no-op anyway since the
+  // verification can't be consumed twice, but explicit = safer).
+  const [updated] = await db
+    .update(users)
+    .set({ emailVerifiedAt: new Date() })
+    .where(and(eq(users.id, verification.userId), isNull(users.emailVerifiedAt)))
+    .returning({ id: users.id, email: users.email });
 
-  if (!result) {
-    // The user was no longer in pre_register (race? cleanup? schema drift).
-    // The verification is already consumed, so we can't replay; surface as
-    // a generic failure. Step 1 will need to be redone.
-    return c.json({ error: 'verification_failed', reason: 'no_pending_verification' }, 401);
+  if (!updated) {
+    // The user was already activated (e.g., second click on the same
+    // link, or admin manually flipped). Surface the same "already
+    // consumed" path so the UI tells them to log in.
+    return c.json(
+      { error: 'activation_failed', reason: 'already_consumed' },
+      401,
+    );
   }
 
-  // Emit register session cookie (24h, kind='register').
-  const session = await createSession(userId, { kind: 'register' });
-  await setRegisterCookie(c, session.id, session.expiresAt);
-
-  const response: RegisterStateResponse = {
-    userId: result.id,
-    email: result.email,
-    registerState: result.registerState,
-  };
-  return c.json(response);
+  // V1 trade-off: we do NOT consume the invite at submit OR at
+  // activation. Same invite can be reused for multiple registrations
+  // — the model is "shared invite link" rather than single-use.
+  // Tightening this to single-use needs a `users.invite_id` FK column
+  // (so we can mark it consumed at activation), tracked as a post-V1
+  // hardening when invite hygiene becomes a real concern.
+  return c.json({ ok: true, email: updated.email });
 });
-
-/**
- * `GET /auth/register/state` — resume helper.
- *
- * Reads the register cookie, returns enough info for the client to
- * route to the correct step. Phase 1B always returns `email_verified`
- * since steps 3+ aren't wired yet — that bumps to richer state values
- * once Phase 2 ships.
- */
-authRegisterV2Routes.get('/state', requireRegisterSession, (c) => {
-  const user = c.get('registerUser');
-  const response: RegisterStateResponse = {
-    userId: user.id,
-    email: user.email,
-    registerState: user.registerState,
-  };
-  return c.json(response);
-});
-
-const setPasswordLimiter = rateLimit({
-  max: 10,
-  windowMs: 60 * 60_000,
-  keyPrefix: 'register-set-password',
-});
-
-/**
- * `POST /auth/register/set-password` — Step 3 (transitional).
- *
- * Bridges the multi-step register flow to the legacy password-derived
- * crypto envelope. Replaced by OPAQUE in Phase 2 of Auth-Roadmap.
- *
- * Required: register cookie (kind='register'). The user is identified
- * via the cookie, so the body carries no email — only the password
- * (Argon2id-hashed server-side), the invite code (kept in client state
- * since step 1, consumed atomically here), and the encryption envelope
- * (`encryptionSalt` + `encryptedKey`) the client just produced by
- * wrapping a fresh main key under the password-derived KEK.
- *
- * On success the register session is replaced by a full session; the
- * client immediately calls `/auth/me` to populate the auth slice and
- * unwraps the main key locally.
- */
-authRegisterV2Routes.post(
-  '/set-password',
-  setPasswordLimiter,
-  requireRegisterSession,
-  async (c) => {
-    const raw = await c.req.json().catch(() => null);
-    const parsed = RegisterSetPasswordBodySchema.safeParse(raw);
-    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
-    const body = parsed.data;
-    const user = c.get('registerUser');
-    const registerSessionId = c.get('registerSessionId');
-
-    // Only `email_verified` users are allowed to set their password —
-    // pre_register users haven't validated their email yet (impossible
-    // path since /verify-email transitions them, but defensive).
-    if (user.registerState !== 'email_verified') {
-      return c.json({ error: 'invalid_state' }, 409);
-    }
-
-    const policy = checkPasswordPolicy(body.password, [user.email]);
-    if (!policy.ok) {
-      return c.json({ error: 'weak_password', reason: policy.reason }, 400);
-    }
-
-    const passwordHash = await hashPassword(body.password);
-    const codeHash = hashInviteCode(body.inviteCode);
-    const now = new Date();
-
-    // Atomic: consume invite + complete user + replace session.
-    const result = await db.transaction(async (tx) => {
-      // 1. Lock the invite for update.
-      const [invite] = await tx
-        .select()
-        .from(invites)
-        .where(
-          and(
-            eq(invites.codeHash, codeHash),
-            isNull(invites.usedBy),
-            or(isNull(invites.expiresAt), gt(invites.expiresAt, now)),
-          ),
-        )
-        .for('update')
-        .limit(1);
-      if (!invite) {
-        return { ok: false as const, reason: 'invalid_invite' as const };
-      }
-
-      // 2. UPDATE the user: real crypto envelope + state=complete.
-      //    The WHERE clause guards against a concurrent transition
-      //    racing the row past 'email_verified'.
-      const [updated] = await tx
-        .update(users)
-        .set({
-          passwordHash,
-          encryptionSalt: body.encryptionSalt,
-          encryptedKey: body.encryptedKey,
-          registerState: 'complete',
-        })
-        .where(
-          and(eq(users.id, user.id), eq(users.registerState, 'email_verified')),
-        )
-        .returning({ id: users.id });
-      if (!updated) {
-        return { ok: false as const, reason: 'invalid_state' as const };
-      }
-
-      // 3. Consume the invite.
-      await tx
-        .update(invites)
-        .set({ usedBy: user.id, usedAt: now })
-        .where(eq(invites.id, invite.id));
-
-      // 4. Drop the register session — the cookie that brought us here
-      //    is about to be replaced by a full session cookie.
-      await tx.delete(sessions).where(eq(sessions.id, registerSessionId));
-
-      return { ok: true as const, userId: user.id };
-    });
-
-    if (!result.ok) {
-      const status = result.reason === 'invalid_invite' ? 400 : 409;
-      return c.json({ error: 'register_failed', reason: result.reason }, status);
-    }
-
-    // Outside the tx: emit the full session. Doing it inside would lock
-    // the sessions row pointlessly, since the new session has a fresh id.
-    const fullSession = await createSession(result.userId, { kind: 'full' });
-    clearRegisterCookie(c);
-    await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
-
-    return c.json({ id: result.userId });
-  },
-);

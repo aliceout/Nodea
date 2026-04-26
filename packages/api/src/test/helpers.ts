@@ -17,6 +17,10 @@ export async function seedAdmin(email = 'admin@example.com'): Promise<{ id: stri
     encryptionSalt: 'test-salt',
     encryptedKey: 'test-wrapped-key',
     role: 'admin',
+    // Bypass the new activation gate (Auth-Roadmap Phase 1 reworked).
+    // Tests that explicitly want an inactive user can null this back
+    // out via a follow-up UPDATE.
+    emailVerifiedAt: new Date(),
   });
   return { id, email };
 }
@@ -30,6 +34,7 @@ export async function seedUser(email: string): Promise<{ id: string; email: stri
     passwordHash,
     encryptionSalt: 'test-salt',
     encryptedKey: 'test-wrapped-key',
+    emailVerifiedAt: new Date(),
   });
   return { id, email };
 }

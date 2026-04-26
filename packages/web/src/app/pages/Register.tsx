@@ -1,5 +1,5 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { forwardRef, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,18 +11,8 @@ import {
   passwordRulesPassed,
   type PasswordRulesCheck,
 } from '@nodea/shared';
-import {
-  RegisterStartBodySchema,
-  VerifyEmailBodySchema,
-  type VerifyEmailErrorReason,
-} from '@nodea/shared/schemas/auth-register-v2';
 import { useSession } from '@/core/auth/use-session';
-import {
-  apiRegisterStart,
-  apiRegisterState,
-  apiVerifyEmail,
-  isApiError,
-} from '@/core/api/client';
+import { isApiError } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 
 zxcvbnOptions.setOptions({
@@ -31,91 +21,40 @@ zxcvbnOptions.setOptions({
 });
 
 /**
- * Register — multi-step wizard (Auth-Roadmap Phase 1C).
+ * Register — single-step inscription with magic-link activation
+ * (Auth-Roadmap Phase 1 reworked).
  *
- * Replaces the legacy single-shot `RegisterPage`. Three steps:
+ * Flow:
+ *   1. User fills the form (email, password, confirm, invite).
+ *   2. Submit → POST /auth/register → server creates inactive user
+ *      and emails an activation link.
+ *   3. UI swaps to a "Check your email" confirmation card. The user
+ *      clicks the link in their email, which lands them on
+ *      `/activate?token=…` (handled by `Activate.tsx`).
+ *   4. After successful activation they're redirected to /login
+ *      with a success banner and can sign in normally.
  *
- *   1. `email` + `inviteCode` → POST /auth/register/start. Server emails
- *      a 6-digit code and creates a `pre_register` users row.
- *   2. `code` → POST /auth/register/verify-email. Server transitions
- *      the row to `email_verified` and emits the register session
- *      cookie.
- *   3. `password` (+ confirm, with rules + zxcvbn). Calls the bridge
- *      route `/auth/register/set-password` (replaced by OPAQUE in
- *      Phase 2), which UPDATEs the user with the real crypto envelope
- *      and promotes the register session to a full session.
- *
- * Resume: `apiRegisterState()` runs once on mount. If the cookie is
- *   live we jump directly to the relevant step (typically step 3 if
- *   `email_verified`, step 2 if somehow still in `pre_register`).
- *
- * The legacy `apiRegister` single-shot stays in `client.ts` for
- * back-compat (admin tooling, seed scripts) — this page no longer
- * uses it.
+ * No cookie is set during the inscription. The legacy
+ * `useSession.register()` (single-shot, set cookie + cache main key
+ * immediately) was removed — the only persistence between submit and
+ * login is the email magic link.
  */
-type WizardStep = 'loading' | 'start' | 'verify' | 'password';
-
-interface ResumeContext {
-  email: string;
-}
+const RegisterFormSchema = z
+  .object({
+    email: z.string().email().max(254),
+    password: z.string().min(PASSWORD_MIN_LENGTH).max(200),
+    confirmPassword: z.string().min(1).max(200),
+    inviteCode: z.string().min(1).max(128),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Les deux mots de passe ne correspondent pas.',
+  });
+type RegisterForm = z.infer<typeof RegisterFormSchema>;
 
 export default function RegisterPage() {
   const session = useSession();
-  const navigate = useNavigate();
-  const [step, setStep] = useState<WizardStep>('loading');
-  /**
-   * The wizard remembers the email + invite across steps. The email
-   * also doubles as the proof of "the user typed something at step 1"
-   * — step 2 won't accept a verify-email submission without it.
-   */
-  const [email, setEmail] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
-  const [resumeFromState, setResumeFromState] = useState<ResumeContext | null>(null);
-
-  // Resume probe — runs once on mount. The register cookie is only
-  // emitted at the END of step 2 (verify-email success), so a present
-  // cookie always means `registerState >= 'email_verified'` → resume
-  // lands on step 3. Step 2 is never the resume target in V1; later
-  // phases that introduce intermediate states (Phase 2+: password_set,
-  // recovery_set, …) revisit this mapping.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const state = await apiRegisterState();
-        if (cancelled) return;
-        if (!state) {
-          setStep('start');
-          return;
-        }
-        setEmail(state.email);
-        setResumeFromState({ email: state.email });
-        setStep('password');
-      } catch {
-        if (!cancelled) setStep('start');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  function goToVerify(nextEmail: string, nextInviteCode: string): void {
-    setEmail(nextEmail);
-    setInviteCode(nextInviteCode);
-    setStep('verify');
-  }
-
-  function goToPassword(): void {
-    setStep('password');
-  }
-
-  function startOver(): void {
-    setEmail('');
-    setInviteCode('');
-    setResumeFromState(null);
-    setStep('start');
-  }
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
@@ -145,278 +84,33 @@ export default function RegisterPage() {
         </div>
       </aside>
 
-      {/* Form panel — content varies per step. */}
+      {/* Form panel */}
       <main className="flex items-center justify-center px-6 py-16 sm:px-14">
         <div className="animate-fade-up w-full max-w-[360px]">
-          {step === 'loading' ? (
-            <p className="text-[13px] text-muted">Chargement…</p>
-          ) : null}
-
-          {step === 'start' ? (
-            <StartStep onSent={goToVerify} />
-          ) : null}
-
-          {step === 'verify' ? (
-            <VerifyStep
-              email={email}
-              onVerified={goToPassword}
-              onStartOver={startOver}
+          {submittedEmail ? (
+            <CheckYourEmailCard email={submittedEmail} />
+          ) : (
+            <RegisterForm
+              onSubmitted={setSubmittedEmail}
+              submitRegistration={session.submitRegistration}
             />
-          ) : null}
-
-          {step === 'password' ? (
-            <PasswordStep
-              email={email}
-              inviteCode={inviteCode}
-              isResume={Boolean(resumeFromState)}
-              onSuccess={() => navigate('/flow/home', { replace: true })}
-              completeRegister={session.completeRegister}
-              onStartOver={startOver}
-            />
-          ) : null}
+          )}
         </div>
       </main>
     </div>
   );
 }
 
-/* ---- Step 1 — email + invite code ------------------------------- */
-
-const StartFormSchema = RegisterStartBodySchema;
-type StartForm = z.infer<typeof StartFormSchema>;
-
-function StartStep({
-  onSent,
+function RegisterForm({
+  onSubmitted,
+  submitRegistration,
 }: {
-  onSent: (email: string, inviteCode: string) => void;
-}) {
-  const [serverError, setServerError] = useState<string | null>(null);
-
-  const {
-    register: field,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<StartForm>({
-    resolver: zodResolver(StartFormSchema),
-    defaultValues: { email: '', inviteCode: '' },
-  });
-
-  async function onSubmit(values: StartForm): Promise<void> {
-    setServerError(null);
-    try {
-      await apiRegisterStart({
-        email: values.email,
-        inviteCode: values.inviteCode,
-      });
-      onSent(values.email, values.inviteCode);
-    } catch (err) {
-      // The server returns 200 even for invalid invites (anti-enum), so
-      // the only failures we see here are network / 5xx / 429.
-      if (isApiError(err) && err.status === 429) {
-        setServerError(
-          'Trop de tentatives. Réessaye dans quelques minutes.',
-        );
-      } else {
-        setServerError('Erreur lors de l’envoi du code. Réessaye dans un instant.');
-        if (import.meta.env.DEV) console.warn('register/start failed', err);
-      }
-    }
-  }
-
-  return (
-    <>
-      <p className="mb-1 text-[13px] text-muted">Étape 1 sur 3</p>
-      <h2 className="mb-2 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Démarrer l’inscription
-      </h2>
-      <p className="mb-6 text-[13px] text-muted">
-        On t’envoie un code à 6 chiffres pour vérifier ton adresse.
-      </p>
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <Field
-          label="E-mail"
-          type="email"
-          autoComplete="email"
-          error={errors.email?.message}
-          {...field('email')}
-        />
-        <Field
-          label="Code d’invitation"
-          type="text"
-          autoComplete="one-time-code"
-          error={errors.inviteCode?.message}
-          {...field('inviteCode')}
-        />
-
-        {serverError ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {serverError}
-          </div>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? 'Envoi…' : 'Envoyer le code'}
-        </button>
-
-        <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
-          <span>Déjà un compte&nbsp;?</span>
-          <Link
-            to="/login"
-            className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
-          >
-            Se connecter
-          </Link>
-        </div>
-      </form>
-    </>
-  );
-}
-
-/* ---- Step 2 — verify email code --------------------------------- */
-
-const VerifyFormSchema = VerifyEmailBodySchema.pick({ code: true });
-type VerifyForm = z.infer<typeof VerifyFormSchema>;
-
-const VERIFY_REASON_MESSAGES: Record<VerifyEmailErrorReason, string> = {
-  invalid_body: 'Code invalide. Six chiffres attendus.',
-  no_pending_verification:
-    'Aucune demande active pour cette adresse. Recommence à l’étape 1.',
-  expired:
-    'Le code a expiré. Recommence à l’étape 1 pour en recevoir un nouveau.',
-  too_many_attempts:
-    'Trop de tentatives. Recommence à l’étape 1 pour repartir avec un nouveau code.',
-  invalid_code: 'Code incorrect. Vérifie tes 6 chiffres et réessaie.',
-};
-
-function VerifyStep({
-  email,
-  onVerified,
-  onStartOver,
-}: {
-  email: string;
-  onVerified: () => void;
-  onStartOver: () => void;
-}) {
-  const [serverError, setServerError] = useState<string | null>(null);
-
-  const {
-    register: field,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<VerifyForm>({
-    resolver: zodResolver(VerifyFormSchema),
-    defaultValues: { code: '' },
-  });
-
-  async function onSubmit(values: VerifyForm): Promise<void> {
-    setServerError(null);
-    try {
-      await apiVerifyEmail({ email, code: values.code });
-      onVerified();
-    } catch (err) {
-      if (isApiError(err)) {
-        const reason = err.reason as VerifyEmailErrorReason | undefined;
-        const message =
-          reason && reason in VERIFY_REASON_MESSAGES
-            ? VERIFY_REASON_MESSAGES[reason]
-            : 'La vérification a échoué. Réessaie.';
-        setServerError(message);
-      } else {
-        setServerError('Erreur réseau. Réessaie dans un instant.');
-        if (import.meta.env.DEV) console.warn('register/verify-email failed', err);
-      }
-    }
-  }
-
-  return (
-    <>
-      <p className="mb-1 text-[13px] text-muted">Étape 2 sur 3</p>
-      <h2 className="mb-2 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Vérifier ton adresse
-      </h2>
-      <p className="mb-6 text-[13px] text-muted">
-        On a envoyé un code à 6 chiffres à <strong>{email}</strong>. Il expire dans 10
-        minutes.
-      </p>
-
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <Field
-          label="Code à 6 chiffres"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          error={errors.code?.message}
-          {...field('code')}
-        />
-
-        {serverError ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {serverError}
-          </div>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? 'Vérification…' : 'Valider le code'}
-        </button>
-
-        <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
-          <button
-            type="button"
-            onClick={onStartOver}
-            className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
-          >
-            Recommencer
-          </button>
-        </div>
-      </form>
-    </>
-  );
-}
-
-/* ---- Step 3 — set password ------------------------------------- */
-
-const PasswordFormSchema = z
-  .object({
-    password: z.string().min(PASSWORD_MIN_LENGTH).max(200),
-    confirmPassword: z.string().min(1).max(200),
-    inviteCode: z.string().min(1).max(128),
-  })
-  .refine((v) => v.password === v.confirmPassword, {
-    path: ['confirmPassword'],
-    message: 'Les deux mots de passe ne correspondent pas.',
-  });
-type PasswordForm = z.infer<typeof PasswordFormSchema>;
-
-function PasswordStep({
-  email,
-  inviteCode,
-  isResume,
-  onSuccess,
-  completeRegister,
-  onStartOver,
-}: {
-  email: string;
-  inviteCode: string;
-  isResume: boolean;
-  onSuccess: () => void;
-  completeRegister: (input: { password: string; inviteCode: string }) => Promise<void>;
-  onStartOver: () => void;
+  onSubmitted: (email: string) => void;
+  submitRegistration: (input: {
+    email: string;
+    password: string;
+    inviteCode: string;
+  }) => Promise<void>;
 }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
@@ -435,68 +129,57 @@ function PasswordStep({
     register: field,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<PasswordForm>({
-    resolver: zodResolver(PasswordFormSchema),
-    defaultValues: { password: '', confirmPassword: '', inviteCode },
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(RegisterFormSchema),
+    defaultValues: { email: '', password: '', confirmPassword: '', inviteCode: '' },
   });
 
-  async function onSubmit(values: PasswordForm): Promise<void> {
+  async function onSubmit(values: RegisterForm): Promise<void> {
     setServerError(null);
     if (!rulesOk) {
       setServerError('Le mot de passe ne respecte pas toutes les règles.');
       return;
     }
     try {
-      await completeRegister({
+      await submitRegistration({
+        email: values.email,
         password: values.password,
         inviteCode: values.inviteCode,
       });
-      onSuccess();
+      onSubmitted(values.email);
     } catch (err) {
       if (isApiError(err)) {
-        if (err.status === 400 && err.reason === 'invalid_invite') {
-          setServerError(
-            'Le code d’invitation n’est plus valide. Recommence depuis l’étape 1.',
-          );
-        } else if (err.status === 400 && err.error === 'weak_password') {
-          setServerError(
-            err.reason ?? 'Le mot de passe est trop faible.',
-          );
-        } else if (err.status === 409) {
-          setServerError(
-            'L’inscription est dans un état inattendu. Recommence depuis le début.',
-          );
+        if (err.status === 400 && err.error === 'weak_password') {
+          setServerError(err.reason ?? 'Le mot de passe est trop faible.');
+        } else if (err.status === 400) {
+          setServerError('Données invalides. Vérifie ton e-mail et ton code.');
+        } else if (err.status === 429) {
+          setServerError('Trop de tentatives. Réessaie dans quelques minutes.');
         } else {
-          setServerError('Erreur lors de la finalisation. Réessaie.');
+          setServerError('Erreur lors de l’inscription. Réessaie.');
         }
       } else {
         setServerError('Erreur réseau. Réessaie dans un instant.');
-        if (import.meta.env.DEV) console.warn('register/set-password failed', err);
+        if (import.meta.env.DEV) console.warn('register submit failed', err);
       }
     }
   }
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Étape 3 sur 3</p>
-      <h2 className="mb-2 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Choisir ton mot de passe
+      <p className="mb-1 text-[13px] text-muted">Inscription</p>
+      <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Créer un compte
       </h2>
-      <p className="mb-6 text-[13px] text-muted">
-        {isResume ? (
-          <>
-            Tu finalises l’inscription de <strong>{email}</strong>. Choisis un mot de
-            passe — toutes tes données seront chiffrées avec lui.
-          </>
-        ) : (
-          <>
-            Choisis un mot de passe pour <strong>{email}</strong>. Toutes tes données
-            seront chiffrées avec lui. Si tu le perds, elles sont irrécupérables.
-          </>
-        )}
-      </p>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Field
+          label="E-mail"
+          type="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...field('email')}
+        />
         <Field
           label="Mot de passe"
           type="password"
@@ -530,21 +213,13 @@ function PasswordStep({
           })}
         />
 
-        {/* Invite code is kept hidden — already entered at step 1.
-            We send it back to the server for atomic consumption.
-            On resume (refresh between step 2 and 3), we ask the user
-            to re-supply it since wizard state is lost. */}
-        {isResume ? (
-          <Field
-            label="Code d’invitation"
-            type="text"
-            autoComplete="one-time-code"
-            error={errors.inviteCode?.message}
-            {...field('inviteCode')}
-          />
-        ) : (
-          <input type="hidden" {...field('inviteCode')} />
-        )}
+        <Field
+          label="Code d’invitation"
+          type="text"
+          autoComplete="one-time-code"
+          error={errors.inviteCode?.message}
+          {...field('inviteCode')}
+        />
 
         {serverError ? (
           <div
@@ -560,17 +235,11 @@ function PasswordStep({
           disabled={isSubmitting || !rulesOk || confirmMismatch || password !== confirm}
           className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? 'Finalisation…' : 'Créer mon compte'}
+          {isSubmitting ? 'Envoi…' : 'Créer mon compte'}
         </button>
 
         <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
-          <button
-            type="button"
-            onClick={onStartOver}
-            className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
-          >
-            Recommencer
-          </button>
+          <span>Déjà un compte&nbsp;?</span>
           <Link
             to="/login"
             className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
@@ -579,6 +248,41 @@ function PasswordStep({
           </Link>
         </div>
       </form>
+    </>
+  );
+}
+
+/**
+ * Confirmation card shown after a successful submit. The actual
+ * account is created server-side but is INACTIVE until the user
+ * clicks the link in the email. We deliberately don't auto-redirect —
+ * the user needs to context-switch to their inbox, and a static
+ * panel makes that affordance obvious.
+ */
+function CheckYourEmailCard({ email }: { email: string }) {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Inscription</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Vérifie ta boîte mail
+      </h2>
+      <p className="mb-4 text-[14px] leading-[1.5] text-ink-soft">
+        On a envoyé un lien d’activation à <strong>{email}</strong>. Clique sur le
+        lien pour activer ton compte — tu pourras te connecter ensuite.
+      </p>
+      <p className="mb-6 text-[12.5px] text-muted">
+        Le lien est valable 7 jours. Pense à vérifier le dossier spam si tu ne le
+        trouves pas tout de suite.
+      </p>
+
+      <div className="mt-2 flex items-center justify-between text-[12.5px] text-muted">
+        <Link
+          to="/login"
+          className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+        >
+          Aller à la page de connexion
+        </Link>
+      </div>
     </>
   );
 }

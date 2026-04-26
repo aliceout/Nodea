@@ -154,6 +154,17 @@ authRoutes.post('/login', loginLimiter, async (c) => {
     return c.json({ error: 'invalid_credentials' }, 401);
   }
 
+  // Activation gate (Auth-Roadmap Phase 1 simplified): accounts
+  // created via the new register flow are inactive until the user
+  // clicks the magic link in their activation email. Refuse login
+  // until then with a distinct status code so the UI can surface a
+  // helpful "active d'abord" message instead of a generic
+  // "wrong password". Legacy users (and admin seeds) have
+  // `email_verified_at` set at creation, so they bypass this gate.
+  if (user.emailVerifiedAt === null) {
+    return c.json({ error: 'account_not_activated' }, 403);
+  }
+
   const session = await createSession(user.id);
   await setSessionCookie(c, session.id, session.expiresAt);
   return c.json({ id: user.id });

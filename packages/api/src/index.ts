@@ -1,10 +1,12 @@
 import { serve } from '@hono/node-server';
 import { buildApp } from './app.ts';
 import { getConfig } from './config.ts';
+import { startCronScheduler } from './cron/index.ts';
 import { closeHeadlessBrowser } from './lookup/headless.ts';
 
 const { PORT } = getConfig();
 const app = buildApp();
+startCronScheduler();
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.log(`[api] listening on http://127.0.0.1:${info.port}`);

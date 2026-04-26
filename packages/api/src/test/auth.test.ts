@@ -28,69 +28,12 @@ async function registerBody(inviteCode: string, email: string, password = TEST_P
   };
 }
 
-describe('POST /auth/register', () => {
-  it('creates a user and sets a session cookie when the invite is valid', async () => {
-    const invite = await seedInvite();
-    const res = await app.request(
-      '/auth/register',
-      json(await registerBody(invite.code, 'new@example.com')),
-    );
-    expect(res.status).toBe(201);
-    const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toMatch(/nodea_session=/);
-    expect(setCookie).toMatch(/HttpOnly/i);
-    expect(setCookie).toMatch(/SameSite=Lax/i);
-
-    const [row] = await db.select().from(users).where(eq(users.email, 'new@example.com'));
-    expect(row).toBeDefined();
-  });
-
-  it('rejects a weak password (length OK, entropy not)', async () => {
-    const invite = await seedInvite();
-    // 12+ chars so Zod accepts it, but clearly a very common pattern so
-    // zxcvbn returns score 0 or 1.
-    const res = await app.request(
-      '/auth/register',
-      json(await registerBody(invite.code, 'weak@example.com', 'password1234')),
-    );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('weak_password');
-  });
-
-  it('rejects an unknown invite code', async () => {
-    const res = await app.request(
-      '/auth/register',
-      json(await registerBody('nd-totallybogus000000000', 'x@example.com')),
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it('prevents invite reuse (atomic consumption)', async () => {
-    const invite = await seedInvite();
-
-    // First race: two parallel registrations with the same code.
-    const [a, b] = await Promise.all([
-      app.request('/auth/register', json(await registerBody(invite.code, 'first@example.com'))),
-      app.request('/auth/register', json(await registerBody(invite.code, 'second@example.com'))),
-    ]);
-    const statuses = [a.status, b.status].sort();
-    expect(statuses[0]).toBe(201);
-    expect(statuses[1]).toBe(400);
-
-    // Third attempt sequentially — still refused.
-    const c = await app.request(
-      '/auth/register',
-      json(await registerBody(invite.code, 'third@example.com')),
-    );
-    expect(c.status).toBe(400);
-
-    // The invite row must be marked consumed.
-    const [row] = await db.select().from(invites).where(eq(invites.id, invite.id));
-    expect(row?.usedBy).toBeDefined();
-    expect(row?.usedAt).toBeInstanceOf(Date);
-  });
-});
+// `POST /auth/register` is now the simplified single-step submit
+// flow (Auth-Roadmap Phase 1 reworked); its behaviour is covered
+// end-to-end in `auth-register-v2.test.ts`. The legacy single-shot
+// register handler in `routes/auth.ts` is no longer reachable via
+// HTTP — Hono's `app.route('/auth/register', authRegisterV2Routes)`
+// catches the bare path first.
 
 describe('POST /auth/login', () => {
   it('accepts correct credentials and returns a session cookie', async () => {

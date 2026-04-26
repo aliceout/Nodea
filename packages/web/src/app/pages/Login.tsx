@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
@@ -20,7 +20,12 @@ import { cn } from '@/lib/utils';
 export default function LoginPage() {
   const session = useSession();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
+  // `?activated=1` lands here from `Activate.tsx` after a successful
+  // magic-link click. We surface a one-shot success banner so the
+  // user knows their account is ready to log in.
+  const justActivated = params.get('activated') === '1';
 
   const {
     register,
@@ -37,10 +42,18 @@ export default function LoginPage() {
       await session.login(values);
       navigate('/flow/home', { replace: true });
     } catch (err) {
-      if (isApiError(err) && err.status === 401) {
-        setServerError('E-mail ou mot de passe incorrect.');
+      if (isApiError(err)) {
+        if (err.status === 403 && err.error === 'account_not_activated') {
+          setServerError(
+            'Ton compte n’est pas encore activé. Clique sur le lien envoyé par e-mail pour l’activer.',
+          );
+        } else if (err.status === 401) {
+          setServerError('E-mail ou mot de passe incorrect.');
+        } else {
+          setServerError('Erreur de connexion. Réessaie.');
+        }
       } else {
-        setServerError('Erreur de connexion. Réessayez.');
+        setServerError('Erreur de connexion. Réessaie.');
         if (import.meta.env.DEV) console.warn('login failed', err);
       }
     }
@@ -81,6 +94,15 @@ export default function LoginPage() {
           <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
             Entre dans ton espace
           </h2>
+
+          {justActivated ? (
+            <div
+              role="status"
+              className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
+            >
+              ✓ Compte activé. Connecte-toi avec ton e-mail et ton mot de passe.
+            </div>
+          ) : null}
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <Field

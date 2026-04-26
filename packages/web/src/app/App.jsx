@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 // @zxcvbn-ts, argon2id wasm) stay out of the initial chunk.
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const Activate = lazy(() => import("./pages/Activate"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 const RequestReset = lazy(() => import("./pages/RequestReset"));
 const Reset = lazy(() => import("./pages/Reset"));
@@ -31,6 +32,7 @@ function AppWithKeyModal() {
       <Route path="/" element={<Navigate to="/flow/home" replace />} />
       <Route path="/login" element={lazyPage(<Login />)} />
       <Route path="/register" element={lazyPage(<Register />)} />
+      <Route path="/activate" element={lazyPage(<Activate />)} />
       <Route path="/change-password" element={lazyPage(<ChangePassword />)} />
       <Route path="/request-reset" element={lazyPage(<RequestReset />)} />
       <Route path="/reset" element={lazyPage(<Reset />)} />

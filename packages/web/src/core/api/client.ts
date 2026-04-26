@@ -38,10 +38,8 @@ import {
   type AnnouncementResponse,
 } from '@nodea/shared';
 import type {
-  RegisterStartBody,
-  VerifyEmailBody,
-  RegisterStateResponse,
-  RegisterSetPasswordBody,
+  RegisterSubmitBody,
+  RegisterActivateBody,
 } from '@nodea/shared/schemas/auth-register-v2';
 
 /**
@@ -116,41 +114,25 @@ export async function apiRegister(body: RegisterBody): Promise<{ id: string }> {
   return request<{ id: string }>('POST', '/auth/register', body);
 }
 
-// --- Register v2 — multi-step flow (Auth-Roadmap Phase 1B/1C) ---------
-// These coexist with the legacy `apiRegister` above. New frontend
-// flows (the multi-step wizard on /register) use these; the legacy
-// single-shot stays for back-compat (admin tooling, seed scripts).
+// --- Register flow with magic-link activation (Auth-Roadmap Phase 1
+// reworked). The new sub-router at /auth/register catches the bare
+// POST too, so `apiRegister` above is now superseded for HTTP usage —
+// kept exported for back-compat with any caller that hasn't migrated.
 
-export async function apiRegisterStart(
-  body: RegisterStartBody,
+export async function apiRegisterSubmit(
+  body: RegisterSubmitBody,
 ): Promise<{ ok: true }> {
-  return request<{ ok: true }>('POST', '/auth/register/start', body);
+  return request<{ ok: true }>('POST', '/auth/register', body);
 }
 
-export async function apiVerifyEmail(
-  body: VerifyEmailBody,
-): Promise<RegisterStateResponse> {
-  return request<RegisterStateResponse>('POST', '/auth/register/verify-email', body);
-}
-
-/**
- * Returns the current register state if the register cookie is active,
- * or `null` if there is no register session (so the wizard can decide
- * to start fresh vs. resume).
- */
-export async function apiRegisterState(): Promise<RegisterStateResponse | null> {
-  try {
-    return await request<RegisterStateResponse>('GET', '/auth/register/state');
-  } catch (err) {
-    if (isApiError(err) && err.status === 401) return null;
-    throw err;
-  }
-}
-
-export async function apiRegisterSetPassword(
-  body: RegisterSetPasswordBody,
-): Promise<{ id: string }> {
-  return request<{ id: string }>('POST', '/auth/register/set-password', body);
+export async function apiRegisterActivate(
+  body: RegisterActivateBody,
+): Promise<{ ok: true; email: string }> {
+  return request<{ ok: true; email: string }>(
+    'POST',
+    '/auth/register/activate',
+    body,
+  );
 }
 
 export async function apiLogin(body: LoginBody): Promise<{ id: string }> {
