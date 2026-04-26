@@ -22,6 +22,7 @@ import {
   apiLogout,
   apiMe,
   apiRegister,
+  apiRegisterSetPassword,
   apiChangePassword,
 } from '../api/client.ts';
 import { randomBytes } from '../crypto/base64.ts';
@@ -31,6 +32,11 @@ import type { LoginBody, RegisterBody } from '@nodea/shared';
 
 export interface SessionRegisterInput {
   email: string;
+  password: string;
+  inviteCode: string;
+}
+
+export interface SessionCompleteRegisterInput {
   password: string;
   inviteCode: string;
 }
@@ -125,6 +131,44 @@ export function useSession() {
     }
   }
 
+  /**
+   * Step 3 of the multi-step register flow (Auth-Roadmap Phase 1C).
+   *
+   * The user already verified their email and holds a `register`
+   * session cookie. This call hands them a freshly wrapped main key,
+   * the password (Argon2id-hashed server-side), and the invite they
+   * entered at step 1 (kept in wizard state). The server consumes the
+   * invite atomically, marks the user `complete`, replaces the
+   * register session by a full one. We then unwrap the main key
+   * locally so the rest of the app sees a normally-logged-in user.
+   *
+   * Mirrors `register()` above, except the email isn't sent (server
+   * gets it from the cookie's user). Replaced by the OPAQUE flow in
+   * Phase 2.
+   */
+  async function completeRegister(input: SessionCompleteRegisterInput): Promise<void> {
+    const rawMainKey = randomBytes(32);
+    try {
+      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
+
+      await apiRegisterSetPassword({
+        password: input.password,
+        inviteCode: input.inviteCode,
+        encryptionSalt,
+        encryptedKey,
+      });
+
+      const me = await apiMe();
+      if (!me) throw new Error('set-password succeeded but /auth/me returned null');
+      setAuth(me);
+
+      const material = await deriveMainKeys(rawMainKey);
+      setMainKey(material);
+    } finally {
+      rawMainKey.fill(0);
+    }
+  }
+
   async function logout(): Promise<void> {
     try {
       await apiLogout();
@@ -166,5 +210,5 @@ export function useSession() {
     }
   }
 
-  return { status, user, login, register, logout, changePassword };
+  return { status, user, login, register, completeRegister, logout, changePassword };
 }

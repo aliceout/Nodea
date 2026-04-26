@@ -37,6 +37,12 @@ import {
   type AnnouncementUpdateBody,
   type AnnouncementResponse,
 } from '@nodea/shared';
+import type {
+  RegisterStartBody,
+  VerifyEmailBody,
+  RegisterStateResponse,
+  RegisterSetPasswordBody,
+} from '@nodea/shared/schemas/auth-register-v2';
 
 /**
  * Base URL for the API. Defaults to the same-origin `/api` prefix so
@@ -108,6 +114,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export async function apiRegister(body: RegisterBody): Promise<{ id: string }> {
   return request<{ id: string }>('POST', '/auth/register', body);
+}
+
+// --- Register v2 — multi-step flow (Auth-Roadmap Phase 1B/1C) ---------
+// These coexist with the legacy `apiRegister` above. New frontend
+// flows (the multi-step wizard on /register) use these; the legacy
+// single-shot stays for back-compat (admin tooling, seed scripts).
+
+export async function apiRegisterStart(
+  body: RegisterStartBody,
+): Promise<{ ok: true }> {
+  return request<{ ok: true }>('POST', '/auth/register/start', body);
+}
+
+export async function apiVerifyEmail(
+  body: VerifyEmailBody,
+): Promise<RegisterStateResponse> {
+  return request<RegisterStateResponse>('POST', '/auth/register/verify-email', body);
+}
+
+/**
+ * Returns the current register state if the register cookie is active,
+ * or `null` if there is no register session (so the wizard can decide
+ * to start fresh vs. resume).
+ */
+export async function apiRegisterState(): Promise<RegisterStateResponse | null> {
+  try {
+    return await request<RegisterStateResponse>('GET', '/auth/register/state');
+  } catch (err) {
+    if (isApiError(err) && err.status === 401) return null;
+    throw err;
+  }
+}
+
+export async function apiRegisterSetPassword(
+  body: RegisterSetPasswordBody,
+): Promise<{ id: string }> {
+  return request<{ id: string }>('POST', '/auth/register/set-password', body);
 }
 
 export async function apiLogin(body: LoginBody): Promise<{ id: string }> {

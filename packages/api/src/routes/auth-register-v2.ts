@@ -1,21 +1,28 @@
 import { Hono } from 'hono';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   RegisterStartBodySchema,
+  RegisterSetPasswordBodySchema,
   VerifyEmailBodySchema,
   type RegisterStateResponse,
 } from '@nodea/shared/schemas/auth-register-v2';
 import { db } from '../db/client.ts';
-import { invites, users } from '../db/schema.ts';
+import { invites, sessions, users } from '../db/schema.ts';
 import { hashInviteCode } from '../auth/invites.ts';
+import { hashPassword } from '../auth/password.ts';
+import { checkPasswordPolicy } from '../auth/password-policy.ts';
 import {
   consumeEmailVerification,
   createEmailVerification,
   invalidatePendingVerifications,
 } from '../auth/email-verifications.ts';
 import { createSession } from '../auth/session.ts';
-import { setRegisterCookie } from '../auth/cookies.ts';
+import {
+  clearRegisterCookie,
+  setRegisterCookie,
+  setSessionCookie,
+} from '../auth/cookies.ts';
 import {
   requireRegisterSession,
   type RegisterAuthVariables,
@@ -313,3 +320,120 @@ authRegisterV2Routes.get('/state', requireRegisterSession, (c) => {
   };
   return c.json(response);
 });
+
+const setPasswordLimiter = rateLimit({
+  max: 10,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'register-set-password',
+});
+
+/**
+ * `POST /auth/register/set-password` — Step 3 (transitional).
+ *
+ * Bridges the multi-step register flow to the legacy password-derived
+ * crypto envelope. Replaced by OPAQUE in Phase 2 of Auth-Roadmap.
+ *
+ * Required: register cookie (kind='register'). The user is identified
+ * via the cookie, so the body carries no email — only the password
+ * (Argon2id-hashed server-side), the invite code (kept in client state
+ * since step 1, consumed atomically here), and the encryption envelope
+ * (`encryptionSalt` + `encryptedKey`) the client just produced by
+ * wrapping a fresh main key under the password-derived KEK.
+ *
+ * On success the register session is replaced by a full session; the
+ * client immediately calls `/auth/me` to populate the auth slice and
+ * unwraps the main key locally.
+ */
+authRegisterV2Routes.post(
+  '/set-password',
+  setPasswordLimiter,
+  requireRegisterSession,
+  async (c) => {
+    const raw = await c.req.json().catch(() => null);
+    const parsed = RegisterSetPasswordBodySchema.safeParse(raw);
+    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+    const body = parsed.data;
+    const user = c.get('registerUser');
+    const registerSessionId = c.get('registerSessionId');
+
+    // Only `email_verified` users are allowed to set their password —
+    // pre_register users haven't validated their email yet (impossible
+    // path since /verify-email transitions them, but defensive).
+    if (user.registerState !== 'email_verified') {
+      return c.json({ error: 'invalid_state' }, 409);
+    }
+
+    const policy = checkPasswordPolicy(body.password, [user.email]);
+    if (!policy.ok) {
+      return c.json({ error: 'weak_password', reason: policy.reason }, 400);
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const codeHash = hashInviteCode(body.inviteCode);
+    const now = new Date();
+
+    // Atomic: consume invite + complete user + replace session.
+    const result = await db.transaction(async (tx) => {
+      // 1. Lock the invite for update.
+      const [invite] = await tx
+        .select()
+        .from(invites)
+        .where(
+          and(
+            eq(invites.codeHash, codeHash),
+            isNull(invites.usedBy),
+            or(isNull(invites.expiresAt), gt(invites.expiresAt, now)),
+          ),
+        )
+        .for('update')
+        .limit(1);
+      if (!invite) {
+        return { ok: false as const, reason: 'invalid_invite' as const };
+      }
+
+      // 2. UPDATE the user: real crypto envelope + state=complete.
+      //    The WHERE clause guards against a concurrent transition
+      //    racing the row past 'email_verified'.
+      const [updated] = await tx
+        .update(users)
+        .set({
+          passwordHash,
+          encryptionSalt: body.encryptionSalt,
+          encryptedKey: body.encryptedKey,
+          registerState: 'complete',
+        })
+        .where(
+          and(eq(users.id, user.id), eq(users.registerState, 'email_verified')),
+        )
+        .returning({ id: users.id });
+      if (!updated) {
+        return { ok: false as const, reason: 'invalid_state' as const };
+      }
+
+      // 3. Consume the invite.
+      await tx
+        .update(invites)
+        .set({ usedBy: user.id, usedAt: now })
+        .where(eq(invites.id, invite.id));
+
+      // 4. Drop the register session — the cookie that brought us here
+      //    is about to be replaced by a full session cookie.
+      await tx.delete(sessions).where(eq(sessions.id, registerSessionId));
+
+      return { ok: true as const, userId: user.id };
+    });
+
+    if (!result.ok) {
+      const status = result.reason === 'invalid_invite' ? 400 : 409;
+      return c.json({ error: 'register_failed', reason: result.reason }, status);
+    }
+
+    // Outside the tx: emit the full session. Doing it inside would lock
+    // the sessions row pointlessly, since the new session has a fresh id.
+    const fullSession = await createSession(result.userId, { kind: 'full' });
+    clearRegisterCookie(c);
+    await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
+
+    return c.json({ id: result.userId });
+  },
+);

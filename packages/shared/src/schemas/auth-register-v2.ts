@@ -79,3 +79,28 @@ export const VerifyEmailErrorReason = z.enum([
   'invalid_code',
 ]);
 export type VerifyEmailErrorReason = z.infer<typeof VerifyEmailErrorReason>;
+
+const Base64ish = z.string().min(1);
+
+/**
+ * Step 3 — `POST /auth/register/set-password` (Auth-Roadmap Phase 1C
+ * bridge — replaced by OPAQUE in Phase 2).
+ *
+ * Requires the register cookie. Hooks the legacy crypto envelope onto
+ * the multi-step flow: the user supplies a password (client derives
+ * KEK + wraps a fresh main key) and the original invite code (kept in
+ * frontend state since step 1). Server validates everything, consumes
+ * the invite, completes the user (registerState = 'complete'), revokes
+ * the register session and emits a full session.
+ *
+ * In Phase 2 this route is replaced by the OPAQUE-based step 3 flow
+ * (cf. Auth-Spec §7.1.3) which derives the wrapping key from
+ * `export_key` instead of the raw password.
+ */
+export const RegisterSetPasswordBodySchema = z.object({
+  password: z.string().min(12).max(200),
+  inviteCode: z.string().min(1).max(128),
+  encryptionSalt: Base64ish,
+  encryptedKey: Base64ish,
+});
+export type RegisterSetPasswordBody = z.infer<typeof RegisterSetPasswordBodySchema>;
