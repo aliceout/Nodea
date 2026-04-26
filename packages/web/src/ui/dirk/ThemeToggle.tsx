@@ -5,15 +5,14 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 /**
- * Tri-state light / system / dark toggle, Direction K · Sauge.
+ * Compact tri-state light / system / dark toggle, Direction K · Sauge.
  *
- * Same `useTheme` hook as the legacy `ThemeSelector` (so the
- * encrypted `preferences.theme` stays the source of truth). Two
- * variants:
- *
- * - `compact` (default) — icon-only buttons, sized to fit in the
- *   sidebar footer next to the sync indicator.
- * - `labeled` — icon + i18n label, sized for the Settings page.
+ * Used in the sidebar footer for one-click switching. The
+ * full-text "labeled" variant lived here briefly during the
+ * Settings → Account merge, then got replaced by a native
+ * `<select>` in the Préférences tab so the theme control matches
+ * the language one. The icon row stays here because in the
+ * sidebar the labels would crowd the sync indicator.
  */
 
 const OPTIONS: Array<{ id: ThemePreference; icon: typeof SunIcon }> = [
@@ -22,14 +21,11 @@ const OPTIONS: Array<{ id: ThemePreference; icon: typeof SunIcon }> = [
   { id: 'dark', icon: MoonIcon },
 ];
 
-export type ThemeToggleVariant = 'compact' | 'labeled';
-
 export interface ThemeToggleProps {
-  variant?: ThemeToggleVariant;
   className?: string;
 }
 
-export default function ThemeToggle({ variant = 'compact', className }: ThemeToggleProps) {
+export default function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const { t } = useI18n();
 
@@ -54,20 +50,13 @@ export default function ThemeToggle({ variant = 'compact', className }: ThemeTog
             aria-label={label}
             title={label}
             className={cn(
-              'inline-flex cursor-pointer items-center gap-1.5 rounded-[5px] transition-colors',
-              variant === 'compact'
-                ? 'h-6 w-6 justify-center'
-                : 'px-3 py-1.5 text-[12.5px]',
+              'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[5px] transition-colors',
               active
                 ? 'bg-accent text-white'
                 : 'text-muted hover:bg-bg-2 hover:text-ink',
             )}
           >
-            <Icon
-              className={variant === 'compact' ? 'h-3.5 w-3.5' : 'h-4 w-4'}
-              aria-hidden="true"
-            />
-            {variant === 'labeled' ? <span>{label}</span> : null}
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         );
       })}

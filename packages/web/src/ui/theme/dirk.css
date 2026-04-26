@@ -47,14 +47,18 @@
 }
 
 .dark {
-  /* Papier la nuit, jamais bleuté */
-  --color-k-bg: #1d1c18;
-  --color-k-bg2: #262520;
+  /* Papier la nuit, jamais bleuté.
+     Lifted ~+5 in luminance from the original (`#1d1c18 / #262520
+     / #34322c`) so the surface reads as "deep warm paper" rather
+     than "almost black". The hair token follows so the new bg
+     still has visible separators. */
+  --color-k-bg: #272620;
+  --color-k-bg2: #312f29;
   --color-k-ink: #ece9dc;
   --color-k-ink-soft: #c5c2b3;
-  --color-k-muted: #7d7a6e;
-  --color-k-muted-soft: #4a4842;
-  --color-k-hair: #34322c;
+  --color-k-muted: #908d80;
+  --color-k-muted-soft: #585650;
+  --color-k-hair: #3f3d36;
 
   /* Sauge clarifié pour contraster sur fond sombre */
   --color-k-accent: #9bbf9f;
@@ -151,4 +155,29 @@ html {
   font-family: var(--font-sans);
   background: var(--color-k-bg);
   color: var(--color-k-ink);
+}
+
+/* Journal Composer — placeholder pour la zone contentEditable.
+   `<div contenteditable>` n'a pas d'attribut `placeholder` natif ;
+   on lit `data-placeholder` via un pseudo-élément qui disparaît
+   dès qu'on tape. La condition `:empty` couvre l'état initial ;
+   un seul `<br>` (état "vide après reset" du navigateur) compte
+   aussi comme vide. */
+.journal-ce:empty::before,
+.journal-ce:has(> br:only-child)::before {
+  content: attr(data-placeholder);
+  color: var(--color-k-muted-soft);
+  pointer-events: none;
+}
+
+/* Liste à puce dans le contentEditable — sans ces règles, les
+   navigateurs n'affichent ni puce ni indentation par défaut sur
+   les <ul>/<li> rendus à l'intérieur d'un éditeur. */
+.journal-ce ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.journal-ce li {
+  margin: 0.125rem 0;
 }

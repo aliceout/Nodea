@@ -19,6 +19,8 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.data.js';
+import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
+import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
 
 /**
  * Mon compte — Direction K · Sauge.
@@ -32,11 +34,13 @@ import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.
  * lives on its own; extracting them into separate files would just
  * add navigation overhead with no reuse.
  */
-type Tab = 'identity' | 'security' | 'data' | 'danger';
+type Tab = 'identity' | 'security' | 'preferences' | 'modules' | 'data' | 'danger';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'identity', label: 'Identité' },
   { id: 'security', label: 'Sécurité' },
+  { id: 'preferences', label: 'Préférences' },
+  { id: 'modules', label: 'Modules' },
   { id: 'data', label: 'Données' },
   { id: 'danger', label: 'Zone rouge' },
 ];
@@ -77,6 +81,8 @@ export default function AccountPage() {
       <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">
         {tab === 'identity' ? <IdentityTab /> : null}
         {tab === 'security' ? <SecurityTab /> : null}
+        {tab === 'preferences' ? <PreferencesTab /> : null}
+        {tab === 'modules' ? <ModulesTab /> : null}
         {tab === 'data' ? <DataTab /> : null}
         {tab === 'danger' ? <DangerTab /> : null}
       </div>
@@ -108,66 +114,118 @@ function Topbar({ onOpenMenu }: TopbarProps) {
 
 /* ---------- Identity tab -------------------------------------------------- */
 
+interface FeedbackState {
+  tone: 'success' | 'error';
+  text: string;
+}
+
 function IdentityTab() {
   const user = useNodeaStore(selectUser);
   const setAuth = useNodeaStore((s) => s.setAuth);
-  const [username, setUsername] = useState(user?.username ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [currentPasswordForEmail, setCurrentPasswordForEmail] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(
-    null,
-  );
 
-  async function onSubmit(): Promise<void> {
-    setSubmitting(true);
-    setFeedback(null);
+  // Each field has its own edit lifecycle (draft, submitting, feedback)
+  // so saving the e-mail doesn't reset a username draft and vice versa.
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState(user?.username ?? '');
+  const [usernameSubmitting, setUsernameSubmitting] = useState(false);
+  const [usernameFeedback, setUsernameFeedback] = useState<FeedbackState | null>(null);
+
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState(user?.email ?? '');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<FeedbackState | null>(null);
+
+  function startEditUsername(): void {
+    setUsernameDraft(user?.username ?? '');
+    setUsernameFeedback(null);
+    setEditingUsername(true);
+  }
+  function cancelEditUsername(): void {
+    setUsernameDraft(user?.username ?? '');
+    setUsernameFeedback(null);
+    setEditingUsername(false);
+  }
+  async function saveUsername(): Promise<void> {
+    setUsernameSubmitting(true);
+    setUsernameFeedback(null);
     try {
-      // Username — empty string clears it.
-      const trimmed = username.trim();
-      if ((user?.username ?? '') !== trimmed) {
-        await apiChangeUsername({ username: trimmed.length === 0 ? null : trimmed });
+      const trimmed = usernameDraft.trim();
+      const next = trimmed.length === 0 ? null : trimmed;
+      const current = user?.username ?? null;
+      if (next === current) {
+        setEditingUsername(false);
+        return;
       }
-      // Email — only push if it changed and the current password was supplied.
-      if (user?.email !== email) {
-        if (!currentPasswordForEmail) {
-          setFeedback({
-            tone: 'error',
-            text: 'Mot de passe actuel requis pour changer l’e-mail.',
-          });
-          setSubmitting(false);
-          return;
-        }
-        await apiChangeEmail({ currentPassword: currentPasswordForEmail, newEmail: email });
-        setCurrentPasswordForEmail('');
-      }
+      await apiChangeUsername({ username: next });
       const me = await apiMe();
       if (me) setAuth(me);
-      setFeedback({ tone: 'success', text: 'Modifications enregistrées.' });
+      setUsernameFeedback({ tone: 'success', text: 'Identifiant mis à jour.' });
+      setEditingUsername(false);
     } catch (err) {
-      if (isApiError(err) && err.status === 401) {
-        setFeedback({ tone: 'error', text: 'Mot de passe actuel incorrect.' });
-      } else if (isApiError(err) && err.status === 409) {
-        setFeedback({ tone: 'error', text: 'Cet identifiant est déjà pris.' });
+      if (isApiError(err) && err.status === 409) {
+        setUsernameFeedback({ tone: 'error', text: 'Cet identifiant est déjà pris.' });
       } else if (isApiError(err) && err.status === 400) {
-        setFeedback({ tone: 'error', text: 'Format invalide.' });
+        setUsernameFeedback({ tone: 'error', text: 'Format invalide.' });
       } else {
-        setFeedback({ tone: 'error', text: 'Erreur lors de la modification.' });
-        if (import.meta.env.DEV) console.warn('account-identity failed', err);
+        setUsernameFeedback({ tone: 'error', text: 'Erreur lors de la modification.' });
+        if (import.meta.env.DEV) console.warn('account-username failed', err);
       }
     } finally {
-      setSubmitting(false);
+      setUsernameSubmitting(false);
     }
   }
 
-  function onCancel(): void {
-    setUsername(user?.username ?? '');
-    setEmail(user?.email ?? '');
-    setCurrentPasswordForEmail('');
-    setFeedback(null);
+  function startEditEmail(): void {
+    setEmailDraft(user?.email ?? '');
+    setEmailPassword('');
+    setEmailFeedback(null);
+    setEditingEmail(true);
   }
-
-  const emailChanged = user?.email !== email;
+  function cancelEditEmail(): void {
+    setEmailDraft(user?.email ?? '');
+    setEmailPassword('');
+    setEmailFeedback(null);
+    setEditingEmail(false);
+  }
+  async function saveEmail(): Promise<void> {
+    setEmailSubmitting(true);
+    setEmailFeedback(null);
+    try {
+      const next = emailDraft.trim();
+      if (next === (user?.email ?? '')) {
+        setEditingEmail(false);
+        return;
+      }
+      if (!emailPassword) {
+        setEmailFeedback({
+          tone: 'error',
+          text: 'Mot de passe actuel requis pour changer l’e-mail.',
+        });
+        setEmailSubmitting(false);
+        return;
+      }
+      await apiChangeEmail({ currentPassword: emailPassword, newEmail: next });
+      const me = await apiMe();
+      if (me) setAuth(me);
+      setEmailPassword('');
+      setEmailFeedback({ tone: 'success', text: 'Adresse e-mail mise à jour.' });
+      setEditingEmail(false);
+    } catch (err) {
+      if (isApiError(err) && err.status === 401) {
+        setEmailFeedback({ tone: 'error', text: 'Mot de passe actuel incorrect.' });
+      } else if (isApiError(err) && err.status === 409) {
+        setEmailFeedback({ tone: 'error', text: 'Cette adresse est déjà utilisée.' });
+      } else if (isApiError(err) && err.status === 400) {
+        setEmailFeedback({ tone: 'error', text: 'Format invalide.' });
+      } else {
+        setEmailFeedback({ tone: 'error', text: 'Erreur lors de la modification.' });
+        if (import.meta.env.DEV) console.warn('account-email failed', err);
+      }
+    } finally {
+      setEmailSubmitting(false);
+    }
+  }
 
   return (
     <div className="grid max-w-[880px] grid-cols-1 gap-14 lg:grid-cols-[1fr_240px]">
@@ -175,31 +233,140 @@ function IdentityTab() {
         <p className="mb-[18px] text-[13px] leading-[1.5] text-muted">
           Les seules infos qui te suivent d’un appareil à l’autre.
         </p>
-        <Field label="Nom d’affichage" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <Field
-          label="Adresse e-mail"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        {emailChanged ? (
-          <Field
-            label="Mot de passe actuel"
-            type="password"
-            value={currentPasswordForEmail}
-            onChange={(e) => setCurrentPasswordForEmail(e.target.value)}
+
+        <IdentityRow
+          label="Nom d’affichage"
+          value={user?.username ?? ''}
+          placeholder="non défini"
+          editing={editingUsername}
+          editLabel="Modifier le nom d’utilisateur·ice"
+          submitting={usernameSubmitting}
+          feedback={usernameFeedback}
+          onEdit={startEditUsername}
+          onCancel={cancelEditUsername}
+          onSave={saveUsername}
+        >
+          <input
+            type="text"
+            value={usernameDraft}
+            onChange={(e) => setUsernameDraft(e.target.value)}
+            autoFocus
+            className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
-        ) : null}
-        <div className="mt-3.5 flex gap-2">
-          <PrimaryButton onClick={onSubmit} disabled={submitting}>
-            {submitting ? 'Enregistrement…' : 'Enregistrer'}
-          </PrimaryButton>
-          <SecondaryButton onClick={onCancel}>Annuler</SecondaryButton>
-        </div>
-        {feedback ? <Feedback tone={feedback.tone}>{feedback.text}</Feedback> : null}
+        </IdentityRow>
+
+        <IdentityRow
+          label="Adresse e-mail"
+          value={user?.email ?? ''}
+          placeholder=""
+          editing={editingEmail}
+          editLabel="Modifier l’adresse e-mail"
+          submitting={emailSubmitting}
+          feedback={emailFeedback}
+          onEdit={startEditEmail}
+          onCancel={cancelEditEmail}
+          onSave={saveEmail}
+        >
+          <div className="space-y-2.5">
+            <input
+              type="email"
+              value={emailDraft}
+              onChange={(e) => setEmailDraft(e.target.value)}
+              autoComplete="email"
+              autoFocus
+              className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+            />
+            <input
+              type="password"
+              value={emailPassword}
+              onChange={(e) => setEmailPassword(e.target.value)}
+              placeholder="Mot de passe actuel"
+              autoComplete="current-password"
+              className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+            />
+          </div>
+        </IdentityRow>
       </div>
 
       <Stats />
+    </div>
+  );
+}
+
+interface IdentityRowProps {
+  label: string;
+  value: string;
+  /** Shown when `value` is empty in display mode. */
+  placeholder: string;
+  editing: boolean;
+  editLabel: string;
+  submitting: boolean;
+  feedback: FeedbackState | null;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  children: React.ReactNode;
+}
+
+/**
+ * Read-by-default row with a single "Modifier …" affordance that
+ * swaps the value for the row's input(s) and surfaces save / cancel
+ * buttons. Each row owns its own edit lifecycle so saving one field
+ * doesn't churn the other.
+ */
+function IdentityRow({
+  label,
+  value,
+  placeholder,
+  editing,
+  editLabel,
+  submitting,
+  feedback,
+  onEdit,
+  onCancel,
+  onSave,
+  children,
+}: IdentityRowProps) {
+  return (
+    <div className="border-b border-hair py-4 last:border-b-0">
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
+          {label}
+        </span>
+        {!editing ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="cursor-pointer text-[12px] text-accent transition-colors hover:text-accent-deep"
+          >
+            {editLabel}
+          </button>
+        ) : null}
+      </div>
+
+      {!editing ? (
+        <div className="text-[14px] text-ink">
+          {value ? (
+            value
+          ) : (
+            <span className="italic text-muted">{placeholder || '—'}</span>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-0 flex-1">{children}</div>
+          <div className="flex shrink-0 gap-2">
+            <PrimaryButton onClick={onSave} disabled={submitting}>
+              {submitting ? 'Enregistrement…' : 'Enregistrer'}
+            </PrimaryButton>
+            <CancelButton onClick={onCancel} disabled={submitting}>
+              Abandonner
+            </CancelButton>
+          </div>
+        </div>
+      )}
+
+      {feedback ? <Feedback tone={feedback.tone}>{feedback.text}</Feedback> : null}
     </div>
   );
 }
@@ -247,35 +414,57 @@ function SecurityTab() {
   const navigate = useNavigate();
 
   return (
-    <div className="grid max-w-[880px] grid-cols-1 gap-14 lg:grid-cols-2">
-      <div>
-        <h3 className="mb-1 text-[16px] font-semibold text-ink">Mot de passe</h3>
-        <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
-          Re-dérive ta clé. L’admin n’a jamais ta clé.
-        </p>
-        <p className="mb-3 text-[12px] text-muted">
-          Le changement passe par une page dédiée — la clé maîtresse est ré-enveloppée localement
-          avant l’envoi au serveur, sans perte de tes entrées chiffrées.
-        </p>
+    <div className="max-w-[880px]">
+      <SecuritySection
+        title="Mot de passe"
+        description="Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais."
+      >
         <PrimaryButton onClick={() => navigate('/change-password')}>
           Renouveler la clé
         </PrimaryButton>
-      </div>
+      </SecuritySection>
 
-      <div>
+      <SecuritySection
+        title="2FA"
+        description="Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Google Authenticator) en plus du mot de passe — une fuite ne suffit alors plus à entrer."
+      >
+        <SecondaryButton>Activer</SecondaryButton>
+      </SecuritySection>
+
+      <section>
         <h3 className="mb-3 text-[16px] font-semibold text-ink">Sessions actives · 2</h3>
         <SessionRow label="MacBook Pro · Paris" meta="maintenant" current />
         <SessionRow label="iPhone 14 · Paris" meta="il y a 1 j" />
-
-        <div className="mt-[22px]">
-          <h3 className="mb-1 text-[14px] font-semibold text-ink">2FA</h3>
-          <p className="mb-2.5 text-[12px] leading-[1.5] text-muted">
-            Application TOTP, une couche en plus.
-          </p>
-          <SecondaryButton>Activer</SecondaryButton>
-        </div>
-      </div>
+      </section>
     </div>
+  );
+}
+
+interface SecuritySectionProps {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}
+
+/**
+ * Security row — heading on top, then a 2-column body: action
+ * button on the left, single 12px descriptor on the right. The
+ * left column has a fixed width (`170px`) shared across every
+ * section so the descriptors line up on the same vertical line
+ * regardless of each button's natural width — descriptor
+ * alignment shouldn't jiggle from "Activer" to "Renouveler la
+ * clé". Below `lg`, columns stack (button first, descriptor
+ * under it).
+ */
+function SecuritySection({ title, description, children }: SecuritySectionProps) {
+  return (
+    <section className="mb-[34px] last:mb-0">
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">{title}</h3>
+      <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[170px_1fr] lg:gap-x-6">
+        <div>{children}</div>
+        <p className="text-[12px] leading-[1.55] text-muted">{description}</p>
+      </div>
+    </section>
   );
 }
 
@@ -301,6 +490,83 @@ function SessionRow({ label, meta, current }: SessionRowProps) {
           Déconnecter
         </button>
       )}
+    </div>
+  );
+}
+
+/* ---------- Preferences tab ----------------------------------------------- */
+
+const THEME_OPTIONS: ReadonlyArray<ThemePreference> = ['light', 'system', 'dark'];
+
+function PreferencesTab() {
+  const { t, language, setLanguage, availableLanguages } = useI18n();
+  const { theme, setTheme } = useTheme();
+
+  function handleLanguage(event: ChangeEvent<HTMLSelectElement>): void {
+    const next = event.target.value;
+    if (!next || next === language) return;
+    setLanguage(next);
+  }
+
+  function handleTheme(event: ChangeEvent<HTMLSelectElement>): void {
+    const next = event.target.value as ThemePreference;
+    if (!THEME_OPTIONS.includes(next) || next === theme) return;
+    setTheme(next);
+  }
+
+  return (
+    <div className="grid max-w-[880px] grid-cols-1 gap-14 lg:grid-cols-2">
+      <div>
+        <h3 className="mb-1 text-[16px] font-semibold text-ink">Thème</h3>
+        <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
+          Clair, sombre, ou suit ton système.
+        </p>
+        <select
+          aria-label={t('settings.theme.ariaLabel', { defaultValue: 'Préférence de thème' })}
+          value={theme}
+          onChange={handleTheme}
+          className="block h-8 w-full max-w-[280px] cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+        >
+          {THEME_OPTIONS.map((id) => (
+            <option key={id} value={id}>
+              {t(`settings.theme.options.${id}`, { defaultValue: id })}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <h3 className="mb-1 text-[16px] font-semibold text-ink">Langue</h3>
+        <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
+          Interface en français ou en anglais.
+        </p>
+        <select
+          aria-label="Langue"
+          value={language}
+          onChange={handleLanguage}
+          className="block h-8 w-full max-w-[280px] cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+        >
+          {availableLanguages.map((lang) => (
+            <option key={lang.id} value={lang.id}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Modules tab --------------------------------------------------- */
+
+function ModulesTab() {
+  return (
+    <div className="max-w-[880px]">
+      <h3 className="mb-1 text-[16px] font-semibold text-ink">Modules actifs</h3>
+      <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
+        Allume ce dont tu te sers — chaque module apparaît dans la sidebar.
+      </p>
+      <ModulesManager />
     </div>
   );
 }
@@ -591,7 +857,7 @@ function DangerTab() {
         type="button"
         onClick={handleDelete}
         disabled={submitting || !canDelete}
-        className="rounded-md bg-danger px-[18px] py-[9px] text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-md bg-danger px-[18px] py-1.5 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? 'Suppression…' : 'Supprimer définitivement'}
       </button>
@@ -617,7 +883,7 @@ function Field({ label, className, id, name, ...rest }: FieldProps) {
         id={inputId}
         name={name}
         className={cn(
-          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
+          'block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink',
           'outline-none transition-[border-color,box-shadow]',
           'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
@@ -638,7 +904,7 @@ function PrimaryButton({
     <button
       type="button"
       className={cn(
-        'rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60',
+        'rounded-md bg-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
       {...rest}
@@ -657,7 +923,33 @@ function SecondaryButton({
     <button
       type="button"
       className={cn(
-        'rounded-md border border-hair bg-transparent px-4 py-2 text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink',
+        'rounded-md border border-hair bg-transparent px-4 py-1.5 text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60',
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Discard / "Abandonner" affordance — ghost style with danger
+ * tone, signalling that the click drops in-flight changes. Kept
+ * separate from `SecondaryButton` so neutral secondary actions
+ * (e.g. the 2FA "Activer" placeholder) don't pick up the red
+ * accent.
+ */
+function CancelButton({
+  className,
+  children,
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'rounded-md bg-transparent px-4 py-1.5 text-[13px] text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
       {...rest}

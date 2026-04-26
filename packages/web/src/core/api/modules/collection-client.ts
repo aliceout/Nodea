@@ -87,9 +87,15 @@ export interface CollectionClient<TSchema extends ZodTypeAny> {
   remove(moduleUserId: string, key: MainKeyMaterial, id: string): Promise<void>;
 }
 
-/** Split the "<iv>.<data>" envelope used by modules-config and wrapped keys. */
-function packBlob(blob: AesBlob): { iv: CipherIV; data: EncryptedBlob } {
-  return { iv: blob.iv, data: blob.data };
+/**
+ * Pack an `AesBlob` into the request shape `CreateEntryBodySchema` /
+ * `UpdateEntryBodySchema` enforce server-side: `cipher_iv` + `payload`.
+ * The earlier `{ iv, data }` keys never matched either schema — every
+ * create / update silently 400'd. Renamed once so both `create` and
+ * `update` share the right wire format.
+ */
+function packBlob(blob: AesBlob): { cipher_iv: CipherIV; payload: EncryptedBlob } {
+  return { cipher_iv: blob.iv, payload: blob.data };
 }
 
 export function createCollectionClient<TSchema extends ZodTypeAny>(

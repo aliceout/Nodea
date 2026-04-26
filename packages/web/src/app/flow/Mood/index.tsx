@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bars3Icon } from '@heroicons/react/24/outline';
+import { Bars3Icon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import {
   MOOD_SCORE_VALUES,
   type MoodPayload,
@@ -41,6 +41,7 @@ export default function MoodPage() {
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['mood']?.moduleUserId ?? null;
+  const moodVersion = useNodeaStore((s) => s.moodVersion);
 
   // `null` ("En cours") is the default — rolling 52 weeks ending
   // today, mirroring GitHub's landing view. A specific year flips to
@@ -83,11 +84,51 @@ export default function MoodPage() {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId]);
+    // `moodVersion` is bumped by the Composer's MoodBody after a
+    // successful create — including it here re-runs the fetch so a
+    // newly saved mood entry shows up without a page reload.
+  }, [mainKey, moduleUserId, moodVersion]);
 
   const totalEntries = load.status === 'ready' ? load.entries.length : 0;
   const sideEntries: ReadonlyArray<MoodEntry> =
     load.status === 'ready' ? load.entries : EMPTY_ENTRIES;
+  const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
+
+  function handleEdit(entry: MoodEntry): void {
+    openComposer('mood', {
+      type: 'mood',
+      id: entry.id,
+      payload: {
+        date: entry.dateIso,
+        mood_score: entry.score,
+        mood_emoji: '',
+        positive1: entry.positives[0],
+        positive2: entry.positives[1],
+        positive3: entry.positives[2],
+        comment: entry.comment ?? '',
+        ...(entry.question ? { question: entry.question } : {}),
+        ...(entry.answer ? { answer: entry.answer } : {}),
+      },
+    });
+  }
+
+  async function handleDelete(entry: MoodEntry): Promise<void> {
+    if (!mainKey || !moduleUserId) return;
+    if (!window.confirm(`Supprimer l’entrée du ${entry.date} ?`)) return;
+    const previous = load;
+    setLoad((prev) =>
+      prev.status === 'ready'
+        ? { status: 'ready', entries: prev.entries.filter((e) => e.id !== entry.id) }
+        : prev,
+    );
+    try {
+      await moodClient.remove(moduleUserId, mainKey, entry.id);
+      bumpMoodVersion();
+    } catch (err) {
+      setLoad(previous);
+      if (import.meta.env.DEV) console.warn('mood: delete failed', err);
+    }
+  }
 
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
@@ -104,6 +145,8 @@ export default function MoodPage() {
           onYearChange={handleYearChange}
           month={month}
           onMonthChange={setMonth}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
         <SideColumn entries={sideEntries} />
       </div>
@@ -131,6 +174,7 @@ function recordToEntry(
     p.positive3 ?? '',
   ];
   const entry: MoodEntry = {
+    id: record.id,
     dateIso,
     date: formatEntryLabel(dateIso, today),
     score: normalizeScore(p.mood_score ?? '0'),
@@ -211,6 +255,8 @@ function Topbar({ count, onOpenMenu, onNewEntry }: TopbarProps) {
 }
 
 interface MoodEntry {
+  /** Decrypted record id — needed by edit / delete handlers. */
+  id: string;
   /** ISO `YYYY-MM-DD` — drives year/month filtering. */
   dateIso: string;
   /** Display label computed from `dateIso` + today (today/yesterday/full date). */
@@ -230,6 +276,8 @@ interface PrimaryColumnProps {
   onYearChange: (next: number | null) => void;
   month: number | null;
   onMonthChange: (next: number | null) => void;
+  onEdit: (entry: MoodEntry) => void;
+  onDelete: (entry: MoodEntry) => void | Promise<void>;
 }
 
 function PrimaryColumn({
@@ -238,6 +286,8 @@ function PrimaryColumn({
   onYearChange,
   month,
   onMonthChange,
+  onEdit,
+  onDelete,
 }: PrimaryColumnProps) {
   const entries: ReadonlyArray<MoodEntry> =
     load.status === 'ready' ? load.entries : EMPTY_ENTRIES;
@@ -351,7 +401,14 @@ function PrimaryColumn({
             Aucune entrée pour cette période.
           </p>
         ) : (
-          filtered.map((entry) => <EntryRow key={entry.dateIso} entry={entry} />)
+          filtered.map((entry) => (
+            <EntryRow
+              key={entry.id}
+              entry={entry}
+              onEdit={() => onEdit(entry)}
+              onDelete={() => onDelete(entry)}
+            />
+          ))
         )}
       </div>
     </section>
@@ -779,9 +836,15 @@ const SCORE_LABELS: Record<MoodScore, string> = {
   '2': 'très bon',
 };
 
-function EntryRow({ entry }: { entry: MoodEntry }) {
+interface EntryRowProps {
+  entry: MoodEntry;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
   return (
-    <article className="grid grid-cols-[110px_44px_1fr] items-baseline gap-4 border-b border-hair py-4">
+    <article className="group grid grid-cols-[110px_44px_1fr_auto] items-baseline gap-4 border-b border-hair py-4">
       <div className="text-[12px] tabular-nums text-muted">{entry.date}</div>
       <NoteBadge score={entry.score} />
       <div className="min-w-0">
@@ -818,6 +881,27 @@ function EntryRow({ entry }: { entry: MoodEntry }) {
           </div>
         ) : null}
       </div>
+
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label="Modifier l’entrée"
+          title="Modifier"
+          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-bg-2 hover:text-ink"
+        >
+          <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label="Supprimer l’entrée"
+          title="Supprimer"
+          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+        >
+          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
     </article>
   );
 }
@@ -851,19 +935,22 @@ interface Pattern {
 }
 
 /**
- * Patterns shown in the side column — every entry here must be
- * derivable from `{date, score, positives[3], comment, question,
- * answer}` alone. No external signals (sleep, calendar, weather…)
- * because the app doesn't capture them; surfacing fake correlations
- * undermines trust.
+ * Patterns are computed over `{date, score}` only — no external
+ * signals (sleep, calendar, weather…) because the app doesn't
+ * capture them; surfacing fake correlations undermines trust.
+ *
+ * Three signals, each surfaced only when the data supports it:
+ *  - best / worst day of the week (mean score per weekday vs the
+ *    overall mean, requires ≥ 3 entries on the day to dampen
+ *    one-shot noise).
+ *  - longest non-negative streak — counts consecutive entries (not
+ *    calendar days), so a missed day doesn't break the streak.
+ *  - 30-day rolling mean vs 90-day rolling mean, only shown when
+ *    the gap is meaningful (≥ 0.2 on the −2..+2 scale).
  */
-const PATTERNS: Pattern[] = [
-  { label: 'Samedi est ton meilleur jour', delta: '+0,9 vs moyenne' },
-  { label: 'Lundi reste ton point bas', delta: '−0,7 vs moyenne' },
-  { label: '12 jours consécutifs ≥ 0', delta: 'meilleur streak du mois' },
-];
-
 function SideColumn({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
+  const patterns = useMemo(() => computePatterns(entries), [entries]);
+
   return (
     <aside className="flex min-w-0 flex-col gap-6">
       <section>
@@ -873,17 +960,176 @@ function SideColumn({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
 
       <section>
         <SectionLabel>Patterns</SectionLabel>
-        <ul>
-          {PATTERNS.map((p) => (
-            <li key={p.label} className="border-b border-hair py-2.5 last:border-b-0">
-              <div className="text-[13px] font-medium text-ink">{p.label}</div>
-              <div className="mt-0.5 text-[11px] text-muted">{p.delta}</div>
-            </li>
-          ))}
-        </ul>
+        {patterns.length === 0 ? (
+          <p className="border-b border-hair py-2.5 text-[12px] italic text-muted">
+            Pas encore assez d’entrées pour dégager des motifs.
+          </p>
+        ) : (
+          <ul>
+            {patterns.map((p) => (
+              <li key={p.label} className="border-b border-hair py-2.5 last:border-b-0">
+                <div className="text-[13px] font-medium text-ink">{p.label}</div>
+                <div className="mt-0.5 text-[11px] text-muted">{p.delta}</div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </aside>
   );
+}
+
+const DAY_NAMES_FR: ReadonlyArray<string> = [
+  'Lundi',
+  'Mardi',
+  'Mercredi',
+  'Jeudi',
+  'Vendredi',
+  'Samedi',
+  'Dimanche',
+];
+
+const SHORT_MONTHS_FR: ReadonlyArray<string> = [
+  'janv.',
+  'févr.',
+  'mars',
+  'avr.',
+  'mai',
+  'juin',
+  'juil.',
+  'août',
+  'sept.',
+  'oct.',
+  'nov.',
+  'déc.',
+];
+
+function computePatterns(entries: ReadonlyArray<MoodEntry>): Pattern[] {
+  const out: Pattern[] = [];
+  if (entries.length < 5) return out;
+
+  // 1) Best / worst day of the week
+  const buckets: number[][] = [[], [], [], [], [], [], []]; // Mon..Sun
+  for (const e of entries) {
+    const d = new Date(e.dateIso);
+    if (Number.isNaN(d.getTime())) continue;
+    const dow = (d.getDay() + 6) % 7; // shift Sun=0..Sat=6 → Mon=0..Sun=6
+    buckets[dow]!.push(Number(e.score));
+  }
+  const allScores = entries.map((e) => Number(e.score));
+  const overallMean = allScores.reduce((s, v) => s + v, 0) / allScores.length;
+  const MIN_PER_DAY = 3;
+  let bestIdx = -1;
+  let worstIdx = -1;
+  let bestMean = -Infinity;
+  let worstMean = Infinity;
+  for (let i = 0; i < 7; i += 1) {
+    const bucket = buckets[i]!;
+    if (bucket.length < MIN_PER_DAY) continue;
+    const mean = bucket.reduce((s, v) => s + v, 0) / bucket.length;
+    if (mean > bestMean) {
+      bestMean = mean;
+      bestIdx = i;
+    }
+    if (mean < worstMean) {
+      worstMean = mean;
+      worstIdx = i;
+    }
+  }
+  if (bestIdx >= 0) {
+    out.push({
+      label: `${DAY_NAMES_FR[bestIdx]} est ton meilleur jour`,
+      delta: `${signedFormat(bestMean - overallMean)} vs moyenne`,
+    });
+  }
+  if (worstIdx >= 0 && worstIdx !== bestIdx) {
+    out.push({
+      label: `${DAY_NAMES_FR[worstIdx]} reste ton point bas`,
+      delta: `${signedFormat(worstMean - overallMean)} vs moyenne`,
+    });
+  }
+
+  // 2) Longest non-negative streak (consecutive entries, gaps OK)
+  const sortedAsc = [...entries].sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+  let current = 0;
+  let currentStart: string | null = null;
+  let bestCount = 0;
+  let bestStart: string | null = null;
+  let bestEnd: string | null = null;
+  for (const e of sortedAsc) {
+    if (Number(e.score) >= 0) {
+      if (current === 0) currentStart = e.dateIso;
+      current += 1;
+      if (current > bestCount) {
+        bestCount = current;
+        bestStart = currentStart;
+        bestEnd = e.dateIso;
+      }
+    } else {
+      current = 0;
+      currentStart = null;
+    }
+  }
+  if (bestCount >= 3 && bestStart && bestEnd) {
+    out.push({
+      label: `${bestCount} entrées ≥ 0 d’affilée`,
+      delta: formatStreakRange(bestStart, bestEnd),
+    });
+  }
+
+  // 3) 30-day mean vs 90-day mean (trend)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayMs = 24 * 3600 * 1000;
+  const cutoff30 = today.getTime() - 30 * dayMs;
+  const cutoff90 = today.getTime() - 90 * dayMs;
+  const last30: number[] = [];
+  const last90: number[] = [];
+  for (const e of entries) {
+    const t = new Date(e.dateIso).getTime();
+    if (Number.isNaN(t)) continue;
+    if (t >= cutoff30) last30.push(Number(e.score));
+    if (t >= cutoff90) last90.push(Number(e.score));
+  }
+  if (last30.length >= 5 && last90.length >= 10) {
+    const m30 = last30.reduce((s, v) => s + v, 0) / last30.length;
+    const m90 = last90.reduce((s, v) => s + v, 0) / last90.length;
+    const delta = m30 - m90;
+    if (Math.abs(delta) >= 0.2) {
+      out.push({
+        label: delta > 0 ? 'Tendance à la hausse' : 'Tendance à la baisse',
+        delta: `${signedFormat(delta)} vs 90 j`,
+      });
+    }
+  }
+
+  return out;
+}
+
+function signedFormat(value: number): string {
+  const sign = value > 0 ? '+' : value < 0 ? '−' : '';
+  const abs = Math.abs(value).toFixed(1).replace('.', ',');
+  return `${sign}${abs}`;
+}
+
+function formatStreakRange(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${startIso} → ${endIso}`;
+  }
+  if (startIso === endIso) {
+    return `le ${formatShortDate(start)}`;
+  }
+  // If start and end share a year, drop the year from the start (less noise).
+  if (start.getFullYear() === end.getFullYear()) {
+    return `du ${start.getDate()} ${SHORT_MONTHS_FR[start.getMonth()]} au ${formatShortDate(end)}`;
+  }
+  return `du ${formatShortDate(start)} au ${formatShortDate(end)}`;
+}
+
+function formatShortDate(d: Date): string {
+  return `${d.getDate()} ${SHORT_MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 const SCORE_STROKE: Record<MoodScore, string> = {

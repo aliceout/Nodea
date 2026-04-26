@@ -1,8 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bars3Icon } from '@heroicons/react/24/outline';
+import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
 
-import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
+import { moodClient } from '@/core/api/modules/mood';
+import {
+  useNodeaStore,
+  selectMainKey,
+  selectModules,
+  selectUser,
+} from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHomepage from './Empty';
@@ -33,6 +40,7 @@ export default function HomePage() {
   const forceEmpty = searchParams.get('empty') === '1';
 
   const displayName = useMemo(() => preferredName(user), [user]);
+  const moodEntries = useMoodEntries();
 
   const formattedDate = useMemo(() => {
     const now = new Date();
@@ -63,11 +71,76 @@ export default function HomePage() {
       />
 
       <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-        <PrimaryColumn name={displayName} />
-        <SideColumn />
+        <PrimaryColumn name={displayName} moodEntries={moodEntries} />
+        <SideColumn moodEntries={moodEntries} />
       </div>
     </div>
   );
+}
+
+/**
+ * Lite shape of a Mood entry consumed by the Home blocks (`MoodBlock`,
+ * `ToSeeList`). Stays in this file so the heavier `recordToEntry`
+ * inside `Mood/index.tsx` can keep its richer shape (positives,
+ * comments, formatted labels) without leaking into Home.
+ */
+interface MoodEntryLite {
+  dateIso: string;
+  score: MoodScore;
+  /** ISO timestamp from the server — used by `ToSeeList` to display
+   *  `HH:MM` next to a checked Mood task. */
+  createdAt: string;
+}
+
+const MOOD_VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
+
+/**
+ * One-shot fetch + projection of the user's Mood entries. Re-runs
+ * whenever `moodVersion` is bumped (the Composer's MoodBody
+ * increments it after a successful create), so newly saved entries
+ * appear on Home without a page reload. Failures are silenced — the
+ * Mood page surfaces the real error.
+ */
+function useMoodEntries(): MoodEntryLite[] {
+  const mainKey = useNodeaStore(selectMainKey);
+  const modules = useNodeaStore(selectModules);
+  const moduleUserId = modules['mood']?.moduleUserId ?? null;
+  const moodVersion = useNodeaStore((s) => s.moodVersion);
+
+  const [entries, setEntries] = useState<MoodEntryLite[]>([]);
+
+  useEffect(() => {
+    if (!mainKey || !moduleUserId) return undefined;
+    let cancelled = false;
+    moodClient
+      .list(moduleUserId, mainKey)
+      .then((records) => {
+        if (cancelled) return;
+        const lite: MoodEntryLite[] = [];
+        for (const r of records) {
+          const p = r.payload;
+          const dateIso =
+            p.date && /^\d{4}-\d{2}-\d{2}/.test(p.date)
+              ? p.date.slice(0, 10)
+              : r.createdAt.slice(0, 10);
+          if (!MOOD_VALID_SCORES.has(p.mood_score)) continue;
+          lite.push({
+            dateIso,
+            score: p.mood_score as MoodScore,
+            createdAt: r.createdAt,
+          });
+        }
+        setEntries(lite);
+      })
+      .catch(() => {
+        // Silent on Home — the Mood page surfaces the real error.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mainKey, moduleUserId, moodVersion]);
+
+  return entries;
 }
 
 /** Display name preference: `username` if set, else email local-part. */
@@ -137,9 +210,10 @@ function Topbar({
 
 interface PrimaryColumnProps {
   name: string;
+  moodEntries: ReadonlyArray<MoodEntryLite>;
 }
 
-function PrimaryColumn({ name }: PrimaryColumnProps) {
+function PrimaryColumn({ name, moodEntries }: PrimaryColumnProps) {
   return (
     <section className="flex min-h-0 min-w-0 flex-col">
       <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
@@ -147,51 +221,124 @@ function PrimaryColumn({ name }: PrimaryColumnProps) {
       </h1>
       <p className="mt-1 mb-[22px] text-[14px] text-muted">Trois choses à voir aujourd&rsquo;hui.</p>
 
-      <ToSeeList />
+      <ToSeeList moodEntries={moodEntries} />
       <RecentMood />
       <RecentPassage />
     </section>
   );
 }
 
-interface TaskRow {
+interface MockTask {
   label: string;
   meta: string;
-  /** Time displayed on the right when the row is checked. */
   doneAt: string;
 }
 
-const TASKS: TaskRow[] = [
-  { label: 'Mood du jour saisi', meta: 'note 7,8 · café, travail, marche', doneAt: '08:42' },
+/** Other "À voir" tasks. Still mocked while Library + Habits aren't
+ *  wired through — clicking the checkbox toggles the local state.
+ *  When the matching modules go live, swap them for real signals
+ *  the same way the Mood task already is. */
+const MOCK_TASKS: ReadonlyArray<MockTask> = [
   { label: 'Lire 30 minutes', meta: 'Slow Productivity · p. 54 →', doneAt: '08:42' },
   { label: 'Marche du soir', meta: 'Habit · 12 jours d’affilée', doneAt: '08:42' },
 ];
 
-function ToSeeList() {
-  // First task pre-checked to mirror the design.
-  const [checked, setChecked] = useState<Record<number, boolean>>({ 0: true });
+interface ToSeeListProps {
+  moodEntries: ReadonlyArray<MoodEntryLite>;
+}
 
-  function toggle(index: number): void {
-    setChecked((prev) => ({ ...prev, [index]: !prev[index] }));
+function ToSeeList({ moodEntries }: ToSeeListProps) {
+  const openComposer = useNodeaStore((s) => s.openComposer);
+
+  // Today's mood entry, if any. Derived from the lifted Home hook so
+  // the same fetch powers the side-column MoodBlock.
+  const todayMood = useMemo(() => {
+    const todayIso = toIsoDate(new Date());
+    return moodEntries.find((e) => e.dateIso === todayIso) ?? null;
+  }, [moodEntries]);
+
+  // Mock tasks keep a small toggle so the design still demos
+  // interactivity. Mood task is derived, not toggled.
+  const [mockChecked, setMockChecked] = useState<Record<number, boolean>>({});
+  function toggleMock(index: number): void {
+    setMockChecked((prev) => ({ ...prev, [index]: !prev[index] }));
   }
+
+  const moodMeta = todayMood
+    ? `note ${signedScore(todayMood.score)}`
+    : 'Pas encore saisi aujourd’hui';
 
   return (
     <div>
       <SectionLabel>À voir</SectionLabel>
       <ul className="-mt-px">
-        {TASKS.map((task, index) => {
-          const isChecked = !!checked[index];
+        {/* Mood task — dynamic */}
+        <li
+          className="animate-slide-in group flex items-baseline gap-3 border-b border-hair py-2.5"
+          style={{ animationDelay: '0ms' }}
+        >
+          <span
+            role="img"
+            aria-label={todayMood ? 'Mood saisi' : 'Mood pas encore saisi'}
+            className={cn(
+              'flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full border-[1.5px] transition-colors duration-200',
+              todayMood ? 'border-accent bg-accent' : 'border-muted-soft',
+            )}
+          >
+            {todayMood ? (
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path
+                  d="M2 6.5l3 3 5-7"
+                  stroke="#fff"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : null}
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <div
+              className={cn(
+                'text-[14.5px] font-medium transition-colors duration-200',
+                todayMood ? 'text-muted line-through' : 'text-ink',
+              )}
+            >
+              Mood du jour saisi
+            </div>
+            <div className="mt-0.5 text-[12.5px] text-muted">{moodMeta}</div>
+          </div>
+
+          {todayMood ? (
+            <span className="text-[11px] tabular-nums text-muted">
+              {formatTimeFromIso(todayMood.createdAt)}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openComposer('mood')}
+              className="cursor-pointer rounded-md border border-hair bg-bg px-2 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-accent hover:text-ink"
+            >
+              + Saisir
+            </button>
+          )}
+        </li>
+
+        {/* Mock tasks (Library + Habits not wired yet) */}
+        {MOCK_TASKS.map((task, index) => {
+          const isChecked = !!mockChecked[index];
           return (
             <li
               key={task.label}
               className="animate-slide-in group flex items-baseline gap-3 border-b border-hair py-2.5 last:border-b-0"
-              style={{ animationDelay: `${index * 80}ms` }}
+              style={{ animationDelay: `${(index + 1) * 80}ms` }}
             >
               <button
                 type="button"
                 role="checkbox"
                 aria-checked={isChecked}
-                onClick={() => toggle(index)}
+                onClick={() => toggleMock(index)}
                 className={cn(
                   'flex h-4 w-4 shrink-0 translate-y-0.5 cursor-pointer items-center justify-center rounded-full border-[1.5px] transition-[border-color,background,transform] duration-200',
                   isChecked
@@ -233,6 +380,18 @@ function ToSeeList() {
       </ul>
     </div>
   );
+}
+
+function signedScore(s: MoodScore): string {
+  return Number(s) > 0 ? `+${s}` : s;
+}
+
+function formatTimeFromIso(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
 }
 
 function RecentMood() {
@@ -285,14 +444,136 @@ function RecentPassage() {
   );
 }
 
-function SideColumn() {
+interface SideColumnProps {
+  moodEntries: ReadonlyArray<MoodEntryLite>;
+}
+
+function SideColumn({ moodEntries }: SideColumnProps) {
   return (
     <aside className="flex min-w-0 flex-col gap-6">
+      <MoodBlock entries={moodEntries} />
       <HabitsBlock />
       <IntentionsBlock />
       <ReadingBlock />
     </aside>
   );
+}
+
+const MOOD_FRISE_DAYS = 14;
+
+/**
+ * Same colour ramp as the Mood page's `SCORE_FILL` (kept duplicated
+ * because the Mood page doesn't export it). Update both if the
+ * tones drift — see `packages/web/src/app/flow/Mood/index.tsx`.
+ */
+const MOOD_BLOCK_FILL: Record<MoodScore, string> = {
+  '2': 'bg-accent',
+  '1': 'bg-accent-soft',
+  '0': 'bg-hair',
+  '-1': 'bg-low-soft',
+  '-2': 'bg-low',
+};
+
+interface MoodFriseCell {
+  dateIso: string;
+  score?: MoodScore;
+  isToday: boolean;
+}
+
+/**
+ * 14-day mood strip on Home. Reads from the lifted `useMoodEntries`
+ * hook on the Home parent — the same fetch powers `ToSeeList`'s
+ * dynamic Mood task. Days without an entry render as a faint
+ * outline so gaps stay visible without faking a zero.
+ *
+ * Smaller-by-design than the Mood page's 52-week frise — this is
+ * a glance, not a chart. Click-through could land on `/flow/mood`
+ * later if we want a navigable version.
+ */
+function MoodBlock({ entries }: { entries: ReadonlyArray<MoodEntryLite> }) {
+  const cells = useMemo<MoodFriseCell[]>(() => {
+    const byDate = new Map<string, MoodScore>();
+    for (const e of entries) byDate.set(e.dateIso, e.score);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const out: MoodFriseCell[] = [];
+    for (let i = MOOD_FRISE_DAYS - 1; i >= 0; i -= 1) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const iso = toIsoDate(d);
+      const score = byDate.get(iso);
+      const cell: MoodFriseCell = { dateIso: iso, isToday: i === 0 };
+      if (score) cell.score = score;
+      out.push(cell);
+    }
+    return out;
+  }, [entries]);
+
+  const stats = useMemo(() => {
+    const scored = cells.filter((c): c is MoodFriseCell & { score: MoodScore } => !!c.score);
+    if (scored.length === 0) return { count: 0, avg: null as number | null };
+    const sum = scored.reduce((s, c) => s + Number(c.score), 0);
+    return { count: scored.length, avg: sum / scored.length };
+  }, [cells]);
+
+  return (
+    <section>
+      <div className="mb-2 flex items-baseline justify-between">
+        <SectionLabel>Mood</SectionLabel>
+        {stats.avg !== null ? (
+          <span className="text-[12px] font-semibold tabular-nums text-accent">
+            {formatMoodAvg(stats.avg)}
+          </span>
+        ) : null}
+      </div>
+      <div
+        className="grid gap-[3px]"
+        style={{ gridTemplateColumns: `repeat(${MOOD_FRISE_DAYS}, minmax(0, 1fr))` }}
+        aria-hidden="true"
+      >
+        {cells.map((c) =>
+          c.score ? (
+            <span
+              key={c.dateIso}
+              title={`${c.dateIso} · ${c.score}`}
+              className={cn(
+                'aspect-square rounded-[2px]',
+                MOOD_BLOCK_FILL[c.score],
+                c.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
+              )}
+            />
+          ) : (
+            <span
+              key={c.dateIso}
+              className={cn(
+                'aspect-square rounded-[2px] border border-hair/70',
+                c.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
+              )}
+            />
+          ),
+        )}
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted">
+        <span>
+          {stats.count} {stats.count === 1 ? 'entrée' : 'entrées'} · {MOOD_FRISE_DAYS} j
+        </span>
+        {stats.avg !== null ? <span>moyenne {formatMoodAvg(stats.avg)}</span> : null}
+      </div>
+    </section>
+  );
+}
+
+function toIsoDate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatMoodAvg(avg: number): string {
+  const sign = avg > 0 ? '+' : avg < 0 ? '−' : '';
+  const abs = Math.abs(avg).toFixed(1).replace('.', ',');
+  return `${sign}${abs}`;
 }
 
 function HabitsBlock() {

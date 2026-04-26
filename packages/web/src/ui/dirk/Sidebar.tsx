@@ -1,6 +1,18 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowRightOnRectangleIcon,
+  BookOpenIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  Cog6ToothIcon,
+  DocumentTextIcon,
+  FireIcon,
+  HeartIcon,
+  HomeIcon,
+  ShieldCheckIcon,
+} from '@heroicons/react/24/outline';
 
 import { useSession } from '@/core/auth/use-session';
 import {
@@ -29,32 +41,22 @@ import ThemeToggle from '@/ui/dirk/ThemeToggle';
 interface NavItem {
   id: string;
   label: string;
-  count?: number | string;
   /** Override the URL — defaults to `/flow/${id}` when omitted. */
   href?: string;
+  /** Heroicon to render before the label. Main items only — sub-items
+   * (Library / Review categories) sit under their group eyebrow and
+   * stay icon-less for visual hierarchy. */
+  icon?: typeof HomeIcon;
 }
 
-/* Counters are placeholders until we wire real data. The handoff
- * mocks them ("116 / 42 / 5 / 4") so the sidebar reads as designed.
- * Replace with selectors over the entries slices once available. */
 const MAIN_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Aujourd’hui', count: 3 },
-  { id: 'mood', label: 'Mood', count: 116 },
-  { id: 'passage', label: 'Passages', count: 42 },
-  { id: 'goals', label: 'Goals', count: 5 },
-  { id: 'habits', label: 'Habits', count: 4 },
-];
-
-const LIBRARY_ITEMS: NavItem[] = [
-  { id: 'library', label: 'En cours', count: 3 },
-  { id: 'library-toread', label: 'À lire', count: 14, href: '/flow/library' },
-  { id: 'library-done', label: 'Terminés', count: 38, href: '/flow/library' },
-];
-
-const REVIEW_ITEMS: NavItem[] = [
-  { id: 'review', label: 'Cette semaine' },
-  { id: 'review-month', label: 'Ce mois', href: '/flow/review' },
-  { id: 'review-year', label: 'L’année', href: '/flow/review' },
+  { id: 'home', label: 'Aujourd’hui', icon: HomeIcon },
+  { id: 'mood', label: 'Mood', icon: HeartIcon },
+  { id: 'journal', label: 'Journal', icon: DocumentTextIcon },
+  { id: 'goals', label: 'Goals', icon: CheckCircleIcon },
+  { id: 'habits', label: 'Habits', icon: FireIcon },
+  { id: 'library', label: 'Library', icon: BookOpenIcon },
+  { id: 'review', label: 'Review', icon: CalendarIcon },
 ];
 
 interface SidebarShellProps {
@@ -134,11 +136,9 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
   const mainVisible = MAIN_ITEMS.filter(
     (item) => item.id === 'home' || enabledIds.has(item.id),
   );
-  const showLibrary = enabledIds.has('library');
-  const showReview = enabledIds.has('review');
 
   return (
-    <nav className="flex w-full flex-col gap-0.5 px-3 py-5">
+    <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
       <SidebarHeader />
 
       <div className="flex flex-col gap-0.5">
@@ -151,32 +151,6 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           />
         ))}
       </div>
-
-      {showLibrary ? (
-        <SidebarSection title="Library">
-          {LIBRARY_ITEMS.map((item) => (
-            <SidebarItem
-              key={item.id}
-              item={item}
-              active={current === 'library' && item.id === 'library'}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </SidebarSection>
-      ) : null}
-
-      {showReview ? (
-        <SidebarSection title="Review">
-          {REVIEW_ITEMS.map((item) => (
-            <SidebarItem
-              key={item.id}
-              item={item}
-              active={current === 'review' && item.id === 'review'}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </SidebarSection>
-      ) : null}
 
       <div className="flex-1" />
       <SidebarFooter />
@@ -203,6 +177,7 @@ interface SidebarItemProps {
 function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
   const navigate = useNavigate();
   const href = item.href ?? `/flow/${item.id}`;
+  const Icon = item.icon;
 
   return (
     <button
@@ -214,41 +189,18 @@ function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
       data-active={active}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left transition-[background-color,color,transform] duration-200',
+        'group flex w-full items-center rounded-md px-2.5 py-1.5 text-left transition-[background-color,color,transform] duration-200',
         'text-[13.5px] text-ink-soft',
         active
           ? 'bg-accent text-white'
           : 'hover:translate-x-0.5 hover:bg-bg hover:text-ink',
       )}
     >
-      <span>{item.label}</span>
-      {item.count !== undefined ? (
-        <span
-          className={cn(
-            'text-[12px] tabular-nums',
-            active ? 'text-white/85' : 'text-muted',
-          )}
-        >
-          {item.count}
-        </span>
-      ) : null}
+      <span className="flex min-w-0 items-center gap-2.5">
+        {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
+        <span className="truncate">{item.label}</span>
+      </span>
     </button>
-  );
-}
-
-interface SidebarSectionProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-function SidebarSection({ title, children }: SidebarSectionProps) {
-  return (
-    <>
-      <div className="px-2.5 pb-1.5 pt-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted">
-        {title}
-      </div>
-      <div className="flex flex-col gap-0.5">{children}</div>
-    </>
   );
 }
 
@@ -269,102 +221,71 @@ function SidebarFooter() {
   );
 }
 
+/**
+ * Direct icon strip — settings (→ `Mon compte` with all its
+ * Préférences / Modules / Identité tabs), an admin-only shield
+ * shortcut, and a logout. The earlier dropdown indirection was
+ * dropped: theme switch lives in the sidebar footer, the rest of
+ * Mon compte is one click away via the cog.
+ */
 function UserMenu() {
   const user = useNodeaStore(selectUser);
   const session = useSession();
   const navigate = useNavigate();
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  const displayName =
-    user?.username ||
-    user?.email?.split('@')[0] ||
-    t('layout.header.defaultUsername', { defaultValue: 'moi' });
   const isAdmin = user?.role === 'admin';
 
-  useEffect(() => {
-    if (!open) return undefined;
-    function handleDocMouseDown(event: MouseEvent): void {
-      if (!rootRef.current) return;
-      if (rootRef.current.contains(event.target as Node)) return;
-      setOpen(false);
-    }
-    function handleKey(event: KeyboardEvent): void {
-      if (event.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', handleDocMouseDown);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleDocMouseDown);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
-
-  function go(path: string): void {
-    setOpen(false);
-    navigate(path);
-  }
-
   async function handleSignOut(): Promise<void> {
-    setOpen(false);
     await session.logout();
     navigate('/login', { replace: true });
   }
 
   return (
-    <div ref={rootRef} className="relative ml-auto">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="rounded px-1 py-0.5 text-[11px] tabular-nums text-muted transition-colors hover:text-ink"
-      >
-        {displayName}
-      </button>
-
-      {open ? (
-        <div
-          role="menu"
-          className="animate-fade-up absolute right-0 top-full z-50 mt-1 w-48 overflow-hidden rounded-md border border-hair bg-bg shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
-        >
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => go('/flow/account')}
-            className="block w-full px-3 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink"
-          >
-            {t('layout.userMenu.profile', { defaultValue: 'Mon compte' })}
-          </button>
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => go('/flow/settings')}
-            className="block w-full px-3 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink"
-          >
-            {t('layout.userMenu.settings', { defaultValue: 'Paramètres' })}
-          </button>
-          {isAdmin ? (
-            <button
-              role="menuitem"
-              type="button"
-              onClick={() => go('/flow/admin')}
-              className="block w-full px-3 py-2 text-left text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink"
-            >
-              {t('layout.userMenu.admin', { defaultValue: 'Administration' })}
-            </button>
-          ) : null}
-          <button
-            role="menuitem"
-            type="button"
-            onClick={handleSignOut}
-            className="block w-full border-t border-hair px-3 py-2 text-left text-[13px] text-danger transition-colors hover:bg-danger/5"
-          >
-            {t('layout.userMenu.signOut', { defaultValue: 'Se déconnecter' })}
-          </button>
-        </div>
+    <div className="ml-auto flex items-center gap-0.5">
+      <UserMenuIcon
+        icon={Cog6ToothIcon}
+        label={t('layout.userMenu.profile', { defaultValue: 'Mon compte' })}
+        onClick={() => navigate('/flow/account')}
+      />
+      {isAdmin ? (
+        <UserMenuIcon
+          icon={ShieldCheckIcon}
+          label={t('layout.userMenu.admin', { defaultValue: 'Administration' })}
+          onClick={() => navigate('/flow/admin')}
+        />
       ) : null}
+      <UserMenuIcon
+        icon={ArrowRightOnRectangleIcon}
+        label={t('layout.userMenu.signOut', { defaultValue: 'Se déconnecter' })}
+        tone="danger"
+        onClick={handleSignOut}
+      />
     </div>
+  );
+}
+
+interface UserMenuIconProps {
+  icon: typeof Cog6ToothIcon;
+  label: string;
+  tone?: 'default' | 'danger';
+  onClick: () => void;
+}
+
+function UserMenuIcon({ icon: Icon, label, tone = 'default', onClick }: UserMenuIconProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors',
+        tone === 'danger'
+          ? 'text-muted hover:bg-danger/10 hover:text-danger'
+          : 'text-muted hover:bg-bg-2 hover:text-ink',
+      )}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </button>
   );
 }

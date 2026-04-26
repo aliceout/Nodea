@@ -31,15 +31,6 @@ declare module '@/ui/branding/LogoLong.jsx' {
   export default LogoLong;
 }
 
-/* --------------------------------------------------------------------
- * Legacy module entry points — imported lazily from `modules_list.tsx`.
- * Vite resolves the `.jsx`; TS (allowJs: false) needs the shape stub.
- * ------------------------------------------------------------------ */
-declare module '@/app/flow/Goals' {
-  import type { ComponentType } from 'react';
-  const GoalsIndex: ComponentType;
-  export default GoalsIndex;
-}
 
 /* --------------------------------------------------------------------
  * i18n provider — named `useI18n` hook consumed from TSX

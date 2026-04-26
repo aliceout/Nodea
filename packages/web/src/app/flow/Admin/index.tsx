@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Subheader from '@/ui/layout/headers/Subheader';
-import SectionHeader from '@/ui/atoms/typography/SectionHeader';
+import { Bars3Icon } from '@heroicons/react/24/outline';
+
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import {
@@ -12,22 +12,36 @@ import {
   type AdminUserRow,
   type AdminInviteRow,
 } from '@/core/api/client';
+import { cn } from '@/lib/utils';
 import UserTable from './components/UserTable';
 import InviteCodeManager, { type MintedInvite } from './components/InviteCode';
 import AnnouncementsManager from './components/AnnouncementsManager';
+import SourcesPanel from './components/SourcesPanel';
 
 /**
- * Admin page.
+ * Admin — Direction K · Sauge.
  *
- * Uses the new `/admin/*` endpoints exclusively. Announcements now have
- * a dedicated table and CRUD surface (#19 / R10) — see
- * `AnnouncementsManager`. Email-based password reset is still tracked
- * in #22 / R13 (SMTP greenfield).
+ * Sticky topbar like Mood / Account / Passages, single column at
+ * 880px, three tabs: Utilisateur·ice·s · Codes d'invitation ·
+ * Annonces. Same tab interaction model as Account: keyed
+ * `animate-fade-up` so each switch replays the entrance.
  */
+
+type Tab = 'users' | 'invites' | 'announcements' | 'sources';
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'users', label: 'Utilisateur·ice·s' },
+  { id: 'invites', label: "Codes d'invitation" },
+  { id: 'announcements', label: 'Annonces' },
+  { id: 'sources', label: 'Sources' },
+];
+
 export default function AdminPage() {
   const { t } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const currentUser = useNodeaStore(selectUser);
 
+  const [tab, setTab] = useState<Tab>('users');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [invites, setInvites] = useState<AdminInviteRow[]>([]);
   const [mintedCodes, setMintedCodes] = useState<MintedInvite[]>([]);
@@ -88,7 +102,6 @@ export default function AdminPage() {
         ...prev,
       ]);
       setCopySuccess(`Code généré : ${res.code}`);
-      // Also refresh the server-known list.
       const i = await apiAdminListInvites();
       setInvites(i);
     } catch {
@@ -118,75 +131,146 @@ export default function AdminPage() {
     }
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="bg-slate-50 p-8 text-red-500 dark:bg-slate-900 dark:text-red-300">
-        {t('admin.sections.restricted', { defaultValue: 'Accès réservé aux admins.' })}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-slate-50 py-12 text-center text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-        {t('admin.states.loading', { defaultValue: 'Chargement…' })}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-slate-50 py-12 text-center text-red-500 dark:bg-slate-900 dark:text-red-300">
-        {error}
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full bg-slate-50 transition-colors dark:bg-slate-900">
-      <Subheader />
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
-        <section>
-          <SectionHeader
-            title={t('admin.sections.users.title', { defaultValue: 'Utilisateur·ice·s' })}
-            description={t('admin.sections.users.description', {
-              defaultValue: 'Liste et gestion des comptes.',
-            })}
-          />
-          {currentUser ? (
-            <UserTable users={users} currentUserId={currentUser.id} onDelete={handleDeleteUser} />
-          ) : null}
-        </section>
+    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
+      <Topbar onOpenMenu={() => setMobileMenuOpen(true)} />
 
-        <section>
-          <SectionHeader
-            title={t('admin.sections.invites.title', { defaultValue: "Codes d'invitation" })}
-            description={t('admin.sections.invites.description', {
-              defaultValue: 'Générer un code à transmettre à un·e nouveau·elle utilisateur·ice.',
-            })}
-          />
-          <InviteCodeManager
-            mintedCodes={mintedCodes}
-            unusedInvites={invites}
-            generating={generating}
-            copySuccess={copySuccess}
-            onGenerate={handleGenerateInvite}
-            onCopy={handleCopy}
-            onDelete={handleDeleteInvite}
-          />
-        </section>
+      <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
+        <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
+          Administration
+        </h1>
+        <div className="-mx-1 flex flex-wrap gap-1">
+          {TABS.map((tt) => {
+            const active = tab === tt.id;
+            return (
+              <button
+                key={tt.id}
+                type="button"
+                onClick={() => setTab(tt.id)}
+                data-active={active}
+                className={cn(
+                  'rounded-md px-3 py-[7px] text-[13px] transition-[background-color,color] duration-200',
+                  active
+                    ? 'bg-bg-2 font-semibold text-ink'
+                    : 'text-muted hover:bg-bg-2 hover:text-ink',
+                )}
+              >
+                {tt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        <section>
-          <SectionHeader
-            title={t('admin.sections.announcements.title', { defaultValue: 'Annonces' })}
-            description={t('admin.sections.announcements.description', {
-              defaultValue:
-                'Messages publiés sur la page d’accueil. Non chiffrés — visibles par tout le monde.',
-            })}
-          />
-          <AnnouncementsManager />
-        </section>
+      <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">
+        <div className="max-w-[880px]">
+          {!isAdmin ? (
+            <p
+              role="alert"
+              className="border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+            >
+              {t('admin.sections.restricted', { defaultValue: 'Accès réservé aux admins.' })}
+            </p>
+          ) : loading ? (
+            <p className="border-b border-hair py-6 text-[13px] italic text-muted">
+              {t('admin.states.loading', { defaultValue: 'Chargement…' })}
+            </p>
+          ) : error ? (
+            <p
+              role="alert"
+              className="border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+            >
+              {error}
+            </p>
+          ) : tab === 'users' ? (
+            <TabIntro
+              description={t('admin.sections.users.description', {
+                defaultValue: 'Liste et gestion des comptes.',
+              })}
+            >
+              {currentUser ? (
+                <UserTable
+                  users={users}
+                  currentUserId={currentUser.id}
+                  onDelete={handleDeleteUser}
+                />
+              ) : null}
+            </TabIntro>
+          ) : tab === 'invites' ? (
+            <TabIntro
+              description={t('admin.sections.invites.description', {
+                defaultValue:
+                  'Générer un code à transmettre à un·e nouveau·elle utilisateur·ice.',
+              })}
+            >
+              <InviteCodeManager
+                mintedCodes={mintedCodes}
+                unusedInvites={invites}
+                generating={generating}
+                copySuccess={copySuccess}
+                onGenerate={handleGenerateInvite}
+                onCopy={handleCopy}
+                onDelete={handleDeleteInvite}
+              />
+            </TabIntro>
+          ) : tab === 'announcements' ? (
+            <TabIntro
+              description={t('admin.sections.announcements.description', {
+                defaultValue:
+                  'Messages publiés sur la page d’accueil. Non chiffrés — visibles par tout le monde.',
+              })}
+            >
+              <AnnouncementsManager />
+            </TabIntro>
+          ) : (
+            <TabIntro
+              description={t('admin.sections.sources.description', {
+                defaultValue:
+                  'Sources de métadonnées externes utilisées par les modules. Vérifie que chaque source répond et que les clés API sont actives.',
+              })}
+            >
+              <SourcesPanel />
+            </TabIntro>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+interface TopbarProps {
+  onOpenMenu: () => void;
+}
+
+function Topbar({ onOpenMenu }: TopbarProps) {
+  return (
+    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          aria-label="Ouvrir le menu"
+          className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink lg:hidden"
+        >
+          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <span className="text-[12px] tracking-[0.02em] text-muted">Administration</span>
+      </div>
+    </div>
+  );
+}
+
+function TabIntro({
+  description,
+  children,
+}: {
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">{description}</p>
+      {children}
+    </>
   );
 }

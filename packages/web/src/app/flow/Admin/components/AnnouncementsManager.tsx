@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { TrashIcon } from '@heroicons/react/24/outline';
+
 import {
   apiAdminListAnnouncements,
   apiAdminCreateAnnouncement,
@@ -7,14 +9,15 @@ import {
   isApiError,
 } from '@/core/api/client';
 import type { AnnouncementResponse } from '@nodea/shared';
+import { cn } from '@/lib/utils';
 
 const INITIAL_FORM = { title: '', body: '' };
 
 /**
- * Admin panel for the homepage announcement feed.
+ * Announcements panel — Direction K · Sauge.
  *
- * Wires to `/admin/announcements` (CRUD) with plaintext content — this
- * is the one admin-curated surface that is intentionally not E2E
+ * Wires to `/admin/announcements` (CRUD) with plaintext content —
+ * the one admin-curated surface that is intentionally NOT E2E
  * encrypted (see schema.ts). Inactive rows can be toggled back on
  * without deleting them, which preserves the audit trail.
  */
@@ -89,97 +92,112 @@ export default function AnnouncementsManager() {
   }
 
   return (
-    <section className="space-y-6">
-      <form
-        onSubmit={onSubmit}
-        className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
-      >
-        <h3 className="text-base font-semibold">Nouvelle annonce</h3>
-        <label className="block">
-          <span className="text-sm">Titre</span>
+    <div>
+      {/* New announcement form */}
+      <form onSubmit={onSubmit} className="mb-9">
+        <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+          Nouvelle annonce
+        </h3>
+
+        <div className="space-y-2.5">
           <input
             type="text"
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
             maxLength={200}
-            placeholder="Nouveau module disponible"
-            className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+            placeholder="Titre"
+            aria-label="Titre"
+            className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
-        </label>
-        <label className="block">
-          <span className="text-sm">Message</span>
           <textarea
             value={form.body}
             onChange={(e) => setForm((prev) => ({ ...prev, body: e.target.value }))}
             rows={4}
-            placeholder="Nous avons ajouté…"
-            className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+            placeholder="Message"
+            aria-label="Message"
+            className="block w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.55] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
-        </label>
-        <div className="flex items-center justify-between">
-          <p className="text-xs opacity-60">
-            Publiée immédiatement sur la page d'accueil des utilisateur·ice·s.
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11px] text-muted">
+            Publiée immédiatement sur la page d’accueil — visible par tout le monde.
           </p>
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
+            className="rounded-md bg-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? 'Publication…' : 'Publier'}
           </button>
         </div>
+
+        {error ? (
+          <p
+            role="alert"
+            className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
+          >
+            {error}
+          </p>
+        ) : null}
       </form>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+      {/* Existing announcements list */}
+      <div>
+        <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
           Annonces existantes
         </h3>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {loading ? <p className="text-sm opacity-60">Chargement…</p> : null}
-        {!loading && items.length === 0 ? (
-          <p className="text-sm opacity-60">Aucune annonce publiée.</p>
-        ) : null}
-        <ul className="space-y-2">
-          {items.map((row) => (
-            <li
-              key={row.id}
-              className={
-                'space-y-2 rounded border p-3 ' +
-                (row.active
-                  ? 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
-                  : 'border-slate-200 bg-slate-50 opacity-75 dark:border-slate-700 dark:bg-slate-800')
-              }
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h4 className="text-base font-semibold">{row.title}</h4>
-                  <p className="text-xs uppercase tracking-wide opacity-60">
-                    {new Date(row.createdAt).toLocaleString('fr-FR')} · {row.active ? 'actif' : 'inactif'}
-                  </p>
+        {loading ? (
+          <p className="border-b border-hair py-6 text-[13px] italic text-muted">Chargement…</p>
+        ) : items.length === 0 ? (
+          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
+            Aucune annonce publiée.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {items.map((row) => (
+              <li
+                key={row.id}
+                className={cn(
+                  'border-b border-hair py-3.5 last:border-b-0',
+                  !row.active && 'opacity-60',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="text-[14.5px] font-medium text-ink">{row.title}</h4>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-[0.04em] text-muted">
+                      {new Date(row.createdAt).toLocaleString('fr-FR')} ·{' '}
+                      {row.active ? 'actif' : 'inactif'}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void toggleActive(row)}
+                      className="cursor-pointer rounded-md border border-hair bg-transparent px-3 py-1 text-[11.5px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink"
+                    >
+                      {row.active ? 'Désactiver' : 'Activer'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(row.id)}
+                      aria-label="Supprimer"
+                      title="Supprimer"
+                      className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void toggleActive(row)}
-                    className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                  >
-                    {row.active ? 'Désactiver' : 'Activer'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete(row.id)}
-                    className="rounded p-1 text-xs text-red-600 hover:bg-red-50"
-                    aria-label="Supprimer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <p className="whitespace-pre-wrap text-sm">{row.body}</p>
-            </li>
-          ))}
-        </ul>
+                <p className="mt-2 whitespace-pre-wrap text-[13px] leading-[1.55] text-ink-soft">
+                  {row.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-    </section>
+    </div>
   );
 }
