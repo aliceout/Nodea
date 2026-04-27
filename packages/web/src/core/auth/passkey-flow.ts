@@ -466,6 +466,12 @@ export interface PasskeyLoginRawResult {
   wrappedKekIv: string | null;
   wrappedMainKey: string;
   wrappedMainKeyIv: string;
+  /** Phase 5C — when `users.security_mode != 'password_or_passkey'`,
+   *  the server emits a `mfa_pending` session instead of a `full`
+   *  one and surfaces the additional factors the client must drive
+   *  before the session is promoted. `false` = already full. */
+  needsMfa: boolean;
+  factorsNeeded: ReadonlyArray<'totp' | 'passkey' | 'password'>;
 }
 
 /**
@@ -513,6 +519,8 @@ export async function loginWithPasskey(
     wrappedKekIv: finishRes.wrappedKekIv,
     wrappedMainKey: finishRes.wrappedMainKey,
     wrappedMainKeyIv: finishRes.wrappedMainKeyIv,
+    needsMfa: finishRes.needsMfa,
+    factorsNeeded: finishRes.factorsNeeded,
   };
 }
 

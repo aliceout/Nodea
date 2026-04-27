@@ -46,6 +46,9 @@ import {
   type OpaqueLoginStartBody,
   type OpaqueLoginStartResponse,
   type OpaqueLoginFinishBody,
+  type OpaqueLoginFinishResponse,
+  type MfaTotpVerifyBody,
+  type MfaTotpVerifyResponse,
   type RecoveryCodeUpsertBody,
   type RecoverKekStartBody,
   type RecoverKekStartResponse,
@@ -61,6 +64,11 @@ import {
   type PasskeyLoginStartResponse,
   type PasskeyLoginFinishBody,
   type PasskeyLoginFinishResponse,
+  type TotpEnrollStartBody,
+  type TotpEnrollStartResponse,
+  type TotpEnrollVerifyBody,
+  type TotpManagementBody,
+  type TotpRegenerateBackupCodesResponse,
 } from '@nodea/shared';
 import type {
   RegisterActivateBody,
@@ -237,13 +245,45 @@ export async function apiLoginStart(
 /**
  * OPAQUE login step 2 — sends the client's `finishLoginRequest`
  * (computed locally from the `loginResponse` + the password). On
- * success the server emits a `nodea_session` cookie; the body is
- * just `{ id }` for the UI to use.
+ * success the server emits a session cookie; the body is a
+ * discriminated union (Auth-Roadmap Phase 5C):
+ *
+ *   - `needsMfa: false` → session is `full`, client follows the
+ *     normal post-login path (call `/auth/me`, etc.).
+ *   - `needsMfa: true` → session is `mfa_pending`. The body inlines
+ *     the wrap blobs the client needs to unwrap the KEK + main key
+ *     locally (since `/auth/me` refuses pending sessions); the
+ *     client must drive `/auth/mfa/totp/verify` next.
  */
 export async function apiLoginFinish(
   body: OpaqueLoginFinishBody,
-): Promise<{ id: string }> {
-  return request<{ id: string }>('POST', '/auth/login/finish', body);
+): Promise<OpaqueLoginFinishResponse> {
+  return request<OpaqueLoginFinishResponse>(
+    'POST',
+    '/auth/login/finish',
+    body,
+  );
+}
+
+/* ============================================================================
+ * Stepped MFA (Auth-Roadmap Phase 5C)
+ * ========================================================================== */
+
+/**
+ * Submit a TOTP code (or backup code in the same field) against the
+ * current `mfa_pending` session. On the response:
+ *
+ *   - `finalized: true` — the server promoted the session to `full`
+ *     and swapped the cookie. Client should call `/auth/me` to load
+ *     the public user shape and proceed.
+ *   - `finalized: false` — at least one factor still missing
+ *     (e.g. mode `maximum` may need a passkey-as-second-factor in
+ *     Phase 5D). The `missing` array drives the next step.
+ */
+export async function apiMfaTotpVerify(
+  body: MfaTotpVerifyBody,
+): Promise<MfaTotpVerifyResponse> {
+  return request<MfaTotpVerifyResponse>('POST', '/auth/mfa/totp/verify', body);
 }
 
 export async function apiLogout(): Promise<void> {
@@ -412,6 +452,40 @@ export async function apiPasskeyLoginFinish(
   return request<PasskeyLoginFinishResponse>(
     'POST',
     '/auth/passkey/login/finish',
+    body,
+  );
+}
+
+/* ============================================================================
+ * TOTP (Auth-Roadmap Phase 5B)
+ * ========================================================================== */
+
+export async function apiTotpEnrollStart(
+  body: TotpEnrollStartBody,
+): Promise<TotpEnrollStartResponse> {
+  return request<TotpEnrollStartResponse>('POST', '/auth/totp/enroll/start', body);
+}
+
+export async function apiTotpEnrollVerify(
+  body: TotpEnrollVerifyBody,
+): Promise<{ ok: true; enabledAt: string }> {
+  return request<{ ok: true; enabledAt: string }>(
+    'POST',
+    '/auth/totp/enroll/verify',
+    body,
+  );
+}
+
+export async function apiTotpDisable(body: TotpManagementBody): Promise<void> {
+  await request<void>('POST', '/auth/totp/disable', body);
+}
+
+export async function apiTotpRegenerateBackupCodes(
+  body: TotpManagementBody,
+): Promise<TotpRegenerateBackupCodesResponse> {
+  return request<TotpRegenerateBackupCodesResponse>(
+    'POST',
+    '/auth/totp/backup-codes/regenerate',
     body,
   );
 }

@@ -27,7 +27,8 @@ import {
   type PasskeyLoginStartResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { authFactors, sessions, users } from '../db/schema.ts';
+import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
+import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
 import {
   finishLogin as opaqueFinishLogin,
   opaqueReady,
@@ -588,13 +589,14 @@ authPasskeyRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
     }
   }
 
-  // Load the wrapped main key so the client can finish the unwrap
-  // dance without an extra /me round-trip.
+  // Load the wrapped main key + the user's security_mode so we can
+  // decide whether to emit a `full` session or step into MFA.
   const [account] = await db
     .select({
       id: users.id,
       wrappedMainKey: users.wrappedMainKey,
       wrappedMainKeyIv: users.wrappedMainKeyIv,
+      securityMode: users.securityMode,
     })
     .from(users)
     .where(eq(users.id, factor.userId))
@@ -622,6 +624,48 @@ authPasskeyRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
     })
     .where(eq(authFactors.id, factor.id));
 
+  // Stepped MFA gate (Auth-Roadmap Phase 5C, Auth-Spec §7.4): same
+  // logic as the password-first path but with `entryFactor=passkey`.
+  // Mode `maximum` is the case where the passkey-first user still
+  // needs password + TOTP; mode `always_totp` just needs TOTP.
+  const baseRequired = requiredFactorsForMode(
+    { securityMode: account.securityMode },
+    'passkey',
+  );
+  let needsMfa = baseRequired.length > 0;
+  if (needsMfa && baseRequired.includes('totp')) {
+    const [totpRow] = await db
+      .select({ enabledAt: mfaTotp.enabledAt })
+      .from(mfaTotp)
+      .where(eq(mfaTotp.userId, account.id))
+      .limit(1);
+    if (!totpRow || totpRow.enabledAt === null) {
+      // Same safety net as the password path: don't lock the user
+      // out if mode requires TOTP but it's not enrolled.
+      needsMfa = false;
+    }
+  }
+
+  if (needsMfa) {
+    const pendingSession = await createSession(account.id, {
+      kind: 'mfa_pending',
+      mfaFlags: { mfaPasskeyVerified: true },
+    });
+    await setSessionCookie(c, pendingSession.id, pendingSession.expiresAt);
+    const response: PasskeyLoginFinishResponse = {
+      userId: account.id,
+      credentialId: factor.credentialId,
+      prfSupported: factor.prfSupported,
+      wrappedKek: factor.wrappedKek,
+      wrappedKekIv: factor.wrappedKekIv,
+      wrappedMainKey: account.wrappedMainKey,
+      wrappedMainKeyIv: account.wrappedMainKeyIv,
+      needsMfa: true,
+      factorsNeeded: [...baseRequired],
+    };
+    return c.json(response);
+  }
+
   const session = await createSession(account.id);
   await setSessionCookie(c, session.id, session.expiresAt);
 
@@ -633,6 +677,8 @@ authPasskeyRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
     wrappedKekIv: factor.wrappedKekIv,
     wrappedMainKey: account.wrappedMainKey,
     wrappedMainKeyIv: account.wrappedMainKeyIv,
+    needsMfa: false,
+    factorsNeeded: [],
   };
   return c.json(response);
 });

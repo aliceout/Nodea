@@ -13,13 +13,17 @@ import {
   OpaqueLoginFinishBodySchema,
   type AuthMeResponse,
   type ChangePasswordStartResponse,
+  type OpaqueLoginFinishResponse,
   type OpaqueLoginStartResponse,
   type OpaquePasswordProof,
   type ResetPasswordStartResponse,
 } from '@nodea/shared';
+import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
 import { db } from '../db/client.ts';
 import {
   authFactors,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
   opaqueRecords,
   users,
   passwordResetTokens,
@@ -260,9 +264,72 @@ authRoutes.post('/login/finish', loginLimiter, async (c) => {
     return c.json({ error: 'account_not_activated' }, 403);
   }
 
-  const session = await createSession(user.id);
-  await setSessionCookie(c, session.id, session.expiresAt);
-  return c.json({ id: user.id });
+  // Stepped MFA gate (Auth-Roadmap Phase 5C, Auth-Spec §7.4): when
+  // the user's mode requires factors beyond password, mint a
+  // `mfa_pending` session with `mfa_password_verified=true` and
+  // return the wrap blobs the client needs to unwrap the KEK + main
+  // key locally (since `/auth/me` refuses pending sessions). The
+  // pending row is promoted to `full` by `/auth/mfa/totp/verify`
+  // once the remaining factors check out.
+  //
+  // We also gate on `mfa_totp.enabled_at` for the `always_totp` /
+  // `maximum` modes — a corrupted state where mode requires TOTP
+  // but the user has none enrolled would otherwise lock them out.
+  // If TOTP isn't actually enrolled, fall through to the full-
+  // session path (the user mode will be downgraded by the next
+  // disable-TOTP / Settings interaction).
+  const baseRequired = requiredFactorsForMode(user, 'password');
+  let needsMfa = baseRequired.length > 0;
+  if (needsMfa && baseRequired.includes('totp')) {
+    const [totpRow] = await db
+      .select({ enabledAt: mfaTotp.enabledAt })
+      .from(mfaTotp)
+      .where(eq(mfaTotp.userId, user.id))
+      .limit(1);
+    if (!totpRow || totpRow.enabledAt === null) {
+      // Mode demands TOTP but it's not actually enrolled — emit
+      // full session as a safety net rather than lock the user out
+      // permanently.
+      needsMfa = false;
+    }
+  }
+
+  if (
+    !needsMfa ||
+    user.wrappedMainKey === null ||
+    user.wrappedMainKeyIv === null ||
+    user.wrappedKekPassword === null ||
+    user.wrappedKekPasswordIv === null
+  ) {
+    // Fall-through path: legacy / password_or_passkey / safety net.
+    const session = await createSession(user.id);
+    await setSessionCookie(c, session.id, session.expiresAt);
+    const response: OpaqueLoginFinishResponse = {
+      needsMfa: false,
+      id: user.id,
+    };
+    return c.json(response);
+  }
+
+  // Stepped path: mfa_pending session with the primary factor
+  // already marked verified.
+  const pendingSession = await createSession(user.id, {
+    kind: 'mfa_pending',
+    mfaFlags: { mfaPasswordVerified: true },
+  });
+  await setSessionCookie(c, pendingSession.id, pendingSession.expiresAt);
+  const response: OpaqueLoginFinishResponse = {
+    needsMfa: true,
+    id: user.id,
+    factorsNeeded: baseRequired.filter(
+      (f): f is 'totp' | 'passkey' => f !== 'password',
+    ),
+    wrappedMainKey: user.wrappedMainKey,
+    wrappedMainKeyIv: user.wrappedMainKeyIv,
+    wrappedKekPassword: user.wrappedKekPassword,
+    wrappedKekPasswordIv: user.wrappedKekPasswordIv,
+  };
+  return c.json(response);
 });
 
 authRoutes.post('/logout', requireUser, async (c) => {
@@ -488,6 +555,29 @@ authRoutes.get('/me', requireUser, async (c) => {
       ),
     );
 
+  // Phase 5: TOTP enabled state + remaining backup codes. `enabled_at`
+  // is NOT NULL only after the user passed the verify step (Auth-Spec
+  // §8.2) — pending enrollments read as "not enabled" so the UI can
+  // resume / restart the flow.
+  const [totpRow] = await db
+    .select({ enabledAt: mfaTotp.enabledAt })
+    .from(mfaTotp)
+    .where(eq(mfaTotp.userId, user.id))
+    .limit(1);
+  const totpEnabled = totpRow?.enabledAt != null;
+
+  // The user has at most 10 backup codes (Auth-Spec §8.1) so loading
+  // all of them and counting unused rows in JS is cheaper + simpler
+  // than two `count()` queries with a `usedAt IS NULL` predicate.
+  let totpBackupCodesRemaining = 0;
+  if (totpEnabled) {
+    const rows = await db
+      .select({ usedAt: mfaTotpRecoveryCodes.usedAt })
+      .from(mfaTotpRecoveryCodes)
+      .where(eq(mfaTotpRecoveryCodes.userId, user.id));
+    totpBackupCodesRemaining = rows.filter((r) => r.usedAt === null).length;
+  }
+
   const body: AuthMeResponse = {
     id: user.id,
     email: user.email,
@@ -502,6 +592,9 @@ authRoutes.get('/me', requireUser, async (c) => {
     recoveryCodeSet: user.recoveryCodeHash !== null,
     passkeysCount: totalRow?.value ?? 0,
     passkeysPrfCount: prfRow?.value ?? 0,
+    totpEnabled,
+    totpBackupCodesRemaining,
+    securityMode: user.securityMode,
   };
   return c.json(body);
 });

@@ -54,6 +54,12 @@ export interface SessionUser {
   /** Subset that are PRF-capable. Required >= 1 to activate mode
    *  `maximum` (Auth-Spec §6.1). */
   passkeysPrfCount: number;
+  /** True when TOTP is fully enabled (Auth-Roadmap Phase 5). */
+  totpEnabled: boolean;
+  /** Unused backup codes left. UI warns at 0. */
+  totpBackupCodesRemaining: number;
+  /** Per-user security policy (Auth-Spec §6.1). */
+  securityMode: 'password_or_passkey' | 'always_totp' | 'maximum';
 }
 
 export type KeyStatus = 'idle' | 'ready' | 'missing' | 'error';

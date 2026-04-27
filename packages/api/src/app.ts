@@ -2,9 +2,11 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
+import { authMfaRoutes } from './routes/auth-mfa.ts';
 import { authPasskeyRoutes } from './routes/auth-passkey.ts';
 import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
+import { authTotpRoutes } from './routes/auth-totp.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { announcementsRoutes } from './routes/announcements.ts';
 import { modulesConfigRoutes } from './routes/modules-config.ts';
@@ -56,6 +58,14 @@ export function buildApp() {
   // mounted before the general `authRoutes` so /auth/passkey/* wins
   // the trie before any catch-alls in the legacy router.
   app.route('/auth', authPasskeyRoutes);
+  // TOTP routes (Auth-Roadmap Phase 5B). Same ordering — mounted
+  // before `authRoutes` so /auth/totp/* + /auth/mfa/totp/* hit the
+  // dedicated handlers first.
+  app.route('/auth', authTotpRoutes);
+  // Stepped-MFA routes (Auth-Roadmap Phase 5C) — `/auth/mfa/*`
+  // operates on `mfa_pending` sessions only. Mounted before the
+  // catch-all `authRoutes` so the trie picks the dedicated handlers.
+  app.route('/auth', authMfaRoutes);
   app.route('/auth', authRoutes);
   app.route('/admin', adminRoutes);
   app.route('/announcements', announcementsRoutes);

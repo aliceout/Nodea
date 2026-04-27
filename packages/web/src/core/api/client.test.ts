@@ -88,6 +88,9 @@ describe('API client', () => {
       recoveryCodeSet: false,
       passkeysCount: 0,
       passkeysPrfCount: 0,
+      totpEnabled: false,
+      totpBackupCodesRemaining: 0,
+      securityMode: 'password_or_passkey',
     });
 
     const me = await apiMe();

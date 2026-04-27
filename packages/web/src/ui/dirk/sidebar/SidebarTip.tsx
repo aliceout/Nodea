@@ -186,3 +186,27 @@ export function SidebarTipPasskey() {
     </SidebarTip>
   );
 }
+
+/**
+ * Specific instance: the « activer TOTP » nudge shown to authenticated
+ * users who haven't enrolled TOTP. Same `warning` tone + dismissable
+ * as the passkey tip — both are opt-in security upgrades, not
+ * data-loss prevention.
+ */
+export function SidebarTipTotp() {
+  return (
+    <SidebarTip
+      title="Suggestion"
+      kind="warning"
+      dismissKey="nodea:home:tip-totp"
+    >
+      Active la 2FA (TOTP) pour ajouter une couche au login.{' '}
+      <Link
+        to="/totp"
+        className="cursor-pointer font-medium text-amber-700 transition-colors hover:underline dark:text-amber-200"
+      >
+        Activer →
+      </Link>
+    </SidebarTip>
+  );
+}

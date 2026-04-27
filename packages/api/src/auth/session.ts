@@ -27,13 +27,28 @@ export interface SessionRecord {
  * - `migrate`     : 30 min — wired in Phase 2 (lazy OPAQUE migration).
  */
 const REGISTER_TTL_SECONDS = 24 * 60 * 60;
+const MFA_PENDING_TTL_SECONDS = 5 * 60;
 
 export type SessionKind = 'full' | 'mfa_pending' | 'register' | 'migrate';
+
+/** Per-factor verification flags carried on `mfa_pending` rows.
+ *  At least one is set when the session is minted (the primary
+ *  factor that just succeeded); `/auth/mfa/*` routes flip the
+ *  remaining ones until `finalizeMfaSession` promotes to `full`. */
+export interface MfaVerifiedFlags {
+  mfaPasswordVerified?: boolean;
+  mfaPasskeyVerified?: boolean;
+  mfaTotpVerified?: boolean;
+}
 
 export interface CreateSessionOptions {
   kind?: SessionKind;
   /** Override the default TTL for this kind. Useful for tests. */
   ttlSeconds?: number;
+  /** Pre-set MFA verification flags (mfa_pending sessions only).
+   *  Phase 5C uses this to mint a pending row with the primary
+   *  factor (password OR passkey) already marked verified. */
+  mfaFlags?: MfaVerifiedFlags;
 }
 
 export async function createSession(
@@ -45,12 +60,23 @@ export async function createSession(
     opts.ttlSeconds ??
     (kind === 'register'
       ? REGISTER_TTL_SECONDS
-      : getConfig().SESSION_TTL_SECONDS);
+      : kind === 'mfa_pending'
+        ? MFA_PENDING_TTL_SECONDS
+        : getConfig().SESSION_TTL_SECONDS);
   const id = newSessionId();
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+  const flags = opts.mfaFlags ?? {};
   const [row] = await db
     .insert(sessions)
-    .values({ id, userId, expiresAt, kind })
+    .values({
+      id,
+      userId,
+      expiresAt,
+      kind,
+      mfaPasswordVerified: flags.mfaPasswordVerified ?? false,
+      mfaPasskeyVerified: flags.mfaPasskeyVerified ?? false,
+      mfaTotpVerified: flags.mfaTotpVerified ?? false,
+    })
     .returning();
   if (!row) throw new Error('failed to create session');
   return { id: row.id, userId: row.userId, expiresAt: row.expiresAt };
@@ -92,6 +118,44 @@ export async function revokeSession(id: string): Promise<void> {
 
 export async function revokeAllUserSessions(userId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.userId, userId));
+}
+
+/**
+ * Promote an `mfa_pending` session row to a fresh `full` session.
+ *
+ * Used at the end of stepped MFA (Auth-Spec §7.4) once all factors
+ * required by `users.security_mode` have been verified. Atomically
+ * deletes the pending row + inserts a new full row in a transaction
+ * so a network drop between the two steps doesn't leave the user
+ * authenticated with two competing sessions.
+ *
+ * The caller is responsible for swapping the cookie via
+ * `setSessionCookie` after this returns — we don't touch
+ * `Set-Cookie` here because Hono's context isn't in scope.
+ */
+export async function finalizeMfaSession(
+  pendingSessionId: string,
+): Promise<SessionRecord> {
+  const ttlSeconds = getConfig().SESSION_TTL_SECONDS;
+  const id = newSessionId();
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+  return db.transaction(async (tx) => {
+    const [pending] = await tx
+      .select({ userId: sessions.userId })
+      .from(sessions)
+      .where(eq(sessions.id, pendingSessionId))
+      .limit(1);
+    if (!pending) {
+      throw new Error('finalizeMfaSession: pending session not found');
+    }
+    await tx.delete(sessions).where(eq(sessions.id, pendingSessionId));
+    const [row] = await tx
+      .insert(sessions)
+      .values({ id, userId: pending.userId, expiresAt, kind: 'full' })
+      .returning();
+    if (!row) throw new Error('finalizeMfaSession: failed to insert full session');
+    return { id: row.id, userId: row.userId, expiresAt: row.expiresAt };
+  });
 }
 
 /** Housekeeping — remove expired rows. Safe to call on an interval. */

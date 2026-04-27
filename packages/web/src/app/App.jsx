@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 // Auth pages are lazy-loaded so their deps (react-hook-form, zod,
 // @zxcvbn-ts, argon2id wasm) stay out of the initial chunk.
 const Login = lazy(() => import("./pages/Login"));
+const LoginMfa = lazy(() => import("./pages/LoginMfa"));
 const Register = lazy(() => import("./pages/Register"));
 const Activate = lazy(() => import("./pages/Activate"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
@@ -16,6 +17,7 @@ const Reset = lazy(() => import("./pages/Reset"));
 const RecoveryCode = lazy(() => import("./pages/RecoveryCode"));
 const Recover = lazy(() => import("./pages/Recover"));
 const Passkeys = lazy(() => import("./pages/Passkeys"));
+const Totp = lazy(() => import("./pages/Totp"));
 
 function lazyPage(node) {
   return (
@@ -34,6 +36,7 @@ function AppWithKeyModal() {
     <Routes>
       <Route path="/" element={<Navigate to="/flow/home" replace />} />
       <Route path="/login" element={lazyPage(<Login />)} />
+      <Route path="/login/mfa" element={lazyPage(<LoginMfa />)} />
       <Route path="/register" element={lazyPage(<Register />)} />
       <Route path="/activate" element={lazyPage(<Activate />)} />
       <Route path="/change-password" element={lazyPage(<ChangePassword />)} />
@@ -42,6 +45,7 @@ function AppWithKeyModal() {
       <Route path="/recovery-code" element={lazyPage(<RecoveryCode />)} />
       <Route path="/recover" element={lazyPage(<Recover />)} />
       <Route path="/passkeys" element={lazyPage(<Passkeys />)} />
+      <Route path="/totp" element={lazyPage(<Totp />)} />
       <Route path="/flow" element={<Navigate to="/flow/home" replace />} />
       <Route
         path="/flow/:moduleId"

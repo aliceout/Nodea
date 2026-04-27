@@ -8,6 +8,7 @@ import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import Button from '@/ui/atoms/dirk/Button';
 
 /**
  * Login — Direction K · Sauge.
@@ -49,8 +50,12 @@ export default function LoginPage() {
   async function onSubmit(values: LoginBody): Promise<void> {
     setServerError(null);
     try {
-      await session.login(values);
-      navigate('/flow/home', { replace: true });
+      const result = await session.login(values);
+      if (result.needsMfa) {
+        navigate('/login/mfa', { replace: true });
+      } else {
+        navigate('/flow/home', { replace: true });
+      }
     } catch (err) {
       if (isApiError(err)) {
         if (err.status === 403 && err.error === 'account_not_activated') {
@@ -82,7 +87,12 @@ export default function LoginPage() {
     setPasskeyBusy(true);
     try {
       const result = await session.loginWithPasskey({});
-      if (result.fullyUnlocked) {
+      if (result.needsMfa) {
+        // Stepped MFA: the session is `mfa_pending`, the user
+        // still needs TOTP (and possibly password for mode max).
+        // The MFA page will drive the next factor.
+        navigate('/login/mfa', { replace: true });
+      } else if (result.fullyUnlocked) {
         navigate('/flow/home', { replace: true });
       } else {
         setServerError(
@@ -160,13 +170,15 @@ export default function LoginPage() {
               </div>
             ) : null}
 
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="submit"
               disabled={isSubmitting || passkeyBusy}
-              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full"
             >
               {isSubmitting ? 'Connexion…' : 'Se connecter'}
-            </button>
+            </Button>
 
             {/* Passkey alternative — secondary affordance below the
                 primary password submit. Hidden on browsers that don't
@@ -176,11 +188,12 @@ export default function LoginPage() {
                 typing the email. */}
             {typeof window !== 'undefined' &&
               typeof window.PublicKeyCredential !== 'undefined' ? (
-              <button
-                type="button"
+              <Button
+                variant="neutral"
+                size="lg"
                 onClick={() => void onPasskeyClick()}
                 disabled={isSubmitting || passkeyBusy}
-                className="mt-2 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-hair bg-bg px-4 py-[11px] text-[14px] font-semibold text-ink transition-colors hover:bg-bg-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 w-full gap-2"
               >
                 {passkeyBusy ? (
                   'Vérification…'
@@ -190,7 +203,7 @@ export default function LoginPage() {
                     Se connecter avec une passkey
                   </>
                 )}
-              </button>
+              </Button>
             ) : null}
 
             <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">

@@ -139,3 +139,47 @@ export const OpaqueLoginFinishBodySchema = z.object({
 export type OpaqueLoginFinishBody = z.infer<
   typeof OpaqueLoginFinishBodySchema
 >;
+
+/**
+ * `POST /auth/login/finish` response — discriminated by `needsMfa`.
+ *
+ * - `needsMfa: false` — pre-Phase-5C path. Session is already `full`,
+ *   the cookie is set, the client hits `/auth/me` to load the user
+ *   shape and proceed normally.
+ * - `needsMfa: true` — Phase 5C stepped MFA. The session is
+ *   `mfa_pending` with `mfa_password_verified=true`; the client
+ *   must drive `/auth/mfa/totp/verify` (and Phase 5D's passkey-as-
+ *   second-factor for mode `maximum`) before the session is
+ *   promoted to `full`.
+ *
+ *   When `needsMfa` is true, the server inlines the wrap blobs the
+ *   client would normally fetch via `/auth/me` — that endpoint
+ *   refuses `mfa_pending` sessions, so the client would otherwise
+ *   be unable to unwrap the KEK before MFA finalization. Per
+ *   Auth-Spec §7.2.bis the client unwraps the KEK + main key
+ *   immediately on the exportKey it just derived; the data is
+ *   unreachable until the session is promoted (no full cookie =
+ *   no data routes), so there's no leak.
+ */
+const Base64ishLogin = z.string().min(1).max(8192);
+export const OpaqueLoginFinishResponseSchema = z.discriminatedUnion(
+  'needsMfa',
+  [
+    z.object({
+      needsMfa: z.literal(false),
+      id: z.string(),
+    }),
+    z.object({
+      needsMfa: z.literal(true),
+      id: z.string(),
+      factorsNeeded: z.array(z.enum(['totp', 'passkey'])).min(1),
+      wrappedMainKey: Base64ishLogin,
+      wrappedMainKeyIv: Base64ishLogin,
+      wrappedKekPassword: Base64ishLogin,
+      wrappedKekPasswordIv: Base64ishLogin,
+    }),
+  ],
+);
+export type OpaqueLoginFinishResponse = z.infer<
+  typeof OpaqueLoginFinishResponseSchema
+>;

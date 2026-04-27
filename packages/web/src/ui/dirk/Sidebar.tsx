@@ -13,6 +13,7 @@ import {
   SidebarTipModules,
   SidebarTipPasskey,
   SidebarTipRecoveryCode,
+  SidebarTipTotp,
 } from './sidebar/SidebarTip';
 import SidebarFooter from './sidebar/SidebarFooter';
 
@@ -95,6 +96,11 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
   // user has zero passkeys enrolled. Disappears as soon as the
   // first one lands, regardless of dismiss state.
   const showPasskeyTip = user !== null && user.passkeysCount === 0;
+  // TOTP suggestion: same shape as passkey — dismissable amber tip
+  // visible until the user enrolls. `totpEnabled` flips to true
+  // only after `/auth/totp/enroll/verify`, so a half-completed
+  // enrollment still shows the tip (= "tu n'as pas fini").
+  const showTotpTip = user !== null && user.totpEnabled === false;
 
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
@@ -106,6 +112,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           and self-contained, so the slot stays a passive container. */}
       {showRecoveryWarning ? <SidebarTipRecoveryCode /> : null}
       {showPasskeyTip ? <SidebarTipPasskey /> : null}
+      {showTotpTip ? <SidebarTipTotp /> : null}
       <SidebarTipModules />
       <SidebarFooter />
     </nav>

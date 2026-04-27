@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.data.js';
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
+import Button from '@/ui/atoms/dirk/Button';
 
 /**
  * Mon compte — Direction K · Sauge.
@@ -231,63 +232,59 @@ function IdentityTab() {
 
   return (
     <div className="grid max-w-[880px] grid-cols-1 gap-14 lg:grid-cols-[1fr_240px]">
-      <div>
-        <p className="mb-[18px] text-[13px] leading-[1.5] text-muted">
-          Les seules infos qui te suivent d’un appareil à l’autre.
-        </p>
+      <div className="divide-y divide-hair">
+      <IdentityRow
+        label="Nom d’affichage"
+        value={user?.username ?? ''}
+        placeholder="non défini"
+        editing={editingUsername}
+        editLabel="Modifier le nom d’utilisateur·ice"
+        submitting={usernameSubmitting}
+        feedback={usernameFeedback}
+        onEdit={startEditUsername}
+        onCancel={cancelEditUsername}
+        onSave={saveUsername}
+      >
+        <input
+          type="text"
+          value={usernameDraft}
+          onChange={(e) => setUsernameDraft(e.target.value)}
+          autoFocus
+          className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+        />
+      </IdentityRow>
 
-        <IdentityRow
-          label="Nom d’affichage"
-          value={user?.username ?? ''}
-          placeholder="non défini"
-          editing={editingUsername}
-          editLabel="Modifier le nom d’utilisateur·ice"
-          submitting={usernameSubmitting}
-          feedback={usernameFeedback}
-          onEdit={startEditUsername}
-          onCancel={cancelEditUsername}
-          onSave={saveUsername}
-        >
+      <IdentityRow
+        label="Adresse e-mail"
+        value={user?.email ?? ''}
+        placeholder=""
+        editing={editingEmail}
+        editLabel="Modifier l’adresse e-mail"
+        submitting={emailSubmitting}
+        feedback={emailFeedback}
+        onEdit={startEditEmail}
+        onCancel={cancelEditEmail}
+        onSave={saveEmail}
+      >
+        <div className="space-y-2.5">
           <input
-            type="text"
-            value={usernameDraft}
-            onChange={(e) => setUsernameDraft(e.target.value)}
+            type="email"
+            value={emailDraft}
+            onChange={(e) => setEmailDraft(e.target.value)}
+            autoComplete="email"
             autoFocus
             className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
-        </IdentityRow>
-
-        <IdentityRow
-          label="Adresse e-mail"
-          value={user?.email ?? ''}
-          placeholder=""
-          editing={editingEmail}
-          editLabel="Modifier l’adresse e-mail"
-          submitting={emailSubmitting}
-          feedback={emailFeedback}
-          onEdit={startEditEmail}
-          onCancel={cancelEditEmail}
-          onSave={saveEmail}
-        >
-          <div className="space-y-2.5">
-            <input
-              type="email"
-              value={emailDraft}
-              onChange={(e) => setEmailDraft(e.target.value)}
-              autoComplete="email"
-              autoFocus
-              className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
-            />
-            <input
-              type="password"
-              value={emailPassword}
-              onChange={(e) => setEmailPassword(e.target.value)}
-              placeholder="Mot de passe actuel"
-              autoComplete="current-password"
-              className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
-            />
-          </div>
-        </IdentityRow>
+          <input
+            type="password"
+            value={emailPassword}
+            onChange={(e) => setEmailPassword(e.target.value)}
+            placeholder="Mot de passe actuel"
+            autoComplete="current-password"
+            className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+          />
+        </div>
+      </IdentityRow>
       </div>
 
       <Stats />
@@ -330,46 +327,40 @@ function IdentityRow({
   children,
 }: IdentityRowProps) {
   return (
-    <div className="border-b border-hair py-4 last:border-b-0">
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
-          {label}
-        </span>
-        {!editing ? (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="cursor-pointer text-[12px] text-accent transition-colors hover:text-accent-deep"
-          >
-            {editLabel}
-          </button>
-        ) : null}
-      </div>
+    <section className="py-[24px] first:pt-0 last:pb-0">
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">{label}</h3>
 
       {!editing ? (
-        <div className="text-[14px] text-ink">
-          {value ? (
-            value
-          ) : (
-            <span className="italic text-muted">{placeholder || '—'}</span>
-          )}
+        <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[170px_1fr] lg:gap-x-6">
+          <div>
+            <Button variant="secondary" size="md" onClick={onEdit} aria-label={editLabel}>
+              Modifier
+            </Button>
+          </div>
+          <div className="min-w-0 text-[14px] text-ink">
+            {value ? (
+              value
+            ) : (
+              <span className="italic text-muted">{placeholder || '—'}</span>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-0 flex-1">{children}</div>
           <div className="flex shrink-0 gap-2">
-            <PrimaryButton onClick={onSave} disabled={submitting}>
+            <Button variant="primary" size="md" onClick={onSave} disabled={submitting}>
               {submitting ? 'Enregistrement…' : 'Enregistrer'}
-            </PrimaryButton>
-            <CancelButton onClick={onCancel} disabled={submitting}>
+            </Button>
+            <Button variant="danger-ghost" size="md" onClick={onCancel} disabled={submitting}>
               Abandonner
-            </CancelButton>
+            </Button>
           </div>
         </div>
       )}
 
       {feedback ? <Feedback tone={feedback.tone}>{feedback.text}</Feedback> : null}
-    </div>
+    </section>
   );
 }
 
@@ -417,16 +408,17 @@ function SecurityTab() {
   const user = useNodeaStore(selectUser);
   const recoveryCodeSet = user?.recoveryCodeSet === true;
   const passkeysCount = user?.passkeysCount ?? 0;
+  const totpEnabled = user?.totpEnabled === true;
 
   return (
-    <div className="max-w-[880px]">
+    <div className="max-w-[880px] divide-y divide-hair">
       <SecuritySection
         title="Mot de passe"
         description="Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais."
       >
-        <PrimaryButton onClick={() => navigate('/change-password')}>
-          Renouveler la clé
-        </PrimaryButton>
+        <Button variant="secondary" size="md" onClick={() => navigate('/change-password')}>
+          Renouveler
+        </Button>
       </SecuritySection>
 
       <SecuritySection
@@ -437,22 +429,22 @@ function SecurityTab() {
             : `${passkeysCount} passkey${passkeysCount > 1 ? 's' : ''} enregistrée${passkeysCount > 1 ? 's' : ''}. Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.`
         }
       >
-        {passkeysCount === 0 ? (
-          <PrimaryButton onClick={() => navigate('/passkeys')}>
-            Ajouter une passkey
-          </PrimaryButton>
-        ) : (
-          <SecondaryButton onClick={() => navigate('/passkeys')}>
-            Gérer
-          </SecondaryButton>
-        )}
+        <Button variant="secondary" size="md" onClick={() => navigate('/passkeys')}>
+          {passkeysCount === 0 ? 'Ajouter' : 'Gérer'}
+        </Button>
       </SecuritySection>
 
       <SecuritySection
-        title="2FA"
-        description="Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Google Authenticator) en plus du mot de passe — une fuite ne suffit alors plus à entrer."
+        title="2FA (TOTP)"
+        description={
+          totpEnabled
+            ? 'TOTP activé. Tu peux gérer tes codes de secours ou désactiver la 2FA depuis cet écran.'
+            : 'Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth) en plus du mot de passe — une fuite ne suffit alors plus à entrer.'
+        }
       >
-        <SecondaryButton>Activer</SecondaryButton>
+        <Button variant="secondary" size="md" onClick={() => navigate('/totp')}>
+          {totpEnabled ? 'Gérer' : 'Activer'}
+        </Button>
       </SecuritySection>
 
       <SecuritySection
@@ -463,22 +455,10 @@ function SecurityTab() {
             : 'Sans ce code, oublier ton mot de passe = perte de toutes tes données. 12 mots BIP39 à noter une seule fois ; tu pourras récupérer ton compte avec, sans détruire tes entrées.'
         }
       >
-        {recoveryCodeSet ? (
-          <SecondaryButton onClick={() => navigate('/recovery-code')}>
-            Régénérer
-          </SecondaryButton>
-        ) : (
-          <PrimaryButton onClick={() => navigate('/recovery-code')}>
-            Configurer
-          </PrimaryButton>
-        )}
+        <Button variant="secondary" size="md" onClick={() => navigate('/recovery-code')}>
+          {recoveryCodeSet ? 'Régénérer' : 'Configurer'}
+        </Button>
       </SecuritySection>
-
-      <section>
-        <h3 className="mb-3 text-[16px] font-semibold text-ink">Sessions actives · 2</h3>
-        <SessionRow label="MacBook Pro · Paris" meta="maintenant" current />
-        <SessionRow label="iPhone 14 · Paris" meta="il y a 1 j" />
-      </section>
     </div>
   );
 }
@@ -501,39 +481,13 @@ interface SecuritySectionProps {
  */
 function SecuritySection({ title, description, children }: SecuritySectionProps) {
   return (
-    <section className="mb-[34px] last:mb-0">
+    <section className="py-[24px] first:pt-0 last:pb-0">
       <h3 className="mb-2 text-[16px] font-semibold text-ink">{title}</h3>
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[170px_1fr] lg:gap-x-6">
         <div>{children}</div>
         <p className="text-[12px] leading-[1.55] text-muted">{description}</p>
       </div>
     </section>
-  );
-}
-
-interface SessionRowProps {
-  label: string;
-  meta: string;
-  current?: boolean;
-}
-
-function SessionRow({ label, meta, current }: SessionRowProps) {
-  return (
-    <div className="flex items-center justify-between border-b border-hair py-2.5">
-      <div>
-        <div className="text-[13px] font-medium text-ink">{label}</div>
-        <div className="text-[11px] text-muted">{meta}</div>
-      </div>
-      {current ? (
-        <span className="rounded-full bg-accent-soft px-[9px] py-[3px] text-[11px] font-semibold text-accent-deep">
-          Actuelle
-        </span>
-      ) : (
-        <button type="button" className="text-[12px] text-muted transition-colors hover:text-ink">
-          Déconnecter
-        </button>
-      )}
-    </div>
   );
 }
 
@@ -557,18 +511,22 @@ function PreferencesTab() {
     setTheme(next);
   }
 
+  // Same row pattern as `SecuritySection`: title spanning full width
+  // on top, then a 2-col grid with the control on the left and the
+  // descriptor on the right. Keeps the two surfaces visually
+  // consistent so a user toggling between Settings tabs doesn't have
+  // to re-parse the layout.
   return (
-    <div className="grid max-w-[880px] grid-cols-1 gap-14 lg:grid-cols-2">
-      <div>
-        <h3 className="mb-1 text-[16px] font-semibold text-ink">Thème</h3>
-        <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
-          Clair, sombre, ou suit ton système.
-        </p>
+    <div className="max-w-[880px] divide-y divide-hair">
+      <PreferenceRow
+        title="Thème"
+        description="Clair, sombre, ou suit ton système."
+      >
         <select
           aria-label={t('settings.theme.ariaLabel', { defaultValue: 'Préférence de thème' })}
           value={theme}
           onChange={handleTheme}
-          className="block h-8 w-full max-w-[280px] cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+          className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
         >
           {THEME_OPTIONS.map((id) => (
             <option key={id} value={id}>
@@ -576,18 +534,17 @@ function PreferencesTab() {
             </option>
           ))}
         </select>
-      </div>
+      </PreferenceRow>
 
-      <div>
-        <h3 className="mb-1 text-[16px] font-semibold text-ink">Langue</h3>
-        <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
-          Interface en français ou en anglais.
-        </p>
+      <PreferenceRow
+        title="Langue"
+        description="Interface en français ou en anglais."
+      >
         <select
           aria-label="Langue"
           value={language}
           onChange={handleLanguage}
-          className="block h-8 w-full max-w-[280px] cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+          className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
         >
           {availableLanguages.map((lang) => (
             <option key={lang.id} value={lang.id}>
@@ -595,8 +552,26 @@ function PreferencesTab() {
             </option>
           ))}
         </select>
-      </div>
+      </PreferenceRow>
     </div>
+  );
+}
+
+interface PreferenceRowProps {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}
+
+function PreferenceRow({ title, description, children }: PreferenceRowProps) {
+  return (
+    <section className="py-[24px] first:pt-0 last:pb-0">
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">{title}</h3>
+      <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6">
+        <div>{children}</div>
+        <p className="text-[12px] leading-[1.55] text-muted">{description}</p>
+      </div>
+    </section>
   );
 }
 
@@ -604,14 +579,16 @@ function PreferencesTab() {
 
 function ModulesTab() {
   return (
-    <div className="max-w-[880px]">
-      <h3 className="mb-1 text-[16px] font-semibold text-ink">Modules actifs</h3>
-      <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
-        Tous les modules sont activés par défaut. Désactive ceux que tu
-        n’utilises pas — ils disparaîtront de la barre latérale et leurs
-        données seront laissées intactes (rien n’est supprimé).
-      </p>
+    <div className="grid max-w-[1100px] grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]">
       <ModulesManager />
+      <div className="space-y-2 text-[13px] leading-[1.55] text-muted">
+        <p>Tous les modules sont activés par défaut.</p>
+        <p>
+          Désactive ceux que tu n’utilises pas — ils disparaîtront de la
+          barre latérale et leurs données seront laissées intactes (rien
+          n’est supprimé).
+        </p>
+      </div>
     </div>
   );
 }
@@ -620,7 +597,7 @@ function ModulesTab() {
 
 function DataTab() {
   return (
-    <div className="grid max-w-[880px] grid-cols-1 gap-9 lg:grid-cols-2">
+    <div className="max-w-[880px] divide-y divide-hair">
       <ExportPanel />
       <ImportPanel />
     </div>
@@ -683,20 +660,21 @@ function ExportPanel() {
   }
 
   return (
-    <div>
-      <div className="mb-1.5 text-[12px] font-semibold tracking-[0.02em] text-accent">Exporter</div>
-      <div className="mb-1.5 text-[22px] font-semibold tracking-[-0.02em] text-ink">
-        Tout emporter.
+    <section className="py-[24px] first:pt-0 last:pb-0">
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">Exporter</h3>
+      <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
+        <div>
+          <Button variant="primary" size="md" onClick={handleExport} disabled={loading || !mainKey}>
+            {loading ? 'Préparation…' : 'Exporter mes données'}
+          </Button>
+        </div>
+        <p className="text-[12px] leading-[1.55] text-muted">
+          JSON déchiffré, généré chez toi. Ne quitte jamais ton navigateur.
+        </p>
       </div>
-      <p className="mb-3.5 text-[13px] leading-[1.55] text-muted">
-        JSON déchiffré, généré chez toi. Ne quitte jamais ton navigateur.
-      </p>
-      <PrimaryButton onClick={handleExport} disabled={loading || !mainKey} className="px-[18px]">
-        {loading ? 'Préparation…' : 'Exporter mes données'}
-      </PrimaryButton>
       {success ? <Feedback tone="success">{success}</Feedback> : null}
       {error ? <Feedback tone="error">{error}</Feedback> : null}
-    </div>
+    </section>
   );
 }
 
@@ -791,44 +769,33 @@ function ImportPanel() {
   }
 
   return (
-    <div>
-      <div className="mb-1.5 text-[12px] font-semibold tracking-[0.02em] text-muted">Importer</div>
-      <div className="mb-1.5 text-[22px] font-semibold tracking-[-0.02em] text-ink">
-        Reprendre un export.
+    <section className="py-[24px] first:pt-0 last:pb-0">
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">Importer</h3>
+      <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
+        <div>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => inputRef.current?.click()}
+            disabled={loading || !mainKey}
+          >
+            {loading ? 'Import en cours…' : 'Importer un fichier'}
+          </Button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/json,.json,.ndjson"
+            onChange={handleFile}
+            className="hidden"
+          />
+        </div>
+        <p className="text-[12px] leading-[1.55] text-muted">
+          JSON ou NDJSON exporté précédemment. Doublons ignorés.
+        </p>
       </div>
-      <p className="mb-3.5 text-[13px] leading-[1.55] text-muted">
-        JSON ou NDJSON exporté précédemment. Doublons ignorés.
-      </p>
-
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={loading || !mainKey}
-        className="block w-full rounded-md border-[1.5px] border-dashed border-hair px-[14px] py-[22px] text-center text-[13px] text-muted transition-colors hover:border-accent hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading
-          ? 'Import en cours…'
-          : (
-            <>
-              Glisse un fichier ici, ou{' '}
-              <span className="text-accent transition-colors group-hover:text-accent-deep">
-                choisis-le
-              </span>
-              .
-            </>
-          )}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/json,.json,.ndjson"
-        onChange={handleFile}
-        className="hidden"
-      />
-
       {success ? <Feedback tone="success">{success}</Feedback> : null}
       {error ? <Feedback tone="error">{error}</Feedback> : null}
-    </div>
+    </section>
   );
 }
 
@@ -878,36 +845,37 @@ function DangerTab() {
   }
 
   return (
-    <div className="max-w-[540px]">
-      <div className="mb-1.5 text-[12px] font-semibold tracking-[0.02em] text-danger">Définitif</div>
-      <div className="mb-2 text-[26px] font-semibold tracking-[-0.025em] text-ink">
-        Pas de retour.
+    <div className="grid max-w-[1100px] grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]">
+      <div>
+        <div className="mb-2 text-[12px] font-semibold tracking-[0.02em] text-danger">
+          Suppression du compte
+        </div>
+        <Field
+          label="Tape ton e-mail pour confirmer"
+          value={confirmEmail}
+          onChange={(e) => setConfirmEmail(e.target.value)}
+          type="email"
+        />
+        <Field
+          label="Mot de passe actuel"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          type="password"
+        />
+        <Button
+          variant="danger"
+          size="md"
+          onClick={handleDelete}
+          disabled={submitting || !canDelete}
+        >
+          {submitting ? 'Suppression…' : 'Supprimer définitivement'}
+        </Button>
+        {error ? <Feedback tone="error">{error}</Feedback> : null}
       </div>
-      <p className="mb-[22px] text-[14px] leading-[1.55] text-ink-soft">
-        La suppression efface toutes tes entrées chiffrées, sessions et invitations. Aucune
-        récupération possible — pense à exporter avant.
+      <p className="text-[13px] leading-[1.55] text-muted">
+        La suppression efface toutes tes entrées chiffrées, sessions et
+        invitations. Aucune récupération possible — pense à exporter avant.
       </p>
-      <Field
-        label="Tape ton e-mail pour confirmer"
-        value={confirmEmail}
-        onChange={(e) => setConfirmEmail(e.target.value)}
-        type="email"
-      />
-      <Field
-        label="Mot de passe actuel"
-        value={currentPassword}
-        onChange={(e) => setCurrentPassword(e.target.value)}
-        type="password"
-      />
-      <button
-        type="button"
-        onClick={handleDelete}
-        disabled={submitting || !canDelete}
-        className="rounded-md bg-danger px-[18px] py-1.5 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {submitting ? 'Suppression…' : 'Supprimer définitivement'}
-      </button>
-      {error ? <Feedback tone="error">{error}</Feedback> : null}
     </div>
   );
 }
@@ -938,70 +906,6 @@ function Field({ label, className, id, name, ...rest }: FieldProps) {
         {...rest}
       />
     </div>
-  );
-}
-
-function PrimaryButton({
-  className,
-  children,
-  ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'rounded-md bg-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60',
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({
-  className,
-  children,
-  ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'rounded-md border border-hair bg-transparent px-4 py-1.5 text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60',
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
- * Discard / "Abandonner" affordance — ghost style with danger
- * tone, signalling that the click drops in-flight changes. Kept
- * separate from `SecondaryButton` so neutral secondary actions
- * (e.g. the 2FA "Activer" placeholder) don't pick up the red
- * accent.
- */
-function CancelButton({
-  className,
-  children,
-  ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'rounded-md bg-transparent px-4 py-1.5 text-[13px] text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-60',
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
   );
 }
 

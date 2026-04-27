@@ -209,6 +209,17 @@ export type PasskeyLoginFinishBody = z.infer<typeof PasskeyLoginFinishBodySchema
  * they're the same blobs `/auth/me` would return, included here so
  * the client can finish the unwrap dance without an extra round-trip.
  */
+/**
+ * Phase 4 base shape — userId / credentialId / wrap blobs the
+ * client needs to unwrap. Phase 5C extends with `needsMfa` so the
+ * passkey path can also drop into stepped MFA when
+ * `users.security_mode != 'password_or_passkey'`.
+ *
+ * `needsMfa = true` means the session was emitted as `mfa_pending`
+ * with `mfa_passkey_verified = true`; the client drives the next
+ * step (TOTP today, password-as-second-factor in Phase 5D for mode
+ * `maximum`).
+ */
 export const PasskeyLoginFinishResponseSchema = z.object({
   userId: z.string(),
   credentialId: z.string(),
@@ -217,6 +228,11 @@ export const PasskeyLoginFinishResponseSchema = z.object({
   wrappedKekIv: Base64ish.nullable(),
   wrappedMainKey: Base64ish,
   wrappedMainKeyIv: Base64ish,
+  /** Stepped MFA flag. When false, the session is already `full`. */
+  needsMfa: z.boolean(),
+  /** Factors still missing before the server will promote to full.
+   *  Empty when `needsMfa = false`. */
+  factorsNeeded: z.array(z.enum(['totp', 'passkey', 'password'])),
 });
 export type PasskeyLoginFinishResponse = z.infer<
   typeof PasskeyLoginFinishResponseSchema

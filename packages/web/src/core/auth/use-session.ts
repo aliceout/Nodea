@@ -32,6 +32,7 @@ import {
   apiLoginFinish,
   apiLogout,
   apiMe,
+  apiMfaTotpVerify,
   apiPasskeyRemove,
   apiPasskeyRename,
   apiRecoverKekFinish,
@@ -39,7 +40,12 @@ import {
   apiRecoveryCodeUpsert,
   apiRegisterStart,
   apiRegisterFinish,
+  apiTotpDisable,
+  apiTotpEnrollStart,
+  apiTotpEnrollVerify,
+  apiTotpRegenerateBackupCodes,
 } from '../api/client.ts';
+import type { TotpEnrollStartResponse } from '@nodea/shared';
 import {
   enrollPasskey,
   loginWithPasskey,
@@ -159,7 +165,28 @@ export function useSession() {
       });
   }, [setAuth, setAuthLoading, markKeyMissing]);
 
-  async function login(body: LoginBody): Promise<void> {
+  /**
+   * Drive an OPAQUE login. Returns a discriminated result so the
+   * caller can branch on stepped-MFA:
+   *
+   *   - `{ needsMfa: false }` — session is `full`, the main key is
+   *     unwrapped + stored, the user shape is hydrated. Caller
+   *     navigates to `/flow/home`.
+   *   - `{ needsMfa: true, factorsNeeded }` — session is `mfa_pending`.
+   *     The main key IS already unwrapped client-side (the wrap
+   *     blobs ride along the /finish response), so subsequent data
+   *     access works as soon as the session is promoted by
+   *     `/auth/mfa/totp/verify`. Caller navigates to `/login/mfa`.
+   *
+   * Throws `{ status: 401, error: 'invalid_credentials' }` on a
+   * wrong password (client-side `finishLogin` returns undefined).
+   */
+  async function login(
+    body: LoginBody,
+  ): Promise<
+    | { needsMfa: false }
+    | { needsMfa: true; factorsNeeded: ReadonlyArray<'totp' | 'passkey'> }
+  > {
     await opaqueReady;
 
     // OPAQUE step 1: build the local login state + the wire request.
@@ -186,13 +213,54 @@ export function useSession() {
       };
     }
 
-    // Server-side verification + session emission. Failures here
-    // surface as 401 / 403 from the API layer; we let them bubble up.
-    await apiLoginFinish({
+    // Server-side verification + session emission. Either `full`
+    // (needsMfa: false) or `mfa_pending` (needsMfa: true).
+    const finishRes = await apiLoginFinish({
       loginToken: startRes.loginToken,
       finishLoginRequest: finished.finishLoginRequest,
     });
 
+    if (finishRes.needsMfa) {
+      // Stepped MFA branch (Auth-Roadmap Phase 5C). `/auth/me`
+      // refuses pending sessions, so the wrap blobs ride inside the
+      // /finish response — we unwrap immediately so subsequent
+      // crypto ops have the key material ready by the time the
+      // session is promoted to full.
+      const kekBytes = await unwrapKekUnderFactor(
+        {
+          wrappedKek: finishRes.wrappedKekPassword as unknown as Base64,
+          wrappedKekIv: finishRes.wrappedKekPasswordIv as unknown as Base64,
+        },
+        finished.exportKey,
+        buildKekAAD(finishRes.id, 'password'),
+      );
+      let rawBytes: Uint8Array;
+      try {
+        rawBytes = await unwrapMainKeyUnderKek(
+          {
+            wrappedMainKey: finishRes.wrappedMainKey as unknown as Base64,
+            wrappedMainKeyIv: finishRes.wrappedMainKeyIv as unknown as Base64,
+          },
+          kekBytes,
+          buildMainKeyAAD(finishRes.id),
+        );
+      } finally {
+        kekBytes.fill(0);
+      }
+      try {
+        const material = await deriveMainKeys(rawBytes);
+        setMainKey(material);
+      } finally {
+        rawBytes.fill(0);
+      }
+      // The auth slice stays `null` until the MFA route promotes
+      // and `/auth/me` succeeds — we don't have a public user
+      // shape we can trust on a pending session. The route guard
+      // handles `null` user + ready key as "still authenticating".
+      return { needsMfa: true, factorsNeeded: finishRes.factorsNeeded };
+    }
+
+    // Full-session branch — original Phase 2C path.
     const me = await apiMe();
     if (!me) throw new Error('login succeeded but /auth/me returned null');
     setAuth(me);
@@ -238,6 +306,35 @@ export function useSession() {
     } finally {
       rawBytes.fill(0);
     }
+    return { needsMfa: false };
+  }
+
+  /**
+   * Verify a TOTP code (or backup code) against the current
+   * `mfa_pending` session. On finalize, hydrate `/auth/me` so the
+   * auth slice flips to authenticated.
+   *
+   * Returns `{ finalized: true }` when the session is now `full` —
+   * the caller navigates to `/flow/home`. Returns
+   * `{ finalized: false, missing }` when more factors are needed
+   * (Phase 5D wiring point).
+   */
+  async function verifyMfaTotp(
+    code: string,
+  ): Promise<
+    | { finalized: true }
+    | { finalized: false; missing: ReadonlyArray<'totp' | 'passkey' | 'password'> }
+  > {
+    const res = await apiMfaTotpVerify({ code });
+    if (res.finalized) {
+      const me = await apiMe();
+      if (!me) {
+        throw new Error('mfa-totp verify finalized but /auth/me returned null');
+      }
+      setAuth(me);
+      return { finalized: true };
+    }
+    return { finalized: false, missing: res.missing };
   }
 
   /**
@@ -801,14 +898,80 @@ export function useSession() {
      *  this point, so a refresh would still drop the user on a
      *  signed-in shell. */
     fullyUnlocked: boolean;
+    /** Phase 5C — true when the server emitted `mfa_pending` because
+     *  the user's `security_mode` requires factors beyond passkey.
+     *  Caller navigates to `/login/mfa` to drive the next step. */
+    needsMfa: boolean;
+    factorsNeeded: ReadonlyArray<'totp' | 'passkey' | 'password'>;
   }> {
     const result = await loginWithPasskey(
       input.email !== undefined ? { email: input.email } : {},
     );
 
-    // Refresh the public user shape regardless of which branch we
-    // take — even login-only credentials should populate `/me` so
-    // the UI sees the user as authenticated.
+    // Stepped MFA branch — `/auth/me` refuses pending sessions, so
+    // we skip the user-shape hydration and use the wrap blobs from
+    // the /finish response directly to derive the main key. The
+    // auth slice stays null until MFA finalize promotes the session
+    // and `verifyMfaTotp` calls /me.
+    if (result.needsMfa) {
+      // Login-only credential + needsMfa is rare but possible (mode
+      // `maximum` user enrolled a non-PRF passkey). Without PRF we
+      // can't unwrap the KEK from passkey alone; the caller will
+      // chain a password login as the second factor.
+      if (
+        !result.prfSupported ||
+        result.prfOutput === null ||
+        result.wrappedKek === null ||
+        result.wrappedKekIv === null
+      ) {
+        markKeyMissing();
+        return {
+          fullyUnlocked: false,
+          needsMfa: true,
+          factorsNeeded: result.factorsNeeded,
+        };
+      }
+      const prfOutput = result.prfOutput;
+      try {
+        const kekBytes = await unwrapKekUnderPrf(
+          {
+            wrappedKek: result.wrappedKek as unknown as Base64,
+            wrappedKekIv: result.wrappedKekIv as unknown as Base64,
+          },
+          prfOutput,
+          result.userId,
+          result.credentialId,
+        );
+        let rawMainKey: Uint8Array;
+        try {
+          rawMainKey = await unwrapMainKeyUnderKek(
+            {
+              wrappedMainKey: result.wrappedMainKey as unknown as Base64,
+              wrappedMainKeyIv: result.wrappedMainKeyIv as unknown as Base64,
+            },
+            kekBytes,
+            buildMainKeyAAD(result.userId),
+          );
+        } finally {
+          kekBytes.fill(0);
+        }
+        try {
+          const material = await deriveMainKeys(rawMainKey);
+          setMainKey(material);
+        } finally {
+          rawMainKey.fill(0);
+        }
+      } finally {
+        prfOutput.fill(0);
+      }
+      return {
+        fullyUnlocked: true,
+        needsMfa: true,
+        factorsNeeded: result.factorsNeeded,
+      };
+    }
+
+    // Original full-session path — pre-Phase-5C behaviour.
     const me = await apiMe();
     if (!me) {
       throw new Error('passkey-login: server accepted assertion but /me returned null');
@@ -836,7 +999,7 @@ export function useSession() {
       // ProtectedRoute layer will catch the missing main key and
       // surface the prompt. Same UX as a cold reload.
       markKeyMissing();
-      return { fullyUnlocked: false };
+      return { fullyUnlocked: false, needsMfa: false, factorsNeeded: [] };
     }
 
     const prfOutput = result.prfOutput;
@@ -873,7 +1036,84 @@ export function useSession() {
       prfOutput.fill(0);
     }
 
-    return { fullyUnlocked: true };
+    return { fullyUnlocked: true, needsMfa: false, factorsNeeded: [] };
+  }
+
+  /* ============================================================================
+   * TOTP (Auth-Roadmap Phase 5B)
+   * ========================================================================== */
+
+  /**
+   * Drive a TOTP enrollment start: re-prove the password and ask the
+   * server for a fresh secret + 10 backup codes. Returns the
+   * `secretBase32`, `otpauthUri` (for QR rendering), and the codes —
+   * all displayed once. The user must scan the QR / type the code,
+   * then call `verifyTotpEnrollment` to flip the row from pending
+   * to enabled.
+   *
+   * Throws `{ status: 401, error: 'invalid_credentials' }` on a wrong
+   * password — same shape the rest of the hook surfaces.
+   */
+  async function startTotpEnrollment(
+    currentPassword: string,
+  ): Promise<TotpEnrollStartResponse> {
+    if (!user) throw new Error('startTotpEnrollment: no authenticated user');
+    const proof = await issuePasswordProof(user.email, currentPassword);
+    return apiTotpEnrollStart({
+      proofLoginToken: proof.loginToken,
+      proofFinishLoginRequest: proof.finishLoginRequest,
+    });
+  }
+
+  /**
+   * Confirm an enrollment with a TOTP code + the backup-codes ack.
+   * On success the server flips `enabled_at`; we refresh `/me` so
+   * the sidebar tip + Settings UI react.
+   */
+  async function verifyTotpEnrollment(code: string): Promise<void> {
+    if (!user) throw new Error('verifyTotpEnrollment: no authenticated user');
+    await apiTotpEnrollVerify({ code, backupCodesAcknowledged: true });
+    const me = await apiMe();
+    if (me) setAuth(me);
+  }
+
+  /**
+   * Disable TOTP. Requires fresh password proof (matrice §6). Server
+   * applies §6.1 downgrade auto if `security_mode` was
+   * `always_totp` / `maximum`. Refreshes `/me` so the UI reflects
+   * the new mode + flag.
+   */
+  async function disableTotp(currentPassword: string): Promise<void> {
+    if (!user) throw new Error('disableTotp: no authenticated user');
+    const proof = await issuePasswordProof(user.email, currentPassword);
+    await apiTotpDisable({
+      proofLoginToken: proof.loginToken,
+      proofFinishLoginRequest: proof.finishLoginRequest,
+    });
+    const me = await apiMe();
+    if (me) setAuth(me);
+  }
+
+  /**
+   * Regenerate the 10 TOTP backup codes. Requires fresh password
+   * proof. Refuses 400 if TOTP isn't enabled (would be regenerating
+   * into a dead pool). Returns the fresh codes for one-shot display;
+   * old codes are invalidated atomically.
+   */
+  async function regenerateTotpBackupCodes(
+    currentPassword: string,
+  ): Promise<string[]> {
+    if (!user) throw new Error('regenerateTotpBackupCodes: no authenticated user');
+    const proof = await issuePasswordProof(user.email, currentPassword);
+    const res = await apiTotpRegenerateBackupCodes({
+      proofLoginToken: proof.loginToken,
+      proofFinishLoginRequest: proof.finishLoginRequest,
+    });
+    // Refresh /me — the count should still be 10, but the field
+    // is non-stale after this call too.
+    const me = await apiMe();
+    if (me) setAuth(me);
+    return res.backupCodes;
   }
 
   return {
@@ -889,6 +1129,11 @@ export function useSession() {
     renamePasskey,
     removePasskey,
     loginWithPasskey: passkeyLogin,
+    startTotpEnrollment,
+    verifyTotpEnrollment,
+    disableTotp,
+    regenerateTotpBackupCodes,
+    verifyMfaTotp,
   };
 }
 
