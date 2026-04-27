@@ -84,53 +84,13 @@ const requestResetLimiter = rateLimit({
 /** Mild cap on reset consumption to slow any brute-force of stolen tokens. */
 const resetLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'reset' });
 
-authRoutes.post('/register', registerLimiter, async (c) => {
-  const raw = await c.req.json().catch(() => null);
-  const parsed = RegisterBodySchema.safeParse(raw);
-  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
-  const body = parsed.data;
-
-  const policy = checkPasswordPolicy(body.password, [body.email]);
-  if (!policy.ok) return c.json({ error: 'weak_password', reason: policy.reason }, 400);
-
-  const passwordHash = await hashPassword(body.password);
-
-  const outcome = await consumeInviteAndCreateUser(body.inviteCode, async (tx) => {
-    const userId = randomUUID();
-    try {
-      await tx.insert(users).values({
-        id: userId,
-        email: body.email.toLowerCase(),
-        passwordHash,
-        encryptionSalt: body.encryptionSalt,
-        encryptedKey: body.encryptedKey,
-      });
-    } catch (err) {
-      // Unique constraint on email → rethrow as a tagged error so the outer
-      // layer can distinguish it from generic failures.
-      if (isUniqueViolation(err, 'users_email_unique')) {
-        throw new EmailTakenError();
-      }
-      throw err;
-    }
-    return { userId, result: userId };
-  }).catch((err) => {
-    if (err instanceof EmailTakenError) return { ok: false as const, reason: 'email_taken' as const };
-    throw err;
-  });
-
-  if (!outcome.ok) {
-    return c.json({ error: 'register_failed', reason: outcome.reason }, 400);
-  }
-
-  const userId = outcome.result;
-  const session = await createSession(userId);
-  await setSessionCookie(c, session.id, session.expiresAt);
-
-  return c.json({ id: userId }, 201);
-});
-
-class EmailTakenError extends Error {}
+// The legacy single-shot `POST /auth/register` was removed when the
+// invite model switched to email-bound tokens. Registrations now go
+// through `routes/auth-register-v2.ts` which is mounted at the same
+// path AND owns the bare `/auth/register` route. Admin tooling /
+// seed scripts insert directly into the `users` table without going
+// through HTTP — see `seedAdmin` in `test/helpers.ts` and the
+// equivalent in `seed.ts`.
 
 authRoutes.post('/login', loginLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);

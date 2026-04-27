@@ -57,6 +57,13 @@
       "when": 1777226041447,
       "tag": "0007_perpetual_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777267856254,
+      "tag": "0008_ambiguous_eternity",
+      "breakpoints": true
     }
   ]
 }

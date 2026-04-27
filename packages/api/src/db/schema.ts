@@ -454,13 +454,31 @@ export const emailVerifications = pgTable(
 );
 
 /**
- * Invites — single-use registration codes. Stored hashed (never in clear).
- * Consumption is atomic via transaction + `SELECT ... FOR UPDATE`.
+ * Invites — email-bound registration tokens (Bitwarden-style).
+ *
+ * Admin enters an email, server generates a 32-byte random token,
+ * stores its SHA-256 in `code_hash` (column kept for migration
+ * brevity, semantic is now "token hash"), and emails the recipient
+ * a link of the form `/register?invite=<token>`. The recipient
+ * lands on the register page with their email pre-filled and locked
+ * — submission is rejected if the email in the form doesn't match
+ * the email this invite was issued for.
+ *
+ * Replaces the previous "invitation code" model where a clear code
+ * was generated, displayed in /admin, and pasted by the user into
+ * the register form. The new model removes the copy-paste step and
+ * gates registration on email control proven via the link click.
  */
 export const invites = pgTable(
   'invites',
   {
     id: text('id').primaryKey(),
+    /** Recipient address — locked at issue time. Strict match at
+     *  consumption: the user must sign up with EXACTLY this email. */
+    email: text('email').notNull(),
+    /** SHA-256 of the random token put in the activation link. The
+     *  column name `code_hash` is preserved for schema brevity even
+     *  though the semantic shifted from "code hash" to "token hash". */
     codeHash: text('code_hash').notNull(),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     usedBy: text('used_by').references(() => users.id, { onDelete: 'set null' }),
@@ -468,8 +486,31 @@ export const invites = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('invites_code_hash_unique').on(t.codeHash)],
+  (t) => [
+    uniqueIndex('invites_code_hash_unique').on(t.codeHash),
+    // Lookups by email when admin asks "is there a pending invite
+    // for foo@bar.com" or when register validates the strict match.
+    index('invites_email_idx').on(t.email),
+  ],
 );
+
+/**
+ * Application-wide settings keyed/value table.
+ *
+ * V1 only stores `open_registration: 'true' | 'false'` (default
+ * 'false' if absent — defensive: an admin must opt in). Future
+ * settings (TOTP requirement, public announcements toggle, etc.)
+ * land here too without a schema change.
+ *
+ * Values are stored as text. Boolean settings parse 'true' / 'false';
+ * future structured settings can JSON-encode and parse on read.
+ */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+});
 
 /**
  * Password-reset tokens. Stored hashed (same pattern as invites) with
@@ -615,6 +656,8 @@ export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type Invite = typeof invites.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;
+export type NewAppSetting = typeof appSettings.$inferInsert;
 export type NewInvite = typeof invites.$inferInsert;
 export type EntryRow = typeof moodEntries.$inferSelect;
 export type NewEntryRow = typeof moodEntries.$inferInsert;

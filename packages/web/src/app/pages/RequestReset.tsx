@@ -2,6 +2,7 @@ import { forwardRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 /**
  * Request-reset — Direction K · Sauge.
@@ -45,31 +46,12 @@ export default function RequestResetPage() {
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      {/* Marketing panel */}
-      <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
-        <div className="flex items-center gap-2.5">
-          <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
-          <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
-        </div>
-
-        <div className="animate-fade-up">
-          <h1 className="mb-[18px] text-[56px] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
-            Récupère l’accès.
-          </h1>
-          <p className="max-w-[460px] text-[18px] leading-[1.5] text-ink-soft">
-            Le mot de passe est aussi la clé qui chiffre tes entrées. Le réinitialiser efface
-            les données existantes.
-          </p>
-        </div>
-
-        <div className="flex gap-3.5 text-[12px] text-muted">
-          <span>Chiffré bout en bout</span>
-          <span>·</span>
-          <span>Auto-hébergé</span>
-          <span>·</span>
-          <span>AGPL-3.0</span>
-        </div>
-      </aside>
+      <AuthMarketingPanel headline="Récupère l’accès.">
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Le mot de passe est aussi la clé qui chiffre tes entrées. Le
+          réinitialiser efface les données existantes.
+        </p>
+      </AuthMarketingPanel>
 
       {/* Form panel */}
       <main className="flex items-center justify-center px-6 py-16 sm:px-14">

@@ -32,7 +32,21 @@ import type { LoginBody } from '@nodea/shared';
 export interface SessionRegisterInput {
   email: string;
   password: string;
-  inviteCode: string;
+  /** Invite-token branch: pre-filled by Register from the URL when
+   *  the user arrived via an invite link. Optional — when omitted the
+   *  call hits the open-registration path instead (which 403s if the
+   *  admin toggle is off). */
+  inviteToken?: string;
+}
+
+export interface SessionRegisterResult {
+  /** True when the server activated the account at submit time
+   *  (invited path). False when the user must still click an
+   *  activation email (open path). */
+  activated: boolean;
+  /** Echoed back from the server on the invited path so the UI can
+   *  redirect to /login?activated=1 with the email known. */
+  email?: string;
 }
 
 export interface SessionChangePasswordInput {
@@ -99,32 +113,41 @@ export function useSession() {
   }
 
   /**
-   * Submit a new registration (Auth-Roadmap Phase 1 reworked).
+   * Submit a new registration (Auth-Roadmap Phase 1, post-rework v2).
    *
    * Generates a fresh main key client-side, wraps it under the
    * password-derived KEK, and ships the envelope alongside the
-   * email + password + invite. Server creates the account in
-   * `email_verified_at = NULL` state and emails an activation link.
+   * email + password (+ invite token, when arriving from an invite
+   * link). Two server-side paths:
    *
-   * Unlike the old `register()`: no session cookie is emitted, no
-   * /auth/me round-trip, no main-key caching. The user must click
-   * the magic link in their email and then log in normally — at
-   * which point `login()` re-derives the main key from the password
-   * the user types (we threw away the bytes we generated here, on
-   * purpose: keeping them in memory for an indefinite period
-   * between submit and activation is a leak surface).
+   *   - With `inviteToken`  → strict email match, account activated
+   *                            immediately on submit.
+   *   - Without              → open-registration path; account stays
+   *                            inactive until the activation email
+   *                            link is clicked.
+   *
+   * No session cookie is emitted in either path. Per UX decision the
+   * user re-types their password on /login?activated=1 once the
+   * account is ready — we throw away the main-key bytes here on
+   * purpose to avoid keeping them in memory across the redirect.
    */
-  async function submitRegistration(input: SessionRegisterInput): Promise<void> {
+  async function submitRegistration(
+    input: SessionRegisterInput,
+  ): Promise<SessionRegisterResult> {
     const rawMainKey = randomBytes(32);
     try {
       const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
-      await apiRegisterSubmit({
+      const body: Parameters<typeof apiRegisterSubmit>[0] = {
         email: input.email,
         password: input.password,
-        inviteCode: input.inviteCode,
         encryptionSalt,
         encryptedKey,
-      });
+      };
+      if (input.inviteToken) body.inviteToken = input.inviteToken;
+      const res = await apiRegisterSubmit(body);
+      const result: SessionRegisterResult = { activated: res.activated };
+      if (res.email !== undefined) result.email = res.email;
+      return result;
     } finally {
       rawMainKey.fill(0);
     }

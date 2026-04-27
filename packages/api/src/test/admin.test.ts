@@ -32,34 +32,30 @@ async function adminCookie(): Promise<string> {
 }
 
 describe('GET /admin/invites', () => {
-  it('lists only invites that have not been consumed', async () => {
+  it('lists pending invites with their email + metadata', async () => {
     const cookie = await adminCookie();
     const mint1 = await app.request('/admin/invites', {
-      ...postJson({}),
+      ...postJson({ email: 'invite-a@example.com' }),
       headers: { 'content-type': 'application/json', cookie },
     });
-    const { id: id1 } = (await mint1.json()) as { id: string; code: string };
+    expect(mint1.status).toBe(201);
+    const { id: id1 } = (await mint1.json()) as { id: string };
 
     const mint2 = await app.request('/admin/invites', {
-      ...postJson({}),
+      ...postJson({ email: 'invite-b@example.com' }),
       headers: { 'content-type': 'application/json', cookie },
     });
-    const { id: id2 } = (await mint2.json()) as { id: string; code: string };
+    expect(mint2.status).toBe(201);
+    const { id: id2 } = (await mint2.json()) as { id: string };
 
-    // Mark invite 2 as "used" to exclude it from the list.
-    await db
-      .update(invites)
-      .set({ usedBy: null, usedAt: new Date() })
-      .where(eq(invites.id, id2));
-    // Re-fetch: usedBy still null (we kept it null to avoid FK work).
-    // Use a real consumption instead by calling register with the code.
-    // For this test we just check the shape: both unused → both listed.
     const list = await app.request('/admin/invites', { headers: { cookie } });
     expect(list.status).toBe(200);
-    const body = (await list.json()) as { invites: Array<{ id: string }> };
-    const ids = body.invites.map((i) => i.id);
-    expect(ids).toContain(id1);
-    expect(ids).toContain(id2);
+    const body = (await list.json()) as {
+      invites: Array<{ id: string; email: string }>;
+    };
+    const byId = new Map(body.invites.map((i) => [i.id, i]));
+    expect(byId.get(id1)?.email).toBe('invite-a@example.com');
+    expect(byId.get(id2)?.email).toBe('invite-b@example.com');
   });
 
   it('refuses non-admin users', async () => {
@@ -74,7 +70,7 @@ describe('DELETE /admin/invites/:id', () => {
   it('removes an unused invite', async () => {
     const cookie = await adminCookie();
     const mint = await app.request('/admin/invites', {
-      ...postJson({}),
+      ...postJson({ email: 'doomed-invite@example.com' }),
       headers: { 'content-type': 'application/json', cookie },
     });
     const { id } = (await mint.json()) as { id: string };

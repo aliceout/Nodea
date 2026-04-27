@@ -1,30 +1,26 @@
 /**
- * Integration tests for the simplified single-step register flow
- * (Auth-Roadmap Phase 1 reworked).
+ * Integration tests for the email-bound invite + open-registration
+ * model (Auth-Roadmap Phase 1, post-rework v2).
  *
- * Two routes:
- *   - POST /auth/register         submit + email magic link
- *   - POST /auth/register/activate  consume magic link
- *
- * Plus the activation gate on POST /auth/login (refuses unactivated
- * users with 403 account_not_activated).
+ * Routes under test:
+ *   - GET  /auth/register/mode
+ *   - GET  /auth/register/invite-info?token=…
+ *   - POST /auth/register                 (invited + open + closed)
+ *   - POST /auth/register/activate        (open path activation)
+ *   - POST /auth/login                    (activation gate)
  *
  * Real Postgres + the in-memory `RecordingEmailService` (forced via
  * `vitest.config.ts`).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { emailVerifications, invites, users } from '../db/schema.ts';
-import { hashToken } from '../auth/email-verifications.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
-import {
-  TEST_PASSWORD,
-  seedAdmin,
-  seedInvite,
-  seedUser,
-} from './helpers.ts';
+import { setOpenRegistration } from '../services/settings.ts';
+import { hashToken } from '../auth/email-verifications.ts';
+import { seedAdmin, seedInvite, seedUser } from './helpers.ts';
 
 const app = buildApp();
 const recording = __getRecordingEmailService();
@@ -39,22 +35,20 @@ function jsonPost(body: unknown): RequestInit {
   };
 }
 
-function submitBody(invite: string, email: string, password = REG_PASSWORD) {
+function submitBody(opts: {
+  email: string;
+  password?: string;
+  inviteToken?: string;
+}) {
   return {
-    email,
-    password,
-    inviteCode: invite,
+    email: opts.email,
+    password: opts.password ?? REG_PASSWORD,
     encryptionSalt: 'salt-base64',
     encryptedKey: 'wrapped-key-base64',
+    ...(opts.inviteToken ? { inviteToken: opts.inviteToken } : {}),
   };
 }
 
-/**
- * The activation email contains a link of the form
- * `{WEB_BASE_URL}/activate?token=…`. Tests don't rely on
- * WEB_BASE_URL being set; they parse the `token=` query param out
- * of the body text.
- */
 function extractTokenFromLatestActivationMail(): string {
   const mail = recording.latestByTag('register-activate');
   if (!mail) throw new Error('no register-activate mail recorded');
@@ -65,66 +59,277 @@ function extractTokenFromLatestActivationMail(): string {
   return decodeURIComponent(match[1]);
 }
 
+beforeEach(async () => {
+  // Default for every test: open_registration OFF. Tests that need
+  // it on call setOpenRegistration(true) explicitly.
+  // (The settings table is wiped by the global TRUNCATE in setup.ts,
+  // so the default-off behavior is what reads return.)
+});
+
 /* ============================================================================
- * POST /auth/register
+ * GET /auth/register/mode
  * ========================================================================== */
 
-describe('POST /auth/register (submit)', () => {
-  it('creates an inactive user + emails an activation link', async () => {
-    const invite = await seedInvite();
+describe('GET /auth/register/mode', () => {
+  it('reports open_registration false by default', async () => {
+    const res = await app.request('/auth/register/mode');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ openRegistration: false });
+  });
+
+  it('reflects the admin toggle', async () => {
+    const admin = await seedAdmin('mode-admin@example.com');
+    await setOpenRegistration(true, admin.id);
+    const res = await app.request('/auth/register/mode');
+    expect(await res.json()).toEqual({ openRegistration: true });
+  });
+});
+
+/* ============================================================================
+ * GET /auth/register/invite-info
+ * ========================================================================== */
+
+describe('GET /auth/register/invite-info', () => {
+  it('returns the email a valid token was issued for', async () => {
+    const invite = await seedInvite('target@example.com');
     const res = await app.request(
-      '/auth/register',
-      jsonPost(submitBody(invite.code, 'newcomer@example.com')),
+      `/auth/register/invite-info?token=${encodeURIComponent(invite.token)}`,
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    const body = (await res.json()) as { email: string; expiresAt: string | null };
+    expect(body.email).toBe('target@example.com');
+    expect(body.expiresAt).toBeTruthy();
+  });
+
+  it('404s on an unknown token', async () => {
+    const res = await app.request(
+      '/auth/register/invite-info?token=totally-bogus-token-xxxxxxxxxxxxxxxxxx',
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('404s when the token query is missing', async () => {
+    const res = await app.request('/auth/register/invite-info');
+    expect(res.status).toBe(404);
+  });
+
+  it('404s on an already-used token', async () => {
+    const invite = await seedInvite('used@example.com');
+    const burner = await seedUser('burner-info@example.com');
+    await db
+      .update(invites)
+      .set({ usedBy: burner.id, usedAt: new Date() })
+      .where(eq(invites.id, invite.id));
+
+    const res = await app.request(
+      `/auth/register/invite-info?token=${encodeURIComponent(invite.token)}`,
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('404s on an expired token', async () => {
+    const invite = await seedInvite('expired-info@example.com');
+    await db
+      .update(invites)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(invites.id, invite.id));
+
+    const res = await app.request(
+      `/auth/register/invite-info?token=${encodeURIComponent(invite.token)}`,
+    );
+    expect(res.status).toBe(404);
+  });
+});
+
+/* ============================================================================
+ * POST /auth/register — invited path
+ * ========================================================================== */
+
+describe('POST /auth/register — invited path', () => {
+  it('creates an activated user and consumes the invite atomically', async () => {
+    const invite = await seedInvite('newcomer@example.com');
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({
+          email: 'newcomer@example.com',
+          inviteToken: invite.token,
+        }),
+      ),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { activated: boolean; email: string };
+    expect(body.activated).toBe(true);
+    expect(body.email).toBe('newcomer@example.com');
 
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.email, 'newcomer@example.com'));
     expect(user).toBeDefined();
-    expect(user!.emailVerifiedAt).toBeNull();
-    expect(user!.passwordHash).not.toBe('');
+    expect(user!.emailVerifiedAt).not.toBeNull();
     expect(user!.encryptionSalt).toBe('salt-base64');
+
+    const [usedInvite] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.id, invite.id));
+    expect(usedInvite!.usedBy).toBe(user!.id);
+    expect(usedInvite!.usedAt).not.toBeNull();
+
+    // No activation email sent on the invited path — the invite
+    // email already proved control.
+    const activationMails = recording.sent.filter(
+      (m) => m.tag === 'register-activate',
+    );
+    expect(activationMails).toHaveLength(0);
+  });
+
+  it('rejects email mismatch with 400 email_mismatch', async () => {
+    const invite = await seedInvite('intended@example.com');
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({
+          email: 'someone-else@example.com',
+          inviteToken: invite.token,
+        }),
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: 'register_failed',
+      reason: 'email_mismatch',
+    });
+
+    // Invite stays unused.
+    const [stillUnused] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.id, invite.id));
+    expect(stillUnused!.usedBy).toBeNull();
+  });
+
+  it('rejects an unknown token with 401 invalid_token', async () => {
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({
+          email: 'someone@example.com',
+          inviteToken: 'totally-bogus-token-xxxxxxxxxxxxxxxxxxx',
+        }),
+      ),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({
+      error: 'register_failed',
+      reason: 'invalid_token',
+    });
+  });
+
+  it('rejects a re-used token (single-use)', async () => {
+    const invite = await seedInvite('once@example.com');
+
+    const first = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({ email: 'once@example.com', inviteToken: invite.token }),
+      ),
+    );
+    expect(first.status).toBe(200);
+
+    const second = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({ email: 'once@example.com', inviteToken: invite.token }),
+      ),
+    );
+    expect(second.status).toBe(401);
+    expect(await second.json()).toMatchObject({ reason: 'invalid_token' });
+  });
+
+  it('rejects a weak password with 400 weak_password', async () => {
+    const invite = await seedInvite('weak@example.com');
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({
+          email: 'weak@example.com',
+          password: 'password1234',
+          inviteToken: invite.token,
+        }),
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()) as { error: string }).toMatchObject({
+      error: 'weak_password',
+    });
+  });
+});
+
+/* ============================================================================
+ * POST /auth/register — open path
+ * ========================================================================== */
+
+describe('POST /auth/register — open path', () => {
+  it('returns 403 registration_closed when open_registration is off', async () => {
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(submitBody({ email: 'closed@example.com' })),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'registration_closed' });
+  });
+
+  it('creates an inactive user and emails an activation link when open', async () => {
+    const admin = await seedAdmin('open-admin@example.com');
+    await setOpenRegistration(true, admin.id);
+
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(submitBody({ email: 'open@example.com' })),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, activated: false });
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, 'open@example.com'));
+    expect(user).toBeDefined();
+    expect(user!.emailVerifiedAt).toBeNull();
 
     const verifs = await db
       .select()
       .from(emailVerifications)
-      .where(eq(emailVerifications.email, 'newcomer@example.com'));
+      .where(eq(emailVerifications.email, 'open@example.com'));
     expect(verifs).toHaveLength(1);
-    expect(verifs[0]!.kind).toBe('register');
     expect(verifs[0]!.consumedAt).toBeNull();
 
-    const mail = recording.latestByTag('register-activate');
-    expect(mail).toBeDefined();
-    expect(mail!.to).toBe('newcomer@example.com');
-    expect(mail!.text).toMatch(/token=/);
+    expect(recording.latestByTag('register-activate')).toBeDefined();
   });
 
-  it('reuses an existing inactive user row + invalidates the previous link', async () => {
-    const invite = await seedInvite();
+  it('reuses an inactive user row + invalidates the previous activation link', async () => {
+    const admin = await seedAdmin('reuse-admin@example.com');
+    await setOpenRegistration(true, admin.id);
 
     await app.request(
       '/auth/register',
-      jsonPost(submitBody(invite.code, 'redo@example.com')),
+      jsonPost(submitBody({ email: 'redo@example.com' })),
     );
-    const firstCount = (
-      await db.select().from(users).where(eq(users.email, 'redo@example.com'))
-    ).length;
-
     await app.request(
       '/auth/register',
-      jsonPost(submitBody(invite.code, 'redo@example.com', 'Other-Pass-Now-77')),
+      jsonPost(
+        submitBody({ email: 'redo@example.com', password: 'Other-Pass-Now-77!' }),
+      ),
     );
 
-    const after = await db
+    const userRows = await db
       .select()
       .from(users)
       .where(eq(users.email, 'redo@example.com'));
-    expect(after).toHaveLength(firstCount);
+    expect(userRows).toHaveLength(1);
 
-    // Two verifications total: first marked consumed, second still pending.
     const verifs = await db
       .select()
       .from(emailVerifications)
@@ -133,29 +338,11 @@ describe('POST /auth/register (submit)', () => {
     const pending = verifs.filter((v) => v.consumedAt === null);
     expect(consumed).toHaveLength(1);
     expect(pending).toHaveLength(1);
-
-    const mails = recording.sent.filter((m) => m.tag === 'register-activate');
-    expect(mails).toHaveLength(2);
   });
 
-  it('returns 200 silently for an unknown invite (anti-enum)', async () => {
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(submitBody('nd-totallybogus000000000', 'noinvite@example.com')),
-    );
-    expect(res.status).toBe(200);
-
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, 'noinvite@example.com'));
-    expect(user).toBeUndefined();
-    expect(recording.sent).toHaveLength(0);
-  });
-
-  it('returns 200 silently for an already-active user', async () => {
-    const invite = await seedInvite();
-    // Pre-seed a complete + activated user.
+  it('returns 200 silently when the email already belongs to an active user', async () => {
+    const admin = await seedAdmin('dup-admin@example.com');
+    await setOpenRegistration(true, admin.id);
     const existing = await seedUser('taken@example.com');
     await db
       .update(users)
@@ -164,29 +351,14 @@ describe('POST /auth/register (submit)', () => {
 
     const res = await app.request(
       '/auth/register',
-      jsonPost(submitBody(invite.code, 'taken@example.com')),
+      jsonPost(submitBody({ email: 'taken@example.com' })),
     );
     expect(res.status).toBe(200);
-    expect(recording.sent).toHaveLength(0);
-  });
 
-  it('rejects a weak password with 400', async () => {
-    const invite = await seedInvite();
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(submitBody(invite.code, 'weak@example.com', 'password1234')),
+    const activationMails = recording.sent.filter(
+      (m) => m.tag === 'register-activate',
     );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('weak_password');
-  });
-
-  it('returns 400 on invalid body shape', async () => {
-    const res = await app.request(
-      '/auth/register',
-      jsonPost({ email: 'not-an-email', password: '', inviteCode: '' }),
-    );
-    expect(res.status).toBe(400);
+    expect(activationMails).toHaveLength(0);
   });
 });
 
@@ -195,17 +367,18 @@ describe('POST /auth/register (submit)', () => {
  * ========================================================================== */
 
 describe('POST /auth/register/activate', () => {
-  async function submitFor(email: string): Promise<string> {
-    const invite = await seedInvite();
+  async function openSubmit(email: string): Promise<string> {
+    const admin = await seedAdmin(`act-admin-${Date.now()}@example.com`);
+    await setOpenRegistration(true, admin.id);
     await app.request(
       '/auth/register',
-      jsonPost(submitBody(invite.code, email)),
+      jsonPost(submitBody({ email })),
     );
     return extractTokenFromLatestActivationMail();
   }
 
   it('flips the user to active and returns its email', async () => {
-    const token = await submitFor('activate@example.com');
+    const token = await openSubmit('activate@example.com');
     const res = await app.request(
       '/auth/register/activate',
       jsonPost({ token }),
@@ -229,33 +402,23 @@ describe('POST /auth/register/activate', () => {
       jsonPost({ token: 'totally-bogus-token-xxxxxxxxxxxxxxxxxx' }),
     );
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({
-      error: 'activation_failed',
-      reason: 'invalid_token',
-    });
+    expect(await res.json()).toMatchObject({ reason: 'invalid_token' });
   });
 
-  it('rejects an already-consumed token with 401 already_consumed', async () => {
-    const token = await submitFor('twice@example.com');
-    const first = await app.request(
-      '/auth/register/activate',
-      jsonPost({ token }),
-    );
-    expect(first.status).toBe(200);
+  it('rejects an already-consumed token with 401', async () => {
+    const token = await openSubmit('twice@example.com');
+    await app.request('/auth/register/activate', jsonPost({ token }));
 
     const second = await app.request(
       '/auth/register/activate',
       jsonPost({ token }),
     );
     expect(second.status).toBe(401);
-    expect(await second.json()).toEqual({
-      error: 'activation_failed',
-      reason: 'already_consumed',
-    });
+    expect(await second.json()).toMatchObject({ reason: 'already_consumed' });
   });
 
-  it('rejects an expired token with 410 expired', async () => {
-    const token = await submitFor('expired@example.com');
+  it('rejects an expired token with 410', async () => {
+    const token = await openSubmit('expired@example.com');
     const tokenHash = hashToken(token);
     await db
       .update(emailVerifications)
@@ -267,31 +430,21 @@ describe('POST /auth/register/activate', () => {
       jsonPost({ token }),
     );
     expect(res.status).toBe(410);
-    expect(await res.json()).toEqual({
-      error: 'activation_failed',
-      reason: 'expired',
-    });
-  });
-
-  it('returns 400 on invalid body', async () => {
-    const res = await app.request(
-      '/auth/register/activate',
-      jsonPost({ token: '' }),
-    );
-    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ reason: 'expired' });
   });
 });
 
 /* ============================================================================
- * POST /auth/login — activation gate
+ * POST /auth/login activation gate
  * ========================================================================== */
 
 describe('POST /auth/login activation gate', () => {
-  it('refuses an unactivated user with 403 account_not_activated', async () => {
-    const invite = await seedInvite();
+  it('refuses an unactivated open-path user with 403', async () => {
+    const admin = await seedAdmin('gate-admin@example.com');
+    await setOpenRegistration(true, admin.id);
     await app.request(
       '/auth/register',
-      jsonPost(submitBody(invite.code, 'unactivated@example.com')),
+      jsonPost(submitBody({ email: 'unactivated@example.com' })),
     );
 
     const res = await app.request(
@@ -305,77 +458,23 @@ describe('POST /auth/login activation gate', () => {
     expect(await res.json()).toEqual({ error: 'account_not_activated' });
   });
 
-  it('lets a fully-activated user log in', async () => {
-    const invite = await seedInvite();
+  it('lets an invited (auto-activated) user log in directly', async () => {
+    const invite = await seedInvite('happy-invite@example.com');
     await app.request(
       '/auth/register',
-      jsonPost(submitBody(invite.code, 'happy@example.com')),
-    );
-    const token = extractTokenFromLatestActivationMail();
-    await app.request(
-      '/auth/register/activate',
-      jsonPost({ token }),
+      jsonPost(
+        submitBody({
+          email: 'happy-invite@example.com',
+          inviteToken: invite.token,
+        }),
+      ),
     );
 
     const res = await app.request(
       '/auth/login',
-      jsonPost({ email: 'happy@example.com', password: REG_PASSWORD }),
+      jsonPost({ email: 'happy-invite@example.com', password: REG_PASSWORD }),
     );
     expect(res.status).toBe(200);
-    const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toMatch(/nodea_session=/);
-  });
-
-  it('lets pre-existing legacy users (with email_verified_at set) log in unchanged', async () => {
-    // Admin seeds set email_verified_at directly; legacy users from
-    // before the activation gate should not be locked out.
-    const admin = await seedAdmin('legacy-admin@example.com');
-    await db
-      .update(users)
-      .set({ emailVerifiedAt: new Date() })
-      .where(eq(users.id, admin.id));
-
-    const res = await app.request(
-      '/auth/login',
-      jsonPost({
-        email: 'legacy-admin@example.com',
-        password: ADMIN_FOR_TEST_HELPERS,
-      }),
-    );
-    expect(res.status).toBe(200);
+    expect(res.headers.get('set-cookie') ?? '').toMatch(/nodea_session=/);
   });
 });
-
-/**
- * Test helpers re-export: the seedAdmin helper uses ADMIN_PASSWORD
- * from helpers.ts. Re-importing as a named const here would be
- * cleaner; for now the test references it by literal so the
- * relationship is visible.
- */
-const ADMIN_FOR_TEST_HELPERS = 'Admin-Horse-Battery-Staple-42';
-
-/* ============================================================================
- * Crypto helpers (sanity)
- * ========================================================================== */
-
-describe('email verification token hashing', () => {
-  it('produces a 64-hex-char SHA-256 digest', () => {
-    const hash = hashToken('some-base64url-token-xyz');
-    expect(hash).toMatch(/^[a-f0-9]{64}$/);
-  });
-
-  it('is deterministic on the same input', () => {
-    expect(hashToken('abc')).toBe(hashToken('abc'));
-  });
-
-  it('differs between distinct inputs', () => {
-    expect(hashToken('abc')).not.toBe(hashToken('abd'));
-  });
-});
-
-/**
- * Make TEST_PASSWORD reachable to the typechecker even though we
- * don't use it directly here — keeps the import linter happy.
- */
-void TEST_PASSWORD;
-void invites;

@@ -183,7 +183,7 @@ describe('POST /auth/change-password', () => {
 });
 
 describe('POST /admin/invites', () => {
-  it('lets an admin mint an invite and returns the clear code once', async () => {
+  it('lets an admin send an invite by email and stores it pending', async () => {
     const admin = await seedAdmin();
     const login = await app.request(
       '/auth/login',
@@ -194,11 +194,31 @@ describe('POST /admin/invites', () => {
     const res = await app.request('/admin/invites', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ email: 'newcomer@example.com' }),
     });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { id: string; code: string };
-    expect(body.code).toMatch(/^nd-[a-z2-9]+$/);
+    const body = (await res.json()) as { id: string; email: string };
+    expect(body.email).toBe('newcomer@example.com');
+    // Clear token never surfaces in the response — only via the email.
+    expect(body).not.toHaveProperty('code');
+    expect(body).not.toHaveProperty('token');
+  });
+
+  it('refuses inviting an already-existing user with 409', async () => {
+    const admin = await seedAdmin();
+    await seedUser('exists@example.com');
+    const login = await app.request(
+      '/auth/login',
+      json({ email: admin.email, password: ADMIN_PASSWORD }),
+    );
+    const cookie = extractCookie(login)!;
+
+    const res = await app.request('/admin/invites', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ email: 'exists@example.com' }),
+    });
+    expect(res.status).toBe(409);
   });
 
   it('refuses a non-admin user', async () => {
@@ -212,7 +232,7 @@ describe('POST /admin/invites', () => {
     const res = await app.request('/admin/invites', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ email: 'whatever@example.com' }),
     });
     expect(res.status).toBe(403);
   });
@@ -221,7 +241,7 @@ describe('POST /admin/invites', () => {
     const res = await app.request('/admin/invites', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ email: 'whatever@example.com' }),
     });
     expect(res.status).toBe(401);
   });

@@ -1,50 +1,38 @@
-import { randomBytes, createHash, timingSafeEqual, randomUUID } from 'node:crypto';
-import { and, eq, isNull, or, gt } from 'drizzle-orm';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { invites } from '../db/schema.ts';
 
 /**
- * Invite code shape.
+ * Email-bound invite tokens (Bitwarden-style).
  *
- * - Clear code: `nd-<24 base32 chars>` (~120 bits of entropy) — emailed /
- *   given to the recipient, never stored server-side in clear.
- * - Stored hash: SHA-256 of the clear code. Invite codes are high-entropy
- *   bearer tokens, not passwords — argon2 is unnecessary and would slow
- *   registration for no meaningful gain. A plain cryptographic hash suffices
- *   against rainbow-table / enumeration attacks on the code_hash column.
+ * Lifecycle:
+ *   1. Admin issues an invite for a specific email via
+ *      `POST /admin/invites { email }`.
+ *   2. Server generates a 32-byte random token, hashes it (SHA-256),
+ *      stores `(email, code_hash)` and emails the recipient a link
+ *      of the form `/register?invite=<clear_token>`.
+ *   3. The recipient clicks the link → register page pre-fills email
+ *      (read-only, locked to the invite) → user sets a password.
+ *   4. Submission validates the invite, enforces strict email match,
+ *      consumes the invite atomically, creates the user account
+ *      already activated (the email click proved control).
  *
- * Verification uses a timing-safe comparison to avoid leaking existence via
- * response latency.
+ * Tokens carry ~256 bits of entropy — far beyond brute-force range —
+ * so we don't need an attempts counter on validation. Single-use:
+ * `used_by` + `used_at` are set on first successful consumption.
  */
 
-const CODE_PREFIX = 'nd-';
-const CODE_BYTES = 15;
+const TOKEN_BYTES = 32;
+/** Default 7 days, can be overridden per invite via the admin form. */
+const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function encodeBase32(buf: Buffer): string {
-  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
-  let out = '';
-  let bits = 0;
-  let value = 0;
-  for (const byte of buf) {
-    value = (value << 8) | byte;
-    bits += 8;
-    while (bits >= 5) {
-      out += alphabet[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-  if (bits > 0) {
-    out += alphabet[(value << (5 - bits)) & 31];
-  }
-  return out;
+export function generateInviteToken(): string {
+  return randomBytes(TOKEN_BYTES).toString('base64url');
 }
 
-export function generateInviteCode(): string {
-  return CODE_PREFIX + encodeBase32(randomBytes(CODE_BYTES));
-}
-
-export function hashInviteCode(code: string): string {
-  return createHash('sha256').update(code.trim().toLowerCase()).digest('hex');
+export function hashInviteToken(token: string): string {
+  return createHash('sha256').update(token, 'utf8').digest('hex');
 }
 
 function constantTimeEqualHex(a: string, b: string): boolean {
@@ -57,42 +45,111 @@ function constantTimeEqualHex(a: string, b: string): boolean {
 }
 
 export interface CreateInviteOptions {
+  email: string;
   createdBy?: string | undefined;
+  /** Override the default 7-day TTL — used by tests + admin power users. */
   expiresAt?: Date | undefined;
 }
 
-export async function createInvite(opts: CreateInviteOptions = {}): Promise<{ id: string; code: string }> {
-  const code = generateInviteCode();
-  const codeHash = hashInviteCode(code);
-  const id = randomUUID();
-  const values: typeof invites.$inferInsert = { id, codeHash };
-  if (opts.createdBy !== undefined) values.createdBy = opts.createdBy;
-  if (opts.expiresAt !== undefined) values.expiresAt = opts.expiresAt;
-  await db.insert(invites).values(values);
-  return { id, code };
-}
-
-export interface ConsumeInviteResult {
-  ok: boolean;
-  inviteId?: string;
-  reason?: 'not_found' | 'already_used' | 'expired';
+export interface CreatedInvite {
+  id: string;
+  /** Clear token to embed in the invite link. Returned ONCE; never
+   *  persisted, never logged. */
+  token: string;
+  email: string;
+  expiresAt: Date;
 }
 
 /**
- * Atomically consume an invite and create the associated user. The whole
- * operation runs inside a single transaction with `SELECT ... FOR UPDATE`
- * so two concurrent requests cannot redeem the same code.
- *
- * The caller provides a `createUser` function that receives the tx handle
- * and performs the INSERT into `users`, returning the new user id. On any
- * error (policy violation, duplicate email, etc.) the whole tx is rolled
- * back and the invite remains redeemable.
+ * Provision a fresh invite for an email. Caller (admin route) is
+ * responsible for sending the actual invitation email after this
+ * resolves.
  */
+export async function createInvite(opts: CreateInviteOptions): Promise<CreatedInvite> {
+  const token = generateInviteToken();
+  const codeHash = hashInviteToken(token);
+  const id = randomUUID();
+  const email = opts.email.toLowerCase();
+  const expiresAt = opts.expiresAt ?? new Date(Date.now() + DEFAULT_TTL_MS);
+
+  const values: typeof invites.$inferInsert = {
+    id,
+    email,
+    codeHash,
+    expiresAt,
+  };
+  if (opts.createdBy !== undefined) values.createdBy = opts.createdBy;
+
+  await db.insert(invites).values(values);
+  return { id, token, email, expiresAt };
+}
+
+export interface ValidInviteInfo {
+  id: string;
+  email: string;
+  expiresAt: Date | null;
+}
+
+/**
+ * Look up an invite by its clear token, validating expiry + non-use.
+ * Returns the email + id if valid, or null otherwise. Used by the
+ * register-page invite-info endpoint to pre-fill the form.
+ *
+ * No timing-safety on the lookup itself: the indexed `code_hash`
+ * comparison is constant-time enough at the SQL layer for our threat
+ * model (the token has 256 bits, an attacker probing has nothing
+ * sub-second to learn). The hash compare via `timingSafeEqual` runs
+ * post-row-fetch as defense-in-depth.
+ */
+export async function findValidInvite(token: string): Promise<ValidInviteInfo | null> {
+  const codeHash = hashInviteToken(token);
+  const now = new Date();
+  const [row] = await db
+    .select()
+    .from(invites)
+    .where(
+      and(
+        eq(invites.codeHash, codeHash),
+        isNull(invites.usedBy),
+        or(isNull(invites.expiresAt), gt(invites.expiresAt, now)),
+      ),
+    )
+    .limit(1);
+
+  if (!row) return null;
+  if (!constantTimeEqualHex(row.codeHash, codeHash)) return null;
+  return { id: row.id, email: row.email, expiresAt: row.expiresAt };
+}
+
+/**
+ * Atomically consume an invite token and create the associated user.
+ * Used by the register submit route when the user holds an invite.
+ *
+ * The whole operation runs inside a single transaction with
+ * `SELECT … FOR UPDATE` so two parallel registrations on the same
+ * token cannot both succeed. On any error from `createUser`
+ * (uniqueness, weak password caught downstream, …) the tx rolls
+ * back and the invite stays redeemable.
+ *
+ * Strict email match is enforced HERE, not by the caller — the
+ * recipient must register with EXACTLY the email the admin invited.
+ */
+export type ConsumeInviteFailureReason =
+  | 'invalid_token'
+  | 'email_mismatch';
+
 export async function consumeInviteAndCreateUser<T>(
-  code: string,
-  createUser: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<{ userId: string; result: T }>,
-): Promise<{ ok: true; result: T } | { ok: false; reason: ConsumeInviteResult['reason'] }> {
-  const codeHash = hashInviteCode(code);
+  token: string,
+  email: string,
+  createUser: (
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  ) => Promise<{ userId: string; result: T }>,
+): Promise<
+  | { ok: true; result: T }
+  | { ok: false; reason: ConsumeInviteFailureReason }
+> {
+  const codeHash = hashInviteToken(token);
+  const targetEmail = email.toLowerCase();
   const now = new Date();
 
   return db.transaction(async (tx) => {
@@ -109,12 +166,12 @@ export async function consumeInviteAndCreateUser<T>(
       .for('update')
       .limit(1);
 
-    if (!invite) return { ok: false as const, reason: 'not_found' };
-
-    // Extra defence-in-depth: verify the hash constant-time, not only via the
-    // indexed WHERE clause (which already relied on equality).
+    if (!invite) return { ok: false as const, reason: 'invalid_token' };
     if (!constantTimeEqualHex(invite.codeHash, codeHash)) {
-      return { ok: false as const, reason: 'not_found' };
+      return { ok: false as const, reason: 'invalid_token' };
+    }
+    if (invite.email.toLowerCase() !== targetEmail) {
+      return { ok: false as const, reason: 'email_mismatch' };
     }
 
     const { userId, result } = await createUser(tx);

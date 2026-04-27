@@ -1,5 +1,5 @@
-import { forwardRef, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,8 +12,13 @@ import {
   type PasswordRulesCheck,
 } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
-import { isApiError } from '@/core/api/client';
+import {
+  apiRegisterInviteInfo,
+  apiRegisterMode,
+  isApiError,
+} from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -21,30 +26,211 @@ zxcvbnOptions.setOptions({
 });
 
 /**
- * Register — single-step inscription with magic-link activation
- * (Auth-Roadmap Phase 1 reworked).
+ * Register — three modes (Auth-Roadmap Phase 1, post-rework v2):
  *
- * Flow:
- *   1. User fills the form (email, password, confirm, invite).
- *   2. Submit → POST /auth/register → server creates inactive user
- *      and emails an activation link.
- *   3. UI swaps to a "Check your email" confirmation card. The user
- *      clicks the link in their email, which lands them on
- *      `/activate?token=…` (handled by `Activate.tsx`).
- *   4. After successful activation they're redirected to /login
- *      with a success banner and can sign in normally.
+ *   - **Invited**   `?invite=<token>` in URL → server-issued email
+ *                    pre-fills the form, locked to the invite. Submit
+ *                    activates the account immediately and lands on
+ *                    /login?activated=1.
+ *   - **Open**      no token + admin toggle ON → free signup with
+ *                    activation email + magic link.
+ *   - **Closed**    no token + toggle OFF → "invitation only" panel,
+ *                    no form.
  *
- * No cookie is set during the inscription. The legacy
- * `useSession.register()` (single-shot, set cookie + cache main key
- * immediately) was removed — the only persistence between submit and
- * login is the email magic link.
+ * The mode is determined on mount via `apiRegisterMode()` +
+ * `apiRegisterInviteInfo(token)`. While that's resolving we show a
+ * neutral loading state; once settled we pick the right panel.
  */
+type Mode =
+  | { kind: 'loading' }
+  | { kind: 'invited'; email: string; token: string }
+  | { kind: 'invalid_invite'; token: string }
+  | { kind: 'open' }
+  | { kind: 'closed' };
+
+export default function RegisterPage() {
+  const session = useSession();
+  const [params] = useSearchParams();
+  const [mode, setMode] = useState<Mode>({ kind: 'loading' });
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+
+  // Resolve mode on mount: if there's a token, validate it; otherwise
+  // ask the server whether open registration is allowed.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = params.get('invite') ?? '';
+      try {
+        if (token) {
+          const info = await apiRegisterInviteInfo(token);
+          if (cancelled) return;
+          if (info) {
+            setMode({ kind: 'invited', email: info.email, token });
+          } else {
+            setMode({ kind: 'invalid_invite', token });
+          }
+        } else {
+          const m = await apiRegisterMode();
+          if (cancelled) return;
+          setMode(m.openRegistration ? { kind: 'open' } : { kind: 'closed' });
+        }
+      } catch {
+        if (!cancelled) setMode({ kind: 'closed' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [params]);
+
+  return (
+    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
+      <AuthMarketingPanel headline="Crée ton espace.">
+        <PrivacyBody />
+      </AuthMarketingPanel>
+
+      {/* Form panel */}
+      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+        <div className="animate-fade-up w-full max-w-[360px]">
+          {mode.kind === 'loading' ? <LoadingPanel /> : null}
+          {mode.kind === 'closed' ? <ClosedPanel /> : null}
+          {mode.kind === 'invalid_invite' ? <InvalidInvitePanel /> : null}
+
+          {(mode.kind === 'invited' || mode.kind === 'open') &&
+          submittedEmail === null ? (
+            <RegisterForm
+              mode={mode}
+              onSubmitted={setSubmittedEmail}
+              submitRegistration={session.submitRegistration}
+            />
+          ) : null}
+
+          {submittedEmail !== null && mode.kind === 'open' ? (
+            <CheckYourEmailCard email={submittedEmail} />
+          ) : null}
+          {submittedEmail !== null && mode.kind === 'invited' ? (
+            <RedirectingToLoginCard email={submittedEmail} />
+          ) : null}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function LoadingPanel() {
+  return <p className="text-[13px] text-muted">Chargement…</p>;
+}
+
+function ClosedPanel() {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Inscription</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Sur invitation
+      </h2>
+      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
+        L'inscription à cette instance Nodea se fait sur invitation.
+        Demande à un·e admin de t'envoyer un lien d'invitation par e-mail.
+      </p>
+
+      <div className="mt-2 text-[12.5px] text-muted">
+        <span>Déjà un compte&nbsp;?</span>{' '}
+        <Link
+          to="/login"
+          className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+        >
+          Se connecter
+        </Link>
+      </div>
+    </>
+  );
+}
+
+function InvalidInvitePanel() {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Inscription</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Lien d'invitation invalide
+      </h2>
+      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
+        Ce lien d'invitation n'est pas valide. Il a peut-être déjà été utilisé,
+        expiré, ou il a été tronqué pendant la copie.
+      </p>
+      <p className="mb-6 text-[13px] text-muted">
+        Demande à un·e admin de te renvoyer un nouveau lien.
+      </p>
+
+      <div className="mt-2 text-[12.5px] text-muted">
+        <span>Déjà un compte&nbsp;?</span>{' '}
+        <Link
+          to="/login"
+          className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+        >
+          Se connecter
+        </Link>
+      </div>
+    </>
+  );
+}
+
+function CheckYourEmailCard({ email }: { email: string }) {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Inscription</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Vérifie ta boîte mail
+      </h2>
+      <p className="mb-4 text-[14px] leading-[1.5] text-ink-soft">
+        On a envoyé un lien d'activation à <strong>{email}</strong>. Clique sur le
+        lien pour activer ton compte — tu pourras te connecter ensuite.
+      </p>
+      <p className="mb-6 text-[12.5px] text-muted">
+        Le lien est valable 7 jours. Pense à vérifier le dossier spam si tu ne le
+        trouves pas tout de suite.
+      </p>
+
+      <div className="mt-2 text-[12.5px] text-muted">
+        <Link
+          to="/login"
+          className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+        >
+          Aller à la page de connexion
+        </Link>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Shown briefly after an invited submit, before the navigate kicks in.
+ * The invited path activates the account immediately so the user can
+ * head straight to /login.
+ */
+function RedirectingToLoginCard({ email }: { email: string }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const t = setTimeout(() => navigate('/login?activated=1', { replace: true }), 1200);
+    return () => clearTimeout(t);
+  }, [navigate]);
+
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Inscription</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Compte créé !
+      </h2>
+      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
+        <strong>{email}</strong> est prêt. On te redirige vers la connexion.
+      </p>
+    </>
+  );
+}
+
 const RegisterFormSchema = z
   .object({
-    email: z.string().email().max(254),
     password: z.string().min(PASSWORD_MIN_LENGTH).max(200),
     confirmPassword: z.string().min(1).max(200),
-    inviteCode: z.string().min(1).max(128),
   })
   .refine((v) => v.password === v.confirmPassword, {
     path: ['confirmPassword'],
@@ -52,69 +238,27 @@ const RegisterFormSchema = z
   });
 type RegisterForm = z.infer<typeof RegisterFormSchema>;
 
-export default function RegisterPage() {
-  const session = useSession();
-  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
-
-  return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      {/* Marketing panel — same shell as Login. */}
-      <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
-        <div className="flex items-center gap-2.5">
-          <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
-          <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
-        </div>
-
-        <div className="animate-fade-up">
-          <h1 className="mb-[18px] text-[56px] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
-            Crée ton espace.
-          </h1>
-          <p className="max-w-[460px] text-[18px] leading-[1.5] text-ink-soft">
-            Un espace privé, hébergé par toi. Mood, journal, passages, goals, habits, library,
-            review — chiffrés bout en bout, jamais visibles côté serveur.
-          </p>
-        </div>
-
-        <div className="flex gap-3.5 text-[12px] text-muted">
-          <span>Chiffré bout en bout</span>
-          <span>·</span>
-          <span>Auto-hébergé</span>
-          <span>·</span>
-          <span>AGPL-3.0</span>
-        </div>
-      </aside>
-
-      {/* Form panel */}
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          {submittedEmail ? (
-            <CheckYourEmailCard email={submittedEmail} />
-          ) : (
-            <RegisterForm
-              onSubmitted={setSubmittedEmail}
-              submitRegistration={session.submitRegistration}
-            />
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
 function RegisterForm({
+  mode,
   onSubmitted,
   submitRegistration,
 }: {
+  mode: { kind: 'invited'; email: string; token: string } | { kind: 'open' };
   onSubmitted: (email: string) => void;
   submitRegistration: (input: {
     email: string;
     password: string;
-    inviteCode: string;
-  }) => Promise<void>;
+    inviteToken?: string;
+  }) => Promise<{ activated: boolean; email?: string }>;
 }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  // Open mode lets the user type their email; invited mode pre-fills
+  // it from the invite (read-only, locked).
+  const [emailInput, setEmailInput] = useState(
+    mode.kind === 'invited' ? mode.email : '',
+  );
 
   const rules = useMemo(() => checkPasswordRules(password), [password]);
   const rulesOk = passwordRulesPassed(rules);
@@ -124,6 +268,7 @@ function RegisterForm({
     return { score, warning: feedback.warning ?? null };
   }, [password]);
   const confirmMismatch = confirm.length > 0 && confirm !== password;
+  const emailLooksValid = /\S+@\S+\.\S+/.test(emailInput);
 
   const {
     register: field,
@@ -131,7 +276,7 @@ function RegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<RegisterForm>({
     resolver: zodResolver(RegisterFormSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', inviteCode: '' },
+    defaultValues: { password: '', confirmPassword: '' },
   });
 
   async function onSubmit(values: RegisterForm): Promise<void> {
@@ -140,23 +285,42 @@ function RegisterForm({
       setServerError('Le mot de passe ne respecte pas toutes les règles.');
       return;
     }
+    if (mode.kind === 'open' && !emailLooksValid) {
+      setServerError('E-mail invalide.');
+      return;
+    }
     try {
-      await submitRegistration({
-        email: values.email,
+      const input: {
+        email: string;
+        password: string;
+        inviteToken?: string;
+      } = {
+        email: emailInput,
         password: values.password,
-        inviteCode: values.inviteCode,
-      });
-      onSubmitted(values.email);
+      };
+      if (mode.kind === 'invited') input.inviteToken = mode.token;
+      const result = await submitRegistration(input);
+      onSubmitted(result.email ?? emailInput);
     } catch (err) {
       if (isApiError(err)) {
         if (err.status === 400 && err.error === 'weak_password') {
           setServerError(err.reason ?? 'Le mot de passe est trop faible.');
-        } else if (err.status === 400) {
-          setServerError('Données invalides. Vérifie ton e-mail et ton code.');
+        } else if (err.status === 400 && err.reason === 'email_mismatch') {
+          setServerError(
+            'L\'e-mail ne correspond pas à celui de l\'invitation.',
+          );
+        } else if (err.status === 401) {
+          setServerError(
+            'Lien d\'invitation invalide ou déjà utilisé. Recharge la page pour vérifier.',
+          );
+        } else if (err.status === 403) {
+          setServerError(
+            'L\'inscription est fermée. Demande un lien d\'invitation à un·e admin.',
+          );
         } else if (err.status === 429) {
           setServerError('Trop de tentatives. Réessaie dans quelques minutes.');
         } else {
-          setServerError('Erreur lors de l’inscription. Réessaie.');
+          setServerError('Erreur lors de l\'inscription. Réessaie.');
         }
       } else {
         setServerError('Erreur réseau. Réessaie dans un instant.');
@@ -177,9 +341,20 @@ function RegisterForm({
           label="E-mail"
           type="email"
           autoComplete="email"
-          error={errors.email?.message}
-          {...field('email')}
+          value={emailInput}
+          readOnly={mode.kind === 'invited'}
+          onChange={(e) =>
+            mode.kind === 'open'
+              ? setEmailInput(e.currentTarget.value)
+              : undefined
+          }
         />
+        {mode.kind === 'invited' ? (
+          <p className="-mt-2 mb-3.5 text-[11.5px] text-muted">
+            E-mail défini par l'invitation, non modifiable.
+          </p>
+        ) : null}
+
         <Field
           label="Mot de passe"
           type="password"
@@ -213,14 +388,6 @@ function RegisterForm({
           })}
         />
 
-        <Field
-          label="Code d’invitation"
-          type="text"
-          autoComplete="one-time-code"
-          error={errors.inviteCode?.message}
-          {...field('inviteCode')}
-        />
-
         {serverError ? (
           <div
             role="alert"
@@ -232,57 +399,39 @@ function RegisterForm({
 
         <button
           type="submit"
-          disabled={isSubmitting || !rulesOk || confirmMismatch || password !== confirm}
+          disabled={
+            isSubmitting ||
+            !rulesOk ||
+            confirmMismatch ||
+            password !== confirm ||
+            (mode.kind === 'open' && !emailLooksValid)
+          }
           className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? 'Envoi…' : 'Créer mon compte'}
         </button>
 
-        <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
-          <span>Déjà un compte&nbsp;?</span>
-          <Link
-            to="/login"
-            className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
-          >
-            Se connecter
-          </Link>
-        </div>
+        {/*
+         * "Déjà un compte ? Se connecter" only makes sense in the open
+         * registration path. Invited users got here from an email link;
+         * they're being onboarded onto THIS instance specifically and
+         * don't have an account on it yet (the admin route enforces
+         * `user_already_exists` 409 before sending the invite). Showing
+         * a "log in" detour here would distract them from completing
+         * their inscription.
+         */}
+        {mode.kind === 'open' ? (
+          <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
+            <span>Déjà un compte&nbsp;?</span>
+            <Link
+              to="/login"
+              className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+            >
+              Se connecter
+            </Link>
+          </div>
+        ) : null}
       </form>
-    </>
-  );
-}
-
-/**
- * Confirmation card shown after a successful submit. The actual
- * account is created server-side but is INACTIVE until the user
- * clicks the link in the email. We deliberately don't auto-redirect —
- * the user needs to context-switch to their inbox, and a static
- * panel makes that affordance obvious.
- */
-function CheckYourEmailCard({ email }: { email: string }) {
-  return (
-    <>
-      <p className="mb-1 text-[13px] text-muted">Inscription</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Vérifie ta boîte mail
-      </h2>
-      <p className="mb-4 text-[14px] leading-[1.5] text-ink-soft">
-        On a envoyé un lien d’activation à <strong>{email}</strong>. Clique sur le
-        lien pour activer ton compte — tu pourras te connecter ensuite.
-      </p>
-      <p className="mb-6 text-[12.5px] text-muted">
-        Le lien est valable 7 jours. Pense à vérifier le dossier spam si tu ne le
-        trouves pas tout de suite.
-      </p>
-
-      <div className="mt-2 flex items-center justify-between text-[12.5px] text-muted">
-        <Link
-          to="/login"
-          className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
-        >
-          Aller à la page de connexion
-        </Link>
-      </div>
     </>
   );
 }
@@ -405,6 +554,7 @@ const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
           'outline-none transition-[border-color,box-shadow]',
           'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
+          'read-only:bg-bg-2 read-only:cursor-default',
           className,
         )}
         {...rest}

@@ -101,8 +101,14 @@ export const ResetPasswordBodySchema = z.object({
 });
 export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
 
-/** Admin-only payload to mint a new invite code. */
+/**
+ * Admin-only payload to send an invite by email (Bitwarden-style).
+ * Replaces the old "mint a clear code" flow — the server generates
+ * a token, hashes it, and emails the recipient a link instead of
+ * surfacing the code in the admin UI.
+ */
 export const CreateInviteBodySchema = z.object({
+  email: z.string().email().max(254),
   expiresAt: z.string().datetime().optional(),
 });
 export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;

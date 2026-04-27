@@ -1,13 +1,18 @@
 import { Hono } from 'hono';
-import { and, eq, gt, isNull, or } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   RegisterSubmitBodySchema,
   RegisterActivateBodySchema,
+  type RegisterModeResponse,
+  type InviteInfoResponse,
 } from '@nodea/shared/schemas/auth-register-v2';
 import { db } from '../db/client.ts';
-import { invites, users } from '../db/schema.ts';
-import { hashInviteCode } from '../auth/invites.ts';
+import { users } from '../db/schema.ts';
+import {
+  consumeInviteAndCreateUser,
+  findValidInvite,
+} from '../auth/invites.ts';
 import { hashPassword } from '../auth/password.ts';
 import { checkPasswordPolicy } from '../auth/password-policy.ts';
 import {
@@ -19,27 +24,27 @@ import { rateLimit } from '../middleware/rate-limit.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderRegisterActivateEmail } from '../services/email/templates/register-activate.ts';
 import { getConfig } from '../config.ts';
+import { isOpenRegistration } from '../services/settings.ts';
 
 /**
- * Single-step register flow with post-submit magic-link activation
- * (Auth-Roadmap Phase 1 simplified, replaces the 3-step wizard).
+ * Register flow — two paths into a single submit endpoint
+ * (Auth-Roadmap Phase 1, post-rework).
  *
- * Two endpoints:
+ * Invited path:  /register?invite=<token> → form pre-filled with the
+ *                invite's email (read-only) → submit hits this route
+ *                with `inviteToken` → account created activated.
+ *                One email exchange total (the invite itself).
  *
- *   - `POST /auth/register`         single submit (email + password +
- *                                   invite + crypto envelope), creates
- *                                   the user as inactive, emails the
- *                                   activation link.
- *   - `POST /auth/register/activate` magic-link target, flips
- *                                   `email_verified_at` so the account
- *                                   can log in.
+ * Open path:     /register without a token, when admin has flipped
+ *                `open_registration = true` → submit creates an
+ *                inactive account → activation email sent → user
+ *                clicks → `/auth/register/activate` flips the flag.
+ *                Two email exchanges total.
  *
- * The legacy single-shot `POST /auth/register` from `auth.ts` is
- * SUPERSEDED by this route — Hono's `app.route('/auth/register', …)`
- * mount catches `POST /auth/register` first, so the legacy handler
- * (which created users immediately active) is no longer reachable
- * via HTTP. Direct DB-based seeding (`pnpm seed:admin`) bypasses
- * activation by setting `email_verified_at` at insert time.
+ * Closed:        /register without a token, open_registration = false
+ *                → submit returns 403; the frontend pre-checks via
+ *                `GET /register/mode` and shows an "invitation only"
+ *                page rather than the form.
  */
 export const authRegisterV2Routes = new Hono();
 
@@ -55,27 +60,60 @@ const activateLimiter = rateLimit({
   keyPrefix: 'register-activate',
 });
 
-/**
- * `POST /auth/register` — submit step.
+const inviteInfoLimiter = rateLimit({
+  max: 30,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'register-invite-info',
+});
+
+/* ============================================================================
+ * GET /auth/register/mode
+ * Public. Tells the frontend whether open registration is on so the
+ * UI can branch between the form and the "invitation only" page.
+ * ========================================================================== */
+authRegisterV2Routes.get('/mode', async (c) => {
+  const response: RegisterModeResponse = {
+    openRegistration: await isOpenRegistration(),
+  };
+  return c.json(response);
+});
+
+/* ============================================================================
+ * GET /auth/register/invite-info?token=…
+ * Public, rate-limited. Returns the email an invite was issued for,
+ * so the register page can pre-fill (read-only) the email field.
+ * 404 on invalid/expired/consumed tokens.
+ * ========================================================================== */
+authRegisterV2Routes.get('/invite-info', inviteInfoLimiter, async (c) => {
+  const token = c.req.query('token');
+  if (!token || token.length < 16) {
+    return c.json({ error: 'invalid_token' }, 404);
+  }
+  const info = await findValidInvite(token);
+  if (!info) return c.json({ error: 'invalid_token' }, 404);
+  const response: InviteInfoResponse = {
+    email: info.email,
+    expiresAt: info.expiresAt ? info.expiresAt.toISOString() : null,
+  };
+  return c.json(response);
+});
+
+/* ============================================================================
+ * POST /auth/register
  *
- * Always responds 200 (anti-enumeration). The actual side effects
- * depend on the (email, invite) combo:
+ * The branching logic:
+ *   - `inviteToken` present → invited path (strict email match,
+ *     account activated immediately).
+ *   - No token + open_registration on → open path (account inactive,
+ *     activation email sent).
+ *   - No token + open_registration off → 403 registration_closed.
  *
- *   - Valid invite + new email → user row created with
- *     `email_verified_at = NULL`, activation email sent.
- *   - Valid invite + existing INACTIVE user with same email →
- *     existing row reused, previous token invalidated, fresh email
- *     sent. Lets a user retry without burning the invite or being
- *     blocked by uniqueness.
- *   - Valid invite + existing ACTIVE user with same email →
- *     silent skip (no email, no row touch). The attacker can't tell
- *     this case apart from the happy path.
- *   - Invalid invite (unknown / used / expired) → silent skip.
- *
- * The invite is **looked up** here but not consumed. Consumption
- * happens at activation — that way a retry via a fresh token (e.g.,
- * after a typo'd email) keeps the invite redeemable.
- */
+ * Errors are NOT silenced anti-enum-style here for the invited path:
+ * the recipient already proved they have the link, so showing them
+ * a precise "email mismatch" or "invalid token" response helps debug
+ * a misclicked or stale link. Open path stays anti-enum (silent 200
+ * on valid-shape submissions even when the email is in use).
+ * ========================================================================== */
 authRegisterV2Routes.post('/', submitLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RegisterSubmitBodySchema.safeParse(raw);
@@ -83,29 +121,69 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
   const body = parsed.data;
   const email = body.email.toLowerCase();
 
-  // Surface password policy violations BEFORE the silent-200 path so
-  // the user sees a real error. zxcvbn / rules check is a client-side
-  // input concern, not an enumeration vector.
+  // Password policy applies to both paths — no anti-enum wiggle here.
   const policy = checkPasswordPolicy(body.password, [email]);
   if (!policy.ok) {
     return c.json({ error: 'weak_password', reason: policy.reason }, 400);
   }
 
-  // Step A — invite lookup. Anti-enum: don't leak.
-  const codeHash = hashInviteCode(body.inviteCode);
-  const now = new Date();
-  const [invite] = await db
-    .select()
-    .from(invites)
-    .where(eq(invites.codeHash, codeHash))
-    .limit(1);
-  const inviteOk =
-    invite && !invite.usedBy && (!invite.expiresAt || invite.expiresAt > now);
-  if (!inviteOk) {
-    return c.json({ ok: true });
+  const passwordHash = await hashPassword(body.password);
+
+  // ---- Invited path -------------------------------------------------
+  if (body.inviteToken) {
+    const result = await consumeInviteAndCreateUser(
+      body.inviteToken,
+      email,
+      async (tx) => {
+        const userId = randomUUID();
+        try {
+          await tx.insert(users).values({
+            id: userId,
+            email,
+            passwordHash,
+            encryptionSalt: body.encryptionSalt,
+            encryptedKey: body.encryptedKey,
+            registerState: 'complete',
+            // Click on the invite link == proof of email control,
+            // so the account is activated immediately.
+            emailVerifiedAt: new Date(),
+          });
+        } catch {
+          // Email already taken — race or admin invited an existing
+          // user. Surface a clean error.
+          throw new Error('email_taken');
+        }
+        return { userId, result: { userId, email } };
+      },
+    ).catch((err: unknown) => {
+      if (err instanceof Error && err.message === 'email_taken') {
+        return { ok: false as const, reason: 'email_taken' as const };
+      }
+      throw err;
+    });
+
+    if (!result.ok) {
+      const status =
+        result.reason === 'email_mismatch' || result.reason === 'email_taken'
+          ? 400
+          : 401;
+      return c.json({ error: 'register_failed', reason: result.reason }, status);
+    }
+
+    // No session emitted: per UX decision, the user re-types their
+    // password on /login?activated=1 (defensive, mirrors the open
+    // path which can't auto-login either since activation happens on
+    // a different device).
+    return c.json({ ok: true, activated: true, email: result.result.email });
   }
 
-  // Step B — email uniqueness with reuse for inactive accounts.
+  // ---- Open path ----------------------------------------------------
+  if (!(await isOpenRegistration())) {
+    return c.json({ error: 'registration_closed' }, 403);
+  }
+
+  // Anti-enum: silent 200 from here on, even when the email is taken
+  // or in use. Same shape as the original Phase 1 reworked behavior.
   const [existing] = await db
     .select({
       id: users.id,
@@ -119,13 +197,12 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
 
   if (existing) {
     if (existing.emailVerifiedAt !== null) {
-      // Active user → silent skip.
-      return c.json({ ok: true });
+      // Active user — silent skip.
+      return c.json({ ok: true, activated: false });
     }
-    // Inactive existing row → reuse, refresh credentials in case the
-    // user typed a different password the second time around.
+    // Reuse the inactive row + refresh credentials in case the user
+    // typed a different password the second time around.
     userId = existing.id;
-    const passwordHash = await hashPassword(body.password);
     await db
       .update(users)
       .set({
@@ -135,9 +212,7 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       })
       .where(eq(users.id, userId));
   } else {
-    // Fresh row.
     userId = randomUUID();
-    const passwordHash = await hashPassword(body.password);
     try {
       await db.insert(users).values({
         id: userId,
@@ -146,17 +221,14 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
         encryptionSalt: body.encryptionSalt,
         encryptedKey: body.encryptedKey,
         registerState: 'complete',
-        // emailVerifiedAt left NULL — activation will set it.
       });
     } catch {
-      // Race: another request inserted the same email between SELECT
-      // and INSERT. Bail anti-enum-style.
-      return c.json({ ok: true });
+      // Race: someone created the user between SELECT and INSERT.
+      // Anti-enum bail.
+      return c.json({ ok: true, activated: false });
     }
   }
 
-  // Step C — invalidate any pending activation for this email and
-  // issue a fresh one.
   await invalidatePendingVerifications(email, 'register');
   const { token } = await createEmailVerification({
     userId,
@@ -164,9 +236,6 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
     kind: 'register',
   });
 
-  // Step D — build the activation link and send. WEB_BASE_URL is the
-  // user-facing origin (no trailing slash); the frontend's
-  // /activate route reads ?token= from the URL.
   const cfg = getConfig();
   const base = (cfg.WEB_BASE_URL ?? '').replace(/\/$/, '');
   const link = `${base}/activate?token=${encodeURIComponent(token)}`;
@@ -183,26 +252,17 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[auth/register] activation email send failed', err);
-    // Still 200 — the user can retry the submit, which reuses the row
-    // and fires a new email.
   }
 
-  return c.json({ ok: true });
+  return c.json({ ok: true, activated: false });
 });
 
-/**
- * `POST /auth/register/activate` — magic-link target.
+/* ============================================================================
+ * POST /auth/register/activate
  *
- * Validates the token (hash, expiry, single-use) and sets
- * `email_verified_at = now()` on the matching user. Returns the
- * email so the UI can show a "Compte activé pour user@example.com"
- * confirmation.
- *
- * No cookie is emitted: the user must log in normally afterwards.
- * Rationale: activation is a passive "yes this is my email" check,
- * not a credentials proof — an attacker who hijacks a single
- * activation link should not get a session.
- */
+ * Magic-link target for the OPEN registration path. Invited users
+ * never hit this — their account is activated at submit time.
+ * ========================================================================== */
 authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RegisterActivateBodySchema.safeParse(raw);
@@ -216,7 +276,6 @@ authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
 
   const verification = result.verification;
   if (!verification.userId) {
-    // Shouldn't happen — the submit route always sets it. Defensive.
     // eslint-disable-next-line no-console
     console.error(
       '[auth/register/activate] verification consumed but userId is null',
@@ -225,9 +284,6 @@ authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
     return c.json({ error: 'internal' }, 500);
   }
 
-  // Set the user's email_verified_at. The WHERE clause guards
-  // against a doubled activation (would be a no-op anyway since the
-  // verification can't be consumed twice, but explicit = safer).
   const [updated] = await db
     .update(users)
     .set({ emailVerifiedAt: new Date() })
@@ -235,20 +291,11 @@ authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
     .returning({ id: users.id, email: users.email });
 
   if (!updated) {
-    // The user was already activated (e.g., second click on the same
-    // link, or admin manually flipped). Surface the same "already
-    // consumed" path so the UI tells them to log in.
     return c.json(
       { error: 'activation_failed', reason: 'already_consumed' },
       401,
     );
   }
 
-  // V1 trade-off: we do NOT consume the invite at submit OR at
-  // activation. Same invite can be reused for multiple registrations
-  // — the model is "shared invite link" rather than single-use.
-  // Tightening this to single-use needs a `users.invite_id` FK column
-  // (so we can mark it consumed at activation), tracked as a post-V1
-  // hardening when invite hygiene becomes a real concern.
   return c.json({ ok: true, email: updated.email });
 });

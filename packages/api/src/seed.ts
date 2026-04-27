@@ -158,6 +158,12 @@ async function main() {
     encryptedKey,
     role: 'admin',
     onboardingStatus: 'pending',
+    // Seeded admins bypass the activation gate (Auth-Roadmap Phase 1
+    // post-rework v2). Without this flag the admin would be created
+    // inactive and `POST /auth/login` would refuse with 403
+    // account_not_activated. Admins seeded via this script have, by
+    // construction, the email under their control already.
+    emailVerifiedAt: new Date(),
   });
   console.log(
     `[seed] admin ${email} created (id=${id}${username ? `, username=${username}` : ''})`,

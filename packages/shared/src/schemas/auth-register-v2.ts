@@ -1,25 +1,27 @@
 import { z } from 'zod';
 
 /**
- * Single-step register flow with post-submit magic-link activation.
+ * Single-step register flow — two paths, same form:
  *
- * Replaces the 3-step wizard from Phase 1B/1C — friction was too high
- * for non-technical users. The new flow:
+ *   - **Invited path** (Bitwarden-style): admin issues an invite for
+ *     a specific email; recipient clicks the link in the email,
+ *     lands on `/register?invite=<token>`, fills password, submits.
+ *     The email click proves email control → account is created
+ *     **already activated**. No second email is sent.
  *
- *   1. `POST /auth/register` — user submits email + password +
- *      invite (if open registration is disabled). Server creates the
- *      account in `email_verified_at = NULL` state, generates a magic
- *      link token, sends an activation email. Always responds 200
- *      (anti-enumeration).
+ *   - **Open registration** (toggle in admin settings): when
+ *     `open_registration = true`, anyone can register without an
+ *     invite. The account is created inactive and the user receives
+ *     a separate activation email with a magic link.
  *
- *   2. User clicks the link in their email →
- *      `POST /auth/register/activate { token }` — server validates,
- *      flips `email_verified_at = now()`, and the account becomes
- *      loginable. The login route refuses accounts where
- *      `email_verified_at IS NULL`.
+ *   - **Closed**: when `open_registration = false` and no invite
+ *     token is supplied, the route returns 403 `registration_closed`.
+ *     The frontend reads `GET /auth/register/mode` on mount to know
+ *     which form to show.
  *
- * Phase 2 of Auth-Roadmap (OPAQUE) extends this with the additional
- * crypto enrollment steps (recovery code, optional TOTP/passkey).
+ * The legacy /auth/register/start + verify-email + state +
+ * set-password endpoints from Phase 1B/1C are gone — replaced by
+ * this single submit + the magic-link activation route below.
  */
 
 const Base64ish = z.string().min(1);
@@ -27,21 +29,50 @@ const Base64ish = z.string().min(1);
 /**
  * `POST /auth/register` — submit step.
  *
- * Anonymous. The body carries everything needed to provision a
- * complete-but-unactivated account: email, password (Argon2id-hashed
- * server-side), invite code, and the encryption envelope produced by
- * the client (`encryptionSalt` + `encryptedKey`). The legacy single-shot
- * `RegisterBody` from `auth.ts` is the sibling of this schema for
- * admin paths that bypass activation entirely.
+ * Anonymous. Carries the full account provisioning payload (email,
+ * password, encryption envelope) plus an optional invite token. The
+ * server's branching logic:
+ *
+ *   - `inviteToken` present → strict email match against the invite,
+ *     consume + create activated account.
+ *   - No token + open_registration ON → create inactive account, send
+ *     activation email.
+ *   - No token + open_registration OFF → 403.
  */
 export const RegisterSubmitBodySchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(12).max(200),
-  inviteCode: z.string().min(1).max(128),
+  /** Clear token from `?invite=<token>` in the invite link URL.
+   *  Optional: omitted when registering via the open-registration
+   *  toggle path. */
+  inviteToken: z.string().min(16).max(256).optional(),
   encryptionSalt: Base64ish,
   encryptedKey: Base64ish,
 });
 export type RegisterSubmitBody = z.infer<typeof RegisterSubmitBodySchema>;
+
+/**
+ * Response shape for `GET /auth/register/mode`. The frontend reads
+ * this on mount to decide which form to show.
+ */
+export const RegisterModeResponseSchema = z.object({
+  /** True when admin has flipped open_registration on. False
+   *  otherwise; the user must arrive via an invite link. */
+  openRegistration: z.boolean(),
+});
+export type RegisterModeResponse = z.infer<typeof RegisterModeResponseSchema>;
+
+/**
+ * Response shape for `GET /auth/register/invite-info?token=…`.
+ * Returned for valid + non-consumed + non-expired tokens; the
+ * route 404s otherwise so the frontend can show an "expired link"
+ * page.
+ */
+export const InviteInfoResponseSchema = z.object({
+  email: z.string().email(),
+  expiresAt: z.string().datetime().nullable(),
+});
+export type InviteInfoResponse = z.infer<typeof InviteInfoResponseSchema>;
 
 /**
  * `POST /auth/register/activate` — magic-link click target.

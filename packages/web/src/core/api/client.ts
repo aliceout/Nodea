@@ -40,6 +40,8 @@ import {
 import type {
   RegisterSubmitBody,
   RegisterActivateBody,
+  RegisterModeResponse,
+  InviteInfoResponse,
 } from '@nodea/shared/schemas/auth-register-v2';
 
 /**
@@ -114,15 +116,52 @@ export async function apiRegister(body: RegisterBody): Promise<{ id: string }> {
   return request<{ id: string }>('POST', '/auth/register', body);
 }
 
-// --- Register flow with magic-link activation (Auth-Roadmap Phase 1
-// reworked). The new sub-router at /auth/register catches the bare
-// POST too, so `apiRegister` above is now superseded for HTTP usage —
-// kept exported for back-compat with any caller that hasn't migrated.
+// --- Register flow (Auth-Roadmap Phase 1, post-rework v2) ------------
+// Two paths into a single submit endpoint:
+//   - invited:  /register?invite=<token> → form has email pre-filled
+//                (read-only) → submit with `inviteToken` → instant
+//                activation (one email exchange total).
+//   - open:     /register without a token → submit creates inactive
+//                account → activation email → click → activated.
+
+/**
+ * The register flow on mount: tells the page whether the open-
+ * registration toggle is on, so it can branch between "show form"
+ * and "show invitation-only" panel.
+ */
+export async function apiRegisterMode(): Promise<RegisterModeResponse> {
+  return request<RegisterModeResponse>('GET', '/auth/register/mode');
+}
+
+/**
+ * Look up an invite token to get the email it was issued for. The
+ * register page calls this after reading `?invite=<token>` from the
+ * URL, then pre-fills (and locks) the email field. Returns null on
+ * 404 (invalid / expired / consumed) so the UI can show a "lien
+ * invalide" panel without try/catching everywhere.
+ */
+export async function apiRegisterInviteInfo(
+  token: string,
+): Promise<InviteInfoResponse | null> {
+  try {
+    return await request<InviteInfoResponse>(
+      'GET',
+      `/auth/register/invite-info?token=${encodeURIComponent(token)}`,
+    );
+  } catch (err) {
+    if (isApiError(err) && err.status === 404) return null;
+    throw err;
+  }
+}
 
 export async function apiRegisterSubmit(
   body: RegisterSubmitBody,
-): Promise<{ ok: true }> {
-  return request<{ ok: true }>('POST', '/auth/register', body);
+): Promise<{ ok: true; activated: boolean; email?: string }> {
+  return request<{ ok: true; activated: boolean; email?: string }>(
+    'POST',
+    '/auth/register',
+    body,
+  );
 }
 
 export async function apiRegisterActivate(
@@ -335,9 +374,14 @@ export interface AdminUserRow {
 
 export interface AdminInviteRow {
   id: string;
+  email: string;
   createdBy: string | null;
   expiresAt: string | null;
   createdAt: string;
+}
+
+export interface AdminSettings {
+  open_registration: boolean;
 }
 
 export async function apiAdminListUsers(): Promise<AdminUserRow[]> {
@@ -366,16 +410,47 @@ export async function apiAdminSources(): Promise<AdminSourcesResponse> {
   return AdminSourcesResponseSchema.parse(raw);
 }
 
-export async function apiAdminCreateInvite(expiresAt?: string): Promise<{ id: string; code: string }> {
-  return request<{ id: string; code: string }>(
+/**
+ * Send an invite by email (Bitwarden-style). Server generates the
+ * token, hashes it, emails the link to the recipient. The clear
+ * token never round-trips to the admin UI — there's nothing to
+ * surface or copy here. The list endpoint shows status; the resend
+ * endpoint re-mails.
+ */
+export async function apiAdminSendInvite(
+  email: string,
+  expiresAt?: string,
+): Promise<{ id: string; email: string; expiresAt: string }> {
+  return request<{ id: string; email: string; expiresAt: string }>(
     'POST',
     '/admin/invites',
-    expiresAt ? { expiresAt } : {},
+    expiresAt ? { email, expiresAt } : { email },
+  );
+}
+
+export async function apiAdminResendInvite(
+  inviteId: string,
+): Promise<{ id: string; email: string; expiresAt: string }> {
+  return request<{ id: string; email: string; expiresAt: string }>(
+    'POST',
+    `/admin/invites/${encodeURIComponent(inviteId)}/resend`,
   );
 }
 
 export async function apiAdminDeleteInvite(inviteId: string): Promise<void> {
   await request<void>('DELETE', `/admin/invites/${encodeURIComponent(inviteId)}`);
+}
+
+// --- Admin app settings ------------------------------------------------
+
+export async function apiAdminGetSettings(): Promise<AdminSettings> {
+  return request<AdminSettings>('GET', '/admin/settings');
+}
+
+export async function apiAdminPatchSettings(
+  patch: Partial<AdminSettings>,
+): Promise<AdminSettings> {
+  return request<AdminSettings>('PATCH', '/admin/settings', patch);
 }
 
 // --- Announcements endpoints -------------------------------------------

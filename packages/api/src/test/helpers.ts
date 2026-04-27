@@ -39,8 +39,11 @@ export async function seedUser(email: string): Promise<{ id: string; email: stri
   return { id, email };
 }
 
-export async function seedInvite(): Promise<{ id: string; code: string }> {
-  return createInvite();
+export async function seedInvite(
+  email = 'invitee@example.com',
+): Promise<{ id: string; token: string; email: string }> {
+  const result = await createInvite({ email });
+  return { id: result.id, token: result.token, email: result.email };
 }
 
 /** Extract the session cookie from a Set-Cookie header, for chaining requests. */

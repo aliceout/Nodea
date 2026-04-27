@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { CreateInviteBodySchema } from '@nodea/shared/schemas/auth';
 import {
   AnnouncementCreateBodySchema,
@@ -12,37 +13,152 @@ import { announcements, invites, users } from '../db/schema.ts';
 import { requireUser, requireAdmin, type AuthVariables } from '../middleware/require-user.ts';
 import { serialize as serializeAnnouncement } from './announcements-serialize.ts';
 import { probeLibraryProviders } from '../lookup/dispatcher.ts';
+import {
+  isOpenRegistration,
+  setOpenRegistration,
+} from '../services/settings.ts';
+import { getConfig } from '../config.ts';
+import { getEmailService } from '../services/email/index.ts';
+import { renderInviteEmail } from '../services/email/templates/invite.ts';
 import type { AdminSourcesResponse } from '@nodea/shared';
 
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
 
 adminRoutes.use('*', requireUser, requireAdmin);
 
-// --- Invites ----------------------------------------------------------
+// --- Invites (email-bound, Bitwarden-style) ---------------------------
 
-/** Mint a new invite code. Returns the clear code once, never again. */
+/**
+ * Build the absolute URL the invite link should point at. Reads
+ * `WEB_BASE_URL` from config and falls back to a relative URL when
+ * unset — the email will still work in dev where the recipient
+ * already has the right origin in their browser, just less polished.
+ */
+function buildInviteLink(token: string): string {
+  const base = (getConfig().WEB_BASE_URL ?? '').replace(/\/$/, '');
+  const encoded = encodeURIComponent(token);
+  return base ? `${base}/register?invite=${encoded}` : `/register?invite=${encoded}`;
+}
+
+async function sendInviteMail(email: string, token: string): Promise<void> {
+  const link = buildInviteLink(token);
+  const rendered = renderInviteEmail({ link });
+  await getEmailService().send({
+    to: email,
+    subject: rendered.subject,
+    text: rendered.text,
+    html: rendered.html,
+    tag: 'admin-invite',
+  });
+}
+
+/**
+ * Send a fresh invite to an email address. Generates a 32-byte token,
+ * stores its hash + the email, emails the link to the recipient. The
+ * clear token is NEVER surfaced in the response — it lives only in
+ * the email's link.
+ */
 adminRoutes.post('/invites', async (c) => {
   const raw = await c.req.json().catch(() => ({}));
   const parsed = CreateInviteBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
 
   const admin = c.get('user');
-  const opts: Parameters<typeof createInvite>[0] = { createdBy: admin.id };
+  const email = parsed.data.email.toLowerCase();
+
+  // Prevent inviting an already-existing user. The check is fail-loud
+  // for admins — anti-enumeration doesn't apply (the admin already
+  // sees the user list anyway).
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existing) {
+    return c.json({ error: 'user_already_exists' }, 409);
+  }
+
+  const opts: Parameters<typeof createInvite>[0] = {
+    email,
+    createdBy: admin.id,
+  };
   if (parsed.data.expiresAt) opts.expiresAt = new Date(parsed.data.expiresAt);
 
   const invite = await createInvite(opts);
-  return c.json({ id: invite.id, code: invite.code }, 201);
+
+  try {
+    await sendInviteMail(invite.email, invite.token);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[admin/invites] email send failed', err);
+    // Surface to admin since they need to know the email didn't fly.
+    return c.json({ error: 'email_send_failed' }, 502);
+  }
+
+  return c.json(
+    {
+      id: invite.id,
+      email: invite.email,
+      expiresAt: invite.expiresAt.toISOString(),
+    },
+    201,
+  );
 });
 
 /**
- * List currently-redeemable invites (never consumed). We intentionally
- * return only the id + metadata — the clear code is unknown server-side
- * (only the hash is stored) and cannot be surfaced here.
+ * Re-issue an invite: generate a fresh token (the old one becomes
+ * unusable since `code_hash` is overwritten), reset `expires_at`,
+ * and send a new email. Used when the recipient says "I never got
+ * the link" or the link expired.
+ */
+adminRoutes.post('/invites/:id/resend', async (c) => {
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: 'missing_id' }, 400);
+
+  const admin = c.get('user');
+
+  const [existing] = await db
+    .select()
+    .from(invites)
+    .where(and(eq(invites.id, id), isNull(invites.usedBy)))
+    .limit(1);
+  if (!existing) return c.json({ error: 'not_found_or_used' }, 404);
+
+  // Re-mint via createInvite, then DELETE the old row inside a tx so
+  // the (email) gets exactly one pending invite at a time.
+  const refreshed = await db.transaction(async (tx) => {
+    await tx.delete(invites).where(eq(invites.id, existing.id));
+    // Fall back to the global default TTL. Admin can revoke + recreate
+    // with a custom expiry if needed.
+    return createInvite({ email: existing.email, createdBy: admin.id });
+  });
+
+  try {
+    await sendInviteMail(refreshed.email, refreshed.token);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[admin/invites] resend email failed', err);
+    return c.json({ error: 'email_send_failed' }, 502);
+  }
+
+  return c.json({
+    id: refreshed.id,
+    email: refreshed.email,
+    expiresAt: refreshed.expiresAt.toISOString(),
+  });
+});
+
+/**
+ * List currently-redeemable invites (never consumed). The clear
+ * token is not stored server-side — only the hash — so the response
+ * never carries it. UI offers a "Resend" action when the admin needs
+ * to surface a fresh link.
  */
 adminRoutes.get('/invites', async (c) => {
   const rows = await db
     .select({
       id: invites.id,
+      email: invites.email,
       createdBy: invites.createdBy,
       expiresAt: invites.expiresAt,
       createdAt: invites.createdAt,
@@ -54,6 +170,7 @@ adminRoutes.get('/invites', async (c) => {
   return c.json({
     invites: rows.map((r) => ({
       id: r.id,
+      email: r.email,
       createdBy: r.createdBy,
       expiresAt: r.expiresAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
@@ -73,6 +190,39 @@ adminRoutes.delete('/invites/:id', async (c) => {
 
   if (result.length === 0) return c.json({ error: 'not_found_or_used' }, 404);
   return c.json({ ok: true });
+});
+
+// --- App settings -----------------------------------------------------
+
+const SettingsPatchBodySchema = z.object({
+  open_registration: z.boolean().optional(),
+});
+
+/** Read every setting the UI exposes. Currently just open_registration. */
+adminRoutes.get('/settings', async (c) => {
+  return c.json({
+    open_registration: await isOpenRegistration(),
+  });
+});
+
+/**
+ * Patch one or more settings. Only fields present in the body are
+ * touched; absent fields stay as-is. Each setting tracks its
+ * `updatedBy` for audit.
+ */
+adminRoutes.patch('/settings', async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = SettingsPatchBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const admin = c.get('user');
+
+  if (parsed.data.open_registration !== undefined) {
+    await setOpenRegistration(parsed.data.open_registration, admin.id);
+  }
+
+  return c.json({
+    open_registration: await isOpenRegistration(),
+  });
 });
 
 // --- Users ------------------------------------------------------------
