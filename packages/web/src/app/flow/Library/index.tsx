@@ -381,14 +381,16 @@ function Topbar({
   return (
     <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <DirkButton
+          variant="ghost"
+          size="md"
+          iconOnly
           onClick={onOpenMenu}
           aria-label="Ouvrir le menu"
-          className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-sm text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink lg:hidden"
+          className="-ml-2 text-ink-soft lg:hidden"
         >
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </button>
+        </DirkButton>
         <span className="text-[12px] tracking-[0.02em] text-muted">{label}</span>
       </div>
       <div className="flex items-center gap-2">
@@ -396,25 +398,21 @@ function Topbar({
           <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
         ) : null}
         {subview === 'livres' ? (
-          <button
-            type="button"
-            onClick={onNewItem}
-            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
-          >
+          <DirkButton variant="primary" size="sm" onClick={onNewItem}>
             + Nouveau livre
-          </button>
+          </DirkButton>
         ) : (
-          <button
-            type="button"
+          <DirkButton
+            variant="primary"
+            size="sm"
             onClick={() => onNewReview(subview === 'extraits' ? 'quote' : 'note')}
             disabled={count === 0}
-            title={
-              count === 0 ? 'Ajoute d’abord un livre dans Library.' : undefined
-            }
-            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+            {...(count === 0
+              ? { title: 'Ajoute d’abord un livre dans Library.' }
+              : {})}
           >
             {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
-          </button>
+          </DirkButton>
         )}
       </div>
     </div>
@@ -739,24 +737,26 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
             <span className="tabular-nums">· p. {review.page}</span>
           ) : null}
           <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            <button
-              type="button"
+            <DirkButton
+              variant="ghost"
+              size="xs"
+              iconOnly
               onClick={onEdit}
               aria-label="Modifier"
               title="Modifier"
-              className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm text-muted transition-colors hover:bg-bg-2 hover:text-ink"
             >
               <PencilSquareIcon className="h-3 w-3" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
+            </DirkButton>
+            <DirkButton
+              variant="danger-ghost"
+              size="xs"
+              iconOnly
               onClick={onDelete}
               aria-label="Supprimer"
               title="Supprimer"
-              className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
             >
               <TrashIcon className="h-3 w-3" aria-hidden="true" />
-            </button>
+            </DirkButton>
           </span>
         </span>
       </div>
@@ -842,15 +842,17 @@ function ItemRow(props: ItemRowProps) {
               <StarIcon className="h-3.5 w-3.5" aria-hidden="true" />
             )}
           </button>
-          <button
-            type="button"
+          <DirkButton
+            variant="danger-ghost"
+            size="sm"
+            iconOnly
             onClick={props.onDelete}
             aria-label="Supprimer le livre"
             title="Supprimer"
-            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm text-muted opacity-0 transition-colors hover:bg-danger/10 hover:text-danger group-hover:opacity-100 group-focus-within:opacity-100"
+            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
           >
             <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+          </DirkButton>
         </div>
       </div>
     </li>
@@ -946,15 +948,17 @@ function GridView({ items, covers, onEditItem, onDeleteItem, onToggleFavorite }:
                     <StarIcon className="h-3 w-3" aria-hidden="true" />
                   )}
                 </button>
-                <button
-                  type="button"
+                <DirkButton
+                  variant="danger-ghost"
+                  size="xs"
+                  iconOnly
                   onClick={() => onDeleteItem(it)}
                   aria-label="Supprimer le livre"
                   title="Supprimer"
-                  className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm text-muted opacity-0 transition-colors hover:bg-danger/10 hover:text-danger group-hover:opacity-100 group-focus-within:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                 >
                   <TrashIcon className="h-3 w-3" aria-hidden="true" />
-                </button>
+                </DirkButton>
               </div>
             </div>
           </li>

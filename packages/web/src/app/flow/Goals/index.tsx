@@ -13,6 +13,7 @@ import {
 } from '@/core/store/nodea-store';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 
 /**
  * Goals — Direction K · Sauge.
@@ -239,24 +240,22 @@ function Topbar({ count, onOpenMenu, onNewEntry }: TopbarProps) {
   return (
     <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="md"
+          iconOnly
           onClick={onOpenMenu}
           aria-label="Ouvrir le menu"
-          className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink lg:hidden"
+          className="-ml-2 text-ink-soft lg:hidden"
         >
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </button>
+        </Button>
         <span className="text-[12px] tracking-[0.02em] text-muted">{label}</span>
       </div>
 
-      <button
-        type="button"
-        onClick={onNewEntry}
-        className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
-      >
+      <Button variant="primary" size="sm" onClick={onNewEntry}>
         + Nouvel objectif
-      </button>
+      </Button>
     </div>
   );
 }
@@ -396,24 +395,26 @@ function GoalRow({ entry, onToggleStatus, onDelete, onEdit }: GoalRowProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
           onClick={onEdit}
           aria-label="Modifier l’objectif"
           title="Modifier"
-          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-bg-2 hover:text-ink"
         >
           <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="danger-ghost"
+          size="sm"
+          iconOnly
           onClick={onDelete}
           aria-label="Supprimer l’objectif"
           title="Supprimer"
-          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-danger/10 hover:text-danger"
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
     </li>
   );

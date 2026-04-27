@@ -124,7 +124,7 @@ export default function AnnouncementsManager() {
           <p className="text-[11px] text-muted">
             Publiée immédiatement sur la page d’accueil — visible par tout le monde.
           </p>
-          <Button type="submit" variant="primary" size="md" disabled={!canSubmit}>
+          <Button type="submit" variant="primary" size="sm" disabled={!canSubmit}>
             {saving ? 'Publication…' : 'Publier'}
           </Button>
         </div>

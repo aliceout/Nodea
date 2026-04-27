@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface KeyMissingModalProps {
   onLogout: () => void;
@@ -52,14 +53,15 @@ export default function KeyMissingModal({ onLogout, open = true }: KeyMissingMod
                 <p className="text-[13.5px] leading-[1.5] text-ink-soft">
                   Merci de bien vouloir vous reconnecter.
                 </p>
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="md"
                   onClick={onLogout}
                   autoFocus
-                  className="mx-auto mt-2 cursor-pointer rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
+                  className="mx-auto mt-2"
                 >
                   Se reconnecter
-                </button>
+                </Button>
               </div>
             </DialogPanel>
           </Transition.Child>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useReview, type ReviewRecord } from '../hooks/useReview';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface ListProps {
   onStartNew(year: number): void;
@@ -38,13 +39,13 @@ export default function ReviewListView({ onStartNew, onOpen, onEdit }: ListProps
               className="mt-1 block w-28 rounded border border-slate-300 p-2 text-sm"
             />
           </label>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => onStartNew(draftYear)}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
           >
             Démarrer
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -68,28 +69,21 @@ export default function ReviewListView({ onStartNew, onOpen, onEdit }: ListProps
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onOpen(e)}
-                  className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                >
+                <Button variant="neutral" size="sm" onClick={() => onOpen(e)}>
                   Relire
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onEdit(e)}
-                  className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                >
+                </Button>
+                <Button variant="neutral" size="sm" onClick={() => onEdit(e)}>
                   Modifier
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="danger-ghost"
+                  size="xs"
+                  iconOnly
                   onClick={() => void handleDelete(e.id)}
-                  className="rounded p-1 text-xs text-red-600 hover:bg-red-50"
                   aria-label="Supprimer"
                 >
                   ✕
-                </button>
+                </Button>
               </div>
             </li>
           ))}

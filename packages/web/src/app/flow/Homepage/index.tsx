@@ -12,6 +12,7 @@ import {
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import EmptyHomepage from './Empty';
 
 /**
@@ -174,14 +175,16 @@ function Topbar({
   return (
     <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="md"
+          iconOnly
           onClick={onOpenMenu}
           aria-label="Ouvrir le menu"
-          className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink lg:hidden"
+          className="-ml-2 text-ink-soft lg:hidden"
         >
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </button>
+        </Button>
         <span className="text-[12px] tracking-[0.02em] text-muted">{date}</span>
       </div>
 
@@ -196,13 +199,9 @@ function Topbar({
           </kbd>
           {searchLabel}
         </button>
-        <button
-          type="button"
-          onClick={onOpenComposer}
-          className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
-        >
+        <Button variant="primary" size="sm" onClick={onOpenComposer}>
           {newEntryLabel}
-        </button>
+        </Button>
       </div>
     </div>
   );

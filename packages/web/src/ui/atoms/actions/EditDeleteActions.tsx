@@ -1,5 +1,6 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface EditDeleteActionsProps {
   isEditing: boolean;
@@ -33,10 +34,12 @@ export default function EditDeleteActions({
   if (isEditing) {
     return (
       <div className={`flex items-center ${className}`}>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
+          iconOnly
           title={saveLabel}
-          className="p-1 hover:bg-green-50 rounded cursor-pointer"
+          aria-label={saveLabel}
           onClick={onSave}
         >
           <svg
@@ -52,11 +55,13 @@ export default function EditDeleteActions({
           >
             <polyline points="4 11 8 15 16 6" />
           </svg>
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          iconOnly
           title={cancelLabel}
-          className="p-1 hover:bg-gray-50 rounded cursor-pointer"
+          aria-label={cancelLabel}
           onClick={onCancel}
         >
           <svg
@@ -73,7 +78,7 @@ export default function EditDeleteActions({
             <line x1="6" y1="6" x2="14" y2="14" />
             <line x1="14" y1="6" x2="6" y2="14" />
           </svg>
-        </button>
+        </Button>
       </div>
     );
   }

@@ -8,7 +8,7 @@ import {
 import { useSession } from '@/core/auth/use-session';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 
 /**
  * Top of the sidebar: brand mark + small user-menu icon strip
@@ -71,19 +71,15 @@ interface UserMenuIconProps {
 
 function UserMenuIcon({ icon: Icon, label, tone = 'default', onClick }: UserMenuIconProps) {
   return (
-    <button
-      type="button"
+    <Button
+      variant={tone === 'danger' ? 'danger-ghost' : 'ghost'}
+      size="xs"
+      iconOnly
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={cn(
-        'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors',
-        tone === 'danger'
-          ? 'text-muted hover:bg-danger/10 hover:text-danger'
-          : 'text-muted hover:bg-bg-2 hover:text-ink',
-      )}
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
-    </button>
+    </Button>
   );
 }

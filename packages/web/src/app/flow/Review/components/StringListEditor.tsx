@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface Props {
   value: string[];
@@ -48,14 +49,15 @@ export default function StringListEditor({ value, onChange, placeholder }: Props
               onChange={(e) => update(i, e.target.value)}
               className="flex-1 rounded border border-slate-300 p-2 text-sm"
             />
-            <button
-              type="button"
+            <Button
+              variant="danger-ghost"
+              size="xs"
+              iconOnly
               onClick={() => remove(i)}
               aria-label="Retirer"
-              className="rounded px-2 text-slate-400 hover:text-red-600"
             >
               ✕
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
@@ -68,14 +70,14 @@ export default function StringListEditor({ value, onChange, placeholder }: Props
           placeholder={placeholder ?? 'Ajouter…'}
           className="flex-1 rounded border border-dashed border-slate-300 p-2 text-sm"
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={commit}
           disabled={!draft.trim()}
-          className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
           + Ajouter
-        </button>
+        </Button>
       </div>
     </div>
   );

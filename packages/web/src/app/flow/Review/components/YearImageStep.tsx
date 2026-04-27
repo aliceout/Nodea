@@ -1,4 +1,5 @@
 import { useRef, type ChangeEvent } from 'react';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface Props {
   value: string | undefined;
@@ -57,21 +58,21 @@ export default function YearImageStep({ value, onChange }: Props) {
           onChange={onFile}
           className="hidden"
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => input.current?.click()}
-          className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
         >
           {value ? 'Remplacer' : 'Choisir une image'}
-        </button>
+        </Button>
         {value ? (
-          <button
-            type="button"
+          <Button
+            variant="neutral"
+            size="sm"
             onClick={() => onChange(undefined)}
-            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
           >
             Retirer
-          </button>
+          </Button>
         ) : null}
       </div>
       <p className="text-xs opacity-60">

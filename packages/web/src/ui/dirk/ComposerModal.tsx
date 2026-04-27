@@ -2489,8 +2489,10 @@ function ToolbarButton({
   children,
 }: ToolbarButtonProps) {
   return (
-    <button
-      type="button"
+    <DirkButton
+      variant="ghost"
+      size="xs"
+      iconOnly
       onMouseDown={(e) => {
         // Keep the textarea focused so `selectionStart/End` stays
         // accurate when the click handler runs.
@@ -2500,10 +2502,10 @@ function ToolbarButton({
       aria-label={ariaLabel}
       title={title}
       disabled={disabled}
-      className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm text-[13px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+      className="text-[13px] text-ink-soft"
     >
       {children}
-    </button>
+    </DirkButton>
   );
 }
 
@@ -2563,14 +2565,14 @@ function Footer({
         </div>
         <div className="flex items-center gap-2">
           {extra}
-          <button
-            type="button"
+          <DirkButton
+            variant="primary"
+            size="sm"
             onClick={onSubmit}
             disabled={submitting}
-            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? submittingLabel : submitLabel}
-          </button>
+          </DirkButton>
         </div>
       </div>
     </div>

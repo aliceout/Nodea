@@ -1,6 +1,7 @@
 import type { HabitItem, HabitLog } from '../hooks/useHabits';
 import { regularityRate } from '../hooks/useRegularity';
 import Heatmap from './Heatmap';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface HabitCardProps {
   item: HabitItem;
@@ -51,33 +52,30 @@ export default function HabitCard({
       <Heatmap itemId={item.id} logs={logs} />
 
       <footer className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onLogToday}
           disabled={archived}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           Log aujourd'hui
-        </button>
-        <button
-          type="button"
-          onClick={onToggleArchive}
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-        >
+        </Button>
+        <Button variant="neutral" size="sm" onClick={onToggleArchive}>
           {archived ? 'Désarchiver' : 'Archiver'}
-        </button>
+        </Button>
         <span className="flex-1" />
         <span className="text-xs opacity-60">
           {logsForItem.length} log{logsForItem.length > 1 ? 's' : ''} au total
         </span>
-        <button
-          type="button"
+        <Button
+          variant="danger-ghost"
+          size="xs"
+          iconOnly
           onClick={onDelete}
           aria-label="Supprimer l'habitude"
-          className="rounded p-1 text-xs text-red-600 hover:bg-red-50"
         >
           ✕
-        </button>
+        </Button>
       </footer>
     </article>
   );

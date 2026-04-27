@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 
 export type SidebarTipKind = 'info' | 'warning' | 'danger';
 
@@ -97,15 +98,17 @@ export default function SidebarTip({
           {title}
         </span>
         {dismissable ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
+            iconOnly
             onClick={handleDismiss}
             aria-label="Fermer"
             title="Fermer"
-            className="-mt-0.5 -mr-0.5 inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-bg hover:text-ink"
+            className="-mt-0.5 -mr-0.5 hover:bg-bg"
           >
             <XMarkIcon className="h-3 w-3" aria-hidden="true" />
-          </button>
+          </Button>
         ) : null}
       </div>
       <p className="text-[11.5px] leading-[1.45] text-ink-soft">{children}</p>

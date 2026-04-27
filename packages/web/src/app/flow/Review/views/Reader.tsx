@@ -1,5 +1,6 @@
 import type { ReviewRecord } from '../hooks/useReview';
 import { STEPS, GROUP_LABELS, getByPath, type Step } from '../config/steps';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface ReaderProps {
   record: ReviewRecord;
@@ -157,13 +158,9 @@ export default function ReviewReader({ record, onBack }: ReaderProps) {
       <header className="space-y-2 text-center">
         <p className="text-xs uppercase tracking-[0.25em] opacity-60">YearCompass</p>
         <h1 className="font-serif text-4xl">Bilan {payload.year}</h1>
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-2 rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-        >
+        <Button variant="neutral" size="sm" onClick={onBack} className="mt-2">
           ← Retour aux bilans
-        </button>
+        </Button>
       </header>
 
       {Array.from(byGroup.entries()).map(([group, steps]) => {

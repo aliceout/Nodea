@@ -11,6 +11,7 @@ import { useDraft } from '../hooks/useDraft';
 import { useReview, type ReviewRecord } from '../hooks/useReview';
 import SectionForm from '../components/SectionForm';
 import StepNav from '../components/StepNav';
+import Button from '@/ui/atoms/dirk/Button';
 
 interface WizardProps {
   year: number;
@@ -139,52 +140,48 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
       {finalError ? <p className="text-sm text-red-600">{finalError}</p> : null}
 
       <footer className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-        >
+        <Button variant="neutral" size="sm" onClick={onCancel}>
           Quitter
-        </button>
+        </Button>
         <span className="flex-1" />
-        <button
-          type="button"
+        <Button
+          variant="neutral"
+          size="sm"
           onClick={() => goto(index - 1)}
           disabled={index === 0}
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:hover:bg-slate-800"
         >
           ← Précédent
-        </button>
+        </Button>
         {!isLast ? (
           <>
-            <button
-              type="button"
+            <Button
+              variant="neutral"
+              size="sm"
               onClick={() => goto(index + 1)}
-              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
             >
               Sauter
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => goto(index + 1)}
-              className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
             >
               Suivant →
-            </button>
+            </Button>
           </>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void submit()}
             disabled={submitting}
-            className="rounded bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
           >
             {submitting
               ? 'Enregistrement…'
               : existing
                 ? 'Mettre à jour le bilan'
                 : 'Finaliser le bilan'}
-          </button>
+          </Button>
         )}
       </footer>
     </div>

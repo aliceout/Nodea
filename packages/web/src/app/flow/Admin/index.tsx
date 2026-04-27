@@ -17,6 +17,7 @@ import {
   type AdminInviteRow,
 } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import UserTable from './components/UserTable';
 import InviteManager from './components/InviteCode';
 import AnnouncementsManager from './components/AnnouncementsManager';
@@ -305,14 +306,16 @@ export default function AdminPage() {
 function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-hair bg-bg/85 px-6 py-3 backdrop-blur-sm sm:px-9 lg:hidden">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
+        iconOnly
         onClick={onOpenMenu}
         aria-label="Ouvrir le menu"
-        className="-ml-2 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-bg-2 hover:text-ink"
+        className="-ml-2"
       >
         <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-      </button>
+      </Button>
       <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink">
         Administration
       </span>

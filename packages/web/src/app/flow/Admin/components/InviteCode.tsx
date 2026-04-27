@@ -83,7 +83,7 @@ export default function InviteManager({
           onSubmit={handleSubmit}
           className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6"
         >
-          <Button type="submit" disabled={!looksValidEmail}>
+          <Button type="submit" size="sm" disabled={!looksValidEmail}>
             Envoyer l'invitation
           </Button>
           <input
