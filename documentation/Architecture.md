@@ -122,6 +122,15 @@ the factory loops over. There is nowhere to forget a guard.
     in a transaction, revokes every session, mints a fresh one.
     Main key envelope (`wrapped_main_key`) stays put — every
     pre-change ciphertext stays readable.
+  - UX: form requires the new password typed twice + a live
+    strength check (`checkPasswordRules` from `@nodea/shared` +
+    zxcvbn band, gates submit on rules-passed + score ≥ 3),
+    same as Register. On success the client also runs
+    `useSession.logout()` and redirects to
+    `/login?password-changed=1` — the server already revoked
+    every session as part of the rotation; we align the local
+    state by dropping the in-memory main-key material and
+    asking the user to re-authenticate with the new password.
 
 - **Reset password** (OPAQUE 2-step via `/auth/reset/start` +
   `/finish`, Phase 2D):
