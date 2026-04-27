@@ -99,12 +99,16 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           `SidebarTipModules` info nudge — visually says "this is
           the safe path, take it". */}
       <div className="rounded-md border-2 border-accent bg-accent/5 px-3 py-2.5 text-[12.5px] text-ink-soft">
-        <p className="mb-0.5 font-semibold text-accent-deep">
+        <p className="mb-2 font-semibold text-accent-deep">
           Tu as un code de récupération&nbsp;?
         </p>
+        {/* Render as an outline button rather than an inline link —
+            "Récupérer sans perdre tes données" was reading as part
+            of the prose otherwise, the green CTA-shaped affordance
+            makes it unambiguous. */}
         <Link
           to="/recover"
-          className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+          className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-3 py-2 text-center text-[12.5px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
         >
           Récupérer sans perdre tes données →
         </Link>
