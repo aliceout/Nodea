@@ -248,5 +248,10 @@ export const AuthMeResponseSchema = z.object({
   wrappedMainKeyIv: Base64ish.nullable(),
   wrappedKekPassword: Base64ish.nullable(),
   wrappedKekPasswordIv: Base64ish.nullable(),
+  /** True when the user has set up a recovery code (Auth-Roadmap
+   *  Phase 3). The actual `users.recovery_code_hash` value never
+   *  leaves the server; we just flag presence so the UI can show
+   *  the "set me up" warning vs the "regenerate" button. */
+  recoveryCodeSet: z.boolean(),
 });
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

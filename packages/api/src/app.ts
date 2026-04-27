@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
+import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { announcementsRoutes } from './routes/announcements.ts';
@@ -45,6 +46,11 @@ export function buildApp() {
   // legacy single-shot register handler in `authRoutes` is no longer
   // reachable via HTTP — admin seeding uses direct DB inserts.
   app.route('/auth/register', authRegisterV2Routes);
+  // Recovery-code KEK routes (Auth-Roadmap Phase 3) — mounted
+  // BEFORE `authRoutes` so the recover-kek/* and security/recovery-
+  // code paths catch first. The general /auth namespace is broad
+  // and would otherwise win on the trie.
+  app.route('/auth', authRecoveryRoutes);
   app.route('/auth', authRoutes);
   app.route('/admin', adminRoutes);
   app.route('/announcements', announcementsRoutes);

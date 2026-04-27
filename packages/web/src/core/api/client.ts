@@ -46,6 +46,10 @@ import {
   type OpaqueLoginStartBody,
   type OpaqueLoginStartResponse,
   type OpaqueLoginFinishBody,
+  type RecoveryCodeUpsertBody,
+  type RecoverKekStartBody,
+  type RecoverKekStartResponse,
+  type RecoverKekFinishBody,
 } from '@nodea/shared';
 import type {
   RegisterActivateBody,
@@ -275,6 +279,39 @@ export async function apiCompleteOnboarding(): Promise<void> {
 
 export async function apiRequestPasswordReset(body: RequestResetBody): Promise<void> {
   await request<void>('POST', '/auth/request-reset', body);
+}
+
+/**
+ * Recovery-code KEK setup / regenerate (Auth-Roadmap Phase 3).
+ * Server gates on whether `recovery_code_hash IS NULL`:
+ *   - first-time setup: just `requireUser`.
+ *   - regenerate: also requires `proofLoginToken` +
+ *     `proofFinishLoginRequest` from a fresh OPAQUE login start.
+ */
+export async function apiRecoveryCodeUpsert(
+  body: RecoveryCodeUpsertBody,
+): Promise<{ ok: true; regenerated: boolean }> {
+  return request<{ ok: true; regenerated: boolean }>(
+    'POST',
+    '/auth/security/recovery-code',
+    body,
+  );
+}
+
+export async function apiRecoverKekStart(
+  body: RecoverKekStartBody,
+): Promise<RecoverKekStartResponse> {
+  return request<RecoverKekStartResponse>(
+    'POST',
+    '/auth/recover-kek/start',
+    body,
+  );
+}
+
+export async function apiRecoverKekFinish(
+  body: RecoverKekFinishBody,
+): Promise<void> {
+  await request<void>('POST', '/auth/recover-kek/finish', body);
 }
 
 export async function apiResetPasswordStart(

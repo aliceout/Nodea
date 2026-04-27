@@ -132,6 +132,30 @@ the factory loops over. There is nowhere to forget a guard.
     state by dropping the in-memory main-key material and
     asking the user to re-authenticate with the new password.
 
+- **Recovery code KEK** (Auth-Roadmap Phase 3, Auth-Spec §7.7) —
+  the non-destructive password-recovery option:
+  - Setup is opt-in from Settings → Security tab. The user types
+    their current password (proof + KEK derivation), the client
+    generates 12 BIP39 words via `@scure/bip39`, derives a wrap
+    key from the entropy via HKDF, wraps the KEK, computes
+    `SHA-256(entropy)` for the server. Mnemonic is shown ONCE
+    in a 4×3 grid + ack checkbox.
+  - A red `SidebarTipRecoveryCode` warns logged-in users without
+    a code yet, non-dismissable until they act on it.
+  - When the user later forgets their password, `/recover` does
+    OPAQUE register on the new password (folded inside
+    `/auth/recover-kek/start`'s response), unwraps the KEK
+    locally with the typed mnemonic, re-wraps under the new
+    `exportKey`, ships the lot to `/finish`. Server-side: hash
+    compared in constant time, every credential blob rotated +
+    a NEW recovery code generated client-side and shown ONCE.
+    Pre-recovery ciphertexts stay readable (the main key
+    didn't move).
+  - Anti-enum on `/start`: unknown emails (and known emails with
+    no recovery code) get fresh random blobs that the client
+    can't unwrap; the response shape and timing are
+    indistinguishable from a known-user path.
+
 - **Reset password** (OPAQUE 2-step via `/auth/reset/start` +
   `/finish`, Phase 2D):
   - The reset email's token is the auth proof; `/start` validates

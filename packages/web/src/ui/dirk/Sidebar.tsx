@@ -4,11 +4,15 @@ import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import {
   useNodeaStore,
   selectMobileMenuOpen,
+  selectUser,
 } from '@/core/store/nodea-store';
 
 import SidebarHeader from './sidebar/SidebarHeader';
 import SidebarNav from './sidebar/SidebarNav';
-import { SidebarTipModules } from './sidebar/SidebarTip';
+import {
+  SidebarTipModules,
+  SidebarTipRecoveryCode,
+} from './sidebar/SidebarTip';
 import SidebarFooter from './sidebar/SidebarFooter';
 
 /**
@@ -81,6 +85,12 @@ interface SidebarBodyProps {
 }
 
 function SidebarBody({ onNavigate }: SidebarBodyProps) {
+  const user = useNodeaStore(selectUser);
+  // The recovery-code warning is non-dismissable + only relevant
+  // for authenticated users without a code yet — gate it here so
+  // freshly-set-up users don't keep seeing a stale tip.
+  const showRecoveryWarning = user !== null && user.recoveryCodeSet === false;
+
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
       <SidebarHeader />
@@ -89,6 +99,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
       {/* Tip slot — drop more `<SidebarTip*>` instances here as
           new nudges appear. Each one is independently dismissable
           and self-contained, so the slot stays a passive container. */}
+      {showRecoveryWarning ? <SidebarTipRecoveryCode /> : null}
       <SidebarTipModules />
       <SidebarFooter />
     </nav>

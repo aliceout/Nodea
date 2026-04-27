@@ -121,6 +121,21 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
 
+        {/* Recovery code is the non-destructive alternative to the
+            reset email — anyone who set one up at register / from
+            Settings can recover their account WITHOUT losing data.
+            We surface that as a sibling action here so users with
+            a code don't go through the destructive flow by reflex. */}
+        <div className="mt-4 rounded-md border border-hair bg-bg-2 px-3 py-2.5 text-[12.5px] text-ink-soft">
+          <span className="font-semibold text-ink">Tu as un code de récupération&nbsp;?</span>{' '}
+          <Link
+            to="/recover"
+            className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
+          >
+            Récupérer sans perdre tes données →
+          </Link>
+        </div>
+
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
             ← Retour à la connexion

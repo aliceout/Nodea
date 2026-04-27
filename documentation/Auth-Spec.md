@@ -1449,13 +1449,19 @@ Server (transaction) :
 4. Revoke toutes les autres sessions.
 5. Réponse `200`.
 
-### 7.7 Recovery via KEK code (🚧 Phase 2+ design)
+### 7.7 Recovery via KEK code (V1 ✅ Phase 3)
 
-> **Statut.** Pas implémenté en V1. En V1 le seul chemin de
-> récupération est le reset destructif (cf. §7.9). Le recovery code
-> KEK BIP39 décrit ci-dessous arrive avec OPAQUE en Phase 2 — il
-> nécessite la KEK random séparée du password, qui n'existe pas
-> dans le modèle Argon2id-direct V1.
+> **Statut.** Livré en Phase 3. Setup opt-in depuis Settings →
+> Security (l'utilisateur·ice ne voit pas le flow à l'inscription —
+> UX choice). Sidebar warning rouge non-dismissable tant que pas
+> configuré. Recovery flow accessible via `/recover` ou via le
+> lien "Tu as un code ?" sur `/request-reset`.
+>
+> Le wire format réel est légèrement plus serré que le design
+> ci-dessous (le OPAQUE register handshake est folded dans le
+> `/start` plutôt que d'avoir une 3e route séparée). Voir le code
+> dans `packages/api/src/routes/auth-recovery.ts` pour la source
+> de vérité ; cette section décrit l'intention.
 
 #### Modèle d'autorisation
 

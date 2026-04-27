@@ -30,8 +30,11 @@ Central identity row.
 | `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
 | `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. **🚧 Phase 2+** — V1 ignores. |
 | `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. **🚧 Phase 2+** — V1 only uses `'complete'`. |
-| `wrapped_*`, `recovery_*` | `text?` | **🚧 Phase 2+** OPAQUE / recovery-code KEK columns, unused in V1.            |
-| `recovery_acknowledged_at` | `ts+tz?` | **🚧 Phase 2+** flag.                                                    |
+| `wrapped_main_key{,_iv}` | `text?` | AES-GCM(main key) under random KEK. Set ONCE at register, never re-wrapped. AAD = `nodea:v1\x1f<id>\x1fmain`. |
+| `wrapped_kek_password{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of OPAQUE `exportKey`. Re-wrapped at change-password / reset / recovery. AAD = `nodea:v1\x1f<id>\x1fpassword`. |
+| `wrapped_kek_recovery{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of BIP39 entropy (Phase 3 ✅). NULL until the user sets up a recovery code. AAD = `nodea:v1\x1f<id>\x1frecovery`. |
+| `recovery_code_hash` | `text?` | SHA-256 hex of the 16-byte BIP39 entropy. Anti-DoS gate at `/auth/recover-kek/finish` — the server never sees the entropy itself. |
+| `recovery_acknowledged_at` | `ts+tz?` | Set on first-time setup AND every regenerate (`/auth/security/recovery-code`) AND every recover-kek/finish. UI uses it to show "code régénéré le …". |
 | `onboarding_status`   | `enum`    | `'pending' \| 'complete'`. Reset to `'pending'` on password reset.           |
 | `onboarding_version`  | `text`    | Integer-as-text, lets us re-trigger the modal on a new onboarding schema.    |
 | `created_at`          | `ts+tz`   | `defaultNow()`.                                                              |

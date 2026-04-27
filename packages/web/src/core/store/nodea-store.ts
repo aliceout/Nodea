@@ -44,6 +44,10 @@ export interface SessionUser {
    *  the OPAQUE `exportKey`. Re-wrapped at change-password. */
   wrappedKekPassword: string | null;
   wrappedKekPasswordIv: string | null;
+  /** True when the user has set up a BIP39 recovery code (Phase 3).
+   *  Drives the sidebar warning + the Settings setup vs regenerate
+   *  affordance. */
+  recoveryCodeSet: boolean;
 }
 
 export type KeyStatus = 'idle' | 'ready' | 'missing' | 'error';

@@ -288,7 +288,72 @@ au passage 2D. La spec promet l'E2E même serveur compromis.
 
 ---
 
-### Phase 3 — Recovery code KEK
+### Phase 3 — Recovery code KEK ✅ livrée
+
+**Statut** : livrée. La saisie a lieu dans Settings (pas à l'inscription
+— UX choice : l'utilisateur·ice opt-in une fois familier de l'app, on
+n'overload pas le register flow). La sidebar warning rouge non-
+dismissable apparaît tant que `recovery_code_hash IS NULL` côté `/me`.
+
+**Routes livrées**
+- `POST /auth/security/recovery-code` (auth) — setup + regenerate, body
+  partagé `RecoveryCodeUpsertBodySchema`. Proof OPAQUE password
+  toujours requis (le client en a déjà un sous la main pour
+  re-dériver la KEK).
+- `POST /auth/recover-kek/start` (anonyme) — anti-enum natif via
+  blobs aléatoires + `userId` UUIDv4 frais pour les emails inconnus
+  ou les comptes sans recovery code. Fold le OPAQUE register
+  handshake : retourne `registrationResponse` aussi pour économiser
+  un round-trip.
+- `POST /auth/recover-kek/finish` (anonyme) — consomme la session,
+  compare le hash en temps constant (`timingSafeEqual`), purge
+  rien (la main key reste — c'est tout l'intérêt vs reset
+  destructif), rotate `opaque_records.envelope` +
+  `wrapped_kek_password{,_iv}` + `wrapped_kek_recovery{,_iv}` +
+  `recovery_code_hash`, mint une session full.
+
+**Frontend livré**
+- `pages/RecoveryCode.tsx` (auth) — page dédiée pour setup +
+  regenerate. Form → display 4×3 grid + Copier/Télécharger +
+  acknowledgement requis avant "Terminé". Marketing panel
+  cohérent avec le reste de la surface auth.
+- `pages/Recover.tsx` (anonyme, route `/recover`) — flow complet :
+  email + 12 mots + nouveau password (avec rules + zxcvbn +
+  confirm). Sur succès, affichage du **nouveau** code BIP39 (le
+  flow rotate aussi le recovery code) avec ack + redirect home.
+- Settings → Security tab : SecuritySection "Code de récupération"
+  positionnée après TOTP, avec `Configurer` (PrimaryButton, état
+  initial) ou `Régénérer` (SecondaryButton) selon
+  `user.recoveryCodeSet`.
+- `RequestReset.tsx` : lien "Tu as un code de récupération ?
+  Récupérer sans perdre tes données →" pointant vers `/recover`.
+- `SidebarTipRecoveryCode` (kind=danger, non-dismissable) — affiché
+  tant que `user.recoveryCodeSet === false`.
+
+**Crypto livrée**
+- Helper `web/core/crypto/bip39.ts` autour de `@scure/bip39@2.2.0`
+  (audited, zero-dep). Wordlist anglaise canonique. Génération
+  128 bits d'entropie + 4 bits checksum BIP39 = 12 mots.
+- `factor-wrap.ts` réutilisé tel quel ; AAD =
+  `nodea:v1\x1f<userId>\x1frecovery`. La KEK est wrappée sous
+  `HKDF(entropy, "nodea:wrap-kek")` — même primitive que pour le
+  password wrap, juste un IKM différent.
+- `sha256Hex(entropy)` → `users.recovery_code_hash` (64 hex chars).
+
+**Tests livrés**
+- API : 12 nouveaux tests (`auth-recovery.test.ts`) — first-time
+  setup, regenerate, bogus proof, unknown email anti-enum, hash
+  mismatch, replayed `recoverSessionId`, happy path complet
+  (login OLD password rejected → login NEW password accepted).
+- Web : 12 nouveaux tests (`bip39.test.ts`) — round-trip,
+  validation (mauvais nombre / mot inconnu / checksum),
+  normalisation, splitMnemonicForDisplay, sha256Hex référence
+  NIST.
+- Total : 126 api (+12) / 74 web (+12).
+
+---
+
+### Phase 3 — Recovery code KEK (design original)
 
 **Livrables**
 - Étape 4 du register (post-OPAQUE) : recovery code au format

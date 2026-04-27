@@ -414,6 +414,8 @@ function StatRow({ label, value, mono, accent }: StatRowProps) {
 
 function SecurityTab() {
   const navigate = useNavigate();
+  const user = useNodeaStore(selectUser);
+  const recoveryCodeSet = user?.recoveryCodeSet === true;
 
   return (
     <div className="max-w-[880px]">
@@ -431,6 +433,25 @@ function SecurityTab() {
         description="Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Google Authenticator) en plus du mot de passe — une fuite ne suffit alors plus à entrer."
       >
         <SecondaryButton>Activer</SecondaryButton>
+      </SecuritySection>
+
+      <SecuritySection
+        title="Code de récupération"
+        description={
+          recoveryCodeSet
+            ? 'Un code de 12 mots BIP39 te permet de récupérer ton compte si tu oublies ton mot de passe — sans perdre tes données. Régénérer invalide immédiatement l’ancien code.'
+            : 'Sans ce code, oublier ton mot de passe = perte de toutes tes données. 12 mots BIP39 à noter une seule fois ; tu pourras récupérer ton compte avec, sans détruire tes entrées.'
+        }
+      >
+        {recoveryCodeSet ? (
+          <SecondaryButton onClick={() => navigate('/recovery-code')}>
+            Régénérer
+          </SecondaryButton>
+        ) : (
+          <PrimaryButton onClick={() => navigate('/recovery-code')}>
+            Configurer
+          </PrimaryButton>
+        )}
       </SecuritySection>
 
       <section>

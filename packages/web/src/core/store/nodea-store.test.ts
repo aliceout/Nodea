@@ -12,6 +12,7 @@ const sampleUser: SessionUser = {
   wrappedMainKeyIv: 'iv',
   wrappedKekPassword: 'kek-iv.kek-data',
   wrappedKekPasswordIv: 'kek-iv',
+  recoveryCodeSet: false,
 };
 
 describe('useNodeaStore', () => {

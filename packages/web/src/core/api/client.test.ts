@@ -81,12 +81,11 @@ describe('API client', () => {
       role: 'user',
       onboardingStatus: 'complete',
       onboardingVersion: '1',
-      encryptionSalt: 's',
-      encryptedKey: 'k',
       wrappedMainKey: null,
       wrappedMainKeyIv: null,
       wrappedKekPassword: null,
       wrappedKekPasswordIv: null,
+      recoveryCodeSet: false,
     });
 
     const me = await apiMe();

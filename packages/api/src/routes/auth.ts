@@ -475,6 +475,7 @@ authRoutes.get('/me', requireUser, (c) => {
     wrappedMainKeyIv: user.wrappedMainKeyIv ?? null,
     wrappedKekPassword: user.wrappedKekPassword ?? null,
     wrappedKekPasswordIv: user.wrappedKekPasswordIv ?? null,
+    recoveryCodeSet: user.recoveryCodeHash !== null,
   };
   return c.json(body);
 });

@@ -131,3 +131,31 @@ export function SidebarTipModules() {
     </SidebarTip>
   );
 }
+
+/**
+ * Specific instance: the « pas de code de récupération » nudge
+ * shown to authenticated users who haven't set up a BIP39
+ * recovery code yet. **Non-dismissable** — losing the password
+ * without a recovery code means destructive reset (every entry
+ * gone), so we want the user to acknowledge it by acting, not by
+ * clicking ×.
+ *
+ * The danger tone matches the destructive Reset / DangerTab
+ * banners — the consequence (data loss) is the same kind of
+ * weight, even though the action here (set up a code) is
+ * preventive.
+ */
+export function SidebarTipRecoveryCode() {
+  return (
+    <SidebarTip title="Important" kind="danger">
+      Aucun code de récupération configuré. Sans lui, oublier ton
+      mot de passe = perte de toutes tes données.{' '}
+      <Link
+        to="/recovery-code"
+        className="cursor-pointer font-medium text-danger transition-colors hover:underline"
+      >
+        Configurer →
+      </Link>
+    </SidebarTip>
+  );
+}
