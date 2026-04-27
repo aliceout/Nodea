@@ -29,6 +29,11 @@ type Factor = 'totp' | 'passkey' | 'password';
  * who reloads / tabs back later will hit a 401 on submit; we surface
  * a "session expired, please re-login" message rather than crash.
  */
+type LostState =
+  | { kind: 'idle' }
+  | { kind: 'confirm'; factor: 'totp' | 'passkey'; submitting: boolean }
+  | { kind: 'sent'; factor: 'totp' | 'passkey'; earliestApplyAt: string };
+
 export default function LoginMfaPage() {
   const session = useSession();
   const navigate = useNavigate();
@@ -36,6 +41,39 @@ export default function LoginMfaPage() {
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lost, setLost] = useState<LostState>({ kind: 'idle' });
+
+  async function startLost(factor: 'totp' | 'passkey'): Promise<void> {
+    setError(null);
+    setLost({ kind: 'confirm', factor, submitting: false });
+  }
+
+  async function confirmLost(): Promise<void> {
+    if (lost.kind !== 'confirm') return;
+    const factor = lost.factor;
+    setLost({ kind: 'confirm', factor, submitting: true });
+    try {
+      const res = await session.requestMfaBypass(factor);
+      setLost({ kind: 'sent', factor, earliestApplyAt: res.earliestApplyAt });
+    } catch (err) {
+      if (isApiError(err) && err.status === 409 && err.error === 'multi_factor_loss') {
+        // §6.2 wall: the user has lost too much MFA in mode
+        // `maximum`. Only path forward is the destructive reset.
+        navigate('/request-reset', { replace: true });
+      } else if (isApiError(err) && err.status === 409 && err.error === 'bypass_already_active') {
+        setError('Une demande de récupération est déjà en cours.');
+        setLost({ kind: 'idle' });
+      } else if (isApiError(err) && err.status === 401) {
+        setError('Session expirée. Reconnecte-toi.');
+        window.setTimeout(() => navigate('/login', { replace: true }), 1500);
+        setLost({ kind: 'idle' });
+      } else {
+        setError('Erreur. Réessaie.');
+        if (import.meta.env.DEV) console.warn('mfa bypass request failed', err);
+        setLost({ kind: 'idle' });
+      }
+    }
+  }
 
   // Heuristic: a 6-digit numeric input is a TOTP code; anything
   // longer is treated as a backup code. The form accepts both —
@@ -180,6 +218,25 @@ export default function LoginMfaPage() {
                   </button>
                 </div>
               </form>
+
+              {lost.kind === 'idle' ? (
+                <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
+                  <button
+                    type="button"
+                    onClick={() => void startLost('totp')}
+                    className="cursor-pointer transition-colors hover:text-ink"
+                  >
+                    J’ai perdu mon TOTP → demander une récupération
+                  </button>
+                </div>
+              ) : null}
+
+              <LostFlow
+                lost={lost}
+                factor="totp"
+                onConfirm={() => void confirmLost()}
+                onCancel={() => setLost({ kind: 'idle' })}
+              />
             </>
           ) : null}
 
@@ -224,10 +281,104 @@ export default function LoginMfaPage() {
                   ← Recommencer la connexion
                 </button>
               </div>
+
+              {lost.kind === 'idle' ? (
+                <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
+                  <button
+                    type="button"
+                    onClick={() => void startLost('passkey')}
+                    className="cursor-pointer transition-colors hover:text-ink"
+                  >
+                    J’ai perdu ma passkey → demander une récupération
+                  </button>
+                </div>
+              ) : null}
+
+              <LostFlow
+                lost={lost}
+                factor="passkey"
+                onConfirm={() => void confirmLost()}
+                onCancel={() => setLost({ kind: 'idle' })}
+              />
             </>
           ) : null}
         </div>
       </main>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * Lost-factor flow inline panel
+ * ========================================================================== */
+
+interface LostFlowProps {
+  lost: LostState;
+  /** Factor of the parent step. We render the flow only when
+   *  `lost` matches this factor — the user never has two flows
+   *  open simultaneously. */
+  factor: 'totp' | 'passkey';
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
+  if (lost.kind === 'idle') return null;
+  if (lost.factor !== factor) return null;
+
+  if (lost.kind === 'confirm') {
+    const verbose = factor === 'totp' ? 'TOTP' : 'passkey';
+    const sideEffect =
+      factor === 'totp'
+        ? 'Ton TOTP sera désactivé et tes codes de secours invalidés.'
+        : 'Toutes tes passkeys seront supprimées — tu pourras en réenrôler après le login.';
+    return (
+      <div className="mt-4 rounded-md border border-amber-500 bg-amber-500/10 px-4 py-3 dark:bg-amber-500/15">
+        <p className="mb-2 text-[12.5px] font-semibold text-amber-700 dark:text-amber-200">
+          Récupération de {verbose}
+        </p>
+        <p className="mb-3 text-[12.5px] leading-[1.45] text-ink-soft">
+          On va t’envoyer un email avec un lien à confirmer. 48h après ta
+          confirmation, ta prochaine connexion sera autorisée sans {verbose}.
+          {' '}
+          {sideEffect}
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={lost.submitting}
+            className="flex-1 cursor-pointer rounded-md bg-accent px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {lost.submitting ? 'Envoi…' : 'Envoyer l’email'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={lost.submitting}
+            className="cursor-pointer rounded-md border border-hair bg-bg px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-bg-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // sent
+  const verboseSent = factor === 'totp' ? 'TOTP' : 'passkey';
+  return (
+    <div
+      role="status"
+      className="mt-4 rounded-md border border-accent bg-accent/5 px-4 py-3"
+    >
+      <p className="mb-1 text-[12.5px] font-semibold text-accent-deep">
+        Email envoyé
+      </p>
+      <p className="text-[12.5px] leading-[1.45] text-ink-soft">
+        Vérifie ta boîte mail. Confirme dans le lien — 48h après cette
+        confirmation, tu pourras te reconnecter sans {verboseSent}.
+      </p>
     </div>
   );
 }

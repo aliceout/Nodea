@@ -32,6 +32,9 @@ import {
   apiLoginFinish,
   apiLogout,
   apiMe,
+  apiMfaBypassActive,
+  apiMfaBypassCancel,
+  apiMfaBypassRequest,
   apiMfaPasskeyFinish,
   apiMfaPasskeyStart,
   apiMfaTotpVerify,
@@ -1156,6 +1159,45 @@ export function useSession() {
   }
 
   /**
+   * Request a bypass for a single MFA factor from the
+   * `/login/mfa` blocked screen (Auth-Roadmap Phase 6, Auth-Spec
+   * §7.8). Returns the earliest possible apply timestamp so the
+   * UI can render "tu pourras te connecter sans <factor> à partir
+   * du <date>".
+   *
+   * Throws ApiError shapes:
+   *   - 409 `multi_factor_loss` — the §6.2 wall fires (mode max +
+   *     two factors lost). Caller routes to the destructive reset.
+   *   - 409 `bypass_already_active` — a request is already in
+   *     flight; nothing to do.
+   *   - 400 `factor_not_required` — degenerate state (mode demoted
+   *     mid-session). Caller refreshes /me and recomputes.
+   */
+  async function requestMfaBypass(
+    factor: 'totp' | 'passkey',
+  ): Promise<{ earliestApplyAt: string }> {
+    return apiMfaBypassRequest({ factor });
+  }
+
+  /**
+   * Read the active bypass for the current full-session user.
+   * Used by Settings → Sécurité to surface a "you have a pending
+   * bypass" row + cancel button. `null` = no active bypass.
+   */
+  async function getActiveMfaBypass(): ReturnType<typeof apiMfaBypassActive> {
+    return apiMfaBypassActive();
+  }
+
+  /**
+   * Cancel the active bypass from a full session (Settings button).
+   * Throws if there's no active bypass — caller should hide the
+   * button when `getActiveMfaBypass` returned `{ active: null }`.
+   */
+  async function cancelMfaBypass(): Promise<void> {
+    await apiMfaBypassCancel();
+  }
+
+  /**
    * Change the user's `security_mode` (Auth-Roadmap Phase 5D).
    * Requires fresh password proof (matrice §6). Server validates
    * §6.1 prerequisites — caller catches `totp_required` /
@@ -1200,6 +1242,9 @@ export function useSession() {
     verifyMfaTotp,
     verifyMfaPasskey,
     changeSecurityMode,
+    requestMfaBypass,
+    getActiveMfaBypass,
+    cancelMfaBypass,
   };
 }
 

@@ -55,6 +55,9 @@ import {
   type MfaTotpVerifyResponse,
   type SecurityMode,
   type SecurityModeChangeBody,
+  type MfaBypassActiveResponse,
+  type MfaBypassRequestBody,
+  type MfaBypassRequestResponse,
   type RecoveryCodeUpsertBody,
   type RecoverKekStartBody,
   type RecoverKekStartResponse,
@@ -539,6 +542,35 @@ export async function apiSecurityModeChange(
     '/auth/security-mode/change',
     body,
   );
+}
+
+/* ============================================================================
+ * MFA bypass (Auth-Roadmap Phase 6)
+ * ========================================================================== */
+
+/** Request a bypass for a single factor from `/login/mfa`. The
+ *  server emails confirm + cancel links; the user must click confirm
+ *  + wait 48h before the next login skips the factor. */
+export async function apiMfaBypassRequest(
+  body: MfaBypassRequestBody,
+): Promise<MfaBypassRequestResponse> {
+  return request<MfaBypassRequestResponse>(
+    'POST',
+    '/auth/mfa/bypass/request',
+    body,
+  );
+}
+
+/** Read the active bypass for the current full-session user. Returns
+ *  `{ active: null }` when none — the UI uses that to skip the row. */
+export async function apiMfaBypassActive(): Promise<MfaBypassActiveResponse> {
+  return request<MfaBypassActiveResponse>('GET', '/auth/mfa/bypass/active');
+}
+
+/** Cancel an active bypass from a full session (Settings button).
+ *  Returns 404 if there's no active bypass. */
+export async function apiMfaBypassCancel(): Promise<{ ok: true }> {
+  return request<{ ok: true }>('POST', '/auth/mfa/bypass/cancel');
 }
 
 // --- Library lookup (proxy) -------------------------------------------
