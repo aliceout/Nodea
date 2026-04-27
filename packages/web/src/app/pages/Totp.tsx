@@ -52,6 +52,7 @@ type Stage =
   | { kind: 'disable' };
 
 export default function TotpPage() {
+  const navigate = useNavigate();
   const session = useSession();
   const user = useNodeaStore(selectUser);
   const [stage, setStage] = useState<Stage>({ kind: 'list' });
@@ -113,7 +114,7 @@ export default function TotpPage() {
             <DisableView
               session={session}
               onCancel={() => setStage({ kind: 'list' })}
-              onDone={() => setStage({ kind: 'list' })}
+              onDone={() => navigate('/flow', { replace: true })}
             />
           ) : null}
         </div>
