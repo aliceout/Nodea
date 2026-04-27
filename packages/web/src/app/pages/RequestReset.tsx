@@ -127,17 +127,13 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           role="alert"
           className="mt-3 rounded-md border border-danger bg-danger/10 px-3.5 py-3 text-[12.5px] leading-[1.5] text-danger"
         >
-          <p className="mb-1 flex items-center gap-1.5 font-semibold tracking-[0.01em]">
+          <p className="flex items-center gap-1.5 font-semibold tracking-[0.01em]">
             <span aria-hidden="true">⚠</span>
             Réinitialiser efface toutes tes données
           </p>
-          <p>Le chiffrement n’est pas réversible sans ton mot de passe d’origine.</p>
 
           <hr className="my-3 border-t border-danger/30" aria-hidden="true" />
 
-          <p className="mb-2 font-semibold text-accent-deep">
-            Tu as un code de récupération&nbsp;?
-          </p>
           <Link
             to="/recover"
             className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-3 py-2 text-center text-[12.5px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
