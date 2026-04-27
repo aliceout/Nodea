@@ -93,10 +93,15 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
       {/* Recovery code is the non-destructive alternative to the
           reset email — anyone who set one up at register / from
           Settings can recover their account WITHOUT losing data.
-          We surface that BEFORE the destructive form so users with
-          a code don't even start typing here by reflex. */}
-      <div className="rounded-md border border-hair bg-bg-2 px-3 py-2.5 text-[12.5px] text-ink-soft">
-        <span className="font-semibold text-ink">Tu as un code de récupération&nbsp;?</span>{' '}
+          Surfaced BEFORE the destructive form so users with a code
+          don't even start typing here by reflex. Same green chrome
+          (border-2 border-accent + bg-accent/5) as the
+          `SidebarTipModules` info nudge — visually says "this is
+          the safe path, take it". */}
+      <div className="rounded-md border-2 border-accent bg-accent/5 px-3 py-2.5 text-[12.5px] text-ink-soft">
+        <p className="mb-0.5 font-semibold text-accent-deep">
+          Tu as un code de récupération&nbsp;?
+        </p>
         <Link
           to="/recover"
           className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
@@ -115,14 +120,6 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           required
         />
 
-        {/* Hard warning right above the destructive button — the
-            user has read the email field and is about to commit. */}
-        <div className="mb-3">
-          <Warning title="Réinitialiser efface toutes tes données">
-            Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
-          </Warning>
-        </div>
-
         {error ? (
           <div
             role="alert"
@@ -139,6 +136,15 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
         >
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
+
+        {/* Hard warning BELOW the button — confirms what just got
+            triggered + leaves the visual punchline as the last
+            thing the user reads on the page. */}
+        <div className="mt-3">
+          <Warning title="Réinitialiser efface toutes tes données">
+            Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
+          </Warning>
+        </div>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
