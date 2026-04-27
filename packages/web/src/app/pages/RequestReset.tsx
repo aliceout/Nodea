@@ -188,7 +188,7 @@ function FormView({
         <button
           type="submit"
           disabled={submitting || !email.trim()}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full cursor-pointer rounded-md bg-danger px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
