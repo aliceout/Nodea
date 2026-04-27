@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
 export type SidebarTipKind = 'info' | 'warning' | 'danger';
@@ -23,26 +24,39 @@ export type SidebarTipKind = 'info' | 'warning' | 'danger';
  * shouldn't be silenced before the user actually does something).
  */
 export interface SidebarTipProps {
+  /** Short uppercase eyebrow rendered at the top of the cartouche
+   * — coloured by `kind` so it doubles as the tone's signal. */
+  title: string;
   kind?: SidebarTipKind;
+  /** When set, a × button appears next to the title and dismissal
+   * is persisted under this key in `localStorage`. Omit for tips
+   * that the user must act on (e.g. « TOTP non configuré ») rather
+   * than just acknowledge. */
   dismissKey?: string;
   children: ReactNode;
 }
 
-const TONE_CLASS: Record<SidebarTipKind, string> = {
-  // Sage wash + accent left rail. Used for the modules nudge and
+const TONE_BORDER: Record<SidebarTipKind, string> = {
+  // Sage wash + full accent border. Used for the modules nudge and
   // any other "by the way" message.
-  info: 'border-l-2 border-accent bg-accent/5',
-  // Amber wash + amber rail. Picked because the project's `low`
+  info: 'border-2 border-accent bg-accent/5',
+  // Amber wash + amber border. Picked because the project's `low`
   // token is too pink/blushy for a security-prompt tone, and a
   // straight `danger` red would over-escalate.
-  warning:
-    'border-l-2 border-amber-500 bg-amber-500/10 dark:bg-amber-500/15',
+  warning: 'border-2 border-amber-500 bg-amber-500/10 dark:bg-amber-500/15',
   // The existing danger token, same register as the destructive
   // banners on Reset / DangerTab.
-  danger: 'border-l-2 border-danger bg-danger/5',
+  danger: 'border-2 border-danger bg-danger/5',
+};
+
+const TONE_TITLE: Record<SidebarTipKind, string> = {
+  info: 'text-accent-deep',
+  warning: 'text-amber-700 dark:text-amber-200',
+  danger: 'text-danger',
 };
 
 export default function SidebarTip({
+  title,
   kind = 'info',
   dismissKey,
   children,
@@ -66,21 +80,35 @@ export default function SidebarTip({
   return (
     <div
       role="note"
-      className={cn(
-        'mx-2 mb-2 rounded-r-md px-2.5 py-2',
-        TONE_CLASS[kind],
-      )}
+      className={cn('mx-2 mb-2 rounded-md px-2.5 py-2', TONE_BORDER[kind])}
     >
-      <p className="text-[11.5px] leading-[1.45] text-ink-soft">{children}</p>
-      {dismissable ? (
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="mt-1.5 cursor-pointer text-[10.5px] text-muted transition-colors hover:text-ink"
+      {/* Header: tone-coloured uppercase eyebrow on the left, a
+          × close button on the right when the tip is dismissable.
+          The eyebrow signals the kind at a glance; the body below
+          stays in the standard `text-ink-soft` so the eyebrow alone
+          carries the tonal weight (no need to also tint the body). */}
+      <div className="mb-1 flex items-start justify-between gap-2">
+        <span
+          className={cn(
+            'text-[10.5px] font-semibold tracking-[0.04em] uppercase',
+            TONE_TITLE[kind],
+          )}
         >
-          Compris
-        </button>
-      ) : null}
+          {title}
+        </span>
+        {dismissable ? (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label="Fermer"
+            title="Fermer"
+            className="-mt-0.5 -mr-0.5 inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-bg hover:text-ink"
+          >
+            <XMarkIcon className="h-3 w-3" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+      <p className="text-[11.5px] leading-[1.45] text-ink-soft">{children}</p>
     </div>
   );
 }
@@ -92,7 +120,7 @@ export default function SidebarTip({
  */
 export function SidebarTipModules() {
   return (
-    <SidebarTip kind="info" dismissKey="nodea:home:tip-modules">
+    <SidebarTip title="Astuce" kind="info" dismissKey="nodea:home:tip-modules">
       Tous les modules sont activés par défaut.{' '}
       <Link
         to="/flow/account"

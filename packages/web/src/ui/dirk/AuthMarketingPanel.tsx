@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 /**
  * Shared marketing aside used by every auth page (Login, Register,
@@ -51,7 +52,26 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
       <div className="flex gap-3.5 text-[12px] text-muted">
         <span>Chiffré côté client</span>
         <span>·</span>
-        <span>Open-source</span>
+        {/* « Open-source » is a claim, so link it to the actual code
+            — readers shouldn't have to take our word for it. Styled
+            as an explicit external link (accent color + underline +
+            outbound arrow) so it reads as clickable without the
+            user having to hover-and-discover. New tab via
+            `target="_blank"` so the auth flow isn't interrupted;
+            `rel="noopener noreferrer"` is the usual hardening for
+            external links that open from a logged-out surface. */}
+        <a
+          href="https://github.com/aliceout/Nodea"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex cursor-pointer items-center gap-1 text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
+        >
+          Open-source
+          <ArrowTopRightOnSquareIcon
+            className="h-3 w-3"
+            aria-hidden="true"
+          />
+        </a>
         <span>·</span>
         <span>Auto-hébergeable</span>
       </div>
