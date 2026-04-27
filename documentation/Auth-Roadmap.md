@@ -698,14 +698,11 @@ destructif, sécurisé par 48h délai après confirmation email.
   email. Response : `{ earliestApplyAt }`.
 - `GET /auth/mfa/bypass/confirm?t=<token>` (anonyme) — flippe
   `confirmed_at`, démarre le délai 48h "réel". Page HTML server-
-  rendered (pas besoin de SPA chargé).
+  rendered (pas besoin de SPA chargé). Le lien email pointe sur
+  `${WEB_BASE_URL}/api/auth/mfa/bypass/confirm?t=…` — passe par
+  le proxy `/api/*` jusqu'à Hono.
 - `GET /auth/mfa/bypass/cancel?t=<token>` (anonyme) — flippe
   `cancelled_at`. Page HTML idem.
-- `GET /auth/mfa/bypass/active` (full session) — retourne le
-  bypass actif pour l'user (ou `null`). Settings l'utilise pour
-  surfacer la row "tu as une demande en cours".
-- `POST /auth/mfa/bypass/cancel` (full session) — annulation
-  in-app (pas besoin du lien email).
 
 **Lazy application au login** (`auth/mfa-bypass.ts:applyConsumableBypass`)
 - Appelée depuis `/auth/login/finish` ET `/auth/passkey/login/finish`
@@ -718,6 +715,22 @@ destructif, sécurisé par 48h délai après confirmation email.
   appliquée" (best-effort).
 - Pas de cron — la consommation est triggered par l'auth, donc
   zéro infra background.
+
+**Auto-cancel sur promotion en session full**
+(`auth/mfa-bypass.ts:cancelPendingBypassesForUser`)
+- Toute promotion en session `full` flippe `cancelled_at` sur
+  chaque request pendante de l'user. Câblé sur les 5 chemins :
+  `/auth/login/finish` (direct), `/auth/passkey/login/finish`
+  (direct), `/auth/mfa/totp/verify` + `/auth/mfa/passkey/finish`
+  (stepped finalize), et après le reset recovery code.
+- Justification : un login complet réussi prouve que l'user
+  contrôle toujours le facteur qu'il prétendait avoir perdu — la
+  demande devient caduque. Bonus sécurité : un attaquant qui
+  déclenche un bypass est défang dès que le user légitime se
+  reconnecte.
+- Conséquence UX : pas de surface "demande active" dans Settings
+  — si l'user a une session full, c'est que la demande a déjà
+  été annulée (ou consommée si 48h écoulées).
 
 **§6.2 "perdu 2 trucs = niqué"** enforced par `bypassEligibility` :
 
@@ -736,12 +749,10 @@ destructif, sécurisé par 48h délai après confirmation email.
   confirmation inline (amber/warning) → "Envoyer l'email" → écran
   "email envoyé". Sur 409 multi_factor_loss → redirect auto vers
   `/request-reset`.
-- Settings → Sécurité tab — `ActiveBypassRow` en haut du tab,
-  visible uniquement quand une bypass est en cours. Affiche
-  factor + état (en attente / confirmée + earliestApplyAt) +
-  bouton **Annuler la demande**.
-- `useSession.requestMfaBypass(factor)`, `getActiveMfaBypass()`,
-  `cancelMfaBypass()`.
+- Pas de surface dans Settings : l'auto-cancel-on-login fait
+  qu'une demande pendante ne peut pas coexister avec une session
+  full, donc rien à afficher.
+- `useSession.requestMfaBypass(factor)`.
 - Email templates : `mfa-bypass.ts` (request avec liens
   confirm/cancel) + `mfaBypassAppliedEmail` (notification post-
   consume).

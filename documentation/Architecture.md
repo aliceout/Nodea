@@ -297,11 +297,12 @@ the factory loops over. There is nowhere to forget a guard.
 
 - **MFA bypass by email (TOTP / passkey, 48h)** (Phase 6 —
   `routes/auth-mfa-bypass.ts`, `auth/mfa-bypass.ts`):
-  - 5 routes: `POST /auth/mfa/bypass/request` (mfa_pending),
+  - 3 routes: `POST /auth/mfa/bypass/request` (mfa_pending),
     `GET /auth/mfa/bypass/{confirm,cancel}` (anonymous, token from
-    email), `GET /auth/mfa/bypass/active` + `POST /cancel` (full
-    session). The two GET routes return server-rendered HTML so
-    the email-click UX doesn't depend on the SPA being loaded.
+    email). The two GET routes return server-rendered HTML so the
+    email-click UX doesn't depend on the SPA being loaded — links
+    point at the API directly via the `/api/*` reverse-proxy
+    prefix.
   - Eligibility check (`bypassEligibility`) enforces Auth-Spec
     §6.2 "perdu 2 trucs = niqué": mode `maximum` requires the
     other factor verifiable in the pending session before the
@@ -316,13 +317,21 @@ the factory loops over. There is nowhere to forget a guard.
     marks `consumed_at`; revokes every other session of the user.
     Notification email "récupération appliquée" is best-effort
     (failure doesn't block login).
+  - Auto-cancel on full-session promotion
+    (`cancelPendingBypassesForUser`) flips `cancelled_at` on every
+    pending request whenever the user lands a full session — at
+    `/auth/login/finish`, `/auth/passkey/login/finish`,
+    `/auth/mfa/{totp,passkey}/finish`, and after a recovery-code
+    reset. Rationale: a successful login proves the user still
+    controls the factor they claimed to have lost (and defangs an
+    attacker who triggered a bypass against them).
   - Tokens: 32 bytes random base64url, SHA-256 hashed in
     `mfa_bypass_requests.{confirm,cancel}_token_hash`. The DB only
     holds hashes; plaintext lives only in the email.
   - Frontend: `/login/mfa` surfaces "j'ai perdu mon X" links under
     each step (TOTP / passkey) → inline confirm dialog → email
-    sent. Settings → Sécurité shows `ActiveBypassRow` (visible
-    only when a bypass is active) with cancel button.
+    sent. No Settings UI: a full session implies the bypass got
+    auto-cancelled, so there's nothing to display.
   - No cron — consumption is triggered by the next login. The
     request itself has a TTL of 7 days (so a never-confirmed
     request doesn't sit forever), which is enforced by the

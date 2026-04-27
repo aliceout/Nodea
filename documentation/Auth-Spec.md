@@ -1677,10 +1677,19 @@ Server :
 
 #### Annulation
 
-`GET /auth/mfa/bypass/cancel?t=<token>` ou bouton dans une session
-active si l'user en a une.
+`GET /auth/mfa/bypass/cancel?t=<token>` (lien email).
 
 Server : `cancelled_at = now()`. Page : "Demande annulée."
+
+Une demande pendante est aussi auto-annulée à la prochaine
+promotion en session `full` (`cancelPendingBypassesForUser` câblé
+sur `/auth/login/finish`, `/auth/passkey/login/finish`,
+`/auth/mfa/{totp,passkey}/finish`, et le reset recovery code).
+Un login complet réussi prouve que l'user contrôle toujours le
+facteur prétendu perdu — la demande est moot et annulée.
+Conséquence : pas de surface "demande active" dans une session
+full, le couple "user authentifié + bypass pendant" ne peut pas
+coexister.
 
 #### Application du bypass au login
 
