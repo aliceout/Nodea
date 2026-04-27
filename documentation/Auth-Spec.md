@@ -65,8 +65,8 @@
 
 | Question | Réponse courte | Détail |
 |---|---|---|
-| Qu'est-ce qui dérive la KEK ? (✅ livré 2/3) | OPAQUE `export_key` (Phase 2) **ou** WebAuthn PRF (Phase 4) **ou** recovery code BIP39 (Phase 3) | §3.2 |
-| Le TOTP dérivera quelque chose ? | **Non.** Gate de session uniquement. | §2.3, §8 |
+| Qu'est-ce qui dérive la KEK ? (✅ livré 3/3) | OPAQUE `export_key` (Phase 2) **ou** WebAuthn PRF (Phase 4) **ou** recovery code BIP39 (Phase 3) | §3.2 |
+| Le TOTP dérive quelque chose ? (✅ Phase 5) | **Non** — gate de session uniquement, secret en clair serveur (cf. §2.3). | §2.3, §8 |
 | Identifiant OPAQUE ? (✅ Phase 2) | `users.email` (changer l'email = re-register OPAQUE) | §7.6 |
 | Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code (✅ tous livrés) | §3.2 |
 | Mode "Sécurité maximale" = split crypto ? | **Non**, gate UX uniquement | §2.3 |
@@ -1780,13 +1780,18 @@ Réponse `200`. Cookie effacé.
 
 ---
 
-## 8. TOTP — détails (🚧 Phase 2+ design)
+## 8. TOTP — détails (✅ Phase 5 livrée)
 
-> **Statut.** Pas implémenté en V1. Les tables `mfa_totp` +
-> `mfa_totp_recovery_codes` existent en DB depuis Phase 0 mais
-> aucun code applicatif ne les écrit ou les lit. Le design ci-dessous
-> reste valide pour Phase 2+ (étape 5 de l'enrollment progressif,
-> via `/settings/security/totp`).
+> **Statut.** Phase 5 livrée. Routes
+> `packages/api/src/routes/auth-totp.ts` (enroll / disable /
+> regenerate) + `packages/api/src/routes/auth-mfa.ts` (verify-step
+> + passkey-as-second-factor) + `packages/api/src/routes/auth-security-mode.ts`
+> (mode change). Page Settings dédiée `/totp` (QR + clé masquée
+> + œil/copier + verify inline) et page `/login/mfa` (stepped MFA
+> avec TOTP puis passkey). Le sidebar tip ambre dismissable invite
+> à activer TOTP tant que `totpEnabled === false`. Backup codes :
+> 10 × 120 bits / 24 base32 chars, single-use enforced par
+> `UPDATE … WHERE used_at IS NULL`.
 
 ### 8.1 Paramètres figés
 

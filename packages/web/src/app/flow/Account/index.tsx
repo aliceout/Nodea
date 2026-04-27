@@ -1,4 +1,9 @@
-import { type ChangeEvent, useRef, useState } from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
@@ -23,6 +28,7 @@ import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
 import Button from '@/ui/atoms/dirk/Button';
+import type { SecurityMode } from '@nodea/shared';
 
 /**
  * Mon compte — Direction K · Sauge.
@@ -333,7 +339,7 @@ function IdentityRow({
       {!editing ? (
         <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[170px_1fr] lg:gap-x-6">
           <div>
-            <Button variant="secondary" size="md" onClick={onEdit} aria-label={editLabel}>
+            <Button variant="secondary" size="sm" onClick={onEdit} aria-label={editLabel}>
               Modifier
             </Button>
           </div>
@@ -349,10 +355,10 @@ function IdentityRow({
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-0 flex-1">{children}</div>
           <div className="flex shrink-0 gap-2">
-            <Button variant="primary" size="md" onClick={onSave} disabled={submitting}>
+            <Button variant="primary" size="sm" onClick={onSave} disabled={submitting}>
               {submitting ? 'Enregistrement…' : 'Enregistrer'}
             </Button>
-            <Button variant="danger-ghost" size="md" onClick={onCancel} disabled={submitting}>
+            <Button variant="danger-ghost" size="sm" onClick={onCancel} disabled={submitting}>
               Abandonner
             </Button>
           </div>
@@ -416,7 +422,7 @@ function SecurityTab() {
         title="Mot de passe"
         description="Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais."
       >
-        <Button variant="secondary" size="md" onClick={() => navigate('/change-password')}>
+        <Button variant="secondary" size="sm" onClick={() => navigate('/change-password')}>
           Renouveler
         </Button>
       </SecuritySection>
@@ -429,7 +435,7 @@ function SecurityTab() {
             : `${passkeysCount} passkey${passkeysCount > 1 ? 's' : ''} enregistrée${passkeysCount > 1 ? 's' : ''}. Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.`
         }
       >
-        <Button variant="secondary" size="md" onClick={() => navigate('/passkeys')}>
+        <Button variant="secondary" size="sm" onClick={() => navigate('/passkeys')}>
           {passkeysCount === 0 ? 'Ajouter' : 'Gérer'}
         </Button>
       </SecuritySection>
@@ -442,7 +448,7 @@ function SecurityTab() {
             : 'Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth) en plus du mot de passe — une fuite ne suffit alors plus à entrer.'
         }
       >
-        <Button variant="secondary" size="md" onClick={() => navigate('/totp')}>
+        <Button variant="secondary" size="sm" onClick={() => navigate('/totp')}>
           {totpEnabled ? 'Gérer' : 'Activer'}
         </Button>
       </SecuritySection>
@@ -455,12 +461,31 @@ function SecurityTab() {
             : 'Sans ce code, oublier ton mot de passe = perte de toutes tes données. 12 mots BIP39 à noter une seule fois ; tu pourras récupérer ton compte avec, sans détruire tes entrées.'
         }
       >
-        <Button variant="secondary" size="md" onClick={() => navigate('/recovery-code')}>
+        <Button variant="secondary" size="sm" onClick={() => navigate('/recovery-code')}>
           {recoveryCodeSet ? 'Régénérer' : 'Configurer'}
+        </Button>
+      </SecuritySection>
+
+      <SecuritySection
+        title="Mode de sécurité"
+        description={
+          'Combien de facteurs sont demandés à chaque connexion (mot de passe, TOTP, passkey). Mode actuel : ' +
+          modeLabel(user?.securityMode ?? 'password_or_passkey') +
+          '.'
+        }
+      >
+        <Button variant="secondary" size="sm" onClick={() => navigate('/security-mode')}>
+          Modifier
         </Button>
       </SecuritySection>
     </div>
   );
+}
+
+function modeLabel(mode: SecurityMode): string {
+  if (mode === 'password_or_passkey') return 'Standard';
+  if (mode === 'always_totp') return 'TOTP requis';
+  return 'Maximum';
 }
 
 interface SecuritySectionProps {
@@ -490,6 +515,15 @@ function SecuritySection({ title, description, children }: SecuritySectionProps)
     </section>
   );
 }
+
+/* ---------- Security mode (Auth-Roadmap Phase 5D — page dédiée) ------------ */
+// The mode picker lives on a standalone `/security-mode` page
+// (parallel to /totp, /passkeys, /recovery-code). Settings → Sécurité
+// just navigates there via a `Modifier` button on the
+// `SecuritySection` row above. `modeLabel` (line ~485) is the only
+// helper still needed locally — to render the current mode name in
+// the row's description.
+
 
 /* ---------- Preferences tab ----------------------------------------------- */
 
@@ -664,7 +698,7 @@ function ExportPanel() {
       <h3 className="mb-2 text-[16px] font-semibold text-ink">Exporter</h3>
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
         <div>
-          <Button variant="primary" size="md" onClick={handleExport} disabled={loading || !mainKey}>
+          <Button variant="primary" size="sm" onClick={handleExport} disabled={loading || !mainKey}>
             {loading ? 'Préparation…' : 'Exporter mes données'}
           </Button>
         </div>
@@ -775,7 +809,7 @@ function ImportPanel() {
         <div>
           <Button
             variant="primary"
-            size="md"
+            size="sm"
             onClick={() => inputRef.current?.click()}
             disabled={loading || !mainKey}
           >
@@ -864,7 +898,7 @@ function DangerTab() {
         />
         <Button
           variant="danger"
-          size="md"
+          size="sm"
           onClick={handleDelete}
           disabled={submitting || !canDelete}
         >

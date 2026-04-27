@@ -205,15 +205,30 @@ authTotpRoutes.post('/totp/enroll/verify', requireUser, enrollLimiter, async (c)
 
   // Anti-replay: stash the matched window so a code from this same
   // window can't be replayed. Auth-Spec §8.3.
-  await db
-    .update(mfaTotp)
-    .set({
-      enabledAt: new Date(),
-      lastWindow: result.window,
-    })
-    .where(eq(mfaTotp.userId, user.id));
+  //
+  // Auto-promote `security_mode` from `password_or_passkey` to
+  // `always_totp` in the same transaction: a user who just went
+  // through TOTP enrollment expects it to be enforced on the next
+  // login (otherwise the activation is a no-op). Modes already at
+  // `always_totp` / `maximum` stay where they are.
+  const enabledAt = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(mfaTotp)
+      .set({
+        enabledAt,
+        lastWindow: result.window,
+      })
+      .where(eq(mfaTotp.userId, user.id));
+    if (user.securityMode === 'password_or_passkey') {
+      await tx
+        .update(users)
+        .set({ securityMode: 'always_totp', updatedAt: enabledAt })
+        .where(eq(users.id, user.id));
+    }
+  });
 
-  return c.json({ ok: true, enabledAt: new Date().toISOString() });
+  return c.json({ ok: true, enabledAt: enabledAt.toISOString() });
 });
 
 /* ============================================================================

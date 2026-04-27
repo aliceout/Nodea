@@ -13,9 +13,9 @@
 > ## État au {{2026-04-27}}
 >
 > **Phases livrées** : 0 (spec), 1 (register simplifié), 2A-2D
-> (OPAQUE migration), 3 (recovery code BIP39), **4 (passkey WebAuthn
-> + PRF)**. En cours : Phase 5 (TOTP + security mode) à attaquer
-> ensuite.
+> (OPAQUE migration), 3 (recovery code BIP39), 4 (passkey WebAuthn
+> + PRF), **5A-5D (TOTP + stepped MFA + security mode UI)**.
+> En cours : Phase 6 (bypass MFA email 48h) à attaquer ensuite.
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -556,7 +556,87 @@ connecter sans jamais retaper son password (passkey-first).
 
 ---
 
-### Phase 5 — TOTP + backup codes + security mode
+### Phase 5 — TOTP + backup codes + security mode ✅ livrée
+
+**Statut** : livrée en quatre sous-phases (5A primitives, 5B
+enrollment, 5C stepped MFA login, 5D security mode UI + passkey-as-
+second-factor). 36 nouveaux tests (22 unit + 14 integration TOTP +
+9 stepped + 9 security-mode + passkey 2nd factor à venir si on en
+ajoute), couvrant gating de proof, anti-replay, single-use des
+backup codes, downgrade auto, mfa_pending row state, finalize.
+
+**Livrables**
+- `otplib@13.4.0` + `qrcode@1.5.4` pinnés. Pas de hand-roll RFC 6238.
+- Helpers crypto `auth/totp.ts` (TOTP_ALGO=sha1 / 6 / 30s, secret
+  20 bytes, skew ±1 window) + `auth/totp-backup-codes.ts` (10 codes
+  120 bits / 24 base32 chars, format 4-4-4-4-4-4 hyphenated,
+  `normaliseBackupCode` + `hashBackupCode` + `constantTimeEqualHex`
+  avec validation hex stricte).
+- Routes (`packages/api/src/routes/auth-totp.ts`) :
+  - `POST /auth/totp/enroll/start` (auth, password proof) — UPSERT
+    `mfa_totp` avec `enabled_at: NULL`, génère 10 backup codes,
+    retourne secret_base32 + otpauth_uri + backupCodes (one-shot).
+  - `POST /auth/totp/enroll/verify` (auth) — vérifie le code TOTP,
+    exige `backup_codes_acknowledged: true`, flippe `enabled_at`.
+  - `POST /auth/totp/disable` (auth, password proof) — DELETE row
+    + DELETE backup codes + §6.1 downgrade auto si mode
+    `always_totp` / `maximum`.
+  - `POST /auth/totp/backup-codes/regenerate` (auth, password proof)
+    — refuse si TOTP pas activé, replace les 10 codes en transaction.
+- Routes stepped MFA (`packages/api/src/routes/auth-mfa.ts`) :
+  - `POST /auth/mfa/totp/verify` (mfa_pending) — accepte TOTP
+    OU backup code dans `code`, anti-replay `lastWindow`, single-
+    use sur les backup codes (`UPDATE … WHERE used_at IS NULL`),
+    finalize automatique si tous les facteurs §6.1 sont satisfaits.
+  - `POST /auth/mfa/passkey/start` + `/finish` (mfa_pending,
+    Phase 5D) — passkey-as-second-factor pour mode `maximum`.
+    Allow-credentials scopé à l'user (pas anti-enum, on est déjà
+    authentifié), challenge persisté sur la pending session row,
+    UV `'required'` enforcé. Finalize automatique aussi.
+- Route `POST /auth/security-mode/change` (auth, password proof,
+  Phase 5D) — valide les §6.1 prerequisites avant accept ; `400
+  totp_required` / `400 passkey_required` quand manquant. Downgrade
+  toujours OK (`password_or_passkey` n'a pas de prereq).
+- Login routes étendus (`/auth/login/finish` + `/auth/passkey/login/
+  finish`) : émettent `mfa_pending` au lieu de `full` selon le
+  mode + le chemin d'entrée. Les blobs wrap sont inlinés dans la
+  réponse (puisque `/auth/me` refuse les pending sessions).
+- `OpaqueLoginFinishResponse` + `PasskeyLoginFinishResponse`
+  étendus avec discriminator `needsMfa` + `factorsNeeded`.
+- `requireMfaPending` middleware + `mfa-policy.ts` helper
+  (matrice §7.4 entry × mode → required factors).
+- `createSession` accepte `mfaFlags` + TTL `mfa_pending = 5 min`.
+  `finalizeMfaSession` (DELETE pending + INSERT full atomiquement).
+- Frontend :
+  - Page `/totp` (TOTP setup avec QR + clé masquée + œil/copier +
+    écran 2/2 backup codes + acknowledge + verify code 6 chiffres
+    inline avec activation).
+  - Page `/login/mfa` (TOTP/backup code form, passe à l'écran
+    passkey si `factorsNeeded` contient `passkey`, fallback "session
+    expirée → /login").
+  - Settings → Sécurité tab : section "Mode de sécurité" en haut
+    avec 3 cards (Standard / TOTP requis / Maximum), gates UI
+    (cards greyed-out + helper line si prereqs manquants), inline
+    password confirm form.
+  - `useSession` gagne `startTotpEnrollment`, `verifyTotpEnrollment`,
+    `disableTotp`, `regenerateTotpBackupCodes`, `verifyMfaTotp`,
+    `verifyMfaPasskey`, `changeSecurityMode`.
+  - SidebarTipTotp (warning amber, dismissable) tant que
+    `totpEnabled === false`.
+- `auth_factors` schema déjà en place depuis Phase 0 ; mfa_totp +
+  mfa_totp_recovery_codes idem. Pas de nouvelle migration.
+
+**Limitations connues**
+- Mode `maximum` passkey-first → `factorsNeeded: ['password', 'totp']`.
+  `password` comme 2e facteur n'est pas implémenté côté UI (route
+  serveur non câblée non plus) — un user maximum qui se connecte
+  via passkey-first reste bloqué sur l'écran MFA. Le cas réaliste
+  est password-first → `['passkey', 'totp']` (passkey-first
+  surtout pertinent quand mode = `password_or_passkey`).
+- Bypass MFA par email (Phase 6) absent ; perte du téléphone en
+  mode max = recovery destructif (Auth-Spec §7.9).
+
+### Phase 5 — design original (archive)
 
 **Livrables**
 - Tables `mfa_totp` (secret 20 bytes, algo SHA1, digits 6, period 30,

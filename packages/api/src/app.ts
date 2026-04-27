@@ -6,6 +6,7 @@ import { authMfaRoutes } from './routes/auth-mfa.ts';
 import { authPasskeyRoutes } from './routes/auth-passkey.ts';
 import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
+import { authSecurityModeRoutes } from './routes/auth-security-mode.ts';
 import { authTotpRoutes } from './routes/auth-totp.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { announcementsRoutes } from './routes/announcements.ts';
@@ -66,6 +67,9 @@ export function buildApp() {
   // operates on `mfa_pending` sessions only. Mounted before the
   // catch-all `authRoutes` so the trie picks the dedicated handlers.
   app.route('/auth', authMfaRoutes);
+  // Security-mode change (Auth-Roadmap Phase 5D). Same ordering —
+  // dedicated handler before the legacy catch-all.
+  app.route('/auth', authSecurityModeRoutes);
   app.route('/auth', authRoutes);
   app.route('/admin', adminRoutes);
   app.route('/announcements', announcementsRoutes);

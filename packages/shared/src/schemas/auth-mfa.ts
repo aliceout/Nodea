@@ -72,3 +72,52 @@ export const MfaTotpVerifyResponseSchema = z.discriminatedUnion('finalized', [
   }),
 ]);
 export type MfaTotpVerifyResponse = z.infer<typeof MfaTotpVerifyResponseSchema>;
+
+/* ============================================================================
+ * Passkey-as-second-factor (Auth-Roadmap Phase 5D, Auth-Spec §7.4)
+ * ========================================================================== */
+
+/**
+ * `POST /auth/mfa/passkey/start` — body. Empty for now: the server
+ * uses the `mfa_pending` cookie to identify the user and queries
+ * their enrolled passkeys to build `allowCredentials`.
+ *
+ * The challenge is persisted on the pending session row
+ * (`pending_webauthn_challenge`, TTL 5 min) so /finish can verify
+ * it without round-tripping additional client state.
+ */
+export const MfaPasskeyStartBodySchema = z.object({}).passthrough();
+export type MfaPasskeyStartBody = z.infer<typeof MfaPasskeyStartBodySchema>;
+
+const WebAuthnOptionsJSON = z.record(z.string(), z.unknown());
+export const MfaPasskeyStartResponseSchema = z.object({
+  requestOptions: WebAuthnOptionsJSON,
+});
+export type MfaPasskeyStartResponse = z.infer<
+  typeof MfaPasskeyStartResponseSchema
+>;
+
+const WebAuthnResponseJSON = z.record(z.string(), z.unknown());
+export const MfaPasskeyFinishBodySchema = z.object({
+  assertionResponse: WebAuthnResponseJSON,
+});
+export type MfaPasskeyFinishBody = z.infer<typeof MfaPasskeyFinishBodySchema>;
+
+/** Same discriminated shape as TOTP verify — promotes to full when
+ *  the pending row now satisfies all factors required by the user's
+ *  `security_mode`, otherwise reports what's still missing. */
+export const MfaPasskeyFinishResponseSchema = z.discriminatedUnion(
+  'finalized',
+  [
+    z.object({
+      finalized: z.literal(true),
+    }),
+    z.object({
+      finalized: z.literal(false),
+      missing: z.array(MfaFactorSchema).min(1),
+    }),
+  ],
+);
+export type MfaPasskeyFinishResponse = z.infer<
+  typeof MfaPasskeyFinishResponseSchema
+>;

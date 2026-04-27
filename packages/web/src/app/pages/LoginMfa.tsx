@@ -5,21 +5,25 @@ import { useSession } from '@/core/auth/use-session';
 import { cn } from '@/lib/utils';
 import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 
+type Factor = 'totp' | 'passkey' | 'password';
+
 /**
- * Stepped MFA — TOTP step (Auth-Roadmap Phase 5C, Auth-Spec §7.4).
+ * Stepped MFA — TOTP + passkey-as-second-factor (Auth-Roadmap
+ * Phase 5C-D, Auth-Spec §7.4).
  *
  * Reached after a successful primary login (`/login` password OR the
  * passkey button) when `users.security_mode != 'password_or_passkey'`
- * and the server emits a `mfa_pending` session. The page collects a
- * TOTP code OR a 24-char backup code in the same field — the server
- * disambiguates by format. On success the server promotes the
- * session to `full` and the client navigates to `/flow/home`.
+ * and the server emits a `mfa_pending` session. The page steps the
+ * user through whatever's still missing:
  *
- * Phase 5D adds the passkey-as-second-factor route for mode
- * `maximum`. When `verifyMfaTotp` returns `finalized: false`, the
- * `missing` array points the user to the next step (currently we
- * just surface a "more factors needed" error — Phase 5D wires the
- * actual route).
+ *   - TOTP form by default (mode `always_totp`, mode `maximum` after
+ *     password-first).
+ *   - Passkey button when the server reports `passkey` is still
+ *     missing — typically mode `maximum` after the TOTP step
+ *     succeeded.
+ *
+ * The page tracks a `step` state that flips to `'passkey'` when a
+ * non-finalizing TOTP verify reports passkey as still pending.
  *
  * Reload safety: the `mfa_pending` cookie has a 5-min TTL. A user
  * who reloads / tabs back later will hit a 401 on submit; we surface
@@ -28,6 +32,7 @@ import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 export default function LoginMfaPage() {
   const session = useSession();
   const navigate = useNavigate();
+  const [step, setStep] = useState<'totp' | 'passkey'>('totp');
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,47 +42,81 @@ export default function LoginMfaPage() {
   // server-side validation gates by length / format.
   const codeIsTotp = /^\d{6}$/.test(code.trim());
   const codeIsBackup = code.replace(/[^A-Za-z0-9]/g, '').length >= 24;
-  const canSubmit = !submitting && (codeIsTotp || codeIsBackup);
+  const canSubmitTotp = !submitting && (codeIsTotp || codeIsBackup);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
+  function applyMissing(missing: ReadonlyArray<Factor>): void {
+    if (missing.includes('passkey')) {
+      setStep('passkey');
+    } else {
+      // Edge case: server reports something we don't have a UI
+      // for (e.g. password-as-second-factor in passkey-first
+      // maximum). Surface a generic message — the auth routes
+      // never return only `password` in practice today.
+      setError(
+        `Vérification incomplète. Facteur(s) encore requis : ${missing.join(', ')}.`,
+      );
+    }
+  }
+
+  function handleApiError(err: unknown, fallback: string): void {
+    if (isApiError(err)) {
+      if (err.status === 401 && err.error === 'unauthenticated') {
+        setError('Session expirée. Reconnecte-toi.');
+        window.setTimeout(
+          () => navigate('/login', { replace: true }),
+          1500,
+        );
+      } else if (err.status === 401) {
+        setError(fallback);
+      } else if (err.status === 429) {
+        setError('Trop de tentatives. Réessaie dans quelques minutes.');
+      } else {
+        setError('Erreur de vérification. Réessaie.');
+        if (import.meta.env.DEV) console.warn('mfa verify failed', err);
+      }
+    } else if (
+      typeof err === 'object' &&
+      err !== null &&
+      (err as { name?: unknown }).name === 'NotAllowedError'
+    ) {
+      setError('Confirmation passkey annulée.');
+    } else {
+      setError('Erreur de vérification. Réessaie.');
+      if (import.meta.env.DEV) console.warn('mfa verify failed', err);
+    }
+  }
+
+  async function onSubmitTotp(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     setError(null);
-    if (!canSubmit) return;
+    if (!canSubmitTotp) return;
     setSubmitting(true);
     try {
       const result = await session.verifyMfaTotp(code.trim());
       if (result.finalized) {
         navigate('/flow/home', { replace: true });
       } else {
-        // Phase 5C ships TOTP only — additional factors land in
-        // Phase 5D (passkey-as-second-factor for mode `maximum`).
-        // Until that route exists we surface an explicit message.
-        setError(
-          `Vérification incomplète. Facteur(s) encore requis : ${result.missing.join(', ')}.`,
-        );
+        applyMissing(result.missing);
       }
     } catch (err) {
-      if (isApiError(err)) {
-        if (err.status === 401 && err.error === 'unauthenticated') {
-          setError('Session expirée. Reconnecte-toi.');
-          // Drop back to login after a beat so the user reads the
-          // message before being redirected.
-          window.setTimeout(
-            () => navigate('/login', { replace: true }),
-            1500,
-          );
-        } else if (err.status === 401) {
-          setError('Code incorrect. Réessaie avec celui en cours.');
-        } else if (err.status === 429) {
-          setError('Trop de tentatives. Réessaie dans quelques minutes.');
-        } else {
-          setError('Erreur de vérification. Réessaie.');
-          if (import.meta.env.DEV) console.warn('mfa totp verify failed', err);
-        }
+      handleApiError(err, 'Code incorrect. Réessaie avec celui en cours.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onPasskeyClick(): Promise<void> {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const result = await session.verifyMfaPasskey();
+      if (result.finalized) {
+        navigate('/flow/home', { replace: true });
       } else {
-        setError('Erreur de vérification. Réessaie.');
-        if (import.meta.env.DEV) console.warn('mfa totp verify failed', err);
+        applyMissing(result.missing);
       }
+    } catch (err) {
+      handleApiError(err, 'Aucune passkey valide n’a répondu.');
     } finally {
       setSubmitting(false);
     }
@@ -91,54 +130,102 @@ export default function LoginMfaPage() {
 
       <main className="flex items-center justify-center px-6 py-16 sm:px-14">
         <div className="animate-fade-up w-full max-w-[360px]">
-          <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
-          <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-            Code à six chiffres
-          </h2>
-          <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-            Tape le code affiché par ton appli d’authentification, ou — si tu
-            l’as perdue — un de tes 10 codes de secours (24 caractères, tirets
-            optionnels).
-          </p>
+          {step === 'totp' ? (
+            <>
+              <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
+              <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+                Code à six chiffres
+              </h2>
+              <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+                Tape le code affiché par ton appli d’authentification, ou — si
+                tu l’as perdue — un de tes 10 codes de secours (24 caractères,
+                tirets optionnels).
+              </p>
 
-          <form onSubmit={onSubmit} noValidate>
-            <Field
-              label="Code TOTP ou code de secours"
-              inputMode="text"
-              autoComplete="one-time-code"
-              autoFocus
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-            />
+              <form onSubmit={onSubmitTotp} noValidate>
+                <Field
+                  label="Code TOTP ou code de secours"
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
 
-            {error ? (
-              <div
-                role="alert"
-                className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-              >
-                {error}
-              </div>
-            ) : null}
+                {error ? (
+                  <div
+                    role="alert"
+                    className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+                  >
+                    {error}
+                  </div>
+                ) : null}
 
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitting ? 'Vérification…' : 'Vérifier'}
-            </button>
+                <button
+                  type="submit"
+                  disabled={!canSubmitTotp}
+                  className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting ? 'Vérification…' : 'Vérifier'}
+                </button>
 
-            <div className="mt-4.5 text-center text-[12.5px] text-muted">
+                <div className="mt-4.5 text-center text-[12.5px] text-muted">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login', { replace: true })}
+                    className="cursor-pointer transition-colors hover:text-ink"
+                  >
+                    ← Recommencer la connexion
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : null}
+
+          {step === 'passkey' ? (
+            <>
+              <p className="mb-1 text-[13px] text-muted">
+                Vérification 2FA · 2/2
+              </p>
+              <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+                Confirme avec ta passkey
+              </h2>
+              <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+                Ton mode de sécurité demande une passkey en plus du code TOTP.
+                Confirme avec Touch ID, Face ID, Windows Hello ou ta clé
+                hardware pour finaliser la connexion.
+              </p>
+
+              {error ? (
+                <div
+                  role="alert"
+                  className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+                >
+                  {error}
+                </div>
+              ) : null}
+
               <button
                 type="button"
-                onClick={() => navigate('/login', { replace: true })}
-                className="cursor-pointer transition-colors hover:text-ink"
+                onClick={() => void onPasskeyClick()}
+                disabled={submitting}
+                className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
               >
-                ← Recommencer la connexion
+                {submitting ? 'Vérification…' : 'Confirmer avec ma passkey'}
               </button>
-            </div>
-          </form>
+
+              <div className="mt-4.5 text-center text-[12.5px] text-muted">
+                <button
+                  type="button"
+                  onClick={() => navigate('/login', { replace: true })}
+                  className="cursor-pointer transition-colors hover:text-ink"
+                >
+                  ← Recommencer la connexion
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       </main>
     </div>

@@ -32,6 +32,8 @@ import {
   apiLoginFinish,
   apiLogout,
   apiMe,
+  apiMfaPasskeyFinish,
+  apiMfaPasskeyStart,
   apiMfaTotpVerify,
   apiPasskeyRemove,
   apiPasskeyRename,
@@ -40,11 +42,13 @@ import {
   apiRecoveryCodeUpsert,
   apiRegisterStart,
   apiRegisterFinish,
+  apiSecurityModeChange,
   apiTotpDisable,
   apiTotpEnrollStart,
   apiTotpEnrollVerify,
   apiTotpRegenerateBackupCodes,
 } from '../api/client.ts';
+import type { SecurityMode } from '@nodea/shared';
 import type { TotpEnrollStartResponse } from '@nodea/shared';
 import {
   enrollPasskey,
@@ -317,7 +321,7 @@ export function useSession() {
    * Returns `{ finalized: true }` when the session is now `full` —
    * the caller navigates to `/flow/home`. Returns
    * `{ finalized: false, missing }` when more factors are needed
-   * (Phase 5D wiring point).
+   * (e.g. mode `maximum` may still need passkey).
    */
   async function verifyMfaTotp(
     code: string,
@@ -335,6 +339,41 @@ export function useSession() {
       return { finalized: true };
     }
     return { finalized: false, missing: res.missing };
+  }
+
+  /**
+   * Drive a passkey-as-second-factor assertion (Phase 5D, mode
+   * `maximum`). Requests WebAuthn `requestOptions` scoped to the
+   * user's enrolled passkeys, runs `startAuthentication`, ships the
+   * assertion back. On finalize hydrate `/auth/me`.
+   *
+   * Throws WebAuthn errors verbatim (caller distinguishes
+   * `NotAllowedError` for user-cancel) and ApiError for server
+   * rejects (401 = invalid assertion, 400 = stale challenge).
+   */
+  async function verifyMfaPasskey(): Promise<
+    | { finalized: true }
+    | { finalized: false; missing: ReadonlyArray<'totp' | 'passkey' | 'password'> }
+  > {
+    const { startAuthentication } = await import('@simplewebauthn/browser');
+    const startRes = await apiMfaPasskeyStart({});
+    const assertion = await startAuthentication({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      optionsJSON: startRes.requestOptions as any,
+    });
+    const finishRes = await apiMfaPasskeyFinish({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      assertionResponse: assertion as any,
+    });
+    if (finishRes.finalized) {
+      const me = await apiMe();
+      if (!me) {
+        throw new Error('mfa-passkey verify finalized but /auth/me returned null');
+      }
+      setAuth(me);
+      return { finalized: true };
+    }
+    return { finalized: false, missing: finishRes.missing };
   }
 
   /**
@@ -1116,6 +1155,31 @@ export function useSession() {
     return res.backupCodes;
   }
 
+  /**
+   * Change the user's `security_mode` (Auth-Roadmap Phase 5D).
+   * Requires fresh password proof (matrice §6). Server validates
+   * §6.1 prerequisites — caller catches `totp_required` /
+   * `passkey_required` 400 errors to surface the right CTA in the
+   * UI ("active TOTP first" / "enroll a passkey first").
+   */
+  async function changeSecurityMode(
+    mode: SecurityMode,
+    currentPassword: string,
+  ): Promise<void> {
+    if (!user) throw new Error('changeSecurityMode: no authenticated user');
+    const proof = await issuePasswordProof(user.email, currentPassword);
+    await apiSecurityModeChange({
+      mode,
+      proofLoginToken: proof.loginToken,
+      proofFinishLoginRequest: proof.finishLoginRequest,
+    });
+    // Refresh /me so the store reflects the new mode + the UI gates
+    // recompute (e.g. the disable-TOTP button gains the "will
+    // downgrade to password_or_passkey" warning).
+    const me = await apiMe();
+    if (me) setAuth(me);
+  }
+
   return {
     status,
     user,
@@ -1134,6 +1198,8 @@ export function useSession() {
     disableTotp,
     regenerateTotpBackupCodes,
     verifyMfaTotp,
+    verifyMfaPasskey,
+    changeSecurityMode,
   };
 }
 

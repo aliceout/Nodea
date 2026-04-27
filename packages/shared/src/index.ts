@@ -5,6 +5,7 @@ export * from './schemas/auth-opaque.ts';
 export * from './schemas/auth-mfa.ts';
 export * from './schemas/auth-passkey.ts';
 export * from './schemas/auth-recovery.ts';
+export * from './schemas/auth-security-mode.ts';
 export * from './schemas/auth-totp.ts';
 export * from './schemas/auth-register-v2.ts';
 export * from './schemas/entries.ts';

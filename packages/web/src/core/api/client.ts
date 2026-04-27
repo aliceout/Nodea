@@ -47,8 +47,14 @@ import {
   type OpaqueLoginStartResponse,
   type OpaqueLoginFinishBody,
   type OpaqueLoginFinishResponse,
+  type MfaPasskeyFinishBody,
+  type MfaPasskeyFinishResponse,
+  type MfaPasskeyStartBody,
+  type MfaPasskeyStartResponse,
   type MfaTotpVerifyBody,
   type MfaTotpVerifyResponse,
+  type SecurityMode,
+  type SecurityModeChangeBody,
   type RecoveryCodeUpsertBody,
   type RecoverKekStartBody,
   type RecoverKekStartResponse,
@@ -286,6 +292,31 @@ export async function apiMfaTotpVerify(
   return request<MfaTotpVerifyResponse>('POST', '/auth/mfa/totp/verify', body);
 }
 
+/** Passkey-as-second-factor — Phase 5D, used for mode `maximum`
+ *  after the primary login. The session is `mfa_pending`; the route
+ *  generates WebAuthn `requestOptions` scoped to this user's
+ *  enrolled passkeys (no anti-enum needed — the user is already
+ *  authenticated). Persists the challenge on the pending row. */
+export async function apiMfaPasskeyStart(
+  body: MfaPasskeyStartBody,
+): Promise<MfaPasskeyStartResponse> {
+  return request<MfaPasskeyStartResponse>(
+    'POST',
+    '/auth/mfa/passkey/start',
+    body,
+  );
+}
+
+export async function apiMfaPasskeyFinish(
+  body: MfaPasskeyFinishBody,
+): Promise<MfaPasskeyFinishResponse> {
+  return request<MfaPasskeyFinishResponse>(
+    'POST',
+    '/auth/mfa/passkey/finish',
+    body,
+  );
+}
+
 export async function apiLogout(): Promise<void> {
   await request<void>('POST', '/auth/logout');
 }
@@ -486,6 +517,26 @@ export async function apiTotpRegenerateBackupCodes(
   return request<TotpRegenerateBackupCodesResponse>(
     'POST',
     '/auth/totp/backup-codes/regenerate',
+    body,
+  );
+}
+
+/* ============================================================================
+ * Security mode (Auth-Roadmap Phase 5D)
+ * ========================================================================== */
+
+/**
+ * Change the user's `security_mode`. Server validates the §6.1
+ * prerequisites and refuses with `400 totp_required` /
+ * `400 passkey_required` when missing. Refresh `/auth/me` after a
+ * successful change so the store reflects the new mode.
+ */
+export async function apiSecurityModeChange(
+  body: SecurityModeChangeBody,
+): Promise<{ ok: true; mode: SecurityMode }> {
+  return request<{ ok: true; mode: SecurityMode }>(
+    'POST',
+    '/auth/security-mode/change',
     body,
   );
 }

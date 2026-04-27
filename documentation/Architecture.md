@@ -250,6 +250,51 @@ the factory loops over. There is nowhere to forget a guard.
     only exposes high-level `enrollPasskey` / `loginWithPasskey` /
     `removePasskey` / `renamePasskey` surfaces.
 
+- **TOTP + stepped MFA + security mode** (Phase 5 — `routes/auth-totp.ts`,
+  `routes/auth-mfa.ts`, `routes/auth-security-mode.ts`):
+  - `auth-totp.ts` — 4 authenticated routes for the management
+    surface: `enroll/start`, `enroll/verify`, `disable`,
+    `backup-codes/regenerate`. All gate on a fresh OPAQUE password
+    proof. `disable` runs the §6.1 downgrade auto if
+    `security_mode in ('always_totp', 'maximum')`.
+  - `auth-mfa.ts` — stepped MFA verify routes operating on the
+    `mfa_pending` session kind via `requireMfaPending` middleware.
+    `POST /auth/mfa/totp/verify` accepts a TOTP code OR a 24-char
+    backup code in the same `code` field; backup codes are
+    single-use via `UPDATE WHERE used_at IS NULL`.
+    `POST /auth/mfa/passkey/start` + `/finish` drive the passkey-
+    as-second-factor flow for mode `maximum` (allow-credentials
+    scoped to the user — no anti-enum needed since they're already
+    authenticated). Both verify routes auto-finalize when no
+    factors remain (DELETE pending + INSERT full atomically via
+    `finalizeMfaSession`).
+  - `auth-security-mode.ts` — `POST /auth/security-mode/change`
+    with §6.1 prerequisite validation (`400 totp_required` /
+    `400 passkey_required`). Downgrades to `password_or_passkey`
+    are always accepted.
+  - The primary login routes (`/auth/login/finish` and
+    `/auth/passkey/login/finish`) compute required factors via
+    `auth/mfa-policy.ts` and emit `mfa_pending` instead of `full`
+    when `security_mode != 'password_or_passkey'`. The wrap blobs
+    ride along the response since `/auth/me` refuses pending
+    sessions — the client unwraps the KEK + main key locally
+    while the session is still pending (Auth-Spec §7.2.bis: no
+    leak because no full cookie = no data routes accessible).
+  - Helpers: `auth/totp.ts` wraps `otplib@13.4.0` with the spec
+    params (SHA-1 / 6 / 30s, ±1 window skew, returns matched
+    window for anti-replay). `auth/totp-backup-codes.ts` generates
+    10 × 120-bit base32 codes with 4-4-4-4-4-4 hyphenation,
+    SHA-256 hashed. `auth/session.ts` gains `finalizeMfaSession`
+    + `mfaFlags` option on `createSession`.
+  - Frontend: `core/auth/use-session.ts` exposes `startTotpEnrollment`
+    / `verifyTotpEnrollment` / `disableTotp` / `regenerateTotpBackupCodes`
+    / `verifyMfaTotp` / `verifyMfaPasskey` / `changeSecurityMode`.
+    Pages: `/totp` (Settings TOTP setup), `/login/mfa` (stepped
+    MFA, drives TOTP then passkey when needed). Settings → Sécurité
+    tab gains a "Mode de sécurité" section with 3 cards + inline
+    password confirm form + UI gates that grey out modes whose
+    prerequisites aren't met.
+
 ### Background jobs
 
 A single `node-cron` schedule lives in

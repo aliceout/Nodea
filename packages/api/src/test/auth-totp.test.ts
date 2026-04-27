@@ -199,6 +199,68 @@ describe('POST /auth/totp/enroll/verify', () => {
     expect(row?.lastWindow).not.toBeNull();
   });
 
+  it('auto-promotes security_mode to always_totp when verifying from password_or_passkey (Phase 5D)', async () => {
+    const u = await seedUser('totp-auto-promote@example.com');
+    const cookie = await loginAs(app, 'totp-auto-promote@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(
+      app,
+      'totp-auto-promote@example.com',
+      TEST_PASSWORD,
+    );
+    const startRes = await app.request('/auth/totp/enroll/start', {
+      ...jsonPost(proof),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    const { secretBase32 } = (await startRes.json()) as { secretBase32: string };
+    const code = await totpFromSecret(secretBase32);
+
+    const verifyRes = await app.request('/auth/totp/enroll/verify', {
+      ...jsonPost({ code, backupCodesAcknowledged: true }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(verifyRes.status).toBe(200);
+
+    const [row] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(row?.mode).toBe('always_totp');
+  });
+
+  it('does NOT downgrade an already-strict mode (maximum stays maximum)', async () => {
+    const u = await seedUser('totp-no-clobber@example.com');
+    // Force mode to maximum BEFORE enrolling (would normally need
+    // TOTP + passkey, but we're forcing for the test).
+    await db
+      .update(users)
+      .set({ securityMode: 'maximum' })
+      .where(eq(users.id, u.id));
+
+    const cookie = await loginAs(app, 'totp-no-clobber@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(
+      app,
+      'totp-no-clobber@example.com',
+      TEST_PASSWORD,
+    );
+    const startRes = await app.request('/auth/totp/enroll/start', {
+      ...jsonPost(proof),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    const { secretBase32 } = (await startRes.json()) as { secretBase32: string };
+    const code = await totpFromSecret(secretBase32);
+
+    await app.request('/auth/totp/enroll/verify', {
+      ...jsonPost({ code, backupCodesAcknowledged: true }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+
+    const [row] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(row?.mode).toBe('maximum');
+  });
+
   it('409 when TOTP is already enabled (no double-flip)', async () => {
     const u = await seedUser('totp-already-enabled@example.com');
     const cookie = await loginAs(
