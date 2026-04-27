@@ -116,7 +116,7 @@ function ForkView({ onNoCode }: ForkViewProps) {
       <button
         type="button"
         onClick={onNoCode}
-        className="mt-2 w-full cursor-pointer rounded-md border border-hair bg-bg px-4 py-[11px] text-[14px] font-semibold text-ink-soft transition-colors hover:border-ink-soft hover:text-ink"
+        className="mt-2 w-full cursor-pointer rounded-md border border-danger bg-bg px-4 py-[11px] text-[14px] font-semibold text-danger transition-colors hover:bg-danger/5"
       >
         Je n’ai pas de code
       </button>
