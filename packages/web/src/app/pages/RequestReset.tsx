@@ -87,7 +87,12 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
         Mot de passe oublié
       </h2>
       <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
-        Indique ton email — on t’enverra un lien pour définir un nouveau mot de passe.
+        Indique ton email — on t’enverra un lien pour définir un nouveau mot
+        de passe.{' '}
+        <span className="text-danger">
+          <span aria-hidden="true">⚠</span> Tes données seront effacées : le
+          chiffrement n’est pas réversible sans ton mot de passe d’origine.
+        </span>
       </p>
 
       <form onSubmit={onSubmit} noValidate>
@@ -117,30 +122,25 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
 
-        {/* Hard warning + recovery escape hatch, fused into one
-            block below the submit. The destructive consequence is
-            front-and-centre (red title + body) and the
-            non-destructive alternative is offered as a green
-            outline CTA inside the same callout — "this is what
-            happens, here's the way out". */}
+        {/* Discreet "ou" divider — separates the destructive action
+            (above) from the non-destructive alternative (below)
+            without using a colored callout. Two horizontal hairlines
+            with a centered "ou" label, classic OAuth-style. */}
         <div
-          role="alert"
-          className="mt-3 rounded-md border border-danger bg-danger/10 px-3.5 py-3 text-[12.5px] leading-[1.5] text-danger"
+          aria-hidden="true"
+          className="my-5 flex items-center gap-3 text-[11.5px] text-muted"
         >
-          <p className="flex items-center gap-1.5 font-semibold tracking-[0.01em]">
-            <span aria-hidden="true">⚠</span>
-            Réinitialiser efface toutes tes données
-          </p>
-
-          <hr className="my-3 border-t border-danger/30" aria-hidden="true" />
-
-          <Link
-            to="/recover"
-            className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-3 py-2 text-center text-[12.5px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
-          >
-            Récupérer sans perdre tes données →
-          </Link>
+          <span className="h-px flex-1 bg-hair" />
+          <span>ou</span>
+          <span className="h-px flex-1 bg-hair" />
         </div>
+
+        <Link
+          to="/recover"
+          className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-4 py-[11px] text-center text-[14px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
+        >
+          Récupérer avec mon code de récupération →
+        </Link>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
