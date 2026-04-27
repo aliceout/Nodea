@@ -90,29 +90,12 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
         Indique ton email — on t’enverra un lien pour définir un nouveau mot de passe.
       </p>
 
-      {/* Recovery code is the non-destructive alternative to the
-          reset email — anyone who set one up at register / from
-          Settings can recover their account WITHOUT losing data.
-          Surfaced BEFORE the destructive form so users with a code
-          don't even start typing here by reflex. Same green chrome
-          (border-2 border-accent + bg-accent/5) as the
-          `SidebarTipModules` info nudge — visually says "this is
-          the safe path, take it". */}
-      <div className="rounded-md border-2 border-accent bg-accent/5 px-3 py-2.5 text-[12.5px] text-ink-soft">
-        <p className="mb-2 font-semibold text-accent-deep">
-          Tu as un code de récupération&nbsp;?
-        </p>
-        {/* Render as an outline button rather than an inline link —
-            "Récupérer sans perdre tes données" was reading as part
-            of the prose otherwise, the green CTA-shaped affordance
-            makes it unambiguous. */}
-        <Link
-          to="/recover"
-          className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-3 py-2 text-center text-[12.5px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
-        >
-          Récupérer sans perdre tes données →
-        </Link>
-      </div>
+      {/* Hard warning at the top — sets the tone before the user
+          even types the email. Reset is the destructive path; we
+          want the consequence framed first. */}
+      <Warning title="Réinitialiser efface toutes tes données">
+        Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
+      </Warning>
 
       <form onSubmit={onSubmit} noValidate className="mt-5">
         <Field
@@ -141,13 +124,25 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
 
-        {/* Hard warning BELOW the button — confirms what just got
-            triggered + leaves the visual punchline as the last
-            thing the user reads on the page. */}
-        <div className="mt-3">
-          <Warning title="Réinitialiser efface toutes tes données">
-            Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
-          </Warning>
+        {/* Recovery code escape hatch BELOW the destructive button —
+            last call before the user pulls the trigger. Same green
+            chrome (border-2 border-accent + bg-accent/5) as the
+            `SidebarTipModules` info nudge — visually says "this is
+            the safe path, take it". */}
+        <div className="mt-3 rounded-md border-2 border-accent bg-accent/5 px-3 py-2.5 text-[12.5px] text-ink-soft">
+          <p className="mb-2 font-semibold text-accent-deep">
+            Tu as un code de récupération&nbsp;?
+          </p>
+          {/* Render as an outline button rather than an inline link —
+              "Récupérer sans perdre tes données" was reading as part
+              of the prose otherwise, the green CTA-shaped affordance
+              makes it unambiguous. */}
+          <Link
+            to="/recover"
+            className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-3 py-2 text-center text-[12.5px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
+          >
+            Récupérer sans perdre tes données →
+          </Link>
         </div>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
