@@ -29,6 +29,9 @@ import {
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
+import { applyConsumableBypass } from '../auth/mfa-bypass.ts';
+import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
+import { getEmailService } from '../services/email/index.ts';
 import {
   finishLogin as opaqueFinishLogin,
   opaqueReady,
@@ -624,12 +627,51 @@ authPasskeyRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
     })
     .where(eq(authFactors.id, factor.id));
 
+  // MFA bypass lazy application (Auth-Roadmap Phase 6, Auth-Spec
+  // §7.8). Same logic as the OPAQUE login flow: consume any
+  // confirmed-past-48h bypass before computing required factors.
+  let activeMode = account.securityMode;
+  for (const f of ['totp', 'passkey'] as const) {
+    const applied = await applyConsumableBypass(
+      { id: account.id, securityMode: activeMode },
+      f,
+      null,
+    );
+    if (applied) {
+      const [refreshed] = await db
+        .select({ securityMode: users.securityMode, email: users.email })
+        .from(users)
+        .where(eq(users.id, account.id))
+        .limit(1);
+      if (refreshed) activeMode = refreshed.securityMode;
+      try {
+        const rendered = renderMfaBypassAppliedEmail({
+          factor: applied.factor,
+          downgraded: applied.downgraded,
+        });
+        await getEmailService().send({
+          to: refreshed?.email ?? '',
+          subject: rendered.subject,
+          text: rendered.text,
+          html: rendered.html,
+          tag: 'mfa-bypass-applied',
+        });
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('[auth/passkey] mfa-bypass-applied mail failed', err);
+        }
+      }
+      break;
+    }
+  }
+
   // Stepped MFA gate (Auth-Roadmap Phase 5C, Auth-Spec §7.4): same
   // logic as the password-first path but with `entryFactor=passkey`.
   // Mode `maximum` is the case where the passkey-first user still
   // needs password + TOTP; mode `always_totp` just needs TOTP.
   const baseRequired = requiredFactorsForMode(
-    { securityMode: account.securityMode },
+    { securityMode: activeMode },
     'passkey',
   );
   let needsMfa = baseRequired.length > 0;

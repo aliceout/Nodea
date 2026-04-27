@@ -3,6 +3,7 @@ export * from './password-rules.ts';
 export * from './schemas/auth.ts';
 export * from './schemas/auth-opaque.ts';
 export * from './schemas/auth-mfa.ts';
+export * from './schemas/auth-mfa-bypass.ts';
 export * from './schemas/auth-passkey.ts';
 export * from './schemas/auth-recovery.ts';
 export * from './schemas/auth-security-mode.ts';

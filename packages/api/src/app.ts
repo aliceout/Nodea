@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
 import { authMfaRoutes } from './routes/auth-mfa.ts';
+import { authMfaBypassRoutes } from './routes/auth-mfa-bypass.ts';
 import { authPasskeyRoutes } from './routes/auth-passkey.ts';
 import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
@@ -67,6 +68,10 @@ export function buildApp() {
   // operates on `mfa_pending` sessions only. Mounted before the
   // catch-all `authRoutes` so the trie picks the dedicated handlers.
   app.route('/auth', authMfaRoutes);
+  // MFA bypass routes (Auth-Roadmap Phase 6) — `/auth/mfa/bypass/*`
+  // mixes mfa_pending (request), full-session (active / cancel),
+  // and anonymous (email-link confirm/cancel) endpoints.
+  app.route('/auth', authMfaBypassRoutes);
   // Security-mode change (Auth-Roadmap Phase 5D). Same ordering —
   // dedicated handler before the legacy catch-all.
   app.route('/auth', authSecurityModeRoutes);

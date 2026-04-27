@@ -19,6 +19,9 @@ import {
   type ResetPasswordStartResponse,
 } from '@nodea/shared';
 import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
+import { applyConsumableBypass } from '../auth/mfa-bypass.ts';
+import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
+import { getEmailService } from '../services/email/index.ts';
 import { db } from '../db/client.ts';
 import {
   authFactors,
@@ -264,6 +267,48 @@ authRoutes.post('/login/finish', loginLimiter, async (c) => {
     return c.json({ error: 'account_not_activated' }, 403);
   }
 
+  // MFA bypass lazy application (Auth-Roadmap Phase 6, Auth-Spec
+  // §7.8). Before computing required factors, consume any confirmed-
+  // past-48h bypass: it'll disable TOTP / delete passkeys and may
+  // downgrade `security_mode`, removing whichever factor the user
+  // can't produce anymore. At most one bypass is active per user
+  // (unique partial index), so the loop iterates at most once with
+  // a side-effect.
+  let activeUser = user;
+  for (const f of ['totp', 'passkey'] as const) {
+    const applied = await applyConsumableBypass(activeUser, f, null);
+    if (applied) {
+      const [refreshed] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1);
+      if (refreshed) activeUser = refreshed;
+      // Best-effort notification — login shouldn't fail if SMTP
+      // hiccups. The user already saw the request email; this is
+      // just the "side-effect landed" follow-up.
+      try {
+        const rendered = renderMfaBypassAppliedEmail({
+          factor: applied.factor,
+          downgraded: applied.downgraded,
+        });
+        await getEmailService().send({
+          to: activeUser.email,
+          subject: rendered.subject,
+          text: rendered.text,
+          html: rendered.html,
+          tag: 'mfa-bypass-applied',
+        });
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('[auth/login] mfa-bypass-applied mail failed', err);
+        }
+      }
+      break;
+    }
+  }
+
   // Stepped MFA gate (Auth-Roadmap Phase 5C, Auth-Spec §7.4): when
   // the user's mode requires factors beyond password, mint a
   // `mfa_pending` session with `mfa_password_verified=true` and
@@ -278,7 +323,7 @@ authRoutes.post('/login/finish', loginLimiter, async (c) => {
   // If TOTP isn't actually enrolled, fall through to the full-
   // session path (the user mode will be downgraded by the next
   // disable-TOTP / Settings interaction).
-  const baseRequired = requiredFactorsForMode(user, 'password');
+  const baseRequired = requiredFactorsForMode(activeUser, 'password');
   let needsMfa = baseRequired.length > 0;
   if (needsMfa && baseRequired.includes('totp')) {
     const [totpRow] = await db
