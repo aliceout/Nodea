@@ -64,6 +64,24 @@ const EnvSchema = z.object({
   EMAIL_SERVICE_IMPL: z.enum(['smtp', 'console', 'recording']).default('smtp'),
 
   /**
+   * OPAQUE server static setup string (Auth-Spec §13.1, Phase 2 of
+   * Auth-Roadmap). Output of `server.createSetup()` from
+   * `@serenity-kit/opaque`, base64url-encoded by the lib. Required
+   * once Phase 2 is in production — the server uses it to participate
+   * in the OPAQUE protocol without ever seeing the user's password.
+   *
+   * Optional in this schema during the cutover so unrelated tests
+   * (and pre-Phase-2 dev runs) don't have to provide it. The OPAQUE
+   * route handlers will refuse to start if it's missing — callers
+   * should use `getOpaqueServerSetup()` (in `auth/opaque.ts`) which
+   * throws a clear error rather than reading the raw value.
+   *
+   * ROTATING IT INVALIDATES EVERY EXISTING ENVELOPE — issue #39
+   * tracks the per-envelope versioning that lifts that constraint.
+   */
+  OPAQUE_SERVER_SETUP: z.string().min(1).optional(),
+
+  /**
    * Optional Google Books API key, shared by all users on this Nodea
    * instance. Phase 2 of the Library module uses it to fetch book
    * metadata via `/library/lookup`. When unset, the proxy still works

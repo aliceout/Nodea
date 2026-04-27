@@ -25,6 +25,7 @@
     "@hono/node-server": "^1.13.7",
     "@node-rs/argon2": "^2.0.2",
     "@nodea/shared": "workspace:*",
+    "@serenity-kit/opaque": "1.1.0",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
     "drizzle-orm": "^0.45.2",

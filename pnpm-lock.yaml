@@ -26,6 +26,9 @@ importers:
       '@nodea/shared':
         specifier: workspace:*
         version: link:../shared
+      '@serenity-kit/opaque':
+        specifier: 1.1.0
+        version: 1.1.0
       '@zxcvbn-ts/core':
         specifier: ^3.0.4
         version: 3.0.4
@@ -103,6 +106,9 @@ importers:
       '@nodea/shared':
         specifier: workspace:*
         version: link:../shared
+      '@serenity-kit/opaque':
+        specifier: 1.1.0
+        version: 1.1.0
       '@tailwindcss/vite':
         specifier: ^4.1.11
         version: 4.2.2(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))
@@ -1020,6 +1026,10 @@ packages:
     resolution: {integrity: sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ==}
     cpu: [x64]
     os: [win32]
+
+  '@serenity-kit/opaque@1.1.0':
+    resolution: {integrity: sha512-Y6v/+hRMn0MdMEk5+/ArM0vPIiFfFEbdTZc7oAx+cWyvGODGezAQ/sMjXBVogf7NsS9z9EV0Ve5paZCVULuedw==}
+    hasBin: true
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -3727,6 +3737,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
+
+  '@serenity-kit/opaque@1.1.0': {}
 
   '@standard-schema/spec@1.1.0': {}
 
