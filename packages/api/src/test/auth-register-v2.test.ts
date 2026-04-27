@@ -555,7 +555,7 @@ describe('POST /auth/register/finish — username field', () => {
     expect(await res.json()).toMatchObject({ error: 'invalid_body' });
   });
 
-  it('returns 400 username_taken on the invited path when the name is already used', async () => {
+  it('allows duplicate usernames on the invited path (display name only)', async () => {
     const seeded = await seedUser('first@example.com');
     await db.update(users).set({ username: 'Pseudo' }).where(eq(users.id, seeded.id));
 
@@ -565,20 +565,19 @@ describe('POST /auth/register/finish — username field', () => {
       inviteToken: invite.token,
       username: 'Pseudo',
     });
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: 'register_failed',
-      reason: 'username_taken',
-    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, activated: true });
 
-    const [stillUnused] = await db
-      .select()
-      .from(invites)
-      .where(eq(invites.id, invite.id));
-    expect(stillUnused!.usedBy).toBeNull();
+    // Both rows now share the username "Pseudo" — that's fine, the
+    // identifier is `users.id` (and `email` for login).
+    const dupes = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, 'Pseudo'));
+    expect(dupes).toHaveLength(2);
   });
 
-  it('returns 400 username_taken on the open path when the name is already used', async () => {
+  it('allows duplicate usernames on the open path', async () => {
     const admin = await seedAdmin('uname-open-admin@example.com');
     await setOpenRegistration(true, admin.id);
     const seeded = await seedUser('squatter@example.com');
@@ -588,11 +587,14 @@ describe('POST /auth/register/finish — username field', () => {
       email: 'wants-it@example.com',
       username: 'OpenName',
     });
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: 'register_failed',
-      reason: 'username_taken',
-    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, activated: false });
+
+    const dupes = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, 'OpenName'));
+    expect(dupes).toHaveLength(2);
   });
 });
 

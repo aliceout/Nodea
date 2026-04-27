@@ -438,10 +438,11 @@ authRoutes.patch('/email', requireUser, async (c) => {
 /**
  * Change the authenticated user's public display name.
  *
- * Not password-gated — a username is a public identifier, not a
- * credential (see `ChangeUsernameBodySchema` comment). Pass `null` to
- * clear the current value. The partial unique index rejects collisions
- * and we surface those as 409.
+ * Not password-gated — a username is a free-form display name, not
+ * a credential (see `ChangeUsernameBodySchema` comment). Duplicates
+ * are allowed: two users named "Alice" don't conflict because the
+ * actual identifier is `users.id` (and `email` for login). Pass
+ * `null` to clear the current value.
  */
 authRoutes.patch('/username', requireUser, async (c) => {
   const raw = await c.req.json().catch(() => null);
@@ -452,17 +453,10 @@ authRoutes.patch('/username', requireUser, async (c) => {
 
   if ((user.username ?? null) === newUsername) return c.json({ ok: true });
 
-  try {
-    await db
-      .update(users)
-      .set({ username: newUsername, updatedAt: new Date() })
-      .where(eq(users.id, user.id));
-  } catch (err) {
-    if (isUniqueViolation(err, 'users_username_unique')) {
-      return c.json({ error: 'username_taken' }, 409);
-    }
-    throw err;
-  }
+  await db
+    .update(users)
+    .set({ username: newUsername, updatedAt: new Date() })
+    .where(eq(users.id, user.id));
 
   return c.json({ ok: true });
 });

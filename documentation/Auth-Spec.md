@@ -919,9 +919,9 @@ par le client pour calculer les AAD bindings (`buildKekAAD(userId,
 
 `username` est **obligatoire** depuis Phase 1 — règles `UsernameField`
 (2-32 chars, lettres/chiffres/`_`/`-`/`.`, accents OK). Présenté à
-l'utilisateur comme "un prénom ou un pseudo". L'unicité est vérifiée
-côté serveur avant insert (clean error, pas d'anti-enum) et garantie
-au niveau DB par l'index unique partiel `users_username_unique`.
+l'utilisateur comme "un prénom ou un pseudo". **Pas d'unicité** :
+deux comptes peuvent porter le même display name (l'identifiant
+réel reste `users.id` + `users.email` pour le login).
 
 `registrationRecord` est l'envelope OPAQUE produit côté client par
 `client.finishRegistration()`. Le serveur le persiste dans
@@ -944,8 +944,6 @@ côté client (cf. §3.2) :
      - Refus si used / expired / unknown → 401 `invalid_token`.
      - Refus si `invites.email !== body.email` (strict match) → 400
        `email_mismatch`.
-     - **Pré-check username dans la transaction** (après validation
-       du token, avant insert).
      - INSERT `users { id: userId, username,
        wrappedMainKey, wrappedMainKeyIv,
        wrappedKekPassword, wrappedKekPasswordIv,
@@ -962,8 +960,6 @@ côté client (cf. §3.2) :
 2. **Open registration** (pas de token, toggle ON) :
    - Vérifier `app_settings.open_registration === true` (défense en
      profondeur — `/start` l'a déjà checké).
-   - Pré-check username : si déjà pris par un autre user → 400
-     `username_taken`.
    - Si `users` (actif OU inactif) existe déjà avec cet email →
      silent 200 (anti-enum). Le retry sur ligne inactive **n'est
      plus** une réutilisation parce que les AAD du nouveau

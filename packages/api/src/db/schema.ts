@@ -220,12 +220,7 @@ export const users = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex('users_email_unique').on(t.email),
-    uniqueIndex('users_username_unique')
-      .on(t.username)
-      .where(sql`${t.username} IS NOT NULL`),
-  ],
+  (t) => [uniqueIndex('users_email_unique').on(t.email)],
 );
 
 /**

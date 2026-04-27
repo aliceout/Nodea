@@ -310,8 +310,6 @@ function RegisterForm({
       if (isApiError(err)) {
         if (err.status === 400 && err.error === 'weak_password') {
           setServerError(err.reason ?? 'Le mot de passe est trop faible.');
-        } else if (err.status === 400 && err.reason === 'username_taken') {
-          setServerError('Ce nom d\'utilisateur·ice est déjà pris. Choisis-en un autre.');
         } else if (err.status === 400 && err.reason === 'email_mismatch') {
           setServerError(
             'L\'e-mail ne correspond pas à celui de l\'invitation.',

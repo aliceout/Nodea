@@ -231,7 +231,7 @@ describe('PATCH /auth/email', () => {
 });
 
 describe('PATCH /auth/username', () => {
-  it('sets, rejects duplicates (409), and clears with null', async () => {
+  it('sets, allows duplicates (display name only), and clears with null', async () => {
     await seedUser('u1@example.com');
     await seedUser('u2@example.com');
 
@@ -248,30 +248,29 @@ describe('PATCH /auth/username', () => {
     const me1Body = (await me1.json()) as { username: string | null };
     expect(me1Body.username).toBe('alice');
 
-    // u2 cannot claim the same name → 409.
+    // u2 can claim the same display name — usernames are not
+    // identifiers (the actual identity lives in `users.id` and
+    // `users.email`).
     const cookieU2 = await loginAs(app, 'u2@example.com', TEST_PASSWORD);
 
-    const collide = await app.request('/auth/username', {
+    const dup = await app.request('/auth/username', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie: cookieU2 },
       body: JSON.stringify({ username: 'alice' }),
     });
-    expect(collide.status).toBe(409);
+    expect(dup.status).toBe(200);
 
-    // null clears, then u2 can take the freed slot.
+    const me2 = await app.request('/auth/me', { headers: { cookie: cookieU2 } });
+    const me2Body = (await me2.json()) as { username: string | null };
+    expect(me2Body.username).toBe('alice');
+
+    // null clears the display name; u1 can now go back to NULL.
     const clear = await app.request('/auth/username', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie: cookieU1 },
       body: JSON.stringify({ username: null }),
     });
     expect(clear.status).toBe(200);
-
-    const claim = await app.request('/auth/username', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie: cookieU2 },
-      body: JSON.stringify({ username: 'alice' }),
-    });
-    expect(claim.status).toBe(200);
   });
 
   it('rejects an invalid shape (400)', async () => {

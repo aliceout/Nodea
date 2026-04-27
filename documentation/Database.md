@@ -24,7 +24,7 @@ Central identity row.
 | --------------------- | --------- | ---------------------------------------------------------------------------- |
 | `id`                  | `text` PK | UUID generated server-side.                                                  |
 | `email`               | `text`    | Lowercased on insert. Unique.                                                |
-| `username`            | `text?`   | Public display name. **Required** at register since Phase 1 (`RegisterSubmitBodySchema.username`, `UsernameField`). Column stays nullable for legacy / seeded rows. Unique when set (partial idx). |
+| `username`            | `text?`   | Public display name. **Required** at register since Phase 1 (`UsernameField`). **Not unique** — duplicates are allowed (it's a free-form display name; identity lives in `id` + `email`). Column stays nullable so users can clear theirs. |
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
 | `password_hash`       | `text?`   | Argon2id hash (legacy). NULL for OPAQUE-registered accounts (Phase 2B+). Dropped in Phase 2D. |
@@ -40,8 +40,8 @@ Central identity row.
 | `created_at`          | `ts+tz`   | `defaultNow()`.                                                              |
 | `updated_at`          | `ts+tz`   | `defaultNow()`. Rewritten by every mutation.                                 |
 
-**Indexes**: `users_email_unique` (unique, full), `users_username_unique`
-(unique, partial `WHERE username IS NOT NULL`).
+**Indexes**: `users_email_unique` (unique, full). `username` has no
+uniqueness index — display-name only.
 
 ### `sessions`
 
@@ -310,12 +310,15 @@ drizzle/
 │                                     # `DELETE FROM invites` to clear legacy
 │                                     # rows the new NOT NULL email column
 │                                     # would have rejected.
-└── 0009_milky_brother_voodoo.sql     # Auth-Roadmap Phase 2B: legacy
-                                      # users.{password_hash, encryption_salt,
-                                      # encrypted_key} relaxed to nullable so
-                                      # OPAQUE-registered accounts can land
-                                      # without dummy values. Columns dropped
-                                      # entirely in Phase 2D.
+├── 0009_milky_brother_voodoo.sql     # Auth-Roadmap Phase 2B: legacy
+│                                     # users.{password_hash, encryption_salt,
+│                                     # encrypted_key} relaxed to nullable so
+│                                     # OPAQUE-registered accounts can land
+│                                     # without dummy values. Columns dropped
+│                                     # entirely in Phase 2D.
+└── 0010_oval_hairball.sql            # DROP `users_username_unique` —
+                                      # username is a free-form display
+                                      # name, duplicates allowed.
 ```
 
 The test harness (`packages/api/src/test/setup.ts`) truncates every

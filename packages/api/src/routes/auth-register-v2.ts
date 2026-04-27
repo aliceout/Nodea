@@ -221,16 +221,6 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
       body.inviteToken,
       email,
       async (tx) => {
-        // Username uniqueness lives INSIDE the tx so that a re-used /
-        // expired invite still reports `invalid_token` first. See
-        // Phase 1's corresponding comment for the rationale.
-        const [usernameClash] = await tx
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.username, username))
-          .limit(1);
-        if (usernameClash) throw new Error('username_taken');
-
         try {
           await tx.insert(users).values({
             id: userId,
@@ -262,17 +252,12 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
       if (err instanceof Error && err.message === 'email_taken') {
         return { ok: false as const, reason: 'email_taken' as const };
       }
-      if (err instanceof Error && err.message === 'username_taken') {
-        return { ok: false as const, reason: 'username_taken' as const };
-      }
       throw err;
     });
 
     if (!result.ok) {
       const status =
-        result.reason === 'email_mismatch' ||
-        result.reason === 'email_taken' ||
-        result.reason === 'username_taken'
+        result.reason === 'email_mismatch' || result.reason === 'email_taken'
           ? 400
           : 401;
       return c.json({ error: 'register_failed', reason: result.reason }, status);
@@ -287,25 +272,13 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
   }
 
   // Anti-enum: silent 200 from here on, even when the email is in
-  // use. Username clash is the only loud failure (usernames are
-  // public per Auth-Spec).
+  // use. Username is a free-form display name with no uniqueness
+  // constraint — duplicates are allowed.
   const [existing] = await db
     .select({ id: users.id })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
-
-  const [usernameOwner] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.username, username))
-    .limit(1);
-  if (usernameOwner && (!existing || usernameOwner.id !== existing.id)) {
-    return c.json(
-      { error: 'register_failed', reason: 'username_taken' },
-      400,
-    );
-  }
 
   if (existing) {
     // Whether active or inactive, we silent-200 here. Reusing an

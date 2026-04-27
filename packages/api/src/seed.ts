@@ -1,10 +1,10 @@
-import { randomBytes, randomUUID, webcrypto } from 'node:crypto';
-import { hashRaw } from '@node-rs/argon2';
+import { randomUUID, webcrypto } from 'node:crypto';
+import { client, ready } from '@serenity-kit/opaque';
 import { eq } from 'drizzle-orm';
 import { UsernameField } from '@nodea/shared';
 import { db, sql } from './db/client.ts';
-import { users } from './db/schema.ts';
-import { hashPassword } from './auth/password.ts';
+import { opaqueRecords, users } from './db/schema.ts';
+import { createRegistrationResponse } from './auth/opaque.ts';
 
 /**
  * Seed an initial admin user, idempotent on email.
@@ -16,68 +16,91 @@ import { hashPassword } from './auth/password.ts';
  * Or fall back to a local `.env` (git-ignored) for offline setups —
  * `tsx --env-file-if-exists=.env` loads it automatically.
  *
- * Unlike a normal register flow, the seed has no browser to generate
- * the encryption envelope — so we reproduce the exact same wrap the
- * web does (argon2id-derived KEK → AES-GCM-wrapped random main key),
- * using `@node-rs/argon2` and Node's WebCrypto. The resulting
- * `encryption_salt` / `encrypted_key` are interoperable with the web
- * crypto (same parameters) so the admin can log in immediately
- * through the UI.
+ * Phase 2C onwards the seed runs the full OPAQUE registration in
+ * process: client.startRegistration → server.createRegistrationResponse
+ * → client.finishRegistration produce the `registrationRecord` we
+ * persist in `opaque_records.envelope`, plus the `exportKey` we use
+ * to wrap a fresh KEK that itself wraps the random main key. The
+ * resulting blobs are byte-compatible with what the web register
+ * flow ships, so the seeded admin can sign in immediately via the
+ * UI (which is the OPAQUE 2-step from /auth/login/start onwards).
+ *
+ * The legacy Argon2id columns (`password_hash`, `encryption_salt`,
+ * `encrypted_key`) stay NULL — Phase 2D drops them entirely.
  */
 
-// Must match packages/web/src/core/crypto/argon2.ts
-const ARGON2_ITERATIONS = 3;
-const ARGON2_MEMORY_KB = 64 * 1024;
-const ARGON2_PARALLELISM = 1;
-const ARGON2_HASH_LEN = 32;
+const HKDF_LABEL_WRAP_KEK = 'nodea:wrap-kek';
+const HKDF_LABEL_WRAP_MAIN = 'nodea:wrap-main';
+const textEncoder = new TextEncoder();
 
-function toBase64(bytes: Uint8Array): string {
+function buildKekAAD(userId: string): string {
+  return `nodea:v1\x1f${userId}\x1fpassword`;
+}
+function buildMainKeyAAD(userId: string): string {
+  return `nodea:v1\x1f${userId}\x1fmain`;
+}
+
+function freshBytes(length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  webcrypto.getRandomValues(out);
+  return out;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('base64');
 }
 
-async function wrapMainKey(
-  password: string,
-  mainKeyBytes: Uint8Array,
-): Promise<{ encryptionSalt: string; encryptedKey: string }> {
-  const saltBytes = new Uint8Array(randomBytes(16));
+function base64UrlToBytes(b64url: string): Uint8Array {
+  const pad = (4 - (b64url.length % 4)) % 4;
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat(pad);
+  return new Uint8Array(Buffer.from(b64, 'base64'));
+}
 
-  // `algorithm` defaults to Argon2id in @node-rs/argon2 — no need to
-  // pass the const-enum value (which TS refuses under
-  // verbatimModuleSyntax).
-  const kek = await hashRaw(password, {
-    salt: saltBytes,
-    timeCost: ARGON2_ITERATIONS,
-    memoryCost: ARGON2_MEMORY_KB,
-    parallelism: ARGON2_PARALLELISM,
-    outputLen: ARGON2_HASH_LEN,
-  });
-
-  const aesKey = await webcrypto.subtle.importKey(
+async function deriveAesKey(ikm: Uint8Array, label: string): Promise<CryptoKey> {
+  const ikmKey = await webcrypto.subtle.importKey(
     'raw',
-    kek,
+    ikm as BufferSource,
+    'HKDF',
+    false,
+    ['deriveBits'],
+  );
+  const subkey = await webcrypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(0) as BufferSource,
+      info: textEncoder.encode(label) as BufferSource,
+    },
+    ikmKey,
+    32 * 8,
+  );
+  return webcrypto.subtle.importKey(
+    'raw',
+    subkey,
     { name: 'AES-GCM' },
     false,
     ['encrypt'],
   );
+}
 
-  // The web encrypts the base64 text of the main-key bytes (not the
-  // raw bytes), so the on-the-wire envelope matches what `wrapMainKey`
-  // in `packages/web/src/core/crypto/envelope.ts` produces.
-  const payloadText = toBase64(mainKeyBytes);
-  const iv = new Uint8Array(randomBytes(12));
-  const ciphertext = new Uint8Array(
-    await webcrypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      aesKey,
-      new TextEncoder().encode(payloadText),
-    ),
+async function wrapAesGcm(
+  plaintext: Uint8Array,
+  key: CryptoKey,
+  aad: string,
+): Promise<{ data: string; iv: string }> {
+  const iv = freshBytes(12);
+  const ct = await webcrypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: iv as BufferSource,
+      additionalData: textEncoder.encode(aad) as BufferSource,
+    },
+    key,
+    plaintext as BufferSource,
   );
-
-  kek.fill(0);
-
   return {
-    encryptionSalt: toBase64(saltBytes),
-    encryptedKey: `${toBase64(iv)}.${toBase64(ciphertext)}`,
+    data: bytesToBase64(new Uint8Array(ct)),
+    iv: bytesToBase64(iv),
   };
 }
 
@@ -91,6 +114,12 @@ async function main() {
   }
   if (password.length < 12) {
     console.error('ADMIN_PASSWORD must be at least 12 characters');
+    process.exit(1);
+  }
+  if (!process.env.OPAQUE_SERVER_SETUP) {
+    console.error(
+      'OPAQUE_SERVER_SETUP must be set — generate one and put it in `.env` (or Infisical → api/).',
+    );
     process.exit(1);
   }
 
@@ -120,9 +149,6 @@ async function main() {
     return;
   }
 
-  // Idempotency on username too — without this, a re-run with a
-  // changed ADMIN_EMAIL (but the same ADMIN_USERNAME) would trip the
-  // `users_username_unique` constraint instead of bailing politely.
   if (username) {
     const [existingByUsername] = await db
       .select()
@@ -141,32 +167,67 @@ async function main() {
     }
   }
 
-  // Generate a fresh random main key and wrap it under the password.
-  // The raw bytes are zeroed immediately after the wrap.
-  const rawMainKey = new Uint8Array(randomBytes(32));
-  const { encryptionSalt, encryptedKey } = await wrapMainKey(password, rawMainKey);
-  rawMainKey.fill(0);
-
-  const passwordHash = await hashPassword(password);
+  await ready;
   const id = randomUUID();
-  await db.insert(users).values({
-    id,
-    email,
-    username,
-    passwordHash,
-    encryptionSalt,
-    encryptedKey,
-    role: 'admin',
-    onboardingStatus: 'pending',
-    // Seeded admins bypass the activation gate (Auth-Roadmap Phase 1
-    // post-rework v2). Without this flag the admin would be created
-    // inactive and `POST /auth/login` would refuse with 403
-    // account_not_activated. Admins seeded via this script have, by
-    // construction, the email under their control already.
-    emailVerifiedAt: new Date(),
+
+  // OPAQUE registration handshake — three local calls, no DB writes
+  // yet. The lib lets us run client + server in the same process, so
+  // we don't need a network round-trip here.
+  const { clientRegistrationState, registrationRequest } = client.startRegistration({
+    password,
   });
+  const { registrationResponse } = createRegistrationResponse({
+    userIdentifier: email,
+    registrationRequest,
+  });
+  const { registrationRecord, exportKey } = client.finishRegistration({
+    password,
+    clientRegistrationState,
+    registrationResponse,
+  });
+
+  // KEK + main key wrapping — same construction as the web's
+  // `factor-wrap.ts`. Bytes are zeroed in finally.
+  const kek = freshBytes(32);
+  const mainKey = freshBytes(32);
+  try {
+    const mainKeyKey = await deriveAesKey(kek, HKDF_LABEL_WRAP_MAIN);
+    const mainKeyWrap = await wrapAesGcm(mainKey, mainKeyKey, buildMainKeyAAD(id));
+
+    const kekKey = await deriveAesKey(
+      base64UrlToBytes(exportKey),
+      HKDF_LABEL_WRAP_KEK,
+    );
+    const kekWrap = await wrapAesGcm(kek, kekKey, buildKekAAD(id));
+
+    await db.transaction(async (tx) => {
+      await tx.insert(users).values({
+        id,
+        email,
+        username,
+        wrappedMainKey: mainKeyWrap.data,
+        wrappedMainKeyIv: mainKeyWrap.iv,
+        wrappedKekPassword: kekWrap.data,
+        wrappedKekPasswordIv: kekWrap.iv,
+        role: 'admin',
+        onboardingStatus: 'pending',
+        registerState: 'complete',
+        // Seeded admins bypass the activation gate — they own the
+        // email by construction.
+        emailVerifiedAt: new Date(),
+      });
+      await tx.insert(opaqueRecords).values({
+        userId: id,
+        envelope: registrationRecord,
+      });
+    });
+  } finally {
+    kek.fill(0);
+    mainKey.fill(0);
+  }
+
   console.log(
-    `[seed] admin ${email} created (id=${id}${username ? `, username=${username}` : ''})`,
+    `[seed] admin ${email} created (id=${id}${username ? `, username=${username}` : ''}, OPAQUE)`,
   );
   await sql.end();
 }

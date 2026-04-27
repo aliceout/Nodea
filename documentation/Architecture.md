@@ -110,10 +110,11 @@ the factory loops over. There is nowhere to forget a guard.
 - **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
   Phase 2B):
   - The form requires email + **username** (public display name,
-    "prénom ou pseudo") + password. Username uniqueness is checked
-    server-side before insert and surfaces a clean `username_taken`
-    error on both paths. Password proof goes through the OPAQUE
-    handshake (`@serenity-kit/opaque`) — the server never sees the
+    "prénom ou pseudo") + password. Username is a free-form
+    display name with no uniqueness check — duplicates are allowed
+    (the actual identifier is `users.id`, login keys on `email`).
+    Password proof goes through the OPAQUE handshake
+    (`@serenity-kit/opaque`) — the server never sees the
     plaintext password. Stored credential = `opaque_records.envelope`.
   - **Step 1** `POST /auth/register/start` — stateless, returns the
     OPAQUE response blob + a fresh `userId` the client uses as the
