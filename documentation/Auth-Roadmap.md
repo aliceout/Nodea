@@ -193,32 +193,58 @@ en staging avant Phase 6 (qui en dépend).
 **Pourquoi maintenant** : OPAQUE change le verbe `password` partout.
 À faire avant passkey/TOTP pour éviter de refaire la danse.
 
-**Livrables**
-- Server : remplacer `password_hash` par `opaque_records.envelope`,
-  clé sur `users.id` (UUID immuable, pas l'email).
-- Étape 3 du register : OPAQUE registration côté client, dérivation
-  KEK depuis `export_key` (HKDF label `nodea:kek`), main key aléatoire
-  wrappée → `wrapped_kek`.
-- Login : OPAQUE login → `export_key` → unwrap KEK → unwrap main key
-  → chaîne `deriveMainKeys` existante inchangée.
-- Change-password : re-registration OPAQUE, re-wrap KEK. La main key
-  reste la même → tout le ciphertext existant reste lisible.
-- Migration des comptes existants : lazy migration au prochain login
-  avec password legacy. `password_hash` conservée le temps de la
-  transition, droppée en Phase 8.
+**Statut** : 2A ✅ livrée (scaffolding lib + wrappers + helpers
+HKDF + tests in-memory). 2B ✅ livrée (register OPAQUE 2-step
+remplace l'Argon2id ; legacy columns rendues nullable). 2C 🚧
+(login OPAQUE), 2D 🚧 (change-password OPAQUE + drop legacy
+columns + dummy-hash).
+
+**Sous-découpage exécuté**
+
+- **2A** — `@serenity-kit/opaque@1.1.0` installé, env var
+  `OPAQUE_SERVER_SETUP`, wrappers serveur + client, helpers HKDF
+  `nodea:wrap-kek` / `nodea:wrap-main`, schémas Zod pour les 4
+  endpoints, tests round-trip in-memory.
+- **2B** — `POST /auth/register/start` + `POST /auth/register/finish`
+  remplacent le single-step Argon2id. Migration `0009_milky_brother_voodoo`
+  rend `password_hash` / `encryption_salt` / `encrypted_key` nullables.
+  Côté client : `submitRegistration` génère KEK + main key,
+  fait l'OPAQUE handshake, wrappe les deux couches sous l'AAD
+  `nodea:v1\x1f<userId>\x1f<tag>`, poste `/finish`. Login,
+  change-password et delete-self refusent les comptes OPAQUE-
+  registered avec un message clair (cf. 2C / 2D pour le rewire).
+
+**Livrables Phase 2C (à venir)**
+- Login : `POST /auth/login/start` + `/finish` (OPAQUE KE1/KE2/KE3)
+  → `export_key` → unwrap KEK → unwrap main key → chaîne
+  `deriveMainKeys` existante inchangée.
 - Suppression du dummy-hash login timing trick (OPAQUE gère
   nativement les identifiants inconnus).
+- `/auth/me` expose `wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}`
+  pour le client.
+
+**Livrables Phase 2D (à venir)**
+- Change-password : re-registration OPAQUE, re-wrap KEK uniquement.
+  La main key reste la même → tout le ciphertext existant reste
+  lisible.
+- Drop colonnes `password_hash` / `encryption_salt` / `encrypted_key`.
+- Re-seed admin via OPAQUE (le seed legacy passe en OPAQUE complet).
+
+**Pas de lazy migration** — décision dev (zéro user prod). Au
+moment où 2C/2D drop le legacy, le seul user impacté est l'admin
+seedé, qui se ré-enrôle via le seed OPAQUE.
 
 **Tests obligatoires (Vitest)**
 - Round-trip register → login → unwrap main key → ciphertext existant
-  lisible.
-- Wrong password rejeté côté client via auth-tag AES-GCM.
-- Stale session rejetée après change-password.
-- Lazy migration : login legacy fonctionne pendant la transition.
+  lisible (✅ Phase 2A pour le protocole nu, à compléter en 2C une
+  fois le wire OPAQUE-login posé).
+- Wrong password rejeté côté client via auth-tag AES-GCM (✅ 2A).
+- Anti-enum sur identifiant inconnu (✅ 2A).
+- Stale session rejetée après change-password (Phase 2D).
 
-**Critère de sortie** : 100% des nouveaux comptes en OPAQUE.
-Anciens comptes migrés au fil des logins. La spec promet l'E2E même
-serveur compromis.
+**Critère de sortie** : 100 % des nouveaux comptes en OPAQUE.
+Pas de migration lazy : le legacy admin est ré-enrôlé via le seed
+au passage 2D. La spec promet l'E2E même serveur compromis.
 
 ---
 

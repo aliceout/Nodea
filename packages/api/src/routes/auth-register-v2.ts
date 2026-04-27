@@ -2,19 +2,23 @@ import { Hono } from 'hono';
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
-  RegisterSubmitBodySchema,
+  OpaqueRegisterStartBodySchema,
+  OpaqueRegisterFinishBodySchema,
   RegisterActivateBodySchema,
+  type OpaqueRegisterStartResponse,
   type RegisterModeResponse,
   type InviteInfoResponse,
-} from '@nodea/shared/schemas/auth-register-v2';
+} from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { users } from '../db/schema.ts';
+import { opaqueRecords, users } from '../db/schema.ts';
 import {
   consumeInviteAndCreateUser,
   findValidInvite,
 } from '../auth/invites.ts';
-import { hashPassword } from '../auth/password.ts';
-import { checkPasswordPolicy } from '../auth/password-policy.ts';
+import {
+  createRegistrationResponse,
+  opaqueReady,
+} from '../auth/opaque.ts';
 import {
   consumeEmailVerification,
   createEmailVerification,
@@ -27,31 +31,45 @@ import { getConfig } from '../config.ts';
 import { isOpenRegistration } from '../services/settings.ts';
 
 /**
- * Register flow — two paths into a single submit endpoint
- * (Auth-Roadmap Phase 1, post-rework).
+ * Register flow — OPAQUE 2-step (Auth-Roadmap Phase 2B).
  *
- * Invited path:  /register?invite=<token> → form pre-filled with the
- *                invite's email (read-only) → submit hits this route
- *                with `inviteToken` → account created activated.
- *                One email exchange total (the invite itself).
+ * Replaces the single Argon2id-based POST /auth/register from Phase
+ * 1 with the canonical OPAQUE handshake: the client commits to a
+ * password locally and never sends it to the server. Two routes:
  *
- * Open path:     /register without a token, when admin has flipped
- *                `open_registration = true` → submit creates an
- *                inactive account → activation email sent → user
- *                clicks → `/auth/register/activate` flips the flag.
- *                Two email exchanges total.
+ *   - POST /auth/register/start   → exchanges the client's
+ *                                   `registrationRequest` for the
+ *                                   server's `registrationResponse`
+ *                                   plus a fresh `userId` the client
+ *                                   uses for AAD bindings.
+ *   - POST /auth/register/finish  → receives the persisted
+ *                                   `registrationRecord` (envelope)
+ *                                   plus the wrapped main key + KEK
+ *                                   blobs, performs the same
+ *                                   invited / open / closed
+ *                                   branching as Phase 1, and
+ *                                   inserts the user + envelope.
  *
- * Closed:        /register without a token, open_registration = false
- *                → submit returns 403; the frontend pre-checks via
- *                `GET /register/mode` and shows an "invitation only"
- *                page rather than the form.
+ * The `/start` step is stateless: the OPAQUE protocol's server
+ * state lives entirely on the client (`clientRegistrationState`),
+ * and the userId we hand out is just a UUID — no DB row exists
+ * until /finish.
+ *
+ * GET /mode, GET /invite-info, POST /activate stay unchanged from
+ * Phase 1 — they're orthogonal to the credential exchange.
  */
 export const authRegisterV2Routes = new Hono();
 
-const submitLimiter = rateLimit({
+const startLimiter = rateLimit({
+  max: 10,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'register-start',
+});
+
+const finishLimiter = rateLimit({
   max: 5,
   windowMs: 60 * 60_000,
-  keyPrefix: 'register-submit',
+  keyPrefix: 'register-finish',
 });
 
 const activateLimiter = rateLimit({
@@ -99,36 +117,103 @@ authRegisterV2Routes.get('/invite-info', inviteInfoLimiter, async (c) => {
 });
 
 /* ============================================================================
- * POST /auth/register
+ * POST /auth/register/start
  *
- * The branching logic:
- *   - `inviteToken` present → invited path (strict email match,
- *     account activated immediately).
- *   - No token + open_registration on → open path (account inactive,
- *     activation email sent).
- *   - No token + open_registration off → 403 registration_closed.
+ * Step 1 of OPAQUE registration. Stateless: no DB writes, no token
+ * consumed. We pre-validate enough of the context (invite present
+ * + matches email, or open_registration on) to refuse early — the
+ * client shouldn't bother computing an envelope for a registration
+ * that will be rejected at /finish anyway.
  *
- * Errors are NOT silenced anti-enum-style here for the invited path:
- * the recipient already proved they have the link, so showing them
- * a precise "email mismatch" or "invalid token" response helps debug
- * a misclicked or stale link. Open path stays anti-enum (silent 200
- * on valid-shape submissions even when the email is in use).
+ * Returns the OPAQUE response blob plus a fresh userId the client
+ * embeds in its AAD computations. The userId only becomes
+ * authoritative when /finish actually inserts the user row.
  * ========================================================================== */
-authRegisterV2Routes.post('/', submitLimiter, async (c) => {
+authRegisterV2Routes.post('/start', startLimiter, async (c) => {
+  await opaqueReady;
+
   const raw = await c.req.json().catch(() => null);
-  const parsed = RegisterSubmitBodySchema.safeParse(raw);
+  const parsed = OpaqueRegisterStartBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+  const email = body.email.toLowerCase();
+
+  // Pre-validate the path so we fail fast — the actual invite
+  // consumption + DB writes happen at /finish in a transaction.
+  if (body.inviteToken) {
+    const invite = await findValidInvite(body.inviteToken);
+    if (!invite) {
+      return c.json({ error: 'register_failed', reason: 'invalid_token' }, 401);
+    }
+    if (invite.email.toLowerCase() !== email) {
+      return c.json(
+        { error: 'register_failed', reason: 'email_mismatch' },
+        400,
+      );
+    }
+  } else {
+    if (!(await isOpenRegistration())) {
+      return c.json({ error: 'registration_closed' }, 403);
+    }
+  }
+
+  // OPAQUE: produce the registration response. `userIdentifier` is
+  // the lowercased email per Auth-Spec §7.6 (changing email later
+  // requires re-registering OPAQUE). The lib is stateless here; the
+  // client owns the `clientRegistrationState`.
+  //
+  // The lib throws on a malformed `registrationRequest` (truncated
+  // base64, wrong curve point, etc.). We catch and surface as 400
+  // rather than letting it bubble up as a 500 — only a misbehaving
+  // or malicious client can produce that input.
+  let registrationResponse: string;
+  try {
+    ({ registrationResponse } = createRegistrationResponse({
+      userIdentifier: email,
+      registrationRequest: body.registrationRequest,
+    }));
+  } catch {
+    return c.json({ error: 'invalid_body' }, 400);
+  }
+
+  const response: OpaqueRegisterStartResponse = {
+    registrationResponse,
+    userId: randomUUID(),
+  };
+  return c.json(response);
+});
+
+/* ============================================================================
+ * POST /auth/register/finish
+ *
+ * Step 2 of OPAQUE registration. Same invited / open / closed
+ * branching as Phase 1's single-step submit, except the credential
+ * payload is now the OPAQUE registration record + the wrapped main
+ * key + the wrapped KEK (under the OPAQUE `exportKey`-derived key).
+ *
+ *   - `inviteToken` present → consume invite atomically + INSERT
+ *     user (activated) + INSERT opaque_records.
+ *   - No token + open_registration on → INSERT inactive user +
+ *     INSERT opaque_records + send activation email.
+ *   - No token + open_registration off → 403 (the /start step
+ *     should have caught this; defense-in-depth in case the toggle
+ *     flipped between the two calls).
+ *
+ * Anti-enum on the open path: existing-active-email → silent 200,
+ * existing-inactive-email → silent 200 (the OPAQUE flow can't
+ * cleanly reuse an inactive row because the AAD on the new
+ * envelope was computed against the userId issued at /start, not
+ * the existing user's id; the original activation email is still
+ * valid).
+ * ========================================================================== */
+authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = OpaqueRegisterFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const email = body.email.toLowerCase();
   const username = body.username;
-
-  // Password policy applies to both paths — no anti-enum wiggle here.
-  const policy = checkPasswordPolicy(body.password, [email]);
-  if (!policy.ok) {
-    return c.json({ error: 'weak_password', reason: policy.reason }, 400);
-  }
-
-  const passwordHash = await hashPassword(body.password);
+  const userId = body.userId;
 
   // ---- Invited path -------------------------------------------------
   if (body.inviteToken) {
@@ -137,10 +222,8 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       email,
       async (tx) => {
         // Username uniqueness lives INSIDE the tx so that a re-used /
-        // expired invite still reports `invalid_token` first — the
-        // token validation has already run before we get here. Run
-        // the lookup against the same tx for read consistency under
-        // SERIALIZABLE if we ever bump the isolation level.
+        // expired invite still reports `invalid_token` first. See
+        // Phase 1's corresponding comment for the rationale.
         const [usernameClash] = await tx
           .select({ id: users.id })
           .from(users)
@@ -148,25 +231,29 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
           .limit(1);
         if (usernameClash) throw new Error('username_taken');
 
-        const userId = randomUUID();
         try {
           await tx.insert(users).values({
             id: userId,
             email,
             username,
-            passwordHash,
-            encryptionSalt: body.encryptionSalt,
-            encryptedKey: body.encryptedKey,
+            wrappedMainKey: body.wrappedMainKey,
+            wrappedMainKeyIv: body.wrappedMainKeyIv,
+            wrappedKekPassword: body.wrappedKekPassword,
+            wrappedKekPasswordIv: body.wrappedKekPasswordIv,
             registerState: 'complete',
             // Click on the invite link == proof of email control,
             // so the account is activated immediately.
             emailVerifiedAt: new Date(),
           });
+          await tx.insert(opaqueRecords).values({
+            userId,
+            envelope: body.registrationRecord,
+          });
         } catch {
-          // Constraint violation — most likely email already taken
-          // (race or admin invited an existing user). Username
-          // conflict was pre-checked above so it'd only land here on
-          // a race; both surface as `email_taken` for V1 simplicity.
+          // Constraint violation — most likely email already taken,
+          // or a userId collision (vanishingly unlikely with UUIDv4
+          // but possible if the client misbehaves and reuses an old
+          // /start userId).
           throw new Error('email_taken');
         }
         return { userId, result: { userId, email } };
@@ -191,10 +278,6 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       return c.json({ error: 'register_failed', reason: result.reason }, status);
     }
 
-    // No session emitted: per UX decision, the user re-types their
-    // password on /login?activated=1 (defensive, mirrors the open
-    // path which can't auto-login either since activation happens on
-    // a different device).
     return c.json({ ok: true, activated: true, email: result.result.email });
   }
 
@@ -203,72 +286,59 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
     return c.json({ error: 'registration_closed' }, 403);
   }
 
-  // Anti-enum: silent 200 from here on, even when the email is taken
-  // or in use. Same shape as the original Phase 1 reworked behavior.
+  // Anti-enum: silent 200 from here on, even when the email is in
+  // use. Username clash is the only loud failure (usernames are
+  // public per Auth-Spec).
   const [existing] = await db
-    .select({
-      id: users.id,
-      emailVerifiedAt: users.emailVerifiedAt,
-    })
+    .select({ id: users.id })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
 
-  // Username conflict check on the open path: usernames are public
-  // info so we surface the clash directly. Allow self-conflict when
-  // reusing an inactive account (the same person retrying with the
-  // same username they already typed before).
-  const usernameOwners = await db
+  const [usernameOwner] = await db
     .select({ id: users.id })
     .from(users)
     .where(eq(users.username, username))
     .limit(1);
-  const usernameTakenByOther = usernameOwners.some(
-    (row) => !existing || row.id !== existing.id,
-  );
-  if (usernameTakenByOther) {
+  if (usernameOwner && (!existing || usernameOwner.id !== existing.id)) {
     return c.json(
       { error: 'register_failed', reason: 'username_taken' },
       400,
     );
   }
 
-  let userId: string;
-
   if (existing) {
-    if (existing.emailVerifiedAt !== null) {
-      // Active user — silent skip.
-      return c.json({ ok: true, activated: false });
-    }
-    // Reuse the inactive row + refresh credentials in case the user
-    // typed a different password (or username) the second time around.
-    userId = existing.id;
-    await db
-      .update(users)
-      .set({
-        passwordHash,
-        encryptionSalt: body.encryptionSalt,
-        encryptedKey: body.encryptedKey,
-        username,
-      })
-      .where(eq(users.id, userId));
-  } else {
-    userId = randomUUID();
-    try {
-      await db.insert(users).values({
+    // Whether active or inactive, we silent-200 here. Reusing an
+    // inactive row would require re-doing the OPAQUE handshake +
+    // re-wrapping under the existing user's id — the current /start
+    // already issued a fresh userId, so the AAD bindings on the
+    // submitted blobs don't match the existing row. The original
+    // activation email (if any) is still valid; admin can resend
+    // out-of-band if the user lost it.
+    return c.json({ ok: true, activated: false });
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(users).values({
         id: userId,
         email,
         username,
-        passwordHash,
-        encryptionSalt: body.encryptionSalt,
-        encryptedKey: body.encryptedKey,
+        wrappedMainKey: body.wrappedMainKey,
+        wrappedMainKeyIv: body.wrappedMainKeyIv,
+        wrappedKekPassword: body.wrappedKekPassword,
+        wrappedKekPasswordIv: body.wrappedKekPasswordIv,
         registerState: 'complete',
       });
-    } catch {
-      // Race: someone created the user between SELECT and INSERT.
-      // Anti-enum bail.
-      return c.json({ ok: true, activated: false });
-    }
+      await tx.insert(opaqueRecords).values({
+        userId,
+        envelope: body.registrationRecord,
+      });
+    });
+  } catch {
+    // Race: someone created the user between SELECT and INSERT, or
+    // the client reused a stale userId. Anti-enum bail.
+    return c.json({ ok: true, activated: false });
   }
 
   await invalidatePendingVerifications(email, 'register');
@@ -303,7 +373,8 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
  * POST /auth/register/activate
  *
  * Magic-link target for the OPEN registration path. Invited users
- * never hit this — their account is activated at submit time.
+ * never hit this — their account is activated at /finish.
+ * Unchanged from Phase 1 — orthogonal to the credential exchange.
  * ========================================================================== */
 authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);

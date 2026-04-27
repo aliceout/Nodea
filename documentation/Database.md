@@ -27,9 +27,9 @@ Central identity row.
 | `username`            | `text?`   | Public display name. **Required** at register since Phase 1 (`RegisterSubmitBodySchema.username`, `UsernameField`). Column stays nullable for legacy / seeded rows. Unique when set (partial idx). |
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
-| `password_hash`       | `text`    | Argon2id hash. Never returned over the API.                                  |
-| `encryption_salt`     | `text`    | Base64, used by argon2id client-side to derive the KEK.                      |
-| `encrypted_key`       | `text`    | Base64 AES-GCM envelope: main key encrypted under KEK.                       |
+| `password_hash`       | `text?`   | Argon2id hash (legacy). NULL for OPAQUE-registered accounts (Phase 2B+). Dropped in Phase 2D. |
+| `encryption_salt`     | `text?`   | Base64, legacy argon2id salt. NULL for OPAQUE accounts. Dropped in Phase 2D. |
+| `encrypted_key`       | `text?`   | Base64 AES-GCM envelope of the main key under the legacy Argon2id KEK. NULL for OPAQUE accounts; the equivalent for OPAQUE is `wrapped_main_key` (under a random KEK) + `wrapped_kek_password` (under the OPAQUE export_key). Dropped in Phase 2D. |
 | `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
 | `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. **🚧 Phase 2+** — V1 ignores. |
 | `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. **🚧 Phase 2+** — V1 only uses `'complete'`. |
@@ -305,11 +305,17 @@ drizzle/
 │                                     # tables (opaque_records, auth_factors,
 │                                     # mfa_totp / mfa_totp_recovery_codes /
 │                                     # mfa_bypass_requests, email_verifications)
-└── 0008_ambiguous_eternity.sql       # Auth-Roadmap Phase 1 v2: invites.email
-                                      # column + app_settings table; preface
-                                      # `DELETE FROM invites` to clear legacy
-                                      # rows the new NOT NULL email column
-                                      # would have rejected.
+├── 0008_ambiguous_eternity.sql       # Auth-Roadmap Phase 1 v2: invites.email
+│                                     # column + app_settings table; preface
+│                                     # `DELETE FROM invites` to clear legacy
+│                                     # rows the new NOT NULL email column
+│                                     # would have rejected.
+└── 0009_milky_brother_voodoo.sql     # Auth-Roadmap Phase 2B: legacy
+                                      # users.{password_hash, encryption_salt,
+                                      # encrypted_key} relaxed to nullable so
+                                      # OPAQUE-registered accounts can land
+                                      # without dummy values. Columns dropped
+                                      # entirely in Phase 2D.
 ```
 
 The test harness (`packages/api/src/test/setup.ts`) truncates every

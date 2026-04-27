@@ -21,12 +21,24 @@ import {
   apiLogin,
   apiLogout,
   apiMe,
-  apiRegisterSubmit,
+  apiRegisterStart,
+  apiRegisterFinish,
   apiChangePassword,
 } from '../api/client.ts';
 import { randomBytes } from '../crypto/base64.ts';
 import { deriveMainKeys } from '../crypto/key-material.ts';
 import { unwrapMainKeyBytes, wrapMainKey } from '../crypto/envelope.ts';
+import {
+  buildKekAAD,
+  buildMainKeyAAD,
+  wrapKekUnderFactor,
+  wrapMainKeyUnderKek,
+} from '../crypto/factor-wrap.ts';
+import {
+  clientRegisterFinish,
+  clientRegisterStart,
+  opaqueReady,
+} from './opaque.ts';
 import type { LoginBody } from '@nodea/shared';
 
 export interface SessionRegisterInput {
@@ -102,7 +114,17 @@ export function useSession() {
     if (!me) throw new Error('login succeeded but /auth/me returned null');
     setAuth(me);
 
-    // Derive the main key from the password + the server's envelope.
+    // Phase 2B: legacy Argon2id login still drives the unwrap path.
+    // OPAQUE-registered accounts (NULL `encryptionSalt`/`encryptedKey`)
+    // can't authenticate here — Phase 2C wires the OPAQUE login route
+    // and the matching unwrap chain (`wrappedKekPassword` →
+    // `wrappedMainKey`). Until then, throw loudly rather than silently
+    // skipping main-key derivation.
+    if (!me.encryptionSalt || !me.encryptedKey) {
+      throw new Error(
+        'login: account is OPAQUE-registered (Phase 2B) and the OPAQUE login flow is not yet wired (Phase 2C).',
+      );
+    }
     const rawBytes = await unwrapMainKeyBytes(
       body.password,
       me.encryptionSalt,
@@ -117,43 +139,89 @@ export function useSession() {
   }
 
   /**
-   * Submit a new registration (Auth-Roadmap Phase 1, post-rework v2).
+   * Submit a new registration (Auth-Roadmap Phase 2B — OPAQUE).
    *
-   * Generates a fresh main key client-side, wraps it under the
-   * password-derived KEK, and ships the envelope alongside the
-   * email + password (+ invite token, when arriving from an invite
-   * link). Two server-side paths:
+   * Three layers of crypto run client-side:
    *
-   *   - With `inviteToken`  → strict email match, account activated
-   *                            immediately on submit.
-   *   - Without              → open-registration path; account stays
-   *                            inactive until the activation email
-   *                            link is clicked.
+   *   1. OPAQUE registration handshake (`/start` + `/finish` round-
+   *      trips). The server gets a `registrationRequest` then a
+   *      `registrationRecord`; the password itself never leaves the
+   *      client. We derive `exportKey` here too — that's the secret
+   *      we use to wrap the KEK.
+   *   2. A fresh random KEK + main key are generated. The main key
+   *      is wrapped under the KEK (label `nodea:wrap-main`, AAD
+   *      bound to the userId). This wrap is set ONCE at register
+   *      and never re-wrapped — change-password rotates the KEK
+   *      envelope, not this one.
+   *   3. The KEK is wrapped under an HKDF sub-key of `exportKey`
+   *      (label `nodea:wrap-kek`, AAD bound to userId + "password").
    *
-   * No session cookie is emitted in either path. Per UX decision the
-   * user re-types their password on /login?activated=1 once the
-   * account is ready — we throw away the main-key bytes here on
-   * purpose to avoid keeping them in memory across the redirect.
+   * No session cookie is emitted by the server. Per UX decision the
+   * user retypes their password on /login?activated=1 once the
+   * account is ready — we wipe the in-memory key material here.
    */
   async function submitRegistration(
     input: SessionRegisterInput,
   ): Promise<SessionRegisterResult> {
+    await opaqueReady;
+
+    // OPAQUE step 1: produce the registrationRequest. We hold onto
+    // `clientRegistrationState` until the server responds.
+    const { clientRegistrationState, registrationRequest } = clientRegisterStart(
+      input.password,
+    );
+
+    // /start round-trip: server returns its OPAQUE response + a
+    // fresh userId we use as the AAD anchor for the wrapped blobs.
+    const startBody: Parameters<typeof apiRegisterStart>[0] = {
+      email: input.email,
+      registrationRequest,
+    };
+    if (input.inviteToken) startBody.inviteToken = input.inviteToken;
+    const startRes = await apiRegisterStart(startBody);
+    const userId = startRes.userId;
+
+    // OPAQUE step 2: combine the response with our state to derive
+    // the persisted registrationRecord + the local exportKey.
+    const finished = clientRegisterFinish({
+      password: input.password,
+      clientRegistrationState,
+      registrationResponse: startRes.registrationResponse,
+    });
+
+    // KEK + main key generation + wrapping.
+    const kek = randomBytes(32);
     const rawMainKey = randomBytes(32);
     try {
-      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
-      const body: Parameters<typeof apiRegisterSubmit>[0] = {
+      const mainKeyWrap = await wrapMainKeyUnderKek(
+        rawMainKey,
+        kek,
+        buildMainKeyAAD(userId),
+      );
+      const kekWrap = await wrapKekUnderFactor(
+        kek,
+        finished.exportKey,
+        buildKekAAD(userId, 'password'),
+      );
+
+      const finishBody: Parameters<typeof apiRegisterFinish>[0] = {
         email: input.email,
         username: input.username,
-        password: input.password,
-        encryptionSalt,
-        encryptedKey,
+        userId,
+        registrationRecord: finished.registrationRecord,
+        wrappedMainKey: mainKeyWrap.wrappedMainKey,
+        wrappedMainKeyIv: mainKeyWrap.wrappedMainKeyIv,
+        wrappedKekPassword: kekWrap.wrappedKek,
+        wrappedKekPasswordIv: kekWrap.wrappedKekIv,
       };
-      if (input.inviteToken) body.inviteToken = input.inviteToken;
-      const res = await apiRegisterSubmit(body);
-      const result: SessionRegisterResult = { activated: res.activated };
-      if (res.email !== undefined) result.email = res.email;
+      if (input.inviteToken) finishBody.inviteToken = input.inviteToken;
+      const finishRes = await apiRegisterFinish(finishBody);
+
+      const result: SessionRegisterResult = { activated: finishRes.activated };
+      if (finishRes.email !== undefined) result.email = finishRes.email;
       return result;
     } finally {
+      kek.fill(0);
       rawMainKey.fill(0);
     }
   }
@@ -172,6 +240,14 @@ export function useSession() {
   async function changePassword(input: SessionChangePasswordInput): Promise<void> {
     if (!user) throw new Error('changePassword: no authenticated user');
 
+    // Phase 2B: legacy change-password path. OPAQUE accounts can't
+    // change their password until 2D rewires this flow on top of
+    // OPAQUE re-registration.
+    if (!user.encryptionSalt || !user.encryptedKey) {
+      throw new Error(
+        'changePassword: account is OPAQUE-registered and the OPAQUE change-password flow is not yet wired (Phase 2D).',
+      );
+    }
     // Unwrap under the CURRENT password first — throws on wrong password
     // (AES-GCM auth-tag check) before we touch the server.
     const rawMainKey = await unwrapMainKeyBytes(

@@ -19,7 +19,18 @@ export async function hashPassword(password: string): Promise<string> {
   return hash(password, ARGON2_OPTS);
 }
 
-export async function verifyPassword(stored: string, candidate: string): Promise<boolean> {
+/**
+ * Argon2id verification. `stored` is nullable because Phase 2B-created
+ * accounts have `users.password_hash = NULL` (their credential is in
+ * `opaque_records.envelope`); for those users the legacy verify path
+ * always rejects, which is the right behaviour for the change-password
+ * / change-email / delete-self routes until Phase 2D rewires them.
+ */
+export async function verifyPassword(
+  stored: string | null,
+  candidate: string,
+): Promise<boolean> {
+  if (!stored) return false;
   try {
     return await verify(stored, candidate);
   } catch {

@@ -36,9 +36,11 @@ import {
   type AnnouncementCreateBody,
   type AnnouncementUpdateBody,
   type AnnouncementResponse,
+  type OpaqueRegisterStartBody,
+  type OpaqueRegisterStartResponse,
+  type OpaqueRegisterFinishBody,
 } from '@nodea/shared';
 import type {
-  RegisterSubmitBody,
   RegisterActivateBody,
   RegisterModeResponse,
   InviteInfoResponse,
@@ -154,12 +156,32 @@ export async function apiRegisterInviteInfo(
   }
 }
 
-export async function apiRegisterSubmit(
-  body: RegisterSubmitBody,
+/**
+ * OPAQUE register step 1 — exchanges the client's
+ * `registrationRequest` for the server's response blob plus a
+ * fresh `userId` the client uses to compute AAD bindings.
+ */
+export async function apiRegisterStart(
+  body: OpaqueRegisterStartBody,
+): Promise<OpaqueRegisterStartResponse> {
+  return request<OpaqueRegisterStartResponse>(
+    'POST',
+    '/auth/register/start',
+    body,
+  );
+}
+
+/**
+ * OPAQUE register step 2 — ships the persisted `registrationRecord`
+ * (envelope) plus the wrapped main key + KEK blobs. Server creates
+ * the user + opaque_records row.
+ */
+export async function apiRegisterFinish(
+  body: OpaqueRegisterFinishBody,
 ): Promise<{ ok: true; activated: boolean; email?: string }> {
   return request<{ ok: true; activated: boolean; email?: string }>(
     'POST',
-    '/auth/register',
+    '/auth/register/finish',
     body,
   );
 }

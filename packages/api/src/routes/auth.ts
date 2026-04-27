@@ -254,6 +254,10 @@ authRoutes.post('/reset', resetLimiter, async (c) => {
 
 authRoutes.get('/me', requireUser, (c) => {
   const user = c.get('user');
+  // `encryptionSalt` / `encryptedKey` are NULL for OPAQUE-registered
+  // accounts (Phase 2B onwards). The client picks the unwrap path
+  // based on which side is filled — legacy Argon2id when the salt is
+  // present, OPAQUE when not.
   const body: AuthMeResponse = {
     id: user.id,
     email: user.email,
@@ -261,8 +265,8 @@ authRoutes.get('/me', requireUser, (c) => {
     role: user.role,
     onboardingStatus: user.onboardingStatus,
     onboardingVersion: user.onboardingVersion,
-    encryptionSalt: user.encryptionSalt,
-    encryptedKey: user.encryptedKey,
+    encryptionSalt: user.encryptionSalt ?? null,
+    encryptedKey: user.encryptedKey ?? null,
   };
   return c.json(body);
 });

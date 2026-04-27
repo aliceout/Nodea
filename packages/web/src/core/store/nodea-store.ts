@@ -36,10 +36,15 @@ export interface SessionUser {
   role: 'user' | 'admin';
   onboardingStatus: 'pending' | 'complete';
   onboardingVersion: string;
-  /** Base64 salt used with Argon2id to derive the KEK. Client-side only. */
-  encryptionSalt: string;
-  /** Base64 AES-GCM ciphertext of the main key under the KEK. */
-  encryptedKey: string;
+  /** Base64 salt used with Argon2id to derive the KEK (legacy
+   *  Argon2id flow). NULL for OPAQUE-registered accounts (Phase 2B
+   *  onwards) — those use `wrappedKekPassword` instead, surfaced once
+   *  Phase 2C lands the OPAQUE login flow. */
+  encryptionSalt: string | null;
+  /** Base64 AES-GCM ciphertext of the main key under the KEK
+   *  (legacy). NULL for OPAQUE accounts; use `wrappedMainKey`
+   *  + `wrappedKekPassword` once 2C wires the OPAQUE unwrap path. */
+  encryptedKey: string | null;
 }
 
 export type KeyStatus = 'idle' | 'ready' | 'missing' | 'error';

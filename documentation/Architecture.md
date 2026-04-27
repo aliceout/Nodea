@@ -86,14 +86,25 @@ the factory loops over. There is nowhere to forget a guard.
 > [`Auth-Spec.md`](./Auth-Spec.md). The summary below captures what
 > the V1 code actually implements.
 
-- **Register** (single submit, two paths via `routes/auth-register-v2.ts`):
+- **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
+  Phase 2B):
   - The form requires email + **username** (public display name,
     "prénom ou pseudo") + password. Username uniqueness is checked
     server-side before insert and surfaces a clean `username_taken`
-    error on both paths.
+    error on both paths. Password proof goes through the OPAQUE
+    handshake (`@serenity-kit/opaque`) — the server never sees the
+    plaintext password. Stored credential = `opaque_records.envelope`.
+  - **Step 1** `POST /auth/register/start` — stateless, returns the
+    OPAQUE response blob + a fresh `userId` the client uses as the
+    AAD anchor for the wrapped main-key + KEK blobs.
+  - **Step 2** `POST /auth/register/finish` — receives the
+    persisted `registrationRecord` plus `wrappedMainKey{,Iv}` and
+    `wrappedKekPassword{,Iv}`, runs the same invited / open /
+    closed branching as before, and inserts both rows
+    (`users` + `opaque_records`) in a transaction.
   - **Invited path** — admin issues an invite via `POST /admin/invites
     { email }` → server emails a `/register?invite=<token>` link →
-    user clicks → form pre-fills the email (read-only) → submit
+    user clicks → form pre-fills the email (read-only) → finish
     consumes the invite atomically (strict email match,
     `SELECT … FOR UPDATE`) → account created with
     `email_verified_at = now()` (the email click proved control).

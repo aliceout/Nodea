@@ -113,7 +113,16 @@ export const CreateInviteBodySchema = z.object({
 });
 export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
 
-/** Response bodies — what the client can rely on without decrypting. */
+/**
+ * Response bodies — what the client can rely on without decrypting.
+ *
+ * Phase 2B made `encryptionSalt` / `encryptedKey` nullable: OPAQUE-
+ * registered accounts have NULL there (their credential lives in
+ * `opaque_records.envelope` + `users.wrapped_kek_password{,_iv}` +
+ * `users.wrapped_main_key{,_iv}`). Legacy accounts created before
+ * 2B still have those two filled. Phase 2C will start surfacing
+ * the OPAQUE-side fields here too.
+ */
 export const AuthMeResponseSchema = z.object({
   id: z.string(),
   email: z.string().email(),
@@ -121,7 +130,7 @@ export const AuthMeResponseSchema = z.object({
   role: z.enum(['user', 'admin']),
   onboardingStatus: z.enum(['pending', 'complete']),
   onboardingVersion: z.string(),
-  encryptionSalt: Base64ish,
-  encryptedKey: Base64ish,
+  encryptionSalt: Base64ish.nullable(),
+  encryptedKey: Base64ish.nullable(),
 });
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

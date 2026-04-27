@@ -259,6 +259,12 @@ async function main(): Promise<void> {
     console.error(`[seed:mood] user ${email} not found — run \`seed:admin\` first`);
     process.exit(1);
   }
+  if (!user.encryptionSalt || !user.encryptedKey) {
+    console.error(
+      `[seed:mood] user ${email} is OPAQUE-registered (Phase 2B) and the legacy seed-mood path can't unwrap its main key yet — wait for the seed rewrite in 2D, or seed:mood against a legacy account.`,
+    );
+    process.exit(1);
+  }
 
   const mainKey = await unwrapMainKey(password, user.encryptionSalt, user.encryptedKey);
   const { aesKey, hmacKey } = await deriveSubKeys(mainKey);

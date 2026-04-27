@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UsernameField } from './auth.ts';
 
 /**
  * Wire schemas for the OPAQUE register / login two-step protocol
@@ -49,13 +50,31 @@ const OpaqueBlob = z.string().min(1).max(8192);
 export const OpaqueRegisterStartBodySchema = z.object({
   email: z.string().email().max(254),
   registrationRequest: OpaqueBlob,
+  /** Optional invite token — sent at /start so the server can pre-
+   *  validate the strict email match before burning a round-trip on
+   *  a doomed registration. The actual invite consumption happens at
+   *  /finish, in a transaction with the user insert. */
+  inviteToken: z.string().min(16).max(256).optional(),
 });
 export type OpaqueRegisterStartBody = z.infer<
   typeof OpaqueRegisterStartBodySchema
 >;
 
+/**
+ * `/start` returns the OPAQUE response blob plus a fresh `userId`
+ * (UUIDv4). The client uses that `userId` to compute AAD bindings
+ * for `wrappedMainKey` and `wrappedKekPassword` BEFORE calling
+ * `/finish`. The server doesn't persist the userId at this point —
+ * it's just a value the client must echo back at finish time.
+ *
+ * Using a server-issued userId (rather than client-side
+ * `crypto.randomUUID()`) keeps a single ID source and makes the AAD
+ * fields predictable for the seed script and any future migration
+ * tooling.
+ */
 export const OpaqueRegisterStartResponseSchema = z.object({
   registrationResponse: OpaqueBlob,
+  userId: z.string().uuid(),
 });
 export type OpaqueRegisterStartResponse = z.infer<
   typeof OpaqueRegisterStartResponseSchema
@@ -71,7 +90,12 @@ export type OpaqueRegisterStartResponse = z.infer<
  */
 export const OpaqueRegisterFinishBodySchema = z.object({
   email: z.string().email().max(254),
-  username: z.string().min(2).max(32),
+  username: UsernameField,
+  /** Server-issued at /start — echoed back so the server can use it
+   *  as the new `users.id` PK. AAD bindings on the wrapped blobs
+   *  reference this same value, so the client must NOT regenerate
+   *  it locally. */
+  userId: z.string().uuid(),
   registrationRecord: OpaqueBlob,
   wrappedMainKey: Base64ish,
   wrappedMainKeyIv: Base64ish,

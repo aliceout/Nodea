@@ -1,22 +1,29 @@
 /**
- * Integration tests for the email-bound invite + open-registration
- * model (Auth-Roadmap Phase 1, post-rework v2).
+ * Integration tests for the OPAQUE 2-step register flow + the
+ * activation magic-link route (Auth-Roadmap Phase 2B).
  *
  * Routes under test:
  *   - GET  /auth/register/mode
  *   - GET  /auth/register/invite-info?token=…
- *   - POST /auth/register                 (invited + open + closed)
- *   - POST /auth/register/activate        (open path activation)
- *   - POST /auth/login                    (activation gate)
+ *   - POST /auth/register/start             (OPAQUE step 1)
+ *   - POST /auth/register/finish            (OPAQUE step 2 + persist)
+ *   - POST /auth/register/activate          (open-path activation)
  *
  * Real Postgres + the in-memory `RecordingEmailService` (forced via
- * `vitest.config.ts`).
+ * `vitest.config.ts`). OPAQUE handshake runs in-process via
+ * `@serenity-kit/opaque` — there's no real client browser involved.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { emailVerifications, invites, users } from '../db/schema.ts';
+import {
+  emailVerifications,
+  invites,
+  opaqueRecords,
+  users,
+} from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
 import { setOpenRegistration } from '../services/settings.ts';
 import { hashToken } from '../auth/email-verifications.ts';
@@ -36,33 +43,122 @@ function jsonPost(body: unknown): RequestInit {
 }
 
 /**
- * Default username derives from the email's local part so that tests
- * registering two distinct emails in the same case end up with two
- * distinct usernames and don't trip the new uniqueness check. Tests
- * exercising username collision can override via `opts.username`.
+ * Default username derives from the email's local part so two
+ * distinct emails in the same test don't trip the uniqueness check.
  */
 function defaultUsernameFor(email: string): string {
   const local = email.split('@')[0] ?? 'user';
-  // UsernameField allows letters/digits/_-. only — strip the rest and
-  // pad if the local part is shorter than 2 chars.
   const cleaned = local.replace(/[^\p{L}\p{N}_.\-]/gu, '');
   return cleaned.length >= 2 ? cleaned : `${cleaned}_u`;
 }
 
-function submitBody(opts: {
+interface StartedRegistration {
+  clientRegistrationState: string;
+  registrationResponse: string;
+  userId: string;
+  password: string;
+}
+
+/**
+ * Drive `POST /auth/register/start` from a fresh OPAQUE client
+ * state. Returns a {@link StartedRegistration} that can be fed
+ * straight into {@link finishRegistration} or used in negative-path
+ * tests on /start alone.
+ */
+async function startRegistration(opts: {
+  email: string;
+  password?: string;
+  inviteToken?: string;
+}): Promise<{ res: Response; started?: StartedRegistration }> {
+  await ready;
+  const password = opts.password ?? REG_PASSWORD;
+  const { clientRegistrationState, registrationRequest } =
+    client.startRegistration({ password });
+
+  const body: Record<string, string> = {
+    email: opts.email,
+    registrationRequest,
+  };
+  if (opts.inviteToken) body.inviteToken = opts.inviteToken;
+
+  const res = await app.request('/auth/register/start', jsonPost(body));
+  if (res.status !== 200) return { res };
+
+  const { registrationResponse, userId } = (await res.json()) as {
+    registrationResponse: string;
+    userId: string;
+  };
+  return {
+    res,
+    started: {
+      clientRegistrationState,
+      registrationResponse,
+      userId,
+      password,
+    },
+  };
+}
+
+/**
+ * Drive `POST /auth/register/finish` from a `StartedRegistration`.
+ * The wrapped-key blobs are deterministic placeholders — the server
+ * stores them as opaque strings, and Phase 2B doesn't check their
+ * AAD bindings (those are validated at unwrap time, future Phase
+ * 2C onwards).
+ */
+async function finishRegistration(opts: {
+  email: string;
+  username?: string;
+  inviteToken?: string;
+  started: StartedRegistration;
+  /** Override the userId echoed back to /finish (tests negative
+   *  paths where the client tampers with the value). */
+  overrideUserId?: string;
+}): Promise<Response> {
+  const { registrationRecord } = client.finishRegistration({
+    password: opts.started.password,
+    clientRegistrationState: opts.started.clientRegistrationState,
+    registrationResponse: opts.started.registrationResponse,
+  });
+
+  const body: Record<string, string> = {
+    email: opts.email,
+    username: opts.username ?? defaultUsernameFor(opts.email),
+    userId: opts.overrideUserId ?? opts.started.userId,
+    registrationRecord,
+    wrappedMainKey: 'test-wrapped-main-key',
+    wrappedMainKeyIv: 'test-iv-main',
+    wrappedKekPassword: 'test-wrapped-kek-password',
+    wrappedKekPasswordIv: 'test-iv-kek',
+  };
+  if (opts.inviteToken) body.inviteToken = opts.inviteToken;
+
+  return app.request('/auth/register/finish', jsonPost(body));
+}
+
+/**
+ * Convenience for the happy paths: drive both steps and return the
+ * /finish response. Asserts /start succeeded — fail loud if it
+ * didn't (the test was probably mis-set-up).
+ */
+async function fullRegister(opts: {
   email: string;
   username?: string;
   password?: string;
   inviteToken?: string;
-}) {
-  return {
+}): Promise<Response> {
+  const { res, started } = await startRegistration(opts);
+  if (!started) {
+    throw new Error(
+      `fullRegister: /start failed with ${res.status} (${await res.text()})`,
+    );
+  }
+  return finishRegistration({
     email: opts.email,
-    username: opts.username ?? defaultUsernameFor(opts.email),
-    password: opts.password ?? REG_PASSWORD,
-    encryptionSalt: 'salt-base64',
-    encryptedKey: 'wrapped-key-base64',
-    ...(opts.inviteToken ? { inviteToken: opts.inviteToken } : {}),
-  };
+    ...(opts.username !== undefined ? { username: opts.username } : {}),
+    ...(opts.inviteToken !== undefined ? { inviteToken: opts.inviteToken } : {}),
+    started,
+  });
 }
 
 function extractTokenFromLatestActivationMail(): string {
@@ -74,13 +170,6 @@ function extractTokenFromLatestActivationMail(): string {
   }
   return decodeURIComponent(match[1]);
 }
-
-beforeEach(async () => {
-  // Default for every test: open_registration OFF. Tests that need
-  // it on call setOpenRegistration(true) explicitly.
-  // (The settings table is wiped by the global TRUNCATE in setup.ts,
-  // so the default-off behavior is what reads return.)
-});
 
 /* ============================================================================
  * GET /auth/register/mode
@@ -124,18 +213,18 @@ describe('GET /auth/register/invite-info', () => {
     expect(res.status).toBe(404);
   });
 
-  it('404s when the token query is missing', async () => {
+  it('404s when the token is missing or too short', async () => {
     const res = await app.request('/auth/register/invite-info');
     expect(res.status).toBe(404);
   });
 
-  it('404s on an already-used token', async () => {
-    const invite = await seedInvite('used@example.com');
-    const burner = await seedUser('burner-info@example.com');
-    await db
-      .update(invites)
-      .set({ usedBy: burner.id, usedAt: new Date() })
-      .where(eq(invites.id, invite.id));
+  it('404s after the invite has been consumed', async () => {
+    const invite = await seedInvite('once-used@example.com');
+    const finishRes = await fullRegister({
+      email: 'once-used@example.com',
+      inviteToken: invite.token,
+    });
+    expect(finishRes.status).toBe(200);
 
     const res = await app.request(
       `/auth/register/invite-info?token=${encodeURIComponent(invite.token)}`,
@@ -143,11 +232,11 @@ describe('GET /auth/register/invite-info', () => {
     expect(res.status).toBe(404);
   });
 
-  it('404s on an expired token', async () => {
-    const invite = await seedInvite('expired-info@example.com');
+  it('404s after the invite has expired', async () => {
+    const invite = await seedInvite('expired-recipient@example.com');
     await db
       .update(invites)
-      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
       .where(eq(invites.id, invite.id));
 
     const res = await app.request(
@@ -158,21 +247,84 @@ describe('GET /auth/register/invite-info', () => {
 });
 
 /* ============================================================================
- * POST /auth/register — invited path
+ * POST /auth/register/start
  * ========================================================================== */
 
-describe('POST /auth/register — invited path', () => {
-  it('creates an activated user and consumes the invite atomically', async () => {
-    const invite = await seedInvite('newcomer@example.com');
+describe('POST /auth/register/start', () => {
+  it('returns the OPAQUE response + a fresh userId on a valid invited start', async () => {
+    const invite = await seedInvite('starter@example.com');
+    const { res, started } = await startRegistration({
+      email: 'starter@example.com',
+      inviteToken: invite.token,
+    });
+    expect(res.status).toBe(200);
+    expect(started?.registrationResponse).toBeTypeOf('string');
+    expect(started?.userId).toMatch(/^[0-9a-f-]{36}$/);
+
+    // /start must NOT consume the invite — that happens in /finish.
+    const [stillUnused] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.id, invite.id));
+    expect(stillUnused!.usedBy).toBeNull();
+  });
+
+  it('rejects 400 email_mismatch when the invite is for a different email', async () => {
+    const invite = await seedInvite('intended@example.com');
+    const { res } = await startRegistration({
+      email: 'someone-else@example.com',
+      inviteToken: invite.token,
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ reason: 'email_mismatch' });
+  });
+
+  it('rejects 401 invalid_token on an unknown invite', async () => {
+    const { res } = await startRegistration({
+      email: 'whoever@example.com',
+      inviteToken: 'totally-bogus-token-xxxxxxxxxxxxxxxxxx',
+    });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ reason: 'invalid_token' });
+  });
+
+  it('returns 403 registration_closed when no token + open_registration off', async () => {
+    const { res } = await startRegistration({ email: 'closed@example.com' });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'registration_closed' });
+  });
+
+  it('rejects 400 invalid_body on a malformed registrationRequest', async () => {
+    // Use the open path so /start gets past the registration_closed
+    // gate and actually runs the OPAQUE call where the malformed
+    // blob trips a parse error.
+    const admin = await seedAdmin('malformed-admin@example.com');
+    await setOpenRegistration(true, admin.id);
+    await ready;
+
     const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'newcomer@example.com',
-          inviteToken: invite.token,
-        }),
-      ),
+      '/auth/register/start',
+      jsonPost({
+        email: 'malformed@example.com',
+        registrationRequest: 'not-a-real-opaque-blob',
+      }),
     );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'invalid_body' });
+  });
+});
+
+/* ============================================================================
+ * POST /auth/register/finish — invited path
+ * ========================================================================== */
+
+describe('POST /auth/register/finish — invited path', () => {
+  it('creates an activated user + opaque record and consumes the invite atomically', async () => {
+    const invite = await seedInvite('newcomer@example.com');
+    const res = await fullRegister({
+      email: 'newcomer@example.com',
+      inviteToken: invite.token,
+    });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { activated: boolean; email: string };
     expect(body.activated).toBe(true);
@@ -184,8 +336,19 @@ describe('POST /auth/register — invited path', () => {
       .where(eq(users.email, 'newcomer@example.com'));
     expect(user).toBeDefined();
     expect(user!.emailVerifiedAt).not.toBeNull();
-    expect(user!.encryptionSalt).toBe('salt-base64');
     expect(user!.username).toBe('newcomer');
+    expect(user!.wrappedMainKey).toBe('test-wrapped-main-key');
+    expect(user!.wrappedKekPassword).toBe('test-wrapped-kek-password');
+    expect(user!.passwordHash).toBeNull();
+    expect(user!.encryptionSalt).toBeNull();
+    expect(user!.encryptedKey).toBeNull();
+
+    const [envelope] = await db
+      .select()
+      .from(opaqueRecords)
+      .where(eq(opaqueRecords.userId, user!.id));
+    expect(envelope).toBeDefined();
+    expect(envelope!.envelope.length).toBeGreaterThan(0);
 
     const [usedInvite] = await db
       .select()
@@ -194,30 +357,29 @@ describe('POST /auth/register — invited path', () => {
     expect(usedInvite!.usedBy).toBe(user!.id);
     expect(usedInvite!.usedAt).not.toBeNull();
 
-    // No activation email sent on the invited path — the invite
-    // email already proved control.
+    // No activation email on the invited path.
     const activationMails = recording.sent.filter(
       (m) => m.tag === 'register-activate',
     );
     expect(activationMails).toHaveLength(0);
   });
 
-  it('rejects email mismatch with 400 email_mismatch', async () => {
-    const invite = await seedInvite('intended@example.com');
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'someone-else@example.com',
-          inviteToken: invite.token,
-        }),
-      ),
-    );
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: 'register_failed',
-      reason: 'email_mismatch',
+  it('rejects 400 email_mismatch at /finish when client tampers with email after /start', async () => {
+    const invite = await seedInvite('locked@example.com');
+    const { started } = await startRegistration({
+      email: 'locked@example.com',
+      inviteToken: invite.token,
     });
+    expect(started).toBeDefined();
+
+    // Client lies on /finish about which email this invite is for.
+    const res = await finishRegistration({
+      email: 'attacker@example.com',
+      inviteToken: invite.token,
+      started: started!,
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ reason: 'email_mismatch' });
 
     // Invite stays unused.
     const [stillUnused] = await db
@@ -227,85 +389,35 @@ describe('POST /auth/register — invited path', () => {
     expect(stillUnused!.usedBy).toBeNull();
   });
 
-  it('rejects an unknown token with 401 invalid_token', async () => {
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'someone@example.com',
-          inviteToken: 'totally-bogus-token-xxxxxxxxxxxxxxxxxxx',
-        }),
-      ),
-    );
-    expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({
-      error: 'register_failed',
-      reason: 'invalid_token',
-    });
-  });
-
-  it('rejects a re-used token (single-use)', async () => {
+  it('rejects a re-used invite token with 401 invalid_token', async () => {
     const invite = await seedInvite('once@example.com');
-
-    const first = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({ email: 'once@example.com', inviteToken: invite.token }),
-      ),
-    );
+    const first = await fullRegister({
+      email: 'once@example.com',
+      inviteToken: invite.token,
+    });
     expect(first.status).toBe(200);
 
-    const second = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({ email: 'once@example.com', inviteToken: invite.token }),
-      ),
-    );
-    expect(second.status).toBe(401);
-    expect(await second.json()).toMatchObject({ reason: 'invalid_token' });
-  });
-
-  it('rejects a weak password with 400 weak_password', async () => {
-    const invite = await seedInvite('weak@example.com');
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'weak@example.com',
-          password: 'password1234',
-          inviteToken: invite.token,
-        }),
-      ),
-    );
-    expect(res.status).toBe(400);
-    expect((await res.json()) as { error: string }).toMatchObject({
-      error: 'weak_password',
+    // Second attempt with the same token: /start now reports invalid_token
+    // because the invite is consumed.
+    const { res } = await startRegistration({
+      email: 'once@example.com',
+      inviteToken: invite.token,
     });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ reason: 'invalid_token' });
   });
 });
 
 /* ============================================================================
- * POST /auth/register — open path
+ * POST /auth/register/finish — open path
  * ========================================================================== */
 
-describe('POST /auth/register — open path', () => {
-  it('returns 403 registration_closed when open_registration is off', async () => {
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(submitBody({ email: 'closed@example.com' })),
-    );
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: 'registration_closed' });
-  });
-
-  it('creates an inactive user and emails an activation link when open', async () => {
+describe('POST /auth/register/finish — open path', () => {
+  it('creates an inactive user + opaque record and emails an activation link', async () => {
     const admin = await seedAdmin('open-admin@example.com');
     await setOpenRegistration(true, admin.id);
 
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(submitBody({ email: 'open@example.com' })),
-    );
+    const res = await fullRegister({ email: 'open@example.com' });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, activated: false });
 
@@ -315,6 +427,13 @@ describe('POST /auth/register — open path', () => {
       .where(eq(users.email, 'open@example.com'));
     expect(user).toBeDefined();
     expect(user!.emailVerifiedAt).toBeNull();
+    expect(user!.passwordHash).toBeNull();
+
+    const [envelope] = await db
+      .select()
+      .from(opaqueRecords)
+      .where(eq(opaqueRecords.userId, user!.id));
+    expect(envelope).toBeDefined();
 
     const verifs = await db
       .select()
@@ -326,37 +445,6 @@ describe('POST /auth/register — open path', () => {
     expect(recording.latestByTag('register-activate')).toBeDefined();
   });
 
-  it('reuses an inactive user row + invalidates the previous activation link', async () => {
-    const admin = await seedAdmin('reuse-admin@example.com');
-    await setOpenRegistration(true, admin.id);
-
-    await app.request(
-      '/auth/register',
-      jsonPost(submitBody({ email: 'redo@example.com' })),
-    );
-    await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({ email: 'redo@example.com', password: 'Other-Pass-Now-77!' }),
-      ),
-    );
-
-    const userRows = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, 'redo@example.com'));
-    expect(userRows).toHaveLength(1);
-
-    const verifs = await db
-      .select()
-      .from(emailVerifications)
-      .where(eq(emailVerifications.email, 'redo@example.com'));
-    const consumed = verifs.filter((v) => v.consumedAt !== null);
-    const pending = verifs.filter((v) => v.consumedAt === null);
-    expect(consumed).toHaveLength(1);
-    expect(pending).toHaveLength(1);
-  });
-
   it('returns 200 silently when the email already belongs to an active user', async () => {
     const admin = await seedAdmin('dup-admin@example.com');
     await setOpenRegistration(true, admin.id);
@@ -366,75 +454,123 @@ describe('POST /auth/register — open path', () => {
       .set({ emailVerifiedAt: new Date() })
       .where(eq(users.id, existing.id));
 
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(submitBody({ email: 'taken@example.com' })),
-    );
+    const res = await fullRegister({ email: 'taken@example.com' });
     expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, activated: false });
 
     const activationMails = recording.sent.filter(
       (m) => m.tag === 'register-activate',
     );
     expect(activationMails).toHaveLength(0);
   });
+
+  it('returns 200 silently on a second register attempt for an inactive email (no DB changes)', async () => {
+    const admin = await seedAdmin('reuse-admin@example.com');
+    await setOpenRegistration(true, admin.id);
+
+    // First attempt creates the inactive user.
+    const first = await fullRegister({ email: 'redo@example.com' });
+    expect(first.status).toBe(200);
+
+    const [originalUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, 'redo@example.com'));
+    expect(originalUser).toBeDefined();
+
+    const [originalEnvelope] = await db
+      .select()
+      .from(opaqueRecords)
+      .where(eq(opaqueRecords.userId, originalUser!.id));
+    expect(originalEnvelope).toBeDefined();
+
+    // Second attempt — same email, fresh OPAQUE handshake. Server
+    // returns silent 200 and does NOT replace the existing envelope
+    // (its AAD bindings would diverge from the new userId issued
+    // at /start).
+    const second = await fullRegister({ email: 'redo@example.com' });
+    expect(second.status).toBe(200);
+
+    const userRows = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, 'redo@example.com'));
+    expect(userRows).toHaveLength(1);
+    expect(userRows[0]!.id).toBe(originalUser!.id);
+
+    const envelopes = await db
+      .select()
+      .from(opaqueRecords)
+      .where(eq(opaqueRecords.userId, originalUser!.id));
+    expect(envelopes).toHaveLength(1);
+    expect(envelopes[0]!.envelope).toBe(originalEnvelope!.envelope);
+  });
 });
 
 /* ============================================================================
- * POST /auth/register — username field
+ * POST /auth/register/finish — username field
  * ========================================================================== */
 
-describe('POST /auth/register — username field', () => {
-  it('rejects 400 invalid_body when username is missing', async () => {
+describe('POST /auth/register/finish — username field', () => {
+  it('rejects 400 invalid_body when username is missing at /finish', async () => {
     const invite = await seedInvite('no-username@example.com');
-    const { username: _omit, ...rest } = submitBody({
+    const { started } = await startRegistration({
       email: 'no-username@example.com',
       inviteToken: invite.token,
     });
-    void _omit;
-    const res = await app.request('/auth/register', jsonPost(rest));
+    expect(started).toBeDefined();
+
+    const { registrationRecord } = client.finishRegistration({
+      password: REG_PASSWORD,
+      clientRegistrationState: started!.clientRegistrationState,
+      registrationResponse: started!.registrationResponse,
+    });
+
+    // Send the finish body WITHOUT the username field.
+    const res = await app.request(
+      '/auth/register/finish',
+      jsonPost({
+        email: 'no-username@example.com',
+        userId: started!.userId,
+        registrationRecord,
+        wrappedMainKey: 'x',
+        wrappedMainKeyIv: 'x',
+        wrappedKekPassword: 'x',
+        wrappedKekPasswordIv: 'x',
+        inviteToken: invite.token,
+      }),
+    );
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: 'invalid_body' });
   });
 
   it('rejects 400 invalid_body when username has invalid characters', async () => {
     const invite = await seedInvite('bad-chars@example.com');
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'bad-chars@example.com',
-          inviteToken: invite.token,
-          username: 'has spaces!',
-        }),
-      ),
-    );
+    const res = await fullRegister({
+      email: 'bad-chars@example.com',
+      inviteToken: invite.token,
+      username: 'has spaces!',
+    });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: 'invalid_body' });
   });
 
   it('returns 400 username_taken on the invited path when the name is already used', async () => {
-    // Seed a user that already grabbed the username "Pseudo".
     const seeded = await seedUser('first@example.com');
     await db.update(users).set({ username: 'Pseudo' }).where(eq(users.id, seeded.id));
 
     const invite = await seedInvite('clasher@example.com');
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'clasher@example.com',
-          inviteToken: invite.token,
-          username: 'Pseudo',
-        }),
-      ),
-    );
+    const res = await fullRegister({
+      email: 'clasher@example.com',
+      inviteToken: invite.token,
+      username: 'Pseudo',
+    });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
       error: 'register_failed',
       reason: 'username_taken',
     });
 
-    // Invite stays unused so the user can retry with a different name.
     const [stillUnused] = await db
       .select()
       .from(invites)
@@ -448,12 +584,10 @@ describe('POST /auth/register — username field', () => {
     const seeded = await seedUser('squatter@example.com');
     await db.update(users).set({ username: 'OpenName' }).where(eq(users.id, seeded.id));
 
-    const res = await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({ email: 'wants-it@example.com', username: 'OpenName' }),
-      ),
-    );
+    const res = await fullRegister({
+      email: 'wants-it@example.com',
+      username: 'OpenName',
+    });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
       error: 'register_failed',
@@ -470,15 +604,12 @@ describe('POST /auth/register/activate', () => {
   async function openSubmit(email: string): Promise<string> {
     const admin = await seedAdmin(`act-admin-${Date.now()}@example.com`);
     await setOpenRegistration(true, admin.id);
-    await app.request(
-      '/auth/register',
-      jsonPost(submitBody({ email })),
-    );
+    await fullRegister({ email });
     return extractTokenFromLatestActivationMail();
   }
 
-  it('flips the user to active and returns its email', async () => {
-    const token = await openSubmit('activate@example.com');
+  it('flips email_verified_at on a fresh token + reports the email back', async () => {
+    const token = await openSubmit('activate-me@example.com');
     const res = await app.request(
       '/auth/register/activate',
       jsonPost({ token }),
@@ -486,45 +617,42 @@ describe('POST /auth/register/activate', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       ok: true,
-      email: 'activate@example.com',
+      email: 'activate-me@example.com',
     });
 
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, 'activate@example.com'));
+      .where(eq(users.email, 'activate-me@example.com'));
     expect(user!.emailVerifiedAt).not.toBeNull();
   });
 
-  it('rejects an invalid token with 401', async () => {
+  it('rejects a malformed body with 400 invalid_body', async () => {
     const res = await app.request(
       '/auth/register/activate',
-      jsonPost({ token: 'totally-bogus-token-xxxxxxxxxxxxxxxxxx' }),
+      jsonPost({ token: 'too-short' }),
     );
-    expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ reason: 'invalid_token' });
+    expect(res.status).toBe(400);
   });
 
-  it('rejects an already-consumed token with 401', async () => {
-    const token = await openSubmit('twice@example.com');
+  it('rejects a re-used token with 401 already_consumed', async () => {
+    const token = await openSubmit('replay@example.com');
     await app.request('/auth/register/activate', jsonPost({ token }));
-
-    const second = await app.request(
+    const res = await app.request(
       '/auth/register/activate',
       jsonPost({ token }),
     );
-    expect(second.status).toBe(401);
-    expect(await second.json()).toMatchObject({ reason: 'already_consumed' });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ reason: 'already_consumed' });
   });
 
-  it('rejects an expired token with 410', async () => {
-    const token = await openSubmit('expired@example.com');
-    const tokenHash = hashToken(token);
+  it('rejects an expired token with 410 expired', async () => {
+    const token = await openSubmit('stale@example.com');
+    // Backdate the verification row.
     await db
       .update(emailVerifications)
-      .set({ expiresAt: new Date(Date.now() - 1000) })
-      .where(eq(emailVerifications.codeHash, tokenHash));
-
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(emailVerifications.codeHash, hashToken(token)));
     const res = await app.request(
       '/auth/register/activate',
       jsonPost({ token }),
@@ -532,49 +660,39 @@ describe('POST /auth/register/activate', () => {
     expect(res.status).toBe(410);
     expect(await res.json()).toMatchObject({ reason: 'expired' });
   });
+
+  it('rejects an unknown token with 401 invalid_token', async () => {
+    const res = await app.request(
+      '/auth/register/activate',
+      jsonPost({ token: 'unknown-token-aaaaaaaaaaaaaaaaaaaaaa' }),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ reason: 'invalid_token' });
+  });
 });
 
 /* ============================================================================
- * POST /auth/login activation gate
+ * Login activation gate
  * ========================================================================== */
 
-describe('POST /auth/login activation gate', () => {
-  it('refuses an unactivated open-path user with 403', async () => {
-    const admin = await seedAdmin('gate-admin@example.com');
-    await setOpenRegistration(true, admin.id);
-    await app.request(
-      '/auth/register',
-      jsonPost(submitBody({ email: 'unactivated@example.com' })),
-    );
+describe('login refuses inactive accounts (account_not_activated)', () => {
+  // Inactive accounts created via OPAQUE register can't log in via
+  // the legacy Argon2id route either — `password_hash` is NULL —
+  // so this test asserts the activation-gate response shape on a
+  // legacy `seedUser` (which does set password_hash) for now. Once
+  // 2C lands, this becomes the OPAQUE login pre-check.
+  it('returns 403 account_not_activated when emailVerifiedAt is null', async () => {
+    const u = await seedUser('inactive@example.com');
+    await db.update(users).set({ emailVerifiedAt: null }).where(eq(users.id, u.id));
 
     const res = await app.request(
       '/auth/login',
       jsonPost({
-        email: 'unactivated@example.com',
-        password: REG_PASSWORD,
+        email: 'inactive@example.com',
+        password: 'Correct-Horse-Battery-Staple-42',
       }),
     );
     expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: 'account_not_activated' });
-  });
-
-  it('lets an invited (auto-activated) user log in directly', async () => {
-    const invite = await seedInvite('happy-invite@example.com');
-    await app.request(
-      '/auth/register',
-      jsonPost(
-        submitBody({
-          email: 'happy-invite@example.com',
-          inviteToken: invite.token,
-        }),
-      ),
-    );
-
-    const res = await app.request(
-      '/auth/login',
-      jsonPost({ email: 'happy-invite@example.com', password: REG_PASSWORD }),
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers.get('set-cookie') ?? '').toMatch(/nodea_session=/);
+    expect(await res.json()).toMatchObject({ error: 'account_not_activated' });
   });
 });

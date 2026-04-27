@@ -875,17 +875,45 @@ Aucun cookie de "register session" en V1 — la state survit
 uniquement via le token dans l'URL d'invitation ou via la
 verification row côté serveur.
 
-#### `POST /auth/register` (submit)
+#### `POST /auth/register/start` + `POST /auth/register/finish` (OPAQUE 2-step, V1 ✅)
 
-**Body**
+**Body** `/start`
+```json
+{
+  "email": "alice@example.com",
+  "registrationRequest": "<opaque-blob>",
+  "inviteToken": "<base64url, optional>"
+}
+```
+
+**Réponse** `/start`
+```json
+{
+  "registrationResponse": "<opaque-blob>",
+  "userId": "<uuid v4>"
+}
+```
+
+`/start` est **stateless** — pas d'écriture DB, pas de consommation
+d'invite, pas de DB row créé. Il pré-valide la voie (invite présente
++ match email, ou `open_registration` ON) pour fail fast, puis appelle
+`server.createRegistrationResponse()` de `@serenity-kit/opaque` avec
+`userIdentifier = email.toLowerCase()`. Le `userId` retourné est utilisé
+par le client pour calculer les AAD bindings (`buildKekAAD(userId,
+'password')` et `buildMainKeyAAD(userId)`) AVANT de poster `/finish`.
+
+**Body** `/finish`
 ```json
 {
   "email": "alice@example.com",
   "username": "Alice",
-  "password": "<plain>",
-  "inviteToken": "<base64url, optional>",
-  "encryptionSalt": "<base64>",
-  "encryptedKey":   "<base64>"
+  "userId": "<uuid retourné par /start>",
+  "registrationRecord": "<opaque envelope>",
+  "wrappedMainKey": "<base64 AES-GCM>",
+  "wrappedMainKeyIv": "<base64 IV>",
+  "wrappedKekPassword": "<base64 AES-GCM>",
+  "wrappedKekPasswordIv": "<base64 IV>",
+  "inviteToken": "<base64url, optional>"
 }
 ```
 
@@ -895,7 +923,20 @@ l'utilisateur comme "un prénom ou un pseudo". L'unicité est vérifiée
 côté serveur avant insert (clean error, pas d'anti-enum) et garantie
 au niveau DB par l'index unique partiel `users_username_unique`.
 
-**Branches serveur** :
+`registrationRecord` est l'envelope OPAQUE produit côté client par
+`client.finishRegistration()`. Le serveur le persiste dans
+`opaque_records.envelope` — il ne peut **pas** être utilisé pour
+retrouver le password (c'est le tout l'intérêt d'OPAQUE).
+
+`wrappedMainKey` / `wrappedKekPassword` sont les deux couches de wrap
+côté client (cf. §3.2) :
+- **Main key** (32 bytes random) wrappée sous KEK via HKDF label
+  `nodea:wrap-main`, AAD = `nodea:v1\x1f<userId>\x1fmain`.
+- **KEK** (32 bytes random) wrappée sous une clé HKDF dérivée de
+  l'OPAQUE `exportKey` via label `nodea:wrap-kek`, AAD =
+  `nodea:v1\x1f<userId>\x1fpassword`.
+
+**Branches serveur** sur `/finish` :
 
 1. **Invité** (`inviteToken` présent) :
    - `consumeInviteAndCreateUser(token, email, …)` :
@@ -904,29 +945,33 @@ au niveau DB par l'index unique partiel `users_username_unique`.
      - Refus si `invites.email !== body.email` (strict match) → 400
        `email_mismatch`.
      - **Pré-check username dans la transaction** (après validation
-       du token, avant insert) : si `users.username` existe déjà →
-       400 `username_taken`. Le check est INSIDE la tx pour que
-       `invalid_token` reste prioritaire quand le lien est ré-utilisé.
-     - INSERT `users { username, passwordHash, encryptionSalt,
-       encryptedKey, emailVerifiedAt: now(),
-       registerState: 'complete' }`.
+       du token, avant insert).
+     - INSERT `users { id: userId, username,
+       wrappedMainKey, wrappedMainKeyIv,
+       wrappedKekPassword, wrappedKekPasswordIv,
+       emailVerifiedAt: now(), registerState: 'complete' }` —
+       `password_hash` / `encryption_salt` / `encrypted_key` restent
+       NULL (legacy columns rendues nullable en 2B).
+     - INSERT `opaque_records { user_id: userId, envelope:
+       registrationRecord }`.
      - UPDATE `invites { usedBy, usedAt }`.
    - Réponse `200 { ok: true, activated: true, email }`. Aucun
-     cookie émis — l'user retape son password à `/login`
-     (option défensive choisie en Q5 du design).
+     cookie émis — l'user retape son password à `/login` (Phase 2C
+     pour OPAQUE login).
 
 2. **Open registration** (pas de token, toggle ON) :
-   - Vérifier `app_settings.open_registration === true`.
+   - Vérifier `app_settings.open_registration === true` (défense en
+     profondeur — `/start` l'a déjà checké).
    - Pré-check username : si déjà pris par un autre user → 400
-     `username_taken`. Self-conflict autorisé quand l'user retry
-     sur sa propre ligne inactive.
-   - Si `users` actif existe déjà avec cet email → silent 200
-     (anti-enum).
-   - Si `users` inactif existe (= retry) → réutilise la ligne,
-     refresh credentials + username, invalide les anciens
-     `email_verifications` pending, génère un nouveau token.
-   - Sinon : INSERT `users { username, …, emailVerifiedAt: NULL,
-     registerState: 'complete' }`.
+     `username_taken`.
+   - Si `users` (actif OU inactif) existe déjà avec cet email →
+     silent 200 (anti-enum). Le retry sur ligne inactive **n'est
+     plus** une réutilisation parce que les AAD du nouveau
+     `/start` userId divergent de l'ancien — l'email d'activation
+     d'origine reste valide, l'admin peut renvoyer hors-bande.
+   - Sinon : INSERT `users { id: userId, …,
+     emailVerifiedAt: NULL }` + INSERT `opaque_records`, dans
+     une transaction.
    - INSERT `email_verifications { kind: 'register', codeHash:
      SHA-256(token), expiresAt: now+7d }`.
    - Email "Active ton compte Nodea" via `EmailService.send`.
@@ -935,6 +980,12 @@ au niveau DB par l'index unique partiel `users_username_unique`.
 3. **Closed** (pas de token, toggle OFF) :
    - 403 `registration_closed`. Le frontend gate ce cas en amont
      via `GET /register/mode` (voir ci-dessous).
+
+**Mode Argon2id legacy** (V1 antérieur à 2B) : remplacé entièrement
+par l'OPAQUE 2-step. Les comptes legacy survivants (admin seedé
+pré-2B) gardent leurs colonnes `password_hash` / `encryption_salt` /
+`encrypted_key` populées le temps que Phase 2C bascule le login. Ces
+colonnes sont droppées en Phase 2D.
 
 #### `POST /auth/register/activate`
 
