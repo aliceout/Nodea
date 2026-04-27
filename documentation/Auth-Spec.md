@@ -1,15 +1,27 @@
 # Auth-Spec — Spécification complète Authentification + MFA
 
-> **Statut.** Document de référence, à figer **avant** d'écrire la
-> moindre ligne de code (Phase 0 de [`Auth-Roadmap.md`](Auth-Roadmap.md)).
-> Toute décision technique prise pendant l'implémentation qui
-> contredirait cette spec doit d'abord remonter ici. Code et doc =
-> source unique de vérité (cf. CLAUDE.md).
+> **Statut.** Document de référence pour Auth-Roadmap. Une partie est
+> déjà **livrée** (Phase 1, modèle simplifié), le reste reste de la
+> conception à dérouler en Phase 2+. Chaque section est marquée :
 >
-> **Précédence.** En cas de conflit avec [`Security.md`](Security.md)
-> ou [`Database.md`](Database.md), c'est ce fichier qui fait foi
-> jusqu'à ce que la migration soit terminée — ces deux fichiers
-> seront rebasés sur la nouvelle réalité en Phase 8.
+> - **✅ V1 livré** — implémenté, testé, en prod-like. Décrit la
+>   réalité actuelle du code.
+> - **🚧 Phase 2+** — design figé mais pas encore livré. Sert de spec
+>   pour les phases à venir (OPAQUE, TOTP, passkey, recovery code KEK).
+>
+> **Précédence.** Code et doc = source unique de vérité (CLAUDE.md).
+> Pour tout ce qui est marqué V1 livré, le code prime sur la spec en
+> cas d'écart constaté → corriger le code OU la spec dans le même PR
+> que la divergence est introduite.
+>
+> **Phase 1 livrée diverge sciemment du design initial** : on a
+> simplifié l'inscription (single-form + magic-link activation au
+> lieu du wizard 7-étapes), basculé les invitations sur du
+> email-bound + token (Bitwarden-style, plus de codes à copier), et
+> ajouté un toggle `open_registration` côté admin. Les sections ci-
+> dessous ont été ré-alignées sur cette réalité ; le wizard 7-étapes
+> et tout ce qui dépend d'OPAQUE / TOTP / passkey reste documenté
+> comme cible Phase 2+ mais explicitement marqué.
 
 ---
 
@@ -38,47 +50,71 @@
 
 ## 0. Lecture rapide
 
+### 0.1 État de livraison ✅ V1 livré
+
 | Question | Réponse courte | Détail |
 |---|---|---|
-| Qu'est-ce qui dérive la KEK ? | OPAQUE `export_key` **ou** WebAuthn PRF **ou** recovery code | §3.2 |
-| Le TOTP dérive quelque chose ? | **Non.** Gate de session uniquement. | §2.3, §8 |
-| Qui est l'identifiant OPAQUE ? | `users.email` (changer l'email = re-register OPAQUE) | §7.6 |
+| Comment crée-t-on un compte ? | Form unique `email + password` ; activation via lien email magique avant que le compte soit utilisable | §7.1 |
+| Comment fonctionnent les invitations ? | Admin entre une adresse e-mail, le serveur envoie un lien `?invite=<token>` ; pas de code à copier-coller | §7.1 |
+| Qu'est-ce qui gate le login ? | `users.email_verified_at IS NOT NULL` (= activation effectuée) | §7.2 |
+| Open registration ? | Toggle admin `open_registration`, défaut OFF | §7.1 |
+| Crypto E2E ? | Conservée — KEK dérivée du password via Argon2id, AES-GCM wrap de la main key (modèle legacy de Security.md, supersedé par OPAQUE en Phase 2) | §3 |
+| Un opérateur serveur peut lire mes données ? | **Non** — la KEK n'est jamais côté serveur | §2.1 |
+
+### 0.2 Phase 2+ 🚧 design seulement
+
+| Question | Réponse courte | Détail |
+|---|---|---|
+| Qu'est-ce qui dérivera la KEK avec OPAQUE ? | OPAQUE `export_key` **ou** WebAuthn PRF **ou** recovery code | §3.2 |
+| Le TOTP dérivera quelque chose ? | **Non.** Gate de session uniquement. | §2.3, §8 |
+| Identifiant OPAQUE ? | `users.email` (changer l'email = re-register OPAQUE) | §7.6 |
 | Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code | §3.2 |
 | Mode "Sécurité maximale" = split crypto ? | **Non**, gate UX uniquement | §2.3 |
-| Une passkey non-PRF déchiffre la KEK ? | Non. Login-only. | §9.4 |
-| Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée à l'enrollment | §9.3 |
-| Un opérateur serveur peut bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
-| Un opérateur serveur peut lire mes données ? | **Non**, jamais (E2E préservé) | §2.1 |
+| Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
+| Un opérateur serveur pourra bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
 
 ---
 
 ## 1. Vue d'ensemble
 
-### 1.1 Objectif
+### 1.1 Objectifs
 
-Remplacer le modèle d'authentification actuel — Argon2id direct
-sur le password, KEK dérivée à chaque login depuis
-`password + encryption_salt` — par un modèle complet, multi-facteurs,
-qui :
+L'auth Nodea évolue en deux temps :
 
-- préserve l'E2E **même quand le serveur est compromis** (lecture DB) ;
+**Phase 1 — ✅ V1 livré (modèle simplifié).**
+- Inscription en un seul formulaire (email + password) + activation
+  via lien magique reçu par email.
+- Invitations email-bound (admin → adresse → lien direct, pas de
+  code à copier-coller).
+- Toggle admin `open_registration` pour basculer entre invitation-
+  only et signup libre.
+- Crypto E2E préservée — KEK dérivée du password (Argon2id),
+  AES-GCM wrap de la main key, exactement comme le modèle décrit
+  dans [`Security.md`](Security.md). Les ciphertexts restent
+  illisibles côté serveur.
+- Pas de second facteur, pas de recovery code séparé. Reset
+  destructif comme unique chemin de récupération.
+
+**Phase 2+ — 🚧 design seulement.** Migrera vers un modèle multi-
+facteurs qui :
+- préserve l'E2E **même quand le serveur est compromis** (vs juste
+  "honest-but-curious" en V1) — bascule du KEK Argon2id vers OPAQUE
+  `export_key` ;
 - accepte les passkeys (WebAuthn) avec dérivation de KEK via PRF
   quand l'authenticator le supporte ;
 - ajoute un gate TOTP optionnel pour les sessions ;
-- offre un **chemin de récupération** explicite (recovery code) qui
-  n'érode pas la propriété E2E ;
-- vérifie l'email à l'inscription (dépendance dure pour la
-  récupération via email) ;
-- expose une **matrice de re-auth** cohérente pour toutes les
+- offre un **chemin de récupération crypto** explicite (recovery
+  code BIP39) qui n'érode pas la propriété E2E ;
+- expose une matrice de re-auth cohérente pour toutes les
   modifications sensibles.
 
-### 1.2 Ce qui ne change pas
+### 1.2 Ce qui ne change pas (✅ V1 livré et préservé en Phase 2+)
 
 Quoi qu'il arrive, ces invariants tiennent :
 
 1. **Main key client-only.** Aléatoire 32 bytes générés à
-   l'inscription. Jamais transmise. Wrapée plusieurs fois côté
-   serveur, toujours sous des clés que le serveur n'a pas.
+   l'inscription. Jamais transmise. Wrapée côté serveur sous une
+   clé que le serveur n'a pas.
 2. **HKDF domain separation** entre `aes` et `hmac` — labels
    `nodea:aes` et `nodea:hmac`, inchangés.
 3. **Non-extractable `CryptoKey`** importé une fois, vit en mémoire
@@ -87,21 +123,21 @@ Quoi qu'il arrive, ces invariants tiennent :
    `HmacMainKey`, etc.) en `packages/shared/src/crypto-types.ts`.
 5. **Guards HMAC** sur les mutations d'entrées, dérivés depuis la
    sub-key HMAC.
-6. **Reset destructif** existant conservé en filet de dernier recours.
+6. **Reset destructif** conservé en filet de dernier recours.
 7. **Aucun "logged-in sans clé"** : status `crypto.missing` →
    `KeyMissingModal` bloquant.
 
-### 1.3 Ce qui change
+### 1.3 Évolution V1 → Phase 2+
 
-| Avant | Après |
+| V1 livré | Phase 2+ cible |
 |---|---|
-| Argon2id côté serveur sur password | OPAQUE (RFC 9497) côté client + serveur |
-| KEK dérivée déterministiquement de `password + salt` | KEK aléatoire 32 bytes, wrappée par chaque facteur |
-| Main key wrappée sous KEK une fois | Main key wrappée sous KEK une fois (inchangé) |
+| Inscription single-form + activation par lien email | Inchangé (le modèle simplifié reste, OPAQUE remplace juste la dérivation crypto interne) |
+| Argon2id côté serveur (password_hash) + KEK dérivée du password | OPAQUE (RFC 9497) côté client + serveur ; KEK random wrappée par chaque facteur |
 | Pas de second facteur | Passkey + TOTP optionnels selon `security_mode` |
-| Reset destructif unique | Recovery code + bypass TOTP + reset destructif |
-| Email accepté tel quel | Email vérifié par code 6 chiffres à l'inscription |
-| `password_hash` colonne `users` | Table `opaque_records` (1:1 avec `users`) |
+| Reset destructif uniquement | Recovery code KEK (BIP39) + bypass TOTP/passkey email + reset destructif |
+| `users.password_hash` + `users.encryption_salt` + `users.encrypted_key` (legacy) | Conservé tant que tous les comptes ne sont pas migrés ; ajout de `opaque_records` 1:1 avec `users`, plus tard drop des colonnes legacy |
+| Invitations email-bound (`invites.email + token`) | Inchangé |
+| Toggle `open_registration` (`app_settings`) | Inchangé |
 
 ---
 
@@ -343,14 +379,29 @@ un bug à fail-loud (assert au build/runtime côté test).
 
 ## 4. Schéma de base de données
 
+> **Statut**. Les tables et colonnes décrites ici existent toutes en
+> DB depuis la migration Drizzle de Phase 0 — leur définition côté
+> code (`packages/api/src/db/schema.ts`) est à jour. **Mais** la
+> majorité des tables auth-v2 ne sont *pas encore peuplées* en V1 :
+> elles attendent Phase 2 (OPAQUE) et au-delà.
+>
+> Légende :
+> - **✅ V1 livré** = utilisé en production / dev. Les tests et le
+>   code applicatif s'en servent.
+> - **🚧 Phase 2+ table prête, code à venir** = la migration a créé
+>   la table mais aucun handler n'écrit dedans encore.
+
 ### 4.0 Tables existantes préservées (hors scope auth)
 
-Les tables suivantes du schéma actuel restent **inchangées** par
-l'introduction de l'auth nouvelle :
+Les tables suivantes existent depuis le code legacy. Phase 1 a
+**modifié** `invites` (ajout de `email`, sémantique du `code_hash`
+qui est maintenant un token magic-link au lieu d'un code court).
+Le reste est inchangé :
 
 | Table | Usage | Touchée par destructive reset (§4.3) ? |
 |---|---|---|
-| `invites` | Codes d'invitation à l'inscription | non (consommée à l'inscription) |
+| `invites` | ✅ V1 — invitations email-bound (Bitwarden-style) ; `email + token_hash` ; cf. §7.1 | non (consommée à l'inscription) |
+| `app_settings` | ✅ V1 — clé/valeur key-value pour la config d'app (V1 stocke `open_registration` ; futurs réglages mode TOTP, etc.) | non |
 | `modules_config` | Config par module et par user, chiffrée | oui (DELETE WHERE user_id) |
 | `user_preferences` | Préférences UI par user, chiffrées | oui |
 | `mood_entries`, `goals_entries`, `passage_entries`, `habits_entries`, `library_entries`, `review_entries` | Données chiffrées par module | oui |
@@ -621,14 +672,22 @@ Toute la séquence dans **une transaction**.
 
 ## 5. Cookies & sessions
 
-### 5.1 Quatre types de cookies
+> **Statut V1 livré.** Un seul cookie en V1 : `nodea_session` (sans
+> préfixe `__Host-` pour rester compatible `COOKIE_SECURE=false` en
+> dev). Les cookies `__Host-nodea_register / _mfa / _migrate`
+> ci-dessous sont Phase 2+ — ils dépendent du wizard multi-étapes
+> (réécrit en simplifié, cf. §7.1) et de OPAQUE (§12). Le rename
+> en `__Host-*` du cookie session se fera quand HTTPS sera
+> obligatoire en dev (Phase 8 cleanup).
+
+### 5.1 Cookies (cible Phase 2+)
 
 | Cookie | Durée | Routes acceptées (middleware) | Émis quand | Promu en quoi |
 |---|---|---|---|---|
-| `__Host-nodea_register` | 24h | `/auth/register/*` | Après vérif email réussie (étape 2) | Effacé à la fin du register |
-| `__Host-nodea_mfa` | 5 min | `/auth/mfa/*` | Après OPAQUE/passkey login finish | `__Host-nodea_session` quand MFA complète |
-| `__Host-nodea_migrate` | 30 min | `/auth/migrate/*` | Après login legacy Argon2id réussi | `__Host-nodea_session` après migration crypto |
-| `__Host-nodea_session` | 7 jours (fixe, **pas** de slide) | tout le reste | Login complet | Re-login forcé après 7j ou révocation |
+| `__Host-nodea_register` 🚧 | 24h | `/auth/register/*` | Après vérif email réussie (étape 2 du wizard) | Effacé à la fin du register |
+| `__Host-nodea_mfa` 🚧 | 5 min | `/auth/mfa/*` | Après OPAQUE/passkey login finish | `__Host-nodea_session` quand MFA complète |
+| `__Host-nodea_migrate` 🚧 | 30 min | `/auth/migrate/*` | Après login legacy Argon2id réussi | `__Host-nodea_session` après migration crypto |
+| `nodea_session` ✅ V1 | 7 jours (fixe, **pas** de slide) | tout le reste | Login complet | Re-login forcé après 7j ou révocation |
 
 Tous les cookies :
 - `HttpOnly`
@@ -772,172 +831,187 @@ qui rend "perdu 2 = niqué" par construction.
 
 ## 7. Flows complets
 
-### 7.1 Register multi-étapes
+### 7.1 Register — single-form + activation magic link (✅ V1 livré)
+
+> Phase 1 a remplacé le wizard 7-étapes du design initial par ce
+> modèle plus simple. Le wizard reste documenté en archive en
+> §7.1.bis pour servir de référence au futur design Phase 2+ qui
+> ré-introduira progressivement TOTP / passkey / recovery code,
+> mais sans imposer 7 écrans à la création d'un compte.
 
 #### Vue d'ensemble
 
+Un seul formulaire (email + password) côté UI, deux chemins serveur
+selon le mode :
+
 ```
-Étape 1 : email + invite code
-Étape 2 : code email 6 chiffres
-Étape 3 : password (OPAQUE register)
-Étape 4 : recovery code KEK affiché + checkbox
-Étape 5 : (optionnel) propose TOTP
-Étape 6 : (optionnel) propose passkey
-Étape 7 : finalisation + onboarding modal
+┌─ Invitation par e-mail (recommandé) ──────────────────────────────┐
+│                                                                   │
+│ Admin → /admin/invites { email }                                  │
+│      → server email lien `/register?invite=<token>`               │
+│ User clique le lien → form pré-rempli (email read-only) → submit  │
+│      → server crée le compte + active immédiatement (1 mail total)│
+│      → redirect /login?activated=1                                │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+
+┌─ Open registration (toggle admin ON) ─────────────────────────────┐
+│                                                                   │
+│ User → /register sans token → form ouvert → submit                │
+│      → server crée compte inactif + envoie mail d'activation      │
+│ User clique le lien → /activate?token=<...> → flip activated      │
+│      → redirect /login?activated=1                                │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+
+┌─ Closed (toggle admin OFF, pas de lien) ──────────────────────────┐
+│                                                                   │
+│ User → /register sans token → page "Sur invitation" + lien login. │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
-Le cookie `__Host-nodea_register` (24h) survit à la fermeture du
-navigateur. À chaque retour : `GET /auth/register/state` →
-`{ step: 1..7 }` → routage vers la bonne étape.
+Aucun cookie de "register session" en V1 — la state survit
+uniquement via le token dans l'URL d'invitation ou via la
+verification row côté serveur.
 
-#### Étape 1 — `POST /auth/register/start`
+#### `POST /auth/register` (submit)
 
 **Body**
 ```json
 {
   "email": "alice@example.com",
-  "invite_code": "ABC123XYZ"
+  "password": "<plain>",
+  "inviteToken": "<base64url, optional>",
+  "encryptionSalt": "<base64>",
+  "encryptedKey":   "<base64>"
 }
 ```
 
-**Serveur**
-1. Rate-limit (5 req/h par IP, 3 req/h par email).
-2. Validation Zod (`email` valide, invite code format).
-3. `SELECT … FOR UPDATE` sur `invites` ; refus si déjà consommé,
-   expiré, ou inexistant.
-4. Vérifier qu'aucun `users` actif n'a cet email.
-5. Si un `users` en `pre_register` existe avec cet email + cette
-   invite → reprise (réémission code email).
-6. Sinon : créer `users { email, register_state: 'pre_register',
-   email_verified_at: NULL }`, lier l'invite (sans la consommer
-   encore — on la consomme au step 2 réussi pour que reprendre
-   step 1 ne brûle pas l'invite).
-7. Générer code 6 chiffres random, hash SHA-256, insérer dans
-   `email_verifications { kind: 'register', expires_at: now+10min }`.
-8. Envoyer email via `EmailService.send(...)` (cf. §10).
-9. Réponse `200 { message: "Code envoyé à <email>" }`. **Pas de
-   cookie**.
+**Branches serveur** :
 
-#### Étape 2 — `POST /auth/register/verify-email`
+1. **Invité** (`inviteToken` présent) :
+   - `consumeInviteAndCreateUser(token, email, …)` :
+     - Lookup `invites` par `code_hash`, sous `SELECT … FOR UPDATE`.
+     - Refus si used / expired / unknown → 401 `invalid_token`.
+     - Refus si `invites.email !== body.email` (strict match) → 400
+       `email_mismatch`.
+     - INSERT `users { passwordHash, encryptionSalt, encryptedKey,
+       emailVerifiedAt: now(), registerState: 'complete' }`.
+     - UPDATE `invites { usedBy, usedAt }`.
+   - Réponse `200 { ok: true, activated: true, email }`. Aucun
+     cookie émis — l'user retape son password à `/login`
+     (option défensive choisie en Q5 du design).
 
-**Body**
-```json
-{ "email": "alice@example.com", "code": "123456" }
+2. **Open registration** (pas de token, toggle ON) :
+   - Vérifier `app_settings.open_registration === true`.
+   - Si `users` actif existe déjà avec cet email → silent 200
+     (anti-enum).
+   - Si `users` inactif existe (= retry) → réutilise la ligne,
+     refresh credentials, invalide les anciens
+     `email_verifications` pending, génère un nouveau token.
+   - Sinon : INSERT `users { …, emailVerifiedAt: NULL,
+     registerState: 'complete' }`.
+   - INSERT `email_verifications { kind: 'register', codeHash:
+     SHA-256(token), expiresAt: now+7d }`.
+   - Email "Active ton compte Nodea" via `EmailService.send`.
+   - Réponse `200 { ok: true, activated: false }`.
+
+3. **Closed** (pas de token, toggle OFF) :
+   - 403 `registration_closed`. Le frontend gate ce cas en amont
+     via `GET /register/mode` (voir ci-dessous).
+
+#### `POST /auth/register/activate`
+
+Cible du lien magique de l'open path. **Pas appelé par le path
+invité** — l'invité est déjà activé au submit.
+
+**Body** : `{ token: "<base64url>" }`.
+
+Server :
+1. `consumeEmailVerification('register', token)` — lookup +
+   timing-safe compare + single-use consume.
+2. UPDATE `users { emailVerifiedAt: now() }` WHERE id = verification.userId
+   AND emailVerifiedAt IS NULL. Si pas matched → 401 `already_consumed`.
+3. Réponse `200 { ok: true, email }`.
+
+Erreurs spécifiques : `invalid_token` (401), `already_consumed`
+(401), `expired` (410).
+
+#### `GET /auth/register/mode`
+
+Public, sans rate-limit côté V1. Renvoie `{ openRegistration:
+boolean }` lu depuis `app_settings`. Le frontend l'appelle au mount
+de `/register` pour décider entre form ouvert vs page "Sur
+invitation".
+
+#### `GET /auth/register/invite-info?token=…`
+
+Public, rate-limit 30/h/IP. Renvoie `{ email, expiresAt }` quand
+le token est valide + non consommé + non expiré ; 404 sinon.
+Permet au frontend de pré-remplir l'email quand l'user arrive via
+`/register?invite=…`.
+
+#### Activation gate sur `POST /auth/login`
+
+Une fois le compte créé, le login refuse si
+`users.email_verified_at IS NULL` :
+
+```ts
+if (user.emailVerifiedAt === null) {
+  return c.json({ error: 'account_not_activated' }, 403);
+}
 ```
 
-**Serveur**
-1. Rate-limit (5 attempts par email).
-2. Charger la dernière `email_verifications` non-consumed pour cet
-   email + kind=register.
-3. Si expiré ou attempts >= 5 → 410, force step 1 à recommencer.
-4. Comparer hash en temps constant. Si KO → `attempts++`, 401.
-5. Si OK :
-   - Transaction :
-     - Marquer `email_verifications.consumed_at`.
-     - `users.email_verified_at = now()`,
-       `register_state = 'email_verified'`.
-     - Consommer l'invite (DELETE ou flag).
-   - Créer une `sessions { kind: 'register', userId, expires_at:
-     now+24h }`. Émettre `__Host-nodea_register`.
-6. Réponse `200 { step: 3 }`.
+UI surface une bannière "Ton compte n'est pas encore activé. Clique
+sur le lien envoyé par e-mail pour l'activer." Légalement les
+admins seedés bypassent (on les insère avec `emailVerifiedAt =
+now()` dans `seed.ts`).
 
-#### Étape 3 — `POST /auth/register/set-password`
+#### Cleanup des comptes non-activés
 
-**Préconditions** : cookie `__Host-nodea_register` actif,
-`register_state = 'email_verified'`.
+Cron Monday 03:00 (cf. §13.2) :
+- DELETE `email_verifications` `kind = 'register'` `expires_at < now()`.
+- DELETE `users` où `emailVerifiedAt IS NULL` ET aucune
+  `email_verifications` pending → la fenêtre 7 jours s'est écoulée.
 
-**Sous-étapes OPAQUE** (dépend de la lib) :
-- `POST /auth/register/opaque/start` : client envoie OPAQUE
-  registration request → serveur répond avec OPAQUE registration
-  response.
-- `POST /auth/register/opaque/finish` : client envoie OPAQUE
-  registration record + `wrapped_main_key`, `wrapped_kek_password`,
-  IVs, AAD précomputés. Server stocke envelope dans
-  `opaque_records` et les wraps dans `users`. Transition
-  `register_state = 'password_set'`.
+#### Trade-offs assumés en V1
 
-**Côté client** (entre start et finish) :
-1. Génère `main_key = randomBytes(32)`.
-2. Génère `kek = randomBytes(32)`.
-3. Récupère `export_key` de la finalisation OPAQUE.
-4. Dérive `wk_password = HKDF(export_key, "nodea:wrap-kek")`.
-5. Wrap KEK : `wrapped_kek_password = AES-GCM(wk_password, kek,
-   AAD=users.id||"password")`.
-6. Wrap main key : `wrapped_main_key = AES-GCM(HKDF(kek,
-   "nodea:wrap-main"), main_key, AAD=users.id)`.
-7. Zero `wk_password`, `export_key` raw bytes.
-8. Réponse → step 4.
+- **Invitations multi-usage** : aucun lien strict invite → user. Une
+  invite n'est ni linkée à un user au submit ni consommée à
+  l'activation — la même invite peut servir à plusieurs registers.
+  Tightening à invite single-use = ajouter une FK
+  `users.invite_id` ; reporté post-V1.
+- **Cooldown change-email contournable via reset destructif** : le
+  reset destructif ne (ré-)arme pas `email_changed_at`, donc
+  enchaîner reset + change-email immédiat est possible. Risque
+  résiduel accepté V1 (cf. §2.2 #7).
 
-**Tous les wraps + IVs sont base64**, AAD est calculée côté client
-(le client connaît `users.id` retourné par step 2 ou par
-`/auth/register/state`).
+---
 
-#### Étape 4 — `POST /auth/register/save-recovery-code`
+### 7.1.bis Register multi-étapes (🚧 Phase 2+ design — archive)
 
-**Préconditions** : `register_state = 'password_set'`.
-
-**Côté client**
-1. Génère `recovery_code` au format BIP39 12 mots (132 bits totaux
-   = 128 bits d'entropie + 4 bits de checksum). Mots tirés de la
-   **wordlist anglaise standard** BIP39. Affichage groupé 4×3 pour
-   la lisibilité. Un texte explicatif accompagne le code :
-   "Ces 12 mots sont en anglais et constituent ton code de
-   récupération. Tu n'as pas besoin de comprendre les mots — note
-   les exactement comme affichés, dans l'ordre."
-2. Affiche le code à l'utilisateur·ice. Bouton "Copier", bouton
-   "Télécharger en .txt".
-3. **Bloque** la suite tant que la checkbox "j'ai noté ce code et
-   je comprends qu'il ne sera plus jamais affiché" n'est pas cochée.
-4. Une fois cochée : convertit le mnémonique BIP39 en entropie
-   binaire (16 bytes pour 12 mots, après vérif checksum) →
-   `recovery_bytes`. Dérive `wk_recovery = HKDF(recovery_bytes,
-   "nodea:wrap-kek")`, wrappe la KEK :
-   `wrapped_kek_recovery = AES-GCM(wk_recovery, kek,
-   AAD=buildAAD(users.id, "recovery"))`.
-   Calcule en parallèle `recovery_code_hash = SHA-256(recovery_bytes)`
-   (validation côté serveur du flow recover-kek sans connaître le
-   code lui-même, cf. §7.7).
-5. POST `{ wrapped_kek_recovery, iv, recovery_code_hash }`.
-6. Zero `recovery_code` bytes en RAM (mais l'utilisateur·ice l'a
-   noté ailleurs).
-
-**Serveur**
-- Stocke les blobs, `users.recovery_acknowledged_at = now()`,
-  `register_state = 'recovery_set'`.
-
-#### Étape 5 — TOTP (optionnel)
-
-Écran : "Veux-tu activer un code à usage unique (TOTP) ?
-[Configurer] [Plus tard]".
-
-Si configuré : flow §8.2. Si skip : pas d'effet, on passe à l'étape
-6.
-
-#### Étape 6 — Passkey (optionnel)
-
-Écran : "Veux-tu enregistrer une passkey pour te connecter sans
-mot de passe ? [Configurer] [Plus tard]".
-
-Si configuré : flow §9.2. Si skip : pas d'effet.
-
-#### Étape 7 — `POST /auth/register/finish`
-
-**Serveur**
-1. Vérifie `register_state in ('recovery_set', ... post-options)`.
-2. Transition `register_state = 'complete'`.
-3. Delete la session register, émet `__Host-nodea_session` (full).
-4. Renvoie l'utilisateur·ice vers le modal d'onboarding existant.
-
-#### Reprise du parcours
-
-À tout moment pendant les 24h du cookie register :
-
-`GET /auth/register/state` → `{ user_id, email,
-register_state, has_totp, has_passkey }`.
-
-Le client route vers l'étape appropriée. Si le cookie a expiré, on
-demande de saisir le code email à nouveau (toute la progression
-au-delà de step 2 est abandonnée).
+> **Statut.** Cette sous-section décrit le wizard 7-étapes initial
+> du design. **Pas implémenté en V1**, pas prévu en l'état pour
+> Phase 2+. Conservée comme référence du raisonnement initial autour
+> de l'enrollment progressif (TOTP, passkey, recovery code KEK
+> intercalés dans le flow d'inscription).
+>
+> Phase 2+ devra reprendre les éléments suivants **séparément** du
+> register simplifié de §7.1 :
+>
+> - Setup recovery code KEK (BIP39 12 mots) : nudge post-activation
+>   ou écran dédié dans `/settings`.
+> - Enrollment TOTP : `/settings/security/totp` avec QR + backup
+>   codes. Issue [#42](https://github.com/aliceout/Nodea/issues/42)
+>   pour le pattern de nudge.
+> - Enrollment passkey : `/settings/security/passkeys` avec
+>   WebAuthn + PRF derivation. Idem.
+>
+> Le passage à OPAQUE pour le password derivation reste valable et
+> doit s'inscrire dans le flow §7.1 actuel : remplacer la dérivation
+> Argon2id du KEK par OPAQUE `export_key`, sans toucher à l'UX du
+> form unique. Voir §12 pour la migration legacy → OPAQUE.
 
 ### 7.2 Login password-first
 
@@ -1134,7 +1208,13 @@ La rotation de l'ID après un changement de privilège (changement
 de password, change-mode, etc.) est un anti-pattern de session
 fixation classique — on l'applique systématiquement.
 
-### 7.6 Change email
+### 7.6 Change email (🚧 Phase 2+ design)
+
+> **Statut.** Pas implémenté en V1. Le flow ci-dessous suppose
+> OPAQUE (re-register OPAQUE sur changement d'email) ; sans OPAQUE
+> il faudrait juste UPDATE `users.email` + revérification email,
+> beaucoup plus simple. Le design ci-dessous reste valide pour
+> Phase 2+.
 
 Plus lourd qu'on aimerait. Trois étapes.
 
@@ -1192,7 +1272,13 @@ Server (transaction) :
 4. Revoke toutes les autres sessions.
 5. Réponse `200`.
 
-### 7.7 Recovery via KEK code
+### 7.7 Recovery via KEK code (🚧 Phase 2+ design)
+
+> **Statut.** Pas implémenté en V1. En V1 le seul chemin de
+> récupération est le reset destructif (cf. §7.9). Le recovery code
+> KEK BIP39 décrit ci-dessous arrive avec OPAQUE en Phase 2 — il
+> nécessite la KEK random séparée du password, qui n'existe pas
+> dans le modèle Argon2id-direct V1.
 
 #### Modèle d'autorisation
 
@@ -1330,7 +1416,11 @@ Pas d'email de notification (l'opération est explicite côté
 utilisateur·ice + re-auth password fresh = pas de takeover
 possible silencieusement).
 
-### 7.8 Bypass d'un facteur MFA par email (TOTP **ou** passkey)
+### 7.8 Bypass d'un facteur MFA par email (🚧 Phase 2+ design)
+
+> **Statut.** Pas implémenté en V1. Aucun second facteur en V1 →
+> rien à bypasser. Le design ci-dessous arrive en Phase 5 quand
+> TOTP / passkey sont enrôlables.
 
 Mécanisme commun pour récupérer la perte d'un facteur MFA sans
 casser l'E2E. Délai dur de 48h après confirmation par email, un
@@ -1507,7 +1597,13 @@ Réponse `200`. Cookie effacé.
 
 ---
 
-## 8. TOTP — détails
+## 8. TOTP — détails (🚧 Phase 2+ design)
+
+> **Statut.** Pas implémenté en V1. Les tables `mfa_totp` +
+> `mfa_totp_recovery_codes` existent en DB depuis Phase 0 mais
+> aucun code applicatif ne les écrit ou les lit. Le design ci-dessous
+> reste valide pour Phase 2+ (étape 5 de l'enrollment progressif,
+> via `/settings/security/totp`).
 
 ### 8.1 Paramètres figés
 
@@ -1608,7 +1704,11 @@ en clair (affichés une seule fois).
 
 ---
 
-## 9. Passkey — détails
+## 9. Passkey — détails (🚧 Phase 2+ design)
+
+> **Statut.** Pas implémenté en V1. La table `auth_factors` existe
+> en DB depuis Phase 0 mais aucun handler ne l'utilise. Design pour
+> l'étape 6 de l'enrollment progressif via `/settings/security/passkeys`.
 
 ### 9.1 Choix structurels
 
@@ -1874,7 +1974,11 @@ Après succès, retry automatique de la requête originale.
 
 ---
 
-## 12. Migration depuis Argon2id direct
+## 12. Migration depuis Argon2id direct (🚧 Phase 2)
+
+> **Statut.** Pas démarré. Le V1 vit *encore* sur le modèle Argon2id
+> direct (legacy) — c'est l'objet précis de cette section. La
+> migration vers OPAQUE est l'enjeu de Phase 2 d'Auth-Roadmap.
 
 ### 12.1 État de départ (legacy)
 
@@ -2047,25 +2151,38 @@ committé.
 
 ### 13.2 Tâches d'arrière-plan (cleanup)
 
-Un cron interne tourne **toutes les heures** côté API et purge :
+#### ✅ V1 livré
+
+Un seul job : `cleanup-unactivated-accounts`, schedulé via
+`node-cron` à **03:00 chaque lundi (UTC, container TZ)**, en
+process API. Cf. `packages/api/src/cron/index.ts` —
+`startCronScheduler()` est appelé depuis `index.ts` au démarrage.
 
 | Cible | Condition de purge | Pourquoi |
 |---|---|---|
-| `users` `register_state = 'pre_register'` | `created_at < now() - 24h` | Inscription abandonnée step 1, libère l'email pour réinscription |
-| `email_verifications` | `expires_at < now() - 7j` ou `consumed_at < now() - 7j` | Lignes finies de vie, audit trail conservé 7j |
-| `mfa_bypass_requests` | (`cancelled_at`, `consumed_at`, ou `expires_at`) `< now() - 30j` | Idem, 30j pour permettre une enquête éventuelle |
-| `sessions` | `expires_at < now() - 7j` | Sessions expirées définitivement, libère la table |
-| Email verifications avec `attempts >= 5` | tout de suite (en flush du job) | Force re-demande |
+| `email_verifications` `kind='register'` | `expires_at < now()` | Tokens d'activation périmés, libère la table |
+| `users` `email_verified_at IS NULL` | aucune `email_verifications` pending restante | Comptes inactifs dont la fenêtre de 7j s'est écoulée. CASCADE supprime sessions / email_verifications consommées au passage |
+| `sessions` | `expires_at < now()` | Sessions expirées définitivement |
 
-Le cron est implémenté en process API (pas de scheduler externe en
-V1). Il logge un résumé chaque exécution
-(`cleanup.users_pre_register=N`, etc.). En cas d'erreur il
-n'**efface rien**, il logge et passe — la donnée orpheline coûte
-moins qu'une suppression buggée.
+Le job logge un résumé sur stdout :
+```
+[cron] cleanup-unactivated done {"verifications":N,"users":N,"sessions":N}
+```
 
-Un endpoint admin `POST /admin/cleanup/run` permet de déclencher
-manuellement (utile en prod si on veut forcer une purge ; gated
-par `requireAdmin` + `requireFreshPassword`).
+En cas d'erreur, le job loggue et passe — la donnée orpheline
+coûte moins qu'une suppression buggée. Pas d'endpoint admin de
+trigger manuel en V1 (à ajouter quand le besoin se manifeste).
+
+#### 🚧 Phase 2+
+
+Quand TOTP / passkey / bypass MFA arrivent, ajouter dans le même
+job :
+
+| Cible | Condition de purge |
+|---|---|
+| `mfa_bypass_requests` | (`cancelled_at`, `consumed_at`, ou `expires_at`) `< now() - 30j` (audit window) |
+| Email verifications avec `attempts >= 5` | tout de suite (force re-demande) |
+| `email_verifications` `kind='email_change'` consommés ou expirés | `> 7j` |
 
 ---
 

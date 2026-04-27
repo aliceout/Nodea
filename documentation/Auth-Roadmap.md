@@ -5,11 +5,31 @@
 > pour passer de l'auth actuelle (Argon2id direct + KEK dérivée du mot
 > de passe) à un modèle complet : OPAQUE pour le password, WebAuthn +
 > PRF pour les passkeys, TOTP pour le gating de session, recovery code
-> KEK, vérification email, parcours d'inscription multi-étapes.
+> KEK, vérification email, parcours d'inscription.
 >
 > La spécification technique détaillée (threat model, schéma DB, AAD,
-> labels HKDF, matrices…) vit dans `Auth-Spec.md` (à rédiger en
-> Phase 0). Ce fichier-ci ne décrit **que** le plan d'exécution.
+> labels HKDF, matrices…) vit dans `Auth-Spec.md`.
+>
+> ## État au {{2026-04-27}}
+>
+> **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
+> initial** :
+> - Inscription en un seul formulaire (email + password) au lieu du
+>   wizard 7-étapes (TOTP / passkey / recovery code retirés du flow
+>   d'inscription, à proposer post-activation — issue
+>   [#42](https://github.com/aliceout/Nodea/issues/42)).
+> - Invitations basculées sur du email-bound (admin → e-mail → lien
+>   `/register?invite=<token>`, Bitwarden-style) plutôt que des codes
+>   à copier-coller.
+> - Toggle admin `open_registration` ajouté pour basculer entre
+>   invitation-only et signup libre.
+> - Crypto reste sur le modèle legacy (Argon2id direct + KEK
+>   dérivée du password) ; OPAQUE arrive en Phase 2.
+>
+> **Phase 2 (OPAQUE) et au-delà — pas démarré**. Les sections
+> ci-dessous décrivent toujours le plan original ; il sera adapté
+> phase par phase pour s'inscrire dans le register simplifié plutôt
+> que de réintroduire le wizard.
 
 ---
 
@@ -78,7 +98,7 @@ Tranchées dans la discussion, à figer dans `Auth-Spec.md` :
 
 ## Phases
 
-### Phase 0 — Spec + dépendances (bloquant tout le reste)
+### Phase 0 — Spec + dépendances (✅ livrée)
 
 **Livrables**
 - `documentation/Auth-Spec.md` (un seul gros fichier) :
@@ -110,7 +130,30 @@ review-able. Aucun code d'auth modifié.
 
 ---
 
-### Phase 1 — Vérification email à l'inscription
+### Phase 1 — Inscription + activation (✅ livrée, simplifiée)
+
+> **Divergence assumée vs design initial.** Phase 1 a été livrée
+> en 5 commits successifs (cf. `git log --grep="feat(auth):"`).
+> Le wizard 7-étapes du plan original a été remplacé par un
+> single-form + magic-link activation après une revue UX qui a
+> jugé l'expérience initiale trop lourde pour des non-tech.
+> Détails dans `Auth-Spec.md` §7.1. Les facteurs additionnels
+> (TOTP, passkey, recovery code BIP39) ne sont **pas** dans le
+> register V1 — ils arrivent en Phase 2+ via des écrans Settings
+> dédiés.
+>
+> Changements significatifs vs ce qui suit :
+> - Pas de cookie `__Host-nodea_register` (single-form, pas de
+>   wizard).
+> - Pas de wizard cookie 24h, pas de `register_state` multi-valeur.
+> - Invitations basculées sur du email-bound (table `invites` a
+>   gagné une colonne `email`, pas de codes en clair).
+> - Toggle `open_registration` ajouté (table `app_settings`).
+>
+> Le détail du flow livré est dans `Auth-Spec.md` §7.1. Les
+> sections suivantes (Phase 2+) restent en l'état comme cible.
+
+### Phase 1 (design initial — non livré tel quel)
 
 **Pourquoi maintenant** : dépendance dure pour la Phase 6 (bypass
 TOTP par email) et pour le parcours multi-étapes (cookie de reprise).
