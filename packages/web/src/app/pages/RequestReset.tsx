@@ -155,14 +155,18 @@ function FormView({
       </h2>
       <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
         Indique ton email — on t’enverra un lien pour définir un nouveau mot
-        de passe.{' '}
-        <span className="text-danger">
-          <span aria-hidden="true">⚠</span> Tes données seront effacées : le
-          chiffrement n’est pas réversible sans ton mot de passe d’origine.
-        </span>
+        de passe.
       </p>
 
-      <form onSubmit={onSubmit} noValidate>
+      {/* Hard data-loss warning — the user chose the destructive
+          path on the fork, but we still want the consequence
+          framed before the form. Same red Warning callout that
+          predated the entry-fork refactor. */}
+      <Warning title="Tes données seront effacées">
+        Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
+      </Warning>
+
+      <form onSubmit={onSubmit} noValidate className="mt-5">
         <Field
           label="E-mail"
           type="email"
