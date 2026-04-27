@@ -31,6 +31,10 @@ import type { LoginBody } from '@nodea/shared';
 
 export interface SessionRegisterInput {
   email: string;
+  /** Public display name — required since the username field landed
+   *  in Phase 1. Validated server-side against `UsernameField` (2-32
+   *  chars, alphanumerics + `_-.`). */
+  username: string;
   password: string;
   /** Invite-token branch: pre-filled by Register from the URL when
    *  the user arrived via an invite link. Optional — when omitted the
@@ -139,6 +143,7 @@ export function useSession() {
       const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
       const body: Parameters<typeof apiRegisterSubmit>[0] = {
         email: input.email,
+        username: input.username,
         password: input.password,
         encryptionSalt,
         encryptedKey,

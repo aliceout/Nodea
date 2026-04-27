@@ -24,7 +24,7 @@ Central identity row.
 | --------------------- | --------- | ---------------------------------------------------------------------------- |
 | `id`                  | `text` PK | UUID generated server-side.                                                  |
 | `email`               | `text`    | Lowercased on insert. Unique.                                                |
-| `username`            | `text?`   | Optional public display name. Unique when set (partial idx).                 |
+| `username`            | `text?`   | Public display name. **Required** at register since Phase 1 (`RegisterSubmitBodySchema.username`, `UsernameField`). Column stays nullable for legacy / seeded rows. Unique when set (partial idx). |
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
 | `password_hash`       | `text`    | Argon2id hash. Never returned over the API.                                  |

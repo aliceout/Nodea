@@ -87,6 +87,10 @@ the factory loops over. There is nowhere to forget a guard.
 > the V1 code actually implements.
 
 - **Register** (single submit, two paths via `routes/auth-register-v2.ts`):
+  - The form requires email + **username** (public display name,
+    "prénom ou pseudo") + password. Username uniqueness is checked
+    server-side before insert and surfaces a clean `username_taken`
+    error on both paths.
   - **Invited path** — admin issues an invite via `POST /admin/invites
     { email }` → server emails a `/register?invite=<token>` link →
     user clicks → form pre-fills the email (read-only) → submit

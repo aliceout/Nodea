@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UsernameField } from './auth.ts';
 
 /**
  * Single-step register flow — two paths, same form:
@@ -41,6 +42,11 @@ const Base64ish = z.string().min(1);
  */
 export const RegisterSubmitBodySchema = z.object({
   email: z.string().email().max(254),
+  /** Public display name — required at register. Same shape rules as
+   *  `ChangeUsernameBody.username` (UsernameField, 2–32 chars). The
+   *  user is told this can be a first name or a pseudo. Uniqueness is
+   *  enforced at the DB layer via the partial unique index. */
+  username: UsernameField,
   password: z.string().min(12).max(200),
   /** Clear token from `?invite=<token>` in the invite link URL.
    *  Optional: omitted when registering via the open-registration

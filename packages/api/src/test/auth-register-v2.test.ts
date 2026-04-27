@@ -35,13 +35,29 @@ function jsonPost(body: unknown): RequestInit {
   };
 }
 
+/**
+ * Default username derives from the email's local part so that tests
+ * registering two distinct emails in the same case end up with two
+ * distinct usernames and don't trip the new uniqueness check. Tests
+ * exercising username collision can override via `opts.username`.
+ */
+function defaultUsernameFor(email: string): string {
+  const local = email.split('@')[0] ?? 'user';
+  // UsernameField allows letters/digits/_-. only — strip the rest and
+  // pad if the local part is shorter than 2 chars.
+  const cleaned = local.replace(/[^\p{L}\p{N}_.\-]/gu, '');
+  return cleaned.length >= 2 ? cleaned : `${cleaned}_u`;
+}
+
 function submitBody(opts: {
   email: string;
+  username?: string;
   password?: string;
   inviteToken?: string;
 }) {
   return {
     email: opts.email,
+    username: opts.username ?? defaultUsernameFor(opts.email),
     password: opts.password ?? REG_PASSWORD,
     encryptionSalt: 'salt-base64',
     encryptedKey: 'wrapped-key-base64',
@@ -169,6 +185,7 @@ describe('POST /auth/register — invited path', () => {
     expect(user).toBeDefined();
     expect(user!.emailVerifiedAt).not.toBeNull();
     expect(user!.encryptionSalt).toBe('salt-base64');
+    expect(user!.username).toBe('newcomer');
 
     const [usedInvite] = await db
       .select()
@@ -359,6 +376,89 @@ describe('POST /auth/register — open path', () => {
       (m) => m.tag === 'register-activate',
     );
     expect(activationMails).toHaveLength(0);
+  });
+});
+
+/* ============================================================================
+ * POST /auth/register — username field
+ * ========================================================================== */
+
+describe('POST /auth/register — username field', () => {
+  it('rejects 400 invalid_body when username is missing', async () => {
+    const invite = await seedInvite('no-username@example.com');
+    const { username: _omit, ...rest } = submitBody({
+      email: 'no-username@example.com',
+      inviteToken: invite.token,
+    });
+    void _omit;
+    const res = await app.request('/auth/register', jsonPost(rest));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'invalid_body' });
+  });
+
+  it('rejects 400 invalid_body when username has invalid characters', async () => {
+    const invite = await seedInvite('bad-chars@example.com');
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({
+          email: 'bad-chars@example.com',
+          inviteToken: invite.token,
+          username: 'has spaces!',
+        }),
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'invalid_body' });
+  });
+
+  it('returns 400 username_taken on the invited path when the name is already used', async () => {
+    // Seed a user that already grabbed the username "Pseudo".
+    const seeded = await seedUser('first@example.com');
+    await db.update(users).set({ username: 'Pseudo' }).where(eq(users.id, seeded.id));
+
+    const invite = await seedInvite('clasher@example.com');
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({
+          email: 'clasher@example.com',
+          inviteToken: invite.token,
+          username: 'Pseudo',
+        }),
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: 'register_failed',
+      reason: 'username_taken',
+    });
+
+    // Invite stays unused so the user can retry with a different name.
+    const [stillUnused] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.id, invite.id));
+    expect(stillUnused!.usedBy).toBeNull();
+  });
+
+  it('returns 400 username_taken on the open path when the name is already used', async () => {
+    const admin = await seedAdmin('uname-open-admin@example.com');
+    await setOpenRegistration(true, admin.id);
+    const seeded = await seedUser('squatter@example.com');
+    await db.update(users).set({ username: 'OpenName' }).where(eq(users.id, seeded.id));
+
+    const res = await app.request(
+      '/auth/register',
+      jsonPost(
+        submitBody({ email: 'wants-it@example.com', username: 'OpenName' }),
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: 'register_failed',
+      reason: 'username_taken',
+    });
   });
 });
 

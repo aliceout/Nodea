@@ -149,6 +149,9 @@ review-able. Aucun code d'auth modifié.
 > - Invitations basculées sur du email-bound (table `invites` a
 >   gagné une colonne `email`, pas de codes en clair).
 > - Toggle `open_registration` ajouté (table `app_settings`).
+> - Username obligatoire au register (`UsernameField`, présenté
+>   comme "prénom ou pseudo"). Erreur clean `username_taken` sur
+>   les deux paths.
 >
 > Le détail du flow livré est dans `Auth-Spec.md` §7.1. Les
 > sections suivantes (Phase 2+) restent en l'état comme cible.

@@ -7,6 +7,7 @@ import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import {
   PASSWORD_MIN_LENGTH,
+  UsernameField,
   checkPasswordRules,
   passwordRulesPassed,
   type PasswordRulesCheck,
@@ -229,6 +230,7 @@ function RedirectingToLoginCard({ email }: { email: string }) {
 
 const RegisterFormSchema = z
   .object({
+    username: UsernameField,
     password: z.string().min(PASSWORD_MIN_LENGTH).max(200),
     confirmPassword: z.string().min(1).max(200),
   })
@@ -247,6 +249,7 @@ function RegisterForm({
   onSubmitted: (email: string) => void;
   submitRegistration: (input: {
     email: string;
+    username: string;
     password: string;
     inviteToken?: string;
   }) => Promise<{ activated: boolean; email?: string }>;
@@ -276,7 +279,7 @@ function RegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<RegisterForm>({
     resolver: zodResolver(RegisterFormSchema),
-    defaultValues: { password: '', confirmPassword: '' },
+    defaultValues: { username: '', password: '', confirmPassword: '' },
   });
 
   async function onSubmit(values: RegisterForm): Promise<void> {
@@ -292,10 +295,12 @@ function RegisterForm({
     try {
       const input: {
         email: string;
+        username: string;
         password: string;
         inviteToken?: string;
       } = {
         email: emailInput,
+        username: values.username,
         password: values.password,
       };
       if (mode.kind === 'invited') input.inviteToken = mode.token;
@@ -305,6 +310,8 @@ function RegisterForm({
       if (isApiError(err)) {
         if (err.status === 400 && err.error === 'weak_password') {
           setServerError(err.reason ?? 'Le mot de passe est trop faible.');
+        } else if (err.status === 400 && err.reason === 'username_taken') {
+          setServerError('Ce nom d\'utilisateur·ice est déjà pris. Choisis-en un autre.');
         } else if (err.status === 400 && err.reason === 'email_mismatch') {
           setServerError(
             'L\'e-mail ne correspond pas à celui de l\'invitation.',
@@ -351,9 +358,26 @@ function RegisterForm({
         />
         {mode.kind === 'invited' ? (
           <p className="-mt-2 mb-3.5 text-[11.5px] text-muted">
-            E-mail défini par l'invitation, non modifiable.
+            E-mail défini lors de l'invitation, non modifiable.
           </p>
         ) : null}
+
+        <Field
+          label="Nom d'utilisateur·ice"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          error={
+            errors.username?.message === 'invalid_username'
+              ? 'Lettres, chiffres, et . _ - uniquement (2 à 32 caractères).'
+              : errors.username?.message
+          }
+          {...field('username')}
+        />
+        <p className="-mt-2 mb-3.5 text-[11.5px] text-muted">
+          Un prénom ou un pseudo, comme tu préfères.
+        </p>
 
         <Field
           label="Mot de passe"

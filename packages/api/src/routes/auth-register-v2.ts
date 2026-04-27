@@ -120,6 +120,7 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const email = body.email.toLowerCase();
+  const username = body.username;
 
   // Password policy applies to both paths — no anti-enum wiggle here.
   const policy = checkPasswordPolicy(body.password, [email]);
@@ -135,11 +136,24 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       body.inviteToken,
       email,
       async (tx) => {
+        // Username uniqueness lives INSIDE the tx so that a re-used /
+        // expired invite still reports `invalid_token` first — the
+        // token validation has already run before we get here. Run
+        // the lookup against the same tx for read consistency under
+        // SERIALIZABLE if we ever bump the isolation level.
+        const [usernameClash] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.username, username))
+          .limit(1);
+        if (usernameClash) throw new Error('username_taken');
+
         const userId = randomUUID();
         try {
           await tx.insert(users).values({
             id: userId,
             email,
+            username,
             passwordHash,
             encryptionSalt: body.encryptionSalt,
             encryptedKey: body.encryptedKey,
@@ -149,8 +163,10 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
             emailVerifiedAt: new Date(),
           });
         } catch {
-          // Email already taken — race or admin invited an existing
-          // user. Surface a clean error.
+          // Constraint violation — most likely email already taken
+          // (race or admin invited an existing user). Username
+          // conflict was pre-checked above so it'd only land here on
+          // a race; both surface as `email_taken` for V1 simplicity.
           throw new Error('email_taken');
         }
         return { userId, result: { userId, email } };
@@ -159,12 +175,17 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       if (err instanceof Error && err.message === 'email_taken') {
         return { ok: false as const, reason: 'email_taken' as const };
       }
+      if (err instanceof Error && err.message === 'username_taken') {
+        return { ok: false as const, reason: 'username_taken' as const };
+      }
       throw err;
     });
 
     if (!result.ok) {
       const status =
-        result.reason === 'email_mismatch' || result.reason === 'email_taken'
+        result.reason === 'email_mismatch' ||
+        result.reason === 'email_taken' ||
+        result.reason === 'username_taken'
           ? 400
           : 401;
       return c.json({ error: 'register_failed', reason: result.reason }, status);
@@ -193,6 +214,25 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
     .where(eq(users.email, email))
     .limit(1);
 
+  // Username conflict check on the open path: usernames are public
+  // info so we surface the clash directly. Allow self-conflict when
+  // reusing an inactive account (the same person retrying with the
+  // same username they already typed before).
+  const usernameOwners = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, username))
+    .limit(1);
+  const usernameTakenByOther = usernameOwners.some(
+    (row) => !existing || row.id !== existing.id,
+  );
+  if (usernameTakenByOther) {
+    return c.json(
+      { error: 'register_failed', reason: 'username_taken' },
+      400,
+    );
+  }
+
   let userId: string;
 
   if (existing) {
@@ -201,7 +241,7 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       return c.json({ ok: true, activated: false });
     }
     // Reuse the inactive row + refresh credentials in case the user
-    // typed a different password the second time around.
+    // typed a different password (or username) the second time around.
     userId = existing.id;
     await db
       .update(users)
@@ -209,6 +249,7 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
         passwordHash,
         encryptionSalt: body.encryptionSalt,
         encryptedKey: body.encryptedKey,
+        username,
       })
       .where(eq(users.id, userId));
   } else {
@@ -217,6 +258,7 @@ authRegisterV2Routes.post('/', submitLimiter, async (c) => {
       await db.insert(users).values({
         id: userId,
         email,
+        username,
         passwordHash,
         encryptionSalt: body.encryptionSalt,
         encryptedKey: body.encryptedKey,

@@ -881,12 +881,19 @@ verification row côté serveur.
 ```json
 {
   "email": "alice@example.com",
+  "username": "Alice",
   "password": "<plain>",
   "inviteToken": "<base64url, optional>",
   "encryptionSalt": "<base64>",
   "encryptedKey":   "<base64>"
 }
 ```
+
+`username` est **obligatoire** depuis Phase 1 — règles `UsernameField`
+(2-32 chars, lettres/chiffres/`_`/`-`/`.`, accents OK). Présenté à
+l'utilisateur comme "un prénom ou un pseudo". L'unicité est vérifiée
+côté serveur avant insert (clean error, pas d'anti-enum) et garantie
+au niveau DB par l'index unique partiel `users_username_unique`.
 
 **Branches serveur** :
 
@@ -896,8 +903,13 @@ verification row côté serveur.
      - Refus si used / expired / unknown → 401 `invalid_token`.
      - Refus si `invites.email !== body.email` (strict match) → 400
        `email_mismatch`.
-     - INSERT `users { passwordHash, encryptionSalt, encryptedKey,
-       emailVerifiedAt: now(), registerState: 'complete' }`.
+     - **Pré-check username dans la transaction** (après validation
+       du token, avant insert) : si `users.username` existe déjà →
+       400 `username_taken`. Le check est INSIDE la tx pour que
+       `invalid_token` reste prioritaire quand le lien est ré-utilisé.
+     - INSERT `users { username, passwordHash, encryptionSalt,
+       encryptedKey, emailVerifiedAt: now(),
+       registerState: 'complete' }`.
      - UPDATE `invites { usedBy, usedAt }`.
    - Réponse `200 { ok: true, activated: true, email }`. Aucun
      cookie émis — l'user retape son password à `/login`
@@ -905,12 +917,15 @@ verification row côté serveur.
 
 2. **Open registration** (pas de token, toggle ON) :
    - Vérifier `app_settings.open_registration === true`.
+   - Pré-check username : si déjà pris par un autre user → 400
+     `username_taken`. Self-conflict autorisé quand l'user retry
+     sur sa propre ligne inactive.
    - Si `users` actif existe déjà avec cet email → silent 200
      (anti-enum).
    - Si `users` inactif existe (= retry) → réutilise la ligne,
-     refresh credentials, invalide les anciens
+     refresh credentials + username, invalide les anciens
      `email_verifications` pending, génère un nouveau token.
-   - Sinon : INSERT `users { …, emailVerifiedAt: NULL,
+   - Sinon : INSERT `users { username, …, emailVerifiedAt: NULL,
      registerState: 'complete' }`.
    - INSERT `email_verifications { kind: 'register', codeHash:
      SHA-256(token), expiresAt: now+7d }`.
