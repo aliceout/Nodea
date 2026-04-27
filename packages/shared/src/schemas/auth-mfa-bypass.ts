@@ -49,39 +49,3 @@ export const MfaBypassRequestResponseSchema = z.object({
 export type MfaBypassRequestResponse = z.infer<
   typeof MfaBypassRequestResponseSchema
 >;
-
-/* ============================================================================
- * `GET /auth/mfa/bypass/active` — active bypass for the current user
- * ========================================================================== */
-
-export const MfaBypassActiveResponseSchema = z.object({
-  /** `null` = no active bypass. The route itself returns the same
-   *  shape with `active: null` rather than a 404 so the UI can
-   *  treat absence as a normal state. */
-  active: z
-    .object({
-      factor: z.enum(['totp', 'passkey']),
-      /** When the user confirmed the email link (null if pending). */
-      confirmedAt: z.string().nullable(),
-      /** When the request expires entirely (TTL 7 days from request). */
-      expiresAt: z.string(),
-      /** When the bypass becomes applicable at next login (only set
-       *  when `confirmedAt` is — `confirmedAt + 48h`). */
-      earliestApplyAt: z.string().nullable(),
-    })
-    .nullable(),
-});
-export type MfaBypassActiveResponse = z.infer<
-  typeof MfaBypassActiveResponseSchema
->;
-
-/* ============================================================================
- * `POST /auth/mfa/bypass/cancel` — authenticated cancellation
- *
- * Email-link cancellation goes through `GET /auth/mfa/bypass/cancel?t=…`
- * which is tokenised; this POST is for an in-app session cancelling
- * its own active request without going through the email.
- * ========================================================================== */
-
-export const MfaBypassCancelBodySchema = z.object({}).passthrough();
-export type MfaBypassCancelBody = z.infer<typeof MfaBypassCancelBodySchema>;

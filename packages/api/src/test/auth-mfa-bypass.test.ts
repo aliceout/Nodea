@@ -6,9 +6,8 @@
  *   - POST /auth/mfa/bypass/request    (mfa_pending)
  *   - GET  /auth/mfa/bypass/confirm    (anon, token)
  *   - GET  /auth/mfa/bypass/cancel     (anon, token)
- *   - GET  /auth/mfa/bypass/active     (full session)
- *   - POST /auth/mfa/bypass/cancel     (full session)
  *   - Lazy application at login (/auth/login/finish)
+ *   - Auto-cancel of pending bypasses on full-session promotion
  *
  * The "perdu 2 trucs = niqué" rule (§6.2) is exercised by mode
  * `maximum` scenarios. Email side-effects are observed via the
@@ -468,56 +467,10 @@ describe('lazy bypass application at login', () => {
 });
 
 /* ============================================================================
- * GET /auth/mfa/bypass/active + POST cancel from full session
+ * Auto-cancel on successful login
  * ========================================================================== */
 
-describe('full-session bypass status routes', () => {
-  it('GET /active returns null when the user has no bypass', async () => {
-    await seedUser('bypass-status-empty@example.com');
-    const r = await rawLogin('bypass-status-empty@example.com', TEST_PASSWORD);
-    const cookie = r.cookie!;
-
-    const res = await app.request('/auth/mfa/bypass/active', {
-      headers: { cookie },
-    });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { active: unknown };
-    expect(body.active).toBeNull();
-  });
-
-  it('POST /cancel from full session cancels the active bypass', async () => {
-    const u = await seedUser('bypass-self-cancel@example.com');
-    // Login first — full-session promotion auto-cancels pending
-    // bypasses, so the row has to be inserted AFTER login to exercise
-    // the manual cancel route.
-    const r = await rawLogin('bypass-self-cancel@example.com', TEST_PASSWORD);
-    const cookie = r.cookie!;
-
-    await db.insert(mfaBypassRequests).values({
-      id: randomUUID(),
-      userId: u.id,
-      factor: 'totp',
-      confirmTokenHash: hashBypassToken('confirm-' + randomUUID()),
-      cancelTokenHash: hashBypassToken('cancel-' + randomUUID()),
-      confirmedAt: null,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      cancelledAt: null,
-      consumedAt: null,
-    });
-
-    const res = await app.request('/auth/mfa/bypass/cancel', {
-      method: 'POST',
-      headers: { cookie },
-    });
-    expect(res.status).toBe(200);
-
-    const [row] = await db
-      .select()
-      .from(mfaBypassRequests)
-      .where(eq(mfaBypassRequests.userId, u.id));
-    expect(row?.cancelledAt).not.toBeNull();
-  });
-
+describe('auto-cancel on full-session promotion', () => {
   it('a successful full-session login auto-cancels any pending bypass', async () => {
     // The legit user re-gained access to the factor they claimed to
     // have lost — completing a full login proves it, so the bypass
@@ -546,18 +499,6 @@ describe('full-session bypass status routes', () => {
       .where(eq(mfaBypassRequests.userId, u.id));
     expect(row?.cancelledAt).not.toBeNull();
     expect(row?.consumedAt).toBeNull();
-  });
-
-  it('POST /cancel returns 404 when no active bypass', async () => {
-    await seedUser('bypass-cancel-empty@example.com');
-    const r = await rawLogin('bypass-cancel-empty@example.com', TEST_PASSWORD);
-    const cookie = r.cookie!;
-
-    const res = await app.request('/auth/mfa/bypass/cancel', {
-      method: 'POST',
-      headers: { cookie },
-    });
-    expect(res.status).toBe(404);
   });
 });
 
