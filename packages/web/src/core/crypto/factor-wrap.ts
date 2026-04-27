@@ -27,14 +27,21 @@
  * `additionalData` makes that mismatch produce an auth-tag failure
  * at decrypt time.
  *
- * The lib-supplied `exportKey` from `@serenity-kit/opaque` is a hex
- * string; for the other factors the IKM is a `Uint8Array`. We
- * accept both forms in {@link deriveFactorWrapKey} to keep call
- * sites symmetric.
+ * The lib-supplied `exportKey` from `@serenity-kit/opaque` is a
+ * **base64url** string (its native wire encoding for everything from
+ * envelope blobs to the static setup). For other factors the IKM
+ * arrives as raw `Uint8Array` (PRF outputs, BIP39 entropy). We
+ * accept both forms in {@link asIkmBytes} to keep call sites
+ * symmetric.
  */
 import type { Base64 } from '@nodea/shared/crypto-types';
 import { hkdfDeriveBits } from './hkdf.ts';
-import { base64ToBytes, bytesToBase64, randomBytes } from './base64.ts';
+import {
+  base64ToBytes,
+  base64UrlToBytes,
+  bytesToBase64,
+  randomBytes,
+} from './base64.ts';
 
 const textEncoder = new TextEncoder();
 
@@ -44,23 +51,17 @@ export const HKDF_LABEL_WRAP_KEK = 'nodea:wrap-kek' as const;
 export const HKDF_LABEL_WRAP_MAIN = 'nodea:wrap-main' as const;
 
 /* ============================================================================
- * Hex / IKM normalisation
+ * IKM normalisation
  * ========================================================================== */
 
-function hexToBytes(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0) throw new Error('hex string has odd length');
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i += 1) {
-    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    if (Number.isNaN(byte)) throw new Error('invalid hex character');
-    out[i] = byte;
-  }
-  return out;
-}
-
-/** Normalise a hex / Uint8Array IKM to bytes. */
+/**
+ * Normalise a base64url-encoded string OR a raw `Uint8Array` IKM
+ * to bytes. The `@serenity-kit/opaque` lib gives `exportKey` as
+ * base64url; passkey PRF outputs and BIP39 entropy come in as
+ * `Uint8Array` directly.
+ */
 function asIkmBytes(ikm: string | Uint8Array): Uint8Array {
-  return typeof ikm === 'string' ? hexToBytes(ikm) : ikm;
+  return typeof ikm === 'string' ? base64UrlToBytes(ikm) : ikm;
 }
 
 /* ============================================================================

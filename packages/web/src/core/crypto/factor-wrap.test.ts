@@ -7,20 +7,21 @@ import {
   wrapKekUnderFactor,
   wrapMainKeyUnderKek,
 } from './factor-wrap.ts';
-import { randomBytes } from './base64.ts';
+import { bytesToBase64Url, randomBytes } from './base64.ts';
 
 describe('factor-wrap — KEK under factor (HKDF nodea:wrap-kek + AES-GCM)', () => {
   const userId = '11111111-2222-3333-4444-555555555555';
 
-  it('round-trip wrap → unwrap with hex IKM (OPAQUE export_key shape)', async () => {
+  it('round-trip wrap → unwrap with base64url IKM (OPAQUE export_key shape)', async () => {
     const kek = randomBytes(32);
-    const exportKeyHex = Array.from(randomBytes(32))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    // `@serenity-kit/opaque` returns `exportKey` as base64url —
+    // mirror that shape here so the test catches regressions if
+    // someone ever swaps the asIkmBytes decoder back to hex.
+    const exportKey = bytesToBase64Url(randomBytes(32));
     const aad = buildKekAAD(userId, 'password');
 
-    const wrapped = await wrapKekUnderFactor(kek, exportKeyHex, aad);
-    const back = await unwrapKekUnderFactor(wrapped, exportKeyHex, aad);
+    const wrapped = await wrapKekUnderFactor(kek, exportKey, aad);
+    const back = await unwrapKekUnderFactor(wrapped, exportKey, aad);
 
     expect(Array.from(back)).toEqual(Array.from(kek));
   });
