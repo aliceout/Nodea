@@ -564,7 +564,9 @@ function ModulesTab() {
     <div className="max-w-[880px]">
       <h3 className="mb-1 text-[16px] font-semibold text-ink">Modules actifs</h3>
       <p className="mb-[18px] text-[13px] leading-[1.55] text-muted">
-        Allume ce dont tu te sers — chaque module apparaît dans la sidebar.
+        Tous les modules sont activés par défaut. Désactive ceux que tu
+        n’utilises pas — ils disparaîtront de la barre latérale et leurs
+        données seront laissées intactes (rien n’est supprimé).
       </p>
       <ModulesManager />
     </div>

@@ -9,6 +9,7 @@ import {
 import { useSession } from '@/core/auth/use-session';
 import { usePreferences } from '@/core/preferences/usePreferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
+import { useFirstRunSeed } from '@/core/modules/useFirstRunSeed';
 import Sidebar from '@/ui/dirk/Sidebar';
 import ComposerModal from '@/ui/dirk/ComposerModal';
 
@@ -33,9 +34,13 @@ export default function Layout() {
   const session = useSession();
   // Hydrate the encrypted user preferences + modules-config slices as
   // soon as the layout mounts — each runs at most once per
-  // (session, mainKey) pair.
+  // (session, mainKey) pair. The first-run seed then enables every
+  // module by default and flips `onboardingStatus = complete` for
+  // brand-new accounts (no picker to confront an uncontextualised
+  // user — see `useFirstRunSeed.ts`).
   usePreferences();
   useModulesHydration();
+  useFirstRunSeed();
 
   // ⌘K (or Ctrl+K) toggles the global composer from anywhere in the
   // shell. Disabled when the key is missing — the blocking

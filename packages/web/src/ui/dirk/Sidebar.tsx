@@ -1,90 +1,29 @@
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-  ArrowRightOnRectangleIcon,
-  BookOpenIcon,
-  CalendarIcon,
-  CheckCircleIcon,
-  Cog6ToothIcon,
-  DocumentTextIcon,
-  FireIcon,
-  HeartIcon,
-  HomeIcon,
-  ShieldCheckIcon,
-} from '@heroicons/react/24/outline';
 
-import { useSession } from '@/core/auth/use-session';
 import {
   useNodeaStore,
   selectMobileMenuOpen,
-  selectModules,
-  selectUser,
 } from '@/core/store/nodea-store';
-import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
-import LanguageToggle from '@/ui/dirk/LanguageToggle';
-import ThemeToggle from '@/ui/dirk/ThemeToggle';
+
+import SidebarHeader from './sidebar/SidebarHeader';
+import SidebarNav from './sidebar/SidebarNav';
+import { SidebarTipModules } from './sidebar/SidebarTip';
+import SidebarFooter from './sidebar/SidebarFooter';
 
 /**
- * Direction K · Sauge sidebar — replicates the handoff prototype
- * (`Design/design_handoff_nodea/source/dir-k.jsx → K_Sidebar`)
- * pixel-precise: 240px column on `bg-bg-2`, no chrome other than
- * the right hairline. Three sections (main / Library / Review)
- * separated by uppercase eyebrows; pulsing sync dot footer.
+ * Direction K · Sauge sidebar — 240 px column on `lg+`, slide-in
+ * drawer below. Pure orchestrator: it stitches together the four
+ * pieces (`<SidebarHeader>`, `<SidebarNav>`, tip slot,
+ * `<SidebarFooter>`) and handles the mobile-drawer plumbing. Each
+ * piece lives in its own file under `./sidebar/` and is independent
+ * — adding a new tip or a new footer widget doesn't require
+ * touching this file.
  *
- * Doubles as the mobile drawer (Headless UI Dialog) below `lg`.
- *
- * The username slot at the top opens a popover anchored to the
- * trigger — Profile / Settings / Admin (conditional) / Sign out.
+ * Tip slot lives between the nav (which can be short) and the
+ * footer (always at the bottom). The `flex-1` spacer pushes the
+ * tip + footer to the bottom of the viewport when the nav is short.
  */
-
-interface NavItem {
-  id: string;
-  label: string;
-  /** Override the URL — defaults to `/flow/${id}` when omitted. */
-  href?: string;
-  /** Heroicon to render before the label. Main items only — sub-items
-   * (Library / Review categories) sit under their group eyebrow and
-   * stay icon-less for visual hierarchy. */
-  icon?: typeof HomeIcon;
-}
-
-const MAIN_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Aujourd’hui', icon: HomeIcon },
-  { id: 'mood', label: 'Mood', icon: HeartIcon },
-  { id: 'journal', label: 'Journal', icon: DocumentTextIcon },
-  { id: 'goals', label: 'Goals', icon: CheckCircleIcon },
-  { id: 'habits', label: 'Habits', icon: FireIcon },
-  { id: 'library', label: 'Library', icon: BookOpenIcon },
-  { id: 'review', label: 'Review', icon: CalendarIcon },
-];
-
-/**
- * Library splits into three lenses on the same data: the books
- * themselves, the highlighted extracts (`reviews.kind === 'quote'`),
- * and the freeform notes (`reviews.kind === 'note'`). All three
- * routes resolve to `/flow/library` with a `?subview=` query param —
- * we don't need a separate router branch since the LibraryPage
- * already conditions its render on the param.
- */
-interface LibrarySubItem {
-  /** Value of the `?subview=` query param. */
-  subview: 'livres' | 'extraits' | 'notes';
-  label: string;
-}
-const LIBRARY_SUB_ITEMS: readonly LibrarySubItem[] = [
-  { subview: 'livres', label: 'Livres' },
-  { subview: 'extraits', label: 'Extraits' },
-  { subview: 'notes', label: 'Notes' },
-];
-
-interface SidebarShellProps {
-  children: React.ReactNode;
-}
-
-/** Renders the sidebar twice: once as a static aside on `lg+`,
- *  once as a slide-in drawer on smaller screens. */
 export default function Sidebar() {
   const open = useNodeaStore(selectMobileMenuOpen);
   const setOpen = useNodeaStore((s) => s.setMobileMenuOpen);
@@ -129,7 +68,7 @@ export default function Sidebar() {
   );
 }
 
-function SidebarShell({ children }: SidebarShellProps) {
+function SidebarShell({ children }: { children: React.ReactNode }) {
   return (
     <aside className="hidden w-[240px] shrink-0 border-r border-hair bg-bg-2 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
       {children}
@@ -142,230 +81,16 @@ interface SidebarBodyProps {
 }
 
 function SidebarBody({ onNavigate }: SidebarBodyProps) {
-  const { moduleId } = useParams();
-  const [searchParams] = useSearchParams();
-  const current = moduleId ?? 'home';
-  const modulesRuntime = useNodeaStore(selectModules);
-
-  // Filter by toggle state, but keep the home item always visible.
-  const enabledIds = new Set(
-    Object.entries(modulesRuntime)
-      .filter(([, entry]) => entry?.enabled)
-      .map(([id]) => id),
-  );
-
-  const mainVisible = MAIN_ITEMS.filter(
-    (item) => item.id === 'home' || enabledIds.has(item.id),
-  );
-
-  // The active Library sub-view tracks `?subview=` — defaults to
-  // `livres` when the user lands on `/flow/library` without a query
-  // string, matching the LibraryPage's own default.
-  const librarySubview = (searchParams.get('subview') ?? 'livres') as
-    | 'livres'
-    | 'extraits'
-    | 'notes';
-
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
       <SidebarHeader />
-
-      <div className="flex flex-col gap-0.5">
-        {mainVisible.map((item) => (
-          <Fragment key={item.id}>
-            <SidebarItem
-              item={item}
-              active={current === item.id}
-              onNavigate={onNavigate}
-            />
-            {item.id === 'library' && current === 'library' ? (
-              <LibrarySubNav
-                activeSubview={librarySubview}
-                onNavigate={onNavigate}
-              />
-            ) : null}
-          </Fragment>
-        ))}
-      </div>
-
+      <SidebarNav onNavigate={onNavigate} />
       <div className="flex-1" />
+      {/* Tip slot — drop more `<SidebarTip*>` instances here as
+          new nudges appear. Each one is independently dismissable
+          and self-contained, so the slot stays a passive container. */}
+      <SidebarTipModules />
       <SidebarFooter />
     </nav>
-  );
-}
-
-interface LibrarySubNavProps {
-  activeSubview: 'livres' | 'extraits' | 'notes';
-  onNavigate: () => void;
-}
-
-function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
-  const navigate = useNavigate();
-  return (
-    <ul className="ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
-      {LIBRARY_SUB_ITEMS.map((sub) => {
-        const active = activeSubview === sub.subview;
-        return (
-          <li key={sub.subview}>
-            <button
-              type="button"
-              onClick={() => {
-                navigate(`/flow/library?subview=${sub.subview}`);
-                onNavigate();
-              }}
-              data-active={active}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'block w-full rounded-md px-2 py-1 text-left text-[12.5px] transition-colors',
-                active
-                  ? 'bg-bg font-medium text-ink'
-                  : 'text-muted hover:bg-bg hover:text-ink',
-              )}
-            >
-              {sub.label}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function SidebarHeader() {
-  return (
-    <div className="flex items-center gap-2 px-2.5 pb-4 pt-1">
-      <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-accent" />
-      <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
-      <UserMenu />
-    </div>
-  );
-}
-
-interface SidebarItemProps {
-  item: NavItem;
-  active: boolean;
-  onNavigate: () => void;
-}
-
-function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
-  const navigate = useNavigate();
-  const href = item.href ?? `/flow/${item.id}`;
-  const Icon = item.icon;
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        navigate(href);
-        onNavigate();
-      }}
-      data-active={active}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        'group flex w-full items-center rounded-md px-2.5 py-1.5 text-left transition-[background-color,color,transform] duration-200',
-        'text-[13.5px] text-ink-soft',
-        active
-          ? 'bg-accent text-white'
-          : 'hover:translate-x-0.5 hover:bg-bg hover:text-ink',
-      )}
-    >
-      <span className="flex min-w-0 items-center gap-2.5">
-        {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
-        <span className="truncate">{item.label}</span>
-      </span>
-    </button>
-  );
-}
-
-function SidebarFooter() {
-  return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-hair px-2.5 pt-2.5">
-      {/* Top row: sync indicator alone, full-width. Status reads
-          first when the eye sweeps the footer top-to-bottom — that's
-          the layout the user asked for. */}
-      <div className="flex items-center gap-2 text-[12px] text-muted">
-        <span
-          aria-hidden="true"
-          className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
-        />
-        Synchronisé · à l’instant
-      </div>
-      {/* Bottom row: language select on the left, theme toggle on
-          the right. `justify-between` pins each to its own edge so
-          the two read as peer widgets rather than huddled. */}
-      <div className="flex items-center justify-between gap-1.5">
-        <LanguageToggle />
-        <ThemeToggle />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Direct icon strip — settings (→ `Mon compte` with all its
- * Préférences / Modules / Identité tabs), an admin-only shield
- * shortcut, and a logout. The earlier dropdown indirection was
- * dropped: theme switch lives in the sidebar footer, the rest of
- * Mon compte is one click away via the cog.
- */
-function UserMenu() {
-  const user = useNodeaStore(selectUser);
-  const session = useSession();
-  const navigate = useNavigate();
-  const { t } = useI18n();
-  const isAdmin = user?.role === 'admin';
-
-  async function handleSignOut(): Promise<void> {
-    await session.logout();
-    navigate('/login', { replace: true });
-  }
-
-  return (
-    <div className="ml-auto flex items-center gap-0.5">
-      <UserMenuIcon
-        icon={Cog6ToothIcon}
-        label={t('layout.userMenu.profile', { defaultValue: 'Mon compte' })}
-        onClick={() => navigate('/flow/account')}
-      />
-      {isAdmin ? (
-        <UserMenuIcon
-          icon={ShieldCheckIcon}
-          label={t('layout.userMenu.admin', { defaultValue: 'Administration' })}
-          onClick={() => navigate('/flow/admin')}
-        />
-      ) : null}
-      <UserMenuIcon
-        icon={ArrowRightOnRectangleIcon}
-        label={t('layout.userMenu.signOut', { defaultValue: 'Se déconnecter' })}
-        tone="danger"
-        onClick={handleSignOut}
-      />
-    </div>
-  );
-}
-
-interface UserMenuIconProps {
-  icon: typeof Cog6ToothIcon;
-  label: string;
-  tone?: 'default' | 'danger';
-  onClick: () => void;
-}
-
-function UserMenuIcon({ icon: Icon, label, tone = 'default', onClick }: UserMenuIconProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={cn(
-        'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors',
-        tone === 'danger'
-          ? 'text-muted hover:bg-danger/10 hover:text-danger'
-          : 'text-muted hover:bg-bg-2 hover:text-ink',
-      )}
-    >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </button>
   );
 }
