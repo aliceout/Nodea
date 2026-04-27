@@ -13,6 +13,7 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHomepage from './Empty';
+import Onboarding from './Onboarding';
 
 /**
  * Homepage — Direction K · Sauge.
@@ -60,6 +61,15 @@ export default function HomePage() {
 
   if (forceEmpty) return <EmptyHomepage />;
 
+  // First-run onboarding lives inline on this page rather than as a
+  // modal — see `./Onboarding.tsx` for the rationale. While the
+  // user's `onboardingStatus` is `pending`, the home swaps out its
+  // mock dashboard for the language + modules picker. The aside is
+  // hidden because its blocks (Mood frise, Habits map, Reading)
+  // would only show mocks until the user actually enables those
+  // modules.
+  const onboardingPending = user?.onboardingStatus === 'pending';
+
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
@@ -70,10 +80,16 @@ export default function HomePage() {
         newEntryLabel={t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
       />
 
-      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-        <PrimaryColumn name={displayName} moodEntries={moodEntries} />
-        <SideColumn moodEntries={moodEntries} />
-      </div>
+      {onboardingPending ? (
+        <div className="px-6 py-7 sm:px-9">
+          <Onboarding displayName={displayName} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
+          <PrimaryColumn name={displayName} moodEntries={moodEntries} />
+          <SideColumn moodEntries={moodEntries} />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRegisterActivate, isApiError } from '@/core/api/client';
+import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 
 /**
  * Activate — landing page for the magic-link in the activation email.
@@ -76,16 +77,22 @@ export default function ActivatePage() {
   }, [params, navigate]);
 
   return (
-    <div className="grid min-h-screen place-items-center bg-bg px-6 py-16 text-ink">
-      <div className="animate-fade-up w-full max-w-[440px] rounded-lg border border-hair bg-bg p-8">
-        {status.state === 'pending' ? <PendingPanel /> : null}
-        {status.state === 'success' ? (
-          <SuccessPanel email={status.email} />
-        ) : null}
-        {status.state === 'error' ? (
-          <ErrorPanel reason={status.reason} />
-        ) : null}
-      </div>
+    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
+      <AuthMarketingPanel headline="Active ton compte.">
+        <PrivacyBody />
+      </AuthMarketingPanel>
+
+      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+        <div className="animate-fade-up w-full max-w-[360px]">
+          {status.state === 'pending' ? <PendingPanel /> : null}
+          {status.state === 'success' ? (
+            <SuccessPanel email={status.email} />
+          ) : null}
+          {status.state === 'error' ? (
+            <ErrorPanel reason={status.reason} />
+          ) : null}
+        </div>
+      </main>
     </div>
   );
 }

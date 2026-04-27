@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal';
-import OnboardingModal from '@/ui/atoms/specifics/OnboardingModal';
 import { nav } from './navigation/Navigation';
 import {
   useNodeaStore,
   selectKeyStatus,
-  selectUser,
 } from '@/core/store/nodea-store';
 import { useSession } from '@/core/auth/use-session';
-import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
 import { usePreferences } from '@/core/preferences/usePreferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
 import Sidebar from '@/ui/dirk/Sidebar';
@@ -23,15 +20,13 @@ import ComposerModal from '@/ui/dirk/ComposerModal';
  * dates, page-level CTAs, custom hierarchies).
  *
  * Crypto status `missing` keeps blocking with `KeyMissingModal`.
- * Pending onboarding still overlays `OnboardingModal` on top of
- * the current route.
+ * First-run onboarding now lives inline on the home page (see
+ * `app/flow/Homepage/Onboarding.tsx`) — no shell-level modal.
  */
 export default function Layout() {
   const { moduleId } = useParams();
   const current = moduleId ?? 'home';
   const keyStatus = useNodeaStore(selectKeyStatus);
-  const user = useNodeaStore(selectUser);
-  const setAuth = useNodeaStore((s) => s.setAuth);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const closeComposer = useNodeaStore((s) => s.closeComposer);
   const composerOpen = useNodeaStore((s) => s.composer.open);
@@ -41,7 +36,6 @@ export default function Layout() {
   // (session, mainKey) pair.
   usePreferences();
   useModulesHydration();
-  const [snoozed, setSnoozed] = useState(false);
 
   // ⌘K (or Ctrl+K) toggles the global composer from anywhere in the
   // shell. Disabled when the key is missing — the blocking
@@ -59,14 +53,6 @@ export default function Layout() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [keyStatus, composerOpen, openComposer, closeComposer]);
-  const needsOnboarding =
-    !snoozed && user?.onboardingStatus === 'pending' && keyStatus !== 'missing';
-
-  async function finishOnboarding(): Promise<void> {
-    await apiCompleteOnboarding();
-    const me = await apiMe();
-    if (me) setAuth(me);
-  }
 
   const moduleKnown = useMemo(() => nav.some((t) => t.id === current), [current]);
   const ActiveView = useMemo(() => {
@@ -87,12 +73,6 @@ export default function Layout() {
           }}
         />
       ) : null}
-
-      <OnboardingModal
-        open={needsOnboarding}
-        onFinish={finishOnboarding}
-        onSnooze={() => setSnoozed(true)}
-      />
 
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>

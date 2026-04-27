@@ -42,7 +42,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'preferences', label: 'Préférences' },
   { id: 'modules', label: 'Modules' },
   { id: 'data', label: 'Données' },
-  { id: 'danger', label: 'Zone rouge' },
+  { id: 'danger', label: 'Suppression du compte' },
 ];
 
 export default function AccountPage() {

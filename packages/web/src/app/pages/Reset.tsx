@@ -1,10 +1,12 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { forwardRef, useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import { apiResetPassword, isApiError } from '@/core/api/client';
 import { randomBytes } from '@/core/crypto/base64';
 import { wrapMainKey } from '@/core/crypto/envelope';
+import { cn } from '@/lib/utils';
+import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -12,7 +14,7 @@ zxcvbnOptions.setOptions({
 });
 
 /**
- * Consume a reset token.
+ * Consume a reset token — Direction K · Sauge.
  *
  * We generate a fresh main key client-side (32 random bytes), wrap it
  * under the user's new password (argon2id → AES-GCM), and ship the
@@ -23,6 +25,12 @@ zxcvbnOptions.setOptions({
  * A confirmation checkbox forces the user to acknowledge the data loss
  * before the destructive request goes out. The main key bytes are
  * zeroed in memory as soon as the wrap is done.
+ *
+ * Two-column shell mirrors Login / Register / RequestReset so the
+ * auth surface stays one continuous design language. The marketing
+ * panel here keeps a recovery-specific body — the standard
+ * `<PrivacyBody />` would feel oddly upbeat next to a destructive
+ * action.
  */
 export default function ResetPage() {
   const [params] = useSearchParams();
@@ -69,16 +77,16 @@ export default function ResetPage() {
     } catch (err) {
       if (isApiError(err) && err.status === 400) {
         if (err.error === 'invalid_token') {
-          setError("Ce lien est invalide ou a expiré. Redemande un email de réinitialisation.");
+          setError('Ce lien est invalide ou a expiré. Redemande un email de réinitialisation.');
         } else if (err.error === 'weak_password') {
-          setError("Mot de passe trop faible : " + (err.reason ?? 'choisis-en un plus complexe.'));
+          setError('Mot de passe trop faible : ' + (err.reason ?? 'choisis-en un plus complexe.'));
         } else {
           setError('Requête refusée.');
         }
       } else if (isApiError(err) && err.status === 429) {
         setError('Trop de tentatives récentes. Réessaie plus tard.');
       } else {
-        setError("Une erreur est survenue. Réessaie plus tard.");
+        setError('Une erreur est survenue. Réessaie plus tard.');
         if (import.meta.env.DEV) console.warn('reset failed', err);
       }
     } finally {
@@ -87,125 +95,262 @@ export default function ResetPage() {
     }
   }
 
-  if (!token) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none">
-          <h1 className="text-center text-lg font-semibold">Lien invalide</h1>
-          <p className="text-sm">
-            Ce lien de réinitialisation est incomplet. Redemande un email depuis la page
-            « mot de passe oublié ».
-          </p>
-          <p className="text-center">
-            <Link to="/request-reset" className="text-sm underline">
-              ← Redemander un lien
-            </Link>
-          </p>
-        </div>
-      </div>
-    );
-  }
+  return (
+    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
+      <AuthMarketingPanel headline="Repars sur de bonnes bases.">
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Le mot de passe est aussi la clé qui chiffre tes entrées. Le réinitialiser
+          remet ton compte à zéro — toutes les données existantes sont supprimées.
+        </p>
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          C’est volontaire : sans la clé, personne ne peut récupérer le contenu —
+          y compris l’équipe de Nodea.
+        </p>
+      </AuthMarketingPanel>
 
-  if (done) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none">
-          <h1 className="text-center text-lg font-semibold">Mot de passe réinitialisé</h1>
-          <p className="text-sm">
-            Tu peux te reconnecter avec ton nouveau mot de passe. Ton compte a été remis à
-            zéro — les entrées précédentes ont été supprimées.
-          </p>
-          <Link
-            to="/login"
-            className="mx-auto inline-block rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
-          >
-            Se connecter
-          </Link>
+      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+        <div className="animate-fade-up w-full max-w-[360px]">
+          {!token ? (
+            <InvalidLinkPanel />
+          ) : done ? (
+            <DonePanel />
+          ) : (
+            <ResetForm
+              password={password}
+              setPassword={setPassword}
+              confirm={confirm}
+              setConfirm={setConfirm}
+              passwordsMatch={passwordsMatch}
+              strength={strength}
+              acknowledged={acknowledged}
+              setAcknowledged={setAcknowledged}
+              error={error}
+              submitting={submitting}
+              canSubmit={canSubmit}
+              onSubmit={onSubmit}
+            />
+          )}
         </div>
+      </main>
+    </div>
+  );
+}
+
+function InvalidLinkPanel() {
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Lien invalide</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Ce lien est incomplet.
+      </h2>
+      <p className="mb-6 text-[14px] text-ink-soft">
+        Redemande un email depuis la page « mot de passe oublié ».
+      </p>
+      <Link
+        to="/request-reset"
+        className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-deep"
+      >
+        Redemander un lien
+      </Link>
+    </>
+  );
+}
+
+function DonePanel() {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white"
+      >
+        ✓
       </div>
-    );
-  }
+      <h2 className="mb-2 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Mot de passe réinitialisé.
+      </h2>
+      <p className="mb-6 text-[14px] text-ink-soft">
+        Tu peux te reconnecter avec ton nouveau mot de passe. Le compte a été remis à
+        zéro — les entrées précédentes ont été supprimées.
+      </p>
+      <Link
+        to="/login"
+        className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-deep"
+      >
+        Se connecter
+      </Link>
+    </>
+  );
+}
+
+interface ResetFormProps {
+  password: string;
+  setPassword: (next: string) => void;
+  confirm: string;
+  setConfirm: (next: string) => void;
+  passwordsMatch: boolean;
+  strength: { score: number; warning: string | null } | null;
+  acknowledged: boolean;
+  setAcknowledged: (next: boolean) => void;
+  error: string | null;
+  submitting: boolean;
+  canSubmit: boolean;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+}
+
+function ResetForm(props: ResetFormProps) {
+  const {
+    password,
+    setPassword,
+    confirm,
+    setConfirm,
+    passwordsMatch,
+    strength,
+    acknowledged,
+    setAcknowledged,
+    error,
+    submitting,
+    canSubmit,
+    onSubmit,
+  } = props;
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-      <form
-        onSubmit={onSubmit}
-        noValidate
-        className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none"
-      >
-      <h1 className="text-xl font-semibold">Nouveau mot de passe</h1>
+    <>
+      <p className="mb-1 text-[13px] text-muted">Réinitialisation</p>
+      <h2 className="mb-5 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Choisis un nouveau mot de passe.
+      </h2>
 
-      <div className="rounded border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
-        <p className="font-semibold">⚠ Perte définitive de données</p>
-        <p className="mt-1">
-          Nodea chiffre tes entrées avec une clé dérivée de ton mot de passe. Comme cette
-          clé a été perdue avec l'ancien mot de passe, <strong>toutes tes entrées existantes
-          seront supprimées</strong> lors de la validation.
+      {/* The destructive warning lives here in the form column rather
+          than as a body line in the marketing panel — it's
+          actionable, the user needs to read it right before clicking
+          submit. K · Sauge danger tone (border-l, danger/5 wash). */}
+      <div
+        role="alert"
+        className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
+      >
+        <p className="font-semibold">Perte définitive de données</p>
+        <p className="mt-1 text-ink-soft">
+          La clé qui chiffre tes entrées dérive du mot de passe. Comme l’ancienne clé
+          a été perdue avec l’ancien mot de passe, toutes tes entrées existantes
+          seront supprimées au moment de la validation.
         </p>
       </div>
 
-      <label className="block">
-        <span className="text-sm">Nouveau mot de passe (≥ 12 caractères)</span>
-        <input
+      <form onSubmit={onSubmit} noValidate>
+        <Field
+          label="Nouveau mot de passe (≥ 12 caractères)"
           type="password"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           minLength={12}
           required
-          className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+          legend={
+            strength ? (
+              <span
+                className={cn(
+                  strength.score >= 3 ? 'text-accent-deep' : 'text-muted',
+                )}
+              >
+                Force : {strength.score} / 4
+                {strength.warning ? ` — ${strength.warning}` : ''}
+              </span>
+            ) : undefined
+          }
         />
-        {strength ? (
-          <p className={`mt-1 text-xs ${strength.score >= 3 ? 'text-emerald-700' : 'text-amber-700'}`}>
-            Force : {strength.score} / 4
-            {strength.warning ? ` — ${strength.warning}` : ''}
-          </p>
-        ) : null}
-      </label>
-
-      <label className="block">
-        <span className="text-sm">Confirmation</span>
-        <input
+        <Field
+          label="Confirmation"
           type="password"
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           required
-          className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+          error={
+            confirm && !passwordsMatch
+              ? 'Les deux mots de passe ne correspondent pas.'
+              : undefined
+          }
         />
-        {confirm && !passwordsMatch ? (
-          <p className="mt-1 text-xs text-red-600">Les deux mots de passe ne correspondent pas.</p>
+
+        <label className="mb-3.5 flex items-start gap-2 text-[12.5px] text-ink-soft">
+          <input
+            type="checkbox"
+            checked={acknowledged}
+            onChange={(e) => setAcknowledged(e.target.checked)}
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
+          />
+          <span>
+            Je comprends que toutes mes données existantes seront supprimées lors de
+            cette réinitialisation.
+          </span>
+        </label>
+
+        {error ? (
+          <div
+            role="alert"
+            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+          >
+            {error}
+          </div>
         ) : null}
-      </label>
 
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={acknowledged}
-          onChange={(e) => setAcknowledged(e.target.checked)}
-          className="mt-1"
-        />
-        <span>
-          Je comprends que toutes mes données existantes seront supprimées lors de cette
-          réinitialisation.
-        </span>
-      </label>
-
-      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/login" className="text-sm underline">
-          ← Annuler
-        </Link>
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded bg-rose-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-2 w-full rounded-md bg-danger px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Réinitialisation…' : 'Réinitialiser et effacer mes données'}
         </button>
-      </div>
+
+        <div className="mt-[18px] text-center text-[12.5px] text-muted">
+          <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
+            ← Annuler
+          </Link>
+        </div>
       </form>
-    </div>
+    </>
   );
 }
+
+interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
+  label: string;
+  legend?: React.ReactNode;
+  error?: string | undefined;
+}
+
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { label, legend, error, className, id, name, ...rest },
+  ref,
+) {
+  const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
+  return (
+    <div className="mb-3.5">
+      <label htmlFor={inputId} className="mb-[5px] block text-[12px] font-medium text-muted">
+        {label}
+      </label>
+      <input
+        id={inputId}
+        name={name}
+        ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+        className={cn(
+          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
+          'outline-none transition-[border-color,box-shadow]',
+          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
+        {...rest}
+      />
+      {legend && !error ? (
+        <p className="mt-1 text-[11px] text-muted">{legend}</p>
+      ) : null}
+      {error ? (
+        <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+});

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,9 +8,8 @@ import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
-import Input from '@/ui/atoms/form/Input';
-import Button from '@/ui/atoms/base/Button';
-import FormError from '@/ui/atoms/form/FormError';
+import { cn } from '@/lib/utils';
+import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -24,12 +23,18 @@ const ChangePasswordFormSchema = z.object({
 type ChangePasswordForm = z.infer<typeof ChangePasswordFormSchema>;
 
 /**
- * Change-password page.
+ * Change-password page — Direction K · Sauge.
  *
  * `useSession.changePassword()` does the full dance: unwrap under the
  * current password (throws on wrong password before any server call),
  * rewrap under the new password, POST the envelope, re-derive the
  * main-key material, store it. This page is a thin form around it.
+ *
+ * Two-column shell mirrors Login / Register / Reset / Activate so
+ * the auth surface stays one continuous design language. The
+ * marketing panel here carries password-specific copy — re-using the
+ * standard `<PrivacyBody />` would be off-tone (the user is already
+ * inside Nodea, not deciding whether to sign up).
  */
 export default function ChangePasswordPage() {
   const session = useSession();
@@ -80,75 +85,144 @@ export default function ChangePasswordPage() {
     }
   }
 
+  const newPasswordRegister = field('newPassword', {
+    onChange: (e) => setNewPwd(e.target.value),
+  });
+
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-      <div className="flex w-full max-w-md flex-col items-stretch gap-6">
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          className="flex flex-col gap-4 rounded-lg bg-white p-8 shadow-sm dark:bg-slate-900 dark:shadow-none"
-        >
-          <h1 className="text-center text-lg font-semibold">Changer le mot de passe</h1>
+    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
+      <AuthMarketingPanel headline="Renouvelle ta clé.">
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Le mot de passe protège la clé qui chiffre tes données. Le changer
+          rechiffre la clé localement — les données restent intactes.
+        </p>
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Le serveur ne voit jamais l’ancien ni le nouveau mot de passe : tout
+          se passe sur ton appareil avant l’envoi.
+        </p>
+      </AuthMarketingPanel>
 
-          <Input
-            label="Mot de passe actuel"
-            type="password"
-            autoComplete="current-password"
-            required
-            {...field('currentPassword')}
-          />
-          {errors.currentPassword ? (
-            <p role="alert" className="-mt-2 text-xs text-rose-600">
-              {errors.currentPassword.message}
-            </p>
-          ) : null}
-
-          <Input
-            label="Nouveau mot de passe (≥ 12 caractères)"
-            type="password"
-            autoComplete="new-password"
-            required
-            {...field('newPassword', { onChange: (e) => setNewPwd(e.target.value) })}
-          />
-          {errors.newPassword ? (
-            <p role="alert" className="-mt-2 text-xs text-rose-600">
-              {errors.newPassword.message}
-            </p>
-          ) : null}
-          {strength ? (
-            <p
-              className={`-mt-2 text-xs ${
-                strength.score >= 3 ? 'text-emerald-700' : 'text-amber-700'
-              }`}
-            >
-              Force : {strength.score} / 4
-              {strength.warning ? ` — ${strength.warning}` : null}
-            </p>
-          ) : null}
-
-          <Button type="submit" variant="primary" disabled={isSubmitting} className="mt-2">
-            {isSubmitting ? 'Mise à jour…' : 'Mettre à jour'}
-          </Button>
+      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+        <div className="animate-fade-up w-full max-w-[360px]">
+          <p className="mb-1 text-[13px] text-muted">Sécurité</p>
+          <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+            Changer le mot de passe
+          </h2>
 
           {success ? (
-            <p role="status" className="text-center text-sm text-emerald-700">
-              Mot de passe mis à jour.
-            </p>
+            <div
+              role="status"
+              className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
+            >
+              ✓ Mot de passe mis à jour.
+            </div>
           ) : null}
-          {serverError ? <FormError message={serverError} /> : null}
 
-          <Link
-            to="/flow/account"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate(-1);
-            }}
-            className="text-center text-xs underline opacity-70"
-          >
-            ← Retour
-          </Link>
-        </form>
-      </div>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+            <Field
+              label="Mot de passe actuel"
+              type="password"
+              autoComplete="current-password"
+              required
+              error={errors.currentPassword?.message}
+              {...field('currentPassword')}
+            />
+            <Field
+              label="Nouveau mot de passe (≥ 12 caractères)"
+              type="password"
+              autoComplete="new-password"
+              required
+              error={errors.newPassword?.message}
+              legend={
+                strength ? (
+                  <span
+                    className={cn(
+                      strength.score >= 3 ? 'text-accent-deep' : 'text-muted',
+                    )}
+                  >
+                    Force : {strength.score} / 4
+                    {strength.warning ? ` — ${strength.warning}` : ''}
+                  </span>
+                ) : undefined
+              }
+              {...newPasswordRegister}
+            />
+
+            {serverError ? (
+              <div
+                role="alert"
+                className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+              >
+                {serverError}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? 'Mise à jour…' : 'Mettre à jour'}
+            </button>
+
+            <div className="mt-[18px] text-center text-[12.5px] text-muted">
+              <Link
+                to="/flow/account"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(-1);
+                }}
+                className="cursor-pointer transition-colors hover:text-ink"
+              >
+                ← Retour
+              </Link>
+            </div>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }
+
+interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
+  label: string;
+  legend?: React.ReactNode;
+  error?: string | undefined;
+}
+
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { label, legend, error, className, id, name, ...rest },
+  ref,
+) {
+  const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
+  return (
+    <div className="mb-3.5">
+      <label htmlFor={inputId} className="mb-[5px] block text-[12px] font-medium text-muted">
+        {label}
+      </label>
+      <input
+        id={inputId}
+        name={name}
+        ref={ref}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+        className={cn(
+          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
+          'outline-none transition-[border-color,box-shadow]',
+          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
+        {...rest}
+      />
+      {legend && !error ? (
+        <p className="mt-1 text-[11px] text-muted">{legend}</p>
+      ) : null}
+      {error ? (
+        <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+});
