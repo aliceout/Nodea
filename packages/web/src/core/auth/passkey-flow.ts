@@ -39,6 +39,7 @@ import {
 import {
   bytesToBase64Url,
   base64UrlToBytes,
+  randomBytes,
 } from '../crypto/base64.ts';
 import { clientLoginFinish, clientLoginStart, opaqueReady } from './opaque.ts';
 import type { Base64 } from '@nodea/shared';
@@ -103,6 +104,22 @@ function readPrfFirst(
   const first = out.results?.first;
   if (!first) return null;
   return first instanceof Uint8Array ? first : new Uint8Array(first);
+}
+
+/**
+ * Detect `prf.enabled === true` in the registration response. Some
+ * authenticators (Bitwarden, 1Password browser extensions, Chrome
+ * platform passkeys >= v123) return this flag without a populated
+ * `results.first` — the PRF output is deferred to the first assertion.
+ * When this is true but `readPrfFirst` returned `null`, we do an
+ * immediate calibration assertion to extract the output before
+ * finishing enrollment.
+ */
+function readPrfEnabled(results: Record<string, unknown> | undefined): boolean {
+  if (!results || typeof results !== 'object') return false;
+  const prf = (results as { prf?: unknown }).prf;
+  if (!prf || typeof prf !== 'object') return false;
+  return (prf as { enabled?: unknown }).enabled === true;
 }
 
 /* ============================================================================
@@ -180,12 +197,18 @@ async function deriveKekFromPassword(
  *   4. `startRegistration(creationOptions)` triggers the browser /
  *      OS passkey UI. User confirms with PIN/biometric.
  *   5. Inspect the resulting `clientExtensionResults.prf` for
- *      whether the authenticator surfaced a PRF output.
- *      - PRF + output present → derive `wk_passkey = HKDF(prf, …)`,
- *        wrap KEK, register as PRF-capable.
- *      - PRF declared but no output (Chrome v123+ sometimes defers
- *        until the first assertion) → register as login-only and
- *        rely on a later "promote" flow (out of Phase 4 scope).
+ *      whether the authenticator surfaced a PRF output:
+ *      - PRF output present (Safari, some Chromium builds) → derive
+ *        `wk_passkey = HKDF(prf, …)`, wrap KEK, register as
+ *        PRF-capable.
+ *      - PRF declared (`enabled: true`) but no output (Bitwarden,
+ *        1Password browser extensions, Chrome platform passkeys
+ *        >= v123 — they defer the output to the first assertion) →
+ *        run an immediate **calibration assertion** locally to
+ *        extract the output, then wrap as above. The assertion is
+ *        never submitted to the server; it's a purely local
+ *        extraction (the user gets a second OS prompt right after
+ *        registration).
  *      - No PRF at all → register as login-only with a warning.
  *   6. POST `/auth/passkey/enroll/finish` with the attestation,
  *      label, prfSupported flag, wrap blobs.
@@ -218,11 +241,29 @@ export async function enrollPasskey(
     });
 
     const credentialIdB64Url = attestation.id;
+    const transports = readTransports(attestation);
 
-    // Step 5: extract PRF output if the authenticator surfaced it.
-    const prfFirst = readPrfFirst(
+    // Step 5: extract PRF output. Two paths:
+    //   - present in attestation → use directly (Safari, some Chrome
+    //     builds);
+    //   - PRF enabled but no output → calibration assertion (Bitwarden,
+    //     1Password, Chrome v123+).
+    let prfFirst = readPrfFirst(
       attestation.clientExtensionResults as Record<string, unknown> | undefined,
     );
+    if (
+      prfFirst === null &&
+      readPrfEnabled(
+        attestation.clientExtensionResults as Record<string, unknown> | undefined,
+      )
+    ) {
+      prfFirst = await runCalibrationAssertion({
+        creationOptions: startRes.creationOptions,
+        credentialIdB64Url,
+        transports,
+      });
+    }
+
     let prfSupported = false;
     let wrappedKek: string | null = null;
     let wrappedKekIv: string | null = null;
@@ -242,10 +283,6 @@ export async function enrollPasskey(
       }
     }
 
-    // Read transports the authenticator reported for itself so the
-    // login flow can hint the browser at the right tunnel.
-    const transports = readTransports(attestation);
-
     // Step 6: ship the attestation + PRF status + wrap blobs.
     const finishRes = await apiPasskeyEnrollFinish({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -264,6 +301,90 @@ export async function enrollPasskey(
 }
 
 /* ============================================================================
+ * Calibration assertion — extract PRF output from a deferred-PRF cred
+ * ========================================================================== */
+
+interface CalibrationInput {
+  /** Original creationOptions — we read `rp.id` from here so the
+   *  assertion targets the right relying party. */
+  creationOptions: Record<string, unknown>;
+  /** Just-enrolled credential id (base64url). */
+  credentialIdB64Url: string;
+  /** Transports we got back from registration, fed into the
+   *  assertion's `allowCredentials` to hint the browser. `null`
+   *  means we don't constrain. */
+  transports: string | null;
+}
+
+/**
+ * Drive a `startAuthentication` call locally to extract the PRF
+ * output for a credential whose authenticator deferred it past
+ * registration.
+ *
+ * The challenge is generated client-side (32 bytes random) and the
+ * resulting assertion is **never submitted to the server** — we
+ * only consume `clientExtensionResults.prf.results.first` and throw
+ * the rest away. That bypasses the need for a server round-trip
+ * and keeps the calibration step entirely local.
+ *
+ * Returns `null` when:
+ *   - the user cancels the OS prompt (`NotAllowedError`);
+ *   - the authenticator silently refuses (no output surfaces);
+ *   - any other WebAuthn error.
+ *
+ * Caller falls back to login-only enrollment in those cases.
+ */
+async function runCalibrationAssertion(
+  input: CalibrationInput,
+): Promise<Uint8Array | null> {
+  const { creationOptions, credentialIdB64Url, transports } = input;
+
+  const rpId =
+    (creationOptions.rp as Record<string, unknown> | undefined)?.id;
+  const challenge = bytesToBase64Url(randomBytes(32));
+
+  const transportsList =
+    transports !== null && transports.length > 0
+      ? transports.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+      : undefined;
+
+  const requestOptions: Record<string, unknown> = {
+    challenge,
+    userVerification: 'required',
+    allowCredentials: [
+      transportsList !== undefined
+        ? {
+            id: credentialIdB64Url,
+            type: 'public-key',
+            transports: transportsList,
+          }
+        : { id: credentialIdB64Url, type: 'public-key' },
+    ],
+    // PRF eval input MUST be raw bytes here for the same reason as
+    // augmentWithPrfEval — see the note there. base64url string would
+    // be silently dropped by the browser.
+    extensions: { prf: { eval: { first: PRF_INPUT_V1 } } },
+  };
+  if (typeof rpId === 'string' && rpId.length > 0) {
+    requestOptions.rpId = rpId;
+  }
+
+  let assertion;
+  try {
+    assertion = await startAuthentication({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      optionsJSON: requestOptions as any,
+    });
+  } catch {
+    return null;
+  }
+
+  return readPrfFirst(
+    assertion.clientExtensionResults as Record<string, unknown> | undefined,
+  );
+}
+
+/* ============================================================================
  * Helpers (private)
  * ========================================================================== */
 
@@ -274,6 +395,17 @@ export async function enrollPasskey(
  * `eval.first` here keeps the constant in one place
  * (`passkey-prf.ts`) and lets the server stay agnostic about which
  * version of the PRF input the client is using.
+ *
+ * **Critical encoding note**: `prf.eval.first` MUST be a `BufferSource`
+ * (Uint8Array / ArrayBuffer), not a base64url string. The
+ * `@simplewebauthn/browser` lib does not decode extension values
+ * before forwarding the options to `navigator.credentials.{create,get}`
+ * — it spreads `optionsJSON` and only converts the well-known fields
+ * (challenge, user.id, excludeCredentials.id, allowCredentials.id).
+ * Anything passed as a string here gets ignored silently by
+ * Firefox / Chrome, the authenticator never sees the PRF request,
+ * and `prf.enabled` is absent from the response. We therefore keep
+ * raw bytes here.
  */
 function augmentWithPrfEval(
   options: Record<string, unknown>,
@@ -285,7 +417,7 @@ function augmentWithPrfEval(
     ...existingExt,
     prf: {
       eval: {
-        first: bytesToBase64Url(PRF_INPUT_V1),
+        first: PRF_INPUT_V1,
       },
     },
   };

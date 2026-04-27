@@ -479,18 +479,39 @@ kind=warning) tant que `passkeysCount === 0`.
   est différé — il demande un fixture `@simplewebauthn/server`-
   compatible non encore en place.
 
+**Calibration immédiate (post-enrollment)**
+
+Beaucoup d'authenticators (Bitwarden / 1Password browser extension,
+Chrome platform passkeys ≥ v123) signalent `prf.enabled: true` au
+registration mais défèrent `prf.results.first` à la première
+assertion. Pour qu'une passkey enrôlée à 100 % en PRF dès la
+première seconde, l'orchestrateur déclenche une **assertion de
+calibration locale** juste après `startRegistration` quand cette
+condition se présente :
+
+- Challenge généré client-side (32 bytes random).
+- `allowCredentials` scopé à la credential qu'on vient de créer.
+- L'assertion **n'est jamais soumise au serveur** — on consomme
+  uniquement `clientExtensionResults.prf.results.first` pour wrapper
+  la KEK, le reste est jeté.
+- Si la calibration échoue (user cancel, NotAllowedError) → fallback
+  login-only sans casser l'enrollment de la credential.
+
+UX : un second prompt biométrique apparaît immédiatement après le
+premier. Bitwarden / 1Password chaînent ça en <1 s sans demander à
+l'user de confirmer deux fois (ils réutilisent le state d'unlock).
+Pour les hardware keys (Yubikey), le second tap est explicite.
+
 **Limitations connues**
-- PRF output au registration : tous les browsers ne le surfacent pas
-  systématiquement. Quand `clientExtensionResults.prf?.results?.first`
-  est absent à l'enrollment, on enregistre la passkey en login-only.
-  Phase 4 prévoit pas de chemin "promote-to-PRF" — la prochaine
-  itération passera par une assertion de calibration au login pour
-  upgrader le wrap.
 - Le bouton "changer mon password via passkey" (matrice §6, row
   change-password) est conceptuellement supporté par le backend
   (la passkey unwrappe la KEK, qui suffit pour le change-password)
   mais le wire UI dédié atterrit en Phase 7 avec le reste de la
   matrice de re-auth.
+- Le full WebAuthn-ceremony test (signature verifiée par
+  `@simplewebauthn/server` avec un virtual authenticator) reste
+  différé — les 17 tests d'intégration actuels couvrent le gating
+  + downgrade auto + anti-enum sans exercer le path crypto signature.
 
 ---
 

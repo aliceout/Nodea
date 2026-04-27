@@ -115,33 +115,38 @@ const EnvSchema = z.object({
 
   /**
    * WebAuthn relying-party identifier (Auth-Spec §13.1, Phase 4).
-   * Must match the registrable domain the web app is served from
-   * (no scheme, no port). For Nodea production this is
-   * `nodea.example.org`; for dev with Vite on
-   * `http://localhost:5173`, set `WEBAUTHN_RP_ID=localhost`.
+   * **Required** — no default, per the "aucun secret hardcodé" rule
+   * (Auth-Spec §13.1 / global-audit). Must match the registrable
+   * domain the web app is served from (no scheme, no port). For
+   * local dev set `WEBAUTHN_RP_ID=localhost`; for prod use the apex
+   * domain, e.g. `nodea.example.org`.
    *
    * Mismatching `rpId` between enrollment and assertion makes every
    * passkey unverifiable — the browser refuses to surface
    * credentials for the wrong rpId.
    */
-  WEBAUTHN_RP_ID: z.string().min(1).default('localhost'),
+  WEBAUTHN_RP_ID: z.string().min(1),
 
   /**
    * Human-friendly relying-party name shown in the OS / browser
    * passkey UI (and in the user's password manager list). Free text;
-   * keep it short.
+   * keep it short. **Required** — no default.
    */
-  WEBAUTHN_RP_NAME: z.string().min(1).default('Nodea'),
+  WEBAUTHN_RP_NAME: z.string().min(1),
 
   /**
    * Origin allowed to use the rpId — full URL with scheme + port.
    * Must match the origin the browser sees when calling
-   * `navigator.credentials.{create,get}`. Defaults to
-   * `http://localhost:5173` (the Vite dev server). Multiple origins
-   * are not currently supported; if we ever need them, pivot to a
-   * comma-separated list.
+   * `navigator.credentials.{create,get}`. **Required** — no default.
+   *
+   * For dev with the Nodea Vite shell, this is
+   * `http://localhost:8089` (port pinned by `strictPort: true` in
+   * `packages/web/vite.config.js`); for prod, the public origin.
+   *
+   * Multiple origins are not currently supported; if we ever need
+   * them, pivot to a comma-separated list.
    */
-  WEBAUTHN_ORIGIN: z.string().url().default('http://localhost:5173'),
+  WEBAUTHN_ORIGIN: z.string().url(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
