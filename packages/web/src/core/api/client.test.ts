@@ -8,7 +8,12 @@
  *   - maps 401 on /auth/me to `null` (the session-is-absent signal)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { apiLogin, apiMe, apiLogout, isApiError } from './client.ts';
+import {
+  apiLoginStart,
+  apiLogout,
+  apiMe,
+  isApiError,
+} from './client.ts';
 
 // Give the client a URL by setting the env var our module reads.
 vi.stubEnv('VITE_API_URL', 'http://test.local');
@@ -31,23 +36,29 @@ describe('API client', () => {
     vi.unstubAllGlobals();
   });
 
-  it('apiLogin POSTs to /auth/login with credentials and JSON body', async () => {
-    const spy = vi
-      .fn()
-      .mockResolvedValue(new Response(JSON.stringify({ id: 'u1' }), { status: 200 }));
+  it('apiLoginStart POSTs to /auth/login/start with credentials + JSON body', async () => {
+    const spy = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ loginResponse: 'opaque-blob', loginToken: 'token-abc' }),
+        { status: 200 },
+      ),
+    );
     vi.stubGlobal('fetch', spy);
 
-    const result = await apiLogin({ email: 'a@b.co', password: 'pw-whatever-123456' });
-    expect(result).toEqual({ id: 'u1' });
+    const result = await apiLoginStart({
+      email: 'a@b.co',
+      startLoginRequest: 'opaque-ke1',
+    });
+    expect(result).toEqual({ loginResponse: 'opaque-blob', loginToken: 'token-abc' });
 
     expect(spy).toHaveBeenCalledOnce();
     const [url, init] = spy.mock.calls[0]!;
-    expect(url).toBe('http://test.local/auth/login');
+    expect(url).toBe('http://test.local/auth/login/start');
     expect(init.method).toBe('POST');
     expect(init.credentials).toBe('include');
     expect(JSON.parse(init.body)).toEqual({
       email: 'a@b.co',
-      password: 'pw-whatever-123456',
+      startLoginRequest: 'opaque-ke1',
     });
     expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
   });
@@ -72,6 +83,10 @@ describe('API client', () => {
       onboardingVersion: '1',
       encryptionSalt: 's',
       encryptedKey: 'k',
+      wrappedMainKey: null,
+      wrappedMainKeyIv: null,
+      wrappedKekPassword: null,
+      wrappedKekPasswordIv: null,
     });
 
     const me = await apiMe();
@@ -85,12 +100,16 @@ describe('API client', () => {
   });
 
   it('non-2xx throws a typed ApiError with status + error + reason', async () => {
-    mockFetchOnce({ error: 'weak_password', reason: 'too short' }, { status: 400 });
+    mockFetchOnce({ error: 'invalid_credentials' }, { status: 401 });
 
-    const err = await apiLogin({ email: 'a@b.co', password: 'x' }).catch((e) => e);
+    const err = await apiLoginStart({
+      email: 'a@b.co',
+      startLoginRequest: 'opaque-ke1',
+    }).catch((e: unknown) => e);
     expect(isApiError(err)).toBe(true);
-    expect(err.status).toBe(400);
-    expect(err.error).toBe('weak_password');
-    expect(err.reason).toBe('too short');
+    if (isApiError(err)) {
+      expect(err.status).toBe(401);
+      expect(err.error).toBe('invalid_credentials');
+    }
   });
 });

@@ -39,6 +39,9 @@ import {
   type OpaqueRegisterStartBody,
   type OpaqueRegisterStartResponse,
   type OpaqueRegisterFinishBody,
+  type OpaqueLoginStartBody,
+  type OpaqueLoginStartResponse,
+  type OpaqueLoginFinishBody,
 } from '@nodea/shared';
 import type {
   RegisterActivateBody,
@@ -196,8 +199,32 @@ export async function apiRegisterActivate(
   );
 }
 
-export async function apiLogin(body: LoginBody): Promise<{ id: string }> {
-  return request<{ id: string }>('POST', '/auth/login', body);
+/**
+ * OPAQUE login step 1 — exchanges the client's `startLoginRequest`
+ * for the server's `loginResponse` blob plus a `loginToken` the
+ * client must echo at /finish so the server can pick up its
+ * intermediate state (single-use, 5-minute TTL).
+ */
+export async function apiLoginStart(
+  body: OpaqueLoginStartBody,
+): Promise<OpaqueLoginStartResponse> {
+  return request<OpaqueLoginStartResponse>(
+    'POST',
+    '/auth/login/start',
+    body,
+  );
+}
+
+/**
+ * OPAQUE login step 2 — sends the client's `finishLoginRequest`
+ * (computed locally from the `loginResponse` + the password). On
+ * success the server emits a `nodea_session` cookie; the body is
+ * just `{ id }` for the UI to use.
+ */
+export async function apiLoginFinish(
+  body: OpaqueLoginFinishBody,
+): Promise<{ id: string }> {
+  return request<{ id: string }>('POST', '/auth/login/finish', body);
 }
 
 export async function apiLogout(): Promise<void> {

@@ -195,9 +195,10 @@ en staging avant Phase 6 (qui en dépend).
 
 **Statut** : 2A ✅ livrée (scaffolding lib + wrappers + helpers
 HKDF + tests in-memory). 2B ✅ livrée (register OPAQUE 2-step
-remplace l'Argon2id ; legacy columns rendues nullable). 2C 🚧
-(login OPAQUE), 2D 🚧 (change-password OPAQUE + drop legacy
-columns + dummy-hash).
+remplace l'Argon2id ; legacy columns rendues nullable). 2C ✅
+livrée (login OPAQUE 2-step, dummy-hash dégagé, /me expose les
+blobs OPAQUE, helper de test `loginAs` factorisé). 2D 🚧
+(change-password / reset-password OPAQUE + drop colonnes legacy).
 
 **Sous-découpage exécuté**
 
@@ -214,14 +215,27 @@ columns + dummy-hash).
   change-password et delete-self refusent les comptes OPAQUE-
   registered avec un message clair (cf. 2C / 2D pour le rewire).
 
-**Livrables Phase 2C (à venir)**
-- Login : `POST /auth/login/start` + `/finish` (OPAQUE KE1/KE2/KE3)
-  → `export_key` → unwrap KEK → unwrap main key → chaîne
-  `deriveMainKeys` existante inchangée.
-- Suppression du dummy-hash login timing trick (OPAQUE gère
-  nativement les identifiants inconnus).
+**Phase 2C livrée**
+- `POST /auth/login/start` + `/finish` (OPAQUE KE1/KE2/KE3) avec
+  un store in-memory pour le `serverLoginState` (token base64url
+  256 bits, single-use, 5 min TTL — `auth/opaque-login-state.ts`).
+- Anti-enum natif via `server.startLogin(registrationRecord: null)`
+  pour les emails inconnus → réponse syntactiquement valide mais
+  cryptographiquement morte que `client.finishLogin` rejette.
+- Suppression du dummy-hash + de toute la route legacy
+  `POST /auth/login` ; `LoginBodySchema` reste dans shared comme
+  type pour le client mais n'est plus consommé par aucune route.
 - `/auth/me` expose `wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}`
-  pour le client.
+  côté client. Le frontend pickle l'un ou l'autre chemin de unwrap
+  selon ce qui est non-NULL (legacy Argon2id encore là pour les
+  comptes seedés pré-2B, OPAQUE pour les nouveaux).
+- Test infra : helper `loginAs(app, email, password)` partagé qui
+  drive l'OPAQUE 2-step ; `seedAdmin` / `seedUser` populent
+  désormais les deux jeux de blobs (legacy + OPAQUE) pour que les
+  tests change-password / change-email / delete-self qui passent
+  par `verifyPassword` continuent de tourner jusqu'à 2D.
+- Nouveau fichier de tests `auth-login-v2.test.ts` (6 cas) couvrant
+  /start, /finish, anti-enum, replay du token, gate d'activation.
 
 **Livrables Phase 2D (à venir)**
 - Change-password : re-registration OPAQUE, re-wrap KEK uniquement.

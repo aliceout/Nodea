@@ -3,7 +3,7 @@ import { buildApp } from '../app.ts';
 import {
   ADMIN_PASSWORD,
   TEST_PASSWORD,
-  extractCookie,
+  loginAs,
   seedAdmin,
   seedUser,
 } from './helpers.ts';
@@ -19,19 +19,14 @@ function json(body: unknown): RequestInit {
   };
 }
 
-async function loginAs(email: string, password: string): Promise<string> {
-  const res = await app.request('/auth/login', json({ email, password }));
-  return extractCookie(res)!;
-}
-
 async function adminCookie(): Promise<string> {
   const admin = await seedAdmin();
-  return loginAs(admin.email, ADMIN_PASSWORD);
+  return loginAs(app, admin.email, ADMIN_PASSWORD);
 }
 
 async function userCookie(email = 'user@example.com'): Promise<string> {
   await seedUser(email);
-  return loginAs(email, TEST_PASSWORD);
+  return loginAs(app, email, TEST_PASSWORD);
 }
 
 async function createAnnouncement(

@@ -4,18 +4,13 @@ import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { moodEntries } from '../db/schema.ts';
 import { COLLECTIONS } from '../collections/registry.ts';
-import { seedUser, TEST_PASSWORD, extractCookie } from './helpers.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
 
 async function authFor(email: string): Promise<string> {
   await seedUser(email);
-  const res = await app.request('/auth/login', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password: TEST_PASSWORD }),
-  });
-  return extractCookie(res)!;
+  return loginAs(app, email, TEST_PASSWORD);
 }
 
 const FAKE_GUARD = 'g_' + 'a'.repeat(64);

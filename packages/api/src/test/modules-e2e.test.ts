@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { buildApp } from '../app.ts';
-import { TEST_PASSWORD, seedUser, extractCookie } from './helpers.ts';
+import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 import {
   simDeriveMainKeys,
   simEncryptPayload,
@@ -23,12 +23,7 @@ const app = buildApp();
 
 async function authCookie(email: string): Promise<string> {
   await seedUser(email);
-  const res = await app.request('/auth/login', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password: TEST_PASSWORD }),
-  });
-  return extractCookie(res)!;
+  return loginAs(app, email, TEST_PASSWORD);
 }
 
 async function freshMainKeys() {

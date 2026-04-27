@@ -18,7 +18,8 @@
 import { useEffect } from 'react';
 import { useNodeaStore, selectAuthStatus, selectUser } from '../store/nodea-store.ts';
 import {
-  apiLogin,
+  apiLoginStart,
+  apiLoginFinish,
   apiLogout,
   apiMe,
   apiRegisterStart,
@@ -31,15 +32,19 @@ import { unwrapMainKeyBytes, wrapMainKey } from '../crypto/envelope.ts';
 import {
   buildKekAAD,
   buildMainKeyAAD,
+  unwrapKekUnderFactor,
+  unwrapMainKeyUnderKek,
   wrapKekUnderFactor,
   wrapMainKeyUnderKek,
 } from '../crypto/factor-wrap.ts';
 import {
+  clientLoginFinish,
+  clientLoginStart,
   clientRegisterFinish,
   clientRegisterStart,
   opaqueReady,
 } from './opaque.ts';
-import type { LoginBody } from '@nodea/shared';
+import type { Base64, LoginBody } from '@nodea/shared';
 
 export interface SessionRegisterInput {
   email: string;
@@ -109,27 +114,92 @@ export function useSession() {
   }, [setAuth, setAuthLoading, markKeyMissing]);
 
   async function login(body: LoginBody): Promise<void> {
-    await apiLogin(body);
+    await opaqueReady;
+
+    // OPAQUE step 1: build the local login state + the wire request.
+    const { clientLoginState, startLoginRequest } = clientLoginStart(body.password);
+    const startRes = await apiLoginStart({
+      email: body.email,
+      startLoginRequest,
+    });
+
+    // OPAQUE step 2: derive the export_key locally from the server's
+    // response. `null` here means the server's response was a fake
+    // (unknown identifier or dead handshake) — surface it as the
+    // standard `invalid_credentials` shape so the UI doesn't have to
+    // distinguish between "wrong email" and "wrong password".
+    const finished = clientLoginFinish({
+      password: body.password,
+      clientLoginState,
+      loginResponse: startRes.loginResponse,
+    });
+    if (!finished) {
+      throw {
+        status: 401,
+        error: 'invalid_credentials',
+      };
+    }
+
+    // Server-side verification + session emission. Failures here
+    // surface as 401 / 403 from the API layer; we let them bubble up.
+    await apiLoginFinish({
+      loginToken: startRes.loginToken,
+      finishLoginRequest: finished.finishLoginRequest,
+    });
+
     const me = await apiMe();
     if (!me) throw new Error('login succeeded but /auth/me returned null');
     setAuth(me);
 
-    // Phase 2B: legacy Argon2id login still drives the unwrap path.
-    // OPAQUE-registered accounts (NULL `encryptionSalt`/`encryptedKey`)
-    // can't authenticate here — Phase 2C wires the OPAQUE login route
-    // and the matching unwrap chain (`wrappedKekPassword` →
-    // `wrappedMainKey`). Until then, throw loudly rather than silently
-    // skipping main-key derivation.
-    if (!me.encryptionSalt || !me.encryptedKey) {
+    // Pick the unwrap path based on which credential set is present
+    // on the user row. OPAQUE accounts (Phase 2B+) carry
+    // `wrappedMainKey` + `wrappedKekPassword`; legacy accounts carry
+    // `encryptionSalt` + `encryptedKey`. Phase 2D drops the legacy
+    // path entirely once the seeded admin is re-enrolled.
+    let rawBytes: Uint8Array;
+    if (
+      me.wrappedMainKey !== null &&
+      me.wrappedMainKeyIv !== null &&
+      me.wrappedKekPassword !== null &&
+      me.wrappedKekPasswordIv !== null
+    ) {
+      // OPAQUE chain: exportKey → KEK → main key. The Base64 brand
+      // checks at the type level — every blob in `me` has been
+      // through `Base64ish`'s Zod parse, so the cast is safe.
+      const kekBytes = await unwrapKekUnderFactor(
+        {
+          wrappedKek: me.wrappedKekPassword as unknown as Base64,
+          wrappedKekIv: me.wrappedKekPasswordIv as unknown as Base64,
+        },
+        finished.exportKey,
+        buildKekAAD(me.id, 'password'),
+      );
+      try {
+        rawBytes = await unwrapMainKeyUnderKek(
+          {
+            wrappedMainKey: me.wrappedMainKey as unknown as Base64,
+            wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
+          },
+          kekBytes,
+          buildMainKeyAAD(me.id),
+        );
+      } finally {
+        kekBytes.fill(0);
+      }
+    } else if (me.encryptionSalt && me.encryptedKey) {
+      // Legacy Argon2id chain — kept around for the seeded admin
+      // until Phase 2D ports the seed to OPAQUE.
+      rawBytes = await unwrapMainKeyBytes(
+        body.password,
+        me.encryptionSalt,
+        me.encryptedKey,
+      );
+    } else {
       throw new Error(
-        'login: account is OPAQUE-registered (Phase 2B) and the OPAQUE login flow is not yet wired (Phase 2C).',
+        'login: user row has neither legacy nor OPAQUE credential blobs',
       );
     }
-    const rawBytes = await unwrapMainKeyBytes(
-      body.password,
-      me.encryptionSalt,
-      me.encryptedKey,
-    );
+
     try {
       const material = await deriveMainKeys(rawBytes);
       setMainKey(material);

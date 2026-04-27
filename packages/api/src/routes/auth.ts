@@ -3,17 +3,20 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   RegisterBodySchema,
-  LoginBodySchema,
   ChangePasswordBodySchema,
   ChangeEmailBodySchema,
   ChangeUsernameBodySchema,
   DeleteSelfBodySchema,
   RequestResetBodySchema,
   ResetPasswordBodySchema,
+  OpaqueLoginStartBodySchema,
+  OpaqueLoginFinishBodySchema,
   type AuthMeResponse,
-} from '@nodea/shared/schemas/auth';
+  type OpaqueLoginStartResponse,
+} from '@nodea/shared';
 import { db } from '../db/client.ts';
 import {
+  opaqueRecords,
   users,
   passwordResetTokens,
   modulesConfig,
@@ -30,6 +33,15 @@ import {
 import { hashPassword, verifyPassword } from '../auth/password.ts';
 import { checkPasswordPolicy } from '../auth/password-policy.ts';
 import { consumeInviteAndCreateUser } from '../auth/invites.ts';
+import {
+  finishLogin as opaqueFinishLogin,
+  opaqueReady,
+  startLogin as opaqueStartLogin,
+} from '../auth/opaque.ts';
+import {
+  consumeLoginState,
+  storeLoginState,
+} from '../auth/opaque-login-state.ts';
 import {
   createSession,
   revokeSession,
@@ -92,35 +104,113 @@ const resetLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'reset' }
 // through HTTP — see `seedAdmin` in `test/helpers.ts` and the
 // equivalent in `seed.ts`.
 
-authRoutes.post('/login', loginLimiter, async (c) => {
+/**
+ * OPAQUE login — step 1 (Auth-Roadmap Phase 2C).
+ *
+ * Public, rate-limited. Anti-enumeration is built into OPAQUE
+ * itself: when the email doesn't match a record, we pass
+ * `registrationRecord = null` to `server.startLogin` and the lib
+ * produces a syntactically valid but cryptographically dead
+ * response that fails at the client's `finishLogin` step. The
+ * server response shape and timing are identical between known
+ * and unknown identifiers — no dummy-hash trick needed.
+ *
+ * Server state for the protocol's second round-trip lives in an
+ * in-memory map (`opaque-login-state.ts`) keyed by `loginToken`.
+ * Single-use, 5-minute TTL.
+ */
+authRoutes.post('/login/start', loginLimiter, async (c) => {
+  await opaqueReady;
+
   const raw = await c.req.json().catch(() => null);
-  const parsed = LoginBodySchema.safeParse(raw);
+  const parsed = OpaqueLoginStartBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+  const userIdentifier = body.email.toLowerCase();
+
+  // Load the registration record — null when the email is unknown.
+  // The OPAQUE lib handles the null case opaquely (anti-enum).
+  const [record] = await db
+    .select({ envelope: opaqueRecords.envelope })
+    .from(opaqueRecords)
+    .innerJoin(users, eq(opaqueRecords.userId, users.id))
+    .where(eq(users.email, userIdentifier))
+    .limit(1);
+
+  let serverLoginState: string;
+  let loginResponse: string;
+  try {
+    const result = opaqueStartLogin({
+      userIdentifier,
+      registrationRecord: record?.envelope ?? null,
+      startLoginRequest: body.startLoginRequest,
+    });
+    serverLoginState = result.serverLoginState;
+    loginResponse = result.loginResponse;
+  } catch {
+    // Malformed `startLoginRequest` (truncated base64, bad point).
+    // Same shape as the success path so a probing attacker can't
+    // tell it apart from "unknown identifier" without trying the
+    // full handshake.
+    return c.json({ error: 'invalid_body' }, 400);
+  }
+
+  const loginToken = storeLoginState(serverLoginState, userIdentifier);
+
+  const response: OpaqueLoginStartResponse = { loginResponse, loginToken };
+  return c.json(response);
+});
+
+/**
+ * OPAQUE login — step 2 (Auth-Roadmap Phase 2C).
+ *
+ * The client sends back its `finishLoginRequest`, computed from
+ * the `loginResponse` it got at /start. The server verifies the
+ * proof, looks up the user (via the identifier captured at /start
+ * — the client can't swap identities mid-protocol), runs the
+ * activation gate, then emits a session cookie. No further auth
+ * factors in V1; Phase 4/5 will branch into `mfa_pending` here.
+ *
+ * Failure modes all return `invalid_credentials` 401 with no
+ * client-visible distinction between unknown user, wrong password,
+ * expired token, and tampered finishLoginRequest — anti-enum.
+ */
+authRoutes.post('/login/finish', loginLimiter, async (c) => {
+  await opaqueReady;
+
+  const raw = await c.req.json().catch(() => null);
+  const parsed = OpaqueLoginFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, body.email.toLowerCase()))
-    .limit(1);
+  const pending = consumeLoginState(body.loginToken);
+  if (!pending) return c.json({ error: 'invalid_credentials' }, 401);
 
-  // Always verify *something* to keep timing constant between
-  // "unknown email" and "wrong password".
-  const passwordOk = await verifyPassword(
-    user?.passwordHash ?? '$argon2id$v=19$m=19456,t=2,p=1$aaaaaaaaaaaaaaaa$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    body.password,
-  );
-  if (!user || !passwordOk) {
+  try {
+    opaqueFinishLogin({
+      serverLoginState: pending.state,
+      finishLoginRequest: body.finishLoginRequest,
+    });
+  } catch {
     return c.json({ error: 'invalid_credentials' }, 401);
   }
 
+  // Look up the user we agreed on at /start. The userIdentifier was
+  // baked into `serverLoginState`, so by the time finishLogin
+  // succeeded we know the password matched THIS row — no risk of
+  // identifier confusion. If the row vanished between /start and
+  // /finish (manual delete, race with /admin), bail with the same
+  // generic 401.
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, pending.userIdentifier))
+    .limit(1);
+  if (!user) return c.json({ error: 'invalid_credentials' }, 401);
+
   // Activation gate (Auth-Roadmap Phase 1 simplified): accounts
   // created via the new register flow are inactive until the user
-  // clicks the magic link in their activation email. Refuse login
-  // until then with a distinct status code so the UI can surface a
-  // helpful "active d'abord" message instead of a generic
-  // "wrong password". Legacy users (and admin seeds) have
-  // `email_verified_at` set at creation, so they bypass this gate.
+  // clicks the magic link in their activation email.
   if (user.emailVerifiedAt === null) {
     return c.json({ error: 'account_not_activated' }, 403);
   }
@@ -254,10 +344,12 @@ authRoutes.post('/reset', resetLimiter, async (c) => {
 
 authRoutes.get('/me', requireUser, (c) => {
   const user = c.get('user');
-  // `encryptionSalt` / `encryptedKey` are NULL for OPAQUE-registered
-  // accounts (Phase 2B onwards). The client picks the unwrap path
-  // based on which side is filled — legacy Argon2id when the salt is
-  // present, OPAQUE when not.
+  // Both credential models surface here: legacy Argon2id
+  // (`encryptionSalt` + `encryptedKey`) for accounts created
+  // pre-Phase-2B, OPAQUE (`wrappedMainKey{,Iv}` + `wrappedKekPassword
+  // {,Iv}`) for accounts created in 2B onwards. The client picks
+  // the unwrap path based on which side is filled. Phase 2D drops
+  // the legacy columns once the seeded admin is re-enrolled.
   const body: AuthMeResponse = {
     id: user.id,
     email: user.email,
@@ -267,6 +359,10 @@ authRoutes.get('/me', requireUser, (c) => {
     onboardingVersion: user.onboardingVersion,
     encryptionSalt: user.encryptionSalt ?? null,
     encryptedKey: user.encryptedKey ?? null,
+    wrappedMainKey: user.wrappedMainKey ?? null,
+    wrappedMainKeyIv: user.wrappedMainKeyIv ?? null,
+    wrappedKekPassword: user.wrappedKekPassword ?? null,
+    wrappedKekPasswordIv: user.wrappedKekPasswordIv ?? null,
   };
   return c.json(body);
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildApp } from '../app.ts';
-import { TEST_PASSWORD, extractCookie, seedUser } from './helpers.ts';
+import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 
 const app = buildApp();
 
@@ -16,11 +16,7 @@ function jsonBody(method: 'POST' | 'PUT', body: unknown, cookie?: string): Reque
 
 async function cookieFor(email: string): Promise<string> {
   await seedUser(email);
-  const res = await app.request(
-    '/auth/login',
-    jsonBody('POST', { email, password: TEST_PASSWORD }),
-  );
-  return extractCookie(res)!;
+  return loginAs(app, email, TEST_PASSWORD);
 }
 
 describe('GET /user-preferences', () => {

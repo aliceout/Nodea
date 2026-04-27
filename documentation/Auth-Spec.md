@@ -1079,7 +1079,59 @@ Cron Monday 03:00 (cf. §13.2) :
 > Argon2id du KEK par OPAQUE `export_key`, sans toucher à l'UX du
 > form unique. Voir §12 pour la migration legacy → OPAQUE.
 
-### 7.2 Login password-first
+### 7.2 Login password-first (V1 ✅ OPAQUE 2-step, Phase 2C)
+
+```
+Client                                Server
+   │                                     │
+   │  client.startLogin(password)        │
+   │   → { clientLoginState, KE1 }       │
+   │                                     │
+   │  POST /auth/login/start             │
+   │  { email, startLoginRequest: KE1 }  │
+   │────────────────────────────────────▶│
+   │                                     │  load opaque_records by email
+   │                                     │  (null when unknown — anti-enum)
+   │                                     │  server.startLogin → KE2 + state
+   │                                     │  storeLoginState(state) → token
+   │  { loginResponse: KE2, loginToken } │
+   │◀────────────────────────────────────│
+   │                                     │
+   │  client.finishLogin(password,       │
+   │    clientLoginState, KE2)           │
+   │   → { finishLoginRequest: KE3,      │
+   │       sessionKey, exportKey }       │
+   │  (undefined on wrong password / fake KE2 — anti-enum)
+   │                                     │
+   │  POST /auth/login/finish            │
+   │  { loginToken, finishLoginRequest } │
+   │────────────────────────────────────▶│
+   │                                     │  consumeLoginState(token) → state
+   │                                     │  server.finishLogin verifies KE3
+   │                                     │  load user by userIdentifier
+   │                                     │  (refuses 403 if not activated)
+   │                                     │  createSession + setSessionCookie
+   │  { id }   + Set-Cookie: nodea_session
+   │◀────────────────────────────────────│
+   │                                     │
+   │  GET /auth/me  → wrappedKekPassword,│
+   │                  wrappedMainKey, …  │
+   │                                     │
+   │  unwrapKekUnderFactor(exportKey)    │
+   │   → KEK                             │
+   │  unwrapMainKeyUnderKek(KEK)         │
+   │   → mainKey                         │
+   │  deriveMainKeys(mainKey)            │
+   │   → aesKey + hmacKey                │
+```
+
+### 7.2.bis Login original — version stepped MFA (🚧 Phase 4+)
+
+> Schéma préservé pour la phase suivante : une fois TOTP/passkey en
+> place, `/auth/login/finish` émettra un cookie `mfa_pending`
+> (5 min, scope `/auth/mfa/*`) plutôt qu'un `nodea_session` complet.
+> La session full sera promue par `POST /auth/mfa/finalize` une fois
+> tous les facteurs additionnels validés.
 
 ```
 Client                                Server

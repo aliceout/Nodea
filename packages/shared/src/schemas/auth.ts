@@ -116,12 +116,20 @@ export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
 /**
  * Response bodies — what the client can rely on without decrypting.
  *
- * Phase 2B made `encryptionSalt` / `encryptedKey` nullable: OPAQUE-
- * registered accounts have NULL there (their credential lives in
- * `opaque_records.envelope` + `users.wrapped_kek_password{,_iv}` +
- * `users.wrapped_main_key{,_iv}`). Legacy accounts created before
- * 2B still have those two filled. Phase 2C will start surfacing
- * the OPAQUE-side fields here too.
+ * Two sets of credential blobs coexist during the OPAQUE migration:
+ *
+ *   - Legacy (`encryptionSalt` + `encryptedKey`): the Argon2id-based
+ *     wrap of the main key under a password-derived KEK. Populated
+ *     for accounts created before Phase 2B; NULL afterwards.
+ *
+ *   - OPAQUE (`wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}`): the
+ *     2-layer wrap landed in Phase 2B — main key under a random KEK,
+ *     KEK under an HKDF sub-key of `exportKey`. Populated for accounts
+ *     created in 2B onwards; NULL for legacy accounts.
+ *
+ * Each account is exclusively one or the other. The client picks
+ * the unwrap path based on which set is present. Phase 2D drops
+ * the legacy columns once the seeded admin is re-enrolled.
  */
 export const AuthMeResponseSchema = z.object({
   id: z.string(),
@@ -132,5 +140,9 @@ export const AuthMeResponseSchema = z.object({
   onboardingVersion: z.string(),
   encryptionSalt: Base64ish.nullable(),
   encryptedKey: Base64ish.nullable(),
+  wrappedMainKey: Base64ish.nullable(),
+  wrappedMainKeyIv: Base64ish.nullable(),
+  wrappedKekPassword: Base64ish.nullable(),
+  wrappedKekPasswordIv: Base64ish.nullable(),
 });
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

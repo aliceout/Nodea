@@ -6,7 +6,7 @@ import { invites, users } from '../db/schema.ts';
 import {
   ADMIN_PASSWORD,
   TEST_PASSWORD,
-  extractCookie,
+  loginAs,
   seedAdmin,
   seedUser,
 } from './helpers.ts';
@@ -21,14 +21,9 @@ function postJson(body: unknown): RequestInit {
   };
 }
 
-async function loginAs(email: string, password: string): Promise<string> {
-  const res = await app.request('/auth/login', postJson({ email, password }));
-  return extractCookie(res)!;
-}
-
 async function adminCookie(): Promise<string> {
   const admin = await seedAdmin();
-  return loginAs(admin.email, ADMIN_PASSWORD);
+  return loginAs(app, admin.email, ADMIN_PASSWORD);
 }
 
 describe('GET /admin/invites', () => {
@@ -60,7 +55,7 @@ describe('GET /admin/invites', () => {
 
   it('refuses non-admin users', async () => {
     await seedUser('peasant@example.com');
-    const cookie = await loginAs('peasant@example.com', TEST_PASSWORD);
+    const cookie = await loginAs(app, 'peasant@example.com', TEST_PASSWORD);
     const res = await app.request('/admin/invites', { headers: { cookie } });
     expect(res.status).toBe(403);
   });
@@ -136,7 +131,7 @@ describe('DELETE /admin/users/:id', () => {
 
   it('refuses an admin deleting themselves', async () => {
     const admin = await seedAdmin();
-    const cookie = await loginAs(admin.email, ADMIN_PASSWORD);
+    const cookie = await loginAs(app, admin.email, ADMIN_PASSWORD);
 
     const res = await app.request(`/admin/users/${admin.id}`, {
       method: 'DELETE',

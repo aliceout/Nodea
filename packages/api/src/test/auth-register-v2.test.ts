@@ -671,28 +671,5 @@ describe('POST /auth/register/activate', () => {
   });
 });
 
-/* ============================================================================
- * Login activation gate
- * ========================================================================== */
-
-describe('login refuses inactive accounts (account_not_activated)', () => {
-  // Inactive accounts created via OPAQUE register can't log in via
-  // the legacy Argon2id route either — `password_hash` is NULL —
-  // so this test asserts the activation-gate response shape on a
-  // legacy `seedUser` (which does set password_hash) for now. Once
-  // 2C lands, this becomes the OPAQUE login pre-check.
-  it('returns 403 account_not_activated when emailVerifiedAt is null', async () => {
-    const u = await seedUser('inactive@example.com');
-    await db.update(users).set({ emailVerifiedAt: null }).where(eq(users.id, u.id));
-
-    const res = await app.request(
-      '/auth/login',
-      jsonPost({
-        email: 'inactive@example.com',
-        password: 'Correct-Horse-Battery-Staple-42',
-      }),
-    );
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ error: 'account_not_activated' });
-  });
-});
+// The login activation gate (`account_not_activated` 403) is covered
+// in `auth-login-v2.test.ts` now that login is the OPAQUE 2-step flow.

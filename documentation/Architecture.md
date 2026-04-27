@@ -86,6 +86,27 @@ the factory loops over. There is nowhere to forget a guard.
 > [`Auth-Spec.md`](./Auth-Spec.md). The summary below captures what
 > the V1 code actually implements.
 
+- **Login** (OPAQUE 2-step via `routes/auth.ts`, Phase 2C):
+  - `POST /auth/login/start` runs `server.startLogin` and returns
+    `{ loginResponse, loginToken }`. Anti-enum is built into the
+    OPAQUE library: an unknown email gets a syntactically valid
+    but cryptographically dead response (`registrationRecord: null`
+    on the server side) — the client's `finishLogin` rejects it
+    with the same shape as a wrong-password attempt.
+  - Server-side state for the second round-trip lives in an
+    in-memory map (`auth/opaque-login-state.ts`), keyed by a
+    256-bit base64url token. Single-use, 5-minute TTL.
+  - `POST /auth/login/finish` runs `server.finishLogin`, gates
+    the user on `email_verified_at` (403 `account_not_activated`
+    when NULL), creates a session, sets the signed cookie. No
+    more dummy-hash timing trick — the legacy `POST /auth/login`
+    is gone.
+  - `GET /auth/me` surfaces both credential sets
+    (`encryptionSalt` + `encryptedKey` for legacy accounts,
+    `wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}` for OPAQUE).
+    The client picks the unwrap chain based on which set is
+    non-NULL.
+
 - **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
   Phase 2B):
   - The form requires email + **username** (public display name,
