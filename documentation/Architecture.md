@@ -75,17 +75,41 @@ the factory loops over. There is nowhere to forget a guard.
 - `requireAdmin` — stacks on `requireUser` and 403s non-admin roles.
 - `requireGuard` — inside `collection-factory`, validates the HMAC
   guard query parameter on update/delete operations.
-- `rateLimit` — in-memory sliding window, keyed on IP. Applied to
-  `/auth/register`, `/auth/login`, `/auth/request-reset`, `/auth/reset`.
+- `rateLimit` — in-memory fixed-window, keyed on IP. Applied to every
+  `/auth/*` mutation (`/auth/register`, `/auth/register/activate`,
+  `/auth/register/invite-info`, `/auth/login`, `/auth/request-reset`,
+  `/auth/reset`).
 
 ### Auth flow
 
-- **Register**: invite code atomically consumed
-  (`SELECT ... FOR UPDATE` in a transaction), password hashed, user row
-  created, session issued.
+> Detailed flows + threat model live in
+> [`Auth-Spec.md`](./Auth-Spec.md). The summary below captures what
+> the V1 code actually implements.
+
+- **Register** (single submit, two paths via `routes/auth-register-v2.ts`):
+  - **Invited path** — admin issues an invite via `POST /admin/invites
+    { email }` → server emails a `/register?invite=<token>` link →
+    user clicks → form pre-fills the email (read-only) → submit
+    consumes the invite atomically (strict email match,
+    `SELECT … FOR UPDATE`) → account created with
+    `email_verified_at = now()` (the email click proved control).
+  - **Open path** — when `app_settings.open_registration = true`,
+    `/register` accepts free signup → account created with
+    `email_verified_at = NULL` → activation email sent → user clicks
+    `/auth/register/activate` → `email_verified_at` flipped.
+  - **Closed path** — `open_registration = false` and no token → 403
+    `registration_closed`. The frontend gates this case via
+    `GET /auth/register/mode` so users see a panel instead of an
+    error.
+  - The legacy single-shot `POST /auth/register` is gone; admin /
+    seed scripts insert directly into the `users` table with
+    `email_verified_at = now()` to bypass the activation gate.
 - **Login**: always runs `verifyPassword` to keep timing identical
   between "unknown email" and "wrong password". Dummy hash used when
-  the email doesn't match any row.
+  the email doesn't match any row. **Refuses 403
+  `account_not_activated`** when `users.email_verified_at IS NULL`,
+  surfaced as a precise UI message ("Ton compte n'est pas encore
+  activé").
 - **Change password**: server expects a re-wrapped envelope
   (`encryptionSalt` + `encryptedKey`) produced by the client under the
   new password. Revokes every other session and issues a fresh one.
@@ -96,13 +120,28 @@ the factory loops over. There is nowhere to forget a guard.
   is unreachable without the old password, so we refuse to keep dead
   ciphertexts around.
 
+### Background jobs
+
+A single `node-cron` schedule lives in
+[`packages/api/src/cron/index.ts`](../packages/api/src/cron/index.ts),
+started from `index.ts` after `buildApp()` :
+
+- **`cleanup-unactivated-accounts`** — Mondays 03:00 UTC. Purges
+  expired `email_verifications` rows + the inactive `users` whose
+  activation window (7 days) has elapsed, plus stale sessions. Logs a
+  summary line per run (`[cron] cleanup-unactivated done {…}`).
+
 ### Tests
 
 Vitest against a real Postgres instance (Docker). Single fork,
 sequential to avoid row-level interference. Setup under
 [`packages/api/src/test/setup.ts`](../packages/api/src/test/setup.ts)
-runs `TRUNCATE … CASCADE` before each test. 78 integration tests at
-the time of writing, covering auth, admin CRUD, invite atomicity,
+runs `TRUNCATE … CASCADE` before each test, and forces
+`EMAIL_SERVICE_IMPL=recording` (cf. `vitest.config.ts`) so suites can
+assert on outgoing mail without spinning up Mailpit. 98 integration
+tests at the time of writing, covering auth (single-form register,
+invite-bound + open paths, activation, login activation gate),
+admin CRUD, invite send/resend/revoke, app settings toggle,
 collection round-trips, announcements, user preferences, password
 reset.
 

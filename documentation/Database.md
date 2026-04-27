@@ -20,19 +20,25 @@ rely on this. Invite rows created by a user survive, with
 
 Central identity row.
 
-| Column              | Type      | Notes                                                         |
-| ------------------- | --------- | ------------------------------------------------------------- |
-| `id`                | `text` PK | UUID generated server-side.                                   |
-| `email`             | `text`    | Lowercased on insert. Unique.                                 |
-| `username`          | `text?`   | Optional public display name. Unique when set (partial idx).  |
-| `password_hash`     | `text`    | Argon2id hash. Never returned over the API.                   |
-| `encryption_salt`   | `text`    | Base64, used by argon2id client-side to derive the KEK.       |
-| `encrypted_key`     | `text`    | Base64 AES-GCM envelope: main key encrypted under KEK.        |
-| `role`              | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                    |
-| `onboarding_status` | `enum`    | `'pending' \| 'complete'`. Reset to `'pending'` on password reset. |
-| `onboarding_version`| `text`    | Integer-as-text, lets us re-trigger the modal on a new onboarding schema. |
-| `created_at`        | `ts+tz`   | `defaultNow()`.                                               |
-| `updated_at`        | `ts+tz`   | `defaultNow()`. Rewritten by every mutation.                  |
+| Column                | Type      | Notes                                                                        |
+| --------------------- | --------- | ---------------------------------------------------------------------------- |
+| `id`                  | `text` PK | UUID generated server-side.                                                  |
+| `email`               | `text`    | Lowercased on insert. Unique.                                                |
+| `username`            | `text?`   | Optional public display name. Unique when set (partial idx).                 |
+| `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
+| `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
+| `password_hash`       | `text`    | Argon2id hash. Never returned over the API.                                  |
+| `encryption_salt`     | `text`    | Base64, used by argon2id client-side to derive the KEK.                      |
+| `encrypted_key`       | `text`    | Base64 AES-GCM envelope: main key encrypted under KEK.                       |
+| `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
+| `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. **🚧 Phase 2+** — V1 ignores. |
+| `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. **🚧 Phase 2+** — V1 only uses `'complete'`. |
+| `wrapped_*`, `recovery_*` | `text?` | **🚧 Phase 2+** OPAQUE / recovery-code KEK columns, unused in V1.            |
+| `recovery_acknowledged_at` | `ts+tz?` | **🚧 Phase 2+** flag.                                                    |
+| `onboarding_status`   | `enum`    | `'pending' \| 'complete'`. Reset to `'pending'` on password reset.           |
+| `onboarding_version`  | `text`    | Integer-as-text, lets us re-trigger the modal on a new onboarding schema.    |
+| `created_at`          | `ts+tz`   | `defaultNow()`.                                                              |
+| `updated_at`          | `ts+tz`   | `defaultNow()`. Rewritten by every mutation.                                 |
 
 **Indexes**: `users_email_unique` (unique, full), `users_username_unique`
 (unique, partial `WHERE username IS NOT NULL`).
@@ -42,32 +48,85 @@ Central identity row.
 Server-side session records. The cookie carries only the signed session
 id; rights and TTL live here so logout/revocation is immediate.
 
-| Column       | Type      | Notes                                          |
-| ------------ | --------- | ---------------------------------------------- |
-| `id`         | `text` PK | Signed value stored in the `nodea_session` cookie. |
-| `user_id`    | `text`    | FK → `users.id`, **ON DELETE CASCADE**.        |
-| `expires_at` | `ts+tz`   | Checked on every request.                      |
-| `created_at` | `ts+tz`   | `defaultNow()`.                                |
+| Column                          | Type      | Notes                                                     |
+| ------------------------------- | --------- | --------------------------------------------------------- |
+| `id`                            | `text` PK | Signed value stored in the `nodea_session` cookie.        |
+| `user_id`                       | `text`    | FK → `users.id`, **ON DELETE CASCADE**.                   |
+| `kind`                          | `enum`    | `'full' \| 'mfa_pending' \| 'register' \| 'migrate'`. V1 only emits `'full'` ; the other kinds are 🚧 Phase 2+ scaffolding for stepped MFA / multi-step register / lazy OPAQUE migration. |
+| `reauth_password_at`            | `ts+tz?`  | **🚧 Phase 2+** — fresh-auth tracking for matrice §6.     |
+| `reauth_passkey_at`             | `ts+tz?`  | **🚧 Phase 2+**.                                          |
+| `mfa_password_verified`         | `bool`    | **🚧 Phase 2+** stepped-MFA flag.                         |
+| `mfa_passkey_verified`          | `bool`    | **🚧 Phase 2+**.                                          |
+| `mfa_totp_verified`             | `bool`    | **🚧 Phase 2+**.                                          |
+| `pending_webauthn_challenge`    | `text?`   | **🚧 Phase 2+** WebAuthn challenge cache.                 |
+| `pending_webauthn_challenge_at` | `ts+tz?`  | **🚧 Phase 2+** TTL anchor (5 min).                       |
+| `ip_hash`                       | `text?`   | Per-deployment salted hash. Audit trail only.             |
+| `user_agent`                    | `text?`   | Audit trail only.                                         |
+| `last_seen_at`                  | `ts+tz?`  | Debounced touch on each request (≤ 1/min/session).        |
+| `expires_at`                    | `ts+tz`   | Checked on every request. 7-day fixed (no slide).         |
+| `created_at`                    | `ts+tz`   | `defaultNow()`.                                           |
 
-**Index**: `sessions_expires_at_idx`.
+**Indexes**: `sessions_expires_at_idx`, `sessions_user_kind_idx`
+(speeds up "list my active full sessions" queries).
 
 ### `invites`
 
-Single-use registration codes. The clear code is emailed to the
-recipient; only the SHA-256 hash is persisted. Atomic consumption via
-transaction + `SELECT … FOR UPDATE` inside `consumeInviteAndCreateUser`.
+Email-bound registration tokens (Bitwarden-style). Admin enters an
+email, server generates a 32-byte token, stores its SHA-256 in
+`code_hash` and emails the recipient a link
+`/register?invite=<clear_token>`. Strict email match enforced at
+register-submit (the recipient must sign up with EXACTLY this email).
+Atomic consumption via transaction + `SELECT … FOR UPDATE` inside
+`consumeInviteAndCreateUser`.
 
 | Column       | Type      | Notes                                                         |
 | ------------ | --------- | ------------------------------------------------------------- |
 | `id`         | `text` PK | UUID.                                                         |
-| `code_hash`  | `text`    | SHA-256 of the clear code. Unique.                            |
+| `email`      | `text`    | Recipient address. Locked at issue time, strict match.        |
+| `code_hash`  | `text`    | SHA-256 of the clear token. Column name kept for migration brevity ; semantic is now "token hash", not "code hash". Unique. |
 | `created_by` | `text?`   | FK → `users.id`, **ON DELETE SET NULL** (keep the audit trail). |
 | `used_by`    | `text?`   | FK → `users.id`, **ON DELETE SET NULL**.                      |
 | `used_at`    | `ts+tz?`  | Set on consumption.                                           |
-| `expires_at` | `ts+tz?`  | Optional expiry.                                              |
+| `expires_at` | `ts+tz?`  | Default 7 days from issue.                                    |
 | `created_at` | `ts+tz`   | `defaultNow()`.                                               |
 
-**Index**: `invites_code_hash_unique`.
+**Indexes**: `invites_code_hash_unique`, `invites_email_idx` (lookups
+"is there a pending invite for `foo@bar.com`?").
+
+### `app_settings`
+
+Application-wide key/value store. Currently holds
+`open_registration: 'true' | 'false'` (default `'false'` if absent —
+defensive: an admin must opt in). Future settings (TOTP requirement,
+banner copy, …) land here without a schema change.
+
+| Column        | Type      | Notes                                                           |
+| ------------- | --------- | --------------------------------------------------------------- |
+| `key`         | `text` PK | e.g. `'open_registration'`.                                     |
+| `value`       | `text`    | Stored as text; boolean settings parse `'true'` / `'false'`.    |
+| `updated_at`  | `ts+tz`   | `defaultNow()`.                                                 |
+| `updated_by`  | `text?`   | FK → `users.id`, **ON DELETE SET NULL** (audit).                |
+
+### `email_verifications`
+
+Magic-link tokens for email-related flows. V1 stores activation
+tokens for the `'register'` open-path (sent post-submit so the user
+can flip `users.email_verified_at`). The `'email_change'` kind is
+🚧 Phase 2+ scaffolding, table-ready but unused in V1.
+
+| Column        | Type      | Notes                                                            |
+| ------------- | --------- | ---------------------------------------------------------------- |
+| `id`          | `text` PK | UUID.                                                            |
+| `user_id`     | `text?`   | FK → `users.id`, **ON DELETE CASCADE**. Nullable for transitional states. |
+| `email`       | `text`    | Target email.                                                    |
+| `kind`        | `enum`    | `'register' \| 'email_change'`.                                  |
+| `code_hash`   | `text`    | SHA-256 of the clear token. Single-use.                          |
+| `attempts`    | `int`     | Always 0 for magic-link tokens (single shot).                    |
+| `expires_at`  | `ts+tz`   | `now() + 7d` for activation tokens.                              |
+| `consumed_at` | `ts+tz?`  | Set on first successful consumption.                             |
+| `created_at`  | `ts+tz`   | `defaultNow()`.                                                  |
+
+**Index**: `email_verifications_email_idx`.
 
 ### `password_reset_tokens`
 
@@ -167,19 +226,42 @@ Each row:
 
 **Index (per table)**: `<table>_user_sid_idx` on `(user_id, module_user_id)`.
 
+### 🚧 Phase 2+ scaffolding tables
+
+The following tables exist in the database (created by migration
+`0007_perpetual_tyrannus.sql`) but are **not written or read by V1
+code**. They're scaffolding for Phase 2+ of `Auth-Roadmap.md` — full
+schemas live in `Auth-Spec.md` §4.1 to avoid duplication.
+
+| Table                     | Phase 2+ purpose                                                |
+| ------------------------- | --------------------------------------------------------------- |
+| `opaque_records`          | OPAQUE registration envelope (1:1 with `users`).                |
+| `auth_factors`            | WebAuthn passkeys per user, with optional PRF-wrapped KEK.      |
+| `mfa_totp`                | 1:1 TOTP secret + period + last_window anti-replay cursor.      |
+| `mfa_totp_recovery_codes` | Backup codes (10/user, hashed, single-use).                     |
+| `mfa_bypass_requests`     | Email-confirmed 48-hour bypass for lost TOTP / passkey.         |
+
+The Drizzle ORM still exports types for these tables (`OpaqueRecord`,
+`AuthFactor`, etc.), but no production handler imports them. The
+intent is to land Phase 2+ migrations on top of the existing
+schema rather than rebuilding it from scratch.
+
 ---
 
 ## 2. FK cascade summary
 
-| Parent  | Child                                   | On delete  |
-| ------- | --------------------------------------- | ---------- |
-| `users` | `sessions`                              | CASCADE    |
-| `users` | `modules_config`                        | CASCADE    |
-| `users` | `user_preferences`                      | CASCADE    |
-| `users` | `password_reset_tokens`                 | CASCADE    |
-| `users` | every `*_entries` table                 | CASCADE    |
-| `users` | `invites.created_by` / `invites.used_by`| SET NULL   |
-| `users` | `announcements.created_by`              | SET NULL   |
+| Parent  | Child                                                          | On delete  |
+| ------- | -------------------------------------------------------------- | ---------- |
+| `users` | `sessions`                                                     | CASCADE    |
+| `users` | `modules_config`                                               | CASCADE    |
+| `users` | `user_preferences`                                             | CASCADE    |
+| `users` | `password_reset_tokens`                                        | CASCADE    |
+| `users` | `email_verifications`                                          | CASCADE    |
+| `users` | every `*_entries` table                                        | CASCADE    |
+| `users` | `invites.created_by` / `invites.used_by`                       | SET NULL   |
+| `users` | `app_settings.updated_by`                                      | SET NULL   |
+| `users` | `announcements.created_by`                                     | SET NULL   |
+| `users` | Phase 2+ tables: `opaque_records`, `auth_factors`, `mfa_*`     | CASCADE    |
 
 Deleting a user therefore wipes every encrypted artefact they owned
 while preserving the audit trail (invites they minted, announcements
@@ -216,10 +298,22 @@ drizzle/
 ├── 0002_good_meteorite.sql           # users.username + partial unique index
 ├── 0003_peaceful_stephen_strange.sql # announcements
 ├── 0004_smooth_titanium_man.sql      # user_preferences
-└── 0005_gray_red_hulk.sql            # password_reset_tokens
+├── 0005_gray_red_hulk.sql            # password_reset_tokens
+├── 0006_petite_gauntlet.sql          # (legacy housekeeping)
+├── 0007_perpetual_tyrannus.sql       # Auth-Roadmap Phase 0: auth-v2 columns on
+│                                     # users + sessions, new Phase 2+ scaffold
+│                                     # tables (opaque_records, auth_factors,
+│                                     # mfa_totp / mfa_totp_recovery_codes /
+│                                     # mfa_bypass_requests, email_verifications)
+└── 0008_ambiguous_eternity.sql       # Auth-Roadmap Phase 1 v2: invites.email
+                                      # column + app_settings table; preface
+                                      # `DELETE FROM invites` to clear legacy
+                                      # rows the new NOT NULL email column
+                                      # would have rejected.
 ```
 
 The test harness (`packages/api/src/test/setup.ts`) truncates every
 row-holding table before each test via `TRUNCATE … CASCADE` —
-`announcements` and `password_reset_tokens` are in that list so the
-suites stay hermetic.
+`announcements`, `password_reset_tokens`, `email_verifications`, and
+the Phase 2+ scaffold tables are in that list so the suites stay
+hermetic.
