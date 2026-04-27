@@ -17,6 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Defaults are usually read-only on `pull_request`, but pinning
+    # explicitly here closes the door on any future trigger change
+    # accidentally widening the token scope. The CI job needs read
+    # access to source only — it doesn't push artefacts, doesn't
+    # comment on PRs, doesn't write packages. Anything beyond that
+    # would be a smell.
+    permissions:
+      contents: read
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -44,6 +53,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Don't leave the GITHUB_TOKEN in `.git/config` after
+          # checkout — subsequent steps don't push, so persisting the
+          # creds is just extra surface for credential leaks via
+          # log lines, third-party actions, or environment dumps.
+          persist-credentials: false
 
       - name: Setup pnpm
         # Version is read from the repo's packageManager field (package.json);

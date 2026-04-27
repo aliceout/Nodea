@@ -48,6 +48,11 @@ jobs:
           # event — check out exactly that commit so the image we push
           # matches the one CI validated.
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # No subsequent step needs to push back to the repo, so
+          # don't persist the GITHUB_TOKEN in `.git/config`. Closes
+          # one credential-leak vector via downstream actions or
+          # logs that would otherwise echo the config.
+          persist-credentials: false
 
       - uses: docker/setup-buildx-action@v3
 
