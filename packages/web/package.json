@@ -20,6 +20,7 @@
     "@nodea/shared": "workspace:*",
     "@scure/bip39": "2.2.0",
     "@serenity-kit/opaque": "1.1.0",
+    "@simplewebauthn/browser": "13.3.0",
     "@tailwindcss/vite": "^4.1.11",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",

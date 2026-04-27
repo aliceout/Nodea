@@ -43,6 +43,8 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   });
 
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+
   async function onSubmit(values: LoginBody): Promise<void> {
     setServerError(null);
     try {
@@ -63,6 +65,40 @@ export default function LoginPage() {
         setServerError('Erreur de connexion. Réessaie.');
         if (import.meta.env.DEV) console.warn('login failed', err);
       }
+    }
+  }
+
+  /**
+   * Drive a passkey-first login. The OS / browser surfaces a
+   * credential picker — discoverable creds (resident keys) appear
+   * even without an email. On a fully-unlocked PRF login the user
+   * lands on /flow/home; on a non-PRF (or PRF deferred) login we
+   * stay on the page so they can chain a password to finish the
+   * unwrap.
+   */
+  async function onPasskeyClick(): Promise<void> {
+    setServerError(null);
+    setPasskeyBusy(true);
+    try {
+      const result = await session.loginWithPasskey({});
+      if (result.fullyUnlocked) {
+        navigate('/flow/home', { replace: true });
+      } else {
+        setServerError(
+          'Cette passkey ne déchiffre pas tes données. Saisis ton mot de passe pour finaliser.',
+        );
+      }
+    } catch (err) {
+      if (isWebAuthnCancel(err)) {
+        // User dismissed the picker — silent, no error.
+      } else if (isApiError(err) && err.status === 401) {
+        setServerError('Aucune passkey valide n’a répondu.');
+      } else {
+        setServerError('Échec de la connexion par passkey.');
+        if (import.meta.env.DEV) console.warn('passkey login failed', err);
+      }
+    } finally {
+      setPasskeyBusy(false);
     }
   }
 
@@ -125,11 +161,29 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || passkeyBusy}
               className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? 'Connexion…' : 'Entrer'}
             </button>
+
+            {/* Passkey alternative — secondary affordance below the
+                primary password submit. Hidden on browsers that don't
+                support WebAuthn at all (older Firefox, very old
+                browsers); on supported browsers, the OS prompt surfaces
+                discoverable credentials so the user can pick without
+                typing the email. */}
+            {typeof window !== 'undefined' &&
+              typeof window.PublicKeyCredential !== 'undefined' ? (
+              <button
+                type="button"
+                onClick={() => void onPasskeyClick()}
+                disabled={isSubmitting || passkeyBusy}
+                className="mt-2 w-full cursor-pointer rounded-md border border-hair bg-bg px-4 py-[11px] text-[14px] font-semibold text-ink transition-colors hover:bg-bg-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {passkeyBusy ? 'Vérification…' : 'Se connecter avec une passkey'}
+              </button>
+            ) : null}
 
             <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
               <Link
@@ -150,6 +204,17 @@ export default function LoginPage() {
       </main>
     </div>
   );
+}
+
+/**
+ * `navigator.credentials.get` rejects with `NotAllowedError` when
+ * the user dismisses the picker or the operation times out. We
+ * silence that case rather than nag — the user explicitly cancelled.
+ */
+function isWebAuthnCancel(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const name = (err as { name?: unknown }).name;
+  return name === 'NotAllowedError' || name === 'AbortError';
 }
 
 interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {

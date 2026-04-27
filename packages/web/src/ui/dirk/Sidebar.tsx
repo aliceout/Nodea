@@ -11,6 +11,7 @@ import SidebarHeader from './sidebar/SidebarHeader';
 import SidebarNav from './sidebar/SidebarNav';
 import {
   SidebarTipModules,
+  SidebarTipPasskey,
   SidebarTipRecoveryCode,
 } from './sidebar/SidebarTip';
 import SidebarFooter from './sidebar/SidebarFooter';
@@ -90,6 +91,10 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
   // for authenticated users without a code yet — gate it here so
   // freshly-set-up users don't keep seeing a stale tip.
   const showRecoveryWarning = user !== null && user.recoveryCodeSet === false;
+  // Passkey suggestion: dismissable amber tip, only shown when the
+  // user has zero passkeys enrolled. Disappears as soon as the
+  // first one lands, regardless of dismiss state.
+  const showPasskeyTip = user !== null && user.passkeysCount === 0;
 
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
@@ -100,6 +105,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           new nudges appear. Each one is independently dismissable
           and self-contained, so the slot stays a passive container. */}
       {showRecoveryWarning ? <SidebarTipRecoveryCode /> : null}
+      {showPasskeyTip ? <SidebarTipPasskey /> : null}
       <SidebarTipModules />
       <SidebarFooter />
     </nav>

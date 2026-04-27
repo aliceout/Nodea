@@ -2,6 +2,7 @@ export * from './crypto-types.ts';
 export * from './password-rules.ts';
 export * from './schemas/auth.ts';
 export * from './schemas/auth-opaque.ts';
+export * from './schemas/auth-passkey.ts';
 export * from './schemas/auth-recovery.ts';
 export * from './schemas/auth-register-v2.ts';
 export * from './schemas/entries.ts';

@@ -15,6 +15,7 @@ const RequestReset = lazy(() => import("./pages/RequestReset"));
 const Reset = lazy(() => import("./pages/Reset"));
 const RecoveryCode = lazy(() => import("./pages/RecoveryCode"));
 const Recover = lazy(() => import("./pages/Recover"));
+const Passkeys = lazy(() => import("./pages/Passkeys"));
 
 function lazyPage(node) {
   return (
@@ -40,6 +41,7 @@ function AppWithKeyModal() {
       <Route path="/reset" element={lazyPage(<Reset />)} />
       <Route path="/recovery-code" element={lazyPage(<RecoveryCode />)} />
       <Route path="/recover" element={lazyPage(<Recover />)} />
+      <Route path="/passkeys" element={lazyPage(<Passkeys />)} />
       <Route path="/flow" element={<Navigate to="/flow/home" replace />} />
       <Route
         path="/flow/:moduleId"

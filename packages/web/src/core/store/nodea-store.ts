@@ -48,6 +48,12 @@ export interface SessionUser {
    *  Drives the sidebar warning + the Settings setup vs regenerate
    *  affordance. */
   recoveryCodeSet: boolean;
+  /** Total passkeys enrolled (Phase 4). Drives the sidebar tip
+   *  inviting enrollment when 0. */
+  passkeysCount: number;
+  /** Subset that are PRF-capable. Required >= 1 to activate mode
+   *  `maximum` (Auth-Spec §6.1). */
+  passkeysPrfCount: number;
 }
 
 export type KeyStatus = 'idle' | 'ready' | 'missing' | 'error';

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import {
   ChangePasswordStartBodySchema,
   ChangePasswordFinishBodySchema,
@@ -19,6 +19,7 @@ import {
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
 import {
+  authFactors,
   opaqueRecords,
   users,
   passwordResetTokens,
@@ -458,12 +459,35 @@ authRoutes.post('/reset/finish', resetLimiter, async (c) => {
   return c.json({ ok: true });
 });
 
-authRoutes.get('/me', requireUser, (c) => {
+authRoutes.get('/me', requireUser, async (c) => {
   const user = c.get('user');
   // OPAQUE-only since Phase 2D dropped the legacy Argon2id columns.
   // `wrapped*` blobs are the exclusive credential surface; the
   // client unwraps the KEK via the OPAQUE `exportKey` derived at
   // login, then unwraps the main key under the KEK.
+  //
+  // Phase 4 added the passkey counts so the sidebar tip + Settings
+  // can branch on enrollment state without a separate round-trip.
+  // Two SELECTs (total + PRF-capable) rather than one with a CASE
+  // sum — keeps each query trivially analysable, and a user has at
+  // most a handful of passkeys so the second pass is free.
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(authFactors)
+    .where(eq(authFactors.userId, user.id));
+  const [prfRow] = await db
+    .select({ value: count() })
+    .from(authFactors)
+    // PRF-capable passkeys: kind='passkey' filter is implicit (the
+    // table currently has no other kinds), but the prf_supported
+    // flag IS the discriminator we care about for §6.1 mode-max.
+    .where(
+      and(
+        eq(authFactors.userId, user.id),
+        eq(authFactors.prfSupported, true),
+      ),
+    );
+
   const body: AuthMeResponse = {
     id: user.id,
     email: user.email,
@@ -476,6 +500,8 @@ authRoutes.get('/me', requireUser, (c) => {
     wrappedKekPassword: user.wrappedKekPassword ?? null,
     wrappedKekPasswordIv: user.wrappedKekPasswordIv ?? null,
     recoveryCodeSet: user.recoveryCodeHash !== null,
+    passkeysCount: totalRow?.value ?? 0,
+    passkeysPrfCount: prfRow?.value ?? 0,
   };
   return c.json(body);
 });

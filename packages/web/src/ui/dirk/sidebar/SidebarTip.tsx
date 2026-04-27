@@ -159,3 +159,30 @@ export function SidebarTipRecoveryCode() {
     </SidebarTip>
   );
 }
+
+/**
+ * Specific instance: the « ajouter une passkey » nudge shown to
+ * authenticated users who haven't enrolled any passkey yet. Tone is
+ * `warning` (amber) — passkeys are a security upgrade rather than a
+ * data-loss prevention, so a softer signal than the recovery code
+ * tip is appropriate. **Dismissable** — the user can opt out of the
+ * suggestion without acting on it.
+ */
+export function SidebarTipPasskey() {
+  return (
+    <SidebarTip
+      title="Suggestion"
+      kind="warning"
+      dismissKey="nodea:home:tip-passkey"
+    >
+      Configure une passkey pour te connecter sans retaper ton mot de
+      passe.{' '}
+      <Link
+        to="/passkeys"
+        className="cursor-pointer font-medium text-amber-700 transition-colors hover:underline dark:text-amber-200"
+      >
+        Ajouter →
+      </Link>
+    </SidebarTip>
+  );
+}

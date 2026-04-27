@@ -270,3 +270,19 @@ export function buildKekAAD(userId: string, tag: FactorTag): string {
 export function buildMainKeyAAD(userId: string): string {
   return `nodea:v1\x1f${userId}\x1fmain`;
 }
+
+/**
+ * AAD for a passkey-wrapped KEK. Adds the credential id as a 4th
+ * component so each passkey's wrap is bound to its own credential —
+ * a server-side row swap between two of the same user's passkeys
+ * fails the auth-tag check at decrypt time. Auth-Spec §9.2 prescribes
+ * this 3-tuple format (`users.id || "passkey" || credential_id`).
+ *
+ * `credentialIdB64Url` must be the canonical base64url of the raw
+ * credential id bytes (no padding, URL-safe alphabet) — the same
+ * encoding used to store `auth_factors.credential_id` server-side.
+ * Both sides MUST agree on the encoding or every assertion fails.
+ */
+export function buildPasskeyAAD(userId: string, credentialIdB64Url: string): string {
+  return `nodea:v1\x1f${userId}\x1fpasskey\x1f${credentialIdB64Url}`;
+}

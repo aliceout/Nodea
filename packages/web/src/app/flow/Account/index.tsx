@@ -416,6 +416,7 @@ function SecurityTab() {
   const navigate = useNavigate();
   const user = useNodeaStore(selectUser);
   const recoveryCodeSet = user?.recoveryCodeSet === true;
+  const passkeysCount = user?.passkeysCount ?? 0;
 
   return (
     <div className="max-w-[880px]">
@@ -426,6 +427,25 @@ function SecurityTab() {
         <PrimaryButton onClick={() => navigate('/change-password')}>
           Renouveler la clé
         </PrimaryButton>
+      </SecuritySection>
+
+      <SecuritySection
+        title="Passkey"
+        description={
+          passkeysCount === 0
+            ? 'Une passkey (Touch ID, Face ID, Windows Hello, Yubikey, gestionnaire de mots de passe…) remplace la saisie du mot de passe à la connexion. Si elle est compatible PRF, elle déchiffre aussi tes données — sinon elle te connecte mais te demande quand même ton mot de passe.'
+            : `${passkeysCount} passkey${passkeysCount > 1 ? 's' : ''} enregistrée${passkeysCount > 1 ? 's' : ''}. Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.`
+        }
+      >
+        {passkeysCount === 0 ? (
+          <PrimaryButton onClick={() => navigate('/passkeys')}>
+            Ajouter une passkey
+          </PrimaryButton>
+        ) : (
+          <SecondaryButton onClick={() => navigate('/passkeys')}>
+            Gérer
+          </SecondaryButton>
+        )}
       </SecuritySection>
 
       <SecuritySection

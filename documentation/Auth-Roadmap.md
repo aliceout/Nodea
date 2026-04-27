@@ -12,6 +12,11 @@
 >
 > ## État au {{2026-04-27}}
 >
+> **Phases livrées** : 0 (spec), 1 (register simplifié), 2A-2D
+> (OPAQUE migration), 3 (recovery code BIP39), **4 (passkey WebAuthn
+> + PRF)**. En cours : Phase 5 (TOTP + security mode) à attaquer
+> ensuite.
+>
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
 > - Inscription en un seul formulaire (email + password) au lieu du
@@ -389,7 +394,107 @@ récupération viable hors password.
 
 ---
 
-### Phase 4 — Passkey (WebAuthn + PRF)
+### Phase 4 — Passkey (WebAuthn + PRF) ✅ livrée
+
+**Statut** : livrée. Enrollment uniquement depuis Settings (pas au
+register — UX choice cohérent avec Phase 3 : on n'overload pas le
+register flow). Sidebar tip ambre dismissable (`SidebarTipPasskey`,
+kind=warning) tant que `passkeysCount === 0`.
+
+**Routes livrées** (`packages/api/src/routes/auth-passkey.ts`)
+- `POST /auth/passkey/enroll/start` (auth, password proof requis) —
+  retourne `creationOptions` WebAuthn (UV `'required'`, attestation
+  `'none'`, `excludeCredentials` peuplé pour anti-double-enrollment).
+  Persiste le challenge sur `sessions.pending_webauthn_challenge`,
+  TTL 5 min.
+- `POST /auth/passkey/enroll/finish` (auth) — vérifie l'attestation
+  via `@simplewebauthn/server`, exige `userVerified === true`, INSERT
+  dans `auth_factors` avec `prf_supported` + `wrapped_kek{,_iv}`.
+- `GET /auth/passkey/list` (auth) — liste les passkeys de l'user
+  appelant uniquement, avec `prfCount` global.
+- `PATCH /auth/passkey/:id/label` (auth, password proof) — renommer.
+- `POST /auth/passkey/:id/remove` (auth, password proof) — supprimer
+  + appliquer le downgrade auto §6.1 quand on retire la dernière
+  passkey PRF-capable d'un user en mode `maximum`.
+- `POST /auth/passkey/login/start` (anonyme) — anti-enum natif :
+  email inconnu → options génériques sans `allowCredentials` (le
+  browser tombe sur la sélection discoverable). Email connu →
+  `allowCredentials` scopé aux credentials de l'user.
+- `POST /auth/passkey/login/finish` (anonyme) — vérifie l'assertion,
+  enforce UV server-side (Auth-Spec §9.3), bump `signCount` +
+  `lastUsedAt`, mint une session full, retourne les blobs `wrappedKek`
+  / `wrappedMainKey` pour que le client finisse l'unwrap localement.
+
+**Frontend livré**
+- `pages/Passkeys.tsx` (auth, route `/passkeys`) — list + add +
+  rename + remove. Trois sub-stages dans un seul fichier (`list` /
+  `add` / `remove` / `rename`). Marketing panel cohérent.
+- `core/auth/passkey-flow.ts` — orchestrateur WebAuthn isolé du hook
+  `useSession`. Drive `startRegistration` / `startAuthentication`,
+  injecte le PRF eval input fixe (`PRF_INPUT_V1`), extrait
+  `clientExtensionResults.prf.results.first` quand l'authenticator
+  le surface, wrap KEK sous PRF output via `wrapKekUnderPrf`.
+- `core/auth/use-session.ts` — gagne `enrollPasskey`,
+  `loginWithPasskey`, `renamePasskey`, `removePasskey`. Le helper
+  `issuePasswordProof` est mutualisé (rename / remove / enroll
+  partagent le même round-trip OPAQUE).
+- Login page : bouton « Se connecter avec une passkey » (visible
+  seulement si le browser supporte `PublicKeyCredential`). Le bouton
+  drive le flow passkey-first. Sur PRF complet → `/flow/home`. Sur
+  non-PRF / PRF deferred → message clair invitant à compléter avec
+  le mot de passe.
+- Account → Sécurité tab : SecuritySection « Passkey » entre Mot de
+  passe et 2FA. Affiche `Ajouter une passkey` (zéro enrôlée) ou
+  `Gérer` (au moins une enrôlée).
+- `SidebarTipPasskey` (kind=warning, ambre, dismissable via
+  `localStorage["nodea:home:tip-passkey"]`) — affichée tant que
+  `user.passkeysCount === 0`.
+
+**Crypto livrée**
+- `core/crypto/passkey-prf.ts` — `PRF_INPUT_V1` (32 bytes : ASCII
+  `"nodea:prf-v1"` + 20 zero bytes), `wrapKekUnderPrf` /
+  `unwrapKekUnderPrf` autour de `factor-wrap.ts` avec AAD =
+  `nodea:v1\x1f<userId>\x1fpasskey\x1f<credentialIdB64Url>`.
+- `factor-wrap.ts` gagne `buildPasskeyAAD(userId, credentialId)` —
+  4-tuple format pour binder le wrap à la credential id (un swap
+  serveur entre deux passkeys du même user fait échouer l'auth-tag).
+
+**Variables d'env livrées**
+- `WEBAUTHN_RP_ID` (défaut `localhost`).
+- `WEBAUTHN_RP_NAME` (défaut `Nodea`).
+- `WEBAUTHN_ORIGIN` (défaut `http://localhost:5173`).
+
+**Tests livrés**
+- API : 17 tests d'intégration (`auth-passkey.test.ts`) — passkey
+  counts dans `/me`, gating de proof OPAQUE sur enroll-start,
+  enroll-start retourne creationOptions avec UV required, list
+  isole les credentials par user, rename / remove gating, downgrade
+  auto §6.1 (PRF) + non-déclenchement (non-PRF), login-start
+  anti-enum + scoped allowCredentials.
+- Web : 9 tests crypto (`passkey-prf.test.ts`) — round-trip wrap,
+  AAD format, binding cross-user / cross-credential, fresh IV,
+  PRF input constant byte-by-byte.
+- Total : 143 api (+17) / 92 web (+9). Le full WebAuthn-ceremony
+  test (enroll/finish + login/finish avec virtual authenticator)
+  est différé — il demande un fixture `@simplewebauthn/server`-
+  compatible non encore en place.
+
+**Limitations connues**
+- PRF output au registration : tous les browsers ne le surfacent pas
+  systématiquement. Quand `clientExtensionResults.prf?.results?.first`
+  est absent à l'enrollment, on enregistre la passkey en login-only.
+  Phase 4 prévoit pas de chemin "promote-to-PRF" — la prochaine
+  itération passera par une assertion de calibration au login pour
+  upgrader le wrap.
+- Le bouton "changer mon password via passkey" (matrice §6, row
+  change-password) est conceptuellement supporté par le backend
+  (la passkey unwrappe la KEK, qui suffit pour le change-password)
+  mais le wire UI dédié atterrit en Phase 7 avec le reste de la
+  matrice de re-auth.
+
+---
+
+### Phase 4 — Passkey (WebAuthn + PRF) — design original
 
 **Livrables**
 - Table `auth_factors` : credential id, public key, signature counter,

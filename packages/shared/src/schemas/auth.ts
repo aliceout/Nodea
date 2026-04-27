@@ -253,5 +253,13 @@ export const AuthMeResponseSchema = z.object({
    *  leaves the server; we just flag presence so the UI can show
    *  the "set me up" warning vs the "regenerate" button. */
   recoveryCodeSet: z.boolean(),
+  /** Total number of passkeys enrolled (`auth_factors WHERE
+   *  kind='passkey'`). Drives the sidebar "configure a passkey" tip
+   *  (visible at 0) and the Settings UI affordance. */
+  passkeysCount: z.number().int().nonnegative(),
+  /** Subset of `passkeysCount` that are PRF-capable (can unwrap the
+   *  KEK on their own). Drives the §6.1 mode-max gate: activating
+   *  `maximum` requires `passkeysPrfCount >= 1`. */
+  passkeysPrfCount: z.number().int().nonnegative(),
 });
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

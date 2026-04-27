@@ -112,6 +112,36 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+
+  /**
+   * WebAuthn relying-party identifier (Auth-Spec §13.1, Phase 4).
+   * Must match the registrable domain the web app is served from
+   * (no scheme, no port). For Nodea production this is
+   * `nodea.example.org`; for dev with Vite on
+   * `http://localhost:5173`, set `WEBAUTHN_RP_ID=localhost`.
+   *
+   * Mismatching `rpId` between enrollment and assertion makes every
+   * passkey unverifiable — the browser refuses to surface
+   * credentials for the wrong rpId.
+   */
+  WEBAUTHN_RP_ID: z.string().min(1).default('localhost'),
+
+  /**
+   * Human-friendly relying-party name shown in the OS / browser
+   * passkey UI (and in the user's password manager list). Free text;
+   * keep it short.
+   */
+  WEBAUTHN_RP_NAME: z.string().min(1).default('Nodea'),
+
+  /**
+   * Origin allowed to use the rpId — full URL with scheme + port.
+   * Must match the origin the browser sees when calling
+   * `navigator.credentials.{create,get}`. Defaults to
+   * `http://localhost:5173` (the Vite dev server). Multiple origins
+   * are not currently supported; if we ever need them, pivot to a
+   * comma-separated list.
+   */
+  WEBAUTHN_ORIGIN: z.string().url().default('http://localhost:5173'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

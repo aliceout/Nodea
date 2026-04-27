@@ -86,6 +86,8 @@ describe('API client', () => {
       wrappedKekPassword: null,
       wrappedKekPasswordIv: null,
       recoveryCodeSet: false,
+      passkeysCount: 0,
+      passkeysPrfCount: 0,
     });
 
     const me = await apiMe();

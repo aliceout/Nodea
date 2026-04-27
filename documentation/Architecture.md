@@ -225,6 +225,31 @@ the factory loops over. There is nowhere to forget a guard.
   ciphertext. Reset-token shape unchanged: 32-byte random, SHA-256
   hashed, 1h TTL (R13 / #22).
 
+- **Passkey (WebAuthn + PRF)** (Phase 4 — `routes/auth-passkey.ts`):
+  - Five authenticated routes (`enroll/start`, `enroll/finish`,
+    `list`, `:id/label`, `:id/remove`) for Settings, two anonymous
+    routes (`login/start`, `login/finish`) for the login flow.
+  - Server primitives via `@simplewebauthn/server@13.3.0`. Challenges
+    persisted on `sessions.pending_webauthn_challenge` for enrollment
+    (TTL 5 min) and on a single-use in-memory pending entry
+    (`auth/passkey-login-state.ts`) for login. UV `'required'` is
+    enforced both via the lib and by re-checking
+    `userVerified === true` server-side (Auth-Spec §9.3).
+  - The KEK is wrapped per-credential under `HKDF(prf_output,
+    "nodea:wrap-kek")`, AAD =
+    `nodea:v1\x1f<userId>\x1fpasskey\x1f<credentialId>` so a server-
+    side row swap between two of the user's passkeys fails the
+    auth-tag at decrypt time. Non-PRF authenticators are stored
+    `prf_supported=false` with NULL wrap blobs (login-only — the user
+    chains a password to unlock data).
+  - The `:id/remove` handler runs the §6.1 downgrade auto: removing
+    the last PRF-capable passkey while `security_mode = 'maximum'`
+    flips it back to `password_or_passkey` in the same transaction.
+  - Client orchestration in `core/auth/passkey-flow.ts` keeps the
+    WebAuthn dance + PRF eval injection out of `useSession`, which
+    only exposes high-level `enrollPasskey` / `loginWithPasskey` /
+    `removePasskey` / `renamePasskey` surfaces.
+
 ### Background jobs
 
 A single `node-cron` schedule lives in

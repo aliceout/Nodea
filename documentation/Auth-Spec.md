@@ -65,12 +65,12 @@
 
 | Question | Réponse courte | Détail |
 |---|---|---|
-| Qu'est-ce qui dérivera la KEK avec OPAQUE ? | OPAQUE `export_key` **ou** WebAuthn PRF **ou** recovery code | §3.2 |
+| Qu'est-ce qui dérive la KEK ? (✅ livré 2/3) | OPAQUE `export_key` (Phase 2) **ou** WebAuthn PRF (Phase 4) **ou** recovery code BIP39 (Phase 3) | §3.2 |
 | Le TOTP dérivera quelque chose ? | **Non.** Gate de session uniquement. | §2.3, §8 |
-| Identifiant OPAQUE ? | `users.email` (changer l'email = re-register OPAQUE) | §7.6 |
-| Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code | §3.2 |
+| Identifiant OPAQUE ? (✅ Phase 2) | `users.email` (changer l'email = re-register OPAQUE) | §7.6 |
+| Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code (✅ tous livrés) | §3.2 |
 | Mode "Sécurité maximale" = split crypto ? | **Non**, gate UX uniquement | §2.3 |
-| Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
+| Yubikey sans PIN acceptée ? (✅ Phase 4) | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
 | Un opérateur serveur pourra bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
 
 ---
@@ -1887,11 +1887,19 @@ en clair (affichés une seule fois).
 
 ---
 
-## 9. Passkey — détails (🚧 Phase 2+ design)
+## 9. Passkey — détails (✅ Phase 4 livrée)
 
-> **Statut.** Pas implémenté en V1. La table `auth_factors` existe
-> en DB depuis Phase 0 mais aucun handler ne l'utilise. Design pour
-> l'étape 6 de l'enrollment progressif via `/settings/security/passkeys`.
+> **Statut.** Phase 4 livrée. Routes
+> `packages/api/src/routes/auth-passkey.ts`, orchestrateur client
+> `packages/web/src/core/auth/passkey-flow.ts`, page Settings dédiée
+> `/passkeys` (et SecuritySection « Passkey » dans Account →
+> Sécurité). Sidebar tip ambre dismissable invite à enroller quand
+> `passkeysCount === 0` (cohérent avec la décision : pas de passkey
+> au register, opt-in post-activation). Limitation connue : les
+> authenticators qui ne surfacent pas `prf.results.first` au
+> registration sont enrôlés en login-only ; le chemin
+> "promote-to-PRF" via une assertion de calibration arrivera dans
+> une itération ultérieure.
 
 ### 9.1 Choix structurels
 

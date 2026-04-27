@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.ts';
+import { authPasskeyRoutes } from './routes/auth-passkey.ts';
 import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
 import { adminRoutes } from './routes/admin.ts';
@@ -51,6 +52,10 @@ export function buildApp() {
   // code paths catch first. The general /auth namespace is broad
   // and would otherwise win on the trie.
   app.route('/auth', authRecoveryRoutes);
+  // Passkey routes (Auth-Roadmap Phase 4) — same ordering rationale:
+  // mounted before the general `authRoutes` so /auth/passkey/* wins
+  // the trie before any catch-alls in the legacy router.
+  app.route('/auth', authPasskeyRoutes);
   app.route('/auth', authRoutes);
   app.route('/admin', adminRoutes);
   app.route('/announcements', announcementsRoutes);
