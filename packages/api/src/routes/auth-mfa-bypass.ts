@@ -1,9 +1,8 @@
 import { Hono, type Context } from 'hono';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   MfaBypassRequestBodySchema,
-  type MfaBypassActiveResponse,
   type MfaBypassRequestResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
@@ -19,7 +18,7 @@ import { renderMfaBypassEmail } from '../services/email/templates/mfa-bypass.ts'
 import { getEmailService } from '../services/email/index.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import type { AuthVariables } from '../middleware/require-user.ts';
 import {
   requireMfaPending,
   type MfaPendingVariables,
@@ -28,7 +27,7 @@ import {
 /**
  * MFA bypass routes (Auth-Roadmap Phase 6, Auth-Spec §7.8).
  *
- * Five surfaces:
+ * Three surfaces:
  *
  *   - `POST /auth/mfa/bypass/request` (mfa_pending) — kicks off the
  *     bypass. Validates §6.2 eligibility, generates the token pair,
@@ -39,16 +38,14 @@ import {
  *     doesn't depend on the SPA being loaded.
  *   - `GET  /auth/mfa/bypass/cancel?t=<token>` (anon) — flips
  *     `cancelled_at`. Same minimalist HTML response.
- *   - `GET  /auth/mfa/bypass/active` (full session) — returns the
- *     active request (if any) so the Settings UI can show "you have
- *     a pending bypass, cancel it here" without polling.
- *   - `POST /auth/mfa/bypass/cancel` (full session) — cancels the
- *     active bypass without going through the email link. Used by
- *     the Settings cancel button.
  *
  * Lazy application happens at login time (`auth.ts` /
  * `auth-passkey.ts` call `applyConsumableBypass`). No cron needed —
- * the bypass is consumed when the user next authenticates.
+ * the bypass is consumed when the user next authenticates. A
+ * successful full-session login also auto-cancels any pending
+ * request (`cancelPendingBypassesForUser`), so there's no separate
+ * "active" surface in Settings — the bypass either applies, gets
+ * cancelled, or expires.
  */
 export const authMfaBypassRoutes = new Hono<{
   Variables: AuthVariables & MfaPendingVariables;
@@ -288,67 +285,6 @@ authMfaBypassRoutes.get('/mfa/bypass/cancel', linkLimiter, async (c) => {
     'La demande de récupération est annulée. Tu peux te reconnecter normalement avec tous tes facteurs habituels.',
     200,
   );
-});
-
-/* ============================================================================
- * GET /auth/mfa/bypass/active — Settings status row
- * ========================================================================== */
-
-authMfaBypassRoutes.get('/mfa/bypass/active', requireUser, async (c) => {
-  const user = c.get('user');
-  const [request] = await db
-    .select()
-    .from(mfaBypassRequests)
-    .where(
-      and(
-        eq(mfaBypassRequests.userId, user.id),
-        isNull(mfaBypassRequests.cancelledAt),
-        isNull(mfaBypassRequests.consumedAt),
-      ),
-    )
-    .orderBy(desc(mfaBypassRequests.createdAt))
-    .limit(1);
-
-  const response: MfaBypassActiveResponse = {
-    active: request
-      ? {
-          factor: request.factor,
-          confirmedAt: request.confirmedAt
-            ? request.confirmedAt.toISOString()
-            : null,
-          expiresAt: request.expiresAt.toISOString(),
-          earliestApplyAt: request.confirmedAt
-            ? new Date(
-                request.confirmedAt.getTime() + BYPASS_APPLY_DELAY_MS,
-              ).toISOString()
-            : null,
-        }
-      : null,
-  };
-  return c.json(response);
-});
-
-/* ============================================================================
- * POST /auth/mfa/bypass/cancel — Settings cancel button
- * ========================================================================== */
-
-authMfaBypassRoutes.post('/mfa/bypass/cancel', requireUser, async (c) => {
-  const user = c.get('user');
-  const result = await db
-    .update(mfaBypassRequests)
-    .set({ cancelledAt: new Date() })
-    .where(
-      and(
-        eq(mfaBypassRequests.userId, user.id),
-        isNull(mfaBypassRequests.cancelledAt),
-        isNull(mfaBypassRequests.consumedAt),
-      ),
-    )
-    .returning({ id: mfaBypassRequests.id });
-  if (result.length === 0) {
-    return c.json({ error: 'no_active_bypass' }, 404);
-  }
-  return c.json({ ok: true });
 });
 
 /* ============================================================================

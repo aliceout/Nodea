@@ -32,8 +32,6 @@ import {
   apiLoginFinish,
   apiLogout,
   apiMe,
-  apiMfaBypassActive,
-  apiMfaBypassCancel,
   apiMfaBypassRequest,
   apiMfaPasskeyFinish,
   apiMfaPasskeyStart,
@@ -1180,24 +1178,6 @@ export function useSession() {
   }
 
   /**
-   * Read the active bypass for the current full-session user.
-   * Used by Settings → Sécurité to surface a "you have a pending
-   * bypass" row + cancel button. `null` = no active bypass.
-   */
-  async function getActiveMfaBypass(): ReturnType<typeof apiMfaBypassActive> {
-    return apiMfaBypassActive();
-  }
-
-  /**
-   * Cancel the active bypass from a full session (Settings button).
-   * Throws if there's no active bypass — caller should hide the
-   * button when `getActiveMfaBypass` returned `{ active: null }`.
-   */
-  async function cancelMfaBypass(): Promise<void> {
-    await apiMfaBypassCancel();
-  }
-
-  /**
    * Change the user's `security_mode` (Auth-Roadmap Phase 5D).
    * Requires fresh password proof (matrice §6). Server validates
    * §6.1 prerequisites — caller catches `totp_required` /
@@ -1243,8 +1223,6 @@ export function useSession() {
     verifyMfaPasskey,
     changeSecurityMode,
     requestMfaBypass,
-    getActiveMfaBypass,
-    cancelMfaBypass,
   };
 }
 

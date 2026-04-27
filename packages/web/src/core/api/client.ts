@@ -55,7 +55,6 @@ import {
   type MfaTotpVerifyResponse,
   type SecurityMode,
   type SecurityModeChangeBody,
-  type MfaBypassActiveResponse,
   type MfaBypassRequestBody,
   type MfaBypassRequestResponse,
   type RecoveryCodeUpsertBody,
@@ -559,18 +558,6 @@ export async function apiMfaBypassRequest(
     '/auth/mfa/bypass/request',
     body,
   );
-}
-
-/** Read the active bypass for the current full-session user. Returns
- *  `{ active: null }` when none — the UI uses that to skip the row. */
-export async function apiMfaBypassActive(): Promise<MfaBypassActiveResponse> {
-  return request<MfaBypassActiveResponse>('GET', '/auth/mfa/bypass/active');
-}
-
-/** Cancel an active bypass from a full session (Settings button).
- *  Returns 404 if there's no active bypass. */
-export async function apiMfaBypassCancel(): Promise<{ ok: true }> {
-  return request<{ ok: true }>('POST', '/auth/mfa/bypass/cancel');
 }
 
 // --- Library lookup (proxy) -------------------------------------------
