@@ -487,6 +487,12 @@ describe('full-session bypass status routes', () => {
 
   it('POST /cancel from full session cancels the active bypass', async () => {
     const u = await seedUser('bypass-self-cancel@example.com');
+    // Login first — full-session promotion auto-cancels pending
+    // bypasses, so the row has to be inserted AFTER login to exercise
+    // the manual cancel route.
+    const r = await rawLogin('bypass-self-cancel@example.com', TEST_PASSWORD);
+    const cookie = r.cookie!;
+
     await db.insert(mfaBypassRequests).values({
       id: randomUUID(),
       userId: u.id,
@@ -499,9 +505,6 @@ describe('full-session bypass status routes', () => {
       consumedAt: null,
     });
 
-    const r = await rawLogin('bypass-self-cancel@example.com', TEST_PASSWORD);
-    const cookie = r.cookie!;
-
     const res = await app.request('/auth/mfa/bypass/cancel', {
       method: 'POST',
       headers: { cookie },
@@ -513,6 +516,36 @@ describe('full-session bypass status routes', () => {
       .from(mfaBypassRequests)
       .where(eq(mfaBypassRequests.userId, u.id));
     expect(row?.cancelledAt).not.toBeNull();
+  });
+
+  it('a successful full-session login auto-cancels any pending bypass', async () => {
+    // The legit user re-gained access to the factor they claimed to
+    // have lost — completing a full login proves it, so the bypass
+    // request is invalidated automatically. Also defangs an attacker
+    // who triggered a bypass against the user.
+    const u = await seedUser('bypass-auto-cancel@example.com');
+    await db.insert(mfaBypassRequests).values({
+      id: randomUUID(),
+      userId: u.id,
+      factor: 'totp',
+      confirmTokenHash: hashBypassToken('confirm-' + randomUUID()),
+      cancelTokenHash: hashBypassToken('cancel-' + randomUUID()),
+      confirmedAt: null,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      cancelledAt: null,
+      consumedAt: null,
+    });
+
+    const r = await rawLogin('bypass-auto-cancel@example.com', TEST_PASSWORD);
+    expect(r.status).toBe(200);
+    expect(r.body.needsMfa).toBe(false);
+
+    const [row] = await db
+      .select()
+      .from(mfaBypassRequests)
+      .where(eq(mfaBypassRequests.userId, u.id));
+    expect(row?.cancelledAt).not.toBeNull();
+    expect(row?.consumedAt).toBeNull();
   });
 
   it('POST /cancel returns 404 when no active bypass', async () => {

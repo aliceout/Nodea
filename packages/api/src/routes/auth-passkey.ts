@@ -29,7 +29,10 @@ import {
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
-import { applyConsumableBypass } from '../auth/mfa-bypass.ts';
+import {
+  applyConsumableBypass,
+  cancelPendingBypassesForUser,
+} from '../auth/mfa-bypass.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
 import {
@@ -708,6 +711,9 @@ authPasskeyRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
     return c.json(response);
   }
 
+  // Successful passkey-only login: defang any pending bypass before
+  // minting the full session — see auth.ts for rationale.
+  await cancelPendingBypassesForUser(account.id);
   const session = await createSession(account.id);
   await setSessionCookie(c, session.id, session.expiresAt);
 

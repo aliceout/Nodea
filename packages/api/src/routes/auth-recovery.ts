@@ -26,6 +26,7 @@ import {
   revokeAllUserSessions,
 } from '../auth/session.ts';
 import { setSessionCookie } from '../auth/cookies.ts';
+import { cancelPendingBypassesForUser } from '../auth/mfa-bypass.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 
@@ -303,6 +304,9 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
   });
 
   await revokeAllUserSessions(user.id);
+  // Successful recovery proves account control; defang any pending
+  // bypass before issuing the new session.
+  await cancelPendingBypassesForUser(user.id);
   const session = await createSession(user.id);
   await setSessionCookie(c, session.id, session.expiresAt);
 

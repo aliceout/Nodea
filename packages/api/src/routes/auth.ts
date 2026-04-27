@@ -19,7 +19,10 @@ import {
   type ResetPasswordStartResponse,
 } from '@nodea/shared';
 import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
-import { applyConsumableBypass } from '../auth/mfa-bypass.ts';
+import {
+  applyConsumableBypass,
+  cancelPendingBypassesForUser,
+} from '../auth/mfa-bypass.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { db } from '../db/client.ts';
@@ -347,6 +350,9 @@ authRoutes.post('/login/finish', loginLimiter, async (c) => {
     user.wrappedKekPasswordIv === null
   ) {
     // Fall-through path: legacy / password_or_passkey / safety net.
+    // A successful login proves the user controls every required
+    // factor — defang any pending bypass before issuing the session.
+    await cancelPendingBypassesForUser(user.id);
     const session = await createSession(user.id);
     await setSessionCookie(c, session.id, session.expiresAt);
     const response: OpaqueLoginFinishResponse = {

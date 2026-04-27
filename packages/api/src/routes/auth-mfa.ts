@@ -31,6 +31,7 @@ import {
 import { finalizeMfaSession } from '../auth/session.ts';
 import { setSessionCookie } from '../auth/cookies.ts';
 import { missingFactors } from '../auth/mfa-policy.ts';
+import { cancelPendingBypassesForUser } from '../auth/mfa-bypass.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import {
@@ -157,6 +158,9 @@ authMfaRoutes.post('/mfa/totp/verify', requireMfaPending, verifyLimiter, async (
 
   if (missing.length === 0) {
     // Promote the session — DELETE pending + INSERT full atomically.
+    // Successfully verifying every required factor invalidates any
+    // bypass request the user (or an attacker) had pending for them.
+    await cancelPendingBypassesForUser(user.id);
     const fullSession = await finalizeMfaSession(sessionId);
     await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
     const response: MfaTotpVerifyResponse = { finalized: true };
@@ -335,6 +339,7 @@ authMfaRoutes.post(
     const missing = missingFactors(user, updatedPending);
 
     if (missing.length === 0) {
+      await cancelPendingBypassesForUser(user.id);
       const fullSession = await finalizeMfaSession(sessionId);
       await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
       const response: MfaPasskeyFinishResponse = { finalized: true };

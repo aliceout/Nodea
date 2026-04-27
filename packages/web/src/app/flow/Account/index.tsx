@@ -1,7 +1,6 @@
 import {
   type ChangeEvent,
   type FormEvent,
-  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -419,8 +418,6 @@ function SecurityTab() {
 
   return (
     <div className="max-w-[880px] divide-y divide-hair">
-      <ActiveBypassRow />
-
       <SecuritySection
         title="Mot de passe"
         description="Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais."
@@ -489,93 +486,6 @@ function modeLabel(mode: SecurityMode): string {
   if (mode === 'password_or_passkey') return 'Standard';
   if (mode === 'always_totp') return 'TOTP requis';
   return 'Maximum';
-}
-
-/**
- * Active MFA bypass row — Auth-Roadmap Phase 6. Renders nothing
- * when there's no active bypass; otherwise surfaces the factor +
- * earliest apply date + a cancel button. Polls `/auth/mfa/bypass/
- * active` once on mount; the user's flow doesn't need real-time
- * updates here.
- */
-function ActiveBypassRow() {
-  const session = useSession();
-  const [active, setActive] = useState<{
-    factor: 'totp' | 'passkey';
-    confirmedAt: string | null;
-    earliestApplyAt: string | null;
-  } | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await session.getActiveMfaBypass();
-        if (!cancelled) setActive(res.active);
-      } catch (err) {
-        if (import.meta.env.DEV) console.warn('bypass active fetch failed', err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // Mount-once. The session hook returns stable references for
-    // its functions; ESLint warning suppressed since we deliberately
-    // ignore deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (active === null) return null;
-
-  const factorLabel = active.factor === 'totp' ? 'TOTP' : 'passkeys';
-  const stateLine = active.confirmedAt
-    ? `Demande confirmée. Applicable au prochain login à partir du ${
-        active.earliestApplyAt
-          ? new Date(active.earliestApplyAt).toLocaleString('fr-FR')
-          : 'délai de 48h'
-      }.`
-    : 'Demande envoyée. Confirme le lien dans ton email pour démarrer le délai 48h.';
-
-  async function onCancel(): Promise<void> {
-    setError(null);
-    setSubmitting(true);
-    try {
-      await session.cancelMfaBypass();
-      setActive(null);
-    } catch (err) {
-      setError('Impossible d’annuler la demande.');
-      if (import.meta.env.DEV) console.warn('bypass cancel failed', err);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <section className="py-[24px] first:pt-0 last:pb-0">
-      <div className="rounded-md border border-amber-500 bg-amber-500/10 px-4 py-3 dark:bg-amber-500/15">
-        <p className="mb-1 text-[13px] font-semibold text-amber-700 dark:text-amber-200">
-          Récupération {factorLabel} en cours
-        </p>
-        <p className="mb-3 text-[12.5px] leading-[1.55] text-ink-soft">
-          {stateLine}
-        </p>
-        {error ? (
-          <p className="mb-2 text-[12px] text-danger">{error}</p>
-        ) : null}
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          onClick={() => void onCancel()}
-          disabled={submitting}
-        >
-          {submitting ? 'Annulation…' : 'Annuler la demande'}
-        </Button>
-      </div>
-    </section>
-  );
 }
 
 interface SecuritySectionProps {

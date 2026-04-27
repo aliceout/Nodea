@@ -128,13 +128,14 @@ authMfaBypassRoutes.post(
       consumedAt: null,
     });
 
-    // Email both links. The base URL is `WEB_BASE_URL` so the link
-    // points at the SPA that hosts the confirm/cancel pages
-    // (rather than the api host directly).
+    // Email both links. They target the API directly (server-rendered
+    // HTML pages) via the `/api` reverse-proxy prefix — the SPA does
+    // not host the confirm/cancel pages. Vite forwards `/api/*` to the
+    // Hono dev server, and prod nginx mirrors that layout.
     const config = getConfig();
-    const base = config.WEB_BASE_URL ?? config.WEBAUTHN_ORIGIN;
-    const confirmLink = `${base}/auth/bypass/confirm?t=${confirm.token}`;
-    const cancelLink = `${base}/auth/bypass/cancel?t=${cancel.token}`;
+    const base = (config.WEB_BASE_URL ?? config.WEBAUTHN_ORIGIN).replace(/\/$/, '');
+    const confirmLink = `${base}/api/auth/mfa/bypass/confirm?t=${confirm.token}`;
+    const cancelLink = `${base}/api/auth/mfa/bypass/cancel?t=${cancel.token}`;
     const rendered = renderMfaBypassEmail({
       factor,
       confirmLink,

@@ -235,7 +235,6 @@ export default function LoginMfaPage() {
                 lost={lost}
                 factor="totp"
                 onConfirm={() => void confirmLost()}
-                onCancel={() => setLost({ kind: 'idle' })}
               />
             </>
           ) : null}
@@ -298,7 +297,6 @@ export default function LoginMfaPage() {
                 lost={lost}
                 factor="passkey"
                 onConfirm={() => void confirmLost()}
-                onCancel={() => setLost({ kind: 'idle' })}
               />
             </>
           ) : null}
@@ -319,10 +317,9 @@ interface LostFlowProps {
    *  open simultaneously. */
   factor: 'totp' | 'passkey';
   onConfirm: () => void;
-  onCancel: () => void;
 }
 
-function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
+function LostFlow({ lost, factor, onConfirm }: LostFlowProps) {
   if (lost.kind === 'idle') return null;
   if (lost.factor !== factor) return null;
 
@@ -343,24 +340,14 @@ function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
           {' '}
           {sideEffect}
         </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={lost.submitting}
-            className="flex-1 cursor-pointer rounded-md bg-accent px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {lost.submitting ? 'Envoi…' : 'Envoyer l’email'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={lost.submitting}
-            className="cursor-pointer rounded-md border border-hair bg-bg px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-bg-2 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Annuler
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={lost.submitting}
+          className="w-full cursor-pointer rounded-md bg-accent px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {lost.submitting ? 'Envoi…' : 'Envoyer l’email'}
+        </button>
       </div>
     );
   }

@@ -259,3 +259,40 @@ export async function applyConsumableBypass(
 
   return { factor, downgraded };
 }
+
+/* ============================================================================
+ * Auto-cancel on successful login
+ * ========================================================================== */
+
+/**
+ * Cancel every pending bypass request for `userId`. Called right
+ * after a successful full-session promotion — completing a normal
+ * login proves the user still controls the factor they claimed to
+ * have lost, so the request is moot. It also defangs an attacker-
+ * triggered bypass: as soon as the legit user logs in, any in-flight
+ * request is invalidated.
+ *
+ * "Pending" here means not yet `consumed_at` and not yet
+ * `cancelled_at`. A confirmed-but-too-recent request is still
+ * pending (the 48h hasn't elapsed) and gets cancelled the same way.
+ *
+ * Returns the number of rows flipped — used by callers that want to
+ * log the side-effect (or skip a follow-up email when nothing
+ * changed).
+ */
+export async function cancelPendingBypassesForUser(
+  userId: string,
+): Promise<number> {
+  const rows = await db
+    .update(mfaBypassRequests)
+    .set({ cancelledAt: new Date() })
+    .where(
+      and(
+        eq(mfaBypassRequests.userId, userId),
+        isNull(mfaBypassRequests.cancelledAt),
+        isNull(mfaBypassRequests.consumedAt),
+      ),
+    )
+    .returning({ id: mfaBypassRequests.id });
+  return rows.length;
+}
