@@ -1,5 +1,5 @@
 import { forwardRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
@@ -7,20 +7,27 @@ import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 /**
  * Request-reset — Direction K · Sauge.
  *
- * Mirrors `LoginPage`'s two-column shell (marketing aside left,
- * compact form right) so the auth surface stays one continuous
- * design language. The "Avant d'aller plus loin" warning keeps its
- * weight — losing the password loses the data — but it now reads in
- * the K palette instead of the legacy amber callout.
+ * Three-stage page:
+ *
+ *   1. **Fork** — entry point from `/login`'s "mot de passe oublié"
+ *      link. Two big choices: "j'ai un code de récupération" vs
+ *      "j'ai pas de code". Most users with a code shouldn't even
+ *      see the destructive form; the fork keeps the colorful
+ *      destructive warning out of the default layout.
+ *   2. **Destroy** — the existing email-input form, reached when
+ *      the user clicks "j'ai pas de code". This is where the data-
+ *      loss warning lives.
+ *   3. **Sent** — confirmation view after a successful POST.
  *
  * The server always returns 200 to avoid enumeration (see the
  * `request-reset` handler), so the success view is identical
- * whether or not the email is in the database. The response itself
- * is our only confirmation the request went through.
+ * whether or not the email is in the database.
  */
+type Stage = 'fork' | 'destroy' | 'sent';
+
 export default function RequestResetPage() {
+  const [stage, setStage] = useState<Stage>('fork');
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +38,7 @@ export default function RequestResetPage() {
     setSubmitting(true);
     try {
       await apiRequestPasswordReset({ email: email.trim().toLowerCase() });
-      setSent(true);
+      setStage('sent');
     } catch (err) {
       if (isApiError(err) && err.status === 429) {
         setError('Trop de demandes récentes. Réessaie dans une heure.');
@@ -56,18 +63,70 @@ export default function RequestResetPage() {
       {/* Form panel */}
       <main className="flex items-center justify-center px-6 py-16 sm:px-14">
         <div className="animate-fade-up w-full max-w-[360px]">
-          {sent ? <SentView email={email} /> : (
+          {stage === 'fork' ? (
+            <ForkView onNoCode={() => setStage('destroy')} />
+          ) : null}
+          {stage === 'destroy' ? (
             <FormView
               email={email}
               onEmailChange={setEmail}
               onSubmit={onSubmit}
               submitting={submitting}
               error={error}
+              onBack={() => setStage('fork')}
             />
-          )}
+          ) : null}
+          {stage === 'sent' ? <SentView email={email} /> : null}
         </div>
       </main>
     </div>
+  );
+}
+
+interface ForkViewProps {
+  onNoCode: () => void;
+}
+
+/**
+ * Entry-point fork: ask whether the user has a recovery code.
+ * Two equally-weighted buttons; the "j'ai un code" button is the
+ * non-destructive path (so primary visual weight) while "j'ai pas
+ * de code" leads into the destructive form (secondary weight).
+ */
+function ForkView({ onNoCode }: ForkViewProps) {
+  const navigate = useNavigate();
+  return (
+    <>
+      <p className="mb-1 text-[13px] text-muted">Récupération</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Mot de passe oublié
+      </h2>
+      <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+        As-tu un code de récupération&nbsp;?
+      </p>
+
+      <button
+        type="button"
+        onClick={() => navigate('/recover')}
+        className="w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px"
+      >
+        J’ai un code de récupération
+      </button>
+
+      <button
+        type="button"
+        onClick={onNoCode}
+        className="mt-2 w-full cursor-pointer rounded-md border border-hair bg-bg px-4 py-[11px] text-[14px] font-semibold text-ink-soft transition-colors hover:border-ink-soft hover:text-ink"
+      >
+        Je n’ai pas de code
+      </button>
+
+      <div className="mt-[18px] text-center text-[12.5px] text-muted">
+        <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
+          ← Retour à la connexion
+        </Link>
+      </div>
+    </>
   );
 }
 
@@ -77,14 +136,22 @@ interface FormViewProps {
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   submitting: boolean;
   error: string | null;
+  onBack: () => void;
 }
 
-function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormViewProps) {
+function FormView({
+  email,
+  onEmailChange,
+  onSubmit,
+  submitting,
+  error,
+  onBack,
+}: FormViewProps) {
   return (
     <>
       <p className="mb-1 text-[13px] text-muted">Réinitialisation</p>
       <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Mot de passe oublié
+        Réinitialiser sans code
       </h2>
       <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
         Indique ton email — on t’enverra un lien pour définir un nouveau mot
@@ -122,30 +189,14 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
 
-        {/* Discreet "ou" divider — separates the destructive action
-            (above) from the non-destructive alternative (below)
-            without using a colored callout. Two horizontal hairlines
-            with a centered "ou" label, classic OAuth-style. */}
-        <div
-          aria-hidden="true"
-          className="my-5 flex items-center gap-3 text-[11.5px] text-muted"
-        >
-          <span className="h-px flex-1 bg-hair" />
-          <span>ou</span>
-          <span className="h-px flex-1 bg-hair" />
-        </div>
-
-        <Link
-          to="/recover"
-          className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-4 py-[11px] text-center text-[14px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
-        >
-          Récupérer avec mon code de récupération →
-        </Link>
-
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
-          <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
-            ← Retour à la connexion
-          </Link>
+          <button
+            type="button"
+            onClick={onBack}
+            className="cursor-pointer transition-colors hover:text-ink"
+          >
+            ← Retour
+          </button>
         </div>
       </form>
     </>
