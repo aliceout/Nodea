@@ -31,3 +31,5 @@ console.log(
 );
 
 await import('./migrate.ts');
+
+export {};
