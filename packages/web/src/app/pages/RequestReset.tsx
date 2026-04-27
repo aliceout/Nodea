@@ -2,6 +2,7 @@ import { forwardRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 /**
@@ -105,21 +106,25 @@ function ForkView({ onNoCode }: ForkViewProps) {
         As-tu un code de récupération&nbsp;?
       </p>
 
-      <button
+      <Button
         type="button"
+        variant="primary"
+        size="lg"
         onClick={() => navigate('/recover')}
-        className="w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px"
+        className="w-full"
       >
         J’ai un code de récupération
-      </button>
+      </Button>
 
-      <button
+      <Button
         type="button"
+        variant="danger-outline"
+        size="lg"
         onClick={onNoCode}
-        className="mt-2 w-full cursor-pointer rounded-md border border-danger bg-bg px-4 py-[11px] text-[14px] font-semibold text-danger transition-colors hover:bg-danger/5"
+        className="mt-2 w-full"
       >
         Je n’ai pas de code
-      </button>
+      </Button>
 
       <div className="mt-[18px] text-center text-[12.5px] text-muted">
         <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
@@ -185,13 +190,15 @@ function FormView({
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="danger"
+          size="lg"
           disabled={submitting || !email.trim()}
-          className="mt-2 w-full cursor-pointer rounded-md bg-danger px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
-        </button>
+        </Button>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
           <button

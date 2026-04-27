@@ -19,6 +19,7 @@ import {
   isApiError,
 } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
@@ -419,8 +420,10 @@ function RegisterForm({
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
           disabled={
             isSubmitting ||
             !rulesOk ||
@@ -428,10 +431,10 @@ function RegisterForm({
             password !== confirm ||
             (mode.kind === 'open' && !emailLooksValid)
           }
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {isSubmitting ? 'Envoi…' : 'Créer mon compte'}
-        </button>
+        </Button>
 
         {/*
          * "Déjà un compte ? Se connecter" only makes sense in the open

@@ -20,6 +20,7 @@ import {
   opaqueReady,
 } from '@/core/auth/opaque';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
@@ -343,13 +344,15 @@ function ResetForm(props: ResetFormProps) {
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="danger"
+          size="lg"
           disabled={!canSubmit}
-          className="mt-2 w-full rounded-md bg-danger px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {submitting ? 'Réinitialisation…' : 'Réinitialiser et effacer mes données'}
-        </button>
+        </Button>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">

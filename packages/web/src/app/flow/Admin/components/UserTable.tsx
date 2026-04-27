@@ -1,5 +1,6 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
 import type { AdminUserRow } from '@/core/api/client';
+import Button from '@/ui/atoms/dirk/Button';
 
 export interface UserTableProps {
   users: AdminUserRow[];
@@ -58,15 +59,16 @@ export default function UserTable({ users, currentUserId, onDelete }: UserTableP
             {isSelf ? (
               <span className="text-[11px] italic text-muted">(toi)</span>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="danger-ghost"
+                size="sm"
+                iconOnly
                 onClick={() => confirmDelete(user)}
                 aria-label="Supprimer l’utilisateur·ice"
                 title="Supprimer l’utilisateur·ice"
-                className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-danger/10 hover:text-danger"
               >
                 <TrashIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
+              </Button>
             )}
           </li>
         );

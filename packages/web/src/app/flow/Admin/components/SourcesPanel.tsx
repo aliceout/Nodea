@@ -4,6 +4,7 @@ import type { AdminSourcesResponse, SourceHealth } from '@nodea/shared';
 
 import { apiAdminSources } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 
 /**
  * Admin "Sources" tab — health check for every external metadata
@@ -54,18 +55,18 @@ export default function SourcesPanel() {
             ? `Dernière vérification : ${new Date(data.generatedAt).toLocaleTimeString('fr-FR')}`
             : 'En attente de la première vérification…'}
         </p>
-        <button
-          type="button"
+        <Button
+          variant="neutral"
+          size="sm"
           onClick={probe}
           disabled={loading}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] font-medium text-ink-soft transition-colors hover:border-ink-soft hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ArrowPathIcon
             className={cn('h-3.5 w-3.5', loading ? 'animate-spin' : '')}
             aria-hidden="true"
           />
           {loading ? 'Vérification…' : 'Re-tester'}
-        </button>
+        </Button>
       </div>
 
       {error ? (
@@ -78,11 +79,11 @@ export default function SourcesPanel() {
       ) : null}
 
       {data ? (
-        <>
+        <div className="divide-y divide-hair">
           {Object.entries(data.modules).map(([moduleName, sources]) => (
             <ModuleBlock key={moduleName} moduleName={moduleName} sources={sources} />
           ))}
-        </>
+        </div>
       ) : null}
     </div>
   );
@@ -100,10 +101,8 @@ interface ModuleBlockProps {
 function ModuleBlock({ moduleName, sources }: ModuleBlockProps) {
   const label = MODULE_LABELS[moduleName] ?? moduleName;
   return (
-    <section className="mb-6">
-      <h2 className="mb-2 border-b border-hair pb-1.5 text-[13px] font-semibold tracking-[0.02em] text-ink">
-        {label}
-      </h2>
+    <section className="py-[24px] first:pt-0 last:pb-0">
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">{label}</h3>
       <ul>
         {sources.map((s) => (
           <SourceRow key={s.name} source={s} />

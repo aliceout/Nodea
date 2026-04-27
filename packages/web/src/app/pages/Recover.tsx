@@ -12,6 +12,7 @@ import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
 import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
@@ -308,13 +309,15 @@ function FormPanel(props: FormPanelProps) {
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
           disabled={!canSubmit}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {submitting ? 'Récupération…' : 'Récupérer mon compte'}
-        </button>
+        </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
@@ -395,20 +398,24 @@ function DisplayPanel({
       </div>
 
       <div className="mb-4 flex gap-2">
-        <button
+        <Button
           type="button"
+          variant="neutral"
+          size="md"
           onClick={copyToClipboard}
-          className="flex-1 cursor-pointer rounded-md border border-hair bg-bg px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-bg-2"
+          className="flex-1"
         >
           Copier
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="neutral"
+          size="md"
           onClick={downloadAsTxt}
-          className="flex-1 cursor-pointer rounded-md border border-hair bg-bg px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-bg-2"
+          className="flex-1"
         >
           Télécharger .txt
-        </button>
+        </Button>
       </div>
 
       <label className="mb-4 flex items-start gap-2 text-[12.5px] text-ink-soft">
@@ -423,14 +430,16 @@ function DisplayPanel({
         </span>
       </label>
 
-      <button
+      <Button
         type="button"
+        variant="primary"
+        size="lg"
         onClick={onDone}
         disabled={!acknowledged}
-        className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-2 w-full"
       >
         Aller à l’accueil
-      </button>
+      </Button>
     </>
   );
 }

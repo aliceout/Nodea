@@ -10,6 +10,7 @@ import {
 } from '@/core/api/client';
 import type { AnnouncementResponse } from '@nodea/shared';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 
 const INITIAL_FORM = { title: '', body: '' };
 
@@ -92,10 +93,10 @@ export default function AnnouncementsManager() {
   }
 
   return (
-    <div>
+    <div className="divide-y divide-hair">
       {/* New announcement form */}
-      <form onSubmit={onSubmit} className="mb-9">
-        <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+      <form onSubmit={onSubmit} className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
           Nouvelle annonce
         </h3>
 
@@ -123,13 +124,9 @@ export default function AnnouncementsManager() {
           <p className="text-[11px] text-muted">
             Publiée immédiatement sur la page d’accueil — visible par tout le monde.
           </p>
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="rounded-md bg-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <Button type="submit" variant="primary" size="md" disabled={!canSubmit}>
             {saving ? 'Publication…' : 'Publier'}
-          </button>
+          </Button>
         </div>
 
         {error ? (
@@ -143,8 +140,8 @@ export default function AnnouncementsManager() {
       </form>
 
       {/* Existing announcements list */}
-      <div>
-        <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+      <div className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
           Annonces existantes
         </h3>
         {loading ? (
@@ -172,22 +169,23 @@ export default function AnnouncementsManager() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      variant="neutral"
+                      size="xs"
                       onClick={() => void toggleActive(row)}
-                      className="cursor-pointer rounded-md border border-hair bg-transparent px-3 py-1 text-[11.5px] text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink"
                     >
                       {row.active ? 'Désactiver' : 'Activer'}
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="danger-ghost"
+                      size="sm"
+                      iconOnly
                       onClick={() => void handleDelete(row.id)}
                       aria-label="Supprimer"
                       title="Supprimer"
-                      className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                     >
                       <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-[13px] leading-[1.55] text-ink-soft">

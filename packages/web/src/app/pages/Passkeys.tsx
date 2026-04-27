@@ -11,6 +11,7 @@ import {
 } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 import type { PasskeyListItem } from '@nodea/shared';
 
@@ -193,13 +194,15 @@ function ListView({
         </ul>
       ) : null}
 
-      <button
+      <Button
         type="button"
+        variant="primary"
+        size="lg"
         onClick={onAdd}
-        className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px"
+        className="mt-2 w-full"
       >
         Ajouter une passkey
-      </button>
+      </Button>
 
       <div className="mt-4.5 text-center text-[12.5px] text-muted">
         <Link
@@ -241,20 +244,22 @@ function PasskeyRow({ passkey, onRename, onRemove }: PasskeyRowProps) {
           </p>
         </div>
         <div className="flex shrink-0 gap-1">
-          <button
+          <Button
             type="button"
+            variant="neutral"
+            size="xs"
             onClick={onRename}
-            className="cursor-pointer rounded-md border border-hair bg-bg px-2 py-1 text-[11.5px] text-ink transition-colors hover:bg-bg-2"
           >
             Renommer
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="danger-outline"
+            size="xs"
             onClick={onRemove}
-            className="cursor-pointer rounded-md border border-danger bg-bg px-2 py-1 text-[11.5px] text-danger transition-colors hover:bg-danger/5"
           >
             Retirer
-          </button>
+          </Button>
         </div>
       </div>
     </li>
@@ -355,13 +360,15 @@ function AddView({ session, onCancel, onSuccess }: AddViewProps) {
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
           disabled={submitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {submitting ? 'Enregistrement…' : 'Confirmer avec ma passkey'}
-        </button>
+        </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
           <button
@@ -448,13 +455,15 @@ function RemoveView({ passkey, session, onCancel, onSuccess }: RemoveViewProps) 
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="danger"
+          size="lg"
           disabled={submitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-danger px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-danger/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {submitting ? 'Retrait…' : 'Retirer'}
-        </button>
+        </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
           <button
@@ -547,13 +556,15 @@ function RenameView({ passkey, session, onCancel, onSuccess }: RenameViewProps) 
           </div>
         ) : null}
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
           disabled={submitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full"
         >
           {submitting ? 'Renommage…' : 'Renommer'}
-        </button>
+        </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
           <button

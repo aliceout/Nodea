@@ -15,6 +15,7 @@ import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 zxcvbnOptions.setOptions({
@@ -195,18 +196,20 @@ export default function ChangePasswordPage() {
               </div>
             ) : null}
 
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              size="lg"
               disabled={
                 isSubmitting ||
                 !rulesOk ||
                 confirmMismatch ||
                 newPwd !== confirmPwd
               }
-              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full"
             >
               {isSubmitting ? 'Mise à jour…' : 'Mettre à jour et se reconnecter'}
-            </button>
+            </Button>
 
             <div className="mt-[18px] text-center text-[12.5px] text-muted">
               <Link
