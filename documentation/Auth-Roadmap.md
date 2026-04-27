@@ -197,8 +197,13 @@ en staging avant Phase 6 (qui en dépend).
 HKDF + tests in-memory). 2B ✅ livrée (register OPAQUE 2-step
 remplace l'Argon2id ; legacy columns rendues nullable). 2C ✅
 livrée (login OPAQUE 2-step, dummy-hash dégagé, /me expose les
-blobs OPAQUE, helper de test `loginAs` factorisé). 2D 🚧
-(change-password / reset-password OPAQUE + drop colonnes legacy).
+blobs OPAQUE, helper de test `loginAs` factorisé). 2D ✅ livrée
+(change-password / reset-password en 2-step OPAQUE,
+change-email / delete-self utilisent un proof OPAQUE, colonnes
+legacy droppées, seed admin + seed-mood portés sur OPAQUE,
+fichiers legacy `password.ts` / `password-policy.ts` /
+`envelope.ts` / `argon2.ts` supprimés, deps `@node-rs/argon2`
++ `@zxcvbn-ts/*` retirées de l'api).
 
 **Sous-découpage exécuté**
 
@@ -237,12 +242,33 @@ blobs OPAQUE, helper de test `loginAs` factorisé). 2D 🚧
 - Nouveau fichier de tests `auth-login-v2.test.ts` (6 cas) couvrant
   /start, /finish, anti-enum, replay du token, gate d'activation.
 
-**Livrables Phase 2D (à venir)**
-- Change-password : re-registration OPAQUE, re-wrap KEK uniquement.
-  La main key reste la même → tout le ciphertext existant reste
-  lisible.
-- Drop colonnes `password_hash` / `encryption_salt` / `encrypted_key`.
-- Re-seed admin via OPAQUE (le seed legacy passe en OPAQUE complet).
+**Phase 2D livrée**
+- `POST /auth/change-password/start` + `/finish` (Auth-Spec §7.5
+  réécrit, store in-memory `auth/opaque-pending-state.ts`). Le
+  client prouve le password courant via `/auth/login/start` (proof
+  body shared `OpaquePasswordProofSchema`), unwrappe la KEK,
+  fait une OPAQUE registration avec le nouveau password, re-wrappe
+  la même KEK sous le nouveau exportKey, puis poste à /finish.
+  La main key reste inchangée → tout le ciphertext existant
+  reste lisible.
+- `POST /auth/reset/start` + `/finish` même pattern, avec
+  destruction des données utilisateur dans la même transaction
+  (puisque la main key est perdue avec le password oublié).
+- `change-email` + `delete-self` passent au proof OPAQUE.
+- Migration `0011_little_morg` drop `users.{password_hash,
+  encryption_salt, encrypted_key}`.
+- Helper partagé `auth/seed-crypto.ts` factorise les blobs
+  OPAQUE pour `seed.ts` (admin), `seed-mood.ts` (data fixtures),
+  `test/helpers.ts` (`seedAdmin` / `seedUser`).
+- Fichiers legacy supprimés : `auth/password.ts`,
+  `auth/password-policy.ts`, `web/core/crypto/envelope.ts`,
+  `web/core/crypto/argon2.ts`. Deps Argon2id et zxcvbn retirées
+  côté api (zxcvbn reste côté web pour le strength meter).
+- Tests : 114 api / 62 web verts. Le reset rotation assert
+  réintroduit (login OLD password rejeté, login NEW password
+  accepté). delete-self / change-email / change-password
+  exercent le proof body. Helper `passwordProofFor(app, email,
+  password)` ajouté à `test/helpers.ts`.
 
 **Pas de lazy migration** — décision dev (zéro user prod). Au
 moment où 2C/2D drop le legacy, le seul user impacté est l'admin

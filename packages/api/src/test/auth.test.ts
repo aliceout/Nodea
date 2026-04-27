@@ -9,23 +9,74 @@
  */
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { invites, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
+  extractCookie,
   loginAs,
+  passwordProofFor,
   seedAdmin,
   seedInvite,
   seedUser,
-  extractCookie,
 } from './helpers.ts';
 
 const app = buildApp();
 
 function json(body: unknown): RequestInit {
   return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
+}
+
+/**
+ * Drive the /auth/change-password 2-step flow against the test app
+ * with deterministic wrap blobs. Returns the /finish response so
+ * the caller can assert on status + cookie. Used by the change-
+ * password test below.
+ */
+async function performChangePassword(
+  cookie: string,
+  email: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<Response> {
+  await ready;
+  const proof = await passwordProofFor(app, email, currentPassword);
+
+  const { clientRegistrationState, registrationRequest } = client.startRegistration({
+    password: newPassword,
+  });
+  const startRes = await app.request('/auth/change-password/start', {
+    ...json({
+      proofLoginToken: proof.proofLoginToken,
+      proofFinishLoginRequest: proof.proofFinishLoginRequest,
+      registrationRequest,
+    }),
+    headers: { 'content-type': 'application/json', cookie },
+  });
+  if (startRes.status !== 200) return startRes;
+  const { registrationResponse, changePasswordToken } = (await startRes.json()) as {
+    registrationResponse: string;
+    changePasswordToken: string;
+  };
+
+  const { registrationRecord } = client.finishRegistration({
+    password: newPassword,
+    clientRegistrationState,
+    registrationResponse,
+  });
+
+  return app.request('/auth/change-password/finish', {
+    ...json({
+      changePasswordToken,
+      registrationRecord,
+      wrappedKekPassword: 'rotated-wrapped-kek',
+      wrappedKekPasswordIv: 'rotated-iv',
+    }),
+    headers: { 'content-type': 'application/json', cookie },
+  });
 }
 
 describe('POST /auth/logout', () => {
@@ -46,7 +97,7 @@ describe('POST /auth/logout', () => {
 });
 
 describe('GET /auth/me', () => {
-  it('returns the current user with both legacy + OPAQUE credential blobs', async () => {
+  it('returns the current user with the OPAQUE credential blobs', async () => {
     await seedUser('me@example.com');
     const cookie = await loginAs(app, 'me@example.com', TEST_PASSWORD);
 
@@ -54,9 +105,11 @@ describe('GET /auth/me', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.email).toBe('me@example.com');
+    // Phase 2D dropped the legacy password / envelope columns —
+    // the response no longer carries them.
     expect(body).not.toHaveProperty('passwordHash');
-    expect(body).toHaveProperty('encryptionSalt');
-    expect(body).toHaveProperty('encryptedKey');
+    expect(body).not.toHaveProperty('encryptionSalt');
+    expect(body).not.toHaveProperty('encryptedKey');
     expect(body).toHaveProperty('wrappedMainKey');
     expect(body).toHaveProperty('wrappedKekPassword');
   });
@@ -67,33 +120,22 @@ describe('GET /auth/me', () => {
   });
 });
 
-describe('POST /auth/change-password', () => {
+describe('POST /auth/change-password (OPAQUE 2-step)', () => {
   const newPassword = 'Brand-New-Horse-Battery-Staple-99';
 
-  // Phase 2C note: change-password still goes through the legacy
-  // Argon2id path until 2D rewires it on top of OPAQUE re-registration.
-  // Tests below cover the route's HTTP semantics (rotation, session
-  // revocation, wrong-password rejection); the matching OPAQUE
-  // envelope rotation lands in 2D.
-  it('rotates the password, revokes the old session, and issues a fresh one', async () => {
+  it('rotates the envelope, revokes the old session, mints a fresh one, and binds login to the new password', async () => {
     await seedUser('rotate@example.com');
     const oldCookie = await loginAs(app, 'rotate@example.com', TEST_PASSWORD);
 
-    const change = await app.request('/auth/change-password', {
-      ...json({
-        currentPassword: TEST_PASSWORD,
-        newPassword,
-        encryptionSalt: 'new-salt',
-        encryptedKey: 'new-wrapped',
-      }),
-      headers: {
-        'content-type': 'application/json',
-        cookie: oldCookie,
-      },
-    });
+    const change = await performChangePassword(
+      oldCookie,
+      'rotate@example.com',
+      TEST_PASSWORD,
+      newPassword,
+    );
     expect(change.status).toBe(200);
 
-    // The response must include a NEW session cookie.
+    // Response must include a NEW session cookie.
     const newCookie = extractCookie(change)!;
     expect(newCookie).not.toBe(oldCookie);
 
@@ -105,27 +147,34 @@ describe('POST /auth/change-password', () => {
     const meNew = await app.request('/auth/me', { headers: { cookie: newCookie } });
     expect(meNew.status).toBe(200);
 
-    // Phase 2D will assert that re-login with the OLD password is
-    // refused — currently the OPAQUE envelope still binds the old
-    // password (legacy change-password only rotates `password_hash`)
-    // so an OPAQUE login with TEST_PASSWORD would still succeed.
-    // Skipped on purpose until 2D rewires change-password.
+    // OLD password no longer works (envelope replaced).
+    await expect(
+      loginAs(app, 'rotate@example.com', TEST_PASSWORD),
+    ).rejects.toThrow();
+
+    // NEW password binds.
+    const cookieNewLogin = await loginAs(app, 'rotate@example.com', newPassword);
+    expect(cookieNewLogin).toBeTruthy();
   });
 
-  it('rejects when the current password is wrong', async () => {
+  it('rejects when the current password is wrong (proof fails at /start)', async () => {
     await seedUser('rotate2@example.com');
     const cookie = await loginAs(app, 'rotate2@example.com', TEST_PASSWORD);
 
-    const change = await app.request('/auth/change-password', {
+    // The wrong currentPassword surfaces as `client.finishLogin`
+    // returning undefined — `passwordProofFor` (helpers.ts) throws
+    // in that case, so we exercise the route directly with a bogus
+    // proof to assert the server-side 401.
+    const startRes = await app.request('/auth/change-password/start', {
       ...json({
-        currentPassword: 'wrong',
-        newPassword,
-        encryptionSalt: 's',
-        encryptedKey: 'k',
+        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
+        proofFinishLoginRequest: 'bogus',
+        registrationRequest: 'whatever',
       }),
       headers: { 'content-type': 'application/json', cookie },
     });
-    expect(change.status).toBe(401);
+    expect(startRes.status).toBe(401);
+    expect(await startRes.json()).toMatchObject({ error: 'invalid_credentials' });
   });
 });
 
@@ -185,14 +234,15 @@ describe('POST /admin/invites', () => {
 describe('PATCH /auth/email', () => {
   const newEmail = 'renamed@example.com';
 
-  it('updates the email when the current password is correct', async () => {
+  it('updates the email when the OPAQUE proof checks out', async () => {
     await seedUser('rename@example.com');
     const cookie = await loginAs(app, 'rename@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'rename@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: TEST_PASSWORD, newEmail }),
+      body: JSON.stringify({ ...proof, newEmail }),
     });
     expect(res.status).toBe(200);
 
@@ -201,14 +251,18 @@ describe('PATCH /auth/email', () => {
     expect(meBody.email).toBe(newEmail);
   });
 
-  it('rejects a wrong current password (401)', async () => {
+  it('rejects a bogus OPAQUE proof (401)', async () => {
     await seedUser('rename2@example.com');
     const cookie = await loginAs(app, 'rename2@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: 'wrong', newEmail }),
+      body: JSON.stringify({
+        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
+        proofFinishLoginRequest: 'bogus',
+        newEmail,
+      }),
     });
     expect(res.status).toBe(401);
   });
@@ -217,12 +271,13 @@ describe('PATCH /auth/email', () => {
     await seedUser('occupant@example.com');
     await seedUser('mover@example.com');
     const cookie = await loginAs(app, 'mover@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'mover@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({
-        currentPassword: TEST_PASSWORD,
+        ...proof,
         newEmail: 'occupant@example.com',
       }),
     });
@@ -323,11 +378,12 @@ describe('DELETE /auth/me', () => {
   it('removes the user and cascades sessions + entries', async () => {
     await seedUser('suicide@example.com');
     const cookie = await loginAs(app, 'suicide@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'suicide@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/me', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: TEST_PASSWORD }),
+      body: JSON.stringify(proof),
     });
     expect(res.status).toBe(200);
 
@@ -337,14 +393,17 @@ describe('DELETE /auth/me', () => {
     expect(me.status).toBe(401);
   });
 
-  it('rejects a wrong current password (401)', async () => {
+  it('rejects a bogus OPAQUE proof (401)', async () => {
     await seedUser('survivor@example.com');
     const cookie = await loginAs(app, 'survivor@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/me', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: 'not-the-one' }),
+      body: JSON.stringify({
+        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
+        proofFinishLoginRequest: 'bogus',
+      }),
     });
     expect(res.status).toBe(401);
   });

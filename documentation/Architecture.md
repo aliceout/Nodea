@@ -101,11 +101,47 @@ the factory loops over. There is nowhere to forget a guard.
     when NULL), creates a session, sets the signed cookie. No
     more dummy-hash timing trick — the legacy `POST /auth/login`
     is gone.
-  - `GET /auth/me` surfaces both credential sets
-    (`encryptionSalt` + `encryptedKey` for legacy accounts,
-    `wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}` for OPAQUE).
-    The client picks the unwrap chain based on which set is
-    non-NULL.
+  - `GET /auth/me` surfaces the OPAQUE credential blobs
+    (`wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}`). Phase 2D
+    dropped the legacy `encryptionSalt` / `encryptedKey` fields.
+
+- **Change password** (OPAQUE 2-step via
+  `/auth/change-password/start` + `/finish`, Phase 2D):
+  - The client first re-derives the current `exportKey` via a
+    `/auth/login/start` round-trip with the typed current
+    password. The resulting proof goes in the body.
+  - `/start` validates the proof, runs OPAQUE
+    `createRegistrationResponse` for the new password, returns
+    `{ registrationResponse, changePasswordToken }`. Pending
+    state lives in `auth/opaque-pending-state.ts`.
+  - The client unwraps the current KEK, finishes OPAQUE
+    registration locally with the new password, re-wraps the
+    SAME KEK under the new `exportKey`, posts to `/finish`.
+  - `/finish` consumes the token, replaces the
+    `opaque_records.envelope` and `users.wrapped_kek_password{,_iv}`
+    in a transaction, revokes every session, mints a fresh one.
+    Main key envelope (`wrapped_main_key`) stays put — every
+    pre-change ciphertext stays readable.
+
+- **Reset password** (OPAQUE 2-step via `/auth/reset/start` +
+  `/finish`, Phase 2D):
+  - The reset email's token is the auth proof; `/start` validates
+    it, runs `createRegistrationResponse`, returns `{ registration
+    Response, resetToken, userId }`.
+  - The client generates a fresh main key + fresh KEK (the old
+    main key is unrecoverable since the password is forgotten),
+    wraps both, ships to `/finish`.
+  - `/finish` purges every user-owned encrypted row + replaces
+    every credential blob in the same transaction.
+
+- **Change-email / delete-self** (Phase 2D):
+  - Both routes take an `OpaquePasswordProof` body
+    (`{ proofLoginToken, proofFinishLoginRequest }`) — same shape
+    as change-password's proof. Server validates via
+    `verifyPasswordProof` (consume the login state, run
+    `server.finishLogin`).
+  - Phase 7 will add a re-auth fresh-window middleware so the
+    proof can be cached across multiple privileged calls.
 
 - **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
   Phase 2B):

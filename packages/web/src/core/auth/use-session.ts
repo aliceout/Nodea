@@ -18,17 +18,17 @@
 import { useEffect } from 'react';
 import { useNodeaStore, selectAuthStatus, selectUser } from '../store/nodea-store.ts';
 import {
+  apiChangePasswordFinish,
+  apiChangePasswordStart,
   apiLoginStart,
   apiLoginFinish,
   apiLogout,
   apiMe,
   apiRegisterStart,
   apiRegisterFinish,
-  apiChangePassword,
 } from '../api/client.ts';
 import { randomBytes } from '../crypto/base64.ts';
 import { deriveMainKeys } from '../crypto/key-material.ts';
-import { unwrapMainKeyBytes, wrapMainKey } from '../crypto/envelope.ts';
 import {
   buildKekAAD,
   buildMainKeyAAD,
@@ -151,53 +151,39 @@ export function useSession() {
     if (!me) throw new Error('login succeeded but /auth/me returned null');
     setAuth(me);
 
-    // Pick the unwrap path based on which credential set is present
-    // on the user row. OPAQUE accounts (Phase 2B+) carry
-    // `wrappedMainKey` + `wrappedKekPassword`; legacy accounts carry
-    // `encryptionSalt` + `encryptedKey`. Phase 2D drops the legacy
-    // path entirely once the seeded admin is re-enrolled.
-    let rawBytes: Uint8Array;
+    // Phase 2D dropped the legacy fallback — every authenticated
+    // user has the OPAQUE blobs at this point (the seed enrolls the
+    // admin via OPAQUE too). The Base64 brand check passes at
+    // compile time because Zod has already validated the blobs as
+    // non-empty strings via `AuthMeResponseSchema`.
     if (
-      me.wrappedMainKey !== null &&
-      me.wrappedMainKeyIv !== null &&
-      me.wrappedKekPassword !== null &&
-      me.wrappedKekPasswordIv !== null
+      me.wrappedMainKey === null ||
+      me.wrappedMainKeyIv === null ||
+      me.wrappedKekPassword === null ||
+      me.wrappedKekPasswordIv === null
     ) {
-      // OPAQUE chain: exportKey → KEK → main key. The Base64 brand
-      // checks at the type level — every blob in `me` has been
-      // through `Base64ish`'s Zod parse, so the cast is safe.
-      const kekBytes = await unwrapKekUnderFactor(
+      throw new Error('login: user row is missing the OPAQUE wrap blobs');
+    }
+    const kekBytes = await unwrapKekUnderFactor(
+      {
+        wrappedKek: me.wrappedKekPassword as unknown as Base64,
+        wrappedKekIv: me.wrappedKekPasswordIv as unknown as Base64,
+      },
+      finished.exportKey,
+      buildKekAAD(me.id, 'password'),
+    );
+    let rawBytes: Uint8Array;
+    try {
+      rawBytes = await unwrapMainKeyUnderKek(
         {
-          wrappedKek: me.wrappedKekPassword as unknown as Base64,
-          wrappedKekIv: me.wrappedKekPasswordIv as unknown as Base64,
+          wrappedMainKey: me.wrappedMainKey as unknown as Base64,
+          wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
         },
-        finished.exportKey,
-        buildKekAAD(me.id, 'password'),
+        kekBytes,
+        buildMainKeyAAD(me.id),
       );
-      try {
-        rawBytes = await unwrapMainKeyUnderKek(
-          {
-            wrappedMainKey: me.wrappedMainKey as unknown as Base64,
-            wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
-          },
-          kekBytes,
-          buildMainKeyAAD(me.id),
-        );
-      } finally {
-        kekBytes.fill(0);
-      }
-    } else if (me.encryptionSalt && me.encryptedKey) {
-      // Legacy Argon2id chain — kept around for the seeded admin
-      // until Phase 2D ports the seed to OPAQUE.
-      rawBytes = await unwrapMainKeyBytes(
-        body.password,
-        me.encryptionSalt,
-        me.encryptedKey,
-      );
-    } else {
-      throw new Error(
-        'login: user row has neither legacy nor OPAQUE credential blobs',
-      );
+    } finally {
+      kekBytes.fill(0);
     }
 
     try {
@@ -309,39 +295,107 @@ export function useSession() {
 
   async function changePassword(input: SessionChangePasswordInput): Promise<void> {
     if (!user) throw new Error('changePassword: no authenticated user');
-
-    // Phase 2B: legacy change-password path. OPAQUE accounts can't
-    // change their password until 2D rewires this flow on top of
-    // OPAQUE re-registration.
-    if (!user.encryptionSalt || !user.encryptedKey) {
-      throw new Error(
-        'changePassword: account is OPAQUE-registered and the OPAQUE change-password flow is not yet wired (Phase 2D).',
-      );
+    if (
+      user.wrappedMainKey === null ||
+      user.wrappedMainKeyIv === null ||
+      user.wrappedKekPassword === null ||
+      user.wrappedKekPasswordIv === null
+    ) {
+      throw new Error('changePassword: user row is missing the OPAQUE wrap blobs');
     }
-    // Unwrap under the CURRENT password first — throws on wrong password
-    // (AES-GCM auth-tag check) before we touch the server.
-    const rawMainKey = await unwrapMainKeyBytes(
-      input.currentPassword,
-      user.encryptionSalt,
-      user.encryptedKey,
+    await opaqueReady;
+
+    // Step 1: prove knowledge of the current password via an OPAQUE
+    // login round-trip, deriving `currentExportKey` locally so we
+    // can unwrap the current KEK before re-wrapping under the new
+    // password's exportKey.
+    const proofClient = clientLoginStart(input.currentPassword);
+    const proofStart = await apiLoginStart({
+      email: user.email,
+      startLoginRequest: proofClient.startLoginRequest,
+    });
+    const proofFinished = clientLoginFinish({
+      password: input.currentPassword,
+      clientLoginState: proofClient.clientLoginState,
+      loginResponse: proofStart.loginResponse,
+    });
+    if (!proofFinished) {
+      throw {
+        status: 401,
+        error: 'invalid_credentials',
+      };
+    }
+    const currentExportKey = proofFinished.exportKey;
+
+    // Step 2: unwrap the current KEK using `currentExportKey`.
+    const kekBytes = await unwrapKekUnderFactor(
+      {
+        wrappedKek: user.wrappedKekPassword as unknown as Base64,
+        wrappedKekIv: user.wrappedKekPasswordIv as unknown as Base64,
+      },
+      currentExportKey,
+      buildKekAAD(user.id, 'password'),
     );
+
     try {
-      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.newPassword, rawMainKey);
-      await apiChangePassword({
-        currentPassword: input.currentPassword,
-        newPassword: input.newPassword,
-        encryptionSalt,
-        encryptedKey,
+      // Step 3: trade the proof + a fresh `registrationRequest` (for
+      // the new password) against `/change-password/start` for the
+      // server's `registrationResponse` + a single-use token to echo
+      // at /finish.
+      const newRegStart = clientRegisterStart(input.newPassword);
+      const startRes = await apiChangePasswordStart({
+        proofLoginToken: proofStart.loginToken,
+        proofFinishLoginRequest: proofFinished.finishLoginRequest,
+        registrationRequest: newRegStart.registrationRequest,
       });
 
+      // Step 4: complete the OPAQUE registration locally with the
+      // new password to get the new envelope + `newExportKey`.
+      const newRegFinished = clientRegisterFinish({
+        password: input.newPassword,
+        clientRegistrationState: newRegStart.clientRegistrationState,
+        registrationResponse: startRes.registrationResponse,
+      });
+
+      // Step 5: re-wrap the SAME KEK under the new exportKey.
+      const newKekWrap = await wrapKekUnderFactor(
+        kekBytes,
+        newRegFinished.exportKey,
+        buildKekAAD(user.id, 'password'),
+      );
+
+      // Step 6: ship everything to /change-password/finish.
+      await apiChangePasswordFinish({
+        changePasswordToken: startRes.changePasswordToken,
+        registrationRecord: newRegFinished.registrationRecord,
+        wrappedKekPassword: newKekWrap.wrappedKek,
+        wrappedKekPasswordIv: newKekWrap.wrappedKekIv,
+      });
+
+      // The session cookie has been rotated by the server; refresh
+      // /me + re-derive the in-memory main-key material from the
+      // KEK we still have on hand (the wrapped main key didn't
+      // change, so we don't need a fresh unwrap).
       const me = await apiMe();
       if (!me) throw new Error('change-password succeeded but /auth/me returned null');
       setAuth(me);
 
-      const material = await deriveMainKeys(rawMainKey);
-      setMainKey(material);
+      const rawMainKey = await unwrapMainKeyUnderKek(
+        {
+          wrappedMainKey: user.wrappedMainKey as unknown as Base64,
+          wrappedMainKeyIv: user.wrappedMainKeyIv as unknown as Base64,
+        },
+        kekBytes,
+        buildMainKeyAAD(user.id),
+      );
+      try {
+        const material = await deriveMainKeys(rawMainKey);
+        setMainKey(material);
+      } finally {
+        rawMainKey.fill(0);
+      }
     } finally {
-      rawMainKey.fill(0);
+      kekBytes.fill(0);
     }
   }
 

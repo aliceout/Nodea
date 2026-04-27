@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID, webcrypto } from 'node:crypto';
-import { hashRaw } from '@node-rs/argon2';
 import { eq } from 'drizzle-orm';
 import { MoodPayloadSchema } from '@nodea/shared';
 import { db, sql } from './db/client.ts';
-import { users, modulesConfig, moodEntries } from './db/schema.ts';
+import { users, modulesConfig, moodEntries, opaqueRecords } from './db/schema.ts';
+import { opaqueLoginUnwrapMainKey } from './auth/seed-crypto.ts';
 import { buildMoodFixtures } from './seed-mood.fixtures.ts';
 
 /**
@@ -13,22 +13,17 @@ import { buildMoodFixtures } from './seed-mood.fixtures.ts';
  * rows before re-inserting the fixtures, so the seed can be re-run
  * safely without piling duplicates.
  *
- * Crypto: this is a Node-side replication of the web client's
- * envelope (argon2id-derived KEK → AES-GCM-unwrap of the main key
- * → HKDF-split into AES + HMAC sub-keys). The constants and labels
- * MUST match `packages/web/src/core/crypto/*`; otherwise the
- * browser couldn't decrypt what this script encrypts.
+ * Crypto: Phase 2D onwards the unwrap path uses `opaqueLoginUnwrapMainKey`
+ * (`auth/seed-crypto.ts`) — runs an in-process OPAQUE login round-trip
+ * to derive `exportKey`, then unwraps the KEK and the main key. The
+ * resulting bytes go through the same HKDF split (`nodea:aes` /
+ * `nodea:hmac`) the web does, so the per-record AES-GCM blobs are
+ * decryptable in the browser.
  *
  * Usage:
  *   ADMIN_EMAIL / ADMIN_PASSWORD set as env vars.
  *   pnpm --filter @nodea/api seed:mood
  */
-
-// Must match packages/web/src/core/crypto/argon2.ts.
-const ARGON2_ITERATIONS = 3;
-const ARGON2_MEMORY_KB = 64 * 1024;
-const ARGON2_PARALLELISM = 1;
-const ARGON2_HASH_LEN = 32;
 
 // Must match packages/web/src/core/crypto/hkdf.ts.
 const HKDF_LABEL_AES = 'nodea:aes';
@@ -47,48 +42,6 @@ function toBase64(bytes: Uint8Array): string {
 
 function bytesToHex(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('hex');
-}
-
-/**
- * Reverse the wrap done in `seed.ts`: argon2id-derived KEK, then
- * AES-GCM decrypt the envelope. The plaintext is a base64 string
- * of the 32 raw main-key bytes — same shape the web's
- * `unwrapMainKey` produces.
- */
-async function unwrapMainKey(
-  password: string,
-  encryptionSalt: string,
-  encryptedKey: string,
-): Promise<Uint8Array> {
-  const saltBytes = fromBase64(encryptionSalt);
-  const kek = await hashRaw(password, {
-    salt: saltBytes,
-    timeCost: ARGON2_ITERATIONS,
-    memoryCost: ARGON2_MEMORY_KB,
-    parallelism: ARGON2_PARALLELISM,
-    outputLen: ARGON2_HASH_LEN,
-  });
-  const aesKey = await webcrypto.subtle.importKey(
-    'raw',
-    kek,
-    { name: 'AES-GCM' },
-    false,
-    ['decrypt'],
-  );
-
-  const [ivB64, ctB64] = encryptedKey.split('.');
-  if (!ivB64 || !ctB64) throw new Error('encrypted_key envelope is malformed');
-  const iv = fromBase64(ivB64);
-  const ct = fromBase64(ctB64);
-  const decrypted = new Uint8Array(
-    await webcrypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ct),
-  );
-
-  // Plaintext = base64(mainKeyBytes) — see seed.ts `wrapMainKey`.
-  const mainKey = fromBase64(textDecoder.decode(decrypted));
-  kek.fill(0);
-  decrypted.fill(0);
-  return mainKey;
 }
 
 async function hkdfDerive(ikm: Uint8Array, label: string, lengthBytes: number): Promise<Uint8Array> {
@@ -259,14 +212,40 @@ async function main(): Promise<void> {
     console.error(`[seed:mood] user ${email} not found — run \`seed:admin\` first`);
     process.exit(1);
   }
-  if (!user.encryptionSalt || !user.encryptedKey) {
+  if (
+    !user.wrappedMainKey ||
+    !user.wrappedMainKeyIv ||
+    !user.wrappedKekPassword ||
+    !user.wrappedKekPasswordIv
+  ) {
     console.error(
-      `[seed:mood] user ${email} is OPAQUE-registered (Phase 2B) and the legacy seed-mood path can't unwrap its main key yet — wait for the seed rewrite in 2D, or seed:mood against a legacy account.`,
+      `[seed:mood] user ${email} has no OPAQUE wrap blobs on its row — re-seed via \`seed:admin\` first.`,
     );
     process.exit(1);
   }
 
-  const mainKey = await unwrapMainKey(password, user.encryptionSalt, user.encryptedKey);
+  const [record] = await db
+    .select({ envelope: opaqueRecords.envelope })
+    .from(opaqueRecords)
+    .where(eq(opaqueRecords.userId, user.id))
+    .limit(1);
+  if (!record) {
+    console.error(
+      `[seed:mood] user ${email} has no opaque_records row — re-seed via \`seed:admin\` first.`,
+    );
+    process.exit(1);
+  }
+
+  const mainKey = await opaqueLoginUnwrapMainKey({
+    userId: user.id,
+    email,
+    password,
+    envelope: record.envelope,
+    wrappedMainKey: user.wrappedMainKey,
+    wrappedMainKeyIv: user.wrappedMainKeyIv,
+    wrappedKekPassword: user.wrappedKekPassword,
+    wrappedKekPasswordIv: user.wrappedKekPasswordIv,
+  });
   const { aesKey, hmacKey } = await deriveSubKeys(mainKey);
   mainKey.fill(0);
 

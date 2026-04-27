@@ -27,9 +27,6 @@ Central identity row.
 | `username`            | `text?`   | Public display name. **Required** at register since Phase 1 (`UsernameField`). **Not unique** — duplicates are allowed (it's a free-form display name; identity lives in `id` + `email`). Column stays nullable so users can clear theirs. |
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
-| `password_hash`       | `text?`   | Argon2id hash (legacy). NULL for OPAQUE-registered accounts (Phase 2B+). Dropped in Phase 2D. |
-| `encryption_salt`     | `text?`   | Base64, legacy argon2id salt. NULL for OPAQUE accounts. Dropped in Phase 2D. |
-| `encrypted_key`       | `text?`   | Base64 AES-GCM envelope of the main key under the legacy Argon2id KEK. NULL for OPAQUE accounts; the equivalent for OPAQUE is `wrapped_main_key` (under a random KEK) + `wrapped_kek_password` (under the OPAQUE export_key). Dropped in Phase 2D. |
 | `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
 | `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. **🚧 Phase 2+** — V1 ignores. |
 | `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. **🚧 Phase 2+** — V1 only uses `'complete'`. |
@@ -316,9 +313,14 @@ drizzle/
 │                                     # OPAQUE-registered accounts can land
 │                                     # without dummy values. Columns dropped
 │                                     # entirely in Phase 2D.
-└── 0010_oval_hairball.sql            # DROP `users_username_unique` —
-                                      # username is a free-form display
-                                      # name, duplicates allowed.
+├── 0010_oval_hairball.sql            # DROP `users_username_unique` —
+│                                     # username is a free-form display
+│                                     # name, duplicates allowed.
+└── 0011_little_morg.sql              # Auth-Roadmap Phase 2D: drop
+                                      # users.{password_hash,
+                                      # encryption_salt, encrypted_key}.
+                                      # OPAQUE blobs are now the only
+                                      # credential surface.
 ```
 
 The test harness (`packages/api/src/test/setup.ts`) truncates every

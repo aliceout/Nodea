@@ -122,3 +122,49 @@ export function clientLoginFinish(
   });
   return result ?? null;
 }
+
+/* ============================================================================
+ * Password proof for mutating routes (change-email, delete-self, …)
+ * ========================================================================== */
+
+import { apiLoginStart } from '../api/client.ts';
+
+export interface PasswordProof {
+  proofLoginToken: string;
+  proofFinishLoginRequest: string;
+}
+
+/**
+ * Run a fresh `/auth/login/start` round-trip with the typed
+ * password and produce the body shape mutating routes expect
+ * (change-email, delete-self, change-password). The resulting
+ * `proofLoginToken` is single-use — get a fresh one for every
+ * call.
+ *
+ * Throws when the server's `loginResponse` doesn't validate
+ * (wrong password / tampered server). Routes treat that as the
+ * usual `invalid_credentials` failure.
+ */
+export async function derivePasswordProof(
+  email: string,
+  password: string,
+): Promise<PasswordProof> {
+  await opaqueReady;
+  const { clientLoginState, startLoginRequest } = clientLoginStart(password);
+  const start = await apiLoginStart({ email, startLoginRequest });
+  const finished = clientLoginFinish({
+    password,
+    clientLoginState,
+    loginResponse: start.loginResponse,
+  });
+  if (!finished) {
+    throw {
+      status: 401,
+      error: 'invalid_credentials',
+    };
+  }
+  return {
+    proofLoginToken: start.loginToken,
+    proofFinishLoginRequest: finished.finishLoginRequest,
+  };
+}

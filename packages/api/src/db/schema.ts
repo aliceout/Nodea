@@ -144,17 +144,7 @@ export const users = pgTable(
      */
     username: text('username'),
 
-    // --- Legacy auth (Phase 2B made these nullable, Phase 2D drops them)
-    // Argon2id-based register/login is being replaced by OPAQUE; new
-    // accounts created in 2B onwards have NULL here and use
-    // `opaque_records.envelope` + `wrapped_kek_password{,_iv}` instead.
-    // The legacy admin (and any pre-2B account) keeps these populated
-    // so the unchanged login route still works for them until 2C.
-    passwordHash: text('password_hash'),
-    encryptionSalt: text('encryption_salt'),
-    encryptedKey: text('encrypted_key'),
-
-    // --- Auth v2 (new, see Auth-Spec.md §4) --------------------------------
+    // --- Auth v2 (Phase 2D dropped the legacy Argon2id columns) -----------
 
     /** Email verification timestamp. NULL until step 2 of register
      *  (or rétro-vérif at lazy migration, cf. Auth-Spec §12.2). */

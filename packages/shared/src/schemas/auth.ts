@@ -1,16 +1,37 @@
 import { z } from 'zod';
 
 const Base64ish = z.string().min(1);
+/** OPAQUE wire blobs (base64url, sometimes 4-8 KB long). Loose ceiling
+ *  is just a DoS safeguard. */
+const OpaqueBlob = z.string().min(1).max(8192);
+
+/**
+ * Re-auth proof from a fresh `/auth/login/start` round-trip.
+ *
+ * Mutating routes that used to require `currentPassword` (Argon2id-
+ * verified server-side) now ship an OPAQUE proof instead: the client
+ * runs a `/auth/login/start` round-trip with the typed current password,
+ * derives `exportKey` locally via `client.finishLogin`, and sends the
+ * `loginToken` + the resulting `finishLoginRequest`. The server runs
+ * `server.finishLogin` to verify the proof; success means the user
+ * knows the current password without it ever crossing the wire in
+ * clear.
+ *
+ * The `loginToken` is consumed on validation (single-use), so each
+ * mutating call pairs with its own fresh login start.
+ */
+export const OpaquePasswordProofSchema = z.object({
+  proofLoginToken: z.string().min(1).max(2048),
+  proofFinishLoginRequest: OpaqueBlob,
+});
+export type OpaquePasswordProof = z.infer<typeof OpaquePasswordProofSchema>;
 
 /**
  * Registration payload.
  *
- * The server never derives the KEK — the client does. The client sends:
- *   - email, password (hashed server-side with argon2id for auth)
- *   - inviteCode (consumed atomically)
- *   - encryptionSalt (opaque bytes, base64) used client-side with argon2id
- *     to derive the KEK
- *   - encryptedKey (base64 AES-GCM blob = mainKey encrypted under KEK)
+ * Legacy single-step shape — kept around for the type alias only;
+ * the actual register flow runs on `auth-opaque.ts`'s 2-step body
+ * (Phase 2B). This schema isn't consumed by any live route.
  */
 export const RegisterBodySchema = z.object({
   email: z.string().email().max(254),
@@ -28,21 +49,61 @@ export const LoginBodySchema = z.object({
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 
 /**
- * Change password. The client re-wraps the main key under a KEK derived from
- * the new password, and ships the fresh salt + wrapped key alongside the old
- * password (proof of knowledge).
+ * Change password — OPAQUE re-registration in 2 steps (Auth-Roadmap
+ * Phase 2D, Auth-Spec §7.5).
+ *
+ * The protocol can't fold into a single POST because OPAQUE
+ * registration itself is a 2-round-trip handshake: the client needs
+ * the server's `registrationResponse` (computed from the new
+ * password's `registrationRequest`) before it can finish the
+ * registration locally.
+ *
+ *   /change-password/start
+ *     Body: proof of current password + new `registrationRequest`.
+ *     Server: validates the proof, runs `server.createRegistration
+ *     Response`, stores a single-use `changePasswordToken` keyed on
+ *     the user id, returns `{ registrationResponse, changePasswordToken }`.
+ *
+ *   /change-password/finish
+ *     Body: `changePasswordToken` + the persisted `registrationRecord`
+ *     + the KEK re-wrapped under an HKDF sub-key of the new
+ *     `exportKey`. Main key isn't re-wrapped — every existing
+ *     ciphertext stays readable across password changes.
+ *     Server: consumes the token, replaces `opaque_records.envelope`
+ *     and `users.wrapped_kek_password{,_iv}`, rotates the session.
  */
-export const ChangePasswordBodySchema = z.object({
-  currentPassword: z.string().min(1).max(200),
-  newPassword: z.string().min(12).max(200),
-  encryptionSalt: Base64ish,
-  encryptedKey: Base64ish,
+export const ChangePasswordStartBodySchema = OpaquePasswordProofSchema.extend({
+  registrationRequest: OpaqueBlob,
 });
-export type ChangePasswordBody = z.infer<typeof ChangePasswordBodySchema>;
+export type ChangePasswordStartBody = z.infer<typeof ChangePasswordStartBodySchema>;
 
-/** Change the authenticated user's email. Current password required. */
-export const ChangeEmailBodySchema = z.object({
-  currentPassword: z.string().min(1).max(200),
+export const ChangePasswordStartResponseSchema = z.object({
+  registrationResponse: OpaqueBlob,
+  changePasswordToken: z.string().min(1).max(2048),
+});
+export type ChangePasswordStartResponse = z.infer<
+  typeof ChangePasswordStartResponseSchema
+>;
+
+export const ChangePasswordFinishBodySchema = z.object({
+  changePasswordToken: z.string().min(1).max(2048),
+  registrationRecord: OpaqueBlob,
+  wrappedKekPassword: Base64ish,
+  wrappedKekPasswordIv: Base64ish,
+});
+export type ChangePasswordFinishBody = z.infer<typeof ChangePasswordFinishBodySchema>;
+
+/**
+ * Change the authenticated user's email. Re-auth via the OPAQUE
+ * proof — see {@link OpaquePasswordProofSchema} for the wire shape.
+ *
+ * The encrypted envelope doesn't change: the email isn't part of
+ * any KEK derivation in V1. The OPAQUE `userIdentifier` is the
+ * email though, so a future Phase 2+ "change email = re-register
+ * OPAQUE" flow will need to ship a fresh `registrationRecord` here.
+ * V1 keeps this minimal — the server just updates the `email` column.
+ */
+export const ChangeEmailBodySchema = OpaquePasswordProofSchema.extend({
   newEmail: z.string().email().max(254),
 });
 export type ChangeEmailBody = z.infer<typeof ChangeEmailBodySchema>;
@@ -69,10 +130,12 @@ export const ChangeUsernameBodySchema = z.object({
 });
 export type ChangeUsernameBody = z.infer<typeof ChangeUsernameBodySchema>;
 
-/** Self-delete the authenticated user. Current password required. */
-export const DeleteSelfBodySchema = z.object({
-  currentPassword: z.string().min(1).max(200),
-});
+/**
+ * Self-delete the authenticated user. Re-auth via the OPAQUE proof
+ * — same shape as change-password / change-email, see
+ * {@link OpaquePasswordProofSchema}.
+ */
+export const DeleteSelfBodySchema = OpaquePasswordProofSchema;
 export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
 
 /**
@@ -86,19 +149,63 @@ export const RequestResetBodySchema = z.object({
 export type RequestResetBody = z.infer<typeof RequestResetBodySchema>;
 
 /**
- * Consume a reset token. The client must generate a fresh main key
- * locally before calling this endpoint (resetting the password means
- * the old AES envelope is unreadable) and ships the new
- * `encryptionSalt` + `encryptedKey` alongside. The server atomically
- * purges every user-owned encrypted row before rotating the
- * credentials — see the handler for the full list.
+ * Consume a reset token — OPAQUE re-registration in 2 steps
+ * (Auth-Roadmap Phase 2D, OPAQUE rewire). Same shape as the change-
+ * password 2-step: the client can't compute a `registrationRecord`
+ * without first getting a `registrationResponse` from the server.
+ *
+ *   /reset/start
+ *     Body: reset `token` + new `registrationRequest`.
+ *     Server: validates the token (active, not expired, not used),
+ *     runs `server.createRegistrationResponse` with userIdentifier=
+ *     user.email, stores a single-use `resetToken` keyed on the
+ *     user id, returns `{ registrationResponse, resetToken }`.
+ *
+ *   /reset/finish
+ *     Body: `resetToken` + the persisted `registrationRecord` +
+ *     a fresh `wrappedMainKey` (the OLD main key is unrecoverable
+ *     so we generate a new one) + the new KEK wrap.
+ *     Server: consumes the token, purges every user-owned
+ *     encrypted row, replaces every credential blob, marks the
+ *     reset token used.
+ *
+ * No `currentPassword` proof: the reset link in the email IS the
+ * auth proof. No `newPassword` over the wire either — OPAQUE keeps
+ * the password client-side.
+ *
+ * `RequestResetBodySchema` (above) and the kept `token` field stay
+ * the same; only the credential payload moved from legacy
+ * `encryptionSalt`/`encryptedKey` to the OPAQUE blobs.
  */
-export const ResetPasswordBodySchema = z.object({
+export const ResetPasswordStartBodySchema = z.object({
   token: z.string().min(16).max(256),
-  newPassword: z.string().min(12).max(200),
-  encryptionSalt: Base64ish,
-  encryptedKey: Base64ish,
+  registrationRequest: OpaqueBlob,
 });
+export type ResetPasswordStartBody = z.infer<typeof ResetPasswordStartBodySchema>;
+
+export const ResetPasswordStartResponseSchema = z.object({
+  registrationResponse: OpaqueBlob,
+  resetToken: z.string().min(1).max(2048),
+  /** The user's stable id, returned so the client can compute the
+   *  AAD bindings for the new wrap blobs. */
+  userId: z.string().uuid(),
+});
+export type ResetPasswordStartResponse = z.infer<
+  typeof ResetPasswordStartResponseSchema
+>;
+
+export const ResetPasswordFinishBodySchema = z.object({
+  resetToken: z.string().min(1).max(2048),
+  registrationRecord: OpaqueBlob,
+  wrappedMainKey: Base64ish,
+  wrappedMainKeyIv: Base64ish,
+  wrappedKekPassword: Base64ish,
+  wrappedKekPasswordIv: Base64ish,
+});
+export type ResetPasswordFinishBody = z.infer<typeof ResetPasswordFinishBodySchema>;
+
+/** @deprecated kept for the type, route was split into start/finish. */
+export const ResetPasswordBodySchema = ResetPasswordFinishBodySchema;
 export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
 
 /**
@@ -116,20 +223,19 @@ export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
 /**
  * Response bodies — what the client can rely on without decrypting.
  *
- * Two sets of credential blobs coexist during the OPAQUE migration:
+ * OPAQUE-only since Phase 2D dropped the legacy Argon2id columns.
+ * The 2-layer wrap is:
+ *   - main key under a random KEK → `wrappedMainKey` /
+ *     `wrappedMainKeyIv` (set ONCE at register, never re-wrapped).
+ *   - KEK under an HKDF sub-key of OPAQUE's `exportKey` →
+ *     `wrappedKekPassword` / `wrappedKekPasswordIv` (re-wrapped at
+ *     change-password and reset).
  *
- *   - Legacy (`encryptionSalt` + `encryptedKey`): the Argon2id-based
- *     wrap of the main key under a password-derived KEK. Populated
- *     for accounts created before Phase 2B; NULL afterwards.
- *
- *   - OPAQUE (`wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}`): the
- *     2-layer wrap landed in Phase 2B — main key under a random KEK,
- *     KEK under an HKDF sub-key of `exportKey`. Populated for accounts
- *     created in 2B onwards; NULL for legacy accounts.
- *
- * Each account is exclusively one or the other. The client picks
- * the unwrap path based on which set is present. Phase 2D drops
- * the legacy columns once the seeded admin is re-enrolled.
+ * The fields are still nullable because the user row is created
+ * during register-finish and these blobs come with it — but during
+ * brief windows (e.g. tests inserting a row by hand) they could be
+ * absent. The client treats null as "this account is broken /
+ * unrecoverable" and surfaces a key-missing prompt.
  */
 export const AuthMeResponseSchema = z.object({
   id: z.string(),
@@ -138,8 +244,6 @@ export const AuthMeResponseSchema = z.object({
   role: z.enum(['user', 'admin']),
   onboardingStatus: z.enum(['pending', 'complete']),
   onboardingVersion: z.string(),
-  encryptionSalt: Base64ish.nullable(),
-  encryptedKey: Base64ish.nullable(),
   wrappedMainKey: Base64ish.nullable(),
   wrappedMainKeyIv: Base64ish.nullable(),
   wrappedKekPassword: Base64ish.nullable(),

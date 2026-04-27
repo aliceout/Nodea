@@ -27,12 +27,16 @@ import {
   type LibraryLookupStreamSnapshot,
   type LoginBody,
   type RegisterBody,
-  type ChangePasswordBody,
+  type ChangePasswordStartBody,
+  type ChangePasswordStartResponse,
+  type ChangePasswordFinishBody,
   type ChangeEmailBody,
   type ChangeUsernameBody,
   type DeleteSelfBody,
   type RequestResetBody,
-  type ResetPasswordBody,
+  type ResetPasswordStartBody,
+  type ResetPasswordStartResponse,
+  type ResetPasswordFinishBody,
   type AnnouncementCreateBody,
   type AnnouncementUpdateBody,
   type AnnouncementResponse,
@@ -241,8 +245,20 @@ export async function apiMe(): Promise<AuthMeResponse | null> {
   }
 }
 
-export async function apiChangePassword(body: ChangePasswordBody): Promise<void> {
-  await request<void>('POST', '/auth/change-password', body);
+export async function apiChangePasswordStart(
+  body: ChangePasswordStartBody,
+): Promise<ChangePasswordStartResponse> {
+  return request<ChangePasswordStartResponse>(
+    'POST',
+    '/auth/change-password/start',
+    body,
+  );
+}
+
+export async function apiChangePasswordFinish(
+  body: ChangePasswordFinishBody,
+): Promise<void> {
+  await request<void>('POST', '/auth/change-password/finish', body);
 }
 
 export async function apiChangeEmail(body: ChangeEmailBody): Promise<void> {
@@ -261,8 +277,20 @@ export async function apiRequestPasswordReset(body: RequestResetBody): Promise<v
   await request<void>('POST', '/auth/request-reset', body);
 }
 
-export async function apiResetPassword(body: ResetPasswordBody): Promise<void> {
-  await request<void>('POST', '/auth/reset', body);
+export async function apiResetPasswordStart(
+  body: ResetPasswordStartBody,
+): Promise<ResetPasswordStartResponse> {
+  return request<ResetPasswordStartResponse>(
+    'POST',
+    '/auth/reset/start',
+    body,
+  );
+}
+
+export async function apiResetPasswordFinish(
+  body: ResetPasswordFinishBody,
+): Promise<void> {
+  await request<void>('POST', '/auth/reset/finish', body);
 }
 
 export async function apiDeleteMe(body: DeleteSelfBody): Promise<void> {

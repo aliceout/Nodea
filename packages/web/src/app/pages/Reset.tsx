@@ -2,9 +2,23 @@ import { forwardRef, useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
-import { apiResetPassword, isApiError } from '@/core/api/client';
+import {
+  apiResetPasswordFinish,
+  apiResetPasswordStart,
+  isApiError,
+} from '@/core/api/client';
 import { randomBytes } from '@/core/crypto/base64';
-import { wrapMainKey } from '@/core/crypto/envelope';
+import {
+  buildKekAAD,
+  buildMainKeyAAD,
+  wrapKekUnderFactor,
+  wrapMainKeyUnderKek,
+} from '@/core/crypto/factor-wrap';
+import {
+  clientRegisterFinish,
+  clientRegisterStart,
+  opaqueReady,
+} from '@/core/auth/opaque';
 import { cn } from '@/lib/utils';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
@@ -64,22 +78,56 @@ export default function ResetPage() {
     if (!canSubmit) return;
 
     setSubmitting(true);
+    const kek = randomBytes(32);
     const rawMainKey = randomBytes(32);
     try {
-      const { encryptionSalt, encryptedKey } = await wrapMainKey(password, rawMainKey);
-      await apiResetPassword({
+      await opaqueReady;
+
+      // Step 1: OPAQUE register start with the new password.
+      const reg = clientRegisterStart(password);
+      const start = await apiResetPasswordStart({
         token,
-        newPassword: password,
-        encryptionSalt,
-        encryptedKey,
+        registrationRequest: reg.registrationRequest,
+      });
+
+      // Step 2: finish OPAQUE registration locally to derive the
+      // exportKey we'll wrap the KEK under.
+      const finished = clientRegisterFinish({
+        password,
+        clientRegistrationState: reg.clientRegistrationState,
+        registrationResponse: start.registrationResponse,
+      });
+
+      // Step 3: wrap the random main key under the random KEK, then
+      // wrap the KEK under an HKDF sub-key of `exportKey`. AAD binds
+      // both blobs to the user id the server returned at /start.
+      const mainKeyWrap = await wrapMainKeyUnderKek(
+        rawMainKey,
+        kek,
+        buildMainKeyAAD(start.userId),
+      );
+      const kekWrap = await wrapKekUnderFactor(
+        kek,
+        finished.exportKey,
+        buildKekAAD(start.userId, 'password'),
+      );
+
+      // Step 4: ship everything to /reset/finish — server purges old
+      // data, replaces every credential blob, marks the reset token
+      // used.
+      await apiResetPasswordFinish({
+        resetToken: start.resetToken,
+        registrationRecord: finished.registrationRecord,
+        wrappedMainKey: mainKeyWrap.wrappedMainKey,
+        wrappedMainKeyIv: mainKeyWrap.wrappedMainKeyIv,
+        wrappedKekPassword: kekWrap.wrappedKek,
+        wrappedKekPasswordIv: kekWrap.wrappedKekIv,
       });
       setDone(true);
     } catch (err) {
       if (isApiError(err) && err.status === 400) {
         if (err.error === 'invalid_token') {
           setError('Ce lien est invalide ou a expiré. Redemande un email de réinitialisation.');
-        } else if (err.error === 'weak_password') {
-          setError('Mot de passe trop faible : ' + (err.reason ?? 'choisis-en un plus complexe.'));
         } else {
           setError('Requête refusée.');
         }
@@ -90,6 +138,7 @@ export default function ResetPage() {
         if (import.meta.env.DEV) console.warn('reset failed', err);
       }
     } finally {
+      kek.fill(0);
       rawMainKey.fill(0);
       setSubmitting(false);
     }

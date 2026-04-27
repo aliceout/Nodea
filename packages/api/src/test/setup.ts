@@ -6,6 +6,7 @@ import { beforeEach } from 'vitest';
 import { sql } from '../db/client.ts';
 import { __resetRateLimits } from '../middleware/rate-limit.ts';
 import { __resetLoginStates } from '../auth/opaque-login-state.ts';
+import { __resetOpaquePendingStates } from '../auth/opaque-pending-state.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
 
 if (!process.env.DATABASE_URL) {
@@ -62,5 +63,6 @@ beforeEach(async () => {
   `;
   __resetRateLimits();
   __resetLoginStates();
+  __resetOpaquePendingStates();
   __getRecordingEmailService().reset();
 });

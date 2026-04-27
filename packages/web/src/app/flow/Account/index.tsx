@@ -10,6 +10,7 @@ import {
   isApiError,
 } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { derivePasswordProof } from '@/core/auth/opaque';
 import {
   useNodeaStore,
   selectMainKey,
@@ -205,7 +206,8 @@ function IdentityTab() {
         setEmailSubmitting(false);
         return;
       }
-      await apiChangeEmail({ currentPassword: emailPassword, newEmail: next });
+      const proof = await derivePasswordProof(user!.email, emailPassword);
+      await apiChangeEmail({ ...proof, newEmail: next });
       const me = await apiMe();
       if (me) setAuth(me);
       setEmailPassword('');
@@ -818,7 +820,8 @@ function DangerTab() {
     }
     setSubmitting(true);
     try {
-      await apiDeleteMe({ currentPassword });
+      const proof = await derivePasswordProof(user!.email, currentPassword);
+      await apiDeleteMe(proof);
       await session.logout().catch(() => undefined);
       navigate('/login', { replace: true });
     } catch (err) {

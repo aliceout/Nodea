@@ -1,18 +1,21 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'node:crypto';
 import {
-  RegisterBodySchema,
-  ChangePasswordBodySchema,
+  ChangePasswordStartBodySchema,
+  ChangePasswordFinishBodySchema,
   ChangeEmailBodySchema,
   ChangeUsernameBodySchema,
   DeleteSelfBodySchema,
   RequestResetBodySchema,
-  ResetPasswordBodySchema,
+  ResetPasswordStartBodySchema,
+  ResetPasswordFinishBodySchema,
   OpaqueLoginStartBodySchema,
   OpaqueLoginFinishBodySchema,
   type AuthMeResponse,
+  type ChangePasswordStartResponse,
   type OpaqueLoginStartResponse,
+  type OpaquePasswordProof,
+  type ResetPasswordStartResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
 import {
@@ -30,10 +33,8 @@ import {
   libraryReviewsEntries,
   reviewEntries,
 } from '../db/schema.ts';
-import { hashPassword, verifyPassword } from '../auth/password.ts';
-import { checkPasswordPolicy } from '../auth/password-policy.ts';
-import { consumeInviteAndCreateUser } from '../auth/invites.ts';
 import {
+  createRegistrationResponse,
   finishLogin as opaqueFinishLogin,
   opaqueReady,
   startLogin as opaqueStartLogin,
@@ -42,6 +43,12 @@ import {
   consumeLoginState,
   storeLoginState,
 } from '../auth/opaque-login-state.ts';
+import {
+  consumeChangePasswordPending,
+  consumeResetPending,
+  storeChangePasswordPending,
+  storeResetPending,
+} from '../auth/opaque-pending-state.ts';
 import {
   createSession,
   revokeSession,
@@ -85,8 +92,45 @@ function isUniqueViolation(err: unknown, constraint: string): boolean {
   return false;
 }
 
-const registerLimiter = rateLimit({ max: 5, windowMs: 60_000, keyPrefix: 'register' });
 const loginLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'login' });
+
+/**
+ * Verify an OPAQUE password proof against the authenticated user.
+ *
+ * Mutating routes (change-password, change-email, delete-self) ship
+ * `{ proofLoginToken, proofFinishLoginRequest }` produced by a fresh
+ * `/auth/login/start` round-trip with the typed current password.
+ * We consume the token (single-use) and run `server.finishLogin` to
+ * verify the client's proof. The user identifier baked into the
+ * stored state must match the calling user's email — otherwise an
+ * attacker holding A's session cookie could change-password using
+ * B's password proof.
+ *
+ * Returns:
+ *   - `'ok'` when the proof checks out;
+ *   - `'invalid'` for any negative path (unknown / expired / replayed
+ *     token, identifier mismatch, lib rejection). Callers respond
+ *     with a generic 401 — no anti-enum distinction needed since
+ *     the user is already authenticated.
+ */
+async function verifyPasswordProof(
+  user: { email: string },
+  proof: OpaquePasswordProof,
+): Promise<'ok' | 'invalid'> {
+  await opaqueReady;
+  const pending = consumeLoginState(proof.proofLoginToken);
+  if (!pending) return 'invalid';
+  if (pending.userIdentifier !== user.email.toLowerCase()) return 'invalid';
+  try {
+    opaqueFinishLogin({
+      serverLoginState: pending.state,
+      finishLoginRequest: proof.proofFinishLoginRequest,
+    });
+  } catch {
+    return 'invalid';
+  }
+  return 'ok';
+}
 /** 5 requests per hour per IP — matches the issue (#22) requirement. */
 const requestResetLimiter = rateLimit({
   max: 5,
@@ -285,9 +329,25 @@ authRoutes.post('/request-reset', requestResetLimiter, async (c) => {
  * Wrong / expired / already-used token → 400 (`invalid_token`). Weak
  * new password → 400 (`weak_password`).
  */
-authRoutes.post('/reset', resetLimiter, async (c) => {
+/**
+ * Consume a reset token — step 1 (Auth-Roadmap Phase 2D, OPAQUE).
+ *
+ * Validates the reset token + runs OPAQUE `createRegistrationResponse`
+ * for the new password the user is about to commit to. Returns
+ * `{ registrationResponse, resetToken }` — the latter is a fresh
+ * single-use marker the client echoes at /finish.
+ *
+ * No DB mutation here. The reset token (`tokenRow`) stays valid
+ * until /finish marks it used, so a botched /finish (network drop,
+ * malformed body) lets the user retry without going through
+ * /request-reset again.
+ *
+ * Wrong / expired / already-used token → 400 `invalid_token`.
+ */
+authRoutes.post('/reset/start', resetLimiter, async (c) => {
+  await opaqueReady;
   const raw = await c.req.json().catch(() => null);
-  const parsed = ResetPasswordBodySchema.safeParse(raw);
+  const parsed = ResetPasswordStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
 
@@ -301,10 +361,61 @@ authRoutes.post('/reset', resetLimiter, async (c) => {
     .limit(1);
   if (!user) return c.json({ error: 'invalid_token' }, 400);
 
-  const policy = checkPasswordPolicy(body.newPassword, [user.email]);
-  if (!policy.ok) return c.json({ error: 'weak_password', reason: policy.reason }, 400);
+  let registrationResponse: string;
+  try {
+    ({ registrationResponse } = createRegistrationResponse({
+      userIdentifier: user.email,
+      registrationRequest: body.registrationRequest,
+    }));
+  } catch {
+    return c.json({ error: 'invalid_body' }, 400);
+  }
 
-  const newHash = await hashPassword(body.newPassword);
+  const resetToken = storeResetPending(user.id, user.email);
+  const response: ResetPasswordStartResponse = {
+    registrationResponse,
+    resetToken,
+    userId: user.id,
+  };
+  return c.json(response);
+});
+
+/**
+ * Consume a reset token — step 2: purge every user-owned encrypted
+ * row, replace every credential blob, mark the reset token used.
+ *
+ * Reset is destructive — the OLD main key is unrecoverable, so the
+ * client generates a fresh main key + fresh KEK and ships the new
+ * wrap blobs alongside the OPAQUE `registrationRecord`. Every
+ * pre-reset ciphertext (mood entries, etc.) is purged in the same
+ * transaction.
+ */
+authRoutes.post('/reset/finish', resetLimiter, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = ResetPasswordFinishBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+
+  const pending = consumeResetPending(body.resetToken);
+  if (!pending) return c.json({ error: 'invalid_token' }, 400);
+
+  // The pending entry binds the reset to a specific user. Re-find
+  // the active reset-token row that started the flow so we can
+  // mark it used at the same transaction; if it's gone the flow
+  // expired between /start and /finish and we bail.
+  const [tokenRow] = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(eq(passwordResetTokens.userId, pending.userId))
+    .limit(1);
+  if (!tokenRow) return c.json({ error: 'invalid_token' }, 400);
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, pending.userId))
+    .limit(1);
+  if (!user) return c.json({ error: 'invalid_token' }, 400);
 
   await db.transaction(async (tx) => {
     // Purge every user-owned encrypted row. FK cascade would also do
@@ -322,11 +433,17 @@ authRoutes.post('/reset', resetLimiter, async (c) => {
     await tx.delete(userPreferences).where(eq(userPreferences.userId, user.id));
 
     await tx
+      .update(opaqueRecords)
+      .set({ envelope: body.registrationRecord })
+      .where(eq(opaqueRecords.userId, user.id));
+
+    await tx
       .update(users)
       .set({
-        passwordHash: newHash,
-        encryptionSalt: body.encryptionSalt,
-        encryptedKey: body.encryptedKey,
+        wrappedMainKey: body.wrappedMainKey,
+        wrappedMainKeyIv: body.wrappedMainKeyIv,
+        wrappedKekPassword: body.wrappedKekPassword,
+        wrappedKekPasswordIv: body.wrappedKekPasswordIv,
         onboardingStatus: 'pending',
         updatedAt: new Date(),
       })
@@ -344,12 +461,10 @@ authRoutes.post('/reset', resetLimiter, async (c) => {
 
 authRoutes.get('/me', requireUser, (c) => {
   const user = c.get('user');
-  // Both credential models surface here: legacy Argon2id
-  // (`encryptionSalt` + `encryptedKey`) for accounts created
-  // pre-Phase-2B, OPAQUE (`wrappedMainKey{,Iv}` + `wrappedKekPassword
-  // {,Iv}`) for accounts created in 2B onwards. The client picks
-  // the unwrap path based on which side is filled. Phase 2D drops
-  // the legacy columns once the seeded admin is re-enrolled.
+  // OPAQUE-only since Phase 2D dropped the legacy Argon2id columns.
+  // `wrapped*` blobs are the exclusive credential surface; the
+  // client unwraps the KEK via the OPAQUE `exportKey` derived at
+  // login, then unwraps the main key under the KEK.
   const body: AuthMeResponse = {
     id: user.id,
     email: user.email,
@@ -357,8 +472,6 @@ authRoutes.get('/me', requireUser, (c) => {
     role: user.role,
     onboardingStatus: user.onboardingStatus,
     onboardingVersion: user.onboardingVersion,
-    encryptionSalt: user.encryptionSalt ?? null,
-    encryptedKey: user.encryptedKey ?? null,
     wrappedMainKey: user.wrappedMainKey ?? null,
     wrappedMainKeyIv: user.wrappedMainKeyIv ?? null,
     wrappedKekPassword: user.wrappedKekPassword ?? null,
@@ -367,31 +480,83 @@ authRoutes.get('/me', requireUser, (c) => {
   return c.json(body);
 });
 
-authRoutes.post('/change-password', requireUser, async (c) => {
+/**
+ * Change password — step 1: validate the proof, run OPAQUE
+ * `createRegistrationResponse` for the new password, hand the
+ * client a single-use `changePasswordToken` to echo at /finish.
+ *
+ * Two-step flow because OPAQUE registration is itself a 2-round-trip
+ * handshake — the client can't compute the new `registrationRecord`
+ * without the server's `registrationResponse` first.
+ */
+authRoutes.post('/change-password/start', requireUser, async (c) => {
+  await opaqueReady;
   const raw = await c.req.json().catch(() => null);
-  const parsed = ChangePasswordBodySchema.safeParse(raw);
+  const parsed = ChangePasswordStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const user = c.get('user');
 
-  const currentOk = await verifyPassword(user.passwordHash, body.currentPassword);
-  if (!currentOk) return c.json({ error: 'invalid_credentials' }, 401);
+  const proof = await verifyPasswordProof(user, body);
+  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
-  const policy = checkPasswordPolicy(body.newPassword, [user.email]);
-  if (!policy.ok) return c.json({ error: 'weak_password', reason: policy.reason }, 400);
+  let registrationResponse: string;
+  try {
+    ({ registrationResponse } = createRegistrationResponse({
+      userIdentifier: user.email,
+      registrationRequest: body.registrationRequest,
+    }));
+  } catch {
+    return c.json({ error: 'invalid_body' }, 400);
+  }
 
-  const newHash = await hashPassword(body.newPassword);
-  await db
-    .update(users)
-    .set({
-      passwordHash: newHash,
-      encryptionSalt: body.encryptionSalt,
-      encryptedKey: body.encryptedKey,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, user.id));
+  const changePasswordToken = storeChangePasswordPending(user.id, user.email);
+  const response: ChangePasswordStartResponse = {
+    registrationResponse,
+    changePasswordToken,
+  };
+  return c.json(response);
+});
 
-  // Revoke all other sessions; mint a fresh one so the caller stays signed in.
+/**
+ * Change password — step 2: replace the envelope + the KEK wrap,
+ * rotate the session cookie. Main key isn't re-wrapped (the whole
+ * point of the 2-layer wrap is that every existing ciphertext
+ * stays readable across password changes).
+ *
+ * The `changePasswordToken` is consumed here. Mismatch between the
+ * token's bound user and the calling session means a privilege
+ * confusion attempt — same generic 401 either way.
+ */
+authRoutes.post('/change-password/finish', requireUser, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = ChangePasswordFinishBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+  const user = c.get('user');
+
+  const pending = consumeChangePasswordPending(body.changePasswordToken);
+  if (!pending || pending.userId !== user.id) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(opaqueRecords)
+      .set({ envelope: body.registrationRecord })
+      .where(eq(opaqueRecords.userId, user.id));
+    await tx
+      .update(users)
+      .set({
+        wrappedKekPassword: body.wrappedKekPassword,
+        wrappedKekPasswordIv: body.wrappedKekPasswordIv,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+  });
+
+  // Revoke all sessions (incl. the caller's) and mint a fresh one so
+  // the cookie ID rotates after the privilege change.
   await revokeAllUserSessions(user.id);
   const session = await createSession(user.id);
   await setSessionCookie(c, session.id, session.expiresAt);
@@ -400,12 +565,13 @@ authRoutes.post('/change-password', requireUser, async (c) => {
 });
 
 /**
- * Change the authenticated user's email.
+ * Change the authenticated user's email — re-auth via OPAQUE proof.
  *
- * Password-gated. The encrypted envelope doesn't change (the email is
- * not part of the KEK derivation), so only the `email` column is
- * updated. The unique index on `email` lets the server reject duplicates
- * via the DB error path.
+ * The envelope stays untouched: email isn't part of the KEK
+ * derivation in V1. Only the `email` column moves. Future Phase 2+
+ * design intends a re-register OPAQUE on email change because the
+ * `userIdentifier` baked into the envelope IS the email — that's a
+ * separate spec section (§7.6) and not implemented here.
  */
 authRoutes.patch('/email', requireUser, async (c) => {
   const raw = await c.req.json().catch(() => null);
@@ -414,8 +580,8 @@ authRoutes.patch('/email', requireUser, async (c) => {
   const body = parsed.data;
   const user = c.get('user');
 
-  const currentOk = await verifyPassword(user.passwordHash, body.currentPassword);
-  if (!currentOk) return c.json({ error: 'invalid_credentials' }, 401);
+  const proof = await verifyPasswordProof(user, body);
+  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   const newEmail = body.newEmail.toLowerCase();
   if (newEmail === user.email) return c.json({ ok: true });
@@ -482,11 +648,12 @@ authRoutes.post('/onboarding/complete', requireUser, async (c) => {
 });
 
 /**
- * Self-delete the authenticated user. Password-gated.
+ * Self-delete the authenticated user — re-auth via OPAQUE proof.
  *
  * Every row owned by this user is removed by the FK ON DELETE CASCADE
- * chain: sessions, modules_config, and every *_entries. Invites the
- * user created keep their row with `created_by` set to NULL.
+ * chain: sessions, modules_config, opaque_records, and every
+ * *_entries. Invites the user created keep their row with
+ * `created_by` set to NULL.
  *
  * After the delete the session row is gone; the cookie is also
  * explicitly cleared in the response so the browser forgets it.
@@ -497,8 +664,8 @@ authRoutes.delete('/me', requireUser, async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
 
-  const currentOk = await verifyPassword(user.passwordHash, parsed.data.currentPassword);
-  if (!currentOk) return c.json({ error: 'invalid_credentials' }, 401);
+  const proof = await verifyPasswordProof(user, parsed.data);
+  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   await db.delete(users).where(eq(users.id, user.id));
   clearSessionCookie(c);

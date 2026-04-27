@@ -8,8 +8,10 @@ const sampleUser: SessionUser = {
   role: 'user',
   onboardingStatus: 'complete',
   onboardingVersion: '1',
-  encryptionSalt: 'salt-b64',
-  encryptedKey: 'iv.data',
+  wrappedMainKey: 'iv.data',
+  wrappedMainKeyIv: 'iv',
+  wrappedKekPassword: 'kek-iv.kek-data',
+  wrappedKekPasswordIv: 'kek-iv',
 };
 
 describe('useNodeaStore', () => {

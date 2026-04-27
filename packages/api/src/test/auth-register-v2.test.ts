@@ -339,9 +339,6 @@ describe('POST /auth/register/finish — invited path', () => {
     expect(user!.username).toBe('newcomer');
     expect(user!.wrappedMainKey).toBe('test-wrapped-main-key');
     expect(user!.wrappedKekPassword).toBe('test-wrapped-kek-password');
-    expect(user!.passwordHash).toBeNull();
-    expect(user!.encryptionSalt).toBeNull();
-    expect(user!.encryptedKey).toBeNull();
 
     const [envelope] = await db
       .select()
@@ -427,7 +424,7 @@ describe('POST /auth/register/finish — open path', () => {
       .where(eq(users.email, 'open@example.com'));
     expect(user).toBeDefined();
     expect(user!.emailVerifiedAt).toBeNull();
-    expect(user!.passwordHash).toBeNull();
+    expect(user!.wrappedMainKey).toBe('test-wrapped-main-key');
 
     const [envelope] = await db
       .select()
