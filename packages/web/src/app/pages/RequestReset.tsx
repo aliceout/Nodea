@@ -90,14 +90,7 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
         Indique ton email — on t’enverra un lien pour définir un nouveau mot de passe.
       </p>
 
-      {/* Hard warning at the top — sets the tone before the user
-          even types the email. Reset is the destructive path; we
-          want the consequence framed first. */}
-      <Warning title="Réinitialiser efface toutes tes données">
-        Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
-      </Warning>
-
-      <form onSubmit={onSubmit} noValidate className="mt-5">
+      <form onSubmit={onSubmit} noValidate>
         <Field
           label="E-mail"
           type="email"
@@ -124,19 +117,27 @@ function FormView({ email, onEmailChange, onSubmit, submitting, error }: FormVie
           {submitting ? 'Envoi…' : 'M’envoyer le lien'}
         </button>
 
-        {/* Recovery code escape hatch BELOW the destructive button —
-            last call before the user pulls the trigger. Same green
-            chrome (border-2 border-accent + bg-accent/5) as the
-            `SidebarTipModules` info nudge — visually says "this is
-            the safe path, take it". */}
-        <div className="mt-3 rounded-md border-2 border-accent bg-accent/5 px-3 py-2.5 text-[12.5px] text-ink-soft">
+        {/* Hard warning + recovery escape hatch, fused into one
+            block below the submit. The destructive consequence is
+            front-and-centre (red title + body) and the
+            non-destructive alternative is offered as a green
+            outline CTA inside the same callout — "this is what
+            happens, here's the way out". */}
+        <div
+          role="alert"
+          className="mt-3 rounded-md border border-danger bg-danger/10 px-3.5 py-3 text-[12.5px] leading-[1.5] text-danger"
+        >
+          <p className="mb-1 flex items-center gap-1.5 font-semibold tracking-[0.01em]">
+            <span aria-hidden="true">⚠</span>
+            Réinitialiser efface toutes tes données
+          </p>
+          <p>Le chiffrement n’est pas réversible sans ton mot de passe d’origine.</p>
+
+          <hr className="my-3 border-t border-danger/30" aria-hidden="true" />
+
           <p className="mb-2 font-semibold text-accent-deep">
             Tu as un code de récupération&nbsp;?
           </p>
-          {/* Render as an outline button rather than an inline link —
-              "Récupérer sans perdre tes données" was reading as part
-              of the prose otherwise, the green CTA-shaped affordance
-              makes it unambiguous. */}
           <Link
             to="/recover"
             className="block w-full cursor-pointer rounded-md border border-accent bg-bg px-3 py-2 text-center text-[12.5px] font-semibold text-accent-deep transition-colors hover:bg-accent/10"
