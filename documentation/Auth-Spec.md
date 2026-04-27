@@ -129,15 +129,22 @@ Quoi qu'il arrive, ces invariants tiennent :
 
 ### 1.3 Évolution V1 → Phase 2+
 
+> **Note** : depuis Phase 2D, OPAQUE est livré pour register / login
+> / change-password / reset / change-email / delete-self, et les
+> colonnes legacy `users.{password_hash, encryption_salt,
+> encrypted_key}` ont été droppées (migration `0011_little_morg`).
+> Le tableau ci-dessous garde la trace du delta initial pour
+> contexte historique.
+
 | V1 livré | Phase 2+ cible |
 |---|---|
-| Inscription single-form + activation par lien email | Inchangé (le modèle simplifié reste, OPAQUE remplace juste la dérivation crypto interne) |
-| Argon2id côté serveur (password_hash) + KEK dérivée du password | OPAQUE (RFC 9497) côté client + serveur ; KEK random wrappée par chaque facteur |
-| Pas de second facteur | Passkey + TOTP optionnels selon `security_mode` |
-| Reset destructif uniquement | Recovery code KEK (BIP39) + bypass TOTP/passkey email + reset destructif |
-| `users.password_hash` + `users.encryption_salt` + `users.encrypted_key` (legacy) | Conservé tant que tous les comptes ne sont pas migrés ; ajout de `opaque_records` 1:1 avec `users`, plus tard drop des colonnes legacy |
-| Invitations email-bound (`invites.email + token`) | Inchangé |
-| Toggle `open_registration` (`app_settings`) | Inchangé |
+| Inscription single-form + activation par lien email | ✅ inchangé (le modèle simplifié reste, OPAQUE a remplacé la dérivation crypto interne en 2B) |
+| Argon2id côté serveur (`password_hash`) + KEK dérivée du password | ✅ remplacé (Phase 2C) — OPAQUE (RFC 9497) côté client + serveur ; KEK random wrappée par chaque facteur |
+| Pas de second facteur | 🚧 Phase 4/5 — Passkey + TOTP optionnels selon `security_mode` |
+| Reset destructif uniquement | 🚧 Phase 3 — Recovery code KEK (BIP39) ; reset destructif déjà OPAQUE depuis 2D ; bypass TOTP/passkey email Phase 6 |
+| `users.password_hash` + `users.encryption_salt` + `users.encrypted_key` (legacy) | ✅ droppées en Phase 2D (`0011_little_morg`) ; `opaque_records.envelope` + `wrapped_main_key{,_iv}` + `wrapped_kek_password{,_iv}` sont la seule surface credential restante |
+| Invitations email-bound (`invites.email + token`) | ✅ inchangé |
+| Toggle `open_registration` (`app_settings`) | ✅ inchangé |
 
 ---
 
@@ -947,9 +954,10 @@ côté client (cf. §3.2) :
      - INSERT `users { id: userId, username,
        wrappedMainKey, wrappedMainKeyIv,
        wrappedKekPassword, wrappedKekPasswordIv,
-       emailVerifiedAt: now(), registerState: 'complete' }` —
-       `password_hash` / `encryption_salt` / `encrypted_key` restent
-       NULL (legacy columns rendues nullable en 2B).
+       emailVerifiedAt: now(), registerState: 'complete' }`.
+       (Les colonnes Argon2id legacy ont été droppées en Phase 2D —
+       `opaque_records.envelope` + les blobs `wrapped_*` sont la
+       seule surface credential.)
      - INSERT `opaque_records { user_id: userId, envelope:
        registrationRecord }`.
      - UPDATE `invites { usedBy, usedAt }`.
@@ -977,11 +985,14 @@ côté client (cf. §3.2) :
    - 403 `registration_closed`. Le frontend gate ce cas en amont
      via `GET /register/mode` (voir ci-dessous).
 
-**Mode Argon2id legacy** (V1 antérieur à 2B) : remplacé entièrement
-par l'OPAQUE 2-step. Les comptes legacy survivants (admin seedé
-pré-2B) gardent leurs colonnes `password_hash` / `encryption_salt` /
-`encrypted_key` populées le temps que Phase 2C bascule le login. Ces
-colonnes sont droppées en Phase 2D.
+**Mode Argon2id legacy** : remplacé entièrement par l'OPAQUE
+2-step en Phase 2B (register), 2C (login), 2D (change-password,
+reset, change-email, delete-self). Les colonnes
+`users.{password_hash, encryption_salt, encrypted_key}` ont été
+droppées en Phase 2D (migration `0011_little_morg`). Aucun chemin
+de code n'utilise plus Argon2id pour l'auth — le seul Argon2id
+restant est celui qu'`@serenity-kit/opaque` fait tourner en
+interne dans la suite OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id.
 
 #### `POST /auth/register/activate`
 

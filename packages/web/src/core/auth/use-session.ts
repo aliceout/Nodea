@@ -6,10 +6,18 @@
  * login/register/logout/change-password call — and manages the
  * lifetime of the in-memory `MainKeyMaterial`:
  *
- *   - login : derive it from the user's password + stored envelope
- *   - register : derive it from the freshly generated main-key bytes
- *   - changePassword : rewrap under the new password then re-derive
- *   - logout : wiped by `resetAll()`
+ *   - login            : OPAQUE login → exportKey → unwrap KEK
+ *                        (`wrapped_kek_password`) → unwrap main key
+ *                        (`wrapped_main_key`) → derive sub-keys.
+ *   - submitRegistration: fresh OPAQUE register → fresh KEK + main
+ *                        key, both wrapped. Server stores the
+ *                        envelope, client throws away the bytes
+ *                        (re-login derives them again).
+ *   - changePassword   : OPAQUE proof of current password → unwrap
+ *                        KEK → fresh OPAQUE register on new password
+ *                        → re-wrap SAME KEK under new exportKey →
+ *                        force-logout. Main key wrap untouched.
+ *   - logout           : wiped by `resetAll()`.
  *
  * On a cold page load, the session cookie survives but the main key
  * does not (it cannot — the client doesn't have the password). The UI

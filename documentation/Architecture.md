@@ -192,15 +192,14 @@ the factory loops over. There is nowhere to forget a guard.
   `account_not_activated`** when `users.email_verified_at IS NULL`,
   surfaced as a precise UI message ("Ton compte n'est pas encore
   activé").
-- **Change password**: server expects a re-wrapped envelope
-  (`encryptionSalt` + `encryptedKey`) produced by the client under the
-  new password. Revokes every other session and issues a fresh one.
-- **Reset password** (R13 / `#22`): token 32-byte random, SHA-256
-  hashed, 1h TTL. Consuming a token runs a transaction that purges
-  every user-owned encrypted row (8 entry tables + `modules_config` +
-  `user_preferences`) before rotating credentials — the old envelope
-  is unreachable without the old password, so we refuse to keep dead
-  ciphertexts around.
+- **Change password / reset / change-email / delete-self**: see the
+  dedicated bullets above — all four moved to OPAQUE proof bodies in
+  Phase 2D. Reset still purges every user-owned encrypted row before
+  rotating credentials (the old main key is unrecoverable once the
+  password is forgotten); change-password rotates the KEK envelope
+  but leaves the main-key wrap untouched, preserving every existing
+  ciphertext. Reset-token shape unchanged: 32-byte random, SHA-256
+  hashed, 1h TTL (R13 / #22).
 
 ### Background jobs
 
@@ -294,9 +293,13 @@ reset.
 - **Guard derivation** (`guard-derivation.ts`): deterministic
   HMAC-SHA-256 over `moduleUserId || ':' || recordId` with the HMAC
   sub-key. No network round-trip.
-- **Envelope** (`envelope.ts`): `wrapMainKey(password, raw) →
-  { encryptionSalt, encryptedKey }` and `unwrapMainKeyBytes` for login.
-  Argon2id via `hash-wasm`.
+- **Two-layer wrap** (`factor-wrap.ts`): the main key is wrapped
+  under a random KEK (label `nodea:wrap-main`), the KEK is wrapped
+  under an HKDF sub-key of the OPAQUE `exportKey` (label
+  `nodea:wrap-kek`). AAD bound to `users.id` (+ a per-factor tag
+  for the KEK wrap) so a row-swap on the server can't pass off
+  one user's blob as another's. The legacy single-step Argon2id
+  envelope (`envelope.ts`) was removed in Phase 2D.
 
 ### UI
 

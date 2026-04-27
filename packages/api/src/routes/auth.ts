@@ -276,8 +276,7 @@ authRoutes.post('/logout', requireUser, async (c) => {
  *
  * Always responds 200 regardless of whether the email matches a user.
  * The response shape leaks nothing; the only side-channel would be
- * timing, which `verifyPassword` / mailer work mask poorly but
- * `hashPassword` during register already accepts. Rate limited to
+ * timing (mailer round-trip on the happy branch). Rate limited to
  * 5 requests per IP per hour to blunt enumeration attempts.
  */
 authRoutes.post('/request-reset', requestResetLimiter, async (c) => {
