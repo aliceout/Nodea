@@ -253,7 +253,7 @@ function Topbar({ count, onOpenMenu, onNewEntry }: TopbarProps) {
       <button
         type="button"
         onClick={onNewEntry}
-        className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
+        className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
       >
         + Nouvel objectif
       </button>
@@ -422,7 +422,7 @@ function GoalRow({ entry, onToggleStatus, onDelete, onEdit }: GoalRowProps) {
 const STATUS_TONE: Record<CanonicalStatus, string> = {
   open: 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
   wip: 'border-accent-soft bg-accent-soft text-accent-deep hover:border-accent hover:text-accent-deep',
-  done: 'border-accent bg-accent text-white hover:bg-accent-deep hover:border-accent-deep',
+  done: 'border-accent bg-accent text-white hover:bg-accent-hover hover:border-accent-hover',
 };
 
 const STATUS_LABEL: Record<CanonicalStatus, string> = {

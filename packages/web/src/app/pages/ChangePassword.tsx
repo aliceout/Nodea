@@ -203,7 +203,7 @@ export default function ChangePasswordPage() {
                 confirmMismatch ||
                 newPwd !== confirmPwd
               }
-              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? 'Mise à jour…' : 'Mettre à jour et se reconnecter'}
             </button>

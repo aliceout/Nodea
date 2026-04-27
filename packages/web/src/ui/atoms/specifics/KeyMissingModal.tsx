@@ -47,20 +47,18 @@ export default function KeyMissingModal({ onLogout, open = true }: KeyMissingMod
             <DialogPanel className="relative w-full max-w-[420px] overflow-hidden rounded-[12px] border border-hair bg-bg shadow-[0_24px_60px_rgba(0,0,0,0.18),0_4px_12px_rgba(0,0,0,0.08)]">
               <div className="flex flex-col items-stretch gap-3 px-6 py-6 text-center">
                 <Dialog.Title className="text-[18px] font-semibold tracking-[-0.01em] text-ink">
-                  Clé de chiffrement manquante
+                  Session verrouillée
                 </Dialog.Title>
                 <p className="text-[13.5px] leading-[1.5] text-ink-soft">
-                  La clé de chiffrement n’est plus disponible.
-                  <br />
                   Merci de bien vouloir vous reconnecter.
                 </p>
                 <button
                   type="button"
                   onClick={onLogout}
                   autoFocus
-                  className="mx-auto mt-2 cursor-pointer rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
+                  className="mx-auto mt-2 cursor-pointer rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
                 >
-                  Se déconnecter
+                  Se reconnecter
                 </button>
               </div>
             </DialogPanel>

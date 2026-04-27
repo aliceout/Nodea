@@ -196,14 +196,14 @@ function ListView({
       <button
         type="button"
         onClick={onAdd}
-        className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px"
+        className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px"
       >
         Ajouter une passkey
       </button>
 
       <div className="mt-4.5 text-center text-[12.5px] text-muted">
         <Link
-          to="/flow/account"
+          to="/flow"
           className="cursor-pointer transition-colors hover:text-ink"
         >
           ← Retour
@@ -358,7 +358,7 @@ function AddView({ session, onCancel, onSuccess }: AddViewProps) {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Enregistrement…' : 'Confirmer avec ma passkey'}
         </button>
@@ -550,7 +550,7 @@ function RenameView({ passkey, session, onCancel, onSuccess }: RenameViewProps) 
         <button
           type="submit"
           disabled={submitting}
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Renommage…' : 'Renommer'}
         </button>

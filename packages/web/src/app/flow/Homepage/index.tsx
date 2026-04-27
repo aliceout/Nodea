@@ -199,7 +199,7 @@ function Topbar({
         <button
           type="button"
           onClick={onOpenComposer}
-          className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
+          className="rounded-md bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
         >
           {newEntryLabel}
         </button>

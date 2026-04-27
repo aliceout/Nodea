@@ -2567,7 +2567,7 @@ function Footer({
             type="button"
             onClick={onSubmit}
             disabled={submitting}
-            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? submittingLabel : submitLabel}
           </button>

@@ -428,7 +428,7 @@ function RegisterForm({
             password !== confirm ||
             (mode.kind === 'open' && !emailLooksValid)
           }
-          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? 'Envoi…' : 'Créer mon compte'}
         </button>

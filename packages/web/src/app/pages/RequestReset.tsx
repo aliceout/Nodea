@@ -108,7 +108,7 @@ function ForkView({ onNoCode }: ForkViewProps) {
       <button
         type="button"
         onClick={() => navigate('/recover')}
-        className="w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px"
+        className="w-full cursor-pointer rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px"
       >
         J’ai un code de récupération
       </button>

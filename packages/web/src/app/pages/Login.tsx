@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { FingerPrintIcon } from '@heroicons/react/24/outline';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
@@ -162,9 +163,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting || passkeyBusy}
-              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? 'Connexion…' : 'Entrer'}
+              {isSubmitting ? 'Connexion…' : 'Se connecter'}
             </button>
 
             {/* Passkey alternative — secondary affordance below the
@@ -179,9 +180,16 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => void onPasskeyClick()}
                 disabled={isSubmitting || passkeyBusy}
-                className="mt-2 w-full cursor-pointer rounded-md border border-hair bg-bg px-4 py-[11px] text-[14px] font-semibold text-ink transition-colors hover:bg-bg-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-hair bg-bg px-4 py-[11px] text-[14px] font-semibold text-ink transition-colors hover:bg-bg-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {passkeyBusy ? 'Vérification…' : 'Se connecter avec une passkey'}
+                {passkeyBusy ? (
+                  'Vérification…'
+                ) : (
+                  <>
+                    <FingerPrintIcon className="h-4 w-4" aria-hidden="true" />
+                    Se connecter avec une passkey
+                  </>
+                )}
               </button>
             ) : null}
 

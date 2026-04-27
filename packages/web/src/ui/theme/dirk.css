@@ -31,6 +31,13 @@
      "barely off-grey". */
   --color-k-accent-soft: #c5d8c9;
   --color-k-accent-deep: #3d5641;
+  /* `-hover` is the button-bg hover state for `bg-accent` surfaces.
+     Distinct from `-deep` because in dark mode `-deep` has to read
+     as foreground text on dark sage backgrounds (so it must be
+     light), whereas `-hover` always has to be *darker* than `accent`
+     so white text on top of a hovered button stays legible. In
+     light mode they happen to coincide; in dark they diverge. */
+  --color-k-accent-hover: #3d5641;
   --color-k-sync: #7a9a7e;
 
   /* Terracotta — tonalité « basse », pour lectures négatives
@@ -60,12 +67,20 @@
   --color-k-muted-soft: #585650;
   --color-k-hair: #3f3d36;
 
-  /* Sauge clarifié pour contraster sur fond sombre */
-  --color-k-accent: #9bbf9f;
+  /* Sauge clarifié pour contraster sur fond sombre — assombri par
+     rapport au #9bbf9f initial (trop pâle, le texte blanc posé
+     dessus passait sous les ~2:1 de contraste) tout en restant
+     lisible comme texte sur le papier de nuit. */
+  --color-k-accent: #7ea582;
   /* See light-mode note — bumped saturation so `+1` cells stay
      visibly green-tinted instead of merging into the neutral. */
   --color-k-accent-soft: #36493b;
   --color-k-accent-deep: #bcd9bf;
+  /* See light-mode comment for the rationale. In dark, `-deep` has
+     to stay bright (it's foreground text on dark sage), so `-hover`
+     branches off into a darker sage that gives white-on-button
+     enough contrast on hover. */
+  --color-k-accent-hover: #688c6c;
   --color-k-sync: #9bbf9f;
 
   /* Terracotta clarifié pour rester lisible sur le papier de nuit */
@@ -125,6 +140,7 @@
   --color-accent: var(--color-k-accent);
   --color-accent-soft: var(--color-k-accent-soft);
   --color-accent-deep: var(--color-k-accent-deep);
+  --color-accent-hover: var(--color-k-accent-hover);
   --color-sync: var(--color-k-sync);
   --color-low: var(--color-k-low);
   --color-low-soft: var(--color-k-low-soft);

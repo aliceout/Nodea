@@ -13,7 +13,7 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   // Primary — accent-filled, used for the dominant action of a
   // surface (Chercher, Ajouter à ma bibliothèque, Enregistrer).
   primary:
-    'bg-accent text-white hover:bg-accent-deep active:translate-y-px',
+    'bg-accent text-white hover:bg-accent-hover active:translate-y-px',
   // Secondary — bordered, used for siblings of the primary action
   // (Annuler, Passer, dismiss buttons inside content blocks).
   secondary:

@@ -399,7 +399,7 @@ function Topbar({
           <button
             type="button"
             onClick={onNewItem}
-            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px"
+            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px"
           >
             + Nouveau livre
           </button>
@@ -411,7 +411,7 @@ function Topbar({
             title={
               count === 0 ? 'Ajoute d’abord un livre dans Library.' : undefined
             }
-            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-sm bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
           >
             {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
           </button>

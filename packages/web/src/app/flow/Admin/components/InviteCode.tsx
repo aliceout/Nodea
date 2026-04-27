@@ -84,7 +84,7 @@ export default function InviteManager({
         <button
           type="submit"
           disabled={!looksValidEmail}
-          className="rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
         >
           Envoyer l'invitation
         </button>

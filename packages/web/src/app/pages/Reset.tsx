@@ -197,7 +197,7 @@ function InvalidLinkPanel() {
       </p>
       <Link
         to="/request-reset"
-        className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-deep"
+        className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
       >
         Redemander un lien
       </Link>
@@ -223,7 +223,7 @@ function DonePanel() {
       </p>
       <Link
         to="/login"
-        className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-deep"
+        className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
       >
         Se connecter
       </Link>
