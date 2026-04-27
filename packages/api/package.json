@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
+    "db:migrate:test": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.test src/db/migrate-test.ts",
     "db:studio": "drizzle-kit studio",
     "seed:admin": "tsx --env-file-if-exists=../../.env src/seed.ts",
     "seed:mood": "tsx --env-file-if-exists=../../.env src/seed-mood.ts",

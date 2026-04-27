@@ -13,10 +13,31 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Issue #41 — refuse to run if DATABASE_URL doesn't target a `_test`
+// database. The TRUNCATE below would otherwise nuke the dev rows on
+// every test run (which is exactly how the admin user disappeared
+// before this guard existed). `vitest.config.ts` auto-swaps the dbname
+// in the dev URL, so this branch only fires when someone manually
+// overrode DATABASE_URL via `.env.test` to a non-`_test` value.
+if (!/\/[^/?]*_test(?:\?|$)/.test(process.env.DATABASE_URL)) {
+  throw new Error(
+    `Refusing to run tests against a non-test database. DATABASE_URL must end with a "_test" dbname (got: ${process.env.DATABASE_URL.replace(
+      /:[^:@]+@/,
+      ':***@',
+    )}). See packages/api/vitest.config.ts and issue #41.`,
+  );
+}
+
 beforeEach(async () => {
   // TRUNCATE ... CASCADE wipes every entry table, modules_config, invites,
   // sessions and users in one round-trip and resets FK state. Much faster
   // than DROP + migrate between tests.
+  //
+  // `app_settings` has no user FK — it must be listed explicitly so
+  // tests don't leak each other's `open_registration` toggles. Same
+  // story for `email_verifications` rows that have a NULL `user_id`
+  // (magic-link rows created before the user exists): those would not
+  // be cascaded by the `users` truncate.
   await sql`
     TRUNCATE TABLE
       mood_entries,
@@ -33,6 +54,8 @@ beforeEach(async () => {
       password_reset_tokens,
       sessions,
       invites,
+      app_settings,
+      email_verifications,
       users
     RESTART IDENTITY CASCADE
   `;

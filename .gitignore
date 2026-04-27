@@ -27,5 +27,10 @@ dist-ssr
 # the Dev Setup VS Code extension from Infisical (see `dev-setup.yaml`).
 .env
 
+# Test environment overrides — points DATABASE_URL at the dedicated
+# `nodea_test` database so `pnpm test` doesn't TRUNCATE the dev rows.
+# See packages/api/vitest.config.ts. Created by `pnpm db:setup-test`.
+.env.test
+
 # Misc
 export.md
