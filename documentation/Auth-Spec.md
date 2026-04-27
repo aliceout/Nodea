@@ -1599,11 +1599,18 @@ Pas d'email de notification (l'opération est explicite côté
 utilisateur·ice + re-auth password fresh = pas de takeover
 possible silencieusement).
 
-### 7.8 Bypass d'un facteur MFA par email (🚧 Phase 2+ design)
+### 7.8 Bypass d'un facteur MFA par email (✅ Phase 6 livrée)
 
-> **Statut.** Pas implémenté en V1. Aucun second facteur en V1 →
-> rien à bypasser. Le design ci-dessous arrive en Phase 5 quand
-> TOTP / passkey sont enrôlables.
+> **Statut.** Phase 6 livrée. Routes
+> `packages/api/src/routes/auth-mfa-bypass.ts`, helpers
+> `packages/api/src/auth/mfa-bypass.ts`, email templates
+> `services/email/templates/mfa-bypass.ts`. UI sur `/login/mfa`
+> (lost-factor links + inline confirm dialog) et Settings →
+> Sécurité (active-bypass row + cancel button). Lazy application
+> au login : `applyConsumableBypass` est appelé depuis
+> `/auth/login/finish` ET `/auth/passkey/login/finish` avant le
+> calcul des facteurs requis. Pas de cron — la consommation est
+> triggered par l'auth.
 
 Mécanisme commun pour récupérer la perte d'un facteur MFA sans
 casser l'E2E. Délai dur de 48h après confirmation par email, un

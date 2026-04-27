@@ -14,8 +14,9 @@
 >
 > **Phases livrées** : 0 (spec), 1 (register simplifié), 2A-2D
 > (OPAQUE migration), 3 (recovery code BIP39), 4 (passkey WebAuthn
-> + PRF), **5A-5D (TOTP + stepped MFA + security mode UI)**.
-> En cours : Phase 6 (bypass MFA email 48h) à attaquer ensuite.
+> + PRF), 5A-5D (TOTP + stepped MFA + security mode UI),
+> **6 (bypass MFA email 48h)**. En cours : Phase 7 (matrice de
+> re-auth + Settings polish) à attaquer ensuite.
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -685,7 +686,85 @@ appliquée selon le chemin d'entrée (passkey-first ou password-first).
 
 ---
 
-### Phase 6 — Bypass d'un facteur MFA par email (TOTP **ou** passkey, 48h)
+### Phase 6 — Bypass d'un facteur MFA par email (TOTP **ou** passkey, 48h) ✅ livrée
+
+**Statut** : livrée. Recovery path single-factor sans reset
+destructif, sécurisé par 48h délai après confirmation email.
+
+**Routes livrées** (`packages/api/src/routes/auth-mfa-bypass.ts`)
+- `POST /auth/mfa/bypass/request` (mfa_pending) — éligibilité §6.2
+  via `bypassEligibility`, génère token confirm + cancel (32 bytes
+  base64url, hash SHA-256), INSERT request avec TTL 7j, envoie
+  email. Response : `{ earliestApplyAt }`.
+- `GET /auth/mfa/bypass/confirm?t=<token>` (anonyme) — flippe
+  `confirmed_at`, démarre le délai 48h "réel". Page HTML server-
+  rendered (pas besoin de SPA chargé).
+- `GET /auth/mfa/bypass/cancel?t=<token>` (anonyme) — flippe
+  `cancelled_at`. Page HTML idem.
+- `GET /auth/mfa/bypass/active` (full session) — retourne le
+  bypass actif pour l'user (ou `null`). Settings l'utilise pour
+  surfacer la row "tu as une demande en cours".
+- `POST /auth/mfa/bypass/cancel` (full session) — annulation
+  in-app (pas besoin du lien email).
+
+**Lazy application au login** (`auth/mfa-bypass.ts:applyConsumableBypass`)
+- Appelée depuis `/auth/login/finish` ET `/auth/passkey/login/finish`
+  AVANT le calcul des facteurs requis. Si une bypass confirmée
+  passe son délai 48h : DELETE backup codes + reset
+  `mfa_totp.enabled_at = NULL` (pour totp) OU DELETE toutes les
+  passkeys (pour passkey). Downgrade auto `security_mode` →
+  `password_or_passkey` selon §6.1. Marquer `consumed_at`. Revoke
+  toutes les autres sessions de l'user. Email "récupération
+  appliquée" (best-effort).
+- Pas de cron — la consommation est triggered par l'auth, donc
+  zéro infra background.
+
+**§6.2 "perdu 2 trucs = niqué"** enforced par `bypassEligibility` :
+
+| Mode | bypass `totp` autorisé si | bypass `passkey` autorisé si |
+|---|---|---|
+| `password_or_passkey` | N/A — 400 `factor_not_required` | idem |
+| `always_totp` | password OR passkey verified | N/A |
+| `maximum` | password ET passkey verified | password ET totp verified |
+
+Échec → 409 `multi_factor_loss`. UI route vers `/request-reset`
+(reset destructif).
+
+**Frontend livré**
+- `/login/mfa` — sous chaque step (TOTP/passkey), un lien "j'ai
+  perdu mon X → demander une récupération". Click → panneau de
+  confirmation inline (amber/warning) → "Envoyer l'email" → écran
+  "email envoyé". Sur 409 multi_factor_loss → redirect auto vers
+  `/request-reset`.
+- Settings → Sécurité tab — `ActiveBypassRow` en haut du tab,
+  visible uniquement quand une bypass est en cours. Affiche
+  factor + état (en attente / confirmée + earliestApplyAt) +
+  bouton **Annuler la demande**.
+- `useSession.requestMfaBypass(factor)`, `getActiveMfaBypass()`,
+  `cancelMfaBypass()`.
+- Email templates : `mfa-bypass.ts` (request avec liens
+  confirm/cancel) + `mfaBypassAppliedEmail` (notification post-
+  consume).
+
+**Limitations connues**
+- Lien email confirm est en GET (state-changing) — convention
+  email-link. Le token est le secret ; bot scanners (link
+  preview) qui suivent le confirm flippent l'état. C'est un
+  trade-off documenté ; le délai 48h donne au user le temps de
+  cancel si nécessaire.
+- Pas de bannière in-app pour les autres sessions actives —
+  email-only par décision §7 (pas de push notification multi-
+  session en V1).
+
+**Tests** : 16 integration tests (`auth-mfa-bypass.test.ts`).
+Couvre : request happy path + multi_factor_loss + bypass_already_active
++ factor_not_required + confirm/cancel via tokens + idempotent
+re-confirm + cancel-then-confirm 410 + lazy application past 48h
++ pending/too-recent NOT consumed + GET active null/cancel 404.
+
+**Total après Phase 6** : 213 api tests (+16), 83 web tests.
+
+### Phase 6 — design original (archive)
 
 **Dépend** de la Phase 1 (email vérifié), Phase 4 (passkey en place)
 et Phase 5 (TOTP en place).

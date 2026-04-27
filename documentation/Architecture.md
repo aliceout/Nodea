@@ -295,6 +295,39 @@ the factory loops over. There is nowhere to forget a guard.
     password confirm form + UI gates that grey out modes whose
     prerequisites aren't met.
 
+- **MFA bypass by email (TOTP / passkey, 48h)** (Phase 6 —
+  `routes/auth-mfa-bypass.ts`, `auth/mfa-bypass.ts`):
+  - 5 routes: `POST /auth/mfa/bypass/request` (mfa_pending),
+    `GET /auth/mfa/bypass/{confirm,cancel}` (anonymous, token from
+    email), `GET /auth/mfa/bypass/active` + `POST /cancel` (full
+    session). The two GET routes return server-rendered HTML so
+    the email-click UX doesn't depend on the SPA being loaded.
+  - Eligibility check (`bypassEligibility`) enforces Auth-Spec
+    §6.2 "perdu 2 trucs = niqué": mode `maximum` requires the
+    other factor verifiable in the pending session before the
+    bypass for X is allowed. Failure → 409 `multi_factor_loss` →
+    UI redirects to `/request-reset` (destructive).
+  - Lazy application (`applyConsumableBypass`) runs at the start
+    of `/auth/login/finish` and `/auth/passkey/login/finish` BEFORE
+    computing required factors. A confirmed-past-48h bypass:
+    disables TOTP + purges backup codes (totp factor) OR deletes
+    every `auth_factors kind='passkey'` (passkey factor); auto-
+    downgrades `security_mode` → `password_or_passkey` per §6.1;
+    marks `consumed_at`; revokes every other session of the user.
+    Notification email "récupération appliquée" is best-effort
+    (failure doesn't block login).
+  - Tokens: 32 bytes random base64url, SHA-256 hashed in
+    `mfa_bypass_requests.{confirm,cancel}_token_hash`. The DB only
+    holds hashes; plaintext lives only in the email.
+  - Frontend: `/login/mfa` surfaces "j'ai perdu mon X" links under
+    each step (TOTP / passkey) → inline confirm dialog → email
+    sent. Settings → Sécurité shows `ActiveBypassRow` (visible
+    only when a bypass is active) with cancel button.
+  - No cron — consumption is triggered by the next login. The
+    request itself has a TTL of 7 days (so a never-confirmed
+    request doesn't sit forever), which is enforced by the
+    `expires_at` check in `applyConsumableBypass`.
+
 ### Background jobs
 
 A single `node-cron` schedule lives in
