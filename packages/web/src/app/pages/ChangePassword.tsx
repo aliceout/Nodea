@@ -5,6 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
+import {
+  PASSWORD_MIN_LENGTH,
+  checkPasswordRules,
+  passwordRulesPassed,
+  type PasswordRulesCheck,
+} from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
@@ -16,39 +22,52 @@ zxcvbnOptions.setOptions({
   graphs: zxcvbnCommon.adjacencyGraphs,
 });
 
-const ChangePasswordFormSchema = z.object({
-  currentPassword: z.string().min(1).max(200),
-  newPassword: z.string().min(12).max(200),
-});
+const ChangePasswordFormSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(200),
+    newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(200),
+    confirmPassword: z.string().min(1).max(200),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Les deux mots de passe ne correspondent pas.',
+  });
 type ChangePasswordForm = z.infer<typeof ChangePasswordFormSchema>;
 
 /**
  * Change-password page — Direction K · Sauge.
  *
- * `useSession.changePassword()` does the full dance: unwrap under the
- * current password (throws on wrong password before any server call),
- * rewrap under the new password, POST the envelope, re-derive the
- * main-key material, store it. This page is a thin form around it.
+ * Mirrors `Register.tsx`'s strength UX: live rule list (12 chars +
+ * upper/lower/digit/special), zxcvbn strength bar, double-typed
+ * confirmation. Submission is gated on every rule + matching
+ * confirmation + zxcvbn ≥ 3 (caps out after 4 ; we treat 1 as
+ * effectively-zero strength while the rules aren't all met).
+ *
+ * On success the route forces a logout: change-password rotates the
+ * envelope server-side, the local main-key material derived from
+ * the OLD password is no longer authoritative for re-encrypting
+ * data — the cleanest way to reset everything is to drop the
+ * session and have the user re-login with the new password.
  *
  * Two-column shell mirrors Login / Register / Reset / Activate so
- * the auth surface stays one continuous design language. The
- * marketing panel here carries password-specific copy — re-using the
- * standard `<PrivacyBody />` would be off-tone (the user is already
- * inside Nodea, not deciding whether to sign up).
+ * the auth surface stays one continuous design language.
  */
 export default function ChangePasswordPage() {
   const session = useSession();
   const user = useNodeaStore(selectUser);
   const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
 
+  const rules = useMemo(() => checkPasswordRules(newPwd), [newPwd]);
+  const rulesOk = passwordRulesPassed(rules);
   const strength = useMemo(() => {
     if (!newPwd) return null;
     const { score, feedback } = zxcvbn(newPwd);
     return { score, warning: feedback.warning ?? null };
   }, [newPwd]);
+  const confirmMismatch = confirmPwd.length > 0 && confirmPwd !== newPwd;
 
   const {
     register: field,
@@ -56,7 +75,7 @@ export default function ChangePasswordPage() {
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordForm>({
     resolver: zodResolver(ChangePasswordFormSchema),
-    defaultValues: { currentPassword: '', newPassword: '' },
+    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
   async function onSubmit(values: ChangePasswordForm): Promise<void> {
@@ -65,15 +84,20 @@ export default function ChangePasswordPage() {
       setServerError('Session absente — reconnecte-toi.');
       return;
     }
+    if (!rulesOk) {
+      setServerError('Le mot de passe ne respecte pas toutes les règles.');
+      return;
+    }
+    if ((strength?.score ?? 0) < 3) {
+      setServerError('Mot de passe trop facile à deviner — essaie quelque chose de plus complexe.');
+      return;
+    }
     try {
-      await session.changePassword(values);
-      setSuccess(true);
+      await session.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
     } catch (err) {
-      // AES-GCM auth-tag failure during unwrap = wrong current password.
-      if (err instanceof Error && /decrypt|auth|OperationError/i.test(err.message)) {
-        setServerError('Mot de passe actuel incorrect.');
-        return;
-      }
       if (isApiError(err) && err.status === 401) {
         setServerError('Mot de passe actuel incorrect.');
       } else if (isApiError(err) && err.status === 400) {
@@ -82,11 +106,23 @@ export default function ChangePasswordPage() {
         setServerError('Erreur lors du changement de mot de passe.');
         if (import.meta.env.DEV) console.warn('change-password failed', err);
       }
+      return;
     }
+
+    // Force a logout + redirect to /login. The server already
+    // revoked every session in the change-password transaction;
+    // we drop the in-memory main-key material here too so the UI
+    // can't keep operating on stale state. The redirect lands on
+    // /login with a marker so the page can show a friendly notice.
+    await session.logout().catch(() => undefined);
+    navigate('/login?password-changed=1', { replace: true });
   }
 
   const newPasswordRegister = field('newPassword', {
     onChange: (e) => setNewPwd(e.target.value),
+  });
+  const confirmRegister = field('confirmPassword', {
+    onChange: (e) => setConfirmPwd(e.target.value),
   });
 
   return (
@@ -109,15 +145,6 @@ export default function ChangePasswordPage() {
             Changer le mot de passe
           </h2>
 
-          {success ? (
-            <div
-              role="status"
-              className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
-            >
-              ✓ Mot de passe mis à jour.
-            </div>
-          ) : null}
-
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <Field
               label="Mot de passe actuel"
@@ -127,25 +154,36 @@ export default function ChangePasswordPage() {
               error={errors.currentPassword?.message}
               {...field('currentPassword')}
             />
+
             <Field
-              label="Nouveau mot de passe (≥ 12 caractères)"
+              label="Nouveau mot de passe"
               type="password"
               autoComplete="new-password"
               required
               error={errors.newPassword?.message}
-              legend={
-                strength ? (
-                  <span
-                    className={cn(
-                      strength.score >= 3 ? 'text-accent-deep' : 'text-muted',
-                    )}
-                  >
-                    Force : {strength.score} / 4
-                    {strength.warning ? ` — ${strength.warning}` : ''}
-                  </span>
-                ) : undefined
-              }
               {...newPasswordRegister}
+            />
+
+            <PasswordRulesList rules={rules} />
+            {strength ? (
+              <StrengthBar
+                score={strength.score}
+                warning={strength.warning}
+                rulesOk={rulesOk}
+              />
+            ) : null}
+
+            <Field
+              label="Confirmer le nouveau mot de passe"
+              type="password"
+              autoComplete="new-password"
+              required
+              error={
+                confirmMismatch
+                  ? 'Les deux mots de passe ne correspondent pas.'
+                  : errors.confirmPassword?.message
+              }
+              {...confirmRegister}
             />
 
             {serverError ? (
@@ -159,10 +197,15 @@ export default function ChangePasswordPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting ||
+                !rulesOk ||
+                confirmMismatch ||
+                newPwd !== confirmPwd
+              }
               className="mt-2 w-full rounded-md bg-accent px-4 py-[11px] text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-deep active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? 'Mise à jour…' : 'Mettre à jour'}
+              {isSubmitting ? 'Mise à jour…' : 'Mettre à jour et se reconnecter'}
             </button>
 
             <div className="mt-[18px] text-center text-[12.5px] text-muted">
@@ -184,14 +227,105 @@ export default function ChangePasswordPage() {
   );
 }
 
+/* ---- Password feedback subcomponents (mirrored from Register.tsx) -- */
+
+interface PasswordRulesListProps {
+  rules: PasswordRulesCheck;
+}
+
+const RULE_LABELS: Array<{ key: keyof PasswordRulesCheck; label: string }> = [
+  { key: 'length', label: `${PASSWORD_MIN_LENGTH} caractères minimum` },
+  { key: 'lowercase', label: 'une minuscule' },
+  { key: 'uppercase', label: 'une majuscule' },
+  { key: 'digit', label: 'un chiffre' },
+  { key: 'special', label: 'un caractère spécial' },
+];
+
+function PasswordRulesList({ rules }: PasswordRulesListProps) {
+  return (
+    <ul className="-mt-2 mb-3 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11.5px]">
+      {RULE_LABELS.map(({ key, label }) => {
+        const ok = rules[key];
+        return (
+          <li
+            key={key}
+            className={cn(
+              'flex items-center gap-1.5',
+              ok ? 'text-accent-deep' : 'text-muted',
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                'inline-block h-3 w-3 shrink-0 rounded-full text-center text-[9px] leading-3 transition-colors',
+                ok ? 'bg-accent text-white' : 'border border-hair bg-bg',
+              )}
+            >
+              {ok ? '✓' : ''}
+            </span>
+            {label}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+interface StrengthBarProps {
+  score: 0 | 1 | 2 | 3 | 4;
+  warning: string | null;
+  rulesOk: boolean;
+}
+
+function StrengthBar({ score: rawScore, warning, rulesOk }: StrengthBarProps) {
+  const score: 0 | 1 | 2 | 3 | 4 = rulesOk
+    ? rawScore
+    : rawScore > 1
+      ? 1
+      : rawScore;
+
+  const bandTone = (i: number): string => {
+    if (i > score) return 'bg-hair';
+    if (score <= 1) return 'bg-low';
+    if (score === 2) return 'bg-low-soft';
+    if (score === 3) return 'bg-accent-soft';
+    return 'bg-accent';
+  };
+  const label =
+    score <= 1
+      ? 'Trop faible'
+      : score === 2
+        ? 'Moyen'
+        : score === 3
+          ? 'Solide'
+          : 'Très solide';
+
+  return (
+    <div className="-mt-2 mb-3">
+      <div className="flex gap-1">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className={cn('h-1 flex-1 rounded-full transition-colors', bandTone(i))}
+          />
+        ))}
+      </div>
+      <p className="mt-1 text-[11px] text-muted">
+        Force&nbsp;: <span className="font-medium text-ink-soft">{label}</span>
+        {warning ? <span className="text-low-deep"> — {warning}</span> : null}
+      </p>
+    </div>
+  );
+}
+
 interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
   label: string;
-  legend?: React.ReactNode;
   error?: string | undefined;
 }
 
 const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, legend, error, className, id, name, ...rest },
+  { label, error, className, id, name, ...rest },
   ref,
 ) {
   const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
@@ -215,9 +349,6 @@ const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
         )}
         {...rest}
       />
-      {legend && !error ? (
-        <p className="mt-1 text-[11px] text-muted">{legend}</p>
-      ) : null}
       {error ? (
         <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
           {error}

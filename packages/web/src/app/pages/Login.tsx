@@ -27,6 +27,12 @@ export default function LoginPage() {
   // magic-link click. We surface a one-shot success banner so the
   // user knows their account is ready to log in.
   const justActivated = params.get('activated') === '1';
+  // `?password-changed=1` lands here from `ChangePassword.tsx` after
+  // the OPAQUE re-registration succeeded — the server revoked every
+  // session and we logged the client out, so the user has to type
+  // their new password to continue. The banner confirms the rotation
+  // happened so they don't think it failed silently.
+  const justChangedPassword = params.get('password-changed') === '1';
 
   const {
     register,
@@ -80,6 +86,15 @@ export default function LoginPage() {
               className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
             >
               ✓ Compte activé. Connecte-toi avec ton e-mail et ton mot de passe.
+            </div>
+          ) : null}
+
+          {justChangedPassword ? (
+            <div
+              role="status"
+              className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
+            >
+              ✓ Mot de passe mis à jour. Connecte-toi avec le nouveau.
             </div>
           ) : null}
 
