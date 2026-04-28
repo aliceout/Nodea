@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiMfaBypassConfirm } from '@/core/api/client';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 
 /**
  * BypassConfirm — landing page for the MFA bypass confirm email
@@ -68,40 +68,40 @@ export default function BypassConfirmPage() {
   }, [params]);
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Récupération MFA.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Quelqu’un a demandé à se connecter sans un de tes facteurs 2FA
-          (TOTP ou passkey). Toi, on espère.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Une fois confirmé, le compteur 7 jours démarre. Cette latence te
-          laisse le temps de réagir si ce n’est pas toi qui as déclenché la
-          demande — il suffit de te reconnecter normalement à Nodea pour
-          que la demande soit annulée.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Au prochain login après le délai, le facteur sera retiré et tu
-          pourras te reconnecter.
-        </p>
-      </AuthMarketingPanel>
-
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[400px]">
-          {status.state === 'pending' ? <PendingPanel /> : null}
-          {status.state === 'success' ? (
-            <SuccessPanel
-              factor={status.factor}
-              earliestApplyAt={status.earliestApplyAt}
-              alreadyConfirmed={status.alreadyConfirmed}
-            />
-          ) : null}
-          {status.state === 'error' ? (
-            <ErrorPanel reason={status.reason} />
-          ) : null}
-        </div>
-      </main>
-    </div>
+    <AuthLayout
+      headline="Récupération MFA."
+      maxWidth="400"
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Quelqu’un a demandé à se connecter sans un de tes facteurs 2FA
+            (TOTP ou passkey). Toi, on espère.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Une fois confirmé, le compteur 7 jours démarre. Cette latence te
+            laisse le temps de réagir si ce n’est pas toi qui as déclenché la
+            demande — il suffit de te reconnecter normalement à Nodea pour
+            que la demande soit annulée.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Au prochain login après le délai, le facteur sera retiré et tu
+            pourras te reconnecter.
+          </p>
+        </>
+      }
+    >
+      {status.state === 'pending' ? <PendingPanel /> : null}
+      {status.state === 'success' ? (
+        <SuccessPanel
+          factor={status.factor}
+          earliestApplyAt={status.earliestApplyAt}
+          alreadyConfirmed={status.alreadyConfirmed}
+        />
+      ) : null}
+      {status.state === 'error' ? (
+        <ErrorPanel reason={status.reason} />
+      ) : null}
+    </AuthLayout>
   );
 }
 

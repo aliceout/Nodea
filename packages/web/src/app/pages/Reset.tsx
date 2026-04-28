@@ -22,7 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -148,43 +148,42 @@ export default function ResetPage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Repars sur de bonnes bases.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le mot de passe est aussi la clé qui chiffre tes entrées. Le réinitialiser
-          remet ton compte à zéro — toutes les données existantes sont supprimées.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          C’est volontaire : sans la clé, personne ne peut récupérer le contenu —
-          y compris l’équipe de Nodea.
-        </p>
-      </AuthMarketingPanel>
-
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          {!token ? (
-            <InvalidLinkPanel />
-          ) : done ? (
-            <DonePanel />
-          ) : (
-            <ResetForm
-              password={password}
-              setPassword={setPassword}
-              confirm={confirm}
-              setConfirm={setConfirm}
-              passwordsMatch={passwordsMatch}
-              strength={strength}
-              acknowledged={acknowledged}
-              setAcknowledged={setAcknowledged}
-              error={error}
-              submitting={submitting}
-              canSubmit={canSubmit}
-              onSubmit={onSubmit}
-            />
-          )}
-        </div>
-      </main>
-    </div>
+    <AuthLayout
+      headline="Repars sur de bonnes bases."
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le mot de passe est aussi la clé qui chiffre tes entrées. Le réinitialiser
+            remet ton compte à zéro — toutes les données existantes sont supprimées.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            C’est volontaire : sans la clé, personne ne peut récupérer le contenu —
+            y compris l’équipe de Nodea.
+          </p>
+        </>
+      }
+    >
+      {!token ? (
+        <InvalidLinkPanel />
+      ) : done ? (
+        <DonePanel />
+      ) : (
+        <ResetForm
+          password={password}
+          setPassword={setPassword}
+          confirm={confirm}
+          setConfirm={setConfirm}
+          passwordsMatch={passwordsMatch}
+          strength={strength}
+          acknowledged={acknowledged}
+          setAcknowledged={setAcknowledged}
+          error={error}
+          submitting={submitting}
+          canSubmit={canSubmit}
+          onSubmit={onSubmit}
+        />
+      )}
+    </AuthLayout>
   );
 }
 

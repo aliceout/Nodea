@@ -4,7 +4,7 @@ import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 type Factor = 'totp' | 'passkey' | 'password';
@@ -170,23 +170,24 @@ export default function LoginMfaPage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Une dernière étape.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le mot de passe seul ne suffit pas dans ton mode de sécurité.
-          Confirme avec ton TOTP ou ta passkey pour finir d’ouvrir ta
-          session.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Si tu n’as plus accès à ton facteur, tu peux demander une
-          récupération par email — le délai de 7 jours te protège des
-          demandes malveillantes.
-        </p>
-      </AuthMarketingPanel>
-
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          {step === 'totp' ? (
+    <AuthLayout
+      headline="Une dernière étape."
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le mot de passe seul ne suffit pas dans ton mode de sécurité.
+            Confirme avec ton TOTP ou ta passkey pour finir d’ouvrir ta
+            session.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Si tu n’as plus accès à ton facteur, tu peux demander une
+            récupération par email — le délai de 7 jours te protège des
+            demandes malveillantes.
+          </p>
+        </>
+      }
+    >
+      {step === 'totp' ? (
             <>
               {/* Header + form + escalation links are only visible
                   when the lost-factor flow is idle. As soon as the
@@ -369,9 +370,7 @@ export default function LoginMfaPage() {
               />
             </>
           ) : null}
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }
 

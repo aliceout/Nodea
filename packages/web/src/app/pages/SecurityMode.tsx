@@ -5,7 +5,7 @@ import { useSession } from '@/core/auth/use-session';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import type { SecurityMode } from '@nodea/shared';
 
 /**
@@ -133,24 +133,26 @@ export default function SecurityModePage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Combien de facteurs à chaque login.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le mode de sécurité gouverne ce que tu dois fournir à chaque
-          connexion : mot de passe seul, mot de passe + TOTP, ou les trois
-          facteurs (mot de passe + passkey + TOTP).
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Plus tu montes en exigence, plus tu protèges l’accès — au prix
-          d’une étape supplémentaire au login. Tes données sont déjà chiffrées
-          côté client : le mode ne change pas la crypto, juste les preuves
-          demandées au serveur.
-        </p>
-      </AuthMarketingPanel>
-
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[420px]">
-          <p className="mb-1 text-[13px] text-muted">Sécurité</p>
+    <AuthLayout
+      headline="Combien de facteurs à chaque login."
+      maxWidth="420"
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le mode de sécurité gouverne ce que tu dois fournir à chaque
+            connexion : mot de passe seul, mot de passe + TOTP, ou les trois
+            facteurs (mot de passe + passkey + TOTP).
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Plus tu montes en exigence, plus tu protèges l’accès — au prix
+            d’une étape supplémentaire au login. Tes données sont déjà chiffrées
+            côté client : le mode ne change pas la crypto, juste les preuves
+            demandées au serveur.
+          </p>
+        </>
+      }
+    >
+      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
           <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
             Mode de sécurité
           </h2>
@@ -271,9 +273,7 @@ export default function SecurityModePage() {
               ← Retour
             </Link>
           </div>
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }
 

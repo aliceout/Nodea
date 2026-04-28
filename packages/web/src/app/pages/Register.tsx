@@ -21,7 +21,8 @@ import {
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -88,36 +89,27 @@ export default function RegisterPage() {
   }, [params]);
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Crée ton espace.">
-        <PrivacyBody />
-      </AuthMarketingPanel>
+    <AuthLayout headline="Crée ton espace." marketing={<PrivacyBody />}>
+      {mode.kind === 'loading' ? <LoadingPanel /> : null}
+      {mode.kind === 'closed' ? <ClosedPanel /> : null}
+      {mode.kind === 'invalid_invite' ? <InvalidInvitePanel /> : null}
 
-      {/* Form panel */}
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          {mode.kind === 'loading' ? <LoadingPanel /> : null}
-          {mode.kind === 'closed' ? <ClosedPanel /> : null}
-          {mode.kind === 'invalid_invite' ? <InvalidInvitePanel /> : null}
+      {(mode.kind === 'invited' || mode.kind === 'open') &&
+      submittedEmail === null ? (
+        <RegisterForm
+          mode={mode}
+          onSubmitted={setSubmittedEmail}
+          submitRegistration={session.submitRegistration}
+        />
+      ) : null}
 
-          {(mode.kind === 'invited' || mode.kind === 'open') &&
-          submittedEmail === null ? (
-            <RegisterForm
-              mode={mode}
-              onSubmitted={setSubmittedEmail}
-              submitRegistration={session.submitRegistration}
-            />
-          ) : null}
-
-          {submittedEmail !== null && mode.kind === 'open' ? (
-            <CheckYourEmailCard email={submittedEmail} />
-          ) : null}
-          {submittedEmail !== null && mode.kind === 'invited' ? (
-            <RedirectingToLoginCard email={submittedEmail} />
-          ) : null}
-        </div>
-      </main>
-    </div>
+      {submittedEmail !== null && mode.kind === 'open' ? (
+        <CheckYourEmailCard email={submittedEmail} />
+      ) : null}
+      {submittedEmail !== null && mode.kind === 'invited' ? (
+        <RedirectingToLoginCard email={submittedEmail} />
+      ) : null}
+    </AuthLayout>
   );
 }
 

@@ -6,7 +6,7 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -88,45 +88,45 @@ export default function RecoveryCodePage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Un filet de sécurité, sans backdoor.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le code de récupération est un mot de passe de secours, sous forme de 12
-          mots simples à recopier. Il dérive une clé qui chiffre la même clé
-          maître que ton mot de passe.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Si tu oublies ton mot de passe, ces 12 mots te permettent de récupérer
-          ton compte sans perdre tes données. Sans eux, le seul recours est de
-          tout effacer.
-        </p>
-      </AuthMarketingPanel>
+    <AuthLayout
+      headline="Un filet de sécurité, sans backdoor."
+      maxWidth="420"
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le code de récupération est un mot de passe de secours, sous forme de 12
+            mots simples à recopier. Il dérive une clé qui chiffre la même clé
+            maître que ton mot de passe.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Si tu oublies ton mot de passe, ces 12 mots te permettent de récupérer
+            ton compte sans perdre tes données. Sans eux, le seul recours est de
+            tout effacer.
+          </p>
+        </>
+      }
+    >
+      {stage.kind === 'form' ? (
+        <FormPanel
+          isRegenerate={isRegenerate}
+          password={password}
+          setPassword={setPassword}
+          error={error}
+          submitting={submitting}
+          onSubmit={onSubmit}
+        />
+      ) : null}
 
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[420px]">
-          {stage.kind === 'form' ? (
-            <FormPanel
-              isRegenerate={isRegenerate}
-              password={password}
-              setPassword={setPassword}
-              error={error}
-              submitting={submitting}
-              onSubmit={onSubmit}
-            />
-          ) : null}
-
-          {stage.kind === 'displaying' ? (
-            <DisplayPanel
-              mnemonic={stage.mnemonic}
-              regenerated={stage.regenerated}
-              acknowledged={acknowledged}
-              setAcknowledged={setAcknowledged}
-              onDone={handleDone}
-            />
-          ) : null}
-        </div>
-      </main>
-    </div>
+      {stage.kind === 'displaying' ? (
+        <DisplayPanel
+          mnemonic={stage.mnemonic}
+          regenerated={stage.regenerated}
+          acknowledged={acknowledged}
+          setAcknowledged={setAcknowledged}
+          onDone={handleDone}
+        />
+      ) : null}
+    </AuthLayout>
   );
 }
 

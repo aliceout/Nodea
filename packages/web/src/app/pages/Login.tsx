@@ -6,7 +6,8 @@ import { FingerPrintIcon } from '@heroicons/react/24/outline';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
-import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -115,15 +116,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Là où personne ne lit.">
-        <PrivacyBody />
-      </AuthMarketingPanel>
-
-      {/* Form panel */}
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          <p className="mb-1 text-[13px] text-muted">Connexion</p>
+    <AuthLayout headline="Là où personne ne lit." marketing={<PrivacyBody />}>
+      <p className="mb-1 text-[13px] text-muted">Connexion</p>
           <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
             Entre dans ton espace
           </h2>
@@ -211,9 +205,7 @@ export default function LoginPage() {
               </Link>
             </div>
           </form>
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }
 

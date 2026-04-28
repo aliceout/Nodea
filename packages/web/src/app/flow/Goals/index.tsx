@@ -18,6 +18,7 @@ import EmptyHint from '@/ui/dirk/EmptyHint';
 import FilterChip from '@/ui/dirk/FilterChip';
 import GroupBlock from '@/ui/dirk/GroupBlock';
 import HoverActions from '@/ui/dirk/HoverActions';
+import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -205,25 +206,18 @@ export default function GoalsPage() {
   }, [filtered, groupBy]);
 
   return (
-    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar
-        label={`Goals · ${stats.total} ${stats.total === 1 ? 'objectif' : 'objectifs'}`}
-        onOpenMenu={() => setMobileMenuOpen(true)}
-      >
-        <Button variant="primary" size="sm" onClick={() => openComposer('goal')}>
-          + Nouvel objectif
-        </Button>
-      </Topbar>
-
-      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-        <PrimaryColumn
-          load={load}
-          stats={stats}
-          groups={groups}
-          onToggleStatus={handleToggleStatus}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
-        />
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={`Goals · ${stats.total} ${stats.total === 1 ? 'objectif' : 'objectifs'}`}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        >
+          <Button variant="primary" size="sm" onClick={() => openComposer('goal')}>
+            + Nouvel objectif
+          </Button>
+        </Topbar>
+      }
+      side={
         <SideColumn
           stats={stats}
           statusFilter={statusFilter}
@@ -231,8 +225,17 @@ export default function GoalsPage() {
           groupBy={groupBy}
           onGroupByChange={setGroupBy}
         />
-      </div>
-    </div>
+      }
+    >
+      <PrimaryColumn
+        load={load}
+        stats={stats}
+        groups={groups}
+        onToggleStatus={handleToggleStatus}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
+      />
+    </ModuleShell>
   );
 }
 

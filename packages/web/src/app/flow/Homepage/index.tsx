@@ -13,6 +13,7 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 import EmptyHomepage from './Empty';
@@ -64,31 +65,31 @@ export default function HomePage() {
   if (forceEmpty) return <EmptyHomepage />;
 
   return (
-    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar
-        label={formattedDate}
-        onOpenMenu={() => setMobileMenuOpen(true)}
-      >
-        <button
-          type="button"
-          onClick={() => openComposer()}
-          className="hidden items-center gap-2 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] text-ink-soft transition-colors hover:border-accent hover:text-ink sm:inline-flex"
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={formattedDate}
+          onOpenMenu={() => setMobileMenuOpen(true)}
         >
-          <kbd className="rounded border border-hair bg-bg-2 px-1 py-px font-mono text-[10px] text-muted">
-            ⌘K
-          </kbd>
-          {t('home.topbar.search', { defaultValue: 'Recherche' })}
-        </button>
-        <Button variant="primary" size="sm" onClick={() => openComposer()}>
-          {t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
-        </Button>
-      </Topbar>
-
-      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-        <PrimaryColumn name={displayName} moodEntries={moodEntries} />
-        <SideColumn moodEntries={moodEntries} />
-      </div>
-    </div>
+          <button
+            type="button"
+            onClick={() => openComposer()}
+            className="hidden items-center gap-2 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] text-ink-soft transition-colors hover:border-accent hover:text-ink sm:inline-flex"
+          >
+            <kbd className="rounded border border-hair bg-bg-2 px-1 py-px font-mono text-[10px] text-muted">
+              ⌘K
+            </kbd>
+            {t('home.topbar.search', { defaultValue: 'Recherche' })}
+          </button>
+          <Button variant="primary" size="sm" onClick={() => openComposer()}>
+            {t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
+          </Button>
+        </Topbar>
+      }
+      side={<SideColumn moodEntries={moodEntries} />}
+    >
+      <PrimaryColumn name={displayName} moodEntries={moodEntries} />
+    </ModuleShell>
   );
 }
 

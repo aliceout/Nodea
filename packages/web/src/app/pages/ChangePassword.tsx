@@ -17,7 +17,7 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -129,26 +129,27 @@ export default function ChangePasswordPage() {
   });
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Renouvelle ta clé.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le mot de passe protège la clé qui chiffre tes données. Le changer
-          rechiffre la clé localement — les données restent intactes.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le serveur ne voit jamais l’ancien ni le nouveau mot de passe : tout
-          se passe sur ton appareil avant l’envoi.
-        </p>
-      </AuthMarketingPanel>
+    <AuthLayout
+      headline="Renouvelle ta clé."
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le mot de passe protège la clé qui chiffre tes données. Le changer
+            rechiffre la clé localement — les données restent intactes.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le serveur ne voit jamais l’ancien ni le nouveau mot de passe : tout
+            se passe sur ton appareil avant l’envoi.
+          </p>
+        </>
+      }
+    >
+      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
+      <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+        Changer le mot de passe
+      </h2>
 
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-          <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-            Changer le mot de passe
-          </h2>
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <Field
               label="Mot de passe actuel"
               type="password"
@@ -221,9 +222,7 @@ export default function ChangePasswordPage() {
               </Link>
             </div>
           </form>
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }
 

@@ -11,7 +11,7 @@ import {
 import { useSession } from '@/core/auth/use-session';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import type { PasskeyListItem } from '@nodea/shared';
 
@@ -70,23 +70,25 @@ export default function PasskeysPage() {
   }, []);
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Une passkey à la place du mot de passe.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Une passkey, c’est l’empreinte de ton téléphone, le PIN de ta clé
-          hardware, ou ton gestionnaire de mots de passe. Confirmer une
-          connexion devient un geste — plus de mot de passe à retenir.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Une passkey compatible PRF (Touch ID, Face ID, Bitwarden, 1Password)
-          peut aussi déchiffrer tes données — sinon elle te connecte mais te
-          demandera ton mot de passe pour ouvrir tes entrées.
-        </p>
-      </AuthMarketingPanel>
-
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[420px]">
-          {stage.kind === 'list' ? (
+    <AuthLayout
+      headline="Une passkey à la place du mot de passe."
+      maxWidth="420"
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Une passkey, c’est l’empreinte de ton téléphone, le PIN de ta clé
+            hardware, ou ton gestionnaire de mots de passe. Confirmer une
+            connexion devient un geste — plus de mot de passe à retenir.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Une passkey compatible PRF (Touch ID, Face ID, Bitwarden, 1Password)
+            peut aussi déchiffrer tes données — sinon elle te connecte mais te
+            demandera ton mot de passe pour ouvrir tes entrées.
+          </p>
+        </>
+      }
+    >
+      {stage.kind === 'list' ? (
             <ListView
               passkeys={passkeys}
               prfCount={prfCount}
@@ -131,9 +133,7 @@ export default function PasskeysPage() {
               }}
             />
           ) : null}
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }
 

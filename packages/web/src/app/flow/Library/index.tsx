@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import FilterChip from '@/ui/dirk/FilterChip';
 import GroupBlock from '@/ui/dirk/GroupBlock';
+import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -291,43 +292,65 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar
-        label={`Library · ${items.length} ${items.length === 1 ? 'livre' : 'livres'}`}
-        onOpenMenu={() => setMobileMenuOpen(true)}
-      >
-        {subview === 'livres' ? (
-          <>
-            <ViewModeToggle value={viewMode} onChange={setViewMode} />
-            <DirkButton
-              variant="primary"
-              size="sm"
-              onClick={() => openComposer('library-item')}
-            >
-              + Nouveau livre
-            </DirkButton>
-          </>
-        ) : (
-          <DirkButton
-            variant="primary"
-            size="sm"
-            onClick={() =>
-              setReviewPicker({
-                open: true,
-                kind: subview === 'extraits' ? 'quote' : 'note',
-              })
-            }
-            disabled={items.length === 0}
-            {...(items.length === 0
-              ? { title: 'Ajoute d’abord un livre dans Library.' }
-              : {})}
+    <>
+      <ModuleShell
+        topbar={
+          <Topbar
+            label={`Library · ${items.length} ${items.length === 1 ? 'livre' : 'livres'}`}
+            onOpenMenu={() => setMobileMenuOpen(true)}
           >
-            {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
-          </DirkButton>
-        )}
-      </Topbar>
-
-      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
+            {subview === 'livres' ? (
+              <>
+                <ViewModeToggle value={viewMode} onChange={setViewMode} />
+                <DirkButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => openComposer('library-item')}
+                >
+                  + Nouveau livre
+                </DirkButton>
+              </>
+            ) : (
+              <DirkButton
+                variant="primary"
+                size="sm"
+                onClick={() =>
+                  setReviewPicker({
+                    open: true,
+                    kind: subview === 'extraits' ? 'quote' : 'note',
+                  })
+                }
+                disabled={items.length === 0}
+                {...(items.length === 0
+                  ? { title: 'Ajoute d’abord un livre dans Library.' }
+                  : {})}
+              >
+                {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
+              </DirkButton>
+            )}
+          </Topbar>
+        }
+        side={
+          <SideColumn
+            subview={subview}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            tags={allTags}
+            activeTag={tagFilter}
+            onTagChange={setTagFilter}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
+            counts={{
+              all: items.length,
+              favorites: items.filter((it) => it.is_favorite).length,
+              planned: items.filter((it) => it.status === 'planned').length,
+              in_progress: items.filter((it) => it.status === 'in_progress').length,
+              finished: items.filter((it) => it.status === 'finished').length,
+              abandoned: items.filter((it) => it.status === 'abandoned').length,
+            }}
+          />
+        }
+      >
         {subview === 'livres' ? (
           <PrimaryColumn
             load={load}
@@ -350,25 +373,7 @@ export default function LibraryPage() {
             onDeleteReview={handleDeleteReview}
           />
         )}
-        <SideColumn
-          subview={subview}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          tags={allTags}
-          activeTag={tagFilter}
-          onTagChange={setTagFilter}
-          groupBy={groupBy}
-          onGroupByChange={setGroupBy}
-          counts={{
-            all: items.length,
-            favorites: items.filter((it) => it.is_favorite).length,
-            planned: items.filter((it) => it.status === 'planned').length,
-            in_progress: items.filter((it) => it.status === 'in_progress').length,
-            finished: items.filter((it) => it.status === 'finished').length,
-            abandoned: items.filter((it) => it.status === 'abandoned').length,
-          }}
-        />
-      </div>
+      </ModuleShell>
       {reviewPicker.open ? (
         <BookPickerModal
           kind={reviewPicker.kind}
@@ -378,7 +383,7 @@ export default function LibraryPage() {
           onClose={() => setReviewPicker({ open: false })}
         />
       ) : null}
-    </div>
+    </>
   );
 }
 

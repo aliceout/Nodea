@@ -19,6 +19,7 @@ import EmptyHint from '@/ui/dirk/EmptyHint';
 import FilterChip from '@/ui/dirk/FilterChip';
 import GroupBlock from '@/ui/dirk/GroupBlock';
 import HoverActions from '@/ui/dirk/HoverActions';
+import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -159,32 +160,34 @@ export default function JournalPage() {
   }, [filtered]);
 
   return (
-    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar
-        label={`Journal · ${entries.length} ${entries.length === 1 ? 'entrée' : 'entrées'}`}
-        onOpenMenu={() => setMobileMenuOpen(true)}
-      >
-        <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
-          + Nouvelle entrée
-        </Button>
-      </Topbar>
-
-      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-        <PrimaryColumn
-          load={load}
-          total={entries.length}
-          groups={groups}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={`Journal · ${entries.length} ${entries.length === 1 ? 'entrée' : 'entrées'}`}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        >
+          <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
+            + Nouvelle entrée
+          </Button>
+        </Topbar>
+      }
+      side={
         <SideColumn
           threads={threads}
           activeThread={threadFilter}
           onThreadChange={setThreadFilter}
           totalCount={entries.length}
         />
-      </div>
-    </div>
+      }
+    >
+      <PrimaryColumn
+        load={load}
+        total={entries.length}
+        groups={groups}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+    </ModuleShell>
   );
 }
 

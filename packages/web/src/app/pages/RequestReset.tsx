@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -54,34 +54,30 @@ export default function RequestResetPage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Récupère l’accès.">
+    <AuthLayout
+      headline="Récupère l’accès."
+      marketing={
         <p className="text-[18px] leading-[1.5] text-ink-soft">
           Le mot de passe est aussi la clé qui chiffre tes entrées. Le
           réinitialiser efface les données existantes.
         </p>
-      </AuthMarketingPanel>
-
-      {/* Form panel */}
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[360px]">
-          {stage === 'fork' ? (
-            <ForkView onNoCode={() => setStage('destroy')} />
-          ) : null}
-          {stage === 'destroy' ? (
-            <FormView
-              email={email}
-              onEmailChange={setEmail}
-              onSubmit={onSubmit}
-              submitting={submitting}
-              error={error}
-              onBack={() => setStage('fork')}
-            />
-          ) : null}
-          {stage === 'sent' ? <SentView email={email} /> : null}
-        </div>
-      </main>
-    </div>
+      }
+    >
+      {stage === 'fork' ? (
+        <ForkView onNoCode={() => setStage('destroy')} />
+      ) : null}
+      {stage === 'destroy' ? (
+        <FormView
+          email={email}
+          onEmailChange={setEmail}
+          onSubmit={onSubmit}
+          submitting={submitting}
+          error={error}
+          onBack={() => setStage('fork')}
+        />
+      ) : null}
+      {stage === 'sent' ? <SentView email={email} /> : null}
+    </AuthLayout>
   );
 }
 

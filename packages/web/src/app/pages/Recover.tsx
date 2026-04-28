@@ -14,7 +14,7 @@ import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -121,55 +121,55 @@ export default function RecoverPage() {
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Récupère sans tout perdre.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Avec tes 12 mots, on peut redériver la clé qui chiffre tes données et
-          la rechiffrer sous un nouveau mot de passe — sans toucher aux entrées
-          existantes.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Tu repars avec un nouveau mot de passe et un nouveau code de
-          récupération. L’ancien code est invalidé immédiatement.
-        </p>
-      </AuthMarketingPanel>
+    <AuthLayout
+      headline="Récupère sans tout perdre."
+      maxWidth="420"
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Avec tes 12 mots, on peut redériver la clé qui chiffre tes données et
+            la rechiffrer sous un nouveau mot de passe — sans toucher aux entrées
+            existantes.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Tu repars avec un nouveau mot de passe et un nouveau code de
+            récupération. L’ancien code est invalidé immédiatement.
+          </p>
+        </>
+      }
+    >
+      {stage.kind === 'form' ? (
+        <FormPanel
+          email={email}
+          setEmail={setEmail}
+          mnemonic={mnemonic}
+          setMnemonic={setMnemonic}
+          password={password}
+          setPassword={setPassword}
+          confirm={confirm}
+          setConfirm={setConfirm}
+          rules={rules}
+          rulesOk={rulesOk}
+          strength={strength}
+          confirmMismatch={confirmMismatch}
+          wordCount={wordCount}
+          emailLooksValid={emailLooksValid}
+          error={error}
+          submitting={submitting}
+          canSubmit={canSubmit}
+          onSubmit={onSubmit}
+        />
+      ) : null}
 
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[420px]">
-          {stage.kind === 'form' ? (
-            <FormPanel
-              email={email}
-              setEmail={setEmail}
-              mnemonic={mnemonic}
-              setMnemonic={setMnemonic}
-              password={password}
-              setPassword={setPassword}
-              confirm={confirm}
-              setConfirm={setConfirm}
-              rules={rules}
-              rulesOk={rulesOk}
-              strength={strength}
-              confirmMismatch={confirmMismatch}
-              wordCount={wordCount}
-              emailLooksValid={emailLooksValid}
-              error={error}
-              submitting={submitting}
-              canSubmit={canSubmit}
-              onSubmit={onSubmit}
-            />
-          ) : null}
-
-          {stage.kind === 'displaying' ? (
-            <DisplayPanel
-              mnemonic={stage.mnemonic}
-              acknowledged={acknowledged}
-              setAcknowledged={setAcknowledged}
-              onDone={handleDone}
-            />
-          ) : null}
-        </div>
-      </main>
-    </div>
+      {stage.kind === 'displaying' ? (
+        <DisplayPanel
+          mnemonic={stage.mnemonic}
+          acknowledged={acknowledged}
+          setAcknowledged={setAcknowledged}
+          onDone={handleDone}
+        />
+      ) : null}
+    </AuthLayout>
   );
 }
 

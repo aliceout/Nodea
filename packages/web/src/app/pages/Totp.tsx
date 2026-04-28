@@ -16,7 +16,7 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/AuthLayout';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -62,23 +62,25 @@ export default function TotpPage() {
   const backupCodesRemaining = user?.totpBackupCodesRemaining ?? 0;
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
-      <AuthMarketingPanel headline="Un code à six chiffres en plus.">
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le TOTP (mot de passe à usage unique basé sur le temps) ajoute une
-          deuxième couche : à chaque connexion, ton appli d’authentification
-          (Bitwarden, Ente Auth, Aegis, Google Auth…) génère un code de 6
-          chiffres valide 30 secondes.
-        </p>
-        <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Une fuite de ton mot de passe ne suffit alors plus à entrer — il
-          faut aussi avoir ton téléphone ou ta clé hardware sous la main.
-        </p>
-      </AuthMarketingPanel>
-
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
-        <div className="animate-fade-up w-full max-w-[420px]">
-          {stage.kind === 'list' ? (
+    <AuthLayout
+      headline="Un code à six chiffres en plus."
+      maxWidth="420"
+      marketing={
+        <>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Le TOTP (mot de passe à usage unique basé sur le temps) ajoute une
+            deuxième couche : à chaque connexion, ton appli d’authentification
+            (Bitwarden, Ente Auth, Aegis, Google Auth…) génère un code de 6
+            chiffres valide 30 secondes.
+          </p>
+          <p className="text-[18px] leading-[1.5] text-ink-soft">
+            Une fuite de ton mot de passe ne suffit alors plus à entrer — il
+            faut aussi avoir ton téléphone ou ta clé hardware sous la main.
+          </p>
+        </>
+      }
+    >
+      {stage.kind === 'list' ? (
             <ListView
               totpEnabled={totpEnabled}
               backupCodesRemaining={backupCodesRemaining}
@@ -118,9 +120,7 @@ export default function TotpPage() {
               onDone={() => navigate('/flow', { replace: true })}
             />
           ) : null}
-        </div>
-      </main>
-    </div>
+    </AuthLayout>
   );
 }
 

@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import HoverActions from '@/ui/dirk/HoverActions';
+import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -141,29 +142,29 @@ export default function MoodPage() {
   }
 
   return (
-    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar
-        label={`Mood · ${totalEntries} ${totalEntries === 1 ? 'entrée' : 'entrées'}`}
-        onOpenMenu={() => setMobileMenuOpen(true)}
-      >
-        <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
-          + Nouvelle entrée
-        </Button>
-      </Topbar>
-
-      <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
-        <PrimaryColumn
-          load={load}
-          year={year}
-          onYearChange={handleYearChange}
-          month={month}
-          onMonthChange={setMonth}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-        <SideColumn entries={sideEntries} />
-      </div>
-    </div>
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={`Mood · ${totalEntries} ${totalEntries === 1 ? 'entrée' : 'entrées'}`}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        >
+          <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
+            + Nouvelle entrée
+          </Button>
+        </Topbar>
+      }
+      side={<SideColumn entries={sideEntries} />}
+    >
+      <PrimaryColumn
+        load={load}
+        year={year}
+        onYearChange={handleYearChange}
+        month={month}
+        onMonthChange={setMonth}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+    </ModuleShell>
   );
 }
 
