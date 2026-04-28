@@ -239,7 +239,7 @@ schemas live in `Auth-Spec.md` §4.1 to avoid duplication.
 | `auth_factors`            | WebAuthn passkeys per user, with optional PRF-wrapped KEK.      |
 | `mfa_totp`                | 1:1 TOTP secret + period + last_window anti-replay cursor.      |
 | `mfa_totp_recovery_codes` | Backup codes (10/user, hashed, single-use).                     |
-| `mfa_bypass_requests`     | Email-confirmed 48-hour bypass for lost TOTP / passkey.         |
+| `mfa_bypass_requests`     | Email-confirmed 7-day bypass for lost TOTP / passkey.           |
 
 The Drizzle ORM still exports types for these tables (`OpaqueRecord`,
 `AuthFactor`, etc.), but no production handler imports them. The

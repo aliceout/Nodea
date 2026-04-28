@@ -158,7 +158,7 @@ Quoi qu'il arrive, ces invariants tiennent :
 | **Attaquant réseau (TLS rompu localement)** | MitM | Aucune fuite si TLS OK ; OPAQUE résiste partiellement à un serveur menteur | OPAQUE binding au server static key, HSTS prod, `Secure` cookies |
 | **Voleur de sessions** (cookie session volé) | Cookie en clair | Lifetime borné, revocation par DELETE FROM sessions, SameSite=Lax. Mode max impose passkey + TOTP au renouvellement. | §5 |
 | **Voleur de device avec session active** | OS access | Limité à la durée de session ; cold reload purge la main key (status `missing`) ; mode max nécessite passkey/TOTP au renouvellement | §5 |
-| **Voleur d'email (compte mail compromis)** | Reset destructif possible, bypass TOTP possible après 48h | **Perte de données potentielle** (reset destructif) ou **bypass TOTP** (avec 48h delay) ; pas de fuite de plaintext sans password OPAQUE ou recovery code | §7.8, §7.9 |
+| **Voleur d'email (compte mail compromis)** | Reset destructif possible, bypass TOTP possible après 7 jours | **Perte de données potentielle** (reset destructif) ou **bypass TOTP** (avec 7 jours delay) ; pas de fuite de plaintext sans password OPAQUE ou recovery code | §7.8, §7.9 |
 | **Phisher** | Faux site Nodea | Passkey FIDO résistante par origin-binding. OPAQUE n'est **pas** anti-phishing (un faux site peut faire register OPAQUE chez l'attaquant). | Documenté §2.3 |
 | **Brute-forceur online** | Tentatives répétées | Rate-limit sur `/auth/login`, OPAQUE intègre Argon2id côté serveur | §13 |
 | **Brute-forceur offline (DB exfiltrée)** | Cracking sur dump | OPAQUE = pas de hash de password offline-crackable ; Argon2id paramètres élevés en cas de fallback | §13 |
@@ -825,8 +825,8 @@ simultanément = reset destructif (perte de données)**.
 | Facteur perdu | Chemin de récupération | Conditions |
 |---|---|---|
 | Password | Recovery code KEK (cf. §7.7) | Il faut connaître le recovery code |
-| TOTP | Bypass email 48h (cf. §7.8) | Password OK + (passkey OK si mode max) |
-| Passkey (la dernière) | Bypass email 48h (cf. §7.8) | Password OK + (TOTP OK si mode `always_totp`/`maximum`) |
+| TOTP | Bypass email 7 jours (cf. §7.8) | Password OK + (passkey OK si mode max) |
+| Passkey (la dernière) | Bypass email 7 jours (cf. §7.8) | Password OK + (TOTP OK si mode `always_totp`/`maximum`) |
 | Recovery code | Régénérer depuis Settings (re-auth password) | Compte encore accessible |
 | 2 facteurs simultanés (passkey + TOTP, password + passkey, etc.) | **Reset destructif uniquement** (cf. §7.9) | Données perdues, l'user est prévenu·e |
 
@@ -1613,7 +1613,7 @@ possible silencieusement).
 > triggered par l'auth.
 
 Mécanisme commun pour récupérer la perte d'un facteur MFA sans
-casser l'E2E. Délai dur de 48h après confirmation par email, un
+casser l'E2E. Délai dur de 7 jours après confirmation par email, un
 seul bypass actif à la fois (toutes factors confondues — un user en
 cours de bypass passkey ne peut pas démarrer un bypass TOTP en
 parallèle).
@@ -1652,16 +1652,21 @@ Server :
 2. Vérifie qu'aucune `mfa_bypass_requests` non-cancelled-non-consumed
    n'existe pour ce user (toutes factors confondues). Si oui → 409
    `bypass_already_active`.
-3. Génère `confirm_token` et `cancel_token` (32 bytes random
-   chacun, base64url). Hash SHA-256 stocké.
-4. INSERT `mfa_bypass_requests { factor, expires_at: now+7j,
-   confirm/cancel_token_hash }`. (TTL de la request = 7j ; le délai
-   "réel" de 48h commence à `confirmed_at`.)
-5. Envoie email avec deux liens (template diffère selon `factor`) :
-   - `https://<rp_id>/auth/mfa/bypass/confirm?t=<confirm_token>`
-   - `https://<rp_id>/auth/mfa/bypass/cancel?t=<cancel_token>`
-6. Réponse `200 { message: "Email envoyé. Tu pourras te connecter
-   sans <factor> dans 48h après confirmation." }`.
+3. Génère `confirm_token` (32 bytes random base64url). Hash SHA-256
+   stocké. La colonne `cancel_token_hash` reste NOT NULL dans le
+   schéma — on y écrit un hash placeholder (token jeté côté serveur)
+   pour éviter une migration ; rien sur le réseau ne matchera jamais
+   ce hash.
+4. INSERT `mfa_bypass_requests { factor, expires_at: now+14j,
+   confirm_token_hash, cancel_token_hash: <placeholder> }`. (TTL de
+   la request = 14j pour laisser 7j de fenêtre de confirmation +
+   7j de délai réel ; le délai "réel" de 7 jours commence à
+   `confirmed_at`.)
+5. Envoie email avec **un seul lien** (template diffère selon
+   `factor`) :
+   - `https://<rp_id>/auth/bypass/confirm?t=<confirm_token>` (SPA
+     route, pas le `/api`).
+6. Réponse `200 { earliestApplyAt: <ISO> }`.
 
 #### Confirmation par email
 
@@ -1675,27 +1680,29 @@ Server :
    status correspondant, HTTP 410 (ou 400/404 si token malformé /
    inconnu). Le SPA affiche le panneau d'erreur adéquat.
 3. Si déjà confirmed → status `already_confirmed` + `factor` +
-   `earliestApplyAt` (= `confirmed_at + 48h`).
+   `earliestApplyAt` (= `confirmed_at + 7 jours`).
 4. Sinon : `confirmed_at = now()` puis status `ok` + `factor` +
-   `earliestApplyAt` (= `now + 48h`). Le compteur 48h "réel"
+   `earliestApplyAt` (= `now + 7 jours`). Le compteur 7 jours "réel"
    démarre ici (pas au request).
 
 Le SPA rend une page au format `/totp` / `/passkeys` avec un
-**countdown live HH:MM** jusqu'à `earliestApplyAt` (tick 1 Hz,
-affichage à la minute pour éviter le bruit visuel).
+**countdown live `Jj HHh MMmin`** jusqu'à `earliestApplyAt` (tick
+1 Hz, affichage à la minute pour éviter le bruit visuel ; les jours
+disparaissent quand le reste passe sous 24h).
 
 #### Annulation
 
-`GET /auth/mfa/bypass/cancel?t=<token>` (lien email).
+**Pas de lien email d'annulation**. Une demande pendante est
+auto-annulée à la prochaine promotion en session `full`
+(`cancelPendingBypassesForUser` câblé sur `/auth/login/finish`,
+`/auth/passkey/login/finish`, `/auth/mfa/{totp,passkey}/finish`,
+et le reset recovery code). Un login complet réussi prouve que
+l'user contrôle toujours le facteur prétendu perdu — la demande
+est moot et annulée. Le legit owner d'un compte attaqué n'a donc
+qu'à se reconnecter normalement pour défuser une demande forgée :
+pas de clic sur un lien email à effectuer (et donc pas de surface
+phishing « clique ici pour défuser » dans la boîte mail).
 
-Server : `cancelled_at = now()`. Page : "Demande annulée."
-
-Une demande pendante est aussi auto-annulée à la prochaine
-promotion en session `full` (`cancelPendingBypassesForUser` câblé
-sur `/auth/login/finish`, `/auth/passkey/login/finish`,
-`/auth/mfa/{totp,passkey}/finish`, et le reset recovery code).
-Un login complet réussi prouve que l'user contrôle toujours le
-facteur prétendu perdu — la demande est moot et annulée.
 Conséquence : pas de surface "demande active" dans une session
 full, le couple "user authentifié + bypass pendant" ne peut pas
 coexister.
@@ -1713,7 +1720,7 @@ WHERE user_id = $1
   AND confirmed_at IS NOT NULL
   AND cancelled_at IS NULL
   AND consumed_at IS NULL
-  AND confirmed_at + interval '48 hours' <= now()
+  AND confirmed_at + interval '7 days' <= now()
   AND expires_at > now()
 LIMIT 1
 ```
@@ -2325,7 +2332,7 @@ rotation.)
 | Email verification code | digits | 6 |
 | Email verification code | TTL | 10 min |
 | Email verification code | max attempts | 5 |
-| Bypass TOTP | delay réel | 48 h après confirmation |
+| Bypass TOTP | delay réel | 7 j après confirmation |
 | Bypass TOTP | request TTL | 7j |
 | Password policy | zxcvbn min score | 3 |
 | Password policy | min length | 8 |
@@ -2551,9 +2558,9 @@ Tests obligatoires **avant** le merge de chaque phase. Localisation :
 |---|---|
 | Request TOTP → email envoyé avec confirm + cancel tokens | integration |
 | Request passkey → email envoyé (template différent) | integration |
-| Confirm sans 48h → bypass refusé | integration |
-| Confirm + 48h TOTP → bypass appliqué, `mfa_totp.enabled_at = NULL`, backup codes purgés | integration |
-| Confirm + 48h passkey → toutes les `auth_factors kind='passkey'` deleted | integration |
+| Confirm sans 7 jours → bypass refusé | integration |
+| Confirm + 7 jours TOTP → bypass appliqué, `mfa_totp.enabled_at = NULL`, backup codes purgés | integration |
+| Confirm + 7 jours passkey → toutes les `auth_factors kind='passkey'` deleted | integration |
 | Cancel pendant la fenêtre invalide la request | integration |
 | Nouvelle request invalide la précédente (toutes factors confondues) | integration |
 | Bypass TOTP en mode `maximum` → downgrade auto vers `password_or_passkey` | integration |
@@ -2606,7 +2613,7 @@ Tests obligatoires **avant** le merge de chaque phase. Localisation :
 | `register-resume` | Step 3 → ferme navigateur → revient → reprend step 4 |
 | `login-password-first-mode-max` | password → passkey → TOTP → home |
 | `login-passkey-first-mode-max` | passkey → password → TOTP → home |
-| `bypass-totp-full-flow` | Lost TOTP → email confirm → 48h passe → login skip TOTP → re-enrollment |
+| `bypass-totp-full-flow` | Lost TOTP → email confirm → 7 jours passe → login skip TOTP → re-enrollment |
 | `change-password-via-passkey` | login → settings → re-auth passkey → change password OK |
 | `migration-legacy-user` | login legacy → migration prompt → set recovery code → home |
 
@@ -2716,7 +2723,7 @@ Tests obligatoires **avant** le merge de chaque phase. Localisation :
 | **HKDF** | HMAC-based Key Derivation Function. RFC 5869. |
 | **Recovery code KEK** | Code haute entropie (~130 bits) généré à l'inscription, affiché une seule fois. Dérive une wrapping key qui wrappe la KEK. |
 | **Backup codes TOTP** | 10 codes single-use générés à l'enrollment TOTP, hashés côté serveur, en cas de perte de l'authenticator. |
-| **Bypass TOTP** | Mécanisme de récupération en cas de perte du TOTP + backup codes. Email + 48h delay. |
+| **Bypass TOTP** | Mécanisme de récupération en cas de perte du TOTP + backup codes. Email + 7 jours delay. |
 | **Stepped MFA** | Login en deux phases : facteur principal (password OPAQUE ou passkey) → cookie pending → facteurs additionnels → cookie full. |
 
 ---

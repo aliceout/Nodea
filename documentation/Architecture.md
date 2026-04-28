@@ -295,15 +295,17 @@ the factory loops over. There is nowhere to forget a guard.
     password confirm form + UI gates that grey out modes whose
     prerequisites aren't met.
 
-- **MFA bypass by email (TOTP / passkey, 48h)** (Phase 6 —
+- **MFA bypass by email (TOTP / passkey, 7 days)** (Phase 6 —
   `routes/auth-mfa-bypass.ts`, `auth/mfa-bypass.ts`):
-  - 3 routes: `POST /auth/mfa/bypass/request` (mfa_pending),
-    `GET /auth/mfa/bypass/{confirm,cancel}` (anonymous, token from
-    email). The two GET routes return JSON; the email link points
-    at the SPA (`/auth/bypass/{confirm,cancel}?t=…`), which
-    fetches the API and renders a styled page (matching `/totp`,
-    `/passkeys`) with a live HH:MM countdown to the
-    `earliestApplyAt` on the confirm panel.
+  - 2 routes: `POST /auth/mfa/bypass/request` (mfa_pending) and
+    `GET /auth/mfa/bypass/confirm?t=<token>` (anonymous). No cancel
+    email link — auto-cancel-on-login defangs forged requests when
+    the legit owner signs in normally, keeping an attacker-
+    controlled "click here to defuse" surface out of the inbox. The
+    confirm GET returns JSON; the email link points at the SPA
+    (`/auth/bypass/confirm?t=…`), which fetches the API and renders
+    a styled page (matching `/totp`, `/passkeys`) with a live `Jj
+    HHh MMmin` countdown to the `earliestApplyAt`.
   - Eligibility check (`bypassEligibility`) enforces Auth-Spec
     §6.2 "perdu 2 trucs = niqué": mode `maximum` requires the
     other factor verifiable in the pending session before the
@@ -311,7 +313,7 @@ the factory loops over. There is nowhere to forget a guard.
     UI redirects to `/request-reset` (destructive).
   - Lazy application (`applyConsumableBypass`) runs at the start
     of `/auth/login/finish` and `/auth/passkey/login/finish` BEFORE
-    computing required factors. A confirmed-past-48h bypass:
+    computing required factors. A confirmed-past-delay bypass:
     disables TOTP + purges backup codes (totp factor) OR deletes
     every `auth_factors kind='passkey'` (passkey factor); auto-
     downgrades `security_mode` → `password_or_passkey` per §6.1;
@@ -327,8 +329,11 @@ the factory loops over. There is nowhere to forget a guard.
     controls the factor they claimed to have lost (and defangs an
     attacker who triggered a bypass against them).
   - Tokens: 32 bytes random base64url, SHA-256 hashed in
-    `mfa_bypass_requests.{confirm,cancel}_token_hash`. The DB only
-    holds hashes; plaintext lives only in the email.
+    `mfa_bypass_requests.confirm_token_hash`. The `cancel_token_hash`
+    column is NOT NULL in the schema and gets a placeholder hash
+    that nothing on the wire will ever match — kept to avoid a DB
+    migration. The DB only holds hashes; plaintext lives only in
+    the confirm email.
   - Frontend: `/login/mfa` surfaces "j'ai perdu mon X" links under
     each step (TOTP / passkey) → inline confirm dialog → email
     sent. No Settings UI: a full session implies the bypass got

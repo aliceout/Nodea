@@ -15,7 +15,7 @@
 > **Phases livrées** : 0 (spec), 1 (register simplifié), 2A-2D
 > (OPAQUE migration), 3 (recovery code BIP39), 4 (passkey WebAuthn
 > + PRF), 5A-5D (TOTP + stepped MFA + security mode UI),
-> **6 (bypass MFA email 48h)**. En cours : Phase 7 (matrice de
+> **6 (bypass MFA email 7 jours)**. En cours : Phase 7 (matrice de
 > re-auth + Settings polish) à attaquer ensuite.
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
@@ -63,7 +63,7 @@ Tranchées dans la discussion, à figer dans `Auth-Spec.md` :
 5. **Backup codes TOTP** : systématiques à l'enrollment (10 codes,
    ~130 bits, SHA-256, single-use). Acknowledgement obligatoire.
 6. **Bypass d'un facteur MFA par email** (TOTP **ou** passkey,
-   mécanisme unifié) : 48h de délai après confirmation, un seul
+   mécanisme unifié) : 7 jours de délai après confirmation, un seul
    actif à la fois (toutes factors confondues). Force
    re-enrollment du facteur perdu au login suivant. **Dépend** de
    la vérification email à l'inscription. **Refusé si plusieurs
@@ -686,10 +686,10 @@ appliquée selon le chemin d'entrée (passkey-first ou password-first).
 
 ---
 
-### Phase 6 — Bypass d'un facteur MFA par email (TOTP **ou** passkey, 48h) ✅ livrée
+### Phase 6 — Bypass d'un facteur MFA par email (TOTP **ou** passkey, 7 jours) ✅ livrée
 
 **Statut** : livrée. Recovery path single-factor sans reset
-destructif, sécurisé par 48h délai après confirmation email.
+destructif, sécurisé par 7 jours délai après confirmation email.
 
 **Routes livrées** (`packages/api/src/routes/auth-mfa-bypass.ts`)
 - `POST /auth/mfa/bypass/request` (mfa_pending) — éligibilité §6.2
@@ -697,21 +697,22 @@ destructif, sécurisé par 48h délai après confirmation email.
   base64url, hash SHA-256), INSERT request avec TTL 7j, envoie
   email. Response : `{ earliestApplyAt }`.
 - `GET /auth/mfa/bypass/confirm?t=<token>` (anonyme) — flippe
-  `confirmed_at`, démarre le délai 48h "réel". Retourne JSON
+  `confirmed_at`, démarre le délai 7 jours "réel". Retourne JSON
   discriminé par `status` (`ok` / `already_confirmed` /
   `cancelled` / `consumed` / `expired` / `unknown`). Le lien
   email pointe sur la SPA `${WEB_BASE_URL}/auth/bypass/confirm?t=…`,
   qui appelle l'API et rend une page stylée (même format que
-  `/totp` / `/passkeys`) avec un compteur HH:MM live jusqu'à
-  `earliestApplyAt`.
-- `GET /auth/mfa/bypass/cancel?t=<token>` (anonyme) — flippe
-  `cancelled_at`. Idem JSON discriminé, idem rendu SPA via
-  `/auth/bypass/cancel`.
+  `/totp` / `/passkeys`) avec un compteur live `Jj HHh MMmin`
+  jusqu'à `earliestApplyAt`.
+- **Pas de lien email d'annulation** : l'auto-cancel-on-login fait
+  qu'une simple reconnexion suffit à invalider une demande forgée
+  par un attaquant. On évite ainsi de placer un lien « clique ici
+  pour défuser » dans la boîte mail (surface phishing classique).
 
 **Lazy application au login** (`auth/mfa-bypass.ts:applyConsumableBypass`)
 - Appelée depuis `/auth/login/finish` ET `/auth/passkey/login/finish`
   AVANT le calcul des facteurs requis. Si une bypass confirmée
-  passe son délai 48h : DELETE backup codes + reset
+  passe son délai 7 jours : DELETE backup codes + reset
   `mfa_totp.enabled_at = NULL` (pour totp) OU DELETE toutes les
   passkeys (pour passkey). Downgrade auto `security_mode` →
   `password_or_passkey` selon §6.1. Marquer `consumed_at`. Revoke
@@ -734,7 +735,7 @@ destructif, sécurisé par 48h délai après confirmation email.
   reconnecte.
 - Conséquence UX : pas de surface "demande active" dans Settings
   — si l'user a une session full, c'est que la demande a déjà
-  été annulée (ou consommée si 48h écoulées).
+  été annulée (ou consommée si 7 jours écoulées).
 
 **§6.2 "perdu 2 trucs = niqué"** enforced par `bypassEligibility` :
 
@@ -758,23 +759,23 @@ destructif, sécurisé par 48h délai après confirmation email.
     déclenche directement le flow bypass.
   - Sur 409 multi_factor_loss → redirect auto vers `/request-reset`.
 - `/auth/bypass/confirm?t=<token>` (`pages/BypassConfirm.tsx`) —
-  page SPA stylée avec `AuthMarketingPanel` + countdown HH:MM
-  ticking à 1Hz. Branche par status JSON renvoyé par l'API.
-- `/auth/bypass/cancel?t=<token>` (`pages/BypassCancel.tsx`) —
-  variante sans countdown, mêmes panneaux d'état.
+  page SPA stylée avec `AuthMarketingPanel` + countdown live
+  `Jj HHh MMmin` (tick 1Hz, affichage à la minute). Branche par
+  status JSON renvoyé par l'API. Pas de page bypass/cancel — le
+  lien email correspondant n'existe pas.
 - Pas de surface dans Settings : l'auto-cancel-on-login fait
   qu'une demande pendante ne peut pas coexister avec une session
   full, donc rien à afficher.
 - `useSession.requestMfaBypass(factor)`.
-- Email templates : `mfa-bypass.ts` (request avec liens
-  confirm/cancel pointant sur la SPA) + `mfaBypassAppliedEmail`
+- Email templates : `mfa-bypass.ts` (request avec **lien confirm
+  uniquement** pointant sur la SPA) + `mfaBypassAppliedEmail`
   (notification post-consume).
 
 **Limitations connues**
 - Lien email confirm est en GET (state-changing) — convention
   email-link. Le token est le secret ; bot scanners (link
   preview) qui suivent le confirm flippent l'état. C'est un
-  trade-off documenté ; le délai 48h donne au user le temps de
+  trade-off documenté ; le délai 7 jours donne au user le temps de
   cancel si nécessaire.
 - Pas de bannière in-app pour les autres sessions actives —
   email-only par décision §7 (pas de push notification multi-
@@ -783,7 +784,7 @@ destructif, sécurisé par 48h délai après confirmation email.
 **Tests** : 16 integration tests (`auth-mfa-bypass.test.ts`).
 Couvre : request happy path + multi_factor_loss + bypass_already_active
 + factor_not_required + confirm/cancel via tokens + idempotent
-re-confirm + cancel-then-confirm 410 + lazy application past 48h
+re-confirm + cancel-then-confirm 410 + lazy application past 7 jours
 + pending/too-recent NOT consumed + GET active null/cancel 404.
 
 **Total après Phase 6** : 213 api tests (+16), 83 web tests.
@@ -805,9 +806,9 @@ et Phase 5 (TOTP en place).
      → 409 `multi_factor_loss` → l'UI redirige vers reset destructif.
   3. Server crée la request, envoie email (template diffère selon
      factor) avec lien confirm + lien cancel.
-  4. User confirme par email → `confirmed_at` set, compteur 48h
+  4. User confirme par email → `confirmed_at` set, compteur 7 jours
      démarre.
-  5. À T+48h, prochain login OPAQUE skip le factor :
+  5. À T+7 jours, prochain login OPAQUE skip le factor :
      - `totp` → `mfa_totp.enabled_at = NULL`, backup codes purgés.
      - `passkey` → toutes les `auth_factors kind='passkey'` deleted.
      - Si `security_mode = 'maximum'` → downgrade auto vers
@@ -818,8 +819,8 @@ et Phase 5 (TOTP en place).
 - Email-only pour les autres sessions actives (pas de bannière in-app).
 
 **Tests**
-- Confirm TOTP → 48h skip OK + downgrade auto si mode max.
-- Confirm passkey → 48h skip OK + DELETE de toutes les passkeys.
+- Confirm TOTP → 7 jours skip OK + downgrade auto si mode max.
+- Confirm passkey → 7 jours skip OK + DELETE de toutes les passkeys.
 - Cancel pendant la fenêtre invalide.
 - Nouvelle request invalide l'ancienne (toutes factors confondues).
 - Bypass passkey démarré pendant qu'un bypass TOTP est actif → 409.
@@ -829,7 +830,7 @@ et Phase 5 (TOTP en place).
 
 **Critère de sortie** : un·e user·ice ayant perdu TOTP **ou**
 passkey (un seul facteur, l'autre encore OK) récupère son compte
-en 48h. La perte simultanée de plusieurs facteurs MFA force le
+en 7 jours. La perte simultanée de plusieurs facteurs MFA force le
 reset destructif.
 
 ---
@@ -925,8 +926,8 @@ Quand toutes les phases sont livrées, l'app garantit :
    pas tous deux enrôlés ; downgrade auto si un facteur est retiré.
 4. **Quatre chemins de récupération** :
    - Recovery code KEK (BIP39) → unwrap + change-password forcé.
-   - Email + 48h delay → bypass TOTP, force re-enrollment.
-   - Email + 48h delay → bypass passkey, force re-enrollment.
+   - Email + 7 jours delay → bypass TOTP, force re-enrollment.
+   - Email + 7 jours delay → bypass passkey, force re-enrollment.
    - Reset destructif → filet de dernier recours (perte de données).
    **Politique "perdu 2 trucs = niqué"** : aucun bypass MFA n'est
    offert si plusieurs facteurs sont simultanément non-vérifiables.
