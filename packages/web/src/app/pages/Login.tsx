@@ -117,7 +117,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout headline="Là où personne ne lit." marketing={<PrivacyBody />}>
+    <AuthLayout headline="Un espace à soi" marketing={<PrivacyBody />}>
       <AuthPanelHeader eyebrow="Connexion" title="Entre dans ton espace" />
 
           {justActivated ? (

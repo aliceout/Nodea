@@ -98,7 +98,7 @@ export function PrivacyBody() {
         ce que tu vises.
       </p>
       <p className="text-[18px] leading-[1.5] text-ink-soft">
-        Toutes les données sont chiffrées côté client. Illisibles pour d’autres,
+        Toutes les données sont chiffrées dans ton navigateur. Illisibles pour d’autres,
         même pour l’équipe de Nodea — tu es la seule personne à y avoir accès.
       </p>
       <p className="text-[18px] leading-[1.5] text-ink-soft">
