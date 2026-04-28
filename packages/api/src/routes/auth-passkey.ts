@@ -36,11 +36,6 @@ import {
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
 import {
-  finishLogin as opaqueFinishLogin,
-  opaqueReady,
-} from '../auth/opaque.ts';
-import { consumeLoginState } from '../auth/opaque-login-state.ts';
-import {
   consumePasskeyLoginPending,
   storePasskeyLoginPending,
 } from '../auth/passkey-login-state.ts';
@@ -49,6 +44,7 @@ import { setSessionCookie } from '../auth/cookies.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 
 /**
  * Passkey routes (Auth-Roadmap Phase 4, Auth-Spec §7.3 + §9).
@@ -101,35 +97,6 @@ const manageLimiter = rateLimit({
 });
 
 /* ============================================================================
- * OPAQUE password proof helper (matrice de re-auth §6)
- * ========================================================================== */
-
-/**
- * Verify the OPAQUE password proof. Same shape as the helper duplicated
- * in `auth.ts` / `auth-recovery.ts` — kept local to avoid an import
- * cycle through the routes module. Used to gate enroll / rename /
- * remove (any operation that mutates the passkey set).
- */
-async function verifyPasswordProof(
-  user: { email: string },
-  body: { proofLoginToken: string; proofFinishLoginRequest: string },
-): Promise<'ok' | 'invalid'> {
-  await opaqueReady;
-  const pending = consumeLoginState(body.proofLoginToken);
-  if (!pending) return 'invalid';
-  if (pending.userIdentifier !== user.email.toLowerCase()) return 'invalid';
-  try {
-    opaqueFinishLogin({
-      serverLoginState: pending.state,
-      finishLoginRequest: body.proofFinishLoginRequest,
-    });
-  } catch {
-    return 'invalid';
-  }
-  return 'ok';
-}
-
-/* ============================================================================
  * Helper: build the WebAuthn user handle from our user id
  * ========================================================================== */
 
@@ -157,6 +124,7 @@ function userIdToHandle(userId: string) {
 authPasskeyRoutes.post(
   '/passkey/enroll/start',
   requireUser,
+  requireFreshPassword,
   enrollLimiter,
   async (c) => {
     const raw = await c.req.json().catch(() => null);
@@ -164,8 +132,6 @@ authPasskeyRoutes.post(
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
 
     const user = c.get('user');
-    const proof = await verifyPasswordProof(user, parsed.data);
-    if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
     // Pull the user's existing passkey credential ids so the browser
     // refuses to enroll the same authenticator twice. Anti-double-
@@ -382,6 +348,7 @@ authPasskeyRoutes.get('/passkey/list', requireUser, manageLimiter, async (c) => 
 authPasskeyRoutes.patch(
   '/passkey/:id/label',
   requireUser,
+  requireFreshPassword,
   manageLimiter,
   async (c) => {
     const id = c.req.param('id');
@@ -390,9 +357,6 @@ authPasskeyRoutes.patch(
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
     const body = parsed.data;
     const user = c.get('user');
-
-    const proof = await verifyPasswordProof(user, body);
-    if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
     const result = await db
       .update(authFactors)
@@ -412,17 +376,14 @@ authPasskeyRoutes.patch(
 authPasskeyRoutes.post(
   '/passkey/:id/remove',
   requireUser,
+  requireFreshPassword,
   manageLimiter,
   async (c) => {
     const id = c.req.param('id');
     const raw = await c.req.json().catch(() => null);
     const parsed = PasskeyDeleteBodySchema.safeParse(raw);
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
-    const body = parsed.data;
     const user = c.get('user');
-
-    const proof = await verifyPasswordProof(user, body);
-    if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
     const result = await db
       .delete(authFactors)

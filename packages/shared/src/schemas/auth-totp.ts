@@ -36,15 +36,12 @@ const BackupCodeInput = z.string().min(24).max(64);
  * ========================================================================== */
 
 /**
- * `POST /auth/totp/enroll/start` — body. The OPAQUE password proof
- * gates the destructive enrollment (rotates any pending secret).
- * Same shape as `OpaquePasswordProofSchema` but inlined for
- * import-locality.
+ * `POST /auth/totp/enroll/start` — body. Empty in V2 (Phase 7B):
+ * the server gates re-auth via `requireFreshPassword` middleware
+ * rather than an embedded OPAQUE proof. The route exists at all
+ * because /verify needs the secret persisted server-side first.
  */
-export const TotpEnrollStartBodySchema = z.object({
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: z.string().min(1).max(8192),
-});
+export const TotpEnrollStartBodySchema = z.object({}).passthrough();
 export type TotpEnrollStartBody = z.infer<typeof TotpEnrollStartBodySchema>;
 
 /**
@@ -80,15 +77,13 @@ export type TotpEnrollVerifyBody = z.infer<typeof TotpEnrollVerifyBodySchema>;
  * ========================================================================== */
 
 /**
- * Shared body shape — both routes only need the OPAQUE password
- * proof. Disable wipes everything; regenerate-backup-codes returns
- * 10 fresh codes (and replaces every old hash in the same
- * transaction).
+ * Shared body shape — Phase 7B. The OPAQUE password proof has
+ * moved to the `requireFreshPassword` middleware on every Settings
+ * route, so the body is empty. Kept as an explicit schema (rather
+ * than inlined `z.object({})`) for symmetry with the other Settings
+ * routes and because callers still type-check against this name.
  */
-export const TotpManagementBodySchema = z.object({
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: z.string().min(1).max(8192),
-});
+export const TotpManagementBodySchema = z.object({}).passthrough();
 export type TotpManagementBody = z.infer<typeof TotpManagementBodySchema>;
 
 export const TotpRegenerateBackupCodesResponseSchema = z.object({

@@ -53,15 +53,11 @@ const WebAuthnResponseJSON = z.record(z.string(), z.unknown());
  * ========================================================================== */
 
 /**
- * `POST /auth/passkey/enroll/start` — body. The OPAQUE password proof
- * is required (matrice de re-auth §6: add/remove passkey ⇒ fresh
- * password). Same shape as `OpaquePasswordProofSchema` but inlined here
- * so the schema stays self-contained and discoverable from one import.
+ * `POST /auth/passkey/enroll/start` — body. Empty in V2 (Phase 7B):
+ * fresh-password gating moved to the `requireFreshPassword`
+ * middleware. Kept as an explicit schema for symmetry.
  */
-export const PasskeyEnrollStartBodySchema = z.object({
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: Base64ish,
-});
+export const PasskeyEnrollStartBodySchema = z.object({}).passthrough();
 export type PasskeyEnrollStartBody = z.infer<typeof PasskeyEnrollStartBodySchema>;
 
 /**
@@ -138,19 +134,16 @@ export type PasskeyRenameBody = z.infer<typeof PasskeyRenameBodySchema>;
 
 /**
  * `POST /auth/passkey/:id/remove` and `PATCH /auth/passkey/:id/label`
- * both require a fresh OPAQUE password proof (matrice §6). The body
- * for delete is just the proof; rename adds the new label.
+ * both require a fresh password (matrice §6). Phase 7B moved that
+ * gate to the `requireFreshPassword` middleware so the bodies carry
+ * only the route-specific payload (delete has none; rename has the
+ * new label).
  */
-export const PasskeyDeleteBodySchema = z.object({
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: Base64ish,
-});
+export const PasskeyDeleteBodySchema = z.object({}).passthrough();
 export type PasskeyDeleteBody = z.infer<typeof PasskeyDeleteBodySchema>;
 
 export const PasskeyRenameWithProofBodySchema = z.object({
   label: z.string().min(1).max(120),
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: Base64ish,
 });
 export type PasskeyRenameWithProofBody = z.infer<
   typeof PasskeyRenameWithProofBodySchema

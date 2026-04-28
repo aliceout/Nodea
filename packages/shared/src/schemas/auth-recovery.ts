@@ -45,19 +45,16 @@ const Sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
  * `recoveryCodeHash` = `SHA-256(entropy)` — the server stores it
  * as-is for offline comparison at recover time.
  *
- * `proofLoginToken` + `proofFinishLoginRequest` are **required** for
- * both first-time setup and regenerate. Rationale: the client needs
- * the typed password to re-derive the KEK before wrapping it under
- * the new BIP39 entropy anyway, so we get the proof for free —
- * makes a stolen session unable to silently set up / replace a
- * recovery code without prompting the legitimate user.
+ * Re-auth is gated by the `requireFreshPassword` middleware
+ * (Phase 7B); the body carries only the wrap blobs + the anti-DoS
+ * hash. First-time setup right after register passes naturally
+ * because the new full session is stamped fresh; regenerate from
+ * Settings goes through the standard re-auth modal first.
  */
 export const RecoveryCodeUpsertBodySchema = z.object({
   wrappedKekRecovery: Base64ish,
   wrappedKekRecoveryIv: Base64ish,
   recoveryCodeHash: Sha256Hex,
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: OpaqueBlob,
 });
 export type RecoveryCodeUpsertBody = z.infer<typeof RecoveryCodeUpsertBodySchema>;
 

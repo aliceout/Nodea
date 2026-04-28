@@ -14,10 +14,6 @@ import {
   opaqueReady,
 } from '../auth/opaque.ts';
 import {
-  finishLogin as opaqueFinishLogin,
-} from '../auth/opaque.ts';
-import { consumeLoginState } from '../auth/opaque-login-state.ts';
-import {
   consumeRecoverPending,
   storeRecoverPending,
 } from '../auth/opaque-recover-state.ts';
@@ -29,6 +25,7 @@ import { setSessionCookie } from '../auth/cookies.ts';
 import { cancelPendingBypassesForUser } from '../auth/mfa-bypass.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 
 /**
  * Recovery-code KEK routes (Auth-Roadmap Phase 3, Auth-Spec §7.7).
@@ -83,55 +80,29 @@ function constantTimeEqualHex(a: string, b: string): boolean {
   }
 }
 
-/**
- * Verify the OPAQUE password proof for the regenerate flow. Same
- * shape as `verifyPasswordProof` in `auth.ts` — duplicated here
- * to avoid an import cycle through the routes module. If the
- * proof is missing or invalid, returns `'invalid'`.
- */
-async function verifyPasswordProof(
-  user: { email: string },
-  body: {
-    proofLoginToken?: string | undefined;
-    proofFinishLoginRequest?: string | undefined;
-  },
-): Promise<'ok' | 'invalid'> {
-  if (!body.proofLoginToken || !body.proofFinishLoginRequest) return 'invalid';
-  await opaqueReady;
-  const pending = consumeLoginState(body.proofLoginToken);
-  if (!pending) return 'invalid';
-  if (pending.userIdentifier !== user.email.toLowerCase()) return 'invalid';
-  try {
-    opaqueFinishLogin({
-      serverLoginState: pending.state,
-      finishLoginRequest: body.proofFinishLoginRequest,
-    });
-  } catch {
-    return 'invalid';
-  }
-  return 'ok';
-}
-
 /* ============================================================================
  * POST /auth/security/recovery-code
  * Setup or regenerate the recovery code (authenticated).
+ *
+ * Re-auth gate: `requireFreshPassword` (Phase 7B). First-time setup
+ * happens right after register, when the new full session is
+ * stamped fresh — middleware passes naturally. Regenerate from
+ * Settings goes through the standard re-auth modal first.
  * ========================================================================== */
 
-authRecoveryRoutes.post('/security/recovery-code', requireUser, recoverySetupLimiter, async (c) => {
+authRecoveryRoutes.post(
+  '/security/recovery-code',
+  requireUser,
+  requireFreshPassword,
+  recoverySetupLimiter,
+  async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RecoveryCodeUpsertBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const user = c.get('user');
 
-  // OPAQUE password proof is required for both first-time setup
-  // and regenerate. The client needs the typed password to re-derive
-  // the KEK anyway (to wrap it under the new BIP39 entropy), so the
-  // proof comes for free — a stolen session can't silently set up
-  // or replace a recovery code without prompting the legit user.
   const isRegenerate = user.recoveryCodeHash !== null;
-  const proof = await verifyPasswordProof(user, body);
-  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   await db
     .update(users)
@@ -145,7 +116,8 @@ authRecoveryRoutes.post('/security/recovery-code', requireUser, recoverySetupLim
     .where(eq(users.id, user.id));
 
   return c.json({ ok: true, regenerated: isRegenerate });
-});
+  },
+);
 
 /* ============================================================================
  * POST /auth/recover-kek/start

@@ -72,7 +72,7 @@ export type LoginBody = z.infer<typeof LoginBodySchema>;
  *     Server: consumes the token, replaces `opaque_records.envelope`
  *     and `users.wrapped_kek_password{,_iv}`, rotates the session.
  */
-export const ChangePasswordStartBodySchema = OpaquePasswordProofSchema.extend({
+export const ChangePasswordStartBodySchema = z.object({
   registrationRequest: OpaqueBlob,
 });
 export type ChangePasswordStartBody = z.infer<typeof ChangePasswordStartBodySchema>;
@@ -94,8 +94,9 @@ export const ChangePasswordFinishBodySchema = z.object({
 export type ChangePasswordFinishBody = z.infer<typeof ChangePasswordFinishBodySchema>;
 
 /**
- * Change the authenticated user's email. Re-auth via the OPAQUE
- * proof — see {@link OpaquePasswordProofSchema} for the wire shape.
+ * Change the authenticated user's email. Re-auth gated by the
+ * `requireFreshPassword` middleware (Phase 7B); the body carries
+ * only the new address.
  *
  * The encrypted envelope doesn't change: the email isn't part of
  * any KEK derivation in V1. The OPAQUE `userIdentifier` is the
@@ -103,7 +104,7 @@ export type ChangePasswordFinishBody = z.infer<typeof ChangePasswordFinishBodySc
  * OPAQUE" flow will need to ship a fresh `registrationRecord` here.
  * V1 keeps this minimal — the server just updates the `email` column.
  */
-export const ChangeEmailBodySchema = OpaquePasswordProofSchema.extend({
+export const ChangeEmailBodySchema = z.object({
   newEmail: z.string().email().max(254),
 });
 export type ChangeEmailBody = z.infer<typeof ChangeEmailBodySchema>;
@@ -131,11 +132,10 @@ export const ChangeUsernameBodySchema = z.object({
 export type ChangeUsernameBody = z.infer<typeof ChangeUsernameBodySchema>;
 
 /**
- * Self-delete the authenticated user. Re-auth via the OPAQUE proof
- * — same shape as change-password / change-email, see
- * {@link OpaquePasswordProofSchema}.
+ * Self-delete the authenticated user. Re-auth gated by the
+ * `requireFreshPassword` middleware (Phase 7B); the body is empty.
  */
-export const DeleteSelfBodySchema = OpaquePasswordProofSchema;
+export const DeleteSelfBodySchema = z.object({}).passthrough();
 export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
 
 /**

@@ -11,11 +11,6 @@ import {
 import { db } from '../db/client.ts';
 import { mfaTotp, mfaTotpRecoveryCodes, users } from '../db/schema.ts';
 import {
-  finishLogin as opaqueFinishLogin,
-  opaqueReady,
-} from '../auth/opaque.ts';
-import { consumeLoginState } from '../auth/opaque-login-state.ts';
-import {
   buildTotpUri,
   currentWindow,
   generateTotpSecret,
@@ -29,6 +24,7 @@ import {
 } from '../auth/totp-backup-codes.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 
 /**
  * TOTP routes (Auth-Roadmap Phase 5B, Auth-Spec §8).
@@ -70,40 +66,23 @@ const manageLimiter = rateLimit({
 });
 
 /* ============================================================================
- * Shared OPAQUE password proof helper (matrice de re-auth §6)
- * ========================================================================== */
-
-async function verifyPasswordProof(
-  user: { email: string },
-  body: { proofLoginToken: string; proofFinishLoginRequest: string },
-): Promise<'ok' | 'invalid'> {
-  await opaqueReady;
-  const pending = consumeLoginState(body.proofLoginToken);
-  if (!pending) return 'invalid';
-  if (pending.userIdentifier !== user.email.toLowerCase()) return 'invalid';
-  try {
-    opaqueFinishLogin({
-      serverLoginState: pending.state,
-      finishLoginRequest: body.proofFinishLoginRequest,
-    });
-  } catch {
-    return 'invalid';
-  }
-  return 'ok';
-}
-
-/* ============================================================================
  * POST /auth/totp/enroll/start
+ *
+ * Re-auth gate: `requireFreshPassword` (Phase 7B). Pre-7B the body
+ * carried an embedded OPAQUE proof; that's now done out-of-band
+ * via `POST /auth/reauth/password`.
  * ========================================================================== */
 
-authTotpRoutes.post('/totp/enroll/start', requireUser, enrollLimiter, async (c) => {
+authTotpRoutes.post(
+  '/totp/enroll/start',
+  requireUser,
+  requireFreshPassword,
+  enrollLimiter,
+  async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = TotpEnrollStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
-
-  const proof = await verifyPasswordProof(user, parsed.data);
-  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   // Generate a fresh secret + 10 backup codes. We persist both BEFORE
   // returning to the client so a network drop after this call leaves
@@ -235,14 +214,16 @@ authTotpRoutes.post('/totp/enroll/verify', requireUser, enrollLimiter, async (c)
  * POST /auth/totp/disable
  * ========================================================================== */
 
-authTotpRoutes.post('/totp/disable', requireUser, manageLimiter, async (c) => {
+authTotpRoutes.post(
+  '/totp/disable',
+  requireUser,
+  requireFreshPassword,
+  manageLimiter,
+  async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = TotpManagementBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
-
-  const proof = await verifyPasswordProof(user, parsed.data);
-  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   await db.transaction(async (tx) => {
     // Delete the row entirely (cleaner than nulling enabled_at —
@@ -278,15 +259,13 @@ authTotpRoutes.post('/totp/disable', requireUser, manageLimiter, async (c) => {
 authTotpRoutes.post(
   '/totp/backup-codes/regenerate',
   requireUser,
+  requireFreshPassword,
   manageLimiter,
   async (c) => {
     const raw = await c.req.json().catch(() => null);
     const parsed = TotpManagementBodySchema.safeParse(raw);
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
     const user = c.get('user');
-
-    const proof = await verifyPasswordProof(user, parsed.data);
-    if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
     // Refuse to regen into a dead pool — TOTP must be fully enabled.
     const [totp] = await db

@@ -3,24 +3,23 @@ import { and, eq } from 'drizzle-orm';
 import { SecurityModeChangeBodySchema } from '@nodea/shared';
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, users } from '../db/schema.ts';
-import {
-  finishLogin as opaqueFinishLogin,
-  opaqueReady,
-} from '../auth/opaque.ts';
-import { consumeLoginState } from '../auth/opaque-login-state.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 
 /**
- * Security-mode change route (Auth-Roadmap Phase 5D, Auth-Spec §6.1).
- *
- * One route:
+ * Security-mode change route (Auth-Roadmap Phase 5D + 7B,
+ * Auth-Spec §6.1).
  *
  *   - `POST /auth/security-mode/change` — moves the user between
  *     `password_or_passkey`, `always_totp`, and `maximum`. Validates
  *     the prerequisites (TOTP enabled / PRF-passkey enrolled) and
  *     refuses with a clear 400 error code when they're not met.
- *     Requires a fresh OPAQUE password proof per the matrice (§6).
+ *
+ * Re-auth gate: `requireFreshPassword` (Phase 7B). The Phase 5D
+ * MVP embedded an OPAQUE proof in the body; that's now done out-
+ * of-band via `POST /auth/reauth/password` and the freshness
+ * window covers this route for 5 minutes.
  *
  * Downgrade auto (§6.1) is wired separately on the de-enrollment
  * routes (`/auth/totp/disable`, `/auth/passkey/:id/remove`); this
@@ -34,28 +33,10 @@ const limiter = rateLimit({
   keyPrefix: 'security-mode-change',
 });
 
-async function verifyPasswordProof(
-  user: { email: string },
-  body: { proofLoginToken: string; proofFinishLoginRequest: string },
-): Promise<'ok' | 'invalid'> {
-  await opaqueReady;
-  const pending = consumeLoginState(body.proofLoginToken);
-  if (!pending) return 'invalid';
-  if (pending.userIdentifier !== user.email.toLowerCase()) return 'invalid';
-  try {
-    opaqueFinishLogin({
-      serverLoginState: pending.state,
-      finishLoginRequest: body.proofFinishLoginRequest,
-    });
-  } catch {
-    return 'invalid';
-  }
-  return 'ok';
-}
-
 authSecurityModeRoutes.post(
   '/security-mode/change',
   requireUser,
+  requireFreshPassword,
   limiter,
   async (c) => {
     const raw = await c.req.json().catch(() => null);
@@ -63,9 +44,6 @@ authSecurityModeRoutes.post(
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
     const { mode } = parsed.data;
     const user = c.get('user');
-
-    const proof = await verifyPasswordProof(user, parsed.data);
-    if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
     // Activation gate (Auth-Spec §6.1). `password_or_passkey` is
     // always reachable; `always_totp` needs TOTP enabled; `maximum`

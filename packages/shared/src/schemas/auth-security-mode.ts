@@ -18,8 +18,9 @@ import { z } from 'zod';
  *
  * Server-side validation refuses with `400 totp_required` /
  * `400 passkey_required` when the prerequisites aren't met. The
- * matrice de re-auth (§6) requires a fresh password proof —
- * standard `OpaquePasswordProof` body shape inlined here.
+ * matrice de re-auth (§6) requires a fresh password proof — gated
+ * server-side by `requireFreshPassword` (Phase 7B), so the body
+ * carries only the new mode.
  */
 export const SecurityModeSchema = z.enum([
   'password_or_passkey',
@@ -30,8 +31,6 @@ export type SecurityMode = z.infer<typeof SecurityModeSchema>;
 
 export const SecurityModeChangeBodySchema = z.object({
   mode: SecurityModeSchema,
-  proofLoginToken: z.string().min(1).max(2048),
-  proofFinishLoginRequest: z.string().min(1).max(8192),
 });
 export type SecurityModeChangeBody = z.infer<
   typeof SecurityModeChangeBodySchema

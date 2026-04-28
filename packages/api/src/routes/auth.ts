@@ -15,7 +15,6 @@ import {
   type ChangePasswordStartResponse,
   type OpaqueLoginFinishResponse,
   type OpaqueLoginStartResponse,
-  type OpaquePasswordProof,
   type ResetPasswordStartResponse,
 } from '@nodea/shared';
 import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
@@ -74,6 +73,10 @@ import { sendMail } from '../auth/mailer.ts';
 import { renderPasswordResetEmail } from '../services/email/templates/password-reset.ts';
 import { getConfig } from '../config.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import {
+  requireFreshPassword,
+  requireFreshPasswordOrPasskey,
+} from '../middleware/require-fresh-reauth.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -105,43 +108,6 @@ function isUniqueViolation(err: unknown, constraint: string): boolean {
 
 const loginLimiter = rateLimit({ max: 10, windowMs: 60_000, keyPrefix: 'login' });
 
-/**
- * Verify an OPAQUE password proof against the authenticated user.
- *
- * Mutating routes (change-password, change-email, delete-self) ship
- * `{ proofLoginToken, proofFinishLoginRequest }` produced by a fresh
- * `/auth/login/start` round-trip with the typed current password.
- * We consume the token (single-use) and run `server.finishLogin` to
- * verify the client's proof. The user identifier baked into the
- * stored state must match the calling user's email — otherwise an
- * attacker holding A's session cookie could change-password using
- * B's password proof.
- *
- * Returns:
- *   - `'ok'` when the proof checks out;
- *   - `'invalid'` for any negative path (unknown / expired / replayed
- *     token, identifier mismatch, lib rejection). Callers respond
- *     with a generic 401 — no anti-enum distinction needed since
- *     the user is already authenticated.
- */
-async function verifyPasswordProof(
-  user: { email: string },
-  proof: OpaquePasswordProof,
-): Promise<'ok' | 'invalid'> {
-  await opaqueReady;
-  const pending = consumeLoginState(proof.proofLoginToken);
-  if (!pending) return 'invalid';
-  if (pending.userIdentifier !== user.email.toLowerCase()) return 'invalid';
-  try {
-    opaqueFinishLogin({
-      serverLoginState: pending.state,
-      finishLoginRequest: proof.proofFinishLoginRequest,
-    });
-  } catch {
-    return 'invalid';
-  }
-  return 'ok';
-}
 /** 5 requests per hour per IP — matches the issue (#22) requirement. */
 const requestResetLimiter = rateLimit({
   max: 5,
@@ -653,7 +619,9 @@ authRoutes.get('/me', requireUser, async (c) => {
 });
 
 /**
- * Change password — step 1: validate the proof, run OPAQUE
+ * Change password — step 1 (Phase 7B): re-auth via either fresh
+ * password OR fresh passkey timestamp (matrice §6 — change-password
+ * is the one entry where a passkey can substitute). Run OPAQUE
  * `createRegistrationResponse` for the new password, hand the
  * client a single-use `changePasswordToken` to echo at /finish.
  *
@@ -661,16 +629,17 @@ authRoutes.get('/me', requireUser, async (c) => {
  * handshake — the client can't compute the new `registrationRecord`
  * without the server's `registrationResponse` first.
  */
-authRoutes.post('/change-password/start', requireUser, async (c) => {
+authRoutes.post(
+  '/change-password/start',
+  requireUser,
+  requireFreshPasswordOrPasskey,
+  async (c) => {
   await opaqueReady;
   const raw = await c.req.json().catch(() => null);
   const parsed = ChangePasswordStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const user = c.get('user');
-
-  const proof = await verifyPasswordProof(user, body);
-  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   let registrationResponse: string;
   try {
@@ -688,7 +657,8 @@ authRoutes.post('/change-password/start', requireUser, async (c) => {
     changePasswordToken,
   };
   return c.json(response);
-});
+  },
+);
 
 /**
  * Change password — step 2: replace the envelope + the KEK wrap,
@@ -741,7 +711,8 @@ authRoutes.post('/change-password/finish', requireUser, async (c) => {
 });
 
 /**
- * Change the authenticated user's email — re-auth via OPAQUE proof.
+ * Change the authenticated user's email — re-auth gated by the
+ * `requireFreshPassword` middleware (Phase 7B).
  *
  * The envelope stays untouched: email isn't part of the KEK
  * derivation in V1. Only the `email` column moves. Future Phase 2+
@@ -749,15 +720,12 @@ authRoutes.post('/change-password/finish', requireUser, async (c) => {
  * `userIdentifier` baked into the envelope IS the email — that's a
  * separate spec section (§7.6) and not implemented here.
  */
-authRoutes.patch('/email', requireUser, async (c) => {
+authRoutes.patch('/email', requireUser, requireFreshPassword, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ChangeEmailBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const user = c.get('user');
-
-  const proof = await verifyPasswordProof(user, body);
-  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   const newEmail = body.newEmail.toLowerCase();
   if (newEmail === user.email) return c.json({ ok: true });
@@ -824,7 +792,8 @@ authRoutes.post('/onboarding/complete', requireUser, async (c) => {
 });
 
 /**
- * Self-delete the authenticated user — re-auth via OPAQUE proof.
+ * Self-delete the authenticated user — re-auth gated by the
+ * `requireFreshPassword` middleware (Phase 7B).
  *
  * Every row owned by this user is removed by the FK ON DELETE CASCADE
  * chain: sessions, modules_config, opaque_records, and every
@@ -834,14 +803,11 @@ authRoutes.post('/onboarding/complete', requireUser, async (c) => {
  * After the delete the session row is gone; the cookie is also
  * explicitly cleared in the response so the browser forgets it.
  */
-authRoutes.delete('/me', requireUser, async (c) => {
+authRoutes.delete('/me', requireUser, requireFreshPassword, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = DeleteSelfBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
-
-  const proof = await verifyPasswordProof(user, parsed.data);
-  if (proof !== 'ok') return c.json({ error: 'invalid_credentials' }, 401);
 
   await db.delete(users).where(eq(users.id, user.id));
   clearSessionCookie(c);
