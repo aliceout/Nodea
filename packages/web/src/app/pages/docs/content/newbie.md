@@ -18,11 +18,23 @@ Pour éviter ça, Nodea te génère à l'inscription un **code de récupération
 
 Tu peux régénérer ce code à tout moment depuis *Compte → Sécurité* ; l'ancien devient invalide.
 
+## Et si quelqu'un veut accéder à mes données ?
+
+Trois cas possibles. Voilà ce que chacun peut voir, en clair.
+
+**L'équipe Nodea** (nous, qui développons et faisons tourner le serveur). On voit ton email, ton nom d'affichage, tes heures de connexion, et le fait que tu utilises tel ou tel module. **On ne voit pas** le contenu de ce que tu écris — c'est chiffré avec une clé qu'on n'a pas.
+
+**L'hébergeur** (le fournisseur cloud qui loue le serveur). Pareil que l'équipe Nodea, plus quelques détails techniques bas niveau (ordre dans lequel les écritures arrivent dans la base). Toujours pas de contenu en clair.
+
+**La police / la justice** (avec une réquisition légale). Nous pouvons être contraints de remettre tout ce qu'on voit nous-mêmes : ton email, tes heures de connexion, tes fichiers chiffrés. **Mais ces fichiers chiffrés sont inutiles sans ta clé**, qui n'est ni chez nous ni chez l'hébergeur. En pratique : « voilà l'email du compte, voilà ses heures de connexion, voilà ses fichiers chiffrés. Bon courage pour les ouvrir. »
+
+**Solution la plus stricte** : auto-héberge ton instance. L'équipe, l'hébergeur et l'interlocuteur d'une réquisition deviennent toi.
+
 ## Sur quoi on est explicites
 
 - Pas de tracking, pas de cookie pub, pas d'analytics tiers.
 - Pas de revente, pas d'entraînement d'IA sur tes données — on n'a même pas accès au contenu.
-- Pas de partage de tes données avec un tiers, sauf injonction légale (et ce qu'on pourrait remettre, c'est du chiffré inutilisable).
+- Pas de partage de tes données avec un tiers, sauf injonction légale (et ce qu'on pourrait remettre, c'est du chiffré inutilisable, voir ci-dessus).
 - Code source [consultable publiquement](https://github.com/aliceout/Nodea). Si tu doutes, tu peux vérifier.
 
 <aside class="docs-hint">

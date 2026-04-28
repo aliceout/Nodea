@@ -30,6 +30,18 @@ Tu peux ajouter une passkey (Touch ID, Face ID, Windows Hello, Yubikey…) comme
 
 **Si ta passkey supporte PRF** (la plupart des passkeys modernes), elle peut déchiffrer tes données toute seule, comme le ferait ton mot de passe. **Sinon**, elle te connecte mais le déchiffrement nécessite encore ton mot de passe (Nodea le détecte et te le demande à ce moment-là).
 
+## Qui peut voir quoi côté serveur
+
+Trois acteurs avec des privilèges différents. Pour chacun, ce qu'il voit en clair, ce qu'il ne voit pas.
+
+**L'équipe Nodea** (l'opérateur de l'instance) — accès SQL direct au serveur. Voit ton email (c'est l'identifiant OPAQUE, en clair), ton nom d'affichage, ton rôle (`user` / `admin`), ton mode de sécurité, tes heures de connexion, les passkeys enrôlées (avec leur label), les annonces, les invitations, la configuration globale. Voit que tu utilises tel module en agrégat (pas par user — les entrées modules ne portent pas de référence à ton compte). **Ne voit pas** ton mot de passe (OPAQUE), tes payloads chiffrés (modules_config, user_preferences, contenu des modules), ni quelle entrée appartient à quel user.
+
+**L'hébergeur** (cloud provider, sysadmin avec root sur le serveur). Voit tout ce que voit l'équipe Nodea, plus le filesystem, la mémoire RAM du process, les logs Postgres bas niveau (WAL, ctid). Avec le WAL, peut faire du forensic statistique « ces écritures sont arrivées proches en temps sur plusieurs tables → probablement même user » — pas du plain SQL, mais reconstructible. **Ne voit pas** la clé maîtresse (elle vit dans ton navigateur, jamais sur le serveur). En revanche, peut tampered le bundle JS livré (cf. section serveur compromis ci-dessous).
+
+**Une réquisition judiciaire** (police, justice avec une procédure formelle). L'équipe Nodea peut être contrainte de remettre tout ce qu'elle voit en SQL : email, heures de connexion, IP, blobs chiffrés, hashes anti-DoS. **Ne peut pas remettre** le contenu en clair (techniquement impossible — pas la clé). **Ne peut pas remettre** le mot de passe (techniquement impossible — OPAQUE). En pratique : « voilà l'email du compte, voilà ses heures de connexion, voilà ses fichiers chiffrés. Bon courage pour les ouvrir. »
+
+**Auto-héberge** si ces vecteurs te préoccupent. L'équipe, l'hébergeur et l'interlocuteur d'une réquisition deviennent toi — la surface de risque se réduit drastiquement (à condition que ton serveur soit sécurisé).
+
 ## Le scénario qu'on ne peut pas neutraliser : le serveur compromis
 
 Soyons honnêtes sur les limites. Le code qui chiffre tes données est servi par le serveur. Si quelqu'un prend le contrôle du serveur (intrusion, compromission de la chaîne de build, employé malveillant chez l'hébergeur…), il pourrait remplacer le JavaScript par une version qui exfiltre ton mot de passe au moment où tu te connectes.
