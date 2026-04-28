@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
@@ -21,6 +21,7 @@ import {
 } from '@/core/auth/opaque';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import Field from '@/ui/atoms/dirk/Field';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
@@ -358,45 +359,3 @@ function ResetForm(props: ResetFormProps) {
   );
 }
 
-interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
-  label: string;
-  legend?: React.ReactNode;
-  error?: string | undefined;
-}
-
-const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, legend, error, className, id, name, ...rest },
-  ref,
-) {
-  const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
-  return (
-    <div className="mb-3.5">
-      <label htmlFor={inputId} className="mb-[5px] block text-[12px] font-medium text-muted">
-        {label}
-      </label>
-      <input
-        id={inputId}
-        name={name}
-        ref={ref}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${inputId}-error` : undefined}
-        className={cn(
-          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
-          'outline-none transition-[border-color,box-shadow]',
-          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          className,
-        )}
-        {...rest}
-      />
-      {legend && !error ? (
-        <p className="mt-1 text-[11px] text-muted">{legend}</p>
-      ) : null}
-      {error ? (
-        <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
-});

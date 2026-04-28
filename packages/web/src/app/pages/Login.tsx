@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,9 +6,9 @@ import { FingerPrintIcon } from '@heroicons/react/24/outline';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
-import { cn } from '@/lib/utils';
 import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import Button from '@/ui/atoms/dirk/Button';
+import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -228,41 +228,3 @@ function isWebAuthnCancel(err: unknown): boolean {
   return name === 'NotAllowedError' || name === 'AbortError';
 }
 
-interface FieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children'> {
-  label: string;
-  error?: string | undefined;
-}
-
-const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, error, className, id, name, ...rest },
-  ref,
-) {
-  const inputId = id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
-  return (
-    <div className="mb-3.5">
-      <label htmlFor={inputId} className="mb-[5px] block text-[12px] font-medium text-muted">
-        {label}
-      </label>
-      <input
-        id={inputId}
-        name={name}
-        ref={ref}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${inputId}-error` : undefined}
-        className={cn(
-          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
-          'outline-none transition-[border-color,box-shadow]',
-          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          className,
-        )}
-        {...rest}
-      />
-      {error ? (
-        <p id={`${inputId}-error`} role="alert" className="mt-1 text-[11px] text-danger">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
-});
