@@ -14,9 +14,11 @@ import {
 } from '@/core/store/nodea-store';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
-import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/EmptyHint';
+import FilterChip from '@/ui/dirk/FilterChip';
+import GroupBlock from '@/ui/dirk/GroupBlock';
+import HoverActions from '@/ui/dirk/HoverActions';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -220,46 +222,23 @@ function PrimaryColumn({ load, total, groups, onEdit, onDelete }: PrimaryColumnP
             <GroupBlock
               key={groupLabel}
               label={groupLabel}
-              entries={items}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
+              count={items.length}
+              countNoun="entrée"
+              variant="subtitle"
+            >
+              {items.map((entry) => (
+                <EntryRow
+                  key={entry.id}
+                  entry={entry}
+                  onEdit={() => onEdit(entry)}
+                  onDelete={() => onDelete(entry)}
+                />
+              ))}
+            </GroupBlock>
           ))
         )}
       </div>
     </section>
-  );
-}
-
-interface GroupBlockProps {
-  label: string;
-  entries: JournalEntry[];
-  onEdit: (entry: JournalEntry) => void;
-  onDelete: (entry: JournalEntry) => void | Promise<void>;
-}
-
-function GroupBlock({ label, entries, onEdit, onDelete }: GroupBlockProps) {
-  return (
-    <div className="mb-9 last:mb-0">
-      <div className="mb-2 flex items-baseline justify-between border-b border-hair pb-1.5">
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink">
-          {label}
-        </h2>
-        <span className="text-[11px] tabular-nums text-muted">
-          {entries.length} {entries.length === 1 ? 'entrée' : 'entrées'}
-        </span>
-      </div>
-      <ul>
-        {entries.map((entry) => (
-          <EntryRow
-            key={entry.id}
-            entry={entry}
-            onEdit={() => onEdit(entry)}
-            onDelete={() => onDelete(entry)}
-          />
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -283,7 +262,7 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
         <JournalContent text={entry.content} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <HoverActions>
         <Button
           variant="ghost"
           size="sm"
@@ -304,7 +283,7 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
-      </div>
+      </HoverActions>
     </li>
   );
 }
@@ -350,35 +329,6 @@ function SideColumn({
         )}
       </section>
     </aside>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count?: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'cursor-pointer rounded-md px-2.5 py-1 text-[12px] tabular-nums transition-colors',
-        active
-          ? 'bg-accent-soft font-semibold text-accent-deep'
-          : 'text-muted hover:bg-bg-2 hover:text-ink',
-      )}
-    >
-      {label}
-      {count !== undefined ? <span className="ml-1.5 text-[11px] text-muted">{count}</span> : null}
-    </button>
   );
 }
 

@@ -436,7 +436,7 @@ function RemoveView({ passkey, session, onCancel, onSuccess }: RemoveViewProps) 
 
         <Button
           type="submit"
-          variant="danger"
+          variant="danger-outline"
           size="lg"
           disabled={submitting}
           className="mt-2 w-full"

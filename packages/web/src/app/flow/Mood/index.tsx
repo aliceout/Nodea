@@ -21,6 +21,7 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/EmptyHint';
+import HoverActions from '@/ui/dirk/HoverActions';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -867,7 +868,7 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <HoverActions>
         <Button
           variant="ghost"
           size="sm"
@@ -888,7 +889,7 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
-      </div>
+      </HoverActions>
     </article>
   );
 }

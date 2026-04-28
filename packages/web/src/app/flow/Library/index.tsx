@@ -36,6 +36,8 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
+import FilterChip from '@/ui/dirk/FilterChip';
+import GroupBlock from '@/ui/dirk/GroupBlock';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -489,18 +491,30 @@ function PrimaryColumn(props: PrimaryColumnProps) {
         ) : isListMode ? (
           groups
             .filter((g) => g.items.length > 0)
-            .map((g) => (
-              <GroupBlock
-                key={g.key}
-                label={g.label}
-                items={g.items}
-                covers={props.covers}
-                viewMode={viewMode}
-                onEditItem={props.onEditItem}
-                onDeleteItem={props.onDeleteItem}
-                onToggleFavorite={props.onToggleFavorite}
-              />
-            ))
+            .map((g) => {
+              const showCover = viewMode === 'list-cover';
+              return (
+                <GroupBlock
+                  key={g.key}
+                  label={g.label}
+                  count={g.items.length}
+                  countNoun="livre"
+                  variant="subtitle"
+                >
+                  {g.items.map((it) => (
+                    <ItemRow
+                      key={it.id}
+                      item={it}
+                      cover={showCover && it.cover_rid ? props.covers.get(it.cover_rid) ?? null : null}
+                      showCover={showCover}
+                      onEdit={() => props.onEditItem(it)}
+                      onDelete={() => props.onDeleteItem(it)}
+                      onToggleFavorite={() => props.onToggleFavorite(it)}
+                    />
+                  ))}
+                </GroupBlock>
+              );
+            })
         ) : viewMode === 'grid' ? (
           <GridView
             items={flatItems}
@@ -519,47 +533,6 @@ function PrimaryColumn(props: PrimaryColumnProps) {
         )}
       </div>
     </section>
-  );
-}
-
-/* ---- Group block (one per status) ------------------------------ */
-
-interface GroupBlockProps {
-  label: string;
-  items: LibraryItem[];
-  covers: Map<string, string>;
-  viewMode: LibraryViewMode;
-  onEditItem: (it: LibraryItem) => void;
-  onDeleteItem: (it: LibraryItem) => void;
-  onToggleFavorite: (it: LibraryItem) => void;
-}
-
-function GroupBlock(props: GroupBlockProps) {
-  const showCover = props.viewMode === 'list-cover';
-  return (
-    <div className="mb-9 last:mb-0">
-      <div className="mb-2 flex items-baseline justify-between border-b border-hair pb-1.5">
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink">
-          {props.label}
-        </h2>
-        <span className="text-[11px] tabular-nums text-muted">
-          {props.items.length} {props.items.length === 1 ? 'livre' : 'livres'}
-        </span>
-      </div>
-      <ul>
-        {props.items.map((it) => (
-          <ItemRow
-            key={it.id}
-            item={it}
-            cover={showCover && it.cover_rid ? props.covers.get(it.cover_rid) ?? null : null}
-            showCover={showCover}
-            onEdit={() => props.onEditItem(it)}
-            onDelete={() => props.onDeleteItem(it)}
-            onToggleFavorite={() => props.onToggleFavorite(it)}
-          />
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -1248,37 +1221,6 @@ function SideColumn({
         </section>
       ) : null}
     </aside>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count?: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'cursor-pointer rounded-sm px-2.5 py-1 text-[12px] tabular-nums transition-colors',
-        active
-          ? 'bg-accent-soft font-semibold text-accent-deep'
-          : 'text-muted hover:bg-bg-2 hover:text-ink',
-      )}
-    >
-      {label}
-      {count !== undefined ? (
-        <span className="ml-1.5 text-[11px] text-muted">{count}</span>
-      ) : null}
-    </button>
   );
 }
 

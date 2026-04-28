@@ -245,16 +245,6 @@ export default function LoginMfaPage() {
                     >
                       {submitting ? 'Vérification…' : 'Vérifier'}
                     </button>
-
-                    <div className="mt-4.5 text-center text-[12.5px] text-muted">
-                      <button
-                        type="button"
-                        onClick={() => navigate('/login', { replace: true })}
-                        className="cursor-pointer transition-colors hover:text-ink"
-                      >
-                        ← Recommencer la connexion
-                      </button>
-                    </div>
                   </form>
 
                   {/* Escalation links — TOTP code → backup code →
@@ -278,20 +268,6 @@ export default function LoginMfaPage() {
 
                   {totpMode === 'backup' ? (
                     <>
-                      <div className="mt-3 text-center text-[12px] text-muted">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setError(null);
-                            setCode('');
-                            setTotpMode('code');
-                          }}
-                          className="cursor-pointer transition-colors hover:text-ink"
-                        >
-                          ← Revenir au code TOTP
-                        </button>
-                      </div>
-
                       {/* Last-resort escalation — destructive (TOTP
                           will be wiped) so we keep it visually
                           distinct from the primary "Vérifier" CTA via
@@ -309,6 +285,20 @@ export default function LoginMfaPage() {
                       </Button>
                     </>
                   ) : null}
+
+                  {/* Always-last fallback — sits below every
+                      escalation so the visual hierarchy reads
+                      « primary action → escalations → give up
+                      and start over ». */}
+                  <div className="mt-4.5 text-center text-[12.5px] text-muted">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login', { replace: true })}
+                      className="cursor-pointer transition-colors hover:text-ink"
+                    >
+                      ← Recommencer la connexion
+                    </button>
+                  </div>
                 </>
               ) : null}
 
@@ -350,6 +340,15 @@ export default function LoginMfaPage() {
                     {submitting ? 'Vérification…' : 'Confirmer avec ma passkey'}
                   </button>
 
+                  <Button
+                    variant="danger-outline"
+                    size="lg"
+                    onClick={() => void startLost('passkey')}
+                    className="mt-6 w-full"
+                  >
+                    Demander une récupération par email
+                  </Button>
+
                   <div className="mt-4.5 text-center text-[12.5px] text-muted">
                     <button
                       type="button"
@@ -359,15 +358,6 @@ export default function LoginMfaPage() {
                       ← Recommencer la connexion
                     </button>
                   </div>
-
-                  <Button
-                    variant="danger-outline"
-                    size="lg"
-                    onClick={() => void startLost('passkey')}
-                    className="mt-6 w-full"
-                  >
-                    Demander une récupération par email
-                  </Button>
                 </>
               ) : null}
 
@@ -427,7 +417,7 @@ function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
         </p>
 
         <Button
-          variant="primary"
+          variant="danger-outline"
           size="lg"
           onClick={onConfirm}
           disabled={lost.submitting}

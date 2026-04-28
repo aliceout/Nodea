@@ -186,7 +186,7 @@ function FormView({
 
         <Button
           type="submit"
-          variant="danger"
+          variant="danger-outline"
           size="lg"
           disabled={submitting || !email.trim()}
           className="mt-2 w-full"

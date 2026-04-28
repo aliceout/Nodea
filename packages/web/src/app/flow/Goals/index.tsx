@@ -15,6 +15,9 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/EmptyHint';
+import FilterChip from '@/ui/dirk/FilterChip';
+import GroupBlock from '@/ui/dirk/GroupBlock';
+import HoverActions from '@/ui/dirk/HoverActions';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -275,55 +278,24 @@ function PrimaryColumn({
             <GroupBlock
               key={groupLabel}
               label={groupLabel}
-              entries={items}
-              onToggleStatus={onToggleStatus}
-              onDelete={onDelete}
-              onEdit={onEdit}
-            />
+              count={items.length}
+              countNoun="objectif"
+              variant="eyebrow"
+            >
+              {items.map((entry) => (
+                <GoalRow
+                  key={entry.id}
+                  entry={entry}
+                  onToggleStatus={() => onToggleStatus(entry)}
+                  onDelete={() => onDelete(entry)}
+                  onEdit={() => onEdit(entry)}
+                />
+              ))}
+            </GroupBlock>
           ))
         )}
       </div>
     </section>
-  );
-}
-
-interface GroupBlockProps {
-  label: string;
-  entries: GoalEntry[];
-  onToggleStatus: (entry: GoalEntry) => void | Promise<void>;
-  onDelete: (entry: GoalEntry) => void | Promise<void>;
-  onEdit: (entry: GoalEntry) => void;
-}
-
-function GroupBlock({
-  label,
-  entries,
-  onToggleStatus,
-  onDelete,
-  onEdit,
-}: GroupBlockProps) {
-  return (
-    <div className="mb-7 last:mb-0">
-      <div className="mb-2 flex items-baseline justify-between border-b border-hair pb-1.5">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-          {label}
-        </h2>
-        <span className="text-[11px] tabular-nums text-muted">
-          {entries.length} {entries.length === 1 ? 'objectif' : 'objectifs'}
-        </span>
-      </div>
-      <ul>
-        {entries.map((entry) => (
-          <GoalRow
-            key={entry.id}
-            entry={entry}
-            onToggleStatus={() => onToggleStatus(entry)}
-            onDelete={() => onDelete(entry)}
-            onEdit={() => onEdit(entry)}
-          />
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -358,7 +330,7 @@ function GoalRow({ entry, onToggleStatus, onDelete, onEdit }: GoalRowProps) {
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <HoverActions>
         <Button
           variant="ghost"
           size="sm"
@@ -379,7 +351,7 @@ function GoalRow({ entry, onToggleStatus, onDelete, onEdit }: GoalRowProps) {
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
-      </div>
+      </HoverActions>
     </li>
   );
 }
@@ -506,35 +478,6 @@ function SideColumn({
         </div>
       </section>
     </aside>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count?: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'cursor-pointer rounded-md px-2.5 py-1 text-[12px] tabular-nums transition-colors',
-        active
-          ? 'bg-accent-soft font-semibold text-accent-deep'
-          : 'text-muted hover:bg-bg-2 hover:text-ink',
-      )}
-    >
-      {label}
-      {count !== undefined ? <span className="ml-1.5 text-[11px] text-muted">{count}</span> : null}
-    </button>
   );
 }
 
