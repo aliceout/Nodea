@@ -5,18 +5,16 @@
 Deux tables, comme pour Library :
 
 1. **`habits_items_entries`**
-   → Une entrée = une habitude que tu veux suivre (ex. “tennis”, “méditation”).
+   → Une entrée = une habitude que tu veux suivre (ex. « tennis », « méditation »).
 
 2. **`habits_logs_entries`**
-   → Une entrée = une occurrence datée (ex. “j’ai fait tennis le 2025-08-25”).
+   → Une entrée = une occurrence datée (ex. « j'ai fait tennis le 2025-08-25 »).
    → Sert de base pour une heatmap / mesure de régularité.
 
-Les règles de sécurité et de chiffrement sont identiques aux autres modules (Mood, Goals, Review, ect) :
-
-* `module_user_id` secondaire, opaque.
-* `payload` chiffré côté client (AES-GCM).
-* `cipher_iv` IV aléatoire.
-* `guard` HMAC hidden, flux création en 2 temps (`POST init` → `PATCH promotion`).
+Les règles de sécurité et de chiffrement sont identiques à tous
+les autres modules — voir [Modules.md §1-3](../Modules.md#1-structure-commune)
+pour le détail (AES-GCM, guard HMAC, création en deux temps,
+validation `requireGuard`).
 
 ---
 
@@ -28,7 +26,7 @@ Les règles de sécurité et de chiffrement sont identiques aux autres modules (
 {
   "title": "string",           // ex. "Tennis"
   "category": "sport|santé|créativité|relation|autre",
-  "frequency": "daily|weekly|monthly|custom", 
+  "frequency": "daily|weekly|monthly|custom",
   "target": "number|optional", // nb/jour ou nb/sem si applicable
   "duration": "P6M|optional",  // période prévue, format ISO8601
   "started_at": "YYYY-MM-DD",
@@ -41,7 +39,7 @@ Les règles de sécurité et de chiffrement sont identiques aux autres modules (
 ```json
 {
   "date": "YYYY-MM-DD",
-  "item_rid": "string",  // id PB de l’habitude associée
+  "item_rid": "string",  // UUID de l'habitude associée (id côté serveur)
   "done": true
 }
 ```
@@ -50,7 +48,7 @@ Les règles de sécurité et de chiffrement sont identiques aux autres modules (
 
 ## Export / Import
 
-Format clair d’export (comme Mood/Goals/Library) :
+Format clair d'export (comme Mood/Goals/Library) :
 
 ```json
 {
@@ -75,7 +73,7 @@ Format clair d’export (comme Mood/Goals/Library) :
 ```
 
 * Export : uniquement les payloads clairs, jamais `guard`, `cipher_iv`, ni `payload` chiffré.
-* Import : flux 2 temps habituel (chiffrement local, `POST init`, `PATCH promotion`).
+* Import : flux 2 temps habituel (chiffrement local, POST init, PATCH promotion).
 
 ---
 
@@ -83,11 +81,9 @@ Format clair d’export (comme Mood/Goals/Library) :
 
 * **Tout est chiffré E2E** (le serveur ne sait pas quelles habitudes tu suis ni quand tu les as faites).
 * **Simplicité** :
-
   * `items` = définition des habitudes,
-  * `logs` = enregistrements de “fait/pas fait” à une date.
+  * `logs` = enregistrements de « fait/pas fait » à une date.
 * **Analyse** :
-
   * tu peux générer une **heatmap** à la GitHub sur base des `logs`,
   * calculer un taux de respect (nb de logs / nb attendu via `frequency+target`).
-* **Souplesse** : si une habitude s’arrête → `archived:true` dans l’item, sans effacer les logs.
+* **Souplesse** : si une habitude s'arrête → `archived:true` dans l'item, sans effacer les logs.

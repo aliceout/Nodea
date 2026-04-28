@@ -26,20 +26,21 @@ Les champs `positive1..3` sont requis (objectif « gratitude »). `question`
 
 ## Sécurité
 
-- Chiffrement AES-GCM avec la clé maîtresse (CryptoKey non extractible).  
-- Guard HMAC dérivé de la clé maîtresse + `module_user_id + id`.  
-- Création en deux temps (`POST guard:"init"` puis `PATCH` promotion).  
-- Update/Delete nécessitent `?sid=<module_user_id>&d=<guard>`.  
-- Le cache de guards (`nodea.guards.v1`) est purgé au login/logout.
+Mood applique les règles communes à tous les modules — voir
+[Modules.md §1-3](../Modules.md#1-structure-commune) pour le détail
+(AES-GCM, guard HMAC, création en deux temps, validation
+`requireGuard`).
 
 ## Export / Import
 
-- Export clair : tableau `modules.mood[]` dans `export.json`.  
-- Import : re-chiffre localement puis rejoue `POST` + promotion.  
-- Les plugins `core/utils/ImportExport/Mood.jsx` :  
-  - détectent les doublons via `date` (`getNaturalKey`).  
-  - paginent les lectures (`perPage=200`).  
-  - ignorent les payloads illisibles (log local uniquement).  
+- Export clair : tableau `modules.mood[]` dans `export.json`.
+- Import : re-chiffre localement puis rejoue le flux POST init →
+  PATCH promotion.
+- Clé naturelle de déduplication : la `date` (une entrée par jour
+  au maximum côté client).
+- Pagination de la lecture : 200 entrées par requête.
+- Les payloads illisibles (clé maître changée, corruption) sont
+  loggés localement et ignorés — pas de blocage de l'import.  
 
 ### Exemple d’export
 

@@ -16,7 +16,7 @@ Docker-compose deployment bundle.
 │   ├── api/        # Node 22 · Hono · Drizzle · PostgreSQL 16
 │   ├── web/        # React 19 · Vite · Tailwind · Zustand · TypeScript strict
 │   └── shared/     # Zod schemas + branded crypto types, used by both sides
-├── documentation/  # This folder
+├── docs/           # This folder
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -75,10 +75,10 @@ the factory loops over. There is nowhere to forget a guard.
 - `requireAdmin` — stacks on `requireUser` and 403s non-admin roles.
 - `requireGuard` — inside `collection-factory`, validates the HMAC
   guard query parameter on update/delete operations.
-- `rateLimit` — in-memory fixed-window, keyed on IP. Applied to every
-  `/auth/*` mutation (`/auth/register`, `/auth/register/activate`,
-  `/auth/register/invite-info`, `/auth/login`, `/auth/request-reset`,
-  `/auth/reset`).
+- `rateLimit` — in-memory fixed-window, keyed on IP. Applied to
+  every `/auth/*` mutation and a few non-auth routes (library
+  lookup). Full catalogue with windows + justification in
+  [`Security.md §5.1`](./Security.md#51-rate-limit-table).
 
 ### Auth flow
 
@@ -167,15 +167,11 @@ the factory loops over. There is nowhere to forget a guard.
   - `/finish` purges every user-owned encrypted row + replaces
     every credential blob in the same transaction.
 
-- **Change-email / delete-self** (Phase 2D):
-  - Both routes take an `OpaquePasswordProof` body
-    (`{ proofLoginToken, proofFinishLoginRequest }`) — same shape
-    as change-password's proof. Server validates via
-    `verifyPasswordProof` (consume the login state, run
-    `server.finishLogin`).
-  - Phase 7B will migrate these to the `requireFreshPassword`
-    middleware so the proof is cached for 5 min across multiple
-    privileged calls (foundation landed in 7A — see below).
+- **Change-email / delete-self**:
+  - Both routes are gated by `requireFreshPassword` (see Re-auth
+    foundation below) — no embedded password proof in the body.
+    The caller has run `/auth/reauth/password` within the last
+    5 minutes, which stamps `sessions.reauth_password_at`.
 
 - **Re-auth foundation + matrix wiring** (Phase 7A + 7B —
   `routes/auth-reauth.ts`,
@@ -400,12 +396,15 @@ sequential to avoid row-level interference. Setup under
 [`packages/api/src/test/setup.ts`](../packages/api/src/test/setup.ts)
 runs `TRUNCATE … CASCADE` before each test, and forces
 `EMAIL_SERVICE_IMPL=recording` (cf. `vitest.config.ts`) so suites can
-assert on outgoing mail without spinning up Mailpit. 98 integration
-tests at the time of writing, covering auth (single-form register,
-invite-bound + open paths, activation, login activation gate),
-admin CRUD, invite send/resend/revoke, app settings toggle,
-collection round-trips, announcements, user preferences, password
-reset.
+assert on outgoing mail without spinning up Mailpit. 221 integration
+tests at the time of writing, covering register / login / activation
+gates, OPAQUE round-trips, OPAQUE re-auth, change-password / reset /
+change-email / delete-self, recovery-code KEK, passkey enroll +
+login + PRF unwrap, TOTP enroll + verify, stepped MFA (TOTP +
+passkey-as-2FA), security-mode change with §5.4 session rotation,
+MFA bypass-by-email, admin CRUD, invites (send / resend / revoke),
+collection round-trips, announcements, user preferences. End-to-
+end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 
 ---
 
@@ -494,9 +493,10 @@ reset.
 
 ### Tests
 
-Vitest + jsdom. Crypto round-trips (AES, HKDF, envelope, guard
-derivation), base64 encoders, the typed HTTP client (mocked fetch),
-and the Zustand store. 56 unit tests at the time of writing.
+Vitest + jsdom. Crypto round-trips (AES, HKDF, factor-wrap, guard
+derivation, passkey-PRF unwrap), base64 encoders, the typed HTTP
+client (mocked fetch), and the Zustand store. 83 unit tests at the
+time of writing.
 
 ---
 

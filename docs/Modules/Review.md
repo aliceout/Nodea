@@ -7,23 +7,29 @@ exactement.
 
 ## 1. Table `review_entries`
 
-* **Type** : `base`
-* **Accès** (règles PocketBase identiques à Mood/Goals) :
+Schéma commun à tous les modules (cf. [Modules.md §1](../Modules.md#1-structure-commune)).
+Validation des mutations via `requireGuard(reviewEntries)` côté
+api — le tuple `(user, sid, guard)` est vérifié dans une seule
+passe centralisée par le `collection-factory`.
 
-  * `list/view` : `record.module_user_id = @request.query.sid`
-  * `update/delete` : idem **et** `record.guard = @request.query.d`
+**Accès** :
 
-**Champs système** (schéma commun à tous les modules) :
+* `list/view` : par `module_user_id` (query `?sid=`).
+* `update/delete` : `?sid=...&d=<guard>` ; le guard est validé
+  contre la valeur stockée serveur, jamais renvoyée en lecture.
 
-| Champ            | Type     | Requis | Hidden | Notes                          |
-| ---------------- | -------- | ------ | ------ | ------------------------------ |
-| `id`             | text PK  | yes    | no     | Généré PB                      |
-| `module_user_id` | text     | yes    | no     | Id secondaire opaque, ex `r_…` |
-| `payload`        | text     | yes    | no     | Base64URL d'un blob AES-GCM    |
-| `cipher_iv`      | text     | yes    | no     | IV AES-GCM                     |
-| `guard`          | text     | yes    | yes    | HMAC déterministe, hidden      |
-| `created`        | autodate | auto   | no     |                                |
-| `updated`        | autodate | auto   | no     |                                |
+**Champs système** :
+
+| Champ            | Type           | Requis | Notes                                          |
+| ---------------- | -------------- | ------ | ---------------------------------------------- |
+| `id`             | `text` PK      | oui    | UUID généré côté serveur                       |
+| `user_id`        | `text`         | oui    | FK → `users.id`, **ON DELETE CASCADE**         |
+| `module_user_id` | `text`         | oui    | Id secondaire opaque, ex. `r_…`                |
+| `payload`        | `text`         | oui    | Base64 d'un blob AES-GCM (contenu chiffré)     |
+| `cipher_iv`      | `text`         | oui    | IV AES-GCM (12 octets, base64)                 |
+| `guard`          | `text`         | oui    | HMAC stocké, jamais renvoyé en lecture         |
+| `created_at`     | `timestamptz`  | auto   |                                                |
+| `updated_at`     | `timestamptz`  | auto   |                                                |
 
 ---
 
