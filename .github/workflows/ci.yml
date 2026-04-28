@@ -80,6 +80,20 @@ jobs:
       - name: Build
         run: pnpm -r build
 
+      # Upload the web bundle's integrity manifest as a CI artifact so
+      # a self-hoster (or any auditor) can download the SHA-384
+      # fingerprints of every emitted asset for the commit under test
+      # and compare against what their deployed instance is actually
+      # serving. See `documentation/Security.md` §7.2 for the
+      # verification procedure.
+      - name: Upload web INTEGRITY.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-integrity-${{ github.sha }}
+          path: packages/web/dist/INTEGRITY.txt
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Write API .env for tests
         run: |
           cat > packages/api/.env <<EOF

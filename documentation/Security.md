@@ -203,7 +203,76 @@ there is no record id to authenticate, the user *is* the record, and
 
 ---
 
-## 7. Developer checklist
+## 7. The web app supply-chain limit (must read)
+
+Every E2E-encrypted webapp shares one fundamental weakness: **a
+compromised server can serve modified JavaScript that exfiltrates
+the user's main key before it is used**. The crypto code is loaded
+fresh from the server on every page visit, so any tampering with
+the served bundle bypasses the entire E2E model. This is not
+specific to Nodea — Bitwarden's web vault, Proton Mail web,
+Standard Notes web, Cryptee, all face the same problem. Their
+mobile and desktop apps mitigate by shipping a signed binary that
+isn't re-fetched on each launch; the browser is the gap.
+
+What we ship in Nodea to *narrow* that gap (mitigate, not eliminate):
+
+### 7.1 Subresource Integrity on the entry chunk
+
+`pnpm --filter @nodea/web build` emits `dist/index.html` with
+`integrity="sha384-…" crossorigin="anonymous"` on the entry
+script and the global stylesheet. The browser refuses to execute
+those files if their SHA-384 doesn't match the declared hash, so a
+proxy / compromised host that swaps the entry chunk for a
+malicious one is blocked at the loader.
+
+**Limitation** : runtime-loaded chunks (route-level `React.lazy`
+imports — every `/login`, `/totp`, `/passkeys`, every `/flow/*`
+module) are NOT covered by browser SRI in the current build. Their
+hashes are listed in `dist/INTEGRITY.txt` for manual verification
+(see §7.2) but Vite's `<link rel="modulepreload">` insertion
+doesn't yet wire `integrity=` for us. A determined attacker who
+can serve a modified lazy chunk bypasses SRI today; the entry
+chunk itself stays protected.
+
+### 7.2 Build integrity manifest (`INTEGRITY.txt`)
+
+The same build emits `dist/INTEGRITY.txt` listing every asset's
+SHA-384 (base64). The CI workflow uploads it as the
+`web-integrity-<commit>` artifact (90-day retention) on every push,
+and the published GitHub Release for a tagged version attaches the
+same file. A user (or auditor, or self-hoster) verifies their
+served bundle by:
+
+```sh
+# Compute hashes locally on the deployed instance
+( cd /var/www/nodea/dist
+  sha384sum index.html assets/* \
+  | awk '{ printf "%s\t%s\n", $2, $1 }' )
+```
+
+then comparing against the official `INTEGRITY.txt` for the
+matching commit. A divergence means the served files are not what
+the source repo would build at that commit — either a build-time
+issue (different toolchain version) or a server compromise.
+
+The check is manual and out-of-band, which is the point: the
+trust anchor is the published release on GitHub, not the running
+server.
+
+### 7.3 Self-hosting recommendation
+
+For threat models where a server compromise is plausible
+(activists, journalists, anyone who'd be specifically targeted),
+the right answer is to **host your own Nodea instance from a
+known-good commit**. The server you control = a server you can
+audit. Nodea is designed for that exact deployment shape:
+docker-compose, no SaaS coupling, every secret loaded from your
+own Infisical / `.env`.
+
+---
+
+## 8. Developer checklist
 
 - Generate a fresh IV per AES-GCM encryption (`crypto.getRandomValues`).
 - Never log / persist a `CryptoKey`, raw main key, or `guard`.
