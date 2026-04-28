@@ -26,6 +26,7 @@ import {
 } from '@/core/api/modules/library';
 import { moodClient } from '@/core/api/modules/mood';
 import { passageClient } from '@/core/api/modules/passage';
+import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/journal-markdown';
 import {
   useNodeaStore,
@@ -670,12 +671,21 @@ function JournalBody({ onClose }: JournalBodyProps) {
       ? s.composer.editing
       : null,
   );
+  // Drafts live for « new entry » flows only — when editing an
+  // existing record the canonical state is the server payload.
+  const {
+    hydrated: draftHydrated,
+    hydrating: draftHydrating,
+    save: saveDraft,
+    clear: clearDraft,
+  } = useJournalDraft();
 
   const [thread, setThread] = useState(editing?.payload.thread ?? '');
   const [content, setContent] = useState(editing?.payload.content ?? '');
   const [threadOptions, setThreadOptions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
   // Visual mode is the Word-like contentEditable surface (default
   // for non-technical users); Markdown mode shows the raw source for
   // anyone who'd rather type `**foo**` directly. Storage stays
@@ -683,6 +693,28 @@ function JournalBody({ onClose }: JournalBodyProps) {
   const [editorMode, setEditorMode] = useState<'visual' | 'markdown'>('visual');
 
   const isEdit = editing !== null;
+
+  // Auto-load any draft sitting in localStorage as soon as it
+  // surfaces from `useJournalDraft`. Skipped when editing or when
+  // the user has already typed something (we don't want to clobber
+  // active input). The « brouillon repris » banner stays visible
+  // until the user submits or wipes it.
+  useEffect(() => {
+    if (isEdit || draftHydrating || draftRestored) return;
+    if (!draftHydrated) return;
+    if (thread.trim() !== '' || content.trim() !== '') return;
+    setThread(draftHydrated.thread);
+    setContent(draftHydrated.content);
+    setDraftRestored(true);
+  }, [isEdit, draftHydrating, draftHydrated, draftRestored, thread, content]);
+
+  // Persist every keystroke (debounced inside `saveDraft`). Skip
+  // the edit path — that flow's source-of-truth is the server
+  // record, no draft slot involved.
+  useEffect(() => {
+    if (isEdit) return;
+    saveDraft({ thread, content });
+  }, [thread, content, isEdit, saveDraft]);
 
   // Pull existing threads once on mount so the input can offer them
   // as suggestions. Existing entries that pre-date the
@@ -749,6 +781,10 @@ function JournalBody({ onClose }: JournalBodyProps) {
         await passageClient.update(moduleUserId, mainKey, editing.id, payload);
       } else {
         await passageClient.create(moduleUserId, mainKey, payload);
+        // Successful save → wipe the draft slot so the next open
+        // starts fresh instead of resurrecting what the user just
+        // submitted.
+        clearDraft();
       }
       bumpJournalVersion();
       onClose();
@@ -763,6 +799,24 @@ function JournalBody({ onClose }: JournalBodyProps) {
   return (
     <>
     <div className="space-y-3 px-[22px] pt-3.5 pb-3">
+      {draftRestored ? (
+        <div className="flex items-baseline justify-between gap-2 rounded-sm border-l-2 border-accent bg-accent-soft/40 px-3 py-1.5 text-[12px] text-accent-deep">
+          <span>Brouillon en cours repris.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setThread('');
+              setContent('');
+              setDraftRestored(false);
+              clearDraft();
+            }}
+            className="cursor-pointer text-[11px] underline-offset-2 hover:underline"
+          >
+            Repartir à zéro
+          </button>
+        </div>
+      ) : null}
+
       <ThreadSuggestInput
         value={thread}
         onChange={setThread}
