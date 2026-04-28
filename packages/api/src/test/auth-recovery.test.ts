@@ -19,7 +19,7 @@ import { client, ready } from '@serenity-kit/opaque';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { users } from '../db/schema.ts';
+import { sessions, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   loginAs,
@@ -126,9 +126,14 @@ describe('POST /auth/security/recovery-code', () => {
     expect(row!.wrappedKekRecovery).toBe(second.body.wrappedKekRecovery);
   });
 
-  it('rejects 401 invalid_credentials when the OPAQUE proof is bogus', async () => {
-    await seedUser('rec-bogus-proof@example.com');
-    const cookie = await loginAs(app, 'rec-bogus-proof@example.com', TEST_PASSWORD);
+  it('rejects 401 reauth_required when the session is stale (Phase 7B)', async () => {
+    await seedUser('rec-stale@example.com');
+    const cookie = await loginAs(app, 'rec-stale@example.com', TEST_PASSWORD);
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
 
     const entropy = new Uint8Array(16);
     webcrypto.getRandomValues(entropy);
@@ -137,12 +142,14 @@ describe('POST /auth/security/recovery-code', () => {
         wrappedKekRecovery: bytesToBase64(new Uint8Array(randomBytes(48))),
         wrappedKekRecoveryIv: bytesToBase64(new Uint8Array(randomBytes(12))),
         recoveryCodeHash: sha256Hex(entropy),
-        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
-        proofFinishLoginRequest: 'bogus',
       }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 
   it('rejects 401 without a session cookie', async () => {

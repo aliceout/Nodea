@@ -18,7 +18,7 @@ import { eq } from 'drizzle-orm';
 import { generate as otplibGenerate } from 'otplib';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { mfaTotp, mfaTotpRecoveryCodes, users } from '../db/schema.ts';
+import { mfaTotp, mfaTotpRecoveryCodes, sessions, users } from '../db/schema.ts';
 import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
@@ -49,19 +49,29 @@ describe('POST /auth/totp/enroll/start', () => {
   it('401 unauthenticated', async () => {
     const res = await app.request(
       '/auth/totp/enroll/start',
-      jsonPost({ proofLoginToken: 'x', proofFinishLoginRequest: 'y' }),
+      jsonPost({}),
     );
     expect(res.status).toBe(401);
   });
 
-  it('401 with a forged password proof', async () => {
-    await seedUser('totp-bad-proof@example.com');
-    const cookie = await loginAs(app, 'totp-bad-proof@example.com', TEST_PASSWORD);
+  it('401 reauth_required when the session is stale (Phase 7B)', async () => {
+    await seedUser('totp-stale@example.com');
+    const cookie = await loginAs(app, 'totp-stale@example.com', TEST_PASSWORD);
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
+
     const res = await app.request('/auth/totp/enroll/start', {
-      ...jsonPost({ proofLoginToken: 'forged', proofFinishLoginRequest: 'forged' }),
+      ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 
   it('persists a pending mfa_totp row + 10 backup codes, returns secret + URI + codes', async () => {

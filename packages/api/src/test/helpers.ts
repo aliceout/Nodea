@@ -154,14 +154,21 @@ export async function loginAs(
 }
 
 /* ============================================================================
- * `passwordProofFor` — runs a fresh /auth/login/start + client.finishLogin
- * round-trip and returns the body shape the new mutating routes
- * (change-password, change-email, delete-self) expect.
+ * Pre-7B helper kept as a no-op data producer for backward compat.
  *
- * Pairs with the proof verification helper in `routes/auth.ts`. The
- * resulting `proofLoginToken` is single-use — each mutating call
- * needs its own.
- * ========================================================================== */
+ * Mutating routes used to take an embedded `OpaquePasswordProof`
+ * body and `passwordProofFor` returned exactly that shape. Phase 7B
+ * moved the gate to a server-side `requireFreshPassword` middleware
+ * keyed on `sessions.reauth_password_at`; the tokens this helper
+ * produces are now silently stripped by zod (the `mode` /
+ * `newEmail` schemas no longer declare them). The fields stay
+ * harmlessly along for the ride.
+ *
+ * Tests that just want a fresh-password gate to pass should rely on
+ * `loginAs` — which itself stamps `reauth_password_at` at finish.
+ * Tests that want to explicitly exercise the re-auth path should
+ * use {@link freshenReauth} below.
+ */
 
 export interface PasswordProofPayload {
   proofLoginToken: string;
@@ -200,6 +207,60 @@ export async function passwordProofFor(
     proofLoginToken: loginToken,
     proofFinishLoginRequest: finished.finishLoginRequest,
   };
+}
+
+/* ============================================================================
+ * `freshenReauth` (Phase 7B) — runs the /auth/reauth/password OPAQUE
+ * round-trip on the calling session cookie so the next mutating
+ * action passes the `requireFreshPassword` middleware.
+ *
+ * Most tests don't need this at all — the cookie returned by
+ * `loginAs` already lands a fresh `reauth_password_at` (login finish
+ * stamps it). Use `freshenReauth` only when the test explicitly
+ * wants to exercise the re-auth path (or when it backdated the
+ * timestamp on purpose).
+ * ========================================================================== */
+
+export async function freshenReauth(
+  app: RequestableApp,
+  cookie: string,
+  password: string,
+): Promise<void> {
+  await ready;
+  const { clientLoginState, startLoginRequest } = client.startLogin({ password });
+  const startRes = await app.request('/auth/reauth/password/start', {
+    ...jsonPost({ startLoginRequest }),
+    headers: { 'content-type': 'application/json', cookie },
+  });
+  if (startRes.status !== 200) {
+    throw new Error(
+      `freshenReauth: /auth/reauth/password/start failed (${startRes.status}: ${await startRes.text()})`,
+    );
+  }
+  const { loginResponse, loginToken } = (await startRes.json()) as {
+    loginResponse: string;
+    loginToken: string;
+  };
+  const finished = client.finishLogin({
+    password,
+    clientLoginState,
+    loginResponse,
+  });
+  if (!finished) {
+    throw new Error('freshenReauth: client.finishLogin returned undefined');
+  }
+  const finishRes = await app.request('/auth/reauth/password/finish', {
+    ...jsonPost({
+      loginToken,
+      finishLoginRequest: finished.finishLoginRequest,
+    }),
+    headers: { 'content-type': 'application/json', cookie },
+  });
+  if (finishRes.status !== 200) {
+    throw new Error(
+      `freshenReauth: /auth/reauth/password/finish failed (${finishRes.status}: ${await finishRes.text()})`,
+    );
+  }
 }
 
 /** Extract the session cookie from a Set-Cookie header, for chaining requests. */

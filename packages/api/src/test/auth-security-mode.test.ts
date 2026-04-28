@@ -21,7 +21,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { authFactors, mfaTotp, users } from '../db/schema.ts';
+import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   loginAs,
@@ -91,20 +91,25 @@ describe('POST /auth/security-mode/change — auth + proof', () => {
     expect(res.status).toBe(401);
   });
 
-  it('401 with a forged password proof', async () => {
-    const u = await seedUser('mode-bad-proof@example.com');
+  it('401 reauth_required when the session is stale (Phase 7B)', async () => {
+    const u = await seedUser('mode-stale@example.com');
     await enableTotpDirect(u.id);
-    const cookie = await loginAs(app, 'mode-bad-proof@example.com', TEST_PASSWORD);
+    const cookie = await loginAs(app, 'mode-stale@example.com', TEST_PASSWORD);
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
 
     const res = await app.request('/auth/security-mode/change', {
-      ...jsonPost({
-        mode: 'always_totp',
-        proofLoginToken: 'forged',
-        proofFinishLoginRequest: 'forged',
-      }),
+      ...jsonPost({ mode: 'always_totp' }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 
   it('400 invalid_body for an unknown mode value', async () => {

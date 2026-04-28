@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { invites, users } from '../db/schema.ts';
+import { invites, sessions, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
@@ -157,24 +157,32 @@ describe('POST /auth/change-password (OPAQUE 2-step)', () => {
     expect(cookieNewLogin).toBeTruthy();
   });
 
-  it('rejects when the current password is wrong (proof fails at /start)', async () => {
-    await seedUser('rotate2@example.com');
+  it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
+    const u = await seedUser('rotate2@example.com');
     const cookie = await loginAs(app, 'rotate2@example.com', TEST_PASSWORD);
 
-    // The wrong currentPassword surfaces as `client.finishLogin`
-    // returning undefined — `passwordProofFor` (helpers.ts) throws
-    // in that case, so we exercise the route directly with a bogus
-    // proof to assert the server-side 401.
+    // Backdate both reauth timestamps past the 5-min window so
+    // requireFreshPasswordOrPasskey refuses. Pre-7B this slot used
+    // an embedded OPAQUE proof; the equivalent now is a stale
+    // session timestamp — coverage of the OPAQUE proof path itself
+    // lives in `auth-reauth.test.ts`.
+    void u;
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    const stale = new Date(Date.now() - 6 * 60_000);
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: stale, reauthPasskeyAt: stale })
+      .where(eq(sessions.id, sessionId));
+
     const startRes = await app.request('/auth/change-password/start', {
-      ...json({
-        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
-        proofFinishLoginRequest: 'bogus',
-        registrationRequest: 'whatever',
-      }),
+      ...json({ registrationRequest: 'whatever' }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(startRes.status).toBe(401);
-    expect(await startRes.json()).toMatchObject({ error: 'invalid_credentials' });
+    expect(await startRes.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password_or_passkey',
+    });
   });
 });
 
@@ -251,20 +259,28 @@ describe('PATCH /auth/email', () => {
     expect(meBody.email).toBe(newEmail);
   });
 
-  it('rejects a bogus OPAQUE proof (401)', async () => {
+  it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
     await seedUser('rename2@example.com');
     const cookie = await loginAs(app, 'rename2@example.com', TEST_PASSWORD);
+
+    // Backdate the password reauth stamp past the 5-min window —
+    // requireFreshPassword refuses with reauth_required.
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({
-        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
-        proofFinishLoginRequest: 'bogus',
-        newEmail,
-      }),
+      body: JSON.stringify({ newEmail }),
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 
   it('409 when the new email is already taken', async () => {
@@ -393,19 +409,26 @@ describe('DELETE /auth/me', () => {
     expect(me.status).toBe(401);
   });
 
-  it('rejects a bogus OPAQUE proof (401)', async () => {
+  it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
     await seedUser('survivor@example.com');
     const cookie = await loginAs(app, 'survivor@example.com', TEST_PASSWORD);
+
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
 
     const res = await app.request('/auth/me', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({
-        proofLoginToken: 'never-issued-token-aaaaaaaaaaaaaaaa',
-        proofFinishLoginRequest: 'bogus',
-      }),
+      body: JSON.stringify({}),
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 });
 

@@ -25,8 +25,8 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { authFactors, users } from '../db/schema.ts';
-import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './helpers.ts';
+import { authFactors, sessions, users } from '../db/schema.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
 
@@ -110,43 +110,41 @@ describe('GET /auth/me — passkey counts', () => {
 
 describe('POST /auth/passkey/enroll/start', () => {
   it('401 unauthenticated without a cookie', async () => {
-    const res = await app.request(
-      '/auth/passkey/enroll/start',
-      jsonPost({ proofLoginToken: 'x', proofFinishLoginRequest: 'y' }),
-    );
+    const res = await app.request('/auth/passkey/enroll/start', jsonPost({}));
     expect(res.status).toBe(401);
   });
 
-  it('401 invalid_credentials when the password proof is forged', async () => {
-    await seedUser('enroll-bad-proof@example.com');
+  it('401 reauth_required when reauth_password_at is stale (>5 min)', async () => {
+    await seedUser('enroll-stale@example.com');
     const cookie = await loginAs(
       app,
-      'enroll-bad-proof@example.com',
+      'enroll-stale@example.com',
       TEST_PASSWORD,
     );
+    // Backdate the freshness stamp so the middleware refuses.
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
     const res = await app.request('/auth/passkey/enroll/start', {
-      ...jsonPost({
-        proofLoginToken: 'forged-token',
-        proofFinishLoginRequest: 'forged-finish',
-      }),
+      ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(401);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('invalid_credentials');
+    const body = (await res.json()) as { error: string; reauth_required?: string };
+    expect(body.error).toBe('reauth_required');
+    expect(body.reauth_required).toBe('password');
   });
 
   it('200 with creationOptions + persists challenge on session', async () => {
     await seedUser('enroll-ok@example.com');
     const cookie = await loginAs(app, 'enroll-ok@example.com', TEST_PASSWORD);
-    const proof = await passwordProofFor(
-      app,
-      'enroll-ok@example.com',
-      TEST_PASSWORD,
-    );
+    // Login already stamped reauth_password_at, so the
+    // requireFreshPassword middleware passes naturally.
 
     const res = await app.request('/auth/passkey/enroll/start', {
-      ...jsonPost(proof),
+      ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(200);
@@ -213,34 +211,13 @@ describe('GET /auth/passkey/list', () => {
  * ========================================================================== */
 
 describe('PATCH /auth/passkey/:id/label', () => {
-  it('401 invalid_credentials when proof is bad', async () => {
-    const u = await seedUser('rename-bad@example.com');
-    const pk = await seedPasskey(u.id);
-    const cookie = await loginAs(app, 'rename-bad@example.com', TEST_PASSWORD);
-
-    const res = await app.request(`/auth/passkey/${pk.id}/label`, {
-      ...jsonPatch({
-        label: 'X',
-        proofLoginToken: 'bad',
-        proofFinishLoginRequest: 'bad',
-      }),
-      headers: { 'content-type': 'application/json', cookie },
-    });
-    expect(res.status).toBe(401);
-  });
-
-  it('renames the passkey when proof is valid', async () => {
+  it('renames the passkey on a fresh-password session', async () => {
     const u = await seedUser('rename-ok@example.com');
     const pk = await seedPasskey(u.id, { label: 'old' });
     const cookie = await loginAs(app, 'rename-ok@example.com', TEST_PASSWORD);
-    const proof = await passwordProofFor(
-      app,
-      'rename-ok@example.com',
-      TEST_PASSWORD,
-    );
 
     const res = await app.request(`/auth/passkey/${pk.id}/label`, {
-      ...jsonPatch({ label: 'new', ...proof }),
+      ...jsonPatch({ label: 'new' }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(200);
@@ -253,23 +230,16 @@ describe('PATCH /auth/passkey/:id/label', () => {
   });
 
   it('404s for another user\'s passkey', async () => {
-    const a = await seedUser('rename-a@example.com');
+    await seedUser('rename-a@example.com');
     const b = await seedUser('rename-b@example.com');
     const pkB = await seedPasskey(b.id);
     const cookieA = await loginAs(app, 'rename-a@example.com', TEST_PASSWORD);
-    const proof = await passwordProofFor(
-      app,
-      'rename-a@example.com',
-      TEST_PASSWORD,
-    );
 
     const res = await app.request(`/auth/passkey/${pkB.id}/label`, {
-      ...jsonPatch({ label: 'hijack', ...proof }),
-      headers: { 'content-type': 'application/json', cookieA },
+      ...jsonPatch({ label: 'hijack' }),
+      headers: { 'content-type': 'application/json', cookie: cookieA },
     });
-    expect(res.status).toBe(401);
-    // (cookie header name is wrong on purpose above — make sure the
-    // valid-cookie variant 404s rather than 200s)
+    expect(res.status).toBe(404);
   });
 });
 
@@ -278,18 +248,13 @@ describe('PATCH /auth/passkey/:id/label', () => {
  * ========================================================================== */
 
 describe('POST /auth/passkey/:id/remove', () => {
-  it('removes the passkey when proof is valid', async () => {
+  it('removes the passkey on a fresh-password session', async () => {
     const u = await seedUser('remove-ok@example.com');
     const pk = await seedPasskey(u.id);
     const cookie = await loginAs(app, 'remove-ok@example.com', TEST_PASSWORD);
-    const proof = await passwordProofFor(
-      app,
-      'remove-ok@example.com',
-      TEST_PASSWORD,
-    );
 
     const res = await app.request(`/auth/passkey/${pk.id}/remove`, {
-      ...jsonPost(proof),
+      ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(200);
@@ -311,14 +276,9 @@ describe('POST /auth/passkey/:id/remove', () => {
       .where(eq(users.id, u.id));
 
     const cookie = await loginAs(app, 'downgrade@example.com', TEST_PASSWORD);
-    const proof = await passwordProofFor(
-      app,
-      'downgrade@example.com',
-      TEST_PASSWORD,
-    );
 
     const res = await app.request(`/auth/passkey/${pk.id}/remove`, {
-      ...jsonPost(proof),
+      ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(200);
@@ -344,16 +304,11 @@ describe('POST /auth/passkey/:id/remove', () => {
       'downgrade-non-prf@example.com',
       TEST_PASSWORD,
     );
-    const proof = await passwordProofFor(
-      app,
-      'downgrade-non-prf@example.com',
-      TEST_PASSWORD,
-    );
 
     // Removing the non-PRF passkey leaves the PRF one in place — mode
     // must stay at 'maximum'.
     const res = await app.request(`/auth/passkey/${nonPrfPk.id}/remove`, {
-      ...jsonPost(proof),
+      ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(200);
