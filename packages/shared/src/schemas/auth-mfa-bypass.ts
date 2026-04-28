@@ -10,17 +10,20 @@ import { z } from 'zod';
  *      clicks "j'ai perdu mon TOTP" / "j'ai perdu ma passkey".
  *      `POST /auth/mfa/bypass/request { factor }` runs the §6.2
  *      eligibility check ("perdu 2 trucs = niqué" → 409
- *      `multi_factor_loss`) and emails a confirm + cancel link
- *      (32-byte tokens, SHA-256 hashed in DB).
+ *      `multi_factor_loss`) and emails a single confirm link
+ *      (32-byte token, SHA-256 hashed in DB).
  *
  *   2. **Confirm via email** — `GET /auth/mfa/bypass/confirm?t=<token>`
- *      flips `confirmed_at`. The 48h "real" delay starts here, NOT
- *      at request time. Cancel via `GET /auth/mfa/bypass/cancel`
- *      from the email.
+ *      flips `confirmed_at`. The 7-day "real" delay starts here, NOT
+ *      at request time. There is no email cancel link: a successful
+ *      login auto-cancels every pending bypass server-side, so the
+ *      legit owner just signs in normally to defang a forged
+ *      request — no extra click needed (and we keep an attacker-
+ *      controlled "click here to defuse" surface out of the inbox).
  *
  *   3. **Apply at next login** — when the OPAQUE / passkey login
  *      finishes, the server checks for a confirmed bypass past
- *      its 48h delay. If found, applies the side-effect (disable
+ *      its 7-day delay. If found, applies the side-effect (disable
  *      TOTP / delete all passkeys) + downgrades `security_mode`
  *      auto + flags `consumed_at`. The user finishes login without
  *      the bypassed factor.
@@ -70,13 +73,13 @@ export const MfaBypassConfirmResponseSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('ok'),
     factor: z.enum(['totp', 'passkey']),
-    /** When the bypass becomes applicable at next login (now + 48h). */
+    /** When the bypass becomes applicable at next login (now + 7d). */
     earliestApplyAt: z.string(),
   }),
   z.object({
     status: z.literal('already_confirmed'),
     factor: z.enum(['totp', 'passkey']),
-    /** Same value as for `ok`, computed from `confirmedAt + 48h`. */
+    /** Same value as for `ok`, computed from `confirmedAt + 7d`. */
     earliestApplyAt: z.string(),
   }),
   z.object({ status: z.literal('cancelled') }),
@@ -88,22 +91,3 @@ export type MfaBypassConfirmResponse = z.infer<
   typeof MfaBypassConfirmResponseSchema
 >;
 
-/* ============================================================================
- * `GET /auth/mfa/bypass/cancel?t=<token>` — email-link cancellation
- * ========================================================================== */
-
-export const MfaBypassCancelResponseSchema = z.discriminatedUnion('status', [
-  z.object({
-    status: z.literal('ok'),
-    factor: z.enum(['totp', 'passkey']),
-  }),
-  z.object({
-    status: z.literal('already_cancelled'),
-    factor: z.enum(['totp', 'passkey']),
-  }),
-  z.object({ status: z.literal('consumed') }),
-  z.object({ status: z.literal('unknown') }),
-]);
-export type MfaBypassCancelResponse = z.infer<
-  typeof MfaBypassCancelResponseSchema
->;

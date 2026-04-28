@@ -93,7 +93,7 @@ export const authFactorKind = pgEnum('auth_factor_kind', ['passkey']);
 
 /**
  * MFA factor a bypass request applies to. Both kinds share the same
- * 48h-after-confirmation flow (Auth-Spec §7.8); the `factor` column
+ * 7-day-after-confirmation flow (Auth-Spec §7.8); the `factor` column
  * disambiguates which side-effect the bypass triggers at consumption.
  */
 export const mfaFactor = pgEnum('mfa_factor', ['totp', 'passkey']);
@@ -380,7 +380,7 @@ export const mfaTotpRecoveryCodes = pgTable(
 /**
  * MFA bypass requests — for users who lost TOTP or all passkeys.
  *
- * Flow: 48h delay after the user clicks the email confirm link.
+ * Flow: 7-day delay after the user clicks the email confirm link.
  * Eligibility check (cf. Auth-Spec §7.8) refuses the request when
  * multiple required factors are missing simultaneously (the
  * "perdu 2 trucs = niqué" policy). The unique partial index ensures

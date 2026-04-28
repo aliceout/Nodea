@@ -6,8 +6,8 @@
  *     for storage; same shape as invites + reset tokens);
  *   - eligibility check (the §6.2 "perdu 2 trucs = niqué" rule);
  *   - lazy application at login time (consume a confirmed bypass
- *     past its 48h delay → disable TOTP / delete passkeys, downgrade
- *     mode if needed).
+ *     past its 7-day delay → disable TOTP / delete passkeys,
+ *     downgrade mode if needed).
  *
  * Routes import from here so the policy lives in one place rather
  * than scattered across `auth-mfa-bypass.ts` + `auth.ts` +
@@ -29,18 +29,23 @@ import {
 
 /**
  * Time the user must wait between confirming the email link and the
- * bypass becoming applicable at login. Auth-Spec §7.8: 48h "real
- * delay" — short enough to be useful, long enough to give the
- * legitimate user time to spot a malicious request.
+ * bypass becoming applicable at login. Auth-Spec §7.8: 7-day "real
+ * delay" — backup codes already provide a fast bypass path, so the
+ * email recovery is the slow / deliberate one. The long window also
+ * gives the legit user plenty of time to spot a malicious request
+ * and click the cancel link.
  */
-export const BYPASS_APPLY_DELAY_MS = 48 * 60 * 60 * 1000;
+export const BYPASS_APPLY_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * TTL of the request record itself. The 48h delay only starts once
- * `confirmed_at` is set; the request as a whole expires after this
- * window so a never-confirmed link doesn't sit forever in the DB.
+ * TTL of the request record itself. The apply delay only starts
+ * once `confirmed_at` is set; the request as a whole expires after
+ * this window so a never-confirmed link doesn't sit forever in the
+ * DB. Must be > apply delay so a user who confirms near the end of
+ * the confirmation window still has time for the delay to elapse —
+ * we give 7 days to confirm + 7 days of delay = 14 days total.
  */
-export const BYPASS_REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const BYPASS_REQUEST_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 /* ============================================================================
  * Token gen + hashing
@@ -274,7 +279,7 @@ export async function applyConsumableBypass(
  *
  * "Pending" here means not yet `consumed_at` and not yet
  * `cancelled_at`. A confirmed-but-too-recent request is still
- * pending (the 48h hasn't elapsed) and gets cancelled the same way.
+ * pending (the apply delay hasn't elapsed) and gets cancelled the same way.
  *
  * Returns the number of rows flipped — used by callers that want to
  * log the side-effect (or skip a follow-up email when nothing

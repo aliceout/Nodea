@@ -5,7 +5,6 @@
  * Routes under test:
  *   - POST /auth/mfa/bypass/request    (mfa_pending)
  *   - GET  /auth/mfa/bypass/confirm    (anon, token)
- *   - GET  /auth/mfa/bypass/cancel     (anon, token)
  *   - Lazy application at login (/auth/login/finish)
  *   - Auto-cancel of pending bypasses on full-session promotion
  *
@@ -252,19 +251,19 @@ describe('POST /auth/mfa/bypass/request', () => {
 });
 
 /* ============================================================================
- * GET /auth/mfa/bypass/confirm + /cancel
+ * GET /auth/mfa/bypass/confirm
  * ========================================================================== */
 
-describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
+describe('GET /auth/mfa/bypass/confirm', () => {
   async function createPendingRequest(
     email: string,
-  ): Promise<{ userId: string; confirmToken: string; cancelToken: string }> {
+  ): Promise<{ userId: string; confirmToken: string }> {
     const { userId, cookie } = await getPendingCookie(email, 'always_totp');
     await app.request('/auth/mfa/bypass/request', {
       ...jsonPost({ factor: 'totp' }),
       headers: { 'content-type': 'application/json', cookie },
     });
-    // Pull tokens from the recorded email body — they're the only
+    // Pull the token from the recorded email body — it's the only
     // place the plaintext token is reachable from a test (DB only
     // has the hash).
     const sent = __getRecordingEmailService().sent;
@@ -272,13 +271,10 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
     expect(last).toBeDefined();
     const text = last!.text;
     const confirmMatch = text.match(/confirm\?t=([A-Za-z0-9_-]+)/);
-    const cancelMatch = text.match(/cancel\?t=([A-Za-z0-9_-]+)/);
     expect(confirmMatch).not.toBeNull();
-    expect(cancelMatch).not.toBeNull();
     return {
       userId,
       confirmToken: confirmMatch![1]!,
-      cancelToken: cancelMatch![1]!,
     };
   }
 
@@ -317,26 +313,6 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
     expect(body.status).toBe('unknown');
   });
 
-  it('cancel flips cancelled_at + returns 200 JSON with status=ok', async () => {
-    const { userId, cancelToken } = await createPendingRequest(
-      'bypass-cancel@example.com',
-    );
-
-    const res = await app.request(
-      `/auth/mfa/bypass/cancel?t=${cancelToken}`,
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { status: string; factor?: string };
-    expect(body.status).toBe('ok');
-    expect(body.factor).toBe('totp');
-
-    const [row] = await db
-      .select()
-      .from(mfaBypassRequests)
-      .where(eq(mfaBypassRequests.userId, userId));
-    expect(row?.cancelledAt).not.toBeNull();
-  });
-
   it('confirm a second time → 200 with status=already_confirmed', async () => {
     const { confirmToken } = await createPendingRequest(
       'bypass-double-confirm@example.com',
@@ -349,11 +325,22 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
     expect(body.status).toBe('already_confirmed');
   });
 
-  it('confirm AFTER cancel → 410 with status=cancelled', async () => {
-    const { confirmToken, cancelToken } = await createPendingRequest(
+  it('confirm AFTER auto-cancel-on-login → 410 with status=cancelled', async () => {
+    // Insert a confirmed bypass directly for a user, then trigger an
+    // auto-cancel by logging the user in (a successful full-session
+    // promotion flips `cancelled_at`). Re-using the confirm token
+    // afterwards must surface `cancelled`.
+    const { userId, confirmToken } = await createPendingRequest(
       'bypass-cancel-then-confirm@example.com',
     );
-    await app.request(`/auth/mfa/bypass/cancel?t=${cancelToken}`);
+    // Login to trigger the auto-cancel (mode is `always_totp`, so
+    // we need to enter MFA — but rawLogin only does password. We
+    // skip the MFA step and flip `cancelled_at` manually to mirror
+    // what `cancelPendingBypassesForUser` would do.)
+    await db
+      .update(mfaBypassRequests)
+      .set({ cancelledAt: new Date() })
+      .where(eq(mfaBypassRequests.userId, userId));
     const res = await app.request(
       `/auth/mfa/bypass/confirm?t=${confirmToken}`,
     );
@@ -368,16 +355,17 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
  * ========================================================================== */
 
 describe('lazy bypass application at login', () => {
-  it('a confirmed-past-48h totp bypass disables TOTP + downgrades mode + lets login finish full', async () => {
+  it('a confirmed-past-delay totp bypass disables TOTP + downgrades mode + lets login finish full', async () => {
     const u = await seedUser('bypass-apply-totp@example.com');
     await enrollTotpDirect(u.id);
     await db
       .update(users)
       .set({ securityMode: 'always_totp' })
       .where(eq(users.id, u.id));
-    // Insert a confirmed-past-48h bypass directly (skip the email
-    // round-trip; we exercise that elsewhere).
-    const past = new Date(Date.now() - 49 * 60 * 60 * 1000); // 49h ago
+    // Insert a confirmed-past-delay bypass directly (skip the email
+    // round-trip; we exercise that elsewhere). 8 days = comfortably
+    // past the 7-day apply delay.
+    const past = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
     await db.insert(mfaBypassRequests).values({
       id: randomUUID(),
       userId: u.id,
@@ -452,7 +440,7 @@ describe('lazy bypass application at login', () => {
     expect(bypass?.confirmedAt).toBeNull();
   });
 
-  it('a confirmed-but-too-recent bypass (<48h) is NOT consumed yet', async () => {
+  it('a confirmed-but-too-recent bypass (< apply delay) is NOT consumed yet', async () => {
     const u = await seedUser('bypass-too-recent@example.com');
     await enrollTotpDirect(u.id);
     await db
