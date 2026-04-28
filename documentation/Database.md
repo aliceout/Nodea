@@ -28,8 +28,8 @@ Central identity row.
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
 | `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
-| `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. **🚧 Phase 2+** — V1 ignores. |
-| `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. **🚧 Phase 2+** — V1 only uses `'complete'`. |
+| `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. Per-user MFA policy (Auth-Spec §6.1) — drives required factors at login finish. |
+| `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. Multi-step register state machine (Auth-Spec §4.1). |
 | `wrapped_main_key{,_iv}` | `text?` | AES-GCM(main key) under random KEK. Set ONCE at register, never re-wrapped. AAD = `nodea:v1\x1f<id>\x1fmain`. |
 | `wrapped_kek_password{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of OPAQUE `exportKey`. Re-wrapped at change-password / reset / recovery. AAD = `nodea:v1\x1f<id>\x1fpassword`. |
 | `wrapped_kek_recovery{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of BIP39 entropy (Phase 3 ✅). NULL until the user sets up a recovery code. AAD = `nodea:v1\x1f<id>\x1frecovery`. |
@@ -109,10 +109,12 @@ banner copy, …) land here without a schema change.
 
 ### `email_verifications`
 
-Magic-link tokens for email-related flows. V1 stores activation
-tokens for the `'register'` open-path (sent post-submit so the user
-can flip `users.email_verified_at`). The `'email_change'` kind is
-🚧 Phase 2+ scaffolding, table-ready but unused in V1.
+Magic-link tokens for email-related flows. The `'register'` kind
+ships activation tokens after register/start so the user can flip
+`users.email_verified_at` via `/auth/register/activate`. The
+`'email_change'` kind is table-ready for the future change-email
+re-vérification step (Auth-Spec §7.6) — currently the
+`/auth/email` route updates the column without re-vérification.
 
 | Column        | Type      | Notes                                                            |
 | ------------- | --------- | ---------------------------------------------------------------- |
@@ -226,25 +228,19 @@ Each row:
 
 **Index (per table)**: `<table>_user_sid_idx` on `(user_id, module_user_id)`.
 
-### 🚧 Phase 2+ scaffolding tables
+### Auth tables (live, Phases 2-7)
 
-The following tables exist in the database (created by migration
-`0007_perpetual_tyrannus.sql`) but are **not written or read by V1
-code**. They're scaffolding for Phase 2+ of `Auth-Roadmap.md` — full
-schemas live in `Auth-Spec.md` §4.1 to avoid duplication.
+Created by migration `0007_perpetual_tyrannus.sql` and now wired
+end-to-end by the live auth surface. Full schemas live in
+`Auth-Spec.md` §4.1 to avoid duplication.
 
-| Table                     | Phase 2+ purpose                                                |
+| Table                     | Role                                                            |
 | ------------------------- | --------------------------------------------------------------- |
 | `opaque_records`          | OPAQUE registration envelope (1:1 with `users`).                |
 | `auth_factors`            | WebAuthn passkeys per user, with optional PRF-wrapped KEK.      |
 | `mfa_totp`                | 1:1 TOTP secret + period + last_window anti-replay cursor.      |
 | `mfa_totp_recovery_codes` | Backup codes (10/user, hashed, single-use).                     |
 | `mfa_bypass_requests`     | Email-confirmed 7-day bypass for lost TOTP / passkey.           |
-
-The Drizzle ORM still exports types for these tables (`OpaqueRecord`,
-`AuthFactor`, etc.), but no production handler imports them. The
-intent is to land Phase 2+ migrations on top of the existing
-schema rather than rebuilding it from scratch.
 
 ---
 

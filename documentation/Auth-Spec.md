@@ -1,13 +1,16 @@
 # Auth-Spec — Spécification complète Authentification + MFA
 
-> **Statut.** Document de référence pour Auth-Roadmap. Une partie est
-> déjà **livrée** (Phase 1, modèle simplifié), le reste reste de la
-> conception à dérouler en Phase 2+. Chaque section est marquée :
+> **Statut (post-Phase 8, 2026-04-28).** Le chantier auth est
+> **livré dans son intégralité** : Phase 0 (spec) → Phase 8 (cleanup
+> + audit). Les sections marquées `✅` décrivent la réalité actuelle
+> du code. Les rares sections encore marquées `🚧` sont des archives
+> du design original conservées pour traçabilité (ex. variantes de
+> register multi-étapes proposées et abandonnées) ou des points de
+> design future hors scope auth (ex. re-vérification email lors d'un
+> change-email — table prête, route à compléter).
 >
-> - **✅ V1 livré** — implémenté, testé, en prod-like. Décrit la
->   réalité actuelle du code.
-> - **🚧 Phase 2+** — design figé mais pas encore livré. Sert de spec
->   pour les phases à venir (OPAQUE, TOTP, passkey, recovery code KEK).
+> - **✅ livré** — implémenté, testé, en prod-like.
+> - **🚧** — design archive ou point future hors scope auth Phase 0-8.
 >
 > **Précédence.** Code et doc = source unique de vérité (CLAUDE.md).
 > Pour tout ce qui est marqué V1 livré, le code prime sur la spec en
@@ -50,28 +53,23 @@
 
 ## 0. Lecture rapide
 
-### 0.1 État de livraison ✅ V1 livré
+### 0.1 État courant (post-Phase 8)
 
 | Question | Réponse courte | Détail |
 |---|---|---|
 | Comment crée-t-on un compte ? | Form unique `email + password` ; activation via lien email magique avant que le compte soit utilisable | §7.1 |
 | Comment fonctionnent les invitations ? | Admin entre une adresse e-mail, le serveur envoie un lien `?invite=<token>` ; pas de code à copier-coller | §7.1 |
-| Qu'est-ce qui gate le login ? | `users.email_verified_at IS NOT NULL` (= activation effectuée) | §7.2 |
+| Qu'est-ce qui gate le login ? | `users.email_verified_at IS NOT NULL` + facteurs requis selon `security_mode` (Auth-Spec §6) | §7.2, §6 |
 | Open registration ? | Toggle admin `open_registration`, défaut OFF | §7.1 |
-| Crypto E2E ? | Conservée — KEK dérivée du password via Argon2id, AES-GCM wrap de la main key (modèle legacy de Security.md, supersedé par OPAQUE en Phase 2) | §3 |
-| Un opérateur serveur peut lire mes données ? | **Non** — la KEK n'est jamais côté serveur | §2.1 |
-
-### 0.2 Phase 2+ 🚧 design seulement
-
-| Question | Réponse courte | Détail |
-|---|---|---|
-| Qu'est-ce qui dérive la KEK ? (✅ livré 3/3) | OPAQUE `export_key` (Phase 2) **ou** WebAuthn PRF (Phase 4) **ou** recovery code BIP39 (Phase 3) | §3.2 |
-| Le TOTP dérive quelque chose ? (✅ Phase 5) | **Non** — gate de session uniquement, secret en clair serveur (cf. §2.3). | §2.3, §8 |
-| Identifiant OPAQUE ? (✅ Phase 2) | `users.email` (changer l'email = re-register OPAQUE) | §7.6 |
-| Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code (✅ tous livrés) | §3.2 |
+| Qu'est-ce qui dérive la KEK ? | OPAQUE `export_key` (Phase 2) **ou** WebAuthn PRF (Phase 4) **ou** recovery code BIP39 (Phase 3) | §3.2 |
+| Le TOTP dérive quelque chose ? | **Non** — gate de session uniquement, secret en clair serveur (cf. §2.3). | §2.3, §8 |
+| Identifiant OPAQUE ? | `users.email` (changer l'email = re-register OPAQUE — la route le fera quand §7.6 sera complétée) | §7.6 |
+| Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code | §3.2 |
 | Mode "Sécurité maximale" = split crypto ? | **Non**, gate UX uniquement | §2.3 |
-| Yubikey sans PIN acceptée ? (✅ Phase 4) | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
-| Un opérateur serveur pourra bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
+| Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
+| Un opérateur serveur peut lire mes données ? | **Non** — la KEK n'est jamais côté serveur | §2.1 |
+| Un opérateur serveur peut bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
+| Un serveur web compromis pourrait-il exfiltrer ma clé via JS injecté ? | **Limite inhérente du modèle web** — mitigée par SRI sur l'entry chunk + INTEGRITY.txt manifest publié à chaque release, recommandation explicite d'auto-hébergement pour usages sensibles | `Security.md` §7 |
 
 ---
 
@@ -81,34 +79,36 @@
 
 L'auth Nodea évolue en deux temps :
 
-**Phase 1 — ✅ V1 livré (modèle simplifié).**
+**Phase 1 — ✅ livré.**
 - Inscription en un seul formulaire (email + password) + activation
   via lien magique reçu par email.
 - Invitations email-bound (admin → adresse → lien direct, pas de
   code à copier-coller).
 - Toggle admin `open_registration` pour basculer entre invitation-
   only et signup libre.
-- Crypto E2E préservée — KEK dérivée du password (Argon2id),
-  AES-GCM wrap de la main key, exactement comme le modèle décrit
-  dans [`Security.md`](Security.md). Les ciphertexts restent
-  illisibles côté serveur.
-- Pas de second facteur, pas de recovery code séparé. Reset
-  destructif comme unique chemin de récupération.
+- Reset destructif comme chemin de récupération de dernier recours.
 
-**Phase 2+ — 🚧 design seulement.** Migrera vers un modèle multi-
-facteurs qui :
+**Phase 2-7 — ✅ tous livrés.** Le modèle multi-facteurs cible :
 - préserve l'E2E **même quand le serveur est compromis** (vs juste
-  "honest-but-curious" en V1) — bascule du KEK Argon2id vers OPAQUE
-  `export_key` ;
-- accepte les passkeys (WebAuthn) avec dérivation de KEK via PRF
-  quand l'authenticator le supporte ;
-- ajoute un gate TOTP optionnel pour les sessions ;
+  "honest-but-curious") — KEK dérivée d'OPAQUE `export_key`
+  (Phase 2C/D), pas d'Argon2id côté serveur sur le password ;
+- accepte les passkeys (WebAuthn, Phase 4) avec dérivation de KEK
+  via PRF quand l'authenticator le supporte ;
+- ajoute un gate TOTP optionnel pour les sessions (Phase 5) ;
 - offre un **chemin de récupération crypto** explicite (recovery
-  code BIP39) qui n'érode pas la propriété E2E ;
+  code BIP39, Phase 3) qui n'érode pas la propriété E2E ;
+- bypass MFA email 7 jours pour récupérer un facteur perdu sans
+  reset destructif (Phase 6) ;
 - expose une matrice de re-auth cohérente pour toutes les
-  modifications sensibles.
+  modifications sensibles (Phase 7).
 
-### 1.2 Ce qui ne change pas (✅ V1 livré et préservé en Phase 2+)
+**Phase 8 — ✅ livré.** Cleanup + audit final (commentaires
+synchronisés avec le code, deps audit vendoré dans
+`deps-audit.md`, security-audit cross-checked, bundle integrity
+SRI + INTEGRITY.txt mitige le threat model "serveur compromis qui
+sert du JS altéré").
+
+### 1.2 Invariants permanents
 
 Quoi qu'il arrive, ces invariants tiennent :
 
@@ -140,8 +140,8 @@ Quoi qu'il arrive, ces invariants tiennent :
 |---|---|
 | Inscription single-form + activation par lien email | ✅ inchangé (le modèle simplifié reste, OPAQUE a remplacé la dérivation crypto interne en 2B) |
 | Argon2id côté serveur (`password_hash`) + KEK dérivée du password | ✅ remplacé (Phase 2C) — OPAQUE (RFC 9497) côté client + serveur ; KEK random wrappée par chaque facteur |
-| Pas de second facteur | 🚧 Phase 4/5 — Passkey + TOTP optionnels selon `security_mode` |
-| Reset destructif uniquement | 🚧 Phase 3 — Recovery code KEK (BIP39) ; reset destructif déjà OPAQUE depuis 2D ; bypass TOTP/passkey email Phase 6 |
+| Pas de second facteur | ✅ livré — Passkey (Phase 4) + TOTP (Phase 5) optionnels selon `security_mode` ; bypass MFA email 7 jours (Phase 6) |
+| Reset destructif uniquement | ✅ livré — Recovery code KEK BIP39 (Phase 3) ; reset destructif déjà OPAQUE depuis 2D ; bypass TOTP/passkey email Phase 6 |
 | `users.password_hash` + `users.encryption_salt` + `users.encrypted_key` (legacy) | ✅ droppées en Phase 2D (`0011_little_morg`) ; `opaque_records.envelope` + `wrapped_main_key{,_iv}` + `wrapped_kek_password{,_iv}` sont la seule surface credential restante |
 | Invitations email-bound (`invites.email + token`) | ✅ inchangé |
 | Toggle `open_registration` (`app_settings`) | ✅ inchangé |
@@ -687,14 +687,14 @@ Toute la séquence dans **une transaction**.
 > en `__Host-*` du cookie session se fera quand HTTPS sera
 > obligatoire en dev (Phase 8 cleanup).
 
-### 5.1 Cookies (cible Phase 2+)
+### 5.1 Cookies
 
 | Cookie | Durée | Routes acceptées (middleware) | Émis quand | Promu en quoi |
 |---|---|---|---|---|
-| `__Host-nodea_register` 🚧 | 24h | `/auth/register/*` | Après vérif email réussie (étape 2 du wizard) | Effacé à la fin du register |
-| `__Host-nodea_mfa` 🚧 | 5 min | `/auth/mfa/*` | Après OPAQUE/passkey login finish | `__Host-nodea_session` quand MFA complète |
-| `__Host-nodea_migrate` 🚧 | 30 min | `/auth/migrate/*` | Après login legacy Argon2id réussi | `__Host-nodea_session` après migration crypto |
-| `nodea_session` ✅ V1 | 7 jours (fixe, **pas** de slide) | tout le reste | Login complet | Re-login forcé après 7j ou révocation |
+| `__Host-nodea_register` ✅ | 24h | `/auth/register/*` | Après vérif email réussie (étape 2 du wizard) | Effacé à la fin du register |
+| `__Host-nodea_mfa` ✅ | 5 min | `/auth/mfa/*` | Après OPAQUE/passkey login finish | `__Host-nodea_session` quand MFA complète |
+| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | Après login legacy Argon2id réussi (n'est plus émis depuis Phase 2D) | `__Host-nodea_session` après migration crypto |
+| `nodea_session` ✅ | 7 jours (fixe, **pas** de slide) | tout le reste | Login complet | Re-login forcé après 7j ou révocation |
 
 Tous les cookies :
 - `HttpOnly`
@@ -1392,13 +1392,16 @@ La rotation de l'ID après un changement de privilège (changement
 de password, change-mode, etc.) est un anti-pattern de session
 fixation classique — on l'applique systématiquement.
 
-### 7.6 Change email (🚧 Phase 2+ design)
+### 7.6 Change email (🚧 design partiel — full flow non livré)
 
-> **Statut.** Pas implémenté en V1. Le flow ci-dessous suppose
-> OPAQUE (re-register OPAQUE sur changement d'email) ; sans OPAQUE
-> il faudrait juste UPDATE `users.email` + revérification email,
-> beaucoup plus simple. Le design ci-dessous reste valide pour
-> Phase 2+.
+> **Statut.** La route `PATCH /auth/email` (✅ livrée Phase 7B)
+> fait juste l'`UPDATE users.email` après un re-auth password
+> fresh. Le flow ci-dessous décrit la version complète envisagée
+> avec re-vérification email + cooldown 7 jours + re-register
+> OPAQUE (parce que le `userIdentifier` baked dans l'envelope IS
+> l'email). À implémenter dans une issue dédiée si on veut le
+> verrou complet ; pour l'instant la simple route fait le boulot
+> minimal.
 
 Plus lourd qu'on aimerait. Trois étapes.
 
