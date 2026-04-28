@@ -34,6 +34,7 @@ import {
   cancelPendingBypassesForUser,
 } from '../auth/mfa-bypass.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
+import { renderSecurityModeDowngradedEmail } from '../services/email/templates/security-mode-downgraded.ts';
 import { getEmailService } from '../services/email/index.ts';
 import {
   consumePasskeyLoginPending,
@@ -415,8 +416,31 @@ authPasskeyRoutes.post(
           .update(users)
           .set({ securityMode: 'password_or_passkey', updatedAt: new Date() })
           .where(eq(users.id, user.id));
-        // TODO Phase 5: send notification email — template not yet
-        // wired (the security_mode UI is delivered there too).
+        // Best-effort notification — the downgrade is already
+        // committed; an SMTP hiccup must not flip the route to
+        // 5xx. Mode `'maximum'` is the only path that reaches
+        // here (the `if` above gates on it).
+        try {
+          const rendered = renderSecurityModeDowngradedEmail({
+            trigger: 'last_prf_passkey_removed',
+            previousMode: 'maximum',
+          });
+          await getEmailService().send({
+            to: user.email,
+            subject: rendered.subject,
+            text: rendered.text,
+            html: rendered.html,
+            tag: 'security-mode-downgraded',
+          });
+        } catch (err) {
+          if (process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.warn(
+              '[auth/passkey] downgrade notification mail failed',
+              err,
+            );
+          }
+        }
       }
     }
 

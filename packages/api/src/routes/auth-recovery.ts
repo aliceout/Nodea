@@ -23,6 +23,8 @@ import {
 } from '../auth/session.ts';
 import { setSessionCookie } from '../auth/cookies.ts';
 import { cancelPendingBypassesForUser } from '../auth/mfa-bypass.ts';
+import { getEmailService } from '../services/email/index.ts';
+import { renderRecoveryAppliedEmail } from '../services/email/templates/recovery-applied.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
@@ -285,10 +287,25 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
   });
   await setSessionCookie(c, session.id, session.expiresAt);
 
-  // TODO Phase 6 / mailer follow-up : send a notification email
-  // ("Ton mot de passe a été réinitialisé via recovery code…").
-  // The mail template doesn't exist yet — wired in once the
-  // template lands.
+  // Best-effort notification — the recovery just succeeded server-
+  // side, an SMTP hiccup must not turn that into a 5xx. The user
+  // already has a fresh session in their browser; this is the
+  // "if it wasn't you, here's how to react" follow-up.
+  try {
+    const rendered = renderRecoveryAppliedEmail();
+    await getEmailService().send({
+      to: user.email,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+      tag: 'recovery-applied',
+    });
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn('[auth/recover-kek] notification mail failed', err);
+    }
+  }
 
   return c.json({ ok: true });
 });

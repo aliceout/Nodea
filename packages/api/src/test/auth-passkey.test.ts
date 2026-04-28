@@ -26,6 +26,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { authFactors, sessions, users } from '../db/schema.ts';
+import { __getRecordingEmailService } from '../services/email/index.ts';
 import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
@@ -288,6 +289,16 @@ describe('POST /auth/passkey/:id/remove', () => {
       .from(users)
       .where(eq(users.id, u.id));
     expect(row?.mode).toBe('password_or_passkey');
+
+    // Best-effort downgrade notification fired (recording transport).
+    const sent = __getRecordingEmailService().sent;
+    const notif = sent.find(
+      (m) =>
+        m.tag === 'security-mode-downgraded' &&
+        m.to === 'downgrade@example.com',
+    );
+    expect(notif).toBeDefined();
+    expect(notif!.subject).toMatch(/Standard/i);
   });
 
   it('removing a non-PRF passkey under maximum does NOT trigger downgrade', async () => {

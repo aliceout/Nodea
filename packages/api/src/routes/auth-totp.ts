@@ -22,6 +22,8 @@ import {
   normaliseBackupCode,
   BACKUP_CODES_PER_USER,
 } from '../auth/totp-backup-codes.ts';
+import { getEmailService } from '../services/email/index.ts';
+import { renderSecurityModeDowngradedEmail } from '../services/email/templates/security-mode-downgraded.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
@@ -225,6 +227,11 @@ authTotpRoutes.post(
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
 
+  const downgradedFrom: 'always_totp' | 'maximum' | null =
+    user.securityMode === 'always_totp' || user.securityMode === 'maximum'
+      ? user.securityMode
+      : null;
+
   await db.transaction(async (tx) => {
     // Delete the row entirely (cleaner than nulling enabled_at —
     // re-enrollment goes through /enroll/start which UPSERTs a fresh
@@ -236,18 +243,37 @@ authTotpRoutes.post(
 
     // §6.1 downgrade auto: a user disabling TOTP while in a mode
     // that requires it falls back to `password_or_passkey` in the
-    // same transaction. Email notification will land in Phase 5C/5D
-    // (template not yet wired).
-    if (
-      user.securityMode === 'always_totp' ||
-      user.securityMode === 'maximum'
-    ) {
+    // same transaction.
+    if (downgradedFrom) {
       await tx
         .update(users)
         .set({ securityMode: 'password_or_passkey', updatedAt: new Date() })
         .where(eq(users.id, user.id));
     }
   });
+
+  if (downgradedFrom) {
+    // Best-effort notification — disable just succeeded server-side,
+    // an SMTP hiccup must not turn the route into a 5xx.
+    try {
+      const rendered = renderSecurityModeDowngradedEmail({
+        trigger: 'totp_disabled',
+        previousMode: downgradedFrom,
+      });
+      await getEmailService().send({
+        to: user.email,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+        tag: 'security-mode-downgraded',
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.warn('[auth/totp] downgrade notification mail failed', err);
+      }
+    }
+  }
 
   return c.json({ ok: true });
 });

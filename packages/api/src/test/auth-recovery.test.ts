@@ -20,6 +20,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { sessions, users } from '../db/schema.ts';
+import { __getRecordingEmailService } from '../services/email/index.ts';
 import {
   TEST_PASSWORD,
   loginAs,
@@ -391,6 +392,14 @@ describe('POST /auth/recover-kek/finish', () => {
     // NEW password binds.
     const newCookie = await loginAs(app, 'rec-happy@example.com', NEW_PASSWORD);
     expect(newCookie).toBeTruthy();
+
+    // Best-effort notification fired (recording transport).
+    const sent = __getRecordingEmailService().sent;
+    const notif = sent.find(
+      (m) => m.tag === 'recovery-applied' && m.to === 'rec-happy@example.com',
+    );
+    expect(notif).toBeDefined();
+    expect(notif!.subject).toMatch(/code de récupération/i);
   });
 
   it('rejects 401 on a re-used recoverSessionId', async () => {

@@ -19,6 +19,7 @@ import { generate as otplibGenerate } from 'otplib';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { mfaTotp, mfaTotpRecoveryCodes, sessions, users } from '../db/schema.ts';
+import { __getRecordingEmailService } from '../services/email/index.ts';
 import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
@@ -445,6 +446,67 @@ describe('POST /auth/totp/disable', () => {
       .from(users)
       .where(eq(users.id, u.id));
     expect(row?.mode).toBe('password_or_passkey');
+
+    // Best-effort downgrade notification fired (recording transport).
+    const sent = __getRecordingEmailService().sent;
+    const notif = sent.find(
+      (m) =>
+        m.tag === 'security-mode-downgraded' &&
+        m.to === 'totp-downgrade@example.com',
+    );
+    expect(notif).toBeDefined();
+    expect(notif!.subject).toMatch(/Standard/i);
+  });
+
+  it('§6.1 downgrade auto: no notification when user was already on password_or_passkey', async () => {
+    const u = await seedUser('totp-no-downgrade@example.com');
+    const cookie = await loginAs(
+      app,
+      'totp-no-downgrade@example.com',
+      TEST_PASSWORD,
+    );
+
+    // Enroll TOTP — auto-promotes mode to always_totp.
+    const proof1 = await passwordProofFor(
+      app,
+      'totp-no-downgrade@example.com',
+      TEST_PASSWORD,
+    );
+    const startRes = await app.request('/auth/totp/enroll/start', {
+      ...jsonPost(proof1),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    const { secretBase32 } = (await startRes.json()) as { secretBase32: string };
+    const code = await totpFromSecret(secretBase32);
+    await app.request('/auth/totp/enroll/verify', {
+      ...jsonPost({ code, backupCodesAcknowledged: true }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+
+    // Walk the user back down to password_or_passkey before disabling
+    // — that's the path where no downgrade should fire.
+    await db
+      .update(users)
+      .set({ securityMode: 'password_or_passkey' })
+      .where(eq(users.id, u.id));
+
+    __getRecordingEmailService().reset();
+    const proof2 = await passwordProofFor(
+      app,
+      'totp-no-downgrade@example.com',
+      TEST_PASSWORD,
+    );
+    const res = await app.request('/auth/totp/disable', {
+      ...jsonPost(proof2),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(200);
+
+    const sent = __getRecordingEmailService().sent;
+    const notif = sent.find(
+      (m) => m.tag === 'security-mode-downgraded',
+    );
+    expect(notif).toBeUndefined();
   });
 });
 
