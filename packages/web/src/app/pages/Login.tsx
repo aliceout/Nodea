@@ -8,6 +8,7 @@ import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
 import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';

@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
