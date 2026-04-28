@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FingerPrintIcon } from '@heroicons/react/24/outline';
+import { ArrowRightIcon, FingerPrintIcon } from '@heroicons/react/24/outline';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
 import { isApiError } from '@/core/api/client';
@@ -117,7 +117,29 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout headline="Un espace à soi" marketing={<PrivacyBody />}>
+    <AuthLayout
+      headline="Un espace à soi"
+      marketing={
+        <>
+          <PrivacyBody />
+          {/* Follow-through after the marketing copy: an explicit
+              "next step" link for the curious reader. Pairs with
+              the shorter "Sécurité" link in the panel footer (always
+              reachable for skimmers) — the two entries are at
+              different visual altitudes so they don't compete. */}
+          <Link
+            to="/docs"
+            className="group inline-flex cursor-pointer items-center gap-1.5 pt-1 text-[15px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
+          >
+            Voir comment Nodea protège mes données
+            <ArrowRightIcon
+              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </Link>
+        </>
+      }
+    >
       <AuthPanelHeader eyebrow="Connexion" title="Entre dans ton espace" />
 
           {justActivated ? (

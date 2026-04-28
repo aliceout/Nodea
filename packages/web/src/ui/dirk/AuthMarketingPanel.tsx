@@ -76,15 +76,16 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
         <span>·</span>
         <span>Auto-hébergeable</span>
         <span>·</span>
-        {/* Public docs entry — accent-colored to read as clickable,
-            no arrow icon (it's an internal SPA route, not an
-            external link). The footer wraps to a second line on
-            narrower viewports thanks to `flex-wrap` + `gap-y-1`. */}
+        {/* Public docs entry — short label matching the register
+            of the surrounding items. The verbose "Voir comment
+            Nodea protège mes données" entry lives in the marketing
+            panel body (under PrivacyBody); this footer link is the
+            always-reachable equivalent for skimmers. */}
         <Link
           to="/docs"
           className="cursor-pointer text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
         >
-          Voir comment Nodea protège mes données
+          Sécurité
         </Link>
       </div>
     </aside>
