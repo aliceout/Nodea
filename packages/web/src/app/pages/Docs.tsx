@@ -75,7 +75,12 @@ export default function DocsPage() {
   }
 
   const tabs = (
-    <Tabs tabs={TABS} value={level} onChange={handleTabChange} />
+    <Tabs
+      tabs={TABS}
+      value={level}
+      onChange={handleTabChange}
+      variant="underline"
+    />
   );
 
   return (

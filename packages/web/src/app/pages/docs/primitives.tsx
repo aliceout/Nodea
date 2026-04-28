@@ -80,7 +80,7 @@ const markdownComponents: Components = {
     </h3>
   ),
   p: ({ children }) => (
-    <p className="mb-3 text-[14.5px] leading-[1.65] text-ink-soft last:mb-0">
+    <p className="mb-3 text-justify text-[14.5px] leading-[1.65] text-ink-soft last:mb-0">
       {children}
     </p>
   ),
@@ -174,14 +174,22 @@ const markdownComponents: Components = {
 
 const markdownPlugins = [rehypeRaw, rehypeSlug];
 
-/** Render a docs tier from its markdown source. */
+/**
+ * Render a docs tier from its markdown source.
+ *
+ * The `lang="fr"` + `hyphens-auto` wrapper enables proper French
+ * hyphenation in justified paragraphs (matching the same prose
+ * polish applied to the Journal entry render).
+ */
 export function MarkdownTier({ source }: { source: string }) {
   return (
-    <ReactMarkdown
-      rehypePlugins={markdownPlugins}
-      components={markdownComponents}
-    >
-      {source}
-    </ReactMarkdown>
+    <div lang="fr" className="hyphens-auto">
+      <ReactMarkdown
+        rehypePlugins={markdownPlugins}
+        components={markdownComponents}
+      >
+        {source}
+      </ReactMarkdown>
+    </div>
   );
 }

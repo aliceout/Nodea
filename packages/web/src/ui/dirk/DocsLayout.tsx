@@ -41,7 +41,7 @@ export default function DocsLayout({ children, aside, tabs }: DocsLayoutProps) {
           tabs stay reachable while scrolling on mobile. */}
       {tabs ? (
         <div className="sticky top-[52px] z-20 border-b border-hair bg-bg/95 backdrop-blur sm:hidden">
-          <div className="mx-auto flex max-w-[1180px] justify-center px-6 py-2">
+          <div className="mx-auto flex h-12 max-w-[1180px] justify-center px-6">
             {tabs}
           </div>
         </div>

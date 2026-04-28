@@ -55,8 +55,10 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
           </span>
         </Link>
 
-        <div className="flex flex-1 justify-center">
-          {children ? <div className="hidden sm:block">{children}</div> : null}
+        <div className="flex flex-1 self-stretch justify-center">
+          {children ? (
+            <div className="hidden h-full sm:flex">{children}</div>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
