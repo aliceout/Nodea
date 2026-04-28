@@ -28,6 +28,7 @@ import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
 import Button from '@/ui/atoms/dirk/Button';
+import Topbar from '@/ui/dirk/Topbar';
 import type { SecurityMode } from '@nodea/shared';
 
 /**
@@ -59,7 +60,7 @@ export default function AccountPage() {
 
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar onOpenMenu={() => setMobileMenuOpen(true)} />
+      <Topbar label="Paramètres · Mon compte" onOpenMenu={() => setMobileMenuOpen(true)} />
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
         <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">Mon compte</h1>
@@ -93,28 +94,6 @@ export default function AccountPage() {
         {tab === 'modules' ? <ModulesTab /> : null}
         {tab === 'data' ? <DataTab /> : null}
         {tab === 'danger' ? <DangerTab /> : null}
-      </div>
-    </div>
-  );
-}
-
-interface TopbarProps {
-  onOpenMenu: () => void;
-}
-
-function Topbar({ onOpenMenu }: TopbarProps) {
-  return (
-    <div className="flex h-[52px] items-center justify-between border-b border-hair px-6 sm:px-9">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
-          className="-ml-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-bg-2 hover:text-ink lg:hidden"
-        >
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </button>
-        <span className="text-[12px] text-muted">Paramètres · Mon compte</span>
       </div>
     </div>
   );
@@ -432,7 +411,15 @@ function SecurityTab() {
         description={
           passkeysCount === 0
             ? 'Une passkey (Touch ID, Face ID, Windows Hello, Yubikey, gestionnaire de mots de passe…) remplace la saisie du mot de passe à la connexion. Si elle est compatible PRF, elle déchiffre aussi tes données — sinon elle te connecte mais te demande quand même ton mot de passe.'
-            : `${passkeysCount} passkey${passkeysCount > 1 ? 's' : ''} enregistrée${passkeysCount > 1 ? 's' : ''}. Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.`
+            : (
+              <>
+                <span className="font-semibold text-accent-deep">
+                  {passkeysCount} passkey{passkeysCount > 1 ? 's' : ''} enregistrée{passkeysCount > 1 ? 's' : ''}.
+                </span>
+                <br />
+                Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.
+              </>
+            )
         }
       >
         <Button variant="secondary" size="sm" onClick={() => navigate('/passkeys')}>
@@ -444,7 +431,15 @@ function SecurityTab() {
         title="2FA (TOTP)"
         description={
           totpEnabled
-            ? 'TOTP activé. Tu peux gérer tes codes de secours ou désactiver la 2FA depuis cet écran.'
+            ? (
+              <>
+                <span className="font-semibold text-accent-deep">
+                  TOTP activé.
+                </span>
+                <br />
+                Tu peux gérer tes codes de secours ou désactiver la 2FA depuis cet écran.
+              </>
+            )
             : 'Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth) en plus du mot de passe — une fuite ne suffit alors plus à entrer.'
         }
       >
@@ -490,7 +485,10 @@ function modeLabel(mode: SecurityMode): string {
 
 interface SecuritySectionProps {
   title: string;
-  description: string;
+  /** Plain string, or arbitrary JSX when the descriptor needs
+   *  inline emphasis (status line + advice in different weights,
+   *  see Passkey + TOTP sections). */
+  description: React.ReactNode;
   children: React.ReactNode;
 }
 

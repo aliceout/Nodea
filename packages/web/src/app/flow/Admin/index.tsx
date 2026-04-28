@@ -18,6 +18,7 @@ import {
 } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import Topbar from '@/ui/dirk/Topbar';
 import UserTable from './components/UserTable';
 import InviteManager from './components/InviteCode';
 import AnnouncementsManager from './components/AnnouncementsManager';
@@ -196,7 +197,7 @@ export default function AdminPage() {
 
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar onOpenMenu={() => setMobileMenuOpen(true)} />
+      <Topbar label="Paramètres · Administration" onOpenMenu={() => setMobileMenuOpen(true)} />
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
         <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
@@ -299,26 +300,6 @@ export default function AdminPage() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
-  return (
-    <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-hair bg-bg/85 px-6 py-3 backdrop-blur-sm sm:px-9 lg:hidden">
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        onClick={onOpenMenu}
-        aria-label="Ouvrir le menu"
-        className="-ml-2"
-      >
-        <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-      </Button>
-      <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink">
-        Administration
-      </span>
     </div>
   );
 }

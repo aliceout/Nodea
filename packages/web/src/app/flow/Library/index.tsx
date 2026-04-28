@@ -35,6 +35,7 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
+import Topbar from '@/ui/dirk/Topbar';
 
 /**
  * Library — Direction K · Sauge.
@@ -288,14 +289,39 @@ export default function LibraryPage() {
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
-        count={items.length}
-        subview={subview}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        label={`Library · ${items.length} ${items.length === 1 ? 'livre' : 'livres'}`}
         onOpenMenu={() => setMobileMenuOpen(true)}
-        onNewItem={() => openComposer('library-item')}
-        onNewReview={(kind) => setReviewPicker({ open: true, kind })}
-      />
+      >
+        {subview === 'livres' ? (
+          <>
+            <ViewModeToggle value={viewMode} onChange={setViewMode} />
+            <DirkButton
+              variant="primary"
+              size="sm"
+              onClick={() => openComposer('library-item')}
+            >
+              + Nouveau livre
+            </DirkButton>
+          </>
+        ) : (
+          <DirkButton
+            variant="primary"
+            size="sm"
+            onClick={() =>
+              setReviewPicker({
+                open: true,
+                kind: subview === 'extraits' ? 'quote' : 'note',
+              })
+            }
+            disabled={items.length === 0}
+            {...(items.length === 0
+              ? { title: 'Ajoute d’abord un livre dans Library.' }
+              : {})}
+          >
+            {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
+          </DirkButton>
+        )}
+      </Topbar>
 
       <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
         {subview === 'livres' ? (
@@ -348,73 +374,6 @@ export default function LibraryPage() {
           onClose={() => setReviewPicker({ open: false })}
         />
       ) : null}
-    </div>
-  );
-}
-
-/* ---- Topbar ---------------------------------------------------- */
-
-interface TopbarProps {
-  count: number;
-  subview: LibrarySubview;
-  viewMode: LibraryViewMode;
-  onViewModeChange: (next: LibraryViewMode) => void;
-  onOpenMenu: () => void;
-  onNewItem: () => void;
-  onNewReview: (kind: 'quote' | 'note') => void;
-}
-
-function Topbar({
-  count,
-  subview,
-  viewMode,
-  onViewModeChange,
-  onOpenMenu,
-  onNewItem,
-  onNewReview,
-}: TopbarProps) {
-  const label = `Library · ${count} ${count === 1 ? 'livre' : 'livres'}`;
-  // The view mode toggle (4 layouts: list / list-cover / grid / wall)
-  // only applies to the books list. Hiding it on the Extraits / Notes
-  // sub-views keeps the topbar honest about what affects what.
-  const showViewMode = subview === 'livres';
-  return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
-      <div className="flex items-center gap-3">
-        <DirkButton
-          variant="ghost"
-          size="md"
-          iconOnly
-          onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
-          className="-ml-2 text-ink-soft lg:hidden"
-        >
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </DirkButton>
-        <span className="text-[12px] tracking-[0.02em] text-muted">{label}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        {showViewMode ? (
-          <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
-        ) : null}
-        {subview === 'livres' ? (
-          <DirkButton variant="primary" size="sm" onClick={onNewItem}>
-            + Nouveau livre
-          </DirkButton>
-        ) : (
-          <DirkButton
-            variant="primary"
-            size="sm"
-            onClick={() => onNewReview(subview === 'extraits' ? 'quote' : 'note')}
-            disabled={count === 0}
-            {...(count === 0
-              ? { title: 'Ajoute d’abord un livre dans Library.' }
-              : {})}
-          >
-            {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
-          </DirkButton>
-        )}
-      </div>
     </div>
   );
 }

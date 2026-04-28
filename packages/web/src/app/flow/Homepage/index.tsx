@@ -13,6 +13,7 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import Topbar from '@/ui/dirk/Topbar';
 import EmptyHomepage from './Empty';
 
 /**
@@ -64,12 +65,23 @@ export default function HomePage() {
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
-        date={formattedDate}
+        label={formattedDate}
         onOpenMenu={() => setMobileMenuOpen(true)}
-        onOpenComposer={() => openComposer()}
-        searchLabel={t('home.topbar.search', { defaultValue: 'Recherche' })}
-        newEntryLabel={t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
-      />
+      >
+        <button
+          type="button"
+          onClick={() => openComposer()}
+          className="hidden items-center gap-2 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] text-ink-soft transition-colors hover:border-accent hover:text-ink sm:inline-flex"
+        >
+          <kbd className="rounded border border-hair bg-bg-2 px-1 py-px font-mono text-[10px] text-muted">
+            ⌘K
+          </kbd>
+          {t('home.topbar.search', { defaultValue: 'Recherche' })}
+        </button>
+        <Button variant="primary" size="sm" onClick={() => openComposer()}>
+          {t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
+        </Button>
+      </Topbar>
 
       <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
         <PrimaryColumn name={displayName} moodEntries={moodEntries} />
@@ -155,56 +167,6 @@ function preferredName(
   if (!email) return '';
   const [local] = email.split('@');
   return local ?? '';
-}
-
-interface TopbarProps {
-  date: string;
-  searchLabel: string;
-  newEntryLabel: string;
-  onOpenMenu: () => void;
-  onOpenComposer: () => void;
-}
-
-function Topbar({
-  date,
-  searchLabel,
-  newEntryLabel,
-  onOpenMenu,
-  onOpenComposer,
-}: TopbarProps) {
-  return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="md"
-          iconOnly
-          onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
-          className="-ml-2 text-ink-soft lg:hidden"
-        >
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </Button>
-        <span className="text-[12px] tracking-[0.02em] text-muted">{date}</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onOpenComposer}
-          className="hidden items-center gap-2 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] text-ink-soft transition-colors hover:border-accent hover:text-ink sm:inline-flex"
-        >
-          <kbd className="rounded border border-hair bg-bg-2 px-1 py-px font-mono text-[10px] text-muted">
-            ⌘K
-          </kbd>
-          {searchLabel}
-        </button>
-        <Button variant="primary" size="sm" onClick={onOpenComposer}>
-          {newEntryLabel}
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 interface PrimaryColumnProps {

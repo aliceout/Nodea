@@ -16,6 +16,7 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import Topbar from '@/ui/dirk/Topbar';
 
 /**
  * Journal — Direction K · Sauge.
@@ -156,10 +157,13 @@ export default function JournalPage() {
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
-        count={entries.length}
+        label={`Journal · ${entries.length} ${entries.length === 1 ? 'entrée' : 'entrées'}`}
         onOpenMenu={() => setMobileMenuOpen(true)}
-        onNewEntry={() => openComposer('journal')}
-      />
+      >
+        <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
+          + Nouvelle entrée
+        </Button>
+      </Topbar>
 
       <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
         <PrimaryColumn
@@ -181,37 +185,6 @@ export default function JournalPage() {
 }
 
 const EMPTY: ReadonlyArray<JournalEntry> = [];
-
-interface TopbarProps {
-  count: number;
-  onOpenMenu: () => void;
-  onNewEntry: () => void;
-}
-
-function Topbar({ count, onOpenMenu, onNewEntry }: TopbarProps) {
-  const label = `Journal · ${count} ${count === 1 ? 'entrée' : 'entrées'}`;
-  return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="md"
-          iconOnly
-          onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
-          className="-ml-2 text-ink-soft lg:hidden"
-        >
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </Button>
-        <span className="text-[12px] tracking-[0.02em] text-muted">{label}</span>
-      </div>
-
-      <Button variant="primary" size="sm" onClick={onNewEntry}>
-        + Nouvelle entrée
-      </Button>
-    </div>
-  );
-}
 
 interface PrimaryColumnProps {
   load: LoadState;

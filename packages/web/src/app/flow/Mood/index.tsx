@@ -20,6 +20,7 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import Topbar from '@/ui/dirk/Topbar';
 
 /**
  * Mood — Direction K · Sauge.
@@ -139,10 +140,13 @@ export default function MoodPage() {
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
-        count={totalEntries}
+        label={`Mood · ${totalEntries} ${totalEntries === 1 ? 'entrée' : 'entrées'}`}
         onOpenMenu={() => setMobileMenuOpen(true)}
-        onNewEntry={() => openComposer('mood')}
-      />
+      >
+        <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
+          + Nouvelle entrée
+        </Button>
+      </Topbar>
 
       <div className="grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]">
         <PrimaryColumn
@@ -225,37 +229,6 @@ function formatEntryLabel(dateIso: string, today: Date): string {
     d.getFullYear() === today.getFullYear() ? ENTRY_SAME_YEAR_FMT : ENTRY_CROSS_YEAR_FMT;
   const formatted = fmt.format(d);
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-interface TopbarProps {
-  count: number;
-  onOpenMenu: () => void;
-  onNewEntry: () => void;
-}
-
-function Topbar({ count, onOpenMenu, onNewEntry }: TopbarProps) {
-  const label = `Mood · ${count} ${count === 1 ? 'entrée' : 'entrées'}`;
-  return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="md"
-          iconOnly
-          onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
-          className="-ml-2 text-ink-soft lg:hidden"
-        >
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </Button>
-        <span className="text-[12px] tracking-[0.02em] text-muted">{label}</span>
-      </div>
-
-      <Button variant="primary" size="sm" onClick={onNewEntry}>
-        + Nouvelle entrée
-      </Button>
-    </div>
-  );
 }
 
 interface MoodEntry {
@@ -394,7 +367,7 @@ function PrimaryColumn({
             onClick={() => setChartCollapsed((prev) => !prev)}
             aria-label={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
             title={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
-            className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-soft transition-colors hover:bg-bg-2 hover:text-muted"
+            className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-bg-2 hover:text-ink"
           >
             <ChevronUpIcon
               className={cn(
@@ -976,7 +949,7 @@ function SideColumn({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
-        <SectionLabel>Distribution</SectionLabel>
+        <SectionLabel>Répartition</SectionLabel>
         <ScoreDonut entries={entries} />
       </section>
 
@@ -1268,7 +1241,7 @@ function ScoreDonut({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
         viewBox="-15 -15 130 130"
         className="h-full w-full"
         role="img"
-        aria-label={`Distribution des notes sur ${total} entrée${total === 1 ? '' : 's'}`}
+        aria-label={`Répartition des notes sur ${total} entrée${total === 1 ? '' : 's'}`}
       >
         {/* Donut group — rotated so the first arc starts at 12 o'clock. */}
         <g transform="rotate(-90 50 50)">

@@ -4,6 +4,7 @@ import { Bars3Icon } from '@heroicons/react/24/outline';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import Topbar from '@/ui/dirk/Topbar';
 
 /**
  * EmptyHomepage — Direction K · Sauge.
@@ -42,10 +43,13 @@ export default function EmptyHomepage() {
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
-        date={formattedDate}
+        label={formattedDate}
         onOpenMenu={() => setMobileMenuOpen(true)}
-        onNewEntry={() => openComposer('mood')}
-      />
+      >
+        <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
+          + Nouvelle entrée
+        </Button>
+      </Topbar>
 
       <div className="flex flex-1 flex-col items-start px-6 py-16 sm:px-14 sm:py-20 lg:py-[92px]">
         <div className="max-w-[640px]">
@@ -86,32 +90,3 @@ export default function EmptyHomepage() {
   );
 }
 
-interface TopbarProps {
-  date: string;
-  onOpenMenu: () => void;
-  onNewEntry: () => void;
-}
-
-function Topbar({ date, onOpenMenu, onNewEntry }: TopbarProps) {
-  return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="md"
-          iconOnly
-          onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
-          className="-ml-2 text-ink-soft lg:hidden"
-        >
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-        </Button>
-        <span className="text-[12px] tracking-[0.02em] text-muted">{date}</span>
-      </div>
-
-      <Button variant="primary" size="sm" onClick={onNewEntry}>
-        + Nouvelle entrée
-      </Button>
-    </div>
-  );
-}
