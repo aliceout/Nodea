@@ -14,6 +14,8 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import EmptyHint from '@/ui/dirk/EmptyHint';
+import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
 /**
@@ -252,9 +254,7 @@ function PrimaryColumn({
 }: PrimaryColumnProps) {
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-        Goals
-      </h1>
+      <PageHeading>Goals</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -267,13 +267,9 @@ function PrimaryColumn({
 
       <div>
         {load.status === 'loading' && stats.total === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Chargement des objectifs…
-          </p>
+          <EmptyHint>Chargement des objectifs…</EmptyHint>
         ) : groups.length === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Aucun objectif pour cette sélection.
-          </p>
+          <EmptyHint>Aucun objectif pour cette sélection.</EmptyHint>
         ) : (
           groups.map(([groupLabel, items]) => (
             <GroupBlock

@@ -20,6 +20,8 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import EmptyHint from '@/ui/dirk/EmptyHint';
+import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
 /**
@@ -326,9 +328,7 @@ function PrimaryColumn({
           keeps it below the topbar (`z-20`). */}
       <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-        <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-          Mood
-        </h1>
+        <PageHeading className="mb-0">Mood</PageHeading>
         <YearSelector value={year} years={availableYears} onChange={onYearChange} />
       </div>
 
@@ -382,13 +382,9 @@ function PrimaryColumn({
 
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Chargement des entrées…
-          </p>
+          <EmptyHint>Chargement des entrées…</EmptyHint>
         ) : filtered.length === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Aucune entrée pour cette période.
-          </p>
+          <EmptyHint>Aucune entrée pour cette période.</EmptyHint>
         ) : (
           filtered.map((entry) => (
             <EntryRow

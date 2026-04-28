@@ -13,6 +13,7 @@ import { useSession } from '@/core/auth/use-session';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import type { PasskeyListItem } from '@nodea/shared';
 
 /**
@@ -172,14 +173,7 @@ function ListView({
             : `${passkeys.length} passkey${passkeys.length > 1 ? 's' : ''} · ${prfCount} déchiffre${prfCount > 1 ? 'nt' : ''} tes données${prfCount === 0 ? ' (aucune compatible PRF)' : ''}.`}
       </p>
 
-      {error ? (
-        <div
-          role="alert"
-          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-        >
-          {error}
-        </div>
-      ) : null}
+      {error ? <InlineAlert className="mb-4">{error}</InlineAlert> : null}
 
       {passkeys && passkeys.length > 0 ? (
         <ul className="mb-4 space-y-2">
@@ -351,14 +345,7 @@ function AddView({ session, onCancel, onSuccess }: AddViewProps) {
           required
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
           type="submit"
@@ -446,14 +433,7 @@ function RemoveView({ passkey, session, onCancel, onSuccess }: RemoveViewProps) 
           required
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
           type="submit"
@@ -547,14 +527,7 @@ function RenameView({ passkey, session, onCancel, onSuccess }: RenameViewProps) 
           required
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
           type="submit"

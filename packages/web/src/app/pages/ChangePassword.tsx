@@ -17,6 +17,7 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -188,12 +189,7 @@ export default function ChangePasswordPage() {
             />
 
             {serverError ? (
-              <div
-                role="alert"
-                className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-              >
-                {serverError}
-              </div>
+              <InlineAlert className="mb-3">{serverError}</InlineAlert>
             ) : null}
 
             <Button

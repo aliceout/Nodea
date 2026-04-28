@@ -1,6 +1,7 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
 import type { AdminUserRow } from '@/core/api/client';
 import Button from '@/ui/atoms/dirk/Button';
+import EmptyHint from '@/ui/dirk/EmptyHint';
 
 export interface UserTableProps {
   users: AdminUserRow[];
@@ -27,11 +28,7 @@ export default function UserTable({ users, currentUserId, onDelete }: UserTableP
   }
 
   if (users.length === 0) {
-    return (
-      <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-        Aucun compte enregistré.
-      </p>
-    );
+    return <EmptyHint>Aucun compte enregistré.</EmptyHint>;
   }
 
   return (

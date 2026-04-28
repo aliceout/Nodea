@@ -13,6 +13,7 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 import EmptyHomepage from './Empty';
 
@@ -177,9 +178,9 @@ interface PrimaryColumnProps {
 function PrimaryColumn({ name, moodEntries }: PrimaryColumnProps) {
   return (
     <section className="flex min-h-0 min-w-0 flex-col">
-      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+      <PageHeading className="mb-0">
         {name ? `Bonjour, ${name}.` : 'Bonjour.'}
-      </h1>
+      </PageHeading>
       <p className="mt-1 mb-[22px] text-[14px] text-muted">Trois choses à voir aujourd&rsquo;hui.</p>
 
       <ToSeeList moodEntries={moodEntries} />

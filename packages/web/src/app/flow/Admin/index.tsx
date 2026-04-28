@@ -18,6 +18,8 @@ import {
 } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import EmptyHint from '@/ui/dirk/EmptyHint';
 import Topbar from '@/ui/dirk/Topbar';
 import UserTable from './components/UserTable';
 import InviteManager from './components/InviteCode';
@@ -229,23 +231,15 @@ export default function AdminPage() {
       <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">
         <div className="max-w-[880px]">
           {!isAdmin ? (
-            <p
-              role="alert"
-              className="border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-            >
+            <InlineAlert>
               {t('admin.sections.restricted', { defaultValue: 'Accès réservé aux admins.' })}
-            </p>
+            </InlineAlert>
           ) : loading ? (
-            <p className="border-b border-hair py-6 text-[13px] italic text-muted">
+            <EmptyHint>
               {t('admin.states.loading', { defaultValue: 'Chargement…' })}
-            </p>
+            </EmptyHint>
           ) : error ? (
-            <p
-              role="alert"
-              className="border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-            >
-              {error}
-            </p>
+            <InlineAlert>{error}</InlineAlert>
           ) : tab === 'users' ? (
             <TabIntro
               description={t('admin.sections.users.description', {

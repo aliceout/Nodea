@@ -11,6 +11,7 @@ import {
 import type { AnnouncementResponse } from '@nodea/shared';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import EmptyHint from '@/ui/dirk/EmptyHint';
 
 const INITIAL_FORM = { title: '', body: '' };
 
@@ -145,11 +146,9 @@ export default function AnnouncementsManager() {
           Annonces existantes
         </h3>
         {loading ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">Chargement…</p>
+          <EmptyHint>Chargement…</EmptyHint>
         ) : items.length === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Aucune annonce publiée.
-          </p>
+          <EmptyHint>Aucune annonce publiée.</EmptyHint>
         ) : (
           <ul className="flex flex-col">
             {items.map((row) => (

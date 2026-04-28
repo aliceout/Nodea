@@ -35,6 +35,8 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
+import EmptyHint from '@/ui/dirk/EmptyHint';
+import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
 /**
@@ -464,9 +466,7 @@ function PrimaryColumn(props: PrimaryColumnProps) {
   );
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-        Library
-      </h1>
+      <PageHeading>Library</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -479,15 +479,13 @@ function PrimaryColumn(props: PrimaryColumnProps) {
 
       <div>
         {load.status === 'loading' && total === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Chargement de la bibliothèque…
-          </p>
+          <EmptyHint>Chargement de la bibliothèque…</EmptyHint>
         ) : filteredCount === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
+          <EmptyHint>
             {total === 0
               ? 'Aucun livre — ajoute le premier avec « + Nouveau livre ».'
               : 'Aucun livre pour cette sélection.'}
-          </p>
+          </EmptyHint>
         ) : isListMode ? (
           groups
             .filter((g) => g.items.length > 0)
@@ -614,9 +612,7 @@ function ReviewsColumn({
   const heading = REVIEW_VIEW_HEADING[kind];
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-        {heading}
-      </h1>
+      <PageHeading>{heading}</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -628,13 +624,9 @@ function ReviewsColumn({
       ) : null}
 
       {load.status === 'loading' ? (
-        <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-          Chargement…
-        </p>
+        <EmptyHint>Chargement…</EmptyHint>
       ) : filtered.length === 0 ? (
-        <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-          {REVIEW_VIEW_EMPTY[kind]}
-        </p>
+        <EmptyHint>{REVIEW_VIEW_EMPTY[kind]}</EmptyHint>
       ) : (
         <ul className="flex flex-col gap-5">
           {filtered.map((r) => (

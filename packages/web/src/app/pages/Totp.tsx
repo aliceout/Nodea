@@ -17,6 +17,7 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
  * Settings → TOTP (Auth-Roadmap Phase 5B, Auth-Spec §8).
@@ -284,14 +285,7 @@ function DisabledActivateView({ onActivate }: DisabledActivateViewProps) {
           required
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
           type="submit"
@@ -407,14 +401,7 @@ function PasswordPanel({
           required
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
           type="submit"
@@ -621,14 +608,7 @@ function SecretPanel({ data, session, onCancel, onActivated }: SecretPanelProps)
           required
         />
 
-        {error ? (
-          <div
-            role="alert"
-            className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
           type="submit"

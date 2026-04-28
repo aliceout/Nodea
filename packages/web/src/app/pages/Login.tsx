@@ -9,6 +9,7 @@ import { isApiError } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
  * Login — Direction K · Sauge.
@@ -128,21 +129,15 @@ export default function LoginPage() {
           </h2>
 
           {justActivated ? (
-            <div
-              role="status"
-              className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
-            >
+            <InlineAlert tone="success" className="mb-4">
               ✓ Compte activé. Connecte-toi avec ton e-mail et ton mot de passe.
-            </div>
+            </InlineAlert>
           ) : null}
 
           {justChangedPassword ? (
-            <div
-              role="status"
-              className="mb-4 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[13px] text-accent-deep"
-            >
+            <InlineAlert tone="success" className="mb-4">
               ✓ Mot de passe mis à jour. Connecte-toi avec le nouveau.
-            </div>
+            </InlineAlert>
           ) : null}
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -162,12 +157,7 @@ export default function LoginPage() {
             />
 
             {serverError ? (
-              <div
-                role="alert"
-                className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-              >
-                {serverError}
-              </div>
+              <InlineAlert className="mb-3">{serverError}</InlineAlert>
             ) : null}
 
             <Button

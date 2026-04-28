@@ -12,6 +12,7 @@ import {
   type ModulesRuntime,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
+import EmptyHint from '@/ui/dirk/EmptyHint';
 
 /**
  * ModulesManager (TSX).
@@ -95,9 +96,9 @@ export default function ModulesManager() {
 
   if (rows.length === 0) {
     return (
-      <p className="border-b border-hair py-6 text-[13px] italic text-muted">
+      <EmptyHint>
         {t('settings.modules.none', { defaultValue: 'Aucun module configurable.' })}
-      </p>
+      </EmptyHint>
     );
   }
 

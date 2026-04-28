@@ -38,6 +38,7 @@ import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
 import DirkTextarea from '@/ui/atoms/dirk/Textarea';
+import SectionLabel from '@/ui/dirk/SectionLabel';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import questions from '@/i18n/fr/Mood/questions.json';
 
@@ -2506,14 +2507,6 @@ function ToolbarButton({
     >
       {children}
     </DirkButton>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
-      {children}
-    </div>
   );
 }
 

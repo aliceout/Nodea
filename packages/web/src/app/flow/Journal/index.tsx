@@ -16,6 +16,8 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import EmptyHint from '@/ui/dirk/EmptyHint';
+import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
 /**
@@ -197,9 +199,7 @@ interface PrimaryColumnProps {
 function PrimaryColumn({ load, total, groups, onEdit, onDelete }: PrimaryColumnProps) {
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-        Journal
-      </h1>
+      <PageHeading>Journal</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -212,13 +212,9 @@ function PrimaryColumn({ load, total, groups, onEdit, onDelete }: PrimaryColumnP
 
       <div>
         {load.status === 'loading' && total === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Chargement du journal…
-          </p>
+          <EmptyHint>Chargement du journal…</EmptyHint>
         ) : groups.length === 0 ? (
-          <p className="border-b border-hair py-6 text-[13px] italic text-muted">
-            Aucune entrée pour cette sélection.
-          </p>
+          <EmptyHint>Aucune entrée pour cette sélection.</EmptyHint>
         ) : (
           groups.map(([groupLabel, items]) => (
             <GroupBlock
