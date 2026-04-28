@@ -91,10 +91,6 @@ export default function DocsPage() {
           <h1 className="text-[36px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
             Comment Nodea protège tes données
           </h1>
-          <p className="mt-4 max-w-[640px] text-[16px] leading-[1.6] text-ink-soft">
-            Trois niveaux de lecture selon ce que tu cherches. Tout est
-            accessible, choisis ton entrée.
-          </p>
         </header>
 
         {level === 'newbie' ? <DocsTierNewbie /> : null}
