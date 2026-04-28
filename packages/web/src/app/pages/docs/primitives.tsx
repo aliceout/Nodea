@@ -1,5 +1,6 @@
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import GithubSlugger from 'github-slugger';
@@ -142,15 +143,56 @@ const markdownComponents: Components = {
       </a>
     );
   },
-  code: ({ children, className }) => (
-    <code
-      className={
-        className ??
-        'rounded bg-bg-2 px-1.5 py-0.5 font-mono text-[13px] text-ink'
-      }
-    >
+  code: ({ children, className }) => {
+    // react-markdown calls this for both inline code and the
+    // <code> child inside fenced blocks. The fenced-block path
+    // emits a `language-xxx` className (or sometimes none, when
+    // no language is specified). The `pre` override below wraps
+    // those in a styled block; here we just need to NOT apply
+    // the inline pill styling in that case.
+    const isBlock = typeof className === 'string';
+    if (isBlock) {
+      return <code className={className}>{children}</code>;
+    }
+    return (
+      <code className="rounded bg-bg-2 px-1.5 py-0.5 font-mono text-[13px] text-ink">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => (
+    <pre className="my-4 overflow-x-auto rounded-lg bg-bg-2 p-4 font-mono text-[12px] leading-[1.55] text-ink-soft">
       {children}
-    </code>
+    </pre>
+  ),
+  // GFM tables — react-markdown needs these explicit overrides
+  // because the default `<table>` rendering inherits the
+  // `text-justify` from `<p>` siblings and produces unreadable
+  // cells. The wrapper allows horizontal scroll on narrow
+  // viewports rather than overflowing the article column.
+  table: ({ children }) => (
+    <div className="my-6 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-[13.5px] leading-[1.55]">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="border-b border-hair text-ink">{children}</thead>
+  ),
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => (
+    <tr className="border-b border-hair last:border-b-0">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="px-3 py-2 align-top font-semibold first:pl-0 last:pr-0">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="px-3 py-2 align-top text-ink-soft first:pl-0 last:pr-0">
+      {children}
+    </td>
   ),
   strong: ({ children }) => (
     <strong className="font-semibold text-ink">{children}</strong>
@@ -172,20 +214,28 @@ const markdownComponents: Components = {
   },
 };
 
-const markdownPlugins = [rehypeRaw, rehypeSlug];
+const remarkPlugins = [remarkGfm];
+const rehypePlugins = [rehypeRaw, rehypeSlug];
 
 /**
  * Render a docs tier from its markdown source.
  *
+ * `remark-gfm` is what unlocks GitHub-flavoured tables, strike-
+ * through, and task lists in the markdown source — without it,
+ * `| col | col |` lines render as literal text rather than
+ * tables. `rehype-raw` lets us keep raw `<aside>` blocks in the
+ * markdown for the docs-hint callouts; `rehype-slug` adds `id`
+ * attrs to headings so the TOC anchor links work.
+ *
  * The `lang="fr"` + `hyphens-auto` wrapper enables proper French
- * hyphenation in justified paragraphs (matching the same prose
- * polish applied to the Journal entry render).
+ * hyphenation in justified paragraphs.
  */
 export function MarkdownTier({ source }: { source: string }) {
   return (
     <div lang="fr" className="hyphens-auto">
       <ReactMarkdown
-        rehypePlugins={markdownPlugins}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
         components={markdownComponents}
       >
         {source}
