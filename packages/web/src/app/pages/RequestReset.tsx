@@ -4,6 +4,7 @@ import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -95,13 +96,11 @@ function ForkView({ onNoCode }: ForkViewProps) {
   const navigate = useNavigate();
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Récupération</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Mot de passe oublié
-      </h2>
-      <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-        As-tu un code de récupération&nbsp;?
-      </p>
+      <AuthPanelHeader
+        eyebrow="Récupération"
+        title="Mot de passe oublié"
+        subtitle={<>As-tu un code de récupération&nbsp;?</>}
+      />
 
       <Button
         type="button"
@@ -151,14 +150,16 @@ function FormView({
 }: FormViewProps) {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Réinitialisation</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Réinitialiser sans code
-      </h2>
-      <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
-        Indique ton email — on t’enverra un lien pour définir un nouveau mot
-        de passe.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Réinitialisation"
+        title="Réinitialiser sans code"
+        subtitle={
+          <>
+            Indique ton email — on t’enverra un lien pour définir un nouveau mot
+            de passe.
+          </>
+        }
+      />
 
       {/* Hard data-loss warning — the user chose the destructive
           path on the fork, but we still want the consequence
@@ -207,14 +208,16 @@ function FormView({
 function SentView({ email }: { email: string }) {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Lien envoyé</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Vérifie ta boîte mail
-      </h2>
-      <p className="mb-5 text-[13.5px] leading-[1.5] text-ink-soft">
-        Si un compte Nodea est associé à <strong className="font-semibold text-ink">{email}</strong>,
-        un email avec un lien de réinitialisation vient d’être envoyé. Le lien est valable 1 heure.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Lien envoyé"
+        title="Vérifie ta boîte mail"
+        subtitle={
+          <>
+            Si un compte Nodea est associé à <strong className="font-semibold text-ink">{email}</strong>,
+            un email avec un lien de réinitialisation vient d’être envoyé. Le lien est valable 1 heure.
+          </>
+        }
+      />
 
       <Warning title="Le lien effacera toutes tes données">
         Confirme uniquement si tu acceptes une réinitialisation complète.

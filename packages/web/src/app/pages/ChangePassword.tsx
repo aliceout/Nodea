@@ -144,10 +144,7 @@ export default function ChangePasswordPage() {
         </>
       }
     >
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Changer le mot de passe
-      </h2>
+      <AuthPanelHeader eyebrow="Sécurité" title="Changer le mot de passe" />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <Field

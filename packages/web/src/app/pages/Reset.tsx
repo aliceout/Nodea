@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -190,13 +191,11 @@ export default function ResetPage() {
 function InvalidLinkPanel() {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Lien invalide</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Ce lien est incomplet.
-      </h2>
-      <p className="mb-6 text-[14px] text-ink-soft">
-        Redemande un email depuis la page « mot de passe oublié ».
-      </p>
+      <AuthPanelHeader
+        eyebrow="Lien invalide"
+        title="Ce lien est incomplet."
+        subtitle="Redemande un email depuis la page « mot de passe oublié »."
+      />
       <Link
         to="/request-reset"
         className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"

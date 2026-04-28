@@ -7,6 +7,7 @@ import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -149,17 +150,19 @@ function FormPanel({
 }: FormPanelProps) {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        {isRegenerate
-          ? 'Régénérer le code de récupération'
-          : 'Configurer un code de récupération'}
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
-        {isRegenerate
-          ? 'Génère un nouveau code de 12 mots. L’ancien sera invalidé immédiatement — assure-toi de pouvoir noter le nouveau avant de continuer.'
-          : 'On va générer 12 mots à noter. Tape ton mot de passe pour autoriser la génération.'}
-      </p>
+      <AuthPanelHeader
+        eyebrow="Sécurité"
+        title={
+          isRegenerate
+            ? 'Régénérer le code de récupération'
+            : 'Configurer un code de récupération'
+        }
+        subtitle={
+          isRegenerate
+            ? 'Génère un nouveau code de 12 mots. L’ancien sera invalidé immédiatement — assure-toi de pouvoir noter le nouveau avant de continuer.'
+            : 'On va générer 12 mots à noter. Tape ton mot de passe pour autoriser la génération.'
+        }
+      />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
@@ -235,10 +238,10 @@ function DisplayPanel({
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        {regenerated ? 'Nouveau code généré' : 'Ton code de récupération'}
-      </h2>
+      <AuthPanelHeader
+        eyebrow="Sécurité"
+        title={regenerated ? 'Nouveau code généré' : 'Ton code de récupération'}
+      />
 
       {/* Same K · Sauge danger tone as Reset.tsx — the message is
           weighty + the action below is destructive-by-omission

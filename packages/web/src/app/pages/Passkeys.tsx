@@ -12,6 +12,7 @@ import { useSession } from '@/core/auth/use-session';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import type { PasskeyListItem } from '@nodea/shared';
 
@@ -160,17 +161,17 @@ function ListView({
 }: ListViewProps) {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Mes passkeys
-      </h2>
-      <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-        {passkeys === null
-          ? 'Chargement…'
-          : passkeys.length === 0
-            ? 'Aucune passkey enregistrée. Ajoute-en une pour te connecter sans retaper ton mot de passe.'
-            : `${passkeys.length} passkey${passkeys.length > 1 ? 's' : ''} · ${prfCount} déchiffre${prfCount > 1 ? 'nt' : ''} tes données${prfCount === 0 ? ' (aucune compatible PRF)' : ''}.`}
-      </p>
+      <AuthPanelHeader
+        eyebrow="Sécurité"
+        title="Mes passkeys"
+        subtitle={
+          passkeys === null
+            ? 'Chargement…'
+            : passkeys.length === 0
+              ? 'Aucune passkey enregistrée. Ajoute-en une pour te connecter sans retaper ton mot de passe.'
+              : `${passkeys.length} passkey${passkeys.length > 1 ? 's' : ''} · ${prfCount} déchiffre${prfCount > 1 ? 'nt' : ''} tes données${prfCount === 0 ? ' (aucune compatible PRF)' : ''}.`
+        }
+      />
 
       {error ? <InlineAlert className="mb-4">{error}</InlineAlert> : null}
 
@@ -318,14 +319,16 @@ function AddView({ session, onCancel, onSuccess }: AddViewProps) {
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Ajout</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Ajouter une passkey
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
-        Donne-lui un nom, retape ton mot de passe, puis confirme avec ton
-        empreinte / Face ID / PIN.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Ajout"
+        title="Ajouter une passkey"
+        subtitle={
+          <>
+            Donne-lui un nom, retape ton mot de passe, puis confirme avec ton
+            empreinte / Face ID / PIN.
+          </>
+        }
+      />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
@@ -412,15 +415,17 @@ function RemoveView({ passkey, session, onCancel, onSuccess }: RemoveViewProps) 
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Retrait</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Retirer une passkey
-      </h2>
-      <p className="mb-5 text-[14px] leading-[1.5] text-ink-soft">
-        Tu vas retirer <strong className="font-semibold text-ink">{passkey.label ?? 'Sans nom'}</strong>.
-        Cette passkey ne pourra plus être utilisée pour se connecter à ton
-        compte.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Retrait"
+        title="Retirer une passkey"
+        subtitle={
+          <>
+            Tu vas retirer <strong className="font-semibold text-ink">{passkey.label ?? 'Sans nom'}</strong>.
+            Cette passkey ne pourra plus être utilisée pour se connecter à ton
+            compte.
+          </>
+        }
+      />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
@@ -505,10 +510,7 @@ function RenameView({ passkey, session, onCancel, onSuccess }: RenameViewProps) 
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Renommer</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Renommer une passkey
-      </h2>
+      <AuthPanelHeader eyebrow="Renommer" title="Renommer une passkey" />
 
       <form onSubmit={onSubmit} noValidate>
         <Field

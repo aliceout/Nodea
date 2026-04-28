@@ -6,6 +6,7 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import type { SecurityMode } from '@nodea/shared';
 
 /**
@@ -152,14 +153,16 @@ export default function SecurityModePage() {
         </>
       }
     >
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-          <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-            Mode de sécurité
-          </h2>
-          <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-            Choisis combien de facteurs sont requis à chaque connexion. Un
-            changement nécessite ton mot de passe.
-          </p>
+      <AuthPanelHeader
+            eyebrow="Sécurité"
+            title="Mode de sécurité"
+            subtitle={
+              <>
+                Choisis combien de facteurs sont requis à chaque connexion. Un
+                changement nécessite ton mot de passe.
+              </>
+            }
+          />
 
           <div className="mb-3 grid gap-2">
             {options.map((opt) => {

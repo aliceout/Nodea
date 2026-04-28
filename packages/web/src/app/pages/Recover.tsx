@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -218,14 +219,16 @@ function FormPanel(props: FormPanelProps) {
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Récupération</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Récupérer avec un code
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
-        Tape ton e-mail, tes 12 mots de récupération, et un nouveau mot de passe.
-        Tes données restent intactes.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Récupération"
+        title="Récupérer avec un code"
+        subtitle={
+          <>
+            Tape ton e-mail, tes 12 mots de récupération, et un nouveau mot de passe.
+            Tes données restent intactes.
+          </>
+        }
+      />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
@@ -361,14 +364,16 @@ function DisplayPanel({
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Récupération</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Compte récupéré ✓
-      </h2>
-      <p className="mb-4 text-[14px] leading-[1.5] text-ink-soft">
-        Ton ancien code a été invalidé. Voici le nouveau, à noter
-        immédiatement.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Récupération"
+        title="Compte récupéré ✓"
+        subtitle={
+          <>
+            Ton ancien code a été invalidé. Voici le nouveau, à noter
+            immédiatement.
+          </>
+        }
+      />
 
       <div
         role="alert"

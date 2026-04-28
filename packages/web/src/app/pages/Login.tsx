@@ -117,10 +117,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout headline="Là où personne ne lit." marketing={<PrivacyBody />}>
-      <p className="mb-1 text-[13px] text-muted">Connexion</p>
-          <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-            Entre dans ton espace
-          </h2>
+      <AuthPanelHeader eyebrow="Connexion" title="Entre dans ton espace" />
 
           {justActivated ? (
             <InlineAlert tone="success" className="mb-4">

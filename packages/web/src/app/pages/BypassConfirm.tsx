@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiMfaBypassConfirm } from '@/core/api/client';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 
 /**
  * BypassConfirm — landing page for the MFA bypass confirm email
@@ -135,15 +136,15 @@ function SuccessPanel({
 
   return (
     <div>
-      <p className="mb-1 text-[13px] text-muted">Récupération {factorLabel}</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        {alreadyConfirmed ? 'Demande déjà confirmée' : 'Demande validée'}
-      </h2>
-      <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-        {alreadyConfirmed
-          ? `Tu avais déjà cliqué le lien — le compteur 7 jours tourne déjà depuis. Tu pourras te reconnecter sans ${factorLabel} dès que le compteur atteint zéro.`
-          : `Tu pourras te reconnecter sans ${factorLabel} dans 7 jours. ${sideEffect}`}
-      </p>
+      <AuthPanelHeader
+        eyebrow={<>Récupération {factorLabel}</>}
+        title={alreadyConfirmed ? 'Demande déjà confirmée' : 'Demande validée'}
+        subtitle={
+          alreadyConfirmed
+            ? `Tu avais déjà cliqué le lien — le compteur 7 jours tourne déjà depuis. Tu pourras te reconnecter sans ${factorLabel} dès que le compteur atteint zéro.`
+            : `Tu pourras te reconnecter sans ${factorLabel} dans 7 jours. ${sideEffect}`
+        }
+      />
 
       <Countdown target={earliestApplyAt} />
 

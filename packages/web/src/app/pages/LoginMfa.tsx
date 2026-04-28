@@ -5,6 +5,7 @@ import { useSession } from '@/core/auth/use-session';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 type Factor = 'totp' | 'passkey' | 'password';
@@ -196,15 +197,15 @@ export default function LoginMfaPage() {
                   panel — typing a code is no longer relevant. */}
               {lost.kind === 'idle' ? (
                 <>
-                  <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
-                  <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-                    {totpMode === 'code' ? 'Code à six chiffres' : 'Code de secours'}
-                  </h2>
-                  <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-                    {totpMode === 'code'
-                      ? 'Tape le code affiché par ton appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth…). Le code change toutes les 30 secondes.'
-                      : 'Tape un de tes 10 codes de secours (24 caractères, tirets optionnels). Chaque code n’est utilisable qu’une seule fois.'}
-                  </p>
+                  <AuthPanelHeader
+                    eyebrow="Vérification 2FA"
+                    title={totpMode === 'code' ? 'Code à six chiffres' : 'Code de secours'}
+                    subtitle={
+                      totpMode === 'code'
+                        ? 'Tape le code affiché par ton appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth…). Le code change toutes les 30 secondes.'
+                        : 'Tape un de tes 10 codes de secours (24 caractères, tirets optionnels). Chaque code n’est utilisable qu’une seule fois.'
+                    }
+                  />
 
                   <form onSubmit={onSubmitTotp} noValidate>
                     {totpMode === 'code' ? (
@@ -316,17 +317,17 @@ export default function LoginMfaPage() {
             <>
               {lost.kind === 'idle' ? (
                 <>
-                  <p className="mb-1 text-[13px] text-muted">
-                    Vérification 2FA · 2/2
-                  </p>
-                  <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-                    Confirme avec ta passkey
-                  </h2>
-                  <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-                    Ton mode de sécurité demande une passkey en plus du code TOTP.
-                    Confirme avec Touch ID, Face ID, Windows Hello ou ta clé
-                    hardware pour finaliser la connexion.
-                  </p>
+                  <AuthPanelHeader
+                    eyebrow="Vérification 2FA · 2/2"
+                    title="Confirme avec ta passkey"
+                    subtitle={
+                      <>
+                        Ton mode de sécurité demande une passkey en plus du code TOTP.
+                        Confirme avec Touch ID, Face ID, Windows Hello ou ta clé
+                        hardware pour finaliser la connexion.
+                      </>
+                    }
+                  />
 
                   {error ? (
                     <InlineAlert className="mb-3">{error}</InlineAlert>
@@ -405,15 +406,17 @@ function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
   if (lost.kind === 'confirm') {
     return (
       <>
-        <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
-        <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-          Récupération {verbose}
-        </h2>
-        <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-          On va t’envoyer un email avec un lien à confirmer. 7 jours après ta
-          confirmation, ta prochaine connexion sera autorisée sans {verbose}.{' '}
-          {sideEffect}
-        </p>
+        <AuthPanelHeader
+          eyebrow="Vérification 2FA"
+          title={<>Récupération {verbose}</>}
+          subtitle={
+            <>
+              On va t’envoyer un email avec un lien à confirmer. 7 jours après ta
+              confirmation, ta prochaine connexion sera autorisée sans {verbose}.{' '}
+              {sideEffect}
+            </>
+          }
+        />
 
         <Button
           variant="danger-outline"
@@ -442,14 +445,16 @@ function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
   // sent
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Email envoyé
-      </h2>
-      <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-        Vérifie ta boîte mail. Confirme dans le lien — 7 jours après cette
-        confirmation, tu pourras te reconnecter sans {verbose}.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Vérification 2FA"
+        title="Email envoyé"
+        subtitle={
+          <>
+            Vérifie ta boîte mail. Confirme dans le lien — 7 jours après cette
+            confirmation, tu pourras te reconnecter sans {verbose}.
+          </>
+        }
+      />
     </>
   );
 }

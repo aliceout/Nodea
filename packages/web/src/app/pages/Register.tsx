@@ -23,6 +23,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 zxcvbnOptions.setOptions({
@@ -120,14 +121,16 @@ function LoadingPanel() {
 function ClosedPanel() {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Inscription</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Sur invitation
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
-        L'inscription à cette instance Nodea se fait sur invitation.
-        Demande à un·e admin de t'envoyer un lien d'invitation par e-mail.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Inscription"
+        title="Sur invitation"
+        subtitle={
+          <>
+            L'inscription à cette instance Nodea se fait sur invitation.
+            Demande à un·e admin de t'envoyer un lien d'invitation par e-mail.
+          </>
+        }
+      />
 
       <div className="mt-2 text-[12.5px] text-muted">
         <span>Déjà un compte&nbsp;?</span>{' '}
@@ -145,14 +148,16 @@ function ClosedPanel() {
 function InvalidInvitePanel() {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Inscription</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Lien d'invitation invalide
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
-        Ce lien d'invitation n'est pas valide. Il a peut-être déjà été utilisé,
-        expiré, ou il a été tronqué pendant la copie.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Inscription"
+        title="Lien d'invitation invalide"
+        subtitle={
+          <>
+            Ce lien d'invitation n'est pas valide. Il a peut-être déjà été utilisé,
+            expiré, ou il a été tronqué pendant la copie.
+          </>
+        }
+      />
       <p className="mb-6 text-[13px] text-muted">
         Demande à un·e admin de te renvoyer un nouveau lien.
       </p>
@@ -173,14 +178,16 @@ function InvalidInvitePanel() {
 function CheckYourEmailCard({ email }: { email: string }) {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Inscription</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Vérifie ta boîte mail
-      </h2>
-      <p className="mb-4 text-[14px] leading-[1.5] text-ink-soft">
-        On a envoyé un lien d'activation à <strong>{email}</strong>. Clique sur le
-        lien pour activer ton compte — tu pourras te connecter ensuite.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Inscription"
+        title="Vérifie ta boîte mail"
+        subtitle={
+          <>
+            On a envoyé un lien d'activation à <strong>{email}</strong>. Clique sur le
+            lien pour activer ton compte — tu pourras te connecter ensuite.
+          </>
+        }
+      />
       <p className="mb-6 text-[12.5px] text-muted">
         Le lien est valable 7 jours. Pense à vérifier le dossier spam si tu ne le
         trouves pas tout de suite.
@@ -212,13 +219,15 @@ function RedirectingToLoginCard({ email }: { email: string }) {
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Inscription</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Compte créé !
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">
-        <strong>{email}</strong> est prêt. On te redirige vers la connexion.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Inscription"
+        title="Compte créé !"
+        subtitle={
+          <>
+            <strong>{email}</strong> est prêt. On te redirige vers la connexion.
+          </>
+        }
+      />
     </>
   );
 }
@@ -331,10 +340,7 @@ function RegisterForm({
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Inscription</p>
-      <h2 className="mb-7 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Créer un compte
-      </h2>
+      <AuthPanelHeader eyebrow="Inscription" title="Créer un compte" />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field

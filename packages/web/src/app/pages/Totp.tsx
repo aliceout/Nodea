@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -149,10 +150,10 @@ function ListView({
 }: ListViewProps) {
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Authentification à deux facteurs
-      </h2>
+      <AuthPanelHeader
+        eyebrow="Sécurité"
+        title="Authentification à deux facteurs"
+      />
 
       {totpEnabled ? (
         <EnabledView
@@ -385,11 +386,7 @@ function PasswordPanel({
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        {title}
-      </h2>
-      <p className="mb-6 text-[14px] leading-[1.5] text-ink-soft">{body}</p>
+      <AuthPanelHeader eyebrow="Sécurité" title={title} subtitle={body} />
 
       <form onSubmit={handle} noValidate>
         <Field
@@ -531,14 +528,16 @@ function SecretPanel({ data, session, onCancel, onActivated }: SecretPanelProps)
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Activation TOTP · 1/2</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Scanne le QR code
-      </h2>
-      <p className="mb-4 text-[13.5px] leading-[1.5] text-ink-soft">
-        Ouvre ton appli d’authentification et ajoute ce compte. Si tu ne peux
-        pas scanner, dévoile la clé et tape-la manuellement.
-      </p>
+      <AuthPanelHeader
+        eyebrow="Activation TOTP · 1/2"
+        title="Scanne le QR code"
+        subtitle={
+          <>
+            Ouvre ton appli d’authentification et ajoute ce compte. Si tu ne peux
+            pas scanner, dévoile la clé et tape-la manuellement.
+          </>
+        }
+      />
 
       {/* QR cap — 180×180 keeps the code scannable but compact. */}
       {qrSvg ? (
@@ -673,10 +672,10 @@ function CodesPanel({ codes, onDone }: CodesPanelProps) {
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Activation TOTP · 2/2</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Codes de secours
-      </h2>
+      <AuthPanelHeader
+        eyebrow="Activation TOTP · 2/2"
+        title="Codes de secours"
+      />
 
       <div
         role="alert"
@@ -805,10 +804,10 @@ function RegenDisplayPanel({ codes, onDone }: RegenDisplayPanelProps) {
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Sécurité</p>
-      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Nouveaux codes de secours
-      </h2>
+      <AuthPanelHeader
+        eyebrow="Sécurité"
+        title="Nouveaux codes de secours"
+      />
 
       <div
         role="alert"
