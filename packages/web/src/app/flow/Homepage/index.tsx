@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Bars3Icon } from '@heroicons/react/24/outline';
-import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  GOAL_STATUS_VALUES,
+  MOOD_SCORE_VALUES,
+  type GoalsPayload,
+  type MoodScore,
+} from '@nodea/shared';
 
+import { goalsClient } from '@/core/api/modules/goals';
 import { moodClient } from '@/core/api/modules/mood';
 import {
   useNodeaStore,
@@ -45,6 +50,7 @@ export default function HomePage() {
 
   const displayName = useMemo(() => preferredName(user), [user]);
   const moodEntries = useMoodEntries();
+  const goalEntries = useGoalEntries();
 
   const formattedDate = useMemo(() => {
     const now = new Date();
@@ -86,7 +92,7 @@ export default function HomePage() {
           </Button>
         </Topbar>
       }
-      side={<SideColumn moodEntries={moodEntries} />}
+      side={<SideColumn moodEntries={moodEntries} goalEntries={goalEntries} />}
     >
       <PrimaryColumn name={displayName} moodEntries={moodEntries} />
     </ModuleShell>
@@ -154,6 +160,83 @@ function useMoodEntries(): MoodEntryLite[] {
       cancelled = true;
     };
   }, [mainKey, moduleUserId, moodVersion]);
+
+  return entries;
+}
+
+type GoalStatusLite = 'open' | 'wip' | 'done';
+
+interface GoalEntryLite {
+  id: string;
+  title: string;
+  status: GoalStatusLite;
+  thread: string;
+  /** ISO `updatedAt` from the record — used to keep recent
+   *  goals on top when there's no other ordering signal. */
+  updatedAt: string;
+}
+
+const GOAL_VALID_STATUS: ReadonlySet<string> = new Set(GOAL_STATUS_VALUES);
+
+/**
+ * One-shot fetch + projection of the user's Goals. Re-runs
+ * whenever `goalsVersion` is bumped (the Composer's GoalBody and
+ * the Goals page's status toggles increment it after every
+ * mutation), so newly saved goals appear on Home without a page
+ * reload. Failures stay silent — the Goals page surfaces the
+ * real error.
+ *
+ * Lite shape on purpose : only what the SideColumn block reads.
+ * The full `GoalEntry` (date / note / completedAt) lives in the
+ * Goals page and doesn't need to leak into Home.
+ */
+function useGoalEntries(): GoalEntryLite[] {
+  const mainKey = useNodeaStore(selectMainKey);
+  const modules = useNodeaStore(selectModules);
+  const moduleUserId = modules['goals']?.moduleUserId ?? null;
+  const goalsVersion = useNodeaStore((s) => s.goalsVersion);
+
+  const [entries, setEntries] = useState<GoalEntryLite[]>([]);
+
+  useEffect(() => {
+    if (!mainKey || !moduleUserId) return undefined;
+    let cancelled = false;
+    goalsClient
+      .list(moduleUserId, mainKey)
+      .then((records) => {
+        if (cancelled) return;
+        const lite: GoalEntryLite[] = [];
+        for (const r of records) {
+          const p = r.payload as GoalsPayload;
+          const title = p.title?.trim() ?? '';
+          if (!title) continue;
+          const raw = (p.status ?? 'open') as string;
+          if (!GOAL_VALID_STATUS.has(raw)) continue;
+          // Map legacy aliases the same way the Goals page does
+          // so the home block doesn't render a fourth tone.
+          const status: GoalStatusLite =
+            raw === 'active'
+              ? 'open'
+              : raw === 'archived'
+                ? 'done'
+                : (raw as GoalStatusLite);
+          lite.push({
+            id: r.id,
+            title,
+            status,
+            thread: p.thread ?? '',
+            updatedAt: r.updatedAt,
+          });
+        }
+        setEntries(lite);
+      })
+      .catch(() => {
+        // Silent — Goals page is responsible for surfacing errors.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mainKey, moduleUserId, goalsVersion]);
 
   return entries;
 }
@@ -409,14 +492,15 @@ function RecentPassage() {
 
 interface SideColumnProps {
   moodEntries: ReadonlyArray<MoodEntryLite>;
+  goalEntries: ReadonlyArray<GoalEntryLite>;
 }
 
-function SideColumn({ moodEntries }: SideColumnProps) {
+function SideColumn({ moodEntries, goalEntries }: SideColumnProps) {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <MoodBlock entries={moodEntries} />
       <HabitsBlock />
-      <IntentionsBlock />
+      <IntentionsBlock entries={goalEntries} />
       <ReadingBlock />
     </aside>
   );
@@ -577,37 +661,94 @@ function HabitsBlock() {
   );
 }
 
-interface Intention {
-  title: string;
-  pct: number;
-}
+const HOME_GOAL_LIMIT = 5;
 
-const INTENTIONS: Intention[] = [
-  { title: 'Écrire 3× / semaine', pct: 62 },
-  { title: 'Lire 24 livres', pct: 45 },
-  { title: 'Marcher 8 km / jour', pct: 78 },
-];
+const STATUS_TONE: Record<GoalStatusLite, string> = {
+  open: 'border-hair bg-bg',
+  wip: 'border-accent bg-accent',
+  done: 'border-accent bg-accent',
+};
 
-function IntentionsBlock() {
+const STATUS_LABEL: Record<GoalStatusLite, string> = {
+  open: 'ouvert',
+  wip: 'en cours',
+  done: 'terminé',
+};
+
+/**
+ * Real-data block on the Home aside : surfaces the goals the
+ * user is actively working on (`wip`) plus the most recently
+ * touched `open` goals as a short to-do list. Done goals are
+ * filtered out — the block is for « what's on my plate », not
+ * « what I've achieved » (the Goals page archives section
+ * covers the latter).
+ *
+ * Order: `wip` first (most recently updated), then `open`
+ * (most recently updated), capped at 5 items so the side
+ * column doesn't explode. Each row is a link to the Goals
+ * page filtered to the matching status — no individual focus
+ * reader yet (#64 tracks that).
+ */
+function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> }) {
+  const visible = useMemo(() => {
+    const wip = [...entries.filter((e) => e.status === 'wip')];
+    const open = [...entries.filter((e) => e.status === 'open')];
+    const byUpdated = (a: GoalEntryLite, b: GoalEntryLite) =>
+      b.updatedAt.localeCompare(a.updatedAt);
+    wip.sort(byUpdated);
+    open.sort(byUpdated);
+    return [...wip, ...open].slice(0, HOME_GOAL_LIMIT);
+  }, [entries]);
+
   return (
     <section>
-      <SectionLabel>Intentions</SectionLabel>
-      {INTENTIONS.map((g, i) => (
-        <div key={g.title} className="mb-[7px]">
-          <div className="mb-[3px] flex justify-between text-[12.5px] text-ink">
-            <span>{g.title}</span>
-            <span className="text-[11px] tabular-nums text-muted">{g.pct}%</span>
-          </div>
-          <div className="h-[3px] overflow-hidden rounded-sm bg-hair">
-            <div
-              className="animate-bar-fill h-full rounded-sm bg-accent"
-              style={{ width: `${g.pct}%`, animationDelay: `${200 + i * 120}ms` }}
-            />
-          </div>
-        </div>
-      ))}
+      <div className="mb-2 flex items-baseline justify-between">
+        <SectionLabel>Goals</SectionLabel>
+        <Link
+          to="/flow/goals"
+          className="text-[11px] text-muted underline-offset-2 transition-colors hover:text-accent hover:underline"
+        >
+          tout voir →
+        </Link>
+      </div>
+      {visible.length === 0 ? (
+        <p className="text-[12px] italic text-muted">
+          Aucun goal en cours.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {visible.map((g) => (
+            <li key={g.id}>
+              <Link
+                to="/flow/goals"
+                className="group flex items-baseline gap-2 text-[12.5px] text-ink transition-colors hover:text-accent"
+                title={STATUS_LABEL[g.status]}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full border',
+                    STATUS_TONE[g.status],
+                  )}
+                />
+                <span className="min-w-0 flex-1 truncate">{g.title}</span>
+                {g.thread ? (
+                  <span className="shrink-0 text-[10px] uppercase tracking-[0.04em] text-muted">
+                    {firstThread(g.thread)}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
+}
+
+function firstThread(thread: string): string {
+  const first = thread.split(',')[0];
+  return first ? first.trim() : '';
 }
 
 interface Reading {
