@@ -64,6 +64,13 @@ export const GoalsPayloadSchema = z
     note: z.string().default(''),
     status: z.enum(GOAL_STATUS_VALUES).default('open'),
     thread: z.string().default(''),
+    /** ISO timestamp captured when the status flips to `done`.
+     *  Cleared (set to `null`) when the user later cycles the
+     *  goal back to `open` / `wip`. Optional — pre-existing
+     *  `done` goals don't have one and the front renders « date
+     *  inconnue » in that case. Drives time-to-completion stats
+     *  and the « cette année » archive view. */
+    completed_at: z.string().nullable().default(null),
   })
   .passthrough();
 export type GoalsPayload = z.infer<typeof GoalsPayloadSchema>;

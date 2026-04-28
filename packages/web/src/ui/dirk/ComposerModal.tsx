@@ -625,12 +625,31 @@ function GoalBody({ onClose }: GoalBodyProps) {
     }
     setSubmitting(true);
     try {
+      // Manage `completed_at` across the form too — same boundary
+      // logic as the Goals page's status toggle. The previous
+      // payload's `completed_at` (or null) is preserved when the
+      // status doesn't cross the `done` line; flipping into done
+      // seeds `now`, flipping out clears.
+      const previousCompletedAt =
+        typeof editing?.payload.completed_at === 'string'
+          ? editing.payload.completed_at
+          : null;
+      const previousStatus = isCanonicalGoalStatus(editing?.payload.status)
+        ? editing!.payload.status
+        : 'open';
+      const nextCompletedAt =
+        status === 'done'
+          ? previousStatus === 'done'
+            ? previousCompletedAt
+            : new Date().toISOString()
+          : null;
       const payload = {
         date: composeDate(year, month),
         title: trimmedTitle,
         note,
         status,
         thread: thread.trim(),
+        completed_at: nextCompletedAt,
       };
       if (editing) {
         await goalsClient.update(moduleUserId, mainKey, editing.id, payload);

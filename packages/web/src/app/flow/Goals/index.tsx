@@ -53,6 +53,10 @@ interface GoalEntry {
   /** ISO timestamp from the saved record's `updatedAt`. Drives the
    *  « Récemment modifié » sort option. */
   updatedAt: string;
+  /** ISO timestamp captured when the goal flipped to `done`,
+   *  null otherwise. Pre-existing `done` records that never went
+   *  through the new flow keep `null` here. */
+  completedAt: string | null;
 }
 
 type SortBy = 'date' | 'updated' | 'alpha';
@@ -76,6 +80,10 @@ export default function GoalsPage() {
   const [groupBy, setGroupBy] = useState<'thread' | 'year'>('thread');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
+  /** When true, completed goals (status === 'done') are filtered
+   *  out of the main list. Stats still count them so the user
+   *  sees their done total. Toggle in the SideColumn. */
+  const [hideDone, setHideDone] = useState(false);
 
   useEffect(() => {
     if (!mainKey || !moduleUserId) return undefined;
@@ -105,13 +113,25 @@ export default function GoalsPage() {
   async function handleToggleStatus(entry: GoalEntry): Promise<void> {
     if (!mainKey || !moduleUserId) return;
     const next = nextStatus(entry.status);
+    // Capture or clear `completed_at` whenever the status crosses
+    // the `done` boundary. Going *into* done from open / wip seeds
+    // a fresh timestamp; cycling out of done back to open clears
+    // it. Re-entering done (after a clear) seeds a new timestamp
+    // — we don't preserve the previous one because the old « date
+    // de complétion » is no longer accurate.
+    const nextCompletedAt =
+      next === 'done'
+        ? (entry.completedAt ?? new Date().toISOString())
+        : null;
     // Optimistic — flip the in-memory copy first, roll back on error.
     setLoad((prev) =>
       prev.status === 'ready'
         ? {
             status: 'ready',
             entries: prev.entries.map((e) =>
-              e.id === entry.id ? { ...e, status: next } : e,
+              e.id === entry.id
+                ? { ...e, status: next, completedAt: nextCompletedAt }
+                : e,
             ),
           }
         : prev,
@@ -123,6 +143,7 @@ export default function GoalsPage() {
         note: entry.note,
         status: next,
         thread: entry.thread,
+        completed_at: nextCompletedAt,
       });
     } catch (err) {
       // Roll back on failure.
@@ -131,7 +152,9 @@ export default function GoalsPage() {
           ? {
               status: 'ready',
               entries: prev.entries.map((e) =>
-                e.id === entry.id ? { ...e, status: entry.status } : e,
+                e.id === entry.id
+                  ? { ...e, status: entry.status, completedAt: entry.completedAt }
+                  : e,
               ),
             }
           : prev,
@@ -150,6 +173,7 @@ export default function GoalsPage() {
         note: entry.note,
         status: entry.status,
         thread: entry.thread,
+        completed_at: entry.completedAt,
       },
     });
   }
@@ -185,6 +209,12 @@ export default function GoalsPage() {
   const filtered = useMemo<GoalEntry[]>(() => {
     const needle = search.trim().toLocaleLowerCase('fr');
     const out = entries.filter((e) => {
+      // « Masquer les terminés » overrides nothing — when an
+      // explicit status filter is `done`, the user clearly wants
+      // to see them, so the hide toggle yields.
+      if (hideDone && statusFilter !== 'done' && e.status === 'done') {
+        return false;
+      }
       if (statusFilter && e.status !== statusFilter) return false;
       if (needle.length > 0) {
         const haystack =
@@ -207,7 +237,7 @@ export default function GoalsPage() {
       return byDateDesc(a, b);
     });
     return out;
-  }, [entries, statusFilter, search, sortBy]);
+  }, [entries, statusFilter, search, sortBy, hideDone]);
 
   // Threads are stored as a comma-separated string in the single
   // `thread` field — splitting here means an entry tagged
@@ -258,6 +288,8 @@ export default function GoalsPage() {
           onGroupByChange={setGroupBy}
           sortBy={sortBy}
           onSortByChange={setSortBy}
+          hideDone={hideDone}
+          onHideDoneChange={setHideDone}
         />
       }
     >
@@ -471,6 +503,8 @@ interface SideColumnProps {
   onGroupByChange: (next: 'thread' | 'year') => void;
   sortBy: SortBy;
   onSortByChange: (next: SortBy) => void;
+  hideDone: boolean;
+  onHideDoneChange: (next: boolean) => void;
 }
 
 const SORT_LABEL: Record<SortBy, string> = {
@@ -489,6 +523,8 @@ function SideColumn({
   onGroupByChange,
   sortBy,
   onSortByChange,
+  hideDone,
+  onHideDoneChange,
 }: SideColumnProps) {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
@@ -553,6 +589,19 @@ function SideColumn({
           ))}
         </div>
       </section>
+
+      <section>
+        <SectionLabel>Affichage</SectionLabel>
+        <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink-soft">
+          <input
+            type="checkbox"
+            checked={hideDone}
+            onChange={(e) => onHideDoneChange(e.target.checked)}
+            className="h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
+          />
+          <span>Masquer les terminés ({stats.done})</span>
+        </label>
+      </section>
     </aside>
   );
 }
@@ -575,6 +624,7 @@ function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry {
     status: normalizeStatus(p.status),
     thread: p.thread ?? '',
     updatedAt: record.updatedAt,
+    completedAt: typeof p.completed_at === 'string' ? p.completed_at : null,
   };
 }
 
