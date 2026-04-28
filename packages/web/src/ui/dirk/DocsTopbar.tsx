@@ -62,14 +62,15 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
         <div className="flex shrink-0 items-center gap-2">
           {/* Styled as an `<a>` (not the Button component) so right-
               click / middle-click / Cmd-click open in a new tab as
-              expected. Visual matches `Button variant="ghost"
-              size="sm"` — the design system already defines the
-              ghost class set. */}
+              expected. Visual matches `Button variant="neutral"
+              size="sm"` but with the muted text of `ghost` —
+              hairline border so it reads as a button without
+              competing for attention with the primary CTA. */}
           <a
             href="https://github.com/aliceout/Nodea"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden h-8 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md bg-transparent px-3 text-[12px] font-semibold text-muted transition-[background-color,color] duration-150 hover:bg-bg-2 hover:text-ink sm:inline-flex"
+            className="hidden h-8 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border border-hair bg-transparent px-3 text-[12px] font-semibold text-muted transition-[background-color,color] duration-150 hover:bg-bg-2 hover:text-ink sm:inline-flex"
           >
             Code source
             <ArrowTopRightOnSquareIcon
