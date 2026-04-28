@@ -18,14 +18,20 @@ import type { ReviewPayload } from '@nodea/shared';
  */
 
 const DEBOUNCE_MS = 800;
+const STORAGE_PREFIX = 'nodea:review:draft:';
 
 function storageKey(year: number): string {
-  return `nodea:review:draft:${year}`;
+  return `${STORAGE_PREFIX}${year}`;
 }
 
 async function encode(key: MainKeyMaterial, payload: ReviewPayload): Promise<string> {
   const blob = await encryptAESGCM(JSON.stringify(payload), key.aesKey);
-  return JSON.stringify({ iv: blob.iv, data: blob.data });
+  // savedAt sits OUTSIDE the encrypted blob so the draft list can
+  // surface a « modifié le … » timestamp without paying the cost
+  // of decrypting every slot. It's not sensitive — it leaks the
+  // mtime of the file to anyone with localStorage access (already
+  // visible via the browser's storage panel).
+  return JSON.stringify({ iv: blob.iv, data: blob.data, savedAt: Date.now() });
 }
 
 async function decode(key: MainKeyMaterial, raw: string): Promise<ReviewPayload | null> {
@@ -39,6 +45,52 @@ async function decode(key: MainKeyMaterial, raw: string): Promise<ReviewPayload 
   } catch {
     return null;
   }
+}
+
+export interface DraftSummary {
+  /** Year the draft was started for. */
+  year: number;
+  /** Last save timestamp (ms epoch), or null if the draft predates
+   *  the savedAt-tracking format (older entries). */
+  savedAt: number | null;
+}
+
+/**
+ * Enumerate every encrypted Review draft sitting in localStorage,
+ * regardless of whether the AES key is currently in memory. Useful
+ * for the list view to show resumable drafts without forcing a
+ * decryption cost for slots the user may never open.
+ *
+ * The year is parsed from the storage key suffix; savedAt is read
+ * from the JSON wrapper (outside the encrypted payload).
+ */
+export function listReviewDrafts(): DraftSummary[] {
+  const out: DraftSummary[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(STORAGE_PREFIX)) continue;
+    const yr = Number(k.slice(STORAGE_PREFIX.length));
+    if (!Number.isFinite(yr)) continue;
+    let savedAt: number | null = null;
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { savedAt?: number };
+        if (typeof parsed.savedAt === 'number') savedAt = parsed.savedAt;
+      }
+    } catch {
+      // Stored slot isn't JSON — ignore the timestamp, still list
+      // the year so the user can wipe it.
+    }
+    out.push({ year: yr, savedAt });
+  }
+  return out.sort((a, b) => b.year - a.year);
+}
+
+/** Wipe a single year's draft from localStorage. Mirrors the
+ *  hook's `clear()` for sites that don't have the hook handy. */
+export function clearReviewDraft(year: number): void {
+  localStorage.removeItem(storageKey(year));
 }
 
 export interface DraftControls {

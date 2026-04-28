@@ -15,7 +15,7 @@
  * never branches on step id.
  */
 
-export type StepGroup = 'welcome' | 'last_year' | 'next_year' | 'closing';
+export type StepGroup = 'welcome' | 'last_year' | 'next_year';
 
 export type StepKind =
   | 'intro' // welcome screen, no payload
@@ -278,16 +278,13 @@ const SIX_PHRASES_NEXT: KeyLabel[] = [
   },
 ];
 
-/** Page 20 — date + signature under the booklet credo. */
-const CLOSING_FINAL: MixedKeyLabel[] = [
-  { key: 'date', label: 'Date', type: 'date' },
-  { key: 'signature', label: 'Signature', type: 'text' },
-];
-
 // --- Steps ----------------------------------------------------------
 
 export const STEPS: Step[] = [
   // ---- Bienvenue ----------------------------------------------------
+  // The general « what is YearCompass » framing lives on the List
+  // page (where the user picks a year). This intro step is the
+  // last beat before the questions start — practical heads-up only.
   {
     id: 'welcome',
     group: 'welcome',
@@ -295,10 +292,8 @@ export const STEPS: Step[] = [
     kind: 'intro',
     title: 'Avant de commencer',
     body: [
-      "Le YearCompass est un carnet annuel pour relire l'année qui se termine et préparer celle qui arrive.",
       "Deux moitiés : on célèbre et on apprend du passé, puis on rêve et on planifie le futur.",
       "Compte quelques heures de calme. Tu peux passer une question, y revenir plus tard, ou t'arrêter — ton brouillon est chiffré dans ton navigateur.",
-      "Respire un bon coup, oublie tes attentes, et commence quand tu te sens prêt·e.",
     ],
   },
 
@@ -445,26 +440,27 @@ export const STEPS: Step[] = [
       "Laisse libre cours à ton esprit. Quel est ton désir secret pour l'année à venir ?",
     placeholder: 'Mon vœu pour cette année…',
   },
-
-  // ---- Clôture finale ----------------------------------------------
-  {
-    id: 'closing_final',
-    group: 'closing',
-    path: 'closing',
-    kind: 'keyed_mixed',
-    title: 'Je crois que cette année tout sera possible.',
-    subtitle:
-      'Tu viens de planifier ton année. Date et signature pour sceller le tout.',
-    fields: CLOSING_FINAL,
-  },
 ];
 
 export const GROUP_LABELS: Record<StepGroup, string> = {
   welcome: 'Bienvenue',
   last_year: "L'année passée",
   next_year: "L'année devant toi",
-  closing: 'Clôture',
 };
+
+/**
+ * Question-only step list — drops `intro` welcome screens. The
+ * topbar counter, the StepNav rail and the « Un parcours guidé en
+ * N étapes » copy on the list view all reference this length so
+ * the welcome screen doesn't inflate the count.
+ */
+export const QUESTION_STEPS: Step[] = STEPS.filter((s) => s.kind !== 'intro');
+
+/** Position of `step` in QUESTION_STEPS, or -1 for intro steps. */
+export function questionPosition(step: Step): number {
+  if (step.kind === 'intro') return -1;
+  return QUESTION_STEPS.findIndex((s) => s.id === step.id);
+}
 
 /**
  * Walk a dotted path on an object, creating intermediate records as

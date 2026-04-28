@@ -10,7 +10,7 @@ import ReviewReader from './views/Reader';
 
 type Mode =
   | { kind: 'list' }
-  | { kind: 'wizard'; year: number; existing?: ReviewRecord }
+  | { kind: 'wizard'; year: number; existing?: ReviewRecord; resume?: boolean }
   | { kind: 'reader'; record: ReviewRecord };
 
 /**
@@ -59,6 +59,7 @@ export default function ReviewIndex() {
       <ReviewWizard
         year={mode.year}
         {...(mode.existing ? { existing: mode.existing } : {})}
+        {...(mode.resume ? { resume: true } : {})}
         onDone={() => setMode({ kind: 'list' })}
         onCancel={() => setMode({ kind: 'list' })}
       />
@@ -77,6 +78,7 @@ export default function ReviewIndex() {
   return (
     <ReviewListView
       onStartNew={(year) => setMode({ kind: 'wizard', year })}
+      onResume={(year) => setMode({ kind: 'wizard', year, resume: true })}
       onOpen={(record) => setMode({ kind: 'reader', record })}
       onEdit={(record) =>
         setMode({ kind: 'wizard', year: record.payload.year, existing: record })

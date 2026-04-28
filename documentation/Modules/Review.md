@@ -154,12 +154,6 @@ listé ici.
 
     // Page 19 — Souhait secret
     "secret_wish": "string"
-  },
-
-  // Page 20 — Je crois que cette année tout sera possible.
-  "closing": {
-    "signature": "string",
-    "date":      "YYYY-MM-DD"
   }
 }
 ```
@@ -174,6 +168,10 @@ listé ici.
 * **Pages 12-13 (transition entre parties)** ne sont pas un écran
   séparé : le wizard enchaîne directement, la barre de progression
   marque le passage à la deuxième moitié.
+* **Page 20 (date + signature sous le credo)** retirée — le
+  timestamp `updatedAt` du record et l'identité du compte
+  remplacent le rituel papier ; le souhait secret (page 19)
+  ferme le parcours.
 
 ---
 
@@ -228,10 +226,6 @@ listé ici.
           "six_phrases":{ "no_procrastination": "écrire", "...": "..." },
           "word_of_year": "ancrage",
           "secret_wish":  "me sentir plus libre"
-        },
-        "closing": {
-          "signature": "Alice",
-          "date":      "2026-01-15"
         }
       }
     ]

@@ -6,9 +6,11 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import {
+  QUESTION_STEPS,
   STEPS,
   GROUP_LABELS,
   getByPath,
+  questionPosition,
   setByPath,
   type Step,
 } from '../config/steps';
@@ -20,6 +22,11 @@ import StepNav from '../components/StepNav';
 interface WizardProps {
   year: number;
   existing?: ReviewRecord;
+  /** When true, auto-load the encrypted localStorage draft for
+   *  this year without prompting. Set this when the user clicked
+   *  « Reprendre » on the list view — they've already validated
+   *  the intent, so a confirm() dialog would be redundant. */
+  resume?: boolean;
   onDone(): void;
   onCancel(): void;
 }
@@ -48,6 +55,7 @@ function isFilled(step: Step, value: unknown): boolean {
 export default function ReviewWizard({
   year,
   existing,
+  resume,
   onDone,
   onCancel,
 }: WizardProps) {
@@ -58,8 +66,6 @@ export default function ReviewWizard({
     hydrating,
     save: saveDraft,
     clear: clearDraft,
-    saving,
-    lastSavedAt,
   } = useDraft(year);
 
   const [payload, setPayload] = useState<ReviewPayload>(
@@ -73,17 +79,22 @@ export default function ReviewWizard({
   const step = STEPS[index]!;
 
   // Offer to resume an encrypted draft, only once on load.
+  // The `resume` flag (set when arriving from « Reprendre » on the
+  // list view) skips the confirm prompt — the user has already
+  // told us they want their draft back.
   useEffect(() => {
     if (hydrating || hydrationOffered || existing) return;
     setHydrationOffered(true);
-    if (hydrated) {
-      if (window.confirm(`Un brouillon chiffré existe pour ${year}. Le reprendre ?`)) {
-        setPayload(hydrated);
-      } else {
-        clearDraft();
-      }
+    if (!hydrated) return;
+    if (
+      resume ||
+      window.confirm(`Un brouillon chiffré existe pour ${year}. Le reprendre ?`)
+    ) {
+      setPayload(hydrated);
+    } else {
+      clearDraft();
     }
-  }, [hydrating, hydrationOffered, hydrated, existing, year, clearDraft]);
+  }, [hydrating, hydrationOffered, hydrated, existing, resume, year, clearDraft]);
 
   // Auto-save on every payload change (skip the initial empty state).
   useEffect(() => {
@@ -153,17 +164,17 @@ export default function ReviewWizard({
     step.path,
   );
   const isLast = index === STEPS.length - 1;
-  const draftStatus = saving
-    ? 'Sauvegarde…'
-    : lastSavedAt
-      ? 'Brouillon chiffré ✓'
-      : null;
+  const qIndex = questionPosition(step);
+  const topbarLabel =
+    qIndex < 0
+      ? `Review · Bilan ${payload.year}`
+      : `Review · Bilan ${payload.year} · étape ${qIndex + 1}/${QUESTION_STEPS.length}`;
 
   return (
     <ModuleShell
       topbar={
         <Topbar
-          label={`Review · Bilan ${payload.year} · étape ${index + 1}/${STEPS.length}`}
+          label={topbarLabel}
           onOpenMenu={() => setMobileMenuOpen(true)}
         >
           <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -172,30 +183,35 @@ export default function ReviewWizard({
         </Topbar>
       }
     >
-      <div className="mx-auto max-w-3xl">
-        <header className="mb-7">
-          <div className="flex items-baseline justify-between gap-3">
+      {/* Header (eyebrow + title + StepNav + subtitle) is sticky
+          right under the 52 px Topbar so the question + progress
+          stay anchored while the form scrolls. Negative margins
+          extend the bg-bg pane to the parent's padding edges so
+          form content doesn't bleed through on either side when
+          the user scrolls. */}
+      <div className="sticky top-[52px] z-10 -mx-6 -mt-7 bg-bg px-6 pt-7 pb-5 sm:-mx-9 sm:px-9">
+        <div className="mx-auto max-w-3xl">
+          <header className="mb-5">
             <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
               Bilan {payload.year} · {GROUP_LABELS[step.group]}
             </p>
-            {draftStatus ? (
-              <span className="text-[11px] text-muted">{draftStatus}</span>
-            ) : null}
-          </div>
-          <h1 className="mt-2 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-            {step.title}
-          </h1>
-        </header>
+            <h1 className="mt-2 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em] text-ink">
+              {step.title}
+            </h1>
+          </header>
 
-        <StepNav index={index} onJump={goto} completed={completed} />
+          <StepNav index={index} onJump={goto} completed={completed} />
 
-        {step.subtitle ? (
-          <p className="mt-5 text-[14px] leading-[1.55] text-ink-soft">
-            {step.subtitle}
-          </p>
-        ) : null}
+          {step.subtitle ? (
+            <p className="mt-4 text-[13.5px] leading-[1.5] text-ink-soft">
+              {step.subtitle}
+            </p>
+          ) : null}
+        </div>
+      </div>
 
-        <section className="mt-7">
+      <div className="mx-auto max-w-3xl pt-7">
+        <section>
           <SectionForm step={step} value={value} onChange={onChangeValue} />
         </section>
 
@@ -204,14 +220,19 @@ export default function ReviewWizard({
         ) : null}
 
         <footer className="mt-8 flex flex-wrap items-center gap-2 border-t border-hair pt-5">
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={() => goto(index - 1)}
-            disabled={index === 0}
-          >
-            ← Précédent
-          </Button>
+          {index === 0 ? (
+            <Button variant="neutral" size="sm" onClick={onCancel}>
+              Quitter
+            </Button>
+          ) : (
+            <Button
+              variant="neutral"
+              size="sm"
+              onClick={() => goto(index - 1)}
+            >
+              ← Précédent
+            </Button>
+          )}
           <span className="flex-1" />
           {!isLast ? (
             <>
