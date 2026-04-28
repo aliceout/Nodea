@@ -103,10 +103,10 @@ L'auth Nodea évolue en deux temps :
   modifications sensibles (Phase 7).
 
 **Phase 8 — ✅ livré.** Cleanup + audit final (commentaires
-synchronisés avec le code, deps audit vendoré dans
-`deps-audit.md`, security-audit cross-checked, bundle integrity
-SRI + INTEGRITY.txt mitige le threat model "serveur compromis qui
-sert du JS altéré").
+synchronisés avec le code, audit des dépendances tierces, revue
+sécurité cross-checked, bundle integrity SRI + INTEGRITY.txt
+mitige le threat model "serveur compromis qui sert du JS
+altéré").
 
 ### 1.2 Invariants permanents
 

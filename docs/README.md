@@ -53,8 +53,6 @@ agencé sous le capot ?
 | [Database.md](./Database.md) | Schéma Postgres complet, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
 | [Auth-Spec.md](./Auth-Spec.md) | **Spécification technique exhaustive** de l'auth (OPAQUE + Passkey + TOTP + recovery + bypass MFA + stepped MFA + session re-auth). Référence complète, pas une lecture rapide |
 | [Security.md](./Security.md) | Invariants crypto, politique de rate-limit (§5.1), gestes interdits |
-| [security-audit.md](./security-audit.md) | Historique des findings sécurité + résolutions (audit initial mars 2026 + self-audit post-Phase 8) |
-| [deps-audit.md](./deps-audit.md) | Audit des dépendances tierces actives |
 
 **Avant de toucher un module** : la fiche `Modules/<Module>.md`
 décrit le payload clair et les règles. Avant de toucher l'auth :
