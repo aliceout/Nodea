@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import type { MouseEvent, ReactNode } from 'react';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 import Button from '@/ui/atoms/dirk/Button';
 import {
@@ -8,26 +9,26 @@ import {
 } from '@/core/store/nodea-store';
 
 interface DocsTopbarProps {
-  /** Optional content rendered between the logo and the CTA — used
-   *  by `DocsLayout` to slot the tier `<Tabs>` in. Hidden on
-   *  small viewports (`< sm`) to keep the row from wrapping; the
-   *  layout exposes a fallback band below the topbar in that
-   *  case. */
+  /** Optional content rendered between the logo and the right-hand
+   *  cluster — used by `DocsLayout` to slot the tier `<Tabs>` in.
+   *  Hidden on small viewports (`< sm`) to keep the row from
+   *  wrapping; the layout exposes a fallback band below the
+   *  topbar in that case. */
   children?: ReactNode;
 }
 
 /**
  * Topbar — Direction K · Sauge, public-facing variant.
  *
- * Different from `dirk/Topbar.tsx` (in-app, breadcrumb +
- * hamburger): the public surface has no sidebar, and the
- * right-hand affordance is the entry point back into the auth
- * flow. The optional `children` slot in the middle hosts page-
- * level navigation (e.g. the Docs tabs).
+ * Three columns at all sizes:
+ *   - logo (link back to /login or /flow/home)
+ *   - middle slot (typically the page tabs; visible on sm+)
+ *   - right cluster: external "Code source" link (sm+) + the
+ *     primary CTA ("Se connecter" or "Retour à Nodea")
  *
- * Logo on the left clicks back to `/login` (or `/flow/home` if a
- * session is already live). The right-hand button label flips
- * accordingly.
+ * The middle column always reserves `flex-1` space, even when the
+ * tabs are hidden below `sm` — without it the right cluster
+ * would collapse against the logo.
  */
 export default function DocsTopbar({ children }: DocsTopbarProps) {
   const navigate = useNavigate();
@@ -45,7 +46,7 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
       <div className="mx-auto flex h-[52px] max-w-[1180px] items-center gap-6 px-6 sm:px-9">
         <Link
           to={target}
-          className="flex shrink-0 items-center gap-2.5 cursor-pointer transition-opacity hover:opacity-80"
+          className="flex shrink-0 cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-80"
           aria-label="Retour à Nodea"
         >
           <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
@@ -54,25 +55,27 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
           </span>
         </Link>
 
-        {/* Middle slot — typically the page tabs. Hidden below sm
-            so the topbar stays single-line; below-topbar fallback
-            row in the layout picks up the slack. */}
-        {children ? (
-          <div className="hidden flex-1 sm:flex sm:justify-center">
-            {children}
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
+        <div className="flex flex-1 justify-center">
+          {children ? <div className="hidden sm:block">{children}</div> : null}
+        </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleCtaClick}
-          className="shrink-0"
-        >
-          {ctaLabel}
-        </Button>
+        <div className="flex shrink-0 items-center gap-4">
+          <a
+            href="https://github.com/aliceout/Nodea"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden cursor-pointer items-center gap-1 text-[13px] text-muted underline-offset-2 transition-colors hover:text-ink sm:inline-flex"
+          >
+            Code source
+            <ArrowTopRightOnSquareIcon
+              className="h-3 w-3"
+              aria-hidden="true"
+            />
+          </a>
+          <Button variant="primary" size="sm" onClick={handleCtaClick}>
+            {ctaLabel}
+          </Button>
+        </div>
       </div>
     </header>
   );

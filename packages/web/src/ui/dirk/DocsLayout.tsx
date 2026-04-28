@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 import DocsTopbar from '@/ui/dirk/DocsTopbar';
 
@@ -28,6 +27,9 @@ interface DocsLayoutProps {
  * The aside's natural top position aligns with `top-[52px]` (the
  * topbar height), so sticky kicks in immediately at scroll=0
  * rather than after the user has scrolled past padding.
+ *
+ * No footer — the only useful link there ("Code source") moved
+ * into the topbar; the rest was decoration.
  */
 export default function DocsLayout({ children, aside, tabs }: DocsLayoutProps) {
   return (
@@ -49,11 +51,11 @@ export default function DocsLayout({ children, aside, tabs }: DocsLayoutProps) {
         <div className="mx-auto max-w-[1180px] px-6 sm:px-9">
           <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-12">
             {/* Aside : sticky right under the topbar from scroll=0.
-                No top padding on its column so the natural position
-                matches `top-[52px]` and the rail doesn't drift before
-                "catching". */}
+                Vertical padding lives inside the sticky wrapper so
+                the natural top position matches `top-[52px]` and the
+                rail doesn't drift before "catching". */}
             {aside ? (
-              <div className="hidden lg:block lg:sticky lg:top-[52px] lg:max-h-[calc(100vh-52px)] lg:overflow-y-auto lg:py-12">
+              <div className="hidden lg:sticky lg:top-[52px] lg:block lg:max-h-[calc(100vh-52px)] lg:overflow-y-auto lg:py-12">
                 {aside}
               </div>
             ) : null}
@@ -61,21 +63,6 @@ export default function DocsLayout({ children, aside, tabs }: DocsLayoutProps) {
           </div>
         </div>
       </main>
-
-      <footer className="border-t border-hair">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-6 py-5 text-[12px] text-muted sm:px-9">
-          <span>Nodea — chiffré côté client · auto-hébergeable</span>
-          <a
-            href="https://github.com/aliceout/Nodea"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex cursor-pointer items-center gap-1 text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
-          >
-            Code source
-            <ArrowTopRightOnSquareIcon className="h-3 w-3" aria-hidden="true" />
-          </a>
-        </div>
-      </footer>
     </div>
   );
 }
