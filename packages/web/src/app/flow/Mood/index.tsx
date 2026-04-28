@@ -328,6 +328,10 @@ function PrimaryColumn({
           instant the user starts scrolling. The `bg-bg` then
           opaque-covers any entry scrolling underneath; `z-10`
           keeps it below the topbar (`z-20`). */}
+      {/* Sticky upper region — H1 + year picker + frise (with its
+          legend) + the « Entrées · … » section header all stay
+          pinned flush against the topbar so the user always sees
+          where they are while scrolling the entries list. */}
       <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
         <PageHeading className="mb-0">Mood</PageHeading>
@@ -339,18 +343,8 @@ function PrimaryColumn({
           <Chart year={year} entries={entries} />
         </div>
       ) : null}
-      </div>
 
-      {load.status === 'error' ? (
-        <p
-          role="alert"
-          className="mt-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {load.message}
-        </p>
-      ) : null}
-
-      <div className="mt-2 mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
           Entrées · {yearLabel}
           {showMonth ? ` · ${MONTH_LABELS_LONG[month]}` : ''}
@@ -359,11 +353,9 @@ function PrimaryColumn({
           {year !== null ? (
             <MonthSelector value={month} onChange={onMonthChange} />
           ) : null}
-          {/* Frise toggle — folds/unfolds the heatmap above. Lives on
-              the entries-section row (not in the sticky region) so the
-              full-width frise can collapse cleanly without leaving a
-              stub control behind, and so the chevron travels with the
-              section it controls when the user scrolls. */}
+          {/* Frise toggle — folds/unfolds the heatmap above. The
+              chevron travels with the sticky pane so it stays
+              accessible while the user scrolls the entries list. */}
           <button
             type="button"
             onClick={() => setChartCollapsed((prev) => !prev)}
@@ -381,6 +373,16 @@ function PrimaryColumn({
           </button>
         </div>
       </div>
+      </div>
+
+      {load.status === 'error' ? (
+        <p
+          role="alert"
+          className="mt-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
+        >
+          {load.message}
+        </p>
+      ) : null}
 
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
