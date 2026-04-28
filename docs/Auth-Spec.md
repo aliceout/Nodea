@@ -243,6 +243,18 @@ sans rouvrir la spec :
   ne le note pas, le seul recours en cas de perte de password +
   passkey est le reset destructif. Documenté à l'inscription, écran
   bloquant avec checkbox.
+- **Surface lisible minimum sur les entry tables.** Aucune ligne
+  d'entrée (`mood_entries`, `goals_entries`, …) ne porte de
+  `user_id`, ni de `created_at` / `updated_at` colonne. Le serveur
+  ne peut pas faire `SELECT … WHERE user_id = X` ni dater les
+  écritures par row côté DB. Conséquence : pas de cascade FK sur
+  user delete — les entrées deviennent orphelines (illisibles, la
+  clé est partie). Self-delete est client-driven (le client énumère
+  ses sids depuis `modules_config`, supprime ses entrées par sid +
+  guard, puis appelle `DELETE /auth/me`). Les modules qui ont
+  besoin d'un timestamp applicatif (Goals « Récent », Review
+  « modifié le ») le mettent dans le payload chiffré, pas dans une
+  colonne en clair. Cf. `Database.md`, `Modules.md §1`.
 
 ---
 
@@ -411,7 +423,7 @@ Le reste est inchangé :
 | `app_settings` | ✅ V1 — clé/valeur key-value pour la config d'app (V1 stocke `open_registration` ; futurs réglages mode TOTP, etc.) | non |
 | `modules_config` | Config par module et par user, chiffrée | oui (DELETE WHERE user_id) |
 | `user_preferences` | Préférences UI par user, chiffrées | oui |
-| `mood_entries`, `goals_entries`, `passage_entries`, `habits_entries`, `library_entries`, `review_entries` | Données chiffrées par module | oui |
+| `mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` | Données chiffrées par module | **non** (depuis migration 0012 — pas de `user_id` sur ces tables, le serveur ne peut pas identifier les entrées d'un user à purger ; rows orphelines acceptées) |
 
 Toutes les autres tables (auth + MFA + sessions) sont définies
 en §4.1.
@@ -645,13 +657,17 @@ serveur :
 
 (Cf. §7.9 — récap pour la migration Drizzle.)
 
+**Note importante** : depuis migration 0012, les tables d'entrées
+modules ne portent plus de `user_id` — le serveur ne peut donc
+plus les identifier ni les purger au reset. Les rows existantes
+deviennent orphelines (clé maîtresse perdue, illisibles). Le
+reset purge seulement les tables 1:1-FK-cascade-able sur l'user.
+
 ```sql
-DELETE FROM mood_entries WHERE user_id = $1;
-DELETE FROM goals_entries WHERE user_id = $1;
-DELETE FROM passage_entries WHERE user_id = $1;
-DELETE FROM habits_entries WHERE user_id = $1;
-DELETE FROM library_entries WHERE user_id = $1;
-DELETE FROM review_entries WHERE user_id = $1;
+-- Tables modules : pas de purge possible (pas de user_id colonne).
+-- Les rows survivent, illisibles, jusqu'à un éventuel cleanup
+-- ops manuel.
+
 DELETE FROM modules_config WHERE user_id = $1;
 DELETE FROM user_preferences WHERE user_id = $1;
 DELETE FROM auth_factors WHERE user_id = $1;

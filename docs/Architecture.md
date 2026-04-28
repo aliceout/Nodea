@@ -73,8 +73,13 @@ the factory loops over. There is nowhere to forget a guard.
 - `requireUser` — resolves the session cookie to a row on the `users`
   table and `c.set('user', …)`.
 - `requireAdmin` — stacks on `requireUser` and 403s non-admin roles.
-- `requireGuard` — inside `collection-factory`, validates the HMAC
-  guard query parameter on update/delete operations.
+- `requireGuard` — inside `collection-factory`, validates the
+  `(module_user_id, guard)` query parameters on update/delete
+  operations. **No `user_id` involvement** : entry rows carry no FK
+  to `users`, the server cannot link a row to a specific user. The
+  guard + sid combo is the only access decision (both require the
+  user's main key to compute, so an attacker without the key cannot
+  mutate even with a valid session cookie).
 - `rateLimit` — in-memory fixed-window, keyed on IP. Applied to
   every `/auth/*` mutation and a few non-auth routes (library
   lookup). Full catalogue with windows + justification in
@@ -542,9 +547,12 @@ knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
   needed.
 - Never duplicate a schema or type between web and api — move it to
   `@nodea/shared`.
-- Every mutation on an entry table goes through the guard middleware.
-  The only 1:1 blobs that skip it (`modules_config`,
-  `user_preferences`) are keyed PK on `user_id` — `requireUser` is
-  sufficient, which is documented in the route files themselves.
+- Every mutation on an entry table goes through the guard
+  middleware. Entry rows carry no `user_id` column (minimum-readable-
+  surface design — the server never links a user to an entry) ; the
+  guard validates `(sid, guard)` only. The 1:1 blobs that skip the
+  guard (`modules_config`, `user_preferences`) are keyed PK on
+  `user_id` and gated by `requireUser`, documented in their route
+  files.
 - Crypto additions respect HKDF domain separation and use branded
   types.

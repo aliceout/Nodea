@@ -18,18 +18,17 @@ passe centralisée par le `collection-factory`.
 * `update/delete` : `?sid=...&d=<guard>` ; le guard est validé
   contre la valeur stockée serveur, jamais renvoyée en lecture.
 
-**Champs système** :
+**Champs système** (5 colonnes seulement, design surface minimum) :
 
 | Champ            | Type           | Requis | Notes                                          |
 | ---------------- | -------------- | ------ | ---------------------------------------------- |
-| `id`             | `text` PK      | oui    | UUID généré côté serveur                       |
-| `user_id`        | `text`         | oui    | FK → `users.id`, **ON DELETE CASCADE**         |
-| `module_user_id` | `text`         | oui    | Id secondaire opaque, ex. `r_…`                |
-| `payload`        | `text`         | oui    | Base64 d'un blob AES-GCM (contenu chiffré)     |
+| `id`             | `text` PK      | oui    | UUID généré côté serveur, handle pour `/records/:id` |
+| `module_user_id` | `text`         | oui    | Sid opaque — **seule clé d'accès** (le mapping user→sid vit chiffré dans `modules_config`) |
+| `payload`        | `text`         | oui    | Base64 d'un blob AES-GCM (contenu chiffré, **+ `updated_at` applicatif** pour le tri « modifié le ») |
 | `cipher_iv`      | `text`         | oui    | IV AES-GCM (12 octets, base64)                 |
 | `guard`          | `text`         | oui    | HMAC stocké, jamais renvoyé en lecture         |
-| `created_at`     | `timestamptz`  | auto   |                                                |
-| `updated_at`     | `timestamptz`  | auto   |                                                |
+
+**Pas de `user_id`, pas de timestamps colonnes.** Le serveur ne sait pas à qui appartient une review ni quand elle a été écrite côté DB.
 
 ---
 
