@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowPathIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import {
   GOAL_STATUS_VALUES,
   type GoalsPayload,
@@ -15,6 +19,7 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
+import { Modal } from '@/ui/atoms/layout/Modal';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import FilterChip from '@/ui/dirk/FilterChip';
 import GroupBlock from '@/ui/dirk/GroupBlock';
@@ -84,6 +89,7 @@ export default function GoalsPage() {
    *  out of the main list. Stats still count them so the user
    *  sees their done total. Toggle in the SideColumn. */
   const [hideDone, setHideDone] = useState(false);
+  const [carryOverOpen, setCarryOverOpen] = useState(false);
 
   useEffect(() => {
     if (!mainKey || !moduleUserId) return undefined;
@@ -176,6 +182,68 @@ export default function GoalsPage() {
         completed_at: entry.completedAt,
       },
     });
+  }
+
+  /**
+   * Bulk-bump every unfinished goal whose date year matches `from`
+   * up to `to`. Status stays as-is (open or wip — done goals are
+   * filtered out before we ever get here). Date format preserved
+   * (YYYY-MM stays YYYY-MM with the year swapped, bare YYYY stays
+   * bare). Each goal is patched serially to keep the optimistic
+   * state simple — for a few dozen carry-overs this is fine; if
+   * we ever face hundreds we can chunk them.
+   */
+  async function handleCarryOver(
+    from: number,
+    to: number,
+    affected: GoalEntry[],
+  ): Promise<void> {
+    if (!mainKey || !moduleUserId) return;
+    if (affected.length === 0) {
+      setCarryOverOpen(false);
+      return;
+    }
+    // Optimistic — flip every affected entry locally first.
+    const renumbered = new Map<string, string>();
+    for (const e of affected) {
+      const newDate = e.date
+        ? e.date.replace(/^\d{4}/, String(to))
+        : String(to);
+      renumbered.set(e.id, newDate);
+    }
+    const previous = load;
+    setLoad((prev) =>
+      prev.status === 'ready'
+        ? {
+            status: 'ready',
+            entries: prev.entries.map((e) =>
+              renumbered.has(e.id)
+                ? { ...e, date: renumbered.get(e.id)! }
+                : e,
+            ),
+          }
+        : prev,
+    );
+    setCarryOverOpen(false);
+    try {
+      for (const e of affected) {
+        const newDate = renumbered.get(e.id)!;
+        await goalsClient.update(moduleUserId, mainKey, e.id, {
+          date: newDate,
+          title: e.title,
+          note: e.note,
+          status: e.status,
+          thread: e.thread,
+          completed_at: e.completedAt,
+        });
+      }
+    } catch (err) {
+      setLoad(previous);
+      if (import.meta.env.DEV) console.warn('goals: carry-over failed', err);
+    }
+    // Suppress unused-param warning when `from` isn't read at runtime
+    // (we use it to scope the affected list at the call site).
+    void from;
   }
 
   async function handleDelete(entry: GoalEntry): Promise<void> {
@@ -290,6 +358,7 @@ export default function GoalsPage() {
           onSortByChange={setSortBy}
           hideDone={hideDone}
           onHideDoneChange={setHideDone}
+          onCarryOverClick={() => setCarryOverOpen(true)}
         />
       }
     >
@@ -300,6 +369,12 @@ export default function GoalsPage() {
         onToggleStatus={handleToggleStatus}
         onDelete={handleDelete}
         onEdit={handleEdit}
+      />
+      <CarryOverDialog
+        open={carryOverOpen}
+        onClose={() => setCarryOverOpen(false)}
+        entries={entries}
+        onConfirm={handleCarryOver}
       />
     </ModuleShell>
   );
@@ -505,6 +580,7 @@ interface SideColumnProps {
   onSortByChange: (next: SortBy) => void;
   hideDone: boolean;
   onHideDoneChange: (next: boolean) => void;
+  onCarryOverClick: () => void;
 }
 
 const SORT_LABEL: Record<SortBy, string> = {
@@ -525,6 +601,7 @@ function SideColumn({
   onSortByChange,
   hideDone,
   onHideDoneChange,
+  onCarryOverClick,
 }: SideColumnProps) {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
@@ -602,7 +679,181 @@ function SideColumn({
           <span>Masquer les terminés ({stats.done})</span>
         </label>
       </section>
+
+      <section>
+        <SectionLabel>Actions</SectionLabel>
+        <Button
+          variant="neutral"
+          size="sm"
+          onClick={onCarryOverClick}
+          className="w-full justify-center"
+        >
+          <ArrowPathIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+          Reporter sur l'année prochaine
+        </Button>
+      </section>
     </aside>
+  );
+}
+
+interface CarryOverDialogProps {
+  open: boolean;
+  onClose: () => void;
+  entries: ReadonlyArray<GoalEntry>;
+  onConfirm: (
+    from: number,
+    to: number,
+    affected: GoalEntry[],
+  ) => void | Promise<void>;
+}
+
+/**
+ * Modal that lets the user bulk-bump unfinished goals from one
+ * year onto another. Default mapping is « previous year → current
+ * year » since end-of-year is when this matters most, but both
+ * fields are editable.
+ *
+ * Affected = goals whose date starts with the source year AND
+ * whose status is open or wip. `done` goals stay where they are
+ * (a completed goal is bound to the year it was achieved). The
+ * user sees the count + a preview of the first few titles before
+ * confirming, so a wrong year doesn't silently rewrite history.
+ */
+function CarryOverDialog({
+  open,
+  onClose,
+  entries,
+  onConfirm,
+}: CarryOverDialogProps) {
+  const currentYear = new Date().getFullYear();
+  const [fromYear, setFromYear] = useState(String(currentYear - 1));
+  const [toYear, setToYear] = useState(String(currentYear));
+  const [busy, setBusy] = useState(false);
+
+  // Reset to the year-end defaults each time the dialog opens so
+  // a previous session's tweak doesn't leak into the next.
+  useEffect(() => {
+    if (!open) return;
+    setFromYear(String(currentYear - 1));
+    setToYear(String(currentYear));
+    setBusy(false);
+  }, [open, currentYear]);
+
+  const fromN = Number(fromYear);
+  const toN = Number(toYear);
+  const validRange =
+    Number.isFinite(fromN) &&
+    Number.isFinite(toN) &&
+    fromN >= 1900 &&
+    fromN <= 2200 &&
+    toN >= 1900 &&
+    toN <= 2200 &&
+    toN !== fromN;
+
+  const affected = useMemo(() => {
+    if (!validRange) return [];
+    const prefix = String(fromN);
+    return entries.filter(
+      (e) =>
+        (e.status === 'open' || e.status === 'wip') &&
+        (e.date.startsWith(`${prefix}-`) || e.date === prefix),
+    );
+  }, [entries, fromN, validRange]);
+
+  async function confirm(): Promise<void> {
+    if (!validRange || busy) return;
+    setBusy(true);
+    await onConfirm(fromN, toN, affected);
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div className="px-[22px] pt-3.5 pb-3">
+        <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.005em] text-ink">
+          Reporter les inachevés
+        </h2>
+        <p className="mb-4 text-[12px] leading-[1.5] text-ink-soft">
+          Bascule les goals « ouverts » et « en cours » d'une année sur
+          l'autre. Les goals terminés restent à leur année.
+        </p>
+
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-muted">
+              De l'année
+            </span>
+            <Input
+              type="number"
+              min={1900}
+              max={2200}
+              value={fromYear}
+              align="center"
+              onChange={(e) => setFromYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              className="w-24"
+            />
+          </label>
+          <span className="pb-2 text-[12px] text-muted">→</span>
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-muted">
+              Vers l'année
+            </span>
+            <Input
+              type="number"
+              min={1900}
+              max={2200}
+              value={toYear}
+              align="center"
+              onChange={(e) => setToYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              className="w-24"
+            />
+          </label>
+        </div>
+
+        <div className="rounded-sm border border-hair bg-bg-2 p-3">
+          {!validRange ? (
+            <p className="text-[12px] italic text-muted">
+              Renseigne deux années valides et différentes.
+            </p>
+          ) : affected.length === 0 ? (
+            <p className="text-[12px] italic text-muted">
+              Aucun goal inachevé pour {fromN} — rien à reporter.
+            </p>
+          ) : (
+            <>
+              <p className="mb-2 text-[12px] text-ink-soft">
+                <span className="font-semibold text-ink">{affected.length}</span>{' '}
+                goal{affected.length === 1 ? '' : 's'} de {fromN} {' '}
+                {affected.length === 1 ? 'va' : 'vont'} être reporté
+                {affected.length === 1 ? '' : 's'} sur {toN}.
+              </p>
+              <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-[12px] text-ink">
+                {affected.slice(0, 8).map((g) => (
+                  <li key={g.id}>{g.title}</li>
+                ))}
+                {affected.length > 8 ? (
+                  <li className="list-none italic text-muted">
+                    … et {affected.length - 8} de plus
+                  </li>
+                ) : null}
+              </ul>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-hair bg-bg-2 px-3.5 py-2.5">
+        <Button variant="neutral" size="sm" onClick={onClose} disabled={busy}>
+          Annuler
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => void confirm()}
+          disabled={!validRange || affected.length === 0 || busy}
+        >
+          {busy ? 'Report en cours…' : 'Reporter'}
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
