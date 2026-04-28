@@ -24,6 +24,7 @@ import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
+  extractCookie,
   loginAs,
   passwordProofFor,
   seedUser,
@@ -261,6 +262,66 @@ describe('POST /auth/security-mode/change — happy paths', () => {
       .from(users)
       .where(eq(users.id, u.id));
     expect(row?.mode).toBe('maximum');
+  });
+
+  it('rotates sessions on mode change (Auth-Spec §5.4)', async () => {
+    const u = await seedUser('mode-rotate-sessions@example.com');
+    await enableTotpDirect(u.id);
+
+    // Two parallel sessions for the same user: cookieA does the
+    // mutation, cookieB simulates a second tab / device that should
+    // be forced back through login after the privilege change.
+    const cookieA = await loginAs(
+      app,
+      'mode-rotate-sessions@example.com',
+      TEST_PASSWORD,
+    );
+    const cookieB = await loginAs(
+      app,
+      'mode-rotate-sessions@example.com',
+      TEST_PASSWORD,
+    );
+    expect(cookieA).not.toBe(cookieB);
+
+    const proof = await passwordProofFor(
+      app,
+      'mode-rotate-sessions@example.com',
+      TEST_PASSWORD,
+    );
+
+    const res = await app.request('/auth/security-mode/change', {
+      ...jsonPost({ mode: 'always_totp', ...proof }),
+      headers: { 'content-type': 'application/json', cookie: cookieA },
+    });
+    expect(res.status).toBe(200);
+
+    // The response must mint a fresh session cookie — the caller is
+    // expected to keep the new one, not the pre-rotation cookieA.
+    const rotatedCookie = extractCookie(res);
+    expect(rotatedCookie).toBeTruthy();
+    expect(rotatedCookie).not.toBe(cookieA);
+
+    // cookieB (the parallel tab) must now be invalid.
+    const meB = await app.request('/auth/me', { headers: { cookie: cookieB } });
+    expect(meB.status).toBe(401);
+
+    // The pre-rotation cookieA itself must also be revoked.
+    const meA = await app.request('/auth/me', { headers: { cookie: cookieA } });
+    expect(meA.status).toBe(401);
+
+    // The freshly-minted cookie carries the user through.
+    const meRotated = await app.request('/auth/me', {
+      headers: { cookie: rotatedCookie! },
+    });
+    expect(meRotated.status).toBe(200);
+
+    // DB sanity: the only live session left is the rotated one.
+    const live = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(eq(sessions.userId, u.id));
+    const rotatedId = rotatedCookie!.replace(/^nodea_session=/, '').split('.')[0]!;
+    expect(live.map((r) => r.id)).toEqual([rotatedId]);
   });
 
   it('downgrade to password_or_passkey is always allowed (no prerequisite)', async () => {

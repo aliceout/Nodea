@@ -3,6 +3,11 @@ import { and, eq } from 'drizzle-orm';
 import { SecurityModeChangeBodySchema } from '@nodea/shared';
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, users } from '../db/schema.ts';
+import {
+  createSession,
+  revokeAllUserSessions,
+} from '../auth/session.ts';
+import { setSessionCookie } from '../auth/cookies.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
@@ -78,6 +83,19 @@ authSecurityModeRoutes.post(
       .update(users)
       .set({ securityMode: mode, updatedAt: new Date() })
       .where(eq(users.id, user.id));
+
+    // Auth-Spec §5.4 — every security-mode change rotates sessions
+    // (same policy as change-password). Revoking & re-minting here
+    // ensures any other live session of this user that authenticated
+    // under the previous policy is forced through a fresh login under
+    // the new policy. The caller has just proved password via the
+    // `requireFreshPassword` gate, so the new session is stamped
+    // fresh wrt password.
+    await revokeAllUserSessions(user.id);
+    const session = await createSession(user.id, {
+      reauthFresh: { password: true },
+    });
+    await setSessionCookie(c, session.id, session.expiresAt);
 
     return c.json({ ok: true, mode });
   },
