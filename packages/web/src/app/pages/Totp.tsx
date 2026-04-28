@@ -18,6 +18,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import RowCard from '@/ui/dirk/RowCard';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -689,7 +690,7 @@ function CodesPanel({ codes, onDone }: CodesPanelProps) {
         </p>
       </div>
 
-      <div className="mb-4 rounded-md border border-hair bg-bg-2 p-3">
+      <RowCard as="div" className="mb-4">
         <ol className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px] tabular-nums">
           {codes.map((c, i) => (
             <li key={i} className="flex items-baseline gap-2 font-mono">
@@ -698,7 +699,7 @@ function CodesPanel({ codes, onDone }: CodesPanelProps) {
             </li>
           ))}
         </ol>
-      </div>
+      </RowCard>
 
       <div className="mb-4 flex gap-2">
         <Button
@@ -820,7 +821,7 @@ function RegenDisplayPanel({ codes, onDone }: RegenDisplayPanelProps) {
         </p>
       </div>
 
-      <div className="mb-4 rounded-md border border-hair bg-bg-2 p-3">
+      <RowCard as="div" className="mb-4">
         <ol className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px] tabular-nums">
           {codes.map((code, i) => (
             <li key={i} className="flex items-baseline gap-2 font-mono">
@@ -829,7 +830,7 @@ function RegenDisplayPanel({ codes, onDone }: RegenDisplayPanelProps) {
             </li>
           ))}
         </ol>
-      </div>
+      </RowCard>
 
       <div className="mb-4 flex gap-2">
         <Button

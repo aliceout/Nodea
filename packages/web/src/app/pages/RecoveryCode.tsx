@@ -8,6 +8,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import RowCard from '@/ui/dirk/RowCard';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
@@ -259,7 +260,7 @@ function DisplayPanel({
         </p>
       </div>
 
-      <div className="mb-4 rounded-md border border-hair bg-bg-2 p-3">
+      <RowCard as="div" className="mb-4">
         <ol className="grid grid-cols-3 gap-x-4 gap-y-2 text-[13px] tabular-nums">
           {rows.flat().map((word, i) => (
             <li
@@ -271,7 +272,7 @@ function DisplayPanel({
             </li>
           ))}
         </ol>
-      </div>
+      </RowCard>
 
       <div className="mb-4 flex gap-2">
         <Button

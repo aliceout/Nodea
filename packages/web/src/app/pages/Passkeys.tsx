@@ -13,6 +13,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import RowCard from '@/ui/dirk/RowCard';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import type { PasskeyListItem } from '@nodea/shared';
 
@@ -218,7 +219,7 @@ interface PasskeyRowProps {
 
 function PasskeyRow({ passkey, onRename, onRemove }: PasskeyRowProps) {
   return (
-    <li className="rounded-md border border-hair bg-bg-2 p-3">
+    <RowCard>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-[14px] font-medium text-ink">
@@ -256,7 +257,7 @@ function PasskeyRow({ passkey, onRename, onRemove }: PasskeyRowProps) {
           </Button>
         </div>
       </div>
-    </li>
+    </RowCard>
   );
 }
 
