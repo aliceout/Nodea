@@ -23,6 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Claude Code — local harness state (scheduled-task locks, agent
+# transcripts, etc.). Per-machine, never committed.
+.claude/
+
 # Secrets — single canonical location at the repo root, written by
 # the Dev Setup VS Code extension from Infisical (see `dev-setup.yaml`).
 .env
