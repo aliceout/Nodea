@@ -18,13 +18,16 @@ export interface SessionRecord {
 /**
  * Default TTLs per session kind (Auth-Spec.md §5.1).
  *
- * - `full`        : the runtime config `SESSION_TTL_SECONDS` (legacy default
- *                   30 days; Auth-Spec target is 7 days fixed, flipped in
- *                   Phase 2 of the roadmap).
+ * - `full`        : the runtime config `SESSION_TTL_SECONDS`
+ *                   (default 30 days, Auth-Spec target 7 days).
  * - `register`    : 24h — gives the user time to come back and finish a
  *                   multi-step inscription without retyping the email code.
  * - `mfa_pending` : 5 min — wired in Phase 5 (TOTP) and Phase 4 (passkey).
- * - `migrate`     : 30 min — wired in Phase 2 (lazy OPAQUE migration).
+ * - `migrate`     : vestigial. Was used for the Phase 2C lazy
+ *                   OPAQUE migration; the migration is complete
+ *                   (Phase 2D dropped the legacy columns) and no
+ *                   code path mints this kind any more. The value
+ *                   stays in the union for DB enum compatibility.
  */
 const REGISTER_TTL_SECONDS = 24 * 60 * 60;
 const MFA_PENDING_TTL_SECONDS = 5 * 60;

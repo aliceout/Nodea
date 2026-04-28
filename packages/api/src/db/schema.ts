@@ -12,14 +12,12 @@ import {
 import { sql } from 'drizzle-orm';
 
 // ============================================================================
-// Auth v2 — enums (shared by users and sessions tables)
+// Auth — enums (shared by users and sessions tables)
 //
-// Introduced by Auth-Spec.md (see documentation/Auth-Spec.md §4). These
-// enums materialise the new multi-factor auth model that supersedes the
-// legacy Argon2id-direct flow described in Security.md §2. They are
-// declared here at the top of the schema because both `users` and
-// `sessions` reference them, and Drizzle requires enum values to exist
-// before they're consumed by table builders.
+// Materialise the multi-factor auth model documented in Auth-Spec.md
+// §4. They are declared here at the top of the schema because both
+// `users` and `sessions` reference them, and Drizzle requires enum
+// values to exist before they're consumed by table builders.
 // ============================================================================
 
 /**
@@ -50,11 +48,6 @@ export const securityMode = pgEnum('security_mode', [
  * pre_register → email_verified → password_set → recovery_set →
  * complete. The cleanup cron purges rows stuck in pre_register for
  * more than 24h (Auth-Spec §13.2).
- *
- * Lazy migration of legacy users (Auth-Spec §12) does NOT use this
- * state machine: a legacy user has register_state = 'complete' from
- * day one, and the migration cookie carries a separate session kind
- * `'migrate'` rather than abusing register_state.
  */
 export const registerState = pgEnum('register_state', [
   'pre_register',
@@ -74,8 +67,11 @@ export const registerState = pgEnum('register_state', [
  *   stepped MFA (Auth-Spec §7.4).
  * - `register` — multi-step register in progress. Scoped to
  *   `/auth/register/*`, 24h TTL.
- * - `migrate` — legacy user authenticated via Argon2id, awaiting
- *   crypto migration to OPAQUE. Scoped to `/auth/migrate/*`, 30 min TTL.
+ * - `migrate` — vestigial. Used during the Phase 2C lazy migration
+ *   from the legacy Argon2id flow to OPAQUE. The migration is
+ *   complete (Phase 2D dropped the legacy columns); the value
+ *   stays in the enum for backward compatibility with any
+ *   leftover row but is no longer minted by any code path.
  */
 export const sessionKind = pgEnum('session_kind', [
   'full',
@@ -111,26 +107,21 @@ export const emailVerificationKind = pgEnum('email_verification_kind', [
 /**
  * Users — owners of encrypted data.
  *
- * Two cohabiting auth models during the migration window (cf.
- * Auth-Spec.md §12):
+ * Auth model: OPAQUE + multi-factor (Auth-Spec.md §4). Each row
+ * carries `wrapped_main_key`, `wrapped_kek_password`,
+ * `wrapped_kek_recovery`, `recovery_code_hash`, plus the
+ * `security_mode` and `register_state` enums. The KEK is a random
+ * 32-byte secret wrapped multiple times (one wrap per factor), and
+ * the OPAQUE record itself lives in the `opaque_records` table.
  *
- * - **Legacy (Argon2id direct)**: `password_hash`, `encryption_salt`,
- *   `encrypted_key`. The client derives a KEK from password + salt
- *   (Argon2id), unwraps `encrypted_key` → main key. These columns
- *   become NULL after a user's lazy migration to OPAQUE, and will
- *   be DROPped once 100% of users are migrated (Auth-Roadmap Phase 8).
+ * The wrap blobs are nullable so that a freshly-pre-registered user
+ * (`register_state = 'pre_register'` after Phase 1 step 1) can sit
+ * in the table without credentials yet — Phase 1 step 2 sets them
+ * atomically with the OPAQUE record. After registration completes,
+ * `register_state = 'complete'` and every wrap blob is populated.
  *
- * - **New (OPAQUE + multi-factor)**: `wrapped_main_key`,
- *   `wrapped_kek_password`, `wrapped_kek_recovery`,
- *   `recovery_code_hash`, plus the `security_mode` and
- *   `register_state` enums. The KEK is a random 32-byte secret
- *   wrapped multiple times (one wrap per factor), and the OPAQUE
- *   record itself lives in the `opaque_records` table.
- *
- * Both sets are nullable for now: legacy users keep the legacy fields
- * populated until they migrate, fresh users populate only the new
- * fields. After migration, `register_state = 'complete'` and the
- * legacy fields are NULL.
+ * Phase 2D dropped the pre-OPAQUE columns (`password_hash`,
+ * `encryption_salt`, `encrypted_key`) — see migration 0011.
  */
 export const users = pgTable(
   'users',
@@ -144,10 +135,7 @@ export const users = pgTable(
      */
     username: text('username'),
 
-    // --- Auth v2 (Phase 2D dropped the legacy Argon2id columns) -----------
-
-    /** Email verification timestamp. NULL until step 2 of register
-     *  (or rétro-vérif at lazy migration, cf. Auth-Spec §12.2). */
+    /** Email verification timestamp. NULL until step 2 of register. */
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
 
     /** Cooldown anchor for change-email (7 days). NULL until first
@@ -158,15 +146,11 @@ export const users = pgTable(
     securityMode: securityMode('security_mode').notNull().default('password_or_passkey'),
 
     /** Multi-step register state machine — see `registerState` enum
-     *  docs above.
-     *
-     *  **Transition note**: schema default is `'complete'` so that
-     *  existing legacy users (and any new legacy register call before
-     *  Phase 1 wires the multi-step flow) land in a coherent state.
-     *  The new Phase 1 flow explicitly INSERTs with `'pre_register'`
-     *  at step 1, overriding this default. After Phase 8 cleanup,
-     *  this default should flip back to `'pre_register'` to match
-     *  Auth-Spec §4.1. */
+     *  docs above. The Phase 1 register flow explicitly INSERTs
+     *  `'pre_register'` at step 1 and transitions to `'complete'`
+     *  at step 2. The schema default is `'complete'` for the few
+     *  out-of-band insertion paths (admin seed, fixtures) where the
+     *  user is fully provisioned in a single statement. */
     registerState: registerState('register_state').notNull().default('complete'),
 
     /** AES-GCM ciphertext of the main key under the KEK. Set ONCE at

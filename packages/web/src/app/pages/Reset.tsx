@@ -34,11 +34,12 @@ zxcvbnOptions.setOptions({
 /**
  * Consume a reset token — Direction K · Sauge.
  *
- * We generate a fresh main key client-side (32 random bytes), wrap it
- * under the user's new password (argon2id → AES-GCM), and ship the
- * envelope alongside the token + new password. The server purges all
- * old encrypted data in a single transaction before rotating the
- * credentials.
+ * Destructive flow: we generate a fresh main key client-side (32
+ * random bytes), run an OPAQUE registration for the new password,
+ * wrap the main key under the resulting export-key-derived KEK
+ * (AES-GCM), and ship the envelope alongside the token + new
+ * registration record. The server purges all old encrypted data in
+ * a single transaction before rotating the credentials.
  *
  * A confirmation checkbox forces the user to acknowledge the data loss
  * before the destructive request goes out. The main key bytes are

@@ -6,7 +6,7 @@ import { ErrorBoundary } from "@/ui/atoms/feedback/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 
 // Auth pages are lazy-loaded so their deps (react-hook-form, zod,
-// @zxcvbn-ts, argon2id wasm) stay out of the initial chunk.
+// @zxcvbn-ts, OPAQUE wasm) stay out of the initial chunk.
 const Login = lazy(() => import("./pages/Login"));
 const LoginMfa = lazy(() => import("./pages/LoginMfa"));
 const Register = lazy(() => import("./pages/Register"));

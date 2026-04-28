@@ -12,10 +12,11 @@ export const ADMIN_PASSWORD = 'Admin-Horse-Battery-Staple-42';
  * OPAQUE-aware seeding — runs the real handshake in process so seeded
  * users can actually log in via /auth/login/start + /finish (Phase 2C+).
  *
- * Phase 2D dropped the legacy Argon2id columns entirely, so seeded
- * users are OPAQUE-only. Tests for change-password / change-email /
- * delete-self exercise the OPAQUE proof path via `loginAs` + the
- * new `/auth/login/start` round-trip the client folds into the body.
+ * Seeded users are OPAQUE-only — see `auth/seed-crypto.ts` for the
+ * in-process registration round-trip. Tests for change-password,
+ * change-email, delete-self exercise the OPAQUE proof path via
+ * `loginAs` (which mints a full session and stamps the
+ * `reauth_password_at` freshness window).
  * ========================================================================== */
 
 interface SeedOpts {
@@ -101,9 +102,10 @@ function jsonPost(body: unknown): RequestInit {
 }
 
 /* ============================================================================
- * `loginAs` — drives /auth/login/start + /finish through the test app
- * and returns the resulting session cookie. Replaces every test's
- * inline `loginAs` from the legacy Argon2id era.
+ * `loginAs` — drives /auth/login/start + /finish through the test
+ * app and returns the resulting session cookie. Stamps a fresh
+ * `reauth_password_at` on the session by virtue of going through
+ * the real login finish.
  * ========================================================================== */
 
 export async function loginAs(
