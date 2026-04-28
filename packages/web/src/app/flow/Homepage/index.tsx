@@ -137,18 +137,23 @@ function useMoodEntries(): MoodEntryLite[] {
       .list(moduleUserId, mainKey)
       .then((records) => {
         if (cancelled) return;
+        // Server-side timestamps are gone (minimum-readable-surface
+        // design). The user-facing `payload.date` carries the only
+        // date we have ; if it's missing we drop the entry rather
+        // than guess. The `createdAt` lite field — used for tie-
+        // breaking when several entries share a date — falls back
+        // to `dateIso` so the home block still renders something
+        // meaningful.
         const lite: MoodEntryLite[] = [];
         for (const r of records) {
           const p = r.payload;
-          const dateIso =
-            p.date && /^\d{4}-\d{2}-\d{2}/.test(p.date)
-              ? p.date.slice(0, 10)
-              : r.createdAt.slice(0, 10);
+          if (!p.date || !/^\d{4}-\d{2}-\d{2}/.test(p.date)) continue;
           if (!MOOD_VALID_SCORES.has(p.mood_score)) continue;
+          const dateIso = p.date.slice(0, 10);
           lite.push({
             dateIso,
             score: p.mood_score as MoodScore,
-            createdAt: r.createdAt,
+            createdAt: dateIso,
           });
         }
         setEntries(lite);
@@ -225,7 +230,11 @@ function useGoalEntries(): GoalEntryLite[] {
             title,
             status,
             thread: p.thread ?? '',
-            updatedAt: r.updatedAt,
+            // `payload.updated_at` is the in-payload timestamp the
+            // Goals writer bumps on every save (server-side
+            // timestamps were dropped). Falls back to the user's
+            // intention `date` when missing on legacy entries.
+            updatedAt: p.updated_at || p.date || '',
           });
         }
         setEntries(lite);

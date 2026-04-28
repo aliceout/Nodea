@@ -15,29 +15,41 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Verify the caller owns the record and provides the correct guard.
+ * Verify the caller provides the correct guard for the targeted entry.
  *
  * Query params:
  *   - `sid` = module_user_id
  *   - `d`   = current guard value ("init" before promotion, "g_<hex>" after)
  *
+ * Authorisation model — **sid + guard only**, no `user_id` involvement.
+ * The server does not know which user an entry belongs to; access is
+ * gated entirely on knowing the right `module_user_id` and the right
+ * HMAC guard. Both require the user's main key to compute, so an
+ * attacker without the key cannot mutate an entry even with a valid
+ * session cookie. This restores the original PocketBase access model
+ * (`@request.query.sid = module_user_id && @request.query.d = guard`)
+ * after the regression introduced in commit 29b6e25.
+ *
  * Steps:
- *   1. Look up the record by id + userId + moduleUserId — scoping by
- *      userId is the primary authorisation: we never even consider rows
- *      the caller doesn't own.
- *   2. Compare `d` to the stored guard via `timingSafeEqual` — no early
- *      return on mismatch to avoid leaking timing.
+ *   1. Look up the record by id + moduleUserId — sid is the primary
+ *      scope.
+ *   2. Compare `d` to the stored guard via `timingSafeEqual` — no
+ *      early return on mismatch to avoid leaking timing.
  *   3. On success, attach the loaded row to the context so the handler
  *      doesn't re-query.
  *
- * Failure returns 404 for "no such row under this user" and 403 for
+ * Failure returns 404 for "no such row under this sid" and 403 for
  * "wrong guard". The 404/403 split intentionally exposes nothing about
- * the existence of rows owned by other users — unknown id and
- * other-user-id both map to 404.
+ * existence of rows under other sids — unknown id and other-sid id
+ * both map to 404.
+ *
+ * `requireUser` still runs ahead of this middleware on the route
+ * factory so an unauthenticated caller never reaches it ; the user
+ * context is kept for logging / rate-limit purposes, not for the
+ * authorisation decision itself.
  */
 export function requireGuard(table: EntryTable): MiddlewareHandler<{ Variables: GuardVariables }> {
   return async (c, next) => {
-    const user = c.get('user');
     const id = c.req.param('id');
     const sid = c.req.query('sid');
     const d = c.req.query('d');
@@ -48,7 +60,7 @@ export function requireGuard(table: EntryTable): MiddlewareHandler<{ Variables: 
     const [row] = await db
       .select()
       .from(table)
-      .where(and(eq(table.id, id), eq(table.userId, user.id), eq(table.moduleUserId, sid)))
+      .where(and(eq(table.id, id), eq(table.moduleUserId, sid)))
       .limit(1);
 
     if (!row) return c.json({ error: 'not_found' }, 404);

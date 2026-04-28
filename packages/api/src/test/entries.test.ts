@@ -155,23 +155,43 @@ describe('Collection routes — Mood used as the representative', () => {
     expect(again.status).toBe(400);
   });
 
-  it('never returns rows belonging to another user', async () => {
+  it('scopes rows by sid only — distinct sids never collide', async () => {
+    // Post-`user_id` removal: scoping is by `module_user_id` (sid)
+    // alone. Sids are derived client-side from the user's main key
+    // + module-specific entropy (32 bytes random), so accidental
+    // collisions are cryptographically negligible. Knowing another
+    // user's sid requires having their main key — at which point
+    // the data is compromised regardless.
+    //
+    // This test asserts: rows under sid_A and sid_B are disjoint
+    // as queried. The previous "two users sharing the same sid"
+    // case was testing a defense-in-depth that intentionally no
+    // longer exists — `user_id` on entry rows was a privacy
+    // regression that let the operator count entries per user per
+    // module.
     const cookieA = await authFor('alice@example.com');
     const cookieB = await authFor('bob@example.com');
-    const sid = 'sid-shared-by-coincidence';
 
-    // Both users happen to pick the same sid (allowed — sids are scoped per user).
     await app.request('/mood/records', {
-      ...jsonBody({ sid, cipher_iv: 'A-iv', payload: 'A', guard: 'init' }, cookieA),
+      ...jsonBody({ sid: 'sid-alice', cipher_iv: 'A-iv', payload: 'A', guard: 'init' }, cookieA),
     });
     await app.request('/mood/records', {
-      ...jsonBody({ sid, cipher_iv: 'B-iv', payload: 'B', guard: 'init' }, cookieB),
+      ...jsonBody({ sid: 'sid-bob', cipher_iv: 'B-iv', payload: 'B', guard: 'init' }, cookieB),
     });
 
-    const list = await app.request(`/mood/records?sid=${sid}`, { headers: { cookie: cookieA } });
-    const body = (await list.json()) as { records: Array<{ payload: string }> };
-    expect(body.records).toHaveLength(1);
-    expect(body.records[0]?.payload).toBe('A');
+    const aList = await app.request('/mood/records?sid=sid-alice', {
+      headers: { cookie: cookieA },
+    });
+    const aBody = (await aList.json()) as { records: Array<{ payload: string }> };
+    expect(aBody.records).toHaveLength(1);
+    expect(aBody.records[0]?.payload).toBe('A');
+
+    const bList = await app.request('/mood/records?sid=sid-bob', {
+      headers: { cookie: cookieB },
+    });
+    const bBody = (await bList.json()) as { records: Array<{ payload: string }> };
+    expect(bBody.records).toHaveLength(1);
+    expect(bBody.records[0]?.payload).toBe('B');
   });
 
   it('requires authentication on every route', async () => {

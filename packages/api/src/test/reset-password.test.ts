@@ -147,14 +147,13 @@ describe('POST /auth/reset (OPAQUE 2-step)', () => {
     return token;
   }
 
-  it('rotates the password, purges old entries, revokes sessions', async () => {
+  it('rotates the password, leaves old entries orphaned, revokes sessions', async () => {
     const email = 'reset2@example.com';
     const token = await requestResetFor(email);
 
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     await db.insert(moodEntries).values({
       id: 'mood-A',
-      userId: user!.id,
       moduleUserId: 'sid-x',
       cipherIv: 'iv',
       payload: 'blob',
@@ -171,12 +170,16 @@ describe('POST /auth/reset (OPAQUE 2-step)', () => {
     expect(result.startStatus).toBe(200);
     expect(result.finishStatus).toBe(200);
 
-    // Old entries are gone.
+    // Old entries are NOT purged anymore — entry tables carry no
+    // user_id, the server cannot link the row to the user being
+    // reset. The row stays orphaned in DB, encrypted with the
+    // (now-lost) main key, unreadable by anyone. This is the
+    // accepted trade-off documented in the entry-table schema.
     const entries = await db
       .select()
       .from(moodEntries)
-      .where(eq(moodEntries.userId, user!.id));
-    expect(entries).toHaveLength(0);
+      .where(eq(moodEntries.moduleUserId, 'sid-x'));
+    expect(entries).toHaveLength(1);
 
     // Wrap blobs rotated to the new ones.
     const [updated] = await db.select().from(users).where(eq(users.id, user!.id)).limit(1);

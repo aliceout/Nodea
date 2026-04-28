@@ -22,15 +22,19 @@ export interface EncryptedRecord {
   module_user_id: string;
   cipher_iv: string;
   payload: string;
-  created_at: string;
-  updated_at: string;
 }
 
+/**
+ * Decrypted record handed back to module code. The server-side
+ * minimum-readable-surface design dropped per-row timestamps —
+ * any `created_at` / `updated_at` a module needs lives inside
+ * the encrypted payload (`T`). Module clients that want
+ * chronological ordering pull dates from `payload.*` after
+ * decryption rather than from the wrapper.
+ */
 export interface DecryptedRecord<T> {
   id: string;
   moduleUserId: string;
-  createdAt: string;
-  updatedAt: string;
   payload: T;
 }
 
@@ -129,8 +133,6 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
       records.map(async (r) => ({
         id: r.id,
         moduleUserId: r.module_user_id,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at,
         payload: await decodePayload(key, r.cipher_iv, r.payload),
       })),
     );
@@ -159,8 +161,6 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     return {
       id: promoted.id,
       moduleUserId: promoted.module_user_id,
-      createdAt: promoted.created_at,
-      updatedAt: promoted.updated_at,
       payload: await decodePayload(key, promoted.cipher_iv, promoted.payload),
     };
   }
@@ -182,8 +182,6 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     return {
       id: updated.id,
       moduleUserId: updated.module_user_id,
-      createdAt: updated.created_at,
-      updatedAt: updated.updated_at,
       payload: await decodePayload(key, updated.cipher_iv, updated.payload),
     };
   }

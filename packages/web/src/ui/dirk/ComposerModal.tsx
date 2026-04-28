@@ -650,6 +650,7 @@ function GoalBody({ onClose }: GoalBodyProps) {
         status,
         thread: thread.trim(),
         completed_at: nextCompletedAt,
+        updated_at: new Date().toISOString(),
       };
       if (editing) {
         await goalsClient.update(moduleUserId, mainKey, editing.id, payload);

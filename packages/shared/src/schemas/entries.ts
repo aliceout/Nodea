@@ -42,14 +42,22 @@ export const UpdateEntryBodySchema = z.object({
 });
 export type UpdateEntryBody = z.infer<typeof UpdateEntryBodySchema>;
 
-/** Public view of an entry — `guard` is deliberately absent. */
+/**
+ * Public view of an entry — minimum-readable-surface design.
+ *
+ * `guard` is deliberately absent (it's the shared secret authenticating
+ * mutations). Timestamps (`created_at`, `updated_at`) are deliberately
+ * absent too — they would leak per-row write activity that the
+ * operator could correlate across modules to deanonymise users.
+ * Whatever timestamps a module needs live inside the encrypted
+ * `payload` ; the client orders entries client-side after
+ * decryption.
+ */
 export const EntryViewSchema = z.object({
   id: z.string(),
   module_user_id: z.string(),
   cipher_iv: Base64ish,
   payload: Base64ish,
-  created_at: z.string(),
-  updated_at: z.string(),
 });
 export type EntryView = z.infer<typeof EntryViewSchema>;
 

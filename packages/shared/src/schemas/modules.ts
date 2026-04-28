@@ -71,6 +71,14 @@ export const GoalsPayloadSchema = z
      *  inconnue » in that case. Drives time-to-completion stats
      *  and the « cette année » archive view. */
     completed_at: z.string().nullable().default(null),
+    /** ISO timestamp of the last write to this goal. Lives in the
+     *  encrypted payload (not the entry-table wrapper) so the
+     *  server never sees write activity per goal — the
+     *  minimum-readable-surface design forbids per-row server-
+     *  side timestamps. The Goals page bumps it on every save ;
+     *  the « Récent » sort reads it. Empty string fallback for
+     *  legacy entries that predate this field. */
+    updated_at: z.string().default(''),
   })
   .passthrough();
 export type GoalsPayload = z.infer<typeof GoalsPayloadSchema>;
@@ -310,6 +318,12 @@ export const ReviewPayloadSchema = z
     last_year: z.record(z.string(), z.unknown()).optional(),
     next_year: z.record(z.string(), z.unknown()).optional(),
     closing: z.record(z.string(), z.unknown()).optional(),
+    /** ISO timestamp of the last write — lives in the encrypted
+     *  payload (server-side timestamps were dropped in the
+     *  minimum-readable-surface refactor). The List view uses it
+     *  to surface the « modifié le … » label. Empty fallback for
+     *  legacy entries. */
+    updated_at: z.string().default(''),
   })
   .passthrough();
 export type ReviewPayload = z.infer<typeof ReviewPayloadSchema>;

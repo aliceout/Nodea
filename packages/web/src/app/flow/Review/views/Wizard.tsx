@@ -37,6 +37,10 @@ function emptyPayload(year: number): ReviewPayload {
     last_year: {},
     next_year: {},
     closing: {},
+    // `updated_at` is bumped to now() by useReview's create/update
+    // wrappers on every save ; this empty placeholder is just to
+    // satisfy the Zod-inferred shape at construction time.
+    updated_at: '',
   };
 }
 

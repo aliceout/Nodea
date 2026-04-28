@@ -779,10 +779,16 @@ function recordToEntry(
   today: Date,
 ): JournalEntry {
   const p = record.payload;
+  // Server-side timestamps are gone (minimum-readable-surface design).
+  // `payload.date` is the user's chosen entry date — the only date
+  // we have for this record. Falls back to `today` if the payload
+  // is malformed (e.g. legacy data) so the UI doesn't crash.
+  const todayIso = today.toISOString().slice(0, 10);
+  const dateIso = p.date ?? todayIso;
   return {
     id: record.id,
-    dateIso: p.date ?? record.createdAt,
-    dateLabel: formatEntryLabel(p.date ?? record.createdAt, today),
+    dateIso,
+    dateLabel: formatEntryLabel(dateIso, today),
     thread: p.thread ?? '',
     title: p.title ?? null,
     content: p.content ?? '',

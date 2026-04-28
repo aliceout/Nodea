@@ -252,11 +252,13 @@ async function main(): Promise<void> {
   const moduleUserId = await ensureMoodModuleUserId(user.id, aesKey);
   console.log(`[seed:mood] mood moduleUserId for ${email} = ${moduleUserId}`);
 
-  // Wipe existing entries so the seed is reproducible — re-running
-  // the script gives a clean dataset, not piled duplicates.
+  // Wipe existing entries for this user's mood sid so the seed is
+  // reproducible — re-running gives a clean dataset, not piled
+  // duplicates. Scoped by `moduleUserId` since entry rows no longer
+  // carry `user_id`.
   const cleared = await db
     .delete(moodEntries)
-    .where(eq(moodEntries.userId, user.id))
+    .where(eq(moodEntries.moduleUserId, moduleUserId))
     .returning({ id: moodEntries.id });
   if (cleared.length > 0) {
     console.log(`[seed:mood] cleared ${cleared.length} previous mood entries`);
@@ -271,7 +273,6 @@ async function main(): Promise<void> {
     const guard = await deriveGuard(hmacKey, moduleUserId, id);
     await db.insert(moodEntries).values({
       id,
-      userId: user.id,
       moduleUserId,
       cipherIv: blob.iv,
       payload: blob.data,

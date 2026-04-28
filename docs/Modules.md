@@ -26,15 +26,20 @@ collection) et la validation HMAC sont automatiquement câblées par
 le factory `collection-factory.ts`. Impossible d'enregistrer une
 collection sans validation guard.
 
+**Surface lisible minimum.** Le serveur ne voit que le strict
+nécessaire au routing et à la cryptographie — pas de `user_id`, pas
+de timestamps colonnes. Le mapping `user → sids` vit chiffré dans
+`modules_config` ; les timestamps applicatifs (`updated_at` etc.)
+vivent dans le `payload` chiffré. Cf. `Auth-Spec.md §2.3` et
+`Database.md`.
+
 | Champ           | Description                                                                  |
 |-----------------|------------------------------------------------------------------------------|
-| `id`            | UUID généré côté serveur (PK).                                               |
-| `user_id`       | FK → `users.id`, **ON DELETE CASCADE**.                                      |
-| `module_user_id`| Identifiant secondaire opaque, dérivé localement via la clé maître. Utilisé comme `sid` dans toutes les requêtes pour découpler l'identité utilisateur du contenu module. |
-| `cipher_iv`     | IV 96 bits aléatoire (base64) utilisé pour le chiffrement AES-GCM.           |
-| `payload`       | Contenu JSON chiffré AES-GCM (base64). **Le serveur ne déchiffre jamais.**   |
+| `id`            | UUID généré côté serveur (PK). Sert uniquement de handle pour les URLs `/records/:id`. Aucun contenu utilisateur. |
+| `module_user_id`| Identifiant secondaire opaque, dérivé localement via la clé maître. **Seule clé d'accès** — le serveur ne sait jamais à qui un sid appartient (le mapping est chiffré dans `modules_config`). |
+| `cipher_iv`     | IV 96 bits aléatoire (base64) utilisé pour le chiffrement AES-GCM. Requis pour déchiffrer le payload. |
+| `payload`       | Contenu JSON chiffré AES-GCM (base64). **Tout** le contenu utilisateur, **plus** les timestamps applicatifs que le module veut conserver. **Le serveur ne déchiffre jamais.** |
 | `guard`         | HMAC-SHA-256 stocké côté serveur, jamais renvoyé en lecture. Cf. §3.         |
-| `created_at` / `updated_at` | Timestamps `timestamptz` standard.                                |
 
 ---
 
@@ -58,12 +63,15 @@ dans une seule passe centralisée — aucun moyen d'oublier la
 validation pour une collection donnée.
 
 **Read** : `GET /{collection}/records?sid=<sid>` retourne uniquement
-le `payload` chiffré + l'`iv` + les timestamps. Le `guard` est
-**toujours retiré** des réponses (sa raison d'être étant d'être un
-secret partagé client/serveur).
+les `id` / `module_user_id` / `cipher_iv` / `payload`. Le `guard`
+est **toujours retiré** des réponses (sa raison d'être étant d'être
+un secret partagé client/serveur). Pas de timestamps : le client
+trie après déchiffrement à partir de ce qu'il a stocké dans le
+payload chiffré.
 
-Le serveur ne voit jamais le contenu clair. Toute logique métier
-s'opère après déchiffrement côté navigateur.
+Le serveur ne voit jamais le contenu clair, ne sait pas à qui un
+sid appartient, ne sait pas quand une entrée a été écrite. Toute
+logique métier s'opère après déchiffrement côté navigateur.
 
 ---
 

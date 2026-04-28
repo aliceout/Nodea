@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
-import { and, desc, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import {
   CreateEntryBodySchema,
   UpdateEntryBodySchema,
@@ -12,9 +12,18 @@ import { requireUser } from '../middleware/require-user.ts';
 import { requireGuard, type GuardVariables } from '../middleware/require-guard.ts';
 
 /**
- * Public view of an entry. `guard` is never returned — it is the shared
- * secret that authenticates mutations. Emitting it in read responses
- * would defeat its whole purpose.
+ * Public view of an entry. The minimum-readable-surface design only
+ * exposes :
+ *   - `id`         server-generated UUID handle (used in /records/:id)
+ *   - `module_user_id`  the access scope sid
+ *   - `cipher_iv`  AES-GCM IV (required to decrypt the payload)
+ *   - `payload`    encrypted JSON
+ *
+ * `guard` is never returned (it's the shared secret authenticating
+ * mutations). Timestamps are not stored at all server-side ; any
+ * created_at / updated_at the client wants must live inside the
+ * encrypted payload (so the operator can't correlate write activity
+ * across modules to deanonymise users).
  */
 function toView(row: EntryRow) {
   return {
@@ -22,18 +31,24 @@ function toView(row: EntryRow) {
     module_user_id: row.moduleUserId,
     cipher_iv: row.cipherIv,
     payload: row.payload,
-    created_at: row.createdAt.toISOString(),
-    updated_at: row.updatedAt.toISOString(),
   };
 }
 
 /**
  * Build the 4 REST routes for a given encrypted collection.
  *
- * Every mutation goes through `requireGuard(table)` so the
- * (user, sid, guard) tuple is validated in a single place. There is
- * no way to add a collection without these guarantees — the route
- * factory is parameterised by the Drizzle table itself.
+ * Authorisation model — **sid + guard only**, restored from the
+ * original PocketBase scheme. Entry rows carry no `user_id`, so the
+ * server cannot link a row to a specific user even with full DB
+ * access. `requireUser` runs first to gate against unauthenticated
+ * callers (rate-limit + logging anchor) but the access decision
+ * itself depends only on knowing the right `module_user_id` and the
+ * right HMAC guard, both of which require the user's main key to
+ * compute.
+ *
+ * Adding a new collection = one line in `collections/registry.ts` ;
+ * the factory mounts the same gauntlet for every collection so it
+ * is impossible to forget the guard validation.
  */
 export function createCollectionRoutes(table: EntryTable) {
   const router = new Hono<{ Variables: GuardVariables }>();
@@ -41,23 +56,24 @@ export function createCollectionRoutes(table: EntryTable) {
   router.use('*', requireUser);
 
   // --- LIST ---
+  // Returns rows in their physical insertion order. Server-side
+  // ordering by date is no longer possible (no timestamp columns
+  // exist) and is intentionally not provided ; the client is
+  // expected to order client-side after decrypting the payload.
   router.get('/records', async (c) => {
-    const user = c.get('user');
     const sid = c.req.query('sid');
     if (!sid) return c.json({ error: 'missing_sid' }, 400);
 
     const rows = await db
       .select()
       .from(table)
-      .where(and(eq(table.userId, user.id), eq(table.moduleUserId, sid)))
-      .orderBy(desc(table.createdAt));
+      .where(eq(table.moduleUserId, sid));
 
     return c.json({ records: rows.map(toView) });
   });
 
   // --- CREATE (only accepts guard: "init") ---
   router.post('/records', async (c) => {
-    const user = c.get('user');
     const raw = await c.req.json().catch(() => null);
     const parsed = CreateEntryBodySchema.safeParse(raw);
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -68,7 +84,6 @@ export function createCollectionRoutes(table: EntryTable) {
       .insert(table)
       .values({
         id,
-        userId: user.id,
         moduleUserId: body.sid,
         cipherIv: body.cipher_iv,
         payload: body.payload,
@@ -82,7 +97,6 @@ export function createCollectionRoutes(table: EntryTable) {
 
   // --- UPDATE (guard-protected; supports one-time promotion init → g_...) ---
   router.patch('/records/:id', requireGuard(table), async (c) => {
-    const user = c.get('user');
     const entry = c.get('entry');
     const raw = await c.req.json().catch(() => null);
     const parsed = UpdateEntryBodySchema.safeParse(raw);
@@ -106,12 +120,10 @@ export function createCollectionRoutes(table: EntryTable) {
       return c.json(toView(entry));
     }
 
-    updates.updatedAt = new Date();
-
     const [row] = await db
       .update(table)
       .set(updates)
-      .where(and(eq(table.id, entry.id), eq(table.userId, user.id)))
+      .where(eq(table.id, entry.id))
       .returning();
 
     if (!row) return c.json({ error: 'update_failed' }, 500);
@@ -120,9 +132,8 @@ export function createCollectionRoutes(table: EntryTable) {
 
   // --- DELETE (guard-protected) ---
   router.delete('/records/:id', requireGuard(table), async (c) => {
-    const user = c.get('user');
     const entry = c.get('entry');
-    await db.delete(table).where(and(eq(table.id, entry.id), eq(table.userId, user.id)));
+    await db.delete(table).where(eq(table.id, entry.id));
     return c.json({ ok: true });
   });
 

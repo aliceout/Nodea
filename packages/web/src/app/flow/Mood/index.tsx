@@ -179,9 +179,13 @@ function recordToEntry(
   today: Date,
 ): MoodEntry {
   const p = record.payload;
+  // Server-side timestamps are gone (minimum-readable-surface design).
+  // We rely on `p.date` exclusively ; if it's missing or malformed we
+  // fall back to today (the entry won't sort meaningfully but at
+  // least the UI doesn't crash on an invalid record).
   const dateIso = p.date && /^\d{4}-\d{2}-\d{2}/.test(p.date)
     ? p.date.slice(0, 10)
-    : record.createdAt.slice(0, 10);
+    : today.toISOString().slice(0, 10);
   const positives: [string, string, string] = [
     p.positive1 ?? '',
     p.positive2 ?? '',

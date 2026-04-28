@@ -34,14 +34,6 @@ import {
   passwordResetTokens,
   modulesConfig,
   userPreferences,
-  moodEntries,
-  goalsEntries,
-  passageEntries,
-  habitsItemsEntries,
-  habitsLogsEntries,
-  libraryItemsEntries,
-  libraryReviewsEntries,
-  reviewEntries,
 } from '../db/schema.ts';
 import {
   createRegistrationResponse,
@@ -504,17 +496,19 @@ authRoutes.post('/reset/finish', resetLimiter, async (c) => {
   if (!user) return c.json({ error: 'invalid_token' }, 400);
 
   await db.transaction(async (tx) => {
-    // Purge every user-owned encrypted row. FK cascade would also do
-    // this if we deleted the user, but we keep the user row (and its
-    // id) so invites they created keep their `created_by` foreign key.
-    await tx.delete(moodEntries).where(eq(moodEntries.userId, user.id));
-    await tx.delete(goalsEntries).where(eq(goalsEntries.userId, user.id));
-    await tx.delete(passageEntries).where(eq(passageEntries.userId, user.id));
-    await tx.delete(habitsItemsEntries).where(eq(habitsItemsEntries.userId, user.id));
-    await tx.delete(habitsLogsEntries).where(eq(habitsLogsEntries.userId, user.id));
-    await tx.delete(libraryItemsEntries).where(eq(libraryItemsEntries.userId, user.id));
-    await tx.delete(libraryReviewsEntries).where(eq(libraryReviewsEntries.userId, user.id));
-    await tx.delete(reviewEntries).where(eq(reviewEntries.userId, user.id));
+    // Purge the records we still CAN identify by user_id : the
+    // 1:1-per-user FK-linked tables (modules_config, user_preferences).
+    // The encrypted user→sids mapping in modules_config is the
+    // anchor for any future client recovery — wiping it cuts the
+    // user off from the orphan entry rows below.
+    //
+    // The per-module entry tables (mood_entries, goals_entries…)
+    // carry no `user_id` column by design — the server cannot link
+    // a row to a user, so we cannot purge them here. Those rows
+    // become orphans : encrypted with the lost main key, unreadable
+    // by anyone, taking up space in the table indefinitely. This is
+    // the documented trade-off of "the server never links user to
+    // data" (cf. `docs/Modules.md`). Bounded growth, accepted.
     await tx.delete(modulesConfig).where(eq(modulesConfig.userId, user.id));
     await tx.delete(userPreferences).where(eq(userPreferences.userId, user.id));
 

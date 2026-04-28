@@ -150,6 +150,7 @@ export default function GoalsPage() {
         status: next,
         thread: entry.thread,
         completed_at: nextCompletedAt,
+        updated_at: new Date().toISOString(),
       });
     } catch (err) {
       // Roll back on failure.
@@ -180,6 +181,9 @@ export default function GoalsPage() {
         status: entry.status,
         thread: entry.thread,
         completed_at: entry.completedAt,
+        // Pass-through current `updated_at` ; the composer's
+        // save handler overwrites it with `now()` on submit.
+        updated_at: entry.updatedAt,
       },
     });
   }
@@ -226,6 +230,7 @@ export default function GoalsPage() {
     );
     setCarryOverOpen(false);
     try {
+      const now = new Date().toISOString();
       for (const e of affected) {
         const newDate = renumbered.get(e.id)!;
         await goalsClient.update(moduleUserId, mainKey, e.id, {
@@ -235,6 +240,7 @@ export default function GoalsPage() {
           status: e.status,
           thread: e.thread,
           completed_at: e.completedAt,
+          updated_at: now,
         });
       }
     } catch (err) {
@@ -874,7 +880,12 @@ function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry {
     note: p.note ?? '',
     status: normalizeStatus(p.status),
     thread: p.thread ?? '',
-    updatedAt: record.updatedAt,
+    // `payload.updated_at` is the in-payload timestamp the writer
+    // bumps on every save — server-side timestamps were dropped
+    // in the minimum-readable-surface refactor. Falls back to the
+    // user's intention `date` when missing (legacy entries) so the
+    // « Récent » sort still has something to compare on.
+    updatedAt: p.updated_at || p.date || '',
     completedAt: typeof p.completed_at === 'string' ? p.completed_at : null,
   };
 }

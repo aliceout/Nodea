@@ -197,10 +197,18 @@ for the public feed query.
 
 ### Entry tables (one per module)
 
-All 8 entry tables share the exact same shape, produced by the
+All 9 entry tables share the exact same shape, produced by the
 `createEntryTable` factory in `schema.ts`. The structural uniformity
 is what lets the route factory loop over a single array of collections
 (`src/collections/registry.ts`) without per-module branches.
+
+**Minimum-readable-surface design.** The original PocketBase schema
+scoped access by `module_user_id` + `guard` only — the server is
+never told which entry belongs to which user. That property was
+restored in migration 0012 (drop `user_id` column) and 0013 (drop
+`created_at` / `updated_at` columns), reversing a regression
+introduced during the Hono migration. Cf. `Auth-Spec.md §2.3` and
+`Modules.md §1` for the rationale.
 
 | Table                       | Records                                       |
 | --------------------------- | --------------------------------------------- |
@@ -208,25 +216,35 @@ is what lets the route factory loop over a single array of collections
 | `goals_entries`             | Goals with lifecycle statuses.                |
 | `passage_entries`           | Passage entries grouped by thread.            |
 | `habits_items_entries`      | Habit definitions (frequency, target).        |
-| `habits_logs_entries`       | Per-day occurrences, FK'd to an item via the encrypted payload. |
+| `habits_logs_entries`       | Per-day occurrences, linked to an item via the encrypted payload. |
 | `library_items_entries`     | Library works (book/movie/tv/doc).            |
 | `library_reviews_entries`   | Reading / viewing notes per work.             |
+| `library_covers_entries`    | Encrypted cover blobs.                        |
 | `review_entries`            | Yearly YearCompass-inspired reviews.          |
 
-Each row:
+Each row carries the strict minimum of plaintext columns:
 
 | Column            | Type      | Notes                                                      |
 | ----------------- | --------- | ---------------------------------------------------------- |
-| `id`              | `text` PK | UUID.                                                      |
-| `user_id`         | `text`    | FK → `users.id`, **ON DELETE CASCADE**.                    |
-| `module_user_id`  | `text`    | Opaque per-module sub-identifier (sid). Client-generated.  |
-| `cipher_iv`       | `text`    | AES-GCM IV.                                                |
-| `payload`         | `text`    | AES-GCM ciphertext of the decrypted payload.               |
+| `id`              | `text` PK | UUID. Server-generated handle for `/records/:id` routing. No user content. |
+| `module_user_id`  | `text`    | Opaque per-module sub-identifier (sid). Client-generated. **Sole access scope** ; the user→sids mapping lives encrypted in `modules_config.payload`. |
+| `cipher_iv`       | `text`    | AES-GCM IV (96 bits, base64). Required to decrypt `payload`. |
+| `payload`         | `text`    | AES-GCM ciphertext of the cleartext JSON. Modules that need application-level timestamps (`updated_at`, etc.) put them here, inside the encrypted blob. |
 | `guard`           | `text`    | HMAC-SHA-256 over `sid:id`. `"init"` on creation, promoted to `g_<64 hex>` via a second PATCH. Never returned in read responses. |
-| `created_at`      | `ts+tz`   | `defaultNow()`.                                            |
-| `updated_at`      | `ts+tz`   | `defaultNow()`.                                            |
 
-**Index (per table)**: `<table>_user_sid_idx` on `(user_id, module_user_id)`.
+**No `user_id`, no `created_at`, no `updated_at`.** The server cannot
+link a row to a user, and cannot order rows chronologically — clients
+list, decrypt, and order client-side from the application timestamps
+inside the payload.
+
+**Index (per table)**: `<table>_sid_idx` on `(module_user_id)`.
+
+**Cascade-on-delete.** No FK from entry rows to `users` ; deleting a
+user does NOT cascade to entry tables. Self-delete is client-driven
+(decrypt `modules_config`, enumerate sids, delete each entry by sid +
+guard before calling `DELETE /auth/me`). Admin delete and destructive
+password reset leave entries orphaned in their tables, encrypted with
+the now-lost main key — unreadable, accepted bounded growth.
 
 ### Auth tables (live, Phases 2-7)
 

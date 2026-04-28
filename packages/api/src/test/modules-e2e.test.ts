@@ -37,8 +37,6 @@ interface RawRecord {
   module_user_id: string;
   cipher_iv: string;
   payload: string;
-  created_at: string;
-  updated_at: string;
 }
 
 async function createPromoted(
@@ -142,6 +140,8 @@ describe('Goals module — full encrypted round-trip', () => {
       note: 'end-to-end encrypted',
       status: 'open',
       thread: 'nodea',
+      completed_at: null,
+      updated_at: '2026-04-17T10:00:00.000Z',
     };
 
     await createPromoted(cookie, 'goals', keys, sid, payload);
@@ -337,6 +337,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
         signature: 'Alice',
         date: '2025-08-25',
       },
+      updated_at: '2025-08-25T10:00:00.000Z',
     };
 
     await createPromoted(cookie, 'review', keys, sid, payload);

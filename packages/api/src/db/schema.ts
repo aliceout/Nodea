@@ -542,22 +542,49 @@ export const announcements = pgTable(
  * with the same shape: an opaque encrypted payload + a HMAC guard
  * computed by the client from its main key + the record id.
  *
- * Using a single factory guarantees structural uniformity across
- * collections — middleware can treat any entry table interchangeably.
+ * **Minimum readable surface design (Auth-Spec §2.3).** The only
+ * field that conveys "scope" in the clear is `module_user_id`
+ * (sid). Every other column is either:
+ *   - a server-generated technical handle without user content
+ *     (`id` UUID for routing `/records/:id`),
+ *   - a crypto byproduct required by the protocol (`cipher_iv`
+ *     for AES-GCM decryption),
+ *   - opaque ciphertext (`payload`),
+ *   - a hidden HMAC checkpoint never returned in reads (`guard`).
+ *
+ * No `user_id`, no `created_at`, no `updated_at`. Timestamps would
+ * leak per-row write activity (operator could correlate insertions
+ * across modules to deanonymise a user). The client puts whatever
+ * timestamps it needs inside the encrypted payload — server-side
+ * ordering by date no longer exists ; the client orders client-
+ * side after decryption.
+ *
+ * `user_id` was a regression introduced during the Hono migration
+ * (commit 29b6e25) for the convenience of `ON DELETE CASCADE` ;
+ * the trade-off is now reversed — orphan rows on user removal are
+ * accepted, server-readable user→data linkage is forbidden.
+ *
+ * Cascade-on-delete consequences :
+ *   - User self-delete is **client-driven** : the client decrypts
+ *     `modules_config`, enumerates its sids, and deletes its entries
+ *     one by one via the standard guard-protected DELETE route
+ *     before the final `DELETE /auth/me`. Cf. `Modules.md §6`.
+ *   - Admin delete (or destructive password reset) leaves entries
+ *     orphaned in the entry tables. They become unreadable (the
+ *     main key required to decrypt the payload + recompute the
+ *     guard is gone). Bounded growth, accepted by design.
  */
 function createEntryTable(name: string) {
   return pgTable(
     name,
     {
       id: text('id').primaryKey(),
-      userId: text('user_id')
-        .notNull()
-        .references(() => users.id, { onDelete: 'cascade' }),
       /**
-       * `module_user_id` is an anonymous per-module sub-identifier chosen
-       * by the client. Two modules can never collide because the
-       * (user_id, module_user_id) tuple scopes queries, and the sid is
-       * derived from module-specific entropy client-side.
+       * `module_user_id` is an anonymous per-module sub-identifier
+       * chosen by the client. The user→sid mapping lives encrypted
+       * inside `modules_config.payload` ; the server never sees it
+       * in plaintext. Two modules can never collide because the sid
+       * is derived from module-specific entropy client-side.
        */
       moduleUserId: text('module_user_id').notNull(),
       cipherIv: text('cipher_iv').notNull(),
@@ -568,10 +595,8 @@ function createEntryTable(name: string) {
        * Never exposed in read responses.
        */
       guard: text('guard').notNull(),
-      createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-      updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     },
-    (t) => [index(`${name}_user_sid_idx`).on(t.userId, t.moduleUserId)],
+    (t) => [index(`${name}_sid_idx`).on(t.moduleUserId)],
   );
 }
 

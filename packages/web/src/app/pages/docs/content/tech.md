@@ -23,7 +23,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 3. **Coercition (rubber-hose)** — si l'utilisateur·ice est forcé·e de donner password + passkey + TOTP, on perd. Problème physique, pas crypto.
 4. **Side channels fins** — timing attacks sur OPAQUE, fuites par cache, microarchitecture. Hors scope V1.
 5. **Perte simultanée** de password + tous les passkeys + recovery code + accès email — reset destructif uniquement, données perdues. L'utilisateur·ice est prévenu·e à chaque étape de l'inscription.
-6. **Métadonnées résiduelles** — taille des blobs chiffrés, fréquence d'écriture, timestamps. Quelques signaux fuitent inévitablement à l'opérateur de l'instance ; on minimise les logs sans pouvoir les éliminer.
+6. **Métadonnées résiduelles minimales** — taille des blobs chiffrés, fréquence de connexion, ordre d'insertion physique au niveau WAL Postgres. Le design « surface lisible minimum » a éliminé les liens directs serveur-side (pas de `user_id` ni de timestamps colonnes sur les entrées) ; ce qui reste tient au stockage relationnel lui-même. Cf. §Modèle de données.
 
 ### Compromis assumés
 
@@ -256,33 +256,39 @@ C'est la limite la plus honnête de Nodea : un serveur compromis peut servir du 
 
 ## Modèle de données
 
-### Ce qui est chiffré côté client
+### Surface lisible côté serveur — minimum strict
 
-Tout le contenu utilisateur. Pour chaque ligne d'une table `*_entries` :
+Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review, Passage…), le serveur ne voit que le strict minimum nécessaire au routing et à la cryptographie :
 
-| Champ | Visible serveur | Contenu |
+| Champ | Visible serveur | Rôle |
 |---|---|---|
-| `id` | oui | UUID généré côté serveur |
-| `user_id` | oui | FK → `users.id` |
-| `module_user_id` | oui | identifiant secondaire opaque, dérivé localement |
-| `cipher_iv` | oui | IV 96 bits aléatoire (base64) |
-| `payload` | oui (chiffré) | JSON chiffré AES-GCM (base64) — **jamais déchiffrable côté serveur** |
-| `guard` | oui | HMAC stocké, jamais renvoyé en lecture (jeton secret pour mutations) |
-| `created_at` / `updated_at` | oui | timestamps `timestamptz` |
+| `id` | oui | UUID généré côté serveur, sert uniquement de handle pour les routes `/records/:id`. Aucun contenu utilisateur. |
+| `module_user_id` | oui | Sid opaque dérivé client-side. **Seule clé d'accès** aux entrées. Le mapping `user → sids` vit chiffré dans `modules_config` ; le serveur ne sait jamais à qui un sid appartient. |
+| `cipher_iv` | oui | IV 96 bits aléatoire — requis pour déchiffrer le payload (impossible de le cacher sans casser AES-GCM). |
+| `payload` | oui (chiffré) | JSON chiffré AES-GCM. **Tout le contenu utilisateur**, **plus** les éventuels timestamps applicatifs (`updated_at` etc.) que le module veut conserver. **Jamais déchiffrable côté serveur.** |
+| `guard` | oui (jamais renvoyé en lecture) | HMAC stocké, jeton secret pour les mutations. Calculer un guard valide nécessite la clé maîtresse. |
 
-Le serveur stocke le ciphertext + l'iv + un HMAC. Sans la clé maîtresse de l'utilisateur·ice, aucun de ces champs ne révèle quoi que ce soit du contenu.
+**Pas de `user_id`** : les entrées ne portent aucune référence directe à `users.id`. Le serveur ne peut donc pas faire `SELECT COUNT(*) FROM mood_entries WHERE user_id = X` — la corrélation user↔data n'existe pas en plain SQL.
 
-### Ce qui fuit comme métadonnée
+**Pas de timestamps colonnes** (`created_at`, `updated_at`) : ils leakaient l'activité d'écriture par ligne. Si un module a besoin d'un timestamp (par ex. Goals pour le tri « Récent »), le client le met dans le `payload` chiffré — le serveur n'en voit jamais la valeur.
 
-Honnêteté : quelques signaux fuitent inévitablement à un opérateur de l'instance, même sans accès au contenu :
+### Conséquences cascade
 
-- **Timestamps** des écritures (`created_at`, `updated_at`) — quand l'utilisateur·ice écrit.
-- **Taille des blobs chiffrés** — donne un ordre de grandeur du contenu (entrée Mood vs. entrée Library).
-- **Nombre d'entrées par module** par utilisateur·ice.
-- **Fréquence de connexion** (timestamps des sessions).
+- **User self-delete** : flow client-driven. Le client décrypte `modules_config` pour récupérer ses sids, énumère ses entrées par sid, calcule les guards, supprime une par une via les routes guard-protected, puis appelle `DELETE /auth/me`.
+- **Admin delete user** : la ligne `users` disparaît + cascade FK sur `modules_config`, `user_preferences`, `sessions`, `opaque_records`. Les entrées dans les tables modules **restent en DB orphelines** — illisibles puisque la clé maîtresse est partie avec le user. Bounded growth, accepté par design.
+- **Reset destructif** : même comportement — les anciennes entrées deviennent orphelines, le user repart avec une nouvelle clé. Les rows existantes sont chiffrées avec une clé perdue, donc inaccessibles.
+
+### Ce qui fuit quand même comme métadonnée
+
+Honnêteté : même avec ce design serré, quelques signaux fuitent inévitablement :
+
+- **Existence d'écritures par module en agrégat** : l'opérateur peut compter `SELECT COUNT(*) FROM mood_entries` (toutes lignes confondues, sans pouvoir attribuer à un user). Il sait qu'il y a 1247 entrées Mood au total, pas qui les a écrites.
+- **Taille des blobs chiffrés** — donne un ordre de grandeur du contenu (entrée Mood vs. entrée Library volumineuse).
+- **Ordre d'insertion physique** (`ctid` Postgres, WAL) : un opérateur avec accès root au serveur Postgres peut faire de la corrélation statistique entre lignes insérées « proches en temps » sur différentes tables. Sans timestamps colonnes c'est beaucoup plus dur (faut accéder au WAL plutôt qu'à un simple `SELECT`), mais pas neutralisé totalement. Inhérent à toute DB relationnelle.
+- **Fréquence de connexion** (timestamps des `sessions`).
 - **Adresse email** (clair en DB, c'est l'identifiant OPAQUE).
 
-Aucun de ces signaux ne révèle le contenu lui-même. Si la confidentialité des métadonnées est critique pour ton usage, l'auto-hébergement reste la meilleure réponse — l'opérateur, c'est toi.
+Aucun de ces signaux ne donne accès au contenu lui-même ni ne permet une corrélation directe sid↔user en plain SQL. Si la confidentialité des métadonnées est critique pour ton usage, l'auto-hébergement reste la meilleure réponse — l'opérateur, c'est toi.
 
 ## Audit & divulgation
 
