@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Bars3Icon,
-  PencilSquareIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { PassagePayload } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
@@ -15,6 +11,7 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import Button from '@/ui/atoms/dirk/Button';
+import Input from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import FilterChip from '@/ui/dirk/FilterChip';
 import GroupBlock from '@/ui/dirk/GroupBlock';
@@ -66,6 +63,8 @@ export default function JournalPage() {
 
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [groupBy, setGroupBy] = useState<'thread' | 'month'>('thread');
 
   useEffect(() => {
     if (!mainKey || !moduleUserId) return undefined;
@@ -141,12 +140,37 @@ export default function JournalPage() {
   }, [entries]);
 
   const filtered = useMemo<JournalEntry[]>(() => {
-    if (!threadFilter) return [...entries];
-    return entries.filter((e) => splitThreads(e.thread).includes(threadFilter));
-  }, [entries, threadFilter]);
+    const needle = search.trim().toLocaleLowerCase('fr');
+    return entries.filter((e) => {
+      if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
+        return false;
+      }
+      if (needle.length > 0) {
+        const haystack = `${e.title ?? ''}\n${e.content}`.toLocaleLowerCase('fr');
+        if (!haystack.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [entries, threadFilter, search]);
 
   const groups = useMemo<Array<[string, JournalEntry[]]>>(() => {
     const map = new Map<string, JournalEntry[]>();
+    if (groupBy === 'month') {
+      // Group by year/month derived from the entry's ISO date.
+      // Sort buckets by their key descending so the freshest month
+      // sits on top — natural for a journal scroll.
+      for (const entry of filtered) {
+        const key = entry.dateIso.slice(0, 7); // YYYY-MM
+        const bucket = map.get(key) ?? [];
+        bucket.push(entry);
+        map.set(key, bucket);
+      }
+      return Array.from(map.entries())
+        .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
+        .map(([k, items]) => [formatMonthLabel(k), items]);
+    }
+    // Default: group by thread (multi-thread entries land in each
+    // of their thread buckets — same convention as Goals).
     for (const entry of filtered) {
       const keys = splitThreads(entry.thread);
       const list = keys.length > 0 ? keys : ['— sans thread —'];
@@ -157,7 +181,9 @@ export default function JournalPage() {
       }
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'fr'));
-  }, [filtered]);
+  }, [filtered, groupBy]);
+
+  const stats = useMemo(() => computeStats(entries), [entries]);
 
   return (
     <ModuleShell
@@ -173,10 +199,15 @@ export default function JournalPage() {
       }
       side={
         <SideColumn
+          search={search}
+          onSearchChange={setSearch}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
           threads={threads}
           activeThread={threadFilter}
           onThreadChange={setThreadFilter}
           totalCount={entries.length}
+          stats={stats}
         />
       }
     >
@@ -184,6 +215,7 @@ export default function JournalPage() {
         load={load}
         total={entries.length}
         groups={groups}
+        groupVariant={groupBy === 'month' ? 'eyebrow' : 'subtitle'}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
@@ -197,11 +229,19 @@ interface PrimaryColumnProps {
   load: LoadState;
   total: number;
   groups: Array<[string, JournalEntry[]]>;
+  groupVariant: 'subtitle' | 'eyebrow';
   onEdit: (entry: JournalEntry) => void;
   onDelete: (entry: JournalEntry) => void | Promise<void>;
 }
 
-function PrimaryColumn({ load, total, groups, onEdit, onDelete }: PrimaryColumnProps) {
+function PrimaryColumn({
+  load,
+  total,
+  groups,
+  groupVariant,
+  onEdit,
+  onDelete,
+}: PrimaryColumnProps) {
   return (
     <section className="flex min-w-0 flex-col">
       <PageHeading>Journal</PageHeading>
@@ -227,7 +267,7 @@ function PrimaryColumn({ load, total, groups, onEdit, onDelete }: PrimaryColumnP
               label={groupLabel}
               count={items.length}
               countNoun="entrée"
-              variant="subtitle"
+              variant={groupVariant}
             >
               {items.map((entry) => (
                 <EntryRow
@@ -291,45 +331,131 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
   );
 }
 
+interface JournalStats {
+  totalEntries: number;
+  totalWords: number;
+  /** Days in a row, ending today (or yesterday if today's empty
+   *  but the streak is otherwise live). 0 when there's no
+   *  qualifying recent run. */
+  streakDays: number;
+  /** Whether today's date already has at least one entry.
+   *  Drives the « jusqu'à aujourd'hui » vs « jusqu'à hier »
+   *  caption next to the streak number. */
+  streakIncludesToday: boolean;
+}
+
 interface SideColumnProps {
+  search: string;
+  onSearchChange: (next: string) => void;
+  groupBy: 'thread' | 'month';
+  onGroupByChange: (next: 'thread' | 'month') => void;
   threads: string[];
   activeThread: string | null;
   onThreadChange: (next: string | null) => void;
   totalCount: number;
+  stats: JournalStats;
 }
 
 function SideColumn({
+  search,
+  onSearchChange,
+  groupBy,
+  onGroupByChange,
   threads,
   activeThread,
   onThreadChange,
   totalCount,
+  stats,
 }: SideColumnProps) {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
-        <SectionLabel>Fils</SectionLabel>
-        {threads.length === 0 ? (
-          <p className="text-[12px] italic text-muted">
-            Tu n’as pas encore créé de fil.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-1">
-            <FilterChip
-              active={activeThread === null}
-              onClick={() => onThreadChange(null)}
-              label="Tous"
-              count={totalCount}
-            />
-            {threads.map((t) => (
+        <SectionLabel>Recherche</SectionLabel>
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Titre ou contenu…"
+          aria-label="Rechercher dans le journal"
+        />
+      </section>
+
+      <section>
+        <SectionLabel>Vue</SectionLabel>
+        <div className="flex flex-wrap gap-1">
+          <FilterChip
+            active={groupBy === 'thread'}
+            onClick={() => onGroupByChange('thread')}
+            label="Par fil"
+          />
+          <FilterChip
+            active={groupBy === 'month'}
+            onClick={() => onGroupByChange('month')}
+            label="Par mois"
+          />
+        </div>
+      </section>
+
+      {groupBy === 'thread' ? (
+        <section>
+          <SectionLabel>Fils</SectionLabel>
+          {threads.length === 0 ? (
+            <p className="text-[12px] italic text-muted">
+              Tu n’as pas encore créé de fil.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1">
               <FilterChip
-                key={t}
-                active={activeThread === t}
-                onClick={() => onThreadChange(t)}
-                label={t}
+                active={activeThread === null}
+                onClick={() => onThreadChange(null)}
+                label="Tous"
+                count={totalCount}
               />
-            ))}
+              {threads.map((t) => (
+                <FilterChip
+                  key={t}
+                  active={activeThread === t}
+                  onClick={() => onThreadChange(t)}
+                  label={t}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      <section>
+        <SectionLabel>Stats</SectionLabel>
+        <dl className="space-y-2 text-[12px] text-ink-soft">
+          <div className="flex items-baseline justify-between gap-2">
+            <dt>Entrées</dt>
+            <dd className="tabular-nums text-ink">
+              {stats.totalEntries}
+            </dd>
           </div>
-        )}
+          <div className="flex items-baseline justify-between gap-2">
+            <dt>Mots écrits</dt>
+            <dd className="tabular-nums text-ink">
+              {stats.totalWords.toLocaleString('fr-FR')}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-2">
+            <dt>Série</dt>
+            <dd className="text-right">
+              <span className="tabular-nums text-ink">
+                {stats.streakDays}{' '}
+                {stats.streakDays === 1 ? 'jour' : 'jours'}
+              </span>
+              {stats.streakDays > 0 ? (
+                <p className="text-[11px] text-muted">
+                  {stats.streakIncludesToday
+                    ? "jusqu'à aujourd'hui"
+                    : "jusqu'à hier"}
+                </p>
+              ) : null}
+            </dd>
+          </div>
+        </dl>
       </section>
     </aside>
   );
@@ -382,6 +508,82 @@ function formatEntryLabel(rawIso: string, today: Date): string {
     d.getFullYear() === today.getFullYear() ? ENTRY_SAME_YEAR_FMT : ENTRY_CROSS_YEAR_FMT;
   const formatted = fmt.format(d);
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+const MONTH_LABEL_FMT = new Intl.DateTimeFormat('fr-FR', {
+  month: 'long',
+  year: 'numeric',
+});
+
+/**
+ * Render a `YYYY-MM` group key as « mars 2026 ». Falls back to the
+ * raw key if parsing fails (defensive — should never happen on
+ * payloads we wrote ourselves).
+ */
+function formatMonthLabel(yyyymm: string): string {
+  const [yStr, mStr] = yyyymm.split('-');
+  const y = Number(yStr);
+  const m = Number(mStr);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return yyyymm;
+  const formatted = MONTH_LABEL_FMT.format(new Date(y, m - 1, 1));
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+/**
+ * Aggregate entry-level stats for the SideColumn « Stats » block.
+ *
+ * - `totalWords` counts whitespace-separated tokens across each
+ *   entry's content + title. Cheap, locale-agnostic enough for an
+ *   indicator.
+ * - `streakDays` walks back from today through `entries` (assumed
+ *   newest-first) counting consecutive days with at least one
+ *   entry. The streak survives a missing « today » as long as
+ *   « yesterday » is covered — a journal you write each evening
+ *   shouldn't reset to 0 the moment you wake up.
+ */
+function computeStats(entries: ReadonlyArray<JournalEntry>): JournalStats {
+  let totalWords = 0;
+  const dayKeys = new Set<string>();
+  for (const entry of entries) {
+    const text = `${entry.title ?? ''} ${entry.content}`;
+    totalWords += countWords(text);
+    const day = entry.dateIso.slice(0, 10);
+    if (day) dayKeys.add(day);
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = isoDay(today);
+  const yesterdayKey = isoDay(new Date(today.getTime() - 24 * 3600 * 1000));
+  const streakIncludesToday = dayKeys.has(todayKey);
+  let cursor = streakIncludesToday
+    ? new Date(today)
+    : dayKeys.has(yesterdayKey)
+      ? new Date(today.getTime() - 24 * 3600 * 1000)
+      : null;
+  let streakDays = 0;
+  while (cursor && dayKeys.has(isoDay(cursor))) {
+    streakDays += 1;
+    cursor = new Date(cursor.getTime() - 24 * 3600 * 1000);
+  }
+  return {
+    totalEntries: entries.length,
+    totalWords,
+    streakDays,
+    streakIncludesToday,
+  };
+}
+
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+function isoDay(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 /**
