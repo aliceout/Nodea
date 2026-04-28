@@ -50,6 +50,32 @@ Issues de suivi ouvertes en GitHub :
 - #50 — RFC extension navigateur pour vérification d'intégrité
 - #51 — rappel : attacher `INTEGRITY.txt` à la première release
 
+## Self-audit post-Phase 8 (2026-04-28)
+
+Revue complète du chantier auth (Phases 1-8) après livraison.
+Trois agents en parallèle (conformité roadmap / sweep code mort /
+revue sécurité). Synthèse :
+
+| Finding | Sévérité | État |
+|---|---|---|
+| Rotation de session manquante sur `/auth/security-mode/change` | HAUTE | ✅ corrigé — `revokeAllUserSessions` + `createSession` + `setSessionCookie` ajoutés (Auth-Spec §5.4 imposait la même rotation que change-password) |
+| Email loggé dans `[auth/recover-kek] hash_mismatch` | FAIBLE | ✅ corrigé — log réduit à `user=<id>` (CLAUDE.md : pas de métadonnée identifiante non liée à la requête servie) |
+| AAD manquante sur `encryptAESGCM` enregistrements | — | ❌ faux positif — Auth-Spec §3.4 limite l'AAD aux blobs wrappés (KEK, main key) ; les enregistrements sont protégés en intégrité par HMAC `guard`, pas par AAD AES-GCM |
+| `passwordProofFor` helper inutilisé | — | ❌ faux positif — 30+ appels actifs dans 5 fichiers de tests (`auth-totp.test.ts`, `auth-recovery.test.ts`, `auth-security-mode.test.ts`, `auth-mfa-stepped.test.ts`, `auth-mfa-bypass.test.ts`) |
+| Politique de rate-limit hétérogène entre routes auth | DOC | 🚧 issue à ouvrir — pas de bug actif, mais la table récap des limites n'est documentée nulle part ; à recenser et expliciter dans `Security.md` |
+
+Test de non-régression ajouté pour la rotation de session
+(`auth-security-mode.test.ts > rotates sessions on mode change
+(Auth-Spec §5.4)`) : seed un user, deux sessions parallèles,
+mute le mode via la session A, vérifie que A et B sont mortes
+et que la session fraîchement émise (Set-Cookie de la réponse)
+authentifie correctement contre `/auth/me`.
+
+**Conformité roadmap.** 8/8 phases livrées sans dérive ni
+livrable manquant. Les 5 sites de promotion full-session
+appellent bien `cancelPendingBypassesForUser` (defang du bypass
+MFA après reprise de contrôle du compte).
+
 ---
 
 ## Résumé exécutif (audit initial — historique)
