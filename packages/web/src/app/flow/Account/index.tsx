@@ -378,16 +378,16 @@ function SecurityTab() {
 
   return (
     <div className="max-w-[880px] divide-y divide-hair">
-      <SecuritySection
+      <DescribedSection
         title="Mot de passe"
         description="Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais."
       >
         <Button variant="secondary" size="sm" onClick={() => navigate('/change-password')}>
           Renouveler
         </Button>
-      </SecuritySection>
+      </DescribedSection>
 
-      <SecuritySection
+      <DescribedSection
         title="Passkey"
         description={
           passkeysCount === 0
@@ -406,9 +406,9 @@ function SecurityTab() {
         <Button variant="secondary" size="sm" onClick={() => navigate('/passkeys')}>
           {passkeysCount === 0 ? 'Ajouter' : 'Gérer'}
         </Button>
-      </SecuritySection>
+      </DescribedSection>
 
-      <SecuritySection
+      <DescribedSection
         title="2FA (TOTP)"
         description={
           totpEnabled
@@ -427,9 +427,9 @@ function SecurityTab() {
         <Button variant="secondary" size="sm" onClick={() => navigate('/totp')}>
           {totpEnabled ? 'Gérer' : 'Activer'}
         </Button>
-      </SecuritySection>
+      </DescribedSection>
 
-      <SecuritySection
+      <DescribedSection
         title="Code de récupération"
         description={
           recoveryCodeSet
@@ -440,9 +440,9 @@ function SecurityTab() {
         <Button variant="secondary" size="sm" onClick={() => navigate('/recovery-code')}>
           {recoveryCodeSet ? 'Régénérer' : 'Configurer'}
         </Button>
-      </SecuritySection>
+      </DescribedSection>
 
-      <SecuritySection
+      <DescribedSection
         title="Mode de sécurité"
         description={
           'Combien de facteurs sont demandés à chaque connexion (mot de passe, TOTP, passkey). Mode actuel : ' +
@@ -453,7 +453,7 @@ function SecurityTab() {
         <Button variant="secondary" size="sm" onClick={() => navigate('/security-mode')}>
           Modifier
         </Button>
-      </SecuritySection>
+      </DescribedSection>
     </div>
   );
 }
@@ -464,30 +464,51 @@ function modeLabel(mode: SecurityMode): string {
   return 'Maximum';
 }
 
-interface SecuritySectionProps {
+interface DescribedSectionProps {
   title: string;
   /** Plain string, or arbitrary JSX when the descriptor needs
    *  inline emphasis (status line + advice in different weights,
    *  see Passkey + TOTP sections). */
   description: React.ReactNode;
+  /** Width of the left control column at `lg+`. Security rows
+   *  fit a `Button` (170 px); preference rows hold a `<select>`
+   *  (200 px). */
+  controlWidth?: 170 | 200;
+  /** Cross-axis alignment at `lg+`. `start` for buttons whose
+   *  descriptor wraps over multiple lines (Security tab), `center`
+   *  for single-line selects (Preferences). */
+  align?: 'start' | 'center';
   children: React.ReactNode;
 }
 
 /**
- * Security row — heading on top, then a 2-column body: action
- * button on the left, single 12px descriptor on the right. The
- * left column has a fixed width (`170px`) shared across every
- * section so the descriptors line up on the same vertical line
- * regardless of each button's natural width — descriptor
- * alignment shouldn't jiggle from "Activer" to "Renouveler la
- * clé". Below `lg`, columns stack (button first, descriptor
- * under it).
+ * Account row with a heading, a 2-column body (control on the
+ * left, single 12px descriptor on the right), and shared chrome:
+ * top/bottom 24 px padding, no padding at the edges (`first:pt-0
+ * last:pb-0`), single hairline divider between rows. The left
+ * column has a fixed width shared across every row inside one
+ * tab so the descriptors line up on the same vertical line
+ * regardless of each control's natural width — alignment
+ * shouldn't jiggle from "Activer" to "Renouveler la clé". Below
+ * `lg`, columns stack (control first, descriptor under it).
  */
-function SecuritySection({ title, description, children }: SecuritySectionProps) {
+function DescribedSection({
+  title,
+  description,
+  controlWidth = 170,
+  align = 'start',
+  children,
+}: DescribedSectionProps) {
   return (
     <section className="py-[24px] first:pt-0 last:pb-0">
       <h3 className="mb-2 text-[16px] font-semibold text-ink">{title}</h3>
-      <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[170px_1fr] lg:gap-x-6">
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-y-3 lg:gap-x-6',
+          align === 'center' ? 'items-center' : 'items-start',
+          controlWidth === 200 ? 'lg:grid-cols-[200px_1fr]' : 'lg:grid-cols-[170px_1fr]',
+        )}
+      >
         <div>{children}</div>
         <p className="text-[12px] leading-[1.55] text-muted">{description}</p>
       </div>
@@ -499,9 +520,9 @@ function SecuritySection({ title, description, children }: SecuritySectionProps)
 // The mode picker lives on a standalone `/security-mode` page
 // (parallel to /totp, /passkeys, /recovery-code). Settings → Sécurité
 // just navigates there via a `Modifier` button on the
-// `SecuritySection` row above. `modeLabel` (line ~485) is the only
-// helper still needed locally — to render the current mode name in
-// the row's description.
+// `DescribedSection` row above. `modeLabel` is the only helper
+// still needed locally — to render the current mode name in the
+// row's description.
 
 
 /* ---------- Preferences tab ----------------------------------------------- */
@@ -524,16 +545,18 @@ function PreferencesTab() {
     setTheme(next);
   }
 
-  // Same row pattern as `SecuritySection`: title spanning full width
-  // on top, then a 2-col grid with the control on the left and the
-  // descriptor on the right. Keeps the two surfaces visually
-  // consistent so a user toggling between Settings tabs doesn't have
-  // to re-parse the layout.
+  // Same `DescribedSection` row as the Security tab — wider control
+  // column (200 px to fit the `<select>`s) and centered alignment
+  // since the descriptor here is a single line. Keeps the two
+  // surfaces visually consistent so a user toggling between
+  // Settings tabs doesn't have to re-parse the layout.
   return (
     <div className="max-w-[880px] divide-y divide-hair">
-      <PreferenceRow
+      <DescribedSection
         title="Thème"
         description="Clair, sombre, ou suit ton système."
+        controlWidth={200}
+        align="center"
       >
         <select
           aria-label={t('settings.theme.ariaLabel', { defaultValue: 'Préférence de thème' })}
@@ -547,11 +570,13 @@ function PreferencesTab() {
             </option>
           ))}
         </select>
-      </PreferenceRow>
+      </DescribedSection>
 
-      <PreferenceRow
+      <DescribedSection
         title="Langue"
         description="Interface en français ou en anglais."
+        controlWidth={200}
+        align="center"
       >
         <select
           aria-label="Langue"
@@ -565,26 +590,8 @@ function PreferencesTab() {
             </option>
           ))}
         </select>
-      </PreferenceRow>
+      </DescribedSection>
     </div>
-  );
-}
-
-interface PreferenceRowProps {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}
-
-function PreferenceRow({ title, description, children }: PreferenceRowProps) {
-  return (
-    <section className="py-[24px] first:pt-0 last:pb-0">
-      <h3 className="mb-2 text-[16px] font-semibold text-ink">{title}</h3>
-      <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6">
-        <div>{children}</div>
-        <p className="text-[12px] leading-[1.55] text-muted">{description}</p>
-      </div>
-    </section>
   );
 }
 
