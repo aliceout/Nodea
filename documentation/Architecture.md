@@ -177,7 +177,7 @@ the factory loops over. There is nowhere to forget a guard.
     middleware so the proof is cached for 5 min across multiple
     privileged calls (foundation landed in 7A — see below).
 
-- **Re-auth foundation** (Phase 7A —
+- **Re-auth foundation + matrix wiring** (Phase 7A + 7B —
   `routes/auth-reauth.ts`,
   `middleware/require-fresh-reauth.ts`):
   - Two timestamps live on the session row:
@@ -206,8 +206,14 @@ the factory loops over. There is nowhere to forget a guard.
     assertion against the calling user's enrolled credentials
     (re-uses the `pending_webauthn_challenge` column on the full
     session row, TTL 5 min — same as the stepped-MFA path).
-  - Phase 7B applies the middlewares to mutating routes; for now
-    the foundation is ready but unused in production paths.
+  - Phase 7B applied the middlewares to every mutating Settings
+    route (security-mode, totp, passkey, recovery-code,
+    change-password, change-email, delete-self) and dropped the
+    embedded `proofLoginToken` body shape that pre-7B routes
+    accepted. Front-end migrated from `derivePasswordProof` (one
+    OPAQUE round-trip per action, embedded in body) to
+    `freshenPasswordReauth` (one round-trip via
+    `/auth/reauth/password`, then a session-fresh action call).
 
 - **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
   Phase 2B):

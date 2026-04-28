@@ -15,9 +15,9 @@
 > **Phases livrées** : 0 (spec), 1 (register simplifié), 2A-2D
 > (OPAQUE migration), 3 (recovery code BIP39), 4 (passkey WebAuthn
 > + PRF), 5A-5D (TOTP + stepped MFA + security mode UI),
-> 6 (bypass MFA email 7 jours), **7A (foundation re-auth :
-> middlewares + endpoints + timestamps)**. En cours : 7B (câblage
-> de la matrice sur les routes mutantes) puis 7C-D.
+> 6 (bypass MFA email 7 jours), 7A (foundation re-auth),
+> **7B (câblage de la matrice sur toutes les routes mutantes +
+> migration front)**. En cours : 7C-D (onboarding + e2e Playwright).
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -874,12 +874,37 @@ reset destructif.
 - 9 tests d'intégration (timestamps + middleware + endpoint
   password OPAQUE round-trip).
 
-**Sous-phases 7B-D restantes (non livrées)**
-- 7B — câblage de la matrice sur toutes les routes mutantes
-  (mode, factors, codes, account deletion). Aujourd'hui plusieurs
-  routes embarquent un `proofLoginToken` dans le body (Phase 5D
-  MVP) ; 7B les migre vers le middleware + drop du helper
-  `verifyPasswordProof` dupliqué dans chaque fichier.
+**Sous-phase 7B — Migration matrice + front (✅ livrée)**
+- Routes mutantes basculées vers `requireFreshPassword` (ou
+  `requireFreshPasswordOrPasskey` pour `/auth/change-password/start`
+  qui est l'unique entrée de la matrice §6 acceptant la passkey en
+  alternative) :
+  - `/auth/security-mode/change`
+  - `/auth/totp/{enroll/start, disable, backup-codes/regenerate}`
+  - `/auth/passkey/{enroll/start, :id/label, :id/remove}`
+  - `/auth/security/recovery-code` (setup + regen)
+  - `/auth/change-password/{start, finish}`
+  - `/auth/email` (PATCH)
+  - `/auth/me` (DELETE)
+- Drop du helper `verifyPasswordProof` dupliqué dans 5 fichiers
+  routes (`auth.ts`, `auth-totp.ts`, `auth-passkey.ts`,
+  `auth-recovery.ts`, `auth-security-mode.ts`).
+- Schémas Zod allégés : `proofLoginToken` /
+  `proofFinishLoginRequest` retirés de `SecurityModeChangeBody`,
+  `TotpEnrollStartBody`, `TotpManagementBody`,
+  `PasskeyEnrollStartBody`, `PasskeyDeleteBody`,
+  `PasskeyRenameWithProofBody`, `RecoveryCodeUpsertBody`,
+  `ChangePasswordStartBody`, `ChangeEmailBody`, `DeleteSelfBody`.
+- Front : `derivePasswordProof` remplacé par
+  `freshenPasswordReauth` qui appelle
+  `/auth/reauth/password/{start,finish}` ; les 7 callers Settings
+  (`useSession.{renamePasskey, removePasskey, startTotpEnrollment,
+  disableTotp, regenerateTotpBackupCodes, changeSecurityMode,
+  setupRecoveryCode}` + `Account.{saveEmail, deleteAccount}`)
+  ne passent plus de proof body — ils freshen puis appellent.
+- `changePassword` réutilise le même OPAQUE round-trip pour
+  freshen ET dériver `currentExportKey` côté client (pas de
+  double saisie du password).
 - Settings UI :
   - Mode de sécurité (avec explication des trade-offs en clair).
     Sélection bloquée si les facteurs requis ne sont pas enrôlés

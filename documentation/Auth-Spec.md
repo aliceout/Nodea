@@ -736,11 +736,12 @@ middleware `loadSession` :
 
 ### 5.3 Re-auth fresh
 
-✅ **Phase 7A livrée** : middlewares + endpoints `/auth/reauth/*` +
-wiring des timestamps sur tous les chemins d'auth qui promeuvent
-vers `full`. Reste à faire en 7B : appliquer les middlewares aux
-routes mutantes (et drop le `proofLoginToken` embarqué dans les
-bodies — pattern Phase 5D MVP).
+✅ **Phase 7A + 7B livrées** : middlewares + endpoints
+`/auth/reauth/*`, timestamps stampés sur tous les chemins d'auth,
+matrice câblée sur toutes les routes mutantes (security-mode,
+totp, passkey, recovery-code, change-password, change-email,
+delete-self) + drop du `proofLoginToken` embarqué dans les bodies
+(pattern Phase 5D MVP). Front migré vers `freshenPasswordReauth`.
 
 La matrice (§6) demande "re-auth fraîche < 5 min". Implémentation :
 
