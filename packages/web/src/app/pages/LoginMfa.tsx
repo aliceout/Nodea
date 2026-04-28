@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { cn } from '@/lib/utils';
-import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import Button from '@/ui/atoms/dirk/Button';
+import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 type Factor = 'totp' | 'passkey' | 'password';
 
@@ -170,189 +171,220 @@ export default function LoginMfaPage() {
   return (
     <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
       <AuthMarketingPanel headline="Une dernière étape.">
-        <PrivacyBody />
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Le mot de passe seul ne suffit pas dans ton mode de sécurité.
+          Confirme avec ton TOTP ou ta passkey pour finir d’ouvrir ta
+          session.
+        </p>
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Si tu n’as plus accès à ton facteur, tu peux demander une
+          récupération par email — le délai de 7 jours te protège des
+          demandes malveillantes.
+        </p>
       </AuthMarketingPanel>
 
       <main className="flex items-center justify-center px-6 py-16 sm:px-14">
         <div className="animate-fade-up w-full max-w-[360px]">
           {step === 'totp' ? (
             <>
-              <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
-              <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-                {totpMode === 'code' ? 'Code à six chiffres' : 'Code de secours'}
-              </h2>
-              <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-                {totpMode === 'code'
-                  ? 'Tape le code affiché par ton appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth…). Le code change toutes les 30 secondes.'
-                  : 'Tape un de tes 10 codes de secours (24 caractères, tirets optionnels). Chaque code n’est utilisable qu’une seule fois.'}
-              </p>
+              {/* Header + form + escalation links are only visible
+                  when the lost-factor flow is idle. As soon as the
+                  user clicks "Demander une récupération par email",
+                  the LostFlow panel below takes over the entire
+                  panel — typing a code is no longer relevant. */}
+              {lost.kind === 'idle' ? (
+                <>
+                  <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
+                  <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+                    {totpMode === 'code' ? 'Code à six chiffres' : 'Code de secours'}
+                  </h2>
+                  <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+                    {totpMode === 'code'
+                      ? 'Tape le code affiché par ton appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth…). Le code change toutes les 30 secondes.'
+                      : 'Tape un de tes 10 codes de secours (24 caractères, tirets optionnels). Chaque code n’est utilisable qu’une seule fois.'}
+                  </p>
 
-              <form onSubmit={onSubmitTotp} noValidate>
-                {totpMode === 'code' ? (
-                  <Field
-                    key="totp-code"
-                    label="Code TOTP"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    maxLength={6}
-                    pattern="\d{6}"
-                    value={code}
-                    onChange={(e) =>
-                      setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                    }
-                    required
-                  />
-                ) : (
-                  <Field
-                    key="totp-backup"
-                    label="Code de secours"
-                    inputMode="text"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    required
-                  />
-                )}
+                  <form onSubmit={onSubmitTotp} noValidate>
+                    {totpMode === 'code' ? (
+                      <Field
+                        key="totp-code"
+                        label="Code TOTP"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        autoFocus
+                        maxLength={6}
+                        pattern="\d{6}"
+                        value={code}
+                        onChange={(e) =>
+                          setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                        }
+                        required
+                      />
+                    ) : (
+                      <Field
+                        key="totp-backup"
+                        label="Code de secours"
+                        inputMode="text"
+                        autoComplete="one-time-code"
+                        autoFocus
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        required
+                      />
+                    )}
 
-                {error ? (
-                  <div
-                    role="alert"
-                    className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-                  >
-                    {error}
-                  </div>
-                ) : null}
+                    {error ? (
+                      <div
+                        role="alert"
+                        className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+                      >
+                        {error}
+                      </div>
+                    ) : null}
 
-                <button
-                  type="submit"
-                  disabled={!canSubmitTotp}
-                  className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submitting ? 'Vérification…' : 'Vérifier'}
-                </button>
+                    <button
+                      type="submit"
+                      disabled={!canSubmitTotp}
+                      className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {submitting ? 'Vérification…' : 'Vérifier'}
+                    </button>
 
-                <div className="mt-4.5 text-center text-[12.5px] text-muted">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/login', { replace: true })}
-                    className="cursor-pointer transition-colors hover:text-ink"
-                  >
-                    ← Recommencer la connexion
-                  </button>
-                </div>
-              </form>
+                    <div className="mt-4.5 text-center text-[12.5px] text-muted">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/login', { replace: true })}
+                        className="cursor-pointer transition-colors hover:text-ink"
+                      >
+                        ← Recommencer la connexion
+                      </button>
+                    </div>
+                  </form>
 
-              {/* Escalation links — TOTP code → backup code → email
-                  recovery. The user picks the path that matches what
-                  they still have access to. */}
-              {lost.kind === 'idle' && totpMode === 'code' ? (
-                <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setCode('');
-                      setTotpMode('backup');
-                    }}
-                    className="cursor-pointer transition-colors hover:text-ink"
-                  >
-                    J’ai perdu mon TOTP → utiliser un code de secours
-                  </button>
-                </div>
-              ) : null}
+                  {/* Escalation links — TOTP code → backup code →
+                      email recovery. The user picks the path that
+                      matches what they still have access to. */}
+                  {totpMode === 'code' ? (
+                    <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError(null);
+                          setCode('');
+                          setTotpMode('backup');
+                        }}
+                        className="cursor-pointer transition-colors hover:text-ink"
+                      >
+                        J’ai perdu mon TOTP → utiliser un code de secours
+                      </button>
+                    </div>
+                  ) : null}
 
-              {lost.kind === 'idle' && totpMode === 'backup' ? (
-                <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setCode('');
-                      setTotpMode('code');
-                    }}
-                    className="block w-full cursor-pointer transition-colors hover:text-ink"
-                  >
-                    ← Revenir au code TOTP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void startLost('totp')}
-                    className="mt-2 block w-full cursor-pointer transition-colors hover:text-ink"
-                  >
-                    J’ai aussi perdu mes codes de secours → demander une
-                    récupération par email
-                  </button>
-                </div>
+                  {totpMode === 'backup' ? (
+                    <>
+                      <div className="mt-3 text-center text-[12px] text-muted">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError(null);
+                            setCode('');
+                            setTotpMode('code');
+                          }}
+                          className="cursor-pointer transition-colors hover:text-ink"
+                        >
+                          ← Revenir au code TOTP
+                        </button>
+                      </div>
+
+                      {/* Last-resort escalation — destructive (TOTP
+                          will be wiped) so we keep it visually
+                          distinct from the primary "Vérifier" CTA via
+                          the danger-outline variant; the wording on
+                          the button is explicit enough that the
+                          previous amber "warning" callout was just
+                          extra chrome around a link. */}
+                      <Button
+                        variant="danger-outline"
+                        size="lg"
+                        onClick={() => void startLost('totp')}
+                        className="mt-6 w-full"
+                      >
+                        Demander une récupération par email
+                      </Button>
+                    </>
+                  ) : null}
+                </>
               ) : null}
 
               <LostFlow
                 lost={lost}
                 factor="totp"
                 onConfirm={() => void confirmLost()}
+                onCancel={() => setLost({ kind: 'idle' })}
               />
             </>
           ) : null}
 
           {step === 'passkey' ? (
             <>
-              <p className="mb-1 text-[13px] text-muted">
-                Vérification 2FA · 2/2
-              </p>
-              <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-                Confirme avec ta passkey
-              </h2>
-              <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-                Ton mode de sécurité demande une passkey en plus du code TOTP.
-                Confirme avec Touch ID, Face ID, Windows Hello ou ta clé
-                hardware pour finaliser la connexion.
-              </p>
-
-              {error ? (
-                <div
-                  role="alert"
-                  className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
-                >
-                  {error}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => void onPasskeyClick()}
-                disabled={submitting}
-                className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting ? 'Vérification…' : 'Confirmer avec ma passkey'}
-              </button>
-
-              <div className="mt-4.5 text-center text-[12.5px] text-muted">
-                <button
-                  type="button"
-                  onClick={() => navigate('/login', { replace: true })}
-                  className="cursor-pointer transition-colors hover:text-ink"
-                >
-                  ← Recommencer la connexion
-                </button>
-              </div>
-
               {lost.kind === 'idle' ? (
-                <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
+                <>
+                  <p className="mb-1 text-[13px] text-muted">
+                    Vérification 2FA · 2/2
+                  </p>
+                  <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+                    Confirme avec ta passkey
+                  </h2>
+                  <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+                    Ton mode de sécurité demande une passkey en plus du code TOTP.
+                    Confirme avec Touch ID, Face ID, Windows Hello ou ta clé
+                    hardware pour finaliser la connexion.
+                  </p>
+
+                  {error ? (
+                    <div
+                      role="alert"
+                      className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] text-danger"
+                    >
+                      {error}
+                    </div>
+                  ) : null}
+
                   <button
                     type="button"
-                    onClick={() => void startLost('passkey')}
-                    className="cursor-pointer transition-colors hover:text-ink"
+                    onClick={() => void onPasskeyClick()}
+                    disabled={submitting}
+                    className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    J’ai perdu ma passkey → demander une récupération
+                    {submitting ? 'Vérification…' : 'Confirmer avec ma passkey'}
                   </button>
-                </div>
+
+                  <div className="mt-4.5 text-center text-[12.5px] text-muted">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login', { replace: true })}
+                      className="cursor-pointer transition-colors hover:text-ink"
+                    >
+                      ← Recommencer la connexion
+                    </button>
+                  </div>
+
+                  <Button
+                    variant="danger-outline"
+                    size="lg"
+                    onClick={() => void startLost('passkey')}
+                    className="mt-6 w-full"
+                  >
+                    Demander une récupération par email
+                  </Button>
+                </>
               ) : null}
 
               <LostFlow
                 lost={lost}
                 factor="passkey"
                 onConfirm={() => void confirmLost()}
+                onCancel={() => setLost({ kind: 'idle' })}
               />
             </>
           ) : null}
@@ -373,56 +405,72 @@ interface LostFlowProps {
    *  open simultaneously. */
   factor: 'totp' | 'passkey';
   onConfirm: () => void;
+  /** Reset `lost` to `idle` so the parent's form re-appears. Used
+   *  by the "← Annuler" link to back out of the panel without
+   *  sending the email. Not exposed in the `sent` state since the
+   *  email has already gone out. */
+  onCancel: () => void;
 }
 
-function LostFlow({ lost, factor, onConfirm }: LostFlowProps) {
+function LostFlow({ lost, factor, onConfirm, onCancel }: LostFlowProps) {
   if (lost.kind === 'idle') return null;
   if (lost.factor !== factor) return null;
 
+  const verbose = factor === 'totp' ? 'TOTP' : 'passkey';
+  const sideEffect =
+    factor === 'totp'
+      ? 'Ton TOTP sera désactivé et tes codes de secours invalidés.'
+      : 'Toutes tes passkeys seront supprimées — tu pourras en réenrôler après le login.';
+
   if (lost.kind === 'confirm') {
-    const verbose = factor === 'totp' ? 'TOTP' : 'passkey';
-    const sideEffect =
-      factor === 'totp'
-        ? 'Ton TOTP sera désactivé et tes codes de secours invalidés.'
-        : 'Toutes tes passkeys seront supprimées — tu pourras en réenrôler après le login.';
     return (
-      <div className="mt-4 rounded-md border border-amber-500 bg-amber-500/10 px-4 py-3 dark:bg-amber-500/15">
-        <p className="mb-2 text-[12.5px] font-semibold text-amber-700 dark:text-amber-200">
-          Récupération de {verbose}
-        </p>
-        <p className="mb-3 text-[12.5px] leading-[1.45] text-ink-soft">
-          On va t’envoyer un email avec un lien à confirmer. 48h après ta
-          confirmation, ta prochaine connexion sera autorisée sans {verbose}.
-          {' '}
+      <>
+        <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
+        <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
+          Récupération {verbose}
+        </h2>
+        <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+          On va t’envoyer un email avec un lien à confirmer. 7 jours après ta
+          confirmation, ta prochaine connexion sera autorisée sans {verbose}.{' '}
           {sideEffect}
         </p>
-        <button
-          type="button"
+
+        <Button
+          variant="primary"
+          size="lg"
           onClick={onConfirm}
           disabled={lost.submitting}
-          className="w-full cursor-pointer rounded-md bg-accent px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full"
         >
           {lost.submitting ? 'Envoi…' : 'Envoyer l’email'}
-        </button>
-      </div>
+        </Button>
+
+        <div className="mt-4.5 text-center text-[12.5px] text-muted">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={lost.submitting}
+            className="cursor-pointer transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            ← Annuler
+          </button>
+        </div>
+      </>
     );
   }
 
   // sent
-  const verboseSent = factor === 'totp' ? 'TOTP' : 'passkey';
   return (
-    <div
-      role="status"
-      className="mt-4 rounded-md border border-accent bg-accent/5 px-4 py-3"
-    >
-      <p className="mb-1 text-[12.5px] font-semibold text-accent-deep">
+    <>
+      <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
+      <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
         Email envoyé
+      </h2>
+      <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
+        Vérifie ta boîte mail. Confirme dans le lien — 7 jours après cette
+        confirmation, tu pourras te reconnecter sans {verbose}.
       </p>
-      <p className="text-[12.5px] leading-[1.45] text-ink-soft">
-        Vérifie ta boîte mail. Confirme dans le lien — 48h après cette
-        confirmation, tu pourras te reconnecter sans {verboseSent}.
-      </p>
-    </div>
+    </>
   );
 }
 

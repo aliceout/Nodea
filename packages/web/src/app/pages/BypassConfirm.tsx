@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiMfaBypassConfirm } from '@/core/api/client';
-import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
 
 /**
  * BypassConfirm — landing page for the MFA bypass confirm email
@@ -9,7 +9,7 @@ import AuthMarketingPanel, { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
  *
  * The email link points at `/auth/bypass/confirm?t=<token>`. On
  * mount we hit the API; on success we surface a live HH:MM countdown
- * to `earliestApplyAt` (now + 48h). Other server statuses
+ * to `earliestApplyAt` (now + 7 days). Other server statuses
  * (`already_confirmed`, `cancelled`, `consumed`, `expired`,
  * `unknown`) each get their own panel — the user gets a clear "what
  * happened, what to do next" message rather than a 404.
@@ -70,7 +70,20 @@ export default function BypassConfirmPage() {
   return (
     <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
       <AuthMarketingPanel headline="Récupération MFA.">
-        <PrivacyBody />
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Quelqu’un a demandé à se connecter sans un de tes facteurs 2FA
+          (TOTP ou passkey). Toi, on espère.
+        </p>
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Une fois confirmé, le compteur 7 jours démarre. Cette latence te
+          laisse le temps de réagir si ce n’est pas toi qui as déclenché la
+          demande — il suffit de te reconnecter normalement à Nodea pour
+          que la demande soit annulée.
+        </p>
+        <p className="text-[18px] leading-[1.5] text-ink-soft">
+          Au prochain login après le délai, le facteur sera retiré et tu
+          pourras te reconnecter.
+        </p>
       </AuthMarketingPanel>
 
       <main className="flex items-center justify-center px-6 py-16 sm:px-14">
@@ -128,16 +141,21 @@ function SuccessPanel({
       </h2>
       <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
         {alreadyConfirmed
-          ? `Tu avais déjà cliqué le lien — le compteur 48h tourne déjà depuis. Tu pourras te reconnecter sans ${factorLabel} dès que le compteur atteint zéro.`
-          : `Tu pourras te reconnecter sans ${factorLabel} dans 48h. ${sideEffect}`}
+          ? `Tu avais déjà cliqué le lien — le compteur 7 jours tourne déjà depuis. Tu pourras te reconnecter sans ${factorLabel} dès que le compteur atteint zéro.`
+          : `Tu pourras te reconnecter sans ${factorLabel} dans 7 jours. ${sideEffect}`}
       </p>
 
       <Countdown target={earliestApplyAt} />
 
       <p className="mt-6 text-[12.5px] leading-[1.5] text-muted">
         Si ce n’est pas toi qui as déclenché cette demande, ferme cet onglet
-        et clique sur le lien <strong>« Annuler »</strong> de l’email — le
-        bypass sera invalidé et personne ne pourra contourner ton {factorLabel}.
+        et <strong>reconnecte-toi normalement à Nodea</strong>. Une connexion
+        réussie annule automatiquement le bypass, personne ne pourra
+        contourner ton {factorLabel}.
+      </p>
+      <p className="mt-3 text-[12.5px] leading-[1.5] text-muted">
+        Si tu suspectes que ton compte est compromis, change ton mot de passe
+        depuis Compte → Sécurité.
       </p>
 
       <div className="mt-6 text-center text-[12.5px] text-muted">
@@ -154,10 +172,11 @@ function SuccessPanel({
 
 /**
  * Live countdown showing the time remaining until the bypass
- * becomes applicable. We tick at 1 Hz internally so the visible
- * minute flips on time, but the rendered text stays at HH:MM
- * precision — second-by-second changes feel anxious, and the user
- * gains nothing actionable from them.
+ * becomes applicable. Ticks at 1 Hz internally so the visible
+ * minute flips on time, but the rendered text stays at minute
+ * precision — second-by-second changes feel anxious. With a 7-day
+ * window we show "Jj HHh MMmin"; we drop the days segment once the
+ * remaining time is < 24h so the format degrades gracefully.
  */
 function Countdown({ target }: { target: Date }) {
   const [now, setNow] = useState(() => new Date());
@@ -185,7 +204,8 @@ function Countdown({ target }: { target: Date }) {
   }
 
   const totalMinutes = Math.ceil(remainingMs / 60_000);
-  const hours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes - days * 60 * 24) / 60);
   const minutes = totalMinutes % 60;
   const targetText = target.toLocaleString('fr-FR', {
     weekday: 'long',
@@ -201,6 +221,12 @@ function Countdown({ target }: { target: Date }) {
         Reconnexion possible dans
       </p>
       <p className="font-mono text-[28px] font-semibold tracking-[0.02em] text-ink tabular-nums">
+        {days > 0 ? (
+          <>
+            {days}
+            <span className="px-1 text-muted">j</span>
+          </>
+        ) : null}
         {String(hours).padStart(2, '0')}
         <span className="px-1 text-muted">h</span>
         {String(minutes).padStart(2, '0')}

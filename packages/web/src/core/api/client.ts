@@ -55,7 +55,6 @@ import {
   type MfaTotpVerifyResponse,
   type SecurityMode,
   type SecurityModeChangeBody,
-  type MfaBypassCancelResponse,
   type MfaBypassConfirmResponse,
   type MfaBypassRequestBody,
   type MfaBypassRequestResponse,
@@ -551,7 +550,7 @@ export async function apiSecurityModeChange(
 
 /** Request a bypass for a single factor from `/login/mfa`. The
  *  server emails confirm + cancel links; the user must click confirm
- *  + wait 48h before the next login skips the factor. */
+ *  + wait 7 days before the next login skips the factor. */
 export async function apiMfaBypassRequest(
   body: MfaBypassRequestBody,
 ): Promise<MfaBypassRequestResponse> {
@@ -575,19 +574,6 @@ export async function apiMfaBypassConfirm(
     { credentials: 'include' },
   );
   const body = (await res.json()) as MfaBypassConfirmResponse;
-  return body;
-}
-
-/** Cancel a bypass via the email link. Same status-discriminated
- *  contract as `apiMfaBypassConfirm`. */
-export async function apiMfaBypassCancel(
-  token: string,
-): Promise<MfaBypassCancelResponse> {
-  const res = await fetch(
-    `${apiBase()}/auth/mfa/bypass/cancel?t=${encodeURIComponent(token)}`,
-    { credentials: 'include' },
-  );
-  const body = (await res.json()) as MfaBypassCancelResponse;
   return body;
 }
 
