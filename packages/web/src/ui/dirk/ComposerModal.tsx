@@ -27,6 +27,7 @@ import {
 } from '@/core/api/modules/library';
 import { moodClient } from '@/core/api/modules/mood';
 import { passageClient } from '@/core/api/modules/passage';
+import { useGoalDraft } from '@/app/flow/Goals/hooks/useGoalDraft';
 import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
 import {
   attachmentSrc,
@@ -467,6 +468,14 @@ function GoalBody({ onClose }: GoalBodyProps) {
       ? s.composer.editing
       : null,
   );
+  // New-entry path only — when editing, the server record is the
+  // canonical state and a draft would clobber the prefill.
+  const {
+    hydrated: draftHydrated,
+    hydrating: draftHydrating,
+    save: saveDraft,
+    clear: clearDraft,
+  } = useGoalDraft();
 
   // Prefill from the editing payload at mount, fall back to empty.
   // Date is split into year + month for the paired selects; an
@@ -482,10 +491,109 @@ function GoalBody({ onClose }: GoalBodyProps) {
   );
   const [thread, setThread] = useState(editing?.payload.thread ?? '');
   const [note, setNote] = useState(editing?.payload.note ?? '');
+  const [noteMode, setNoteMode] = useState<'visual' | 'markdown'>('visual');
+  const [threadOptions, setThreadOptions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const isEdit = editing !== null;
+
+  // Pull existing thread tokens from every stored goal so the
+  // composer can suggest them as chips below the input. Splits
+  // each goal's `thread` field on commas (the multi-thread
+  // convention) and dedupes.
+  useEffect(() => {
+    if (!mainKey || !moduleUserId) return undefined;
+    let cancelled = false;
+    goalsClient
+      .list(moduleUserId, mainKey)
+      .then((records) => {
+        if (cancelled) return;
+        const set = new Set<string>();
+        for (const r of records) {
+          const raw = r.payload.thread ?? '';
+          for (const t of raw.split(',')) {
+            const trimmed = t.trim();
+            if (trimmed) set.add(trimmed);
+          }
+        }
+        setThreadOptions(Array.from(set).sort((a, b) => a.localeCompare(b, 'fr')));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setThreadOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mainKey, moduleUserId]);
+
+  // Auto-load any pending draft once it surfaces. Skipped on edit,
+  // and skipped if the user has already typed something — we don't
+  // want a draft to clobber active input.
+  useEffect(() => {
+    if (isEdit || draftHydrating || draftRestored) return;
+    if (!draftHydrated) return;
+    if (
+      title.trim() !== '' ||
+      thread.trim() !== '' ||
+      note.trim() !== '' ||
+      month !== '' ||
+      year !== ''
+    ) {
+      return;
+    }
+    setTitle(draftHydrated.title);
+    setMonth(draftHydrated.month);
+    setYear(draftHydrated.year);
+    setStatus(
+      isCanonicalGoalStatus(draftHydrated.status) ? draftHydrated.status : 'open',
+    );
+    setThread(draftHydrated.thread);
+    setNote(draftHydrated.note);
+    setDraftRestored(true);
+  }, [
+    isEdit,
+    draftHydrating,
+    draftHydrated,
+    draftRestored,
+    title,
+    thread,
+    note,
+    month,
+    year,
+  ]);
+
+  // Persist every change through the debounced draft hook.
+  useEffect(() => {
+    if (isEdit) return;
+    saveDraft({ title, month, year, status, thread, note });
+  }, [title, month, year, status, thread, note, isEdit, saveDraft]);
+
+  // Append (or remove) a thread token from the comma-separated
+  // string. Toggle behaviour means clicking the same chip twice
+  // adds then removes.
+  function toggleThreadToken(token: string): void {
+    const current = thread
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (current.includes(token)) {
+      setThread(current.filter((t) => t !== token).join(', '));
+      return;
+    }
+    setThread(current.length > 0 ? `${current.join(', ')}, ${token}` : token);
+  }
+
+  const activeThreads = useMemo(
+    () =>
+      thread
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    [thread],
+  );
 
   function composeDate(y: string, m: string): string {
     // Year + month → `YYYY-MM`. Year alone → bare `YYYY` (a goal
@@ -528,6 +636,7 @@ function GoalBody({ onClose }: GoalBodyProps) {
         await goalsClient.update(moduleUserId, mainKey, editing.id, payload);
       } else {
         await goalsClient.create(moduleUserId, mainKey, payload);
+        clearDraft();
       }
       bumpGoalsVersion();
       onClose();
@@ -542,6 +651,28 @@ function GoalBody({ onClose }: GoalBodyProps) {
   return (
     <>
     <div className="space-y-3 px-[22px] pt-3.5 pb-3">
+      {draftRestored ? (
+        <div className="flex items-baseline justify-between gap-2 rounded-sm border-l-2 border-accent bg-accent-soft/40 px-3 py-1.5 text-[12px] text-accent-deep">
+          <span>Brouillon en cours repris.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setTitle('');
+              setMonth('');
+              setYear('');
+              setStatus('open');
+              setThread('');
+              setNote('');
+              setDraftRestored(false);
+              clearDraft();
+            }}
+            className="cursor-pointer text-[11px] underline-offset-2 hover:underline"
+          >
+            Repartir à zéro
+          </button>
+        </div>
+      ) : null}
+
       <DirkInput
         autoFocus
         value={title}
@@ -608,22 +739,53 @@ function GoalBody({ onClose }: GoalBodyProps) {
         </div>
       </div>
 
-      <DirkInput
-        value={thread}
-        onChange={(e) => setThread(e.target.value)}
-        onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-        placeholder="Threads (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo"
-        disabled={submitting}
-      />
+      <div className="space-y-1.5">
+        <DirkInput
+          value={thread}
+          onChange={(e) => setThread(e.target.value)}
+          onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
+          placeholder="Threads (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo"
+          disabled={submitting}
+        />
+        {threadOptions.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-0.5 text-[11px] italic text-muted">
+              Existants :
+            </span>
+            {threadOptions.map((opt) => {
+              const active = activeThreads.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => toggleThreadToken(opt)}
+                  disabled={submitting}
+                  className={cn(
+                    'cursor-pointer rounded-sm border px-1.5 py-0.5 text-[11px] transition-colors',
+                    active
+                      ? 'border-accent bg-accent-soft text-accent-deep'
+                      : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
+                    'disabled:cursor-not-allowed disabled:opacity-50',
+                  )}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
 
-      <DirkTextarea
+      <MarkdownEditor
         value={note}
-        onChange={(e) => setNote(e.target.value)}
-        onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-        placeholder="Note (optionnelle) — détails, contexte, échéance précise…"
-        rows={3}
-        minHeightPx={84}
+        onChange={setNote}
+        onSubmit={handleSave}
         disabled={submitting}
+        mode={noteMode}
+        onModeChange={setNoteMode}
+        minHeightPx={120}
+        maxHeightPx={300}
+        placeholder="Note (optionnelle) — détails, contexte, échéance précise…"
       />
     </div>
     <Footer
