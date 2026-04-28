@@ -5,6 +5,7 @@ import { authRoutes } from './routes/auth.ts';
 import { authMfaRoutes } from './routes/auth-mfa.ts';
 import { authMfaBypassRoutes } from './routes/auth-mfa-bypass.ts';
 import { authPasskeyRoutes } from './routes/auth-passkey.ts';
+import { authReauthRoutes } from './routes/auth-reauth.ts';
 import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
 import { authSecurityModeRoutes } from './routes/auth-security-mode.ts';
@@ -72,6 +73,11 @@ export function buildApp() {
   // mixes mfa_pending (request), full-session (active / cancel),
   // and anonymous (email-link confirm/cancel) endpoints.
   app.route('/auth', authMfaBypassRoutes);
+  // Re-auth routes (Auth-Roadmap Phase 7A) — `/auth/reauth/*`
+  // bumps `reauth_*_at` on the current `full` session so subsequent
+  // mutating actions can pass `requireFreshPassword` /
+  // `requireFreshPasswordOrPasskey` for 5 minutes.
+  app.route('/auth', authReauthRoutes);
   // Security-mode change (Auth-Roadmap Phase 5D). Same ordering —
   // dedicated handler before the legacy catch-all.
   app.route('/auth', authSecurityModeRoutes);

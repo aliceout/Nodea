@@ -714,7 +714,9 @@ authPasskeyRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
   // Successful passkey-only login: defang any pending bypass before
   // minting the full session — see auth.ts for rationale.
   await cancelPendingBypassesForUser(account.id);
-  const session = await createSession(account.id);
+  const session = await createSession(account.id, {
+    reauthFresh: { passkey: true },
+  });
   await setSessionCookie(c, session.id, session.expiresAt);
 
   const response: PasskeyLoginFinishResponse = {

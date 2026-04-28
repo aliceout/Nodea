@@ -353,7 +353,9 @@ authRoutes.post('/login/finish', loginLimiter, async (c) => {
     // A successful login proves the user controls every required
     // factor — defang any pending bypass before issuing the session.
     await cancelPendingBypassesForUser(user.id);
-    const session = await createSession(user.id);
+    const session = await createSession(user.id, {
+      reauthFresh: { password: true },
+    });
     await setSessionCookie(c, session.id, session.expiresAt);
     const response: OpaqueLoginFinishResponse = {
       needsMfa: false,
@@ -726,9 +728,13 @@ authRoutes.post('/change-password/finish', requireUser, async (c) => {
   });
 
   // Revoke all sessions (incl. the caller's) and mint a fresh one so
-  // the cookie ID rotates after the privilege change.
+  // the cookie ID rotates after the privilege change. The OPAQUE
+  // proof was just verified above, so the new session is fresh wrt
+  // password.
   await revokeAllUserSessions(user.id);
-  const session = await createSession(user.id);
+  const session = await createSession(user.id, {
+    reauthFresh: { password: true },
+  });
   await setSessionCookie(c, session.id, session.expiresAt);
 
   return c.json({ ok: true });

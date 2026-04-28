@@ -41,6 +41,16 @@ export interface MfaVerifiedFlags {
   mfaTotpVerified?: boolean;
 }
 
+/** Mark the session as fresh wrt one or both factors at creation
+ *  time. Drives the `requireFreshPassword` /
+ *  `requireFreshPasswordOrPasskey` middleware checks via the
+ *  `reauth_password_at` / `reauth_passkey_at` columns
+ *  (Auth-Spec §5.3, §6). */
+export interface ReauthFreshFlags {
+  password?: boolean;
+  passkey?: boolean;
+}
+
 export interface CreateSessionOptions {
   kind?: SessionKind;
   /** Override the default TTL for this kind. Useful for tests. */
@@ -49,6 +59,12 @@ export interface CreateSessionOptions {
    *  Phase 5C uses this to mint a pending row with the primary
    *  factor (password OR passkey) already marked verified. */
   mfaFlags?: MfaVerifiedFlags;
+  /** Stamp `reauth_*_at = now` for the listed factors at insert
+   *  (Phase 7A). Used by every auth path that promotes to / mints
+   *  a `full` session: direct password login, direct passkey
+   *  login, change-password rotation, recovery-code reset, and
+   *  the dedicated `/auth/reauth/*` endpoints. */
+  reauthFresh?: ReauthFreshFlags;
 }
 
 export async function createSession(
@@ -64,8 +80,10 @@ export async function createSession(
         ? MFA_PENDING_TTL_SECONDS
         : getConfig().SESSION_TTL_SECONDS);
   const id = newSessionId();
-  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
   const flags = opts.mfaFlags ?? {};
+  const reauth = opts.reauthFresh ?? {};
   const [row] = await db
     .insert(sessions)
     .values({
@@ -76,10 +94,55 @@ export async function createSession(
       mfaPasswordVerified: flags.mfaPasswordVerified ?? false,
       mfaPasskeyVerified: flags.mfaPasskeyVerified ?? false,
       mfaTotpVerified: flags.mfaTotpVerified ?? false,
+      reauthPasswordAt: reauth.password ? now : null,
+      reauthPasskeyAt: reauth.passkey ? now : null,
     })
     .returning();
   if (!row) throw new Error('failed to create session');
   return { id: row.id, userId: row.userId, expiresAt: row.expiresAt };
+}
+
+/**
+ * Bump `reauth_password_at` or `reauth_passkey_at` on an existing
+ * session. Used by `/auth/reauth/password` and `/auth/reauth/passkey`
+ * after they verify a fresh proof, and anywhere a mutating action
+ * proves a factor inline (e.g. change-password / change-mode).
+ */
+export async function bumpSessionReauth(
+  sessionId: string,
+  factor: 'password' | 'passkey',
+): Promise<void> {
+  const now = new Date();
+  await db
+    .update(sessions)
+    .set(
+      factor === 'password'
+        ? { reauthPasswordAt: now }
+        : { reauthPasskeyAt: now },
+    )
+    .where(eq(sessions.id, sessionId));
+}
+
+/**
+ * Read the per-factor freshness timestamps off a session. Used by
+ * `requireFreshPassword` / `requireFreshPasswordOrPasskey` to gate
+ * mutating actions per Auth-Spec §6. Returns `null` if the session
+ * does not exist (the caller should already have rejected via
+ * `requireUser`).
+ */
+export async function getSessionReauth(
+  sessionId: string,
+): Promise<{ password: Date | null; passkey: Date | null } | null> {
+  const [row] = await db
+    .select({
+      password: sessions.reauthPasswordAt,
+      passkey: sessions.reauthPasskeyAt,
+    })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (!row) return null;
+  return { password: row.password, passkey: row.passkey };
 }
 
 /**
@@ -138,10 +201,15 @@ export async function finalizeMfaSession(
 ): Promise<SessionRecord> {
   const ttlSeconds = getConfig().SESSION_TTL_SECONDS;
   const id = newSessionId();
-  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
   return db.transaction(async (tx) => {
     const [pending] = await tx
-      .select({ userId: sessions.userId })
+      .select({
+        userId: sessions.userId,
+        mfaPasswordVerified: sessions.mfaPasswordVerified,
+        mfaPasskeyVerified: sessions.mfaPasskeyVerified,
+      })
       .from(sessions)
       .where(eq(sessions.id, pendingSessionId))
       .limit(1);
@@ -151,7 +219,18 @@ export async function finalizeMfaSession(
     await tx.delete(sessions).where(eq(sessions.id, pendingSessionId));
     const [row] = await tx
       .insert(sessions)
-      .values({ id, userId: pending.userId, expiresAt, kind: 'full' })
+      .values({
+        id,
+        userId: pending.userId,
+        expiresAt,
+        kind: 'full',
+        // Propagate factor freshness from the pending row: whichever
+        // primary / step proved a factor stamps the corresponding
+        // `reauth_*_at` on the brand-new full row, so the user
+        // doesn't have to immediately re-prove to mutate Settings.
+        reauthPasswordAt: pending.mfaPasswordVerified ? now : null,
+        reauthPasskeyAt: pending.mfaPasskeyVerified ? now : null,
+      })
       .returning();
     if (!row) throw new Error('finalizeMfaSession: failed to insert full session');
     return { id: row.id, userId: row.userId, expiresAt: row.expiresAt };

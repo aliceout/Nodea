@@ -305,9 +305,13 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
 
   await revokeAllUserSessions(user.id);
   // Successful recovery proves account control; defang any pending
-  // bypass before issuing the new session.
+  // bypass before issuing the new session. The recovery flow just
+  // set a fresh password via OPAQUE registration, so the new
+  // session is fresh wrt password.
   await cancelPendingBypassesForUser(user.id);
-  const session = await createSession(user.id);
+  const session = await createSession(user.id, {
+    reauthFresh: { password: true },
+  });
   await setSessionCookie(c, session.id, session.expiresAt);
 
   // TODO Phase 6 / mailer follow-up : send a notification email
