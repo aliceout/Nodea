@@ -1,26 +1,38 @@
 import { useSearchParams } from 'react-router-dom';
 
 import DocsLayout from '@/ui/dirk/DocsLayout';
+import DocsToc from '@/ui/dirk/DocsToc';
 import Tabs from '@/ui/dirk/Tabs';
 
-import DocsTierNewbie from './docs/DocsTierNewbie';
-import DocsTierAdvanced from './docs/DocsTierAdvanced';
-import DocsTierTech from './docs/DocsTierTech';
+import DocsTierNewbie, {
+  tocSections as newbieToc,
+} from './docs/DocsTierNewbie';
+import DocsTierAdvanced, {
+  tocSections as advancedToc,
+} from './docs/DocsTierAdvanced';
+import DocsTierTech, {
+  tocSections as techToc,
+} from './docs/DocsTierTech';
 
 /**
  * Public docs page — Direction K · Sauge.
  *
  * Single URL `/docs` with three tabs (Newbie / Advanced / Tech).
+ * Tabs sit in the topbar (slotted via `DocsLayout.tabs`); the
+ * left rail TOC is auto-derived from the active tier's markdown
+ * headings.
+ *
  * Active tier is mirrored in the query string (`?level=`) so each
- * tier is independently shareable, deep-linkable, and SEO-able. The
- * default tier is `newbie` — assume a brand-new visitor landing
+ * tier is independently shareable, deep-linkable, and SEO-able.
+ * Default tier is `newbie` — assume a brand-new visitor landing
  * from the login page link.
  *
- * Content is hand-curated, NOT pulled from `docs/*.md` (which target
- * a more technical reader). The three tiers cover the same security
- * model at three different reading registers; the tech tier links
- * out to `docs/Auth-Spec.md` and `docs/Security.md` for the
- * exhaustive reference.
+ * Content is hand-curated markdown under `./docs/content/*.md` —
+ * NOT pulled from `docs/*.md` (which target a more technical
+ * reader). The three tiers cover the same security model at three
+ * different reading registers; the tech tier links out to
+ * `docs/Auth-Spec.md` and `docs/Security.md` for the exhaustive
+ * reference.
  */
 const TAB_IDS = ['newbie', 'advanced', 'tech'] as const;
 type TabId = (typeof TAB_IDS)[number];
@@ -30,6 +42,15 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'advanced', label: 'Comment ça marche' },
   { id: 'tech', label: 'Pour les profils sécu' },
 ];
+
+const TIER_TOCS: Record<
+  TabId,
+  ReadonlyArray<{ id: string; label: string }>
+> = {
+  newbie: newbieToc,
+  advanced: advancedToc,
+  tech: techToc,
+};
 
 function isTabId(value: string | null): value is TabId {
   return value !== null && (TAB_IDS as readonly string[]).includes(value);
@@ -48,16 +69,22 @@ export default function DocsPage() {
       nextParams.set('level', next);
     }
     setParams(nextParams, { replace: true });
-    // Scroll back to top — switching tab should feel like opening
-    // a new page, not jumping to a same-position scroll on
-    // different content.
+    // Switching tabs is logically a new page — scroll to top so
+    // the reader doesn't end up halfway down a different document.
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
+  const tabs = (
+    <Tabs tabs={TABS} value={level} onChange={handleTabChange} />
+  );
+
   return (
-    <DocsLayout>
+    <DocsLayout
+      tabs={tabs}
+      aside={<DocsToc sections={TIER_TOCS[level]} />}
+    >
       <article className="animate-fade-up">
-        <header className="mb-10">
+        <header className="mb-8">
           <p className="mb-2 text-[12px] uppercase tracking-[0.08em] text-muted">
             Documentation
           </p>
@@ -69,8 +96,6 @@ export default function DocsPage() {
             accessible, choisis ton entrée.
           </p>
         </header>
-
-        <Tabs tabs={TABS} value={level} onChange={handleTabChange} className="mb-8" />
 
         {level === 'newbie' ? <DocsTierNewbie /> : null}
         {level === 'advanced' ? <DocsTierAdvanced /> : null}
