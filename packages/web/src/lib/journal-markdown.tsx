@@ -28,7 +28,10 @@ export function JournalContent({ text }: { text: string }) {
     blocks.push(
       <ul key={key++} className="my-1 list-disc space-y-0.5 pl-5">
         {listBuffer.map((item, i) => (
-          <li key={i} className="text-[13px] leading-[1.5] text-ink">
+          <li
+            key={i}
+            className="text-justify text-[13px] leading-[1.5] text-ink hyphens-auto"
+          >
             {renderInline(item)}
           </li>
         ))}
@@ -45,7 +48,7 @@ export function JournalContent({ text }: { text: string }) {
       blocks.push(
         <p
           key={key++}
-          className="whitespace-pre-wrap text-[13px] leading-[1.5] text-ink"
+          className="min-h-[1lh] whitespace-pre-wrap text-justify text-[13px] leading-[1.5] text-ink hyphens-auto"
         >
           {renderInline(line)}
         </p>,
@@ -54,7 +57,11 @@ export function JournalContent({ text }: { text: string }) {
   }
   flushList();
 
-  return <div className="space-y-0.5">{blocks}</div>;
+  return (
+    <div lang="fr" className="space-y-0.5">
+      {blocks}
+    </div>
+  );
 }
 
 /**

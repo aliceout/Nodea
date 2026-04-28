@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -357,7 +363,7 @@ function EntryRow({ entry, onRead, onEdit, onDelete }: EntryRowProps) {
         {entry.title ? (
           <p className="mb-1 text-[14px] font-medium text-ink">{entry.title}</p>
         ) : null}
-        <JournalContent text={entry.content} />
+        <ClampedJournalContent text={entry.content} onExpand={onRead} />
         {entry.attachments.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {entry.attachments.map((att) => (
@@ -413,6 +419,69 @@ function EntryRow({ entry, onRead, onEdit, onDelete }: EntryRowProps) {
         </Button>
       </HoverActions>
     </li>
+  );
+}
+
+interface ClampedJournalContentProps {
+  text: string;
+  /** Called when the user clicks the « lire la suite » affordance.
+   *  Wired to the row's `onRead` so the expansion route is the
+   *  same as the « Lire » hover action — the focus reader. */
+  onExpand: () => void;
+}
+
+const CLAMP_LINES = 4;
+
+/**
+ * Inline-list wrapper around `JournalContent` that caps the
+ * preview at ~4 lines so the list stays scannable when entries
+ * grow long. Detects whether content overflows post-render via a
+ * scrollHeight check, then conditionally paints a fade gradient
+ * at the bottom + a discreet « lire la suite » trigger that opens
+ * the focus reader.
+ *
+ * No clamp = no extra DOM (the fade and the link are rendered
+ * only when `overflowing`), so short entries stay visually pure.
+ */
+function ClampedJournalContent({ text, onExpand }: ClampedJournalContentProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // +1 absorbs sub-pixel rounding so an entry that fits exactly
+    // doesn't toggle to « overflowing » due to a 0.5 px diff.
+    setOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [text]);
+
+  return (
+    <div>
+      <div className="relative">
+        <div
+          ref={ref}
+          className="overflow-hidden"
+          style={{ maxHeight: `${CLAMP_LINES}lh` }}
+        >
+          <JournalContent text={text} />
+        </div>
+        {overflowing ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[1.5lh] bg-gradient-to-t from-bg to-transparent"
+          />
+        ) : null}
+      </div>
+      {overflowing ? (
+        <button
+          type="button"
+          onClick={onExpand}
+          className="mt-1 cursor-pointer text-[12px] text-accent underline-offset-2 transition-colors hover:underline"
+        >
+          lire la suite →
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -507,17 +576,19 @@ function ReaderShell({
     >
       <article className="mx-auto max-w-2xl">
         <header className="mb-7">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-            {entry.thread || '— sans fil —'}
-          </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+              {entry.thread || '— sans fil —'}
+            </p>
+            <p className="text-[12px] tabular-nums text-muted">
+              {entry.dateLabel}
+            </p>
+          </div>
           {entry.title ? (
             <h1 className="mt-2 font-serif text-[32px] leading-[1.15] tracking-[-0.01em] text-ink">
               {entry.title}
             </h1>
           ) : null}
-          <p className="mt-2 text-[13px] tabular-nums text-ink-soft">
-            {entry.dateLabel}
-          </p>
         </header>
 
         <div className="text-[15px] leading-[1.7] text-ink">
