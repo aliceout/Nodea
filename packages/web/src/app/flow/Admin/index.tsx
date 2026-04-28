@@ -16,10 +16,10 @@ import {
   type AdminUserRow,
   type AdminInviteRow,
 } from '@/core/api/client';
-import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/EmptyHint';
+import Tabs from '@/ui/dirk/Tabs';
 import Topbar from '@/ui/dirk/Topbar';
 import UserTable from './components/UserTable';
 import InviteManager from './components/InviteCode';
@@ -205,27 +205,7 @@ export default function AdminPage() {
         <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
           Administration
         </h1>
-        <div className="-mx-1 flex flex-wrap gap-1">
-          {TABS.map((tt) => {
-            const active = tab === tt.id;
-            return (
-              <button
-                key={tt.id}
-                type="button"
-                onClick={() => setTab(tt.id)}
-                data-active={active}
-                className={cn(
-                  'rounded-md px-3 py-[7px] text-[13px] transition-[background-color,color] duration-200',
-                  active
-                    ? 'bg-bg-2 font-semibold text-ink'
-                    : 'text-muted hover:bg-bg-2 hover:text-ink',
-                )}
-              >
-                {tt.label}
-              </button>
-            );
-          })}
-        </div>
+        <Tabs tabs={TABS} value={tab} onChange={setTab} />
       </div>
 
       <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">

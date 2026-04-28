@@ -28,6 +28,7 @@ import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
 import Button from '@/ui/atoms/dirk/Button';
+import Tabs from '@/ui/dirk/Tabs';
 import Topbar from '@/ui/dirk/Topbar';
 import type { SecurityMode } from '@nodea/shared';
 
@@ -64,27 +65,7 @@ export default function AccountPage() {
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
         <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">Mon compte</h1>
-        <div className="-mx-1 flex flex-wrap gap-1">
-          {TABS.map((tt) => {
-            const active = tab === tt.id;
-            return (
-              <button
-                key={tt.id}
-                type="button"
-                onClick={() => setTab(tt.id)}
-                data-active={active}
-                className={cn(
-                  'rounded-md px-3 py-[7px] text-[13px] transition-[background-color,color] duration-200',
-                  active
-                    ? 'bg-bg-2 font-semibold text-ink'
-                    : 'text-muted hover:bg-bg-2 hover:text-ink',
-                )}
-              >
-                {tt.label}
-              </button>
-            );
-          })}
-        </div>
+        <Tabs tabs={TABS} value={tab} onChange={setTab} />
       </div>
 
       <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">
