@@ -1321,7 +1321,7 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
             disabled={submitting}
             mode={summaryMode}
             onModeChange={setSummaryMode}
-            minHeightPx={240}
+            minHeightPx={160}
           />
         </div>
         {coverUrl && !coverLoadFailed ? (
