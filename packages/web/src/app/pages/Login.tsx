@@ -202,6 +202,19 @@ export default function LoginPage() {
                 Créer un compte
               </Link>
             </div>
+
+            {/* Public docs entry — discrete, single line below the
+                form footer. Targets users who land on /login curious
+                about the security model before signing up; the link
+                opens the curated 3-tier docs page (no auth needed). */}
+            <div className="mt-6 border-t border-hair pt-4 text-center text-[12.5px] text-muted">
+              <Link
+                to="/docs"
+                className="cursor-pointer transition-colors hover:text-ink"
+              >
+                Voir comment Nodea protège mes données
+              </Link>
+            </div>
           </form>
     </AuthLayout>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bars3Icon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import {
   GOAL_STATUS_VALUES,
   type GoalsPayload,
@@ -14,6 +14,7 @@ import {
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import Input from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import FilterChip from '@/ui/dirk/FilterChip';
 import GroupBlock from '@/ui/dirk/GroupBlock';
@@ -49,7 +50,12 @@ interface GoalEntry {
   note: string;
   status: CanonicalStatus;
   thread: string;
+  /** ISO timestamp from the saved record's `updatedAt`. Drives the
+   *  « Récemment modifié » sort option. */
+  updatedAt: string;
 }
+
+type SortBy = 'date' | 'updated' | 'alpha';
 
 type LoadState =
   | { status: 'idle' }
@@ -68,6 +74,8 @@ export default function GoalsPage() {
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
   const [statusFilter, setStatusFilter] = useState<CanonicalStatus | null>(null);
   const [groupBy, setGroupBy] = useState<'thread' | 'year'>('thread');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('date');
 
   useEffect(() => {
     if (!mainKey || !moduleUserId) return undefined;
@@ -175,9 +183,31 @@ export default function GoalsPage() {
   }, [entries]);
 
   const filtered = useMemo<GoalEntry[]>(() => {
-    if (!statusFilter) return [...entries];
-    return entries.filter((e) => e.status === statusFilter);
-  }, [entries, statusFilter]);
+    const needle = search.trim().toLocaleLowerCase('fr');
+    const out = entries.filter((e) => {
+      if (statusFilter && e.status !== statusFilter) return false;
+      if (needle.length > 0) {
+        const haystack =
+          `${e.title}\n${e.note}\n${e.thread}`.toLocaleLowerCase('fr');
+        if (!haystack.includes(needle)) return false;
+      }
+      return true;
+    });
+    // Sort the filtered slice — the original `entries` array is
+    // already date-desc, so stable sort keeps that order whenever
+    // two entries tie on the active key (e.g. all goals updated
+    // today fall back to date desc).
+    out.sort((a, b) => {
+      if (sortBy === 'alpha') {
+        return a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
+      }
+      if (sortBy === 'updated') {
+        return b.updatedAt.localeCompare(a.updatedAt);
+      }
+      return byDateDesc(a, b);
+    });
+    return out;
+  }, [entries, statusFilter, search, sortBy]);
 
   // Threads are stored as a comma-separated string in the single
   // `thread` field — splitting here means an entry tagged
@@ -220,10 +250,14 @@ export default function GoalsPage() {
       side={
         <SideColumn
           stats={stats}
+          search={search}
+          onSearchChange={setSearch}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           groupBy={groupBy}
           onGroupByChange={setGroupBy}
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
         />
       }
     >
@@ -429,21 +463,46 @@ function StatusGlyph({ status }: { status: CanonicalStatus }) {
 
 interface SideColumnProps {
   stats: { total: number; open: number; wip: number; done: number };
+  search: string;
+  onSearchChange: (next: string) => void;
   statusFilter: CanonicalStatus | null;
   onStatusFilterChange: (next: CanonicalStatus | null) => void;
   groupBy: 'thread' | 'year';
   onGroupByChange: (next: 'thread' | 'year') => void;
+  sortBy: SortBy;
+  onSortByChange: (next: SortBy) => void;
 }
+
+const SORT_LABEL: Record<SortBy, string> = {
+  date: 'Date',
+  updated: 'Récent',
+  alpha: 'A→Z',
+};
 
 function SideColumn({
   stats,
+  search,
+  onSearchChange,
   statusFilter,
   onStatusFilterChange,
   groupBy,
   onGroupByChange,
+  sortBy,
+  onSortByChange,
 }: SideColumnProps) {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
+      <section>
+        <SectionLabel>Recherche</SectionLabel>
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Titre, note ou fil…"
+          aria-label="Rechercher dans les objectifs"
+        />
+      </section>
+
       <section>
         <SectionLabel>Statut</SectionLabel>
         <div className="flex flex-wrap gap-1">
@@ -480,6 +539,20 @@ function SideColumn({
           />
         </div>
       </section>
+
+      <section>
+        <SectionLabel>Trier par</SectionLabel>
+        <div className="flex flex-wrap gap-1">
+          {(['date', 'updated', 'alpha'] as ReadonlyArray<SortBy>).map((s) => (
+            <FilterChip
+              key={s}
+              active={sortBy === s}
+              onClick={() => onSortByChange(s)}
+              label={SORT_LABEL[s]}
+            />
+          ))}
+        </div>
+      </section>
     </aside>
   );
 }
@@ -501,6 +574,7 @@ function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry {
     note: p.note ?? '',
     status: normalizeStatus(p.status),
     thread: p.thread ?? '',
+    updatedAt: record.updatedAt,
   };
 }
 
