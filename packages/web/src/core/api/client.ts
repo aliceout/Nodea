@@ -58,6 +58,13 @@ import {
   type MfaBypassConfirmResponse,
   type MfaBypassRequestBody,
   type MfaBypassRequestResponse,
+  type ReauthOkResponse,
+  type ReauthPasskeyFinishBody,
+  type ReauthPasskeyStartBody,
+  type ReauthPasskeyStartResponse,
+  type ReauthPasswordFinishBody,
+  type ReauthPasswordStartBody,
+  type ReauthPasswordStartResponse,
   type RecoveryCodeUpsertBody,
   type RecoverKekStartBody,
   type RecoverKekStartResponse,
@@ -249,6 +256,50 @@ export async function apiLoginStart(
     '/auth/login/start',
     body,
   );
+}
+
+/* ============================================================================
+ * Re-auth (Auth-Roadmap Phase 7A foundation, Phase 7B wiring).
+ *
+ * `requireFreshPassword` / `requireFreshPasswordOrPasskey` middleware
+ * on the server side gates every mutating Settings action: if the
+ * caller's `reauth_*_at` timestamp is older than 5 min, the call
+ * 401s with `{ error:'reauth_required', reauth_required:'password'
+ * | 'password_or_passkey' }`. The SPA intercepts that, prompts the
+ * user via the re-auth modal, hits the matching endpoint here, then
+ * retries the original action.
+ * ========================================================================== */
+
+export async function apiReauthPasswordStart(
+  body: ReauthPasswordStartBody,
+): Promise<ReauthPasswordStartResponse> {
+  return request<ReauthPasswordStartResponse>(
+    'POST',
+    '/auth/reauth/password/start',
+    body,
+  );
+}
+
+export async function apiReauthPasswordFinish(
+  body: ReauthPasswordFinishBody,
+): Promise<ReauthOkResponse> {
+  return request<ReauthOkResponse>('POST', '/auth/reauth/password/finish', body);
+}
+
+export async function apiReauthPasskeyStart(
+  body: ReauthPasskeyStartBody,
+): Promise<ReauthPasskeyStartResponse> {
+  return request<ReauthPasskeyStartResponse>(
+    'POST',
+    '/auth/reauth/passkey/start',
+    body,
+  );
+}
+
+export async function apiReauthPasskeyFinish(
+  body: ReauthPasskeyFinishBody,
+): Promise<ReauthOkResponse> {
+  return request<ReauthOkResponse>('POST', '/auth/reauth/passkey/finish', body);
 }
 
 /**

@@ -124,34 +124,43 @@ export function clientLoginFinish(
 }
 
 /* ============================================================================
- * Password proof for mutating routes (change-email, delete-self, …)
+ * Re-auth helper (Auth-Roadmap Phase 7B)
+ *
+ * Pre-7B every mutating Settings call shipped a one-shot OPAQUE
+ * proof in its body; the server consumed it, verified it inline,
+ * then ran the action. 7B moved that to a session-scoped
+ * `reauth_password_at` timestamp gated by the
+ * `requireFreshPassword` middleware, so the front does the OPAQUE
+ * round-trip out-of-band against `/auth/reauth/password` and the
+ * subsequent action just rides on the now-fresh session.
  * ========================================================================== */
 
-import { apiLoginStart } from '../api/client.ts';
-
-export interface PasswordProof {
-  proofLoginToken: string;
-  proofFinishLoginRequest: string;
-}
+import {
+  apiReauthPasswordFinish,
+  apiReauthPasswordStart,
+} from '../api/client.ts';
 
 /**
- * Run a fresh `/auth/login/start` round-trip with the typed
- * password and produce the body shape mutating routes expect
- * (change-email, delete-self, change-password). The resulting
- * `proofLoginToken` is single-use — get a fresh one for every
- * call.
+ * Prove the user knows the typed password and bump
+ * `reauth_password_at = now()` on the calling session. The OPAQUE
+ * round-trip uses the dedicated `/auth/reauth/password/{start,
+ * finish}` endpoints so the user identifier is taken from the
+ * session (anti-confused-deputy).
  *
- * Throws when the server's `loginResponse` doesn't validate
- * (wrong password / tampered server). Routes treat that as the
- * usual `invalid_credentials` failure.
+ * Returns the OPAQUE `exportKey` because callers that re-derive a
+ * KEK locally (change-password, recovery-code regenerate) need the
+ * fresh derivation. Most callers ignore the return value.
+ *
+ * Throws `{ status: 401, error: 'invalid_credentials' }` when the
+ * password doesn't match — the SPA surfaces that as "Mot de passe
+ * actuel incorrect."
  */
-export async function derivePasswordProof(
-  email: string,
+export async function freshenPasswordReauth(
   password: string,
-): Promise<PasswordProof> {
+): Promise<{ exportKey: string }> {
   await opaqueReady;
   const { clientLoginState, startLoginRequest } = clientLoginStart(password);
-  const start = await apiLoginStart({ email, startLoginRequest });
+  const start = await apiReauthPasswordStart({ startLoginRequest });
   const finished = clientLoginFinish({
     password,
     clientLoginState,
@@ -163,8 +172,9 @@ export async function derivePasswordProof(
       error: 'invalid_credentials',
     };
   }
-  return {
-    proofLoginToken: start.loginToken,
-    proofFinishLoginRequest: finished.finishLoginRequest,
-  };
+  await apiReauthPasswordFinish({
+    loginToken: start.loginToken,
+    finishLoginRequest: finished.finishLoginRequest,
+  });
+  return { exportKey: finished.exportKey };
 }

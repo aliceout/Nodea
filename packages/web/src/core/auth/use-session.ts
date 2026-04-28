@@ -78,6 +78,7 @@ import {
   clientLoginStart,
   clientRegisterFinish,
   clientRegisterStart,
+  freshenPasswordReauth,
   opaqueReady,
 } from './opaque.ts';
 import type { Base64, LoginBody } from '@nodea/shared';
@@ -486,29 +487,15 @@ export function useSession() {
     ) {
       throw new Error('changePassword: user row is missing the OPAQUE wrap blobs');
     }
-    await opaqueReady;
-
-    // Step 1: prove knowledge of the current password via an OPAQUE
-    // login round-trip, deriving `currentExportKey` locally so we
-    // can unwrap the current KEK before re-wrapping under the new
-    // password's exportKey.
-    const proofClient = clientLoginStart(input.currentPassword);
-    const proofStart = await apiLoginStart({
-      email: user.email,
-      startLoginRequest: proofClient.startLoginRequest,
-    });
-    const proofFinished = clientLoginFinish({
-      password: input.currentPassword,
-      clientLoginState: proofClient.clientLoginState,
-      loginResponse: proofStart.loginResponse,
-    });
-    if (!proofFinished) {
-      throw {
-        status: 401,
-        error: 'invalid_credentials',
-      };
-    }
-    const currentExportKey = proofFinished.exportKey;
+    // Step 1 (Phase 7B): re-auth on the current password via
+    // /auth/reauth/password, which also bumps
+    // `reauth_password_at` so the upcoming /change-password/start
+    // passes `requireFreshPasswordOrPasskey`. The same OPAQUE
+    // round-trip gives us `currentExportKey` for the local KEK
+    // unwrap.
+    const { exportKey: currentExportKey } = await freshenPasswordReauth(
+      input.currentPassword,
+    );
 
     // Step 2: unwrap the current KEK using `currentExportKey`.
     const kekBytes = await unwrapKekUnderFactor(
@@ -521,14 +508,11 @@ export function useSession() {
     );
 
     try {
-      // Step 3: trade the proof + a fresh `registrationRequest` (for
-      // the new password) against `/change-password/start` for the
-      // server's `registrationResponse` + a single-use token to echo
-      // at /finish.
+      // Step 3: ship a fresh `registrationRequest` (for the new
+      // password) to `/change-password/start`, which now relies on
+      // the middleware-gated freshness above.
       const newRegStart = clientRegisterStart(input.newPassword);
       const startRes = await apiChangePasswordStart({
-        proofLoginToken: proofStart.loginToken,
-        proofFinishLoginRequest: proofFinished.finishLoginRequest,
         registrationRequest: newRegStart.registrationRequest,
       });
 
@@ -620,32 +604,17 @@ export function useSession() {
         'setupRecoveryCode: user row is missing the OPAQUE wrap blobs',
       );
     }
-    await opaqueReady;
-
-    // Step 1+2: OPAQUE login round-trip → exportKey → unwrap KEK.
-    const proofClient = clientLoginStart(currentPassword);
-    const proofStart = await apiLoginStart({
-      email: user.email,
-      startLoginRequest: proofClient.startLoginRequest,
-    });
-    const proofFinished = clientLoginFinish({
-      password: currentPassword,
-      clientLoginState: proofClient.clientLoginState,
-      loginResponse: proofStart.loginResponse,
-    });
-    if (!proofFinished) {
-      throw {
-        status: 401,
-        error: 'invalid_credentials',
-      };
-    }
+    // Step 1+2 (Phase 7B): re-auth via /auth/reauth/password (also
+    // bumps `reauth_password_at` for the upcoming POST), then use
+    // the same exportKey to unwrap the current KEK.
+    const { exportKey } = await freshenPasswordReauth(currentPassword);
 
     const kekBytes = await unwrapKekUnderFactor(
       {
         wrappedKek: user.wrappedKekPassword as unknown as Base64,
         wrappedKekIv: user.wrappedKekPasswordIv as unknown as Base64,
       },
-      proofFinished.exportKey,
+      exportKey,
       buildKekAAD(user.id, 'password'),
     );
 
@@ -663,13 +632,13 @@ export function useSession() {
       const { sha256Hex } = await import('../crypto/bip39.ts');
       const recoveryCodeHash = await sha256Hex(entropy);
 
-      // Step 6: POST with the OPAQUE proof (always required).
+      // Step 6: POST. Re-auth gate is now the
+      // `requireFreshPassword` middleware on the server, satisfied
+      // by the timestamp bumped at step 1.
       const result = await apiRecoveryCodeUpsert({
         wrappedKekRecovery: recoveryWrap.wrappedKek,
         wrappedKekRecoveryIv: recoveryWrap.wrappedKekIv,
         recoveryCodeHash,
-        proofLoginToken: proofStart.loginToken,
-        proofFinishLoginRequest: proofFinished.finishLoginRequest,
       });
 
       // Step 7: refresh /me so `recoveryCodeSet` flips.
@@ -885,12 +854,8 @@ export function useSession() {
     label: string,
   ): Promise<void> {
     if (!user) throw new Error('renamePasskey: no authenticated user');
-    const proof = await issuePasswordProof(user.email, currentPassword);
-    await apiPasskeyRename(id, {
-      label,
-      proofLoginToken: proof.loginToken,
-      proofFinishLoginRequest: proof.finishLoginRequest,
-    });
+    await freshenReauth(currentPassword);
+    await apiPasskeyRename(id, { label });
   }
 
   /**
@@ -904,11 +869,8 @@ export function useSession() {
     currentPassword: string,
   ): Promise<void> {
     if (!user) throw new Error('removePasskey: no authenticated user');
-    const proof = await issuePasswordProof(user.email, currentPassword);
-    await apiPasskeyRemove(id, {
-      proofLoginToken: proof.loginToken,
-      proofFinishLoginRequest: proof.finishLoginRequest,
-    });
+    await freshenReauth(currentPassword);
+    await apiPasskeyRemove(id, {});
     // Refresh /me so passkeysCount drops accordingly.
     const me = await apiMe();
     if (me) setAuth(me);
@@ -1098,11 +1060,8 @@ export function useSession() {
     currentPassword: string,
   ): Promise<TotpEnrollStartResponse> {
     if (!user) throw new Error('startTotpEnrollment: no authenticated user');
-    const proof = await issuePasswordProof(user.email, currentPassword);
-    return apiTotpEnrollStart({
-      proofLoginToken: proof.loginToken,
-      proofFinishLoginRequest: proof.finishLoginRequest,
-    });
+    await freshenReauth(currentPassword);
+    return apiTotpEnrollStart({});
   }
 
   /**
@@ -1125,11 +1084,8 @@ export function useSession() {
    */
   async function disableTotp(currentPassword: string): Promise<void> {
     if (!user) throw new Error('disableTotp: no authenticated user');
-    const proof = await issuePasswordProof(user.email, currentPassword);
-    await apiTotpDisable({
-      proofLoginToken: proof.loginToken,
-      proofFinishLoginRequest: proof.finishLoginRequest,
-    });
+    await freshenReauth(currentPassword);
+    await apiTotpDisable({});
     const me = await apiMe();
     if (me) setAuth(me);
   }
@@ -1144,11 +1100,8 @@ export function useSession() {
     currentPassword: string,
   ): Promise<string[]> {
     if (!user) throw new Error('regenerateTotpBackupCodes: no authenticated user');
-    const proof = await issuePasswordProof(user.email, currentPassword);
-    const res = await apiTotpRegenerateBackupCodes({
-      proofLoginToken: proof.loginToken,
-      proofFinishLoginRequest: proof.finishLoginRequest,
-    });
+    await freshenReauth(currentPassword);
+    const res = await apiTotpRegenerateBackupCodes({});
     // Refresh /me — the count should still be 10, but the field
     // is non-stale after this call too.
     const me = await apiMe();
@@ -1189,12 +1142,8 @@ export function useSession() {
     currentPassword: string,
   ): Promise<void> {
     if (!user) throw new Error('changeSecurityMode: no authenticated user');
-    const proof = await issuePasswordProof(user.email, currentPassword);
-    await apiSecurityModeChange({
-      mode,
-      proofLoginToken: proof.loginToken,
-      proofFinishLoginRequest: proof.finishLoginRequest,
-    });
+    await freshenReauth(currentPassword);
+    await apiSecurityModeChange({ mode });
     // Refresh /me so the store reflects the new mode + the UI gates
     // recompute (e.g. the disable-TOTP button gains the "will
     // downgrade to password_or_passkey" warning).
@@ -1239,28 +1188,18 @@ export function useSession() {
  * Throws `{ status: 401, error: 'invalid_credentials' }` on a wrong
  * password — same shape the rest of the hook surfaces.
  */
-async function issuePasswordProof(
-  email: string,
-  password: string,
-): Promise<{ loginToken: string; finishLoginRequest: string }> {
-  await opaqueReady;
-  const proofClient = clientLoginStart(password);
-  const proofStart = await apiLoginStart({
-    email,
-    startLoginRequest: proofClient.startLoginRequest,
-  });
-  const proofFinished = clientLoginFinish({
-    password,
-    clientLoginState: proofClient.clientLoginState,
-    loginResponse: proofStart.loginResponse,
-  });
-  if (!proofFinished) {
-    throw { status: 401, error: 'invalid_credentials' };
-  }
-  return {
-    loginToken: proofStart.loginToken,
-    finishLoginRequest: proofFinished.finishLoginRequest,
-  };
+/**
+ * Phase 7B: bump `sessions.reauth_password_at = now()` so the next
+ * mutating Settings call passes the `requireFreshPassword`
+ * middleware. Wraps {@link freshenPasswordReauth} from
+ * `core/auth/opaque.ts` — the helper-of-helpers exists here so the
+ * mutating actions in this file all read with one
+ * `await freshenReauth(currentPassword)` line, which is the same
+ * shape they had with the old `issuePasswordProof` minus the
+ * proof-token plumbing.
+ */
+async function freshenReauth(password: string): Promise<void> {
+  await freshenPasswordReauth(password);
 }
 
 // Stub-keep: `bytesToBase64Url` is imported for an upcoming wire
