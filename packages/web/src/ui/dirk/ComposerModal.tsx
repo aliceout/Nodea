@@ -126,7 +126,7 @@ const TYPE_OPTIONS: Array<{ id: ComposerType; label: string }> = [
 
 function TypePicker({ active, onSelect }: TypePickerProps) {
   return (
-    <div className="flex gap-1 px-3 pt-2.5">
+    <div className="flex shrink-0 gap-1 px-3 pt-2.5">
       {TYPE_OPTIONS.map((opt) => {
         const isActive = active === opt.id;
         return (
@@ -168,7 +168,7 @@ function SimpleBody({ type, onClose }: SimpleBodyProps) {
   const [text, setText] = useState('');
   return (
     <>
-      <div className="px-[22px] pt-3.5 pb-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-[22px] pt-3.5 pb-3">
         <textarea
           autoFocus
           value={text}
@@ -541,7 +541,7 @@ function GoalBody({ onClose }: GoalBodyProps) {
 
   return (
     <>
-    <div className="space-y-3 px-[22px] pt-3.5 pb-3">
+    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
       <DirkInput
         autoFocus
         value={title}
@@ -870,7 +870,7 @@ function JournalBody({ onClose }: JournalBodyProps) {
 
   return (
     <>
-    <div className="space-y-3 px-[22px] pt-3.5 pb-3">
+    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
       {draftRestored ? (
         <div className="flex items-baseline justify-between gap-2 rounded-sm border-l-2 border-accent bg-accent-soft/40 px-3 py-1.5 text-[12px] text-accent-deep">
           <span>Brouillon en cours repris.</span>
@@ -1393,7 +1393,7 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         600 px and the inner `<ul>` scrolls. The 200 px envelope
         accounts for the type picker, footer, and the modal's top
         offset (`pt-[12vh]`). */}
-    <div className="flex h-[600px] max-h-[calc(100vh-200px)] flex-col space-y-3 px-[22px] pt-3.5 pb-3">
+    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
       {!isEdit ? (
         <LookupBar
           value={searchInput}
@@ -2177,7 +2177,7 @@ function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
 
   return (
     <>
-    <div className="space-y-3 px-[22px] pt-3.5 pb-3">
+    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px]">
         <div className="grid grid-cols-2 gap-1.5">
           {LIBRARY_REVIEW_KIND_VALUES.map((k) => {
@@ -2720,7 +2720,7 @@ function Footer({
   extra,
 }: FooterProps) {
   return (
-    <div className="border-t border-hair bg-bg-2">
+    <div className="shrink-0 border-t border-hair bg-bg-2">
       {error ? (
         <p
           role="alert"

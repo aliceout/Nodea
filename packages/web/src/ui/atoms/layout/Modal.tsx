@@ -60,7 +60,7 @@ export function Modal({ open, onClose, children }: ModalProps) {
             leaveFrom="opacity-100 translate-y-0 scale-100"
             leaveTo="opacity-0 -translate-y-3 scale-[0.98]"
           >
-            <DialogPanel className="relative w-full max-w-[620px] overflow-hidden rounded-[12px] border border-hair bg-bg shadow-[0_24px_60px_rgba(0,0,0,0.18),0_4px_12px_rgba(0,0,0,0.08)]">
+            <DialogPanel className="relative flex w-full max-w-[620px] flex-col overflow-hidden rounded-[12px] border border-hair bg-bg shadow-[0_24px_60px_rgba(0,0,0,0.18),0_4px_12px_rgba(0,0,0,0.08)] max-h-[calc(100vh-160px)]">
               {children}
             </DialogPanel>
           </Transition.Child>
