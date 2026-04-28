@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BookOpenIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import type { PassagePayload } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
@@ -65,6 +72,10 @@ export default function JournalPage() {
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [groupBy, setGroupBy] = useState<'thread' | 'month'>('thread');
+  /** Id of the entry currently shown in the focus reader, or null
+   *  when the regular list view is active. Stored as id rather than
+   *  index so the reader survives a refetch that reorders entries. */
+  const [readingId, setReadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mainKey || !moduleUserId) return undefined;
@@ -185,6 +196,37 @@ export default function JournalPage() {
 
   const stats = useMemo(() => computeStats(entries), [entries]);
 
+  // Reader sequence — the user navigates prev/next inside the
+  // *filtered* list (search + thread filter applied). That matches
+  // what they were just looking at in the list view; jumping to an
+  // entry that wasn't visible would feel like a glitch.
+  const readingIndex =
+    readingId === null ? -1 : filtered.findIndex((e) => e.id === readingId);
+  const readingEntry = readingIndex >= 0 ? filtered[readingIndex]! : null;
+
+  if (readingEntry) {
+    return (
+      <ReaderShell
+        entry={readingEntry}
+        position={readingIndex + 1}
+        total={filtered.length}
+        onClose={() => setReadingId(null)}
+        onPrev={
+          readingIndex > 0
+            ? () => setReadingId(filtered[readingIndex - 1]!.id)
+            : null
+        }
+        onNext={
+          readingIndex < filtered.length - 1
+            ? () => setReadingId(filtered[readingIndex + 1]!.id)
+            : null
+        }
+        onEdit={() => handleEdit(readingEntry)}
+        onMobileMenu={() => setMobileMenuOpen(true)}
+      />
+    );
+  }
+
   return (
     <ModuleShell
       topbar={
@@ -216,6 +258,7 @@ export default function JournalPage() {
         total={entries.length}
         groups={groups}
         groupVariant={groupBy === 'month' ? 'eyebrow' : 'subtitle'}
+        onRead={(entry) => setReadingId(entry.id)}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
@@ -230,6 +273,7 @@ interface PrimaryColumnProps {
   total: number;
   groups: Array<[string, JournalEntry[]]>;
   groupVariant: 'subtitle' | 'eyebrow';
+  onRead: (entry: JournalEntry) => void;
   onEdit: (entry: JournalEntry) => void;
   onDelete: (entry: JournalEntry) => void | Promise<void>;
 }
@@ -239,6 +283,7 @@ function PrimaryColumn({
   total,
   groups,
   groupVariant,
+  onRead,
   onEdit,
   onDelete,
 }: PrimaryColumnProps) {
@@ -273,6 +318,7 @@ function PrimaryColumn({
                 <EntryRow
                   key={entry.id}
                   entry={entry}
+                  onRead={() => onRead(entry)}
                   onEdit={() => onEdit(entry)}
                   onDelete={() => onDelete(entry)}
                 />
@@ -287,16 +333,22 @@ function PrimaryColumn({
 
 interface EntryRowProps {
   entry: JournalEntry;
+  onRead: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
+function EntryRow({ entry, onRead, onEdit, onDelete }: EntryRowProps) {
   return (
     <li className="group flex items-start gap-4 border-b border-hair py-4 last:border-b-0">
-      <div className="w-[110px] shrink-0 text-[12px] tabular-nums text-muted">
+      <button
+        type="button"
+        onClick={onRead}
+        className="w-[110px] shrink-0 cursor-pointer text-left text-[12px] tabular-nums text-muted transition-colors hover:text-accent"
+        aria-label={`Ouvrir ${entry.title ?? entry.dateLabel} en lecture`}
+      >
         {entry.dateLabel}
-      </div>
+      </button>
 
       <div className="min-w-0 flex-1">
         {entry.title ? (
@@ -306,6 +358,16 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
       </div>
 
       <HoverActions>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          onClick={onRead}
+          aria-label="Ouvrir en lecture"
+          title="Lire"
+        >
+          <BookOpenIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
         <Button
           variant="ghost"
           size="sm"
@@ -328,6 +390,142 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
         </Button>
       </HoverActions>
     </li>
+  );
+}
+
+interface ReaderShellProps {
+  entry: JournalEntry;
+  position: number;
+  total: number;
+  onClose: () => void;
+  onPrev: (() => void) | null;
+  onNext: (() => void) | null;
+  onEdit: () => void;
+  onMobileMenu: () => void;
+}
+
+/**
+ * Focus reading mode — full-shell takeover that drops the side
+ * column and the regular list to surface a single entry as a
+ * long-form read. Topbar carries:
+ *   - « Retour » (closes the reader)
+ *   - position counter « N / total » against the filtered list
+ *   - « Modifier » (re-opens the Composer)
+ * Body:
+ *   - serif title (when the legacy entry has one) + date
+ *   - the entry's Markdown rendered through `JournalContent` at
+ *     a slightly larger size than the inline list
+ * Footer:
+ *   - « ← Précédent » / « Suivant → » navigation, disabled at
+ *     either end. Sequence follows the filtered list so the user
+ *     keeps reading what they were just looking at, not random
+ *     entries that weren't in their view.
+ *
+ * Keyboard: `Esc` closes, `←` / `→` step through neighbours.
+ */
+function ReaderShell({
+  entry,
+  position,
+  total,
+  onClose,
+  onPrev,
+  onNext,
+  onEdit,
+  onMobileMenu,
+}: ReaderShellProps) {
+  useEffect(() => {
+    function handle(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      // Don't steal arrow keys when the user is interacting with
+      // a focusable element (form fields, toolbar buttons) — the
+      // reader is read-only but a future inline-edit affordance
+      // would care.
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      ) {
+        return;
+      }
+      if (e.key === 'ArrowLeft' && onPrev) {
+        e.preventDefault();
+        onPrev();
+        return;
+      }
+      if (e.key === 'ArrowRight' && onNext) {
+        e.preventDefault();
+        onNext();
+      }
+    }
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={`Journal · ${position} / ${total}`}
+          onOpenMenu={onMobileMenu}
+        >
+          <Button variant="ghost" size="sm" onClick={onEdit}>
+            <PencilSquareIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            Modifier
+          </Button>
+          <Button variant="ghost" size="sm" iconOnly onClick={onClose} aria-label="Fermer">
+            <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </Topbar>
+      }
+    >
+      <article className="mx-auto max-w-2xl">
+        <header className="mb-7">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+            {entry.thread || '— sans fil —'}
+          </p>
+          {entry.title ? (
+            <h1 className="mt-2 font-serif text-[32px] leading-[1.15] tracking-[-0.01em] text-ink">
+              {entry.title}
+            </h1>
+          ) : null}
+          <p className="mt-2 text-[13px] tabular-nums text-ink-soft">
+            {entry.dateLabel}
+          </p>
+        </header>
+
+        <div className="text-[15px] leading-[1.7] text-ink">
+          <JournalContent text={entry.content} />
+        </div>
+
+        <footer className="mt-12 flex items-center justify-between gap-3 border-t border-hair pt-5">
+          <Button
+            variant="neutral"
+            size="sm"
+            onClick={onPrev ?? (() => undefined)}
+            disabled={onPrev === null}
+          >
+            <ArrowLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            Précédent
+          </Button>
+          <span className="text-[11px] tabular-nums text-muted">
+            {position} / {total}
+          </span>
+          <Button
+            variant="neutral"
+            size="sm"
+            onClick={onNext ?? (() => undefined)}
+            disabled={onNext === null}
+          >
+            Suivant
+            <ArrowRightIcon className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </footer>
+      </article>
+    </ModuleShell>
   );
 }
 
