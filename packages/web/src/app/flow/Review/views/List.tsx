@@ -1,6 +1,15 @@
-import { useState } from 'react';
-import { useReview, type ReviewRecord } from '../hooks/useReview';
+import { useMemo, useState } from 'react';
+import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
+import Input from '@/ui/atoms/dirk/Input';
+import EmptyHint from '@/ui/dirk/EmptyHint';
+import GroupBlock from '@/ui/dirk/GroupBlock';
+import HoverActions from '@/ui/dirk/HoverActions';
+import ModuleShell from '@/ui/dirk/ModuleShell';
+import PageHeading from '@/ui/dirk/PageHeading';
+import Topbar from '@/ui/dirk/Topbar';
+import { useReview, type ReviewRecord } from '../hooks/useReview';
 
 interface ListProps {
   onStartNew(year: number): void;
@@ -8,35 +17,72 @@ interface ListProps {
   onEdit(record: ReviewRecord): void;
 }
 
+const ENTRY_DATE_FMT = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
 export default function ReviewListView({ onStartNew, onOpen, onEdit }: ListProps) {
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { loading, error, entries, deleteReview } = useReview();
   const currentYear = new Date().getFullYear();
   const [draftYear, setDraftYear] = useState<number>(currentYear);
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Supprimer ce bilan annuel ?')) return;
-    await deleteReview(id);
+  const sorted = useMemo(
+    () => [...entries].sort((a, b) => b.payload.year - a.payload.year),
+    [entries],
+  );
+
+  async function handleDelete(record: ReviewRecord): Promise<void> {
+    if (!window.confirm(`Supprimer le bilan ${record.payload.year} ?`)) return;
+    await deleteReview(record.id);
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 py-6">
-      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h1 className="text-xl font-bold">Commencer un nouveau bilan</h1>
-        <p className="text-sm opacity-80">
-          Un parcours guidé en {15} étapes, inspiré du YearCompass. Tu peux
-          passer, revenir, et le reprendre quand tu veux — ton brouillon est
-          chiffré localement.
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={`Review · ${entries.length} ${entries.length === 1 ? 'bilan' : 'bilans'}`}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        />
+      }
+    >
+      <PageHeading>Bilans</PageHeading>
+
+      {error ? (
+        <p
+          role="alert"
+          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
+        >
+          {error}
         </p>
-        <div className="flex items-end gap-3">
+      ) : null}
+
+      <section className="mb-9">
+        <h2 className="mb-2 border-b border-hair pb-1.5 text-[15px] font-semibold tracking-[-0.005em] text-ink">
+          Commencer un nouveau bilan
+        </h2>
+        <p className="mb-4 text-[13px] leading-[1.55] text-ink-soft">
+          Un parcours guidé en 15 étapes, inspiré du YearCompass. Tu peux passer,
+          revenir, et le reprendre quand tu veux — ton brouillon est chiffré
+          localement.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
           <label className="block">
-            <span className="text-xs">Année concernée</span>
-            <input
+            <span className="mb-1 block text-[12px] font-medium text-muted">
+              Année concernée
+            </span>
+            <Input
               type="number"
               min={1900}
               max={2200}
               value={draftYear}
-              onChange={(e) => setDraftYear(Number(e.target.value) || currentYear)}
-              className="mt-1 block w-28 rounded border border-slate-300 p-2 text-sm"
+              align="center"
+              onChange={(e) =>
+                setDraftYear(Number(e.target.value) || currentYear)
+              }
+              className="w-28"
             />
           </label>
           <Button
@@ -49,46 +95,77 @@ export default function ReviewListView({ onStartNew, onOpen, onEdit }: ListProps
         </div>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">Bilans passés</h2>
-        {loading ? <p className="opacity-60">Chargement…</p> : null}
-        {error ? <p className="text-red-600">{error}</p> : null}
-        {!loading && entries.length === 0 ? (
-          <p className="opacity-60">Aucun bilan enregistré pour le moment.</p>
-        ) : null}
-        <ul className="space-y-2">
-          {entries.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-center justify-between gap-3 rounded border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div>
-                <p className="font-semibold">Bilan {e.payload.year}</p>
-                <p className="text-xs opacity-60">
-                  Mis à jour le {new Date(e.updatedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="neutral" size="sm" onClick={() => onOpen(e)}>
-                  Relire
-                </Button>
-                <Button variant="neutral" size="sm" onClick={() => onEdit(e)}>
-                  Modifier
-                </Button>
-                <Button
-                  variant="danger-ghost"
-                  size="xs"
-                  iconOnly
-                  onClick={() => void handleDelete(e.id)}
-                  aria-label="Supprimer"
-                >
-                  ✕
-                </Button>
-              </div>
-            </li>
+      {loading && sorted.length === 0 ? (
+        <EmptyHint>Chargement des bilans…</EmptyHint>
+      ) : sorted.length === 0 ? (
+        <EmptyHint>Aucun bilan enregistré pour le moment.</EmptyHint>
+      ) : (
+        <GroupBlock
+          label="Bilans passés"
+          count={sorted.length}
+          countNoun="bilan"
+        >
+          {sorted.map((entry) => (
+            <ReviewRow
+              key={entry.id}
+              record={entry}
+              onOpen={() => onOpen(entry)}
+              onEdit={() => onEdit(entry)}
+              onDelete={() => void handleDelete(entry)}
+            />
           ))}
-        </ul>
-      </section>
-    </div>
+        </GroupBlock>
+      )}
+    </ModuleShell>
+  );
+}
+
+interface ReviewRowProps {
+  record: ReviewRecord;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function ReviewRow({ record, onOpen, onEdit, onDelete }: ReviewRowProps) {
+  const updated = ENTRY_DATE_FMT.format(new Date(record.updatedAt));
+  return (
+    <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="min-w-0 flex-1 cursor-pointer text-left transition-colors hover:text-accent"
+      >
+        <p className="text-[14px] font-medium text-ink group-hover:text-accent">
+          Bilan {record.payload.year}
+        </p>
+        <p className="mt-0.5 text-[12px] text-muted">
+          Mis à jour le {updated}
+        </p>
+      </button>
+
+      <HoverActions>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          onClick={onEdit}
+          aria-label="Modifier le bilan"
+          title="Modifier"
+        >
+          <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="danger-ghost"
+          size="sm"
+          iconOnly
+          onClick={onDelete}
+          aria-label="Supprimer le bilan"
+          title="Supprimer"
+        >
+          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+      </HoverActions>
+    </li>
   );
 }

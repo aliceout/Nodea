@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { STEPS, GROUP_LABELS } from '../config/steps';
 
 interface StepNavProps {
@@ -7,8 +8,11 @@ interface StepNavProps {
 }
 
 /**
- * Progress rail + clickable step list. Completed steps get filled; the
- * current step is highlighted; future steps are dimmed.
+ * Progress rail + clickable step list — Direction K · Sauge.
+ *
+ * Top: a thin overall progress bar. Bottom: one tick per step,
+ * clickable, coloured by state — current = accent, completed =
+ * ink-soft, future = bg-2.
  */
 export default function StepNav({ index, onJump, completed }: StepNavProps) {
   const total = STEPS.length;
@@ -17,18 +21,18 @@ export default function StepNav({ index, onJump, completed }: StepNavProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded bg-slate-200 dark:bg-slate-700">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-2">
           <div
-            className="h-full bg-slate-900 transition-all dark:bg-slate-100"
+            className="h-full bg-accent transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <span className="text-xs tabular-nums opacity-70">
+        <span className="text-[11px] tabular-nums text-muted">
           {index + 1} / {total}
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-1 text-xs">
+      <div className="flex flex-wrap gap-1">
         {STEPS.map((s, i) => {
           const done = completed.has(i);
           const active = i === index;
@@ -39,14 +43,16 @@ export default function StepNav({ index, onJump, completed }: StepNavProps) {
               type="button"
               onClick={() => onJump(i)}
               title={`${group} — ${s.title}`}
-              className={
-                'h-2 min-w-3 flex-grow rounded transition-colors ' +
-                (active
-                  ? 'bg-emerald-600'
+              aria-label={`${group} — ${s.title}`}
+              aria-current={active ? 'step' : undefined}
+              className={cn(
+                'h-1.5 min-w-3 flex-grow rounded-full transition-colors',
+                active
+                  ? 'bg-accent'
                   : done
-                    ? 'bg-slate-500 dark:bg-slate-400'
-                    : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600')
-              }
+                    ? 'bg-ink-soft hover:bg-ink'
+                    : 'bg-bg-2 hover:bg-hair',
+              )}
             />
           );
         })}

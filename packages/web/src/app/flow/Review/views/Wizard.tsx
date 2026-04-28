@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReviewPayload } from '@nodea/shared';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import ModuleShell from '@/ui/dirk/ModuleShell';
+import Topbar from '@/ui/dirk/Topbar';
 import {
   STEPS,
   GROUP_LABELS,
@@ -11,7 +16,6 @@ import { useDraft } from '../hooks/useDraft';
 import { useReview, type ReviewRecord } from '../hooks/useReview';
 import SectionForm from '../components/SectionForm';
 import StepNav from '../components/StepNav';
-import Button from '@/ui/atoms/dirk/Button';
 
 interface WizardProps {
   year: number;
@@ -34,17 +38,32 @@ function isFilled(step: Step, value: unknown): boolean {
   if (typeof value === 'string') return value.trim().length > 0;
   if (Array.isArray(value)) return value.some((v) => String(v).trim().length > 0);
   if (typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).some((v) => isFilled(step, v));
+    return Object.values(value as Record<string, unknown>).some((v) =>
+      isFilled(step, v),
+    );
   }
   return false;
 }
 
-export default function ReviewWizard({ year, existing, onDone, onCancel }: WizardProps) {
+export default function ReviewWizard({
+  year,
+  existing,
+  onDone,
+  onCancel,
+}: WizardProps) {
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { createReview, updateReview } = useReview();
-  const { hydrated, hydrating, save: saveDraft, clear: clearDraft, saving, lastSavedAt } = useDraft(year);
+  const {
+    hydrated,
+    hydrating,
+    save: saveDraft,
+    clear: clearDraft,
+    saving,
+    lastSavedAt,
+  } = useDraft(year);
 
-  const [payload, setPayload] = useState<ReviewPayload>(() =>
-    existing?.payload ?? emptyPayload(year),
+  const [payload, setPayload] = useState<ReviewPayload>(
+    () => existing?.payload ?? emptyPayload(year),
   );
   const [hydrationOffered, setHydrationOffered] = useState(false);
   const [index, setIndex] = useState(0);
@@ -68,14 +87,19 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
 
   // Auto-save on every payload change (skip the initial empty state).
   useEffect(() => {
-    if (existing) return; // editing an existing entry bypasses the draft cache
+    if (existing) return;
     saveDraft(payload);
   }, [payload, saveDraft, existing]);
 
   const completed = useMemo(() => {
     const set = new Set<number>();
     STEPS.forEach((s, i) => {
-      if (isFilled(s, getByPath(payload as unknown as Record<string, unknown>, s.path))) {
+      if (
+        isFilled(
+          s,
+          getByPath(payload as unknown as Record<string, unknown>, s.path),
+        )
+      ) {
         set.add(i);
       }
     });
@@ -83,7 +107,14 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
   }, [payload]);
 
   function onChangeValue(next: unknown): void {
-    setPayload((prev) => setByPath(prev as unknown as Record<string, unknown>, step.path, next) as unknown as ReviewPayload);
+    setPayload(
+      (prev) =>
+        setByPath(
+          prev as unknown as Record<string, unknown>,
+          step.path,
+          next,
+        ) as unknown as ReviewPayload,
+    );
   }
 
   function goto(nextIdx: number): void {
@@ -103,87 +134,111 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
       }
       onDone();
     } catch (err) {
-      setFinalError(err instanceof Error ? err.message : "Échec de l'enregistrement.");
+      setFinalError(
+        err instanceof Error ? err.message : "Échec de l'enregistrement.",
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
-  const value = getByPath(payload as unknown as Record<string, unknown>, step.path);
+  const value = getByPath(
+    payload as unknown as Record<string, unknown>,
+    step.path,
+  );
   const isLast = index === STEPS.length - 1;
+  const draftStatus = saving
+    ? 'Sauvegarde…'
+    : lastSavedAt
+      ? 'Brouillon chiffré ✓'
+      : null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 py-6">
-      <header className="space-y-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide opacity-60">
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={`Review · Bilan ${payload.year} · étape ${index + 1}/${STEPS.length}`}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        >
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Quitter
+          </Button>
+        </Topbar>
+      }
+    >
+      <div className="mx-auto max-w-3xl">
+        <header className="mb-7">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
               Bilan {payload.year} · {GROUP_LABELS[step.group]}
             </p>
-            <h1 className="text-2xl font-bold">{step.title}</h1>
-            {step.subtitle ? (
-              <p className="mt-1 text-sm opacity-80">{step.subtitle}</p>
+            {draftStatus ? (
+              <span className="text-[11px] text-muted">{draftStatus}</span>
             ) : null}
           </div>
-          <div className="text-right text-xs opacity-60">
-            {saving ? 'Sauvegarde…' : lastSavedAt ? 'Brouillon chiffré ✓' : null}
-          </div>
-        </div>
+          <h1 className="mt-2 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+            {step.title}
+          </h1>
+          {step.subtitle ? (
+            <p className="mt-2 text-[14px] leading-[1.55] text-ink-soft">
+              {step.subtitle}
+            </p>
+          ) : null}
+        </header>
 
         <StepNav index={index} onJump={goto} completed={completed} />
-      </header>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <SectionForm step={step} value={value} onChange={onChangeValue} />
-      </section>
+        <section className="mt-7">
+          <SectionForm step={step} value={value} onChange={onChangeValue} />
+        </section>
 
-      {finalError ? <p className="text-sm text-red-600">{finalError}</p> : null}
+        {finalError ? (
+          <InlineAlert className="mt-5">{finalError}</InlineAlert>
+        ) : null}
 
-      <footer className="flex flex-wrap items-center gap-2">
-        <Button variant="neutral" size="sm" onClick={onCancel}>
-          Quitter
-        </Button>
-        <span className="flex-1" />
-        <Button
-          variant="neutral"
-          size="sm"
-          onClick={() => goto(index - 1)}
-          disabled={index === 0}
-        >
-          ← Précédent
-        </Button>
-        {!isLast ? (
-          <>
-            <Button
-              variant="neutral"
-              size="sm"
-              onClick={() => goto(index + 1)}
-            >
-              Sauter
-            </Button>
+        <footer className="mt-8 flex flex-wrap items-center gap-2 border-t border-hair pt-5">
+          <Button
+            variant="neutral"
+            size="sm"
+            onClick={() => goto(index - 1)}
+            disabled={index === 0}
+          >
+            ← Précédent
+          </Button>
+          <span className="flex-1" />
+          {!isLast ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => goto(index + 1)}
+              >
+                Sauter
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => goto(index + 1)}
+              >
+                Suivant →
+              </Button>
+            </>
+          ) : (
             <Button
               variant="primary"
               size="sm"
-              onClick={() => goto(index + 1)}
+              onClick={() => void submit()}
+              disabled={submitting}
             >
-              Suivant →
+              {submitting
+                ? 'Enregistrement…'
+                : existing
+                  ? 'Mettre à jour le bilan'
+                  : 'Finaliser le bilan'}
             </Button>
-          </>
-        ) : (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void submit()}
-            disabled={submitting}
-          >
-            {submitting
-              ? 'Enregistrement…'
-              : existing
-                ? 'Mettre à jour le bilan'
-                : 'Finaliser le bilan'}
-          </Button>
-        )}
-      </footer>
-    </div>
+          )}
+        </footer>
+      </div>
+    </ModuleShell>
   );
 }

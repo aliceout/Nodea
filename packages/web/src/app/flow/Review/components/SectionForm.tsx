@@ -1,3 +1,5 @@
+import Input from '@/ui/atoms/dirk/Input';
+import Textarea from '@/ui/atoms/dirk/Textarea';
 import type { Step } from '../config/steps';
 import StringListEditor from './StringListEditor';
 import YearImageStep from './YearImageStep';
@@ -8,6 +10,9 @@ interface SectionFormProps {
   onChange: (next: unknown) => void;
 }
 
+const FIELD_LABEL_CLASS =
+  'mb-1 block text-[12px] font-medium text-muted';
+
 /**
  * Type-driven renderer for a single step. Picks the editor based on
  * `step.kind` — the Wizard stays declarative.
@@ -16,12 +21,12 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
   switch (step.kind) {
     case 'textarea':
       return (
-        <textarea
+        <Textarea
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value)}
           {...(step.placeholder ? { placeholder: step.placeholder } : {})}
           rows={8}
-          className="block w-full rounded border border-slate-300 p-3 text-sm leading-relaxed"
+          minHeightPx={180}
         />
       );
 
@@ -42,12 +47,12 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
         <div className="space-y-4">
           {step.fields.map((f) => (
             <label key={f.key} className="block">
-              <span className="text-sm">{f.label}</span>
-              <textarea
+              <span className={FIELD_LABEL_CLASS}>{f.label}</span>
+              <Textarea
                 value={obj[f.key] ?? ''}
                 onChange={(e) => onChange({ ...obj, [f.key]: e.target.value })}
                 rows={2}
-                className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+                minHeightPx={64}
               />
             </label>
           ))}
@@ -63,7 +68,7 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
             const list = Array.isArray(obj[f.key]) ? (obj[f.key] as string[]) : [];
             return (
               <div key={f.key}>
-                <p className="mb-2 text-sm font-medium">{f.label}</p>
+                <p className={FIELD_LABEL_CLASS}>{f.label}</p>
                 <StringListEditor
                   value={list}
                   onChange={(next) => onChange({ ...obj, [f.key]: next })}
@@ -80,16 +85,17 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
       return (
         <div className="space-y-5">
           <label className="block">
-            <span className="text-sm">Si cette année avait été un livre, son titre serait…</span>
-            <input
+            <span className={FIELD_LABEL_CLASS}>
+              Si cette année avait été un livre, son titre serait…
+            </span>
+            <Input
               type="text"
               value={obj.book_title ?? ''}
               onChange={(e) => onChange({ ...obj, book_title: e.target.value })}
-              className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
             />
           </label>
           <div>
-            <p className="mb-2 text-sm">Trois mots pour la résumer</p>
+            <p className={FIELD_LABEL_CLASS}>Trois mots pour la résumer</p>
             <StringListEditor
               value={Array.isArray(obj.three_words) ? obj.three_words : []}
               onChange={(next) => onChange({ ...obj, three_words: next })}
@@ -110,40 +116,38 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
       return (
         <div className="space-y-4">
           <label className="block">
-            <span className="text-sm">Lettre à moi-même</span>
-            <textarea
+            <span className={FIELD_LABEL_CLASS}>Lettre à moi-même</span>
+            <Textarea
               value={obj.letter_to_self ?? ''}
               onChange={(e) => onChange({ ...obj, letter_to_self: e.target.value })}
               rows={6}
-              className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm leading-relaxed"
+              minHeightPx={140}
             />
           </label>
           <label className="block">
-            <span className="text-sm">Mon engagement</span>
-            <textarea
+            <span className={FIELD_LABEL_CLASS}>Mon engagement</span>
+            <Textarea
               value={obj.commitment ?? ''}
               onChange={(e) => onChange({ ...obj, commitment: e.target.value })}
               rows={3}
-              className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+              minHeightPx={80}
             />
           </label>
-          <div className="flex gap-3">
-            <label className="flex-1 block">
-              <span className="text-sm">Signature</span>
-              <input
+          <div className="flex flex-wrap gap-3">
+            <label className="block flex-1 min-w-40">
+              <span className={FIELD_LABEL_CLASS}>Signature</span>
+              <Input
                 type="text"
                 value={obj.signature ?? ''}
                 onChange={(e) => onChange({ ...obj, signature: e.target.value })}
-                className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
               />
             </label>
-            <label className="flex-1 block">
-              <span className="text-sm">Date</span>
-              <input
+            <label className="block flex-1 min-w-40">
+              <span className={FIELD_LABEL_CLASS}>Date</span>
+              <Input
                 type="date"
                 value={obj.date ?? ''}
                 onChange={(e) => onChange({ ...obj, date: e.target.value })}
-                className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
               />
             </label>
           </div>

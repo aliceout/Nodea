@@ -6,7 +6,7 @@ interface Props {
   onChange: (next: string | undefined) => void;
 }
 
-const MAX_BYTES = 2 * 1024 * 1024; // 2 MB cap — the payload is encrypted and uploaded on save.
+const MAX_BYTES = 2 * 1024 * 1024; // 2 MB cap — payload is encrypted and uploaded on save.
 
 /**
  * Read the chosen image as a base64url data URL so the string lives
@@ -43,10 +43,10 @@ export default function YearImageStep({ value, onChange }: Props) {
         <img
           src={value}
           alt="Image de l'année"
-          className="max-h-96 w-full rounded border border-slate-200 object-contain dark:border-slate-700"
+          className="max-h-96 w-full rounded-md border border-hair object-contain"
         />
       ) : (
-        <div className="flex h-48 items-center justify-center rounded border border-dashed border-slate-300 text-sm opacity-60">
+        <div className="flex h-48 items-center justify-center rounded-md border border-dashed border-hair text-[13px] italic text-muted">
           Aucune image choisie.
         </div>
       )}
@@ -75,7 +75,7 @@ export default function YearImageStep({ value, onChange }: Props) {
           </Button>
         ) : null}
       </div>
-      <p className="text-xs opacity-60">
+      <p className="text-[12px] leading-[1.5] text-muted">
         L'image est chiffrée avec le reste du bilan — le serveur ne la voit jamais
         en clair. Taille maximale : 2 Mo.
       </p>
