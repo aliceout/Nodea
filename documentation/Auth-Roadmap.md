@@ -697,12 +697,16 @@ destructif, sécurisé par 48h délai après confirmation email.
   base64url, hash SHA-256), INSERT request avec TTL 7j, envoie
   email. Response : `{ earliestApplyAt }`.
 - `GET /auth/mfa/bypass/confirm?t=<token>` (anonyme) — flippe
-  `confirmed_at`, démarre le délai 48h "réel". Page HTML server-
-  rendered (pas besoin de SPA chargé). Le lien email pointe sur
-  `${WEB_BASE_URL}/api/auth/mfa/bypass/confirm?t=…` — passe par
-  le proxy `/api/*` jusqu'à Hono.
+  `confirmed_at`, démarre le délai 48h "réel". Retourne JSON
+  discriminé par `status` (`ok` / `already_confirmed` /
+  `cancelled` / `consumed` / `expired` / `unknown`). Le lien
+  email pointe sur la SPA `${WEB_BASE_URL}/auth/bypass/confirm?t=…`,
+  qui appelle l'API et rend une page stylée (même format que
+  `/totp` / `/passkeys`) avec un compteur HH:MM live jusqu'à
+  `earliestApplyAt`.
 - `GET /auth/mfa/bypass/cancel?t=<token>` (anonyme) — flippe
-  `cancelled_at`. Page HTML idem.
+  `cancelled_at`. Idem JSON discriminé, idem rendu SPA via
+  `/auth/bypass/cancel`.
 
 **Lazy application au login** (`auth/mfa-bypass.ts:applyConsumableBypass`)
 - Appelée depuis `/auth/login/finish` ET `/auth/passkey/login/finish`
@@ -744,18 +748,27 @@ destructif, sécurisé par 48h délai après confirmation email.
 (reset destructif).
 
 **Frontend livré**
-- `/login/mfa` — sous chaque step (TOTP/passkey), un lien "j'ai
-  perdu mon X → demander une récupération". Click → panneau de
-  confirmation inline (amber/warning) → "Envoyer l'email" → écran
-  "email envoyé". Sur 409 multi_factor_loss → redirect auto vers
-  `/request-reset`.
+- `/login/mfa` — step TOTP avec deux sous-modes :
+  - **Code TOTP** (default, input 6 chiffres uniquement) — le
+    lien "j'ai perdu mon TOTP" switch vers le sous-mode backup.
+  - **Code de secours** (input 24 chars hyphenated) — le lien
+    "j'ai aussi perdu mes codes de secours" déclenche le flow
+    bypass email. Lien retour "← Revenir au code TOTP".
+  - Step passkey : bouton + lien "j'ai perdu ma passkey" qui
+    déclenche directement le flow bypass.
+  - Sur 409 multi_factor_loss → redirect auto vers `/request-reset`.
+- `/auth/bypass/confirm?t=<token>` (`pages/BypassConfirm.tsx`) —
+  page SPA stylée avec `AuthMarketingPanel` + countdown HH:MM
+  ticking à 1Hz. Branche par status JSON renvoyé par l'API.
+- `/auth/bypass/cancel?t=<token>` (`pages/BypassCancel.tsx`) —
+  variante sans countdown, mêmes panneaux d'état.
 - Pas de surface dans Settings : l'auto-cancel-on-login fait
   qu'une demande pendante ne peut pas coexister avec une session
   full, donc rien à afficher.
 - `useSession.requestMfaBypass(factor)`.
 - Email templates : `mfa-bypass.ts` (request avec liens
-  confirm/cancel) + `mfaBypassAppliedEmail` (notification post-
-  consume).
+  confirm/cancel pointant sur la SPA) + `mfaBypassAppliedEmail`
+  (notification post-consume).
 
 **Limitations connues**
 - Lien email confirm est en GET (state-changing) — convention

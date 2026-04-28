@@ -1665,15 +1665,24 @@ Server :
 
 #### Confirmation par email
 
-`GET /auth/mfa/bypass/confirm?t=<token>`
+`GET /auth/mfa/bypass/confirm?t=<token>` retourne du JSON discriminé
+par `status` ; le lien email pointe sur la SPA
+(`/auth/bypass/confirm?t=…`) qui appelle l'API et rend la page.
 
 Server :
 1. Hash le token, charge la request.
-2. Si déjà confirmed/cancelled/consumed/expired → message d'erreur.
-3. Si OK : `confirmed_at = now()`. Le compteur 48h "réel" démarre
-   ici (pas au request).
-4. Page de confirmation : "Demande validée. Tu pourras te connecter
-   sans <factor> à partir du <date>."
+2. Branche : `cancelled` / `consumed` / `expired` / `unknown` →
+   status correspondant, HTTP 410 (ou 400/404 si token malformé /
+   inconnu). Le SPA affiche le panneau d'erreur adéquat.
+3. Si déjà confirmed → status `already_confirmed` + `factor` +
+   `earliestApplyAt` (= `confirmed_at + 48h`).
+4. Sinon : `confirmed_at = now()` puis status `ok` + `factor` +
+   `earliestApplyAt` (= `now + 48h`). Le compteur 48h "réel"
+   démarre ici (pas au request).
+
+Le SPA rend une page au format `/totp` / `/passkeys` avec un
+**countdown live HH:MM** jusqu'à `earliestApplyAt` (tick 1 Hz,
+affichage à la minute pour éviter le bruit visuel).
 
 #### Annulation
 

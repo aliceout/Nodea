@@ -299,10 +299,11 @@ the factory loops over. There is nowhere to forget a guard.
   `routes/auth-mfa-bypass.ts`, `auth/mfa-bypass.ts`):
   - 3 routes: `POST /auth/mfa/bypass/request` (mfa_pending),
     `GET /auth/mfa/bypass/{confirm,cancel}` (anonymous, token from
-    email). The two GET routes return server-rendered HTML so the
-    email-click UX doesn't depend on the SPA being loaded — links
-    point at the API directly via the `/api/*` reverse-proxy
-    prefix.
+    email). The two GET routes return JSON; the email link points
+    at the SPA (`/auth/bypass/{confirm,cancel}?t=…`), which
+    fetches the API and renders a styled page (matching `/totp`,
+    `/passkeys`) with a live HH:MM countdown to the
+    `earliestApplyAt` on the confirm panel.
   - Eligibility check (`bypassEligibility`) enforces Auth-Spec
     §6.2 "perdu 2 trucs = niqué": mode `maximum` requires the
     other factor verifiable in the pending session before the
