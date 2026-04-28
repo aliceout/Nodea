@@ -18,8 +18,9 @@
 > 6 (bypass MFA email 7 jours), 7A (foundation re-auth),
 > 7B (câblage de la matrice + migration front),
 > 7C (onboarding nudges via sidebar tips, design wizard
-> abandonné), **8 (cleanup + audit final + bundle integrity)**.
-> Optionnelle : 7D (Playwright e2e). **Chantier auth complet.**
+> abandonné), 8 (cleanup + audit final + bundle integrity),
+> **7D (Playwright framework + smoke + TOTP ; passkey / bypass /
+> change-mode en follow-up issues)**. **Chantier auth complet.**
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -946,10 +947,42 @@ Chaque tip pointe vers la page dédiée existante (`/recovery-code`,
 `/passkeys`, `/totp`) et l'user y va à son rythme — pas de
 parcours forcé, pas de modal qui interrompt.
 
-**Sous-phase 7D — Test Playwright e2e (non livrée, optionnelle)**
-- Scénario : register → activate email → set password → save
-  recovery code → enroll TOTP → enroll passkey → login → change
-  mode → use bypass → re-enrollment TOTP.
+**Sous-phase 7D — Test Playwright e2e (✅ livrée — framework
++ 2 scénarios ; suites étendues en follow-up)**
+
+Le framework + les helpers + 2 tests représentatifs ont landé :
+
+- `packages/e2e/` : workspace package dédié (`@nodea/e2e`)
+- `playwright.config.ts` : webServer auto-start (api :3000 +
+  web :8089), DB pointée sur `nodea_e2e`
+- `helpers/global-setup.ts` : create / migrate / truncate avant
+  le run
+- `helpers/{mailpit, totp, webauthn, db, flows}.ts` :
+  interception Mailpit, génération codes TOTP via otplib,
+  authenticator virtuel Chromium CDP, lecture / time-shift DB,
+  blocs réutilisables register / login / logout
+- `tests/01-register-activate-login.spec.ts` : smoke test full
+  register → email → activation → login → /flow
+- `tests/02-totp-enroll-login.spec.ts` : enroll TOTP + log out
+  + log back in via stepped MFA avec un code généré par otplib
+
+Pré-requis runtime documentés dans `packages/e2e/README.md` :
+postgres + Mailpit + chromium binary + .env complet (avec
+`OPAQUE_SERVER_SETUP`).
+
+**Suites étendues en follow-up** (issues GitHub à ouvrir) :
+- passkey enroll + login via authenticator virtuel
+  (Chromium CDP — branche non-PRF, le passkey couvre l'auth
+  mais la KEK reste dérivée du password)
+- MFA bypass : request → confirm via lien Mailpit → time-shift
+  via `helpers/db.ts:backdateBypassConfirmation` → login skip
+  TOTP
+- change-mode `maximum` + downgrade auto sur disable TOTP
+
+Aucun wiring CI dans ce commit — la suite est local-only pour
+l'instant. Une `e2e.yml` workflow opt-in (`workflow_dispatch` +
+label `run-e2e` sur PR) pourra être ajoutée quand la cadence
+release stabilisera.
 
 **Critère de sortie** : Settings expose toutes les opérations
 sensibles avec re-auth correcte. Pas de chemin caché qui

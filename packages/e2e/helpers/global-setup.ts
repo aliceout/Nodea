@@ -1,0 +1,85 @@
+import postgres from 'postgres';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Global setup — runs once before all Playwright tests.
+ *
+ *   1. Make sure the `nodea_e2e` database exists (CREATE if not).
+ *   2. Run Drizzle migrations against it.
+ *   3. Truncate every user-data table so the test run starts clean.
+ *
+ * Tests are NOT independent — some build on user state from
+ * earlier tests. We rely on this clean-slate setup + serial
+ * execution (workers: 1 in playwright.config.ts) to keep things
+ * reproducible.
+ */
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+
+const E2E_DB_URL =
+  process.env['E2E_DATABASE_URL'] ??
+  'postgres://nodea:Wise-Sinless6-Untainted-Unwed-Onward@127.0.0.1:5433/nodea_e2e';
+
+// Server-admin URL — same Postgres but pointed at the default
+// `postgres` database so we can issue CREATE DATABASE.
+const ADMIN_URL = E2E_DB_URL.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
+
+async function ensureDatabaseExists(): Promise<void> {
+  const dbName = E2E_DB_URL.match(/\/([^/?]+)(?:\?|$)/)?.[1];
+  if (!dbName) throw new Error(`Could not parse db name from ${E2E_DB_URL}`);
+  const admin = postgres(ADMIN_URL, { max: 1, prepare: false });
+  try {
+    const rows = await admin`
+      SELECT 1 FROM pg_database WHERE datname = ${dbName}
+    `;
+    if (rows.length === 0) {
+      // postgres-js doesn't support CREATE DATABASE in a normal
+      // template literal because it'd want to bind the name as a
+      // parameter; use unsafe() since we control the value.
+      await admin.unsafe(`CREATE DATABASE "${dbName}"`);
+      // eslint-disable-next-line no-console
+      console.log(`[e2e/setup] created database ${dbName}`);
+    }
+  } finally {
+    await admin.end();
+  }
+}
+
+function runMigrations(): void {
+  // Reuse the api's existing migration script. We override
+  // DATABASE_URL via env so it runs against `nodea_e2e` rather
+  // than dev `nodea`.
+  execSync('pnpm --filter @nodea/api db:migrate', {
+    cwd: REPO_ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: E2E_DB_URL },
+  });
+}
+
+async function truncateAll(): Promise<void> {
+  const sql = postgres(E2E_DB_URL, { max: 1, prepare: false });
+  try {
+    // CASCADE is important — sessions / opaque_records / auth_factors
+    // / mfa_* / *_entries all FK back to users.
+    await sql`TRUNCATE TABLE
+      users, invites, password_reset_tokens, app_settings,
+      announcements, modules_config, user_preferences,
+      mood_entries, goals_entries, passage_entries,
+      habits_items_entries, habits_logs_entries,
+      library_items_entries, library_reviews_entries,
+      review_entries
+    RESTART IDENTITY CASCADE`;
+  } finally {
+    await sql.end();
+  }
+}
+
+export default async function globalSetup(): Promise<void> {
+  await ensureDatabaseExists();
+  runMigrations();
+  await truncateAll();
+  // eslint-disable-next-line no-console
+  console.log('[e2e/setup] database ready');
+}
