@@ -126,7 +126,7 @@ const TYPE_OPTIONS: Array<{ id: ComposerType; label: string }> = [
 
 function TypePicker({ active, onSelect }: TypePickerProps) {
   return (
-    <div className="flex shrink-0 gap-1 px-3 pt-2.5">
+    <div className="flex gap-1 px-3 pt-2.5">
       {TYPE_OPTIONS.map((opt) => {
         const isActive = active === opt.id;
         return (
@@ -168,7 +168,7 @@ function SimpleBody({ type, onClose }: SimpleBodyProps) {
   const [text, setText] = useState('');
   return (
     <>
-      <div className="flex-1 min-h-0 overflow-y-auto px-[22px] pt-3.5 pb-3">
+      <div className="px-[22px] pt-3.5 pb-3">
         <textarea
           autoFocus
           value={text}
@@ -541,7 +541,7 @@ function GoalBody({ onClose }: GoalBodyProps) {
 
   return (
     <>
-    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
+    <div className="space-y-3 px-[22px] pt-3.5 pb-3">
       <DirkInput
         autoFocus
         value={title}
@@ -870,7 +870,7 @@ function JournalBody({ onClose }: JournalBodyProps) {
 
   return (
     <>
-    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
+    <div className="space-y-3 px-[22px] pt-3.5 pb-3">
       {draftRestored ? (
         <div className="flex items-baseline justify-between gap-2 rounded-sm border-l-2 border-accent bg-accent-soft/40 px-3 py-1.5 text-[12px] text-accent-deep">
           <span>Brouillon en cours repris.</span>
@@ -1393,7 +1393,7 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         600 px and the inner `<ul>` scrolls. The 200 px envelope
         accounts for the type picker, footer, and the modal's top
         offset (`pt-[12vh]`). */}
-    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
+    <div className="flex h-[600px] max-h-[calc(100vh-200px)] flex-col space-y-3 px-[22px] pt-3.5 pb-3">
       {!isEdit ? (
         <LookupBar
           value={searchInput}
@@ -2177,7 +2177,7 @@ function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
 
   return (
     <>
-    <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-[22px] pt-3.5 pb-3">
+    <div className="space-y-3 px-[22px] pt-3.5 pb-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px]">
         <div className="grid grid-cols-2 gap-1.5">
           {LIBRARY_REVIEW_KIND_VALUES.map((k) => {
@@ -2400,6 +2400,11 @@ interface MarkdownEditorProps {
    * has a lot of fields above and a fixed-height modal) tune the
    * editor to fill the available space. */
   minHeightPx?: number;
+  /** Maximum height of the writing surface in pixels (defaults to
+   * 360). Beyond this the editor scrolls internally so the modal
+   * doesn't grow taller than the viewport — the « Enregistrer »
+   * footer below the editor stays reachable on long entries. */
+  maxHeightPx?: number;
   /** Placeholder shown when the surface is empty. Both modes use
    * the same string — visual mode wires it via a CSS pseudo on
    * the contentEditable, Markdown mode via the native textarea
@@ -2440,6 +2445,7 @@ function MarkdownEditor({
   mode = 'visual',
   onModeChange,
   minHeightPx = 180,
+  maxHeightPx = 360,
   placeholder = 'Ce qui te traverse aujourd’hui — au long, sans contrainte.',
 }: MarkdownEditorProps) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -2639,7 +2645,11 @@ function MarkdownEditor({
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}
           onPaste={handleVisualPaste}
-          style={{ minHeight: `${minHeightPx}px` }}
+          style={{
+            minHeight: `${minHeightPx}px`,
+            maxHeight: `${maxHeightPx}px`,
+            overflowY: 'auto',
+          }}
           className={cn(
             'journal-ce block w-full rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink',
             'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none',
@@ -2655,8 +2665,11 @@ function MarkdownEditor({
           placeholder={placeholder}
           rows={8}
           disabled={disabled}
-          style={{ minHeight: `${minHeightPx}px` }}
-          className="block w-full resize-none rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          style={{
+            minHeight: `${minHeightPx}px`,
+            maxHeight: `${maxHeightPx}px`,
+          }}
+          className="block w-full resize-none overflow-y-auto rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
         />
       )}
     </div>
@@ -2720,7 +2733,7 @@ function Footer({
   extra,
 }: FooterProps) {
   return (
-    <div className="shrink-0 border-t border-hair bg-bg-2">
+    <div className="border-t border-hair bg-bg-2">
       {error ? (
         <p
           role="alert"
