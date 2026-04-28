@@ -170,8 +170,12 @@ there is no record id to authenticate, the user *is* the record, and
   even on unknown email (dummy hash) to keep timing constant.
 - **Parametrised queries** everywhere — Drizzle's `eq(x.field, value)`
   etc. No string concatenation.
-- **Rate limits** on `/auth/register`, `/auth/login`,
-  `/auth/request-reset`, `/auth/reset`. In-process memory, keyed on IP.
+- **Rate limits** on every `/auth/*` endpoint (and a few non-auth
+  ones — see §5.1). Fixed-window, in-process memory, keyed on the
+  first `x-forwarded-for` hop (or `x-real-ip`, then `unknown` as
+  last fallback). Single-instance only — when scaling out, move
+  the bucket store to Redis. Implementation in
+  `packages/api/src/middleware/rate-limit.ts`.
 - **Invite atomicity**: `SELECT … FOR UPDATE` inside a transaction
   guarantees each code is consumed at most once.
 - **Session cookies**: HttpOnly, Signed (`COOKIE_SECRET`, min 32
@@ -182,6 +186,67 @@ there is no record id to authenticate, the user *is* the record, and
   `/admin/users/:id` — the route refuses `self.id === id`.
 - **Response serialisation** never returns `guard` or another user's
   `encrypted_key`.
+
+### 5.1 Rate-limit table
+
+Catalogue exhaustif des compteurs déclarés dans
+`packages/api/src/routes/`. Le format est `max / fenêtre`. Tous
+les compteurs sont keyed-IP (cf. `getClientKey` ci-dessus) et
+indépendants les uns des autres — un même IP peut consommer
+chaque limite séparément.
+
+**Pré-auth (`/auth/*` accessibles sans cookie de session)**
+
+| Route | Limite | `keyPrefix` | Justification |
+|---|---|---|---|
+| `POST /auth/register/start` | 10 / 1h | `register-start` | OPAQUE start, accepte 10 essais/heure pour permettre la correction d'erreurs sans ouvrir un boulevard à l'enrôlement automatisé |
+| `POST /auth/register/finish` | 5 / 1h | `register-finish` | Étape coûteuse (création user + opaque_record + invite consumption en transaction) |
+| `POST /auth/register/activate` | 20 / 1h | `register-activate` | Click sur le magic-link — tolérant à un user qui clique plusieurs fois |
+| `GET  /auth/register/invite-info` | 30 / 1h | `register-invite-info` | Pré-rendu de l'écran de register (peeks au token sans le consommer) |
+| `POST /auth/login` (legacy hashed) | 10 / 1min | `login` | Court-fenêtré pour limiter le brute-force, tolérant à un user qui se trompe |
+| `POST /auth/login/start` + `/finish` | — | — | Pas de limiter dédié : OPAQUE est déjà coûteux côté serveur et `client.finishLogin` retourne `undefined` avant tout aller-retour réseau pour un mot de passe faux |
+| `POST /auth/request-reset` | 5 / 1h | `request-reset` | Anti-spam mailer, 5 demandes par IP par heure suffisent à un user honnête |
+| `POST /auth/reset` | 10 / 1min | `reset` | Mild cap pour ralentir un brute-force sur un token volé |
+| `POST /auth/recover-kek/start` | 5 / 1h | `recover-kek` | Anti-énumération : 5 emails testés par heure max |
+| `POST /auth/recover-kek/finish` | 5 / 1h | `recover-kek` | Partage le bucket avec `/start` |
+| `POST /auth/mfa-bypass/confirm` | 20 / 1h | `mfa-bypass-link` | Click sur le magic-link de confirmation |
+
+**Authentifié (cookie de session requis)**
+
+| Route | Limite | `keyPrefix` | Justification |
+|---|---|---|---|
+| `POST /auth/reauth/password/{start,finish}` | 10 / 15min | `reauth` | Re-prove password gate (Phase 7B) — assez large pour les ré-auths légitimes, assez serré pour ne pas devenir un canal de devinette du mot de passe |
+| `POST /auth/security-mode/change` | 10 / 15min | `security-mode-change` | Mutation sensible mais déjà gardée par re-auth — aucun raison d'en passer 100 |
+| `POST /auth/mfa/totp` | 10 / 5min | `mfa-totp-verify` | Stepped-MFA après login : 10 tentatives par fenêtre 5min coupent le brute-force du code à 6 chiffres |
+| `POST /auth/mfa/passkey/{options,verify}` | 10 / 5min | `mfa-passkey` | Stepped-MFA passkey : même logique, le challenge est de toute façon à usage unique côté serveur |
+| `POST /auth/mfa-bypass/request` | 3 / 1h | `mfa-bypass-request` | Anti-spam : trois mails maximum par heure pour le bypass MFA |
+| `POST /auth/totp/enroll/{start,verify}` | 10 / 15min | `totp-enroll` | Setup d'un nouveau secret — utilisé une fois en pratique |
+| `POST /auth/totp/{disable,…}` | 30 / 15min | `totp-manage` | Lecture/écriture régulière depuis Settings, plafond confortable |
+| `POST /auth/security/recovery-code` | 5 / 1h | `recovery-code-setup` | Setup ou regenerate du code de récupération — opération rare |
+| `POST /auth/passkey/enroll/{options,finish}` | 10 / 15min | `passkey-enroll` | Setup d'un nouveau passkey, idem TOTP |
+| `POST /auth/passkey/{login-options,login-finish}` | 20 / 15min | `passkey-login` | Login passkey-first : tolérant aux annulations utilisateur sur le prompt OS |
+| `*    /auth/passkey/:id/...` (rename, remove) | 30 / 15min | `passkey-manage` | Lecture/écriture Settings |
+
+**Non-auth (lookup externes)**
+
+| Route | Limite | `keyPrefix` | Justification |
+|---|---|---|---|
+| `GET /library/lookup/isbn/:isbn` | 30 / 1min | `library-lookup-isbn` | Proxy ISBN — protège l'API tierce |
+| `GET /library/lookup/query` | 30 / 1min | `library-lookup-query` | Recherche fuzzy |
+| `GET /library/lookup/cover/:hash` | 60 / 1min | `library-lookup-cover` | Couvertures d'images, ratio plus haut car appelé en batch sur une page de résultats |
+
+**Politique implicite.** Trois familles de durée :
+- **5 min** pour les codes courts (TOTP, passkey en stepped-MFA) —
+  borne le brute-force d'un secret 6 chiffres.
+- **15 min** pour la gestion sensible (re-auth, security-mode,
+  enroll d'un facteur).
+- **1 h** pour les actions à coût mailer ou à coût serveur élevé
+  (register, reset, recovery, bypass).
+
+Si tu ajoutes une nouvelle route `/auth/*`, choisis la fenêtre
+selon ces familles plutôt que d'inventer une nouvelle valeur ; les
+exceptions doivent être justifiées en commentaire au-dessus du
+`rateLimit({…})`.
 
 ---
 

@@ -62,7 +62,7 @@ revue sécurité). Synthèse :
 | Email loggé dans `[auth/recover-kek] hash_mismatch` | FAIBLE | ✅ corrigé — log réduit à `user=<id>` (CLAUDE.md : pas de métadonnée identifiante non liée à la requête servie) |
 | AAD manquante sur `encryptAESGCM` enregistrements | — | ❌ faux positif — Auth-Spec §3.4 limite l'AAD aux blobs wrappés (KEK, main key) ; les enregistrements sont protégés en intégrité par HMAC `guard`, pas par AAD AES-GCM |
 | `passwordProofFor` helper inutilisé | — | ❌ faux positif — 30+ appels actifs dans 5 fichiers de tests (`auth-totp.test.ts`, `auth-recovery.test.ts`, `auth-security-mode.test.ts`, `auth-mfa-stepped.test.ts`, `auth-mfa-bypass.test.ts`) |
-| Politique de rate-limit hétérogène entre routes auth | DOC | 🚧 issue à ouvrir — pas de bug actif, mais la table récap des limites n'est documentée nulle part ; à recenser et expliciter dans `Security.md` |
+| Politique de rate-limit hétérogène entre routes auth | DOC | ✅ corrigé — `Security.md §5.1` recense les 22 limiters actifs avec leur fenêtre, leur prefix et la justification ; la politique implicite (5min / 15min / 1h selon la famille) est explicite |
 
 Test de non-régression ajouté pour la rotation de session
 (`auth-security-mode.test.ts > rotates sessions on mode change
