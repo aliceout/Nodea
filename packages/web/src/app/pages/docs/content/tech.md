@@ -278,17 +278,101 @@ Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review,
 - **Admin delete user** : la ligne `users` disparaît + cascade FK sur `modules_config`, `user_preferences`, `sessions`, `opaque_records`. Les entrées dans les tables modules **restent en DB orphelines** — illisibles puisque la clé maîtresse est partie avec le user. Bounded growth, accepté par design.
 - **Reset destructif** : même comportement — les anciennes entrées deviennent orphelines, le user repart avec une nouvelle clé. Les rows existantes sont chiffrées avec une clé perdue, donc inaccessibles.
 
-### Ce qui fuit quand même comme métadonnée
+### Inventaire complet — toutes les autres tables
 
-Honnêteté : même avec ce design serré, quelques signaux fuitent inévitablement :
+Pour la transparence totale, voilà ce qui existe en clair dans la DB sur les autres tables. Tout ce qui n'est pas listé comme « **chiffré** » est lisible avec un simple `SELECT` par n'importe qui ayant accès SQL.
 
-- **Existence d'écritures par module en agrégat** : l'opérateur peut compter `SELECT COUNT(*) FROM mood_entries` (toutes lignes confondues, sans pouvoir attribuer à un user). Il sait qu'il y a 1247 entrées Mood au total, pas qui les a écrites.
-- **Taille des blobs chiffrés** — donne un ordre de grandeur du contenu (entrée Mood vs. entrée Library volumineuse).
-- **Ordre d'insertion physique** (`ctid` Postgres, WAL) : un opérateur avec accès root au serveur Postgres peut faire de la corrélation statistique entre lignes insérées « proches en temps » sur différentes tables. Sans timestamps colonnes c'est beaucoup plus dur (faut accéder au WAL plutôt qu'à un simple `SELECT`), mais pas neutralisé totalement. Inhérent à toute DB relationnelle.
-- **Fréquence de connexion** (timestamps des `sessions`).
-- **Adresse email** (clair en DB, c'est l'identifiant OPAQUE).
+**`users`** (1 ligne par compte)
+- En clair : `id`, `email` (identifiant OPAQUE), `username` (display name), `role` (`'user' | 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at`.
+- **Chiffrés** (blobs AES-GCM) : `wrapped_main_key{,_iv}`, `wrapped_kek_password{,_iv}`, `wrapped_kek_recovery{,_iv}`. Inutiles sans la clé du user.
+- **Hash** : `recovery_code_hash` (SHA-256 du code à 12 mots, jamais le code lui-même).
 
-Aucun de ces signaux ne donne accès au contenu lui-même ni ne permet une corrélation directe sid↔user en plain SQL. Si la confidentialité des métadonnées est critique pour ton usage, l'auto-hébergement reste la meilleure réponse — l'opérateur, c'est toi.
+**`opaque_records`** (1 par user) — `user_id`, `envelope` (le « registration record » OPAQUE — cryptographiquement opaque, pas du contenu user mais visible).
+
+**`sessions`** (N par user, expirent) — `id` (token signé), `user_id`, `kind`, timestamps, flags MFA, `pending_webauthn_challenge` (éphémère, single-use, TTL 5 min).
+
+**`auth_factors`** (passkeys, N par user) — `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (l'étiquette que le user a donnée à sa passkey), `created_at`. Plus `wrapped_kek{,_iv}` chiffrés (par credential PRF).
+
+**`mfa_totp`** (1 par user) — `user_id`, `secret`. **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert (le serveur doit pouvoir vérifier le code). Trade-off documenté : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. Plus `algo`, `digits`, `period`, `enabled_at`, `last_window`.
+
+**`mfa_totp_recovery_codes`** (10 par user) — `code_hash` (SHA-256, jamais le code en clair), `used_at`.
+
+**`mfa_bypass_requests`** — hashes de tokens, factor (`'totp' | 'passkey'`), timestamps de confirmation / annulation / consommation / expiration.
+
+**`email_verifications`** (TTL 10 min) — `user_id`, `kind`, `code_hash`, `attempts`, `expires_at`. Pas le code lui-même.
+
+**`password_reset_tokens`** (TTL 1h) — `user_id`, `token_hash`, `expires_at`, `used_at`.
+
+**`invites`** — `email` (du destinataire, en clair), `token_hash`, `created_by`, `expires_at`. L'email du futur user est lisible avant qu'il s'inscrive.
+
+**`announcements`** — annonces de l'admin, lues par tous les users connectés. Tout en clair par construction (c'est le but).
+
+**`app_settings`** — config globale (clé/valeur), ex. `open_registration`. En clair.
+
+**`modules_config`** (1 par user) — `user_id`, `cipher_iv`, `updated_at` en clair ; `payload` **chiffré** (contient le mapping `user → sids` par module).
+
+**`user_preferences`** (1 par user) — `user_id`, `cipher_iv`, `updated_at` en clair ; `payload` **chiffré**.
+
+**Tables modules** (`mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries`) — voir le tableau précédent. **Pas de `user_id`, pas de timestamps colonnes.**
+
+### Qui peut voir quoi
+
+Trois acteurs possibles avec des privilèges différents. Liste honnête des capacités de chacun.
+
+#### L'équipe Nodea (l'opérateur de l'instance hébergée par nous)
+
+Avec accès SQL direct au serveur de prod, l'équipe peut lire toutes les colonnes en clair listées ci-dessus. Concrètement :
+
+- **Voir** les emails, usernames, rôles admin/user, mode de sécurité de chaque compte.
+- **Voir** les heures de connexion, la fréquence d'usage agrégée, l'IP des sessions courantes (à travers les logs proxy / API ; pas en DB).
+- **Voir** quelles passkeys sont enrôlées (label, transport — pas le contenu crypto utile sans intervention de la passkey).
+- **Voir** les annonces, les invitations envoyées, les paramètres globaux de l'app.
+- **Compter** les entrées par module en agrégat (« il y a 1247 entrées Mood ») — **pas par user**, le serveur ne sait pas à qui chaque entrée appartient.
+- **Désactiver / supprimer** des comptes, modifier les rôles, supprimer des invites.
+
+L'équipe **ne peut pas** :
+- Lire le mot de passe (OPAQUE — jamais transmis en clair).
+- Lire les payloads chiffrés (modules_config, user_preferences, *_entries) — pas la clé.
+- Lier une entrée module à un user (pas de `user_id` sur les entries — corrélation impossible en SQL direct).
+- Forger un guard pour modifier une entrée (HMAC dépend de la clé maîtresse).
+- Récupérer un compte perdu (pas le mot de passe, pas le code de récup, pas la clé).
+
+#### L'hébergeur (cloud provider, sysadmin avec accès root au serveur)
+
+Tout ce que voit l'équipe Nodea + accès au filesystem, à la mémoire RAM du process Node, aux logs Postgres / WAL, aux backups disque.
+
+- **Voir** les `ctid` Postgres / le WAL → corrélation statistique d'écritures « proches en temps » sur plusieurs tables, pour reconstruire qui a écrit quoi sans avoir le `user_id` direct (forensic, pas plain SQL).
+- **Snapshot mémoire** : la clé maîtresse vit dans le **navigateur du user**, jamais sur le serveur. Un snapshot RAM du serveur n'aide donc pas à lire les payloads chiffrés.
+- **Tampering du bundle JS** : si l'hébergeur prend le contrôle de la chaîne de build / du serveur web, il peut servir un JS modifié qui exfiltre le mot de passe ou la KEK au moment où le user se connecte. **Limite fondamentale du modèle web E2EE** — mitigations : SRI sur l'entry chunk, manifest `INTEGRITY.txt`, recommandation d'auto-hébergement.
+
+L'hébergeur **ne peut pas** non plus lire les payloads tant qu'il n'a pas tampered le bundle ET attendu une connexion user.
+
+#### Une autorité judiciaire (police, justice — réquisition légale)
+
+L'équipe Nodea, contrainte par une réquisition formelle, peut être obligée de remettre **tout ce qui est lisible côté serveur** :
+
+- **Peut remettre** : les emails, usernames, heures de connexion, IP des sessions, blobs chiffrés (inutiles sans la clé), hashes anti-DoS, liste des passkeys enrôlées, mode de sécurité, dates d'inscription, dates d'annonces.
+- **Ne peut pas remettre** : le contenu utilisateur en clair (techniquement impossible — l'équipe n'a aucune clé pour le déchiffrer). Le mot de passe (techniquement impossible — OPAQUE le rend non-récupérable côté serveur).
+- **Pourrait être contrainte** d'installer un bundle JS modifié qui exfiltrerait les clés au prochain login (cf. limite supply-chain ci-dessus). Cette éventualité est documentée dans Auth-Spec §2.2 comme l'un des vecteurs qu'on **ne défend pas**.
+
+Concrètement, en pratique : « voilà l'email du compte, voilà ses heures de connexion, voilà ses fichiers chiffrés sur la table X. Bon courage pour les ouvrir. »
+
+#### Auto-héberge si ces vecteurs te préoccupent
+
+L'équipe Nodea, l'hébergeur de l'instance, et l'interlocuteur d'une réquisition deviennent **toi**. Tu réduis drastiquement la surface de risque (à condition que ton serveur soit sécurisé). C'est explicitement la posture par défaut recommandée pour un usage sensible.
+
+### Ce qui fuit comme métadonnée — récap
+
+Pour les vecteurs qui restent même si l'équipe Nodea, l'hébergeur et l'autorité judiciaire ne sont pas tous corrompus :
+
+- **Existence d'écritures par module en agrégat** (sans attribuer à un user).
+- **Taille des blobs chiffrés** (ordre de grandeur du contenu).
+- **Ordre d'insertion physique** Postgres / WAL (corrélation statistique forensic).
+- **Fréquence et timestamps de connexion** des sessions.
+- **Adresse email** (clair, c'est l'identifiant OPAQUE).
+- **Logs proxy / API** côté hébergeur (IP, user-agent, request ID).
+
+Aucun de ces signaux ne donne accès au contenu en clair ni ne permet une corrélation directe sid↔user en plain SQL.
 
 ## Audit & divulgation
 
