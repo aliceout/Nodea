@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { encryptAESGCM, decryptAESGCM } from '@/core/crypto/aes';
-import type { Base64, CipherIV, EncryptedBlob } from '@nodea/shared';
+import type {
+  Base64,
+  CipherIV,
+  EncryptedBlob,
+  PassageAttachment,
+} from '@nodea/shared';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
 import { useNodeaStore, selectMainKey } from '@/core/store/nodea-store';
 
@@ -26,6 +31,7 @@ const STORAGE_KEY = 'nodea:journal:draft:new';
 export interface JournalDraftPayload {
   thread: string;
   content: string;
+  attachments: PassageAttachment[];
 }
 
 async function encode(
@@ -103,7 +109,11 @@ export function useJournalDraft(): JournalDraftControls {
     if (!payload) return;
     // Wipe slot on empty draft so we don't keep a never-ending
     // « brouillon en cours » that's just whitespace.
-    if (payload.thread.trim() === '' && payload.content.trim() === '') {
+    if (
+      payload.thread.trim() === '' &&
+      payload.content.trim() === '' &&
+      payload.attachments.length === 0
+    ) {
       localStorage.removeItem(STORAGE_KEY);
       return;
     }

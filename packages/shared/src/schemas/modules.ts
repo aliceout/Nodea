@@ -72,6 +72,26 @@ export type GoalsPayload = z.infer<typeof GoalsPayloadSchema>;
 // Passage
 // ---------------------------------------------------------------------
 
+/**
+ * Per-entry image attachment — inline base64 inside the encrypted
+ * entry payload. v1 keeps it inline (no separate collection) since
+ * the Journal use-case is « 0-3 small photos per entry » and that
+ * cost stays under the per-record encryption ceiling. If the volume
+ * grows we'll split into a `journal_attachments` collection mirroring
+ * `library_covers` — see the follow-up issue.
+ *
+ * `data` is **base64 of the raw bytes** (no `data:…;base64,` prefix);
+ * the renderer reconstructs the data URL with `mime`. Keeps the
+ * encrypted blob a hair smaller and avoids leaking the prefix
+ * twice on the wire.
+ */
+export const PassageAttachmentSchema = z.object({
+  id: z.string().min(1),
+  mime: z.string().regex(/^image\/(?:png|jpeg|jpg|webp|gif)$/),
+  data: z.string().min(1),
+});
+export type PassageAttachment = z.infer<typeof PassageAttachmentSchema>;
+
 export const PassagePayloadSchema = z
   .object({
     type: z.literal('passage.entry').default('passage.entry'),
@@ -79,6 +99,7 @@ export const PassagePayloadSchema = z
     thread: z.string().default(''),
     title: z.string().nullable().default(null),
     content: z.string().min(1),
+    attachments: z.array(PassageAttachmentSchema).default([]),
   })
   .passthrough();
 export type PassagePayload = z.infer<typeof PassagePayloadSchema>;

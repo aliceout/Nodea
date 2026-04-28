@@ -7,7 +7,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import type { PassagePayload } from '@nodea/shared';
+import type { PassageAttachment, PassagePayload } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
 import {
@@ -17,6 +17,7 @@ import {
 } from '@/core/store/nodea-store';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
+import { attachmentSrc } from './hooks/imageResize';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/EmptyHint';
@@ -51,6 +52,7 @@ interface JournalEntry {
   thread: string;
   title: string | null;
   content: string;
+  attachments: PassageAttachment[];
 }
 
 type LoadState =
@@ -116,6 +118,7 @@ export default function JournalPage() {
         thread: entry.thread,
         title: entry.title,
         content: entry.content,
+        attachments: entry.attachments,
       },
     });
   }
@@ -355,6 +358,26 @@ function EntryRow({ entry, onRead, onEdit, onDelete }: EntryRowProps) {
           <p className="mb-1 text-[14px] font-medium text-ink">{entry.title}</p>
         ) : null}
         <JournalContent text={entry.content} />
+        {entry.attachments.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {entry.attachments.map((att) => (
+              <button
+                key={att.id}
+                type="button"
+                onClick={onRead}
+                className="h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-hair bg-bg-2 transition-opacity hover:opacity-80"
+                aria-label="Ouvrir l'image dans le lecteur"
+                title="Voir en grand"
+              >
+                <img
+                  src={attachmentSrc(att)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <HoverActions>
@@ -500,6 +523,19 @@ function ReaderShell({
         <div className="text-[15px] leading-[1.7] text-ink">
           <JournalContent text={entry.content} />
         </div>
+
+        {entry.attachments.length > 0 ? (
+          <div className="mt-8 space-y-4">
+            {entry.attachments.map((att) => (
+              <img
+                key={att.id}
+                src={attachmentSrc(att)}
+                alt=""
+                className="block w-full rounded-md border border-hair object-contain"
+              />
+            ))}
+          </div>
+        ) : null}
 
         <footer className="mt-12 flex items-center justify-between gap-3 border-t border-hair pt-5">
           <Button
@@ -679,6 +715,7 @@ function recordToEntry(
     thread: p.thread ?? '',
     title: p.title ?? null,
     content: p.content ?? '',
+    attachments: Array.isArray(p.attachments) ? p.attachments : [],
   };
 }
 

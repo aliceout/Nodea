@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Modal } from '@/ui/atoms/layout/Modal';
 import {
   LIBRARY_FORMAT_VALUES,
@@ -27,7 +28,12 @@ import {
 import { moodClient } from '@/core/api/modules/mood';
 import { passageClient } from '@/core/api/modules/passage';
 import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
+import {
+  attachmentSrc,
+  resizeImageFile,
+} from '@/app/flow/Journal/hooks/imageResize';
 import { pickJournalPrompt } from '@/app/flow/Journal/prompts';
+import type { PassageAttachment } from '@nodea/shared';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/journal-markdown';
 import {
   useNodeaStore,
@@ -683,10 +689,14 @@ function JournalBody({ onClose }: JournalBodyProps) {
 
   const [thread, setThread] = useState(editing?.payload.thread ?? '');
   const [content, setContent] = useState(editing?.payload.content ?? '');
+  const [attachments, setAttachments] = useState<PassageAttachment[]>(
+    editing?.payload.attachments ?? [],
+  );
   const [threadOptions, setThreadOptions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
+  const attachInputRef = useRef<HTMLInputElement | null>(null);
   // Visual mode is the Word-like contentEditable surface (default
   // for non-technical users); Markdown mode shows the raw source for
   // anyone who'd rather type `**foo**` directly. Storage stays
@@ -712,19 +722,70 @@ function JournalBody({ onClose }: JournalBodyProps) {
   useEffect(() => {
     if (isEdit || draftHydrating || draftRestored) return;
     if (!draftHydrated) return;
-    if (thread.trim() !== '' || content.trim() !== '') return;
+    if (
+      thread.trim() !== '' ||
+      content.trim() !== '' ||
+      attachments.length > 0
+    ) {
+      return;
+    }
     setThread(draftHydrated.thread);
     setContent(draftHydrated.content);
+    setAttachments(draftHydrated.attachments ?? []);
     setDraftRestored(true);
-  }, [isEdit, draftHydrating, draftHydrated, draftRestored, thread, content]);
+  }, [
+    isEdit,
+    draftHydrating,
+    draftHydrated,
+    draftRestored,
+    thread,
+    content,
+    attachments,
+  ]);
 
   // Persist every keystroke (debounced inside `saveDraft`). Skip
   // the edit path — that flow's source-of-truth is the server
   // record, no draft slot involved.
   useEffect(() => {
     if (isEdit) return;
-    saveDraft({ thread, content });
-  }, [thread, content, isEdit, saveDraft]);
+    saveDraft({ thread, content, attachments });
+  }, [thread, content, attachments, isEdit, saveDraft]);
+
+  function randomAttachmentId(): string {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID();
+    }
+    return `att-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  async function handleAttach(e: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (attachments.length >= 3) {
+      setError('Trois images maximum par entrée.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image trop volumineuse (10 Mo maximum avant compression).');
+      return;
+    }
+    setError(null);
+    try {
+      const resized = await resizeImageFile(file);
+      const id = randomAttachmentId();
+      setAttachments((prev) => [
+        ...prev,
+        { id, mime: resized.mime, data: resized.data },
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de lire l'image.");
+    }
+  }
+
+  function handleRemoveAttachment(id: string): void {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }
 
   // Pull existing threads once on mount so the input can offer them
   // as suggestions. Existing entries that pre-date the
@@ -786,6 +847,7 @@ function JournalBody({ onClose }: JournalBodyProps) {
         thread: trimmedThread,
         title: null,
         content: trimmedContent,
+        attachments,
       };
       if (editing) {
         await passageClient.update(moduleUserId, mainKey, editing.id, payload);
@@ -844,6 +906,62 @@ function JournalBody({ onClose }: JournalBodyProps) {
         onModeChange={setEditorMode}
         {...(prompt ? { placeholder: prompt } : {})}
       />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {attachments.map((att) => (
+          <div
+            key={att.id}
+            className="group/att relative h-16 w-16 shrink-0 overflow-hidden rounded-sm border border-hair bg-bg-2"
+          >
+            <img
+              src={attachmentSrc(att)}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveAttachment(att.id)}
+              aria-label="Retirer l'image"
+              title="Retirer"
+              className="absolute right-0.5 top-0.5 cursor-pointer rounded-sm bg-bg/85 p-0.5 text-ink-soft opacity-0 transition-opacity hover:text-danger group-hover/att:opacity-100 group-focus-within/att:opacity-100"
+            >
+              <XMarkIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+        {attachments.length < 3 ? (
+          <>
+            <input
+              ref={attachInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleAttach}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => attachInputRef.current?.click()}
+              disabled={submitting}
+              className={cn(
+                'flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-dashed border-hair bg-bg text-[11px] text-muted',
+                'transition-colors hover:border-accent hover:text-accent',
+                'disabled:cursor-not-allowed disabled:opacity-50',
+              )}
+              aria-label="Joindre une image"
+              title="Joindre une image"
+            >
+              + Image
+            </button>
+          </>
+        ) : null}
+        {attachments.length > 0 ? (
+          <p className="text-[11px] italic text-muted">
+            {attachments.length} / 3 image
+            {attachments.length === 1 ? '' : 's'} — chiffrée
+            {attachments.length === 1 ? '' : 's'} avec l'entrée.
+          </p>
+        ) : null}
+      </div>
     </div>
     <Footer
       onSubmit={handleSave}
