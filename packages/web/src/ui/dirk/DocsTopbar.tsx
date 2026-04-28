@@ -62,6 +62,9 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Button variant="primary" size="sm" onClick={handleCtaClick}>
+            {ctaLabel}
+          </Button>
           {/* Styled as an `<a>` (not the Button component) so right-
               click / middle-click / Cmd-click open in a new tab as
               expected. Visual matches `Button variant="neutral"
@@ -80,9 +83,6 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
               aria-hidden="true"
             />
           </a>
-          <Button variant="primary" size="sm" onClick={handleCtaClick}>
-            {ctaLabel}
-          </Button>
         </div>
       </div>
     </header>
