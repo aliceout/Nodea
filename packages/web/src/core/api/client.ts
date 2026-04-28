@@ -55,6 +55,8 @@ import {
   type MfaTotpVerifyResponse,
   type SecurityMode,
   type SecurityModeChangeBody,
+  type MfaBypassCancelResponse,
+  type MfaBypassConfirmResponse,
   type MfaBypassRequestBody,
   type MfaBypassRequestResponse,
   type RecoveryCodeUpsertBody,
@@ -558,6 +560,35 @@ export async function apiMfaBypassRequest(
     '/auth/mfa/bypass/request',
     body,
   );
+}
+
+/** Confirm a bypass via the email link. Reads the body even on 4xx
+ *  / 410 because the server returns a discriminated `status` payload
+ *  for every outcome (`ok`, `already_confirmed`, `cancelled`,
+ *  `consumed`, `expired`, `unknown`). The SPA renders a different
+ *  panel per status. */
+export async function apiMfaBypassConfirm(
+  token: string,
+): Promise<MfaBypassConfirmResponse> {
+  const res = await fetch(
+    `${apiBase()}/auth/mfa/bypass/confirm?t=${encodeURIComponent(token)}`,
+    { credentials: 'include' },
+  );
+  const body = (await res.json()) as MfaBypassConfirmResponse;
+  return body;
+}
+
+/** Cancel a bypass via the email link. Same status-discriminated
+ *  contract as `apiMfaBypassConfirm`. */
+export async function apiMfaBypassCancel(
+  token: string,
+): Promise<MfaBypassCancelResponse> {
+  const res = await fetch(
+    `${apiBase()}/auth/mfa/bypass/cancel?t=${encodeURIComponent(token)}`,
+    { credentials: 'include' },
+  );
+  const body = (await res.json()) as MfaBypassCancelResponse;
+  return body;
 }
 
 // --- Library lookup (proxy) -------------------------------------------

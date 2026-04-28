@@ -19,6 +19,8 @@ const Recover = lazy(() => import("./pages/Recover"));
 const Passkeys = lazy(() => import("./pages/Passkeys"));
 const Totp = lazy(() => import("./pages/Totp"));
 const SecurityMode = lazy(() => import("./pages/SecurityMode"));
+const BypassConfirm = lazy(() => import("./pages/BypassConfirm"));
+const BypassCancel = lazy(() => import("./pages/BypassCancel"));
 
 function lazyPage(node) {
   return (
@@ -48,6 +50,8 @@ function AppWithKeyModal() {
       <Route path="/passkeys" element={lazyPage(<Passkeys />)} />
       <Route path="/totp" element={lazyPage(<Totp />)} />
       <Route path="/security-mode" element={lazyPage(<SecurityMode />)} />
+      <Route path="/auth/bypass/confirm" element={lazyPage(<BypassConfirm />)} />
+      <Route path="/auth/bypass/cancel" element={lazyPage(<BypassCancel />)} />
       <Route path="/flow" element={<Navigate to="/flow/home" replace />} />
       <Route
         path="/flow/:moduleId"

@@ -38,6 +38,12 @@ export default function LoginMfaPage() {
   const session = useSession();
   const navigate = useNavigate();
   const [step, setStep] = useState<'totp' | 'passkey'>('totp');
+  // Sub-mode of the TOTP step: enter the live 6-digit code, or a
+  // 24-char single-use backup code (when the user lost the
+  // authenticator app). Switching modes resets the input so a stale
+  // value from one mode can't accidentally be submitted under the
+  // other's regex.
+  const [totpMode, setTotpMode] = useState<'code' | 'backup'>('code');
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +81,13 @@ export default function LoginMfaPage() {
     }
   }
 
-  // Heuristic: a 6-digit numeric input is a TOTP code; anything
-  // longer is treated as a backup code. The form accepts both —
-  // server-side validation gates by length / format.
+  // Validation depends on which sub-mode the user picked. The server
+  // accepts either format on the same endpoint and disambiguates by
+  // length / shape.
   const codeIsTotp = /^\d{6}$/.test(code.trim());
   const codeIsBackup = code.replace(/[^A-Za-z0-9]/g, '').length >= 24;
-  const canSubmitTotp = !submitting && (codeIsTotp || codeIsBackup);
+  const canSubmitTotp =
+    !submitting && (totpMode === 'code' ? codeIsTotp : codeIsBackup);
 
   function applyMissing(missing: ReadonlyArray<Factor>): void {
     if (missing.includes('passkey')) {
@@ -172,24 +179,42 @@ export default function LoginMfaPage() {
             <>
               <p className="mb-1 text-[13px] text-muted">Vérification 2FA</p>
               <h2 className="mb-3 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-                Code à six chiffres
+                {totpMode === 'code' ? 'Code à six chiffres' : 'Code de secours'}
               </h2>
               <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-                Tape le code affiché par ton appli d’authentification, ou — si
-                tu l’as perdue — un de tes 10 codes de secours (24 caractères,
-                tirets optionnels).
+                {totpMode === 'code'
+                  ? 'Tape le code affiché par ton appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth…). Le code change toutes les 30 secondes.'
+                  : 'Tape un de tes 10 codes de secours (24 caractères, tirets optionnels). Chaque code n’est utilisable qu’une seule fois.'}
               </p>
 
               <form onSubmit={onSubmitTotp} noValidate>
-                <Field
-                  label="Code TOTP ou code de secours"
-                  inputMode="text"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  required
-                />
+                {totpMode === 'code' ? (
+                  <Field
+                    key="totp-code"
+                    label="Code TOTP"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    maxLength={6}
+                    pattern="\d{6}"
+                    value={code}
+                    onChange={(e) =>
+                      setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
+                    required
+                  />
+                ) : (
+                  <Field
+                    key="totp-backup"
+                    label="Code de secours"
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    required
+                  />
+                )}
 
                 {error ? (
                   <div
@@ -219,14 +244,45 @@ export default function LoginMfaPage() {
                 </div>
               </form>
 
-              {lost.kind === 'idle' ? (
+              {/* Escalation links — TOTP code → backup code → email
+                  recovery. The user picks the path that matches what
+                  they still have access to. */}
+              {lost.kind === 'idle' && totpMode === 'code' ? (
                 <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
                   <button
                     type="button"
-                    onClick={() => void startLost('totp')}
+                    onClick={() => {
+                      setError(null);
+                      setCode('');
+                      setTotpMode('backup');
+                    }}
                     className="cursor-pointer transition-colors hover:text-ink"
                   >
-                    J’ai perdu mon TOTP → demander une récupération
+                    J’ai perdu mon TOTP → utiliser un code de secours
+                  </button>
+                </div>
+              ) : null}
+
+              {lost.kind === 'idle' && totpMode === 'backup' ? (
+                <div className="mt-6 border-t border-hair pt-4 text-center text-[12px] text-muted">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setCode('');
+                      setTotpMode('code');
+                    }}
+                    className="block w-full cursor-pointer transition-colors hover:text-ink"
+                  >
+                    ← Revenir au code TOTP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void startLost('totp')}
+                    className="mt-2 block w-full cursor-pointer transition-colors hover:text-ink"
+                  >
+                    J’ai aussi perdu mes codes de secours → demander une
+                    récupération par email
                   </button>
                 </div>
               ) : null}
