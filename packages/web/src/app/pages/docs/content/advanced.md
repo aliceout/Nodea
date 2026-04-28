@@ -46,6 +46,6 @@ On n'a pas la prétention de neutraliser ce scénario. On le documente, on borne
 
 <aside class="docs-hint">
 
-Tu veux le threat model formel, les algos figés, et les détails crypto auditables ? L'onglet **« Pour les profils sécu »** a tout — avec liens vers la spec exhaustive et le code.
+Tu veux le threat model formel, les algos figés, et les détails crypto auditables ? L'onglet **« Sous le capot »** a tout — avec liens vers la spec exhaustive et le code.
 
 </aside>

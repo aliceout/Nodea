@@ -2,7 +2,7 @@ import source from './content/advanced.md?raw';
 import { MarkdownTier, parseToc } from './primitives';
 
 /**
- * Docs — onglet « Comment ça marche ».
+ * Docs — onglet « La mécanique ».
  *
  * Audience : lecteur·ice avec un peu de bagage technique. On
  * vulgarise la mécanique sans formaliser ; les détails crypto vivent

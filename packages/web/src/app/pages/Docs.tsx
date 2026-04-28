@@ -38,9 +38,9 @@ const TAB_IDS = ['newbie', 'advanced', 'tech'] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
-  { id: 'newbie', label: 'Les bases' },
-  { id: 'advanced', label: 'Comment ça marche' },
-  { id: 'tech', label: 'Pour les profils sécu' },
+  { id: 'newbie', label: "L'essentiel" },
+  { id: 'advanced', label: 'La mécanique' },
+  { id: 'tech', label: 'Sous le capot' },
 ];
 
 const TIER_TOCS: Record<

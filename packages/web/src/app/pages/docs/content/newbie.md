@@ -27,6 +27,6 @@ Tu peux régénérer ce code à tout moment depuis *Compte → Sécurité* ; l'a
 
 <aside class="docs-hint">
 
-Tu veux comprendre comment tout ça marche concrètement ? L'onglet **« Comment ça marche »** explique la mécanique du chiffrement avec des mots simples.
+Tu veux comprendre comment tout ça marche concrètement ? L'onglet **« La mécanique »** explique le chiffrement avec des mots simples.
 
 </aside>

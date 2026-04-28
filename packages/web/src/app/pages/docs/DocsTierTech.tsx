@@ -2,7 +2,7 @@ import source from './content/tech.md?raw';
 import { MarkdownTier, parseToc } from './primitives';
 
 /**
- * Docs — onglet « Pour les profils sécu ».
+ * Docs — onglet « Sous le capot ».
  *
  * Audience : auditeur·ice / contributeur·ice / lecteur·ice
  * technique. Le tier reste concis et linke vers `docs/Auth-Spec.md`

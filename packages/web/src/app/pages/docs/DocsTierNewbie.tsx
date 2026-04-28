@@ -2,7 +2,7 @@ import source from './content/newbie.md?raw';
 import { MarkdownTier, parseToc } from './primitives';
 
 /**
- * Docs — onglet « Les bases ».
+ * Docs — onglet « L'essentiel ».
  *
  * Audience : visiteur·e qui découvre Nodea et veut comprendre en
  * deux minutes ce que ça change pour ses données. Zéro jargon, des
