@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
 
-interface TocItem {
+interface TocChild {
   id: string;
   label: string;
 }
 
+interface TocSection {
+  id: string;
+  label: string;
+  children: ReadonlyArray<TocChild>;
+}
+
 interface DocsTocProps {
-  /** Section list for the active tier. The order drives the rail
-   *  rendering; ids must match the `<h2 id>` anchors emitted by
-   *  the markdown render (`rehype-slug`). */
-  sections: ReadonlyArray<TocItem>;
+  /** Section tree for the active tier. The order drives the rail
+   *  rendering; ids must match the `<h2 id>` / `<h3 id>` anchors
+   *  emitted by the markdown render (`rehype-slug`). */
+  sections: ReadonlyArray<TocSection>;
   /** Optional rail header — defaults to "Sur cette page". */
   title?: string;
 }
@@ -22,16 +28,18 @@ interface DocsTocProps {
  * so the rail's natural top can align with the topbar exactly,
  * eliminating the "catches a few px after scrolling" effect.
  *
- * Scroll-spy via `IntersectionObserver` highlights the section
- * currently in view. The observer's `rootMargin` biases the
- * "active band" toward the top third of the viewport so the
- * highlight tracks the section the reader is *currently
- * reading*, not the next one about to scroll into view.
+ * Scroll-spy via `IntersectionObserver` highlights the heading
+ * currently in view. Both `<h2>` and `<h3>` anchors are observed,
+ * so the active id can land on a sub-section. The active section's
+ * children are revealed; siblings stay collapsed to keep the rail
+ * tight. The observer's `rootMargin` biases the "active band"
+ * toward the top third of the viewport so the highlight tracks
+ * the heading the reader is *currently reading*, not the next one
+ * about to scroll into view.
  */
 export default function DocsToc({ sections, title }: DocsTocProps) {
-  const [activeId, setActiveId] = useState<string | null>(
-    sections[0]?.id ?? null,
-  );
+  const firstId = sections[0]?.id ?? null;
+  const [activeId, setActiveId] = useState<string | null>(firstId);
 
   useEffect(() => {
     if (sections.length === 0) return undefined;
@@ -55,12 +63,24 @@ export default function DocsToc({ sections, title }: DocsTocProps) {
     for (const s of sections) {
       const el = document.getElementById(s.id);
       if (el) observer.observe(el);
+      for (const c of s.children) {
+        const childEl = document.getElementById(c.id);
+        if (childEl) observer.observe(childEl);
+      }
     }
 
     return () => observer.disconnect();
   }, [sections]);
 
   if (sections.length === 0) return null;
+
+  // The "active section" is the `<h2>` whose own anchor is active,
+  // OR the parent of the active `<h3>`. Only this section's
+  // children are shown — others stay collapsed.
+  const activeSection =
+    sections.find(
+      (s) => s.id === activeId || s.children.some((c) => c.id === activeId),
+    ) ?? null;
 
   return (
     <nav aria-label="Sur cette page">
@@ -69,20 +89,42 @@ export default function DocsToc({ sections, title }: DocsTocProps) {
       </p>
       <ul className="space-y-1.5 border-l border-hair">
         {sections.map((s) => {
-          const active = s.id === activeId;
+          const isActiveSection = s === activeSection;
           return (
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                data-active={active}
+                data-active={isActiveSection}
                 className={
-                  active
-                    ? '-ml-px block border-l-2 border-accent pl-3 text-[13.5px] leading-[1.45] text-ink'
+                  isActiveSection
+                    ? '-ml-px block border-l-2 border-accent pl-3 text-[13.5px] leading-[1.45] text-accent'
                     : '-ml-px block border-l-2 border-transparent pl-3 text-[13.5px] leading-[1.45] text-muted transition-colors hover:text-ink'
                 }
               >
                 {s.label}
               </a>
+              {isActiveSection && s.children.length > 0 ? (
+                <ul className="mt-1.5 space-y-1.5">
+                  {s.children.map((c) => {
+                    const active = c.id === activeId;
+                    return (
+                      <li key={c.id}>
+                        <a
+                          href={`#${c.id}`}
+                          data-active={active}
+                          className={
+                            active
+                              ? 'block pl-7 text-[12.5px] leading-[1.45] text-accent'
+                              : 'block pl-7 text-[12.5px] leading-[1.45] text-muted transition-colors hover:text-ink'
+                          }
+                        >
+                          {c.label}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
             </li>
           );
         })}

@@ -211,7 +211,7 @@ Variante `requireFreshPasswordOrPasskey` accepte aussi un re-prove passkey via `
 
 ### Requêtes paramétrées
 
-Toutes les requêtes DB passent par Drizzle (`eq(users.email, value)`, etc.). **Aucune** interpolation de chaîne dans le SQL — le legacy `Register.jsx` qui interpolait `code="${inviteCode}"` dans un filtre PocketBase est éliminé. Cette règle est dans CLAUDE.md, vérifiée à chaque PR.
+Toutes les requêtes DB passent par Drizzle (`eq(users.email, value)`, etc.). **Aucune** interpolation de chaîne dans le SQL — le legacy `Register.jsx` qui interpolait `code="${inviteCode}"` dans un filtre PocketBase est éliminé. Règle dure du projet, vérifiée à chaque PR.
 
 ### Guards HMAC obligatoires sur les mutations
 
@@ -229,7 +229,7 @@ Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`), 
 
 ### Pas d'identifiants dans les logs
 
-CLAUDE.md interdit toute métadonnée identifiante dans les logs qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs Pino côté API portent un `request_id` + un `user_id` quand pertinent, et l'opération.
+La politique de logs interdit toute métadonnée identifiante qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs Pino côté API portent un `request_id` + un `user_id` quand pertinent, et l'opération.
 
 ### Anti-patterns interdits
 
@@ -278,42 +278,76 @@ Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review,
 - **Admin delete user** : la ligne `users` disparaît + cascade FK sur `modules_config`, `user_preferences`, `sessions`, `opaque_records`. Les entrées dans les tables modules **restent en DB orphelines** — illisibles puisque la clé maîtresse est partie avec le user. Bounded growth, accepté par design.
 - **Reset destructif** : même comportement — les anciennes entrées deviennent orphelines, le user repart avec une nouvelle clé. Les rows existantes sont chiffrées avec une clé perdue, donc inaccessibles.
 
-### Inventaire complet — toutes les autres tables
+### Surface lisible côté serveur — toutes les autres tables
 
-Pour la transparence totale, voilà ce qui existe en clair dans la DB sur les autres tables. Tout ce qui n'est pas listé comme « **chiffré** » est lisible avec un simple `SELECT` par n'importe qui ayant accès SQL.
+Pour la transparence totale, voilà ce qui vit dans les autres tables. Pour chaque table : ce qui est **lu en clair** (lisible avec un simple `SELECT`), ce qui est **chiffré** (AES-GCM, illisible sans la clé du user), ce qui est **haché** (SHA-256, irréversible).
 
-**`users`** (1 ligne par compte)
-- En clair : `id`, `email` (identifiant OPAQUE), `username` (display name), `role` (`'user' | 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at`.
-- **Chiffrés** (blobs AES-GCM) : `wrapped_main_key{,_iv}`, `wrapped_kek_password{,_iv}`, `wrapped_kek_recovery{,_iv}`. Inutiles sans la clé du user.
-- **Hash** : `recovery_code_hash` (SHA-256 du code à 12 mots, jamais le code lui-même).
+#### Comptes et identité
 
-**`opaque_records`** (1 par user) — `user_id`, `envelope` (le « registration record » OPAQUE — cryptographiquement opaque, pas du contenu user mais visible).
+**`users`** — une ligne par compte
+- **Lu en clair** : `id`, `email` (identifiant OPAQUE), `username`, `role` (`'user' | 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at`
+- **Chiffré** : `wrapped_main_key`, `wrapped_kek_password`, `wrapped_kek_recovery` (chacun avec son IV) — inutiles sans la clé du user
+- **Haché** : `recovery_code_hash` (SHA-256 du code à 12 mots, jamais le code lui-même)
 
-**`sessions`** (N par user, expirent) — `id` (token signé), `user_id`, `kind`, timestamps, flags MFA, `pending_webauthn_challenge` (éphémère, single-use, TTL 5 min).
+**`opaque_records`** — une ligne par user
+- **Lu en clair** : `user_id`, `envelope` (le « registration record » OPAQUE — cryptographiquement opaque, pas du contenu user mais visible)
 
-**`auth_factors`** (passkeys, N par user) — `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (l'étiquette que le user a donnée à sa passkey), `created_at`. Plus `wrapped_kek{,_iv}` chiffrés (par credential PRF).
+#### Sessions et MFA
 
-**`mfa_totp`** (1 par user) — `user_id`, `secret`. **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert (le serveur doit pouvoir vérifier le code). Trade-off documenté : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. Plus `algo`, `digits`, `period`, `enabled_at`, `last_window`.
+**`sessions`** — N par user, expirent
+- **Lu en clair** : `id` (token signé), `user_id`, `kind`, timestamps, flags MFA, `pending_webauthn_challenge` (éphémère, single-use, TTL 5 min)
 
-**`mfa_totp_recovery_codes`** (10 par user) — `code_hash` (SHA-256, jamais le code en clair), `used_at`.
+**`auth_factors`** — passkeys enrôlées, N par user
+- **Lu en clair** : `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (étiquette donnée par le user), `created_at`
+- **Chiffré** : `wrapped_kek` + IV (chiffré par le PRF de la passkey)
 
-**`mfa_bypass_requests`** — hashes de tokens, factor (`'totp' | 'passkey'`), timestamps de confirmation / annulation / consommation / expiration.
+**`mfa_totp`** — une ligne par user
+- **Lu en clair** : `user_id`, `secret`, `algo`, `digits`, `period`, `enabled_at`, `last_window`
+- **Le secret TOTP est en clair côté serveur.** RFC 6238 l'exige (le serveur doit pouvoir vérifier le code). Trade-off documenté : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure.
 
-**`email_verifications`** (TTL 10 min) — `user_id`, `kind`, `code_hash`, `attempts`, `expires_at`. Pas le code lui-même.
+**`mfa_totp_recovery_codes`** — 10 par user
+- **Lu en clair** : `used_at`
+- **Haché** : `code_hash` (SHA-256, jamais le code en clair)
 
-**`password_reset_tokens`** (TTL 1h) — `user_id`, `token_hash`, `expires_at`, `used_at`.
+**`mfa_bypass_requests`** — bypass MFA par email
+- **Lu en clair** : `factor` (`'totp' | 'passkey'`), timestamps de confirmation / annulation / consommation / expiration
+- **Haché** : tokens (jamais le token en clair)
 
-**`invites`** — `email` (du destinataire, en clair), `token_hash`, `created_by`, `expires_at`. L'email du futur user est lisible avant qu'il s'inscrive.
+#### Flux email transitoires
 
-**`announcements`** — annonces de l'admin, lues par tous les users connectés. Tout en clair par construction (c'est le but).
+**`email_verifications`** — TTL 10 min
+- **Lu en clair** : `user_id`, `kind`, `attempts`, `expires_at`
+- **Haché** : `code_hash` (pas le code lui-même)
 
-**`app_settings`** — config globale (clé/valeur), ex. `open_registration`. En clair.
+**`password_reset_tokens`** — TTL 1h
+- **Lu en clair** : `user_id`, `expires_at`, `used_at`
+- **Haché** : `token_hash`
 
-**`modules_config`** (1 par user) — `user_id`, `cipher_iv`, `updated_at` en clair ; `payload` **chiffré** (contient le mapping `user → sids` par module).
+**`invites`** — invitations en attente
+- **Lu en clair** : `email` du destinataire, `created_by`, `expires_at`. **L'email du futur user est lisible avant qu'il s'inscrive.**
+- **Haché** : `token_hash`
 
-**`user_preferences`** (1 par user) — `user_id`, `cipher_iv`, `updated_at` en clair ; `payload` **chiffré**.
+#### Préférences chiffrées par user
 
-**Tables modules** (`mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries`) — voir le tableau précédent. **Pas de `user_id`, pas de timestamps colonnes.**
+**`modules_config`** — une ligne par user, contient le mapping `user → sids` par module
+- **Lu en clair** : `user_id`, `cipher_iv`, `updated_at`
+- **Chiffré** : `payload`
+
+**`user_preferences`** — une ligne par user
+- **Lu en clair** : `user_id`, `cipher_iv`, `updated_at`
+- **Chiffré** : `payload`
+
+#### Données globales d'app
+
+**`announcements`** — annonces de l'admin, lues par tous les users connectés
+- **Lu en clair** : tout, par construction (c'est le but)
+
+**`app_settings`** — config globale (clé/valeur), ex. `open_registration`
+- **Lu en clair** : tout
+
+#### Tables modules (rappel)
+
+`mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` — voir le tableau plus haut. **Pas de `user_id`, pas de timestamps colonnes.**
 
 ### Qui peut voir quoi
 
@@ -392,7 +426,7 @@ Les tests crypto vérifient les invariants (round-trip AES-GCM, déterminisme HK
 
 ### Documentation technique de référence
 
-Tout le détail vit dans le repo, mis à jour avec le code (règle CLAUDE.md : doc et code sont une seule source de vérité, dans le même PR).
+Tout le détail vit dans le repo, mis à jour avec le code — règle de projet : doc et code sont une seule source de vérité, dans le même PR.
 
 - [Auth-Spec.md](https://github.com/aliceout/Nodea/blob/main/docs/Auth-Spec.md) — spécification auth complète, ~2700 lignes : threat model formel, schéma cryptographique détaillé, flows complets, matrice de re-auth, anti-patterns interdits, test matrix.
 - [Security.md](https://github.com/aliceout/Nodea/blob/main/docs/Security.md) — politique sécu vivante : invariants, rate-limit catalogue (§5.1), protections serveur, supply-chain limit (§7).
@@ -401,7 +435,7 @@ Tout le détail vit dans le repo, mis à jour avec le code (règle CLAUDE.md : d
 
 ### Contribuer
 
-Issues étiquetées dans [le tracker GitHub](https://github.com/aliceout/Nodea/issues). CLAUDE.md à la racine du repo décrit les règles dures (crypto, monorepo, conventions).
+Issues étiquetées dans [le tracker GitHub](https://github.com/aliceout/Nodea/issues). Les règles dures du projet (crypto, monorepo, conventions) vivent à la racine du repo.
 
 ### Signaler une vulnérabilité
 

@@ -3,6 +3,7 @@ import type { MouseEvent, ReactNode } from 'react';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 import Button from '@/ui/atoms/dirk/Button';
+import ThemeSwitch from '@/ui/dirk/ThemeSwitch';
 import {
   useNodeaStore,
   selectIsAuthenticated,
@@ -29,11 +30,17 @@ interface DocsTopbarProps {
  * `gap-6` and centered tabs (no aside is rendered there, so
  * grid alignment isn't useful).
  *
- * Right cluster:
+ * Right cluster (inside the centered max-w container):
  *   - "Accéder à Nodea" / "Retour à Nodea" — primary CTA
  *   - "Code source" — secondary external link styled as a
  *     neutral-ghost button (transparent bg + hairline border +
  *     muted text). Hidden below `sm` to keep the row tight.
+ *
+ * `<ThemeSwitch>` is positioned absolutely against the viewport's
+ * right edge — outside the centered `max-w-[1180px]` container so
+ * it stays flush regardless of where the inner content sits. On
+ * narrow viewports the absolute element would crowd the right
+ * cluster, so it's hidden below `sm`.
  */
 export default function DocsTopbar({ children }: DocsTopbarProps) {
   const navigate = useNavigate();
@@ -52,12 +59,16 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
         <div className="flex h-[52px] items-center gap-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-stretch lg:gap-12">
           <Link
             to={target}
-            className="flex shrink-0 cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-80"
+            className="flex shrink-0 cursor-pointer items-center gap-2.5 self-center transition-opacity hover:opacity-80"
             aria-label="Retour à Nodea"
           >
-            <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
+            <span
+              aria-hidden="true"
+              className="h-3 w-3 shrink-0 rounded-full bg-accent"
+            />
             <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">
-              Nodea
+              Nodea{' '}
+              <span className="font-normal text-muted">· Documentation</span>
             </span>
           </Link>
 
@@ -91,6 +102,9 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
             </a>
           </div>
         </div>
+      </div>
+      <div className="absolute right-2 top-0 hidden h-13 items-center sm:flex">
+        <ThemeSwitch />
       </div>
     </header>
   );

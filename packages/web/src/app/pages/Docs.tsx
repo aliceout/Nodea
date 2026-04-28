@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
 
 import DocsLayout from '@/ui/dirk/DocsLayout';
 import DocsToc from '@/ui/dirk/DocsToc';
@@ -22,10 +22,9 @@ import DocsTierTech, {
  * left rail TOC is auto-derived from the active tier's markdown
  * headings.
  *
- * Active tier is mirrored in the query string (`?level=`) so each
- * tier is independently shareable, deep-linkable, and SEO-able.
- * Default tier is `newbie` — assume a brand-new visitor landing
- * from the login page link.
+ * Active tier is component-local state — the URL stays `/docs`
+ * regardless of the active tab. Default tier is `newbie` — assume
+ * a brand-new visitor landing from the login page link.
  *
  * Content is hand-curated markdown under `./docs/content/*.md` —
  * NOT pulled from `docs/*.md` (which target a more technical
@@ -52,23 +51,11 @@ const TIER_TOCS: Record<
   tech: techToc,
 };
 
-function isTabId(value: string | null): value is TabId {
-  return value !== null && (TAB_IDS as readonly string[]).includes(value);
-}
-
 export default function DocsPage() {
-  const [params, setParams] = useSearchParams();
-  const raw = params.get('level');
-  const level: TabId = isTabId(raw) ? raw : 'newbie';
+  const [level, setLevel] = useState<TabId>('newbie');
 
   function handleTabChange(next: TabId): void {
-    const nextParams = new URLSearchParams(params);
-    if (next === 'newbie') {
-      nextParams.delete('level');
-    } else {
-      nextParams.set('level', next);
-    }
-    setParams(nextParams, { replace: true });
+    setLevel(next);
     // Switching tabs is logically a new page — scroll to top so
     // the reader doesn't end up halfway down a different document.
     window.scrollTo({ top: 0, behavior: 'instant' });

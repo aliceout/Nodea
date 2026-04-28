@@ -29,17 +29,30 @@ import OpaqueFlowDiagram from './diagrams/OpaqueFlowDiagram';
  * uses internally — they always agree.
  */
 
-interface TocItem {
+interface TocChild {
   id: string;
   label: string;
 }
 
-/** Parse `## Heading` lines from a markdown source and slug them
- *  the same way `rehype-slug` does at render time. Returns the
- *  ordered list ready for the TOC rail. */
-export function parseToc(source: string): ReadonlyArray<TocItem> {
+interface TocSection {
+  id: string;
+  label: string;
+  children: ReadonlyArray<TocChild>;
+}
+
+/** Parse `## Heading` and `### Heading` lines from a markdown source
+ *  and slug them the same way `rehype-slug` does at render time.
+ *  Returns a tree of sections: each `##` becomes a section, each
+ *  `###` is attached as a child of the most recent `##` above it.
+ *  `###` headings before any `##` are dropped (no parent to attach
+ *  to). */
+export function parseToc(source: string): ReadonlyArray<TocSection> {
   const slugger = new GithubSlugger();
-  const items: TocItem[] = [];
+  const sections: Array<{
+    id: string;
+    label: string;
+    children: TocChild[];
+  }> = [];
   const lines = source.split('\n');
   let inFence = false;
   for (const line of lines) {
@@ -50,13 +63,19 @@ export function parseToc(source: string): ReadonlyArray<TocItem> {
       continue;
     }
     if (inFence) continue;
-    const match = /^##\s+(.+?)\s*$/.exec(line);
-    if (match) {
-      const label = match[1]!;
-      items.push({ id: slugger.slug(label), label });
+    const match = /^(##|###)\s+(.+?)\s*$/.exec(line);
+    if (!match) continue;
+    const level = match[1]!.length === 2 ? 2 : 3;
+    const label = match[2]!;
+    const id = slugger.slug(label);
+    if (level === 2) {
+      sections.push({ id, label, children: [] });
+    } else {
+      const last = sections[sections.length - 1];
+      if (last) last.children.push({ id, label });
     }
   }
-  return items;
+  return sections;
 }
 
 /**
@@ -70,7 +89,7 @@ const markdownComponents: Components = {
   h2: ({ children, ...props }) => (
     <h2
       {...props}
-      className="mb-3 mt-10 scroll-mt-24 text-[22px] font-semibold tracking-[-0.01em] text-ink first:mt-0"
+      className="mb-3 mt-10 scroll-mt-24 text-[22px] font-semibold tracking-[-0.01em] text-accent first:mt-0"
     >
       {children}
     </h2>
@@ -78,7 +97,7 @@ const markdownComponents: Components = {
   h3: ({ children, ...props }) => (
     <h3
       {...props}
-      className="mb-2 mt-6 scroll-mt-24 text-[16px] font-semibold text-ink"
+      className="relative mb-3 mt-8 scroll-mt-24 pl-5 text-[18px] font-semibold tracking-[-0.005em] text-ink before:absolute before:left-0 before:top-1/2 before:h-2 before:w-2 before:-translate-y-1/2 before:rounded-full before:bg-accent before:content-['']"
     >
       {children}
     </h3>
