@@ -224,12 +224,9 @@ interface PrimaryColumnProps {
 function PrimaryColumn({ load, total, groups, onEdit, onDelete }: PrimaryColumnProps) {
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
         Journal
       </h1>
-      <p className="mt-1 mb-6 text-[14px] text-muted">
-        {total} {total === 1 ? 'entrée' : 'entrées'} · regroupées par fil.
-      </p>
 
       {load.status === 'error' ? (
         <p
@@ -357,7 +354,7 @@ function SideColumn({
   totalCount,
 }: SideColumnProps) {
   return (
-    <aside className="flex min-w-0 flex-col gap-6">
+    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
         <SectionLabel>Fils</SectionLabel>
         {threads.length === 0 ? (

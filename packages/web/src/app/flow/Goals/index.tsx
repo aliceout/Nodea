@@ -279,14 +279,9 @@ function PrimaryColumn({
 }: PrimaryColumnProps) {
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
         Goals
       </h1>
-      <p className="mt-1 mb-6 text-[14px] text-muted">
-        {stats.total} {stats.total === 1 ? 'objectif' : 'objectifs'} · {stats.open}{' '}
-        ouvert{stats.open === 1 ? '' : 's'} · {stats.wip} en cours · {stats.done}{' '}
-        terminé{stats.done === 1 ? '' : 's'}
-      </p>
 
       {load.status === 'error' ? (
         <p
@@ -504,7 +499,7 @@ function SideColumn({
   onGroupByChange,
 }: SideColumnProps) {
   return (
-    <aside className="flex min-w-0 flex-col gap-6">
+    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
         <SectionLabel>Statut</SectionLabel>
         <div className="flex flex-wrap gap-1">

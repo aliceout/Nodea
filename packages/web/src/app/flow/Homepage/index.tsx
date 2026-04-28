@@ -449,7 +449,7 @@ interface SideColumnProps {
 
 function SideColumn({ moodEntries }: SideColumnProps) {
   return (
-    <aside className="flex min-w-0 flex-col gap-6">
+    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <MoodBlock entries={moodEntries} />
       <HabitsBlock />
       <IntentionsBlock />

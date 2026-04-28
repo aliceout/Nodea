@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bars3Icon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  Bars3Icon,
+  ChevronUpIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import {
   MOOD_SCORE_VALUES,
   type MoodPayload,
@@ -288,6 +293,11 @@ function PrimaryColumn({
   onEdit,
   onDelete,
 }: PrimaryColumnProps) {
+  // Whether the frise (chart + legend) is folded away. The header
+  // row + entries list stay visible either way; the toggle just
+  // reclaims vertical space when the user wants to scroll through
+  // many entries without the sticky chart eating half the viewport.
+  const [chartCollapsed, setChartCollapsed] = useState(false);
   const entries: ReadonlyArray<MoodEntry> =
     load.status === 'ready' ? load.entries : EMPTY_ENTRIES;
 
@@ -320,29 +330,6 @@ function PrimaryColumn({
     });
   }, [entries, year, month]);
 
-  // Stats for the page header — total entry count + 30-day rolling
-  // mean score. Mean is computed only over entries that fall in the
-  // last 30 days; rounded to one decimal so the header doesn't
-  // jitter as new entries land.
-  const stats = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cutoff = today.getTime() - 30 * 24 * 3600 * 1000;
-    const recent = entries.filter((e) => new Date(e.dateIso).getTime() >= cutoff);
-    if (recent.length === 0) {
-      return { total: entries.length, avg: null as number | null };
-    }
-    const sum = recent.reduce((acc, e) => acc + Number(e.score), 0);
-    return { total: entries.length, avg: Math.round((sum / recent.length) * 10) / 10 };
-  }, [entries]);
-
-  function formatAvg(avg: number | null): string {
-    if (avg === null) return '—';
-    const sign = avg > 0 ? '+' : avg < 0 ? '−' : '';
-    const abs = Math.abs(avg).toFixed(1).replace('.', ',');
-    return `${sign}${abs}`;
-  }
-
   // Section heading describes the selected range plain-language so
   // a screen reader (and a glance) reads cleanly: "Entrées · En
   // cours", "Entrées · 2025 · mars", etc. Month is suppressed for
@@ -353,22 +340,30 @@ function PrimaryColumn({
 
   return (
     <section className="flex min-w-0 flex-col">
+      {/* Sticky upper region — the H1 + 30-day average + year picker
+          + frise (with its legend) stay pinned flush against the
+          topbar, with zero scroll-movement and no bleed-through.
+          The `-mt-7 pt-7` pair pulls the wrapper's box up into the
+          parent's `py-7` padding while keeping content at its
+          original visual position; combined with `top-13` (the
+          topbar's height) this means the wrapper's natural top
+          already sits at the sticky threshold, so it pins the
+          instant the user starts scrolling. The `bg-bg` then
+          opaque-covers any entry scrolling underneath; `z-10`
+          keeps it below the topbar (`z-20`). */}
+      <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-        <div>
-          <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
-            Mood
-          </h1>
-          <p className="mt-1 text-[14px] text-muted">
-            {stats.total} {stats.total === 1 ? 'entrée' : 'entrées'} · moyenne mobile{' '}
-            <span className="font-semibold text-ink">{formatAvg(stats.avg)}</span> sur 30 j
-            (échelle −2 → +2)
-          </p>
-        </div>
+        <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+          Mood
+        </h1>
         <YearSelector value={year} years={availableYears} onChange={onYearChange} />
       </div>
 
-      <div className="mt-6">
-        <Chart year={year} entries={entries} />
+      {!chartCollapsed ? (
+        <div className="mt-6">
+          <Chart year={year} entries={entries} />
+        </div>
+      ) : null}
       </div>
 
       {load.status === 'error' ? (
@@ -380,14 +375,36 @@ function PrimaryColumn({
         </p>
       ) : null}
 
-      <div className="mt-2 mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+      <div className="mt-2 mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
           Entrées · {yearLabel}
           {showMonth ? ` · ${MONTH_LABELS_LONG[month]}` : ''}
         </h2>
-        {year !== null ? (
-          <MonthSelector value={month} onChange={onMonthChange} />
-        ) : null}
+        <div className="flex items-center gap-2">
+          {year !== null ? (
+            <MonthSelector value={month} onChange={onMonthChange} />
+          ) : null}
+          {/* Frise toggle — folds/unfolds the heatmap above. Lives on
+              the entries-section row (not in the sticky region) so the
+              full-width frise can collapse cleanly without leaving a
+              stub control behind, and so the chevron travels with the
+              section it controls when the user scrolls. */}
+          <button
+            type="button"
+            onClick={() => setChartCollapsed((prev) => !prev)}
+            aria-label={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
+            title={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
+            className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-soft transition-colors hover:bg-bg-2 hover:text-muted"
+          >
+            <ChevronUpIcon
+              className={cn(
+                'h-3 w-3 transition-transform duration-200',
+                chartCollapsed && 'rotate-180',
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        </div>
       </div>
 
       <div>
@@ -600,7 +617,7 @@ function Chart({ year, entries }: ChartProps) {
 
   return (
     <div
-      className="mb-7 grid gap-x-1 gap-y-[3px]"
+      className="grid gap-x-1 gap-y-[3px]"
       aria-hidden="true"
       style={{
         gridTemplateColumns: `28px repeat(${HEATMAP_WEEKS}, minmax(0, 1fr))`,
@@ -951,9 +968,13 @@ interface Pattern {
  */
 function SideColumn({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
   const patterns = useMemo(() => computePatterns(entries), [entries]);
+  // 30-day rolling mean — used to be displayed in the page subtitle;
+  // now lives in the Patterns block as a permanent first row so the
+  // header surface stays uncluttered.
+  const avg30d = useMemo(() => computeAverage30d(entries), [entries]);
 
   return (
-    <aside className="flex min-w-0 flex-col gap-6">
+    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
         <SectionLabel>Distribution</SectionLabel>
         <ScoreDonut entries={entries} />
@@ -961,23 +982,52 @@ function SideColumn({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
 
       <section>
         <SectionLabel>Patterns</SectionLabel>
-        {patterns.length === 0 ? (
-          <p className="border-b border-hair py-2.5 text-[12px] italic text-muted">
-            Pas encore assez d’entrées pour dégager des motifs.
-          </p>
-        ) : (
-          <ul>
-            {patterns.map((p) => (
+        <ul>
+          <li className="border-b border-hair py-2.5">
+            <div className="text-[13px] font-medium text-ink">
+              Moyenne mobile{' '}
+              <span className="tabular-nums">{formatMoodAvg(avg30d)}</span>
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted">
+              sur 30 j · échelle −2 → +2
+            </div>
+          </li>
+          {patterns.length === 0 ? (
+            <li className="border-b border-hair py-2.5 last:border-b-0 text-[12px] italic text-muted">
+              Pas encore assez d’entrées pour dégager des motifs.
+            </li>
+          ) : (
+            patterns.map((p) => (
               <li key={p.label} className="border-b border-hair py-2.5 last:border-b-0">
                 <div className="text-[13px] font-medium text-ink">{p.label}</div>
                 <div className="mt-0.5 text-[11px] text-muted">{p.delta}</div>
               </li>
-            ))}
-          </ul>
-        )}
+            ))
+          )}
+        </ul>
       </section>
     </aside>
   );
+}
+
+/** 30-day rolling average mood score. `null` when no entries fell
+ *  within the window, so the UI can render a placeholder instead of
+ *  a numeric zero (which would falsely read as "perfectly neutral"). */
+function computeAverage30d(entries: ReadonlyArray<MoodEntry>): number | null {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cutoff = today.getTime() - 30 * 24 * 3600 * 1000;
+  const recent = entries.filter((e) => new Date(e.dateIso).getTime() >= cutoff);
+  if (recent.length === 0) return null;
+  const sum = recent.reduce((acc, e) => acc + Number(e.score), 0);
+  return Math.round((sum / recent.length) * 10) / 10;
+}
+
+function formatMoodAvg(avg: number | null): string {
+  if (avg === null) return '—';
+  const sign = avg > 0 ? '+' : avg < 0 ? '−' : '';
+  const abs = Math.abs(avg).toFixed(1).replace('.', ',');
+  return `${sign}${abs}`;
 }
 
 const DAY_NAMES_FR: ReadonlyArray<string> = [

@@ -505,12 +505,9 @@ function PrimaryColumn(props: PrimaryColumnProps) {
   );
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
         Library
       </h1>
-      <p className="mt-1 mb-6 text-[14px] text-muted">
-        {total} {total === 1 ? 'livre' : 'livres'}.
-      </p>
 
       {load.status === 'error' ? (
         <p
@@ -658,20 +655,9 @@ function ReviewsColumn({
   const heading = REVIEW_VIEW_HEADING[kind];
   return (
     <section className="flex min-w-0 flex-col">
-      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
+      <h1 className="mb-6 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
         {heading}
       </h1>
-      <p className="mt-1 mb-6 text-[14px] text-muted">
-        {filtered.length}{' '}
-        {kind === 'quote'
-          ? filtered.length === 1
-            ? 'extrait'
-            : 'extraits'
-          : filtered.length === 1
-            ? 'note'
-            : 'notes'}
-        .
-      </p>
 
       {load.status === 'error' ? (
         <p
@@ -1246,7 +1232,7 @@ function SideColumn({
 }: SideColumnProps) {
   const showGroupBy = subview === 'livres';
   return (
-    <aside className="flex min-w-0 flex-col gap-6">
+    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       {showGroupBy ? (
         <section>
           <SectionLabel>Grouper par</SectionLabel>

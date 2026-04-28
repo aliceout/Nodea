@@ -193,7 +193,7 @@ export default function LoginPage() {
                 size="lg"
                 onClick={() => void onPasskeyClick()}
                 disabled={isSubmitting || passkeyBusy}
-                className="mt-2 w-full gap-2"
+                className="mt-2 w-full gap-2 font-normal"
               >
                 {passkeyBusy ? (
                   'Vérification…'
