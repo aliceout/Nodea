@@ -59,7 +59,9 @@ export default function DocsLayout({ children, aside, tabs }: DocsLayoutProps) {
                 {aside}
               </div>
             ) : null}
-            <div className="max-w-[760px] py-12 sm:py-16">{children}</div>
+            <div className="max-w-[760px] py-12 sm:py-16 lg:pt-12">
+              {children}
+            </div>
           </div>
         </div>
       </main>
