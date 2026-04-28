@@ -15,8 +15,9 @@
 > **Phases livrées** : 0 (spec), 1 (register simplifié), 2A-2D
 > (OPAQUE migration), 3 (recovery code BIP39), 4 (passkey WebAuthn
 > + PRF), 5A-5D (TOTP + stepped MFA + security mode UI),
-> **6 (bypass MFA email 7 jours)**. En cours : Phase 7 (matrice de
-> re-auth + Settings polish) à attaquer ensuite.
+> 6 (bypass MFA email 7 jours), **7A (foundation re-auth :
+> middlewares + endpoints + timestamps)**. En cours : 7B (câblage
+> de la matrice sur les routes mutantes) puis 7C-D.
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -837,12 +838,48 @@ reset destructif.
 
 ### Phase 7 — Matrice de re-auth + Settings UI
 
-**Livrables**
-- Middlewares serveur :
-  - `requireFreshPassword` (5 min)
-  - `requireFreshPasswordOrPasskey` (5 min)
-- Câblage de la matrice sur toutes les routes mutantes
-  (mode, factors, codes, account deletion).
+**Sous-phase 7A — Foundation re-auth (✅ livrée)**
+- Wiring des timestamps `sessions.{reauth_password_at,
+  reauth_passkey_at}` sur tous les chemins d'auth qui promeuvent
+  vers `full` :
+  - `/auth/login/finish` (direct full) → password
+  - `/auth/passkey/login/finish` (direct full) → passkey
+  - `/auth/mfa/totp/verify` finalize → propagation depuis
+    `mfa_password_verified` du pending
+  - `/auth/mfa/passkey/finish` finalize → propagation des deux
+    flags du pending
+  - `/auth/change-password/finish` (rotation full) → password
+  - `/auth/recover-kek/finish` (reset destructif) → password
+- Helpers `auth/session.ts` :
+  - `createSession(opts.reauthFresh)` pose les timestamps à
+    l'INSERT
+  - `finalizeMfaSession()` lit les `mfa_*_verified` du pending et
+    les propage en `reauth_*_at` sur la nouvelle full
+  - `bumpSessionReauth(sessionId, factor)` met à jour un seul
+    facteur à `now()`
+  - `getSessionReauth(sessionId)` lit les deux timestamps
+- Middlewares `middleware/require-fresh-reauth.ts` :
+  - `requireFreshPassword` — 401 `{error:'reauth_required',
+    reauth_required:'password'}` si timestamp > 5 min
+  - `requireFreshPasswordOrPasskey` — accepte l'un OU l'autre,
+    401 `reauth_required:'password_or_passkey'` sinon
+- Routes dédiées `routes/auth-reauth.ts` :
+  - `POST /auth/reauth/password/start` (OPAQUE) +
+    `/finish` → bump password
+  - `POST /auth/reauth/passkey/start` (WebAuthn) +
+    `/finish` → bump passkey
+  - Les deux requièrent `requireUser`. L'identifier OPAQUE est
+    pris depuis la session, jamais depuis le body
+    (anti-confused-deputy).
+- 9 tests d'intégration (timestamps + middleware + endpoint
+  password OPAQUE round-trip).
+
+**Sous-phases 7B-D restantes (non livrées)**
+- 7B — câblage de la matrice sur toutes les routes mutantes
+  (mode, factors, codes, account deletion). Aujourd'hui plusieurs
+  routes embarquent un `proofLoginToken` dans le body (Phase 5D
+  MVP) ; 7B les migre vers le middleware + drop du helper
+  `verifyPasswordProof` dupliqué dans chaque fichier.
 - Settings UI :
   - Mode de sécurité (avec explication des trade-offs en clair).
     Sélection bloquée si les facteurs requis ne sont pas enrôlés

@@ -173,8 +173,41 @@ the factory loops over. There is nowhere to forget a guard.
     as change-password's proof. Server validates via
     `verifyPasswordProof` (consume the login state, run
     `server.finishLogin`).
-  - Phase 7 will add a re-auth fresh-window middleware so the
-    proof can be cached across multiple privileged calls.
+  - Phase 7B will migrate these to the `requireFreshPassword`
+    middleware so the proof is cached for 5 min across multiple
+    privileged calls (foundation landed in 7A — see below).
+
+- **Re-auth foundation** (Phase 7A —
+  `routes/auth-reauth.ts`,
+  `middleware/require-fresh-reauth.ts`):
+  - Two timestamps live on the session row:
+    `reauth_password_at` and `reauth_passkey_at`. They're stamped
+    on every auth path that promotes to `full`: password login
+    finish, passkey login finish, MFA finalize (propagated from
+    the pending row's `mfa_*_verified` flags), change-password
+    rotation, recovery-code reset.
+  - `bumpSessionReauth(sessionId, factor)` in `auth/session.ts`
+    flips a single timestamp to `now()`; used by
+    `/auth/reauth/{password,passkey}/finish` after they verify a
+    fresh proof. `getSessionReauth(sessionId)` reads both
+    timestamps for the middleware.
+  - `requireFreshPassword` /
+    `requireFreshPasswordOrPasskey` middlewares chain after
+    `requireUser` and 401 with `{error:'reauth_required',
+    reauth_required:'password'|'password_or_passkey'}` when the
+    relevant timestamp is older than 5 min. The SPA reads
+    `reauth_required` to decide which modal to surface.
+  - `POST /auth/reauth/password/{start,finish}` runs an OPAQUE
+    login round-trip on the calling session — the user identifier
+    is taken from the session, never from the body, so an
+    attacker holding A's cookie can't run a proof against B's
+    record.
+  - `POST /auth/reauth/passkey/{start,finish}` runs a WebAuthn
+    assertion against the calling user's enrolled credentials
+    (re-uses the `pending_webauthn_challenge` column on the full
+    session row, TTL 5 min — same as the stepped-MFA path).
+  - Phase 7B applies the middlewares to mutating routes; for now
+    the foundation is ready but unused in production paths.
 
 - **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
   Phase 2B):

@@ -736,6 +736,12 @@ middleware `loadSession` :
 
 ### 5.3 Re-auth fresh
 
+✅ **Phase 7A livrée** : middlewares + endpoints `/auth/reauth/*` +
+wiring des timestamps sur tous les chemins d'auth qui promeuvent
+vers `full`. Reste à faire en 7B : appliquer les middlewares aux
+routes mutantes (et drop le `proofLoginToken` embarqué dans les
+bodies — pattern Phase 5D MVP).
+
 La matrice (§6) demande "re-auth fraîche < 5 min". Implémentation :
 
 - `requireFreshPassword` middleware : checke
