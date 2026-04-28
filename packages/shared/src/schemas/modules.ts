@@ -76,8 +76,7 @@ export const GoalsPayloadSchema = z
      *  server never sees write activity per goal — the
      *  minimum-readable-surface design forbids per-row server-
      *  side timestamps. The Goals page bumps it on every save ;
-     *  the « Récent » sort reads it. Empty string fallback for
-     *  legacy entries that predate this field. */
+     *  the « Récent » sort reads it. */
     updated_at: z.string().default(''),
   })
   .passthrough();
@@ -321,8 +320,7 @@ export const ReviewPayloadSchema = z
     /** ISO timestamp of the last write — lives in the encrypted
      *  payload (server-side timestamps were dropped in the
      *  minimum-readable-surface refactor). The List view uses it
-     *  to surface the « modifié le … » label. Empty fallback for
-     *  legacy entries. */
+     *  to surface the « modifié le … » label. */
     updated_at: z.string().default(''),
   })
   .passthrough();

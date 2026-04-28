@@ -201,13 +201,8 @@ interface ReviewRowProps {
 function ReviewRow({ record, onOpen, onEdit, onDelete }: ReviewRowProps) {
   // `payload.updated_at` is the in-payload write timestamp — the
   // entry-table wrapper no longer carries `updated_at` (minimum-
-  // readable-surface design). Empty string falls back to "—" via
-  // `Date(NaN)` → "Date invalide" which is acceptable for legacy
-  // entries that predate this field.
-  const rawUpdated = record.payload.updated_at ?? '';
-  const updated = rawUpdated
-    ? ENTRY_DATE_FMT.format(new Date(rawUpdated))
-    : '—';
+  // readable-surface design). Always set by the create/update hooks.
+  const updated = ENTRY_DATE_FMT.format(new Date(record.payload.updated_at));
   return (
     <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
       <button

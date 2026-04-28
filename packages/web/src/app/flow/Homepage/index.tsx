@@ -232,9 +232,8 @@ function useGoalEntries(): GoalEntryLite[] {
             thread: p.thread ?? '',
             // `payload.updated_at` is the in-payload timestamp the
             // Goals writer bumps on every save (server-side
-            // timestamps were dropped). Falls back to the user's
-            // intention `date` when missing on legacy entries.
-            updatedAt: p.updated_at || p.date || '',
+            // timestamps were dropped).
+            updatedAt: p.updated_at,
           });
         }
         setEntries(lite);

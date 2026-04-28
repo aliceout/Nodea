@@ -882,10 +882,8 @@ function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry {
     thread: p.thread ?? '',
     // `payload.updated_at` is the in-payload timestamp the writer
     // bumps on every save — server-side timestamps were dropped
-    // in the minimum-readable-surface refactor. Falls back to the
-    // user's intention `date` when missing (legacy entries) so the
-    // « Récent » sort still has something to compare on.
-    updatedAt: p.updated_at || p.date || '',
+    // in the minimum-readable-surface refactor.
+    updatedAt: p.updated_at,
     completedAt: typeof p.completed_at === 'string' ? p.completed_at : null,
   };
 }
