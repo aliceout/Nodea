@@ -245,13 +245,12 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
   }
 
   // Constant-time hash comparison. A mismatch is treated as a
-  // wrong recovery code — server logs it for monitoring but no
-  // mutation is applied.
+  // wrong recovery code — server logs the user id for monitoring
+  // but never the email (per CLAUDE.md: no identifying metadata
+  // in logs that aren't tied to the request being served).
   if (!constantTimeEqualHex(user.recoveryCodeHash, body.recoveryCodeHash)) {
     // eslint-disable-next-line no-console
-    console.warn(
-      `[auth/recover-kek] hash_mismatch for user ${user.id} (${user.email})`,
-    );
+    console.warn(`[auth/recover-kek] hash_mismatch user=${user.id}`);
     return c.json({ error: 'invalid_credentials' }, 401);
   }
 
