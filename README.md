@@ -166,6 +166,14 @@ La CI GitHub Actions fait la même chose à chaque push/PR.
 - **Le serveur ne stocke que du ciphertext** : un dump complet de la DB
   ne révèle aucune donnée utilisateur·ice en clair. L'email et le sel
   d'enveloppe sont les seules métadonnées identifiantes.
+- **Limite du modèle web** : un serveur compromis pourrait servir du JS
+  altéré qui exfiltre la clé avant chiffrement. C'est inhérent à
+  toute webapp E2E. Mitigations en place : Subresource Integrity sur
+  l'entry chunk + `INTEGRITY.txt` (manifest SHA-384 publié à chaque
+  build) que tu peux comparer avec ta deploy. Pour des données
+  particulièrement sensibles, **auto-héberge** depuis un commit de
+  référence — voir
+  [`documentation/Security.md` §7](documentation/Security.md#7-the-web-app-supply-chain-limit-must-read).
 
 Plus de détails dans [`documentation/Security.md`](documentation/Security.md).
 
