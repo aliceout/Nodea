@@ -52,14 +52,14 @@ id; rights and TTL live here so logout/revocation is immediate.
 | ------------------------------- | --------- | --------------------------------------------------------- |
 | `id`                            | `text` PK | Signed value stored in the `nodea_session` cookie.        |
 | `user_id`                       | `text`    | FK → `users.id`, **ON DELETE CASCADE**.                   |
-| `kind`                          | `enum`    | `'full' \| 'mfa_pending' \| 'register' \| 'migrate'`. V1 only emits `'full'` ; the other kinds are 🚧 Phase 2+ scaffolding for stepped MFA / multi-step register / lazy OPAQUE migration. |
-| `reauth_password_at`            | `ts+tz?`  | **🚧 Phase 2+** — fresh-auth tracking for matrice §6.     |
-| `reauth_passkey_at`             | `ts+tz?`  | **🚧 Phase 2+**.                                          |
-| `mfa_password_verified`         | `bool`    | **🚧 Phase 2+** stepped-MFA flag.                         |
-| `mfa_passkey_verified`          | `bool`    | **🚧 Phase 2+**.                                          |
-| `mfa_totp_verified`             | `bool`    | **🚧 Phase 2+**.                                          |
-| `pending_webauthn_challenge`    | `text?`   | **🚧 Phase 2+** WebAuthn challenge cache.                 |
-| `pending_webauthn_challenge_at` | `ts+tz?`  | **🚧 Phase 2+** TTL anchor (5 min).                       |
+| `kind`                          | `enum`    | `'full' \| 'mfa_pending' \| 'register' \| 'migrate'`. `'migrate'` is vestigial (Phase 2C lazy migration completed in 2D); no code path mints it any more. The others are live: `full` after login, `mfa_pending` between primary auth and MFA verification, `register` during the multi-step inscription. |
+| `reauth_password_at`            | `ts+tz?`  | Fresh-password timestamp gating mutating Settings routes via `requireFreshPassword` (5 min window, Auth-Spec §5.3 / §6, Phase 7A). |
+| `reauth_passkey_at`             | `ts+tz?`  | Fresh-passkey timestamp — `requireFreshPasswordOrPasskey` accepts either factor. |
+| `mfa_password_verified`         | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when password is the primary factor (Phase 5C). |
+| `mfa_passkey_verified`          | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when passkey is the primary factor or after passkey 2nd-factor verify. |
+| `mfa_totp_verified`             | `bool`    | Stepped-MFA flag set after `/auth/mfa/totp/verify` succeeds. |
+| `pending_webauthn_challenge`    | `text?`   | WebAuthn challenge persisted on the row for `/auth/passkey/{enroll,login}/finish` and `/auth/reauth/passkey/finish` (Phase 4 / 7A). |
+| `pending_webauthn_challenge_at` | `ts+tz?`  | TTL anchor on the challenge — 5 min, after which the value is rejected. |
 | `ip_hash`                       | `text?`   | Per-deployment salted hash. Audit trail only.             |
 | `user_agent`                    | `text?`   | Audit trail only.                                         |
 | `last_seen_at`                  | `ts+tz?`  | Debounced touch on each request (≤ 1/min/session).        |
@@ -281,11 +281,14 @@ is **hidden** in read responses and compared on update/delete as a
 query parameter (`?d=<guard>`), so the server never learns the main
 key.
 
-The envelope for `users.encrypted_key` uses argon2id to derive a KEK
-from the password + `encryption_salt`, then AES-GCM to wrap the 32-byte
-random main key. This is the one server-readable piece of ciphertext
-— the server can read the blob but cannot decrypt it without the
-password.
+The envelope for the user's KEK uses OPAQUE to derive an
+`exportKey` from the typed password (server never sees the
+password), then HKDF-derives a wrap key (`wk_password`) and AES-GCM
+to wrap the 32-byte random KEK (`users.wrapped_kek_password`).
+The KEK in turn wraps the 32-byte random main key
+(`users.wrapped_main_key`). The server can read both blobs but
+cannot decrypt them without the password — see Auth-Spec §7
+for the exact flow.
 
 ---
 

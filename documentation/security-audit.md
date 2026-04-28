@@ -1,12 +1,58 @@
 # Audit de Sécurité — Nodea
 
-**Date :** 2026-03-04
-**Branche analysée :** `main`
-**Périmètre :** Frontend React + hooks PocketBase + architecture E2E
+**Date de l'audit initial :** 2026-03-04
+**Périmètre initial :** Frontend React + hooks PocketBase + architecture E2E
+**Mise à jour :** 2026-04-28 (post-migration Hono/Drizzle/PostgreSQL +
+Auth-Roadmap Phases 1-7 livrées + bundle-integrity / SRI Phase 8)
 
 ---
 
-## Résumé exécutif
+## ⚠️ Statut
+
+L'audit initial date d'avant la migration vers le stack actuel
+(Hono/Drizzle/PostgreSQL) et avant le déroulement de l'Auth-Roadmap.
+**La majorité des findings ci-dessous référencent du code qui n'existe
+plus** : `frontend/src/...` a été remplacé par `packages/web/src/...`,
+PocketBase a été remplacé par une API Hono, et l'architecture
+d'authentification a basculé d'Argon2id direct vers OPAQUE +
+multi-facteur.
+
+Statut courant des findings (cf. Récapitulatif §en bas) :
+
+| Finding | État |
+|---|---|
+| `window.mainKey` fallback (CRITIQUE) | ✅ résolu — la clé n'est plus jamais sur `window`, le store Zustand est l'unique source ; règle CLAUDE.md durcit l'invariant |
+| Injection filtre PocketBase (HAUTE) | ✅ résolu — PocketBase retiré, Drizzle paramétrise toutes les requêtes |
+| Réutilisation code invitation (HAUTE) | ✅ résolu — Phase 1 v2 : invites bornés à un email, consommés en transaction, hashés en DB |
+| `wipeMainKeyMaterial` inefficace (HAUTE) | ✅ résolu — la fonction n'existe plus dans le code actuel ; Auth-Spec assume l'absence d'effacement complet, doc explicite (`location.reload()` = purge totale) |
+| Énumération codes invitation (HAUTE) | ✅ résolu — endpoint dédié supprimé, vérif uniquement dans `/auth/register` |
+| Réutilisation clé AES/HMAC (MOYENNE) | ✅ résolu — séparation HKDF avec labels `nodea:aes` / `nodea:hmac`, branded types `AesMainKey` / `HmacMainKey` |
+| Guards en localStorage (MOYENNE) | ✅ résolu — guards en cache mémoire seulement, purge au logout |
+| Pas de politique de mot de passe (MOYENNE) | ✅ résolu — zxcvbn-ts score ≥ 3 + min 12 chars, validé client + serveur |
+| `decryptWithRetry` inutile (FAIBLE) | ✅ résolu — code retiré |
+| Double-base64 legacy (FAIBLE) | ✅ résolu — code retiré (un seul module base64 partagé) |
+| Logs verbeux (INFO) | ⚠️ partiellement — la plupart des logs sont gated `import.meta.env.DEV` ; reste à passer en revue les routes API au prochain audit |
+
+## Findings ouverts post-Phases 1-7
+
+Tous les findings critiques et hauts identifiés en mars 2026 sont
+fermés ; la migration OPAQUE + le refactor `packages/web` ont
+réécrit ou supprimé les emplacements concernés. Aucun nouveau
+finding bloquant identifié pendant Phases 1-7 ; le seul élément
+résiduel formel est le **threat model du modèle web** (un serveur
+compromis pouvant servir du JS malveillant) — adressé partiellement
+par la Phase 8 bundle-integrity (SRI sur entry chunk +
+`INTEGRITY.txt` manifest, voir `Security.md` §7) avec recommandation
+explicite d'auto-hébergement pour les usages sensibles.
+
+Issues de suivi ouvertes en GitHub :
+- #49 — coverage de test manquante : change-password via fresh-passkey re-auth
+- #50 — RFC extension navigateur pour vérification d'intégrité
+- #51 — rappel : attacher `INTEGRITY.txt` à la première release
+
+---
+
+## Résumé exécutif (audit initial — historique)
 
 L'architecture de chiffrement côté client (E2EE) est globalement solide (Argon2id, AES-256-GCM, HMAC-SHA256, WebCrypto). Cependant, plusieurs vulnérabilités significatives ont été identifiées, allant d'une exposition critique de la clé maître en mémoire globale à des failles d'injection de filtre et de réutilisation des codes d'invitation.
 

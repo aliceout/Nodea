@@ -17,8 +17,9 @@
 > + PRF), 5A-5D (TOTP + stepped MFA + security mode UI),
 > 6 (bypass MFA email 7 jours), 7A (foundation re-auth),
 > 7B (câblage de la matrice + migration front),
-> **7C (onboarding nudges via sidebar tips, design wizard
-> abandonné)**. Optionnelle : 7D (Playwright e2e).
+> 7C (onboarding nudges via sidebar tips, design wizard
+> abandonné), **8 (cleanup + audit final + bundle integrity)**.
+> Optionnelle : 7D (Playwright e2e). **Chantier auth complet.**
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -956,22 +957,48 @@ contourne la matrice.
 
 ---
 
-### Phase 8 — Cleanup + audit final
+### Phase 8 — Cleanup + audit final ✅ livrée
 
-**Livrables**
-- Drop `users.password_hash` (legacy) une fois la migration à 100%.
-- Drop dummy-hash login timing.
-- Mettre à jour `Security.md`, `Database.md`, `Architecture.md` :
-  le nouveau flow est le **seul** flow.
-- Re-cross-check `documentation/security-audit.md` : fermer les
-  findings résolus, ouvrir ceux découverts en chemin.
-- Audit deps OPAQUE / WebAuthn / TOTP : vendoring des références
-  d'audit dans la PR finale.
-- Page publique "Comment Nodea protège tes données" basée sur le
-  threat model d'Auth-Spec.md (différer si pas le temps).
+**Livré**
 
-**Critère de sortie** : aucune référence à l'ancien flow Argon2id
-direct dans la doc ou le code. Audit interne OK.
+- Drop `users.password_hash` / `encryption_salt` / `encrypted_key` :
+  fait dans la migration `0011_little_morg.sql` (Phase 2D), donc
+  rien à faire en 8.
+- Drop dummy-hash login timing : pas de code à retirer — OPAQUE
+  fait l'anti-énumération nativement, le commentaire dans
+  `auth.ts` `/auth/login/start` le note explicitement.
+- Commentaires schéma / helpers dépoussiérés : `schema.ts`,
+  `auth/session.ts`, `test/helpers.ts`, `Reset.tsx`, `App.jsx`
+  ne décrivent plus une cohabitation legacy/OPAQUE qui n'existe
+  plus. La valeur `'migrate'` du `sessionKind` enum est marquée
+  vestigiale (laissée en DB pour compat, plus jamais minted).
+- `Database.md` : section Sessions colonnes mise à jour (toutes les
+  colonnes `🚧 Phase 2+` flippées en livré, descriptions corrigées),
+  description du wrap KEK alignée sur OPAQUE plutôt qu'Argon2id.
+- `Security.md` §7 (Phase 8 bundle-integrity) : SRI sur entry chunk
+  + `INTEGRITY.txt` manifest + reco self-host pour le threat model
+  « serveur compromis injecte du JS ». Cf. commits `e4a87a0`,
+  `a4b9856`, `a8272b8`.
+- `security-audit.md` : status courant des 11 findings de l'audit
+  initial mars 2026 — 10/11 résolus (la migration PocketBase →
+  Hono/OPAQUE et les Phases 1-7 ont réécrit ou supprimé les sites
+  concernés), 1/11 partiellement résolu (logs verbeux côté API à
+  re-passer).
+- `deps-audit.md` (nouveau) : vendoring des références d'audit pour
+  `@serenity-kit/opaque` 1.1.0, `@simplewebauthn/{server,browser}`
+  13.3.0, `otplib` 13.4.0, plus les deps crypto-adjacentes
+  secondaires (`@scure/bip39`, `qrcode`, `zod`).
+
+**Reporté** (faible priorité, non bloquant)
+
+- Page publique « Comment Nodea protège tes données » basée sur le
+  threat model d'Auth-Spec — différée jusqu'à ce que le projet ait
+  un site / blog où la publier.
+
+**Critère de sortie atteint** : la doc et le code décrivent
+exclusivement le flow OPAQUE + multi-facteur. Aucun chemin
+d'authentification legacy n'est encore mentionné comme actif. Les
+deps crypto sont versionnées + auditées + documentées.
 
 ---
 
