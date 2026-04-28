@@ -94,6 +94,12 @@ export default function ReviewWizard({
   const completed = useMemo(() => {
     const set = new Set<number>();
     STEPS.forEach((s, i) => {
+      // Intro steps don't persist anything — treat them as always
+      // complete so the StepNav rail doesn't paint them as missing.
+      if (s.kind === 'intro') {
+        set.add(i);
+        return;
+      }
       if (
         isFilled(
           s,
@@ -179,14 +185,15 @@ export default function ReviewWizard({
           <h1 className="mt-2 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
             {step.title}
           </h1>
-          {step.subtitle ? (
-            <p className="mt-2 text-[14px] leading-[1.55] text-ink-soft">
-              {step.subtitle}
-            </p>
-          ) : null}
         </header>
 
         <StepNav index={index} onJump={goto} completed={completed} />
+
+        {step.subtitle ? (
+          <p className="mt-5 text-[14px] leading-[1.55] text-ink-soft">
+            {step.subtitle}
+          </p>
+        ) : null}
 
         <section className="mt-7">
           <SectionForm step={step} value={value} onChange={onChangeValue} />
@@ -208,19 +215,21 @@ export default function ReviewWizard({
           <span className="flex-1" />
           {!isLast ? (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => goto(index + 1)}
-              >
-                Sauter
-              </Button>
+              {step.kind !== 'intro' ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => goto(index + 1)}
+                >
+                  Sauter
+                </Button>
+              ) : null}
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => goto(index + 1)}
               >
-                Suivant →
+                {step.kind === 'intro' ? 'Commencer →' : 'Suivant →'}
               </Button>
             </>
           ) : (

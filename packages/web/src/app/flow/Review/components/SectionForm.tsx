@@ -1,8 +1,7 @@
 import Input from '@/ui/atoms/dirk/Input';
 import Textarea from '@/ui/atoms/dirk/Textarea';
-import type { Step } from '../config/steps';
+import type { MixedFieldType, MixedKeyLabel, Step } from '../config/steps';
 import StringListEditor from './StringListEditor';
-import YearImageStep from './YearImageStep';
 
 interface SectionFormProps {
   step: Step;
@@ -10,24 +9,39 @@ interface SectionFormProps {
   onChange: (next: unknown) => void;
 }
 
-const FIELD_LABEL_CLASS =
-  'mb-1 block text-[12px] font-medium text-muted';
+const FIELD_LABEL_CLASS = 'mb-1 block text-[12px] font-medium text-muted';
+const FIELD_HINT_CLASS = 'mt-1 text-[11px] italic text-muted';
 
 /**
  * Type-driven renderer for a single step. Picks the editor based on
  * `step.kind` — the Wizard stays declarative.
+ *
+ * `intro` steps render their welcome body and do not touch the
+ * payload; the Wizard's « Suivant → » button is the only way out.
  */
 export default function SectionForm({ step, value, onChange }: SectionFormProps) {
   switch (step.kind) {
+    case 'intro':
+      return (
+        <div className="space-y-4 text-[15px] leading-[1.65] text-ink-soft">
+          {step.body.map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </div>
+      );
+
     case 'textarea':
       return (
-        <Textarea
-          value={typeof value === 'string' ? value : ''}
-          onChange={(e) => onChange(e.target.value)}
-          {...(step.placeholder ? { placeholder: step.placeholder } : {})}
-          rows={8}
-          minHeightPx={180}
-        />
+        <div>
+          <Textarea
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+            {...(step.placeholder ? { placeholder: step.placeholder } : {})}
+            rows={8}
+            minHeightPx={180}
+          />
+          {step.help ? <p className={FIELD_HINT_CLASS}>{step.help}</p> : null}
+        </div>
       );
 
     case 'string_list': {
@@ -54,6 +68,7 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
                 rows={2}
                 minHeightPx={64}
               />
+              {f.hint ? <p className={FIELD_HINT_CLASS}>{f.hint}</p> : null}
             </label>
           ))}
         </div>
@@ -73,6 +88,7 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
                   value={list}
                   onChange={(next) => onChange({ ...obj, [f.key]: next })}
                 />
+                {f.hint ? <p className={FIELD_HINT_CLASS}>{f.hint}</p> : null}
               </div>
             );
           })}
@@ -80,87 +96,69 @@ export default function SectionForm({ step, value, onChange }: SectionFormProps)
       );
     }
 
-    case 'closing_last': {
-      const obj = (value ?? {}) as { book_title?: string; three_words?: string[] };
+    case 'keyed_mixed': {
+      const obj = (value ?? {}) as Record<string, unknown>;
       return (
         <div className="space-y-5">
-          <label className="block">
-            <span className={FIELD_LABEL_CLASS}>
-              Si cette année avait été un livre, son titre serait…
-            </span>
-            <Input
-              type="text"
-              value={obj.book_title ?? ''}
-              onChange={(e) => onChange({ ...obj, book_title: e.target.value })}
+          {step.fields.map((f) => (
+            <MixedField
+              key={f.key}
+              field={f}
+              value={obj[f.key]}
+              onChange={(next) => onChange({ ...obj, [f.key]: next })}
             />
-          </label>
-          <div>
-            <p className={FIELD_LABEL_CLASS}>Trois mots pour la résumer</p>
-            <StringListEditor
-              value={Array.isArray(obj.three_words) ? obj.three_words : []}
-              onChange={(next) => onChange({ ...obj, three_words: next })}
-              placeholder="Un mot…"
-            />
-          </div>
+          ))}
         </div>
       );
     }
-
-    case 'closing_final': {
-      const obj = (value ?? {}) as {
-        letter_to_self?: string;
-        commitment?: string;
-        signature?: string;
-        date?: string;
-      };
-      return (
-        <div className="space-y-4">
-          <label className="block">
-            <span className={FIELD_LABEL_CLASS}>Lettre à moi-même</span>
-            <Textarea
-              value={obj.letter_to_self ?? ''}
-              onChange={(e) => onChange({ ...obj, letter_to_self: e.target.value })}
-              rows={6}
-              minHeightPx={140}
-            />
-          </label>
-          <label className="block">
-            <span className={FIELD_LABEL_CLASS}>Mon engagement</span>
-            <Textarea
-              value={obj.commitment ?? ''}
-              onChange={(e) => onChange({ ...obj, commitment: e.target.value })}
-              rows={3}
-              minHeightPx={80}
-            />
-          </label>
-          <div className="flex flex-wrap gap-3">
-            <label className="block flex-1 min-w-40">
-              <span className={FIELD_LABEL_CLASS}>Signature</span>
-              <Input
-                type="text"
-                value={obj.signature ?? ''}
-                onChange={(e) => onChange({ ...obj, signature: e.target.value })}
-              />
-            </label>
-            <label className="block flex-1 min-w-40">
-              <span className={FIELD_LABEL_CLASS}>Date</span>
-              <Input
-                type="date"
-                value={obj.date ?? ''}
-                onChange={(e) => onChange({ ...obj, date: e.target.value })}
-              />
-            </label>
-          </div>
-        </div>
-      );
-    }
-
-    case 'year_image':
-      return (
-        <YearImageStep
-          value={typeof value === 'string' ? value : undefined}
-          onChange={(next) => onChange(next)}
-        />
-      );
   }
+}
+
+interface MixedFieldProps {
+  field: MixedKeyLabel;
+  value: unknown;
+  onChange: (next: unknown) => void;
+}
+
+function MixedField({ field, value, onChange }: MixedFieldProps) {
+  return (
+    <div>
+      <label className="block">
+        <span className={FIELD_LABEL_CLASS}>{field.label}</span>
+        <MixedEditor type={field.type} value={value} onChange={onChange} />
+      </label>
+      {field.hint ? <p className={FIELD_HINT_CLASS}>{field.hint}</p> : null}
+    </div>
+  );
+}
+
+interface MixedEditorProps {
+  type: MixedFieldType;
+  value: unknown;
+  onChange: (next: unknown) => void;
+}
+
+function MixedEditor({ type, value, onChange }: MixedEditorProps) {
+  if (type === 'list') {
+    const list = Array.isArray(value) ? (value as string[]) : [];
+    return <StringListEditor value={list} onChange={(next) => onChange(next)} />;
+  }
+  if (type === 'textarea') {
+    return (
+      <Textarea
+        value={typeof value === 'string' ? value : ''}
+        onChange={(e) => onChange(e.target.value)}
+        rows={4}
+        minHeightPx={100}
+      />
+    );
+  }
+  // 'text' or 'date'
+  return (
+    <Input
+      type={type === 'date' ? 'date' : 'text'}
+      value={typeof value === 'string' ? value : ''}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
 }

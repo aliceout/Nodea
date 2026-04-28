@@ -16,23 +16,10 @@ interface StepNavProps {
  */
 export default function StepNav({ index, onJump, completed }: StepNavProps) {
   const total = STEPS.length;
-  const progress = Math.round(((index + 1) / total) * 100);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-2">
-          <div
-            className="h-full bg-accent transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="text-[11px] tabular-nums text-muted">
-          {index + 1} / {total}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap gap-1">
+    <div className="flex items-center gap-3">
+      <div className="flex flex-1 flex-wrap gap-1">
         {STEPS.map((s, i) => {
           const done = completed.has(i);
           const active = i === index;
@@ -57,6 +44,9 @@ export default function StepNav({ index, onJump, completed }: StepNavProps) {
           );
         })}
       </div>
+      <span className="shrink-0 text-[11px] tabular-nums text-muted">
+        {index + 1} / {total}
+      </span>
     </div>
   );
 }
