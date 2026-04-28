@@ -80,13 +80,13 @@ const markdownComponents: Components = {
     </h3>
   ),
   p: ({ children }) => (
-    <p className="mb-3 text-[15.5px] leading-[1.65] text-ink-soft last:mb-0">
+    <p className="mb-3 text-[14.5px] leading-[1.65] text-ink-soft last:mb-0">
       {children}
     </p>
   ),
   ul: ({ children }) => <ul className="my-4 space-y-2">{children}</ul>,
   ol: ({ children }) => (
-    <ol className="my-4 list-decimal space-y-2 pl-6 text-[15.5px] leading-[1.65] text-ink-soft">
+    <ol className="my-4 list-decimal space-y-2 pl-6 text-[14.5px] leading-[1.65] text-ink-soft">
       {children}
     </ol>
   ),
@@ -102,7 +102,7 @@ const markdownComponents: Components = {
     return (
       <li
         {...props}
-        className="flex gap-2.5 text-[15.5px] leading-[1.65] text-ink-soft"
+        className="flex gap-2.5 text-[14.5px] leading-[1.65] text-ink-soft"
       >
         <span
           aria-hidden="true"
