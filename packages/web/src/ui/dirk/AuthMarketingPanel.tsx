@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 /**
@@ -49,7 +50,7 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
         <div className="space-y-4">{children}</div>
       </div>
 
-      <div className="flex gap-3.5 text-[12px] text-muted">
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12px] text-muted">
         <span>Chiffré côté client</span>
         <span>·</span>
         {/* « Open-source » is a claim, so link it to the actual code
@@ -74,6 +75,17 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
         </a>
         <span>·</span>
         <span>Auto-hébergeable</span>
+        <span>·</span>
+        {/* Public docs entry — accent-colored to read as clickable,
+            no arrow icon (it's an internal SPA route, not an
+            external link). The footer wraps to a second line on
+            narrower viewports thanks to `flex-wrap` + `gap-y-1`. */}
+        <Link
+          to="/docs"
+          className="cursor-pointer text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
+        >
+          Voir comment Nodea protège mes données
+        </Link>
       </div>
     </aside>
   );
