@@ -27,6 +27,7 @@ import {
 import { moodClient } from '@/core/api/modules/mood';
 import { passageClient } from '@/core/api/modules/passage';
 import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
+import { pickJournalPrompt } from '@/app/flow/Journal/prompts';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/journal-markdown';
 import {
   useNodeaStore,
@@ -694,6 +695,15 @@ function JournalBody({ onClose }: JournalBodyProps) {
 
   const isEdit = editing !== null;
 
+  // Pick the day's prompt once per Composer mount — using
+  // `useMemo` (not a fresh call per render) keeps the placeholder
+  // stable while the user types. Edit flows reuse the canonical
+  // default since the surface is never empty there anyway.
+  const prompt = useMemo(
+    () => (isEdit ? undefined : pickJournalPrompt()),
+    [isEdit],
+  );
+
   // Auto-load any draft sitting in localStorage as soon as it
   // surfaces from `useJournalDraft`. Skipped when editing or when
   // the user has already typed something (we don't want to clobber
@@ -832,6 +842,7 @@ function JournalBody({ onClose }: JournalBodyProps) {
         disabled={submitting}
         mode={editorMode}
         onModeChange={setEditorMode}
+        {...(prompt ? { placeholder: prompt } : {})}
       />
     </div>
     <Footer
@@ -2271,6 +2282,11 @@ interface MarkdownEditorProps {
    * has a lot of fields above and a fixed-height modal) tune the
    * editor to fill the available space. */
   minHeightPx?: number;
+  /** Placeholder shown when the surface is empty. Both modes use
+   * the same string — visual mode wires it via a CSS pseudo on
+   * the contentEditable, Markdown mode via the native textarea
+   * placeholder attribute. */
+  placeholder?: string;
 }
 
 /**
@@ -2306,6 +2322,7 @@ function MarkdownEditor({
   mode = 'visual',
   onModeChange,
   minHeightPx = 180,
+  placeholder = 'Ce qui te traverse aujourd’hui — au long, sans contrainte.',
 }: MarkdownEditorProps) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const ceRef = useRef<HTMLDivElement | null>(null);
@@ -2500,7 +2517,7 @@ function MarkdownEditor({
           role="textbox"
           aria-multiline="true"
           aria-label="Contenu de l’entrée"
-          data-placeholder="Ce qui te traverse aujourd’hui — au long, sans contrainte."
+          data-placeholder={placeholder}
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}
           onPaste={handleVisualPaste}
@@ -2517,7 +2534,7 @@ function MarkdownEditor({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleTextareaKeyDown}
-          placeholder="Ce qui te traverse aujourd’hui — au long, sans contrainte."
+          placeholder={placeholder}
           rows={8}
           disabled={disabled}
           style={{ minHeight: `${minHeightPx}px` }}
