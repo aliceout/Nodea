@@ -56,40 +56,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 
 Trois étages, deux blobs structurels par utilisateur·ice. Aucune clé n'apparaît jamais en clair côté serveur.
 
-```
-Password OPAQUE                                   Passkey PRF
-     │                                                 │
-     │ OPAQUE finishLogin                              │ navigator.credentials.get
-     ▼                                                 ▼
-  export_key  ──HKDF("nodea:wrap-kek")─┐    prf_output  ──HKDF("nodea:wrap-kek")─┐
-                                       │                                         │
-                                       ▼                                         ▼
-                                wk_password                              wk_passkey_<id>
-                                       │                                         │
-                                       │ AES-GCM-decrypt                         │ AES-GCM-decrypt
-                                       ▼                                         ▼
-                              ┌────────────────────────────┐
-                              │  KEK  (32 bytes, client)   │
-                              └────────────────────────────┘
-                                            │
-                                            │ HKDF("nodea:wrap-main")
-                                            ▼
-                                     wk_main
-                                            │
-                                            │ AES-GCM-decrypt(wrapped_main_key)
-                                            ▼
-                              ┌────────────────────────────┐
-                              │  main_key  (32 bytes)      │
-                              └────────────────────────────┘
-                                            │
-                                  ┌─────────┴─────────┐
-                                  │ HKDF              │ HKDF
-                                  │ "nodea:aes"       │ "nodea:hmac"
-                                  ▼                   ▼
-                              aes_main_key       hmac_main_key
-                              (chiffrement       (guards
-                               des entrées)      d'intégrité)
-```
+<aside class="docs-diagram-key-hierarchy"></aside>
 
 ### Ce qui rotate à quel moment
 
@@ -123,46 +90,7 @@ Aucune autre construction n'est autorisée dans le code applicatif — toute exc
 
 ### OPAQUE en deux étapes
 
-```
-Client                                          Server
-  │                                                │
-  │  client.startLogin(password)                   │
-  │      → { startLoginRequest, clientLoginState } │
-  │                                                │
-  │  ──────── POST /auth/login/start ─────────▶    │
-  │           { email, startLoginRequest }         │
-  │                                                │
-  │           server.startLogin({ identifier,      │
-  │             registrationRecord }) ─────────────│
-  │           pas de match → registrationRecord    │
-  │           = null (anti-enum, réponse syntaxi-  │
-  │           quement valide mais cryptographique- │
-  │           ment morte)                          │
-  │                                                │
-  │  ◀──────── { loginResponse, loginToken } ──────│
-  │                                                │
-  │  client.finishLogin({ password, ... })         │
-  │      → finishLoginRequest, exportKey           │
-  │  // exportKey n'existe que côté client         │
-  │                                                │
-  │  ──────── POST /auth/login/finish ─────────▶   │
-  │           { loginToken, finishLoginRequest }   │
-  │                                                │
-  │           server.finishLogin → match ou pas    │
-  │           gate email_verified_at IS NOT NULL   │
-  │           insert sessions row, set cookie      │
-  │                                                │
-  │  ◀──────── 200 + Set-Cookie + wrap blobs ──────│
-  │                                                │
-  │  HKDF(exportKey, "nodea:wrap-kek")             │
-  │      → AES-GCM-decrypt(wrapped_kek_password)   │
-  │      → KEK                                     │
-  │  HKDF(KEK, "nodea:wrap-main")                  │
-  │      → AES-GCM-decrypt(wrapped_main_key)       │
-  │      → main_key                                │
-  │  HKDF(main_key, ...) → aes_main + hmac_main    │
-  │                                                │
-```
+<aside class="docs-diagram-opaque-flow"></aside>
 
 Ce qui transite : le `startLoginRequest` (un point sur la courbe Ristretto), la réponse OPAQUE, le `finishLoginRequest`. **Jamais le password en clair, jamais l'`exportKey`, jamais la KEK ou la main key.** Le serveur ne peut pas reconstruire le password à partir des messages capturés.
 

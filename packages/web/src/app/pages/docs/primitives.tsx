@@ -6,6 +6,9 @@ import rehypeSlug from 'rehype-slug';
 import GithubSlugger from 'github-slugger';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
+import KeyHierarchyDiagram from './diagrams/KeyHierarchyDiagram';
+import OpaqueFlowDiagram from './diagrams/OpaqueFlowDiagram';
+
 /**
  * Markdown rendering primitives for the docs tiers.
  *
@@ -198,10 +201,11 @@ const markdownComponents: Components = {
     <strong className="font-semibold text-ink">{children}</strong>
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
-  // Custom block: raw `<aside class="docs-hint">…</aside>` in the
-  // markdown source becomes a styled hint card pointing at the next
-  // tab. `rehype-raw` is what makes this `aside` reach us as an
-  // actual element rather than escaped text.
+  // Custom blocks. `rehype-raw` lets a `<aside class="X">` slip
+  // through the markdown source untouched ; we switch on the
+  // class here to render either a styled hint card or an inline
+  // SVG diagram. Unknown classes fall back to a vanilla `aside`
+  // so future custom blocks aren't silently dropped.
   aside: ({ children, className }) => {
     if (className === 'docs-hint') {
       return (
@@ -209,6 +213,12 @@ const markdownComponents: Components = {
           {children}
         </aside>
       );
+    }
+    if (className === 'docs-diagram-key-hierarchy') {
+      return <KeyHierarchyDiagram />;
+    }
+    if (className === 'docs-diagram-opaque-flow') {
+      return <OpaqueFlowDiagram />;
     }
     return <aside className={className}>{children}</aside>;
   },
