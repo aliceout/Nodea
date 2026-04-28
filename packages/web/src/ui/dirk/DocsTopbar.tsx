@@ -34,7 +34,7 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
   const navigate = useNavigate();
   const isAuthenticated = useNodeaStore(selectIsAuthenticated);
   const target = isAuthenticated ? '/flow/home' : '/login';
-  const ctaLabel = isAuthenticated ? 'Retour à Nodea' : 'Se connecter';
+  const ctaLabel = isAuthenticated ? 'Retour à Nodea' : 'Accéder à Nodea';
 
   function handleCtaClick(e: MouseEvent<HTMLButtonElement>): void {
     e.preventDefault();
@@ -59,12 +59,17 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
           {children ? <div className="hidden sm:block">{children}</div> : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Styled as an `<a>` (not the Button component) so right-
+              click / middle-click / Cmd-click open in a new tab as
+              expected. Visual matches `Button variant="ghost"
+              size="sm"` — the design system already defines the
+              ghost class set. */}
           <a
             href="https://github.com/aliceout/Nodea"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden cursor-pointer items-center gap-1 text-[13px] text-muted underline-offset-2 transition-colors hover:text-ink sm:inline-flex"
+            className="hidden h-8 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md bg-transparent px-3 text-[12px] font-semibold text-muted transition-[background-color,color] duration-150 hover:bg-bg-2 hover:text-ink sm:inline-flex"
           >
             Code source
             <ArrowTopRightOnSquareIcon
