@@ -16,8 +16,9 @@
 > (OPAQUE migration), 3 (recovery code BIP39), 4 (passkey WebAuthn
 > + PRF), 5A-5D (TOTP + stepped MFA + security mode UI),
 > 6 (bypass MFA email 7 jours), 7A (foundation re-auth),
-> **7B (câblage de la matrice sur toutes les routes mutantes +
-> migration front)**. En cours : 7C-D (onboarding + e2e Playwright).
+> 7B (câblage de la matrice + migration front),
+> **7C (onboarding nudges via sidebar tips, design wizard
+> abandonné)**. Optionnelle : 7D (Playwright e2e).
 >
 > **Phase 1 — ✅ livrée**, mais **simplifiée par rapport au design
 > initial** :
@@ -921,14 +922,33 @@ reset destructif.
     bascule visible mais inactive côté backend (l'invite reste
     requise). Le backend "ouvert sans invitation" sera implémenté
     plus tard dans une issue dédiée.
-- Onboarding intégré : étape 5 (TOTP) et étape 6 (Passkey)
-  proposées à l'étape 4. Si les deux sont skippées, on saute
-  directement au modal d'onboarding existant.
+**Sous-phase 7C — Onboarding nudges (✅ livrée, design abandonné →
+remplacé par sidebar tips)**
 
-**Tests**
-- Scénario Playwright end-to-end : register → activate email →
-  set password → save recovery code → enroll TOTP → enroll passkey
-  → login → change mode → use bypass → re-enrollment TOTP.
+Le design original (« étape 5 TOTP + étape 6 Passkey » dans un
+wizard multi-étapes après l'activation email) a été abandonné au
+profit d'une approche plus légère et déjà couverte par le
+`Sidebar` :
+
+- **Recovery code** : warning non dismissable, visible tant que
+  `recoveryCodeSet === false`. Disparaît quand le user a sauvé
+  son code.
+- **Passkey** : tip dismissable, visible tant que
+  `passkeysCount === 0`. Disparaît dès que la première passkey
+  est enrôlée.
+- **TOTP** : tip dismissable, visible tant que
+  `totpEnabled === false`. Disparaît au premier
+  `/auth/totp/enroll/verify` réussi.
+- **Modules** : tip permanent vers la gestion modules.
+
+Chaque tip pointe vers la page dédiée existante (`/recovery-code`,
+`/passkeys`, `/totp`) et l'user y va à son rythme — pas de
+parcours forcé, pas de modal qui interrompt.
+
+**Sous-phase 7D — Test Playwright e2e (non livrée, optionnelle)**
+- Scénario : register → activate email → set password → save
+  recovery code → enroll TOTP → enroll passkey → login → change
+  mode → use bypass → re-enrollment TOTP.
 
 **Critère de sortie** : Settings expose toutes les opérations
 sensibles avec re-auth correcte. Pas de chemin caché qui
