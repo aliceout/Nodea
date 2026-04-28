@@ -49,3 +49,61 @@ export const MfaBypassRequestResponseSchema = z.object({
 export type MfaBypassRequestResponse = z.infer<
   typeof MfaBypassRequestResponseSchema
 >;
+
+/* ============================================================================
+ * `GET /auth/mfa/bypass/confirm?t=<token>` — email-link confirmation
+ *
+ * Returns JSON for the SPA's `/auth/bypass/confirm` route which is
+ * the actual email-link target. Discriminated union so the UI can
+ * render a different state per outcome:
+ *   - `ok` / `already_confirmed`: success panel + countdown.
+ *   - `cancelled` / `consumed` / `expired` / `unknown`: error panel.
+ *
+ * HTTP: 200 for `ok` / `already_confirmed`, 400 for `unknown`
+ * (token malformed or not in DB), 410 for `cancelled` / `consumed` /
+ * `expired` so an HTTP-aware client can distinguish "valid link, just
+ * stale" from "invalid token". The SPA branches on body.status either
+ * way.
+ * ========================================================================== */
+
+export const MfaBypassConfirmResponseSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('ok'),
+    factor: z.enum(['totp', 'passkey']),
+    /** When the bypass becomes applicable at next login (now + 48h). */
+    earliestApplyAt: z.string(),
+  }),
+  z.object({
+    status: z.literal('already_confirmed'),
+    factor: z.enum(['totp', 'passkey']),
+    /** Same value as for `ok`, computed from `confirmedAt + 48h`. */
+    earliestApplyAt: z.string(),
+  }),
+  z.object({ status: z.literal('cancelled') }),
+  z.object({ status: z.literal('consumed') }),
+  z.object({ status: z.literal('expired') }),
+  z.object({ status: z.literal('unknown') }),
+]);
+export type MfaBypassConfirmResponse = z.infer<
+  typeof MfaBypassConfirmResponseSchema
+>;
+
+/* ============================================================================
+ * `GET /auth/mfa/bypass/cancel?t=<token>` — email-link cancellation
+ * ========================================================================== */
+
+export const MfaBypassCancelResponseSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('ok'),
+    factor: z.enum(['totp', 'passkey']),
+  }),
+  z.object({
+    status: z.literal('already_cancelled'),
+    factor: z.enum(['totp', 'passkey']),
+  }),
+  z.object({ status: z.literal('consumed') }),
+  z.object({ status: z.literal('unknown') }),
+]);
+export type MfaBypassCancelResponse = z.infer<
+  typeof MfaBypassCancelResponseSchema
+>;

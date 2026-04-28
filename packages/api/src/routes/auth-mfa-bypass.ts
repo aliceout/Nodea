@@ -1,8 +1,10 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   MfaBypassRequestBodySchema,
+  type MfaBypassCancelResponse,
+  type MfaBypassConfirmResponse,
   type MfaBypassRequestResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
@@ -125,14 +127,14 @@ authMfaBypassRoutes.post(
       consumedAt: null,
     });
 
-    // Email both links. They target the API directly (server-rendered
-    // HTML pages) via the `/api` reverse-proxy prefix — the SPA does
-    // not host the confirm/cancel pages. Vite forwards `/api/*` to the
-    // Hono dev server, and prod nginx mirrors that layout.
+    // Email both links. They target the SPA's `/auth/bypass/{confirm,
+    // cancel}?t=…` routes, which mount a React component that calls
+    // the corresponding API endpoint and renders a styled page with a
+    // countdown — same look as `/totp`, `/passkeys`, `/activate`.
     const config = getConfig();
     const base = (config.WEB_BASE_URL ?? config.WEBAUTHN_ORIGIN).replace(/\/$/, '');
-    const confirmLink = `${base}/api/auth/mfa/bypass/confirm?t=${confirm.token}`;
-    const cancelLink = `${base}/api/auth/mfa/bypass/cancel?t=${cancel.token}`;
+    const confirmLink = `${base}/auth/bypass/confirm?t=${confirm.token}`;
+    const cancelLink = `${base}/auth/bypass/cancel?t=${cancel.token}`;
     const rendered = renderMfaBypassEmail({
       factor,
       confirmLink,
@@ -160,17 +162,17 @@ authMfaBypassRoutes.post(
 
 /* ============================================================================
  * GET /auth/mfa/bypass/confirm?t=… — email-link confirmation
+ *
+ * Returns JSON for the SPA (`/auth/bypass/confirm` route) which is
+ * the actual email-link target. The SPA renders a styled page with
+ * a countdown to `earliestApplyAt`.
  * ========================================================================== */
 
 authMfaBypassRoutes.get('/mfa/bypass/confirm', linkLimiter, async (c) => {
   const token = c.req.query('t');
   if (!token || token.length < 16 || token.length > 256) {
-    return htmlPage(
-      c,
-      'Lien invalide',
-      'Le lien de confirmation est invalide ou tronqué.',
-      400,
-    );
+    const body: MfaBypassConfirmResponse = { status: 'unknown' };
+    return c.json(body, 400);
   }
   const hash = hashBypassToken(token);
   const [request] = await db
@@ -179,45 +181,32 @@ authMfaBypassRoutes.get('/mfa/bypass/confirm', linkLimiter, async (c) => {
     .where(eq(mfaBypassRequests.confirmTokenHash, hash))
     .limit(1);
   if (!request) {
-    return htmlPage(
-      c,
-      'Lien expiré ou inconnu',
-      'Le lien de confirmation est invalide. Tu peux relancer une demande depuis la page de connexion.',
-      404,
-    );
+    const body: MfaBypassConfirmResponse = { status: 'unknown' };
+    return c.json(body, 404);
   }
   const now = new Date();
   if (request.cancelledAt !== null) {
-    return htmlPage(
-      c,
-      'Demande annulée',
-      'Cette demande de récupération a déjà été annulée.',
-      410,
-    );
+    const body: MfaBypassConfirmResponse = { status: 'cancelled' };
+    return c.json(body, 410);
   }
   if (request.consumedAt !== null) {
-    return htmlPage(
-      c,
-      'Demande déjà consommée',
-      'Cette demande de récupération a déjà été appliquée à un login précédent.',
-      410,
-    );
+    const body: MfaBypassConfirmResponse = { status: 'consumed' };
+    return c.json(body, 410);
   }
   if (request.expiresAt < now) {
-    return htmlPage(
-      c,
-      'Demande expirée',
-      'Cette demande a expiré. Relance une demande depuis la page de connexion.',
-      410,
-    );
+    const body: MfaBypassConfirmResponse = { status: 'expired' };
+    return c.json(body, 410);
   }
   if (request.confirmedAt !== null) {
-    return htmlPage(
-      c,
-      'Demande déjà confirmée',
-      `Cette demande est déjà confirmée. Tu pourras te connecter sans ${factorLabel(request.factor)} 48h après ${request.confirmedAt.toISOString()}.`,
-      200,
+    const earliestApply = new Date(
+      request.confirmedAt.getTime() + BYPASS_APPLY_DELAY_MS,
     );
+    const body: MfaBypassConfirmResponse = {
+      status: 'already_confirmed',
+      factor: request.factor,
+      earliestApplyAt: earliestApply.toISOString(),
+    };
+    return c.json(body);
   }
 
   await db
@@ -226,12 +215,12 @@ authMfaBypassRoutes.get('/mfa/bypass/confirm', linkLimiter, async (c) => {
     .where(eq(mfaBypassRequests.id, request.id));
 
   const earliestApply = new Date(now.getTime() + BYPASS_APPLY_DELAY_MS);
-  return htmlPage(
-    c,
-    'Demande validée',
-    `Tu pourras te connecter sans ${factorLabel(request.factor)} à partir du ${earliestApply.toLocaleString('fr-FR')}.`,
-    200,
-  );
+  const body: MfaBypassConfirmResponse = {
+    status: 'ok',
+    factor: request.factor,
+    earliestApplyAt: earliestApply.toISOString(),
+  };
+  return c.json(body);
 });
 
 /* ============================================================================
@@ -241,12 +230,8 @@ authMfaBypassRoutes.get('/mfa/bypass/confirm', linkLimiter, async (c) => {
 authMfaBypassRoutes.get('/mfa/bypass/cancel', linkLimiter, async (c) => {
   const token = c.req.query('t');
   if (!token || token.length < 16 || token.length > 256) {
-    return htmlPage(
-      c,
-      'Lien invalide',
-      'Le lien d’annulation est invalide ou tronqué.',
-      400,
-    );
+    const body: MfaBypassCancelResponse = { status: 'unknown' };
+    return c.json(body, 400);
   }
   const hash = hashBypassToken(token);
   const [request] = await db
@@ -255,23 +240,19 @@ authMfaBypassRoutes.get('/mfa/bypass/cancel', linkLimiter, async (c) => {
     .where(eq(mfaBypassRequests.cancelTokenHash, hash))
     .limit(1);
   if (!request) {
-    return htmlPage(c, 'Lien inconnu', 'Ce lien n’est pas valide.', 404);
+    const body: MfaBypassCancelResponse = { status: 'unknown' };
+    return c.json(body, 404);
   }
   if (request.cancelledAt !== null) {
-    return htmlPage(
-      c,
-      'Déjà annulée',
-      'Cette demande a déjà été annulée.',
-      200,
-    );
+    const body: MfaBypassCancelResponse = {
+      status: 'already_cancelled',
+      factor: request.factor,
+    };
+    return c.json(body);
   }
   if (request.consumedAt !== null) {
-    return htmlPage(
-      c,
-      'Trop tard',
-      'Cette demande a déjà été appliquée — il est trop tard pour l’annuler. Si ce n’est pas toi, va sur la page de connexion et utilise « reset destructif ».',
-      410,
-    );
+    const body: MfaBypassCancelResponse = { status: 'consumed' };
+    return c.json(body, 410);
   }
 
   await db
@@ -279,66 +260,9 @@ authMfaBypassRoutes.get('/mfa/bypass/cancel', linkLimiter, async (c) => {
     .set({ cancelledAt: new Date() })
     .where(eq(mfaBypassRequests.id, request.id));
 
-  return htmlPage(
-    c,
-    'Demande annulée',
-    'La demande de récupération est annulée. Tu peux te reconnecter normalement avec tous tes facteurs habituels.',
-    200,
-  );
+  const body: MfaBypassCancelResponse = {
+    status: 'ok',
+    factor: request.factor,
+  };
+  return c.json(body);
 });
-
-/* ============================================================================
- * Local helpers
- * ========================================================================== */
-
-function factorLabel(factor: 'totp' | 'passkey'): string {
-  return factor === 'totp' ? 'TOTP' : 'passkey';
-}
-
-/**
- * Render a minimal HTML page for the email-link endpoints. The
- * email-click UX shouldn't require the SPA to be loaded; this
- * server-side page works in any browser, even with JS disabled.
- */
-function htmlPage(
-  c: Context,
-  title: string,
-  message: string,
-  status: number,
-): Response {
-  const body = `<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHtml(title)} — Nodea</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #fafaf6; color: #1f1f1c; margin: 0; padding: 48px 24px; min-height: 100vh; box-sizing: border-box; }
-    main { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #e7e7e0; border-radius: 12px; padding: 32px; }
-    h1 { margin: 0 0 16px 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
-    p { margin: 0 0 16px 0; line-height: 1.55; color: #4a4a44; }
-    a { color: #3d5641; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>${escapeHtml(title)}</h1>
-    <p>${escapeHtml(message)}</p>
-    <p><a href="/login">← Retour à la connexion</a></p>
-  </main>
-</body>
-</html>`;
-  // Hono's `c.html` overloads accept a status code as the second
-  // arg; we cast through `unknown` because the union of accepted
-  // status codes is narrower than the `number` we use here.
-  return c.html(body, status as Parameters<Context['html']>[1]);
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}

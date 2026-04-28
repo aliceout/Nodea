@@ -282,7 +282,7 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
     };
   }
 
-  it('confirm flips confirmed_at + returns 200 HTML', async () => {
+  it('confirm flips confirmed_at + returns 200 JSON with status=ok', async () => {
     const { userId, confirmToken } = await createPendingRequest(
       'bypass-confirm@example.com',
     );
@@ -291,7 +291,15 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
       `/auth/mfa/bypass/confirm?t=${confirmToken}`,
     );
     expect(res.status).toBe(200);
-    expect(res.headers.get('content-type')).toContain('text/html');
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const body = (await res.json()) as {
+      status: string;
+      factor?: string;
+      earliestApplyAt?: string;
+    };
+    expect(body.status).toBe('ok');
+    expect(body.factor).toBe('totp');
+    expect(typeof body.earliestApplyAt).toBe('string');
 
     const [row] = await db
       .select()
@@ -300,14 +308,16 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
     expect(row?.confirmedAt).not.toBeNull();
   });
 
-  it('confirm with an unknown token → 404', async () => {
+  it('confirm with an unknown token → 404 + status=unknown', async () => {
     const res = await app.request(
       '/auth/mfa/bypass/confirm?t=not-a-real-token-just-padding-chars-here',
     );
     expect(res.status).toBe(404);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe('unknown');
   });
 
-  it('cancel flips cancelled_at + returns 200 HTML', async () => {
+  it('cancel flips cancelled_at + returns 200 JSON with status=ok', async () => {
     const { userId, cancelToken } = await createPendingRequest(
       'bypass-cancel@example.com',
     );
@@ -316,6 +326,9 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
       `/auth/mfa/bypass/cancel?t=${cancelToken}`,
     );
     expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; factor?: string };
+    expect(body.status).toBe('ok');
+    expect(body.factor).toBe('totp');
 
     const [row] = await db
       .select()
@@ -324,17 +337,19 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
     expect(row?.cancelledAt).not.toBeNull();
   });
 
-  it('confirm a second time (already-confirmed) returns 200 with informative message', async () => {
+  it('confirm a second time → 200 with status=already_confirmed', async () => {
     const { confirmToken } = await createPendingRequest(
       'bypass-double-confirm@example.com',
     );
     const r1 = await app.request(`/auth/mfa/bypass/confirm?t=${confirmToken}`);
     expect(r1.status).toBe(200);
     const r2 = await app.request(`/auth/mfa/bypass/confirm?t=${confirmToken}`);
-    expect(r2.status).toBe(200); // already confirmed → idempotent ack
+    expect(r2.status).toBe(200);
+    const body = (await r2.json()) as { status: string };
+    expect(body.status).toBe('already_confirmed');
   });
 
-  it('confirm AFTER cancel → 410 gone', async () => {
+  it('confirm AFTER cancel → 410 with status=cancelled', async () => {
     const { confirmToken, cancelToken } = await createPendingRequest(
       'bypass-cancel-then-confirm@example.com',
     );
@@ -343,6 +358,8 @@ describe('GET /auth/mfa/bypass/{confirm,cancel}', () => {
       `/auth/mfa/bypass/confirm?t=${confirmToken}`,
     );
     expect(res.status).toBe(410);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe('cancelled');
   });
 });
 
