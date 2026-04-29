@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
 import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal';
 import { nav } from './navigation/Navigation';
 import {
   useNodeaStore,
   selectKeyStatus,
+  selectCurrentModule,
 } from '@/core/store/nodea-store';
 import { useSession } from '@/core/auth/use-session';
 import { usePreferences } from '@/core/preferences/usePreferences';
@@ -25,8 +25,13 @@ import ComposerModal from '@/ui/dirk/ComposerModal';
  * `app/flow/Homepage/Onboarding.tsx`) — no shell-level modal.
  */
 export default function Layout() {
-  const { moduleId } = useParams();
-  const current = moduleId ?? 'home';
+  // The active module lives in the store, not in the URL — see
+  // `flow` slice in `nodea-store.ts` and the popstate listener in
+  // `App.jsx`. URL stays at `/flow` regardless of which module is
+  // active so module-visited metadata never leaks into Nginx /
+  // Pino logs.
+  const current = useNodeaStore(selectCurrentModule);
+  const syncCurrentModule = useNodeaStore((s) => s.syncCurrentModule);
   const keyStatus = useNodeaStore(selectKeyStatus);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const closeComposer = useNodeaStore((s) => s.closeComposer);
@@ -61,12 +66,23 @@ export default function Layout() {
 
   const moduleKnown = useMemo(() => nav.some((t) => t.id === current), [current]);
   const ActiveView = useMemo(() => {
-    return nav.find((t) => t.id === current)?.element ?? null;
+    // Fall back to home's element when the store points at a module
+    // that isn't in the user's enabled set — happens if a module was
+    // disabled while the user was on it. The store correction below
+    // happens in an effect (no setState during render).
+    return (
+      nav.find((t) => t.id === current)?.element ??
+      nav.find((t) => t.id === 'home')?.element ??
+      null
+    );
   }, [current]);
 
-  if (!moduleKnown) {
-    return <Navigate to="/flow/home" replace />;
-  }
+  // Self-heal the store when it points at an unknown / disabled module.
+  // Uses `syncCurrentModule` (no `pushState`) so we don't add a phantom
+  // entry to the back-stack for a fallback the user never asked for.
+  useEffect(() => {
+    if (!moduleKnown) syncCurrentModule('home');
+  }, [moduleKnown, syncCurrentModule]);
 
   return (
     <div className="flex min-h-screen bg-bg text-ink">

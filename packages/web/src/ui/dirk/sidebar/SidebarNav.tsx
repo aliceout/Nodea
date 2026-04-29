@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   BookOpenIcon,
   CalendarIcon,
@@ -10,14 +9,19 @@ import {
   HomeIcon,
 } from '@heroicons/react/24/outline';
 
-import { useNodeaStore, selectModules } from '@/core/store/nodea-store';
+import {
+  useNodeaStore,
+  selectModules,
+  selectCurrentModule,
+  selectLibrarySubview,
+  type ModuleId,
+  type LibrarySubview,
+} from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
-  id: string;
+  id: ModuleId;
   label: string;
-  /** Override the URL — defaults to `/flow/${id}` when omitted. */
-  href?: string;
   /** Heroicon to render before the label. Main items only — sub-items
    * (Library categories) sit under their group eyebrow and stay
    * icon-less for visual hierarchy. */
@@ -37,12 +41,10 @@ const MAIN_ITEMS: NavItem[] = [
 /**
  * Library splits into three lenses on the same data: the books
  * themselves, the highlighted extracts (`reviews.kind === 'quote'`),
- * and the freeform notes (`reviews.kind === 'note'`). All three
- * routes resolve to `/flow/library` with a `?subview=` query param —
- * we don't need a separate router branch since the LibraryPage
- * already conditions its render on the param.
+ * and the freeform notes (`reviews.kind === 'note'`). The active
+ * lens is `librarySubview` in the flow slice — never an URL query
+ * param, so it doesn't leak in server logs.
  */
-type LibrarySubview = 'livres' | 'extraits' | 'notes';
 interface LibrarySubItem {
   subview: LibrarySubview;
   label: string;
@@ -58,9 +60,8 @@ interface SidebarNavProps {
 }
 
 export default function SidebarNav({ onNavigate }: SidebarNavProps) {
-  const { moduleId } = useParams();
-  const [searchParams] = useSearchParams();
-  const current = moduleId ?? 'home';
+  const current = useNodeaStore(selectCurrentModule);
+  const librarySubview = useNodeaStore(selectLibrarySubview);
   const modulesRuntime = useNodeaStore(selectModules);
 
   // Filter by toggle state, but keep the home item always visible.
@@ -73,11 +74,6 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
   const visible = MAIN_ITEMS.filter(
     (item) => item.id === 'home' || enabledIds.has(item.id),
   );
-
-  // The active Library sub-view tracks `?subview=` — defaults to
-  // `livres` when the user lands on `/flow/library` without a query
-  // string, matching the LibraryPage's own default.
-  const librarySubview = (searchParams.get('subview') ?? 'livres') as LibrarySubview;
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -107,15 +103,14 @@ interface SidebarItemProps {
 }
 
 function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
-  const navigate = useNavigate();
-  const href = item.href ?? `/flow/${item.id}`;
+  const setModule = useNodeaStore((s) => s.setModule);
   const Icon = item.icon;
 
   return (
     <button
       type="button"
       onClick={() => {
-        navigate(href);
+        setModule(item.id);
         onNavigate();
       }}
       data-active={active}
@@ -142,7 +137,8 @@ interface LibrarySubNavProps {
 }
 
 function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
-  const navigate = useNavigate();
+  const setModule = useNodeaStore((s) => s.setModule);
+  const setLibrarySubview = useNodeaStore((s) => s.setLibrarySubview);
   return (
     <ul className="ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
       {LIBRARY_SUB_ITEMS.map((sub) => {
@@ -152,7 +148,13 @@ function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
             <button
               type="button"
               onClick={() => {
-                navigate(`/flow/library?subview=${sub.subview}`);
+                // Two-step : ensure we're on Library (no-op if already
+                // there, so no extra history entry), then swap the
+                // lens. Subview is its own slice — switching it
+                // doesn't push history because we don't want each
+                // tab-flip to spawn a back-stack entry.
+                setModule('library');
+                setLibrarySubview(sub.subview);
                 onNavigate();
               }}
               data-active={active}

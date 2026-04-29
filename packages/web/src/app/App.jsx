@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/ui/layout/Layout";
 import ProtectedRoute from "@/core/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/ui/atoms/feedback/ErrorBoundary";
+import { useNodeaStore, isModuleId } from "@/core/store/nodea-store";
 import NotFound from "./pages/NotFound";
 
 // Auth pages are lazy-loaded so their deps (react-hook-form, zod,
@@ -35,9 +36,27 @@ function lazyPage(node) {
 }
 
 function AppWithKeyModal() {
+  // Back/forward navigation listener. The privacy invariant is that
+  // `/flow` is the *only* URL the server ever sees while a user is in
+  // the app — but the browser's history API still tracks navigation
+  // via the per-entry `state` payload, which never leaves the client.
+  // `setModule` in the store writes `{ nodeaModule: id }` into each
+  // pushed entry ; here we read it back on `popstate` and sync the
+  // store so the back button restores the previous module without
+  // changing the URL.
+  useEffect(() => {
+    function handler(e) {
+      const id = e.state?.nodeaModule;
+      const next = isModuleId(id) ? id : "home";
+      useNodeaStore.getState().syncCurrentModule(next);
+    }
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
+
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/flow/home" replace />} />
+      <Route path="/" element={<Navigate to="/flow" replace />} />
       <Route path="/login" element={lazyPage(<Login />)} />
       <Route path="/login/mfa" element={lazyPage(<LoginMfa />)} />
       <Route path="/register" element={lazyPage(<Register />)} />
@@ -52,15 +71,18 @@ function AppWithKeyModal() {
       <Route path="/security-mode" element={lazyPage(<SecurityMode />)} />
       <Route path="/auth/bypass/confirm" element={lazyPage(<BypassConfirm />)} />
       <Route path="/docs" element={lazyPage(<Docs />)} />
-      <Route path="/flow" element={<Navigate to="/flow/home" replace />} />
       <Route
-        path="/flow/:moduleId"
+        path="/flow"
         element={
           <ProtectedRoute>
             <Layout />
           </ProtectedRoute>
         }
       />
+      {/* Catch-all under /flow — old `/flow/<module>` bookmarks land
+          here and get redirected to the canonical `/flow`. The store
+          decides which module to show ; the URL never reveals it. */}
+      <Route path="/flow/*" element={<Navigate to="/flow" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
