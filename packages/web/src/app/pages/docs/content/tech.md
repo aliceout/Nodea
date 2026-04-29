@@ -307,7 +307,7 @@ Pour la transparence totale, voilà ce qui vit dans les autres tables. Pour chaq
 | `password_reset_tokens` (TTL 1h) | **clair** : `id`, `user_id`, `expires_at`, `used_at`<br>**haché** : `token_hash` |
 | `invites` | **clair** : `id`, `email` du destinataire (visible avant son inscription), `created_by`, `expires_at`, `created_at`<br>**haché** : `token_hash` |
 
-#### Préférences chiffrées par user
+#### Configuration utilisateur (1:1 par user)
 
 | Table | Champs |
 |---|---|
