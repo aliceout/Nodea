@@ -280,50 +280,92 @@ Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review,
 
 ### Surface lisible côté serveur — toutes les autres tables
 
-Pour chaque table, voilà **ce qui est lisible avec un simple `SELECT`**. Tout ce qui n'apparaît pas dans ces listes est soit un blob chiffré AES-GCM (inutile sans la clé maîtresse du user), soit un hash SHA-256 (irréversible) — détails en bas de section.
+Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour laquelle il existe en clair plutôt qu'ailleurs. Les colonnes absentes sont chiffrées ou hashées — détails en bas de section.
 
 #### Comptes et identité
 
-| Table | Champs en clair |
-|---|---|
-| `users` (1 par compte) | `id`, `email` (identifiant OPAQUE), `username`, `role` (`'user' \| 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at` |
-| `opaque_records` (1 par user) | `user_id`, `envelope` (registration record OPAQUE — cryptographiquement opaque mais visible) |
+| Table | Champ | Description | Pourquoi |
+|---|---|---|---|
+| `users` | `id` | UUID PK | Identifiant unique référencé en FK par toutes les autres tables (sessions, opaque_records, etc.) |
+| `users` | `email` | Adresse email du compte | Identifiant OPAQUE pour le login + envoi des mails de service (reset, invitations, notifs) |
+| `users` | `username` | Nom d'affichage public | UI uniquement, duplications autorisées (l'identité c'est l'`id`) |
+| `users` | `role` | `'user'` / `'admin'` | Gate les routes admin (créer des invites, supprimer des comptes…) |
+| `users` | `security_mode` | `password_or_passkey` / `always_totp` / `maximum` | Détermine quels facteurs sont requis au login (Auth-Spec §6.1) |
+| `users` | `register_state` | État dans la machine d'inscription multi-étapes | Permet de reprendre l'inscription si l'user ferme l'onglet (pre_register → email_verified → password_set → recovery_set → complete) |
+| `users` | `email_verified_at` | Timestamp d'activation | Le login refuse `403 account_not_activated` si NULL |
+| `users` | `email_changed_at` | Timestamp du dernier change-email | Anchor du cooldown 7 jours entre deux change-email |
+| `users` | `recovery_acknowledged_at` | Timestamp de validation du code de récup | Set quand l'user a coché « j'ai noté mes 12 mots » ; gate la transition `recovery_set` |
+| `users` | `onboarding_status`, `onboarding_version` | État de l'onboarding | Drive le modal de premier login + permet de re-trigger après update du flow |
+| `users` | `created_at`, `updated_at` | Timestamps standard | Audit / debug |
+| `opaque_records` | `user_id` | FK | Lie l'envelope OPAQUE au user |
+| `opaque_records` | `envelope` | Registration record OPAQUE (opaque crypto blob) | Lu au login pour `server.startLogin` ; sans, pas de preuve OPAQUE possible |
 
 #### Sessions et MFA
 
-| Table | Champs en clair |
-|---|---|
-| `sessions` (N par user, expirent) | `id` (token signé), `user_id`, `kind`, timestamps, flags MFA (`mfa_*_verified`, `reauth_*_at`), `pending_webauthn_challenge` (éphémère, TTL 5 min) |
-| `auth_factors` (passkeys, N par user) | `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (étiquette donnée par le user), `created_at` |
-| `mfa_totp` (1 par user) | `user_id`, **`secret`**, `algo`, `digits`, `period`, `enabled_at`, `last_window` |
-| `mfa_totp_recovery_codes` (10 par user) | `id`, `user_id`, `used_at` |
-| `mfa_bypass_requests` | `id`, `user_id`, `factor` (`'totp' \| 'passkey'`), timestamps (confirmation / annulation / consommation / expiration / earliest_apply) |
+| Table | Champ | Description | Pourquoi |
+|---|---|---|---|
+| `sessions` | `id` | Token signé (HMAC `COOKIE_SECRET`) | Valeur du cookie `nodea_session` ; la signature empêche un attaquant de fabriquer un cookie valide |
+| `sessions` | `user_id`, `kind` | FK + classification | `kind` gate quelles routes la session peut atteindre (`full`, `mfa_pending`, `register`, `migrate`) |
+| `sessions` | `expires_at` | TTL | 7j pour `full`, 5min pour `mfa_pending`, 24h pour `register` |
+| `sessions` | `reauth_password_at`, `reauth_passkey_at` | Timestamps de la dernière re-auth fraîche | Gate les actions sensibles via `requireFreshPassword` (5 min de fenêtre) |
+| `sessions` | `mfa_*_verified` (3 flags) | Progression stepped MFA | Sur une session pending : track quels facteurs sont OK ; promotion en `full` quand tous les requis sont à `true` |
+| `sessions` | `pending_webauthn_challenge` | Challenge WebAuthn en cours | Single-use TTL 5 min — anti-replay entre `passkey/options` et `passkey/verify` |
+| `sessions` | `created_at`, `updated_at` | Timestamps standard | Audit, expiration |
+| `auth_factors` | `id`, `user_id`, `kind` | Identité de la passkey | `kind = 'passkey'` (TOTP a sa table dédiée) |
+| `auth_factors` | `credential_id` | ID renvoyé par WebAuthn à l'enrollment | Identifie la passkey lors d'une assertion ultérieure |
+| `auth_factors` | `public_key` | Clé publique de la passkey | Vérifie les signatures WebAuthn |
+| `auth_factors` | `sign_count` | Compteur de signatures | Anti-clone : un compteur qui régresse signale un duplicata de l'authenticator |
+| `auth_factors` | `transports` | `'usb'`, `'nfc'`, `'internal'`… | Hints au navigateur pour les discoverable credentials |
+| `auth_factors` | `prf_supported` | Bool | Détermine si la passkey peut déchiffrer la KEK seule (PRF) ou si l'user devra chaîner un mot de passe |
+| `auth_factors` | `label` | Étiquette donnée par l'user | UI : « iPhone Touch ID », « Yubikey perso »… |
+| `auth_factors` | `created_at` | Date d'enrôlement | Affichée dans la liste des passkeys de l'user |
+| `mfa_totp` | `user_id` | FK | 1:1 par user |
+| `mfa_totp` | **`secret`** | Secret TOTP RFC 6238 (⚠️ en clair) | RFC 6238 EXIGE le secret en clair côté serveur pour vérifier les codes à 6 chiffres ; trade-off assumé (cf. callout ci-dessous) |
+| `mfa_totp` | `algo`, `digits`, `period` | SHA1 / 6 / 30s | Paramètres figés compatibles avec toutes les apps authenticator |
+| `mfa_totp` | `enabled_at` | Timestamp d'activation | Distingue un enrollment en cours (NULL) d'une activation complète |
+| `mfa_totp` | `last_window` | Dernière fenêtre TOTP matchée | Anti-replay : le même code dans la même fenêtre 30s n'est pas accepté deux fois |
+| `mfa_totp_recovery_codes` | `id`, `user_id` | PK + FK | Identité du backup code |
+| `mfa_totp_recovery_codes` | `used_at` | Timestamp ou NULL | Single-use : `UPDATE WHERE used_at IS NULL` lors de la consommation |
+| `mfa_bypass_requests` | `id`, `user_id` | PK + FK | Identité de la requête de bypass |
+| `mfa_bypass_requests` | `factor` | `'totp'` ou `'passkey'` | Quel facteur sera désactivé après le délai 7 jours |
+| `mfa_bypass_requests` | timestamps (`confirmed_at`, `cancelled_at`, `consumed_at`, `expires_at`, `earliest_apply_at`) | Track le cycle de vie | Le bypass devient applicable après `earliest_apply_at` (= confirmation + 7j), est annulé à `cancelled_at` (un login normal défang la requête), consommé à `consumed_at` |
 
-> ⚠️ **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert (le serveur doit pouvoir vérifier les codes à 6 chiffres). Trade-off assumé : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. OPAQUE et PRF restent E2E même serveur compromis.
+> ⚠️ **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert. Trade-off assumé : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. OPAQUE et PRF restent E2E même serveur compromis.
 
 #### Flux email transitoires
 
-| Table | Champs en clair |
-|---|---|
-| `email_verifications` (TTL 10 min) | `id`, `user_id`, `kind`, `attempts`, `expires_at` |
-| `password_reset_tokens` (TTL 1h) | `id`, `user_id`, `expires_at`, `used_at` |
-| `invites` | `id`, `email` du destinataire (visible avant son inscription), `created_by`, `expires_at`, `created_at` |
+| Table | Champ | Description | Pourquoi |
+|---|---|---|---|
+| `email_verifications` | `id`, `user_id`, `kind` | Identité de la demande | `kind = 'register'` ou `'email_change'` — même mécanisme, deux contextes |
+| `email_verifications` | `attempts` | Compteur | Cap à 5 avant invalidation forcée |
+| `email_verifications` | `expires_at` | TTL 10 min | Empêche un token volé de servir indéfiniment |
+| `password_reset_tokens` | `id`, `user_id` | Identité de la demande | PK + FK |
+| `password_reset_tokens` | `expires_at` | TTL 1h | Anti-replay sur token volé |
+| `password_reset_tokens` | `used_at` | Single-use marker | Une demande de reset = un token utilisable une fois |
+| `invites` | `id` | UUID PK | — |
+| `invites` | `email` | Adresse du destinataire (en clair) | Pour envoyer le magic-link **et** matcher strictement à l'inscription (l'invite ne peut être consommée que par cette adresse exacte) |
+| `invites` | `created_by` | FK admin | Audit / révocation côté admin |
+| `invites` | `expires_at`, `created_at` | TTL configurable | — |
 
 #### Configuration utilisateur (1:1 par user)
 
-| Table | Champs en clair |
-|---|---|
-| `modules_config` | `user_id`, `cipher_iv`, `updated_at` |
-| `user_preferences` | `user_id`, `cipher_iv`, `updated_at` |
+| Table | Champ | Description | Pourquoi |
+|---|---|---|---|
+| `modules_config` | `user_id` | PK | 1:1 par user — `requireUser` suffit, pas de guard |
+| `modules_config` | `cipher_iv` | IV AES-GCM | Requis pour déchiffrer le payload |
+| `modules_config` | `updated_at` | Timestamp | Cache invalidation côté client |
+| `user_preferences` | `user_id` | PK | 1:1 par user — `requireUser` suffit, pas de guard |
+| `user_preferences` | `cipher_iv` | IV AES-GCM | Requis pour déchiffrer le payload |
+| `user_preferences` | `updated_at` | Timestamp | Cache invalidation côté client |
 
 Le `payload` de ces deux tables est chiffré (`modules_config` contient le mapping `user → sids` par module ; `user_preferences` contient les réglages UI du user).
 
 #### Données globales d'app
 
-| Table | Champs en clair |
-|---|---|
-| `announcements` | tout — annonces de l'admin lues par tous les users connectés, en clair par construction (c'est le but) |
-| `app_settings` | `key`, `value`, `updated_at` — config globale (ex. `open_registration`) |
+| Table | Champ | Description | Pourquoi |
+|---|---|---|---|
+| `announcements` | tout (id, title, body, active, priority, timestamps, created_by) | Annonces publiques de l'admin | Affichées en tête de la home pour TOUS les users connectés — en clair par construction (pas du contenu user) |
+| `app_settings` | `key`, `value`, `updated_at` | Config globale clé/valeur | Stocke les flags d'app comme `open_registration` (autoriser ou non l'inscription sans invite) |
 
 #### Tables modules (rappel)
 
