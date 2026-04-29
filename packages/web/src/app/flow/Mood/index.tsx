@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ChevronUpIcon,
   PencilSquareIcon,
@@ -6,12 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { type MoodScore } from '@nodea/shared';
 
-import { moodClient } from '@/core/api/modules/mood';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/EmptyHint';
@@ -20,6 +15,12 @@ import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
+import {
+  MoodProvider,
+  useMoodActions,
+  useMoodData,
+  useMoodFilters,
+} from './context';
 import {
   DONUT_ORDER,
   MONTH_LABELS_LONG,
@@ -30,133 +31,62 @@ import {
   SCORE_STROKE,
   SCORE_TONE,
 } from './lib/constants';
-import { formatEntryLabel, rangeFor } from './lib/date-format';
 import {
   buildHeatmap,
   HEATMAP_DAYS_PER_WEEK,
   HEATMAP_WEEKS,
 } from './lib/heatmap';
-import { recordToEntry } from './lib/mappers';
 import {
   computeAverage30d,
   computePatterns,
   formatMoodAvg,
 } from './lib/stats';
-import type {
-  HeatmapCell,
-  LoadState,
-  MonthLabel,
-  MoodEntry,
-} from './lib/types';
+import type { LoadState, MoodEntry } from './lib/types';
 
 /**
  * Mood — Direction K · Sauge.
  *
- * Single detail view (no more tabs): a 30-day note timeline + the
- * latest entries listed in the canonical Mood shape — three
- * positives, a -2..+2 note, an optional "question du jour" answer
- * and an optional free-form comment. Emoji has been dropped per
- * the redesign; old entries that still carry one are read-tolerant
- * via `MoodPayloadSchema.mood_emoji.optional()`.
+ * Single detail view (no more tabs) : a 52 × 7 heatmap of mood
+ * scores + the latest entries listed in the canonical Mood shape —
+ * three positives, a −2..+2 note, an optional « question du jour »
+ * answer and an optional free-form comment. Emoji has been dropped
+ * per the redesign ; old entries that still carry one are
+ * read-tolerant via `MoodPayloadSchema.mood_emoji.optional()`.
  *
- * Data is mocked while the redesign settles — actual wiring to the
- * encrypted `mood_entries` collection happens in a follow-up commit
- * once the UI shape is locked.
+ * Architecture (matches Library / Goals / Journal) :
+ *   - `<MoodProvider>` (`./context.tsx`) owns the page-local state
+ *     — entries, filters (year / month / chart fold), actions.
+ *   - Three hooks (`useMoodData`, `useMoodFilters`, `useMoodActions`)
+ *     expose the slices ; consumers re-render only on the slice
+ *     they read.
+ *   - Sub-components (heatmap, sidebar donut, entry row, year /
+ *     month selectors) keep their prop API for now — Steps 3 & 4
+ *     of the refacto roadmap will migrate them to read directly
+ *     from the contexts.
+ *   - Pure helpers in `lib/` (mappers, date-format, heatmap, stats)
+ *     carry the Vitest coverage.
  */
 export default function MoodPage() {
+  return (
+    <MoodProvider>
+      <MoodView />
+    </MoodProvider>
+  );
+}
+
+/** Thin shell that pulls state from the three Mood contexts and
+ *  hands it down as props to the still-prop-driven sub-components.
+ *  The inner views are migrated to direct context reads in the
+ *  next refacto step. */
+function MoodView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['mood']?.moduleUserId ?? null;
-  const moodVersion = useNodeaStore((s) => s.moodVersion);
+  const { entries, load } = useMoodData();
+  const { year, month, chartCollapsed, setYear, setMonth, toggleChart } =
+    useMoodFilters();
+  const { editEntry, deleteEntry } = useMoodActions();
 
-  // `null` ("En cours") is the default — rolling 52 weeks ending
-  // today, mirroring GitHub's landing view. A specific year flips to
-  // calendar mode (full year for past years, Jan 1 → today for the
-  // current year).
-  const [year, setYear] = useState<number | null>(null);
-  const [month, setMonth] = useState<number | null>(null);
-  const [load, setLoad] = useState<LoadState>({ status: 'idle' });
-
-  // Reset month when switching years so a stale "Mars" filter
-  // doesn't silently empty the list when jumping into a year
-  // where that month has no entries yet.
-  function handleYearChange(next: number | null): void {
-    setYear(next);
-    setMonth(null);
-  }
-
-  useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
-    let cancelled = false;
-    setLoad({ status: 'loading' });
-    moodClient
-      .list(moduleUserId, mainKey)
-      .then((records) => {
-        if (cancelled) return;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const entries = records
-          .map((r) => recordToEntry(r, today))
-          // Newest first — the EntryRow list reads top-down.
-          .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
-        setLoad({ status: 'ready', entries });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : 'Erreur lors du chargement des entrées Mood.';
-        setLoad({ status: 'error', message });
-      });
-    return () => {
-      cancelled = true;
-    };
-    // `moodVersion` is bumped by the Composer's MoodBody after a
-    // successful create — including it here re-runs the fetch so a
-    // newly saved mood entry shows up without a page reload.
-  }, [mainKey, moduleUserId, moodVersion]);
-
-  const totalEntries = load.status === 'ready' ? load.entries.length : 0;
-  const sideEntries: ReadonlyArray<MoodEntry> =
-    load.status === 'ready' ? load.entries : EMPTY_ENTRIES;
-  const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
-
-  function handleEdit(entry: MoodEntry): void {
-    openComposer('mood', {
-      type: 'mood',
-      id: entry.id,
-      payload: {
-        date: entry.dateIso,
-        mood_score: entry.score,
-        mood_emoji: '',
-        positive1: entry.positives[0],
-        positive2: entry.positives[1],
-        positive3: entry.positives[2],
-        comment: entry.comment ?? '',
-        ...(entry.question ? { question: entry.question } : {}),
-        ...(entry.answer ? { answer: entry.answer } : {}),
-      },
-    });
-  }
-
-  async function handleDelete(entry: MoodEntry): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    if (!window.confirm(`Supprimer l’entrée du ${entry.date} ?`)) return;
-    const previous = load;
-    setLoad((prev) =>
-      prev.status === 'ready'
-        ? { status: 'ready', entries: prev.entries.filter((e) => e.id !== entry.id) }
-        : prev,
-    );
-    try {
-      await moodClient.remove(moduleUserId, mainKey, entry.id);
-      bumpMoodVersion();
-    } catch (err) {
-      setLoad(previous);
-      if (import.meta.env.DEV) console.warn('mood: delete failed', err);
-    }
-  }
+  const totalEntries = entries.length;
 
   return (
     <ModuleShell
@@ -170,22 +100,22 @@ export default function MoodPage() {
           </Button>
         </Topbar>
       }
-      side={<SideColumn entries={sideEntries} />}
+      side={<SideColumn entries={entries} />}
     >
       <PrimaryColumn
         load={load}
         year={year}
-        onYearChange={handleYearChange}
+        onYearChange={setYear}
         month={month}
         onMonthChange={setMonth}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        chartCollapsed={chartCollapsed}
+        onToggleChart={toggleChart}
+        onEdit={editEntry}
+        onDelete={deleteEntry}
       />
     </ModuleShell>
   );
 }
-
-const EMPTY_ENTRIES: ReadonlyArray<MoodEntry> = [];
 
 interface PrimaryColumnProps {
   load: LoadState;
@@ -193,6 +123,8 @@ interface PrimaryColumnProps {
   onYearChange: (next: number | null) => void;
   month: number | null;
   onMonthChange: (next: number | null) => void;
+  chartCollapsed: boolean;
+  onToggleChart: () => void;
   onEdit: (entry: MoodEntry) => void;
   onDelete: (entry: MoodEntry) => void | Promise<void>;
 }
@@ -203,45 +135,13 @@ function PrimaryColumn({
   onYearChange,
   month,
   onMonthChange,
+  chartCollapsed,
+  onToggleChart,
   onEdit,
   onDelete,
 }: PrimaryColumnProps) {
-  // Whether the frise (chart + legend) is folded away. The header
-  // row + entries list stay visible either way; the toggle just
-  // reclaims vertical space when the user wants to scroll through
-  // many entries without the sticky chart eating half the viewport.
-  const [chartCollapsed, setChartCollapsed] = useState(false);
-  const entries: ReadonlyArray<MoodEntry> =
-    load.status === 'ready' ? load.entries : EMPTY_ENTRIES;
-
-  // Years available in the dataset, sorted descending. Falls back to
-  // the current year if the entries collection is empty so the
-  // selector never goes blank.
-  const availableYears = useMemo<number[]>(() => {
-    const set = new Set<number>(entries.map((e) => Number(e.dateIso.slice(0, 4))));
-    if (set.size === 0) set.add(new Date().getFullYear());
-    return Array.from(set).sort((a, b) => b - a);
-  }, [entries]);
-
-  // Date range to filter the entries list against. Mirrors the
-  // frise's `rangeFor()` (`dataEnd`, not `end` — for the current
-  // year the frise visually extends to Dec 31 but data stops at
-  // today, and the entries list should match the data, not the
-  // visual extent).
-  const filtered = useMemo<MoodEntry[]>(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const { start, dataEnd } = rangeFor(year, today);
-    const startTime = start.getTime();
-    const dataEndTime = dataEnd.getTime();
-    return entries.filter((entry) => {
-      const d = new Date(entry.dateIso);
-      const t = d.getTime();
-      if (t < startTime || t > dataEndTime) return false;
-      if (month !== null && d.getMonth() !== month) return false;
-      return true;
-    });
-  }, [entries, year, month]);
+  const { entries, availableYears } = useMoodData();
+  const { filtered } = useMoodFilters();
 
   // Section heading describes the selected range plain-language so
   // a screen reader (and a glance) reads cleanly: "Entrées · En
@@ -294,7 +194,7 @@ function PrimaryColumn({
               accessible while the user scrolls the entries list. */}
           <button
             type="button"
-            onClick={() => setChartCollapsed((prev) => !prev)}
+            onClick={onToggleChart}
             aria-label={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
             title={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
             className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-bg-2 hover:text-ink"

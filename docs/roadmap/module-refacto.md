@@ -227,7 +227,7 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
         `computePatterns`, `signedFormat` + tests
   - 38 tests verts (mappers 9 · date-format 10 · heatmap 7 ·
     stats 12).
-- [ ] **2. context.tsx** — `MoodProvider` + 3 hooks
+- [x] **2. context.tsx** — `MoodProvider` + 3 hooks
 - [ ] **3. components/** — `YearSelector`, `MonthSelector`,
        `SideColumn`, `NoteBadge`
 - [ ] **4. views/** — `PrimaryColumn`, `Chart` (heatmap), `EntryRow`
