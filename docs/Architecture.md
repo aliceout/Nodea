@@ -434,17 +434,22 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   resolver built from the shared schema.
 - **Routing**: URL stays at `/flow` regardless of the active module.
   The active module lives in the `flow` slice (`currentModule: ModuleId`).
-  This is a **privacy invariant** : Nginx access logs, Hono/Pino
-  request logs, browser referrers and bookmarks never reveal which
+  **Privacy invariant — page URL only** : Nginx access logs for page
+  loads, browser referrers and bookmarks no longer reveal which
   module an authenticated user is consulting. `setModule(id)` pushes
   a `history.pushState({ nodeaModule: id }, '', '/flow')` entry so
   the back button still works ; a top-level `popstate` listener
   reads `event.state.nodeaModule` and calls `syncCurrentModule(id)`
   to restore the previous module. Old per-module URLs (`/flow/mood`,
   `?subview=`) are gone ; `/flow/*` is a catch-all redirect to
-  `/flow`. Every module is `React.lazy()` so opening "Mood" for the
-  first time fetches only Mood's code chunk. Per-module
-  `ErrorBoundary`.
+  `/flow`. **Known gap** : the API itself still mounts per-module
+  endpoints (`/mood-entries/records`, `/library-items/records`,
+  etc.), so the operator can correlate Nginx + Pino logs against
+  the `sessions` table to attribute « user U acted on module M at
+  time T ». See [Security.md](./Security.md) invariant 6 for the
+  full picture and the planned `/records` unification fix. Every
+  module is `React.lazy()` so opening "Mood" for the first time
+  fetches only Mood's code chunk. Per-module `ErrorBoundary`.
 
 ### State slices
 

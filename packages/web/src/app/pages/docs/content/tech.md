@@ -1,6 +1,6 @@
 ## Threat model
 
-Cette section liste explicitement contre quoi Nodea protège — et contre quoi non. Tout ce qui suit est testable contre le code et la spec ; les compromis sont assumés en clair plutôt que cachés.
+Cette section liste explicitement contre quoi Nodea protège — et contre quoi non. Tout ce qui suit est testable contre le code et la spec ; les compromis sont assumés en clair plutôt que cachés.
 
 ### Adversaires couverts
 
@@ -12,30 +12,30 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 | Cross-user blob swap | Bidouille DB pour servir le wrap d'un autre utilisateur | AES-GCM auth-tag fail au déchiffrement. | AAD lie chaque blob à `users.id` + facteur (cf. §Hiérarchie des clés). |
 | Brute-force online password | Tentatives répétées sur `/auth/login` | Borné par rate-limit IP + email. | 10/min IP + 20/h email sur les routes login (cf. §Hardening serveur). |
 | Phishing passkey | Faux site Nodea avec WebAuthn | Refusé par origin-binding FIDO. | `WEBAUTHN_RP_ID` lié à l'origin déclaré, navigator.credentials refuse les origines tierces. |
-| Énumération de comptes | Tester si une adresse existe | Réponses indistinguables sur `/register`, `/login`, `/recover-kek`, `/mfa-bypass`, `/reset`. | Anti-enum systématique : blobs aléatoires pour les emails inconnus, timing constant. |
+| Énumération de comptes | Tester si une adresse existe | Réponses indistinguables sur `/register`, `/login`, `/recover-kek`, `/mfa-bypass`, `/reset`. | Anti-enum systématique : blobs aléatoires pour les emails inconnus, timing constant. |
 
 ### Adversaires non couverts
 
 Énoncés en clair pour qu'aucune mise à jour ne prétende les couvrir sans rouvrir la spec.
 
-1. **Serveur compromis avec tampering du bundle JS** — un opérateur malveillant peut servir du JavaScript modifié qui exfiltre le password ou la KEK au moment où le navigateur les manipule. Cette limite est **inhérente à toute application web E2EE** ; on la mitige (SRI, `INTEGRITY.txt`, recommandation auto-hébergement) sans prétendre la neutraliser. Cf. §Intégrité du bundle.
+1. **Serveur compromis avec tampering du bundle JS** — un opérateur malveillant peut servir du JavaScript modifié qui exfiltre le password ou la KEK au moment où le navigateur les manipule. Cette limite est **inhérente à toute application web E2EE** ; on la mitige (SRI, `INTEGRITY.txt`, recommandation auto-hébergement) sans prétendre la neutraliser. Cf. §Intégrité du bundle.
 2. **Malware sur la machine de l'utilisateur·ice** — keylogger, extension malveillante avec accès au DOM, autofill compromis. Aucune défense possible depuis le serveur ou le bundle.
 3. **Coercition (rubber-hose)** — si l'utilisateur·ice est forcé·e de donner password + passkey + TOTP, on perd. Problème physique, pas crypto.
 4. **Side channels fins** — timing attacks sur OPAQUE, fuites par cache, microarchitecture. Hors scope V1.
 5. **Perte simultanée** de password + tous les passkeys + recovery code + accès email — reset destructif uniquement, données perdues. L'utilisateur·ice est prévenu·e à chaque étape de l'inscription.
-6. **Métadonnées résiduelles minimales** — taille des blobs chiffrés, fréquence de connexion, ordre d'insertion physique au niveau WAL Postgres. Le design « surface lisible minimum » a éliminé les liens directs serveur-side (pas de `user_id` ni de timestamps colonnes sur les entrées) ; ce qui reste tient au stockage relationnel lui-même. Cf. §Modèle de données.
+6. **Métadonnées résiduelles minimales** — taille des blobs chiffrés, fréquence de connexion, ordre d'insertion physique au niveau WAL Postgres. Le design « surface lisible minimum » a éliminé les liens directs serveur-side (pas de `user_id` ni de timestamps colonnes sur les entrées) ; ce qui reste tient au stockage relationnel lui-même. Cf. §Modèle de données.
 
 ### Compromis assumés
 
-- **TOTP est un gate de session, pas un gate cryptographique.** Le secret TOTP est stocké en clair côté serveur (RFC 6238 le requiert). Un opérateur serveur qui aurait obtenu le password OPAQUE peut techniquement contourner TOTP. La protection TOTP repose sur l'intégrité du serveur ; OPAQUE et PRF restent E2E même serveur compromis.
+- **TOTP est un gate de session, pas un gate cryptographique.** Le secret TOTP est stocké en clair côté serveur (RFC 6238 le requiert). Un opérateur serveur qui aurait obtenu le password OPAQUE peut techniquement contourner TOTP. La protection TOTP repose sur l'intégrité du serveur ; OPAQUE et PRF restent E2E même serveur compromis.
 - **Mode « Maximum » est un gate UX, pas un Shamir 2-of-2.** Refuser le partage de secret évite l'explosion de complexité. Le mode max augmente la résistance au vol d'appareil et à la session volée, pas au serveur compromis.
-- **OPAQUE n'est pas anti-phishing.** Un faux site peut capturer le password en lançant un OPAQUE register sur son propre serveur. Les passkeys FIDO **sont** anti-phishing (origin-binding) ; on les encourage sans les rendre obligatoires.
+- **OPAQUE n'est pas anti-phishing.** Un faux site peut capturer le password en lançant un OPAQUE register sur son propre serveur. Les passkeys FIDO **sont** anti-phishing (origin-binding) ; on les encourage sans les rendre obligatoires.
 
 ## Primitives cryptographiques
 
 | Usage | Algo | Paramètres exacts | Source |
 |---|---|---|---|
-| Password proof + key export | OPAQUE-3DH | suite OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id ; Argon2 m=64 MiB, t=3, p=4 | RFC 9497, librairie `@serenity-kit/opaque` 1.1.0 (Rust + WASM, audit Cure53) |
+| Password proof + key export | OPAQUE-3DH | suite OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id ; Argon2 m=64 MiB, t=3, p=4 | RFC 9497, librairie `@serenity-kit/opaque` 1.1.0 (Rust + WASM, audit Cure53) |
 | Passkey | WebAuthn level 2 | `userVerification: 'required'`, attestation `'none'`, extension PRF, algos ES256 (-7) + RS256 (-257) | WebAuthn L2, librairie `@simplewebauthn` 13.3.0 |
 | Wrapping key derivation | HKDF-SHA-256 | labels figés ci-dessous | RFC 5869, WebCrypto |
 | Symmetric encryption | AES-256-GCM | clé 256 bits, IV 96 bits aléatoire par chiffrement, tag 128 bits | NIST SP 800-38D, WebCrypto |
@@ -92,17 +92,17 @@ Aucune autre construction n'est autorisée dans le code applicatif — toute exc
 
 <aside class="docs-diagram-opaque-flow"></aside>
 
-Ce qui transite : le `startLoginRequest` (un point sur la courbe Ristretto), la réponse OPAQUE, le `finishLoginRequest`. **Jamais le password en clair, jamais l'`exportKey`, jamais la KEK ou la main key.** Le serveur ne peut pas reconstruire le password à partir des messages capturés.
+Ce qui transite : le `startLoginRequest` (un point sur la courbe Ristretto), la réponse OPAQUE, le `finishLoginRequest`. **Jamais le password en clair, jamais l'`exportKey`, jamais la KEK ou la main key.** Le serveur ne peut pas reconstruire le password à partir des messages capturés.
 
 L'état serveur entre start et finish (`opaque_login_state`) vit en mémoire process, TTL 5 minutes, single-use. Pas d'opportunité de replay.
 
 ### Anti-énumération
 
-Cinq routes peuvent être abusées pour énumérer les comptes ; toutes répondent de manière indistinguable :
+Cinq routes peuvent être abusées pour énumérer les comptes ; toutes répondent de manière indistinguable :
 
 - `/auth/register/finish` — sur invite-bound, l'invite est consommée ou refusée selon que l'email matche le token, jamais selon que le compte existe déjà ailleurs.
 - `/auth/login/start` — un email inconnu reçoit une réponse OPAQUE syntaxiquement valide mais cryptographiquement morte (`finishLogin` côté client retourne `undefined`).
-- `/auth/recover-kek/start` — emails inconnus (ou emails connus sans recovery code) reçoivent des `wrappedKekRecovery` aléatoires de la bonne taille (48 bytes ciphertext + 12 bytes IV) ; le client échoue silencieusement à les unwrap.
+- `/auth/recover-kek/start` — emails inconnus (ou emails connus sans recovery code) reçoivent des `wrappedKekRecovery` aléatoires de la bonne taille (48 bytes ciphertext + 12 bytes IV) ; le client échoue silencieusement à les unwrap.
 - `/auth/mfa-bypass/request` — pendant un `mfa_pending`, la requête de bypass renvoie toujours 200, qu'un `mfa_bypass_request` soit créé en DB ou non.
 - `/auth/request-reset` — toujours 200, qu'un email matche ou non.
 
@@ -110,7 +110,7 @@ Cinq routes peuvent être abusées pour énumérer les comptes ; toutes réponde
 
 ### Inscription
 
-Deux variantes selon `app_settings.open_registration` :
+Deux variantes selon `app_settings.open_registration` :
 
 **Invite-bound** (Bitwarden-style, par défaut) — admin émet `POST /admin/invites { email }` → email envoyé avec lien `/register?invite=<token>` → l'utilisateur·ice clique → form pré-remplit l'email (read-only) → submit consomme l'invite atomiquement (`SELECT … FOR UPDATE`, strict email match) → ligne `users` créée avec `email_verified_at = now()` (le clic sur le lien magique a prouvé le contrôle de l'email).
 
@@ -122,7 +122,7 @@ Dans les deux cas, le client génère localement la `main_key` (32 bytes random)
 
 Cf. flux OPAQUE ci-dessus. Le serveur refuse `403 account_not_activated` si `email_verified_at IS NULL`.
 
-Si `users.security_mode != 'password_or_passkey'`, le `/auth/login/finish` n'émet pas une session `'full'` mais une session `'mfa_pending'` (TTL 5 min) avec les wrap blobs en payload. Le client unwrap localement la KEK + main key pendant que la session est encore pending — `/auth/me` refuse les sessions pending donc aucune route data n'est accessible avant la finalisation MFA (cf. §MFA).
+Si `users.security_mode != 'password_or_passkey'`, le `/auth/login/finish` n'émet pas une session `'full'` mais une session `'mfa_pending'` (TTL 5 min) avec les wrap blobs en payload. Le client unwrap localement la KEK + main key pendant que la session est encore pending — `/auth/me` refuse les sessions pending donc aucune route data n'est accessible avant la finalisation MFA (cf. §MFA).
 
 ### Change password
 
@@ -142,17 +142,17 @@ Non-destructif. L'utilisateur·ice tape ses 12 mots → le client dérive la wra
 
 ### Modes de sécurité
 
-Trois niveaux par utilisateur·ice (`users.security_mode`) :
+Trois niveaux par utilisateur·ice (`users.security_mode`) :
 
 - `password_or_passkey` (défaut) — un facteur unique unlock la session.
 - `always_totp` — TOTP requis après password ou passkey. Activable seulement si TOTP enrôlé.
 - `maximum` — password + passkey PRF + TOTP, les trois requis. Activable seulement si une passkey PRF est enrôlée.
 
-Downgrade auto §6.1 : si l'utilisateur·ice désactive le facteur qui maintient le mode, le mode retombe à `password_or_passkey` dans la même transaction (avec email de notification).
+Downgrade auto §6.1 : si l'utilisateur·ice désactive le facteur qui maintient le mode, le mode retombe à `password_or_passkey` dans la même transaction (avec email de notification).
 
 ### Stepped MFA
 
-Quand `security_mode != 'password_or_passkey'`, le login finish émet une session `'mfa_pending'` au lieu de `'full'`. Les routes `/auth/mfa/totp/verify` et `/auth/mfa/passkey/{options,verify}` consomment des flags sur la pending row. Quand tous les flags requis pour le mode sont à `true`, la pending est promue en `'full'` atomiquement (DELETE + INSERT en transaction via `finalizeMfaSession`).
+Quand `security_mode != 'password_or_passkey'`, le login finish émet une session `'mfa_pending'` au lieu de `'full'`. Les routes `/auth/mfa/totp/verify` et `/auth/mfa/passkey/{options,verify}` consomment des flags sur la pending row. Quand tous les flags requis pour le mode sont à `true`, la pending est promue en `'full'` atomiquement (DELETE + INSERT en transaction via `finalizeMfaSession`).
 
 <aside class="docs-diagram-stepped-mfa"></aside>
 
@@ -160,7 +160,7 @@ Quand `security_mode != 'password_or_passkey'`, le login finish émet une sessio
 
 RFC 6238, paramètres figés (SHA1 / 6 chiffres / 30 s, ±1 fenêtre de skew). Secret 20 bytes random, en clair en DB (le serveur doit pouvoir vérifier — c'est le compromis assumé du protocole).
 
-Anti-replay : la dernière fenêtre matchée est stockée dans `mfa_totp.last_window`, refusant les codes du même créneau réutilisés.
+Anti-replay : la dernière fenêtre matchée est stockée dans `mfa_totp.last_window`, refusant les codes du même créneau réutilisés.
 
 10 backup codes générés à l'enrollment, 130 bits d'entropie chacun, format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX` (base32), hash SHA-256 stocké. Single-use via `UPDATE WHERE used_at IS NULL`.
 
@@ -168,17 +168,17 @@ Anti-replay : la dernière fenêtre matchée est stockée dans `mfa_totp.last_wi
 
 WebAuthn level 2 avec `userVerification: 'required'` (gate côté serveur en plus de la lib). Toute passkey sans gesture (PIN, biométrie, déverrouillage gestionnaire) refusée à l'enrollment.
 
-PRF input v1 : `"nodea:prf-v1"` zero-padding 32 bytes — figé pour ne pas casser les KEK déjà wrappées si on évolue.
+PRF input v1 : `"nodea:prf-v1"` zero-padding 32 bytes — figé pour ne pas casser les KEK déjà wrappées si on évolue.
 
-La KEK est wrappée par credential PRF. L'ajout d'une passkey crée un nouveau `wrapped_kek_passkey_<credId>` ; la suppression supprime la ligne. La main key et la KEK ne sont jamais re-générées dans ces opérations.
+La KEK est wrappée par credential PRF. L'ajout d'une passkey crée un nouveau `wrapped_kek_passkey_<credId>` ; la suppression supprime la ligne. La main key et la KEK ne sont jamais re-générées dans ces opérations.
 
 Signature counter `signCount` vérifié strict côté serveur — un counter qui régresse signale un clone de la passkey (refus + log).
 
 ### Bypass MFA par email
 
-Auth-Spec §7.8. Quand l'utilisateur·ice perd son TOTP (téléphone perdu, app effacée…) et n'a pas de backup code sous la main, il/elle peut demander un bypass via `/auth/mfa-bypass/request`. Le serveur envoie un email avec un lien `/auth/bypass/confirm?t=<token>` ; cliquer démarre un délai de **7 jours** pendant lesquels la requête peut être annulée par n'importe quelle connexion réussie. Après 7 jours, la prochaine connexion consomme le bypass : le facteur perdu est nettoyé (TOTP désactivé + backup codes purgés, ou toutes les passkeys supprimées) et le mode rétrogradé si nécessaire.
+Auth-Spec §7.8. Quand l'utilisateur·ice perd son TOTP (téléphone perdu, app effacée…) et n'a pas de backup code sous la main, il/elle peut demander un bypass via `/auth/mfa-bypass/request`. Le serveur envoie un email avec un lien `/auth/bypass/confirm?t=<token>` ; cliquer démarre un délai de **7 jours** pendant lesquels la requête peut être annulée par n'importe quelle connexion réussie. Après 7 jours, la prochaine connexion consomme le bypass : le facteur perdu est nettoyé (TOTP désactivé + backup codes purgés, ou toutes les passkeys supprimées) et le mode rétrogradé si nécessaire.
 
-Eligibility gate §6.2 : en mode `maximum`, un bypass d'un facteur exige que l'autre facteur soit prouvé dans la session `mfa_pending` avant d'émettre la requête. Sans ça, on perdrait deux facteurs d'un coup → reset destructif.
+Eligibility gate §6.2 : en mode `maximum`, un bypass d'un facteur exige que l'autre facteur soit prouvé dans la session `mfa_pending` avant d'émettre la requête. Sans ça, on perdrait deux facteurs d'un coup → reset destructif.
 
 <aside class="docs-diagram-mfa-bypass"></aside>
 
@@ -196,7 +196,7 @@ Eligibility gate §6.2 : en mode `maximum`, un bypass d'un facteur exige que l'a
 
 ### Rotation systématique sur changement de privilège
 
-La table `sessions` est purgée (`revokeAllUserSessions`) à chaque événement qui change le profil de sécurité du compte :
+La table `sessions` est purgée (`revokeAllUserSessions`) à chaque événement qui change le profil de sécurité du compte :
 
 - `change-password` finish
 - `security-mode-change`
@@ -219,25 +219,25 @@ Toutes les requêtes DB passent par Drizzle (`eq(users.email, value)`, etc.). **
 
 ### Guards HMAC obligatoires sur les mutations
 
-Toute table d'entrée chiffrée (`mood_entries`, `goals_entries`, etc.) requiert un guard HMAC pour UPDATE et DELETE. Le middleware `requireGuard(table)` valide le tuple `(user, sid, guard)` dans une seule passe centralisée. La liste des collections est dans `packages/api/src/collections/registry.ts` — le route factory itère cette liste pour monter les routes ; impossible d'enregistrer une collection sans validation.
+Toute table d'entrée chiffrée (`mood_entries`, `goals_entries`, etc.) requiert un guard HMAC pour UPDATE et DELETE. Le middleware `requireGuard(table)` valide le tuple `(user, sid, guard)` dans une seule passe centralisée. La liste des collections est dans `packages/api/src/collections/registry.ts` — le route factory itère cette liste pour monter les routes ; impossible d'enregistrer une collection sans validation.
 
 ### Rate-limit catalog
 
-22 limiters actifs (cf. [`Security.md §5.1`](https://github.com/aliceout/Nodea/blob/main/docs/Security.md#51-rate-limit-table) pour le tableau exhaustif). Politique implicite par familles :
+22 limiters actifs (cf. [`Security.md §5.1`](https://github.com/aliceout/Nodea/blob/main/docs/Security.md#51-rate-limit-table) pour le tableau exhaustif). Politique implicite par familles :
 
 - **5 minutes** pour les codes courts (TOTP, passkey en stepped-MFA) — borne le brute-force d'un secret 6 chiffres.
 - **15 minutes** pour la gestion sensible (re-auth, security-mode, enroll d'un facteur).
 - **1 heure** pour les actions à coût mailer ou serveur élevé (register, reset, recovery, bypass).
 
-Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`), keyed-IP via `x-forwarded-for` ou `x-real-ip`. Single-instance ; scaling out = swap vers Redis.
+Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`), keyed-IP via `x-forwarded-for` ou `x-real-ip`. Single-instance ; scaling out = swap vers Redis.
 
 ### Pas d'identifiants dans les logs
 
-La politique de logs interdit toute métadonnée identifiante qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs Pino côté API portent un `request_id` + un `user_id` quand pertinent, et l'opération.
+La politique de logs interdit toute métadonnée identifiante qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs Pino côté API portent un `request_id` + un `user_id` quand pertinent, et l'opération.
 
 ### Anti-patterns interdits
 
-Liste partielle (cf. Auth-Spec §14 pour la complète) :
+Liste partielle (cf. Auth-Spec §14 pour la complète) :
 
 - Pas de `window.mainKey` ou équivalent global qui exposerait la clé.
 - Pas de stockage de `guard` ou de tokens sensibles dans `localStorage`.
@@ -247,11 +247,11 @@ Liste partielle (cf. Auth-Spec §14 pour la complète) :
 
 ## Intégrité du bundle
 
-C'est la limite la plus honnête de Nodea : un serveur compromis peut servir du JavaScript modifié qui exfiltre password ou KEK avant qu'ils ne soient utilisés. Inhérent à toute application web E2EE — Bitwarden, Standard Notes, Cryptee partagent la même limite.
+C'est la limite la plus honnête de Nodea : un serveur compromis peut servir du JavaScript modifié qui exfiltre password ou KEK avant qu'ils ne soient utilisés. Inhérent à toute application web E2EE — Bitwarden, Standard Notes, Cryptee partagent la même limite.
 
 ### Mitigations en place
 
-- **Subresource Integrity** sur l'entry chunk — le HTML qui charge le bundle principal contient l'empreinte SHA-384 du fichier ; un navigateur conforme refuse d'exécuter un fichier altéré.
+- **Subresource Integrity** sur l'entry chunk — le HTML qui charge le bundle principal contient l'empreinte SHA-384 du fichier ; un navigateur conforme refuse d'exécuter un fichier altéré.
 - **Manifest `INTEGRITY.txt`** publié à chaque release — empreintes SHA-384 de tous les fichiers du bundle. Un auditeur peut comparer ce que son instance sert avec ce qui est annoncé. Cf. [`Security.md §7`](https://github.com/aliceout/Nodea/blob/main/docs/Security.md#7-the-web-app-supply-chain-limit-must-read).
 
 ### Recommandation
@@ -262,29 +262,29 @@ C'est la limite la plus honnête de Nodea : un serveur compromis peut servir du 
 
 ### Surface lisible côté serveur — minimum strict
 
-Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review, Passage…), le serveur ne voit que le strict minimum nécessaire au routing et à la cryptographie :
+Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review, Passage…), le serveur ne voit que le strict minimum nécessaire au routing et à la cryptographie :
 
 | Champ | Visible serveur | Rôle |
 |---|---|---|
 | `id` | oui | UUID généré côté serveur, sert uniquement de handle pour les routes `/records/:id`. Aucun contenu utilisateur. |
-| `module_user_id` | oui | Sid opaque dérivé client-side. **Seule clé d'accès** aux entrées. Le mapping `user → sids` vit chiffré dans `modules_config` ; le serveur ne sait jamais à qui un sid appartient. |
+| `module_user_id` | oui | Sid opaque dérivé client-side. **Seule clé d'accès** aux entrées. Le mapping `user → sids` vit chiffré dans `modules_config` ; le serveur ne sait jamais à qui un sid appartient. |
 | `cipher_iv` | oui | IV 96 bits aléatoire — requis pour déchiffrer le payload (impossible de le cacher sans casser AES-GCM). |
 | `payload` | oui (chiffré) | JSON chiffré AES-GCM. **Tout le contenu utilisateur**, **plus** les éventuels timestamps applicatifs (`updated_at` etc.) que le module veut conserver. **Jamais déchiffrable côté serveur.** |
 | `guard` | oui (jamais renvoyé en lecture) | HMAC stocké, jeton secret pour les mutations. Calculer un guard valide nécessite la clé maîtresse. |
 
-**Pas de `user_id`** : les entrées ne portent aucune référence directe à `users.id`. Le serveur ne peut donc pas faire `SELECT COUNT(*) FROM mood_entries WHERE user_id = X` — la corrélation user↔data n'existe pas en plain SQL.
+**Pas de `user_id`** : les entrées ne portent aucune référence directe à `users.id`. Le serveur ne peut donc pas faire `SELECT COUNT(*) FROM mood_entries WHERE user_id = X` — la corrélation user↔data n'existe pas en plain SQL.
 
-**Pas de timestamps colonnes** (`created_at`, `updated_at`) : ils leakaient l'activité d'écriture par ligne. Si un module a besoin d'un timestamp (par ex. Goals pour le tri « Récent »), le client le met dans le `payload` chiffré — le serveur n'en voit jamais la valeur.
+**Pas de timestamps colonnes** (`created_at`, `updated_at`) : ils leakaient l'activité d'écriture par ligne. Si un module a besoin d'un timestamp (par ex. Goals pour le tri « Récent »), le client le met dans le `payload` chiffré — le serveur n'en voit jamais la valeur.
 
 ### Conséquences cascade
 
-- **User self-delete** : flow client-driven. Le client décrypte `modules_config` pour récupérer ses sids, énumère ses entrées par sid, calcule les guards, supprime une par une via les routes guard-protected, puis appelle `DELETE /auth/me`.
-- **Admin delete user** : la ligne `users` disparaît + cascade FK sur `modules_config`, `user_preferences`, `sessions`, `opaque_records`. Les entrées dans les tables modules **restent en DB orphelines** — illisibles puisque la clé maîtresse est partie avec le user. Bounded growth, accepté par design.
-- **Reset destructif** : même comportement — les anciennes entrées deviennent orphelines, le user repart avec une nouvelle clé. Les rows existantes sont chiffrées avec une clé perdue, donc inaccessibles.
+- **User self-delete** : flow client-driven. Le client décrypte `modules_config` pour récupérer ses sids, énumère ses entrées par sid, calcule les guards, supprime une par une via les routes guard-protected, puis appelle `DELETE /auth/me`.
+- **Admin delete user** : la ligne `users` disparaît + cascade FK sur `modules_config`, `user_preferences`, `sessions`, `opaque_records`. Les entrées dans les tables modules **restent en DB orphelines** — illisibles puisque la clé maîtresse est partie avec le user. Bounded growth, accepté par design.
+- **Reset destructif** : même comportement — les anciennes entrées deviennent orphelines, le user repart avec une nouvelle clé. Les rows existantes sont chiffrées avec une clé perdue, donc inaccessibles.
 
 ### Surface lisible côté serveur — toutes les autres tables
 
-Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour laquelle il existe en clair plutôt qu'ailleurs. Les colonnes absentes sont chiffrées ou hashées — détails en bas de section.
+Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour laquelle il existe en clair plutôt qu'ailleurs. Les colonnes absentes sont chiffrées ou hashées — détails en bas de section.
 
 #### Comptes et identité
 
@@ -298,43 +298,43 @@ Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour 
 | `users` | `register_state` | État dans la machine d'inscription multi-étapes | Permet de reprendre l'inscription si l'user ferme l'onglet (pre_register → email_verified → password_set → recovery_set → complete) |
 | `users` | `email_verified_at` | Timestamp d'activation | Le login refuse `403 account_not_activated` si NULL |
 | `users` | `email_changed_at` | Timestamp du dernier change-email | Anchor du cooldown 7 jours entre deux change-email |
-| `users` | `recovery_acknowledged_at` | Timestamp de validation du code de récup | Set quand l'user a coché « j'ai noté mes 12 mots » ; gate la transition `recovery_set` |
+| `users` | `recovery_acknowledged_at` | Timestamp de validation du code de récup | Set quand l'user a coché « j'ai noté mes 12 mots » ; gate la transition `recovery_set` |
 | `users` | `onboarding_status`, `onboarding_version` | État de l'onboarding | Drive le modal de premier login + permet de re-trigger après update du flow |
 | `users` | `created_at`, `updated_at` | Timestamps standard | Audit / debug |
 | `opaque_records` | `user_id` | FK | Lie l'envelope OPAQUE au user |
-| `opaque_records` | `envelope` | Registration record OPAQUE (opaque crypto blob) | Lu au login pour `server.startLogin` ; sans, pas de preuve OPAQUE possible |
+| `opaque_records` | `envelope` | Registration record OPAQUE (opaque crypto blob) | Lu au login pour `server.startLogin` ; sans, pas de preuve OPAQUE possible |
 
 #### Sessions et MFA
 
 | Table | Champ | Description | Pourquoi |
 |---|---|---|---|
-| `sessions` | `id` | Token signé (HMAC `COOKIE_SECRET`) | Valeur du cookie `nodea_session` ; la signature empêche un attaquant de fabriquer un cookie valide |
+| `sessions` | `id` | Token signé (HMAC `COOKIE_SECRET`) | Valeur du cookie `nodea_session` ; la signature empêche un attaquant de fabriquer un cookie valide |
 | `sessions` | `user_id`, `kind` | FK + classification | `kind` gate quelles routes la session peut atteindre (`full`, `mfa_pending`, `register`, `migrate`) |
 | `sessions` | `expires_at` | TTL | 7j pour `full`, 5min pour `mfa_pending`, 24h pour `register` |
 | `sessions` | `reauth_password_at`, `reauth_passkey_at` | Timestamps de la dernière re-auth fraîche | Gate les actions sensibles via `requireFreshPassword` (5 min de fenêtre) |
-| `sessions` | `mfa_*_verified` (3 flags) | Progression stepped MFA | Sur une session pending : track quels facteurs sont OK ; promotion en `full` quand tous les requis sont à `true` |
+| `sessions` | `mfa_*_verified` (3 flags) | Progression stepped MFA | Sur une session pending : track quels facteurs sont OK ; promotion en `full` quand tous les requis sont à `true` |
 | `sessions` | `pending_webauthn_challenge` | Challenge WebAuthn en cours | Single-use TTL 5 min — anti-replay entre `passkey/options` et `passkey/verify` |
 | `sessions` | `created_at`, `updated_at` | Timestamps standard | Audit, expiration |
 | `auth_factors` | `id`, `user_id`, `kind` | Identité de la passkey | `kind = 'passkey'` (TOTP a sa table dédiée) |
 | `auth_factors` | `credential_id` | ID renvoyé par WebAuthn à l'enrollment | Identifie la passkey lors d'une assertion ultérieure |
 | `auth_factors` | `public_key` | Clé publique de la passkey | Vérifie les signatures WebAuthn |
-| `auth_factors` | `sign_count` | Compteur de signatures | Anti-clone : un compteur qui régresse signale un duplicata de l'authenticator |
+| `auth_factors` | `sign_count` | Compteur de signatures | Anti-clone : un compteur qui régresse signale un duplicata de l'authenticator |
 | `auth_factors` | `transports` | `'usb'`, `'nfc'`, `'internal'`… | Hints au navigateur pour les discoverable credentials |
 | `auth_factors` | `prf_supported` | Bool | Détermine si la passkey peut déchiffrer la KEK seule (PRF) ou si l'user devra chaîner un mot de passe |
-| `auth_factors` | `label` | Étiquette donnée par l'user | UI : « iPhone Touch ID », « Yubikey perso »… |
+| `auth_factors` | `label` | Étiquette donnée par l'user | UI : « iPhone Touch ID », « Yubikey perso »… |
 | `auth_factors` | `created_at` | Date d'enrôlement | Affichée dans la liste des passkeys de l'user |
 | `mfa_totp` | `user_id` | FK | 1:1 par user |
-| `mfa_totp` | **`secret`** | Secret TOTP RFC 6238 (⚠️ en clair) | RFC 6238 EXIGE le secret en clair côté serveur pour vérifier les codes à 6 chiffres ; trade-off assumé (cf. callout ci-dessous) |
+| `mfa_totp` | **`secret`** | Secret TOTP RFC 6238 (⚠️ en clair) | RFC 6238 EXIGE le secret en clair côté serveur pour vérifier les codes à 6 chiffres ; trade-off assumé (cf. callout ci-dessous) |
 | `mfa_totp` | `algo`, `digits`, `period` | SHA1 / 6 / 30s | Paramètres figés compatibles avec toutes les apps authenticator |
 | `mfa_totp` | `enabled_at` | Timestamp d'activation | Distingue un enrollment en cours (NULL) d'une activation complète |
-| `mfa_totp` | `last_window` | Dernière fenêtre TOTP matchée | Anti-replay : le même code dans la même fenêtre 30s n'est pas accepté deux fois |
+| `mfa_totp` | `last_window` | Dernière fenêtre TOTP matchée | Anti-replay : le même code dans la même fenêtre 30s n'est pas accepté deux fois |
 | `mfa_totp_recovery_codes` | `id`, `user_id` | PK + FK | Identité du backup code |
-| `mfa_totp_recovery_codes` | `used_at` | Timestamp ou NULL | Single-use : `UPDATE WHERE used_at IS NULL` lors de la consommation |
+| `mfa_totp_recovery_codes` | `used_at` | Timestamp ou NULL | Single-use : `UPDATE WHERE used_at IS NULL` lors de la consommation |
 | `mfa_bypass_requests` | `id`, `user_id` | PK + FK | Identité de la requête de bypass |
 | `mfa_bypass_requests` | `factor` | `'totp'` ou `'passkey'` | Quel facteur sera désactivé après le délai 7 jours |
 | `mfa_bypass_requests` | timestamps (`confirmed_at`, `cancelled_at`, `consumed_at`, `expires_at`, `earliest_apply_at`) | Track le cycle de vie | Le bypass devient applicable après `earliest_apply_at` (= confirmation + 7j), est annulé à `cancelled_at` (un login normal défang la requête), consommé à `consumed_at` |
 
-> ⚠️ **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert. Trade-off assumé : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. OPAQUE et PRF restent E2E même serveur compromis.
+> ⚠️ **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert. Trade-off assumé : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. OPAQUE et PRF restent E2E même serveur compromis.
 
 #### Flux email transitoires
 
@@ -362,7 +362,7 @@ Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour 
 | `user_preferences` | `cipher_iv` | IV AES-GCM | Requis pour déchiffrer le payload |
 | `user_preferences` | `updated_at` | Timestamp | Cache invalidation côté client |
 
-Le `payload` de ces deux tables est chiffré (`modules_config` contient le mapping `user → sids` par module ; `user_preferences` contient les réglages UI du user).
+Le `payload` de ces deux tables est chiffré (`modules_config` contient le mapping `user → sids` par module ; `user_preferences` contient les réglages UI du user).
 
 #### Données globales d'app
 
@@ -377,10 +377,10 @@ Le `payload` de ces deux tables est chiffré (`modules_config` contient le mappi
 
 #### Le reste (chiffré ou haché)
 
-Pour la complétude — colonnes absentes des tableaux ci-dessus :
+Pour la complétude — colonnes absentes des tableaux ci-dessus :
 
-- **Blobs chiffrés AES-GCM** (illisibles sans la clé maîtresse) : `users.wrapped_main_key{,_iv}`, `users.wrapped_kek_password{,_iv}`, `users.wrapped_kek_recovery{,_iv}`, `auth_factors.wrapped_kek{,_iv}`, `modules_config.payload`, `user_preferences.payload`.
-- **Hashes SHA-256** (irréversibles, le secret en clair n'est jamais stocké) : `users.recovery_code_hash`, `mfa_totp_recovery_codes.code_hash`, `mfa_bypass_requests.{confirm,cancel}_token_hash`, `email_verifications.code_hash`, `password_reset_tokens.token_hash`, `invites.token_hash`.
+- **Blobs chiffrés AES-GCM** (illisibles sans la clé maîtresse) : `users.wrapped_main_key{,_iv}`, `users.wrapped_kek_password{,_iv}`, `users.wrapped_kek_recovery{,_iv}`, `auth_factors.wrapped_kek{,_iv}`, `modules_config.payload`, `user_preferences.payload`.
+- **Hashes SHA-256** (irréversibles, le secret en clair n'est jamais stocké) : `users.recovery_code_hash`, `mfa_totp_recovery_codes.code_hash`, `mfa_bypass_requests.{confirm,cancel}_token_hash`, `email_verifications.code_hash`, `password_reset_tokens.token_hash`, `invites.token_hash`.
 
 ### Qui peut voir quoi
 
@@ -388,16 +388,16 @@ Trois acteurs possibles avec des privilèges différents. Liste honnête des cap
 
 #### L'équipe Nodea (l'opérateur de l'instance hébergée par nous)
 
-Avec accès SQL direct au serveur de prod, l'équipe peut lire toutes les colonnes en clair listées ci-dessus. Concrètement :
+Avec accès SQL direct au serveur de prod, l'équipe peut lire toutes les colonnes en clair listées ci-dessus. Concrètement :
 
 - **Voir** les emails, usernames, rôles admin/user, mode de sécurité de chaque compte.
-- **Voir** les heures de connexion, la fréquence d'usage agrégée, l'IP des sessions courantes (à travers les logs proxy / API ; pas en DB).
+- **Voir** les heures de connexion, la fréquence d'usage agrégée, l'IP des sessions courantes (à travers les logs proxy / API ; pas en DB).
 - **Voir** quelles passkeys sont enrôlées (label, transport — pas le contenu crypto utile sans intervention de la passkey).
 - **Voir** les annonces, les invitations envoyées, les paramètres globaux de l'app.
 - **Compter** les entrées par module en agrégat (« il y a 1247 entrées Mood ») — **pas par user**, le serveur ne sait pas à qui chaque entrée appartient.
 - **Désactiver / supprimer** des comptes, modifier les rôles, supprimer des invites.
 
-L'équipe **ne peut pas** :
+L'équipe **ne peut pas** :
 - Lire le mot de passe (OPAQUE — jamais transmis en clair).
 - Lire les payloads chiffrés (modules_config, user_preferences, *_entries) — pas la clé.
 - Lier une entrée module à un user (pas de `user_id` sur les entries — corrélation impossible en SQL direct).
@@ -409,20 +409,20 @@ L'équipe **ne peut pas** :
 Tout ce que voit l'équipe Nodea + accès au filesystem, à la mémoire RAM du process Node, aux logs Postgres / WAL, aux backups disque.
 
 - **Voir** les `ctid` Postgres / le WAL → corrélation statistique d'écritures « proches en temps » sur plusieurs tables, pour reconstruire qui a écrit quoi sans avoir le `user_id` direct (forensic, pas plain SQL).
-- **Snapshot mémoire** : la clé maîtresse vit dans le **navigateur du user**, jamais sur le serveur. Un snapshot RAM du serveur n'aide donc pas à lire les payloads chiffrés.
-- **Tampering du bundle JS** : si l'hébergeur prend le contrôle de la chaîne de build / du serveur web, il peut servir un JS modifié qui exfiltre le mot de passe ou la KEK au moment où le user se connecte. **Limite fondamentale du modèle web E2EE** — mitigations : SRI sur l'entry chunk, manifest `INTEGRITY.txt`, recommandation d'auto-hébergement.
+- **Snapshot mémoire** : la clé maîtresse vit dans le **navigateur du user**, jamais sur le serveur. Un snapshot RAM du serveur n'aide donc pas à lire les payloads chiffrés.
+- **Tampering du bundle JS** : si l'hébergeur prend le contrôle de la chaîne de build / du serveur web, il peut servir un JS modifié qui exfiltre le mot de passe ou la KEK au moment où le user se connecte. **Limite fondamentale du modèle web E2EE** — mitigations : SRI sur l'entry chunk, manifest `INTEGRITY.txt`, recommandation d'auto-hébergement.
 
 L'hébergeur **ne peut pas** non plus lire les payloads tant qu'il n'a pas tampered le bundle ET attendu une connexion user.
 
 #### Une autorité judiciaire (police, justice — réquisition légale)
 
-L'équipe Nodea, contrainte par une réquisition formelle, peut être obligée de remettre **tout ce qui est lisible côté serveur** :
+L'équipe Nodea, contrainte par une réquisition formelle, peut être obligée de remettre **tout ce qui est lisible côté serveur** :
 
-- **Peut remettre** : les emails, usernames, heures de connexion, IP des sessions, blobs chiffrés (inutiles sans la clé), hashes anti-DoS, liste des passkeys enrôlées, mode de sécurité, dates d'inscription, dates d'annonces.
-- **Ne peut pas remettre** : le contenu utilisateur en clair (techniquement impossible — l'équipe n'a aucune clé pour le déchiffrer). Le mot de passe (techniquement impossible — OPAQUE le rend non-récupérable côté serveur).
+- **Peut remettre** : les emails, usernames, heures de connexion, IP des sessions, blobs chiffrés (inutiles sans la clé), hashes anti-DoS, liste des passkeys enrôlées, mode de sécurité, dates d'inscription, dates d'annonces.
+- **Ne peut pas remettre** : le contenu utilisateur en clair (techniquement impossible — l'équipe n'a aucune clé pour le déchiffrer). Le mot de passe (techniquement impossible — OPAQUE le rend non-récupérable côté serveur).
 - **Pourrait être contrainte** d'installer un bundle JS modifié qui exfiltrerait les clés au prochain login (cf. limite supply-chain ci-dessus). Cette éventualité est documentée dans Auth-Spec §2.2 comme l'un des vecteurs qu'on **ne défend pas**.
 
-Concrètement, en pratique : « voilà l'email du compte, voilà ses heures de connexion, voilà ses fichiers chiffrés sur la table X. Bon courage pour les ouvrir. »
+Concrètement, en pratique : « voilà l'email du compte, voilà ses heures de connexion, voilà ses fichiers chiffrés sur la table X. Bon courage pour les ouvrir. »
 
 #### Auto-héberge si ces vecteurs te préoccupent
 
@@ -430,39 +430,39 @@ L'équipe Nodea, l'hébergeur de l'instance, et l'interlocuteur d'une réquisiti
 
 ### Ce qui fuit comme métadonnée — récap
 
-Pour les vecteurs qui restent même si l'équipe Nodea, l'hébergeur et l'autorité judiciaire ne sont pas tous corrompus :
+Pour les vecteurs qui restent même si l'équipe Nodea, l'hébergeur et l'autorité judiciaire ne sont pas tous corrompus :
 
-- **Existence d'écritures par module en agrégat** (sans attribuer à un user).
+- **Action × module × utilisateur·ice par croisement de logs.** Les endpoints API sont nommés par module (`/mood-entries/records`, `/library-items/records`, etc.) — une requête est tirée à chaque lecture, écriture, édition, suppression. En croisant les logs Nginx (path + IP + horodatage), les logs Pino (request_id + user_id quand présent) et la table `sessions` (user_id ↔ IP), un opérateur peut reconstruire « user U a fait une opération sur le module M à l'heure T ». Le contenu reste chiffré et les rows ne portent toujours pas de `user_id`, mais l'attribution user → module → action → timestamp est triviale par jointure des logs. **Mitigation prévue** : unifier les endpoints `*-entries/records` en un seul `/records` agnostique au module, pour que le path ne révèle plus rien — pas encore implémenté.
 - **Taille des blobs chiffrés** (ordre de grandeur du contenu).
 - **Ordre d'insertion physique** Postgres / WAL (corrélation statistique forensic).
 - **Fréquence et timestamps de connexion** des sessions.
 - **Adresse email** (clair, c'est l'identifiant OPAQUE).
 - **Logs proxy / API** côté hébergeur (IP, user-agent, request ID).
 
-Aucun de ces signaux ne donne accès au contenu en clair ni ne permet une corrélation directe sid↔user en plain SQL.
+Aucun de ces signaux ne donne accès au contenu en clair. L'auto-hébergement neutralise la quasi-totalité d'entre eux.
 
 ## Audit & divulgation
 
 ### Auditer
 
-Le code est public et chaque commit est signé. La suite de tests est exécutable localement contre un Postgres réel :
+Le code est public et chaque commit est signé. La suite de tests est exécutable localement contre un Postgres réel :
 
 ```sh
 git clone https://github.com/aliceout/Nodea
 pnpm install
 pnpm --filter @nodea/api test       # 222 tests d'intégration
 pnpm --filter @nodea/web test       # 83 tests unitaires (crypto round-trips, HKDF, factor-wrap, guards, passkey-PRF unwrap, base64, store, HTTP client)
-pnpm --filter @nodea/e2e test       # Playwright : register / activate / TOTP enroll + login
+pnpm --filter @nodea/e2e test       # Playwright : register / activate / TOTP enroll + login
 ```
 
 Les tests crypto vérifient les invariants (round-trip AES-GCM, déterminisme HKDF, séparation de domaine AES vs. HMAC, consistance d'AAD, anti-enum dans OPAQUE) en isolation des routes — auditables sans environnement complet.
 
 ### Documentation technique de référence
 
-Tout le détail vit dans le repo, mis à jour avec le code — règle de projet : doc et code sont une seule source de vérité, dans le même PR.
+Tout le détail vit dans le repo, mis à jour avec le code — règle de projet : doc et code sont une seule source de vérité, dans le même PR.
 
-- [Auth-Spec.md](https://github.com/aliceout/Nodea/blob/main/docs/Auth-Spec.md) — spécification auth complète, ~2700 lignes : threat model formel, schéma cryptographique détaillé, flows complets, matrice de re-auth, anti-patterns interdits, test matrix.
-- [Security.md](https://github.com/aliceout/Nodea/blob/main/docs/Security.md) — politique sécu vivante : invariants, rate-limit catalogue (§5.1), protections serveur, supply-chain limit (§7).
+- [Auth-Spec.md](https://github.com/aliceout/Nodea/blob/main/docs/Auth-Spec.md) — spécification auth complète, ~2700 lignes : threat model formel, schéma cryptographique détaillé, flows complets, matrice de re-auth, anti-patterns interdits, test matrix.
+- [Security.md](https://github.com/aliceout/Nodea/blob/main/docs/Security.md) — politique sécu vivante : invariants, rate-limit catalogue (§5.1), protections serveur, supply-chain limit (§7).
 - [Architecture.md](https://github.com/aliceout/Nodea/blob/main/docs/Architecture.md) — vue d'ensemble du code (api / web / shared), routes, runtime, stack frontend.
 - [Database.md](https://github.com/aliceout/Nodea/blob/main/docs/Database.md) — schéma Postgres complet, FK cascades, AAD pour chaque blob chiffré.
 

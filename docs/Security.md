@@ -274,18 +274,33 @@ exceptions doivent être justifiées en commentaire au-dessus du
 5. **Reset is destructive** — resetting the password purges the
    user's encrypted data in the same transaction that rotates the
    credentials. There is no orphaned ciphertext lying around.
-6. **No module-visited metadata leaks via the URL.** While a user is
-   authenticated, the URL stays at `/flow` regardless of which
-   module they're consulting. The active module lives in the
+6. **The page URL never reveals which module the user is on.** While
+   a user is authenticated, the URL stays at `/flow` regardless of
+   which module they're consulting. The active module lives in the
    client-side Zustand store ; browser-history navigation is
    preserved via `history.pushState({ nodeaModule: id }, '',
    '/flow')` so back / forward still work, but `event.state` never
-   leaves the tab. Nginx access logs, Hono/Pino request logs, the
+   leaves the tab. Nginx access logs for **page** loads, the
    browser's own history.pushed URL and any outbound `Referer`
    headers all see a single `/flow` path. Old bookmarks like
    `/flow/library?subview=extraits` are caught by a
    `/flow/*` → `/flow` redirect so they no longer route through
    the server with the leaky path.
+
+   **Known gap — API endpoints still encode the module in their
+   path.** Each module mounts its REST routes at `/<collection>-
+   entries/records` (e.g. `/mood-entries/records`,
+   `/library-items/records`). Any read or write action triggers a
+   request to that endpoint. Cross-referencing Nginx access logs
+   (path + IP + timestamp), Pino request logs (request_id +
+   user_id when present), and the `sessions` table (user_id ↔ IP
+   mapping) lets the operator reconstruct « user U did a list /
+   create / update on module M at time T », even though the row
+   contents stay encrypted and the rows themselves carry no
+   user_id. Closing this leak requires a unified `entries` table
+   served by a module-agnostic `/records` endpoint — tracked
+   separately, not yet implemented. Self-hosting is the practical
+   mitigation today.
 
 ---
 
