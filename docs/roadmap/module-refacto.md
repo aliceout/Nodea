@@ -145,7 +145,7 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
   - [x] `lib/threads.ts` — `splitThreads` + tests
   - [x] `lib/date-format.ts` — `formatDate`, `FRENCH_MONTHS` + tests
 - [x] **2. context.tsx** — `GoalsProvider` + 3 hooks
-- [ ] **3. components/** — `SideColumn` (avec `SectionLabel`),
+- [x] **3. components/** — `SideColumn` (avec `SectionLabel`),
        `CarryOverDialog`
 - [ ] **4. views/** — `PrimaryColumn`, `GoalRow`, `StatusPill` (avec
        `StatusGlyph` co-localisé)
