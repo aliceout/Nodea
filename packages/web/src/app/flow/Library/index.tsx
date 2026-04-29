@@ -48,6 +48,12 @@ import {
   LIBRARY_GROUP_BY_OPTIONS,
   type LibraryGroupBy,
 } from './lib/grouping';
+import {
+  CELL_FILTER_LABEL,
+  matchesCellFilter,
+  type CellFilter,
+  type CellFilterField,
+} from './lib/cell-filter';
 import { itemFromRecord, reviewFromRecord, buildCoverMap } from './lib/mappers';
 import { formatReviewDate } from './lib/review-format';
 import { normaliseForSearch } from './lib/search';
@@ -899,43 +905,6 @@ interface TableViewProps {
   onCellFilter: (filter: CellFilter) => void;
 }
 
-/** Filterable axes surfaced by the Tableau / Liste cells. The
- *  catalogue applies the filter via `matchesCellFilter` ; the
- *  active filter is shown as a banner above the list with an « x »
- *  to clear. */
-export type CellFilterField = 'author' | 'publisher' | 'language' | 'year';
-
-export interface CellFilter {
-  field: CellFilterField;
-  /** String for « author » / « publisher » / « language », canonical
-   *  year string (e.g. "2022") for « year ». */
-  value: string;
-}
-
-const CELL_FILTER_LABEL: Record<CellFilterField, string> = {
-  author: 'Auteur·rice',
-  publisher: 'Éditeur',
-  language: 'Langue',
-  year: 'Année',
-};
-
-function matchesCellFilter(item: LibraryItem, filter: CellFilter): boolean {
-  switch (filter.field) {
-    case 'author': {
-      const authors = item.creators
-        ?.filter((c) => !c.role || c.role === 'author')
-        .map((c) => c.name.trim())
-        .filter(Boolean);
-      return Boolean(authors?.includes(filter.value));
-    }
-    case 'publisher':
-      return (item.publisher?.trim() ?? '') === filter.value;
-    case 'language':
-      return (item.language?.toLowerCase() ?? '') === filter.value.toLowerCase();
-    case 'year':
-      return item.year != null && String(item.year) === filter.value;
-  }
-}
 
 const LANGUAGE_LABEL: Record<string, string> = {
   fr: 'Français',
@@ -1106,18 +1075,15 @@ function TableView({ items, onEditItem, onCellFilter }: TableViewProps) {
           <tr className="border-b border-hair text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
             {TABLE_COLUMNS.map((col) => {
               const active = sort?.column === col.id;
-              const arrow = !active
-                ? ''
-                : sort.direction === 'asc'
-                  ? '▲'
-                  : '▼';
+              const ascActive = active && sort.direction === 'asc';
+              const descActive = active && sort.direction === 'desc';
               return (
                 <th key={col.id} className={cn(col.className, 'font-semibold')}>
                   <button
                     type="button"
                     onClick={() => handleSortClick(col.id)}
                     className={cn(
-                      'inline-flex cursor-pointer items-center gap-1 uppercase tracking-[0.04em] transition-colors',
+                      'inline-flex cursor-pointer items-center gap-1.5 uppercase tracking-[0.04em] transition-colors',
                       active ? 'text-ink' : 'text-muted hover:text-ink',
                     )}
                     aria-sort={
@@ -1129,11 +1095,33 @@ function TableView({ items, onEditItem, onCellFilter }: TableViewProps) {
                     }
                   >
                     {col.label}
-                    {arrow ? (
-                      <span aria-hidden="true" className="text-[9px]">
-                        {arrow}
+                    {/* Stacked double-arrow affordance — always
+                        rendered on every column header. The active
+                        arrow takes the ink colour ; the inactive
+                        one falls back to a faint hair tint so the
+                        column still reads as sortable when nothing
+                        is sorted. */}
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex flex-col items-center leading-[0.6]"
+                    >
+                      <span
+                        className={cn(
+                          'text-[8px] transition-colors',
+                          ascActive ? 'text-ink' : 'text-hair',
+                        )}
+                      >
+                        ▲
                       </span>
-                    ) : null}
+                      <span
+                        className={cn(
+                          'text-[8px] transition-colors',
+                          descActive ? 'text-ink' : 'text-hair',
+                        )}
+                      >
+                        ▼
+                      </span>
+                    </span>
                   </button>
                 </th>
               );
