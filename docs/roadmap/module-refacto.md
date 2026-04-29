@@ -1,7 +1,7 @@
 # Module internal refacto — split + 3 contexts
 
-> **Statut** : Library + Goals livrés (référence). Journal → Mood à
-> faire.
+> **Statut** : Library + Goals + Journal livrés (référence). Mood
+> à faire.
 > **Mise à jour** : à chaque commit qui touche un module concerné, cocher la
 > case correspondante dans ce fichier.
 
@@ -182,9 +182,9 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
         tests
 - [x] **2. context.tsx** — `JournalProvider` + 3 hooks
 - [x] **3. components/** — `SideColumn`
-- [ ] **4. views/** — `PrimaryColumn`, `EntryRow`,
+- [x] **4. views/** — `PrimaryColumn`, `EntryRow`,
        `ClampedJournalContent`, `ReaderShell`
-- [ ] **5. index.tsx final** ≤ 100 LOC
+- [x] **5. index.tsx final** ≤ 100 LOC (83 LOC livré)
 
 ---
 
