@@ -30,31 +30,41 @@ porte 11 composants inline (`PrimaryColumn`, `ToSeeList`,
 `IntentionsBlock`, `ReadingBlock`, `SectionLabel` + 3 hooks de
 fetch + 4 helpers).
 
-- [ ] **`useMoodEntries` / `useGoalEntries` / `useLibraryReadings`**
-       — 3 hooks de fetch inlinés ; chacun re-déclare un type Lite
-       (`MoodEntryLite`, `GoalEntryLite`, `LibraryReadingLite`).
-       À sortir dans `Homepage/hooks/` (un fichier par hook). Les
-       Lite types peuvent dériver des `lib/types.ts` modules
-       canoniques via `Pick<>` ou être supprimés si la lib type
-       est déjà assez précise.
-- [ ] **Helpers purs** (`preferredName`, `firstThread`,
+- [x] **Helpers purs** (`preferredName`, `firstThread`,
        `formatTimeFromIso`, `signedScore`, `formatMoodAvg`,
-       `toIsoDate`) → `Homepage/lib/`. Plusieurs sont des
-       duplications (cf. Tier 3). Attention : `firstThread` est
-       un cousin de `splitThreads(...)[0]` — à factoriser au passage.
-- [ ] **`MOOD_VALID_SCORES` / `GOAL_VALID_STATUS`** redondants
-       avec les `VALID_*` des modules → à importer plutôt qu'à
-       redéclarer.
+       `toIsoDate`) → `Homepage/lib/format.ts`. Le cousinage de
+       `firstThread` avec `splitThreads(...)[0]` est documenté
+       dans la JSDoc ; la promotion vers `packages/shared` reste
+       en Tier 3.
+- [x] **`MOOD_VALID_SCORES` / `GOAL_VALID_STATUS`** sont passés
+       en privés dans `lib/projections.ts` (à côté de la logique
+       de projection record → Lite). Tests Vitest sur les trois
+       projections en couvrent la déduplication / le filtrage.
+- [x] **Constantes UI** (`MOOD_FRISE_DAYS`, `MOOD_BLOCK_FILL`,
+       `STATUS_TONE`, `STATUS_LABEL`, `HOME_GOAL_LIMIT`,
+       `MOCK_TASKS`) → `Homepage/lib/constants.ts`.
+- [x] **Logique métier** : `buildMoodFrise` /
+       `summariseMoodFrise` (`lib/frise.ts`) et `pickHomeGoals`
+       (`lib/intentions.ts`) avec leurs Vitest. Les `useMemo` côté
+       blocks sont devenus de simples appels mémoïsés.
+- [x] **Lite types** (`MoodEntryLite`, `GoalEntryLite`,
+       `GoalStatusLite`, `LibraryReadingLite`, `MoodFriseCell`,
+       `MoodFriseStats`, `MockTask`) → `Homepage/lib/types.ts`.
+       Le passage à `Pick<MoodEntry, …>` reste pour Tier 3.
+- [ ] **`useMoodEntries` / `useGoalEntries` / `useLibraryReadings`**
+       — 3 hooks de fetch inlinés ; à sortir dans `Homepage/hooks/`
+       (un fichier par hook) ou à fondre dans le `HomepageProvider`.
+       Les projections record → Lite sont déjà sorties (cf. plus
+       haut), il ne reste que le wiring `useEffect` / `useState`.
 - [ ] **6 blocks visuels** (`MoodBlock`, `HabitsBlock`,
        `IntentionsBlock`, `ReadingBlock`, `ToSeeList`, `RecentPassage`)
        → `Homepage/components/` ou `Homepage/views/` selon leur
        degré de réutilisation. Chacun ≥ 80 LOC inline ; aucun
        seul ne dépasse les 200 si on les sort.
-- [ ] **`MOCK_TASKS`** est de la donnée mock pour `ToSeeList`. À
-       sortir avec son block, ou à supprimer si Habits arrive bientôt.
-- [ ] **3 contextes** (Data / UI / Actions) ? Probable que non —
-       Homepage est read-only par design ; un seul `HomepageData`
-       context suffit. Décider à l'extraction.
+- [ ] **Single context** : un seul `HomepageData` context suffit
+       (Homepage est read-only). Pas besoin du pattern « 3
+       contextes » qui s'appliquerait au Library / Goals / Journal /
+       Mood.
 - [ ] **`index.tsx` final ≤ 100 LOC** : provider + `<HomepageView />`.
 
 ### Account — 949 LOC → ~10 fichiers

@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  GOAL_STATUS_VALUES,
-  MOOD_SCORE_VALUES,
-  type GoalsPayload,
-  type MoodScore,
-} from '@nodea/shared';
+import { Link } from 'react-router-dom';
+import { type MoodScore } from '@nodea/shared';
 
 import { goalsClient } from '@/core/api/modules/goals';
+import { libraryItemsClient } from '@/core/api/modules/library';
 import { moodClient } from '@/core/api/modules/mood';
 import {
   useNodeaStore,
@@ -20,6 +17,35 @@ import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
+
+import {
+  HOME_GOAL_LIMIT,
+  MOCK_TASKS,
+  MOOD_BLOCK_FILL,
+  MOOD_FRISE_DAYS,
+  STATUS_LABEL,
+  STATUS_TONE,
+} from './lib/constants';
+import {
+  firstThread,
+  formatMoodAvg,
+  formatTimeFromIso,
+  preferredName,
+  signedScore,
+  toIsoDate,
+} from './lib/format';
+import { buildMoodFrise, summariseMoodFrise } from './lib/frise';
+import { pickHomeGoals } from './lib/intentions';
+import {
+  projectGoalEntries,
+  projectLibraryReadings,
+  projectMoodEntries,
+} from './lib/projections';
+import type {
+  GoalEntryLite,
+  LibraryReadingLite,
+  MoodEntryLite,
+} from './lib/types';
 
 /**
  * Homepage — Direction K · Sauge.
@@ -42,6 +68,7 @@ export default function HomePage() {
   const displayName = useMemo(() => preferredName(user), [user]);
   const moodEntries = useMoodEntries();
   const goalEntries = useGoalEntries();
+  const readings = useLibraryReadings();
 
   const formattedDate = useMemo(() => {
     const now = new Date();
@@ -83,33 +110,24 @@ export default function HomePage() {
       }
       side={<SideColumn moodEntries={moodEntries} goalEntries={goalEntries} />}
     >
-      <PrimaryColumn name={displayName} moodEntries={moodEntries} />
+      <PrimaryColumn
+        name={displayName}
+        moodEntries={moodEntries}
+        readings={readings}
+      />
     </ModuleShell>
   );
 }
 
 /**
- * Lite shape of a Mood entry consumed by the Home blocks (`MoodBlock`,
- * `ToSeeList`). Stays in this file so the heavier `recordToEntry`
- * inside `Mood/index.tsx` can keep its richer shape (positives,
- * comments, formatted labels) without leaking into Home.
- */
-interface MoodEntryLite {
-  dateIso: string;
-  score: MoodScore;
-  /** ISO timestamp from the server — used by `ToSeeList` to display
-   *  `HH:MM` next to a checked Mood task. */
-  createdAt: string;
-}
-
-const MOOD_VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
-
-/**
  * One-shot fetch + projection of the user's Mood entries. Re-runs
  * whenever `moodVersion` is bumped (the Composer's MoodBody
  * increments it after a successful create), so newly saved entries
- * appear on Home without a page reload. Failures are silenced — the
- * Mood page surfaces the real error.
+ * appear on Home without a page reload. Failures are silenced —
+ * the Mood page surfaces the real error.
+ *
+ * The pure projection logic lives in `lib/projections.ts` ; this
+ * hook just wires the fetch lifecycle around it.
  */
 function useMoodEntries(): MoodEntryLite[] {
   const mainKey = useNodeaStore(selectMainKey);
@@ -126,26 +144,7 @@ function useMoodEntries(): MoodEntryLite[] {
       .list(moduleUserId, mainKey)
       .then((records) => {
         if (cancelled) return;
-        // Server-side timestamps are gone (minimum-readable-surface
-        // design). The user-facing `payload.date` carries the only
-        // date we have ; if it's missing we drop the entry rather
-        // than guess. The `createdAt` lite field — used for tie-
-        // breaking when several entries share a date — falls back
-        // to `dateIso` so the home block still renders something
-        // meaningful.
-        const lite: MoodEntryLite[] = [];
-        for (const r of records) {
-          const p = r.payload;
-          if (!p.date || !/^\d{4}-\d{2}-\d{2}/.test(p.date)) continue;
-          if (!MOOD_VALID_SCORES.has(p.mood_score)) continue;
-          const dateIso = p.date.slice(0, 10);
-          lite.push({
-            dateIso,
-            score: p.mood_score as MoodScore,
-            createdAt: dateIso,
-          });
-        }
-        setEntries(lite);
+        setEntries(projectMoodEntries(records));
       })
       .catch(() => {
         // Silent on Home — the Mood page surfaces the real error.
@@ -158,31 +157,11 @@ function useMoodEntries(): MoodEntryLite[] {
   return entries;
 }
 
-type GoalStatusLite = 'open' | 'wip' | 'done';
-
-interface GoalEntryLite {
-  id: string;
-  title: string;
-  status: GoalStatusLite;
-  thread: string;
-  /** ISO `updatedAt` from the record — used to keep recent
-   *  goals on top when there's no other ordering signal. */
-  updatedAt: string;
-}
-
-const GOAL_VALID_STATUS: ReadonlySet<string> = new Set(GOAL_STATUS_VALUES);
-
 /**
  * One-shot fetch + projection of the user's Goals. Re-runs
- * whenever `goalsVersion` is bumped (the Composer's GoalBody and
- * the Goals page's status toggles increment it after every
- * mutation), so newly saved goals appear on Home without a page
- * reload. Failures stay silent — the Goals page surfaces the
- * real error.
- *
- * Lite shape on purpose : only what the SideColumn block reads.
- * The full `GoalEntry` (date / note / completedAt) lives in the
- * Goals page and doesn't need to leak into Home.
+ * whenever `goalsVersion` is bumped. Failures stay silent — the
+ * Goals page surfaces the real error. Projection logic lives in
+ * `lib/projections.ts`.
  */
 function useGoalEntries(): GoalEntryLite[] {
   const mainKey = useNodeaStore(selectMainKey);
@@ -199,33 +178,7 @@ function useGoalEntries(): GoalEntryLite[] {
       .list(moduleUserId, mainKey)
       .then((records) => {
         if (cancelled) return;
-        const lite: GoalEntryLite[] = [];
-        for (const r of records) {
-          const p = r.payload as GoalsPayload;
-          const title = p.title?.trim() ?? '';
-          if (!title) continue;
-          const raw = (p.status ?? 'open') as string;
-          if (!GOAL_VALID_STATUS.has(raw)) continue;
-          // Map legacy aliases the same way the Goals page does
-          // so the home block doesn't render a fourth tone.
-          const status: GoalStatusLite =
-            raw === 'active'
-              ? 'open'
-              : raw === 'archived'
-                ? 'done'
-                : (raw as GoalStatusLite);
-          lite.push({
-            id: r.id,
-            title,
-            status,
-            thread: p.thread ?? '',
-            // `payload.updated_at` is the in-payload timestamp the
-            // Goals writer bumps on every save (server-side
-            // timestamps were dropped).
-            updatedAt: p.updated_at,
-          });
-        }
-        setEntries(lite);
+        setEntries(projectGoalEntries(records));
       })
       .catch(() => {
         // Silent — Goals page is responsible for surfacing errors.
@@ -238,25 +191,47 @@ function useGoalEntries(): GoalEntryLite[] {
   return entries;
 }
 
-/** Display name preference: `username` if set, else email local-part. */
-function preferredName(
-  user: { username?: string | null; email?: string } | null | undefined,
-): string {
-  if (!user) return '';
-  const trimmed = user.username?.trim();
-  if (trimmed) return trimmed;
-  const email = user.email;
-  if (!email) return '';
-  const [local] = email.split('@');
-  return local ?? '';
+/**
+ * One-shot fetch of the user's Library items, filtered to those
+ * currently being read. Re-runs on every `libraryItemsVersion`
+ * bump. Failures stay silent — the Library page surfaces the
+ * real error. Projection logic lives in `lib/projections.ts`.
+ */
+function useLibraryReadings(): LibraryReadingLite[] {
+  const mainKey = useNodeaStore(selectMainKey);
+  const modules = useNodeaStore(selectModules);
+  const moduleUserId = modules['library']?.moduleUserId ?? null;
+  const itemsVersion = useNodeaStore((s) => s.libraryItemsVersion);
+
+  const [entries, setEntries] = useState<LibraryReadingLite[]>([]);
+
+  useEffect(() => {
+    if (!mainKey || !moduleUserId) return undefined;
+    let cancelled = false;
+    libraryItemsClient
+      .list(moduleUserId, mainKey)
+      .then((records) => {
+        if (cancelled) return;
+        setEntries(projectLibraryReadings(records));
+      })
+      .catch(() => {
+        // Silent — Library page is responsible for surfacing errors.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mainKey, moduleUserId, itemsVersion]);
+
+  return entries;
 }
 
 interface PrimaryColumnProps {
   name: string;
   moodEntries: ReadonlyArray<MoodEntryLite>;
+  readings: ReadonlyArray<LibraryReadingLite>;
 }
 
-function PrimaryColumn({ name, moodEntries }: PrimaryColumnProps) {
+function PrimaryColumn({ name, moodEntries, readings }: PrimaryColumnProps) {
   return (
     <section className="flex min-h-0 min-w-0 flex-col">
       <PageHeading className="mb-0">
@@ -265,26 +240,11 @@ function PrimaryColumn({ name, moodEntries }: PrimaryColumnProps) {
       <p className="mt-1 mb-[22px] text-[14px] text-muted">Trois choses à voir aujourd&rsquo;hui.</p>
 
       <ToSeeList moodEntries={moodEntries} />
-      <RecentMood />
+      <ReadingBlock readings={readings} />
       <RecentPassage />
     </section>
   );
 }
-
-interface MockTask {
-  label: string;
-  meta: string;
-  doneAt: string;
-}
-
-/** Other "À voir" tasks. Still mocked while Library + Habits aren't
- *  wired through — clicking the checkbox toggles the local state.
- *  When the matching modules go live, swap them for real signals
- *  the same way the Mood task already is. */
-const MOCK_TASKS: ReadonlyArray<MockTask> = [
-  { label: 'Lire 30 minutes', meta: 'Slow Productivity · p. 54 →', doneAt: '08:42' },
-  { label: 'Marche du soir', meta: 'Habit · 12 jours d’affilée', doneAt: '08:42' },
-];
 
 interface ToSeeListProps {
   moodEntries: ReadonlyArray<MoodEntryLite>;
@@ -425,46 +385,6 @@ function ToSeeList({ moodEntries }: ToSeeListProps) {
   );
 }
 
-function signedScore(s: MoodScore): string {
-  return Number(s) > 0 ? `+${s}` : s;
-}
-
-function formatTimeFromIso(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
-}
-
-function RecentMood() {
-  return (
-    <div className="mt-7">
-      <SectionLabel>Mood récent</SectionLabel>
-      <div className="py-1.5">
-        <p className="font-serif text-[17px] italic leading-[1.45] text-ink">
-          «&nbsp;Café tranquille avec Sam, fin du chantier client, longue marche au bord du
-          canal.&nbsp;»
-        </p>
-        <div className="mt-2 flex items-center gap-2.5 text-[12px] text-muted">
-          <span className="font-semibold tabular-nums text-ink">7,8</span>
-          <span>·</span>
-          <span>Café · Travail · Marche</span>
-          <span className="ml-auto">
-            il y a 2 h ·{' '}
-            <button
-              type="button"
-              className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
-            >
-              éditer
-            </button>
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function RecentPassage() {
   return (
     <div className="mt-7">
@@ -498,67 +418,24 @@ function SideColumn({ moodEntries, goalEntries }: SideColumnProps) {
       <MoodBlock entries={moodEntries} />
       <HabitsBlock />
       <IntentionsBlock entries={goalEntries} />
-      <ReadingBlock />
     </aside>
   );
 }
 
-const MOOD_FRISE_DAYS = 14;
-
 /**
- * Same colour ramp as the Mood page's `SCORE_FILL` (kept duplicated
- * because the Mood page doesn't export it). Update both if the
- * tones drift — see `packages/web/src/app/flow/Mood/index.tsx`.
- */
-const MOOD_BLOCK_FILL: Record<MoodScore, string> = {
-  '2': 'bg-accent',
-  '1': 'bg-accent-soft',
-  '0': 'bg-hair',
-  '-1': 'bg-low-soft',
-  '-2': 'bg-low',
-};
-
-interface MoodFriseCell {
-  dateIso: string;
-  score?: MoodScore;
-  isToday: boolean;
-}
-
-/**
- * 14-day mood strip on Home. Reads from the lifted `useMoodEntries`
- * hook on the Home parent — the same fetch powers `ToSeeList`'s
- * dynamic Mood task. Days without an entry render as a faint
- * outline so gaps stay visible without faking a zero.
+ * 14-day mood strip on Home. Reads from the lifted
+ * `useMoodEntries` hook on the Home parent — the same fetch
+ * powers `ToSeeList`'s dynamic Mood task. Days without an entry
+ * render as a faint outline so gaps stay visible without faking
+ * a zero.
  *
  * Smaller-by-design than the Mood page's 52-week frise — this is
  * a glance, not a chart. Click-through could land on `/flow/mood`
  * later if we want a navigable version.
  */
 function MoodBlock({ entries }: { entries: ReadonlyArray<MoodEntryLite> }) {
-  const cells = useMemo<MoodFriseCell[]>(() => {
-    const byDate = new Map<string, MoodScore>();
-    for (const e of entries) byDate.set(e.dateIso, e.score);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const out: MoodFriseCell[] = [];
-    for (let i = MOOD_FRISE_DAYS - 1; i >= 0; i -= 1) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const iso = toIsoDate(d);
-      const score = byDate.get(iso);
-      const cell: MoodFriseCell = { dateIso: iso, isToday: i === 0 };
-      if (score) cell.score = score;
-      out.push(cell);
-    }
-    return out;
-  }, [entries]);
-
-  const stats = useMemo(() => {
-    const scored = cells.filter((c): c is MoodFriseCell & { score: MoodScore } => !!c.score);
-    if (scored.length === 0) return { count: 0, avg: null as number | null };
-    const sum = scored.reduce((s, c) => s + Number(c.score), 0);
-    return { count: scored.length, avg: sum / scored.length };
-  }, [cells]);
+  const cells = useMemo(() => buildMoodFrise(entries), [entries]);
+  const stats = useMemo(() => summariseMoodFrise(cells), [cells]);
 
   return (
     <section>
@@ -607,19 +484,6 @@ function MoodBlock({ entries }: { entries: ReadonlyArray<MoodEntryLite> }) {
   );
 }
 
-function toIsoDate(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatMoodAvg(avg: number): string {
-  const sign = avg > 0 ? '+' : avg < 0 ? '−' : '';
-  const abs = Math.abs(avg).toFixed(1).replace('.', ',');
-  return `${sign}${abs}`;
-}
-
 function HabitsBlock() {
   return (
     <section>
@@ -658,20 +522,6 @@ function HabitsBlock() {
   );
 }
 
-const HOME_GOAL_LIMIT = 5;
-
-const STATUS_TONE: Record<GoalStatusLite, string> = {
-  open: 'border-hair bg-bg',
-  wip: 'border-accent bg-accent',
-  done: 'border-accent bg-accent',
-};
-
-const STATUS_LABEL: Record<GoalStatusLite, string> = {
-  open: 'ouvert',
-  wip: 'en cours',
-  done: 'terminé',
-};
-
 /**
  * Real-data block on the Home aside : surfaces the goals the
  * user is actively working on (`wip`) plus the most recently
@@ -680,24 +530,16 @@ const STATUS_LABEL: Record<GoalStatusLite, string> = {
  * « what I've achieved » (the Goals page archives section
  * covers the latter).
  *
- * Order: `wip` first (most recently updated), then `open`
- * (most recently updated), capped at 5 items so the side
- * column doesn't explode. Each row is a link to the Goals
- * page filtered to the matching status — no individual focus
- * reader yet (#64 tracks that).
+ * Selection logic lives in `lib/intentions.ts` (`pickHomeGoals`) :
+ * `wip` first (most recently updated), then `open` (most recently
+ * updated), capped at `HOME_GOAL_LIMIT` items so the side column
+ * doesn't explode. Each row is a link to the Goals page — no
+ * individual focus reader yet (#64 tracks that).
  */
 function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> }) {
   const setModule = useNodeaStore((s) => s.setModule);
   const goToGoals = () => setModule('goals');
-  const visible = useMemo(() => {
-    const wip = [...entries.filter((e) => e.status === 'wip')];
-    const open = [...entries.filter((e) => e.status === 'open')];
-    const byUpdated = (a: GoalEntryLite, b: GoalEntryLite) =>
-      b.updatedAt.localeCompare(a.updatedAt);
-    wip.sort(byUpdated);
-    open.sort(byUpdated);
-    return [...wip, ...open].slice(0, HOME_GOAL_LIMIT);
-  }, [entries]);
+  const visible = useMemo(() => pickHomeGoals(entries), [entries]);
 
   return (
     <section>
@@ -747,37 +589,53 @@ function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> })
   );
 }
 
-function firstThread(thread: string): string {
-  const first = thread.split(',')[0];
-  return first ? first.trim() : '';
-}
-
-interface Reading {
-  title: string;
-  author: string;
-  page: string;
-}
-
-const READINGS: Reading[] = [
-  { title: 'Le Pavillon d’Or', author: 'Mishima', page: '64 / 248' },
-  { title: 'Slow Productivity', author: 'Cal Newport', page: '54 / 244' },
-];
-
-function ReadingBlock() {
+/**
+ * « En cours de lecture » block on the home primary column. Reads
+ * from `useLibraryReadings` (which filters Library items to
+ * `status === 'in_progress'`). The block shows nothing if no
+ * book is currently being read — the section heading hides too,
+ * so a user without an in-progress book doesn't see an empty
+ * « En cours de lecture » header staring back.
+ *
+ * Each row is a `<Link>` to /flow/library/livres ; opening a
+ * specific book in detail (#?) is left for a follow-up.
+ */
+function ReadingBlock({
+  readings,
+}: {
+  readings: ReadonlyArray<LibraryReadingLite>;
+}) {
+  if (readings.length === 0) return null;
   return (
-    <section>
-      <SectionLabel>En cours de lecture</SectionLabel>
+    <section className="mt-7">
+      <div className="mb-2 flex items-baseline justify-between">
+        <SectionLabel>En cours de lecture</SectionLabel>
+        <Link
+          to="/flow/library"
+          className="text-[11px] text-muted underline-offset-2 transition-colors hover:text-accent hover:underline"
+        >
+          tout voir →
+        </Link>
+      </div>
       <ul>
-        {READINGS.map((b) => (
+        {readings.map((b) => (
           <li
-            key={b.title}
-            className="flex items-baseline justify-between border-b border-hair py-[5px] last:border-b-0"
+            key={b.id}
+            className="flex items-baseline justify-between gap-3 border-b border-hair py-[5px] last:border-b-0"
           >
-            <div>
-              <div className="text-[13px] font-medium text-ink">{b.title}</div>
-              <div className="text-[11px] text-muted">{b.author}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1.5 truncate text-[13px] font-medium text-ink">
+                {b.isFavorite ? (
+                  <span aria-hidden="true" className="text-accent">
+                    ★
+                  </span>
+                ) : null}
+                <span className="truncate">{b.title}</span>
+              </div>
+              {b.author ? (
+                <div className="truncate text-[11px] text-muted">{b.author}</div>
+              ) : null}
             </div>
-            <span className="text-[11px] tabular-nums text-muted">{b.page}</span>
           </li>
         ))}
       </ul>
