@@ -16,20 +16,12 @@ import {
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import {
   LIBRARY_STATUS_VALUES,
-  type LibraryItemPayload,
   type LibraryReviewPayload,
   type LibraryStatus,
 } from '@nodea/shared';
 
 import {
-  libraryCoversClient,
-  libraryItemsClient,
-  libraryReviewsClient,
-} from '@/core/api/modules/library';
-import {
   useNodeaStore,
-  selectMainKey,
-  selectModules,
   selectLibrarySubview,
   type LibrarySubview,
 } from '@/core/store/nodea-store';
@@ -42,19 +34,24 @@ import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
+import {
+  LibraryProvider,
+  useLibraryActions,
+  useLibraryData,
+  useLibraryFilters,
+  type LibraryViewMode,
+  type LoadState,
+} from './context';
 import { STATUS_LABEL } from './lib/constants';
 import {
-  buildGroups,
   LIBRARY_GROUP_BY_OPTIONS,
   type LibraryGroupBy,
 } from './lib/grouping';
 import {
   CELL_FILTER_LABEL,
-  matchesCellFilter,
   type CellFilter,
   type CellFilterField,
 } from './lib/cell-filter';
-import { itemFromRecord, reviewFromRecord, buildCoverMap } from './lib/mappers';
 import { formatReviewDate } from './lib/review-format';
 import { normaliseForSearch } from './lib/search';
 import type { LibraryGroup, LibraryItem, LibraryReview } from './lib/types';
@@ -69,235 +66,64 @@ import type { LibraryGroup, LibraryItem, LibraryReview } from './lib/types';
  * (notes + extracts) — a single integrated surface rather than a
  * separate detail page.
  *
+ * Page-local state (decrypted records, filters, actions) lives in
+ * `<LibraryProvider>` ; this file is the rendering surface — the
+ * orchestrator (`LibraryView`) reads via the three hooks and feeds
+ * the existing prop-driven sub-components. Subsequent commits will
+ * migrate the leaves to consume the contexts directly.
+ *
  * Both items and reviews live in their own encrypted collections
  * (`library-items` / `library-reviews`). The page joins them
  * client-side via `review.item_rid → item.id`.
  */
 
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };
-
 export default function LibraryPage() {
-  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const openComposer = useNodeaStore((s) => s.openComposer);
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['library']?.moduleUserId ?? null;
-  const itemsVersion = useNodeaStore((s) => s.libraryItemsVersion);
-  const reviewsVersion = useNodeaStore((s) => s.libraryReviewsVersion);
-  const bumpItemsVersion = useNodeaStore((s) => s.bumpLibraryItemsVersion);
-  const bumpReviewsVersion = useNodeaStore((s) => s.bumpLibraryReviewsVersion);
+  return (
+    <LibraryProvider>
+      <LibraryView />
+    </LibraryProvider>
+  );
+}
 
-  // The Library page exposes three lenses on the same encrypted
-  // collections: the books themselves (`livres`), the highlighted
-  // extracts pulled from them (`extraits` = `reviews` with
-  // `kind=quote`), and the freeform notes (`notes` = `kind=note`).
-  // The active lens lives in the flow slice — never in the URL, so
-  // the server never sees which sub-page the user is on.
+/**
+ * Page rendering surface — reads page-local state from the three
+ * Library contexts and feeds the existing prop-driven sub-
+ * components. Subsequent commits will migrate the leaves
+ * (`PrimaryColumn`, `ItemRow`, `ReviewsColumn`, …) to consume the
+ * contexts directly, eliminating most of this prop plumbing.
+ */
+function LibraryView() {
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectLibrarySubview);
 
-  const [items, setItems] = useState<LibraryItem[]>([]);
-  const [reviews, setReviews] = useState<LibraryReview[]>([]);
-  // Decrypted cover blobs, keyed by the cover record's id (= the
-  // value stored on `item.cover_rid`). Built once at mount from the
-  // bulk decrypt of the `library-covers` collection. Items without a
-  // cover_rid never look up here. Empty Map is fine.
-  const [covers, setCovers] = useState<Map<string, string>>(() => new Map());
-  const [load, setLoad] = useState<LoadState>({ status: 'idle' });
-  const [statusFilter, setStatusFilter] = useState<LibraryStatus | 'all' | 'favorites'>('all');
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [groupBy, setGroupBy] = useState<LibraryGroupBy>('status');
-  /** Ad-hoc filter set by clicking a cell in the Tableau view :
-   *  « Auteur·rice : Camille Leboulanger », « Année : 2022 », etc.
-   *  Stays at top-level state so switching view modes (Tableau →
-   *  Grille → Mur) keeps the filter active. Composes with status
-   *  + tag filters — all three must match. */
-  const [cellFilter, setCellFilter] = useState<CellFilter | null>(null);
-  // Picker shown when the user clicks « + Nouvel extrait » / « +
-  // Nouvelle note ». A review needs an `item_rid` so we ask the
-  // user to pick the parent book first, then route to the standard
-  // composer with the kind + item_rid pre-filled.
-  const [reviewPicker, setReviewPicker] = useState<
-    { open: false } | { open: true; kind: 'quote' | 'note' }
-  >({ open: false });
-  // View mode for the catalogue. Persisted to localStorage so the
-  // user's choice sticks across sessions on the same device. We
-  // don't sync this through the encrypted preferences blob — it's a
-  // local UI decision, the cross-device hop isn't worth the wiring.
-  const [viewMode, setViewMode] = useState<LibraryViewMode>(() => readViewMode());
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
-    let cancelled = false;
-    setLoad({ status: 'loading' });
-    Promise.all([
-      libraryItemsClient.list(moduleUserId, mainKey),
-      libraryReviewsClient.list(moduleUserId, mainKey),
-      libraryCoversClient.list(moduleUserId, mainKey),
-    ])
-      .then(([itemRecords, reviewRecords, coverRecords]) => {
-        if (cancelled) return;
-        setItems(itemRecords.map(itemFromRecord));
-        setReviews(reviewRecords.map(reviewFromRecord));
-        setCovers(buildCoverMap(coverRecords));
-        setLoad({ status: 'ready' });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : 'Erreur lors du chargement de la bibliothèque.';
-        setLoad({ status: 'error', message });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mainKey, moduleUserId, itemsVersion, reviewsVersion]);
-
-  const allTags = useMemo<string[]>(() => {
-    const set = new Set<string>();
-    for (const it of items) for (const t of it.tags ?? []) set.add(t);
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [items]);
-
-  const filteredItems = useMemo<LibraryItem[]>(() => {
-    return items.filter((it) => {
-      if (statusFilter === 'favorites') {
-        if (!it.is_favorite) return false;
-      } else if (statusFilter !== 'all' && it.status !== statusFilter) {
-        return false;
-      }
-      if (tagFilter && !(it.tags ?? []).includes(tagFilter)) return false;
-      if (cellFilter && !matchesCellFilter(it, cellFilter)) return false;
-      return true;
-    });
-  }, [items, statusFilter, tagFilter, cellFilter]);
-
-  const groups = useMemo<LibraryGroup[]>(
-    () => buildGroups(filteredItems, groupBy),
-    [filteredItems, groupBy],
-  );
-
-  function handleEditItem(it: LibraryItem): void {
-    const { id, ...payload } = it;
-    openComposer('library-item', {
-      type: 'library-item',
-      id,
-      payload: payload as LibraryItemPayload,
-    });
-  }
-
-  async function handleDeleteItem(it: LibraryItem): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    if (!window.confirm(`Supprimer « ${it.title} » et ses reviews ?`)) return;
-    const previousItems = items;
-    const previousReviews = reviews;
-    setItems((prev) => prev.filter((i) => i.id !== it.id));
-    setReviews((prev) => prev.filter((r) => r.item_rid !== it.id));
-    try {
-      // Delete reviews first so we never leave orphans if the item
-      // delete fails. They're encrypted but unreachable, so failing
-      // here is a soft warning rather than a hard error.
-      const orphanReviews = previousReviews.filter((r) => r.item_rid === it.id);
-      await Promise.all(
-        orphanReviews.map((r) => libraryReviewsClient.remove(moduleUserId, mainKey, r.id)),
-      );
-      await libraryItemsClient.remove(moduleUserId, mainKey, it.id);
-      bumpItemsVersion();
-      bumpReviewsVersion();
-    } catch (err) {
-      setItems(previousItems);
-      setReviews(previousReviews);
-      if (import.meta.env.DEV) console.warn('library: delete item failed', err);
-    }
-  }
-
-  function handleToggleFavorite(it: LibraryItem): void {
-    if (!mainKey || !moduleUserId) return;
-    const next = !it.is_favorite;
-    const previous = items;
-    setItems((prev) =>
-      prev.map((i) => (i.id === it.id ? { ...i, is_favorite: next } : i)),
-    );
-    libraryItemsClient
-      .update(moduleUserId, mainKey, it.id, {
-        ...(it as LibraryItemPayload),
-        is_favorite: next,
-      })
-      .then(() => bumpItemsVersion())
-      .catch((err) => {
-        setItems(previous);
-        if (import.meta.env.DEV) console.warn('library: favorite toggle failed', err);
-      });
-  }
-
-  function handleAddReview(itemId: string): void {
-    openComposer('library-review', {
-      type: 'library-review',
-      id: '',
-      payload: {
-        item_rid: itemId,
-        date: new Date().toISOString(),
-        kind: 'note',
-        title: null,
-        content: '',
-        page: null,
-        spoiler: false,
-      },
-    });
-  }
-
-  function handleEditReview(review: LibraryReview): void {
-    const { id, ...payload } = review;
-    openComposer('library-review', {
-      type: 'library-review',
-      id,
-      payload: payload as LibraryReviewPayload,
-    });
-  }
-
-  /**
-   * Called by the picker when the user has chosen which book the new
-   * review attaches to. Closes the picker and routes to the standard
-   * review composer with the kind + item_rid pre-filled — same path
-   * the old inline expand `+ Ajouter` button used to take.
-   */
-  function handlePickBookForReview(itemId: string, kind: 'quote' | 'note'): void {
-    setReviewPicker({ open: false });
-    openComposer('library-review', {
-      type: 'library-review',
-      id: '',
-      payload: {
-        item_rid: itemId,
-        date: new Date().toISOString(),
-        kind,
-        title: null,
-        content: '',
-        page: null,
-        spoiler: false,
-      },
-    });
-  }
-
-  async function handleDeleteReview(review: LibraryReview): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    if (!window.confirm('Supprimer cette review ?')) return;
-    const previous = reviews;
-    setReviews((prev) => prev.filter((r) => r.id !== review.id));
-    try {
-      await libraryReviewsClient.remove(moduleUserId, mainKey, review.id);
-      bumpReviewsVersion();
-    } catch (err) {
-      setReviews(previous);
-      if (import.meta.env.DEV) console.warn('library: delete review failed', err);
-    }
-  }
+  const { items, reviews, covers, load } = useLibraryData();
+  const {
+    statusFilter,
+    tagFilter,
+    groupBy,
+    viewMode,
+    cellFilter,
+    allTags,
+    filteredItems,
+    groups,
+    setStatusFilter,
+    setTagFilter,
+    setGroupBy,
+    setViewMode,
+    setCellFilter,
+  } = useLibraryFilters();
+  const {
+    reviewPicker,
+    addItem,
+    editItem,
+    deleteItem,
+    toggleFavorite,
+    editReview,
+    deleteReview,
+    openReviewPicker,
+    closeReviewPicker,
+    pickBookForReview,
+  } = useLibraryActions();
 
   return (
     <>
@@ -310,11 +136,7 @@ export default function LibraryPage() {
             {subview === 'livres' ? (
               <>
                 <ViewModeToggle value={viewMode} onChange={setViewMode} />
-                <DirkButton
-                  variant="primary"
-                  size="sm"
-                  onClick={() => openComposer('library-item')}
-                >
+                <DirkButton variant="primary" size="sm" onClick={addItem}>
                   + Nouveau livre
                 </DirkButton>
               </>
@@ -323,10 +145,7 @@ export default function LibraryPage() {
                 variant="primary"
                 size="sm"
                 onClick={() =>
-                  setReviewPicker({
-                    open: true,
-                    kind: subview === 'extraits' ? 'quote' : 'note',
-                  })
+                  openReviewPicker(subview === 'extraits' ? 'quote' : 'note')
                 }
                 disabled={items.length === 0}
                 {...(items.length === 0
@@ -369,9 +188,9 @@ export default function LibraryPage() {
             viewMode={viewMode}
             cellFilter={cellFilter}
             onCellFilterChange={setCellFilter}
-            onEditItem={handleEditItem}
-            onDeleteItem={handleDeleteItem}
-            onToggleFavorite={handleToggleFavorite}
+            onEditItem={editItem}
+            onDeleteItem={deleteItem}
+            onToggleFavorite={toggleFavorite}
           />
         ) : (
           <ReviewsColumn
@@ -379,8 +198,8 @@ export default function LibraryPage() {
             load={load}
             items={items}
             reviews={reviews}
-            onEditReview={handleEditReview}
-            onDeleteReview={handleDeleteReview}
+            onEditReview={editReview}
+            onDeleteReview={deleteReview}
           />
         )}
       </ModuleShell>
@@ -389,8 +208,8 @@ export default function LibraryPage() {
           kind={reviewPicker.kind}
           items={items}
           covers={covers}
-          onPick={(itemId) => handlePickBookForReview(itemId, reviewPicker.kind)}
-          onClose={() => setReviewPicker({ open: false })}
+          onPick={(itemId) => pickBookForReview(itemId, reviewPicker.kind)}
+          onClose={closeReviewPicker}
         />
       ) : null}
     </>
@@ -1637,23 +1456,3 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---- View mode persistence ------------------------------------- */
-
-const VIEW_MODE_STORAGE_KEY = 'nodea:library:viewMode';
-const LIBRARY_VIEW_MODES = [
-  'list-plain',
-  'list-cover',
-  'table',
-  'grid',
-  'wall',
-] as const;
-type LibraryViewMode = (typeof LIBRARY_VIEW_MODES)[number];
-
-function readViewMode(): LibraryViewMode {
-  if (typeof window === 'undefined') return 'list-plain';
-  const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-  if (stored && (LIBRARY_VIEW_MODES as readonly string[]).includes(stored)) {
-    return stored as LibraryViewMode;
-  }
-  return 'list-plain';
-}
