@@ -9,13 +9,13 @@ import {
   QueueListIcon,
   RectangleGroupIcon,
   Squares2X2Icon,
+  TableCellsIcon,
   StarIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import {
   LIBRARY_STATUS_VALUES,
-  type LibraryCoverPayload,
   type LibraryItemPayload,
   type LibraryReviewPayload,
   type LibraryStatus,
@@ -33,7 +33,6 @@ import {
   selectLibrarySubview,
   type LibrarySubview,
 } from '@/core/store/nodea-store';
-import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
@@ -42,6 +41,17 @@ import GroupBlock from '@/ui/dirk/GroupBlock';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
+
+import { STATUS_LABEL } from './lib/constants';
+import {
+  buildGroups,
+  LIBRARY_GROUP_BY_OPTIONS,
+  type LibraryGroupBy,
+} from './lib/grouping';
+import { itemFromRecord, reviewFromRecord, buildCoverMap } from './lib/mappers';
+import { formatReviewDate } from './lib/review-format';
+import { normaliseForSearch } from './lib/search';
+import type { LibraryGroup, LibraryItem, LibraryReview } from './lib/types';
 
 /**
  * Library — Direction K · Sauge.
@@ -57,14 +67,6 @@ import Topbar from '@/ui/dirk/Topbar';
  * (`library-items` / `library-reviews`). The page joins them
  * client-side via `review.item_rid → item.id`.
  */
-
-interface LibraryItem extends LibraryItemPayload {
-  id: string;
-}
-
-interface LibraryReview extends LibraryReviewPayload {
-  id: string;
-}
 
 type LoadState =
   | { status: 'idle' }
@@ -102,6 +104,12 @@ export default function LibraryPage() {
   const [statusFilter, setStatusFilter] = useState<LibraryStatus | 'all' | 'favorites'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<LibraryGroupBy>('status');
+  /** Ad-hoc filter set by clicking a cell in the Tableau view :
+   *  « Auteur·rice : Camille Leboulanger », « Année : 2022 », etc.
+   *  Stays at top-level state so switching view modes (Tableau →
+   *  Grille → Mur) keeps the filter active. Composes with status
+   *  + tag filters — all three must match. */
+  const [cellFilter, setCellFilter] = useState<CellFilter | null>(null);
   // Picker shown when the user clicks « + Nouvel extrait » / « +
   // Nouvelle note ». A review needs an `item_rid` so we ask the
   // user to pick the parent book first, then route to the standard
@@ -160,9 +168,10 @@ export default function LibraryPage() {
         return false;
       }
       if (tagFilter && !(it.tags ?? []).includes(tagFilter)) return false;
+      if (cellFilter && !matchesCellFilter(it, cellFilter)) return false;
       return true;
     });
-  }, [items, statusFilter, tagFilter]);
+  }, [items, statusFilter, tagFilter, cellFilter]);
 
   const groups = useMemo<LibraryGroup[]>(
     () => buildGroups(filteredItems, groupBy),
@@ -352,6 +361,8 @@ export default function LibraryPage() {
             groups={groups}
             covers={covers}
             viewMode={viewMode}
+            cellFilter={cellFilter}
+            onCellFilterChange={setCellFilter}
             onEditItem={handleEditItem}
             onDeleteItem={handleDeleteItem}
             onToggleFavorite={handleToggleFavorite}
@@ -394,6 +405,7 @@ const VIEW_MODE_DEFS: ReadonlyArray<{
 }> = [
   { id: 'list-plain', label: 'Liste compacte', Icon: ListBulletIcon },
   { id: 'list-cover', label: 'Liste avec couverture', Icon: QueueListIcon },
+  { id: 'table', label: 'Tableau', Icon: TableCellsIcon },
   { id: 'grid', label: 'Grille', Icon: Squares2X2Icon },
   { id: 'wall', label: 'Mur de couvertures', Icon: RectangleGroupIcon },
 ];
@@ -440,20 +452,15 @@ interface PrimaryColumnProps {
   groups: LibraryGroup[];
   covers: Map<string, string>;
   viewMode: LibraryViewMode;
+  cellFilter: CellFilter | null;
+  onCellFilterChange: (next: CellFilter | null) => void;
   onEditItem: (it: LibraryItem) => void;
   onDeleteItem: (it: LibraryItem) => void;
   onToggleFavorite: (it: LibraryItem) => void;
 }
 
-const STATUS_LABEL: Record<LibraryStatus, string> = {
-  planned: 'À lire',
-  in_progress: 'En cours',
-  finished: 'Terminés',
-  abandoned: 'Abandonnés',
-};
-
 function PrimaryColumn(props: PrimaryColumnProps) {
-  const { load, total, filteredCount, groups, viewMode } = props;
+  const { load, total, filteredCount, groups, viewMode, cellFilter, onCellFilterChange } = props;
   const isListMode = viewMode === 'list-plain' || viewMode === 'list-cover';
   // Flat list for the gallery views — they ignore the grouping
   // (a wall of covers fragmented into N section headers would break
@@ -475,6 +482,28 @@ function PrimaryColumn(props: PrimaryColumnProps) {
         >
           {load.message}
         </p>
+      ) : null}
+
+      {cellFilter ? (
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-[12px] text-ink-soft">
+          <span className="text-muted">Filtre :</span>
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-accent bg-accent-soft/40 px-2 py-0.5 text-accent-deep">
+            <span>
+              <span className="font-semibold">
+                {CELL_FILTER_LABEL[cellFilter.field]}
+              </span>{' '}
+              · {cellFilter.value}
+            </span>
+            <button
+              type="button"
+              onClick={() => onCellFilterChange(null)}
+              aria-label="Retirer le filtre"
+              className="cursor-pointer text-accent-deep transition-colors hover:text-ink"
+            >
+              ✕
+            </button>
+          </span>
+        </div>
       ) : null}
 
       <div>
@@ -508,11 +537,18 @@ function PrimaryColumn(props: PrimaryColumnProps) {
                       onEdit={() => props.onEditItem(it)}
                       onDelete={() => props.onDeleteItem(it)}
                       onToggleFavorite={() => props.onToggleFavorite(it)}
+                      onCellFilter={onCellFilterChange}
                     />
                   ))}
                 </GroupBlock>
               );
             })
+        ) : viewMode === 'table' ? (
+          <TableView
+            items={flatItems}
+            onEditItem={props.onEditItem}
+            onCellFilter={onCellFilterChange}
+          />
         ) : viewMode === 'grid' ? (
           <GridView
             items={flatItems}
@@ -687,16 +723,55 @@ interface ItemRowProps {
   onEdit: () => void;
   onDelete: () => void;
   onToggleFavorite: () => void;
+  onCellFilter: (filter: CellFilter) => void;
 }
 
 function ItemRow(props: ItemRowProps) {
   const { item, cover, showCover } = props;
-  const author = item.creators?.[0]?.name ?? '—';
-  const yearLabel = item.year ? String(item.year) : '';
+  const author = authorsLabel(item);
+  const publisher = item.publisher?.trim() ?? '';
+  const langCode = item.language?.toLowerCase() ?? '';
+  const yearStr = item.year != null ? String(item.year) : '';
+
+  // List-plain : everything inline on one row to stay compact.
+  // List-cover : title on row 1, meta cells on row 2 — the cover's
+  // extra vertical real estate gives room for a second line without
+  // making the row taller than the thumb itself.
+  const metaCells = (
+    <>
+      <FilterableCell
+        field="author"
+        value={author}
+        onCellFilter={props.onCellFilter}
+        className="max-w-40 truncate"
+      />
+      <span aria-hidden="true">·</span>
+      <FilterableCell
+        field="publisher"
+        value={publisher}
+        onCellFilter={props.onCellFilter}
+        className="max-w-32 truncate"
+      />
+      <span aria-hidden="true">·</span>
+      <FilterableCell
+        field="language"
+        value={langCode}
+        display={languageLabel(item.language)}
+        onCellFilter={props.onCellFilter}
+      />
+      <span aria-hidden="true">·</span>
+      <FilterableCell
+        field="year"
+        value={yearStr}
+        onCellFilter={props.onCellFilter}
+        className="tabular-nums"
+      />
+    </>
+  );
 
   return (
     <li className="group border-b border-hair last:border-b-0">
-      <div className="flex items-center gap-3 py-3.5">
+      <div className={cn('flex gap-3 py-2', showCover ? 'items-center' : 'items-baseline')}>
         {showCover ? (
           cover ? (
             <img
@@ -715,21 +790,69 @@ function ItemRow(props: ItemRowProps) {
           )
         ) : null}
 
-        {/* The whole row text is the click target — opens the
-            composer in edit mode. The dropdown-to-expand-reviews UI
-            is gone; reviews now live on their own routes
-            (`?subview=extraits` / `?subview=notes`). */}
-        <button
-          type="button"
-          onClick={props.onEdit}
-          className="min-w-0 flex-1 cursor-pointer text-left"
-        >
-          <p className="truncate text-[14px] font-medium text-ink">{item.title}</p>
-          <p className="mt-0.5 truncate text-[12px] text-muted">
-            {author}
-            {yearLabel ? <span className="ml-1.5 tabular-nums">· {yearLabel}</span> : null}
-          </p>
-        </button>
+        {showCover ? (
+          // Two-line layout : title on row 1, meta on row 2.
+          <div className="min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={props.onEdit}
+              className="block w-full cursor-pointer truncate text-left text-[14px] font-medium text-ink transition-colors hover:text-accent"
+              title="Modifier ce livre"
+            >
+              {item.title}
+            </button>
+            <div className="mt-0.5 flex items-baseline gap-2 truncate text-[12px] text-muted">
+              {metaCells}
+            </div>
+          </div>
+        ) : (
+          // Single-line layout : title + author clustered on the
+          // left (title in ink, author one notch lighter right
+          // beside it), then publisher · language · year on the
+          // right pushed to the row's edge.
+          <>
+            <div className="flex min-w-0 flex-1 items-baseline gap-2 truncate">
+              <button
+                type="button"
+                onClick={props.onEdit}
+                className="cursor-pointer truncate text-left text-[14px] font-medium text-ink transition-colors hover:text-accent"
+                title="Modifier ce livre"
+              >
+                {item.title}
+              </button>
+              {author ? (
+                <FilterableCell
+                  field="author"
+                  value={author}
+                  onCellFilter={props.onCellFilter}
+                  className="max-w-48 truncate text-[12px] text-muted"
+                />
+              ) : null}
+            </div>
+            <div className="hidden shrink-0 items-baseline gap-2 text-[12px] text-muted sm:flex">
+              <FilterableCell
+                field="publisher"
+                value={publisher}
+                onCellFilter={props.onCellFilter}
+                className="max-w-32 truncate"
+              />
+              <span aria-hidden="true">·</span>
+              <FilterableCell
+                field="language"
+                value={langCode}
+                display={languageLabel(item.language)}
+                onCellFilter={props.onCellFilter}
+              />
+              <span aria-hidden="true">·</span>
+              <FilterableCell
+                field="year"
+                value={yearStr}
+                onCellFilter={props.onCellFilter}
+                className="tabular-nums"
+              />
+            </div>
+          </>
+        )}
 
         <div className="flex shrink-0 items-center gap-0.5">
           <button
@@ -767,6 +890,316 @@ function ItemRow(props: ItemRowProps) {
   );
 }
 
+
+/* ---- Table view (one row per book, dense columns) -------------- */
+
+interface TableViewProps {
+  items: LibraryItem[];
+  onEditItem: (it: LibraryItem) => void;
+  onCellFilter: (filter: CellFilter) => void;
+}
+
+/** Filterable axes surfaced by the Tableau / Liste cells. The
+ *  catalogue applies the filter via `matchesCellFilter` ; the
+ *  active filter is shown as a banner above the list with an « x »
+ *  to clear. */
+export type CellFilterField = 'author' | 'publisher' | 'language' | 'year';
+
+export interface CellFilter {
+  field: CellFilterField;
+  /** String for « author » / « publisher » / « language », canonical
+   *  year string (e.g. "2022") for « year ». */
+  value: string;
+}
+
+const CELL_FILTER_LABEL: Record<CellFilterField, string> = {
+  author: 'Auteur·rice',
+  publisher: 'Éditeur',
+  language: 'Langue',
+  year: 'Année',
+};
+
+function matchesCellFilter(item: LibraryItem, filter: CellFilter): boolean {
+  switch (filter.field) {
+    case 'author': {
+      const authors = item.creators
+        ?.filter((c) => !c.role || c.role === 'author')
+        .map((c) => c.name.trim())
+        .filter(Boolean);
+      return Boolean(authors?.includes(filter.value));
+    }
+    case 'publisher':
+      return (item.publisher?.trim() ?? '') === filter.value;
+    case 'language':
+      return (item.language?.toLowerCase() ?? '') === filter.value.toLowerCase();
+    case 'year':
+      return item.year != null && String(item.year) === filter.value;
+  }
+}
+
+const LANGUAGE_LABEL: Record<string, string> = {
+  fr: 'Français',
+  en: 'Anglais',
+  es: 'Espagnol',
+  de: 'Allemand',
+  it: 'Italien',
+  pt: 'Portugais',
+  jp: 'Japonais',
+  ja: 'Japonais',
+  zh: 'Chinois',
+  ar: 'Arabe',
+  ru: 'Russe',
+  he: 'Hébreu',
+};
+
+/** Resolve a raw `item.language` code to a French label, falling
+ *  back to the raw code if unknown. Used by both the table view
+ *  and the inline list meta-row. */
+function languageLabel(code: string | undefined): string {
+  if (!code) return '';
+  return LANGUAGE_LABEL[code.toLowerCase()] ?? code;
+}
+
+/** First author name on an item. Honors `role: 'author'` or
+ *  unspecified (empty role) ; multi-author works land their names
+ *  joined by `, `. */
+function authorsLabel(it: LibraryItem): string {
+  return (
+    it.creators
+      ?.filter((c) => !c.role || c.role === 'author')
+      .map((c) => c.name.trim())
+      .filter(Boolean)
+      .join(', ') ?? ''
+  );
+}
+
+interface FilterableCellProps {
+  field: CellFilterField;
+  value: string;
+  display?: string;
+  onCellFilter: (filter: CellFilter) => void;
+  className?: string;
+}
+
+/**
+ * Inline button styled to read like plain text — clicking sets the
+ * matching cell filter on the catalogue. Empty values render as a
+ * non-clickable « — » so empty cells don't pretend to be filterable.
+ */
+function FilterableCell({
+  field,
+  value,
+  display,
+  onCellFilter,
+  className,
+}: FilterableCellProps) {
+  if (!value) {
+    return <span className={cn('text-muted', className)}>—</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onCellFilter({ field, value });
+      }}
+      className={cn(
+        'cursor-pointer text-left transition-colors hover:text-accent hover:underline underline-offset-2',
+        className,
+      )}
+      title={`Filtrer sur ${CELL_FILTER_LABEL[field]} : ${display ?? value}`}
+    >
+      {display ?? value}
+    </button>
+  );
+}
+
+type TableSortColumn = 'title' | 'author' | 'publisher' | 'language' | 'year';
+
+interface TableSort {
+  column: TableSortColumn;
+  direction: 'asc' | 'desc';
+}
+
+const TABLE_COLUMNS: ReadonlyArray<{
+  id: TableSortColumn;
+  label: string;
+  className: string;
+}> = [
+  { id: 'title', label: 'Titre', className: 'py-2 pr-3' },
+  { id: 'author', label: 'Auteur·rice', className: 'px-3 py-2' },
+  { id: 'publisher', label: 'Éditeur', className: 'px-3 py-2' },
+  { id: 'language', label: 'Langue', className: 'px-3 py-2' },
+  { id: 'year', label: 'Année', className: 'px-3 py-2' },
+];
+
+function valueForSort(it: LibraryItem, column: TableSortColumn): string | number {
+  switch (column) {
+    case 'title':
+      return it.title.toLocaleLowerCase('fr');
+    case 'author':
+      return authorsLabel(it).toLocaleLowerCase('fr');
+    case 'publisher':
+      return (it.publisher?.trim() ?? '').toLocaleLowerCase('fr');
+    case 'language':
+      return languageLabel(it.language).toLocaleLowerCase('fr');
+    case 'year':
+      return it.year ?? -Infinity;
+  }
+}
+
+/**
+ * Dense table view — one book per row, five columns (titre /
+ * auteur·rice / éditeur / langue / année). Cells in the four
+ * meta-columns are clickable filter triggers ; the title cell
+ * still opens the Composer in edit mode.
+ *
+ * Column headers cycle through asc → desc → null on click — null
+ * restores the incoming order (the catalogue's natural sort).
+ * Empty values always sink to the bottom regardless of direction
+ * so a row without an éditeur or langue doesn't bubble up to the
+ * top of an asc sort.
+ *
+ * Like the grid + wall views, this mode flattens the status
+ * grouping — a real table with a status column would invite
+ * sorting features later, but for now the existing « par statut »
+ * filter chips on the SideColumn cover the same need without
+ * breaking the table's visual rhythm.
+ */
+function TableView({ items, onEditItem, onCellFilter }: TableViewProps) {
+  const [sort, setSort] = useState<TableSort | null>(null);
+
+  function handleSortClick(col: TableSortColumn): void {
+    setSort((prev) => {
+      if (!prev || prev.column !== col) return { column: col, direction: 'asc' };
+      if (prev.direction === 'asc') return { column: col, direction: 'desc' };
+      return null;
+    });
+  }
+
+  const sortedItems = useMemo<LibraryItem[]>(() => {
+    if (!sort) return items;
+    const out = [...items];
+    out.sort((a, b) => {
+      const av = valueForSort(a, sort.column);
+      const bv = valueForSort(b, sort.column);
+      // Empty / missing values always sink to the bottom — both
+      // strings and the year sentinel `-Infinity` are detected.
+      const aEmpty = av === '' || av === -Infinity;
+      const bEmpty = bv === '' || bv === -Infinity;
+      if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
+      let cmp: number;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        cmp = av - bv;
+      } else {
+        cmp = String(av).localeCompare(String(bv), 'fr');
+      }
+      return sort.direction === 'asc' ? cmp : -cmp;
+    });
+    return out;
+  }, [items, sort]);
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-[13px] text-ink">
+        <thead>
+          <tr className="border-b border-hair text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
+            {TABLE_COLUMNS.map((col) => {
+              const active = sort?.column === col.id;
+              const arrow = !active
+                ? ''
+                : sort.direction === 'asc'
+                  ? '▲'
+                  : '▼';
+              return (
+                <th key={col.id} className={cn(col.className, 'font-semibold')}>
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick(col.id)}
+                    className={cn(
+                      'inline-flex cursor-pointer items-center gap-1 uppercase tracking-[0.04em] transition-colors',
+                      active ? 'text-ink' : 'text-muted hover:text-ink',
+                    )}
+                    aria-sort={
+                      active
+                        ? sort.direction === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                  >
+                    {col.label}
+                    {arrow ? (
+                      <span aria-hidden="true" className="text-[9px]">
+                        {arrow}
+                      </span>
+                    ) : null}
+                  </button>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {sortedItems.map((it) => {
+            const author = authorsLabel(it);
+            const publisher = it.publisher?.trim() ?? '';
+            const langCode = it.language?.toLowerCase() ?? '';
+            const yearStr = it.year != null ? String(it.year) : '';
+            return (
+              <tr
+                key={it.id}
+                className="border-b border-hair last:border-b-0 transition-colors hover:bg-bg-2"
+              >
+                <td className="py-2 pr-3">
+                  <button
+                    type="button"
+                    onClick={() => onEditItem(it)}
+                    className="block w-full cursor-pointer truncate text-left font-medium text-ink transition-colors hover:text-accent"
+                    title="Modifier ce livre"
+                  >
+                    {it.title}
+                  </button>
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  <FilterableCell
+                    field="author"
+                    value={author}
+                    onCellFilter={onCellFilter}
+                    className="block truncate"
+                  />
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  <FilterableCell
+                    field="publisher"
+                    value={publisher}
+                    onCellFilter={onCellFilter}
+                    className="block truncate"
+                  />
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  <FilterableCell
+                    field="language"
+                    value={langCode}
+                    display={languageLabel(it.language)}
+                    onCellFilter={onCellFilter}
+                  />
+                </td>
+                <td className="px-3 py-2 tabular-nums text-ink-soft">
+                  <FilterableCell
+                    field="year"
+                    value={yearStr}
+                    onCellFilter={onCellFilter}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /* ---- Grid view (cards with cover + title) ---------------------- */
 
@@ -1110,20 +1543,6 @@ function BookPickerModal({
   );
 }
 
-/**
- * Diacritic + case folding for the picker search input. "Ernaux",
- * "ernaux", and "ÉRNAUX" all want to match the same row. Uses
- * NFD + combining-mark strip — works for FR/EN/ES; broken for
- * scripts that don't use combining marks (CJK, Arabic, …) but
- * those still pass through case-fold which is the main lever.
- */
-function normaliseForSearch(s: string): string {
-  return s
-    .toLocaleLowerCase('fr')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
-}
-
 /* ---- Side column (filters) ------------------------------------- */
 
 interface SideColumnProps {
@@ -1230,183 +1649,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---- Helpers --------------------------------------------------- */
-
-function itemFromRecord(r: DecryptedRecord<LibraryItemPayload>): LibraryItem {
-  return { id: r.id, ...r.payload };
-}
-
-function reviewFromRecord(r: DecryptedRecord<LibraryReviewPayload>): LibraryReview {
-  return { id: r.id, ...r.payload };
-}
-
-/**
- * Turn the bulk-decrypted cover records into a Map keyed by the
- * cover row's id (which is the value stored as `cover_rid` on the
- * matching item). The data URL is `data:<mime>;base64,<blob_b64>`
- * — directly usable as `<img src>`. No URL.createObjectURL overhead
- * (which would require revocation on unmount).
- */
-function buildCoverMap(
-  records: DecryptedRecord<LibraryCoverPayload>[],
-): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const r of records) {
-    const url = `data:${r.payload.mime};base64,${r.payload.blob_b64}`;
-    map.set(r.id, url);
-  }
-  return map;
-}
-
-/* ---- Grouping ---------------------------------------------------
- * The catalogue list view supports five grouping axes — status (the
- * historical default, ordered by reading flow: en cours → à lire →
- * terminés → abandonnés), and four metadata-driven ones (author,
- * tag, publisher, collection). All five share the same render
- * (`GroupBlock`) so adding more later is just a buildGroups branch.
- *
- * Tag grouping is the only one where a single book lands in
- * multiple groups (a book tagged `classique, roman` shows in both
- * sections). That's intentional — the user reads the page to scan
- * "what do I have in this category", not "what's the canonical
- * home for this book". For the others a book has at most one
- * value per axis, so each book appears once.
- */
-
-interface LibraryGroup {
-  /** Stable key for React reconciliation (status code, normalised
-   * tag, author name, etc.). */
-  key: string;
-  /** Human-readable header rendered above the items. */
-  label: string;
-  items: LibraryItem[];
-}
-
-const LIBRARY_GROUP_BY_VALUES = [
-  'status',
-  'author',
-  'tag',
-  'publisher',
-  'collection',
-] as const;
-type LibraryGroupBy = (typeof LIBRARY_GROUP_BY_VALUES)[number];
-
-const LIBRARY_GROUP_BY_OPTIONS: ReadonlyArray<{
-  value: LibraryGroupBy;
-  label: string;
-}> = [
-  { value: 'status', label: 'Statut' },
-  { value: 'author', label: 'Auteur·ice' },
-  { value: 'tag', label: 'Catégorie' },
-  { value: 'publisher', label: 'Éditeur' },
-  { value: 'collection', label: 'Collection' },
-];
-
-const STATUS_GROUP_ORDER: readonly LibraryStatus[] = [
-  'in_progress',
-  'planned',
-  'finished',
-  'abandoned',
-];
-
-/** Empty-bucket label used when an item has no value for the
- * grouping axis (no author, no tag, no publisher, no collection). */
-const NO_VALUE_LABEL: Record<Exclude<LibraryGroupBy, 'status'>, string> = {
-  author: 'Auteur·ice inconnu·e',
-  tag: 'Sans catégorie',
-  publisher: 'Éditeur inconnu',
-  collection: 'Sans collection',
-};
-
-function buildGroups(
-  items: readonly LibraryItem[],
-  groupBy: LibraryGroupBy,
-): LibraryGroup[] {
-  if (groupBy === 'status') {
-    const map = new Map<LibraryStatus, LibraryItem[]>();
-    for (const status of LIBRARY_STATUS_VALUES) map.set(status, []);
-    for (const it of items) (map.get(it.status) ?? []).push(it);
-    for (const [, list] of map) {
-      list.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
-    }
-    return STATUS_GROUP_ORDER.map(
-      (s): LibraryGroup => ({
-        key: s,
-        label: STATUS_LABEL[s],
-        items: map.get(s) ?? [],
-      }),
-    );
-  }
-
-  // Metadata-driven groupings: walk the items, key on the chosen
-  // axis, alphabetical bucket order. The "no value" bucket goes
-  // last so the populated groups stay at the top of the page.
-  const buckets = new Map<string, LibraryItem[]>();
-  const noValueBucket: LibraryItem[] = [];
-  for (const it of items) {
-    const keys = groupKeysFor(it, groupBy);
-    if (keys.length === 0) {
-      noValueBucket.push(it);
-      continue;
-    }
-    for (const k of keys) {
-      const list = buckets.get(k);
-      if (list) list.push(it);
-      else buckets.set(k, [it]);
-    }
-  }
-  const sortedKeys = Array.from(buckets.keys()).sort((a, b) =>
-    a.localeCompare(b, 'fr'),
-  );
-  const groups: LibraryGroup[] = sortedKeys.map((k): LibraryGroup => {
-    const list = buckets.get(k) ?? [];
-    list.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
-    return { key: k, label: k, items: list };
-  });
-  if (noValueBucket.length > 0) {
-    noValueBucket.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
-    groups.push({
-      key: '__none__',
-      label: NO_VALUE_LABEL[groupBy],
-      items: noValueBucket,
-    });
-  }
-  return groups;
-}
-
-/**
- * Per-axis keys for a single item. A book can land in zero (no
- * value), one (author / publisher / collection), or many (every
- * tag) buckets. Empty strings are filtered out so blank values
- * don't create their own ghost bucket.
- */
-function groupKeysFor(
-  item: LibraryItem,
-  groupBy: Exclude<LibraryGroupBy, 'status'>,
-): string[] {
-  switch (groupBy) {
-    case 'author': {
-      const name = item.creators?.[0]?.name?.trim() ?? '';
-      return name ? [name] : [];
-    }
-    case 'tag': {
-      return (item.tags ?? []).map((t) => t.trim()).filter(Boolean);
-    }
-    case 'publisher': {
-      const p = item.publisher?.trim() ?? '';
-      return p ? [p] : [];
-    }
-    case 'collection': {
-      const c = item.collection?.trim() ?? '';
-      return c ? [c] : [];
-    }
-  }
-}
-
 /* ---- View mode persistence ------------------------------------- */
 
 const VIEW_MODE_STORAGE_KEY = 'nodea:library:viewMode';
-const LIBRARY_VIEW_MODES = ['list-plain', 'list-cover', 'grid', 'wall'] as const;
+const LIBRARY_VIEW_MODES = [
+  'list-plain',
+  'list-cover',
+  'table',
+  'grid',
+  'wall',
+] as const;
 type LibraryViewMode = (typeof LIBRARY_VIEW_MODES)[number];
 
 function readViewMode(): LibraryViewMode {
@@ -1416,16 +1668,4 @@ function readViewMode(): LibraryViewMode {
     return stored as LibraryViewMode;
   }
   return 'list-plain';
-}
-
-const REVIEW_DATE_FMT = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
-
-function formatReviewDate(rawIso: string): string {
-  const d = new Date(rawIso);
-  if (Number.isNaN(d.getTime())) return rawIso;
-  return REVIEW_DATE_FMT.format(d);
 }
