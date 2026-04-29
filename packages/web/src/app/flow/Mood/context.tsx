@@ -140,7 +140,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
           // Newest first — the EntryRow list reads top-down.
           .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
         setEntries(next);
-        setLoad({ status: 'ready', entries: next });
+        setLoad({ status: 'ready' });
       })
       .catch((err: unknown) => {
         if (cancelled) return;

@@ -1,7 +1,8 @@
 # Module internal refacto — split + 3 contexts
 
-> **Statut** : Library + Goals + Journal livrés (référence). Mood
-> à faire.
+> **Statut** : Library + Goals + Journal + Mood livrés. Tous les
+> modules de `flow/` sont passés à la structure split (≤ 220 LOC
+> par feuille, provider central, helpers purs testés).
 > **Mise à jour** : à chaque commit qui touche un module concerné, cocher la
 > case correspondante dans ce fichier.
 
@@ -228,10 +229,10 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
   - 38 tests verts (mappers 9 · date-format 10 · heatmap 7 ·
     stats 12).
 - [x] **2. context.tsx** — `MoodProvider` + 3 hooks
-- [ ] **3. components/** — `YearSelector`, `MonthSelector`,
-       `SideColumn`, `NoteBadge`
-- [ ] **4. views/** — `PrimaryColumn`, `Chart` (heatmap), `EntryRow`
-- [ ] **5. index.tsx final** ≤ 100 LOC
+- [x] **3. components/** — `YearSelector`, `MonthSelector`,
+       `SideColumn`, `ScoreDonut`, `NoteBadge`
+- [x] **4. views/** — `PrimaryColumn`, `Chart` (heatmap), `EntryRow`
+- [x] **5. index.tsx final** ≤ 100 LOC (71 LOC livré)
 
 ---
 

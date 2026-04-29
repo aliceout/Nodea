@@ -18,15 +18,15 @@ export interface MoodEntry {
   answer?: string;
 }
 
-/** Async lifecycle of the page-level fetch. The `ready` variant
- *  bundles the decrypted entries so consumers can branch on a
- *  single discriminated union (`load.status === 'ready'`). Step 2
- *  will split this into separate `entries` and `load` slices once
- *  the `<MoodProvider>` lands. */
+/** Async lifecycle of the page-level fetch. The `<MoodProvider>`
+ *  exposes `entries` and `load` as separate slices ; `load`
+ *  carries only the lifecycle status, never the data itself, so
+ *  the data context's `entries` array stays the single source of
+ *  truth. */
 export type LoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; entries: MoodEntry[] }
+  | { status: 'ready' }
   | { status: 'error'; message: string };
 
 /** One cell of the 52 × 7 heatmap grid. `null` is rendered as a
