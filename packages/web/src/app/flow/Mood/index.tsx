@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Bars3Icon,
   ChevronUpIcon,
   PencilSquareIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import {
-  MOOD_SCORE_VALUES,
-  type MoodPayload,
-  type MoodScore,
-} from '@nodea/shared';
+import { type MoodScore } from '@nodea/shared';
 
 import { moodClient } from '@/core/api/modules/mood';
 import {
@@ -17,7 +12,6 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
-import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/EmptyHint';
@@ -25,6 +19,35 @@ import HoverActions from '@/ui/dirk/HoverActions';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
+
+import {
+  DONUT_ORDER,
+  MONTH_LABELS_LONG,
+  MONTH_LABELS_SHORT,
+  SCORE_FILL,
+  SCORE_LABEL_FILL,
+  SCORE_LABELS,
+  SCORE_STROKE,
+  SCORE_TONE,
+} from './lib/constants';
+import { formatEntryLabel, rangeFor } from './lib/date-format';
+import {
+  buildHeatmap,
+  HEATMAP_DAYS_PER_WEEK,
+  HEATMAP_WEEKS,
+} from './lib/heatmap';
+import { recordToEntry } from './lib/mappers';
+import {
+  computeAverage30d,
+  computePatterns,
+  formatMoodAvg,
+} from './lib/stats';
+import type {
+  HeatmapCell,
+  LoadState,
+  MonthLabel,
+  MoodEntry,
+} from './lib/types';
 
 /**
  * Mood — Direction K · Sauge.
@@ -40,12 +63,6 @@ import Topbar from '@/ui/dirk/Topbar';
  * encrypted `mood_entries` collection happens in a follow-up commit
  * once the UI shape is locked.
  */
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready'; entries: MoodEntry[] }
-  | { status: 'error'; message: string };
-
 export default function MoodPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
@@ -166,91 +183,6 @@ export default function MoodPage() {
       />
     </ModuleShell>
   );
-}
-
-/**
- * Map a decrypted Mood record onto the page-local `MoodEntry`
- * shape. Tolerates legacy values: `mood_emoji` is ignored, and a
- * legacy 0..10 `mood_score` gets linearly mapped onto −2..+2 so
- * older entries don't disappear under the new scale.
- */
-function recordToEntry(
-  record: DecryptedRecord<MoodPayload>,
-  today: Date,
-): MoodEntry {
-  const p = record.payload;
-  // Server-side timestamps are gone (minimum-readable-surface design).
-  // We rely on `p.date` exclusively ; if it's missing or malformed we
-  // fall back to today (the entry won't sort meaningfully but at
-  // least the UI doesn't crash on an invalid record).
-  const dateIso = p.date && /^\d{4}-\d{2}-\d{2}/.test(p.date)
-    ? p.date.slice(0, 10)
-    : today.toISOString().slice(0, 10);
-  const positives: [string, string, string] = [
-    p.positive1 ?? '',
-    p.positive2 ?? '',
-    p.positive3 ?? '',
-  ];
-  const entry: MoodEntry = {
-    id: record.id,
-    dateIso,
-    date: formatEntryLabel(dateIso, today),
-    score: normalizeScore(p.mood_score ?? '0'),
-    positives,
-  };
-  if (p.comment && p.comment.trim().length > 0) entry.comment = p.comment;
-  if (p.question && p.question.trim().length > 0) entry.question = p.question;
-  if (p.answer && p.answer.trim().length > 0) entry.answer = p.answer;
-  return entry;
-}
-
-const VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
-
-function normalizeScore(raw: string): MoodScore {
-  if (VALID_SCORES.has(raw)) return raw as MoodScore;
-  // Legacy 0..10 scale → linear map onto −2..+2.
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return '0';
-  const mapped = Math.max(-2, Math.min(2, Math.round((n - 5) / 2.5)));
-  return String(mapped) as MoodScore;
-}
-
-const ENTRY_SAME_YEAR_FMT = new Intl.DateTimeFormat('fr-FR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
-const ENTRY_CROSS_YEAR_FMT = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
-
-function formatEntryLabel(dateIso: string, today: Date): string {
-  const d = new Date(dateIso);
-  if (Number.isNaN(d.getTime())) return dateIso;
-  const dayMs = 24 * 3600 * 1000;
-  const diff = Math.floor((today.getTime() - d.getTime()) / dayMs);
-  if (diff === 0) return 'Aujourd’hui';
-  if (diff === 1) return 'Hier';
-  const fmt =
-    d.getFullYear() === today.getFullYear() ? ENTRY_SAME_YEAR_FMT : ENTRY_CROSS_YEAR_FMT;
-  const formatted = fmt.format(d);
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-interface MoodEntry {
-  /** Decrypted record id — needed by edit / delete handlers. */
-  id: string;
-  /** ISO `YYYY-MM-DD` — drives year/month filtering. */
-  dateIso: string;
-  /** Display label computed from `dateIso` + today (today/yesterday/full date). */
-  date: string;
-  score: MoodScore;
-  positives: [string, string, string];
-  comment?: string;
-  question?: string;
-  answer?: string;
 }
 
 const EMPTY_ENTRIES: ReadonlyArray<MoodEntry> = [];
@@ -408,36 +340,6 @@ function PrimaryColumn({
   );
 }
 
-const MONTH_LABELS_LONG: ReadonlyArray<string> = [
-  'janvier',
-  'février',
-  'mars',
-  'avril',
-  'mai',
-  'juin',
-  'juillet',
-  'août',
-  'septembre',
-  'octobre',
-  'novembre',
-  'décembre',
-];
-
-const MONTH_LABELS_SHORT: ReadonlyArray<string> = [
-  'Janv',
-  'Févr',
-  'Mars',
-  'Avr',
-  'Mai',
-  'Juin',
-  'Juil',
-  'Août',
-  'Sept',
-  'Oct',
-  'Nov',
-  'Déc',
-];
-
 interface YearSelectorProps {
   value: number | null;
   years: ReadonlyArray<number>;
@@ -531,20 +433,6 @@ function MonthSelector({ value, onChange }: MonthSelectorProps) {
   );
 }
 
-const SCORE_FILL: Record<MoodScore, string> = {
-  '2': 'bg-accent',
-  '1': 'bg-accent-soft',
-  // `bg-hair` instead of `bg-bg-2`: empty cells (no entry) render
-  // with a faint hair-coloured *outline*, so a solid hair *fill*
-  // for score 0 reads as "filled neutral" without competing with
-  // the ±1 soft tints. Going `outline → neutral fill → tinted fill
-  // → saturated fill` removes the ambiguity between "no entry" and
-  // "neutral entry".
-  '0': 'bg-hair',
-  '-1': 'bg-low-soft',
-  '-2': 'bg-low',
-};
-
 /**
  * GitHub-style mood frise. 52 columns of weeks (rolling year — when
  * the current year isn't complete, the trailing weeks come from
@@ -558,23 +446,6 @@ const SCORE_FILL: Record<MoodScore, string> = {
  * stretches to fill the primary content column without needing a
  * horizontal scrollbar.
  */
-const HEATMAP_WEEKS = 52;
-const HEATMAP_DAYS_PER_WEEK = 7;
-
-interface HeatmapCell {
-  score: MoodScore;
-  isToday: boolean;
-  /** Pre-formatted French label for the cell's date (`lundi 30 mars`,
-   * with the year appended only when it differs from today's year).
-   * Used for the hover tooltip. */
-  dateLabel: string;
-}
-
-interface MonthLabel {
-  /** Index of the week this label sits over (0 = oldest, 51 = current). */
-  weekIndex: number;
-  label: string;
-}
 
 interface ChartProps {
   /** Year selection driving the frise.
@@ -679,156 +550,6 @@ function Chart({ year, entries }: ChartProps) {
   );
 }
 
-/**
- * Date range covered by a year selection.
- *
- * Three values:
- * - `start` / `end`: the visible window — drives the 52-week grid
- *   anchor and the entries list filter. The frise is laid out so
- *   `end`'s week sits in the rightmost column.
- * - `dataEnd`: the latest date that actually carries data. For
- *   the current year this is `today` (the rest of the year is
- *   visible but empty); for past years and the rolling view it's
- *   the same as `end`.
- *
- * Modes:
- * - `null` ("En cours"): rolling 52 weeks ending today — bleeds
- *   into the previous calendar year, like GitHub's default view.
- * - `currentYear`: window goes Jan 1 → Dec 31, anchored so
- *   January starts on the left and December ends on the right;
- *   data stops at today, so the rest of the year shows empty.
- * - past year: Jan 1 → Dec 31, fully populated.
- */
-function rangeFor(
-  year: number | null,
-  today: Date,
-): { start: Date; end: Date; dataEnd: Date } {
-  if (year === null) {
-    const start = new Date(today);
-    start.setDate(today.getDate() - HEATMAP_WEEKS * HEATMAP_DAYS_PER_WEEK + 1);
-    return { start, end: today, dataEnd: today };
-  }
-  const jan1 = new Date(year, 0, 1);
-  const dec31 = new Date(year, 11, 31);
-  if (year === today.getFullYear()) {
-    return { start: jan1, end: dec31, dataEnd: today };
-  }
-  return { start: jan1, end: dec31, dataEnd: dec31 };
-}
-
-/** Local-TZ ISO date string, no time component. */
-function toIsoDate(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-/**
- * Project a flat list of `MoodEntry`s onto the 52 × 7 heatmap grid.
- *
- * Cells flow column-major: `cells[0..6]` = oldest column (Mon..Sun),
- * `cells[357..363]` = the most recent week.
- *
- * Single uniform rule per cell:
- * - if the cell's date falls outside `[start, dataEnd]` (computed by
- *   `rangeFor(year, today)`), the cell is `null` (rendered as faint
- *   outline) — keeps the trailing weeks of the current year visible
- *   but empty;
- * - else, look the cell's `dateIso` up in the entries map: a hit
- *   becomes a coloured cell with the matching score; a miss stays
- *   `null` so days without an entry read as gaps, not zeros.
- */
-function buildHeatmap(
-  year: number | null,
-  entries: ReadonlyArray<MoodEntry>,
-): {
-  cells: Array<HeatmapCell | null>;
-  monthLabels: MonthLabel[];
-} {
-  const total = HEATMAP_WEEKS * HEATMAP_DAYS_PER_WEEK;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const currentYear = today.getFullYear();
-  const todayTime = today.getTime();
-  const { start, end, dataEnd } = rangeFor(year, today);
-  const startTime = start.getTime();
-  const dataEndTime = dataEnd.getTime();
-
-  // Index entries by ISO date for O(1) lookup per cell.
-  const entriesByDate = new Map<string, MoodScore>();
-  for (const entry of entries) entriesByDate.set(entry.dateIso, entry.score);
-
-  // Anchor at the oldest visible Monday — `end`'s week's Monday
-  // minus 51 weeks. From there, cell index `i` maps to a calendar
-  // date by `i` days (column-major flow walks the same way:
-  // Mon..Sun of week 0, then Mon..Sun of week 1, …).
-  const endDow = (end.getDay() + 6) % 7;
-  const lastWeekMonday = new Date(end);
-  lastWeekMonday.setDate(end.getDate() - endDow);
-  const oldestMonday = new Date(lastWeekMonday);
-  oldestMonday.setDate(lastWeekMonday.getDate() - (HEATMAP_WEEKS - 1) * 7);
-
-  const sameYearFmt = new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-  const crossYearFmt = new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const cells: Array<HeatmapCell | null> = [];
-  for (let i = 0; i < total; i++) {
-    const cellDate = new Date(oldestMonday);
-    cellDate.setDate(oldestMonday.getDate() + i);
-    const t = cellDate.getTime();
-    if (t < startTime || t > dataEndTime) {
-      cells.push(null);
-      continue;
-    }
-    const score = entriesByDate.get(toIsoDate(cellDate));
-    if (!score) {
-      // Day in range but no entry — show as faint gap, not zero.
-      cells.push(null);
-      continue;
-    }
-    const fmt = cellDate.getFullYear() === currentYear ? sameYearFmt : crossYearFmt;
-    cells.push({
-      score,
-      isToday: t === todayTime,
-      dateLabel: fmt.format(cellDate),
-    });
-  }
-
-  // Month labels: every time a week's Monday lands in a different
-  // calendar month than the previous week's Monday, drop a label.
-  const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
-  const monthLabels: MonthLabel[] = [];
-  let prevMonth = -1;
-  for (let w = 0; w < HEATMAP_WEEKS; w++) {
-    const weeksAgo = HEATMAP_WEEKS - 1 - w;
-    const monday = new Date(lastWeekMonday);
-    monday.setDate(lastWeekMonday.getDate() - weeksAgo * 7);
-    if (monday.getMonth() !== prevMonth) {
-      monthLabels.push({ weekIndex: w, label: monthFormatter.format(monday) });
-      prevMonth = monday.getMonth();
-    }
-  }
-  return { cells, monthLabels };
-}
-
-const SCORE_LABELS: Record<MoodScore, string> = {
-  '-2': 'très bas',
-  '-1': 'bas',
-  '0': 'neutre',
-  '1': 'bon',
-  '2': 'très bon',
-};
-
 interface EntryRowProps {
   entry: MoodEntry;
   onEdit: () => void;
@@ -901,14 +622,6 @@ function EntryRow({ entry, onEdit, onDelete }: EntryRowProps) {
   );
 }
 
-const SCORE_TONE: Record<MoodScore, string> = {
-  '2': 'bg-accent text-white',
-  '1': 'bg-accent-soft text-accent-deep',
-  '0': 'bg-bg-2 text-ink-soft',
-  '-1': 'bg-low-soft text-low-deep',
-  '-2': 'bg-low text-white',
-};
-
 function NoteBadge({ score }: { score: MoodScore }) {
   const numeric = Number(score);
   const display = numeric > 0 ? `+${score}` : score;
@@ -922,11 +635,6 @@ function NoteBadge({ score }: { score: MoodScore }) {
       {display}
     </span>
   );
-}
-
-interface Pattern {
-  label: string;
-  delta: string;
 }
 
 /**
@@ -986,205 +694,6 @@ function SideColumn({ entries }: { entries: ReadonlyArray<MoodEntry> }) {
     </aside>
   );
 }
-
-/** 30-day rolling average mood score. `null` when no entries fell
- *  within the window, so the UI can render a placeholder instead of
- *  a numeric zero (which would falsely read as "perfectly neutral"). */
-function computeAverage30d(entries: ReadonlyArray<MoodEntry>): number | null {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const cutoff = today.getTime() - 30 * 24 * 3600 * 1000;
-  const recent = entries.filter((e) => new Date(e.dateIso).getTime() >= cutoff);
-  if (recent.length === 0) return null;
-  const sum = recent.reduce((acc, e) => acc + Number(e.score), 0);
-  return Math.round((sum / recent.length) * 10) / 10;
-}
-
-function formatMoodAvg(avg: number | null): string {
-  if (avg === null) return '—';
-  const sign = avg > 0 ? '+' : avg < 0 ? '−' : '';
-  const abs = Math.abs(avg).toFixed(1).replace('.', ',');
-  return `${sign}${abs}`;
-}
-
-const DAY_NAMES_FR: ReadonlyArray<string> = [
-  'Lundi',
-  'Mardi',
-  'Mercredi',
-  'Jeudi',
-  'Vendredi',
-  'Samedi',
-  'Dimanche',
-];
-
-const SHORT_MONTHS_FR: ReadonlyArray<string> = [
-  'janv.',
-  'févr.',
-  'mars',
-  'avr.',
-  'mai',
-  'juin',
-  'juil.',
-  'août',
-  'sept.',
-  'oct.',
-  'nov.',
-  'déc.',
-];
-
-function computePatterns(entries: ReadonlyArray<MoodEntry>): Pattern[] {
-  const out: Pattern[] = [];
-  if (entries.length < 5) return out;
-
-  // 1) Best / worst day of the week
-  const buckets: number[][] = [[], [], [], [], [], [], []]; // Mon..Sun
-  for (const e of entries) {
-    const d = new Date(e.dateIso);
-    if (Number.isNaN(d.getTime())) continue;
-    const dow = (d.getDay() + 6) % 7; // shift Sun=0..Sat=6 → Mon=0..Sun=6
-    buckets[dow]!.push(Number(e.score));
-  }
-  const allScores = entries.map((e) => Number(e.score));
-  const overallMean = allScores.reduce((s, v) => s + v, 0) / allScores.length;
-  const MIN_PER_DAY = 3;
-  let bestIdx = -1;
-  let worstIdx = -1;
-  let bestMean = -Infinity;
-  let worstMean = Infinity;
-  for (let i = 0; i < 7; i += 1) {
-    const bucket = buckets[i]!;
-    if (bucket.length < MIN_PER_DAY) continue;
-    const mean = bucket.reduce((s, v) => s + v, 0) / bucket.length;
-    if (mean > bestMean) {
-      bestMean = mean;
-      bestIdx = i;
-    }
-    if (mean < worstMean) {
-      worstMean = mean;
-      worstIdx = i;
-    }
-  }
-  if (bestIdx >= 0) {
-    out.push({
-      label: `${DAY_NAMES_FR[bestIdx]} est ton meilleur jour`,
-      delta: `${signedFormat(bestMean - overallMean)} vs moyenne`,
-    });
-  }
-  if (worstIdx >= 0 && worstIdx !== bestIdx) {
-    out.push({
-      label: `${DAY_NAMES_FR[worstIdx]} reste ton point bas`,
-      delta: `${signedFormat(worstMean - overallMean)} vs moyenne`,
-    });
-  }
-
-  // 2) Longest non-negative streak (consecutive entries, gaps OK)
-  const sortedAsc = [...entries].sort((a, b) => a.dateIso.localeCompare(b.dateIso));
-  let current = 0;
-  let currentStart: string | null = null;
-  let bestCount = 0;
-  let bestStart: string | null = null;
-  let bestEnd: string | null = null;
-  for (const e of sortedAsc) {
-    if (Number(e.score) >= 0) {
-      if (current === 0) currentStart = e.dateIso;
-      current += 1;
-      if (current > bestCount) {
-        bestCount = current;
-        bestStart = currentStart;
-        bestEnd = e.dateIso;
-      }
-    } else {
-      current = 0;
-      currentStart = null;
-    }
-  }
-  if (bestCount >= 3 && bestStart && bestEnd) {
-    out.push({
-      label: `${bestCount} entrées ≥ 0 d’affilée`,
-      delta: formatStreakRange(bestStart, bestEnd),
-    });
-  }
-
-  // 3) 30-day mean vs 90-day mean (trend)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dayMs = 24 * 3600 * 1000;
-  const cutoff30 = today.getTime() - 30 * dayMs;
-  const cutoff90 = today.getTime() - 90 * dayMs;
-  const last30: number[] = [];
-  const last90: number[] = [];
-  for (const e of entries) {
-    const t = new Date(e.dateIso).getTime();
-    if (Number.isNaN(t)) continue;
-    if (t >= cutoff30) last30.push(Number(e.score));
-    if (t >= cutoff90) last90.push(Number(e.score));
-  }
-  if (last30.length >= 5 && last90.length >= 10) {
-    const m30 = last30.reduce((s, v) => s + v, 0) / last30.length;
-    const m90 = last90.reduce((s, v) => s + v, 0) / last90.length;
-    const delta = m30 - m90;
-    if (Math.abs(delta) >= 0.2) {
-      out.push({
-        label: delta > 0 ? 'Tendance à la hausse' : 'Tendance à la baisse',
-        delta: `${signedFormat(delta)} vs 90 j`,
-      });
-    }
-  }
-
-  return out;
-}
-
-function signedFormat(value: number): string {
-  const sign = value > 0 ? '+' : value < 0 ? '−' : '';
-  const abs = Math.abs(value).toFixed(1).replace('.', ',');
-  return `${sign}${abs}`;
-}
-
-function formatStreakRange(startIso: string, endIso: string): string {
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return `${startIso} → ${endIso}`;
-  }
-  if (startIso === endIso) {
-    return `le ${formatShortDate(start)}`;
-  }
-  // If start and end share a year, drop the year from the start (less noise).
-  if (start.getFullYear() === end.getFullYear()) {
-    return `du ${start.getDate()} ${SHORT_MONTHS_FR[start.getMonth()]} au ${formatShortDate(end)}`;
-  }
-  return `du ${formatShortDate(start)} au ${formatShortDate(end)}`;
-}
-
-function formatShortDate(d: Date): string {
-  return `${d.getDate()} ${SHORT_MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-const SCORE_STROKE: Record<MoodScore, string> = {
-  '2': 'stroke-accent',
-  '1': 'stroke-accent-soft',
-  '0': 'stroke-muted-soft',
-  '-1': 'stroke-low-soft',
-  '-2': 'stroke-low',
-};
-
-/**
- * Text-fill ramp for the donut's per-segment labels. Mirrors the
- * magnitude of the score: extreme values (`+2` / `-2`) get the
- * deep shade of their family, mild values (`+1` / `-1`) the medium
- * shade, neutral stays muted. Always a readable tone — the soft
- * variants used by the segments themselves would be invisible as
- * text on the page background.
- */
-const SCORE_LABEL_FILL: Record<MoodScore, string> = {
-  '2': 'fill-accent-deep',
-  '1': 'fill-accent',
-  '0': 'fill-ink-soft',
-  '-1': 'fill-low',
-  '-2': 'fill-low-deep',
-};
-
-const DONUT_ORDER: ReadonlyArray<MoodScore> = ['2', '1', '0', '-1', '-2'];
 
 /**
  * Score distribution rendered as an empty-centre donut. Each arc is

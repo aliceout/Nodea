@@ -210,20 +210,23 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
 
 ### Checklist
 
-- [ ] **1. lib/ + tests**
-  - [ ] `lib/types.ts` — `MoodEntry`, `LoadState`, `Pattern`,
+- [x] **1. lib/ + tests**
+  - [x] `lib/types.ts` — `MoodEntry`, `LoadState`, `Pattern`,
         `HeatmapCell`, `MonthLabel`
-  - [ ] `lib/mappers.ts` — `recordToEntry`, `normalizeScore`,
+  - [x] `lib/mappers.ts` — `recordToEntry`, `normalizeScore`,
         `VALID_SCORES`
-  - [ ] `lib/constants.ts` — `SCORE_FILL`, `SCORE_LABELS`,
-        `SCORE_TONE`, `DAY_NAMES_FR`, `SHORT_MONTHS_FR`,
+  - [x] `lib/constants.ts` — `SCORE_FILL`, `SCORE_LABELS`,
+        `SCORE_TONE`, `SCORE_STROKE`, `SCORE_LABEL_FILL`,
+        `DONUT_ORDER`, `DAY_NAMES_FR`, `SHORT_MONTHS_FR`,
         `MONTH_LABELS_LONG`, `MONTH_LABELS_SHORT`
-  - [ ] `lib/date-format.ts` — `formatEntryLabel`, `toIsoDate`,
-        `rangeFor`
-  - [ ] `lib/heatmap.ts` — `buildHeatmap` + constantes + tests
+  - [x] `lib/date-format.ts` — `formatEntryLabel`, `toIsoDate`,
+        `rangeFor` (+ `parseLocalDate` interne, fix bug TZ)
+  - [x] `lib/heatmap.ts` — `buildHeatmap` + constantes + tests
         (priorité)
-  - [ ] `lib/stats.ts` — `computeAverage30d`, `formatMoodAvg`,
+  - [x] `lib/stats.ts` — `computeAverage30d`, `formatMoodAvg`,
         `computePatterns`, `signedFormat` + tests
+  - 38 tests verts (mappers 9 · date-format 10 · heatmap 7 ·
+    stats 12).
 - [ ] **2. context.tsx** — `MoodProvider` + 3 hooks
 - [ ] **3. components/** — `YearSelector`, `MonthSelector`,
        `SideColumn`, `NoteBadge`
