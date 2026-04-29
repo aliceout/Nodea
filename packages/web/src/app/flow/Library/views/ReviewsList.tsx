@@ -3,13 +3,13 @@ import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { LibraryReviewPayload } from '@nodea/shared';
 
 import DirkButton from '@/ui/atoms/dirk/Button';
+import { formatLongDate } from '@/core/i18n/date-fr';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import PageHeading from '@/ui/dirk/PageHeading';
 
 import { useLibraryActions, useLibraryData } from '../context';
-import { formatReviewDate } from '../lib/review-format';
 import type { LibraryItem, LibraryReview } from '../lib/types';
 
 interface ReviewsListProps {
@@ -104,7 +104,7 @@ interface FlatReviewRowProps {
 }
 
 function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
-  const dateLabel = formatReviewDate(review.date);
+  const dateLabel = formatLongDate(review.date);
   const accent = review.kind === 'quote';
   const bookTitle = book?.title ?? '(livre supprimé)';
   const bookAuthor = book?.creators?.[0]?.name ?? '';

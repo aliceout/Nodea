@@ -1,8 +1,8 @@
 import { MOOD_SCORE_VALUES, type MoodPayload, type MoodScore } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
+import { formatEntryLabel } from '@/core/i18n/date-fr';
 
-import { formatEntryLabel } from './date-format';
 import type { MoodEntry } from './types';
 
 /** Set of canonical score strings the schema accepts. Used by

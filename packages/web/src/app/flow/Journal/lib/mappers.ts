@@ -1,8 +1,8 @@
 import type { PassagePayload } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
+import { formatEntryLabel } from '@/core/i18n/date-fr';
 
-import { formatEntryLabel } from './date-format';
 import type { JournalEntry } from './types';
 
 /** Flatten a decrypted Passage record into the in-memory shape the

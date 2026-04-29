@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUturnLeftIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { formatLongDate } from '@/core/i18n/date-fr';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
@@ -24,11 +25,10 @@ interface ListProps {
   onEdit(record: ReviewRecord): void;
 }
 
-const ENTRY_DATE_FMT = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
+/** « 12 mars 14:30 » — used for the « Brouillons » timestamp.
+ *  Specific to this surface (no other module surfaces a date with
+ *  hour / minute on the same line), so it stays local instead of
+ *  going to `core/i18n/date-fr.ts`. */
 const DRAFT_DATETIME_FMT = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
   month: 'long',
@@ -202,7 +202,7 @@ function ReviewRow({ record, onOpen, onEdit, onDelete }: ReviewRowProps) {
   // `payload.updated_at` is the in-payload write timestamp — the
   // entry-table wrapper no longer carries `updated_at` (minimum-
   // readable-surface design). Always set by the create/update hooks.
-  const updated = ENTRY_DATE_FMT.format(new Date(record.payload.updated_at));
+  const updated = formatLongDate(record.payload.updated_at);
   return (
     <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
       <button

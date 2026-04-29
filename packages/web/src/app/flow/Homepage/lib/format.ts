@@ -40,16 +40,9 @@ export function formatMoodAvg(avg: number): string {
   return `${sign}${abs}`;
 }
 
-/** Local-TZ ISO date (`YYYY-MM-DD`) for a `Date`, no time
- *  component. Used by the home frise to look entries up by day. */
-export function toIsoDate(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// `firstThread` lives in `@nodea/shared/threads` since the
-// post-`module-refacto` dedup. Importers should pull it from
-// there directly — this barrel doesn't re-export it (one less
-// indirection between caller and the source of truth).
+// `toIsoDate` and the FR date formatters (`formatEntryLabel`,
+// `formatMonthLabel`, `formatLongDate`, `parseLocalDate`) live
+// in `@/core/i18n/date-fr` since the post-`module-refacto`
+// dedup. `firstThread` lives in `@nodea/shared/threads`. This
+// barrel doesn't re-export them — one less indirection between
+// caller and the source of truth.

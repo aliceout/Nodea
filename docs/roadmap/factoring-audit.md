@@ -167,21 +167,25 @@ modifie une copie sans toucher l'autre.
        (9 cases). Le `vitest.config.ts` web pointe désormais aussi
        sur `../shared/src/**/*.test.ts` pour que le runner unique
        exerce le shared package sans infra dédiée.
-- [ ] **Formatters de date FR** dispersés :
-       [`flow/Mood/lib/date-format.ts`](../../packages/web/src/app/flow/Mood/lib/date-format.ts)
-       (`ENTRY_SAME_YEAR_FMT`, `ENTRY_CROSS_YEAR_FMT`,
-       `parseLocalDate`),
-       [`flow/Journal/lib/date-format.ts`](../../packages/web/src/app/flow/Journal/lib/date-format.ts)
-       (`formatEntryLabel`, `formatMonthLabel`),
+- [x] **Formatters de date FR** centralisés dans
+       [`core/i18n/date-fr.ts`](../../packages/web/src/core/i18n/date-fr.ts) :
+       `parseLocalDate`, `toIsoDate`, `formatEntryLabel`,
+       `formatMonthLabel`, `formatLongDate`. 18 tests Vitest dans
+       [`core/i18n/date-fr.test.ts`](../../packages/web/src/core/i18n/date-fr.test.ts)
+       — couvrent le fix TZ (« Aujourd'hui » sur un timestamp UTC
+       midnight) et un bug latent dans `formatMonthLabel` (l'input
+       `'2026-'` rendait « Décembre 2025 » à cause de
+       `Number('') === 0` ; corrigé par un range check explicit).
+       Suppressions :
+       [`flow/Journal/lib/date-format.ts`](../../packages/web/src/app/flow/Journal/lib/date-format.ts),
        [`flow/Library/lib/review-format.ts`](../../packages/web/src/app/flow/Library/lib/review-format.ts),
-       [`flow/Review/views/List.tsx`](../../packages/web/src/app/flow/Review/views/List.tsx),
-       [`flow/Mood/lib/heatmap.ts`](../../packages/web/src/app/flow/Mood/lib/heatmap.ts).
-       Chacun construit ses `Intl.DateTimeFormat('fr-FR', …)` en
-       local. → factoriser dans `core/i18n/date-fr.ts` :
-       `formatEntryLabel(iso, today)`, `formatMonthLabel(yyyymm)`,
-       `parseLocalDate(iso)`, `toIsoDate(date)`. **Important** :
-       garder le fix `parseLocalDate` (Mood) dedans, c'est lui qui
-       répare le bug TZ.
+       et leurs tests. Les helpers spécifiques restent en local
+       (`Mood/lib/date-format.ts` ne porte plus que `rangeFor`,
+       lié à la heatmap ; `Review/views/List.tsx` garde
+       `DRAFT_DATETIME_FMT` qui ajoute heure/minute, pattern
+       unique à cette surface). Le `vitest.config.ts` web a aussi
+       reçu l'alias `@/` qui manquait — pré-requis pour que les
+       tests de `core/i18n/` résolvent leurs imports.
 - [ ] **Lite shapes Homepage** redondent
        [`flow/Goals/lib/types.ts`](../../packages/web/src/app/flow/Goals/lib/types.ts) /
        [`flow/Mood/lib/types.ts`](../../packages/web/src/app/flow/Mood/lib/types.ts) /

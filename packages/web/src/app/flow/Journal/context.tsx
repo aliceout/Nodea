@@ -12,13 +12,13 @@ import {
 import { splitThreads } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
+import { formatMonthLabel } from '@/core/i18n/date-fr';
 import {
   useNodeaStore,
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
 
-import { formatMonthLabel } from './lib/date-format';
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
 import type { JournalEntry, JournalStats, LoadState } from './lib/types';

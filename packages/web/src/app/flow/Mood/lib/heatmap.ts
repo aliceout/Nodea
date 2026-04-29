@@ -1,6 +1,8 @@
 import type { MoodScore } from '@nodea/shared';
 
-import { rangeFor, toIsoDate } from './date-format';
+import { toIsoDate } from '@/core/i18n/date-fr';
+
+import { rangeFor } from './date-format';
 import type { HeatmapCell, MonthLabel, MoodEntry } from './types';
 
 /** GitHub-style frise dimensions. 52 weeks × 7 days = 364 cells. */

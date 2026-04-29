@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 
+import { toIsoDate } from '@/core/i18n/date-fr';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 
 import { useHomepageData } from '../context';
 import { MOCK_TASKS } from '../lib/constants';
-import { formatTimeFromIso, signedScore, toIsoDate } from '../lib/format';
+import { formatTimeFromIso, signedScore } from '../lib/format';
 import SectionLabel from './SectionLabel';
 
 /** Rounded check icon used by both the dynamic Mood task and the

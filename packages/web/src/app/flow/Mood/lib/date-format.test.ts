@@ -1,44 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatEntryLabel, rangeFor, toIsoDate } from './date-format';
+import { rangeFor } from './date-format';
 
 const TODAY = new Date(2026, 2, 15); // 15 mars 2026 (Sunday)
-
-describe('formatEntryLabel', () => {
-  it('returns « Aujourd’hui » for today', () => {
-    expect(formatEntryLabel('2026-03-15', TODAY)).toBe('Aujourd’hui');
-  });
-
-  it('returns « Hier » for yesterday', () => {
-    expect(formatEntryLabel('2026-03-14', TODAY)).toBe('Hier');
-  });
-
-  it('returns the long FR form (no year) for older dates in the same year', () => {
-    const out = formatEntryLabel('2026-01-20', TODAY);
-    expect(out).toMatch(/20/);
-    expect(out).toMatch(/janvier/i);
-    expect(out).not.toMatch(/2026/);
-    expect(out[0]).toBe(out[0]?.toUpperCase());
-  });
-
-  it('returns the long FR form WITH year for cross-year dates', () => {
-    const out = formatEntryLabel('2024-08-12', TODAY);
-    expect(out).toMatch(/12/);
-    expect(out).toMatch(/août/i);
-    expect(out).toMatch(/2024/);
-  });
-
-  it('returns the raw input when the ISO can\'t be parsed', () => {
-    expect(formatEntryLabel('not-a-date', TODAY)).toBe('not-a-date');
-  });
-});
-
-describe('toIsoDate', () => {
-  it('returns YYYY-MM-DD with zero-padding', () => {
-    expect(toIsoDate(new Date(2026, 0, 5))).toBe('2026-01-05');
-    expect(toIsoDate(new Date(2024, 11, 31))).toBe('2024-12-31');
-  });
-});
 
 describe('rangeFor', () => {
   it('rolling 52 weeks ending today when year is null', () => {
@@ -76,3 +40,8 @@ describe('rangeFor', () => {
     expect(dataEnd).toEqual(new Date(2030, 11, 31));
   });
 });
+
+// `formatEntryLabel` and `toIsoDate` moved to
+// `core/i18n/date-fr.ts` and are tested there alongside the
+// other shared FR formatters (`formatMonthLabel`,
+// `formatLongDate`, `parseLocalDate`).

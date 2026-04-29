@@ -1,7 +1,8 @@
 import type { MoodScore } from '@nodea/shared';
 
+import { toIsoDate } from '@/core/i18n/date-fr';
+
 import { MOOD_FRISE_DAYS } from './constants';
-import { toIsoDate } from './format';
 import type { MoodEntryLite, MoodFriseCell, MoodFriseStats } from './types';
 
 /**

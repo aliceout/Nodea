@@ -5,7 +5,6 @@ import {
   formatTimeFromIso,
   preferredName,
   signedScore,
-  toIsoDate,
 } from './format';
 
 describe('preferredName', () => {
@@ -62,12 +61,7 @@ describe('formatMoodAvg', () => {
   });
 });
 
-describe('toIsoDate', () => {
-  it('uses local-TZ year/month/day with zero padding', () => {
-    expect(toIsoDate(new Date(2026, 0, 4))).toBe('2026-01-04');
-    expect(toIsoDate(new Date(2026, 11, 31))).toBe('2026-12-31');
-  });
-});
-
-// `firstThread` is now `@nodea/shared/threads`, tested in
+// `toIsoDate` is now `@/core/i18n/date-fr`, tested in
+// `packages/web/src/core/i18n/date-fr.test.ts` ; `firstThread`
+// is `@nodea/shared/threads`, tested in
 // `packages/shared/src/threads.test.ts`.
