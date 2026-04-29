@@ -13,7 +13,9 @@
  * `library`, `review`. Unknown names are skipped with a warning.
  */
 
-import { sql } from '../db/client.ts';
+import { eq } from 'drizzle-orm';
+import { db, sql } from '../db/client.ts';
+import { users } from '../db/schema.ts';
 import { loadSeedContext, type SeedContext, type SeedResult } from './shared.ts';
 import { seedMood } from './mood.ts';
 import { seedGoals } from './goals.ts';
@@ -59,6 +61,18 @@ async function main(): Promise<void> {
       process.exitCode = 1;
     }
   }
+
+  // Skip the front's first-run seed hook : it fires on
+  // `onboarding_status = 'pending'` and races against the modules-
+  // config hydration, generating fresh sids that orphan everything
+  // we just inserted (the data exists but `modules_config` points
+  // somewhere else). Marking onboarding as complete here means the
+  // next login renders the seeded data straight away.
+  await db
+    .update(users)
+    .set({ onboardingStatus: 'complete' })
+    .where(eq(users.id, ctx.user.id));
+  console.log('[seed:test] onboarding_status → complete');
 
   await sql.end();
 }
