@@ -284,70 +284,46 @@ Pour la transparence totale, voilà ce qui vit dans les autres tables. Pour chaq
 
 #### Comptes et identité
 
-**`users`** — une ligne par compte
-- **Lu en clair** : `id`, `email` (identifiant OPAQUE), `username`, `role` (`'user' | 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at`
-- **Chiffré** : `wrapped_main_key`, `wrapped_kek_password`, `wrapped_kek_recovery` (chacun avec son IV) — inutiles sans la clé du user
-- **Haché** : `recovery_code_hash` (SHA-256 du code à 12 mots, jamais le code lui-même)
-
-**`opaque_records`** — une ligne par user
-- **Lu en clair** : `user_id`, `envelope` (le « registration record » OPAQUE — cryptographiquement opaque, pas du contenu user mais visible)
+| Table | Champs |
+|---|---|
+| `users` (1 par compte) | **clair** : `id`, `email` (identifiant OPAQUE), `username`, `role` (`'user' \| 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at`<br>**chiffrés** (inutiles sans la clé du user) : `wrapped_main_key{,_iv}`, `wrapped_kek_password{,_iv}`, `wrapped_kek_recovery{,_iv}`<br>**haché** : `recovery_code_hash` (SHA-256 du code à 12 mots, jamais le code lui-même) |
+| `opaque_records` (1 par user) | **clair** : `user_id`, `envelope` (le « registration record » OPAQUE — cryptographiquement opaque, pas du contenu user mais visible) |
 
 #### Sessions et MFA
 
-**`sessions`** — N par user, expirent
-- **Lu en clair** : `id` (token signé), `user_id`, `kind`, timestamps, flags MFA, `pending_webauthn_challenge` (éphémère, single-use, TTL 5 min)
-
-**`auth_factors`** — passkeys enrôlées, N par user
-- **Lu en clair** : `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (étiquette donnée par le user), `created_at`
-- **Chiffré** : `wrapped_kek` + IV (chiffré par le PRF de la passkey)
-
-**`mfa_totp`** — une ligne par user
-- **Lu en clair** : `user_id`, `secret`, `algo`, `digits`, `period`, `enabled_at`, `last_window`
-- **Le secret TOTP est en clair côté serveur.** RFC 6238 l'exige (le serveur doit pouvoir vérifier le code). Trade-off documenté : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure.
-
-**`mfa_totp_recovery_codes`** — 10 par user
-- **Lu en clair** : `used_at`
-- **Haché** : `code_hash` (SHA-256, jamais le code en clair)
-
-**`mfa_bypass_requests`** — bypass MFA par email
-- **Lu en clair** : `factor` (`'totp' | 'passkey'`), timestamps de confirmation / annulation / consommation / expiration
-- **Haché** : tokens (jamais le token en clair)
+| Table | Champs |
+|---|---|
+| `sessions` (N par user, expirent) | **clair** : `id` (token signé), `user_id`, `kind`, timestamps, flags MFA (`mfa_*_verified`, `reauth_*_at`), `pending_webauthn_challenge` (éphémère, single-use, TTL 5 min) |
+| `auth_factors` (passkeys, N par user) | **clair** : `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (étiquette donnée par le user), `created_at`<br>**chiffré** : `wrapped_kek{,_iv}` (par credential PRF) |
+| `mfa_totp` (1 par user) | **clair** : `user_id`, `secret` (le secret TOTP est en clair côté serveur — RFC 6238 le **requiert** ; trade-off documenté : la protection TOTP repose sur l'intégrité du serveur, pas sur la crypto pure), `algo`, `digits`, `period`, `enabled_at`, `last_window` |
+| `mfa_totp_recovery_codes` (10 par user) | **clair** : `id`, `user_id`, `used_at`<br>**haché** : `code_hash` (SHA-256, jamais le code en clair) |
+| `mfa_bypass_requests` | **clair** : `id`, `user_id`, `factor` (`'totp' \| 'passkey'`), timestamps (confirmation / annulation / consommation / expiration / earliest_apply)<br>**hachés** : `confirm_token_hash`, `cancel_token_hash` |
 
 #### Flux email transitoires
 
-**`email_verifications`** — TTL 10 min
-- **Lu en clair** : `user_id`, `kind`, `attempts`, `expires_at`
-- **Haché** : `code_hash` (pas le code lui-même)
-
-**`password_reset_tokens`** — TTL 1h
-- **Lu en clair** : `user_id`, `expires_at`, `used_at`
-- **Haché** : `token_hash`
-
-**`invites`** — invitations en attente
-- **Lu en clair** : `email` du destinataire, `created_by`, `expires_at`. **L'email du futur user est lisible avant qu'il s'inscrive.**
-- **Haché** : `token_hash`
+| Table | Champs |
+|---|---|
+| `email_verifications` (TTL 10 min) | **clair** : `id`, `user_id`, `kind`, `attempts`, `expires_at`<br>**haché** : `code_hash` (pas le code lui-même) |
+| `password_reset_tokens` (TTL 1h) | **clair** : `id`, `user_id`, `expires_at`, `used_at`<br>**haché** : `token_hash` |
+| `invites` | **clair** : `id`, `email` du destinataire (visible avant son inscription), `created_by`, `expires_at`, `created_at`<br>**haché** : `token_hash` |
 
 #### Préférences chiffrées par user
 
-**`modules_config`** — une ligne par user, contient le mapping `user → sids` par module
-- **Lu en clair** : `user_id`, `cipher_iv`, `updated_at`
-- **Chiffré** : `payload`
-
-**`user_preferences`** — une ligne par user
-- **Lu en clair** : `user_id`, `cipher_iv`, `updated_at`
-- **Chiffré** : `payload`
+| Table | Champs |
+|---|---|
+| `modules_config` (1 par user) | **clair** : `user_id`, `cipher_iv`, `updated_at`<br>**chiffré** : `payload` (contient le mapping `user → sids` par module) |
+| `user_preferences` (1 par user) | **clair** : `user_id`, `cipher_iv`, `updated_at`<br>**chiffré** : `payload` |
 
 #### Données globales d'app
 
-**`announcements`** — annonces de l'admin, lues par tous les users connectés
-- **Lu en clair** : tout, par construction (c'est le but)
-
-**`app_settings`** — config globale (clé/valeur), ex. `open_registration`
-- **Lu en clair** : tout
+| Table | Champs |
+|---|---|
+| `announcements` | **clair** : tout — annonces de l'admin lues par tous les users connectés, en clair par construction (c'est le but) |
+| `app_settings` | **clair** : `key`, `value`, `updated_at` — config globale (ex. `open_registration`) |
 
 #### Tables modules (rappel)
 
-`mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` — voir le tableau plus haut. **Pas de `user_id`, pas de timestamps colonnes.**
+`mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` — décrites dans le tableau « surface lisible côté serveur — minimum strict » plus haut. **Pas de `user_id`, pas de timestamps colonnes.**
 
 ### Qui peut voir quoi
 
