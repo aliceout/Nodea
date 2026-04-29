@@ -221,37 +221,53 @@ modifie une copie sans toucher l'autre.
 
 ---
 
-## Tier 4 — pages d'auth publiques (≥ 500 LOC)
+## Tier 4 — pages d'auth publiques (livré)
 
-Pages publiques (`/login`, `/register`, `/recover`, `/totp`,
-`/passkeys`) — jamais refacto'ées. Même pattern monolithique que
-le `flow/`.
+**Statut** : 7 pages refacto'ées (LoginMfa, RecoveryCode,
+Recover, Reset, Register, Passkeys, Totp) + 2 dedups
+cross-pages (PasswordRulesList + StrengthBar dans
+`ui/atoms/auth/`, RecoveryCodeDisplay dans `ui/atoms/auth/`).
+Aucun `useReducer` introduit — le `useState`-par-stage
+existait déjà partout, le coût d'un reducer n'aurait pas
+amorti le risque.
 
-- [ ] [`pages/Totp.tsx`](../../packages/web/src/app/pages/Totp.tsx)
-       — **909 LOC**. Page la plus lourde côté auth ; gère
-       l'enrôlement TOTP + la vérification + les codes de
-       récupération. À découper en `Totp/views/Setup.tsx` /
-       `Verify.tsx` / `Recovery.tsx` + un provider d'état
-       d'enrôlement.
-- [ ] [`pages/Passkeys.tsx`](../../packages/web/src/app/pages/Passkeys.tsx)
-       — **581 LOC**. Liste + enrolment + révocation. Split
-       similaire à Account (un fichier par sous-vue).
-- [ ] [`pages/Register.tsx`](../../packages/web/src/app/pages/Register.tsx)
-       — **550 LOC**. Multi-step form (invite → mot de passe →
-       phrase de récupération). Le formulaire en lui-même tient
-       en ~250 LOC ; le reste est de la logique crypto et de la
-       gestion de retours serveur. Sortir le pas-à-pas dans
-       `Register/steps/`.
-- [ ] [`pages/Recover.tsx`](../../packages/web/src/app/pages/Recover.tsx)
-       — **539 LOC**. Multi-step (email → code → nouveau mot de
-       passe). Même découpage que Register.
-- [ ] [`pages/LoginMfa.tsx`](../../packages/web/src/app/pages/LoginMfa.tsx)
-       — **461 LOC**. TOTP + passkey + bypass. À sortir les trois
-       pistes dans des `views/` dédiés.
-
-Note : ces pages n'ont **pas** besoin du pattern « 3 contextes »
-puisqu'elles ne hostent qu'un seul flow vertical ; un provider
-unique avec `useReducer` suffit pour le state machine.
+- [x] [`pages/Totp/`](../../packages/web/src/app/pages/Totp/) —
+       909 → 106 LOC orchestrator + 7 fichiers ≤ 218 LOC.
+       Dedup interne `BackupCodesPanel` (factorise
+       `CodesPanel` + `RegenDisplayPanel`) et `PasswordPanel`
+       (utilisé par RegenFlow + DisableView).
+- [x] [`pages/Passkeys/`](../../packages/web/src/app/pages/Passkeys/) —
+       581 → 140 LOC orchestrator + 4 panels (List/Add/Remove/
+       Rename) + `lib/error-helpers.ts` (`isPasswordError`,
+       `isWebAuthnCancel`).
+- [x] [`pages/Register/`](../../packages/web/src/app/pages/Register/) —
+       550 → 110 LOC orchestrator + `RegisterForm` (262) +
+       `Stages` (135 — les 5 panels triviaux groupés).
+- [x] [`pages/Recover/`](../../packages/web/src/app/pages/Recover/) —
+       539 → 183 LOC orchestrator + `FormPanel` (181). Le
+       `DisplayPanel` post-recovery est passé sur le partagé
+       `ui/atoms/auth/RecoveryCodeDisplay`.
+- [x] [`pages/Reset/`](../../packages/web/src/app/pages/Reset/) —
+       360 → 191 LOC orchestrator + `ResetForm` (146) +
+       `InvalidLinkPanel` (25) + `DonePanel` (33).
+- [x] [`pages/RecoveryCode/`](../../packages/web/src/app/pages/RecoveryCode/) —
+       323 → 136 LOC orchestrator + `FormPanel` (83). Le
+       `DisplayPanel` est passé sur le partagé.
+- [x] [`pages/LoginMfa/`](../../packages/web/src/app/pages/LoginMfa/) —
+       461 → 232 LOC orchestrator + `TotpStep` (168) +
+       `PasskeyStep` (94) + `LostFlow` (106) +
+       `lib/validation.ts` (avec 11 tests Vitest).
+- [x] **`pages/ChangePassword.tsx`** : 318 → 227 LOC après le
+       dedup `PasswordRulesList` + `StrengthBar` (sous le
+       plafond, pas besoin de découpage supplémentaire).
+- [x] **Dedup cross-pages** :
+       - [`ui/atoms/auth/PasswordRulesList.tsx`](../../packages/web/src/ui/atoms/auth/PasswordRulesList.tsx)
+         + [`StrengthBar.tsx`](../../packages/web/src/ui/atoms/auth/StrengthBar.tsx)
+         (Register, Recover, ChangePassword partageaient le
+         même JSX byte-for-byte).
+       - [`ui/atoms/auth/RecoveryCodeDisplay.tsx`](../../packages/web/src/ui/atoms/auth/RecoveryCodeDisplay.tsx)
+         (RecoveryCode, Recover partageaient le même
+         « show this mnemonic ONCE »).
 
 ---
 
