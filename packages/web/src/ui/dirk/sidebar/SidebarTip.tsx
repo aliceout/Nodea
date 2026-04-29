@@ -167,37 +167,13 @@ export function SidebarTipRecoveryCode() {
 }
 
 /**
- * Specific instance: the « ajouter une passkey » nudge shown to
- * authenticated users who haven't enrolled any passkey yet. Tone is
- * `warning` (amber) — passkeys are a security upgrade rather than a
- * data-loss prevention, so a softer signal than the recovery code
- * tip is appropriate. **Dismissable** — the user can opt out of the
- * suggestion without acting on it.
- */
-export function SidebarTipPasskey() {
-  return (
-    <SidebarTip
-      title="Suggestion"
-      kind="warning"
-      dismissKey="nodea:home:tip-passkey"
-    >
-      Configure une passkey pour te connecter sans retaper ton mot de
-      passe.{' '}
-      <Link
-        to="/passkeys"
-        className="cursor-pointer font-medium text-amber-700 transition-colors hover:underline dark:text-amber-200"
-      >
-        Ajouter →
-      </Link>
-    </SidebarTip>
-  );
-}
-
-/**
  * Specific instance: the « activer TOTP » nudge shown to authenticated
- * users who haven't enrolled TOTP. Same `warning` tone + dismissable
- * as the passkey tip — both are opt-in security upgrades, not
- * data-loss prevention.
+ * users who haven't enrolled TOTP. `warning` tone, dismissable —
+ * an opt-in security upgrade rather than data-loss prevention. The
+ * passkey nudge that used to live next to it has been retired :
+ * stacking both on a fresh account read as two separate warnings,
+ * and once the user opens the TOTP page they discover the passkey
+ * option there anyway.
  */
 export function SidebarTipTotp() {
   return (

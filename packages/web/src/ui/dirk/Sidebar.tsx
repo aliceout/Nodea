@@ -11,7 +11,6 @@ import SidebarHeader from './sidebar/SidebarHeader';
 import SidebarNav from './sidebar/SidebarNav';
 import {
   SidebarTipModules,
-  SidebarTipPasskey,
   SidebarTipRecoveryCode,
   SidebarTipTotp,
 } from './sidebar/SidebarTip';
@@ -92,14 +91,12 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
   // for authenticated users without a code yet — gate it here so
   // freshly-set-up users don't keep seeing a stale tip.
   const showRecoveryWarning = user !== null && user.recoveryCodeSet === false;
-  // Passkey suggestion: dismissable amber tip, only shown when the
-  // user has zero passkeys enrolled. Disappears as soon as the
-  // first one lands, regardless of dismiss state.
-  const showPasskeyTip = user !== null && user.passkeysCount === 0;
-  // TOTP suggestion: same shape as passkey — dismissable amber tip
-  // visible until the user enrolls. `totpEnabled` flips to true
-  // only after `/auth/totp/enroll/verify`, so a half-completed
-  // enrollment still shows the tip (= "tu n'as pas fini").
+  // TOTP suggestion: dismissable amber tip visible until the user
+  // enrolls. `totpEnabled` flips to true only after
+  // `/auth/totp/enroll/verify`, so a half-completed enrollment
+  // still shows the tip (= "tu n'as pas fini"). The passkey
+  // suggestion lives on the TOTP page itself — surfacing both at
+  // sidebar level just stacked two warnings on a fresh account.
   const showTotpTip = user !== null && user.totpEnabled === false;
 
   return (
@@ -111,7 +108,6 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           new nudges appear. Each one is independently dismissable
           and self-contained, so the slot stays a passive container. */}
       {showRecoveryWarning ? <SidebarTipRecoveryCode /> : null}
-      {showPasskeyTip ? <SidebarTipPasskey /> : null}
       {showTotpTip ? <SidebarTipTotp /> : null}
       <SidebarTipModules />
       <SidebarFooter />
