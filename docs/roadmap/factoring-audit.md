@@ -15,12 +15,15 @@ correspondent à l'état au commit qui livre cet audit.
 
 ---
 
-## Tier 1 — appliquer le même refacto que `module-refacto`
+## Tier 1 — appliquer le même refacto que `module-refacto` (livré)
 
 Mêmes symptômes (gros `index.tsx` monolithique, hooks de fetch
 inlinés, types Lite redondants) → mêmes remèdes (5 commits :
 lib/ + tests, context provider, components/, views/, orchestrator
 ≤ 100 LOC). On a déjà la recette ; le coût est mécanique.
+
+**Statut** : Homepage (858 → 77 LOC) et Account (949 → 68 LOC)
+livrés. Tier 1 fermé.
 
 ### Homepage — 858 LOC → ~12 fichiers
 
@@ -73,27 +76,38 @@ fetch + 4 helpers).
        wrapper + `HomepageView` qui lit la date d'entête + dispatch
        sur `<PrimaryColumn />` / `<SideColumn />`).
 
-### Account — 949 LOC → ~10 fichiers
+### Account — 949 LOC → ~14 fichiers (livré)
 
-[`packages/web/src/app/flow/Account/index.tsx`](../../packages/web/src/app/flow/Account/index.tsx)
-porte 6 onglets inline (`IdentityTab`, `SecurityTab`,
-`PreferencesTab`, `ModulesTab`, `DataTab`, `DangerTab`) + des
-sous-blocks (`Stats`, `IdentityRow`, `DescribedSection`,
-`ExportPanel`, `ImportPanel`, `Field`, `Feedback`).
+État de départ : `index.tsx` portait 6 onglets inline
+(`IdentityTab`, `SecurityTab`, `PreferencesTab`, `ModulesTab`,
+`DataTab`, `DangerTab`) + des sous-blocks (`Stats`,
+`IdentityRow`, `DescribedSection`, `ExportPanel`, `ImportPanel`,
+`Field`, `Feedback`).
 
-- [ ] **6 onglets** → `Account/views/` (un fichier par onglet).
-       L'`Account/index.tsx` garde uniquement le tab dispatch.
-- [ ] **Sous-blocks réutilisables** (`Field`, `Feedback`,
+- [x] **6 onglets** → `Account/views/` (un fichier par onglet).
+       `IdentityTab` reste la feuille la plus lourde (192 LOC) —
+       sous le plafond 220. Les autres feuilles sont entre 14 et
+       100 LOC.
+- [x] **Sous-blocks réutilisables** (`Field`, `Feedback`,
        `DescribedSection`, `IdentityRow`) → `Account/components/`.
-- [ ] **`Stats`** + ses `StatRow` → `Account/components/Stats.tsx`.
-- [ ] **`ExportPanel` / `ImportPanel`** vivent dans le `DataTab` ;
-       à co-localiser dans le même fichier que la vue ou à sortir
-       dans `Account/data/` selon leur taille (probablement ≥ 100
-       LOC chacun).
-- [ ] **Pure logic** (validation des inputs, transformation
-       export / import) → `Account/lib/` avec tests Vitest sur les
-       parsers / sérialiseurs.
-- [ ] **`index.tsx` final ≤ 100 LOC**.
+       Tous ≤ 79 LOC.
+- [x] **`Stats`** + ses `StatRow` (co-localisés) →
+       `Account/components/Stats.tsx`.
+- [x] **`ExportPanel` / `ImportPanel`** sortis dans
+       `Account/views/data/` (90 et 136 LOC). Le `DataTab` se
+       contente de les composer.
+- [x] **Pure logic** : `modeLabel(SecurityMode)` (`lib/security-
+       mode.ts`) + 3 tests Vitest. La logique de parsing import
+       est restée co-localisée dans `ImportPanel` parce qu'elle
+       est entrelacée avec la résolution runtime des plugins ;
+       l'extraire forcerait à dupliquer le wiring `pluginFor`.
+- [x] **Pas de provider central** : chaque onglet garde son
+       state local — le `key={tab}` re-mount du conteneur réinit-
+       ialise volontairement les drafts en cours quand l'utilisat-
+       eur·ice change d'onglet. Centraliser combattrait ce
+       comportement.
+- [x] **`index.tsx` final ≤ 100 LOC** : 68 LOC livrés (juste le
+       Topbar + le `<Tabs>` + le dispatch sur la `Tab` union).
 
 ---
 
