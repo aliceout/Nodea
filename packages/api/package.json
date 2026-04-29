@@ -18,8 +18,8 @@
     "db:migrate:test": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.test src/db/migrate-test.ts",
     "db:studio": "drizzle-kit studio",
     "seed:admin": "tsx --env-file-if-exists=../../.env src/seed.ts",
-    "seed:mood": "tsx --env-file-if-exists=../../.env src/seed-mood.ts",
-    "seed:all": "pnpm seed:admin && pnpm seed:mood"
+    "seed:test": "tsx --env-file-if-exists=../../.env src/seed/index.ts",
+    "seed:all": "pnpm seed:admin && pnpm seed:test"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

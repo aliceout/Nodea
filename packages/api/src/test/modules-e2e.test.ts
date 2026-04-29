@@ -171,6 +171,7 @@ describe('Passage module — full encrypted round-trip', () => {
       thread: 'journal',
       title: 'Phase 6 notes',
       content: 'today i wired up the three modules',
+      attachments: [],
     };
 
     await createPromoted(cookie, 'passage', keys, sid, payload);
