@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 
 export type SidebarTipKind = 'info' | 'warning' | 'danger';
@@ -122,15 +123,17 @@ export default function SidebarTip({
  * fixed copy + a link to the place the user can opt out from.
  */
 export function SidebarTipModules() {
+  const setModule = useNodeaStore((s) => s.setModule);
   return (
     <SidebarTip title="Astuce" kind="info" dismissKey="nodea:home:tip-modules">
       Tous les modules sont activés par défaut.{' '}
-      <Link
-        to="/flow/account"
+      <button
+        type="button"
+        onClick={() => setModule('account')}
         className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
       >
         Personnaliser →
-      </Link>
+      </button>
     </SidebarTip>
   );
 }

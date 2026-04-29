@@ -57,7 +57,7 @@ export default function LoginPage() {
       if (result.needsMfa) {
         navigate('/login/mfa', { replace: true });
       } else {
-        navigate('/flow/home', { replace: true });
+        navigate('/flow', { replace: true });
       }
     } catch (err) {
       if (isApiError(err)) {
@@ -81,7 +81,7 @@ export default function LoginPage() {
    * Drive a passkey-first login. The OS / browser surfaces a
    * credential picker — discoverable creds (resident keys) appear
    * even without an email. On a fully-unlocked PRF login the user
-   * lands on /flow/home; on a non-PRF (or PRF deferred) login we
+   * lands on /flow; on a non-PRF (or PRF deferred) login we
    * stay on the page so they can chain a password to finish the
    * unwrap.
    */
@@ -96,7 +96,7 @@ export default function LoginPage() {
         // The MFA page will drive the next factor.
         navigate('/login/mfa', { replace: true });
       } else if (result.fullyUnlocked) {
-        navigate('/flow/home', { replace: true });
+        navigate('/flow', { replace: true });
       } else {
         setServerError(
           'Cette passkey ne déchiffre pas tes données. Saisis ton mot de passe pour finaliser.',

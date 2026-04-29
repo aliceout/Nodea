@@ -142,7 +142,7 @@ export default function LoginMfaPage() {
     try {
       const result = await session.verifyMfaTotp(code.trim());
       if (result.finalized) {
-        navigate('/flow/home', { replace: true });
+        navigate('/flow', { replace: true });
       } else {
         applyMissing(result.missing);
       }
@@ -159,7 +159,7 @@ export default function LoginMfaPage() {
     try {
       const result = await session.verifyMfaPasskey();
       if (result.finalized) {
-        navigate('/flow/home', { replace: true });
+        navigate('/flow', { replace: true });
       } else {
         applyMissing(result.missing);
       }

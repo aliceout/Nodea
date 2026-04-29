@@ -26,7 +26,6 @@ const Habits = lazy(() => import('@/app/flow/Habits'));
 const Library = lazy(() => import('@/app/flow/Library'));
 const Review = lazy(() => import('@/app/flow/Review'));
 const Account = lazy(() => import('@/app/flow/Account'));
-const Settings = lazy(() => import('@/app/flow/Settings'));
 const Admin = lazy(() => import('@/app/flow/Admin'));
 
 /**
@@ -139,16 +138,6 @@ export const MODULES: readonly ModuleDef[] = [
     element: lazyModule('account', Account),
     to_toggle: false,
     description: 'modules.account.description',
-    icon: Cog6ToothIcon,
-    display: false,
-  },
-  {
-    id: 'settings',
-    label: 'modules.settings.label',
-    collection: null,
-    element: lazyModule('settings', Settings),
-    to_toggle: false,
-    description: 'modules.settings.description',
     icon: Cog6ToothIcon,
     display: false,
   },

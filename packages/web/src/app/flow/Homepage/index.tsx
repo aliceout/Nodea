@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
 import {
   GOAL_STATUS_VALUES,
   MOOD_SCORE_VALUES,
@@ -21,7 +20,6 @@ import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
-import EmptyHomepage from './Empty';
 
 /**
  * Homepage — Direction K · Sauge.
@@ -40,13 +38,6 @@ export default function HomePage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { t, language } = useI18n();
-  const [searchParams] = useSearchParams();
-
-  // Until real entry-count data is wired through TanStack Query,
-  // `?empty=1` flips the page to its first-day variant so the design
-  // can be reviewed without faking store state. The condition will
-  // expand once the home dashboard reads from real collections.
-  const forceEmpty = searchParams.get('empty') === '1';
 
   const displayName = useMemo(() => preferredName(user), [user]);
   const moodEntries = useMoodEntries();
@@ -67,8 +58,6 @@ export default function HomePage() {
     );
     return `${formatter.format(now)} · jour ${dayOfYear}`;
   }, [language]);
-
-  if (forceEmpty) return <EmptyHomepage />;
 
   return (
     <ModuleShell
@@ -698,6 +687,8 @@ const STATUS_LABEL: Record<GoalStatusLite, string> = {
  * reader yet (#64 tracks that).
  */
 function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> }) {
+  const setModule = useNodeaStore((s) => s.setModule);
+  const goToGoals = () => setModule('goals');
   const visible = useMemo(() => {
     const wip = [...entries.filter((e) => e.status === 'wip')];
     const open = [...entries.filter((e) => e.status === 'open')];
@@ -712,12 +703,13 @@ function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> })
     <section>
       <div className="mb-2 flex items-baseline justify-between">
         <SectionLabel>Goals</SectionLabel>
-        <Link
-          to="/flow/goals"
-          className="text-[11px] text-muted underline-offset-2 transition-colors hover:text-accent hover:underline"
+        <button
+          type="button"
+          onClick={goToGoals}
+          className="cursor-pointer text-[11px] text-muted underline-offset-2 transition-colors hover:text-accent hover:underline"
         >
           tout voir →
-        </Link>
+        </button>
       </div>
       {visible.length === 0 ? (
         <p className="text-[12px] italic text-muted">
@@ -727,9 +719,10 @@ function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> })
         <ul className="space-y-1.5">
           {visible.map((g) => (
             <li key={g.id}>
-              <Link
-                to="/flow/goals"
-                className="group flex items-baseline gap-2 text-[12.5px] text-ink transition-colors hover:text-accent"
+              <button
+                type="button"
+                onClick={goToGoals}
+                className="group flex w-full cursor-pointer items-baseline gap-2 text-left text-[12.5px] text-ink transition-colors hover:text-accent"
                 title={STATUS_LABEL[g.status]}
               >
                 <span
@@ -745,7 +738,7 @@ function IntentionsBlock({ entries }: { entries: ReadonlyArray<GoalEntryLite> })
                     {firstThread(g.thread)}
                   </span>
                 ) : null}
-              </Link>
+              </button>
             </li>
           ))}
         </ul>

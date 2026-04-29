@@ -28,7 +28,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
  * The mnemonic is shown ONCE in a 4×3 grid with copy / download
  * buttons; the user must check "j'ai noté ce code" before the
  * "Terminé" button appears. After confirmation we navigate to
- * `/flow/home` — the sidebar warning disappears as soon as `/me`
+ * `/flow` — the sidebar warning disappears as soon as `/me`
  * surfaces `recoveryCodeSet: true`.
  */
 type Stage =
@@ -86,7 +86,7 @@ export default function RecoveryCodePage() {
 
   function handleDone(): void {
     setStage({ kind: 'done' });
-    navigate('/flow/home', { replace: true });
+    navigate('/flow', { replace: true });
   }
 
   return (
@@ -189,7 +189,7 @@ function FormPanel({
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
           <Link
-            to="/flow/home"
+            to="/flow"
             className="cursor-pointer transition-colors hover:text-ink"
           >
             ← Retour

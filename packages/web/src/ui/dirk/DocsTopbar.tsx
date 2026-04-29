@@ -45,7 +45,7 @@ interface DocsTopbarProps {
 export default function DocsTopbar({ children }: DocsTopbarProps) {
   const navigate = useNavigate();
   const isAuthenticated = useNodeaStore(selectIsAuthenticated);
-  const target = isAuthenticated ? '/flow/home' : '/login';
+  const target = isAuthenticated ? '/flow' : '/login';
   const ctaLabel = isAuthenticated ? 'Retour à Nodea' : 'Accéder à Nodea';
 
   function handleCtaClick(e: MouseEvent<HTMLButtonElement>): void {

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
@@ -35,6 +35,8 @@ interface ModeOption {
 }
 
 export default function SecurityModePage() {
+  const navigate = useNavigate();
+  const setModule = useNodeaStore((s) => s.setModule);
   const session = useSession();
   const user = useNodeaStore(selectUser);
   const currentMode = user?.securityMode ?? 'password_or_passkey';
@@ -269,12 +271,16 @@ export default function SecurityModePage() {
           ) : null}
 
           <div className="mt-4.5 text-center text-[12.5px] text-muted">
-            <Link
-              to="/flow/account"
+            <button
+              type="button"
+              onClick={() => {
+                setModule('account');
+                navigate('/flow');
+              }}
               className="cursor-pointer transition-colors hover:text-ink"
             >
               ← Retour
-            </Link>
+            </button>
           </div>
     </AuthLayout>
   );

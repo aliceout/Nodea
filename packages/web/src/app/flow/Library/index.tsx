@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import { Modal } from '@/ui/atoms/layout/Modal';
@@ -31,6 +30,8 @@ import {
   useNodeaStore,
   selectMainKey,
   selectModules,
+  selectLibrarySubview,
+  type LibrarySubview,
 } from '@/core/store/nodea-store';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
@@ -71,9 +72,6 @@ type LoadState =
   | { status: 'ready' }
   | { status: 'error'; message: string };
 
-type LibrarySubview = 'livres' | 'extraits' | 'notes';
-const LIBRARY_SUBVIEWS: readonly LibrarySubview[] = ['livres', 'extraits', 'notes'];
-
 export default function LibraryPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
@@ -89,14 +87,9 @@ export default function LibraryPage() {
   // collections: the books themselves (`livres`), the highlighted
   // extracts pulled from them (`extraits` = `reviews` with
   // `kind=quote`), and the freeform notes (`notes` = `kind=note`).
-  // The active lens is driven by the URL so the Sidebar's sub-nav
-  // and any deep link end up on the same page state.
-  const [searchParams] = useSearchParams();
-  const subviewParam = searchParams.get('subview');
-  const subview: LibrarySubview =
-    subviewParam && (LIBRARY_SUBVIEWS as readonly string[]).includes(subviewParam)
-      ? (subviewParam as LibrarySubview)
-      : 'livres';
+  // The active lens lives in the flow slice — never in the URL, so
+  // the server never sees which sub-page the user is on.
+  const subview = useNodeaStore(selectLibrarySubview);
 
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [reviews, setReviews] = useState<LibraryReview[]>([]);

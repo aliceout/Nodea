@@ -35,7 +35,7 @@ zxcvbnOptions.setOptions({
  *      server-side as soon as /finish runs), so we show a new
  *      mnemonic with the same 4×3 grid + ack pattern as
  *      `/recovery-code`.
- *   3. **Done**: redirect to `/flow/home` — the server has minted a
+ *   3. **Done**: redirect to `/flow` — the server has minted a
  *      fresh session cookie at /finish so the user lands signed in.
  *
  * Throughout: anti-enum on unknown emails, anti-enum on wrong
@@ -119,7 +119,7 @@ export default function RecoverPage() {
 
   function handleDone(): void {
     setStage({ kind: 'done' });
-    navigate('/flow/home', { replace: true });
+    navigate('/flow', { replace: true });
   }
 
   return (

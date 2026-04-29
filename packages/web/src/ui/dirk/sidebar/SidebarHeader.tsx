@@ -28,6 +28,7 @@ export default function SidebarHeader() {
 
 function UserMenu() {
   const user = useNodeaStore(selectUser);
+  const setModule = useNodeaStore((s) => s.setModule);
   const session = useSession();
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -43,13 +44,13 @@ function UserMenu() {
       <UserMenuIcon
         icon={Cog6ToothIcon}
         label={t('layout.userMenu.profile', { defaultValue: 'Mon compte' })}
-        onClick={() => navigate('/flow/account')}
+        onClick={() => setModule('account')}
       />
       {isAdmin ? (
         <UserMenuIcon
           icon={ShieldCheckIcon}
           label={t('layout.userMenu.admin', { defaultValue: 'Administration' })}
-          onClick={() => navigate('/flow/admin')}
+          onClick={() => setModule('admin')}
         />
       ) : null}
       <UserMenuIcon

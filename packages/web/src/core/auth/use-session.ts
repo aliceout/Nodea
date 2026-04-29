@@ -140,7 +140,7 @@ export interface SessionRecoverInput {
  * Without this guard, a second mount's `setAuthLoading()` would
  * race-reset the auth slice back to `loading` after an earlier one
  * settled it — ProtectedRoute would then stay stuck on its
- * null-render branch forever on a cold reload of `/flow/*`.
+ * null-render branch forever on a cold reload of `/flow`.
  */
 let hydrationStarted = false;
 
@@ -177,7 +177,7 @@ export function useSession() {
    *
    *   - `{ needsMfa: false }` — session is `full`, the main key is
    *     unwrapped + stored, the user shape is hydrated. Caller
-   *     navigates to `/flow/home`.
+   *     navigates to `/flow`.
    *   - `{ needsMfa: true, factorsNeeded }` — session is `mfa_pending`.
    *     The main key IS already unwrapped client-side (the wrap
    *     blobs ride along the /finish response), so subsequent data
@@ -321,7 +321,7 @@ export function useSession() {
    * auth slice flips to authenticated.
    *
    * Returns `{ finalized: true }` when the session is now `full` —
-   * the caller navigates to `/flow/home`. Returns
+   * the caller navigates to `/flow`. Returns
    * `{ finalized: false, missing }` when more factors are needed
    * (e.g. mode `maximum` may still need passkey).
    */

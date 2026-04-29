@@ -209,7 +209,7 @@ export default function ChangePasswordPage() {
 
             <div className="mt-[18px] text-center text-[12.5px] text-muted">
               <Link
-                to="/flow/account"
+                to="/flow"
                 onClick={(e) => {
                   e.preventDefault();
                   navigate(-1);
