@@ -172,13 +172,14 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
 
 ### Checklist
 
-- [ ] **1. lib/ + tests**
-  - [ ] `lib/types.ts` — `JournalEntry`, `LoadState`, `JournalStats`
-  - [ ] `lib/mappers.ts` — `recordToEntry`
-  - [ ] `lib/threads.ts` — `splitThreads` + tests
-  - [ ] `lib/date-format.ts` — `formatEntryLabel`, `formatMonthLabel`,
-        `isoDay`
-  - [ ] `lib/stats.ts` — `computeStats`, `countWords` + tests
+- [x] **1. lib/ + tests**
+  - [x] `lib/types.ts` — `JournalEntry`, `LoadState`, `JournalStats`
+  - [x] `lib/mappers.ts` — `recordToEntry`
+  - [x] `lib/threads.ts` — `splitThreads` + tests
+  - [x] `lib/date-format.ts` — `formatEntryLabel`, `formatMonthLabel`
+        + tests
+  - [x] `lib/stats.ts` — `computeStats`, `countWords`, `isoDay` +
+        tests
 - [ ] **2. context.tsx** — `JournalProvider` + 3 hooks
 - [ ] **3. components/** — `SideColumn`
 - [ ] **4. views/** — `PrimaryColumn`, `EntryRow`,

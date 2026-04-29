@@ -13,7 +13,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import type { PassageAttachment, PassagePayload } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
 import {
@@ -21,7 +20,6 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
-import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { JournalContent } from '@/lib/journal-markdown';
 import { attachmentSrc } from './hooks/imageResize';
 import Button from '@/ui/atoms/dirk/Button';
@@ -33,6 +31,16 @@ import HoverActions from '@/ui/dirk/HoverActions';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
+
+import { formatMonthLabel } from './lib/date-format';
+import { recordToEntry } from './lib/mappers';
+import { computeStats } from './lib/stats';
+import { splitThreads } from './lib/threads';
+import type {
+  JournalEntry,
+  JournalStats,
+  LoadState,
+} from './lib/types';
 
 /**
  * Journal — Direction K · Sauge.
@@ -48,24 +56,6 @@ import Topbar from '@/ui/dirk/Topbar';
  * its own `moduleUserId`, so journal entries are isolated from
  * any data the legacy `passage` module wrote.
  */
-
-interface JournalEntry {
-  id: string;
-  /** ISO timestamp from the saved record. */
-  dateIso: string;
-  /** Display label (today / yesterday / full date). */
-  dateLabel: string;
-  thread: string;
-  title: string | null;
-  content: string;
-  attachments: PassageAttachment[];
-}
-
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready'; entries: JournalEntry[] }
-  | { status: 'error'; message: string };
 
 export default function JournalPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
@@ -636,19 +626,6 @@ function ReaderShell({
   );
 }
 
-interface JournalStats {
-  totalEntries: number;
-  totalWords: number;
-  /** Days in a row, ending today (or yesterday if today's empty
-   *  but the streak is otherwise live). 0 when there's no
-   *  qualifying recent run. */
-  streakDays: number;
-  /** Whether today's date already has at least one entry.
-   *  Drives the « jusqu'à aujourd'hui » vs « jusqu'à hier »
-   *  caption next to the streak number. */
-  streakIncludesToday: boolean;
-}
-
 interface SideColumnProps {
   search: string;
   onSearchChange: (next: string) => void;
@@ -772,145 +749,3 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---------- Helpers ------------------------------------------------------- */
-
-function recordToEntry(
-  record: DecryptedRecord<PassagePayload>,
-  today: Date,
-): JournalEntry {
-  const p = record.payload;
-  // Server-side timestamps are gone (minimum-readable-surface design).
-  // `payload.date` is the user's chosen entry date — the only date
-  // we have for this record. Falls back to `today` if the payload
-  // is malformed (e.g. legacy data) so the UI doesn't crash.
-  const todayIso = today.toISOString().slice(0, 10);
-  const dateIso = p.date ?? todayIso;
-  return {
-    id: record.id,
-    dateIso,
-    dateLabel: formatEntryLabel(dateIso, today),
-    thread: p.thread ?? '',
-    title: p.title ?? null,
-    content: p.content ?? '',
-    attachments: Array.isArray(p.attachments) ? p.attachments : [],
-  };
-}
-
-const ENTRY_SAME_YEAR_FMT = new Intl.DateTimeFormat('fr-FR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
-const ENTRY_CROSS_YEAR_FMT = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
-
-function formatEntryLabel(rawIso: string, today: Date): string {
-  const d = new Date(rawIso);
-  if (Number.isNaN(d.getTime())) return rawIso;
-  const dayMs = 24 * 3600 * 1000;
-  const dStart = new Date(d);
-  dStart.setHours(0, 0, 0, 0);
-  const diff = Math.floor((today.getTime() - dStart.getTime()) / dayMs);
-  if (diff === 0) return 'Aujourd’hui';
-  if (diff === 1) return 'Hier';
-  const fmt =
-    d.getFullYear() === today.getFullYear() ? ENTRY_SAME_YEAR_FMT : ENTRY_CROSS_YEAR_FMT;
-  const formatted = fmt.format(d);
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-const MONTH_LABEL_FMT = new Intl.DateTimeFormat('fr-FR', {
-  month: 'long',
-  year: 'numeric',
-});
-
-/**
- * Render a `YYYY-MM` group key as « mars 2026 ». Falls back to the
- * raw key if parsing fails (defensive — should never happen on
- * payloads we wrote ourselves).
- */
-function formatMonthLabel(yyyymm: string): string {
-  const [yStr, mStr] = yyyymm.split('-');
-  const y = Number(yStr);
-  const m = Number(mStr);
-  if (!Number.isFinite(y) || !Number.isFinite(m)) return yyyymm;
-  const formatted = MONTH_LABEL_FMT.format(new Date(y, m - 1, 1));
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-/**
- * Aggregate entry-level stats for the SideColumn « Stats » block.
- *
- * - `totalWords` counts whitespace-separated tokens across each
- *   entry's content + title. Cheap, locale-agnostic enough for an
- *   indicator.
- * - `streakDays` walks back from today through `entries` (assumed
- *   newest-first) counting consecutive days with at least one
- *   entry. The streak survives a missing « today » as long as
- *   « yesterday » is covered — a journal you write each evening
- *   shouldn't reset to 0 the moment you wake up.
- */
-function computeStats(entries: ReadonlyArray<JournalEntry>): JournalStats {
-  let totalWords = 0;
-  const dayKeys = new Set<string>();
-  for (const entry of entries) {
-    const text = `${entry.title ?? ''} ${entry.content}`;
-    totalWords += countWords(text);
-    const day = entry.dateIso.slice(0, 10);
-    if (day) dayKeys.add(day);
-  }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayKey = isoDay(today);
-  const yesterdayKey = isoDay(new Date(today.getTime() - 24 * 3600 * 1000));
-  const streakIncludesToday = dayKeys.has(todayKey);
-  let cursor = streakIncludesToday
-    ? new Date(today)
-    : dayKeys.has(yesterdayKey)
-      ? new Date(today.getTime() - 24 * 3600 * 1000)
-      : null;
-  let streakDays = 0;
-  while (cursor && dayKeys.has(isoDay(cursor))) {
-    streakDays += 1;
-    cursor = new Date(cursor.getTime() - 24 * 3600 * 1000);
-  }
-  return {
-    totalEntries: entries.length,
-    totalWords,
-    streakDays,
-    streakIncludesToday,
-  };
-}
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-}
-
-function isoDay(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/**
- * Comma-separated thread tokens — same convention as Goals so an
- * entry tagged `#A, #B` lands in both fils. Empty / whitespace
- * tokens drop, dedupe preserves order.
- */
-function splitThreads(raw: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const token of raw.split(',')) {
-    const trimmed = token.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    out.push(trimmed);
-  }
-  return out;
-}
