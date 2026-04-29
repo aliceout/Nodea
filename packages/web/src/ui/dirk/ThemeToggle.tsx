@@ -76,7 +76,7 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
 
   return (
     <Listbox value={theme} onChange={setTheme}>
-      <div className={cn('relative inline-flex', className)}>
+      <div className={cn('relative inline-flex min-w-0', className)}>
         <ListboxButton
           aria-label={t('settings.theme.ariaLabel', {
             defaultValue: 'Préférence de thème',
@@ -84,12 +84,17 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
           className={cn(
             // Same chrome as <LanguageToggle> so the two widgets
             // sit at exactly the same height and visual weight.
-            'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-hair bg-bg pl-2.5 pr-7 text-[12px] text-ink',
+            // `w-full min-w-0` lets the parent wrapper drive the
+            // width (the sidebar footer passes `flex-1`) — without
+            // `min-w-0` the button keeps its content as a min-width
+            // and ends up resizing whenever the active label
+            // changes (« Clair » vs « Système »).
+            'inline-flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border border-hair bg-bg pl-2.5 pr-7 text-[12px] text-ink',
             'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none',
           )}
         >
-          <ActiveIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{activeLabel}</span>
+          <ActiveIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-left">{activeLabel}</span>
           <ChevronDownIcon
             aria-hidden="true"
             className="pointer-events-none absolute top-1/2 right-1.5 h-3.5 w-3.5 -translate-y-1/2 text-muted"
