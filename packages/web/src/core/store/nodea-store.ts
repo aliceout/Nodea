@@ -25,6 +25,50 @@ import type {
   UserPreferencesPayload,
 } from '@nodea/shared';
 
+/**
+ * The set of valid module ids the flow can show. Kept as a frozen
+ * tuple so `ModuleId` is a strict union (no widening to plain
+ * `string`) and so the popstate listener can discriminate a known
+ * id from arbitrary garbage in `event.state`.
+ *
+ * `settings` (alias to `account`) is intentionally absent — it was
+ * killed alongside the URL-routing rework. `home` is the cold-start
+ * default ; `account` and `admin` are reachable but hidden from the
+ * public module list (`display: false` in `modules_list.tsx`).
+ */
+export const MODULE_IDS = [
+  'home',
+  'mood',
+  'journal',
+  'goals',
+  'habits',
+  'library',
+  'review',
+  'account',
+  'admin',
+] as const;
+export type ModuleId = (typeof MODULE_IDS)[number];
+
+export function isModuleId(value: unknown): value is ModuleId {
+  return typeof value === 'string' && (MODULE_IDS as readonly string[]).includes(value);
+}
+
+/**
+ * Library has three lenses on the same encrypted catalogue : the
+ * books themselves, the highlighted extracts, the freeform notes.
+ * The active lens used to live in the URL (`?subview=`) — moved
+ * here as part of the `/flow` URL-freezing rework so the server
+ * never sees which sub-page the user is on.
+ */
+export const LIBRARY_SUBVIEWS = ['livres', 'extraits', 'notes'] as const;
+export type LibrarySubview = (typeof LIBRARY_SUBVIEWS)[number];
+
+export function isLibrarySubview(value: unknown): value is LibrarySubview {
+  return (
+    typeof value === 'string' && (LIBRARY_SUBVIEWS as readonly string[]).includes(value)
+  );
+}
+
 export type AuthStatus = 'unauthenticated' | 'loading' | 'authenticated';
 
 /** Public-safe user shape returned by `/auth/me`. Never includes secrets. */
@@ -116,6 +160,31 @@ export interface NodeaState {
   mobileMenuOpen: boolean;
   setMobileMenuOpen(open: boolean): void;
 
+  // --- Flow routing (URL stays at /flow ; module is store state) ---
+  // Privacy invariant : no module-visited / sub-view metadata leaks
+  // through Nginx access logs, Hono/Pino request logs, or browser
+  // referrers. The browser history API still tracks navigation, with
+  // `nodeaModule` in the entry's state payload — useful for the back
+  // button without revealing anything in the URL or sent to the server.
+  flow: {
+    currentModule: ModuleId;
+    librarySubview: LibrarySubview;
+  };
+  /**
+   * Imperative module switch. Pushes a new browser history entry so the
+   * back button works, then updates the store. No-op if the target is
+   * already the current module (avoids polluting the back-stack with
+   * duplicates when the same sidebar item is clicked twice).
+   */
+  setModule(id: ModuleId): void;
+  /**
+   * Internal — called by the popstate listener when the user hits
+   * back/forward. Updates the store WITHOUT calling `pushState`,
+   * otherwise we'd corrupt the very history we're responding to.
+   */
+  syncCurrentModule(id: ModuleId): void;
+  setLibrarySubview(sub: LibrarySubview): void;
+
   // --- UI: ⌘K composer modal (Direction K) ---
   composer: {
     open: boolean;
@@ -200,7 +269,12 @@ const emptyAuth: NodeaState['auth'] = { status: 'loading', user: null };
 const loggedOutAuth: NodeaState['auth'] = { status: 'unauthenticated', user: null };
 const emptyCrypto: NodeaState['crypto'] = { status: 'idle', main: null };
 
-export const useNodeaStore = create<NodeaState>()((set) => ({
+const initialFlow: NodeaState['flow'] = {
+  currentModule: 'home',
+  librarySubview: 'livres',
+};
+
+export const useNodeaStore = create<NodeaState>()((set, get) => ({
   auth: emptyAuth,
   setAuth: (user) =>
     set({
@@ -250,6 +324,20 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
   mobileMenuOpen: false,
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 
+  flow: initialFlow,
+  setModule: (id) => {
+    const current = get().flow.currentModule;
+    if (current === id) return;
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ nodeaModule: id }, '', '/flow');
+    }
+    set((state) => ({ flow: { ...state.flow, currentModule: id } }));
+  },
+  syncCurrentModule: (id) =>
+    set((state) => ({ flow: { ...state.flow, currentModule: id } })),
+  setLibrarySubview: (sub) =>
+    set((state) => ({ flow: { ...state.flow, librarySubview: sub } })),
+
   composer: { open: false, type: 'mood', editing: null },
   openComposer: (type, editing) =>
     set((state) => ({
@@ -288,6 +376,7 @@ export const useNodeaStore = create<NodeaState>()((set) => ({
       preferences: {},
       notifications: [],
       mobileMenuOpen: false,
+      flow: initialFlow,
       composer: { open: false, type: 'mood', editing: null },
       goalsVersion: 0,
       moodVersion: 0,
@@ -321,3 +410,5 @@ export const selectEnabledModuleCount = (s: NodeaState): number => {
   return n;
 };
 export const selectPreferences = (s: NodeaState) => s.preferences;
+export const selectCurrentModule = (s: NodeaState) => s.flow.currentModule;
+export const selectLibrarySubview = (s: NodeaState) => s.flow.librarySubview;

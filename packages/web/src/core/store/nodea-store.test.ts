@@ -96,4 +96,53 @@ describe('useNodeaStore', () => {
     expect(after.notifications).toEqual([]);
     expect(after.crypto.main).toBeNull();
   });
+
+  // The flow slice's `setModule` also calls `window.history.pushState`
+  // so the back button works. Vitest runs under `node` env (no `window`),
+  // so the store guards on `typeof window !== 'undefined'` and these
+  // tests cover the store mutation only — the browser history pairing
+  // is verified by integration / manual click-through.
+  describe('flow slice', () => {
+    it('starts on home with the default library subview', () => {
+      const s = useNodeaStore.getState();
+      expect(s.flow.currentModule).toBe('home');
+      expect(s.flow.librarySubview).toBe('livres');
+    });
+
+    it('setModule updates currentModule', () => {
+      useNodeaStore.getState().setModule('library');
+      expect(useNodeaStore.getState().flow.currentModule).toBe('library');
+    });
+
+    it('setModule is a no-op when target equals current', () => {
+      useNodeaStore.getState().setModule('library');
+      const before = useNodeaStore.getState().flow;
+      useNodeaStore.getState().setModule('library');
+      // Same object reference because the no-op early-returns before set().
+      // This is the behaviour that prevents duplicate browser history
+      // entries on double-clicks of the same sidebar item.
+      expect(useNodeaStore.getState().flow).toBe(before);
+    });
+
+    it('syncCurrentModule updates currentModule (used by popstate listener)', () => {
+      useNodeaStore.getState().setModule('library');
+      useNodeaStore.getState().syncCurrentModule('goals');
+      expect(useNodeaStore.getState().flow.currentModule).toBe('goals');
+    });
+
+    it('setLibrarySubview swaps the active Library lens', () => {
+      useNodeaStore.getState().setLibrarySubview('extraits');
+      expect(useNodeaStore.getState().flow.librarySubview).toBe('extraits');
+    });
+
+    it('resetAll resets the flow slice to home + livres', () => {
+      const s = useNodeaStore.getState();
+      s.setModule('library');
+      s.setLibrarySubview('notes');
+      s.resetAll();
+      const after = useNodeaStore.getState();
+      expect(after.flow.currentModule).toBe('home');
+      expect(after.flow.librarySubview).toBe('livres');
+    });
+  });
 });
