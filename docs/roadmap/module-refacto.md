@@ -133,16 +133,17 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
 
 ### Checklist
 
-- [ ] **1. lib/ + tests**
-  - [ ] `lib/types.ts` — `GoalEntry`, `CanonicalStatus`, `SortBy`,
+- [x] **1. lib/ + tests**
+  - [x] `lib/types.ts` — `GoalEntry`, `CanonicalStatus`, `SortBy`,
         `LoadState`
-  - [ ] `lib/constants.ts` — `STATUS_TONE`, `STATUS_LABEL`,
+  - [x] `lib/constants.ts` — `STATUS_TONE`, `STATUS_LABEL`,
         `SORT_LABEL`, `CANONICAL_STATUSES`
-  - [ ] `lib/mappers.ts` — `recordToEntry`, `normalizeStatus`,
+  - [x] `lib/mappers.ts` — `recordToEntry`, `normalizeStatus`,
         `VALID_STATUS`
-  - [ ] `lib/sort.ts` — `byDateDesc`, `nextStatus` + tests
-  - [ ] `lib/threads.ts` — `splitThreads` + tests
-  - [ ] `lib/date-format.ts` — `formatDate`, `FRENCH_MONTHS`
+  - [x] `lib/sort.ts` — `byDateDesc` + tests
+  - [x] `lib/status.ts` — `nextStatus` + tests
+  - [x] `lib/threads.ts` — `splitThreads` + tests
+  - [x] `lib/date-format.ts` — `formatDate`, `FRENCH_MONTHS` + tests
 - [ ] **2. context.tsx** — `GoalsProvider` + 3 hooks
 - [ ] **3. components/** — `SideColumn` (avec `SectionLabel`),
        `CarryOverDialog`

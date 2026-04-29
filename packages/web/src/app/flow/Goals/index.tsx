@@ -4,10 +4,6 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import {
-  GOAL_STATUS_VALUES,
-  type GoalsPayload,
-} from '@nodea/shared';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import {
@@ -15,7 +11,6 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
-import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
@@ -27,6 +22,24 @@ import HoverActions from '@/ui/dirk/HoverActions';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
+
+import {
+  CANONICAL_STATUSES,
+  SORT_LABEL,
+  STATUS_LABEL,
+  STATUS_TONE,
+} from './lib/constants';
+import { formatDate } from './lib/date-format';
+import { recordToEntry } from './lib/mappers';
+import { byDateDesc } from './lib/sort';
+import { nextStatus } from './lib/status';
+import { splitThreads } from './lib/threads';
+import type {
+  CanonicalStatus,
+  GoalEntry,
+  LoadState,
+  SortBy,
+} from './lib/types';
 
 /**
  * Goals — Direction K · Sauge.
@@ -44,33 +57,6 @@ import Topbar from '@/ui/dirk/Topbar';
  * for follow-up. For now this page is a faithful list with status
  * + delete inline; new entries flow through the Composer.
  */
-
-type CanonicalStatus = 'open' | 'wip' | 'done';
-const CANONICAL_STATUSES: ReadonlyArray<CanonicalStatus> = ['open', 'wip', 'done'];
-
-interface GoalEntry {
-  id: string;
-  date: string;
-  title: string;
-  note: string;
-  status: CanonicalStatus;
-  thread: string;
-  /** ISO timestamp from the saved record's `updatedAt`. Drives the
-   *  « Récemment modifié » sort option. */
-  updatedAt: string;
-  /** ISO timestamp captured when the goal flipped to `done`,
-   *  null otherwise. Pre-existing `done` records that never went
-   *  through the new flow keep `null` here. */
-  completedAt: string | null;
-}
-
-type SortBy = 'date' | 'updated' | 'alpha';
-
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready'; entries: GoalEntry[] }
-  | { status: 'error'; message: string };
 
 export default function GoalsPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
@@ -459,8 +445,6 @@ interface GoalRowProps {
 function GoalRow({ entry, onToggleStatus, onDelete, onEdit }: GoalRowProps) {
   return (
     <li className="group flex items-start gap-3 border-b border-hair py-3 last:border-b-0">
-      <StatusPill status={entry.status} onCycle={onToggleStatus} />
-
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-3">
           <p
@@ -480,43 +464,34 @@ function GoalRow({ entry, onToggleStatus, onDelete, onEdit }: GoalRowProps) {
         ) : null}
       </div>
 
-      <HoverActions>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          onClick={onEdit}
-          aria-label="Modifier l’objectif"
-          title="Modifier"
-        >
-          <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-        <Button
-          variant="danger-ghost"
-          size="sm"
-          iconOnly
-          onClick={onDelete}
-          aria-label="Supprimer l’objectif"
-          title="Supprimer"
-        >
-          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-      </HoverActions>
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <StatusPill status={entry.status} onCycle={onToggleStatus} />
+        <HoverActions>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={onEdit}
+            aria-label="Modifier l’objectif"
+            title="Modifier"
+          >
+            <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="danger-ghost"
+            size="sm"
+            iconOnly
+            onClick={onDelete}
+            aria-label="Supprimer l’objectif"
+            title="Supprimer"
+          >
+            <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </HoverActions>
+      </div>
     </li>
   );
 }
-
-const STATUS_TONE: Record<CanonicalStatus, string> = {
-  open: 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
-  wip: 'border-accent-soft bg-accent-soft text-accent-deep hover:border-accent hover:text-accent-deep',
-  done: 'border-accent bg-accent text-white hover:bg-accent-hover hover:border-accent-hover',
-};
-
-const STATUS_LABEL: Record<CanonicalStatus, string> = {
-  open: 'ouvert',
-  wip: 'en cours',
-  done: 'terminé',
-};
 
 function StatusPill({
   status,
@@ -588,12 +563,6 @@ interface SideColumnProps {
   onHideDoneChange: (next: boolean) => void;
   onCarryOverClick: () => void;
 }
-
-const SORT_LABEL: Record<SortBy, string> = {
-  date: 'Date',
-  updated: 'Récent',
-  alpha: 'A→Z',
-};
 
 function SideColumn({
   stats,
@@ -869,95 +838,3 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---------- Helpers ------------------------------------------------------- */
-
-function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry {
-  const p = record.payload;
-  return {
-    id: record.id,
-    date: p.date ?? '',
-    title: p.title ?? '',
-    note: p.note ?? '',
-    status: normalizeStatus(p.status),
-    thread: p.thread ?? '',
-    // `payload.updated_at` is the in-payload timestamp the writer
-    // bumps on every save — server-side timestamps were dropped
-    // in the minimum-readable-surface refactor.
-    updatedAt: p.updated_at,
-    completedAt: typeof p.completed_at === 'string' ? p.completed_at : null,
-  };
-}
-
-const VALID_STATUS = new Set<string>(GOAL_STATUS_VALUES);
-
-function normalizeStatus(raw: string | undefined): CanonicalStatus {
-  if (!raw || !VALID_STATUS.has(raw)) return 'open';
-  // The schema accepts legacy aliases `active` / `archived`. Map them
-  // onto the three canonical states so the K UI doesn't have to render
-  // five colours for two real meanings.
-  if (raw === 'active') return 'open';
-  if (raw === 'archived') return 'done';
-  return raw as CanonicalStatus;
-}
-
-/**
- * Split a comma-separated `thread` string into trimmed, deduped
- * tokens. The schema keeps `thread` as a single string so the
- * server stays oblivious; splitting here is purely a UI grouping
- * convention. Empty or whitespace-only tokens drop out, and
- * dedup-then-stable order means `"#A, #A, #B"` becomes
- * `["#A", "#B"]` (not `["#A", "#A", "#B"]`).
- */
-function splitThreads(raw: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const token of raw.split(',')) {
-    const trimmed = token.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    out.push(trimmed);
-  }
-  return out;
-}
-
-function nextStatus(current: CanonicalStatus): CanonicalStatus {
-  const i = CANONICAL_STATUSES.indexOf(current);
-  return CANONICAL_STATUSES[(i + 1) % CANONICAL_STATUSES.length] ?? 'open';
-}
-
-function byDateDesc(a: GoalEntry, b: GoalEntry): number {
-  // Goals are usually dated YYYY-MM (or empty). Empty dates land last.
-  const ad = a.date || '';
-  const bd = b.date || '';
-  if (ad === bd) return 0;
-  if (!ad) return 1;
-  if (!bd) return -1;
-  return bd.localeCompare(ad);
-}
-
-const FRENCH_MONTHS = [
-  'janv.',
-  'févr.',
-  'mars',
-  'avr.',
-  'mai',
-  'juin',
-  'juil.',
-  'août',
-  'sept.',
-  'oct.',
-  'nov.',
-  'déc.',
-];
-
-function formatDate(dateIso: string): string {
-  // Accepts both `YYYY-MM` (the legacy form's DateMonthPicker) and
-  // `YYYY-MM-DD`. Anything else is rendered as-is.
-  const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(dateIso);
-  if (!m) return dateIso;
-  const year = m[1] ?? '';
-  const monthIdx = Number(m[2]) - 1;
-  const month = FRENCH_MONTHS[monthIdx] ?? m[2] ?? '';
-  const day = m[3];
-  return day ? `${day} ${month} ${year}` : `${month} ${year}`;
-}
