@@ -230,6 +230,51 @@ export async function ensureModuleUserId(
   return moduleUserId;
 }
 
+/**
+ * Remove a list of module ids from `modules_config` and return any
+ * sids those keys held — the caller then deletes orphan entries
+ * under those sids. Used to clean up after a seed bug that pushed
+ * stale keys into the user's runtime store.
+ *
+ * No-op when the user has no `modules_config` row, or when none of
+ * `moduleIds` is present.
+ */
+export async function purgeModuleKeys(
+  userId: string,
+  moduleIds: ReadonlyArray<string>,
+  aesKey: webcrypto.CryptoKey,
+): Promise<string[]> {
+  const [row] = await db
+    .select()
+    .from(modulesConfig)
+    .where(eq(modulesConfig.userId, userId))
+    .limit(1);
+  if (!row) return [];
+  const runtime = await decryptJson<ModulesRuntimeMap>(aesKey, {
+    iv: row.cipherIv,
+    data: row.payload,
+  });
+
+  const orphanSids: string[] = [];
+  let changed = false;
+  for (const moduleId of moduleIds) {
+    const slot = runtime[moduleId];
+    if (slot) {
+      if (slot.moduleUserId) orphanSids.push(slot.moduleUserId);
+      delete runtime[moduleId];
+      changed = true;
+    }
+  }
+  if (!changed) return orphanSids;
+
+  const blob = await encryptJson(aesKey, runtime);
+  await db
+    .update(modulesConfig)
+    .set({ cipherIv: blob.iv, payload: blob.data, updatedAt: new Date() })
+    .where(eq(modulesConfig.userId, userId));
+  return orphanSids;
+}
+
 // ---------------------------------------------------------------------
 // Wipe + insert helpers
 // ---------------------------------------------------------------------

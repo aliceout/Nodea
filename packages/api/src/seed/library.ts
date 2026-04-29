@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import {
   LibraryItemPayloadSchema,
   LibraryReviewPayloadSchema,
@@ -10,6 +10,7 @@ import {
   deriveGuard,
   encryptJson,
   ensureModuleUserId,
+  purgeModuleKeys,
   type SeedContext,
   type SeedResult,
 } from './shared.ts';
@@ -18,41 +19,53 @@ import { buildLibraryFixtures } from './library.fixtures.ts';
 /**
  * Library seed — items + reviews.
  *
- * Library has three collections (items / reviews / covers) but only
- * the first two are seeded ; covers come from the manual Composer
- * flow (the lookup-by-ISBN path) and inflate the fixture for little
- * test value.
+ * Library has three collections (items / reviews / covers) but they
+ * **share a single `modules_config` key** (`library`) — the front
+ * uses one sid for all three clients (`items` / `reviews` /
+ * `covers`). Only items + reviews are seeded ; covers come from the
+ * manual Composer flow (the lookup-by-ISBN path) and inflate the
+ * fixture for little test value.
  *
  * Cross-reference handling : reviews carry an `item_rid` pointing to
  * their parent item's record id. The id is generated at insert time,
  * so we insert items first and remap each fixture's stable handle
  * to the freshly-minted id before encrypting the matching reviews.
- *
- * Both module sids (`library_items` and `library_reviews`) are
- * provisioned in `modules_config` so the web's runtime store
- * surfaces them right away.
  */
 export async function seedLibrary(ctx: SeedContext): Promise<SeedResult> {
-  const itemsSid = await ensureModuleUserId(
+  // One-shot cleanup : the seed v1 created two separate
+  // `library_items` / `library_reviews` keys in `modules_config`
+  // (wrong — the front uses one shared `library` sid). Drop those
+  // legacy keys + the orphan entries they own so the dataset
+  // converges on the correct shape on first re-run.
+  const orphanSids = await purgeModuleKeys(
     ctx.user.id,
-    'library_items',
+    ['library_items', 'library_reviews'],
     ctx.aesKey,
   );
-  const reviewsSid = await ensureModuleUserId(
-    ctx.user.id,
-    'library_reviews',
-    ctx.aesKey,
-  );
+  let clearedOrphans = 0;
+  if (orphanSids.length > 0) {
+    const removedItems = await db
+      .delete(libraryItemsEntries)
+      .where(inArray(libraryItemsEntries.moduleUserId, orphanSids))
+      .returning({ id: libraryItemsEntries.id });
+    const removedReviews = await db
+      .delete(libraryReviewsEntries)
+      .where(inArray(libraryReviewsEntries.moduleUserId, orphanSids))
+      .returning({ id: libraryReviewsEntries.id });
+    clearedOrphans = removedItems.length + removedReviews.length;
+  }
+
+  const sid = await ensureModuleUserId(ctx.user.id, 'library', ctx.aesKey);
 
   // Wipe the user's library on every reseed so the dataset is
   // reproducible — covers are left alone since we don't write any.
   const clearedItems = await db
     .delete(libraryItemsEntries)
-    .where(eq(libraryItemsEntries.moduleUserId, itemsSid))
+    .where(eq(libraryItemsEntries.moduleUserId, sid))
     .returning({ id: libraryItemsEntries.id });
   const clearedReviews = await db
     .delete(libraryReviewsEntries)
-    .where(eq(libraryReviewsEntries.moduleUserId, reviewsSid))
+    .where(eq(libraryReviewsEntries.moduleUserId, sid))
     .returning({ id: libraryReviewsEntries.id });
 
   const fixtures = buildLibraryFixtures();
@@ -63,11 +76,11 @@ export async function seedLibrary(ctx: SeedContext): Promise<SeedResult> {
   for (const fx of fixtures) {
     const payload = LibraryItemPayloadSchema.parse(fx.item);
     const id = randomUUID();
-    const guard = await deriveGuard(ctx.hmacKey, itemsSid, id);
+    const guard = await deriveGuard(ctx.hmacKey, sid, id);
     const blob = await encryptJson(ctx.aesKey, payload);
     await db.insert(libraryItemsEntries).values({
       id,
-      moduleUserId: itemsSid,
+      moduleUserId: sid,
       cipherIv: blob.iv,
       payload: blob.data,
       guard,
@@ -87,11 +100,11 @@ export async function seedLibrary(ctx: SeedContext): Promise<SeedResult> {
         item_rid: itemRid,
       });
       const id = randomUUID();
-      const guard = await deriveGuard(ctx.hmacKey, reviewsSid, id);
+      const guard = await deriveGuard(ctx.hmacKey, sid, id);
       const blob = await encryptJson(ctx.aesKey, payload);
       await db.insert(libraryReviewsEntries).values({
         id,
-        moduleUserId: reviewsSid,
+        moduleUserId: sid,
         cipherIv: blob.iv,
         payload: blob.data,
         guard,
@@ -101,7 +114,7 @@ export async function seedLibrary(ctx: SeedContext): Promise<SeedResult> {
   }
 
   return {
-    cleared: clearedItems.length + clearedReviews.length,
+    cleared: clearedItems.length + clearedReviews.length + clearedOrphans,
     inserted: insertedItems + insertedReviews,
   };
 }
