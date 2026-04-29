@@ -107,9 +107,10 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 - Password fields: show zxcvbn strength + min length. Never a silent "too weak" acceptance.
 
 ### Routing
-- URL-driven routing: `/flow/:module` — never store the current tab in Zustand state.
+- **URL stays at `/flow` regardless of which module is active.** The active module lives in the Zustand `flow` slice (`currentModule: ModuleId`), never in the URL or query string. **Privacy invariant** — module-visited / sub-view metadata must not leak through Nginx access logs, Hono/Pino request logs, or browser referrers. No `/flow/:moduleId` paths, no `?subview=`, no `?tab=`. (See `App.jsx` `popstate` listener for the back-button sync that preserves UX without exposing the module in the URL.)
 - Every module component lazy-loaded via `React.lazy()`. Wrap in `<Suspense>`. No JSX instantiated at module import.
 - `ErrorBoundary` at two levels: global in `App.tsx`, and per-module inside the router resolver. A crashed module must not take down the whole app.
+- Public routes (`/login`, `/register`, `/docs`, `/recover`, `/totp`, `/passkeys`, etc.) keep their own URLs — the privacy rule applies to the authenticated `/flow` surface only, where leakage would reveal *what an authenticated user is doing*.
 
 ### UI components — reuse before creating
 Before creating any component, check `packages/web/src/ui/` first. If something close exists (Button, Input, Textarea, Modal, Badge, TableShell, Surface, FormField…), **extend it via props/variants** rather than duplicating.

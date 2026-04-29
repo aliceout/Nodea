@@ -1,7 +1,9 @@
 # Module Library
 
-> Statut : **en conception** (refacto K · Sauge). Décisions de cadrage
-> validées le 2026-04-26 (cf. §10) ; reste à coder selon le plan §11.
+> Statut : **Phase 1 et 2 livrées · Phase 3 partielle · Phase 4 non démarrée.**
+> Décisions de cadrage validées le 2026-04-26 (cf. §9). Code shippé sur
+> `refacto-design-v2` ; une refacto interne du fichier `Library/index.tsx`
+> (1438 lignes monolithiques) est nécessaire avant Phase 4.
 
 ---
 
@@ -175,6 +177,9 @@ acceptable puisque la personne est aussi celle qui héberge.
 | **Open Library** | aucune | très bonne, livres internationaux | par défaut |
 | **Google Books** | clé API | bonne, résumés | utile pour les éditions récentes / françaises mal couvertes par OL |
 | **BNF (data.bnf.fr)** | aucune | livres FR, autorité auteur | en complément, surtout pour la langue française |
+| **BNE (datos.bne.es)** | aucune | livres espagnols, autorité auteur | équivalent BNF côté ES |
+| **Wikidata / SPARQL** | aucune | universelle, reliée Open Library / GB | utilisée pour résoudre les Q-numbers (notamment imports Inventaire.io) |
+| **Amazon (scraping headless)** | aucune | éditions FR/EN/ES | dernier recours quand les bases bibliographiques ne renvoient rien — TLD figé à `amazon.fr` aujourd'hui (cf. issue #38) |
 
 > **Clé API partagée** : la valeur vit dans la config serveur
 > (variable d'environnement type `LIBRARY_GOOGLE_BOOKS_API_KEY`).
@@ -341,50 +346,81 @@ l'usage le réclame, sans casser le format existant.
 
 ---
 
-## 10. Plan d'implémentation
+## 10. État d'avancement
 
-### Phase 1 — Fondations (bouge déjà sans APIs externes)
+### Phase 1 — Fondations · **livrée**
 
-- Schémas Zod dans `@nodea/shared` (`LibraryItemPayload`,
+- ✅ Schémas Zod dans `@nodea/shared` (`LibraryItemPayload`,
   `LibraryReviewPayload`, `LibraryCoverPayload`).
-- Tables Drizzle + migration : `library_items_entries`,
+- ✅ Tables Drizzle : `library_items_entries`,
   `library_reviews_entries`, `library_covers_entries`.
-- Routes back via `collection-factory` (factory déjà en place pour
-  les autres modules).
-- Page K du module : liste des items + filtres (status, tags,
-  favoris) + détail item avec ses reviews. Réutilise le
-  MarkdownEditor du Journal pour les reviews.
-- Composer pour ajout / édition manuelle d'item + review.
-- Wipe des données Passage (script `seed:wipe-passage` ou
-  équivalent) + retrait du module Passage côté front (modules_list,
-  sidebar, store, i18n).
+- ✅ Routes back via `collection-factory`.
+- ✅ Page K du module avec catalogue et trois sous-vues pilotées
+  par l'URL (`?subview=livres|extraits|notes`) :
+  - **`livres`** : catalogue groupé, quatre modes d'affichage
+    (`list-plain` / `list-cover` / `grid` / `wall`), choix
+    persisté en localStorage.
+  - **`extraits`** : flat list des reviews `kind=quote` avec
+    contexte du livre.
+  - **`notes`** : flat list des reviews `kind=note`.
+- ✅ Filtres : statut (`all` / `planned` / `in_progress` / `finished`
+  / `abandoned`) + favoris + chip-tag.
+- ✅ Cinq axes de regroupement : `status` (par défaut), `author`,
+  `tag`, `publisher`, `collection`. L'axe `tag` autorise un livre
+  à apparaître dans plusieurs groupes (intentionnel).
+- ✅ Composer ajout / édition d'items et de reviews via le
+  `ComposerModal` global.
+- ✅ Modal `BookPickerModal` pour le flow « + Nouvel extrait /
+  Nouvelle note » : choisir d'abord le livre parent, puis le
+  composer s'ouvre pré-rempli.
+- ✅ Wipe Passage + retrait du module Passage côté front.
 
-### Phase 2 — Proxy métadonnées
+> Drift par rapport au plan initial : **les sous-vues, les 4 modes
+> d'affichage et les 5 axes de regroupement ne figuraient pas dans
+> le plan original**. Ils ont été ajoutés au fur et à mesure et la
+> doc rattrape ici.
 
-- Endpoint API `/library/lookup/by-isbn` + `/library/lookup/by-query`.
-- Cache en mémoire (ou Redis si dispo) côté serveur.
-- Adaptateur Open Library (sans clé), Google Books (clé env),
-  BNF (sans clé).
-- Toggle Préférences "Métadonnées externes" + bandeau d'info.
-- Composer enrichi : "Chercher par ISBN ou titre…" → résultats →
-  click → préremplit le formulaire.
+### Phase 2 — Proxy métadonnées · **livrée (avec extras)**
 
-### Phase 3 — Couvertures
+- ✅ Endpoints `POST /library/lookup/by-isbn` et
+  `POST /library/lookup/by-query`.
+- ✅ Cache en mémoire côté serveur (`packages/api/src/lookup/cache.ts`).
+- ✅ Six adapters : Open Library, Google Books, BNF, BNE, Wikidata
+  (via SPARQL), Amazon scraping headless (cf. §4.1). Plus que les
+  trois prévus initialement.
+- ⚠️ **À faire** : toggle Préférences « Métadonnées externes » + bandeau
+  d'info (la fonctionnalité existe en backend mais n'est pas
+  désactivable côté UI).
 
-- Endpoint `/library/cover/proxy` pour download serveur d'une URL
-  distante (évite le mixed-content + leaks d'IP côté client).
-- Récupération automatique au moment de l'ajout d'un item.
-- Stockage blob chiffré → table `library_covers_entries`.
+### Phase 3 — Couvertures · **partielle**
 
-### Phase 4 — Imports
+- ✅ Stockage : table `library_covers_entries` chiffrée, déchiffrement
+  bulk au mount, mappée par `cover_rid` côté front (`<img src>` en
+  data URL `data:<mime>;base64,…`).
+- ⚠️ **À faire** : endpoint `/library/cover/proxy` pour download serveur
+  d'URLs distantes (évite mixed-content + leaks IP côté client).
+- ⚠️ **À faire** : récupération automatique de la couverture au moment
+  de l'ajout d'un item via le composer enrichi.
 
-- Parser **Babelio** CSV (format confirmé §5.1).
-- Parser **Inventaire.io** (à confirmer à l'implémentation —
-  l'export est probablement JSON avec Wikidata IDs).
-- Parser **Goodreads** CSV.
-- Parser **StoryGraph** CSV.
-- Parser **CSV générique** avec mapping de colonnes.
+### Phase 4 — Imports · **non démarrée**
+
+Parsers à implémenter (priorité décroissante, cf. §5) :
+
+- Babelio CSV (format confirmé §5.1).
+- Inventaire.io (export JSON probable, Wikidata IDs disponibles).
+- Goodreads CSV.
+- The StoryGraph CSV.
+- CSV générique avec mapping manuel des colonnes.
 - UI d'import : upload → preview → mapping → progress + récap.
+
+### Refacto interne · **à prévoir avant Phase 4**
+
+`packages/web/src/app/flow/Library/index.tsx` fait **1438 lignes** et
+porte 11 responsabilités distinctes (orchestrateur + 5 vues + 2 modals
++ 3 modules de logique). Une découpe vers le pattern
+`flow/<Module>/{components,views,hooks,lib}/` (déjà appliqué dans
+`Habits/` et `Review/`) est nécessaire avant d'ajouter une UI d'import
+et un composer enrichi — sinon le fichier devient ingérable.
 
 ---
 
@@ -395,3 +431,5 @@ l'usage le réclame, sans casser le format existant.
   (liste groupée + Markdown viewer)
 - Pattern `collection-client` : `packages/web/src/core/api/modules/collection-client.ts`
 - Factory routes back : `packages/api/src/routes/collection-factory.ts`
+- Pattern de découpe modulaire (à imiter pour la refacto) :
+  `packages/web/src/app/flow/Habits/` et `packages/web/src/app/flow/Review/`

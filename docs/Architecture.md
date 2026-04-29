@@ -428,13 +428,23 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 - **Zustand** is the single application store, see
   [`src/core/store/nodea-store.ts`](../packages/web/src/core/store/nodea-store.ts).
   Slices: `auth`, `crypto`, `modules`, `preferences`, `notifications`,
-  `mobileMenuOpen`. There is **no** parallel singleton or Context
+  `mobileMenuOpen`, `flow`. There is **no** parallel singleton or Context
   reducer.
 - **React Hook Form + Zod** for every form that ships to the server —
   resolver built from the shared schema.
-- **Routing**: URL-driven (`/flow/:moduleId`). Every module is
-  `React.lazy()` so opening "Mood" for the first time fetches only
-  Mood's code chunk. Per-module `ErrorBoundary`.
+- **Routing**: URL stays at `/flow` regardless of the active module.
+  The active module lives in the `flow` slice (`currentModule: ModuleId`).
+  This is a **privacy invariant** : Nginx access logs, Hono/Pino
+  request logs, browser referrers and bookmarks never reveal which
+  module an authenticated user is consulting. `setModule(id)` pushes
+  a `history.pushState({ nodeaModule: id }, '', '/flow')` entry so
+  the back button still works ; a top-level `popstate` listener
+  reads `event.state.nodeaModule` and calls `syncCurrentModule(id)`
+  to restore the previous module. Old per-module URLs (`/flow/mood`,
+  `?subview=`) are gone ; `/flow/*` is a catch-all redirect to
+  `/flow`. Every module is `React.lazy()` so opening "Mood" for the
+  first time fetches only Mood's code chunk. Per-module
+  `ErrorBoundary`.
 
 ### State slices
 
@@ -446,6 +456,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 | `preferences`    | Encrypted `user_preferences`       | yes             |
 | `notifications`  | Local only (toast queue)           | yes             |
 | `mobileMenuOpen` | Local only (sidebar drawer)        | yes             |
+| `flow`           | Local only (current module + Library subview) | yes  |
 
 ### Data access
 

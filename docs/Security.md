@@ -274,6 +274,18 @@ exceptions doivent être justifiées en commentaire au-dessus du
 5. **Reset is destructive** — resetting the password purges the
    user's encrypted data in the same transaction that rotates the
    credentials. There is no orphaned ciphertext lying around.
+6. **No module-visited metadata leaks via the URL.** While a user is
+   authenticated, the URL stays at `/flow` regardless of which
+   module they're consulting. The active module lives in the
+   client-side Zustand store ; browser-history navigation is
+   preserved via `history.pushState({ nodeaModule: id }, '',
+   '/flow')` so back / forward still work, but `event.state` never
+   leaves the tab. Nginx access logs, Hono/Pino request logs, the
+   browser's own history.pushed URL and any outbound `Referer`
+   headers all see a single `/flow` path. Old bookmarks like
+   `/flow/library?subview=extraits` are caught by a
+   `/flow/*` → `/flow` redirect so they no longer route through
+   the server with the leaky path.
 
 ---
 
@@ -301,8 +313,9 @@ proxy / compromised host that swaps the entry chunk for a
 malicious one is blocked at the loader.
 
 **Limitation** : runtime-loaded chunks (route-level `React.lazy`
-imports — every `/login`, `/totp`, `/passkeys`, every `/flow/*`
-module) are NOT covered by browser SRI in the current build. Their
+imports — every `/login`, `/totp`, `/passkeys`, every `/flow`
+module loaded on demand when the user switches sections) are NOT
+covered by browser SRI in the current build. Their
 hashes are listed in `dist/INTEGRITY.txt` for manual verification
 (see §7.2) but Vite's `<link rel="modulepreload">` insertion
 doesn't yet wire `integrity=` for us. A determined attacker who
