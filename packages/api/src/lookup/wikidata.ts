@@ -109,7 +109,6 @@ function groupRowsByWork(
         year: extractYear(bindingValue(row, 'date') ?? null),
         language,
         original_language: language,
-        page_count: parseIntSafe(bindingValue(row, 'pages')),
         publisher: null,
         collection: null,
         summary: null,

@@ -18,7 +18,6 @@ const sampleItemPayload: LibraryItemPayload = {
   format: 'paper',
   started_at: null,
   finished_at: null,
-  current_page: null,
   rating: null,
   tags: [],
   is_favorite: false,

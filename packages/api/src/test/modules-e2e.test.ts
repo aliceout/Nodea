@@ -266,7 +266,6 @@ describe('Library — items and reviews encrypted round-trip', () => {
       cover_rid: null,
       started_at: null,
       finished_at: null,
-      current_page: null,
       rating: null,
       tags: ['roman'],
       is_favorite: false,

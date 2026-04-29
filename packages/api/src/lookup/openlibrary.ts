@@ -146,7 +146,6 @@ async function editionToNormalised(
     year: extractYear(edition.publish_date ?? null),
     language,
     original_language: null,
-    page_count: positiveOrNull(edition.number_of_pages),
     publisher: edition.publishers?.[0] ?? null,
     collection: null,
     summary: description,
@@ -188,7 +187,6 @@ function searchDocToNormalised(
     // Fallback to `[0]` when no hint or no match.
     language: pickLanguage(doc.language, langHint),
     original_language: null,
-    page_count: positiveOrNull(doc.number_of_pages_median),
     publisher: doc.publisher?.[0] ?? null,
     collection: null,
     summary: doc.first_sentence?.[0] ?? null,

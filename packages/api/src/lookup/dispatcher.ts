@@ -227,7 +227,6 @@ function mergeOnce(books: NormalisedBook[]): NormalisedBook | null {
     if (!merged.original_language && b.original_language) {
       merged.original_language = b.original_language;
     }
-    if (!merged.page_count && b.page_count) merged.page_count = b.page_count;
     if (!merged.publisher && b.publisher) merged.publisher = b.publisher;
     if (!merged.collection && b.collection) merged.collection = b.collection;
     if (!merged.summary && b.summary) merged.summary = b.summary;

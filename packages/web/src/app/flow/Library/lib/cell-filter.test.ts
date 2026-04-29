@@ -14,7 +14,6 @@ function fixture(
     format: 'unknown',
     started_at: null,
     finished_at: null,
-    current_page: null,
     rating: null,
     tags: [],
     is_favorite: false,

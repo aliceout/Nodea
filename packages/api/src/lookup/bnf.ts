@@ -106,7 +106,6 @@ function groupRowsByWork(
         year: extractYear(bindingValue(row, 'date') ?? null),
         language: bindingValue(row, 'language') ?? null,
         original_language: null,
-        page_count: null,
         publisher: bindingValue(row, 'publisher') ?? null,
         collection: bindingValue(row, 'collectionName') ?? null,
         summary: null,

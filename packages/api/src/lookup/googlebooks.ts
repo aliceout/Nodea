@@ -101,7 +101,6 @@ interface GoogleBookVolume {
     authors?: string[];
     publishedDate?: string;
     publisher?: string;
-    pageCount?: number;
     language?: string;
     description?: string;
     industryIdentifiers?: { type: string; identifier: string }[];
@@ -142,10 +141,6 @@ function volumeToNormalised(volume: GoogleBookVolume): NormalisedBook {
     year: extractYear(info.publishedDate ?? null),
     language: info.language ?? null,
     original_language: null,
-    page_count:
-      typeof info.pageCount === 'number' && info.pageCount > 0
-        ? info.pageCount
-        : null,
     publisher: info.publisher ?? null,
     collection: null,
     summary: info.description ?? null,

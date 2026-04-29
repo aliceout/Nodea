@@ -166,7 +166,6 @@ function parseSearchHtml(html: string, limit: number): NormalisedBook[] {
       // dispatcher's filter keeps `null` records on purpose.
       language: extractLanguage(tile, title),
       original_language: null,
-      page_count: null,
       publisher: null,
       collection: null,
       summary: null,

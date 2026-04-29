@@ -100,7 +100,6 @@ function groupRowsByManif(
         year: extractYear(bindingValue(row, 'date') ?? null),
         language: 'es',
         original_language: 'es',
-        page_count: null,
         publisher: bindingValue(row, 'publisher') ?? null,
         collection: null,
         summary: null,
