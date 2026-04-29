@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
+import { firstThread } from '@nodea/shared';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 
 import { useHomepageData } from '../context';
 import { STATUS_LABEL, STATUS_TONE } from '../lib/constants';
-import { firstThread } from '../lib/format';
 import { pickHomeGoals } from '../lib/intentions';
 import SectionLabel from './SectionLabel';
 

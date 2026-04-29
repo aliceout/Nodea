@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  firstThread,
   formatMoodAvg,
   formatTimeFromIso,
   preferredName,
@@ -70,14 +69,5 @@ describe('toIsoDate', () => {
   });
 });
 
-describe('firstThread', () => {
-  it('returns the first comma-separated token, trimmed', () => {
-    expect(firstThread('  #alpha  ,  #beta')).toBe('#alpha');
-    expect(firstThread('#solo')).toBe('#solo');
-  });
-
-  it('returns empty on empty / whitespace input', () => {
-    expect(firstThread('')).toBe('');
-    expect(firstThread('   ')).toBe('');
-  });
-});
+// `firstThread` is now `@nodea/shared/threads`, tested in
+// `packages/shared/src/threads.test.ts`.

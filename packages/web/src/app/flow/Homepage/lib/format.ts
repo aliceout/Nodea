@@ -49,11 +49,7 @@ export function toIsoDate(d: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** First comma-separated token of a `thread` string, trimmed.
- *  Empty string on a missing / blank thread. Cousin of
- *  `splitThreads(...)[0]` from the Goals / Journal libs ; kept
- *  local because Home only ever needs the first one. */
-export function firstThread(thread: string): string {
-  const first = thread.split(',')[0];
-  return first ? first.trim() : '';
-}
+// `firstThread` lives in `@nodea/shared/threads` since the
+// post-`module-refacto` dedup. Importers should pull it from
+// there directly — this barrel doesn't re-export it (one less
+// indirection between caller and the source of truth).

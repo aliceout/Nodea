@@ -9,6 +9,7 @@ import {
   type Context,
   type ReactNode,
 } from 'react';
+import { splitThreads } from '@nodea/shared';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import {
@@ -20,7 +21,6 @@ import {
 import { recordToEntry } from './lib/mappers';
 import { byDateDesc } from './lib/sort';
 import { nextStatus } from './lib/status';
-import { splitThreads } from './lib/threads';
 import type {
   CanonicalStatus,
   GoalEntry,

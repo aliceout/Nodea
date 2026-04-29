@@ -9,6 +9,7 @@ import {
   type Context,
   type ReactNode,
 } from 'react';
+import { splitThreads } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
 import {
@@ -20,7 +21,6 @@ import {
 import { formatMonthLabel } from './lib/date-format';
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
-import { splitThreads } from './lib/threads';
 import type { JournalEntry, JournalStats, LoadState } from './lib/types';
 
 /**

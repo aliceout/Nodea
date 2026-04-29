@@ -238,7 +238,6 @@ export const LibraryItemPayloadSchema = z
     year: z.number().int().optional(),
     language: z.string().optional(),
     original_language: z.string().optional(),
-    page_count: z.number().int().positive().optional(),
     publisher: z.string().optional(),
     /** Collection éditoriale (e.g. "Folio classique", "Pléiade",
      * "Babel"). Distinct from `series` which is a multi-volume work.
@@ -254,7 +253,6 @@ export const LibraryItemPayloadSchema = z
     format: z.enum(LIBRARY_FORMAT_VALUES).default('unknown'),
     started_at: z.string().nullable().default(null),
     finished_at: z.string().nullable().default(null),
-    current_page: z.number().int().nonnegative().nullable().default(null),
     rating: z.number().min(0).max(5).nullable().default(null),
     tags: z.array(z.string()).default([]),
     is_favorite: z.boolean().default(false),

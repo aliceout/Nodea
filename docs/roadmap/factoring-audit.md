@@ -158,16 +158,15 @@ silencieux serait dur à repérer.
 Petits gains, mais ils stoppent net la divergence quand quelqu'un
 modifie une copie sans toucher l'autre.
 
-- [ ] **`splitThreads`** vit en triple :
-       [`flow/Goals/lib/threads.ts`](../../packages/web/src/app/flow/Goals/lib/threads.ts) ·
-       [`flow/Journal/lib/threads.ts`](../../packages/web/src/app/flow/Journal/lib/threads.ts) ·
-       cousin `firstThread` dans
-       [`flow/Homepage/index.tsx`](../../packages/web/src/app/flow/Homepage/index.tsx).
-       Les bodies des fonctions Goals / Journal sont **identiques
-       au caractère près**. → promouvoir dans
-       `packages/shared/src/threads.ts` et faire dériver
-       `firstThread = (s) => splitThreads(s)[0] ?? null`. Tests
-       cross-package via `@nodea/shared`.
+- [x] **`splitThreads`** vivait en triple ; promu dans
+       [`packages/shared/src/threads.ts`](../../packages/shared/src/threads.ts)
+       avec `firstThread` dérivé. Goals et Journal importent
+       maintenant depuis `@nodea/shared` ; les copies locales
+       sont supprimées (`git rm`). Tests consolidés dans
+       [`packages/shared/src/threads.test.ts`](../../packages/shared/src/threads.test.ts)
+       (9 cases). Le `vitest.config.ts` web pointe désormais aussi
+       sur `../shared/src/**/*.test.ts` pour que le runner unique
+       exerce le shared package sans infra dédiée.
 - [ ] **Formatters de date FR** dispersés :
        [`flow/Mood/lib/date-format.ts`](../../packages/web/src/app/flow/Mood/lib/date-format.ts)
        (`ENTRY_SAME_YEAR_FMT`, `ENTRY_CROSS_YEAR_FMT`,
