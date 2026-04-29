@@ -180,7 +180,7 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
         + tests
   - [x] `lib/stats.ts` — `computeStats`, `countWords`, `isoDay` +
         tests
-- [ ] **2. context.tsx** — `JournalProvider` + 3 hooks
+- [x] **2. context.tsx** — `JournalProvider` + 3 hooks
 - [ ] **3. components/** — `SideColumn`
 - [ ] **4. views/** — `PrimaryColumn`, `EntryRow`,
        `ClampedJournalContent`, `ReaderShell`

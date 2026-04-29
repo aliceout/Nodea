@@ -21,13 +21,12 @@ export interface JournalEntry {
 }
 
 /** Async lifecycle of the page-level fetch. The `<JournalProvider>`
- *  in commit 2 will split data + load into separate slices ; for
- *  now the legacy `entries`-on-ready shape stays so the existing
- *  components keep working unchanged. */
+ *  exposes `entries` and `load` as separate slices ; `load`
+ *  carries only the lifecycle status, never the data itself. */
 export type LoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; entries: JournalEntry[] }
+  | { status: 'ready' }
   | { status: 'error'; message: string };
 
 /** Aggregate stats shown in the SideColumn « Stats » block. */

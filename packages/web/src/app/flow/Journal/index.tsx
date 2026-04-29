@@ -1,7 +1,6 @@
 import {
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -14,12 +13,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
-import { passageClient } from '@/core/api/modules/passage';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { JournalContent } from '@/lib/journal-markdown';
 import { attachmentSrc } from './hooks/imageResize';
 import Button from '@/ui/atoms/dirk/Button';
@@ -32,15 +26,13 @@ import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
-import { formatMonthLabel } from './lib/date-format';
-import { recordToEntry } from './lib/mappers';
-import { computeStats } from './lib/stats';
-import { splitThreads } from './lib/threads';
-import type {
-  JournalEntry,
-  JournalStats,
-  LoadState,
-} from './lib/types';
+import {
+  JournalProvider,
+  useJournalActions,
+  useJournalData,
+  useJournalFilters,
+} from './context';
+import type { JournalEntry, JournalStats, LoadState } from './lib/types';
 
 /**
  * Journal — Direction K · Sauge.
@@ -58,147 +50,41 @@ import type {
  */
 
 export default function JournalPage() {
+  return (
+    <JournalProvider>
+      <JournalView />
+    </JournalProvider>
+  );
+}
+
+/** Page rendering surface — picks between the focus reader and the
+ *  regular list shell. Reads from the three Journal contexts and
+ *  feeds the existing prop-driven sub-components. Subsequent commits
+ *  will migrate the leaves (`SideColumn`, `PrimaryColumn`,
+ *  `EntryRow`, `ReaderShell`) to consume the contexts directly. */
+function JournalView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['journal']?.moduleUserId ?? null;
-  const journalVersion = useNodeaStore((s) => s.journalVersion);
-  const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
 
-  const [load, setLoad] = useState<LoadState>({ status: 'idle' });
-  const [threadFilter, setThreadFilter] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [groupBy, setGroupBy] = useState<'thread' | 'month'>('thread');
-  /** Id of the entry currently shown in the focus reader, or null
-   *  when the regular list view is active. Stored as id rather than
-   *  index so the reader survives a refetch that reorders entries. */
-  const [readingId, setReadingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
-    let cancelled = false;
-    setLoad({ status: 'loading' });
-    passageClient
-      .list(moduleUserId, mainKey)
-      .then((records) => {
-        if (cancelled) return;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const entries = records
-          .map((r) => recordToEntry(r, today))
-          // Newest first.
-          .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
-        setLoad({ status: 'ready', entries });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : 'Erreur lors du chargement du journal.';
-        setLoad({ status: 'error', message });
-      });
-    return () => {
-      cancelled = true;
-    };
-    // `journalVersion` is bumped by the Composer's JournalBody after
-    // a successful save — re-runs the fetch without a page reload.
-  }, [mainKey, moduleUserId, journalVersion]);
-
-  function handleEdit(entry: JournalEntry): void {
-    openComposer('journal', {
-      type: 'journal',
-      id: entry.id,
-      payload: {
-        type: 'passage.entry',
-        date: entry.dateIso,
-        thread: entry.thread,
-        title: entry.title,
-        content: entry.content,
-        attachments: entry.attachments,
-      },
-    });
-  }
-
-  async function handleDelete(entry: JournalEntry): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    const label = entry.title ?? entry.dateLabel;
-    if (!window.confirm(`Supprimer « ${label} » ?`)) return;
-    const previous = load;
-    setLoad((prev) =>
-      prev.status === 'ready'
-        ? { status: 'ready', entries: prev.entries.filter((e) => e.id !== entry.id) }
-        : prev,
-    );
-    try {
-      await passageClient.remove(moduleUserId, mainKey, entry.id);
-      bumpJournalVersion();
-    } catch (err) {
-      setLoad(previous);
-      if (import.meta.env.DEV) console.warn('journal: delete failed', err);
-    }
-  }
-
-  const entries: ReadonlyArray<JournalEntry> =
-    load.status === 'ready' ? load.entries : EMPTY;
-
-  const threads = useMemo<string[]>(() => {
-    const set = new Set<string>();
-    for (const e of entries) {
-      for (const t of splitThreads(e.thread)) set.add(t);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [entries]);
-
-  const filtered = useMemo<JournalEntry[]>(() => {
-    const needle = search.trim().toLocaleLowerCase('fr');
-    return entries.filter((e) => {
-      if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
-        return false;
-      }
-      if (needle.length > 0) {
-        const haystack = `${e.title ?? ''}\n${e.content}`.toLocaleLowerCase('fr');
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
-    });
-  }, [entries, threadFilter, search]);
-
-  const groups = useMemo<Array<[string, JournalEntry[]]>>(() => {
-    const map = new Map<string, JournalEntry[]>();
-    if (groupBy === 'month') {
-      // Group by year/month derived from the entry's ISO date.
-      // Sort buckets by their key descending so the freshest month
-      // sits on top — natural for a journal scroll.
-      for (const entry of filtered) {
-        const key = entry.dateIso.slice(0, 7); // YYYY-MM
-        const bucket = map.get(key) ?? [];
-        bucket.push(entry);
-        map.set(key, bucket);
-      }
-      return Array.from(map.entries())
-        .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
-        .map(([k, items]) => [formatMonthLabel(k), items]);
-    }
-    // Default: group by thread (multi-thread entries land in each
-    // of their thread buckets — same convention as Goals).
-    for (const entry of filtered) {
-      const keys = splitThreads(entry.thread);
-      const list = keys.length > 0 ? keys : ['— sans thread —'];
-      for (const key of list) {
-        const bucket = map.get(key) ?? [];
-        bucket.push(entry);
-        map.set(key, bucket);
-      }
-    }
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'fr'));
-  }, [filtered, groupBy]);
-
-  const stats = useMemo(() => computeStats(entries), [entries]);
+  const { entries, load, stats } = useJournalData();
+  const {
+    threadFilter,
+    groupBy,
+    search,
+    threads,
+    filtered,
+    groups,
+    setThreadFilter,
+    setGroupBy,
+    setSearch,
+  } = useJournalFilters();
+  const { readingId, editEntry, deleteEntry, openReader, closeReader } =
+    useJournalActions();
 
   // Reader sequence — the user navigates prev/next inside the
   // *filtered* list (search + thread filter applied). That matches
-  // what they were just looking at in the list view; jumping to an
-  // entry that wasn't visible would feel like a glitch.
+  // what they were just looking at in the list view ; jumping to
+  // an entry that wasn't visible would feel like a glitch.
   const readingIndex =
     readingId === null ? -1 : filtered.findIndex((e) => e.id === readingId);
   const readingEntry = readingIndex >= 0 ? filtered[readingIndex]! : null;
@@ -209,18 +95,18 @@ export default function JournalPage() {
         entry={readingEntry}
         position={readingIndex + 1}
         total={filtered.length}
-        onClose={() => setReadingId(null)}
+        onClose={closeReader}
         onPrev={
           readingIndex > 0
-            ? () => setReadingId(filtered[readingIndex - 1]!.id)
+            ? () => openReader(filtered[readingIndex - 1]!.id)
             : null
         }
         onNext={
           readingIndex < filtered.length - 1
-            ? () => setReadingId(filtered[readingIndex + 1]!.id)
+            ? () => openReader(filtered[readingIndex + 1]!.id)
             : null
         }
-        onEdit={() => handleEdit(readingEntry)}
+        onEdit={() => editEntry(readingEntry)}
         onMobileMenu={() => setMobileMenuOpen(true)}
       />
     );
@@ -244,7 +130,7 @@ export default function JournalPage() {
           onSearchChange={setSearch}
           groupBy={groupBy}
           onGroupByChange={setGroupBy}
-          threads={threads}
+          threads={[...threads]}
           activeThread={threadFilter}
           onThreadChange={setThreadFilter}
           totalCount={entries.length}
@@ -257,20 +143,18 @@ export default function JournalPage() {
         total={entries.length}
         groups={groups}
         groupVariant={groupBy === 'month' ? 'eyebrow' : 'subtitle'}
-        onRead={(entry) => setReadingId(entry.id)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onRead={(entry) => openReader(entry.id)}
+        onEdit={editEntry}
+        onDelete={deleteEntry}
       />
     </ModuleShell>
   );
 }
 
-const EMPTY: ReadonlyArray<JournalEntry> = [];
-
 interface PrimaryColumnProps {
   load: LoadState;
   total: number;
-  groups: Array<[string, JournalEntry[]]>;
+  groups: ReadonlyArray<readonly [string, JournalEntry[]]>;
   groupVariant: 'subtitle' | 'eyebrow';
   onRead: (entry: JournalEntry) => void;
   onEdit: (entry: JournalEntry) => void;
