@@ -2747,7 +2747,7 @@ Tests obligatoires **avant** le merge de chaque phase. Localisation :
 | **Sub-keys (aes_main, hmac_main)** | Dérivées par HKDF depuis main_key, importées non-extractables dans WebCrypto. |
 | **AAD** | Additional Authenticated Data. Données qui sont authentifiées par AES-GCM mais non chiffrées. Lient un blob à son contexte. |
 | **HKDF** | HMAC-based Key Derivation Function. RFC 5869. |
-| **Recovery code KEK** | Code haute entropie (~130 bits) généré à l'inscription, affiché une seule fois. Dérive une wrapping key qui wrappe la KEK. |
+| **Recovery code KEK** | Code haute entropie (~130 bits) généré au moment où l'user configure le code de récupération (étape post-inscription fortement recommandée), affiché une seule fois. Dérive une wrapping key qui wrappe la KEK. |
 | **Backup codes TOTP** | 10 codes single-use générés à l'enrollment TOTP, hashés côté serveur, en cas de perte de l'authenticator. |
 | **Bypass TOTP** | Mécanisme de récupération en cas de perte du TOTP + backup codes. Email + 7 jours delay. |
 | **Stepped MFA** | Login en deux phases : facteur principal (password OPAQUE ou passkey) → cookie pending → facteurs additionnels → cookie full. |

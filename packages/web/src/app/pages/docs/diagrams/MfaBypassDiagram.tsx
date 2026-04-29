@@ -102,10 +102,10 @@ export default function MfaBypassDiagram() {
   return (
     <figure className="my-8 -mx-2 overflow-x-auto">
       <svg
-        viewBox="0 0 720 380"
+        viewBox="0 0 860 380"
         role="img"
         aria-label="Timeline du bypass MFA Nodea : la requête est créée en mfa_pending, le user clique sur le lien email pour la confirmer, un délai de 7 jours s'écoule, puis le prochain login normal consomme le bypass et désactive le facteur perdu. Pendant les 7 jours, n'importe quel login full annule la requête (defang anti-phishing)."
-        className="mx-auto block w-full max-w-[720px] text-ink"
+        className="mx-auto block w-full max-w-[860px] text-ink"
       >
         <defs>
           <marker
@@ -155,21 +155,21 @@ export default function MfaBypassDiagram() {
         <line
           x1={170}
           y1={yMain + hMain / 2}
-          x2={210}
+          x2={250}
           y2={yMain + hMain / 2}
           className="stroke-hair"
           strokeWidth={1}
           markerEnd="url(#bypass-arrow)"
         />
         <Label
-          x={190}
-          y={yMain + hMain / 2 - 16}
+          x={210}
+          y={yMain + hMain / 2 - 12}
           text="email envoyé"
         />
 
         {/* 2 — Confirmé (clic sur email) */}
         <Node
-          x={210}
+          x={250}
           y={yMain}
           width={150}
           height={hMain}
@@ -179,23 +179,23 @@ export default function MfaBypassDiagram() {
 
         {/* Arrow 2→3 — long, with "délai 7 jours" highlighted */}
         <line
-          x1={360}
+          x1={400}
           y1={yMain + hMain / 2}
-          x2={400}
+          x2={480}
           y2={yMain + hMain / 2}
           className="stroke-hair"
           strokeWidth={1}
           markerEnd="url(#bypass-arrow)"
         />
         <Label
-          x={380}
-          y={yMain + hMain / 2 - 16}
+          x={440}
+          y={yMain + hMain / 2 - 12}
           text="délai 7 jours"
         />
 
         {/* 3 — Applicable */}
         <Node
-          x={400}
+          x={480}
           y={yMain}
           width={150}
           height={hMain}
@@ -205,25 +205,25 @@ export default function MfaBypassDiagram() {
 
         {/* Arrow 3→4 */}
         <line
-          x1={550}
+          x1={630}
           y1={yMain + hMain / 2}
-          x2={590}
+          x2={710}
           y2={yMain + hMain / 2}
           className="stroke-hair"
           strokeWidth={1}
           markerEnd="url(#bypass-arrow)"
         />
         <Label
-          x={570}
-          y={yMain + hMain / 2 - 16}
+          x={670}
+          y={yMain + hMain / 2 - 12}
           text="next login"
         />
 
         {/* 4 — Consommé (terminal, highlight) */}
         <Node
-          x={590}
+          x={710}
           y={yMain}
-          width={120}
+          width={130}
           height={hMain}
           label="Consommé"
           sub="facteur supprimé"
@@ -232,37 +232,44 @@ export default function MfaBypassDiagram() {
 
         {/* Cancel branch — drops down from the "Confirmé" box,
             sweeps right under the timeline, terminates at a
-            cancelled node */}
+            cancelled node. The two-line label sits above the
+            dashed arrow within the (Confirmé→Annulé) corridor
+            so it never overlaps the box fills. */}
         <line
-          x1={285}
+          x1={325}
           y1={yMain + hMain}
-          x2={285}
-          y2={235}
+          x2={325}
+          y2={245}
           className="stroke-hair"
           strokeWidth={1}
           strokeDasharray="3 3"
         />
         <line
-          x1={285}
-          y1={235}
-          x2={400}
-          y2={235}
+          x1={325}
+          y1={245}
+          x2={480}
+          y2={245}
           className="stroke-hair"
           strokeWidth={1}
           strokeDasharray="3 3"
           markerEnd="url(#bypass-arrow-danger)"
         />
         <Label
-          x={343}
-          y={222}
-          text="tout login full pendant le délai → cancelled_at = now"
+          x={402}
+          y={218}
+          text="tout login full pendant le délai"
+        />
+        <Label
+          x={402}
+          y={232}
+          text="→ cancelled_at = now"
         />
 
         {/* Cancelled terminal */}
         <Node
-          x={400}
-          y={210}
-          width={150}
+          x={480}
+          y={220}
+          width={170}
           height={50}
           label="Annulé"
           sub="cancelPendingBypassesForUser"
@@ -270,7 +277,7 @@ export default function MfaBypassDiagram() {
 
         {/* Footer note */}
         <text
-          x={360}
+          x={430}
           y={325}
           textAnchor="middle"
           className="fill-muted text-[10.5px] italic"
@@ -279,7 +286,7 @@ export default function MfaBypassDiagram() {
           ce qui évite d'exposer un bouton de désamorçage à un phisher.
         </text>
         <text
-          x={360}
+          x={430}
           y={343}
           textAnchor="middle"
           className="fill-muted text-[10.5px] italic"

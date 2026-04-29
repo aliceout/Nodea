@@ -10,6 +10,8 @@ import KeyHierarchyDiagram from './diagrams/KeyHierarchyDiagram';
 import OpaqueFlowDiagram from './diagrams/OpaqueFlowDiagram';
 import SteppedMfaDiagram from './diagrams/SteppedMfaDiagram';
 import MfaBypassDiagram from './diagrams/MfaBypassDiagram';
+import RecoveryDoorsDiagram from './diagrams/RecoveryDoorsDiagram';
+import BrowserVsServerDiagram from './diagrams/BrowserVsServerDiagram';
 
 /**
  * Markdown rendering primitives for the docs tiers.
@@ -246,6 +248,12 @@ const markdownComponents: Components = {
     }
     if (className === 'docs-diagram-mfa-bypass') {
       return <MfaBypassDiagram />;
+    }
+    if (className === 'docs-diagram-recovery-doors') {
+      return <RecoveryDoorsDiagram />;
+    }
+    if (className === 'docs-diagram-browser-vs-server') {
+      return <BrowserVsServerDiagram />;
     }
     return <aside className={className}>{children}</aside>;
   },

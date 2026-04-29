@@ -31,7 +31,10 @@ import DocsTierTech, {
  * reader). The three tiers cover the same security model at three
  * different reading registers; the tech tier links out to
  * `docs/Auth-Spec.md` and `docs/Security.md` for the exhaustive
- * reference.
+ * reference. The Newbie tier also bundles a "Questions pratiques"
+ * appendix (export, deletion, hosting, mobile…) — kept inline
+ * rather than as a separate FAQ tab so newcomers find both the
+ * security model and the practical answers in a single page.
  */
 const TAB_IDS = ['newbie', 'advanced', 'tech'] as const;
 type TabId = (typeof TAB_IDS)[number];
