@@ -53,7 +53,14 @@ fetch + 4 helpers).
 - [x] **Lite types** (`MoodEntryLite`, `GoalEntryLite`,
        `GoalStatusLite`, `LibraryReadingLite`, `MoodFriseCell`,
        `MoodFriseStats`, `MockTask`) → `Homepage/lib/types.ts`.
-       Le passage à `Pick<MoodEntry, …>` reste pour Tier 3.
+       `MoodEntryLite` dérive maintenant de `MoodEntry` via
+       `Pick<MoodEntry, 'dateIso' | 'score'> & { createdAt }`
+       (Tier 3 fait). `GoalEntryLite` et `LibraryReadingLite`
+       restent locaux : Goal a un `status` plus étroit que
+       `CanonicalStatus` (un Pick élargirait l'union et
+       laisserait fuir des `'active'` / `'archived'`) ; Library
+       a un `author` qui est un join dérivé du `creators[]`
+       filtré, pas un champ direct. Documenté dans la JSDoc.
 - [x] **`useMoodEntries` / `useGoalEntries` / `useLibraryReadings`**
        — 3 hooks de fetch inlinés, fondus dans le
        `HomepageProvider` (`context.tsx`). Le wiring lifecycle
@@ -186,13 +193,20 @@ modifie une copie sans toucher l'autre.
        unique à cette surface). Le `vitest.config.ts` web a aussi
        reçu l'alias `@/` qui manquait — pré-requis pour que les
        tests de `core/i18n/` résolvent leurs imports.
-- [ ] **Lite shapes Homepage** redondent
-       [`flow/Goals/lib/types.ts`](../../packages/web/src/app/flow/Goals/lib/types.ts) /
-       [`flow/Mood/lib/types.ts`](../../packages/web/src/app/flow/Mood/lib/types.ts) /
-       [`flow/Library/lib/types.ts`](../../packages/web/src/app/flow/Library/lib/types.ts).
-       Une fois Homepage refacto'ée, exporter les Lite via
-       `Pick<MoodEntry, 'dateIso' | 'score' | 'createdAt'>` (et
-       équivalents) plutôt que les redéclarer.
+- [x] **Lite shapes Homepage** : évalués après refacto
+       Homepage. `MoodEntryLite` dérive via
+       `Pick<MoodEntry, 'dateIso' | 'score'> & { createdAt }` —
+       le `createdAt` reste en shim local parce que la
+       canonical `MoodEntry` n'a pas de timestamp serveur (le
+       design minimum-readable-surface l'a supprimé). Pour
+       `GoalEntryLite` et `LibraryReadingLite`, le Pick<>
+       n'est **pas** un gain : Goal a un `status` plus étroit
+       (`'open' | 'wip' | 'done'`) que la canonical
+       `CanonicalStatus` (qui inclut `'active'`/`'archived'`),
+       et Library a un `author` qui est un join dérivé du
+       `creators[]` filtré, pas un champ direct. La raison de
+       chaque décision est documentée dans la JSDoc des Lite
+       — futur lecteur n'a pas à redécouvrir.
 - [ ] **`VALID_SCORES` / `VALID_STATUS`** : Homepage redéclare des
        `Set` à partir des constantes `@nodea/shared` au lieu
        d'importer les validateurs des modules. Une fois Homepage
