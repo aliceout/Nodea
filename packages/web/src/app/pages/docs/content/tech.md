@@ -280,50 +280,61 @@ Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review,
 
 ### Surface lisible côté serveur — toutes les autres tables
 
-Pour la transparence totale, voilà ce qui vit dans les autres tables. Pour chaque table : ce qui est **lu en clair** (lisible avec un simple `SELECT`), ce qui est **chiffré** (AES-GCM, illisible sans la clé du user), ce qui est **haché** (SHA-256, irréversible).
+Pour chaque table, voilà **ce qui est lisible avec un simple `SELECT`**. Tout ce qui n'apparaît pas dans ces listes est soit un blob chiffré AES-GCM (inutile sans la clé maîtresse du user), soit un hash SHA-256 (irréversible) — détails en bas de section.
 
 #### Comptes et identité
 
-| Table | Champs |
+| Table | Champs en clair |
 |---|---|
-| `users` (1 par compte) | **clair** : `id`, `email` (identifiant OPAQUE), `username`, `role` (`'user' \| 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at`<br>**chiffrés** (inutiles sans la clé du user) : `wrapped_main_key{,_iv}`, `wrapped_kek_password{,_iv}`, `wrapped_kek_recovery{,_iv}`<br>**haché** : `recovery_code_hash` (SHA-256 du code à 12 mots, jamais le code lui-même) |
-| `opaque_records` (1 par user) | **clair** : `user_id`, `envelope` (le « registration record » OPAQUE — cryptographiquement opaque, pas du contenu user mais visible) |
+| `users` (1 par compte) | `id`, `email` (identifiant OPAQUE), `username`, `role` (`'user' \| 'admin'`), `security_mode`, `register_state`, `email_verified_at`, `email_changed_at`, `recovery_acknowledged_at`, `onboarding_status`, `onboarding_version`, `created_at`, `updated_at` |
+| `opaque_records` (1 par user) | `user_id`, `envelope` (registration record OPAQUE — cryptographiquement opaque mais visible) |
 
 #### Sessions et MFA
 
-| Table | Champs |
+| Table | Champs en clair |
 |---|---|
-| `sessions` (N par user, expirent) | **clair** : `id` (token signé), `user_id`, `kind`, timestamps, flags MFA (`mfa_*_verified`, `reauth_*_at`), `pending_webauthn_challenge` (éphémère, single-use, TTL 5 min) |
-| `auth_factors` (passkeys, N par user) | **clair** : `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (étiquette donnée par le user), `created_at`<br>**chiffré** : `wrapped_kek{,_iv}` (par credential PRF) |
-| `mfa_totp` (1 par user) | **clair** : `user_id`, `secret` (le secret TOTP est en clair côté serveur — RFC 6238 le **requiert** ; trade-off documenté : la protection TOTP repose sur l'intégrité du serveur, pas sur la crypto pure), `algo`, `digits`, `period`, `enabled_at`, `last_window` |
-| `mfa_totp_recovery_codes` (10 par user) | **clair** : `id`, `user_id`, `used_at`<br>**haché** : `code_hash` (SHA-256, jamais le code en clair) |
-| `mfa_bypass_requests` | **clair** : `id`, `user_id`, `factor` (`'totp' \| 'passkey'`), timestamps (confirmation / annulation / consommation / expiration / earliest_apply)<br>**hachés** : `confirm_token_hash`, `cancel_token_hash` |
+| `sessions` (N par user, expirent) | `id` (token signé), `user_id`, `kind`, timestamps, flags MFA (`mfa_*_verified`, `reauth_*_at`), `pending_webauthn_challenge` (éphémère, TTL 5 min) |
+| `auth_factors` (passkeys, N par user) | `id`, `user_id`, `kind`, `credential_id`, `public_key`, `sign_count`, `transports`, `prf_supported`, `label` (étiquette donnée par le user), `created_at` |
+| `mfa_totp` (1 par user) | `user_id`, **`secret`**, `algo`, `digits`, `period`, `enabled_at`, `last_window` |
+| `mfa_totp_recovery_codes` (10 par user) | `id`, `user_id`, `used_at` |
+| `mfa_bypass_requests` | `id`, `user_id`, `factor` (`'totp' \| 'passkey'`), timestamps (confirmation / annulation / consommation / expiration / earliest_apply) |
+
+> ⚠️ **Le secret TOTP est en clair côté serveur.** RFC 6238 le requiert (le serveur doit pouvoir vérifier les codes à 6 chiffres). Trade-off assumé : la protection TOTP repose sur l'intégrité du serveur, pas sur la cryptographie pure. OPAQUE et PRF restent E2E même serveur compromis.
 
 #### Flux email transitoires
 
-| Table | Champs |
+| Table | Champs en clair |
 |---|---|
-| `email_verifications` (TTL 10 min) | **clair** : `id`, `user_id`, `kind`, `attempts`, `expires_at`<br>**haché** : `code_hash` (pas le code lui-même) |
-| `password_reset_tokens` (TTL 1h) | **clair** : `id`, `user_id`, `expires_at`, `used_at`<br>**haché** : `token_hash` |
-| `invites` | **clair** : `id`, `email` du destinataire (visible avant son inscription), `created_by`, `expires_at`, `created_at`<br>**haché** : `token_hash` |
+| `email_verifications` (TTL 10 min) | `id`, `user_id`, `kind`, `attempts`, `expires_at` |
+| `password_reset_tokens` (TTL 1h) | `id`, `user_id`, `expires_at`, `used_at` |
+| `invites` | `id`, `email` du destinataire (visible avant son inscription), `created_by`, `expires_at`, `created_at` |
 
 #### Configuration utilisateur (1:1 par user)
 
-| Table | Champs |
+| Table | Champs en clair |
 |---|---|
-| `modules_config` (1 par user) | **clair** : `user_id`, `cipher_iv`, `updated_at`<br>**chiffré** : `payload` (contient le mapping `user → sids` par module) |
-| `user_preferences` (1 par user) | **clair** : `user_id`, `cipher_iv`, `updated_at`<br>**chiffré** : `payload` |
+| `modules_config` | `user_id`, `cipher_iv`, `updated_at` |
+| `user_preferences` | `user_id`, `cipher_iv`, `updated_at` |
+
+Le `payload` de ces deux tables est chiffré (`modules_config` contient le mapping `user → sids` par module ; `user_preferences` contient les réglages UI du user).
 
 #### Données globales d'app
 
-| Table | Champs |
+| Table | Champs en clair |
 |---|---|
-| `announcements` | **clair** : tout — annonces de l'admin lues par tous les users connectés, en clair par construction (c'est le but) |
-| `app_settings` | **clair** : `key`, `value`, `updated_at` — config globale (ex. `open_registration`) |
+| `announcements` | tout — annonces de l'admin lues par tous les users connectés, en clair par construction (c'est le but) |
+| `app_settings` | `key`, `value`, `updated_at` — config globale (ex. `open_registration`) |
 
 #### Tables modules (rappel)
 
 `mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` — décrites dans le tableau « surface lisible côté serveur — minimum strict » plus haut. **Pas de `user_id`, pas de timestamps colonnes.**
+
+#### Le reste (chiffré ou haché)
+
+Pour la complétude — colonnes absentes des tableaux ci-dessus :
+
+- **Blobs chiffrés AES-GCM** (illisibles sans la clé maîtresse) : `users.wrapped_main_key{,_iv}`, `users.wrapped_kek_password{,_iv}`, `users.wrapped_kek_recovery{,_iv}`, `auth_factors.wrapped_kek{,_iv}`, `modules_config.payload`, `user_preferences.payload`.
+- **Hashes SHA-256** (irréversibles, le secret en clair n'est jamais stocké) : `users.recovery_code_hash`, `mfa_totp_recovery_codes.code_hash`, `mfa_bypass_requests.{confirm,cancel}_token_hash`, `email_verifications.code_hash`, `password_reset_tokens.token_hash`, `invites.token_hash`.
 
 ### Qui peut voir quoi
 
