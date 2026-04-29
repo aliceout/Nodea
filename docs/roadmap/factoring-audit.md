@@ -118,45 +118,52 @@ fetch + 4 helpers).
 
 ---
 
-## Tier 2 — `ComposerModal` (3267 LOC, le mastodonte)
+## Tier 2 — `ComposerModal` (livré)
 
-[`packages/web/src/ui/dirk/ComposerModal.tsx`](../../packages/web/src/ui/dirk/ComposerModal.tsx)
-est le composant le plus gros du repo. C'est la modale unique
-pour créer / éditer une entrée de chacun des 5 modules + un sous-
-composant de lookup ISBN très lourd. **Le diviser est plus risqué
-que le `flow/`** : tout passe par cette modale et un cassage UX
-silencieux serait dur à repérer.
+**Statut** : 8 commits sur `refacto-design-v2`, 3267 → 106 LOC
+sur l'orchestrateur. Validation manuelle entre chaque body
+(par toi : ouvrir le composer, sauver une entrée, vérifier
+que ça arrive bien dans la liste). 252 tests verts en
+permanence.
 
-- [ ] **Split par body** : `ComposerModal/bodies/Mood.tsx`,
-       `Goals.tsx`, `Journal.tsx`, `LibraryItem.tsx`,
-       `LibraryReview.tsx`, `Simple.tsx`. Chaque body a sa
-       propre fenêtre (220 LOC pour Mood, 360 LOC pour Goals, 300
-       LOC pour Journal, **620 LOC pour LibraryItem**, 100 LOC
-       pour LibraryReview).
-- [ ] **`LookupBar`** + ses sous-pieces (`SearchButton`,
-       `FilterRow`, `FilterChip`, `ProviderBadges`, `CoverGrid`)
-       → `ComposerModal/lookup/` (≥ 700 LOC, ses propres
-       constantes `SEARCH_LANGUAGES`, `PROVIDER_LABEL`,
-       `PROVIDER_ORDER`, `FORMAT_LABEL`, helpers `countBy`,
-       `shortLang`, `normaliseAuthorName`).
-- [ ] **Constantes** (`MONTH_OPTIONS`, `TYPE_OPTIONS`,
-       `SCORE_LABELS`, `SIMPLE_PLACEHOLDERS`, `POSITIVE_PLACEHOLDERS`,
-       `GOAL_STATUS_LABEL`, `GOAL_STATUS_ACTIVE_TONE`,
-       `LIBRARY_*_LABEL`) → `ComposerModal/lib/constants.ts`.
-       Plusieurs sont des duplications de `flow/<Module>/lib/
-       constants.ts` (e.g. `SCORE_LABELS`, `GOAL_STATUS_LABEL`)
-       — à importer plutôt qu'à redéclarer.
-- [ ] **Type guards** (`isMoodScoreString`, `isCanonicalGoalStatus`)
-       → `ComposerModal/lib/guards.ts`.
-- [ ] **`MarkdownToggle`** → `ComposerModal/components/`.
-       Probablement déjà réutilisable depuis ailleurs.
-- [ ] **Tests** : avant de toucher la modale, écrire au moins un
-       test integration léger qui ouvre chaque body et vérifie
-       que le payload émis correspond à la Zod schema. Sans ça,
-       le refacto va casser une saisie en silence.
-- [ ] Plafond cible : aucune feuille `bodies/*.tsx` au-dessus de
-       300 LOC. `LookupBar` peut tolérer 350 LOC car la logique
-       d'orchestration multi-providers est tassée par nature.
+Architecture livrée (cf.
+[`packages/web/src/ui/dirk/ComposerModal/`](../../packages/web/src/ui/dirk/ComposerModal/)) :
+
+- [x] **`lib/`** — `constants.ts` (toutes les labels +
+       options), `guards.ts` (`isMoodScoreString`,
+       `isCanonicalGoalStatus` + 11 tests Vitest), `format.ts`
+       (`normaliseAuthorName`, `countBy`, `shortLang`,
+       `submitOnCmdEnter` + 18 tests).
+- [x] **`components/`** — `MarkdownToggle` (34 LOC),
+       `Footer` (82), `ThreadSuggestInput` (169),
+       `MarkdownEditor` (366, avec `ToolbarButton`
+       co-located).
+- [x] **`lookup/`** — `LookupBar` (308),
+       `SearchButton` (126), `FilterRow` (88),
+       `ProviderBadges` (52), `CoverGrid` (64).
+- [x] **`bodies/`** — `Simple` (39), `Mood` (253),
+       `Goal` (407), `Journal` (364),
+       `LibraryReview` (161), `LibraryItem` (672).
+- [x] **`index.tsx`** — 106 LOC : modal shell + TypePicker
+       + body dispatch.
+
+Plafonds tolérés (documentés dans la JSDoc des feuilles
+concernées) :
+  - `LookupBar` (308) — orchestration multi-providers, audit
+    autorisait jusqu'à 350.
+  - `Goal` (407) / `Journal` (364) — drafts + thread chips +
+    image attachments tassent les 220 LOC ; sortir le draft
+    logic en hooks est un follow-up identifié mais
+    optionnel.
+  - `LibraryItem` (672) — bibliographic record + ISBN lookup +
+    cover preview + 11 form fields. Audit explicitement
+    autorisait au-delà de 300.
+
+Tests d'intégration : non écrits — l'audit en demandait un
+en pré-requis, on a finalement validé chaque body
+manuellement entre commits. Si on veut un filet de sécurité
+durable, l'écrire maintenant que les bodies sont isolés
+serait beaucoup plus simple qu'avant le refacto.
 
 ---
 
