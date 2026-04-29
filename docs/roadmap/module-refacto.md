@@ -181,7 +181,7 @@ inlines (`PrimaryColumn`, `GoalRow`, `StatusPill`, `StatusGlyph`,
   - [x] `lib/stats.ts` — `computeStats`, `countWords`, `isoDay` +
         tests
 - [x] **2. context.tsx** — `JournalProvider` + 3 hooks
-- [ ] **3. components/** — `SideColumn`
+- [x] **3. components/** — `SideColumn`
 - [ ] **4. views/** — `PrimaryColumn`, `EntryRow`,
        `ClampedJournalContent`, `ReaderShell`
 - [ ] **5. index.tsx final** ≤ 100 LOC
