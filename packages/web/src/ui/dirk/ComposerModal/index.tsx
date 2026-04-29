@@ -51,20 +51,27 @@ import SectionLabel from '@/ui/dirk/SectionLabel';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import questions from '@/i18n/fr/Mood/questions.json';
 
-const MONTH_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: '01', label: 'Janvier' },
-  { value: '02', label: 'Février' },
-  { value: '03', label: 'Mars' },
-  { value: '04', label: 'Avril' },
-  { value: '05', label: 'Mai' },
-  { value: '06', label: 'Juin' },
-  { value: '07', label: 'Juillet' },
-  { value: '08', label: 'Août' },
-  { value: '09', label: 'Septembre' },
-  { value: '10', label: 'Octobre' },
-  { value: '11', label: 'Novembre' },
-  { value: '12', label: 'Décembre' },
-];
+import {
+  FORMAT_LABEL,
+  GOAL_STATUS_ACTIVE_TONE,
+  GOAL_STATUS_LABEL,
+  LIBRARY_FORMAT_LABEL,
+  LIBRARY_REVIEW_KIND_LABEL,
+  LIBRARY_STATUS_LABEL,
+  MONTH_OPTIONS,
+  POSITIVE_PLACEHOLDERS,
+  PROVIDER_LABEL,
+  PROVIDER_ORDER,
+  SCORE_LABELS,
+  SEARCH_LANGUAGES,
+  SEARCH_MODE_LABEL,
+  SIMPLE_PLACEHOLDERS,
+  TYPE_OPTIONS,
+  type GoalStatus,
+  type SimpleType,
+} from './lib/constants';
+import { countBy, normaliseAuthorName, shortLang, submitOnCmdEnter } from './lib/format';
+import { isCanonicalGoalStatus, isMoodScoreString } from './lib/guards';
 
 
 /**
@@ -117,14 +124,6 @@ interface TypePickerProps {
   onSelect: (next: ComposerType) => void;
 }
 
-const TYPE_OPTIONS: Array<{ id: ComposerType; label: string }> = [
-  { id: 'mood', label: 'Mood' },
-  { id: 'journal', label: 'Journal' },
-  { id: 'goal', label: 'Goal' },
-  { id: 'habit', label: 'Habit' },
-  { id: 'note', label: 'Note libre' },
-];
-
 function TypePicker({ active, onSelect }: TypePickerProps) {
   return (
     <div className="flex gap-1 px-3 pt-2.5">
@@ -150,16 +149,6 @@ function TypePicker({ active, onSelect }: TypePickerProps) {
   );
 }
 
-type SimpleType = Exclude<
-  ComposerType,
-  'mood' | 'goal' | 'journal' | 'library-item' | 'library-review'
->;
-
-const SIMPLE_PLACEHOLDERS: Record<SimpleType, string> = {
-  habit: 'Une habitude à suivre — quoi, à quel rythme.',
-  note: 'Une note libre. Aucune contrainte.',
-};
-
 interface SimpleBodyProps {
   type: SimpleType;
   onClose: () => void;
@@ -183,14 +172,6 @@ function SimpleBody({ type, onClose }: SimpleBodyProps) {
     </>
   );
 }
-
-const SCORE_LABELS: Record<MoodScore, string> = {
-  '-2': 'très bas',
-  '-1': 'bas',
-  '0': 'neutre',
-  '1': 'bon',
-  '2': 'très bon',
-};
 
 interface MoodBodyProps {
   onClose: () => void;
@@ -415,30 +396,6 @@ function MoodBody({ onClose }: MoodBodyProps) {
     </>
   );
 }
-
-function isMoodScoreString(s: string | undefined): s is MoodScore {
-  return s === '-2' || s === '-1' || s === '0' || s === '1' || s === '2';
-}
-
-const POSITIVE_PLACEHOLDERS: ReadonlyArray<string> = [
-  'Un premier moment qui a tenu la journée debout.',
-  'Un deuxième — plus discret peut-être.',
-  'Un troisième — même tout petit.',
-];
-
-type GoalStatus = 'open' | 'wip' | 'done';
-
-const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
-  open: 'Ouvert',
-  wip: 'En cours',
-  done: 'Terminé',
-};
-
-const GOAL_STATUS_ACTIVE_TONE: Record<GoalStatus, string> = {
-  open: 'border-ink-soft bg-bg-2 font-semibold text-ink',
-  wip: 'border-accent-soft bg-accent-soft font-semibold text-accent-deep',
-  done: 'border-accent bg-accent font-semibold text-white',
-};
 
 interface GoalBodyProps {
   onClose: () => void;
@@ -819,10 +776,6 @@ function GoalBody({ onClose }: GoalBodyProps) {
   );
 }
 
-function isCanonicalGoalStatus(s: string | undefined): s is GoalStatus {
-  return s === 'open' || s === 'wip' || s === 'done';
-}
-
 interface JournalBodyProps {
   onClose: () => void;
 }
@@ -1189,25 +1142,6 @@ function MarkdownToggle({ value, onChange }: MarkdownToggleProps) {
 /* ===============================================================
  * Library — Item & Review bodies
  * =============================================================== */
-
-const LIBRARY_STATUS_LABEL: Record<LibraryStatus, string> = {
-  planned: 'À lire',
-  in_progress: 'En cours',
-  finished: 'Terminé',
-  abandoned: 'Abandonné',
-};
-
-const LIBRARY_FORMAT_LABEL: Record<LibraryFormat, string> = {
-  paper: 'Papier',
-  ebook: 'eBook',
-  audio: 'Audio',
-  unknown: '—',
-};
-
-const LIBRARY_REVIEW_KIND_LABEL: Record<LibraryReviewKind, string> = {
-  quote: 'Extrait',
-  note: 'Note',
-};
 
 interface LibraryItemBodyProps {
   onClose: () => void;
@@ -1848,24 +1782,6 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
  * patronyms with particles) get the simple heuristic and may need
  * manual fix in the import preview — documented in Library.md §5.1.
  */
-function normaliseAuthorName(raw: string): string {
-  const trimmed = raw.trim().replace(/\s+/g, ' ');
-  if (!trimmed) return trimmed;
-  const tokens = trimmed.split(' ');
-  if (tokens.length === 1) return tokens[0]!.toLocaleUpperCase('fr');
-  // Heuristic: if the first token is already in MAJUSCULES, the user
-  // probably typed "HUGO Victor" — flip.
-  const first = tokens[0]!;
-  if (first === first.toLocaleUpperCase('fr') && first !== first.toLocaleLowerCase('fr')) {
-    const rest = tokens.slice(1).join(' ');
-    return `${rest} ${first}`;
-  }
-  // Default: last token = lastname → uppercase
-  const last = tokens[tokens.length - 1]!;
-  const rest = tokens.slice(0, -1).join(' ');
-  return `${rest} ${last.toLocaleUpperCase('fr')}`;
-}
-
 interface SearchButtonProps {
   searching: boolean;
   disabled: boolean;
@@ -1877,11 +1793,6 @@ interface SearchButtonProps {
   mode: 'all' | 'cover-only' | undefined;
   onModeChange: ((next: 'all' | 'cover-only') => void) | undefined;
 }
-
-const SEARCH_MODE_LABEL: Record<'all' | 'cover-only', string> = {
-  all: 'Métadonnées + couverture',
-  'cover-only': 'Couverture seule',
-};
 
 /**
  * Split-button « Chercher » with an optional mode dropdown attached.
@@ -2022,33 +1933,6 @@ interface LookupBarProps {
  * in its own language) make the dropdown self-explanatory regardless
  * of the user's UI locale.
  */
-const SEARCH_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
-  { code: 'fr', label: 'Français' },
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'pt', label: 'Português' },
-  { code: 'ja', label: '日本語' },
-];
-
-const PROVIDER_LABEL: Record<NormalisedBook['source'], string> = {
-  openlibrary: 'OL',
-  googlebooks: 'GB',
-  bnf: 'BNF',
-  wikidata: 'WD',
-  bne: 'BNE',
-  amazon: 'Amz',
-};
-
-const PROVIDER_ORDER: ReadonlyArray<NormalisedBook['source']> = [
-  'openlibrary',
-  'googlebooks',
-  'bnf',
-  'wikidata',
-  'bne',
-  'amazon',
-];
 
 interface FilterEntry<T> {
   value: T;
@@ -2171,58 +2055,6 @@ function ProviderBadges({ primarySource, providers }: ProviderBadgesProps) {
   );
 }
 
-const FORMAT_LABEL: Record<NonNullable<NormalisedBook['format']>, string> = {
-  paper: 'Papier',
-  ebook: 'eBook',
-  audio: 'Audio',
-};
-
-/**
- * Count facet values across results (e.g. how many books per
- * language). Drops null/undefined extractions, returns descending
- * counts so the most-populated chip renders first. Used to drive
- * the filter chips below the lookup search bar.
- */
-function countBy<T, K>(
-  items: ReadonlyArray<T>,
-  pick: (item: T) => K | null | undefined,
-): Array<{ value: K; count: number }> {
-  const map = new Map<K, number>();
-  for (const item of items) {
-    const v = pick(item);
-    if (v === null || v === undefined) continue;
-    map.set(v, (map.get(v) ?? 0) + 1);
-  }
-  return Array.from(map.entries())
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
-/**
- * Normalise the various language codes providers spit out
- * (`fr`, `fre`, `fr-FR`, `eng`, `en`) into a 2-letter BCP 47 code
- * for display + filtering. Returns null when the input doesn't
- * look like a language at all.
- */
-function shortLang(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const lc = raw.toLowerCase();
-  // 3-letter MARC codes Open Library still returns sometimes
-  const marcToBcp: Record<string, string> = {
-    fre: 'fr',
-    eng: 'en',
-    spa: 'es',
-    ger: 'de',
-    ita: 'it',
-    por: 'pt',
-    jpn: 'ja',
-    rus: 'ru',
-  };
-  if (marcToBcp[lc]) return marcToBcp[lc] ?? null;
-  // BCP 47 like `fr-FR` → first two letters
-  const m = /^([a-z]{2})(?:[-_].*)?$/.exec(lc);
-  return m ? m[1]! : null;
-}
 
 /**
  * Cover-only result grid : when the user is on the « Couverture
@@ -3256,12 +3088,3 @@ function Footer({
   );
 }
 
-function submitOnCmdEnter(
-  e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
-  onSubmit: () => void,
-): void {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-    e.preventDefault();
-    onSubmit();
-  }
-}
