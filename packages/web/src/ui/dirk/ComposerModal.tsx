@@ -1288,6 +1288,12 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   // it via the `<select>` next to the search button. ISBN searches
   // ignore this (a 13-digit code is unambiguous across languages).
   const [searchLang, setSearchLang] = useState<string>(userLang);
+  // What gets applied when the user picks a search result : « tout »
+  // (default — title, author, year, cover, …) or « couverture
+  // seule » (only the cover URL is pulled, everything else stays).
+  // Surfaced as a small dropdown next to the search button on the
+  // edit path.
+  const [searchMode, setSearchMode] = useState<'all' | 'cover-only'>('all');
   // AbortController for the in-flight streaming search. We cancel
   // the previous run when the user fires a new search before the
   // old one finished — otherwise late snapshots from the old query
@@ -1370,6 +1376,19 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   }
 
   function applyResult(book: NormalisedBook): void {
+    if (searchMode === 'cover-only') {
+      // Pull only the cover URL — every other field stays as the
+      // user typed it. Useful when the existing metadata is fine
+      // but the user wants a different cover (or the seed didn't
+      // come with one).
+      setCoverUrl(book.cover_url);
+      setCoverLoadFailed(false);
+      setSearchOpen(false);
+      setSearchResults([]);
+      // Keep the search input in cover-only mode so the user can
+      // browse another result without re-typing.
+      return;
+    }
     setTitle(book.title);
     if (book.creators[0]?.name) setAuthor(book.creators[0].name);
     if (book.year) setYear(String(book.year));
@@ -1406,6 +1425,60 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
       searchAbortRef.current?.abort();
     };
   }, []);
+
+  // On edit-mount, pre-seed the LookupBar query with the book's
+  // current ISBN (if any), else its `title author` combo. Lets the
+  // user click « Chercher » immediately to refresh metadata from
+  // an upstream provider without retyping their book's identity.
+  // Runs once per editing target — `editing.id` is stable for a
+  // given Composer open.
+  const editingId = editing?.id;
+  useEffect(() => {
+    if (!isEdit || !editingId) return;
+    const trimmedIsbn = editingIsbn.trim();
+    if (trimmedIsbn) {
+      setSearchInput(trimmedIsbn);
+      return;
+    }
+    const trimmedTitle = (editingPayload?.title ?? '').trim();
+    const trimmedAuthor = editingCreatorName.trim();
+    const seed = [trimmedTitle, trimmedAuthor].filter(Boolean).join(' ');
+    if (seed) setSearchInput(seed);
+    // We deliberately depend only on `editingId` — the seed is
+    // a one-shot on Composer open, not a live mirror of the
+    // form's state (the user can adjust the search input freely
+    // after that).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId]);
+
+  // Load the existing cover when editing an item that has a
+  // `cover_rid`. We list every cover record under the user's sid,
+  // pick the one whose record id matches, and reconstruct the data
+  // URL — same recipe as the Library page's `buildCoverMap`. Bulk
+  // list is cheaper than a 1-record fetch endpoint we don't have,
+  // and the cover collection is small per user.
+  const editingCoverRid = editingPayload?.cover_rid ?? null;
+  useEffect(() => {
+    if (!isEdit || !editingCoverRid || !mainKey || !moduleUserId) return undefined;
+    let cancelled = false;
+    libraryCoversClient
+      .list(moduleUserId, mainKey)
+      .then((records) => {
+        if (cancelled) return;
+        const match = records.find((r) => r.id === editingCoverRid);
+        if (match) {
+          setCoverUrl(`data:${match.payload.mime};base64,${match.payload.blob_b64}`);
+          setCoverLoadFailed(false);
+        }
+      })
+      .catch(() => {
+        // Silent — the Library page surfaces real load errors. The
+        // composer just renders without the cover thumb.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, editingCoverRid, mainKey, moduleUserId]);
 
   async function handleSave(): Promise<void> {
     if (submitting) return;
@@ -1454,7 +1527,6 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         format,
         started_at: basePayload?.started_at ?? null,
         finished_at: basePayload?.finished_at ?? null,
-        current_page: basePayload?.current_page ?? null,
         rating: basePayload?.rating ?? null,
         is_favorite: basePayload?.is_favorite ?? false,
         tags,
@@ -1563,8 +1635,11 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   // "form → empty → results → form" shrink/grow flicker the user
   // sees during the few hundred ms of round-trip latency. While
   // loading, the form stays visible and the LookupBar shows its
-  // own inline "…" indicator.
-  const showFormFields = isEdit || !searchOpen || searchResults.length === 0;
+  // own inline "…" indicator. The same rule applies on the edit
+  // path : letting the form stay visible would squeeze the result
+  // list to a 100 px slice at the top of the modal — when the user
+  // is browsing search results, they're not editing the form.
+  const showFormFields = !searchOpen || searchResults.length === 0;
 
   return (
     <>
@@ -1576,22 +1651,29 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         accounts for the type picker, footer, and the modal's top
         offset (`pt-[12vh]`). */}
     <div className="flex h-[600px] max-h-[calc(100vh-200px)] flex-col space-y-3 px-[22px] pt-3.5 pb-3">
-      {!isEdit ? (
-        <LookupBar
-          value={searchInput}
-          onChange={setSearchInput}
-          onSearch={runSearch}
-          searching={searching}
-          error={searchError}
-          results={searchResults}
-          open={searchOpen}
-          onApply={applyResult}
-          onDismiss={dismissSearch}
-          disabled={submitting}
-          lang={searchLang}
-          onLangChange={setSearchLang}
-        />
-      ) : null}
+      {/* LookupBar lives on both paths : on create it's the entry
+          point (search → pick → form prefills) ; on edit it serves
+          as « Télécharger les métadonnées » — pre-seeded with the
+          current title / author / ISBN on mount so the user can
+          refresh from BNF / Google / OpenLibrary without retyping
+          their book's identity. */}
+      <LookupBar
+        value={searchInput}
+        onChange={setSearchInput}
+        onSearch={runSearch}
+        searching={searching}
+        error={searchError}
+        results={searchResults}
+        open={searchOpen}
+        onApply={applyResult}
+        onDismiss={dismissSearch}
+        disabled={submitting}
+        lang={searchLang}
+        onLangChange={setSearchLang}
+        {...(isEdit
+          ? { mode: searchMode, onModeChange: setSearchMode }
+          : {})}
+      />
 
       {showFormFields ? (
       <>
@@ -1677,8 +1759,8 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           provider) on l'efface — pas envie d'afficher un cadre vide.
           Le MarkdownEditor rend le wiki-markup `##title##` et le
           markdown léger normalisés par le dispatcher (cleanSummary). */}
-      <div className="flex gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-1 min-h-0 gap-3">
+        <div className="flex min-w-0 min-h-0 flex-1 flex-col">
           <MarkdownEditor
             value={summary}
             onChange={setSummary}
@@ -1686,7 +1768,7 @@ function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
             disabled={submitting}
             mode={summaryMode}
             onModeChange={setSummaryMode}
-            minHeightPx={160}
+            fillParent
           />
         </div>
         {coverUrl && !coverLoadFailed ? (
@@ -1784,6 +1866,129 @@ function normaliseAuthorName(raw: string): string {
   return `${rest} ${last.toLocaleUpperCase('fr')}`;
 }
 
+interface SearchButtonProps {
+  searching: boolean;
+  disabled: boolean;
+  title: string | undefined;
+  onSearch: () => void;
+  /** Mode dropdown — only rendered when both `mode` and
+   *  `onModeChange` are provided. Surfaced as a small `▾` split
+   *  attached to the right of the « Chercher » button. */
+  mode: 'all' | 'cover-only' | undefined;
+  onModeChange: ((next: 'all' | 'cover-only') => void) | undefined;
+}
+
+const SEARCH_MODE_LABEL: Record<'all' | 'cover-only', string> = {
+  all: 'Métadonnées + couverture',
+  'cover-only': 'Couverture seule',
+};
+
+/**
+ * Split-button « Chercher » with an optional mode dropdown attached.
+ * The main click runs the search with whatever mode is currently
+ * selected ; the small `▾` on the right opens a popover that lets
+ * the user pick between « Métadonnées + couverture » (the default,
+ * applies the full payload of a picked result) and « Couverture
+ * seule » (applies only the cover URL — used to refresh the cover
+ * of an existing book without losing typed metadata).
+ *
+ * On the create path no mode is passed → the split disappears, the
+ * button stays a regular « Chercher ».
+ */
+function SearchButton({
+  searching,
+  disabled,
+  title,
+  onSearch,
+  mode,
+  onModeChange,
+}: SearchButtonProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Click outside closes the popover. Pointer-down catches the
+  // press on the trigger button itself (which would otherwise
+  // toggle on click and immediately re-close from this listener).
+  useEffect(() => {
+    if (!open) return undefined;
+    function handle(e: MouseEvent): void {
+      if (!containerRef.current) return;
+      if (containerRef.current.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const hasMenu = mode !== undefined && onModeChange !== undefined;
+
+  return (
+    <div ref={containerRef} className="relative inline-flex">
+      <DirkButton
+        variant="primary"
+        onClick={onSearch}
+        disabled={disabled}
+        title={title}
+        className={hasMenu ? 'rounded-r-none' : undefined}
+      >
+        {searching ? '…' : 'Chercher'}
+      </DirkButton>
+      {hasMenu ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            disabled={searching}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-label="Choisir ce qui sera appliqué"
+            title={SEARCH_MODE_LABEL[mode]}
+            className={cn(
+              'inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-l-none rounded-r-md bg-accent px-2 text-white font-semibold transition-[background-color,color] duration-150',
+              'shadow-[inset_1px_0_0_rgba(255,255,255,0.25)]',
+              'hover:bg-accent-hover focus:outline-none disabled:cursor-not-allowed disabled:opacity-60',
+            )}
+          >
+            <span aria-hidden="true" className="text-[11px] leading-none">
+              ▾
+            </span>
+          </button>
+          {open ? (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-30 mt-1 min-w-[200px] rounded-md border border-hair bg-bg p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+            >
+              {(['all', 'cover-only'] as const).map((opt) => {
+                const active = mode === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={active}
+                    onClick={() => {
+                      onModeChange(opt);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      'block w-full cursor-pointer rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors',
+                      active
+                        ? 'bg-accent-soft font-semibold text-accent-deep'
+                        : 'text-ink hover:bg-bg-2',
+                    )}
+                  >
+                    {SEARCH_MODE_LABEL[opt]}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 interface LookupBarProps {
   value: string;
   onChange: (next: string) => void;
@@ -1800,6 +2005,14 @@ interface LookupBarProps {
    * post-search chip). Empty string disables the search button. */
   lang: string;
   onLangChange: (next: string) => void;
+  /** What gets applied when the user picks a result :
+   *   - `all` (default) — all metadata fields + cover, current behaviour.
+   *   - `cover-only` — only the picked result's cover URL is applied,
+   *     existing title / author / etc. stay as-is. Surfaced as a small
+   *     toggle next to the search button on the edit path so a user
+   *     who wants a fresh cover doesn't have to retype their metadata. */
+  mode?: 'all' | 'cover-only';
+  onModeChange?: (next: 'all' | 'cover-only') => void;
 }
 
 /**
@@ -2012,6 +2225,66 @@ function shortLang(raw: string | null | undefined): string | null {
 }
 
 /**
+ * Cover-only result grid : when the user is on the « Couverture
+ * seule » mode, metadata is irrelevant — the only signal that
+ * matters is the cover thumbnail. Render a tile grid sized to
+ * roughly four columns at modal width, dropping any result whose
+ * provider didn't return a `cover_url` (Wikidata / Google Books
+ * sometimes do, Open Library always does when the work is
+ * indexed). Falls back to a hint when no result has a cover at
+ * all so the user isn't staring at an empty box.
+ */
+function CoverGrid({
+  results,
+  onPick,
+}: {
+  results: NormalisedBook[];
+  onPick: (book: NormalisedBook) => void;
+}): React.ReactElement {
+  const withCover = results.filter((b) => b.cover_url);
+  if (withCover.length === 0) {
+    return (
+      <div className="mt-2 flex min-h-0 flex-1 items-center justify-center rounded-sm border border-hair bg-bg p-6 text-center text-[12px] text-muted">
+        Aucun résultat ne propose de couverture — essaie une autre recherche.
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg p-2">
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-2">
+        {withCover.map((book, i) => (
+          <li key={`${book.source}-${book.title}-${i}`}>
+            <button
+              type="button"
+              onClick={() => onPick(book)}
+              title={book.title}
+              className="group flex w-full cursor-pointer flex-col gap-1 rounded-sm p-1 text-left transition-colors hover:bg-bg-2"
+            >
+              <span className="block aspect-[2/3] w-full overflow-hidden rounded-sm border border-hair bg-bg-2">
+                <img
+                  src={book.cover_url ?? ''}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-150 group-hover:scale-[1.02]"
+                />
+              </span>
+              <span className="line-clamp-2 text-[11px] text-ink">
+                {book.title}
+              </span>
+              {book.creators[0]?.name ? (
+                <span className="line-clamp-1 text-[10.5px] text-muted">
+                  {book.creators[0].name}
+                </span>
+              ) : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
  * Single search bar at the top of the create form. Detects ISBN
  * automatically (10/13 digits) and routes through the right
  * lookup endpoint. Results render inline below the bar; clicking
@@ -2033,6 +2306,8 @@ function LookupBar({
   disabled,
   lang,
   onLangChange,
+  mode,
+  onModeChange,
 }: LookupBarProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter') {
@@ -2140,14 +2415,14 @@ function LookupBar({
             </option>
           ))}
         </DirkSelect>
-        <DirkButton
-          variant="primary"
-          onClick={() => void onSearch()}
+        <SearchButton
+          searching={searching}
           disabled={disabled || searching || value.trim().length < 2 || !lang}
           title={!lang ? 'Choisis une langue avant de chercher' : undefined}
-        >
-          {searching ? '…' : 'Chercher'}
-        </DirkButton>
+          onSearch={() => void onSearch()}
+          mode={mode}
+          onModeChange={onModeChange}
+        />
         {open ? (
           <DirkButton
             variant="secondary"
@@ -2212,62 +2487,66 @@ function LookupBar({
         </div>
       ) : null}
       {open && filteredResults.length > 0 ? (
-        <ul className="mt-2 min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg">
-          {filteredResults.map((book, i) => {
-            const isbn = book.isbn13 ?? book.isbn10;
-            const formatLabel = book.format ? FORMAT_LABEL[book.format] : null;
-            const langCode = shortLang(book.language);
-            const seriesLabel = book.series
-              ? book.series.position
-                ? `${book.series.name}, t. ${book.series.position}`
-                : book.series.name
-              : null;
-            return (
-              <li
-                key={`${book.source}-${book.title}-${i}`}
-                className="border-b border-hair last:border-b-0"
-              >
-                <button
-                  type="button"
-                  onClick={() => onApply(book)}
-                  className="flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-bg-2"
+        mode === 'cover-only' ? (
+          <CoverGrid results={filteredResults} onPick={onApply} />
+        ) : (
+          <ul className="mt-2 min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg">
+            {filteredResults.map((book, i) => {
+              const isbn = book.isbn13 ?? book.isbn10;
+              const formatLabel = book.format ? FORMAT_LABEL[book.format] : null;
+              const langCode = shortLang(book.language);
+              const seriesLabel = book.series
+                ? book.series.position
+                  ? `${book.series.name}, t. ${book.series.position}`
+                  : book.series.name
+                : null;
+              return (
+                <li
+                  key={`${book.source}-${book.title}-${i}`}
+                  className="border-b border-hair last:border-b-0"
                 >
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate text-[13px] font-medium text-ink">
-                      {book.title}
-                    </span>
-                    <span className="truncate text-[11px] text-muted">
-                      {book.creators[0]?.name ?? '—'}
-                      {book.year ? <span className="ml-1.5 tabular-nums">· {book.year}</span> : null}
-                      {book.publisher ? <span className="ml-1.5">· {book.publisher}</span> : null}
-                      {book.collection ? <span className="ml-1.5">· {book.collection}</span> : null}
-                    </span>
-                    {(isbn || formatLabel || langCode || seriesLabel) ? (
-                      <span className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-muted-soft">
-                        {isbn ? <span className="tabular-nums">{isbn}</span> : null}
-                        {langCode ? (
-                          <span className="rounded bg-bg-2 px-1 py-px font-medium uppercase text-ink-soft">
-                            {langCode}
-                          </span>
-                        ) : null}
-                        {formatLabel ? (
-                          <span className="rounded bg-bg-2 px-1 py-px font-medium text-ink-soft">
-                            {formatLabel}
-                          </span>
-                        ) : null}
-                        {seriesLabel ? <span className="italic">· {seriesLabel}</span> : null}
+                  <button
+                    type="button"
+                    onClick={() => onApply(book)}
+                    className="flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-bg-2"
+                  >
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate text-[13px] font-medium text-ink">
+                        {book.title}
                       </span>
-                    ) : null}
-                  </span>
-                  <ProviderBadges
-                    primarySource={book.source}
-                    providers={book.providers}
-                  />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                      <span className="truncate text-[11px] text-muted">
+                        {book.creators[0]?.name ?? '—'}
+                        {book.year ? <span className="ml-1.5 tabular-nums">· {book.year}</span> : null}
+                        {book.publisher ? <span className="ml-1.5">· {book.publisher}</span> : null}
+                        {book.collection ? <span className="ml-1.5">· {book.collection}</span> : null}
+                      </span>
+                      {(isbn || formatLabel || langCode || seriesLabel) ? (
+                        <span className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-muted-soft">
+                          {isbn ? <span className="tabular-nums">{isbn}</span> : null}
+                          {langCode ? (
+                            <span className="rounded bg-bg-2 px-1 py-px font-medium uppercase text-ink-soft">
+                              {langCode}
+                            </span>
+                          ) : null}
+                          {formatLabel ? (
+                            <span className="rounded bg-bg-2 px-1 py-px font-medium text-ink-soft">
+                              {formatLabel}
+                            </span>
+                          ) : null}
+                          {seriesLabel ? <span className="italic">· {seriesLabel}</span> : null}
+                        </span>
+                      ) : null}
+                    </span>
+                    <ProviderBadges
+                      primarySource={book.source}
+                      providers={book.providers}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )
       ) : null}
     </div>
   );
@@ -2592,6 +2871,14 @@ interface MarkdownEditorProps {
    * the contentEditable, Markdown mode via the native textarea
    * placeholder attribute. */
   placeholder?: string;
+  /** When true, the writing surface drops `min/maxHeightPx` and
+   * fills its parent's height instead (`flex-1 min-h-0` + internal
+   * scroll). Use this when the host owns the vertical sizing
+   * — e.g. the Library Composer where the editor sits in a
+   * `flex-col h-[600px]` body and should soak up whatever room is
+   * left after the other fields. The toolbar stays sticky on top
+   * via `shrink-0`. Default `false` (legacy fixed sizing). */
+  fillParent?: boolean;
 }
 
 /**
@@ -2629,6 +2916,7 @@ function MarkdownEditor({
   minHeightPx = 180,
   maxHeightPx = 360,
   placeholder = 'Ce qui te traverse aujourd’hui — au long, sans contrainte.',
+  fillParent = false,
 }: MarkdownEditorProps) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const ceRef = useRef<HTMLDivElement | null>(null);
@@ -2773,8 +3061,8 @@ function MarkdownEditor({
   const isVisual = mode === 'visual';
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-0.5">
+    <div className={cn('flex flex-col gap-1.5', fillParent && 'h-full min-h-0')}>
+      <div className="flex shrink-0 items-center gap-0.5">
         <ToolbarButton
           onClick={() => (isVisual ? execCommand('bold') : wrapSelection('**'))}
           ariaLabel="Gras"
@@ -2827,14 +3115,19 @@ function MarkdownEditor({
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}
           onPaste={handleVisualPaste}
-          style={{
-            minHeight: `${minHeightPx}px`,
-            maxHeight: `${maxHeightPx}px`,
-            overflowY: 'auto',
-          }}
+          style={
+            fillParent
+              ? undefined
+              : {
+                  minHeight: `${minHeightPx}px`,
+                  maxHeight: `${maxHeightPx}px`,
+                  overflowY: 'auto',
+                }
+          }
           className={cn(
             'journal-ce block w-full rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink',
             'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none',
+            fillParent && 'min-h-0 flex-1 overflow-y-auto',
             disabled ? 'pointer-events-none opacity-60' : '',
           )}
         />
@@ -2845,13 +3138,20 @@ function MarkdownEditor({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleTextareaKeyDown}
           placeholder={placeholder}
-          rows={8}
+          rows={fillParent ? undefined : 8}
           disabled={disabled}
-          style={{
-            minHeight: `${minHeightPx}px`,
-            maxHeight: `${maxHeightPx}px`,
-          }}
-          className="block w-full resize-none overflow-y-auto rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60"
+          style={
+            fillParent
+              ? undefined
+              : {
+                  minHeight: `${minHeightPx}px`,
+                  maxHeight: `${maxHeightPx}px`,
+                }
+          }
+          className={cn(
+            'block w-full resize-none overflow-y-auto rounded-sm border border-hair bg-bg px-3 py-2 text-[13.5px] leading-[1.5] text-ink placeholder:text-muted-soft focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60',
+            fillParent && 'min-h-0 flex-1',
+          )}
         />
       )}
     </div>
