@@ -154,6 +154,8 @@ Downgrade auto §6.1 : si l'utilisateur·ice désactive le facteur qui maintient
 
 Quand `security_mode != 'password_or_passkey'`, le login finish émet une session `'mfa_pending'` au lieu de `'full'`. Les routes `/auth/mfa/totp/verify` et `/auth/mfa/passkey/{options,verify}` consomment des flags sur la pending row. Quand tous les flags requis pour le mode sont à `true`, la pending est promue en `'full'` atomiquement (DELETE + INSERT en transaction via `finalizeMfaSession`).
 
+<aside class="docs-diagram-stepped-mfa"></aside>
+
 ### TOTP
 
 RFC 6238, paramètres figés (SHA1 / 6 chiffres / 30 s, ±1 fenêtre de skew). Secret 20 bytes random, en clair en DB (le serveur doit pouvoir vérifier — c'est le compromis assumé du protocole).
@@ -177,6 +179,8 @@ Signature counter `signCount` vérifié strict côté serveur — un counter qui
 Auth-Spec §7.8. Quand l'utilisateur·ice perd son TOTP (téléphone perdu, app effacée…) et n'a pas de backup code sous la main, il/elle peut demander un bypass via `/auth/mfa-bypass/request`. Le serveur envoie un email avec un lien `/auth/bypass/confirm?t=<token>` ; cliquer démarre un délai de **7 jours** pendant lesquels la requête peut être annulée par n'importe quelle connexion réussie. Après 7 jours, la prochaine connexion consomme le bypass : le facteur perdu est nettoyé (TOTP désactivé + backup codes purgés, ou toutes les passkeys supprimées) et le mode rétrogradé si nécessaire.
 
 Eligibility gate §6.2 : en mode `maximum`, un bypass d'un facteur exige que l'autre facteur soit prouvé dans la session `mfa_pending` avant d'émettre la requête. Sans ça, on perdrait deux facteurs d'un coup → reset destructif.
+
+<aside class="docs-diagram-mfa-bypass"></aside>
 
 ## Sessions
 

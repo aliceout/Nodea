@@ -8,6 +8,8 @@ import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 import KeyHierarchyDiagram from './diagrams/KeyHierarchyDiagram';
 import OpaqueFlowDiagram from './diagrams/OpaqueFlowDiagram';
+import SteppedMfaDiagram from './diagrams/SteppedMfaDiagram';
+import MfaBypassDiagram from './diagrams/MfaBypassDiagram';
 
 /**
  * Markdown rendering primitives for the docs tiers.
@@ -238,6 +240,12 @@ const markdownComponents: Components = {
     }
     if (className === 'docs-diagram-opaque-flow') {
       return <OpaqueFlowDiagram />;
+    }
+    if (className === 'docs-diagram-stepped-mfa') {
+      return <SteppedMfaDiagram />;
+    }
+    if (className === 'docs-diagram-mfa-bypass') {
+      return <MfaBypassDiagram />;
     }
     return <aside className={className}>{children}</aside>;
   },

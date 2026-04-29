@@ -42,14 +42,11 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'tech', label: 'Sous le capot' },
 ];
 
-const TIER_TOCS: Record<
-  TabId,
-  ReadonlyArray<{ id: string; label: string }>
-> = {
+const TIER_TOCS = {
   newbie: newbieToc,
   advanced: advancedToc,
   tech: techToc,
-};
+} as const satisfies Record<TabId, unknown>;
 
 export default function DocsPage() {
   const [level, setLevel] = useState<TabId>('newbie');
