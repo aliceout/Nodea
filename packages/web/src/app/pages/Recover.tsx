@@ -18,6 +18,8 @@ import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import RowCard from '@/ui/dirk/RowCard';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import PasswordRulesList from '@/ui/atoms/auth/PasswordRulesList';
+import StrengthBar from '@/ui/atoms/auth/StrengthBar';
 
 zxcvbnOptions.setOptions({
   dictionary: zxcvbnCommon.dictionary,
@@ -445,95 +447,4 @@ function DisplayPanel({
   );
 }
 
-/* ---- Password feedback subcomponents (copied from Register.tsx) -- */
-
-interface PasswordRulesListProps {
-  rules: PasswordRulesCheck;
-}
-
-const RULE_LABELS: Array<{ key: keyof PasswordRulesCheck; label: string }> = [
-  { key: 'length', label: `${PASSWORD_MIN_LENGTH} caractères minimum` },
-  { key: 'lowercase', label: 'une minuscule' },
-  { key: 'uppercase', label: 'une majuscule' },
-  { key: 'digit', label: 'un chiffre' },
-  { key: 'special', label: 'un caractère spécial' },
-];
-
-function PasswordRulesList({ rules }: PasswordRulesListProps) {
-  return (
-    <ul className="-mt-2 mb-3 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11.5px]">
-      {RULE_LABELS.map(({ key, label }) => {
-        const ok = rules[key];
-        return (
-          <li
-            key={key}
-            className={cn(
-              'flex items-center gap-1.5',
-              ok ? 'text-accent-deep' : 'text-muted',
-            )}
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                'inline-block h-3 w-3 shrink-0 rounded-full text-center text-[9px] leading-3 transition-colors',
-                ok ? 'bg-accent text-white' : 'border border-hair bg-bg',
-              )}
-            >
-              {ok ? '✓' : ''}
-            </span>
-            {label}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-interface StrengthBarProps {
-  score: 0 | 1 | 2 | 3 | 4;
-  warning: string | null;
-  rulesOk: boolean;
-}
-
-function StrengthBar({ score: rawScore, warning, rulesOk }: StrengthBarProps) {
-  const score: 0 | 1 | 2 | 3 | 4 = rulesOk
-    ? rawScore
-    : rawScore > 1
-      ? 1
-      : rawScore;
-
-  const bandTone = (i: number): string => {
-    if (i > score) return 'bg-hair';
-    if (score <= 1) return 'bg-low';
-    if (score === 2) return 'bg-low-soft';
-    if (score === 3) return 'bg-accent-soft';
-    return 'bg-accent';
-  };
-  const label =
-    score <= 1
-      ? 'Trop faible'
-      : score === 2
-        ? 'Moyen'
-        : score === 3
-          ? 'Solide'
-          : 'Très solide';
-
-  return (
-    <div className="-mt-2 mb-3">
-      <div className="flex gap-1">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <span
-            key={i}
-            aria-hidden="true"
-            className={cn('h-1 flex-1 rounded-full transition-colors', bandTone(i))}
-          />
-        ))}
-      </div>
-      <p className="mt-1 text-[11px] text-muted">
-        Force&nbsp;: <span className="font-medium text-ink-soft">{label}</span>
-        {warning ? <span className="text-low-deep"> — {warning}</span> : null}
-      </p>
-    </div>
-  );
-}
 
