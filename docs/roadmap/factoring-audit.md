@@ -51,21 +51,27 @@ fetch + 4 helpers).
        `GoalStatusLite`, `LibraryReadingLite`, `MoodFriseCell`,
        `MoodFriseStats`, `MockTask`) → `Homepage/lib/types.ts`.
        Le passage à `Pick<MoodEntry, …>` reste pour Tier 3.
-- [ ] **`useMoodEntries` / `useGoalEntries` / `useLibraryReadings`**
-       — 3 hooks de fetch inlinés ; à sortir dans `Homepage/hooks/`
-       (un fichier par hook) ou à fondre dans le `HomepageProvider`.
-       Les projections record → Lite sont déjà sorties (cf. plus
-       haut), il ne reste que le wiring `useEffect` / `useState`.
-- [ ] **6 blocks visuels** (`MoodBlock`, `HabitsBlock`,
-       `IntentionsBlock`, `ReadingBlock`, `ToSeeList`, `RecentPassage`)
-       → `Homepage/components/` ou `Homepage/views/` selon leur
-       degré de réutilisation. Chacun ≥ 80 LOC inline ; aucun
-       seul ne dépasse les 200 si on les sort.
-- [ ] **Single context** : un seul `HomepageData` context suffit
-       (Homepage est read-only). Pas besoin du pattern « 3
-       contextes » qui s'appliquerait au Library / Goals / Journal /
-       Mood.
-- [ ] **`index.tsx` final ≤ 100 LOC** : provider + `<HomepageView />`.
+- [x] **`useMoodEntries` / `useGoalEntries` / `useLibraryReadings`**
+       — 3 hooks de fetch inlinés, fondus dans le
+       `HomepageProvider` (`context.tsx`). Le wiring lifecycle
+       (`useEffect` / `useState`) est désormais centralisé ; les
+       projections record → Lite vivent dans `lib/projections.ts`
+       et sont testées sans React.
+- [x] **6 blocks visuels** (`MoodBlock`, `HabitsBlock`,
+       `IntentionsBlock`, `ReadingBlock`, `ToSeeList`,
+       `RecentPassage`) → `Homepage/components/` (un fichier par
+       bloc), tous propless et lisant directement le contexte
+       Homepage. `SectionLabel` co-localisé en
+       `components/SectionLabel.tsx`. `ToSeeList` reste la
+       feuille la plus lourde (154 LOC) ; les autres ≤ 80.
+- [x] **Single context** : `HomepageDataContext` expose
+       `displayName`, `formattedDate`, `mood`, `goals`,
+       `readings` ; `useHomepageData()` y accède. Le pattern
+       « 3 contextes » n'a pas été instancié (Home reste
+       read-only).
+- [x] **`index.tsx` final ≤ 100 LOC** : 77 LOC livrés (provider
+       wrapper + `HomepageView` qui lit la date d'entête + dispatch
+       sur `<PrimaryColumn />` / `<SideColumn />`).
 
 ### Account — 949 LOC → ~10 fichiers
 
