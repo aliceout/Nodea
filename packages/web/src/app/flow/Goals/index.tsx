@@ -5,12 +5,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 
-import { goalsClient } from '@/core/api/modules/goals';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
@@ -24,16 +19,18 @@ import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
 import {
+  GoalsProvider,
+  useGoalsActions,
+  useGoalsData,
+  useGoalsFilters,
+} from './context';
+import {
   CANONICAL_STATUSES,
   SORT_LABEL,
   STATUS_LABEL,
   STATUS_TONE,
 } from './lib/constants';
 import { formatDate } from './lib/date-format';
-import { recordToEntry } from './lib/mappers';
-import { byDateDesc } from './lib/sort';
-import { nextStatus } from './lib/status';
-import { splitThreads } from './lib/threads';
 import type {
   CanonicalStatus,
   GoalEntry,
@@ -59,271 +56,45 @@ import type {
  */
 
 export default function GoalsPage() {
+  return (
+    <GoalsProvider>
+      <GoalsView />
+    </GoalsProvider>
+  );
+}
+
+/** Page rendering surface — reads from the three Goals contexts and
+ *  feeds the existing prop-driven sub-components. Subsequent commits
+ *  will migrate the leaves (`SideColumn`, `PrimaryColumn`,
+ *  `CarryOverDialog`, `GoalRow`) to consume the contexts directly,
+ *  eliminating most of this prop plumbing. */
+function GoalsView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['goals']?.moduleUserId ?? null;
-  const goalsVersion = useNodeaStore((s) => s.goalsVersion);
 
-  const [load, setLoad] = useState<LoadState>({ status: 'idle' });
-  const [statusFilter, setStatusFilter] = useState<CanonicalStatus | null>(null);
-  const [groupBy, setGroupBy] = useState<'thread' | 'year'>('thread');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('date');
-  /** When true, completed goals (status === 'done') are filtered
-   *  out of the main list. Stats still count them so the user
-   *  sees their done total. Toggle in the SideColumn. */
-  const [hideDone, setHideDone] = useState(false);
-  const [carryOverOpen, setCarryOverOpen] = useState(false);
-
-  useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
-    let cancelled = false;
-    setLoad({ status: 'loading' });
-    goalsClient
-      .list(moduleUserId, mainKey)
-      .then((records) => {
-        if (cancelled) return;
-        const entries = records.map(recordToEntry).sort(byDateDesc);
-        setLoad({ status: 'ready', entries });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : 'Erreur lors du chargement des objectifs.';
-        setLoad({ status: 'error', message });
-      });
-    return () => {
-      cancelled = true;
-    };
-    // `goalsVersion` is bumped by the Composer's GoalBody after a
-    // successful create — including it here re-runs the fetch so the
-    // new entry shows up without a page reload.
-  }, [mainKey, moduleUserId, goalsVersion]);
-
-  async function handleToggleStatus(entry: GoalEntry): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    const next = nextStatus(entry.status);
-    // Capture or clear `completed_at` whenever the status crosses
-    // the `done` boundary. Going *into* done from open / wip seeds
-    // a fresh timestamp; cycling out of done back to open clears
-    // it. Re-entering done (after a clear) seeds a new timestamp
-    // — we don't preserve the previous one because the old « date
-    // de complétion » is no longer accurate.
-    const nextCompletedAt =
-      next === 'done'
-        ? (entry.completedAt ?? new Date().toISOString())
-        : null;
-    // Optimistic — flip the in-memory copy first, roll back on error.
-    setLoad((prev) =>
-      prev.status === 'ready'
-        ? {
-            status: 'ready',
-            entries: prev.entries.map((e) =>
-              e.id === entry.id
-                ? { ...e, status: next, completedAt: nextCompletedAt }
-                : e,
-            ),
-          }
-        : prev,
-    );
-    try {
-      await goalsClient.update(moduleUserId, mainKey, entry.id, {
-        date: entry.date,
-        title: entry.title,
-        note: entry.note,
-        status: next,
-        thread: entry.thread,
-        completed_at: nextCompletedAt,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      // Roll back on failure.
-      setLoad((prev) =>
-        prev.status === 'ready'
-          ? {
-              status: 'ready',
-              entries: prev.entries.map((e) =>
-                e.id === entry.id
-                  ? { ...e, status: entry.status, completedAt: entry.completedAt }
-                  : e,
-              ),
-            }
-          : prev,
-      );
-      if (import.meta.env.DEV) console.warn('goals: toggle status failed', err);
-    }
-  }
-
-  function handleEdit(entry: GoalEntry): void {
-    openComposer('goal', {
-      type: 'goal',
-      id: entry.id,
-      payload: {
-        date: entry.date,
-        title: entry.title,
-        note: entry.note,
-        status: entry.status,
-        thread: entry.thread,
-        completed_at: entry.completedAt,
-        // Pass-through current `updated_at` ; the composer's
-        // save handler overwrites it with `now()` on submit.
-        updated_at: entry.updatedAt,
-      },
-    });
-  }
-
-  /**
-   * Bulk-bump every unfinished goal whose date year matches `from`
-   * up to `to`. Status stays as-is (open or wip — done goals are
-   * filtered out before we ever get here). Date format preserved
-   * (YYYY-MM stays YYYY-MM with the year swapped, bare YYYY stays
-   * bare). Each goal is patched serially to keep the optimistic
-   * state simple — for a few dozen carry-overs this is fine; if
-   * we ever face hundreds we can chunk them.
-   */
-  async function handleCarryOver(
-    from: number,
-    to: number,
-    affected: GoalEntry[],
-  ): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    if (affected.length === 0) {
-      setCarryOverOpen(false);
-      return;
-    }
-    // Optimistic — flip every affected entry locally first.
-    const renumbered = new Map<string, string>();
-    for (const e of affected) {
-      const newDate = e.date
-        ? e.date.replace(/^\d{4}/, String(to))
-        : String(to);
-      renumbered.set(e.id, newDate);
-    }
-    const previous = load;
-    setLoad((prev) =>
-      prev.status === 'ready'
-        ? {
-            status: 'ready',
-            entries: prev.entries.map((e) =>
-              renumbered.has(e.id)
-                ? { ...e, date: renumbered.get(e.id)! }
-                : e,
-            ),
-          }
-        : prev,
-    );
-    setCarryOverOpen(false);
-    try {
-      const now = new Date().toISOString();
-      for (const e of affected) {
-        const newDate = renumbered.get(e.id)!;
-        await goalsClient.update(moduleUserId, mainKey, e.id, {
-          date: newDate,
-          title: e.title,
-          note: e.note,
-          status: e.status,
-          thread: e.thread,
-          completed_at: e.completedAt,
-          updated_at: now,
-        });
-      }
-    } catch (err) {
-      setLoad(previous);
-      if (import.meta.env.DEV) console.warn('goals: carry-over failed', err);
-    }
-    // Suppress unused-param warning when `from` isn't read at runtime
-    // (we use it to scope the affected list at the call site).
-    void from;
-  }
-
-  async function handleDelete(entry: GoalEntry): Promise<void> {
-    if (!mainKey || !moduleUserId) return;
-    if (!window.confirm(`Supprimer « ${entry.title} » ?`)) return;
-    const previous = load;
-    setLoad((prev) =>
-      prev.status === 'ready'
-        ? { status: 'ready', entries: prev.entries.filter((e) => e.id !== entry.id) }
-        : prev,
-    );
-    try {
-      await goalsClient.remove(moduleUserId, mainKey, entry.id);
-    } catch (err) {
-      setLoad(previous);
-      if (import.meta.env.DEV) console.warn('goals: delete failed', err);
-    }
-  }
-
-  const entries: ReadonlyArray<GoalEntry> =
-    load.status === 'ready' ? load.entries : EMPTY;
-
-  const stats = useMemo(() => {
-    const total = entries.length;
-    const open = entries.filter((e) => e.status === 'open').length;
-    const wip = entries.filter((e) => e.status === 'wip').length;
-    const done = entries.filter((e) => e.status === 'done').length;
-    return { total, open, wip, done };
-  }, [entries]);
-
-  const filtered = useMemo<GoalEntry[]>(() => {
-    const needle = search.trim().toLocaleLowerCase('fr');
-    const out = entries.filter((e) => {
-      // « Masquer les terminés » overrides nothing — when an
-      // explicit status filter is `done`, the user clearly wants
-      // to see them, so the hide toggle yields.
-      if (hideDone && statusFilter !== 'done' && e.status === 'done') {
-        return false;
-      }
-      if (statusFilter && e.status !== statusFilter) return false;
-      if (needle.length > 0) {
-        const haystack =
-          `${e.title}\n${e.note}\n${e.thread}`.toLocaleLowerCase('fr');
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
-    });
-    // Sort the filtered slice — the original `entries` array is
-    // already date-desc, so stable sort keeps that order whenever
-    // two entries tie on the active key (e.g. all goals updated
-    // today fall back to date desc).
-    out.sort((a, b) => {
-      if (sortBy === 'alpha') {
-        return a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
-      }
-      if (sortBy === 'updated') {
-        return b.updatedAt.localeCompare(a.updatedAt);
-      }
-      return byDateDesc(a, b);
-    });
-    return out;
-  }, [entries, statusFilter, search, sortBy, hideDone]);
-
-  // Threads are stored as a comma-separated string in the single
-  // `thread` field — splitting here means an entry tagged
-  // `"#A, #B"` lands in BOTH groups instead of one combined-string
-  // group. Empty / whitespace-only tokens drop out, dedupe so a
-  // double comma doesn't double the entry.
-  const groups = useMemo<Array<[string, GoalEntry[]]>>(() => {
-    const map = new Map<string, GoalEntry[]>();
-    for (const entry of filtered) {
-      const keys =
-        groupBy === 'year'
-          ? [entry.date.slice(0, 4) || '—']
-          : (() => {
-              const ts = splitThreads(entry.thread);
-              return ts.length > 0 ? ts : ['— sans thread —'];
-            })();
-      for (const key of keys) {
-        const bucket = map.get(key) ?? [];
-        bucket.push(entry);
-        map.set(key, bucket);
-      }
-    }
-    return Array.from(map.entries()).sort(([a], [b]) =>
-      b.localeCompare(a, 'fr', { numeric: true }),
-    );
-  }, [filtered, groupBy]);
+  const { entries, load, stats } = useGoalsData();
+  const {
+    statusFilter,
+    groupBy,
+    search,
+    sortBy,
+    hideDone,
+    groups,
+    setStatusFilter,
+    setGroupBy,
+    setSearch,
+    setSortBy,
+    setHideDone,
+  } = useGoalsFilters();
+  const {
+    carryOverOpen,
+    cycleStatus,
+    editEntry,
+    deleteEntry,
+    openCarryOver,
+    closeCarryOver,
+    carryOver,
+  } = useGoalsActions();
 
   return (
     <ModuleShell
@@ -350,7 +121,7 @@ export default function GoalsPage() {
           onSortByChange={setSortBy}
           hideDone={hideDone}
           onHideDoneChange={setHideDone}
-          onCarryOverClick={() => setCarryOverOpen(true)}
+          onCarryOverClick={openCarryOver}
         />
       }
     >
@@ -358,26 +129,24 @@ export default function GoalsPage() {
         load={load}
         stats={stats}
         groups={groups}
-        onToggleStatus={handleToggleStatus}
-        onDelete={handleDelete}
-        onEdit={handleEdit}
+        onToggleStatus={cycleStatus}
+        onDelete={deleteEntry}
+        onEdit={editEntry}
       />
       <CarryOverDialog
         open={carryOverOpen}
-        onClose={() => setCarryOverOpen(false)}
+        onClose={closeCarryOver}
         entries={entries}
-        onConfirm={handleCarryOver}
+        onConfirm={carryOver}
       />
     </ModuleShell>
   );
 }
 
-const EMPTY: ReadonlyArray<GoalEntry> = [];
-
 interface PrimaryColumnProps {
   load: LoadState;
   stats: { total: number; open: number; wip: number; done: number };
-  groups: Array<[string, GoalEntry[]]>;
+  groups: ReadonlyArray<readonly [string, GoalEntry[]]>;
   onToggleStatus: (entry: GoalEntry) => void | Promise<void>;
   onDelete: (entry: GoalEntry) => void | Promise<void>;
   onEdit: (entry: GoalEntry) => void;

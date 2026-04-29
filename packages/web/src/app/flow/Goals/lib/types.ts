@@ -27,12 +27,11 @@ export interface GoalEntry {
 
 export type SortBy = 'date' | 'updated' | 'alpha';
 
-/** Async lifecycle of the page-level fetch. The `ready` branch
- *  carries the list inline (legacy shape ; the `<GoalsProvider>`
- *  in commit 2 will split data + load into separate slices like
- *  Library). */
+/** Async lifecycle of the page-level fetch. The `<GoalsProvider>`
+ *  exposes `entries` and `load` as separate slices ; `load` only
+ *  carries the lifecycle status, never the data itself. */
 export type LoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; entries: GoalEntry[] }
+  | { status: 'ready' }
   | { status: 'error'; message: string };
