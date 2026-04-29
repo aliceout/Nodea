@@ -34,6 +34,9 @@ import ModuleShell from '@/ui/dirk/ModuleShell';
 import PageHeading from '@/ui/dirk/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 
+import BookPickerModal from './components/BookPickerModal';
+import SideColumn from './components/SideColumn';
+import ViewModeToggle from './components/ViewModeToggle';
 import {
   LibraryProvider,
   useLibraryActions,
@@ -43,10 +46,7 @@ import {
   type LoadState,
 } from './context';
 import { STATUS_LABEL } from './lib/constants';
-import {
-  LIBRARY_GROUP_BY_OPTIONS,
-  type LibraryGroupBy,
-} from './lib/grouping';
+import { type LibraryGroupBy } from './lib/grouping';
 import {
   CELL_FILTER_LABEL,
   type CellFilter,
@@ -97,23 +97,9 @@ function LibraryView() {
   const subview = useNodeaStore(selectLibrarySubview);
 
   const { items, reviews, covers, load } = useLibraryData();
+  const { viewMode, cellFilter, filteredItems, groups, setCellFilter } =
+    useLibraryFilters();
   const {
-    statusFilter,
-    tagFilter,
-    groupBy,
-    viewMode,
-    cellFilter,
-    allTags,
-    filteredItems,
-    groups,
-    setStatusFilter,
-    setTagFilter,
-    setGroupBy,
-    setViewMode,
-    setCellFilter,
-  } = useLibraryFilters();
-  const {
-    reviewPicker,
     addItem,
     editItem,
     deleteItem,
@@ -121,8 +107,6 @@ function LibraryView() {
     editReview,
     deleteReview,
     openReviewPicker,
-    closeReviewPicker,
-    pickBookForReview,
   } = useLibraryActions();
 
   return (
@@ -135,7 +119,7 @@ function LibraryView() {
           >
             {subview === 'livres' ? (
               <>
-                <ViewModeToggle value={viewMode} onChange={setViewMode} />
+                <ViewModeToggle />
                 <DirkButton variant="primary" size="sm" onClick={addItem}>
                   + Nouveau livre
                 </DirkButton>
@@ -157,26 +141,7 @@ function LibraryView() {
             )}
           </Topbar>
         }
-        side={
-          <SideColumn
-            subview={subview}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
-            tags={allTags}
-            activeTag={tagFilter}
-            onTagChange={setTagFilter}
-            groupBy={groupBy}
-            onGroupByChange={setGroupBy}
-            counts={{
-              all: items.length,
-              favorites: items.filter((it) => it.is_favorite).length,
-              planned: items.filter((it) => it.status === 'planned').length,
-              in_progress: items.filter((it) => it.status === 'in_progress').length,
-              finished: items.filter((it) => it.status === 'finished').length,
-              abandoned: items.filter((it) => it.status === 'abandoned').length,
-            }}
-          />
-        }
+        side={<SideColumn />}
       >
         {subview === 'livres' ? (
           <PrimaryColumn
@@ -203,68 +168,8 @@ function LibraryView() {
           />
         )}
       </ModuleShell>
-      {reviewPicker.open ? (
-        <BookPickerModal
-          kind={reviewPicker.kind}
-          items={items}
-          covers={covers}
-          onPick={(itemId) => pickBookForReview(itemId, reviewPicker.kind)}
-          onClose={closeReviewPicker}
-        />
-      ) : null}
+      <BookPickerModal />
     </>
-  );
-}
-
-/* ---- View mode toggle ------------------------------------------ */
-
-interface ViewModeToggleProps {
-  value: LibraryViewMode;
-  onChange: (next: LibraryViewMode) => void;
-}
-
-const VIEW_MODE_DEFS: ReadonlyArray<{
-  id: LibraryViewMode;
-  label: string;
-  Icon: typeof ListBulletIcon;
-}> = [
-  { id: 'list-plain', label: 'Liste compacte', Icon: ListBulletIcon },
-  { id: 'list-cover', label: 'Liste avec couverture', Icon: QueueListIcon },
-  { id: 'table', label: 'Tableau', Icon: TableCellsIcon },
-  { id: 'grid', label: 'Grille', Icon: Squares2X2Icon },
-  { id: 'wall', label: 'Mur de couvertures', Icon: RectangleGroupIcon },
-];
-
-function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Mode d'affichage"
-      className="flex items-center gap-0.5 rounded-sm border border-hair bg-bg-2/60 p-0.5"
-    >
-      {VIEW_MODE_DEFS.map(({ id, label, Icon }) => {
-        const active = value === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={label}
-            title={label}
-            onClick={() => onChange(id)}
-            className={cn(
-              'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-[5px] transition-colors',
-              active
-                ? 'bg-bg text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
-                : 'text-muted hover:bg-bg hover:text-ink',
-            )}
-          >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1206,253 +1111,6 @@ function WallView({ items, covers, onEditItem, onDeleteItem }: WallViewProps) {
         );
       })}
     </ul>
-  );
-}
-
-/* ---- Book picker modal (new extract / note flow) -------------- */
-
-interface BookPickerModalProps {
-  kind: 'quote' | 'note';
-  items: LibraryItem[];
-  covers: Map<string, string>;
-  onPick: (itemId: string) => void;
-  onClose: () => void;
-}
-
-/**
- * Picker shown after the user clicks « + Nouvel extrait » /
- * « + Nouvelle note ». A review is constrained to belong to a
- * specific book (`item_rid`), so we ask which one before opening
- * the actual composer.
- *
- * UX: a small dialog with an autofocused search input and a
- * filtered list. Matches on title and first author, case- and
- * diacritic-insensitive (folk knowledge: "ernaux" should match
- * "Annie ERNAUX"). Clicking a row routes to the existing review
- * composer with the right kind + item_rid baked in. Esc / backdrop
- * click closes.
- */
-function BookPickerModal({
-  kind,
-  items,
-  covers,
-  onPick,
-  onClose,
-}: BookPickerModalProps) {
-  const [query, setQuery] = useState('');
-
-  const filtered = useMemo(() => {
-    const q = normaliseForSearch(query.trim());
-    const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title, 'fr'));
-    if (!q) return sorted;
-    return sorted.filter((it) => {
-      const haystack = normaliseForSearch(
-        `${it.title} ${it.creators?.[0]?.name ?? ''}`,
-      );
-      return haystack.includes(q);
-    });
-  }, [items, query]);
-
-  const heading =
-    kind === 'quote' ? 'Nouvel extrait' : 'Nouvelle note';
-
-  // Same fixed body height as the Composer modals — `h-[600px]`
-  // capped at `100vh-200px` for short viewports. The shell
-  // (backdrop, panel border, animation) comes from the shared
-  // `<Modal>` atom, the layout below is what's specific to the
-  // picker.
-  return (
-    <Modal open onClose={onClose}>
-      <div className="flex h-[600px] max-h-[calc(100vh-200px)] flex-col">
-        <div className="border-b border-hair px-[22px] pt-3.5 pb-3">
-          <h2 className="text-[14px] font-semibold tracking-[-0.005em] text-ink">
-            {heading}
-          </h2>
-          <p className="mt-0.5 text-[12px] text-muted">
-            Choisis le livre auquel rattacher
-            {kind === 'quote' ? ' cet extrait' : ' cette note'}.
-          </p>
-        </div>
-        <div className="px-[22px] pt-3">
-          <DirkInput
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') onClose();
-              if (e.key === 'Enter' && filtered[0]) {
-                e.preventDefault();
-                onPick(filtered[0].id);
-              }
-            }}
-            placeholder="Rechercher un livre par titre ou auteur·rice…"
-          />
-        </div>
-        <ul className="min-h-0 flex-1 overflow-auto px-2 py-2">
-          {filtered.length === 0 ? (
-            <li className="px-3 py-6 text-center text-[12px] italic text-muted">
-              {items.length === 0
-                ? 'Aucun livre dans la bibliothèque.'
-                : 'Aucun résultat pour cette recherche.'}
-            </li>
-          ) : (
-            filtered.map((it) => {
-              const cover = it.cover_rid
-                ? covers.get(it.cover_rid) ?? null
-                : null;
-              const author = it.creators?.[0]?.name ?? '—';
-              const yearLabel = it.year ? String(it.year) : '';
-              return (
-                <li key={it.id}>
-                  <button
-                    type="button"
-                    onClick={() => onPick(it.id)}
-                    className="flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors hover:bg-bg-2"
-                  >
-                    {cover ? (
-                      <img
-                        src={cover}
-                        alt=""
-                        className="h-12 w-8 shrink-0 rounded-sm border border-hair bg-bg-2 object-cover"
-                      />
-                    ) : (
-                      <div
-                        aria-hidden="true"
-                        className="h-12 w-8 shrink-0 rounded-sm border border-hair border-dashed bg-bg-2/60"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-ink">
-                        {it.title}
-                      </p>
-                      <p className="truncate text-[12px] text-muted">
-                        {author}
-                        {yearLabel ? (
-                          <span className="ml-1.5 tabular-nums">
-                            · {yearLabel}
-                          </span>
-                        ) : null}
-                      </p>
-                    </div>
-                  </button>
-                </li>
-              );
-            })
-          )}
-        </ul>
-        <div className="flex justify-end gap-2 border-t border-hair bg-bg-2/40 px-[22px] py-3">
-          <DirkButton variant="secondary" onClick={onClose}>
-            Annuler
-          </DirkButton>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-/* ---- Side column (filters) ------------------------------------- */
-
-interface SideColumnProps {
-  /** Drives whether the group-by selector is shown. The Extraits /
-   * Notes views share the column for visual consistency but only
-   * the books view (`livres`) lets the user re-group. */
-  subview: LibrarySubview;
-  statusFilter: LibraryStatus | 'all' | 'favorites';
-  onStatusChange: (next: LibraryStatus | 'all' | 'favorites') => void;
-  tags: string[];
-  activeTag: string | null;
-  onTagChange: (next: string | null) => void;
-  groupBy: LibraryGroupBy;
-  onGroupByChange: (next: LibraryGroupBy) => void;
-  counts: Record<LibraryStatus | 'all' | 'favorites', number>;
-}
-
-function SideColumn({
-  subview,
-  statusFilter,
-  onStatusChange,
-  tags,
-  activeTag,
-  onTagChange,
-  groupBy,
-  onGroupByChange,
-  counts,
-}: SideColumnProps) {
-  const showGroupBy = subview === 'livres';
-  return (
-    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
-      {showGroupBy ? (
-        <section>
-          <SectionLabel>Grouper par</SectionLabel>
-          <div className="flex flex-wrap gap-1">
-            {LIBRARY_GROUP_BY_OPTIONS.map((opt) => (
-              <FilterChip
-                key={opt.value}
-                active={groupBy === opt.value}
-                onClick={() => onGroupByChange(opt.value)}
-                label={opt.label}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section>
-        <SectionLabel>Statut</SectionLabel>
-        <div className="flex flex-wrap gap-1">
-          <FilterChip
-            active={statusFilter === 'all'}
-            onClick={() => onStatusChange('all')}
-            label="Tous"
-            count={counts.all}
-          />
-          <FilterChip
-            active={statusFilter === 'favorites'}
-            onClick={() => onStatusChange('favorites')}
-            label="★ Favoris"
-            count={counts.favorites}
-          />
-          {LIBRARY_STATUS_VALUES.map((s) => (
-            <FilterChip
-              key={s}
-              active={statusFilter === s}
-              onClick={() => onStatusChange(s)}
-              label={STATUS_LABEL[s]}
-              count={counts[s]}
-            />
-          ))}
-        </div>
-      </section>
-
-      {tags.length > 0 ? (
-        <section>
-          <SectionLabel>Tags</SectionLabel>
-          <div className="flex flex-wrap gap-1">
-            <FilterChip
-              active={activeTag === null}
-              onClick={() => onTagChange(null)}
-              label="Tous"
-            />
-            {tags.map((t) => (
-              <FilterChip
-                key={t}
-                active={activeTag === t}
-                onClick={() => onTagChange(t)}
-                label={t}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-    </aside>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
-      {children}
-    </div>
   );
 }
 
