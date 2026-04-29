@@ -278,30 +278,47 @@ amorti le risque.
 
 ---
 
-## Tier 5 — routes API (≥ 500 LOC)
+## Tier 5 — routes API (≥ 500 LOC) — livré
 
-Le côté serveur a deux routes monolithiques. Moins prioritaire
-côté UX (pas d'effet visible), mais idem côté maintenabilité.
+Le côté serveur avait deux routes monolithiques + le schéma
+Drizzle + le dispatcher ISBN. Livré dans son intégralité.
 
-- [ ] [`api/src/routes/auth.ts`](../../packages/api/src/routes/auth.ts)
-       — **809 LOC**. Couvre login / logout / refresh / change-
-       password / reauth. À sortir un fichier par groupe de
-       handlers : `auth/login.ts`, `auth/refresh.ts`,
-       `auth/change-password.ts`. La factorisation `auth-totp.ts`,
-       `auth-mfa.ts`, `auth-recovery.ts` est déjà partiellement
-       faite ; finir le découpage.
-- [ ] [`api/src/routes/auth-passkey.ts`](../../packages/api/src/routes/auth-passkey.ts)
-       — **800 LOC**. Enrôlement + auth + révocation des passkeys.
-       Même découpage que auth.ts.
-- [ ] [`api/src/lookup/dispatcher.ts`](../../packages/api/src/lookup/dispatcher.ts)
-       — **568 LOC**. Orchestrateur ISBN multi-providers. Probable
-       qu'une factory `provider-pipeline.ts` réduise le code à
-       ~250 LOC en sortant la logique de fan-out.
-- [ ] [`api/src/db/schema.ts`](../../packages/api/src/db/schema.ts)
-       — **678 LOC**. Schéma Drizzle, normal qu'il soit gros mais
-       le découper par domaine (`schema/users.ts`,
-       `schema/modules.ts`, `schema/auth.ts`) faciliterait les
-       migrations.
+- [x] [`api/src/routes/auth.ts`](../../packages/api/src/routes/auth.ts)
+       — **809 → 49 LOC** (orchestrateur). Sous-routeurs Hono
+       montés sur `/` : `auth-login.ts` (login/logout, 282),
+       `auth-reset.ts` (request-reset / reset/start / reset/finish,
+       215), `auth-change-password.ts` (130),
+       `auth-account.ts` (GET /me, PATCH email/username,
+       /onboarding/complete, DELETE /me, 217),
+       `auth-shared.ts` (`isUniqueViolation` + 3 rate limiters, 53).
+       Surface externe inchangée.
+- [x] [`api/src/routes/auth-passkey.ts`](../../packages/api/src/routes/auth-passkey.ts)
+       — **800 → 63 LOC** (orchestrateur). Sous-routeurs montés
+       sur `/` : `auth-passkey-enroll.ts` (start/finish, 229),
+       `auth-passkey-manage.ts` (list/rename/remove + auto-
+       downgrade §6.1, 169), `auth-passkey-login.ts` (login
+       start/finish, 323), `passkey-helpers.ts` (handles + b64url
+       + transports + rate limiters, 98).
+- [x] [`api/src/lookup/dispatcher.ts`](../../packages/api/src/lookup/dispatcher.ts)
+       — **568 → 162 LOC** (orchestrateur).
+       `lookup/providers.ts` (PROVIDERS array, 31),
+       `lookup/merge.ts` (`collectResults` + `mergeOnce` +
+       `cleanSummary`, 151), `lookup/dedupe.ts`
+       (`dedupeAcrossProviders` + `identityTokens` +
+       `filterByLanguage`, 123), `lookup/probe.ts` (health
+       check + `TEST_ISBN_BY_PROVIDER`, 116). `dispatcher.ts`
+       garde la cache + `reorderForLang` + `lookupByIsbn` +
+       `streamLookupByQuery` + re-export `probeLibraryProviders`.
+- [x] [`api/src/db/schema.ts`](../../packages/api/src/db/schema.ts)
+       — **678 → 113 LOC** (barrel). Découpé par domaine :
+       `schema/enums.ts` (101), `schema/users.ts` (users +
+       sessions, 177), `schema/auth.ts` (opaque + factors + totp
+       + bypass + email-verifs + reset-tokens, 225),
+       `schema/admin.ts` (invites + appSettings + announcements,
+       100), `schema/entries.ts` (factory + 9 tables, 90),
+       `schema/modules.ts` (modulesConfig + userPreferences, 35).
+       Le barrel re-exporte tout + tous les `Row` / `New` types
+       inférés ; les 200+ call-sites n'ont pas bougé.
 
 ---
 
