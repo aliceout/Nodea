@@ -341,49 +341,52 @@ ou 0 si on attend le 5ᵉ module.
       Test sur un seul module en isolation, ensuite
       propagation.
 
-### 7. Rewire ImportExport plugins → schémas Zod actuels
+### 7. Rewire ImportExport plugins → schémas Zod actuels — livré
 
-**Pain** : la migration TS du Tier A.2 a mis en lumière que les
-7 plugins sous
-[`core/utils/ImportExport/`](../../packages/web/src/core/utils/ImportExport/)
-produisent des payloads qui ne matchent **plus** les schémas
-Zod canoniques de `@nodea/shared`. Exemples concrets :
-  - `LibraryReviews` parle de `note` ; le schéma actuel utilise
-    `content` + `kind` + `spoiler`.
-  - `LibraryItems` ne pose ni `cover_rid`, ni `format`, ni
-    `is_favorite` ; `type`/`status` sont des enums stricts.
-  - `Mood` envoie `mood_score: unknown` ; le schéma exige
-    `string`.
-  - `HabitsItems` envoie `category: string` ; le schéma a un
-    enum à 5 valeurs.
-  - `Review` ne pose pas le `updated_at` que le schéma
-    requiert.
+**Statut** : commit `55157ac`. Les 7 plugins passent désormais
+leur payload à travers `Schema.parse()` et retournent le type
+inféré canonique. Les casts au boundary sont supprimés ; le
+runtime n'est plus en décalage avec les schémas.
 
-Pour passer le typecheck, le client API est appelé avec
-`as Parameters<typeof client.create>[2]` (cast au boundary)
-avec un TODO pointant ici dans chaque plugin. **Le runtime
-reste cassé** : importer un export ancien aujourd'hui lèvera
-des Zod validation errors, comme en JS — la migration TS n'a
-fait que rendre la dette visible.
+Bilan par plugin :
+  - **Mood** : `mood_score` coercé en `string` (était parfois
+    un nombre dans les vieux exports).
+  - **Goals** : minimal — le schéma a un `.default(…)` sur
+    presque tout, donc les anciens exports passent direct.
+  - **HabitsItems** : `category` / `frequency` clamp aux
+    enum, fall back à `autre` / `weekly` pour les valeurs
+    free-form.
+  - **HabitsLogs** : trivial.
+  - **LibraryItems** : **migration legacy on the fly** —
+    l'ancien `provider` + `external_id` plat est groupé en
+    `providers` canonique. `status` / `format` clamp aux
+    enums. Natural key reconstruite.
+  - **LibraryReviews** : **vrai bug fix** — `note` legacy →
+    `content` canonique, `kind: 'note'` par défaut. Les
+    exports anciens importent sans retouche manuelle.
+  - **Review** : `year` coercé en number, `updated_at` rempli
+    par défaut Zod.
 
-**Coût** : 1–2 jours pour réaligner les 7 plugins + un test
-par module qui round-trip un export → import → compare.
+Bonus : `normalizePayload` est passé de 25-40 LOC à ~10 LOC
+par plugin (Zod fait la coercion). Les interfaces internes
+`RawXxxPayload` / `NormalisedXxxPayload` sont retirées.
 
-- [ ] Réaligner chaque `normalizePayload` sur le schéma Zod
-       canonique de son module
-       (`MoodPayloadSchema`, `GoalsPayloadSchema`, etc.).
-- [ ] Réaligner les enveloppes d'export : la `version` du
-       plugin doit refléter la version de schéma. Si la shape
-       a divergé, bumper la version et garder un chemin de
-       migration pour les anciens exports stockés en JSON.
-- [ ] Retirer les casts `as Parameters<…>[2]` au boundary
-       `client.create()` une fois les payloads conformes.
-- [ ] Test round-trip par module : export N records → re-importer
-       → vérifier que toutes les natural keys matchent.
-- [ ] Si la rewire devient trop coûteuse vs l'usage réel,
-       envisager option B : rip out tout le sous-système
-       ImportExport (DataTab disparaît, JSON manuel via
-       admin tooling). Discuter en review avant.
+- [x] Réaligner chaque `normalizePayload` sur le schéma Zod
+       canonique de son module (7 plugins migrés).
+- [x] Retirer les casts `as Parameters<…>[2]` au boundary
+       `client.create()` (tous supprimés).
+- [x] Migration legacy in-flight pour les exports anciens :
+       LibraryItems (provider plat → providers groupé),
+       LibraryReviews (note → content), Review
+       (string year → number).
+- [ ] **Follow-up** : test round-trip par module (export N
+       records → re-importer → vérifier que les natural keys
+       matchent). À écrire quand l'infra de tests web aura
+       gagné jsdom + RTL (pré-requis Tier A.3).
+- [ ] **Follow-up** : `meta.version` reste à `1` pour tous
+       les plugins. Si on bump une shape de schéma à l'avenir,
+       il faudra incrémenter la version + ajouter un chemin
+       de migration depuis les exports v1.
 
 ---
 
