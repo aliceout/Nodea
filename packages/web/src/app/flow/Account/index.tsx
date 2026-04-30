@@ -21,7 +21,7 @@ import SecurityTab from './views/SecurityTab';
  * buttons, then a tab content panel that re-mounts on each switch
  * (keyed on the tab id) so the `animate-fade-up` keyframe replays.
  *
- * Architecture (Tier 1 § Account of `factoring-audit.md`) :
+ * Architecture :
  *   - `lib/` carries the pure helpers (security-mode label, the
  *     tab definition list, theme options) with their tests.
  *   - `components/` hosts the layout primitives shared between
