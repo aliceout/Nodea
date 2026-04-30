@@ -21,14 +21,16 @@ export default function SidebarFooter() {
         />
         Synchronisé · à l’instant
       </div>
-      {/* Bottom row: language and theme pickers side by side. Each
-          gets `flex-1` so they share the row width equally and stay
-          stable regardless of which option is selected — without
-          this, both selects resize when the user picks a longer /
-          shorter label. */}
+      {/* Bottom row: language and theme pickers side by side. The
+          theme picker gets a slightly larger share (4:5 ratio,
+          ~44/56) since its labels are wider (« Système » vs short
+          autonyms like « FR ») — without that, the active theme
+          label hits the truncate ellipsis at the default 50/50
+          split. The flex bases keep both selects stable regardless
+          of the active option (no more resize-on-pick). */}
       <div className="flex items-center gap-1.5">
-        <LanguageToggle className="flex-1" />
-        <ThemeToggle className="flex-1" />
+        <LanguageToggle className="flex-4" />
+        <ThemeToggle className="flex-5" />
       </div>
     </div>
   );
