@@ -1,3 +1,4 @@
+import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 import { renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
@@ -14,46 +15,46 @@ import { renderLayout, type RenderedEmailContent } from './layout.ts';
  * means the attacker had access to the recovery code at some point,
  * and the user has to know immediately so they can react.
  */
-export function renderRecoveryAppliedEmail(): RenderedEmailContent {
-  const subject = 'Mot de passe réinitialisé via code de récupération';
+export function renderRecoveryAppliedEmail(params: {
+  language: SupportedEmailLanguage;
+}): RenderedEmailContent {
+  const { language } = params;
+  const subject = emailT(language, 'recoveryApplied.subject');
 
   const bodyText = [
-    `Quelqu'un (toi ?) vient de réinitialiser le mot de passe de ton compte`,
-    `Nodea via le code de récupération à 12 mots.`,
+    emailT(language, 'recoveryApplied.summaryText'),
     ``,
-    `Toutes tes sessions actives ont été révoquées et un nouveau code de`,
-    `récupération a été généré (l'ancien ne fonctionne plus).`,
+    emailT(language, 'recoveryApplied.sessionsRevoked'),
     ``,
-    `Si c'est bien toi : tout est en ordre, tu peux te reconnecter avec`,
-    `ton nouveau mot de passe.`,
+    emailT(language, 'recoveryApplied.legitText'),
     ``,
-    `Si ce n'est PAS toi : ton code de récupération a été compromis.`,
-    `Reprends le contrôle MAINTENANT depuis Compte → Sécurité :`,
-    `  1. Change ton mot de passe (révoque toutes les sessions à nouveau).`,
-    `  2. Régénère un nouveau code de récupération (et garde-le hors-ligne).`,
-    `  3. Vérifie tes facteurs MFA (TOTP, passkeys) — supprime tout ce que`,
-    `     tu ne reconnais pas.`,
+    emailT(language, 'recoveryApplied.notYouTextHeader'),
+    emailT(language, 'recoveryApplied.notYouTextIntro'),
+    `  1. ${emailT(language, 'recoveryApplied.step1')}`,
+    `  2. ${emailT(language, 'recoveryApplied.step2Text')}`,
+    `  3. ${emailT(language, 'recoveryApplied.step3')}`,
   ].join('\n');
 
   const bodyHtml = [
-    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">Mot de passe réinitialisé via code de récupération</h2>`,
-    `<p style="margin:0 0 12px 0;">Quelqu'un (toi&nbsp;?) vient de <strong>réinitialiser le mot de passe</strong> de ton compte Nodea via le code de récupération à 12 mots.</p>`,
-    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:14px;">Toutes tes sessions actives ont été révoquées et un nouveau code de récupération a été généré (l'ancien ne fonctionne plus).</p>`,
-    `<p style="margin:0 0 24px 0;">Si c'est bien toi&nbsp;: tout est en ordre, tu peux te reconnecter avec ton nouveau mot de passe.</p>`,
+    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">${emailT(language, 'recoveryApplied.heading')}</h2>`,
+    `<p style="margin:0 0 12px 0;">${emailT(language, 'recoveryApplied.summaryHtml')}</p>`,
+    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:14px;">${emailT(language, 'recoveryApplied.sessionsRevoked')}</p>`,
+    `<p style="margin:0 0 24px 0;">${emailT(language, 'recoveryApplied.legitHtml')}</p>`,
     `<div style="margin:24px 0;padding:16px;background:#fee2e2;border-left:4px solid #dc2626;border-radius:4px;">`,
-    `  <p style="margin:0 0 8px 0;font-size:14px;color:#7f1d1d;font-weight:600;">Si ce n'est PAS toi :</p>`,
-    `  <p style="margin:0 0 12px 0;font-size:14px;color:#7f1d1d;">Ton code de récupération a été compromis. Reprends le contrôle <strong>maintenant</strong> depuis Compte &rarr; Sécurité :</p>`,
+    `  <p style="margin:0 0 8px 0;font-size:14px;color:#7f1d1d;font-weight:600;">${emailT(language, 'recoveryApplied.notYouHtmlLabel')}</p>`,
+    `  <p style="margin:0 0 12px 0;font-size:14px;color:#7f1d1d;">${emailT(language, 'recoveryApplied.notYouHtmlIntro')}</p>`,
     `  <ol style="margin:0;padding-left:20px;font-size:14px;color:#7f1d1d;line-height:1.6;">`,
-    `    <li>Change ton mot de passe (révoque toutes les sessions à nouveau).</li>`,
-    `    <li>Régénère un nouveau code de récupération (garde-le hors-ligne).</li>`,
-    `    <li>Vérifie tes facteurs MFA (TOTP, passkeys) — supprime tout ce que tu ne reconnais pas.</li>`,
+    `    <li>${emailT(language, 'recoveryApplied.step1')}</li>`,
+    `    <li>${emailT(language, 'recoveryApplied.step2Html')}</li>`,
+    `    <li>${emailT(language, 'recoveryApplied.step3')}</li>`,
     `  </ol>`,
     `</div>`,
   ].join('\n');
 
   const layout = renderLayout({
     subject,
-    preheader: `Réinitialisation par code de récupération sur Nodea — vérifie que c'est bien toi.`,
+    language,
+    preheader: emailT(language, 'recoveryApplied.preheader'),
     bodyText,
     bodyHtml,
   });

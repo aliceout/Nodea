@@ -17,6 +17,7 @@ import {
 } from '../auth/mfa-bypass.ts';
 import { renderMfaBypassEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import type { AuthVariables } from '../middleware/require-user.ts';
@@ -140,6 +141,7 @@ authMfaBypassRoutes.post(
     const base = (config.WEB_BASE_URL ?? config.WEBAUTHN_ORIGIN).replace(/\/$/, '');
     const confirmLink = `${base}/auth/bypass/confirm?t=${confirm.token}`;
     const rendered = renderMfaBypassEmail({
+      language: extractEmailLanguage(c),
       factor,
       confirmLink,
     });

@@ -1,3 +1,4 @@
+import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
@@ -13,43 +14,43 @@ import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts
  * Pure function. Caller fills in `to` and `tag` on `EmailService.send()`.
  */
 export function renderPasswordResetEmail(params: {
+  language: SupportedEmailLanguage;
   /** Absolute or relative URL to the reset page including the token
    *  query param. The template doesn't append anything. */
   link: string;
 }): RenderedEmailContent {
-  const subject = 'Réinitialisation de ton mot de passe Nodea';
+  const { language } = params;
+  const subject = emailT(language, 'passwordReset.subject');
   const linkSafe = escapeHtml(params.link);
 
   const bodyText = [
-    `Quelqu'un (toi ?) a demandé la réinitialisation de ton mot de passe Nodea.`,
+    emailT(language, 'passwordReset.requestText'),
     ``,
-    `Ouvre ce lien dans l'heure pour continuer :`,
+    emailT(language, 'passwordReset.instructionText'),
     params.link,
     ``,
-    `⚠ Attention : tes données sont chiffrées avec une clé dérivée de ton mot`,
-    `de passe. Réinitialiser le mot de passe entraîne la perte définitive de`,
-    `toutes tes entrées déjà enregistrées.`,
+    emailT(language, 'passwordReset.warningText'),
     ``,
-    `Si tu n'es pas à l'origine de la demande, ignore ce message — ton compte`,
-    `et tes données restent intacts.`,
+    emailT(language, 'passwordReset.ignoreNote'),
   ].join('\n');
 
   const bodyHtml = [
-    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">Réinitialisation du mot de passe</h2>`,
-    `<p style="margin:0 0 16px 0;">Quelqu'un (toi&nbsp;?) a demandé la réinitialisation de ton mot de passe Nodea.</p>`,
+    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">${escapeHtml(emailT(language, 'passwordReset.heading'))}</h2>`,
+    `<p style="margin:0 0 16px 0;">${emailT(language, 'passwordReset.requestHtml')}</p>`,
     `<p style="margin:0 0 24px 0;text-align:center;">`,
-    `  <a href="${linkSafe}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:500;font-size:15px;">Réinitialiser mon mot de passe</a>`,
+    `  <a href="${linkSafe}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:500;font-size:15px;">${escapeHtml(emailT(language, 'passwordReset.cta'))}</a>`,
     `</p>`,
-    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">Lien valable 1 heure.</p>`,
+    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">${escapeHtml(emailT(language, 'passwordReset.validity'))}</p>`,
     `<div style="margin:24px 0 16px 0;padding:16px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:4px;">`,
-    `  <p style="margin:0;font-size:14px;color:#78350f;"><strong>⚠ Attention&nbsp;:</strong> tes données sont chiffrées avec une clé dérivée de ton mot de passe. Réinitialiser le mot de passe entraîne la <strong>perte définitive</strong> de toutes tes entrées déjà enregistrées.</p>`,
+    `  <p style="margin:0;font-size:14px;color:#78350f;"><strong>${escapeHtml(emailT(language, 'passwordReset.warningHtmlPrefix'))}</strong> ${emailT(language, 'passwordReset.warningHtmlBody')}</p>`,
     `</div>`,
-    `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">Si tu n'es pas à l'origine de la demande, ignore ce message — ton compte et tes données restent intacts.</p>`,
+    `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">${escapeHtml(emailT(language, 'passwordReset.ignoreNote'))}</p>`,
   ].join('\n');
 
   const layout = renderLayout({
     subject,
-    preheader: 'Demande de réinitialisation de ton mot de passe Nodea. Lien valable 1 heure.',
+    language,
+    preheader: emailT(language, 'passwordReset.preheader'),
     bodyText,
     bodyHtml,
   });

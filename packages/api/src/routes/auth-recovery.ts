@@ -25,6 +25,7 @@ import { setSessionCookie } from '../auth/cookies.ts';
 import { cancelPendingBypassesForUser } from '../auth/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderRecoveryAppliedEmail } from '../services/email/templates/recovery-applied.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
@@ -292,7 +293,7 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
   // already has a fresh session in their browser; this is the
   // "if it wasn't you, here's how to react" follow-up.
   try {
-    const rendered = renderRecoveryAppliedEmail();
+    const rendered = renderRecoveryAppliedEmail({ language: extractEmailLanguage(c) });
     await getEmailService().send({
       to: user.email,
       subject: rendered.subject,

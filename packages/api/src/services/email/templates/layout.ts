@@ -1,4 +1,5 @@
 import { getConfig } from '../../../config.ts';
+import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 
 /**
  * Common email layout — Auth-Spec.md §10.3.
@@ -25,14 +26,17 @@ import { getConfig } from '../../../config.ts';
  *     carries the brand's accessible name — assistive tech that
  *     announces both would say "Nodea Nodea".
  *
- * Localisation: French only in V1 per CLAUDE.md. Header / footer text
- * lives here as constants so a future i18n pass has one place to swap.
+ * Localisation : Tier 5 i18n — caller passes `language`, the layout
+ * pipes it through `emailT(language, 'layout.*')` for the footer
+ * strings and into the `<html lang="…">` attribute.
  */
 
 export interface LayoutOptions {
   /** Email subject — used as the HTML <title> too for clients that
    *  surface it (Apple Mail in summary view does). */
   subject: string;
+  /** Active language for footer translation + `<html lang>` attr. */
+  language: SupportedEmailLanguage;
   /** Optional preview / preheader (the line clients show next to the
    *  subject in the inbox list). Kept invisible but readable by the
    *  preview pane. ~100 chars max for best results. */
@@ -64,24 +68,30 @@ export interface RenderedEmailContent {
   html: string;
 }
 
-const FOOTER_TEXT = [
-  '',
-  '—',
-  "L'équipe Nodea",
-  '',
-  'Cet email a été envoyé automatiquement.',
-  "Si tu n'attendais rien de notre part, ignore-le simplement —",
-  'aucune action ne sera prise sur ton compte.',
-].join('\n');
+function buildFooterText(language: SupportedEmailLanguage): string {
+  return [
+    '',
+    '—',
+    emailT(language, 'layout.footerSignature'),
+    '',
+    emailT(language, 'layout.footerAutoLine'),
+    emailT(language, 'layout.footerIgnoreLine'),
+  ].join('\n');
+}
 
-const FOOTER_HTML = [
-  '<tr>',
-  '  <td style="padding:24px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5;">',
-  '    <p style="margin:0 0 8px 0;font-weight:500;color:#374151;">— L\'équipe Nodea</p>',
-  '    <p style="margin:0;">Cet email a été envoyé automatiquement. Si tu n\'attendais rien de notre part, ignore-le simplement — aucune action ne sera prise sur ton compte.</p>',
-  '  </td>',
-  '</tr>',
-].join('\n');
+function buildFooterHtml(language: SupportedEmailLanguage): string {
+  const signature = escapeHtml(emailT(language, 'layout.footerSignature'));
+  const autoLine = escapeHtml(emailT(language, 'layout.footerAutoLine'));
+  const ignoreLine = escapeHtml(emailT(language, 'layout.footerIgnoreLine'));
+  return [
+    '<tr>',
+    '  <td style="padding:24px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5;">',
+    `    <p style="margin:0 0 8px 0;font-weight:500;color:#374151;">— ${signature}</p>`,
+    `    <p style="margin:0;">${autoLine} ${ignoreLine}</p>`,
+    '  </td>',
+    '</tr>',
+  ].join('\n');
+}
 
 function renderHeader(): string {
   const baseUrl = (getConfig().WEB_BASE_URL ?? '').replace(/\/$/, '');
@@ -144,11 +154,11 @@ function renderPreheader(text: string): string {
  * pair.
  */
 export function renderLayout(opts: LayoutOptions): RenderedLayout {
-  const text = `${opts.bodyText}\n${FOOTER_TEXT}`;
+  const text = `${opts.bodyText}\n${buildFooterText(opts.language)}`;
 
   const html = [
     '<!DOCTYPE html>',
-    '<html lang="fr">',
+    `<html lang="${opts.language}">`,
     '<head>',
     '  <meta charset="UTF-8">',
     '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
@@ -166,7 +176,7 @@ export function renderLayout(opts: LayoutOptions): RenderedLayout {
     opts.bodyHtml,
     '            </td>',
     '          </tr>',
-    FOOTER_HTML,
+    buildFooterHtml(opts.language),
     '        </table>',
     '      </td>',
     '    </tr>',

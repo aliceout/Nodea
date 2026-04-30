@@ -27,6 +27,7 @@ import {
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderRegisterActivateEmail } from '../services/email/templates/register-activate.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { getConfig } from '../config.ts';
 import { isOpenRegistration } from '../services/settings.ts';
 
@@ -326,7 +327,10 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
   const link = `${base}/activate?token=${encodeURIComponent(token)}`;
 
   try {
-    const rendered = renderRegisterActivateEmail({ link });
+    const rendered = renderRegisterActivateEmail({
+      link,
+      language: extractEmailLanguage(c),
+    });
     await getEmailService().send({
       to: email,
       subject: rendered.subject,

@@ -1,3 +1,4 @@
+import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
@@ -14,46 +15,51 @@ import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts
  * tool, the inviter is just opening the door, not branding their
  * instance. We don't surface the inviter's name to keep the focus on
  * "you have a new space" rather than "X is sharing with you".
+ *
+ * Localisation : admin invites have no authenticated request to
+ * derive `Accept-Language` from, so the caller falls back to
+ * `DEFAULT_LANGUAGE` (FR) — see `i18n.ts` decision note.
  */
 export function renderInviteEmail(params: {
+  language: SupportedEmailLanguage;
   /** Absolute URL to /register including the invite token query param. */
   link: string;
   /** Days until the invite link expires. Defaults to 7. */
   ttlDays?: number;
 }): RenderedEmailContent {
+  const { language } = params;
   const ttl = params.ttlDays ?? 7;
-  const subject = "Tu es invité·e à créer ton espace Nodea";
+  const subject = emailT(language, 'invite.subject');
   const linkSafe = escapeHtml(params.link);
 
   const bodyText = [
-    `Tu es invité·e à créer ton espace Nodea.`,
+    emailT(language, 'invite.heading'),
     ``,
-    `Pour créer ton compte, clique sur ce lien :`,
+    emailT(language, 'invite.instructionText'),
     params.link,
     ``,
-    `Le lien est valable ${ttl} jours.`,
+    emailT(language, 'invite.validity', { values: { ttl } }),
     ``,
-    `Nodea est un espace privé, chiffré bout en bout — tes données ne`,
-    `quittent pas ta machine sans être chiffrées avec une clé que tu`,
-    `contrôles seul·e.`,
+    emailT(language, 'invite.description'),
     ``,
-    `Si ce message ne te concerne pas, ignore-le simplement.`,
+    emailT(language, 'invite.ignoreNote'),
   ].join('\n');
 
   const bodyHtml = [
-    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">Tu es invité·e à créer ton espace Nodea.</h2>`,
-    `<p style="margin:0 0 24px 0;">Pour créer ton compte, clique sur le bouton ci-dessous&nbsp;:</p>`,
+    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">${escapeHtml(emailT(language, 'invite.heading'))}</h2>`,
+    `<p style="margin:0 0 24px 0;">${escapeHtml(emailT(language, 'invite.instructionHtml'))}&nbsp;</p>`,
     `<p style="margin:0 0 16px 0;text-align:center;">`,
-    `  <a href="${linkSafe}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">Créer mon compte</a>`,
+    `  <a href="${linkSafe}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">${escapeHtml(emailT(language, 'invite.cta'))}</a>`,
     `</p>`,
-    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">Le lien est valable ${ttl} jours.</p>`,
-    `<p style="margin:24px 0 0 0;color:#374151;font-size:13px;line-height:1.6;">Nodea est un espace privé, chiffré bout en bout — tes données ne quittent pas ta machine sans être chiffrées avec une clé que tu contrôles seul·e.</p>`,
-    `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">Si ce message ne te concerne pas, ignore-le simplement.</p>`,
+    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">${escapeHtml(emailT(language, 'invite.validity', { values: { ttl } }))}</p>`,
+    `<p style="margin:24px 0 0 0;color:#374151;font-size:13px;line-height:1.6;">${escapeHtml(emailT(language, 'invite.description'))}</p>`,
+    `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">${escapeHtml(emailT(language, 'invite.ignoreNote'))}</p>`,
   ].join('\n');
 
   const layout = renderLayout({
     subject,
-    preheader: `Crée ton espace Nodea — lien valable ${ttl} jours.`,
+    language,
+    preheader: emailT(language, 'invite.preheader', { values: { ttl } }),
     bodyText,
     bodyHtml,
   });

@@ -13,6 +13,7 @@ import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderSecurityModeDowngradedEmail } from '../services/email/templates/security-mode-downgraded.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 
 import { manageLimiter } from './passkey-helpers.ts';
 
@@ -142,6 +143,7 @@ authPasskeyManageRoutes.post(
           .where(eq(users.id, user.id));
         try {
           const rendered = renderSecurityModeDowngradedEmail({
+            language: extractEmailLanguage(c),
             trigger: 'last_prf_passkey_removed',
             previousMode: 'maximum',
           });

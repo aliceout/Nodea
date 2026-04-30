@@ -29,6 +29,7 @@ import {
 } from '../db/schema.ts';
 import type { AuthVariables } from '../middleware/require-user.ts';
 import { renderPasswordResetEmail } from '../services/email/templates/password-reset.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 
 import { requestResetLimiter, resetLimiter } from './auth-shared.ts';
 
@@ -56,7 +57,7 @@ authResetRoutes.post('/request-reset', requestResetLimiter, async (c) => {
     const link = base
       ? `${base.replace(/\/$/, '')}/reset?token=${encodeURIComponent(token)}`
       : `/reset?token=${encodeURIComponent(token)}`;
-    const rendered = renderPasswordResetEmail({ link });
+    const rendered = renderPasswordResetEmail({ link, language: extractEmailLanguage(c) });
     try {
       await sendMail({
         to: email,

@@ -1,3 +1,4 @@
+import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 import { renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
@@ -17,56 +18,57 @@ import { renderLayout, type RenderedEmailContent } from './layout.ts';
  * the attacker walked the security level down.
  */
 export function renderSecurityModeDowngradedEmail(params: {
+  language: SupportedEmailLanguage;
   /** Which factor's removal triggered the downgrade. */
   trigger: 'totp_disabled' | 'last_prf_passkey_removed';
   /** What the user was on before the auto-downgrade. */
   previousMode: 'always_totp' | 'maximum';
 }): RenderedEmailContent {
-  const triggerLabel =
+  const { language } = params;
+  const trigger =
     params.trigger === 'totp_disabled'
-      ? 'la désactivation de ton TOTP'
-      : 'la suppression de ta dernière passkey compatible PRF';
-  const previousLabel =
-    params.previousMode === 'always_totp' ? 'TOTP obligatoire' : 'Maximum';
+      ? emailT(language, 'securityModeDowngraded.triggerTotpDisabled')
+      : emailT(language, 'securityModeDowngraded.triggerLastPrfPasskey');
+  const previous =
+    params.previousMode === 'always_totp'
+      ? emailT(language, 'securityModeDowngraded.previousLabelAlwaysTotp')
+      : emailT(language, 'securityModeDowngraded.previousLabelMaximum');
 
-  const subject = 'Mode de sécurité abaissé à Standard';
+  const subject = emailT(language, 'securityModeDowngraded.subject');
 
   const bodyText = [
-    `Suite à ${triggerLabel}, ton mode de sécurité Nodea est repassé`,
-    `de "${previousLabel}" à "Standard" (mot de passe ou passkey).`,
+    emailT(language, 'securityModeDowngraded.summaryTextLine1', { values: { trigger } }),
+    emailT(language, 'securityModeDowngraded.summaryTextLine2', { values: { previous } }),
     ``,
-    `Concrètement : la prochaine connexion ne demandera que ton mot de`,
-    `passe (ou une passkey) — plus de second facteur obligatoire.`,
+    emailT(language, 'securityModeDowngraded.behaviorText'),
     ``,
-    `Si tu veux remonter le niveau de sécurité, depuis Compte → Sécurité :`,
-    `  - Réactive le TOTP, OU`,
-    `  - Enregistre une passkey compatible PRF (Touch ID, Face ID, Yubikey),`,
-    `  - puis change le mode dans la même page.`,
+    emailT(language, 'securityModeDowngraded.upgradeIntroText'),
+    `  - ${emailT(language, 'securityModeDowngraded.upgradeStep1')}`,
+    `  - ${emailT(language, 'securityModeDowngraded.upgradeStep2')}`,
+    `  - ${emailT(language, 'securityModeDowngraded.upgradeStep3')}`,
     ``,
-    `Si ce n'est PAS toi qui as déclenché cette opération, ton compte`,
-    `est peut-être compromis : change ton mot de passe immédiatement`,
-    `depuis Compte → Sécurité — toutes les sessions actives seront`,
-    `invalidées.`,
+    emailT(language, 'securityModeDowngraded.notYouText'),
   ].join('\n');
 
   const bodyHtml = [
-    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">Mode de sécurité abaissé à Standard</h2>`,
-    `<p style="margin:0 0 12px 0;">Suite à <strong>${triggerLabel}</strong>, ton mode de sécurité Nodea est repassé de <strong>«&nbsp;${previousLabel}&nbsp;»</strong> à <strong>«&nbsp;Standard&nbsp;»</strong> (mot de passe ou passkey).</p>`,
-    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:14px;">Concrètement&nbsp;: la prochaine connexion ne demandera que ton mot de passe (ou une passkey) — plus de second facteur obligatoire.</p>`,
-    `<p style="margin:0 0 8px 0;font-weight:600;">Pour remonter le niveau de sécurité (depuis Compte &rarr; Sécurité) :</p>`,
+    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">${emailT(language, 'securityModeDowngraded.heading')}</h2>`,
+    `<p style="margin:0 0 12px 0;">${emailT(language, 'securityModeDowngraded.summaryHtml', { values: { trigger, previous } })}</p>`,
+    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:14px;">${emailT(language, 'securityModeDowngraded.behaviorHtml')}</p>`,
+    `<p style="margin:0 0 8px 0;font-weight:600;">${emailT(language, 'securityModeDowngraded.upgradeIntroHtml')}</p>`,
     `<ul style="margin:0 0 24px 0;padding-left:20px;line-height:1.6;">`,
-    `  <li>Réactive le TOTP, ou</li>`,
-    `  <li>Enregistre une passkey compatible PRF (Touch ID, Face ID, Yubikey),</li>`,
-    `  <li>puis change le mode dans la même page.</li>`,
+    `  <li>${emailT(language, 'securityModeDowngraded.upgradeStep1')}</li>`,
+    `  <li>${emailT(language, 'securityModeDowngraded.upgradeStep2')}</li>`,
+    `  <li>${emailT(language, 'securityModeDowngraded.upgradeStep3')}</li>`,
     `</ul>`,
     `<div style="margin:24px 0;padding:16px;background:#fee2e2;border-left:4px solid #dc2626;border-radius:4px;">`,
-    `  <p style="margin:0;font-size:14px;color:#7f1d1d;"><strong>Si ce n'est PAS toi&nbsp;:</strong> ton compte est peut-être compromis. <strong>Change ton mot de passe immédiatement</strong> depuis Compte &rarr; Sécurité — toutes les sessions actives seront invalidées.</p>`,
+    `  <p style="margin:0;font-size:14px;color:#7f1d1d;"><strong>${emailT(language, 'securityModeDowngraded.notYouHtmlLabel')}</strong> ${emailT(language, 'securityModeDowngraded.notYouHtmlBody')}</p>`,
     `</div>`,
   ].join('\n');
 
   const layout = renderLayout({
     subject,
-    preheader: `Mode de sécurité Nodea repassé à Standard suite à ${triggerLabel}.`,
+    language,
+    preheader: emailT(language, 'securityModeDowngraded.preheader', { values: { trigger } }),
     bodyText,
     bodyHtml,
   });

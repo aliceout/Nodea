@@ -20,6 +20,7 @@ import {
 import { getConfig } from '../config.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderInviteEmail } from '../services/email/templates/invite.ts';
+import { extractEmailLanguage, type SupportedEmailLanguage } from '../services/email/i18n.ts';
 import type { AdminSourcesResponse } from '@nodea/shared';
 
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -40,9 +41,13 @@ function buildInviteLink(token: string): string {
   return base ? `${base}/register?invite=${encoded}` : `/register?invite=${encoded}`;
 }
 
-async function sendInviteMail(email: string, token: string): Promise<void> {
+async function sendInviteMail(
+  email: string,
+  token: string,
+  language: SupportedEmailLanguage,
+): Promise<void> {
   const link = buildInviteLink(token);
-  const rendered = renderInviteEmail({ link });
+  const rendered = renderInviteEmail({ link, language });
   await getEmailService().send({
     to: email,
     subject: rendered.subject,
@@ -87,9 +92,9 @@ adminRoutes.post('/invites', async (c) => {
   const invite = await createInvite(opts);
 
   try {
-    await sendInviteMail(invite.email, invite.token);
+    await sendInviteMail(invite.email, invite.token, extractEmailLanguage(c));
   } catch (err) {
-     
+
     console.error('[admin/invites] email send failed', err);
     // Surface to admin since they need to know the email didn't fly.
     return c.json({ error: 'email_send_failed' }, 502);
@@ -134,9 +139,9 @@ adminRoutes.post('/invites/:id/resend', async (c) => {
   });
 
   try {
-    await sendInviteMail(refreshed.email, refreshed.token);
+    await sendInviteMail(refreshed.email, refreshed.token, extractEmailLanguage(c));
   } catch (err) {
-     
+
     console.error('[admin/invites] resend email failed', err);
     return c.json({ error: 'email_send_failed' }, 502);
   }

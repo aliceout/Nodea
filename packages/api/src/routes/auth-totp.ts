@@ -24,6 +24,7 @@ import {
 } from '../auth/totp-backup-codes.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderSecurityModeDowngradedEmail } from '../services/email/templates/security-mode-downgraded.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
@@ -257,6 +258,7 @@ authTotpRoutes.post(
     // an SMTP hiccup must not turn the route into a 5xx.
     try {
       const rendered = renderSecurityModeDowngradedEmail({
+        language: extractEmailLanguage(c),
         trigger: 'totp_disabled',
         previousMode: downgradedFrom,
       });

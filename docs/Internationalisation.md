@@ -177,6 +177,50 @@ résolution finale, pas juste les top-level) : un côté qui aurait
      nouvelle langue. Vérifier qu'aucun fallback `defaultValue`
      n'apparaît, et que `pnpm test` reste vert.
 
+## Emails (côté API)
+
+Les 7 templates d'emails transactionnels (`invite`,
+`password-reset`, `register-activate`, `mfa-bypass` request +
+applied, `recovery-applied`, `security-mode-downgraded`) sont
+bilingues via un mécanisme distinct du provider web — pas de
+React côté Node, juste une fonction pure.
+
+```ts
+import { emailT, extractEmailLanguage } from '@/services/email/i18n';
+
+emailT('fr', 'invite.subject');                          // → 'Tu es invité·e à créer ton espace Nodea'
+emailT('en', 'invite.validity', { values: { ttl: 7 } }); // → 'The link is valid for 7 days.'
+
+extractEmailLanguage(c);                                 // 'fr' | 'en' (parse `Accept-Language`)
+```
+
+- **Sources** :
+  [`packages/api/src/services/email/locales/{fr,en}.ts`](../packages/api/src/services/email/locales/) —
+  arbres profonds (subject / preheader / heading / texte / HTML
+  par template). Le shape `EmailLocaleShape` est exporté depuis
+  `fr.ts` ; une clé manquante côté EN est une erreur TS au build.
+- **Détection de langue** : pas de colonne `users.email_language`
+  en clair (déclassée pour garder la frontière de chiffrement
+  propre). On lit `Accept-Language` de la requête qui déclenche
+  l'email — ça matche le browser du user pour les flux
+  self-service (register, reset, MFA bypass) et l'admin pour les
+  invites. Les emails sans contexte (futurs cron) tombent sur
+  `DEFAULT_LANGUAGE` (FR).
+- **Parité FR ↔ EN** :
+  [`packages/api/src/services/email/parity.test.ts`](../packages/api/src/services/email/parity.test.ts) —
+  même invariant que côté web, leaf-paths comparés.
+- **Layout partagé** : le footer (« — L'équipe Nodea » /
+  « — The Nodea team » + ligne « envoyé automatiquement ») et
+  l'attribut `<html lang>` viennent de `emailT('layout.*')`.
+  Aucun template n'a besoin de re-traduire ces blocs.
+
+Pour ajouter une 3ᵉ langue côté emails : créer
+`locales/<code>.ts` mirroir de `fr.ts`, étendre
+`SupportedEmailLanguage` dans
+[`packages/api/src/services/email/i18n.ts`](../packages/api/src/services/email/i18n.ts),
+ajouter le bag dans `RESOURCES`, et ajuster
+`parseAcceptLanguage` pour reconnaître le tag primaire.
+
 ## Notes
 
 - Les locales sont chargées **statiquement** : toute nouvelle

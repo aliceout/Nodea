@@ -32,6 +32,7 @@ import { authFactors, mfaTotp, users } from '../db/schema.ts';
 import type { AuthVariables } from '../middleware/require-user.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 
 import {
   base64UrlToBytes,
@@ -235,6 +236,7 @@ authPasskeyLoginRoutes.post('/passkey/login/finish', loginLimiter, async (c) => 
       if (refreshed) activeMode = refreshed.securityMode;
       try {
         const rendered = renderMfaBypassAppliedEmail({
+          language: extractEmailLanguage(c),
           factor: applied.factor,
           downgraded: applied.downgraded,
         });

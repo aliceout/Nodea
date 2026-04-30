@@ -34,6 +34,7 @@ import { mfaTotp, opaqueRecords, users } from '../db/schema.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
+import { extractEmailLanguage } from '../services/email/i18n.ts';
 
 import { loginLimiter } from './auth-shared.ts';
 
@@ -178,6 +179,7 @@ authLoginRoutes.post('/login/finish', loginLimiter, async (c) => {
       // this is just the « side-effect landed » follow-up.
       try {
         const rendered = renderMfaBypassAppliedEmail({
+          language: extractEmailLanguage(c),
           factor: applied.factor,
           downgraded: applied.downgraded,
         });

@@ -1,3 +1,4 @@
+import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
@@ -14,6 +15,7 @@ import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts
  * `EmailService.send()`.
  */
 export function renderRegisterActivateEmail(params: {
+  language: SupportedEmailLanguage;
   /** Absolute URL to the activation page including the token query
    *  param. Built by the route handler from `WEB_BASE_URL` + the
    *  generated token. The template doesn't append anything. */
@@ -21,35 +23,36 @@ export function renderRegisterActivateEmail(params: {
   /** Days until the link expires. Defaults to 7. */
   ttlDays?: number;
 }): RenderedEmailContent {
+  const { language } = params;
   const ttl = params.ttlDays ?? 7;
-  const subject = "Active ton compte Nodea";
+  const subject = emailT(language, 'registerActivate.subject');
   const linkSafe = escapeHtml(params.link);
 
   const bodyText = [
-    `Bienvenue sur Nodea !`,
+    emailT(language, 'registerActivate.heading'),
     ``,
-    `Pour activer ton compte et pouvoir te connecter, clique sur ce lien :`,
+    emailT(language, 'registerActivate.instructionText'),
     params.link,
     ``,
-    `Le lien expire dans ${ttl} jours.`,
+    emailT(language, 'registerActivate.validity', { values: { ttl } }),
     ``,
-    `Si tu n'es pas à l'origine de cette inscription, ignore ce message —`,
-    `aucun compte ne sera activé sans ce clic.`,
+    emailT(language, 'registerActivate.ignoreNote'),
   ].join('\n');
 
   const bodyHtml = [
-    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">Bienvenue sur Nodea !</h2>`,
-    `<p style="margin:0 0 24px 0;">Pour activer ton compte et pouvoir te connecter, clique sur le bouton ci-dessous&nbsp;:</p>`,
+    `<h2 style="margin:0 0 16px 0;font-size:18px;font-weight:600;color:#111827;">${escapeHtml(emailT(language, 'registerActivate.heading'))}</h2>`,
+    `<p style="margin:0 0 24px 0;">${escapeHtml(emailT(language, 'registerActivate.instructionHtml'))}&nbsp;</p>`,
     `<p style="margin:0 0 16px 0;text-align:center;">`,
-    `  <a href="${linkSafe}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">Activer mon compte</a>`,
+    `  <a href="${linkSafe}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">${escapeHtml(emailT(language, 'registerActivate.cta'))}</a>`,
     `</p>`,
-    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">Le lien expire dans ${ttl} jours.</p>`,
-    `<p style="margin:24px 0 0 0;color:#6b7280;font-size:13px;">Si tu n'es pas à l'origine de cette inscription, ignore ce message — aucun compte ne sera activé sans ce clic.</p>`,
+    `<p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">${escapeHtml(emailT(language, 'registerActivate.validity', { values: { ttl } }))}</p>`,
+    `<p style="margin:24px 0 0 0;color:#6b7280;font-size:13px;">${escapeHtml(emailT(language, 'registerActivate.ignoreNote'))}</p>`,
   ].join('\n');
 
   const layout = renderLayout({
     subject,
-    preheader: `Active ton compte Nodea — lien valable ${ttl} jours.`,
+    language,
+    preheader: emailT(language, 'registerActivate.preheader', { values: { ttl } }),
     bodyText,
     bodyHtml,
   });
