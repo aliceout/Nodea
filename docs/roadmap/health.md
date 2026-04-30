@@ -448,30 +448,45 @@ exempté de guard, intentionnel et documenté dans CLAUDE.md).
        traiter au Tier 11 (doc reconciliation) — soit on
        l'écrit, soit on retire la référence.
 
-### 9. Couverture crypto + intégration auth
+### 9. Couverture crypto + intégration auth — livré
 
-**Pain** : CLAUDE.md cible ≥ 90 % sur
-[`core/crypto/`](../../packages/web/src/core/crypto/) **non
-vérifié**, et exige des tests d'intégration sur :
-- register → login → change-password → logout → stale-cookie
-  rejection,
-- invite atomicity (le même code utilisé deux fois — la 2ᵉ
-  doit échouer).
+**Statut** : seuil ≥ 90 % bloquant CI figé sur
+[`core/crypto/`](../../packages/web/src/core/crypto/) (mesuré
+93.54 % au baseline, on a de la marge). Les deux tests
+d'intégration mandatés par CLAUDE.md sont en place.
 
-**Coût** : 2–3 jours.
+Bilan :
+  - **Seuil bloquant CI** : `vitest.config.ts` web déclare
+    `thresholds: { 'src/core/crypto/**/*.ts': { lines: 90,
+    functions: 90, branches: 90, statements: 90 } }`. La CI
+    échoue si une régression fait tomber crypto sous 90 % ;
+    le reste reste en monitoring sans seuil dur.
+  - **Test register → login → change-password → logout →
+    stale-cookie** : nouveau bloc « end-to-end auth lifecycle »
+    dans [`auth.test.ts`](../../packages/api/src/test/auth.test.ts)
+    qui chaîne tout. Vérifie à chaque étape que l'ancien
+    cookie est bien rejeté (3 vérifications stale-cookie en
+    bout-en-bout).
+  - **Test atomicité d'invite** : déjà fixé en Tier 8 (concurrent
+    `Promise.all` sur `/finish` avec le même token).
+  - **Refacto helpers** : `fullRegister` / `startRegistration` /
+    `finishRegistration` / `defaultUsernameFor` promus de
+    `auth-register-v2.test.ts` vers
+    [`helpers.ts`](../../packages/api/src/test/helpers.ts) pour
+    réutilisation cross-test.
+  - **`wipeMainKeyMaterial` audit** : déjà couvert dans le
+    sweep crypto du Tier 8 (cf.
+    [`security-audit.md`](../security-audit.md) §1) — la
+    fonction `wipeRawBytes` est appelée à tous les sites de
+    dérivation de KEK, et le doc-bloc explique que les
+    CryptoKey opaques sont laissées au garbage collector.
 
-- [ ] Mesurer la couverture crypto via Tier 3 ci-dessus.
-      Cible : ≥ 90 % bloquant en CI.
-- [ ] Écrire le test d'intégration register → … → stale-cookie
-      (probablement déjà partiellement présent mais pas
-      bout-en-bout).
-- [ ] Écrire le test d'atomicité d'invite (transaction Drizzle
-      `SELECT FOR UPDATE` → create user → delete invite). À
-      placer dans
-      [`packages/api/src/test/`](../../packages/api/src/test/).
-- [ ] Vérifier que le pattern `wipeMainKeyMaterial` est
-      respecté partout (les CryptoKey ne peuvent pas être
-      effacées, mais les bytes sources doivent l'être).
+- [x] Couverture crypto mesurée (93.54 % vs target 90 %).
+- [x] Seuil bloquant CI configuré dans `vitest.config.ts`.
+- [x] Test bout-en-bout register → login → change-password →
+       logout → stale-cookie écrit.
+- [x] Test concurrent invite atomicity (livré au Tier 8).
+- [x] Audit `wipeMainKeyMaterial` (livré au Tier 8).
 
 ---
 

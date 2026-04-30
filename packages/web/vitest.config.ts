@@ -47,6 +47,19 @@ export default defineConfig({
         'src/types/**',
         'src/i18n/locales/**',
       ],
+      // Fail CI when `core/crypto/` drops below CLAUDE.md's
+      // ≥ 90 % bar (we measured 93.54 % at the Tier A.3 baseline).
+      // The rest of the codebase stays in monitoring mode — no
+      // hard threshold yet, the coverage report is informational.
+      // Tier 9 of `docs/roadmap/health.md`.
+      thresholds: {
+        'src/core/crypto/**/*.ts': {
+          lines: 90,
+          functions: 90,
+          branches: 90,
+          statements: 90,
+        },
+      },
     },
   },
 });

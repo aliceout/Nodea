@@ -272,3 +272,120 @@ export function extractCookie(res: Response): string | null {
   const match = header.match(/nodea_session=([^;]+)/);
   return match ? `nodea_session=${match[1]}` : null;
 }
+
+/* ============================================================================
+ * Register helpers — drive the OPAQUE 2-step register flow against the
+ * test app. Promoted from `auth-register-v2.test.ts` so the lifecycle
+ * tests in `auth.test.ts` can reuse the same orchestration without
+ * dynamic imports.
+ *
+ * Wrapped-key blobs are deterministic placeholders ; the server stores
+ * them as opaque strings, the AAD bindings only matter at unwrap time.
+ * ========================================================================== */
+
+export interface StartedRegistration {
+  clientRegistrationState: string;
+  registrationResponse: string;
+  userId: string;
+  password: string;
+}
+
+/**
+ * Default username derives from the email's local part so two distinct
+ * emails in the same test don't trip the uniqueness check.
+ */
+export function defaultUsernameFor(email: string): string {
+  const local = email.split('@')[0] ?? 'user';
+  const cleaned = local.replace(/[^\p{L}\p{N}_.-]/gu, '');
+  return cleaned.length >= 2 ? cleaned : `${cleaned}_u`;
+}
+
+export async function startRegistration(
+  app: RequestableApp,
+  opts: { email: string; password: string; inviteToken?: string },
+): Promise<{ res: Response; started?: StartedRegistration }> {
+  await ready;
+  const { clientRegistrationState, registrationRequest } = client.startRegistration({
+    password: opts.password,
+  });
+
+  const body: Record<string, string> = {
+    email: opts.email,
+    registrationRequest,
+  };
+  if (opts.inviteToken) body.inviteToken = opts.inviteToken;
+
+  const res = await app.request('/auth/register/start', jsonPost(body));
+  if (res.status !== 200) return { res };
+
+  const { registrationResponse, userId } = (await res.json()) as {
+    registrationResponse: string;
+    userId: string;
+  };
+  return {
+    res,
+    started: {
+      clientRegistrationState,
+      registrationResponse,
+      userId,
+      password: opts.password,
+    },
+  };
+}
+
+export async function finishRegistration(
+  app: RequestableApp,
+  opts: {
+    email: string;
+    username?: string;
+    inviteToken?: string;
+    started: StartedRegistration;
+  },
+): Promise<Response> {
+  const { registrationRecord } = client.finishRegistration({
+    password: opts.started.password,
+    clientRegistrationState: opts.started.clientRegistrationState,
+    registrationResponse: opts.started.registrationResponse,
+  });
+
+  const body: Record<string, string> = {
+    email: opts.email,
+    username: opts.username ?? defaultUsernameFor(opts.email),
+    userId: opts.started.userId,
+    registrationRecord,
+    wrappedMainKey: 'test-wrapped-main-key',
+    wrappedMainKeyIv: 'test-iv-main',
+    wrappedKekPassword: 'test-wrapped-kek-password',
+    wrappedKekPasswordIv: 'test-iv-kek',
+  };
+  if (opts.inviteToken) body.inviteToken = opts.inviteToken;
+
+  return app.request('/auth/register/finish', jsonPost(body));
+}
+
+/**
+ * Drive both register steps and return the /finish response. Throws
+ * loud if /start failed — the test was probably mis-set-up.
+ */
+export async function fullRegister(
+  app: RequestableApp,
+  opts: {
+    email: string;
+    password: string;
+    username?: string;
+    inviteToken?: string;
+  },
+): Promise<Response> {
+  const { res, started } = await startRegistration(app, opts);
+  if (!started) {
+    throw new Error(
+      `fullRegister: /start failed with ${res.status} (${await res.text()})`,
+    );
+  }
+  return finishRegistration(app, {
+    email: opts.email,
+    ...(opts.username !== undefined ? { username: opts.username } : {}),
+    ...(opts.inviteToken !== undefined ? { inviteToken: opts.inviteToken } : {}),
+    started,
+  });
+}

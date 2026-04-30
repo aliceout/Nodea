@@ -17,9 +17,11 @@ import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
   extractCookie,
+  fullRegister,
   loginAs,
   passwordProofFor,
   seedAdmin,
+  seedInvite,
   seedUser,
 } from './helpers.ts';
 
@@ -92,6 +94,97 @@ describe('POST /auth/logout', () => {
     // /auth/me with the same cookie must now fail.
     const me = await app.request('/auth/me', { headers: { cookie } });
     expect(me.status).toBe(401);
+  });
+});
+
+/**
+ * End-to-end auth lifecycle (Tier 9 health.md) — chains every step
+ * CLAUDE.md asks for in a single test :
+ *   register (with invite) → login → change-password → logout →
+ *   stale-cookie rejection.
+ *
+ * The narrower « change-password kills the old session » test below
+ * exercises a slice of this with `seedUser` ; this one starts from
+ * the actual register flow so a regression that breaks the
+ * register → first-login transition gets caught here.
+ */
+describe('end-to-end auth lifecycle (register → login → change-password → logout)', () => {
+  it('honours every transition + rejects stale cookies at each step', async () => {
+    const FIRST_PWD = 'Initial-Lifecycle-Pass-77';
+    const SECOND_PWD = 'Rotated-Lifecycle-Pass-99';
+    const email = 'lifecycle@example.com';
+
+    // 1. Register via invite (the invited path activates the
+    //    account immediately, no magic-link round trip needed).
+    const invite = await seedInvite(email);
+    const registered = await fullRegister(app, {
+      email,
+      password: FIRST_PWD,
+      inviteToken: invite.token,
+    });
+    expect(registered.status).toBe(200);
+
+    // 2. Login with the password chosen at register time.
+    const firstCookie = await loginAs(app, email, FIRST_PWD);
+    expect(firstCookie).toBeTruthy();
+
+    const meFirst = await app.request('/auth/me', {
+      headers: { cookie: firstCookie },
+    });
+    expect(meFirst.status).toBe(200);
+
+    // 3. Rotate the password. The first session must die ; the
+    //    response carries a fresh cookie bound to the new envelope.
+    const change = await performChangePassword(
+      firstCookie,
+      email,
+      FIRST_PWD,
+      SECOND_PWD,
+    );
+    expect(change.status).toBe(200);
+
+    const secondCookie = extractCookie(change)!;
+    expect(secondCookie).toBeTruthy();
+    expect(secondCookie).not.toBe(firstCookie);
+
+    // 3a. Old cookie is dead — stale-cookie rejection.
+    const meStale = await app.request('/auth/me', {
+      headers: { cookie: firstCookie },
+    });
+    expect(meStale.status).toBe(401);
+
+    // 3b. New cookie carries the active session.
+    const meSecond = await app.request('/auth/me', {
+      headers: { cookie: secondCookie },
+    });
+    expect(meSecond.status).toBe(200);
+
+    // 3c. Old password no longer works — envelope replaced.
+    await expect(loginAs(app, email, FIRST_PWD)).rejects.toThrow();
+
+    // 4. Logout the second session.
+    const logout = await app.request('/auth/logout', {
+      method: 'POST',
+      headers: { cookie: secondCookie },
+    });
+    expect(logout.status).toBe(200);
+
+    // 4a. Second cookie is now also dead.
+    const meAfterLogout = await app.request('/auth/me', {
+      headers: { cookie: secondCookie },
+    });
+    expect(meAfterLogout.status).toBe(401);
+
+    // 5. Re-login with the new password — fresh cookie, full
+    //    lifecycle has come back to a clean state.
+    const thirdCookie = await loginAs(app, email, SECOND_PWD);
+    expect(thirdCookie).toBeTruthy();
+    expect(thirdCookie).not.toBe(secondCookie);
+
+    const meThird = await app.request('/auth/me', {
+      headers: { cookie: thirdCookie },
+    });
+    expect(meThird.status).toBe(200);
   });
 });
 
