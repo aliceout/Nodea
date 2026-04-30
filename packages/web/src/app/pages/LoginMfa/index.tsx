@@ -9,7 +9,7 @@ import {
   isValidBackupCode,
   isValidTotpCode,
 } from './lib/validation';
-import LostFlow, { type LostState } from './LostFlow';
+import { type LostState } from './LostFlow';
 import PasskeyStep from './PasskeyStep';
 import TotpStep from './TotpStep';
 

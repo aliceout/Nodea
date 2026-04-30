@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { invites, sessions, users } from '../db/schema.ts';
+import { invites, sessions } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
@@ -20,7 +20,6 @@ import {
   loginAs,
   passwordProofFor,
   seedAdmin,
-  seedInvite,
   seedUser,
 } from './helpers.ts';
 

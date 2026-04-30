@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent } from 'react';
 
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
 import { getDataPlugin } from '@/core/utils/ImportExport/registry.data.js';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import Feedback from '../../components/Feedback';
@@ -15,6 +16,7 @@ import Feedback from '../../components/Feedback';
  * `getNaturalKey` — re-importing the same file is a no-op rather
  * than a duplicator. */
 export default function ImportPanel() {
+  const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -29,7 +31,7 @@ export default function ImportPanel() {
     setError('');
     setSuccess('');
     try {
-      if (!mainKey) throw new Error('Clé de chiffrement absente.');
+      if (!mainKey) throw new Error(t('account.data.import.noKey'));
       const text = (await file.text()).trim();
       let count = 0;
       const parts: string[] = [];
@@ -45,18 +47,18 @@ export default function ImportPanel() {
 
       if (text.startsWith('{')) {
         const root = JSON.parse(text) as { modules?: Record<string, unknown[]> };
-        if (!root?.modules) throw new Error('Format JSON invalide.');
+        if (!root?.modules) throw new Error(t('account.data.import.invalidJson'));
         for (const [key, items] of Object.entries(root.modules)) {
           if (!Array.isArray(items) || items.length === 0) continue;
           let resolved;
           try {
             resolved = await pluginFor(key);
           } catch {
-            parts.push(`${key}: ignoré (inconnu)`);
+            parts.push(t('account.data.import.moduleSkippedUnknown', { values: { key } }));
             continue;
           }
           if (!resolved) {
-            parts.push(`${key}: ignoré (non activé)`);
+            parts.push(t('account.data.import.moduleSkippedDisabled', { values: { key } }));
             continue;
           }
           const { plugin, sid } = resolved;
@@ -73,14 +75,18 @@ export default function ImportPanel() {
             if (k) existing.add(k);
             created += 1;
           }
-          parts.push(`${key}: ${created} ajouté(s), ${skipped} doublon(s)`);
+          parts.push(
+            t('account.data.import.moduleResult', {
+              values: { key, created, skipped },
+            }),
+          );
           count += created;
         }
       } else if (text.startsWith('[')) {
         // Legacy mood array
         const arr = JSON.parse(text) as unknown[];
         const resolved = await pluginFor('mood');
-        if (!resolved) throw new Error('Module Mood non activé.');
+        if (!resolved) throw new Error(t('account.data.import.moodNotEnabled'));
         const { plugin, sid } = resolved;
         const existing: Set<string> = await plugin.listExistingKeys({ sid, mainKey });
         for (const payload of arr) {
@@ -90,14 +96,18 @@ export default function ImportPanel() {
           if (k) existing.add(k);
           count += 1;
         }
-        parts.push(`mood: ${count} ajouté(s)`);
+        parts.push(t('account.data.import.moodResult', { values: { count } }));
       } else {
-        throw new Error('Format inconnu.');
+        throw new Error(t('account.data.import.unknownFormat'));
       }
 
-      setSuccess(`Import terminé · ${count} entrée(s) — ${parts.join(' ; ')}`);
+      setSuccess(
+        t('account.data.import.successPrefix', {
+          values: { count, parts: parts.join(' ; ') },
+        }),
+      );
     } catch (err) {
-      setError('Erreur d’import : ' + ((err as Error)?.message ?? ''));
+      setError(t('account.data.import.errorPrefix') + ((err as Error)?.message ?? ''));
     } finally {
       setLoading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -106,7 +116,7 @@ export default function ImportPanel() {
 
   return (
     <section className="py-[24px] first:pt-0 last:pb-0">
-      <h3 className="mb-2 text-[16px] font-semibold text-ink">Importer</h3>
+      <h3 className="mb-2 text-[16px] font-semibold text-ink">{t('account.data.import.title')}</h3>
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
         <div>
           <Button
@@ -115,7 +125,7 @@ export default function ImportPanel() {
             onClick={() => inputRef.current?.click()}
             disabled={loading || !mainKey}
           >
-            {loading ? 'Import en cours…' : 'Importer un fichier'}
+            {loading ? t('account.data.import.ctaLoading') : t('account.data.import.cta')}
           </Button>
           <input
             ref={inputRef}
@@ -126,7 +136,7 @@ export default function ImportPanel() {
           />
         </div>
         <p className="text-[12px] leading-[1.55] text-muted">
-          JSON ou NDJSON exporté précédemment. Doublons ignorés.
+          {t('account.data.import.description')}
         </p>
       </div>
       {success ? <Feedback tone="success">{success}</Feedback> : null}

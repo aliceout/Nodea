@@ -278,6 +278,7 @@ export default function MarkdownEditor({
           contentEditable={!disabled}
           suppressContentEditableWarning
           role="textbox"
+          tabIndex={disabled ? -1 : 0}
           aria-multiline="true"
           aria-label="Contenu de l’entrée"
           data-placeholder={placeholder}

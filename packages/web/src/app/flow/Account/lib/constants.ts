@@ -4,14 +4,15 @@ import type { Tab } from './types';
 
 /** Tab strip rendered under the H1, in the order the user sees
  *  them. Adding a tab here is enough — the orchestrator dispatches
- *  on the discriminated union to render the matching view. */
-export const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'identity', label: 'Identité' },
-  { id: 'security', label: 'Sécurité' },
-  { id: 'preferences', label: 'Préférences' },
-  { id: 'modules', label: 'Modules' },
-  { id: 'data', label: 'Données' },
-  { id: 'danger', label: 'Suppression du compte' },
+ *  on the discriminated union to render the matching view, and
+ *  surfaces the localised label via `t('account.tabs.<id>')`. */
+export const TAB_IDS: ReadonlyArray<Tab> = [
+  'identity',
+  'security',
+  'preferences',
+  'modules',
+  'data',
+  'danger',
 ];
 
 /** The three theme preferences the Preferences tab `<select>`

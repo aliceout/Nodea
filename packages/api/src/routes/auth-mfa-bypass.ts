@@ -7,7 +7,7 @@ import {
   type MfaBypassRequestResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { mfaBypassRequests, users } from '../db/schema.ts';
+import { mfaBypassRequests } from '../db/schema.ts';
 import {
   BYPASS_APPLY_DELAY_MS,
   BYPASS_REQUEST_TTL_MS,

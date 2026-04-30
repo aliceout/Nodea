@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { modeLabel } from './security-mode';
+import { modeLabelKey } from './security-mode';
 
-describe('modeLabel', () => {
-  it('maps password_or_passkey to « Standard »', () => {
-    expect(modeLabel('password_or_passkey')).toBe('Standard');
+describe('modeLabelKey', () => {
+  it('maps password_or_passkey to "standard"', () => {
+    expect(modeLabelKey('password_or_passkey')).toBe('standard');
   });
 
-  it('maps always_totp to « TOTP requis »', () => {
-    expect(modeLabel('always_totp')).toBe('TOTP requis');
+  it('maps always_totp to "totpRequired"', () => {
+    expect(modeLabelKey('always_totp')).toBe('totpRequired');
   });
 
-  it('falls back to « Maximum » for any other mode', () => {
-    expect(modeLabel('maximum')).toBe('Maximum');
+  it('falls back to "maximum" for any other mode', () => {
+    expect(modeLabelKey('maximum')).toBe('maximum');
   });
 });

@@ -28,7 +28,7 @@ interface LibraryItemFixture extends Omit<LibraryItemPayload, 'cover_rid'> {
   cover_rid: null;
 }
 
-interface LibraryReviewFixture extends Omit<LibraryReviewPayload, 'item_rid'> {}
+type LibraryReviewFixture = Omit<LibraryReviewPayload, 'item_rid'>;
 
 export interface LibrarySeedFixture {
   /** Stable handle used to wire reviews to their parent item — the

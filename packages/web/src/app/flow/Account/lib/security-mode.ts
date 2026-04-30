@@ -1,16 +1,18 @@
 import type { SecurityMode } from '@nodea/shared';
 
-/** Short FR label for a security mode, displayed in the
- *  « Mode de sécurité » row's descriptor under the Security tab.
+export type ModeLabelKey = 'standard' | 'totpRequired' | 'maximum';
+
+/** Map a security mode to its label key under
+ *  `account.security.mode.labels.*`. The actual translation
+ *  happens at the call site via `t('account.security.mode.labels.<key>')` —
+ *  this helper stays pure (no React, no provider) so it remains
+ *  testable in isolation.
  *
- *  - `password_or_passkey` → « Standard »
- *  - `always_totp` → « TOTP requis »
- *  - anything else (currently `password_and_passkey`) → « Maximum »
- *
- *  Pure : no I/O, no React. Sat in `index.tsx` until the Account
- *  refacto extracted it here so the label is testable in isolation. */
-export function modeLabel(mode: SecurityMode): string {
-  if (mode === 'password_or_passkey') return 'Standard';
-  if (mode === 'always_totp') return 'TOTP requis';
-  return 'Maximum';
+ *  - `password_or_passkey` → `'standard'`
+ *  - `always_totp` → `'totpRequired'`
+ *  - anything else (currently `password_and_passkey`) → `'maximum'` */
+export function modeLabelKey(mode: SecurityMode): ModeLabelKey {
+  if (mode === 'password_or_passkey') return 'standard';
+  if (mode === 'always_totp') return 'totpRequired';
+  return 'maximum';
 }

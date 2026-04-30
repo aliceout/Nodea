@@ -347,7 +347,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
             <p className="text-[11px] italic text-muted">
               {attachments.length} / 3 image
               {attachments.length === 1 ? '' : 's'} — chiffrée
-              {attachments.length === 1 ? '' : 's'} avec l'entrée.
+              {attachments.length === 1 ? '' : 's'} avec l’entrée.
             </p>
           ) : null}
         </div>

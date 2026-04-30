@@ -31,33 +31,33 @@ export default function PreferencesTab() {
   return (
     <div className="max-w-[880px] divide-y divide-hair">
       <DescribedSection
-        title="Thème"
-        description="Clair, sombre, ou suit ton système."
+        title={t('settings.theme.title')}
+        description={t('account.preferences.themeDescription')}
         controlWidth={200}
         align="center"
       >
         <select
-          aria-label={t('settings.theme.ariaLabel', { defaultValue: 'Préférence de thème' })}
+          aria-label={t('settings.theme.ariaLabel')}
           value={theme}
           onChange={handleTheme}
           className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
         >
           {THEME_OPTIONS.map((id) => (
             <option key={id} value={id}>
-              {t(`settings.theme.options.${id}`, { defaultValue: id })}
+              {t(`settings.theme.options.${id}`)}
             </option>
           ))}
         </select>
       </DescribedSection>
 
       <DescribedSection
-        title="Langue"
-        description="Interface en français ou en anglais."
+        title={t('settings.language.title')}
+        description={t('account.preferences.languageDescription')}
         controlWidth={200}
         align="center"
       >
         <select
-          aria-label="Langue"
+          aria-label={t('account.preferences.languageAriaLabel')}
           value={language}
           onChange={handleLanguage}
           className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"

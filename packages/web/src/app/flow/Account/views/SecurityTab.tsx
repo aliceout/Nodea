@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import DescribedSection from '../components/DescribedSection';
-import { modeLabel } from '../lib/security-mode';
+import { modeLabelKey } from '../lib/security-mode';
 
 /** « Sécurité » tab — five rows that link to the dedicated auth
  *  pages for recovery code, password rotation, TOTP enrol, passkey
@@ -15,88 +16,102 @@ import { modeLabel } from '../lib/security-mode';
  *  combine » (security mode). Stateless on its own; each link
  *  target owns its own flow. */
 export default function SecurityTab() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const user = useNodeaStore(selectUser);
   const recoveryCodeSet = user?.recoveryCodeSet === true;
   const passkeysCount = user?.passkeysCount ?? 0;
   const totpEnabled = user?.totpEnabled === true;
+  const modeLabel = t(
+    `account.security.mode.labels.${modeLabelKey(user?.securityMode ?? 'password_or_passkey')}`,
+  );
 
   return (
     <div className="max-w-[880px] divide-y divide-hair">
       <DescribedSection
-        title="Code de récupération"
+        title={t('account.security.recoveryCode.title')}
         description={
           recoveryCodeSet
-            ? 'Un code de 12 mots BIP39 te permet de récupérer ton compte si tu oublies ton mot de passe — sans perdre tes données. Régénérer invalide immédiatement l’ancien code.'
-            : 'Sans ce code, oublier ton mot de passe = perte de toutes tes données. 12 mots BIP39 à noter une seule fois ; tu pourras récupérer ton compte avec, sans détruire tes entrées.'
+            ? t('account.security.recoveryCode.descriptionSet')
+            : t('account.security.recoveryCode.descriptionUnset')
         }
       >
         <Button variant="primary" size="sm" onClick={() => navigate('/recovery-code')}>
-          {recoveryCodeSet ? 'Régénérer' : 'Configurer'}
+          {recoveryCodeSet
+            ? t('account.security.recoveryCode.ctaSet')
+            : t('account.security.recoveryCode.ctaUnset')}
         </Button>
       </DescribedSection>
 
       <DescribedSection
-        title="Mot de passe"
-        description="Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais."
+        title={t('account.security.password.title')}
+        description={t('account.security.password.description')}
       >
         <Button variant="primary" size="sm" onClick={() => navigate('/change-password')}>
-          Renouveler
+          {t('account.security.password.cta')}
         </Button>
       </DescribedSection>
 
       <DescribedSection
-        title="2FA (TOTP)"
+        title={t('account.security.totp.title')}
         description={
           totpEnabled
             ? (
               <>
                 <span className="font-semibold text-accent-deep">
-                  TOTP activé.
+                  {t('account.security.totp.statusEnabled')}
                 </span>
                 <br />
-                Tu peux gérer tes codes de secours ou désactiver la 2FA depuis cet écran.
+                {t('account.security.totp.descriptionEnabledTail')}
               </>
             )
-            : 'Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth) en plus du mot de passe — une fuite ne suffit alors plus à entrer.'
+            : t('account.security.totp.descriptionDisabled')
         }
       >
         <Button variant="primary" size="sm" onClick={() => navigate('/totp')}>
-          {totpEnabled ? 'Gérer' : 'Activer'}
+          {totpEnabled
+            ? t('account.security.totp.ctaEnabled')
+            : t('account.security.totp.ctaDisabled')}
         </Button>
       </DescribedSection>
 
       <DescribedSection
-        title="Passkey"
+        title={t('account.security.passkey.title')}
         description={
           passkeysCount === 0
-            ? 'Une passkey (Touch ID, Face ID, Windows Hello, Yubikey, gestionnaire de mots de passe…) remplace la saisie du mot de passe à la connexion. Si elle est compatible PRF, elle déchiffre aussi tes données — sinon elle te connecte mais te demande quand même ton mot de passe.'
+            ? t('account.security.passkey.descriptionEmpty')
             : (
               <>
                 <span className="font-semibold text-accent-deep">
-                  {passkeysCount} passkey{passkeysCount > 1 ? 's' : ''} enregistrée{passkeysCount > 1 ? 's' : ''}.
+                  {passkeysCount === 1
+                    ? t('account.security.passkey.countOne', {
+                        values: { count: passkeysCount },
+                      })
+                    : t('account.security.passkey.countOther', {
+                        values: { count: passkeysCount },
+                      })}
                 </span>
                 <br />
-                Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.
+                {t('account.security.passkey.descriptionExtras')}
               </>
             )
         }
       >
         <Button variant="primary" size="sm" onClick={() => navigate('/passkeys')}>
-          {passkeysCount === 0 ? 'Ajouter' : 'Gérer'}
+          {passkeysCount === 0
+            ? t('account.security.passkey.ctaEmpty')
+            : t('account.security.passkey.ctaManage')}
         </Button>
       </DescribedSection>
 
       <DescribedSection
-        title="Mode de sécurité"
-        description={
-          'Combien de facteurs sont demandés à chaque connexion (mot de passe, TOTP, passkey). Mode actuel : ' +
-          modeLabel(user?.securityMode ?? 'password_or_passkey') +
-          '.'
-        }
+        title={t('account.security.mode.title')}
+        description={t('account.security.mode.description', {
+          values: { mode: modeLabel },
+        })}
       >
         <Button variant="primary" size="sm" onClick={() => navigate('/security-mode')}>
-          Modifier
+          {t('account.security.mode.cta')}
         </Button>
       </DescribedSection>
     </div>

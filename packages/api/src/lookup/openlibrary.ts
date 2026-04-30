@@ -227,17 +227,6 @@ function pickLanguage(
 }
 
 /**
- * Treat 0 / negative / undefined page counts as "unknown". Some
- * OL records carry `number_of_pages: 0` as a placeholder for
- * missing data, which would fail downstream validation that
- * (correctly) refuses zero-page books.
- */
-function positiveOrNull(n: number | undefined | null): number | null {
-  if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null;
-  return n;
-}
-
-/**
  * Map the free-form `physical_format` string Open Library returns
  * (typical values: "Paperback", "Hardcover", "Mass Market Paperback",
  * "eBook", "Kindle Edition", "Audio CD", "Audiobook"…) onto our

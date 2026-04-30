@@ -119,7 +119,7 @@ export const UsernameField = z
   .string()
   .min(2)
   .max(32)
-  .regex(/^[\p{L}\p{N}_.\-]+$/u, 'invalid_username');
+  .regex(/^[\p{L}\p{N}_.-]+$/u, 'invalid_username');
 
 /**
  * Change the authenticated user's username. Not password-gated — a

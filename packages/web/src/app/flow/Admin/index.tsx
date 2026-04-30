@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Bars3Icon } from '@heroicons/react/24/outline';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
@@ -16,7 +15,6 @@ import {
   type AdminUserRow,
   type AdminInviteRow,
 } from '@/core/api/client';
-import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import Tabs from '@/ui/dirk/Tabs';

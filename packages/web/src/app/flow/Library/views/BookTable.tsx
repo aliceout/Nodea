@@ -107,7 +107,17 @@ export default function BookTable({ items }: BookTableProps) {
               const ascActive = active && sort.direction === 'asc';
               const descActive = active && sort.direction === 'desc';
               return (
-                <th key={col.id} className={cn(col.className, 'font-semibold')}>
+                <th
+                  key={col.id}
+                  className={cn(col.className, 'font-semibold')}
+                  aria-sort={
+                    active
+                      ? sort.direction === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
+                >
                   <button
                     type="button"
                     onClick={() => handleSortClick(col.id)}
@@ -115,13 +125,6 @@ export default function BookTable({ items }: BookTableProps) {
                       'inline-flex cursor-pointer items-center gap-1.5 uppercase tracking-[0.04em] transition-colors',
                       active ? 'text-ink' : 'text-muted hover:text-ink',
                     )}
-                    aria-sort={
-                      active
-                        ? sort.direction === 'asc'
-                          ? 'ascending'
-                          : 'descending'
-                        : 'none'
-                    }
                   >
                     {col.label}
                     {/* Stacked double-arrow affordance — always

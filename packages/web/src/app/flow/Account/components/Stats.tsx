@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 interface StatRowProps {
@@ -29,14 +30,15 @@ function StatRow({ label, value, mono, accent }: StatRowProps) {
  *  wired through — once they are, this becomes a real-data block
  *  that pulls from the auth + module-config slices. */
 export default function Stats() {
+  const { t } = useI18n();
   return (
     <div>
       <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
-        En chiffres
+        {t('account.stats.title')}
       </div>
-      <StatRow label="Entrées chiffrées" value="428" mono />
-      <StatRow label="Série habits" value="12 j" mono accent />
-      <StatRow label="Membre depuis" value="mars 2024" />
+      <StatRow label={t('account.stats.encryptedEntries')} value="428" mono />
+      <StatRow label={t('account.stats.habitsStreak')} value="12 j" mono accent />
+      <StatRow label={t('account.stats.memberSince')} value="mars 2024" />
     </div>
   );
 }

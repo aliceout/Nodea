@@ -29,7 +29,6 @@ import {
 import {
   TEST_PASSWORD,
   extractCookie,
-  passwordProofFor,
   seedUser,
 } from './helpers.ts';
 import {

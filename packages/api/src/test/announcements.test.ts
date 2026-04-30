@@ -11,14 +11,6 @@ import type { AnnouncementResponse } from '@nodea/shared';
 
 const app = buildApp();
 
-function json(body: unknown): RequestInit {
-  return {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-}
-
 async function adminCookie(): Promise<string> {
   const admin = await seedAdmin();
   return loginAs(app, admin.email, ADMIN_PASSWORD);

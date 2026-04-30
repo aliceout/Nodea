@@ -36,8 +36,7 @@ import DocsTierTech, {
  * rather than as a separate FAQ tab so newcomers find both the
  * security model and the practical answers in a single page.
  */
-const TAB_IDS = ['newbie', 'advanced', 'tech'] as const;
-type TabId = (typeof TAB_IDS)[number];
+type TabId = 'newbie' | 'advanced' | 'tech';
 
 const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'newbie', label: "L'essentiel" },

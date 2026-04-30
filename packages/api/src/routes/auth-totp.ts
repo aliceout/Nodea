@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   TotpEnrollStartBodySchema,
@@ -269,7 +269,7 @@ authTotpRoutes.post(
       });
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
+         
         console.warn('[auth/totp] downgrade notification mail failed', err);
       }
     }

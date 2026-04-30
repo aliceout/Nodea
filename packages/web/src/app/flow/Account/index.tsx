@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Tabs from '@/ui/dirk/Tabs';
 import Topbar from '@/ui/dirk/Topbar';
 
-import { TABS } from './lib/constants';
+import { TAB_IDS } from './lib/constants';
 import type { Tab } from './lib/types';
 import DangerTab from './views/DangerTab';
 import DataTab from './views/DataTab';
@@ -38,21 +39,27 @@ import SecurityTab from './views/SecurityTab';
  * fight that behaviour.
  */
 export default function AccountPage() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const [tab, setTab] = useState<Tab>('identity');
+
+  const tabs = useMemo(
+    () => TAB_IDS.map((id) => ({ id, label: t(`account.tabs.${id}`) })),
+    [t],
+  );
 
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       <Topbar
-        label="Paramètres · Mon compte"
+        label={t('account.topbar')}
         onOpenMenu={() => setMobileMenuOpen(true)}
       />
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
         <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
-          Mon compte
+          {t('account.title')}
         </h1>
-        <Tabs tabs={TABS} value={tab} onChange={setTab} />
+        <Tabs tabs={tabs} value={tab} onChange={setTab} />
       </div>
 
       <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">

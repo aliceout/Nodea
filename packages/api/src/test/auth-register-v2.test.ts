@@ -48,7 +48,7 @@ function jsonPost(body: unknown): RequestInit {
  */
 function defaultUsernameFor(email: string): string {
   const local = email.split('@')[0] ?? 'user';
-  const cleaned = local.replace(/[^\p{L}\p{N}_.\-]/gu, '');
+  const cleaned = local.replace(/[^\p{L}\p{N}_.-]/gu, '');
   return cleaned.length >= 2 ? cleaned : `${cleaned}_u`;
 }
 

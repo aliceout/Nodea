@@ -20,17 +20,16 @@ import { daysAgo, monthsAgo, nowMinusDays } from './shared.ts';
  *     Goals composer has something realistic to display.
  */
 
-interface GoalFixture
-  extends Pick<
-    GoalsPayload,
-    | 'date'
-    | 'title'
-    | 'note'
-    | 'status'
-    | 'thread'
-    | 'completed_at'
-    | 'updated_at'
-  > {}
+type GoalFixture = Pick<
+  GoalsPayload,
+  | 'date'
+  | 'title'
+  | 'note'
+  | 'status'
+  | 'thread'
+  | 'completed_at'
+  | 'updated_at'
+>;
 
 export function buildGoalsFixtures(): GoalFixture[] {
   const thisYear = new Date().getFullYear();

@@ -146,7 +146,9 @@ describe('factor-wrap — main key under KEK (HKDF nodea:wrap-main + AES-GCM)', 
       buildMainKeyAAD(userId2),
     );
 
-    // Cross-unwrap must fail: each label produces a different sub-key.
+    // Cross-unwrap must fail in BOTH directions: each HKDF label
+    // produces a different sub-key, so a blob wrapped under one
+    // label cannot be opened with the other label's unwrap.
     await expect(
       unwrapKekUnderFactor(
         {
@@ -155,6 +157,16 @@ describe('factor-wrap — main key under KEK (HKDF nodea:wrap-main + AES-GCM)', 
         },
         sharedIkm,
         buildKekAAD(userId2, 'password'),
+      ),
+    ).rejects.toBeDefined();
+    await expect(
+      unwrapMainKeyUnderKek(
+        {
+          wrappedMainKey: wrappedAsKek.wrappedKek,
+          wrappedMainKeyIv: wrappedAsKek.wrappedKekIv,
+        },
+        sharedIkm,
+        buildMainKeyAAD(userId2),
       ),
     ).rejects.toBeDefined();
   });

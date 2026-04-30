@@ -8,6 +8,7 @@ import {
 } from '@/core/api/client';
 import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import IdentityRow from '../components/IdentityRow';
 import Stats from '../components/Stats';
@@ -22,6 +23,7 @@ import type { FeedbackState } from '../lib/types';
  * stays valid across the change.
  */
 export default function IdentityTab() {
+  const { t } = useI18n();
   const user = useNodeaStore(selectUser);
   const setAuth = useNodeaStore((s) => s.setAuth);
 
@@ -61,15 +63,15 @@ export default function IdentityTab() {
       await apiChangeUsername({ username: next });
       const me = await apiMe();
       if (me) setAuth(me);
-      setUsernameFeedback({ tone: 'success', text: 'Identifiant mis à jour.' });
+      setUsernameFeedback({ tone: 'success', text: t('account.identity.username.feedback.success') });
       setEditingUsername(false);
     } catch (err) {
       if (isApiError(err) && err.status === 409) {
-        setUsernameFeedback({ tone: 'error', text: 'Cet identifiant est déjà pris.' });
+        setUsernameFeedback({ tone: 'error', text: t('account.identity.username.feedback.taken') });
       } else if (isApiError(err) && err.status === 400) {
-        setUsernameFeedback({ tone: 'error', text: 'Format invalide.' });
+        setUsernameFeedback({ tone: 'error', text: t('account.identity.username.feedback.invalid') });
       } else {
-        setUsernameFeedback({ tone: 'error', text: 'Erreur lors de la modification.' });
+        setUsernameFeedback({ tone: 'error', text: t('account.identity.username.feedback.error') });
         if (import.meta.env.DEV) console.warn('account-username failed', err);
       }
     } finally {
@@ -101,7 +103,7 @@ export default function IdentityTab() {
       if (!emailPassword) {
         setEmailFeedback({
           tone: 'error',
-          text: 'Mot de passe actuel requis pour changer l’e-mail.',
+          text: t('account.identity.email.passwordRequired'),
         });
         setEmailSubmitting(false);
         return;
@@ -111,17 +113,17 @@ export default function IdentityTab() {
       const me = await apiMe();
       if (me) setAuth(me);
       setEmailPassword('');
-      setEmailFeedback({ tone: 'success', text: 'Adresse e-mail mise à jour.' });
+      setEmailFeedback({ tone: 'success', text: t('account.identity.email.feedback.success') });
       setEditingEmail(false);
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
-        setEmailFeedback({ tone: 'error', text: 'Mot de passe actuel incorrect.' });
+        setEmailFeedback({ tone: 'error', text: t('account.identity.email.feedback.wrongPassword') });
       } else if (isApiError(err) && err.status === 409) {
-        setEmailFeedback({ tone: 'error', text: 'Cette adresse est déjà utilisée.' });
+        setEmailFeedback({ tone: 'error', text: t('account.identity.email.feedback.taken') });
       } else if (isApiError(err) && err.status === 400) {
-        setEmailFeedback({ tone: 'error', text: 'Format invalide.' });
+        setEmailFeedback({ tone: 'error', text: t('account.identity.email.feedback.invalid') });
       } else {
-        setEmailFeedback({ tone: 'error', text: 'Erreur lors de la modification.' });
+        setEmailFeedback({ tone: 'error', text: t('account.identity.email.feedback.error') });
         if (import.meta.env.DEV) console.warn('account-email failed', err);
       }
     } finally {
@@ -133,11 +135,11 @@ export default function IdentityTab() {
     <div className="grid max-w-[880px] grid-cols-1 gap-14 lg:grid-cols-[1fr_240px]">
       <div className="divide-y divide-hair">
         <IdentityRow
-          label="Nom d’affichage"
+          label={t('account.identity.username.label')}
           value={user?.username ?? ''}
-          placeholder="non défini"
+          placeholder={t('account.identity.username.placeholder')}
           editing={editingUsername}
-          editLabel="Modifier le nom d’utilisateur·ice"
+          editLabel={t('account.identity.username.editLabel')}
           submitting={usernameSubmitting}
           feedback={usernameFeedback}
           onEdit={startEditUsername}
@@ -154,11 +156,11 @@ export default function IdentityTab() {
         </IdentityRow>
 
         <IdentityRow
-          label="Adresse e-mail"
+          label={t('account.identity.email.label')}
           value={user?.email ?? ''}
           placeholder=""
           editing={editingEmail}
-          editLabel="Modifier l’adresse e-mail"
+          editLabel={t('account.identity.email.editLabel')}
           submitting={emailSubmitting}
           feedback={emailFeedback}
           onEdit={startEditEmail}
@@ -178,7 +180,7 @@ export default function IdentityTab() {
               type="password"
               value={emailPassword}
               onChange={(e) => setEmailPassword(e.target.value)}
-              placeholder="Mot de passe actuel"
+              placeholder={t('account.identity.email.passwordPlaceholder')}
               autoComplete="current-password"
               className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
             />
