@@ -322,23 +322,42 @@ Drizzle + le dispatcher ISBN. Livré dans son intégralité.
 
 ---
 
-## Tier 6 — petites lignes
+## Tier 6 — petites lignes — livré
 
-Bricoles repérées au passage, pas urgentes.
+Bricoles repérées au passage, traitées dans la foulée.
 
-- [ ] [`web/src/core/auth/use-session.ts`](../../packages/web/src/core/auth/use-session.ts)
-       — **1208 LOC**. Mono-fichier qui tient l'orchestration auth
-       + les flows MFA + le bookkeeping de session. Difficile à
-       toucher tant que les pages auth (Tier 4) ne sont pas
-       refacto'ées ; à reprendre après.
-- [ ] [`web/src/core/api/client.ts`](../../packages/web/src/core/api/client.ts)
-       — **937 LOC**. Client Hono typé + helpers crypto +
-       wrappers fetch. Probablement OK ; à inspecter si jamais on
-       touche le routeur API.
-- [ ] [`web/src/app/flow/Review/config/steps.ts`](../../packages/web/src/app/flow/Review/config/steps.ts)
-       — **505 LOC**. Configuration déclarative ; peut tolérer la
-       taille. Au-dessus de 600 LOC il faudra le splitter par
-       review kind.
+- [x] [`web/src/core/auth/use-session.ts`](../../packages/web/src/core/auth/use-session.ts)
+       — **1208 → 159 LOC** (hook React seul). Modules sous
+       `core/auth/session/` :
+       `types.ts` (68), `login.ts` (236), `register.ts` (99),
+       `change-password.ts` (126), `recovery-code.ts` (274),
+       `passkeys.ts` (268), `totp.ts` (90),
+       `security-mode.ts` (54), `freshen-reauth.ts` (15).
+       Chaque helper reçoit un `deps` étroit (mutations store +
+       user) bindé par le hook depuis les sélecteurs Zustand.
+       Surface du hook inchangée — les 14 consommateurs (Login,
+       Register, Recover, RecoveryCode, ChangePassword,
+       LoginMfa, Totp, Passkeys, SecurityMode, DangerTab,
+       ProtectedRoute, Layout, SidebarHeader, use-session
+       lui-même) n'ont pas bougé.
+- [x] [`web/src/core/api/client.ts`](../../packages/web/src/core/api/client.ts)
+       — **937 → 122 LOC** (barrel re-export). Modules par
+       domaine sous `core/api/` :
+       `internal.ts` (82, request + ApiError + helpers),
+       `auth.ts` (299), `mfa.ts` (80), `passkeys.ts` (86),
+       `totp.ts` (43), `security-mode.ts` (20),
+       `library.ts` (148), `admin.ts` (153),
+       `storage.ts` (43, modules-config + user-preferences).
+       Surface inchangée — les 38+ call-sites continuent
+       d'importer depuis `core/api/client.ts`.
+- [x] [`web/src/app/flow/Review/config/steps.ts`](../../packages/web/src/app/flow/Review/config/steps.ts)
+       — **505 → 267 LOC**. Types extraits dans
+       `step-types.ts` (92), tableaux de champs YearCompass
+       dans `step-fields.ts` (190). Le fichier `steps.ts`
+       garde STEPS, GROUP_LABELS, QUESTION_STEPS,
+       `questionPosition`, `setByPath`, `getByPath`. Surface
+       inchangée pour les 5 importeurs (Wizard, Reader, List,
+       StepNav, SectionForm) via re-export des types.
 - [ ] **Plafond global** : viser ≤ 300 LOC pour tout fichier `.tsx`
        de feuille (composant, view, page d'auth simple). Les
        providers (`*Provider`) tolèrent ≤ 500 LOC par design,
