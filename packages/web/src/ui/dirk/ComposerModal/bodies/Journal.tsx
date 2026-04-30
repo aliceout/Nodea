@@ -55,7 +55,7 @@ interface JournalBodyProps {
  * an in-flight typing session is never clobbered.
  */
 export default function JournalBody({ onClose }: JournalBodyProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['journal']?.moduleUserId ?? null;
@@ -100,8 +100,8 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
   // the canonical default since the surface is never empty
   // there anyway.
   const prompt = useMemo(
-    () => (isEdit ? undefined : pickJournalPrompt()),
-    [isEdit],
+    () => (isEdit ? undefined : pickJournalPrompt(language)),
+    [isEdit, language],
   );
 
   // Auto-load any draft sitting in localStorage as soon as it
@@ -359,7 +359,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
         submitting={submitting}
         error={error}
         submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
-        submittingLabel={isEdit ? 'Mise à jour…' : 'Enregistrement…'}
+        submittingLabel={isEdit ? t('passage.composer.submittingUpdate') : t('common.states.saving')}
       />
     </>
   );

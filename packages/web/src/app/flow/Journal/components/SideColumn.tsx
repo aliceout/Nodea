@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Input from '@/ui/atoms/dirk/Input';
 import FilterChip from '@/ui/dirk/FilterChip';
 
@@ -16,6 +17,7 @@ import { useJournalData, useJournalFilters } from '../context';
  * survive the current filter.
  */
 export default function SideColumn() {
+  const { t, language } = useI18n();
   const { entries, stats } = useJournalData();
   const {
     search,
@@ -30,53 +32,53 @@ export default function SideColumn() {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
-        <SectionLabel>Recherche</SectionLabel>
+        <SectionLabel>{t('passage.side.search')}</SectionLabel>
         <Input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Titre ou contenu…"
-          aria-label="Rechercher dans le journal"
+          placeholder={t('passage.side.searchPlaceholder')}
+          aria-label={t('passage.side.searchAria')}
         />
       </section>
 
       <section>
-        <SectionLabel>Vue</SectionLabel>
+        <SectionLabel>{t('passage.side.view')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={groupBy === 'thread'}
             onClick={() => setGroupBy('thread')}
-            label="Par fil"
+            label={t('passage.side.viewByThread')}
           />
           <FilterChip
             active={groupBy === 'month'}
             onClick={() => setGroupBy('month')}
-            label="Par mois"
+            label={t('passage.side.viewByMonth')}
           />
         </div>
       </section>
 
       {groupBy === 'thread' ? (
         <section>
-          <SectionLabel>Fils</SectionLabel>
+          <SectionLabel>{t('passage.side.threads')}</SectionLabel>
           {threads.length === 0 ? (
             <p className="text-[12px] italic text-muted">
-              Tu n’as pas encore créé de fil.
+              {t('passage.side.threadsEmpty')}
             </p>
           ) : (
             <div className="flex flex-wrap gap-1">
               <FilterChip
                 active={threadFilter === null}
                 onClick={() => setThreadFilter(null)}
-                label="Tous"
+                label={t('passage.side.threadsAll')}
                 count={entries.length}
               />
-              {threads.map((t) => (
+              {threads.map((thread) => (
                 <FilterChip
-                  key={t}
-                  active={threadFilter === t}
-                  onClick={() => setThreadFilter(t)}
-                  label={t}
+                  key={thread}
+                  active={threadFilter === thread}
+                  onClick={() => setThreadFilter(thread)}
+                  label={thread}
                 />
               ))}
             </div>
@@ -85,30 +87,31 @@ export default function SideColumn() {
       ) : null}
 
       <section>
-        <SectionLabel>Stats</SectionLabel>
+        <SectionLabel>{t('passage.side.stats')}</SectionLabel>
         <dl className="space-y-2 text-[12px] text-ink-soft">
           <div className="flex items-baseline justify-between gap-2">
-            <dt>Entrées</dt>
+            <dt>{t('passage.side.statsEntries')}</dt>
             <dd className="tabular-nums text-ink">{stats.totalEntries}</dd>
           </div>
           <div className="flex items-baseline justify-between gap-2">
-            <dt>Mots écrits</dt>
+            <dt>{t('passage.side.statsWords')}</dt>
             <dd className="tabular-nums text-ink">
-              {stats.totalWords.toLocaleString('fr-FR')}
+              {stats.totalWords.toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-2">
-            <dt>Série</dt>
+            <dt>{t('passage.side.statsStreak')}</dt>
             <dd className="text-right">
               <span className="tabular-nums text-ink">
-                {stats.streakDays}{' '}
-                {stats.streakDays === 1 ? 'jour' : 'jours'}
+                {stats.streakDays === 1
+                  ? t('passage.side.streakDayOne', { values: { count: stats.streakDays } })
+                  : t('passage.side.streakDayOther', { values: { count: stats.streakDays } })}
               </span>
               {stats.streakDays > 0 ? (
                 <p className="text-[11px] text-muted">
                   {stats.streakIncludesToday
-                    ? "jusqu'à aujourd'hui"
-                    : "jusqu'à hier"}
+                    ? t('passage.side.streakUntilToday')
+                    : t('passage.side.streakUntilYesterday')}
                 </p>
               ) : null}
             </dd>

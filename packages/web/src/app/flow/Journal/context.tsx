@@ -16,6 +16,7 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
@@ -88,11 +89,15 @@ const {
   JournalActionsValue
 >('Journal');
 
+// `JournalProvider` lives below — these hooks come from the
+// factory above; splitting would defeat its purpose.
+// eslint-disable-next-line react-refresh/only-export-components
 export { useJournalData, useJournalFilters, useJournalActions };
 
 /* ---- Provider --------------------------------------------------- */
 
 export function JournalProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   // ---- Pulled from the global store ----
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
@@ -140,15 +145,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       .catch((err: unknown) => {
         if (cancelled) return;
         const message =
-          err instanceof Error
-            ? err.message
-            : 'Erreur lors du chargement du journal.';
+          err instanceof Error ? err.message : t('passage.context.loadFailed');
         setLoad({ status: 'error', message });
       });
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, journalVersion]);
+  }, [mainKey, moduleUserId, journalVersion, t]);
 
   // ---- Derived ----
   const stats = useMemo<JournalStats>(() => computeStats(entries), [entries]);
@@ -235,7 +238,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     async (entry: JournalEntry) => {
       if (!mainKey || !moduleUserId) return;
       const label = entry.title ?? entry.dateLabel;
-      if (!window.confirm(`Supprimer « ${label} » ?`)) return;
+      if (!window.confirm(t('passage.context.confirmDelete', { values: { label } })))
+        return;
       const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
@@ -246,7 +250,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         if (import.meta.env.DEV) console.warn('journal: delete failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpJournalVersion],
+    [mainKey, moduleUserId, bumpJournalVersion, t],
   );
 
   const openReader = useCallback((id: string) => setReadingId(id), []);

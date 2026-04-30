@@ -1,1 +1,60 @@
-{}
+{
+  "title": "Journal",
+  "topbar": {
+    "labelOne": "Journal · {count} entrée",
+    "labelOther": "Journal · {count} entrées",
+    "newCta": "+ Nouvelle entrée",
+    "readerLabel": "Journal · {position} / {total}"
+  },
+  "list": {
+    "loading": "Chargement du journal…",
+    "empty": "Aucune entrée pour cette sélection.",
+    "groupCountNoun": "entrée",
+    "noThread": "— sans thread —"
+  },
+  "row": {
+    "openAria": "Ouvrir {label} en lecture",
+    "imageAria": "Ouvrir l’image dans le lecteur",
+    "imageTitle": "Voir en grand",
+    "readAria": "Ouvrir en lecture",
+    "readTitle": "Lire",
+    "editAria": "Modifier l’entrée",
+    "deleteAria": "Supprimer l’entrée"
+  },
+  "clamped": {
+    "readMore": "lire la suite →"
+  },
+  "side": {
+    "search": "Recherche",
+    "searchPlaceholder": "Titre ou contenu…",
+    "searchAria": "Rechercher dans le journal",
+    "view": "Vue",
+    "viewByThread": "Par fil",
+    "viewByMonth": "Par mois",
+    "threads": "Fils",
+    "threadsEmpty": "Tu n’as pas encore créé de fil.",
+    "threadsAll": "Tous",
+    "stats": "Stats",
+    "statsEntries": "Entrées",
+    "statsWords": "Mots écrits",
+    "statsStreak": "Série",
+    "streakDayOne": "{count} jour",
+    "streakDayOther": "{count} jours",
+    "streakUntilToday": "jusqu’à aujourd’hui",
+    "streakUntilYesterday": "jusqu’à hier"
+  },
+  "reader": {
+    "noThreadEyebrow": "— sans fil —",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "prev": "Précédent",
+    "next": "Suivant"
+  },
+  "context": {
+    "loadFailed": "Erreur lors du chargement du journal.",
+    "confirmDelete": "Supprimer « {label} » ?"
+  },
+  "composer": {
+    "submittingUpdate": "Mise à jour…"
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import DirkButton from '@/ui/atoms/dirk/Button';
@@ -81,9 +82,11 @@ export default function MarkdownEditor({
   onModeChange,
   minHeightPx = 180,
   maxHeightPx = 360,
-  placeholder = 'Ce qui te traverse aujourd’hui — au long, sans contrainte.',
+  placeholder: placeholderProp,
   fillParent = false,
 }: MarkdownEditorProps) {
+  const { t } = useI18n();
+  const placeholder = placeholderProp ?? t('modals.composer.markdownDefaultPlaceholder');
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const ceRef = useRef<HTMLDivElement | null>(null);
   const prevMode = useRef<'visual' | 'markdown'>(mode);
@@ -280,7 +283,7 @@ export default function MarkdownEditor({
           role="textbox"
           tabIndex={disabled ? -1 : 0}
           aria-multiline="true"
-          aria-label="Contenu de l’entrée"
+          aria-label={t('modals.composer.markdownContentAria')}
           data-placeholder={placeholder}
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}

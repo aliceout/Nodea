@@ -1,4 +1,5 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -54,6 +55,7 @@ export default function JournalPage() {
  *  (when the user is reading an entry) and the regular module
  *  shell. Both routes rely on the `<JournalProvider>` for state. */
 function JournalView() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useJournalData();
@@ -63,15 +65,17 @@ function JournalView() {
     return <ReaderShell />;
   }
 
+  const topbarLabel =
+    entries.length === 1
+      ? t('passage.topbar.labelOne', { values: { count: entries.length } })
+      : t('passage.topbar.labelOther', { values: { count: entries.length } });
+
   return (
     <ModuleShell
       topbar={
-        <Topbar
-          label={`Journal · ${entries.length} ${entries.length === 1 ? 'entrée' : 'entrées'}`}
-          onOpenMenu={() => setMobileMenuOpen(true)}
-        >
+        <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
           <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
-            + Nouvelle entrée
+            {t('passage.topbar.newCta')}
           </Button>
         </Topbar>
       }

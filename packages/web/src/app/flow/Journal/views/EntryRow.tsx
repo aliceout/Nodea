@@ -4,6 +4,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/HoverActions';
 
@@ -24,6 +25,7 @@ interface EntryRowProps {
  * from the actions context ; only the entry comes in as a prop.
  */
 export default function EntryRow({ entry }: EntryRowProps) {
+  const { t } = useI18n();
   const { openReader, editEntry, deleteEntry } = useJournalActions();
   const onRead = () => openReader(entry.id);
 
@@ -33,7 +35,9 @@ export default function EntryRow({ entry }: EntryRowProps) {
         type="button"
         onClick={onRead}
         className="w-[110px] shrink-0 cursor-pointer text-left text-[12px] tabular-nums text-muted transition-colors hover:text-accent"
-        aria-label={`Ouvrir ${entry.title ?? entry.dateLabel} en lecture`}
+        aria-label={t('passage.row.openAria', {
+          values: { label: entry.title ?? entry.dateLabel },
+        })}
       >
         {entry.dateLabel}
       </button>
@@ -51,8 +55,8 @@ export default function EntryRow({ entry }: EntryRowProps) {
                 type="button"
                 onClick={onRead}
                 className="h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-hair bg-bg-2 transition-opacity hover:opacity-80"
-                aria-label="Ouvrir l'image dans le lecteur"
-                title="Voir en grand"
+                aria-label={t('passage.row.imageAria')}
+                title={t('passage.row.imageTitle')}
               >
                 <img
                   src={attachmentSrc(att)}
@@ -71,8 +75,8 @@ export default function EntryRow({ entry }: EntryRowProps) {
           size="sm"
           iconOnly
           onClick={onRead}
-          aria-label="Ouvrir en lecture"
-          title="Lire"
+          aria-label={t('passage.row.readAria')}
+          title={t('passage.row.readTitle')}
         >
           <BookOpenIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
@@ -81,8 +85,8 @@ export default function EntryRow({ entry }: EntryRowProps) {
           size="sm"
           iconOnly
           onClick={() => editEntry(entry)}
-          aria-label="Modifier l’entrée"
-          title="Modifier"
+          aria-label={t('passage.row.editAria')}
+          title={t('common.actions.edit')}
         >
           <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
@@ -91,8 +95,8 @@ export default function EntryRow({ entry }: EntryRowProps) {
           size="sm"
           iconOnly
           onClick={() => void deleteEntry(entry)}
-          aria-label="Supprimer l’entrée"
-          title="Supprimer"
+          aria-label={t('passage.row.deleteAria')}
+          title={t('common.actions.delete')}
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>

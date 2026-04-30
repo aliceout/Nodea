@@ -1,1 +1,60 @@
-{}
+{
+  "title": "Journal",
+  "topbar": {
+    "labelOne": "Journal · {count} entry",
+    "labelOther": "Journal · {count} entries",
+    "newCta": "+ New entry",
+    "readerLabel": "Journal · {position} / {total}"
+  },
+  "list": {
+    "loading": "Loading journal…",
+    "empty": "No entry matches the current filters.",
+    "groupCountNoun": "entry",
+    "noThread": "— no thread —"
+  },
+  "row": {
+    "openAria": "Open {label} in reader",
+    "imageAria": "Open image in reader",
+    "imageTitle": "View larger",
+    "readAria": "Open in reader",
+    "readTitle": "Read",
+    "editAria": "Edit entry",
+    "deleteAria": "Delete entry"
+  },
+  "clamped": {
+    "readMore": "read more →"
+  },
+  "side": {
+    "search": "Search",
+    "searchPlaceholder": "Title or content…",
+    "searchAria": "Search journal",
+    "view": "View",
+    "viewByThread": "By thread",
+    "viewByMonth": "By month",
+    "threads": "Threads",
+    "threadsEmpty": "You haven't created any thread yet.",
+    "threadsAll": "All",
+    "stats": "Stats",
+    "statsEntries": "Entries",
+    "statsWords": "Words written",
+    "statsStreak": "Streak",
+    "streakDayOne": "{count} day",
+    "streakDayOther": "{count} days",
+    "streakUntilToday": "up to today",
+    "streakUntilYesterday": "up to yesterday"
+  },
+  "reader": {
+    "noThreadEyebrow": "— no thread —",
+    "edit": "Edit",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next"
+  },
+  "context": {
+    "loadFailed": "Failed to load journal.",
+    "confirmDelete": "Delete \"{label}\"?"
+  },
+  "composer": {
+    "submittingUpdate": "Updating…"
+  }
+}

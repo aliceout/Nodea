@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { JournalContent } from '@/lib/journal-markdown';
 
 const CLAMP_LINES = 4;
@@ -27,6 +28,7 @@ export default function ClampedJournalContent({
   text,
   onExpand,
 }: ClampedJournalContentProps) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [overflowing, setOverflowing] = useState(false);
 
@@ -61,7 +63,7 @@ export default function ClampedJournalContent({
           onClick={onExpand}
           className="mt-1 cursor-pointer text-[12px] text-accent underline-offset-2 transition-colors hover:underline"
         >
-          lire la suite →
+          {t('passage.clamped.readMore')}
         </button>
       ) : null}
     </div>

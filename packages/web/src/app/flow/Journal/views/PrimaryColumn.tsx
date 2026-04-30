@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import GroupBlock from '@/ui/dirk/GroupBlock';
 import PageHeading from '@/ui/dirk/PageHeading';
@@ -12,13 +13,14 @@ import EntryRow from './EntryRow';
  * props.
  */
 export default function PrimaryColumn() {
+  const { t } = useI18n();
   const { entries, load } = useJournalData();
   const { groupBy, groups } = useJournalFilters();
   const groupVariant = groupBy === 'month' ? 'eyebrow' : 'subtitle';
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading>Journal</PageHeading>
+      <PageHeading>{t('passage.title')}</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -31,16 +33,16 @@ export default function PrimaryColumn() {
 
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
-          <EmptyHint>Chargement du journal…</EmptyHint>
+          <EmptyHint>{t('passage.list.loading')}</EmptyHint>
         ) : groups.length === 0 ? (
-          <EmptyHint>Aucune entrée pour cette sélection.</EmptyHint>
+          <EmptyHint>{t('passage.list.empty')}</EmptyHint>
         ) : (
           groups.map(([groupLabel, items]) => (
             <GroupBlock
               key={groupLabel}
               label={groupLabel}
               count={items.length}
-              countNoun="entrée"
+              countNoun={t('passage.list.groupCountNoun')}
               variant={groupVariant}
             >
               {items.map((entry) => (

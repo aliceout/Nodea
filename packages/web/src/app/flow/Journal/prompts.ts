@@ -1,3 +1,6 @@
+import promptsEn from './data/prompts-en.json';
+import promptsFr from './data/prompts-fr.json';
+
 /**
  * Daily writing-prompt placeholder for the Journal Composer.
  *
@@ -12,24 +15,20 @@
  * same prompt, which avoids the « slot-machine » feel and lets the
  * prompt act like a daily orientation rather than ambient noise.
  *
- * Tone guideline : open-ended, low-stakes, no « do this ». Tutoie.
- * Add new prompts at the end so existing days don't shift.
+ * Why this lives under `app/flow/Journal/data/` and not
+ * `i18n/locales/`: the prompts are editorial content (open-ended
+ * suggestions, not UI chrome), and the `t()` helper returns a
+ * string — not an array. Same trade-off as `Mood/data/questions.ts`.
+ *
+ * Tone guideline : open-ended, low-stakes, no « do this ». Tutoie
+ * the FR list, second-person the EN one. Add new prompts at the
+ * end so existing days don't shift.
  */
 
-const PROMPTS: ReadonlyArray<string> = [
-  'Ce qui te traverse aujourd’hui — au long, sans contrainte.',
-  'Qu’est-ce qui s’est joué dans ta journée ?',
-  'Une chose que tu veux poser sur le papier…',
-  'Un moment qui t’est resté en tête.',
-  'Comment tu te sens, là, en ce moment précis ?',
-  'Un détail de la journée qui mérite d’être noté.',
-  'Ce que tu n’as pas eu le temps de dire à voix haute.',
-  'Une pensée à laisser ici pour la relire plus tard.',
-  'Si tu devais résumer ta journée en quelques lignes…',
-  'Quelque chose que tu as appris cette semaine.',
-  'Une rencontre, une lecture, une image qui t’a marqué·e.',
-  'Ce que tu choisis de garder de cette journée.',
-];
+const PROMPTS_BY_LANGUAGE: Record<string, ReadonlyArray<string>> = {
+  fr: promptsFr,
+  en: promptsEn,
+};
 
 /**
  * Day-of-year index — 1-based, January 1st = 1. UTC-agnostic
@@ -42,7 +41,9 @@ function dayOfYear(d: Date): number {
   return Math.floor(diff / (24 * 3600 * 1000));
 }
 
-export function pickJournalPrompt(now: Date = new Date()): string {
-  const idx = dayOfYear(now) % PROMPTS.length;
-  return PROMPTS[idx]!;
+export function pickJournalPrompt(language: string, now: Date = new Date()): string {
+  const pool = PROMPTS_BY_LANGUAGE[language] ?? promptsFr;
+  if (pool.length === 0) return '';
+  const idx = dayOfYear(now) % pool.length;
+  return pool[idx]!;
 }

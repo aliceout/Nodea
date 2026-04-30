@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { JournalContent } from '@/lib/journal-markdown';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
@@ -41,6 +42,7 @@ import { attachmentSrc } from '../hooks/imageResize';
  * reading entry, so `JournalView` can mount this unconditionally.
  */
 export default function ReaderShell() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { filtered } = useJournalFilters();
   const { readingId, editEntry, openReader, closeReader } = useJournalActions();
@@ -49,14 +51,20 @@ export default function ReaderShell() {
     readingId === null ? -1 : filtered.findIndex((e) => e.id === readingId);
   const entry = readingIndex >= 0 ? filtered[readingIndex]! : null;
 
-  const onPrev =
-    entry && readingIndex > 0
-      ? () => openReader(filtered[readingIndex - 1]!.id)
-      : null;
-  const onNext =
-    entry && readingIndex < filtered.length - 1
-      ? () => openReader(filtered[readingIndex + 1]!.id)
-      : null;
+  const onPrev = useMemo(
+    () =>
+      entry && readingIndex > 0
+        ? () => openReader(filtered[readingIndex - 1]!.id)
+        : null,
+    [entry, readingIndex, filtered, openReader],
+  );
+  const onNext = useMemo(
+    () =>
+      entry && readingIndex < filtered.length - 1
+        ? () => openReader(filtered[readingIndex + 1]!.id)
+        : null,
+    [entry, readingIndex, filtered, openReader],
+  );
 
   useEffect(() => {
     if (!entry) return undefined;
@@ -97,19 +105,19 @@ export default function ReaderShell() {
     <ModuleShell
       topbar={
         <Topbar
-          label={`Journal · ${position} / ${total}`}
+          label={t('passage.topbar.readerLabel', { values: { position, total } })}
           onOpenMenu={() => setMobileMenuOpen(true)}
         >
           <Button variant="ghost" size="sm" onClick={() => editEntry(entry)}>
             <PencilSquareIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            Modifier
+            {t('passage.reader.edit')}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             iconOnly
             onClick={closeReader}
-            aria-label="Fermer"
+            aria-label={t('passage.reader.close')}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -120,7 +128,7 @@ export default function ReaderShell() {
         <header className="mb-7">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-              {entry.thread || '— sans fil —'}
+              {entry.thread || t('passage.reader.noThreadEyebrow')}
             </p>
             <p className="text-[12px] tabular-nums text-muted">
               {entry.dateLabel}
@@ -158,7 +166,7 @@ export default function ReaderShell() {
             disabled={onPrev === null}
           >
             <ArrowLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            Précédent
+            {t('passage.reader.prev')}
           </Button>
           <span className="text-[11px] tabular-nums text-muted">
             {position} / {total}
@@ -169,7 +177,7 @@ export default function ReaderShell() {
             onClick={onNext ?? (() => undefined)}
             disabled={onNext === null}
           >
-            Suivant
+            {t('passage.reader.next')}
             <ArrowRightIcon className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </footer>

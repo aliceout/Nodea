@@ -18,6 +18,8 @@
   "composer": {
     "kbdSend": "envoyer",
     "kbdCancel": "annuler",
-    "encryptedLocally": "chiffré localement"
+    "encryptedLocally": "chiffré localement",
+    "markdownContentAria": "Contenu de l’entrée",
+    "markdownDefaultPlaceholder": "Ce qui te traverse aujourd’hui — au long, sans contrainte."
   }
 }

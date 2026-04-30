@@ -18,6 +18,8 @@
   "composer": {
     "kbdSend": "send",
     "kbdCancel": "cancel",
-    "encryptedLocally": "encrypted locally"
+    "encryptedLocally": "encrypted locally",
+    "markdownContentAria": "Entry content",
+    "markdownDefaultPlaceholder": "What's going through your mind today — at length, no constraint."
   }
 }
