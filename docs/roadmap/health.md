@@ -402,45 +402,53 @@ par plugin (Zod fait la coercion). Les interfaces internes
 Enjeux réels (l'app est e2e encrypted). À traiter sérieusement
 dès que le terrain est clean (Tier A).
 
-### 7. Audit sécurité — combler `security-audit.md`
+### 8. Audit sécurité — combler `security-audit.md` — livré
 
-**Pain** : CLAUDE.md référence
-`documentation/security-audit.md` et
-`documentation/global-audit.md` comme **références
-obligatoires à cross-checker avant tout PR sécurité**. Ces
-fichiers **n'existent pas dans le repo**. Le baseline qu'ils
-sont censés porter n'a jamais été figé. Auth Phase 2/4 sont
-landées, c'est le bon moment pour cristalliser.
+**Statut** : baseline posée dans
+[`docs/security-audit.md`](../security-audit.md). Audit
+exhaustif des 6 zones (crypto / auth / response leakage /
+git history / deps / CLAUDE.md security-checklist) ; les
+**2 findings critiques** trouvés ont été fixés dans le même
+cycle.
 
-**Coût** : 3–5 jours pour un audit honnête.
+Findings traités :
+  - 🚨 **Finding 1** (Critique) — Guards HMAC loggés via le
+    query string `?d=<guard>` par Hono `logger()`. Fix :
+    custom printer
+    [`sanitize-log-url.ts`](../../packages/api/src/middleware/sanitize-log-url.ts)
+    qui redacte `d=` et `token=` avant d'atteindre stdout +
+    10 tests Vitest qui figent le contrat.
+  - 🚨 **Finding 2** (Haute) — Atomicité d'invite non testée
+    en concurrent. Fix : test
+    [« rejects a second concurrent invite consumption »](../../packages/api/src/test/auth-register-v2.test.ts)
+    qui drive deux `/finish` en `Promise.all` et vérifie qu'un
+    seul user est créé.
 
-- [ ] Décider de l'emplacement : `docs/security-audit.md` ou
-      `documentation/security-audit.md`. Voir Tier 10 sur
-      `docs/` vs `documentation/`.
-- [ ] Sweep crypto : HKDF labels, branded types,
-      [`wipeMainKeyMaterial`](../../packages/web/src/core/crypto/),
-      pas de `window.mainKey` survivant, base64 source
-      unique.
-- [ ] Sweep auth : guards sur toutes les mutations
-      (CLAUDE.md exige le « factory of module routes driven
-      by a single typed array »), invite atomicity test
-      écrit, rate-limit sur tous les `/auth/*`, session
-      cookies avec les flags `httpOnly; Secure; SameSite=Lax;
-      Signed`.
-- [ ] Sweep réponse serveur : intégration test qui vérifie
-      qu'aucune réponse ne contient `guard` ou
-      `encrypted_key` d'un autre user (CLAUDE.md exige ce
-      test).
-- [ ] Sweep deps : `pnpm audit`, `npm-check-updates`. Lister
-      les deps non maintenues / non auditées.
-- [ ] Sweep secrets : `git log -p | grep -i 'secret\|key\|
-      token'` pour ne rien avoir laissé fuiter
-      historiquement.
-- [ ] Cross-check avec le `security-checklist` de CLAUDE.md
-      (≈ 9 cases) : pour chaque case, prouver dans le doc
-      qu'elle est respectée + cite un test.
+Le doc s'archive aussi le ⚠️ design-choice (`modules_config`
+exempté de guard, intentionnel et documenté dans CLAUDE.md).
 
-### 8. Couverture crypto + intégration auth
+- [x] Doc posé en `docs/security-audit.md` (la confusion
+       `docs/` vs `documentation/` se résoudra dans le Tier
+       11).
+- [x] Sweep crypto : HKDF labels, branded types,
+       wipeRawBytes, pas de leak global. ✅
+- [x] Sweep auth : guards via `collections/registry.ts`,
+       atomicité d'invite testée, rate-limit sur tous les
+       `/auth/*`, session cookies signés httpOnly. ✅
+- [x] Sweep réponse serveur : `toView()` strip `guard`,
+       admin route sélective, `/me` ne renvoie que les wrap
+       blobs du user authentifié. ✅
+- [x] Sweep deps : `pnpm audit --prod` clean (1 vuln
+       Playwright dev-only), crypto-deps toutes pinned. ✅
+- [x] Sweep secrets : `.env.example` propre, git log clean. ✅
+- [x] Cross-check security-checklist CLAUDE.md : 9/9 cases
+       respectées avec évidence. ✅
+- [ ] **Follow-up** : `documentation/global-audit.md`
+       reste référencé dans CLAUDE.md mais inexistant. À
+       traiter au Tier 11 (doc reconciliation) — soit on
+       l'écrit, soit on retire la référence.
+
+### 9. Couverture crypto + intégration auth
 
 **Pain** : CLAUDE.md cible ≥ 90 % sur
 [`core/crypto/`](../../packages/web/src/core/crypto/) **non
@@ -471,7 +479,7 @@ vérifié**, et exige des tests d'intégration sur :
 
 À traiter en dernier. Sans mesure, on optimise à l'aveugle.
 
-### 9. Bundle + load profiling
+### 10. Bundle + load profiling
 
 **Pain** : pas de mesure récente. Suspects :
 - Argon2 + WASM hash dans le main thread peut bloquer la
@@ -511,7 +519,7 @@ dépend des résultats.
 Drift à corriger en continu, pas de chantier dédié sauf
 clarification du `docs/` vs `documentation/`.
 
-### 10. Doc-code reconciliation
+### 11. Doc-code reconciliation
 
 **Pain** :
 - CLAUDE.md référence à la fois `docs/` et `documentation/`
@@ -522,7 +530,7 @@ clarification du `docs/` vs `documentation/`.
   largement développé maintenant.
 - [`security-audit.md`](../security-audit.md) et
   [`global-audit.md`](../global-audit.md) référencés mais
-  absents (cf. Tier 7).
+  absents (cf. Tier 8).
 - Les roadmaps cochées à 100 % doivent être archivées /
   supprimées plutôt que de traîner — la convention vient
   d'être appliquée sur `module-refacto.md` (commit `4e45616`)
@@ -557,21 +565,21 @@ clarification du `docs/` vs `documentation/`.
 2. **Tier A.3 (carte de couverture)** en parallèle — audit
    peu coûteux qui informe les Tiers suivants. Un `vitest
    --coverage` et 30 min de lecture du rapport.
-3. **Tier C.7 (security-audit)** ensuite — l'app est e2e
+3. **Tier C.8 (security-audit)** ensuite — l'app est e2e
    encrypted, on ne devrait pas pousser de Phase 5+ sans
    baseline figé.
 4. **Tier A.2 (legacy JSX)** + **Tier B.4 (errors unifiés)**
    en cycle court — les deux se feront naturellement avec
    un linter qui hurle.
-5. **Tier C.8 (crypto + auth integration tests)** — c'est le
+5. **Tier C.9 (crypto + auth integration tests)** — c'est le
    moment de rattraper la dette de tests une fois la carte
    de couverture lue.
-6. **Tier B.5 (shared keystone)** + **Tier E.10 (docs)** —
+6. **Tier B.5 (shared keystone)** + **Tier E.11 (docs)** —
    chantiers continus à tisser dans toutes les autres PRs.
-7. **Tier B.6 (factory contextes)** — wait-for-trigger,
-   recommandation : ne rien faire tant qu'un 5ᵉ module n'en
-   a pas besoin.
-8. **Tier D.9 (perf)** — en dernier. Mesurer avant
+7. **Tier B.6 (factory contextes)** — extraction faite (4
+   modules migrés), Habits + Review hériteront du même
+   contrat sans effort.
+8. **Tier D.10 (perf)** — en dernier. Mesurer avant
    d'optimiser.
 
 ## Décisions à figer

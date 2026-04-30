@@ -18,6 +18,7 @@ import { libraryLookupRoutes } from './routes/library-lookup.ts';
 import { createCollectionRoutes } from './routes/collection-factory.ts';
 import { COLLECTIONS } from './collections/registry.ts';
 import type { AuthVariables } from './middleware/require-user.ts';
+import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 
 /** Build a fresh Hono app. Exported so tests can assemble an app without side-effects. */
 export function buildApp() {
@@ -41,7 +42,13 @@ export function buildApp() {
     }),
   );
 
-  app.use('*', logger());
+  // Hono's logger() prints `<method> <url> <status> <duration>`.
+  // We hand it a sanitising printer so the HMAC `d=` guard
+  // (passed as a query param by the collection factory) and any
+  // `token=…` param never reach stdout. CLAUDE.md §Error handling
+  // forbids logging crypto material — see `docs/security-audit.md`
+  // Finding 1.
+  app.use('*', logger(redactingPrintFunc));
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 

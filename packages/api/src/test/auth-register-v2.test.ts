@@ -403,6 +403,77 @@ describe('POST /auth/register/finish — invited path', () => {
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ reason: 'invalid_token' });
   });
+
+  /**
+   * Closes Finding 2 of `docs/security-audit.md` — invite atomicity
+   * under concurrent consumption.
+   *
+   * The implementation in `auth/invites.ts` wraps the consumption in
+   * a `db.transaction(...)` with `SELECT … FOR UPDATE` so that two
+   * parallel /finish requests on the same token can't both succeed.
+   * That's a hard requirement per CLAUDE.md §Backend rules ; this
+   * test is the integration filet that catches a regression if
+   * someone removes the `.for('update')` later.
+   *
+   * Strategy : drive two `/start` calls in parallel (the invite isn't
+   * consumed yet, both succeed and produce distinct `started` states),
+   * then race two `/finish` calls. Postgres serialises the FOR UPDATE
+   * lock — whichever transaction reaches it first inserts the user
+   * and marks `usedBy` ; the loser sees the row as already-consumed
+   * and returns 401.
+   */
+  it('rejects a second concurrent invite consumption (atomicity)', async () => {
+    const invite = await seedInvite('race@example.com');
+
+    const startA = startRegistration({
+      email: 'race@example.com',
+      inviteToken: invite.token,
+    });
+    const startB = startRegistration({
+      email: 'race@example.com',
+      inviteToken: invite.token,
+    });
+    const [a, b] = await Promise.all([startA, startB]);
+    expect(a.started).toBeDefined();
+    expect(b.started).toBeDefined();
+
+    // Race the two /finish calls.
+    const finishA = finishRegistration({
+      email: 'race@example.com',
+      inviteToken: invite.token,
+      started: a.started!,
+    });
+    const finishB = finishRegistration({
+      email: 'race@example.com',
+      inviteToken: invite.token,
+      started: b.started!,
+    });
+    const [resA, resB] = await Promise.all([finishA, finishB]);
+
+    // Exactly one wins (200), the other gets 401 invalid_token (the
+    // invite was consumed by the winner under FOR UPDATE) — or 400
+    // email_taken if the loser slipped past the invite check but
+    // hit the user-row uniqueness constraint. Both outcomes are
+    // acceptable as long as exactly one user lands.
+    const statuses = [resA.status, resB.status].sort((x, y) => x - y);
+    expect(statuses[0]).toBe(200);
+    expect([400, 401]).toContain(statuses[1]);
+
+    // The invite must point to exactly one user, and exactly one
+    // user row must exist for that email.
+    const [usedInvite] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.id, invite.id));
+    expect(usedInvite!.usedBy).not.toBeNull();
+    expect(usedInvite!.usedAt).not.toBeNull();
+
+    const userRows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, 'race@example.com'));
+    expect(userRows).toHaveLength(1);
+  });
 });
 
 /* ============================================================================
