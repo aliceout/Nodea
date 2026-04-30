@@ -254,9 +254,21 @@ Bilan concret :
        fallbacks).
 - [x] [`Login.tsx`](../../packages/web/src/app/pages/Login.tsx)
        migré (les 2 `catch` du formulaire + de la passkey).
-- [ ] Migrer les autres pages auth (Register, Recover,
-       ChangePassword, RecoveryCode, Reset, Activate,
-       SecurityMode).
+- [x] Pages auth migrées : ChangePassword, Recover,
+       RecoveryCode, Register/RegisterForm, RequestReset,
+       Reset, SecurityMode (+ Login déjà fait dans le commit
+       de fondation). 4 nouvelles clés page-spécifiques
+       ajoutées dans `errors.recovery.*`, `errors.register.*`,
+       `errors.securityMode.*` (FR + EN) pour les overrides
+       sémantiques (code recovery vs password, email
+       mismatch, totp/passkey required actionable).
+- [ ] Activate.tsx — pattern incompatible (catch construit
+       un enum `reason` qui pilote des panels différents,
+       pas un setError). À traiter séparément si on uniformise
+       les Activate panels.
+- [ ] LoginMfa, Passkeys, Totp pages — patterns spéciaux
+       (WebAuthn cancel, panels de stage). Migration à
+       prévoir mais demande analyse au cas par cas.
 - [ ] Migrer les pages module (Account/views/IdentityTab,
        Library composer, Goals carry-over, etc.). Cousin
        direct du Tier 4 de [`i18n.md`](i18n.md).
