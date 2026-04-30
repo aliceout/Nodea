@@ -1,16 +1,13 @@
 import type { ReactNode } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import FilterChip from '@/ui/dirk/FilterChip';
 
 import { useGoalsActions, useGoalsData, useGoalsFilters } from '../context';
-import {
-  CANONICAL_STATUSES,
-  SORT_LABEL,
-  STATUS_LABEL,
-} from '../lib/constants';
+import { CANONICAL_STATUSES } from '../lib/constants';
 import type { SortBy } from '../lib/types';
 
 const SORT_VALUES: ReadonlyArray<SortBy> = ['date', 'updated', 'alpha'];
@@ -25,6 +22,7 @@ const SORT_VALUES: ReadonlyArray<SortBy> = ['date', 'updated', 'alpha'];
  * props.
  */
 export default function SideColumn() {
+  const { t } = useI18n();
   const { stats } = useGoalsData();
   const {
     search,
@@ -43,23 +41,23 @@ export default function SideColumn() {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
-        <SectionLabel>Recherche</SectionLabel>
+        <SectionLabel>{t('goals.side.search')}</SectionLabel>
         <Input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Titre, note ou fil…"
-          aria-label="Rechercher dans les objectifs"
+          placeholder={t('goals.side.searchPlaceholder')}
+          aria-label={t('goals.side.searchAria')}
         />
       </section>
 
       <section>
-        <SectionLabel>Statut</SectionLabel>
+        <SectionLabel>{t('goals.side.statusHeading')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={statusFilter === null}
             onClick={() => setStatusFilter(null)}
-            label="Tous"
+            label={t('goals.side.all')}
             count={stats.total}
           />
           {CANONICAL_STATUSES.map((s) => (
@@ -67,7 +65,7 @@ export default function SideColumn() {
               key={s}
               active={statusFilter === s}
               onClick={() => setStatusFilter(s)}
-              label={STATUS_LABEL[s]}
+              label={t(`goals.status.lower.${s}`)}
               count={s === 'open' ? stats.open : s === 'wip' ? stats.wip : stats.done}
             />
           ))}
@@ -75,37 +73,37 @@ export default function SideColumn() {
       </section>
 
       <section>
-        <SectionLabel>Grouper par</SectionLabel>
+        <SectionLabel>{t('goals.side.groupBy')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={groupBy === 'thread'}
             onClick={() => setGroupBy('thread')}
-            label="Thread"
+            label={t('goals.side.groupByThread')}
           />
           <FilterChip
             active={groupBy === 'year'}
             onClick={() => setGroupBy('year')}
-            label="Année"
+            label={t('goals.side.groupByYear')}
           />
         </div>
       </section>
 
       <section>
-        <SectionLabel>Trier par</SectionLabel>
+        <SectionLabel>{t('goals.side.sortBy')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           {SORT_VALUES.map((s) => (
             <FilterChip
               key={s}
               active={sortBy === s}
               onClick={() => setSortBy(s)}
-              label={SORT_LABEL[s]}
+              label={t(`goals.sort.${s}`)}
             />
           ))}
         </div>
       </section>
 
       <section>
-        <SectionLabel>Affichage</SectionLabel>
+        <SectionLabel>{t('goals.side.display')}</SectionLabel>
         <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink-soft">
           <input
             type="checkbox"
@@ -113,12 +111,12 @@ export default function SideColumn() {
             onChange={(e) => setHideDone(e.target.checked)}
             className="h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
           />
-          <span>Masquer les terminés ({stats.done})</span>
+          <span>{t('goals.side.hideDone', { values: { count: stats.done } })}</span>
         </label>
       </section>
 
       <section>
-        <SectionLabel>Actions</SectionLabel>
+        <SectionLabel>{t('goals.side.actions')}</SectionLabel>
         <Button
           variant="neutral"
           size="sm"
@@ -126,7 +124,7 @@ export default function SideColumn() {
           className="w-full justify-center"
         >
           <ArrowPathIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          Reporter sur l'année prochaine
+          {t('goals.side.carryOverCta')}
         </Button>
       </section>
     </aside>

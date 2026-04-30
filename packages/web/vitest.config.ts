@@ -31,5 +31,22 @@ export default defineConfig({
       '../shared/src/**/*.test.ts',
     ],
     testTimeout: 10_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
+      reportsDirectory: 'coverage',
+      // Source surface that should appear in coverage. Tests, configs,
+      // build artefacts, and ambient declarations don't count.
+      include: ['src/**/*.{ts,tsx}', '../shared/src/**/*.ts'],
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        '**/*.d.ts',
+        '**/types.ts',
+        'src/main.tsx',
+        'src/types/**',
+        'src/i18n/locales/**',
+      ],
+    },
   },
 });

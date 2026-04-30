@@ -1,1 +1,85 @@
-{}
+{
+  "title": "Goals",
+  "topbar": {
+    "labelOne": "Goals · {count} objectif",
+    "labelOther": "Goals · {count} objectifs",
+    "newCta": "+ Nouvel objectif"
+  },
+  "list": {
+    "loading": "Chargement des objectifs…",
+    "empty": "Aucun objectif pour cette sélection.",
+    "groupCountNoun": "objectif"
+  },
+  "row": {
+    "editAria": "Modifier l’objectif",
+    "deleteAria": "Supprimer l’objectif"
+  },
+  "statusPill": {
+    "ariaLabel": "Statut : {label}, cliquer pour cycler",
+    "title": "Statut : {label}"
+  },
+  "status": {
+    "lower": {
+      "open": "ouvert",
+      "wip": "en cours",
+      "done": "terminé"
+    },
+    "title": {
+      "open": "Ouvert",
+      "wip": "En cours",
+      "done": "Terminé"
+    }
+  },
+  "sort": {
+    "date": "Date",
+    "updated": "Récent",
+    "alpha": "A→Z"
+  },
+  "side": {
+    "search": "Recherche",
+    "searchPlaceholder": "Titre, note ou fil…",
+    "searchAria": "Rechercher dans les objectifs",
+    "statusHeading": "Statut",
+    "all": "Tous",
+    "groupBy": "Grouper par",
+    "groupByThread": "Thread",
+    "groupByYear": "Année",
+    "sortBy": "Trier par",
+    "display": "Affichage",
+    "hideDone": "Masquer les terminés ({count})",
+    "actions": "Actions",
+    "carryOverCta": "Reporter sur l’année prochaine"
+  },
+  "carryOver": {
+    "title": "Reporter les inachevés",
+    "intro": "Bascule les goals « ouverts » et « en cours » d’une année sur l’autre. Les goals terminés restent à leur année.",
+    "fromLabel": "De l’année",
+    "toLabel": "Vers l’année",
+    "invalidRange": "Renseigne deux années valides et différentes.",
+    "noneEmpty": "Aucun goal inachevé pour {year} — rien à reporter.",
+    "summaryOne": "{count} goal de {fromYear} va être reporté sur {toYear}.",
+    "summaryOther": "{count} goals de {fromYear} vont être reportés sur {toYear}.",
+    "moreCount": "… et {count} de plus",
+    "submitting": "Report en cours…",
+    "submitCta": "Reporter"
+  },
+  "composer": {
+    "draftRestored": "Brouillon en cours repris.",
+    "resetDraft": "Repartir à zéro",
+    "titlePlaceholder": "Titre — ex. Lancer un blog",
+    "monthAria": "Mois",
+    "monthPlaceholder": "— mois —",
+    "yearPlaceholder": "Année",
+    "yearAria": "Année (4 chiffres)",
+    "threadPlaceholder": "Threads (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo",
+    "existingThreads": "Existants :",
+    "notePlaceholder": "Note (optionnelle) — détails, contexte, échéance précise…",
+    "errors": {
+      "titleRequired": "Le titre est requis.",
+      "missingConfig": "Module Goals non configuré ou clé absente — reconnecte-toi.",
+      "invalidYear": "L’année doit être un nombre à 4 chiffres.",
+      "saveFailed": "Erreur lors de l’enregistrement."
+    },
+    "submittingUpdate": "Mise à jour…"
+  }
+}

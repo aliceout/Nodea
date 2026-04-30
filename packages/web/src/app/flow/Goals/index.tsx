@@ -1,4 +1,5 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -45,19 +46,22 @@ export default function GoalsPage() {
  *  sidebar) and the always-rendered (self-conditional) carry-over
  *  dialog. State + actions live in the contexts. */
 function GoalsView() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { stats } = useGoalsData();
 
+  const topbarLabel =
+    stats.total === 1
+      ? t('goals.topbar.labelOne', { values: { count: stats.total } })
+      : t('goals.topbar.labelOther', { values: { count: stats.total } });
+
   return (
     <ModuleShell
       topbar={
-        <Topbar
-          label={`Goals · ${stats.total} ${stats.total === 1 ? 'objectif' : 'objectifs'}`}
-          onOpenMenu={() => setMobileMenuOpen(true)}
-        >
+        <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
           <Button variant="primary" size="sm" onClick={() => openComposer('goal')}>
-            + Nouvel objectif
+            {t('goals.topbar.newCta')}
           </Button>
         </Topbar>
       }

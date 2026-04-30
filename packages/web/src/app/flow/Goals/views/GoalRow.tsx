@@ -1,5 +1,6 @@
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/HoverActions';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ interface GoalRowProps {
  * context ; only the entry itself comes in as a prop.
  */
 export default function GoalRow({ entry }: GoalRowProps) {
+  const { t } = useI18n();
   const { editEntry, deleteEntry } = useGoalsActions();
   return (
     <li className="group flex items-start gap-3 border-b border-hair py-3 last:border-b-0">
@@ -52,8 +54,8 @@ export default function GoalRow({ entry }: GoalRowProps) {
             size="sm"
             iconOnly
             onClick={() => editEntry(entry)}
-            aria-label="Modifier l’objectif"
-            title="Modifier"
+            aria-label={t('goals.row.editAria')}
+            title={t('common.actions.edit')}
           >
             <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
@@ -62,8 +64,8 @@ export default function GoalRow({ entry }: GoalRowProps) {
             size="sm"
             iconOnly
             onClick={() => void deleteEntry(entry)}
-            aria-label="Supprimer l’objectif"
-            title="Supprimer"
+            aria-label={t('goals.row.deleteAria')}
+            title={t('common.actions.delete')}
           >
             <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>

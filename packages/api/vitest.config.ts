@@ -62,5 +62,25 @@ export default defineConfig({
     poolOptions: { forks: { singleFork: true } },
     setupFiles: ['./src/test/setup.ts'],
     testTimeout: 20_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.ts'],
+      // Tests, fixtures, ambient .d.ts, and build/migration scripts
+      // don't count as production surface. Seed scripts are dev-only
+      // tooling — they have their own fixture round-trip tests via
+      // the e2e package, no need to count them here.
+      exclude: [
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/*.d.ts',
+        'src/test/**',
+        'src/seed/**',
+        'src/seed.ts',
+        'src/db/migrate.ts',
+        'src/db/migrate-test.ts',
+      ],
+    },
   },
 });

@@ -16,7 +16,6 @@ import Footer from '../components/Footer';
 import MarkdownEditor from '../components/MarkdownEditor';
 import {
   GOAL_STATUS_ACTIVE_TONE,
-  GOAL_STATUS_LABEL,
   MONTH_OPTIONS,
   type GoalStatus,
 } from '../lib/constants';
@@ -206,15 +205,15 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
     setError(null);
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      setError('Le titre est requis.');
+      setError(t('goals.composer.errors.titleRequired'));
       return;
     }
     if (!mainKey || !moduleUserId) {
-      setError('Module Goals non configuré ou clé absente — reconnecte-toi.');
+      setError(t('goals.composer.errors.missingConfig'));
       return;
     }
     if (year && !/^\d{4}$/.test(year)) {
-      setError('L’année doit être un nombre à 4 chiffres.');
+      setError(t('goals.composer.errors.invalidYear'));
       return;
     }
     setSubmitting(true);
@@ -251,7 +250,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
+        err instanceof Error ? err.message : t('goals.composer.errors.saveFailed'),
       );
       setSubmitting(false);
     }
@@ -262,7 +261,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
       <div className="space-y-3 px-[22px] pt-3.5 pb-3">
         {draftRestored ? (
           <div className="flex items-baseline justify-between gap-2 rounded-sm border-l-2 border-accent bg-accent-soft/40 px-3 py-1.5 text-[12px] text-accent-deep">
-            <span>Brouillon en cours repris.</span>
+            <span>{t('goals.composer.draftRestored')}</span>
             <button
               type="button"
               onClick={() => {
@@ -277,7 +276,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
               }}
               className="cursor-pointer text-[11px] underline-offset-2 hover:underline"
             >
-              Repartir à zéro
+              {t('goals.composer.resetDraft')}
             </button>
           </div>
         ) : null}
@@ -287,7 +286,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Titre — ex. Lancer un blog"
+          placeholder={t('goals.composer.titlePlaceholder')}
           disabled={submitting}
         />
 
@@ -296,10 +295,10 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
             <DirkSelect
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              aria-label="Mois"
+              aria-label={t('goals.composer.monthAria')}
               disabled={submitting}
             >
-              <option value="">— mois —</option>
+              <option value="">{t('goals.composer.monthPlaceholder')}</option>
               {MONTH_OPTIONS.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
@@ -317,9 +316,9 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
                 setYear(digits);
               }}
               onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-              placeholder="Année"
+              placeholder={t('goals.composer.yearPlaceholder')}
               maxLength={4}
-              aria-label="Année (4 chiffres)"
+              aria-label={t('goals.composer.yearAria')}
               disabled={submitting}
               align="center"
             />
@@ -341,7 +340,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
                       : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
                   )}
                 >
-                  {GOAL_STATUS_LABEL[s]}
+                  {t(`goals.status.title.${s}`)}
                 </button>
               );
             })}
@@ -353,13 +352,13 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
             value={thread}
             onChange={(e) => setThread(e.target.value)}
             onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-            placeholder="Threads (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo"
+            placeholder={t('goals.composer.threadPlaceholder')}
             disabled={submitting}
           />
           {threadOptions.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1">
               <span className="mr-0.5 text-[11px] italic text-muted">
-                Existants :
+                {t('goals.composer.existingThreads')}
               </span>
               {threadOptions.map((opt) => {
                 const active = activeThreads.includes(opt);
@@ -394,7 +393,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
           onModeChange={setNoteMode}
           minHeightPx={120}
           maxHeightPx={300}
-          placeholder="Note (optionnelle) — détails, contexte, échéance précise…"
+          placeholder={t('goals.composer.notePlaceholder')}
         />
       </div>
       <Footer
@@ -402,7 +401,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
         submitting={submitting}
         error={error}
         submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
-        submittingLabel={isEdit ? 'Mise à jour…' : 'Enregistrement…'}
+        submittingLabel={isEdit ? t('goals.composer.submittingUpdate') : t('common.states.saving')}
       />
     </>
   );

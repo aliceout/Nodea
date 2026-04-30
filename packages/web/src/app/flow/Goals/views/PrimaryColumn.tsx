@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import GroupBlock from '@/ui/dirk/GroupBlock';
 import PageHeading from '@/ui/dirk/PageHeading';
@@ -11,12 +12,13 @@ import GoalRow from './GoalRow';
  * from data and `groups` from filters ; no props.
  */
 export default function PrimaryColumn() {
+  const { t } = useI18n();
   const { load, stats } = useGoalsData();
   const { groups } = useGoalsFilters();
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading>Goals</PageHeading>
+      <PageHeading>{t('goals.title')}</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -29,16 +31,16 @@ export default function PrimaryColumn() {
 
       <div>
         {load.status === 'loading' && stats.total === 0 ? (
-          <EmptyHint>Chargement des objectifs…</EmptyHint>
+          <EmptyHint>{t('goals.list.loading')}</EmptyHint>
         ) : groups.length === 0 ? (
-          <EmptyHint>Aucun objectif pour cette sélection.</EmptyHint>
+          <EmptyHint>{t('goals.list.empty')}</EmptyHint>
         ) : (
           groups.map(([groupLabel, items]) => (
             <GroupBlock
               key={groupLabel}
               label={groupLabel}
               count={items.length}
-              countNoun="objectif"
+              countNoun={t('goals.list.groupCountNoun')}
               variant="eyebrow"
             >
               {items.map((entry) => (

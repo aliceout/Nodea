@@ -124,33 +124,82 @@ Bilan concret :
       `find packages -name "*.js" -o -name "*.jsx" | grep -v
       node_modules | grep -v dist` → liste vide.
 
-### 3. Carte de couverture des tests
+### 3. Carte de couverture des tests — baseline posé
 
-**Pain** : 49 fichiers de test, mais on ne sait pas où sont
-les trous. CLAUDE.md vise ≥ 90 % sur
-[`core/crypto/`](../../packages/web/src/core/crypto/) — non
-mesuré. Le bug onboarding qu'on vient de chasser (race
-`useFirstRunSeed`/`useModulesHydration`) montre qu'on a au
-moins **un trou critique sur les flows post-login**.
+**Statut** : `@vitest/coverage-v8@3.2.4` installé,
+`vitest.config.ts` configuré côté web + api avec
+`reportsDirectory: 'coverage'` et un set d'`exclude`
+pertinent (tests, fixtures, config, ambient `.d.ts`,
+seed, scripts de migration). `pnpm test:coverage` à la
+racine lance tout en parallèle.
 
-**Coût** : 1 jour d'audit + suivi à la PR près.
+**Baseline (commit `<this commit>`)** :
 
-- [ ] Activer `vitest run --coverage` côté `web` et `api`
-      (provider `v8` natif, pas besoin d'install).
-- [ ] Générer un rapport HTML, lire les zones à 0 %.
-- [ ] Documenter le **baseline actuel** dans cette section —
-      crypto X %, auth Y %, modules Z %, etc. Sert d'ancrage.
-- [ ] Identifier les 3–5 fichiers où une régression silencieuse
-      coûterait le plus (CLAUDE.md liste : crypto round-trips,
-      auth flows, invite atomicity). Combler en priorité.
-- [ ] Ajouter le test qui aurait attrapé le bug onboarding :
-      simuler un user fraîchement créé avec
-      `onboarding_status = pending`, vérifier que
-      `useFirstRunSeed` ne se déclenche pas pendant que
-      `useModulesHydration` n'a pas fini.
-- [ ] Décider si on impose un seuil bloquant en CI (`vitest
-      --coverage --reporter=...` qui échoue sous X %). Pour
-      crypto ≥ 90 %, oui ; pour le reste, à débattre.
+| Zone web | Stmts | Verdict |
+|---|---|---|
+| `core/crypto` | **93.54 %** | ✅ Cible CLAUDE.md ≥ 90 % atteinte |
+| `core/i18n` | 100 % | ✅ |
+| `core/store` | 78.76 % | OK (funcs à 30 %) |
+| `core/api` | 12.6 % | ⚠️ Sous-couvert |
+| `core/auth` | **0 %** | ❌ Trou — sessions, ProtectedRoute, login flows |
+| `core/modules` | **0 %** | ❌ Bug onboarding y vit |
+| `app/flow/Mood/lib` | 83.57 % | ✅ |
+| `app/flow/Library/lib` | 69.36 % | OK |
+| `app/flow/Goals/lib` | 52.63 % | Moyen |
+| `app/flow/Journal/lib` | 38.13 % | Faible |
+| `app/flow/Account/lib` | 10.63 % | ⚠️ |
+| **Total web** | **4.77 %** | (UI components à 0 %, attendu sans jsdom + RTL) |
+
+| Zone api | Stmts | Verdict |
+|---|---|---|
+| `routes/` | 73.43 % | ✅ Bien |
+| `middleware/` | 93.37 % | ✅ |
+| `auth/` | 90 %+ sur la majorité | ✅ |
+| `lookup/` | **9.74 %** | ❌ BNF/Wikidata/Google/OL non testés en unitaire |
+| `cron/` | **0 %** | ❌ 134 LOC non testées |
+| `services/email` (hors templates) | 34.43 % | Moyen |
+| **Total api** | **63.36 %** | (avec `seed/` exclu) |
+
+**Trous prioritaires** :
+1. `core/auth/` — 0 %, gros risque (use-session est central).
+   Tester demande `@testing-library/react` + jsdom (non
+   installés), donc pré-requis : poser l'infra de tests
+   React.
+2. `core/modules/` — 0 %, c'est là que vit le bug onboarding
+   qu'on a chassé. Même pré-requis (RTL).
+3. `api/src/lookup/*` — 9.74 %, les adapters ISBN ne sont
+   testés que via le dispatcher dans `merge.ts`. Risque
+   moyen (les providers évoluent côté serveur, on n'attrape
+   pas leurs régressions silencieusement).
+4. `api/src/cron/` — 0 %, 134 LOC. À vérifier d'abord si le
+   cron est encore consommé ou si c'est mort.
+
+- [x] `vitest run --coverage` opérationnel côté web + api +
+       script `pnpm test:coverage` à la racine.
+- [x] `coverage/` ajouté à `.gitignore` (artefacts par
+       package).
+- [x] Baseline ci-dessus documenté.
+- [ ] **Pré-requis bloquant pour combler les 0 %** :
+       installer `@testing-library/react` + un env DOM
+       (recommandation : `happy-dom` plutôt que `jsdom`,
+       plus rapide). Un seul setup partagé par
+       `vitest.config.ts`.
+- [ ] Une fois RTL en place, écrire le test de la race
+       `useFirstRunSeed` / `useModulesHydration` — celui qui
+       aurait attrapé le bug `onboarding_status` du commit
+       `5da5e22`.
+- [ ] Combler `core/auth/` à au moins 60 % (use-session a
+       9 sous-modules, prioriser `login.ts` et
+       `register.ts`).
+- [ ] Couvrir au moins un round-trip par adapter
+       `api/src/lookup/*` (mock du fetch ; l'objectif n'est
+       pas de hit les vrais providers en CI).
+- [ ] Auditer `api/src/cron/` — si vivant, écrire un test
+       par job ; si mort, supprimer.
+- [ ] Décider d'un seuil bloquant CI sur `core/crypto/`
+       (recommandation : ≥ 90 %, on est à 93.54 % donc on
+       peut figer). Le reste reste en monitoring (observable
+       via le job CI mais non bloquant).
 
 ---
 

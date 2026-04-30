@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import { Modal } from '@/ui/atoms/layout/Modal';
@@ -22,6 +23,7 @@ import { useGoalsActions, useGoalsData } from '../context';
  * unconditionally rather than wrapping in a ternary.
  */
 export default function CarryOverDialog() {
+  const { t } = useI18n();
   const { entries } = useGoalsData();
   const { carryOverOpen, closeCarryOver, carryOver } = useGoalsActions();
 
@@ -72,17 +74,16 @@ export default function CarryOverDialog() {
     <Modal open onClose={closeCarryOver}>
       <div className="px-[22px] pt-3.5 pb-3">
         <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.005em] text-ink">
-          Reporter les inachevés
+          {t('goals.carryOver.title')}
         </h2>
         <p className="mb-4 text-[12px] leading-[1.5] text-ink-soft">
-          Bascule les goals « ouverts » et « en cours » d'une année sur
-          l'autre. Les goals terminés restent à leur année.
+          {t('goals.carryOver.intro')}
         </p>
 
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="mb-1 block text-[12px] font-medium text-muted">
-              De l'année
+              {t('goals.carryOver.fromLabel')}
             </span>
             <Input
               type="number"
@@ -97,7 +98,7 @@ export default function CarryOverDialog() {
           <span className="pb-2 text-[12px] text-muted">→</span>
           <label className="block">
             <span className="mb-1 block text-[12px] font-medium text-muted">
-              Vers l'année
+              {t('goals.carryOver.toLabel')}
             </span>
             <Input
               type="number"
@@ -114,19 +115,22 @@ export default function CarryOverDialog() {
         <div className="rounded-sm border border-hair bg-bg-2 p-3">
           {!validRange ? (
             <p className="text-[12px] italic text-muted">
-              Renseigne deux années valides et différentes.
+              {t('goals.carryOver.invalidRange')}
             </p>
           ) : affected.length === 0 ? (
             <p className="text-[12px] italic text-muted">
-              Aucun goal inachevé pour {fromN} — rien à reporter.
+              {t('goals.carryOver.noneEmpty', { values: { year: fromN } })}
             </p>
           ) : (
             <>
               <p className="mb-2 text-[12px] text-ink-soft">
-                <span className="font-semibold text-ink">{affected.length}</span>{' '}
-                goal{affected.length === 1 ? '' : 's'} de {fromN} {' '}
-                {affected.length === 1 ? 'va' : 'vont'} être reporté
-                {affected.length === 1 ? '' : 's'} sur {toN}.
+                {affected.length === 1
+                  ? t('goals.carryOver.summaryOne', {
+                      values: { count: affected.length, fromYear: fromN, toYear: toN },
+                    })
+                  : t('goals.carryOver.summaryOther', {
+                      values: { count: affected.length, fromYear: fromN, toYear: toN },
+                    })}
               </p>
               <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-[12px] text-ink">
                 {affected.slice(0, 8).map((g) => (
@@ -134,7 +138,9 @@ export default function CarryOverDialog() {
                 ))}
                 {affected.length > 8 ? (
                   <li className="list-none italic text-muted">
-                    … et {affected.length - 8} de plus
+                    {t('goals.carryOver.moreCount', {
+                      values: { count: affected.length - 8 },
+                    })}
                   </li>
                 ) : null}
               </ul>
@@ -144,7 +150,7 @@ export default function CarryOverDialog() {
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-hair bg-bg-2 px-3.5 py-2.5">
         <Button variant="neutral" size="sm" onClick={closeCarryOver} disabled={busy}>
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
         <Button
           variant="primary"
@@ -152,7 +158,7 @@ export default function CarryOverDialog() {
           onClick={() => void confirm()}
           disabled={!validRange || affected.length === 0 || busy}
         >
-          {busy ? 'Report en cours…' : 'Reporter'}
+          {busy ? t('goals.carryOver.submitting') : t('goals.carryOver.submitCta')}
         </Button>
       </div>
     </Modal>

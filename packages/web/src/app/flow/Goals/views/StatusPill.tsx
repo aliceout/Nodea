@@ -1,7 +1,8 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useGoalsActions } from '../context';
-import { STATUS_LABEL, STATUS_TONE } from '../lib/constants';
+import { STATUS_TONE } from '../lib/constants';
 import type { CanonicalStatus, GoalEntry } from '../lib/types';
 
 interface StatusPillProps {
@@ -16,20 +17,22 @@ interface StatusPillProps {
  * sidebar status filter chips.
  */
 export default function StatusPill({ entry }: StatusPillProps) {
+  const { t } = useI18n();
   const { cycleStatus } = useGoalsActions();
+  const label = t(`goals.status.lower.${entry.status}`);
   return (
     <button
       type="button"
       onClick={() => void cycleStatus(entry)}
-      aria-label={`Statut : ${STATUS_LABEL[entry.status]}, cliquer pour cycler`}
-      title={`Statut : ${STATUS_LABEL[entry.status]}`}
+      aria-label={t('goals.statusPill.ariaLabel', { values: { label } })}
+      title={t('goals.statusPill.title', { values: { label } })}
       className={cn(
         'inline-flex h-6 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors',
         STATUS_TONE[entry.status],
       )}
     >
       <StatusGlyph status={entry.status} />
-      <span className="tracking-[0.01em]">{STATUS_LABEL[entry.status]}</span>
+      <span className="tracking-[0.01em]">{label}</span>
     </button>
   );
 }
