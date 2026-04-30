@@ -1,8 +1,10 @@
 {
   "title": "Review",
   "topbar": {
-    "labelOne": "Review · {count} bilan",
-    "labelOther": "Review · {count} bilans",
+    "label": {
+      "one": "Review · {count} bilan",
+      "other": "Review · {count} bilans"
+    },
     "wizardLabelIntro": "Review · Bilan {year}",
     "wizardLabelStep": "Review · Bilan {year} · étape {position}/{total}",
     "readerLabel": "Review · Bilan {year}"

@@ -1,8 +1,10 @@
 {
   "title": "Goals",
   "topbar": {
-    "labelOne": "Goals · {count} goal",
-    "labelOther": "Goals · {count} goals",
+    "label": {
+      "one": "Goals · {count} goal",
+      "other": "Goals · {count} goals"
+    },
     "newCta": "+ New goal"
   },
   "list": {
@@ -57,8 +59,10 @@
     "toLabel": "To year",
     "invalidRange": "Enter two valid, different years.",
     "noneEmpty": "No unfinished goal for {year} — nothing to carry over.",
-    "summaryOne": "{count} goal from {fromYear} will be carried over to {toYear}.",
-    "summaryOther": "{count} goals from {fromYear} will be carried over to {toYear}.",
+    "summary": {
+      "one": "{count} goal from {fromYear} will be carried over to {toYear}.",
+      "other": "{count} goals from {fromYear} will be carried over to {toYear}."
+    },
     "moreCount": "… and {count} more",
     "submitting": "Carrying over…",
     "submitCta": "Carry over"

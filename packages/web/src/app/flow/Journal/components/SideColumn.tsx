@@ -17,7 +17,7 @@ import { useJournalData, useJournalFilters } from '../context';
  * survive the current filter.
  */
 export default function SideColumn() {
-  const { t, language } = useI18n();
+  const { t, tn, language } = useI18n();
   const { entries, stats } = useJournalData();
   const {
     search,
@@ -103,9 +103,7 @@ export default function SideColumn() {
             <dt>{t('passage.side.statsStreak')}</dt>
             <dd className="text-right">
               <span className="tabular-nums text-ink">
-                {stats.streakDays === 1
-                  ? t('passage.side.streakDayOne', { values: { count: stats.streakDays } })
-                  : t('passage.side.streakDayOther', { values: { count: stats.streakDays } })}
+                {tn('passage.side.streakDay', stats.streakDays)}
               </span>
               {stats.streakDays > 0 ? (
                 <p className="text-[11px] text-muted">

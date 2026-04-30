@@ -23,7 +23,7 @@ import { useGoalsActions, useGoalsData } from '../context';
  * unconditionally rather than wrapping in a ternary.
  */
 export default function CarryOverDialog() {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const { entries } = useGoalsData();
   const { carryOverOpen, closeCarryOver, carryOver } = useGoalsActions();
 
@@ -124,13 +124,9 @@ export default function CarryOverDialog() {
           ) : (
             <>
               <p className="mb-2 text-[12px] text-ink-soft">
-                {affected.length === 1
-                  ? t('goals.carryOver.summaryOne', {
-                      values: { count: affected.length, fromYear: fromN, toYear: toN },
-                    })
-                  : t('goals.carryOver.summaryOther', {
-                      values: { count: affected.length, fromYear: fromN, toYear: toN },
-                    })}
+                {tn('goals.carryOver.summary', affected.length, {
+                  values: { fromYear: fromN, toYear: toN },
+                })}
               </p>
               <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-[12px] text-ink">
                 {affected.slice(0, 8).map((g) => (

@@ -1,8 +1,10 @@
 {
   "title": "Journal",
   "topbar": {
-    "labelOne": "Journal · {count} entry",
-    "labelOther": "Journal · {count} entries",
+    "label": {
+      "one": "Journal · {count} entry",
+      "other": "Journal · {count} entries"
+    },
     "newCta": "+ New entry",
     "readerLabel": "Journal · {position} / {total}"
   },
@@ -38,8 +40,10 @@
     "statsEntries": "Entries",
     "statsWords": "Words written",
     "statsStreak": "Streak",
-    "streakDayOne": "{count} day",
-    "streakDayOther": "{count} days",
+    "streakDay": {
+      "one": "{count} day",
+      "other": "{count} days"
+    },
     "streakUntilToday": "up to today",
     "streakUntilYesterday": "up to yesterday"
   },

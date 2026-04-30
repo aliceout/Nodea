@@ -65,8 +65,10 @@
     "passkey": {
       "title": "Passkey",
       "descriptionEmpty": "Une passkey (Touch ID, Face ID, Windows Hello, Yubikey, gestionnaire de mots de passe…) remplace la saisie du mot de passe à la connexion. Si elle est compatible PRF, elle déchiffre aussi tes données — sinon elle te connecte mais te demande quand même ton mot de passe.",
-      "countOne": "{count} passkey enregistrée.",
-      "countOther": "{count} passkeys enregistrées.",
+      "count": {
+        "one": "{count} passkey enregistrée.",
+        "other": "{count} passkeys enregistrées."
+      },
       "descriptionExtras": "Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.",
       "ctaEmpty": "Ajouter",
       "ctaManage": "Gérer"

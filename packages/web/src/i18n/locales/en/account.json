@@ -65,8 +65,10 @@
     "passkey": {
       "title": "Passkey",
       "descriptionEmpty": "A passkey (Touch ID, Face ID, Windows Hello, Yubikey, password manager…) replaces typing your password at login. If it's PRF-capable it also decrypts your data — otherwise it logs you in but still asks for your password.",
-      "countOne": "{count} passkey registered.",
-      "countOther": "{count} passkeys registered.",
+      "count": {
+        "one": "{count} passkey registered.",
+        "other": "{count} passkeys registered."
+      },
       "descriptionExtras": "You can add more or remove the ones you no longer use.",
       "ctaEmpty": "Add",
       "ctaManage": "Manage"

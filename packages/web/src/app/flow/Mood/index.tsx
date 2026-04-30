@@ -47,16 +47,13 @@ export default function MoodPage() {
  *  primary column and the sidebar, which subscribe to the contexts
  *  themselves. */
 function MoodView() {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useMoodData();
   const total = entries.length;
 
-  const topbarLabel =
-    total === 1
-      ? t('mood.topbar.labelOne', { values: { count: total } })
-      : t('mood.topbar.labelOther', { values: { count: total } });
+  const topbarLabel = tn('mood.topbar.label', total);
 
   return (
     <ModuleShell

@@ -16,7 +16,7 @@ import { modeLabelKey } from '../lib/security-mode';
  *  combine » (security mode). Stateless on its own; each link
  *  target owns its own flow. */
 export default function SecurityTab() {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const navigate = useNavigate();
   const user = useNodeaStore(selectUser);
   const recoveryCodeSet = user?.recoveryCodeSet === true;
@@ -83,13 +83,7 @@ export default function SecurityTab() {
             : (
               <>
                 <span className="font-semibold text-accent-deep">
-                  {passkeysCount === 1
-                    ? t('account.security.passkey.countOne', {
-                        values: { count: passkeysCount },
-                      })
-                    : t('account.security.passkey.countOther', {
-                        values: { count: passkeysCount },
-                      })}
+                  {tn('account.security.passkey.count', passkeysCount)}
                 </span>
                 <br />
                 {t('account.security.passkey.descriptionExtras')}

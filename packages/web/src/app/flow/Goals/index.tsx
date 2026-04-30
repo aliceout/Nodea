@@ -46,15 +46,12 @@ export default function GoalsPage() {
  *  sidebar) and the always-rendered (self-conditional) carry-over
  *  dialog. State + actions live in the contexts. */
 function GoalsView() {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { stats } = useGoalsData();
 
-  const topbarLabel =
-    stats.total === 1
-      ? t('goals.topbar.labelOne', { values: { count: stats.total } })
-      : t('goals.topbar.labelOther', { values: { count: stats.total } });
+  const topbarLabel = tn('goals.topbar.label', stats.total);
 
   return (
     <ModuleShell

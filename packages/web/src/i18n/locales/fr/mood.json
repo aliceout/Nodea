@@ -1,8 +1,10 @@
 {
   "title": "Mood",
   "topbar": {
-    "labelOne": "Mood · {count} entrée",
-    "labelOther": "Mood · {count} entrées",
+    "label": {
+      "one": "Mood · {count} entrée",
+      "other": "Mood · {count} entrées"
+    },
     "newCta": "+ Nouvelle entrée"
   },
   "primary": {
@@ -31,10 +33,14 @@
     "monthAll": "Tous"
   },
   "donut": {
-    "ariaLabelOne": "Répartition des notes sur {count} entrée",
-    "ariaLabelOther": "Répartition des notes sur {count} entrées",
-    "centerCountOne": "{count} entrée",
-    "centerCountOther": "{count} entrées"
+    "ariaLabel": {
+      "one": "Répartition des notes sur {count} entrée",
+      "other": "Répartition des notes sur {count} entrées"
+    },
+    "centerCount": {
+      "one": "{count} entrée",
+      "other": "{count} entrées"
+    }
   },
   "chart": {
     "day0": "Lun",

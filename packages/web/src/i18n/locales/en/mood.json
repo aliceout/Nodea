@@ -1,8 +1,10 @@
 {
   "title": "Mood",
   "topbar": {
-    "labelOne": "Mood · {count} entry",
-    "labelOther": "Mood · {count} entries",
+    "label": {
+      "one": "Mood · {count} entry",
+      "other": "Mood · {count} entries"
+    },
     "newCta": "+ New entry"
   },
   "primary": {
@@ -31,10 +33,14 @@
     "monthAll": "All"
   },
   "donut": {
-    "ariaLabelOne": "Score distribution over {count} entry",
-    "ariaLabelOther": "Score distribution over {count} entries",
-    "centerCountOne": "{count} entry",
-    "centerCountOther": "{count} entries"
+    "ariaLabel": {
+      "one": "Score distribution over {count} entry",
+      "other": "Score distribution over {count} entries"
+    },
+    "centerCount": {
+      "one": "{count} entry",
+      "other": "{count} entries"
+    }
   },
   "chart": {
     "day0": "Mon",

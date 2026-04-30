@@ -27,6 +27,16 @@ declare module '@/i18n/I18nProvider.jsx' {
     /** Legacy shape: `{ id, label }` per the JSX provider implementation. */
     availableLanguages: Array<{ id: string; label: string }>;
     t: (key: string, options?: I18nTranslateOptions) => string;
+    /** Plural-aware translate. Picks `<key>.<rule>` where rule
+     *  comes from `Intl.PluralRules(language).select(count)` —
+     *  one of `zero | one | two | few | many | other`. Falls back
+     *  to `<key>.other` then the bare `<key>`. `count` is auto-
+     *  injected into `values.count`. */
+    tn: (
+      key: string,
+      count: number,
+      options?: I18nTranslateOptions,
+    ) => string;
   }
 
   export const I18nProvider: ComponentType<{ children?: ReactNode }>;

@@ -1,8 +1,10 @@
 {
   "title": "Journal",
   "topbar": {
-    "labelOne": "Journal · {count} entrée",
-    "labelOther": "Journal · {count} entrées",
+    "label": {
+      "one": "Journal · {count} entrée",
+      "other": "Journal · {count} entrées"
+    },
     "newCta": "+ Nouvelle entrée",
     "readerLabel": "Journal · {position} / {total}"
   },
@@ -38,8 +40,10 @@
     "statsEntries": "Entrées",
     "statsWords": "Mots écrits",
     "statsStreak": "Série",
-    "streakDayOne": "{count} jour",
-    "streakDayOther": "{count} jours",
+    "streakDay": {
+      "one": "{count} jour",
+      "other": "{count} jours"
+    },
     "streakUntilToday": "jusqu’à aujourd’hui",
     "streakUntilYesterday": "jusqu’à hier"
   },

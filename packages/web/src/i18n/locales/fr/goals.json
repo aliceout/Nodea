@@ -1,8 +1,10 @@
 {
   "title": "Goals",
   "topbar": {
-    "labelOne": "Goals · {count} objectif",
-    "labelOther": "Goals · {count} objectifs",
+    "label": {
+      "one": "Goals · {count} objectif",
+      "other": "Goals · {count} objectifs"
+    },
     "newCta": "+ Nouvel objectif"
   },
   "list": {
@@ -57,8 +59,10 @@
     "toLabel": "Vers l’année",
     "invalidRange": "Renseigne deux années valides et différentes.",
     "noneEmpty": "Aucun goal inachevé pour {year} — rien à reporter.",
-    "summaryOne": "{count} goal de {fromYear} va être reporté sur {toYear}.",
-    "summaryOther": "{count} goals de {fromYear} vont être reportés sur {toYear}.",
+    "summary": {
+      "one": "{count} goal de {fromYear} va être reporté sur {toYear}.",
+      "other": "{count} goals de {fromYear} vont être reportés sur {toYear}."
+    },
     "moreCount": "… et {count} de plus",
     "submitting": "Report en cours…",
     "submitCta": "Reporter"

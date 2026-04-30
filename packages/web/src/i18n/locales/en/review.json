@@ -1,8 +1,10 @@
 {
   "title": "Review",
   "topbar": {
-    "labelOne": "Review · {count} review",
-    "labelOther": "Review · {count} reviews",
+    "label": {
+      "one": "Review · {count} review",
+      "other": "Review · {count} reviews"
+    },
     "wizardLabelIntro": "Review · {year}",
     "wizardLabelStep": "Review · {year} · step {position}/{total}",
     "readerLabel": "Review · {year}"

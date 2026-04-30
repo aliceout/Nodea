@@ -28,7 +28,7 @@ import NoteBadge from './NoteBadge';
  * down to.
  */
 export default function ScoreDonut() {
-  const { t } = useI18n();
+  const { tn } = useI18n();
   const { entries } = useMoodData();
   const [hovered, setHovered] = useState<MoodScore | null>(null);
   const counts: Record<MoodScore, number> = { '2': 0, '1': 0, '0': 0, '-1': 0, '-2': 0 };
@@ -79,11 +79,7 @@ export default function ScoreDonut() {
         viewBox="-15 -15 130 130"
         className="h-full w-full"
         role="img"
-        aria-label={
-          total === 1
-            ? t('mood.donut.ariaLabelOne', { values: { count: total } })
-            : t('mood.donut.ariaLabelOther', { values: { count: total } })
-        }
+        aria-label={tn('mood.donut.ariaLabel', total)}
       >
         {/* Donut group — rotated so the first arc starts at 12 o'clock. */}
         <g transform="rotate(-90 50 50)">
@@ -154,9 +150,7 @@ export default function ScoreDonut() {
           <>
             <NoteBadge score={hovered} />
             <span className="mt-2 text-[12px] tabular-nums text-muted">
-              {hoveredCount === 1
-                ? t('mood.donut.centerCountOne', { values: { count: hoveredCount } })
-                : t('mood.donut.centerCountOther', { values: { count: hoveredCount } })}
+              {tn('mood.donut.centerCount', hoveredCount)}
             </span>
           </>
         ) : null}

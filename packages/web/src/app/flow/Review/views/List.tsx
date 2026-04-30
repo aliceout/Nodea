@@ -43,7 +43,7 @@ export default function ReviewListView({
   onOpen,
   onEdit,
 }: ListProps) {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { loading, error, entries, deleteReview } = useReview();
   const currentYear = new Date().getFullYear();
@@ -95,11 +95,7 @@ export default function ReviewListView({
     <ModuleShell
       topbar={
         <Topbar
-          label={
-            entries.length === 1
-              ? t('review.topbar.labelOne', { values: { count: entries.length } })
-              : t('review.topbar.labelOther', { values: { count: entries.length } })
-          }
+          label={tn('review.topbar.label', entries.length)}
           onOpenMenu={() => setMobileMenuOpen(true)}
         />
       }

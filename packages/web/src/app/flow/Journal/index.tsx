@@ -55,7 +55,7 @@ export default function JournalPage() {
  *  (when the user is reading an entry) and the regular module
  *  shell. Both routes rely on the `<JournalProvider>` for state. */
 function JournalView() {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useJournalData();
@@ -65,10 +65,7 @@ function JournalView() {
     return <ReaderShell />;
   }
 
-  const topbarLabel =
-    entries.length === 1
-      ? t('passage.topbar.labelOne', { values: { count: entries.length } })
-      : t('passage.topbar.labelOther', { values: { count: entries.length } });
+  const topbarLabel = tn('passage.topbar.label', entries.length);
 
   return (
     <ModuleShell
