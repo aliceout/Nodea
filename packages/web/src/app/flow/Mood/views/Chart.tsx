@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import type { MoodScore } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useMoodData, useMoodFilters } from '../context';
-import { SCORE_FILL, SCORE_LABELS } from '../lib/constants';
+import { SCORE_FILL } from '../lib/constants';
 import {
   buildHeatmap,
   HEATMAP_DAYS_PER_WEEK,
@@ -32,13 +33,22 @@ import {
  * 364-cell rebuild cost.
  */
 export default function Chart() {
+  const { t } = useI18n();
   const { entries, today } = useMoodData();
   const { year } = useMoodFilters();
   const { cells, monthLabels } = useMemo(
     () => buildHeatmap(year, entries, today),
     [year, entries, today],
   );
-  const dayLabels = ['Lun', '', 'Mer', '', 'Ven', '', 'Dim'];
+  const dayLabels = [
+    t('mood.chart.day0'),
+    t('mood.chart.day1'),
+    t('mood.chart.day2'),
+    t('mood.chart.day3'),
+    t('mood.chart.day4'),
+    t('mood.chart.day5'),
+    t('mood.chart.day6'),
+  ];
 
   return (
     <div
@@ -123,7 +133,7 @@ export default function Chart() {
             <span className="tabular-nums text-ink-soft">
               {Number(score) > 0 ? `+${score}` : score}
             </span>
-            <span>{SCORE_LABELS[score]}</span>
+            <span>{t(`mood.scoreLabels.${score}`)}</span>
           </li>
         ))}
       </ul>

@@ -14,15 +14,6 @@ export const SCORE_FILL: Record<MoodScore, string> = {
   '-2': 'bg-low',
 };
 
-/** FR display label for each score, used by the chart legend. */
-export const SCORE_LABELS: Record<MoodScore, string> = {
-  '-2': 'très bas',
-  '-1': 'bas',
-  '0': 'neutre',
-  '1': 'bon',
-  '2': 'très bon',
-};
-
 /** Tailwind classes for the inline `<NoteBadge>` pill. Five
  *  tones ; saturated extremes flip text white, mild values keep
  *  ink-toned text on a soft background. */

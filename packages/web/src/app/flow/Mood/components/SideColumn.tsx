@@ -1,5 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 import { useMoodData } from '../context';
 import {
   computeAverage30d,
@@ -32,6 +34,7 @@ import ScoreDonut from './ScoreDonut';
  * sidebar is a lifetime view by design.
  */
 export default function SideColumn() {
+  const { t } = useI18n();
   const { entries, today } = useMoodData();
   const patterns = useMemo(
     () => computePatterns(entries, today),
@@ -48,25 +51,25 @@ export default function SideColumn() {
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
       <section>
-        <SectionLabel>Répartition</SectionLabel>
+        <SectionLabel>{t('mood.side.distribution')}</SectionLabel>
         <ScoreDonut />
       </section>
 
       <section>
-        <SectionLabel>Patterns</SectionLabel>
+        <SectionLabel>{t('mood.side.patterns')}</SectionLabel>
         <ul>
           <li className="border-b border-hair py-2.5">
             <div className="text-[13px] font-medium text-ink">
-              Moyenne mobile{' '}
+              {t('mood.side.rollingAvg')}{' '}
               <span className="tabular-nums">{formatMoodAvg(avg30d)}</span>
             </div>
             <div className="mt-0.5 text-[11px] text-muted">
-              sur 30 j · échelle −2 → +2
+              {t('mood.side.rollingAvgScale')}
             </div>
           </li>
           {patterns.length === 0 ? (
             <li className="border-b border-hair py-2.5 last:border-b-0 text-[12px] italic text-muted">
-              Pas encore assez d’entrées pour dégager des motifs.
+              {t('mood.side.noPatterns')}
             </li>
           ) : (
             patterns.map((p) => (

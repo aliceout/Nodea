@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
 
+import { pickQuestion } from '@/app/flow/Mood/data/questions';
 import { moodClient } from '@/core/api/modules/mood';
 import {
   useNodeaStore,
@@ -12,10 +13,9 @@ import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkTextarea from '@/ui/atoms/dirk/Textarea';
 import SectionLabel from '@/ui/dirk/SectionLabel';
-import questions from '@/i18n/fr/Mood/questions.json';
 
 import Footer from '../components/Footer';
-import { POSITIVE_PLACEHOLDERS, SCORE_LABELS } from '../lib/constants';
+import { POSITIVE_PLACEHOLDERS } from '../lib/constants';
 import { submitOnCmdEnter } from '../lib/format';
 import { isMoodScoreString } from '../lib/guards';
 
@@ -45,7 +45,7 @@ interface MoodBodyProps {
  * text with an empty answer.
  */
 export default function MoodBody({ onClose }: MoodBodyProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['mood']?.moduleUserId ?? null;
@@ -82,11 +82,8 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
 
   const question = useMemo<string>(() => {
     if (editing) return editing.payload.question ?? '';
-    const list = questions as readonly string[];
-    if (list.length === 0) return '';
-    const i = Math.floor(Math.random() * list.length);
-    return list[i] ?? '';
-  }, [editing]);
+    return pickQuestion(language);
+  }, [editing, language]);
 
   function setPositive(idx: 0 | 1 | 2, value: string): void {
     setPositives((prev) => {
@@ -100,11 +97,11 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
     if (submitting) return;
     setError(null);
     if (!score) {
-      setError('Choisis une note du jour.');
+      setError(t('mood.composer.errors.scoreRequired'));
       return;
     }
     if (!mainKey || !moduleUserId) {
-      setError('Module Mood non configuré ou clé absente — reconnecte-toi.');
+      setError(t('mood.composer.errors.missingConfig'));
       return;
     }
     setSubmitting(true);
@@ -139,7 +136,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
+        err instanceof Error ? err.message : t('mood.composer.errors.saveFailed'),
       );
       setSubmitting(false);
     }
@@ -149,7 +146,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
     <>
       <div className="space-y-3.5 px-[22px] pt-3.5 pb-3">
         <div className="space-y-2">
-          <SectionLabel>Trois choses positives aujourd&rsquo;hui</SectionLabel>
+          <SectionLabel>{t('mood.composer.positivesHeading')}</SectionLabel>
           {[0, 1, 2].map((i) => (
             <DirkInput
               key={i}
@@ -163,7 +160,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
         </div>
 
         <div>
-          <SectionLabel>Note du jour</SectionLabel>
+          <SectionLabel>{t('mood.composer.scoreHeading')}</SectionLabel>
           <div className="grid grid-cols-5 gap-1.5">
             {MOOD_SCORE_VALUES.map((value) => {
               const selected = score === value;
@@ -194,7 +191,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
                   <span className="text-[14px] font-semibold tabular-nums">
                     {numeric > 0 ? `+${value}` : value}
                   </span>
-                  <span className="text-[10px] tracking-[0.02em]">{SCORE_LABELS[value]}</span>
+                  <span className="text-[10px] tracking-[0.02em]">{t(`mood.scoreLabels.${value}`)}</span>
                 </button>
               );
             })}
@@ -207,14 +204,14 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
           className="text-[12px] text-muted transition-colors hover:text-ink"
           aria-expanded={optionalsOpen}
         >
-          {optionalsOpen ? '− Replier' : '+ Question du jour & commentaire'}
+          {optionalsOpen ? t('mood.composer.optionalsCollapse') : t('mood.composer.optionalsExpand')}
         </button>
 
         {optionalsOpen ? (
           <div className="space-y-3 pt-1">
             <div>
               <p className="mb-1 text-[12px] text-muted">
-                <span className="font-semibold tracking-[0.02em]">Question du jour : </span>
+                <span className="font-semibold tracking-[0.02em]">{t('mood.composer.questionLabel')}</span>
                 <span className="font-serif italic text-ink-soft">
                   {question || '—'}
                 </span>
@@ -223,19 +220,19 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-                placeholder="Réponse (optionnelle)"
+                placeholder={t('mood.composer.answerPlaceholder')}
                 rows={2}
                 minHeightPx={56}
               />
             </div>
 
             <div>
-              <SectionLabel>Commentaire</SectionLabel>
+              <SectionLabel>{t('mood.composer.commentHeading')}</SectionLabel>
               <DirkTextarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-                placeholder="Ce qui ne tient pas dans les trois lignes du dessus."
+                placeholder={t('mood.composer.commentPlaceholder')}
                 rows={3}
                 minHeightPx={84}
               />
@@ -248,7 +245,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
         submitting={submitting}
         error={error}
         submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
-        submittingLabel={isEdit ? 'Mise à jour…' : 'Enregistrement…'}
+        submittingLabel={isEdit ? t('mood.composer.submittingUpdate') : t('common.states.saving')}
       />
     </>
   );

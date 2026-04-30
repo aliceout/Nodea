@@ -11,7 +11,8 @@ import {
   passwordRulesPassed,
 } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
-import { isApiError } from '@/core/api/client';
+import { apiErrorMessage } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
@@ -57,6 +58,7 @@ type ChangePasswordForm = z.infer<typeof ChangePasswordFormSchema>;
  * the auth surface stays one continuous design language.
  */
 export default function ChangePasswordPage() {
+  const { t } = useI18n();
   const session = useSession();
   const user = useNodeaStore(selectUser);
   const navigate = useNavigate();
@@ -102,14 +104,8 @@ export default function ChangePasswordPage() {
         newPassword: values.newPassword,
       });
     } catch (err) {
-      if (isApiError(err) && err.status === 401) {
-        setServerError('Mot de passe actuel incorrect.');
-      } else if (isApiError(err) && err.status === 400) {
-        setServerError(err.reason ?? 'Nouveau mot de passe refusé.');
-      } else {
-        setServerError('Erreur lors du changement de mot de passe.');
-        if (import.meta.env.DEV) console.warn('change-password failed', err);
-      }
+      setServerError(apiErrorMessage(err, t));
+      if (import.meta.env.DEV) console.warn('change-password failed', err);
       return;
     }
 

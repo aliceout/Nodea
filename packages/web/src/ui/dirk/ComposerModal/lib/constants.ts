@@ -2,7 +2,6 @@ import type {
   LibraryFormat,
   LibraryReviewKind,
   LibraryStatus,
-  MoodScore,
   NormalisedBook,
 } from '@nodea/shared';
 
@@ -62,18 +61,6 @@ export type SimpleType = Exclude<
 export const SIMPLE_PLACEHOLDERS: Record<SimpleType, string> = {
   habit: 'Une habitude à suivre — quoi, à quel rythme.',
   note: 'Une note libre. Aucune contrainte.',
-};
-
-/** FR labels for the Mood score scale. Same wording as
- *  `flow/Mood/lib/constants.ts`'s `SCORE_LABELS` ; kept local
- *  because the Mood module's exports aren't a public API for
- *  the global Composer. */
-export const SCORE_LABELS: Record<MoodScore, string> = {
-  '-2': 'très bas',
-  '-1': 'bas',
-  '0': 'neutre',
-  '1': 'bon',
-  '2': 'très bon',
 };
 
 /** Placeholder copy for the three « positive » fields on the

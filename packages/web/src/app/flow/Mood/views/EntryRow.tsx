@@ -1,5 +1,6 @@
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/HoverActions';
 
@@ -12,6 +13,7 @@ import type { MoodEntry } from '../lib/types';
  *  (edit / delete). The actions read from the actions context so
  *  the row only needs the entry as a prop. */
 export default function EntryRow({ entry }: { entry: MoodEntry }) {
+  const { t } = useI18n();
   const { editEntry, deleteEntry } = useMoodActions();
 
   return (
@@ -41,7 +43,7 @@ export default function EntryRow({ entry }: { entry: MoodEntry }) {
         ) : null}
         {entry.question ? (
           <div className="mt-1.5 text-[12px] text-muted">
-            <span className="font-semibold tracking-[0.02em]">Q.</span>{' '}
+            <span className="font-semibold tracking-[0.02em]">{t('mood.row.questionMarker')}</span>{' '}
             <span className="italic">{entry.question}</span>
             {entry.answer ? (
               <>
@@ -59,8 +61,8 @@ export default function EntryRow({ entry }: { entry: MoodEntry }) {
           size="sm"
           iconOnly
           onClick={() => editEntry(entry)}
-          aria-label="Modifier l’entrée"
-          title="Modifier"
+          aria-label={t('mood.row.editAria')}
+          title={t('common.actions.edit')}
         >
           <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
@@ -71,8 +73,8 @@ export default function EntryRow({ entry }: { entry: MoodEntry }) {
           onClick={() => {
             void deleteEntry(entry);
           }}
-          aria-label="Supprimer l’entrée"
-          title="Supprimer"
+          aria-label={t('mood.row.deleteAria')}
+          title={t('common.actions.delete')}
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>

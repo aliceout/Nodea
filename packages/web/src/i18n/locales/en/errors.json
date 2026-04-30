@@ -61,5 +61,15 @@
     "internal": "Server error. Try again in a moment.",
     "internal_error": "Server error. Try again in a moment.",
     "update_failed": "Update failed. Try again."
+  },
+  "recovery": {
+    "invalidCode": "Invalid recovery code."
+  },
+  "register": {
+    "emailMismatch": "The e-mail doesn’t match the invitation."
+  },
+  "securityMode": {
+    "totpRequired": "Enable TOTP before choosing this mode.",
+    "passkeyRequired": "Enrol a PRF-capable passkey before choosing this mode."
   }
 }

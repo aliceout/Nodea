@@ -3,10 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import {
+  apiErrorMessage,
   apiResetPasswordFinish,
   apiResetPasswordStart,
-  isApiError,
 } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { randomBytes } from '@/core/crypto/base64';
 import {
   buildKekAAD,
@@ -51,6 +52,7 @@ zxcvbnOptions.setOptions({
  * action.
  */
 export default function ResetPage() {
+  const { t } = useI18n();
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
 
@@ -129,18 +131,8 @@ export default function ResetPage() {
       });
       setDone(true);
     } catch (err) {
-      if (isApiError(err) && err.status === 400) {
-        if (err.error === 'invalid_token') {
-          setError('Ce lien est invalide ou a expiré. Redemande un email de réinitialisation.');
-        } else {
-          setError('Requête refusée.');
-        }
-      } else if (isApiError(err) && err.status === 429) {
-        setError('Trop de tentatives récentes. Réessaie plus tard.');
-      } else {
-        setError('Une erreur est survenue. Réessaie plus tard.');
-        if (import.meta.env.DEV) console.warn('reset failed', err);
-      }
+      setError(apiErrorMessage(err, t));
+      if (import.meta.env.DEV) console.warn('reset failed', err);
     } finally {
       kek.fill(0);
       rawMainKey.fill(0);

@@ -1,4 +1,5 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -46,20 +47,23 @@ export default function MoodPage() {
  *  primary column and the sidebar, which subscribe to the contexts
  *  themselves. */
 function MoodView() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useMoodData();
   const total = entries.length;
 
+  const topbarLabel =
+    total === 1
+      ? t('mood.topbar.labelOne', { values: { count: total } })
+      : t('mood.topbar.labelOther', { values: { count: total } });
+
   return (
     <ModuleShell
       topbar={
-        <Topbar
-          label={`Mood · ${total} ${total === 1 ? 'entrée' : 'entrées'}`}
-          onOpenMenu={() => setMobileMenuOpen(true)}
-        >
+        <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
           <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
-            + Nouvelle entrée
+            {t('mood.topbar.newCta')}
           </Button>
         </Topbar>
       }

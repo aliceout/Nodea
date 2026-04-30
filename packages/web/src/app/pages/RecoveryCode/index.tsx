@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { isApiError } from '@/core/api/client';
+import { apiErrorMessage } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
 import AuthLayout from '@/ui/dirk/AuthLayout';
@@ -38,6 +39,7 @@ type Stage =
   | { kind: 'done' };
 
 export default function RecoveryCodePage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();
   const user = useNodeaStore(selectUser);
@@ -66,20 +68,8 @@ export default function RecoveryCodePage() {
       });
       setPassword('');
     } catch (err) {
-      if (isApiError(err) && err.status === 401) {
-        setError('Mot de passe incorrect.');
-      } else if (
-        typeof err === 'object' &&
-        err !== null &&
-        (err as { status?: number }).status === 401
-      ) {
-        setError('Mot de passe incorrect.');
-      } else if (isApiError(err) && err.status === 429) {
-        setError('Trop de tentatives. Réessaie dans quelques minutes.');
-      } else {
-        setError('Erreur lors de la configuration. Réessaie.');
-        if (import.meta.env.DEV) console.warn('recovery-code setup failed', err);
-      }
+      setError(apiErrorMessage(err, t));
+      if (import.meta.env.DEV) console.warn('recovery-code setup failed', err);
     } finally {
       setSubmitting(false);
     }

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isApiError } from '@/core/api/client';
+import { apiErrorMessage, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
@@ -35,6 +36,7 @@ interface ModeOption {
 }
 
 export default function SecurityModePage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const setModule = useNodeaStore((s) => s.setModule);
   const session = useSession();
@@ -109,25 +111,24 @@ export default function SecurityModePage() {
       setSelected(null);
       setPassword('');
     } catch (err) {
-      if (isApiError(err)) {
-        if (err.status === 401) {
-          setError('Mot de passe incorrect.');
-        } else if (err.status === 400 && err.error === 'totp_required') {
-          setError('Active TOTP avant de choisir ce mode.');
-        } else if (err.status === 400 && err.error === 'passkey_required') {
-          setError('Enrôle une passkey PRF avant de choisir ce mode.');
-        } else {
-          setError('Erreur lors du changement de mode.');
-          if (import.meta.env.DEV) console.warn('security-mode change failed', err);
-        }
-      } else if (
-        typeof err === 'object' &&
-        err !== null &&
-        (err as { status?: number }).status === 401
-      ) {
-        setError('Mot de passe incorrect.');
+      // Page-specific overrides : « totp_required » / « passkey_required »
+      // are not abstract errors here, they're actionable hints.
+      // The generic helper would translate them to neutral phrases ;
+      // we want « Active TOTP avant de choisir ce mode. »
+      if (isApiError(err) && err.error === 'totp_required') {
+        setError(
+          t('errors.securityMode.totpRequired', {
+            defaultValue: 'Active TOTP avant de choisir ce mode.',
+          }),
+        );
+      } else if (isApiError(err) && err.error === 'passkey_required') {
+        setError(
+          t('errors.securityMode.passkeyRequired', {
+            defaultValue: 'Enrôle une passkey PRF avant de choisir ce mode.',
+          }),
+        );
       } else {
-        setError('Erreur lors du changement de mode.');
+        setError(apiErrorMessage(err, t));
         if (import.meta.env.DEV) console.warn('security-mode change failed', err);
       }
     } finally {

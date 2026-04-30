@@ -61,5 +61,15 @@
     "internal": "Erreur serveur. Réessaie dans un instant.",
     "internal_error": "Erreur serveur. Réessaie dans un instant.",
     "update_failed": "La mise à jour a échoué. Réessaie."
+  },
+  "recovery": {
+    "invalidCode": "Code de récupération invalide."
+  },
+  "register": {
+    "emailMismatch": "L’e-mail ne correspond pas à celui de l’invitation."
+  },
+  "securityMode": {
+    "totpRequired": "Active TOTP avant de choisir ce mode.",
+    "passkeyRequired": "Enrôle une passkey PRF avant de choisir ce mode."
   }
 }

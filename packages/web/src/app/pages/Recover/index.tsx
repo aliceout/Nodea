@@ -7,7 +7,8 @@ import {
   passwordRulesPassed,
 } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
-import { isApiError } from '@/core/api/client';
+import { apiErrorMessage, isApiError } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
@@ -42,6 +43,7 @@ type Stage =
   | { kind: 'done' };
 
 export default function RecoverPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();
 
@@ -92,18 +94,24 @@ export default function RecoverPage() {
       setPassword('');
       setConfirm('');
     } catch (err) {
-      // Bad mnemonic shape (validated client-side before any
-      // server hit) AND server-side wrong-code AND unknown email
-      // all surface here as the same "code invalide" message —
-      // anti-enum requires not differentiating client-visibly.
-      if (err instanceof Error && err.message === 'invalid_recovery_code') {
-        setError('Code de récupération invalide.');
-      } else if (isApiError(err) && err.status === 401) {
-        setError('Code de récupération invalide.');
-      } else if (isApiError(err) && err.status === 429) {
-        setError('Trop de tentatives. Réessaie dans quelques minutes.');
+      // Bad mnemonic shape (validated client-side) AND server-side
+      // wrong-code AND unknown email all surface as the same
+      // « code invalide » message — anti-enum requires not
+      // differentiating client-visibly. Override needed because
+      // the api ships `invalid_credentials` for a wrong recovery
+      // code, which the helper would translate to « wrong
+      // password » — semantically off in the recovery flow.
+      const isWrongRecoveryCode =
+        (err instanceof Error && err.message === 'invalid_recovery_code') ||
+        (isApiError(err) && err.error === 'invalid_credentials');
+      if (isWrongRecoveryCode) {
+        setError(
+          t('errors.recovery.invalidCode', {
+            defaultValue: 'Code de récupération invalide.',
+          }),
+        );
       } else {
-        setError('Une erreur est survenue. Réessaie plus tard.');
+        setError(apiErrorMessage(err, t));
         if (import.meta.env.DEV) console.warn('recover failed', err);
       }
     } finally {

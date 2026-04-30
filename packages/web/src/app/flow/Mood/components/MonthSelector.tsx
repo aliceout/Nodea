@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useMoodFilters } from '../context';
@@ -14,10 +15,11 @@ import { MONTH_LABELS_SHORT } from '../lib/constants';
  * down).
  */
 export default function MonthSelector() {
+  const { t } = useI18n();
   const { month, setMonth } = useMoodFilters();
 
   return (
-    <div role="tablist" aria-label="Mois" className="flex flex-wrap gap-1">
+    <div role="tablist" aria-label={t('mood.selectors.monthAria')} className="flex flex-wrap gap-1">
       <button
         type="button"
         role="tab"
@@ -30,7 +32,7 @@ export default function MonthSelector() {
             : 'text-muted hover:bg-bg-2 hover:text-ink',
         )}
       >
-        Tous
+        {t('mood.selectors.monthAll')}
       </button>
       {MONTH_LABELS_SHORT.map((label, i) => {
         const active = month === i;

@@ -1,1 +1,75 @@
-{}
+{
+  "title": "Mood",
+  "topbar": {
+    "labelOne": "Mood · {count} entrée",
+    "labelOther": "Mood · {count} entrées",
+    "newCta": "+ Nouvelle entrée"
+  },
+  "primary": {
+    "yearRolling": "En cours",
+    "entriesHeading": "Entrées",
+    "showChart": "Afficher la frise",
+    "hideChart": "Masquer la frise",
+    "loading": "Chargement des entrées…",
+    "empty": "Aucune entrée pour cette période."
+  },
+  "row": {
+    "editAria": "Modifier l’entrée",
+    "deleteAria": "Supprimer l’entrée",
+    "questionMarker": "Q."
+  },
+  "side": {
+    "distribution": "Répartition",
+    "patterns": "Patterns",
+    "rollingAvg": "Moyenne mobile",
+    "rollingAvgScale": "sur 30 j · échelle −2 → +2",
+    "noPatterns": "Pas encore assez d’entrées pour dégager des motifs."
+  },
+  "selectors": {
+    "yearAria": "Année",
+    "monthAria": "Mois",
+    "monthAll": "Tous"
+  },
+  "donut": {
+    "ariaLabelOne": "Répartition des notes sur {count} entrée",
+    "ariaLabelOther": "Répartition des notes sur {count} entrées",
+    "centerCountOne": "{count} entrée",
+    "centerCountOther": "{count} entrées"
+  },
+  "chart": {
+    "day0": "Lun",
+    "day1": "",
+    "day2": "Mer",
+    "day3": "",
+    "day4": "Ven",
+    "day5": "",
+    "day6": "Dim"
+  },
+  "scoreLabels": {
+    "-2": "très bas",
+    "-1": "bas",
+    "0": "neutre",
+    "1": "bon",
+    "2": "très bon"
+  },
+  "context": {
+    "loadFailed": "Erreur lors du chargement des entrées Mood.",
+    "confirmDelete": "Supprimer l’entrée du {date} ?"
+  },
+  "composer": {
+    "positivesHeading": "Trois choses positives aujourd’hui",
+    "scoreHeading": "Note du jour",
+    "optionalsExpand": "+ Question du jour & commentaire",
+    "optionalsCollapse": "− Replier",
+    "questionLabel": "Question du jour : ",
+    "answerPlaceholder": "Réponse (optionnelle)",
+    "commentHeading": "Commentaire",
+    "commentPlaceholder": "Ce qui ne tient pas dans les trois lignes du dessus.",
+    "errors": {
+      "scoreRequired": "Choisis une note du jour.",
+      "missingConfig": "Module Mood non configuré ou clé absente — reconnecte-toi.",
+      "saveFailed": "Erreur lors de l’enregistrement."
+    },
+    "submittingUpdate": "Mise à jour…"
+  }
+}

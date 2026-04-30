@@ -14,6 +14,7 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { rangeFor } from './lib/date-format';
 import { recordToEntry } from './lib/mappers';
@@ -77,11 +78,16 @@ const {
   'Mood',
 );
 
+// `MoodProvider` lives below — these hooks are bound by the
+// factory above. Splitting would defeat the purpose of
+// `createModuleContexts` (one source of truth per module).
+// eslint-disable-next-line react-refresh/only-export-components
 export { useMoodData, useMoodFilters, useMoodActions };
 
 /* ---- Provider --------------------------------------------------- */
 
 export function MoodProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   // ---- Pulled from the global store ----
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
@@ -134,15 +140,13 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       .catch((err: unknown) => {
         if (cancelled) return;
         const message =
-          err instanceof Error
-            ? err.message
-            : 'Erreur lors du chargement des entrées Mood.';
+          err instanceof Error ? err.message : t('mood.context.loadFailed');
         setLoad({ status: 'error', message });
       });
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, moodVersion, today]);
+  }, [mainKey, moduleUserId, moodVersion, today, t]);
 
   // ---- Derived ----
 
@@ -208,7 +212,8 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const deleteEntry = useCallback(
     async (entry: MoodEntry) => {
       if (!mainKey || !moduleUserId) return;
-      if (!window.confirm(`Supprimer l’entrée du ${entry.date} ?`)) return;
+      if (!window.confirm(t('mood.context.confirmDelete', { values: { date: entry.date } })))
+        return;
       const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
@@ -219,7 +224,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         if (import.meta.env.DEV) console.warn('mood: delete failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpMoodVersion],
+    [mainKey, moduleUserId, bumpMoodVersion, t],
   );
 
   // ---- Memoised context values ----

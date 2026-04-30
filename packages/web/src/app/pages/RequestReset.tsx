@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiRequestPasswordReset, isApiError } from '@/core/api/client';
+import { apiErrorMessage, apiRequestPasswordReset } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
@@ -29,6 +30,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 type Stage = 'fork' | 'destroy' | 'sent';
 
 export default function RequestResetPage() {
+  const { t } = useI18n();
   const [stage, setStage] = useState<Stage>('fork');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -43,12 +45,8 @@ export default function RequestResetPage() {
       await apiRequestPasswordReset({ email: email.trim().toLowerCase() });
       setStage('sent');
     } catch (err) {
-      if (isApiError(err) && err.status === 429) {
-        setError('Trop de demandes récentes. Réessaie dans une heure.');
-      } else {
-        setError('Une erreur est survenue. Réessaie plus tard.');
-        if (import.meta.env.DEV) console.warn('request-reset failed', err);
-      }
+      setError(apiErrorMessage(err, t));
+      if (import.meta.env.DEV) console.warn('request-reset failed', err);
     } finally {
       setSubmitting(false);
     }

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useMoodData, useMoodFilters } from '../context';
@@ -14,11 +15,12 @@ import { useMoodData, useMoodFilters } from '../context';
  * years.
  */
 export default function YearSelector() {
+  const { t } = useI18n();
   const { availableYears } = useMoodData();
   const { year, setYear } = useMoodFilters();
 
   return (
-    <div role="tablist" aria-label="Année" className="flex flex-wrap gap-1">
+    <div role="tablist" aria-label={t('mood.selectors.yearAria')} className="flex flex-wrap gap-1">
       <button
         type="button"
         role="tab"
@@ -31,7 +33,7 @@ export default function YearSelector() {
             : 'text-muted hover:bg-bg-2 hover:text-ink',
         )}
       >
-        En cours
+        {t('mood.primary.yearRolling')}
       </button>
       {availableYears.map((y) => {
         const active = y === year;

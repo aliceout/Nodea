@@ -1,1 +1,75 @@
-{}
+{
+  "title": "Mood",
+  "topbar": {
+    "labelOne": "Mood · {count} entry",
+    "labelOther": "Mood · {count} entries",
+    "newCta": "+ New entry"
+  },
+  "primary": {
+    "yearRolling": "Rolling",
+    "entriesHeading": "Entries",
+    "showChart": "Show heatmap",
+    "hideChart": "Hide heatmap",
+    "loading": "Loading entries…",
+    "empty": "No entry for this period."
+  },
+  "row": {
+    "editAria": "Edit entry",
+    "deleteAria": "Delete entry",
+    "questionMarker": "Q."
+  },
+  "side": {
+    "distribution": "Distribution",
+    "patterns": "Patterns",
+    "rollingAvg": "Rolling average",
+    "rollingAvgScale": "over 30 d · scale −2 → +2",
+    "noPatterns": "Not enough entries yet to surface patterns."
+  },
+  "selectors": {
+    "yearAria": "Year",
+    "monthAria": "Month",
+    "monthAll": "All"
+  },
+  "donut": {
+    "ariaLabelOne": "Score distribution over {count} entry",
+    "ariaLabelOther": "Score distribution over {count} entries",
+    "centerCountOne": "{count} entry",
+    "centerCountOther": "{count} entries"
+  },
+  "chart": {
+    "day0": "Mon",
+    "day1": "",
+    "day2": "Wed",
+    "day3": "",
+    "day4": "Fri",
+    "day5": "",
+    "day6": "Sun"
+  },
+  "scoreLabels": {
+    "-2": "very low",
+    "-1": "low",
+    "0": "neutral",
+    "1": "good",
+    "2": "very good"
+  },
+  "context": {
+    "loadFailed": "Failed to load Mood entries.",
+    "confirmDelete": "Delete the entry from {date}?"
+  },
+  "composer": {
+    "positivesHeading": "Three positive things today",
+    "scoreHeading": "Today's score",
+    "optionalsExpand": "+ Question of the day & comment",
+    "optionalsCollapse": "− Collapse",
+    "questionLabel": "Question of the day: ",
+    "answerPlaceholder": "Answer (optional)",
+    "commentHeading": "Comment",
+    "commentPlaceholder": "Anything that didn't fit in the three lines above.",
+    "errors": {
+      "scoreRequired": "Pick today's score.",
+      "missingConfig": "Mood module not configured or key missing — sign in again.",
+      "saveFailed": "Failed to save."
+    },
+    "submittingUpdate": "Updating…"
+  }
+}

@@ -1,5 +1,6 @@
 import { ChevronUpIcon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import PageHeading from '@/ui/dirk/PageHeading';
@@ -22,6 +23,7 @@ import EntryRow from './EntryRow';
  *
  *  All state is read from the contexts ; no props. */
 export default function PrimaryColumn() {
+  const { t } = useI18n();
   const { entries, load } = useMoodData();
   const { year, month, chartCollapsed, filtered, toggleChart } =
     useMoodFilters();
@@ -31,8 +33,11 @@ export default function PrimaryColumn() {
   // cours », « Entrées · 2025 · mars », etc. Month is suppressed
   // for the rolling selection because the rolling window straddles
   // months by design.
-  const yearLabel = year === null ? 'En cours' : String(year);
+  const yearLabel = year === null ? t('mood.primary.yearRolling') : String(year);
   const showMonth = year !== null && month !== null;
+  const chartToggleLabel = chartCollapsed
+    ? t('mood.primary.showChart')
+    : t('mood.primary.hideChart');
 
   return (
     <section className="flex min-w-0 flex-col">
@@ -50,7 +55,7 @@ export default function PrimaryColumn() {
           keeps it below the topbar (`z-20`). */}
       <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-          <PageHeading className="mb-0">Mood</PageHeading>
+          <PageHeading className="mb-0">{t('mood.title')}</PageHeading>
           <YearSelector />
         </div>
 
@@ -62,7 +67,7 @@ export default function PrimaryColumn() {
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
-            Entrées · {yearLabel}
+            {t('mood.primary.entriesHeading')} · {yearLabel}
             {showMonth ? ` · ${MONTH_LABELS_LONG[month]}` : ''}
           </h2>
           <div className="flex items-center gap-2">
@@ -73,10 +78,8 @@ export default function PrimaryColumn() {
             <button
               type="button"
               onClick={toggleChart}
-              aria-label={
-                chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'
-              }
-              title={chartCollapsed ? 'Afficher la frise' : 'Masquer la frise'}
+              aria-label={chartToggleLabel}
+              title={chartToggleLabel}
               className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-bg-2 hover:text-ink"
             >
               <ChevronUpIcon
@@ -102,9 +105,9 @@ export default function PrimaryColumn() {
 
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
-          <EmptyHint>Chargement des entrées…</EmptyHint>
+          <EmptyHint>{t('mood.primary.loading')}</EmptyHint>
         ) : filtered.length === 0 ? (
-          <EmptyHint>Aucune entrée pour cette période.</EmptyHint>
+          <EmptyHint>{t('mood.primary.empty')}</EmptyHint>
         ) : (
           filtered.map((entry) => <EntryRow key={entry.id} entry={entry} />)
         )}

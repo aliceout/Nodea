@@ -11,7 +11,8 @@ import {
   passwordRulesPassed,
 } from '@nodea/shared';
 
-import { isApiError } from '@/core/api/client';
+import { apiErrorMessage, isApiError } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -62,6 +63,7 @@ export default function RegisterFormView({
   onSubmitted,
   submitRegistration,
 }: RegisterFormProps) {
+  const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -115,28 +117,21 @@ export default function RegisterFormView({
       const result = await submitRegistration(input);
       onSubmitted(result.email ?? emailInput);
     } catch (err) {
-      if (isApiError(err)) {
-        if (err.status === 400 && err.error === 'weak_password') {
-          setServerError(err.reason ?? 'Le mot de passe est trop faible.');
-        } else if (err.status === 400 && err.reason === 'email_mismatch') {
-          setServerError(
-            'L\'e-mail ne correspond pas à celui de l\'invitation.',
-          );
-        } else if (err.status === 401) {
-          setServerError(
-            'Lien d\'invitation invalide ou déjà utilisé. Recharge la page pour vérifier.',
-          );
-        } else if (err.status === 403) {
-          setServerError(
-            'L\'inscription est fermée. Demande un lien d\'invitation à un·e admin.',
-          );
-        } else if (err.status === 429) {
-          setServerError('Trop de tentatives. Réessaie dans quelques minutes.');
-        } else {
-          setServerError('Erreur lors de l\'inscription. Réessaie.');
-        }
+      // Page-specific override : the api ships
+      // `{ error: 'register_failed', reason: 'email_mismatch' }`
+      // when the invite was issued for a different e-mail. The
+      // generic helper would translate to « inscription a échoué »
+      // which masks the actionable copy. Catch the reason here and
+      // inline the bilingual message.
+      if (isApiError(err) && err.reason === 'email_mismatch') {
+        setServerError(
+          t('errors.register.emailMismatch', {
+            defaultValue:
+              'L’e-mail ne correspond pas à celui de l’invitation.',
+          }),
+        );
       } else {
-        setServerError('Erreur réseau. Réessaie dans un instant.');
+        setServerError(apiErrorMessage(err, t));
         if (import.meta.env.DEV) console.warn('register submit failed', err);
       }
     }
