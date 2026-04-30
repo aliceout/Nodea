@@ -16,7 +16,7 @@
 
 Audit mené sur `packages/web/src/`, `packages/api/src/`,
 `packages/shared/src/` au commit `f09d73c`. Référence d'audit
-antérieur : [`health.md`](./health.md) — celui-ci a déjà signé
+antérieur : `health.md` (livré et retiré) — celui-ci avait déjà signé
 le pattern `createModuleContexts<>()` et la promotion de
 `splitThreads` à `@nodea/shared`. La roadmap ci-dessous est en
 **continuité** de ces travaux, pas en concurrence.
@@ -32,10 +32,10 @@ le pattern `createModuleContexts<>()` et la promotion de
   **0 `:any` explicites**, 1 seul `@ts-ignore` dans tout le
   code, 13 `eslint-disable`. Plancher de typage solide.
 - **49 fichiers de test** (vitest + e2e Playwright). Couverture
-  non mesurée — voir [`health.md` Tier A § 3](./health.md#3-carte-de-couverture-des-tests--baseline-posé).
+  non mesurée à la pose de l'audit (depuis : baseline posé via le Tier A 3 de `health.md`, livré).
 - **1 seul fichier `.jsx` legacy** restant
   ([`I18nProvider.jsx`](../../packages/web/src/i18n/I18nProvider.jsx)),
-  suivi par [`health.md` Tier A § 2](./health.md#2-liquider-la-dette-jsxjs-résiduelle--quasi-livré).
+  qui était suivi par le Tier A 2 de `health.md` (roadmap livrée et retirée).
 
 ### Côté Zod & schémas partagés
 

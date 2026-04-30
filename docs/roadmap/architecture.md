@@ -1,14 +1,14 @@
 # Architecture & qualité structurelle — audit & roadmap
 
 > **Statut** : audit posé après les chantiers `module-refacto`,
-> `factoring-audit`, la migration logo, et les 5 audits
-> parallèles ([`health.md`](./health.md), [`i18n.md`](./i18n.md),
-> [`refacto.md`](./refacto.md), [`security.md`](./security.md),
-> [`api.md`](./api.md), [`frontend.md`](./frontend.md)). 17
-> findings identifiés — **0 critique, 0 élevé, 4 moyens, 13
-> faibles** + 1 point fort à conserver. C'est le **plus
-> subjectif** des sept audits ; chaque finding porte une note
-> de subjectivité explicite.
+> `factoring-audit`, la migration logo, et les audits parallèles
+> ([`refacto.md`](./refacto.md), [`security.md`](./security.md),
+> [`api.md`](./api.md), [`frontend.md`](./frontend.md)) ; les
+> roadmaps `health.md` et `i18n.md` qui ont précédé ont déjà
+> été livrées et retirées. 17 findings identifiés —
+> **0 critique, 0 élevé, 4 moyens, 13 faibles** + 1 point fort
+> à conserver. C'est le **plus subjectif** des audits ; chaque
+> finding porte une note de subjectivité explicite.
 >
 > **Mise à jour** : à chaque PR qui livre un fix, cocher la
 > case correspondante. Si une décision architecturale est
@@ -75,8 +75,9 @@ inhabituel pour un projet de cette taille.
 
 Plusieurs époques sont visibles, mais elles **vivent ensemble
 proprement**. La couche legacy (PocketBase + JSX) est en voie
-d'extinction (1 seul `.jsx` reste, `I18nProvider.jsx`, déjà
-tracké dans `health.md`). La couche Hono + Drizzle (post-Phase
+d'extinction (1 seul `.jsx` reste, `I18nProvider.jsx`, qui
+était tracké dans `health.md` avant la livraison de cette
+roadmap). La couche Hono + Drizzle (post-Phase
 2) est récente et soignée. La couche en cours d'écriture
 (i18n Tier 5/6) commit Tier-par-Tier — discipline. Les 6
 roadmaps actives tracent les chantiers en flight ; c'est
@@ -154,7 +155,7 @@ individuels plutôt que dans `documentation/API.md`).
 |---|---|---|
 | `CLAUDE.md` (root) | ~12 KB | À jour, **partiellement aspirationnel** (TanStack Query, Pino — non livrés) |
 | `docs/Auth-Spec.md` | ~2700 lignes | Maintenu activement |
-| `docs/Database.md`, `docs/Modules.md`, `docs/Architecture.md` | varie | À jour selon `health.md` Tier E 10 |
+| `docs/Database.md`, `docs/Modules.md`, `docs/Architecture.md` | varie | Synchronisation doc-code suivie historiquement dans `health.md` (livré). Ré-audit à prévoir si dérive. |
 | `docs/roadmap/` | 7 fichiers (~3000+ lignes cumulées) | Toutes en cours, format homogène |
 | ADR (Architectural Decision Records) | **0** | Décisions vivent dans les commits / commentaires |
 | Commentaires-en-tête de fichier | Très denses sur les fichiers critiques |
@@ -266,13 +267,13 @@ individuels plutôt que dans `documentation/API.md`).
 - **Type** : organisation / dette de process
 - **Sévérité** : moyenne
 - **Subjectivité** : moyenne
-- **Zone concernée** : [`docs/roadmap/`](./) — `health.md`, `i18n.md`, `refacto.md`, `security.md`, `api.md`, `frontend.md` + cette `architecture.md` qui en fera 7
-- **Description** : 7 roadmaps actives, ~3000+ lignes cumulées, ~95+ chantiers identifiés. Chaque audit a généré sa roadmap propre. C'est une grande quantité de dette **rendue visible** — bon signe sur la conscience du projet. Mais c'est aussi un coût de maintenance.
+- **Zone concernée** : [`docs/roadmap/`](./) — `refacto.md`, `security.md`, `api.md`, `frontend.md`, `architecture.md`, `ops.md` + [`docs/recommendations/server-config.md`](../recommendations/server-config.md). Soit **6 roadmaps actives + 1 doc de recos serveur**. Les anciennes `health.md` et `i18n.md` ont été livrées et retirées.
+- **Description** : 6 roadmaps actives + 1 doc de recos serveur (post-livraison de `health.md` et `i18n.md`), ~3500 lignes cumulées, ~80 chantiers identifiés. Chaque audit a généré sa roadmap propre. C'est une grande quantité de dette **rendue visible** — bon signe sur la conscience du projet. Mais c'est aussi un coût de maintenance.
 - **Pourquoi c'est un problème concret** : pour décider *« qu'est-ce qu'on fait cette semaine »*, il faut consulter 7 fichiers, recouper les dépendances (e.g., `frontend.md` FRONT-02 dépend de `api.md` API-08, ARCH-01 chevauche `refacto.md` REFACTO-06), et reconstituer un plan unifié.
 - **Tâches**
-  - [ ] **Option A (recommandée)** : créer `docs/roadmap/INDEX.md` qui liste les 7 roadmaps + un *« Top 10 cross-cutting cette semaine »* qui pointe vers les findings concrets.
+  - [ ] **Option A (recommandée)** : créer `docs/roadmap/INDEX.md` qui liste les 6 roadmaps actives + le doc `docs/recommendations/server-config.md` + un *« Top 10 cross-cutting cette semaine »* qui pointe vers les findings concrets.
   - [ ] **Option B** : fusionner en 1 roadmap géante. **Mauvaise idée** — les périmètres sont vraiment différents.
-  - [ ] **Option C (long terme)** : quand une roadmap est livrée à >80 %, la retirer de `docs/roadmap/` et mettre les findings résiduels dans `health.md` (qui est la roadmap *« long terme »*).
+  - [ ] **Option C (long terme)** : quand une roadmap est livrée à >80 %, la retirer de `docs/roadmap/` (convention déjà appliquée pour `health.md` et `i18n.md`). Les findings résiduels qui survivent à la roadmap parent peuvent être collectés dans une nouvelle roadmap *« reliquat »* si nécessaire.
 - **Effort** : S (~1h pour `INDEX.md`)
 - **Risque** : aucun
 - **Dépendances** : aucune
@@ -441,7 +442,7 @@ individuels plutôt que dans `documentation/API.md`).
 
 1. **ARCH-01** — Restructurer CLAUDE.md en blocs *« actuel »* / *« cible »* (1h, gain énorme pour onboarding).
 2. **ARCH-12** — Validation Zod runtime sur les routes critiques côté client (3h, attrape les drifts API silencieux).
-3. **ARCH-07** — `docs/roadmap/INDEX.md` qui pointe vers les 7 roadmaps + top cross-cutting (1h, simplifie la coordination).
+3. **ARCH-07** — `docs/roadmap/INDEX.md` qui pointe vers les 6 roadmaps + le doc de recos serveur + top cross-cutting (1h, simplifie la coordination).
 4. **ARCH-14** — Purge `ui/atoms/` du code mort (cf. [`refacto.md`](./refacto.md) REFACTO-09 — 30 min, ~1000 LOC mortes).
 5. **ARCH-10** — Sweep des références *« Phase N »* / *« Tier X »* livrées (2h, allège la charge cognitive).
 
@@ -541,4 +542,4 @@ Ce qui demanderait de connaître l'historique, l'équipe, ou les contraintes bus
 - À chaque PR qui livre un fix, cocher les `[ ]` correspondants.
 - Quand toutes les tâches d'un finding sont cochées, ajouter `— résolu (commit `xxxxxxx`)` à côté du titre.
 - Quand un finding est résolu par une **décision documentée en ADR** (et pas par un fix code), pointer l'ADR dans le titre du finding : *« — figé en ADR 0002 »*.
-- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (cf. convention du repo dans `health.md` Statut).
+- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (convention du repo : les roadmaps sont des artefacts temporaires qui disparaissent quand leur travail est fait — comme `i18n.md` et `health.md` retirés post-livraison).

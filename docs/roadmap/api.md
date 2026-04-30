@@ -4,7 +4,7 @@
 > `factoring-audit`, la migration logo, l'audit organisation
 > ([`refacto.md`](./refacto.md)) et l'audit sécurité
 > ([`security.md`](./security.md)). 16 findings identifiés —
-> dont **0 critique**, 1 élevé, 6 moyens, 7 faibles, 2
+> dont **0 critique**, 1 élevé, 5 moyens, 8 faibles, 2
 > informatifs. La posture API est **un hybride REST + RPC tenu
 > honnêtement**, mais avec **deux cultures de nommage qui
 > cohabitent sans convention figée** (snake_case sur les
@@ -357,7 +357,7 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 
 ### API-13 — Ordre des résultats dans les LIST `<module>/records` non spécifié
 
-- **Sévérité** : moyenne
+- **Sévérité** : faible *(initialement moyenne — révisée : Postgres préserve l'ordre d'insertion physique en steady state, sauf VACUUM FULL / pg_repack ; le risque réel de drift d'ordre est faible)*
 - **Type de breaking** : breaking si on contraint l'ordre
 - **Endpoints** : [`GET /<module>/records`](../../packages/api/src/routes/collection-factory.ts#L63)
 - **Description** : la route retourne *« rows in their physical insertion order »* (commentaire explicite). C'est volontaire — pas de timestamp colonne pour préserver la privacy. Mais un consommateur web qui dépend de l'ordre pour afficher peut se planter quand un utilisateur supprime puis recrée une entrée. Le contrat actuel est *« ne dépendez pas de l'ordre »* mais ce n'est pas dans la réponse, juste dans le code.
@@ -433,10 +433,10 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 | 6. Versionnement | — | — | API-10 | — | — |
 | 7. Doc / typage | — | — | API-11 | — | — |
 | 8. Webhooks | — | — | — | — | API-12 |
-| 9. Contrats implicites | — | — | API-13 | API-14 | — |
+| 9. Contrats implicites | — | — | — | API-13, API-14 | — |
 | 10. DX | — | — | API-15 | API-16 | — |
 
-**0 critique, 1 élevée, 6 moyennes, 7 faibles, 2 informatives.**
+**0 critique, 1 élevée, 5 moyennes, 8 faibles, 2 informatives.**
 
 ---
 
@@ -587,4 +587,4 @@ Ce que je n'ai pas pu vérifier depuis le code :
 - À chaque PR qui livre un fix, cocher les `[ ]` correspondants dans la liste de tâches du finding concerné.
 - Quand toutes les tâches d'un finding sont cochées, ajouter `— résolu (commit `xxxxxxx`)` à côté du titre.
 - Quand tous les findings d'une catégorie sont résolus, déplacer la section en bas du document sous une rubrique « Résolu ».
-- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (cf. convention du repo dans `health.md` Statut).
+- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (convention du repo : les roadmaps sont des artefacts temporaires qui disparaissent quand leur travail est fait — comme `i18n.md` et `health.md` retirés post-livraison).

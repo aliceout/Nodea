@@ -3,8 +3,8 @@
 > **Statut** : audit posé après les chantiers `module-refacto`,
 > `factoring-audit`, la migration logo, et les audits
 > [`refacto.md`](./refacto.md), [`security.md`](./security.md),
-> [`api.md`](./api.md). 15 findings identifiés — dont **0
-> critique**, 1 élevé, 2 moyens, 11 faibles, 1 informatif
+> [`api.md`](./api.md). 14 findings identifiés — dont **0
+> critique**, 1 élevé, 2 moyens, 10 faibles, 1 informatif
 > (positif). La posture frontend est **accessibilité d'abord +
 > vélocité de dev**, avec un effort visible sur les atoms a11y
 > mais sans monitoring runtime des Core Web Vitals.
@@ -228,21 +228,25 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### FRONT-08 — `recharts` chargé pour Habits seul (lib lourde, ~95 KB gzip)
+### FRONT-08 — `recharts` peut-être pas vraiment utilisé (audit + retrait potentiel)
 
-- **Catégorie** : perf chargement
+> Consolide l'ancien FRONT-15. Un seul finding, un seul fix.
+
+- **Catégorie** : perf chargement / dette
 - **Sévérité** : faible
-- **Impact utilisateur** : ouvrir le module Habits pour la première fois → fetch d'un chunk d'environ 95 KB (recharts) qui contient toute la lib charts alors qu'on n'utilise probablement qu'1 ou 2 composants. Sur connexion lente, ajoute ~500 ms au premier accès Habits.
+- **Impact utilisateur** : si recharts est dans le bundle Habits, il pèse ~95 KB gzip. Ouvrir Habits pour la première fois → fetch un chunk de cette taille. Sur connexion lente, ~500 ms ajoutés au premier accès Habits.
 - **Fichiers** :
-  - [`Habits/components/Heatmap.tsx`](../../packages/web/src/app/flow/Habits/components/Heatmap.tsx) — seul site qui importe `recharts`
-- **Description** : `recharts` exporte une centaine de composants (LineChart, BarChart, PieChart, AreaChart, etc.) — tree-shaking partiel possible mais limité par les dépendances internes.
+  - [`Habits/components/Heatmap.tsx`](../../packages/web/src/app/flow/Habits/components/Heatmap.tsx) — **seul site qui importe `recharts`** dans tout le repo
+- **Description** : `recharts` est dans `package.json` mais ne semble être consommé qu'à un seul endroit (Heatmap.tsx). Le code visible de Heatmap.tsx suggère des **SVG hand-rolled** (`<title>` inline pour tooltips). Très probablement la lib est importée *« par habitude »* sans être réellement utilisée — à vérifier.
 - **Tâches**
-  - [ ] **Vérifier** si recharts est *vraiment* utilisé pour les charts ou juste importé par habitude (le code visible suggère SVG hand-rolled).
-  - [ ] Si non utilisé essentiellement → **retirer la dep** (-95 KB).
-  - [ ] Si utilisé, regarder si `recharts/es6/chart-name` (sub-imports) tree-shake mieux.
-- **Effort** : S (~30 min audit) à M (~1h migration)
-- **Risque** : faible
-- **Dépendances** : aucune
+  - [ ] **Étape 1 — audit (~30 min)** : ouvrir `Heatmap.tsx`, identifier précisément quels symboles de `recharts` sont consommés.
+  - [ ] **Étape 2 — décision** :
+    - Si rien d'essentiel n'est utilisé → **retirer la dep** de `package.json` + retirer l'import.
+    - Si quelque chose est utilisé → vérifier si `recharts/es6/<component>` (sub-imports) tree-shake mieux que l'import racine.
+  - [ ] **Étape 3 — confirmation** : rebuild + bundle analyzer (cf. FRONT-03) pour confirmer le gain.
+- **Effort** : S (~30 min audit) à M (~1h si migration sub-imports)
+- **Risque** : faible (ou aucun si suppression pure)
+- **Dépendances** : FRONT-03 (bundle analyzer pour valider le gain)
 
 ### FRONT-09 — `@zxcvbn-ts/language-common` importé en `import *` sur 4 pages auth
 
@@ -361,19 +365,11 @@ catalogue se rend en une passe. »*
 - **Risque** : aucun
 - **Dépendances** : aucune
 
-### FRONT-15 — Recharts en deps mais peut-être pas utilisé pour des charts
+### FRONT-15 — *(retiré — fusionné dans FRONT-08)*
 
-- **Catégorie** : perf chargement / dette
-- **Sévérité** : faible
-- **Fichiers** :
-  - [`Habits/components/Heatmap.tsx`](../../packages/web/src/app/flow/Habits/components/Heatmap.tsx) — seul import recharts trouvé
-- **Description** : possiblement importé et non utilisé, ou utilisé pour 1 utilité. À auditer manuellement. Doublon partiel avec FRONT-08 — à fusionner dans le même fix.
-- **Tâches**
-  - [ ] Ouvrir Heatmap.tsx, vérifier ce qui de recharts est concrètement consommé.
-  - [ ] Si rien d'essentiel, retirer la dep (-95 KB gzip du chunk Habits).
-- **Effort** : S (~30 min)
-- **Risque** : faible
-- **Dépendances** : aucune (à fusionner avec FRONT-08)
+Le finding *« recharts en deps mais peut-être pas utilisé »* qui vivait
+ici était un doublon partiel de FRONT-08. Les tâches sont consolidées
+dans FRONT-08 ci-dessus.
 
 ---
 
@@ -381,7 +377,7 @@ catalogue se rend en une passe. »*
 
 | Catégorie | Critique | Élevée | Moyenne | Faible | Info |
 |---|---|---|---|---|---|
-| Perf chargement | — | — | FRONT-03 | FRONT-08, FRONT-09, FRONT-10, FRONT-15 | — |
+| Perf chargement | — | — | FRONT-03 | FRONT-08, FRONT-09, FRONT-10 | — |
 | Perf runtime | — | — | FRONT-02 | — | — |
 | Images / médias | — | FRONT-01 | — | — | — |
 | Core Web Vitals | — | — | FRONT-03 | — | — |
@@ -402,7 +398,7 @@ catalogue se rend en une passe. »*
 2. **FRONT-04** — Ajouter `useEffect(() => { document.title = ... })` sur `Docs.tsx`, `Login.tsx`, `Register.tsx`, etc. ~1h pour 8 pages publiques.
 3. **FRONT-14** — Skip-link sur `App.tsx`. 10 min, gain a11y immédiat.
 4. **FRONT-11** — OG / Twitter meta dans `index.html`. 15 min, valeurs statiques.
-5. **FRONT-15 + FRONT-08** — Audit recharts dans Heatmap. 30 min, potentiel gain ~95 KB sur le chunk Habits.
+5. **FRONT-08** — Audit recharts dans Heatmap (consolidé). 30 min, potentiel gain ~95 KB sur le chunk Habits.
 
 ## Top 5 chantiers structurants
 
@@ -436,7 +432,7 @@ Semaine 1 (quick wins a11y + SEO, ~3h cumulées)
   ├─ FRONT-14    (skip-link)
   ├─ FRONT-11    (OG / Twitter meta)
   ├─ FRONT-04    (document.title par page publique)
-  └─ FRONT-15+08 (audit recharts)
+  └─ FRONT-08    (audit recharts)
 
 Semaine 2 (mesure + observabilité)
   ├─ FRONT-03    (web-vitals + bundle analyzer + LHCI)
@@ -489,4 +485,4 @@ Ce que je n'ai pas pu vérifier sans navigateur réel :
 - À chaque PR qui livre un fix, cocher les `[ ]` correspondants dans la liste de tâches du finding concerné.
 - Quand toutes les tâches d'un finding sont cochées, ajouter `— résolu (commit `xxxxxxx`)` à côté du titre.
 - Quand tous les findings d'une catégorie sont résolus, déplacer la section en bas du document sous une rubrique « Résolu ».
-- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (cf. convention du repo dans `health.md` Statut).
+- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (convention du repo : les roadmaps sont des artefacts temporaires qui disparaissent quand leur travail est fait — comme `i18n.md` et `health.md` retirés post-livraison).

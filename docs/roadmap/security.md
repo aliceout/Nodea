@@ -13,8 +13,7 @@
 > **Mise à jour** : à chaque PR qui livre un fix, cocher la
 > case correspondante. Si un fix change un invariant documenté
 > (ex : déplacer `sid+d` du query vers les headers), mettre à
-> jour `CLAUDE.md` ou `documentation/Security.md` (à créer —
-> cf. [`health.md`](./health.md) Tier C 7) dans le **même
+> jour `CLAUDE.md` ou `docs/Security.md` dans le **même
 > commit**.
 
 Audit mené sur le code au commit `b9b250c` + un `curl -I` sur
@@ -22,7 +21,9 @@ l'instance prod `nodea.app` pour confirmer les headers servis
 par le reverse proxy upstream. **Périmètre limité à la sécurité
 applicative et la protection des données** — pas de remarques
 qualité de code / perf / archi (ces angles vivent dans
-[`health.md`](./health.md) et [`refacto.md`](./refacto.md)).
+[`refacto.md`](./refacto.md) et [`architecture.md`](./architecture.md)
+— l'ancienne roadmap `health.md` qui couvrait la dette
+JSX/lint/couverture est livrée).
 
 ---
 
@@ -153,46 +154,31 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Risque** : faible (pas de breaking change visible côté user, juste une migration interne)
 - **Dépendances** : aucune
 
-### SEC-02 — Content-Security-Policy manquante
+### SEC-02 — Content-Security-Policy manquante (serveur-side)
 
 - **Sévérité** : moyenne *(était élevée avant vérif `curl -I` — les autres headers sont posés par l'upstream)*
 - **Exploitabilité** : conditions particulières (suppose une faille XSS, dépendance compromise, ou bundle JS modifié)
-- **Fichiers** : configuration upstream nginx (hors-repo, sur le VPS)
-- **Description** : tous les autres headers défensifs sont en place sur `https://nodea.app/` (HSTS 2 ans, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy), **sauf la CSP**. Pour une app E2EE, la CSP est *la défense la plus pertinente* parce qu'elle bloque l'exfiltration cross-origin de la main key dans le scénario *« serveur compromis sert un bundle JS modifié »* — exactement ce que la doc publique reconnaît comme *« le seul scénario qu'on ne peut pas neutraliser »* et que `INTEGRITY.txt` mitige déjà partiellement.
-- **Scénario d'exploitation** : un attaquant compromet un sous-domaine sibling (`old.nodea.app`) ou injecte un script via une CVE dans une lib front. En l'absence de CSP, le script exfiltre la main key déchiffrée en mémoire vers `https://attacker.com/?k=<base64>`. Avec `connect-src 'self'`, l'exfiltration cross-origin est bloquée.
-- **Correctif proposé** : à ajouter sur le `location /` du reverse proxy upstream (qui sert le HTML, pas sur les `/assets/`) :
-  ```nginx
-  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'" always;
-  ```
-- **Tâches**
-  - [ ] Déployer en `Content-Security-Policy-Report-Only` d'abord, ~1 semaine.
-  - [ ] Surveiller les violations (Sentry / endpoint custom `/csp-report` ou les logs nginx).
-  - [ ] Switcher en `Content-Security-Policy` (mode enforce).
-  - [ ] Documenter dans `documentation/Security.md` (à créer).
-- **Notes** :
-  - `style-src 'unsafe-inline'` est nécessaire pour Tailwind v4 qui inline ses utility classes.
-  - `https://fonts.googleapis.com` + `https://fonts.gstatic.com` parce que `index.html` charge Instrument Sans/Serif via Google Fonts. Si tu self-host les fonts un jour, retire ces sources.
-  - `frame-ancestors 'self'` est l'équivalent moderne de XFO.
-- **Effort** : M (~1-2h test report-only + 1 semaine de soak + enforce)
-- **Risque** : faible si report-only en amont
-- **Dépendances** : aucune
+- **Statut** : **finding intégralement serveur-side** — déplacé dans [`docs/recommendations/server-config.md` REC-S1](../recommendations/server-config.md#rec-s1--content-security-policy).
+- **Description courte** : tous les autres headers défensifs sont en place sur `https://nodea.app/` (HSTS 2 ans, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy), **sauf la CSP**. Le fix est sur le reverse proxy upstream (hors-repo).
+- **Tâches** : voir [`server-config.md` REC-S1](../recommendations/server-config.md#rec-s1--content-security-policy).
 
 ### SEC-03 — Rate limiter bypassable via `X-Forwarded-For` spoofé
 
 - **Sévérité** : moyenne
 - **Exploitabilité** : triviale si l'API est joignable directement, conditionnelle derrière le proxy
-- **Fichiers** :
+- **Statut** : **partagé** — la partie code app reste ici, la partie config upstream nginx est dans [`server-config.md` REC-S2](../recommendations/server-config.md#rec-s2--x-forwarded-for-strip-de-lentrant).
+- **Fichiers (app)** :
   - [`packages/api/src/middleware/rate-limit.ts:34`](../../packages/api/src/middleware/rate-limit.ts#L34) (`getClientKey` lit `x-forwarded-for` premier hop sans validation)
-  - [`packages/web/nginx.conf`](../../packages/web/nginx.conf) — `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for` (append, ne strip pas l'entrant)
-- **Description** : la fonction extrait le **premier IP** de `X-Forwarded-For` comme clé de rate-limit. Aucun mécanisme de *trusted proxy* n'est en place — le code accepte n'importe quel header `X-Forwarded-For` envoyé par le client. `nginx.conf` set `X-Forwarded-For $proxy_add_x_forwarded_for` qui **append** l'IP réelle, mais ne purge pas l'entrant : si le client envoie `X-Forwarded-For: 1.2.3.4`, Nginx forwarde `1.2.3.4, <real_ip>`, et le code prend `split(',')[0]` = `1.2.3.4`. **Spoofé.**
-- **Scénario d'exploitation** : un attaquant veut brute-forcer un email qu'il pense connu. Il envoie 1000 requêtes `POST /auth/login/start` avec `X-Forwarded-For: ${random_ip}` à chaque coup. Chaque requête hit un bucket différent → rate-limit jamais déclenché. Bypass valable sur tous les endpoints rate-limités : login, request-reset, mfa-totp/verify, recovery, etc.
-- **Tâches**
-  - [ ] Configurer le **reverse proxy upstream** pour strip les `X-Forwarded-For` entrants : `proxy_set_header X-Forwarded-For $remote_addr;`
-  - [ ] OU côté Hono : lire le **dernier** hop de `X-Forwarded-For` (celui que l'upstream vient d'append) plutôt que le premier — `parts[parts.length - 1].trim()`.
-  - [ ] Documenter le contrat : « le rate limiter suppose un seul reverse proxy de confiance directement devant l'API ».
-- **Effort** : S (~30 min)
+- **Description** : la fonction extrait le **premier IP** de `X-Forwarded-For` comme clé de rate-limit. Sous l'hypothèse d'un reverse proxy upstream qui **n'a pas** strip l'entrant (cf. REC-S2), un client peut spoof `X-Forwarded-For: 1.2.3.4` et bypass le rate-limit. Le fix app-side est de lire le **dernier** hop (celui que l'upstream vient d'append) plutôt que le premier.
+- **Scénario d'exploitation** : un attaquant envoie 1000 requêtes `POST /auth/login/start` avec `X-Forwarded-For: ${random_ip}` à chaque coup. Chaque requête hit un bucket différent → rate-limit jamais déclenché. Bypass valable sur tous les endpoints rate-limités.
+- **Tâches (app-side)**
+  - [ ] Modifier `getClientKey` dans `rate-limit.ts` pour lire le **dernier** hop : `parts[parts.length - 1].trim()`.
+  - [ ] Documenter le contrat dans le commentaire du fichier : *« le rate limiter suppose un seul reverse proxy de confiance directement devant l'API, qui append son IP en dernier »*.
+  - [ ] Ajouter un test unit qui vérifie le comportement avec un `X-Forwarded-For` multi-hop.
+- **Tâches (server-side)** : voir [`server-config.md` REC-S2](../recommendations/server-config.md#rec-s2--x-forwarded-for-strip-de-lentrant).
+- **Effort (app)** : S (~30 min)
 - **Risque** : faible
-- **Dépendances** : aucune
+- **Dépendances** : REC-S2 (les deux fixes ensemble closent le finding)
 
 ### SEC-04 — `COOKIE_SECURE` défaut à `false` (foot-gun pour self-hosters)
 
@@ -309,26 +295,13 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Risque** : faible (fail-fast meilleur que silent broken)
 - **Dépendances** : aucune
 
-### SEC-11 — HSTS éligible au preload list (enhancement)
+### SEC-11 — HSTS éligible au preload list (serveur-side)
 
 - **Sévérité** : informatif
 - **Exploitabilité** : N/A (renforcement, pas vulnérabilité)
-- **Fichiers** : configuration upstream nginx (hors-repo)
-- **Description** : la prod sert `Strict-Transport-Security: max-age=63072000; includeSubDomains` — éligible au [HSTS preload list](https://hstspreload.org/) de Chrome / Firefox / Safari (max-age ≥ 31536000 + includeSubDomains, OK). Ajouter la directive `preload` permet de **soumettre `nodea.app` au preload list** : les navigateurs forceront alors HTTPS dès la première visite, jamais sur HTTP, même avant le premier hit du site. C'est la version la plus stricte du HSTS — adoptée par les banques et services sensibles.
-- **Avant de submit** :
-  - Vérifier que **tous les sous-domaines** servent en HTTPS (parce que `includeSubDomains` s'applique aussi aux sous-domaines préchargés). Si `dev.nodea.app` ou similaire ne sert qu'en HTTP, le preload casserait l'accès.
-  - Le retrait de la liste prend ~6 mois — c'est quasi-irréversible. Donc à faire seulement quand la config DNS / TLS est stable.
-- **Tâches**
-  - [ ] Audit des sous-domaines de `nodea.app` : tous en HTTPS ?
-  - [ ] Ajouter `preload` à la directive HSTS sur l'upstream :
-    ```nginx
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    ```
-  - [ ] Soumettre sur https://hstspreload.org/.
-  - [ ] Vérifier `https://hstspreload.org/?domain=nodea.app` quelques semaines après le submit.
-- **Effort** : S (~15 min config + soumission)
-- **Risque** : faible si l'audit des sous-domaines est fait en amont
-- **Dépendances** : aucune
+- **Statut** : **finding intégralement serveur-side** — déplacé dans [`docs/recommendations/server-config.md` REC-S3](../recommendations/server-config.md#rec-s3--hsts-preload).
+- **Description courte** : la prod sert `Strict-Transport-Security: max-age=63072000; includeSubDomains` — éligible au HSTS preload list. Ajouter la directive `preload` + soumettre à `hstspreload.org`. Choix infra (quasi-irréversible — retrait ~6 mois).
+- **Tâches** : voir [`server-config.md` REC-S3](../recommendations/server-config.md#rec-s3--hsts-preload).
 
 ---
 
@@ -419,4 +392,4 @@ Ce que je n'ai **pas** pu vérifier depuis le code, et qui peut basculer la post
 - À chaque PR qui livre un fix, cocher les `[ ]` correspondants dans la liste de tâches du finding concerné.
 - Quand toutes les tâches d'un finding sont cochées, ajouter `— résolu (commit `xxxxxxx`)` à côté du titre.
 - Quand tout un Tier est résolu, déplacer la section en bas du document sous une rubrique « Résolu ».
-- Quand tous les findings du document sont résolus, retirer le fichier de `docs/roadmap/` (cf. `health.md` Statut — convention du repo).
+- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (convention du repo : les roadmaps sont des artefacts temporaires qui disparaissent quand leur travail est fait — comme `i18n.md` et `health.md` retirés post-livraison).

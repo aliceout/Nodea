@@ -1,10 +1,11 @@
 # Infra, déploiement & observabilité — audit & roadmap
 
-> **Statut** : audit posé après les 7 roadmaps précédentes
-> ([`health.md`](./health.md), [`i18n.md`](./i18n.md),
-> [`refacto.md`](./refacto.md), [`security.md`](./security.md),
+> **Statut** : audit posé après 5 roadmaps actives
+> ([`refacto.md`](./refacto.md), [`security.md`](./security.md),
 > [`api.md`](./api.md), [`frontend.md`](./frontend.md),
-> [`architecture.md`](./architecture.md)). 15 findings —
+> [`architecture.md`](./architecture.md)) ; les roadmaps
+> `health.md` et `i18n.md` qui ont précédé celle-ci ont déjà
+> été livrées et retirées de `docs/roadmap/`. 15 findings —
 > **0 critique, 3 élevés, 6 moyens, 4 faibles**, plus 2
 > cross-références aux audits précédents. La maturité ops est
 > **bonne sur la CI/CD, naïve sur le runtime** : le projet est
@@ -14,8 +15,8 @@
 > **Mise à jour** : à chaque PR qui livre un fix, cocher la
 > case correspondante. Si un fix change le comportement
 > opérationnel (healthcheck, alerting, backup), mettre à jour
-> `documentation/Operations.md` (à créer — cf. OPS-14) dans
-> le **même commit**.
+> `docs/Operations.md` (à créer — cf. OPS-14) dans le **même
+> commit**.
 
 Audit mené sur le code au commit `ae12f2a`. **Périmètre limité
 à l'infra, déploiement, observabilité, tests** — pas de
@@ -193,19 +194,24 @@ détection est inexistante. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### OPS-02 — Aucun alerting / monitoring runtime
+### OPS-02 — Aucune intégration runtime de capture d'erreurs ni de webhook 5xx (côté app)
 
 - **Domaine** : alerting
 - **Sévérité** : élevée
-- **Effort** : M (~2-4h pour le minimum)
-- **Zone concernée** : aucune (l'absence est le finding)
-- **Description** : pas de Sentry, pas de webhook Slack, pas de healthcheck externe (UptimeRobot, Better Stack, etc.). Si l'instance crashe, si la DB tombe, si un déploiement échoue — **personne ne sera notifié**. La seule détection possible est *« un user m'a écrit pour dire que l'app marche pas »*.
-- **Tâches** (par ordre de simplicité)
-  - [ ] **UptimeRobot ou Better Stack Heartbeats** (gratuit) qui ping `/healthz` toutes les minutes et envoie un email/SMS si down. ~10 min de setup.
-  - [ ] **Sentry** (cloud free tier, 10k events/mois) sur l'API (`@sentry/node`) + sur le web (`@sentry/react`). ~1h de setup.
-  - [ ] **Webhook Slack/Discord** sur les 5xx — middleware Hono qui fire un POST si `c.res.status >= 500`. ~30 min.
-- **Risque** : faible
-- **Dépendances** : OPS-01 utile en prérequis (sinon UptimeRobot ne détecte que l'arrêt complet du process).
+- **Effort** : M (~2-3h pour le minimum côté app)
+- **Statut** : **partagé** — la partie *« choix d'outil »* (UptimeRobot, Sentry cloud vs self-hosted, Discord vs Slack) est dans [`server-config.md` REC-S4-S6](../recommendations/server-config.md#section-2--alerting--monitoring-runtime). La partie code app (SDK Sentry init, middleware webhook 5xx) reste ici.
+- **Zone concernée (app)** :
+  - [`packages/api/src/app.ts`](../../packages/api/src/app.ts) — pas de Sentry init, pas de middleware 5xx-webhook
+  - [`packages/web/src/main.tsx`](../../packages/web/src/main.tsx) — pas de Sentry init côté front
+- **Description** : aucune capture d'exceptions runtime, aucun webhook sur 5xx, aucun ping externe sur `/healthz`. Si l'instance crashe ou que la DB tombe, **personne ne sera notifié**. La seule détection possible est *« un user m'a écrit pour dire que l'app marche pas »*.
+- **⚠️ Caveat critique — Sentry dépend de SEC-01** :
+  > **Ne PAS brancher Sentry avant que SEC-01 (Pino + scrubbing) soit livré.** Sentry capture par défaut les request bodies + cookies dans les events. Tant que `hono/logger()` log les guards HMAC en query string et que les bodies ne sont pas scrubbés, **Sentry exfiltrerait du matériel cryptographique** vers ses serveurs. SEC-01 doit livrer en amont, et l'init Sentry doit utiliser `beforeSend` pour filtrer agressivement les bodies / headers / query.
+- **Tâches (app-side)**
+  - [ ] **Étape 1 (sans Sentry)** : middleware Hono qui fire un POST sur webhook si `c.res.status >= 500`. URL du webhook via env var `ERROR_WEBHOOK_URL`. ~30 min. **Pas de dépendance à SEC-01** (le webhook envoie juste *« 5xx sur la route X »*, pas de body).
+  - [ ] **Étape 2 (Sentry)** : ajouter `@sentry/node` côté API + `@sentry/react` côté web. **Après livraison de SEC-01.** Init avec `beforeSend` qui filtre les request bodies et les query strings sensibles. ~1h.
+  - [ ] **Étape 3** : config UptimeRobot ou équivalent côté infra (hors-app — voir REC-S4).
+- **Risque** : élevé si Sentry branché avant SEC-01 (fuite de crypto material vers Sentry servers).
+- **Dépendances** : OPS-01 (healthcheck honnête), [`security.md`](./security.md) SEC-01 (Pino + scrubbing) **avant Sentry**.
 
 ### OPS-03 — Aucun container applicatif (api, web) ne tourne en `USER` non-root
 
@@ -258,16 +264,17 @@ détection est inexistante. »*
 
 - **Domaine** : backups / résilience
 - **Sévérité** : élevée
-- **Effort** : M (~2-3h pour setup + doc)
-- **Zone concernée** : `infra/scripts/`, `docs/`, `documentation/` — aucun script `backup.sh`, aucune mention de `pg_dump` / `pg_restore` (cf. [`security.md`](./security.md) SEC-09 angle mort #7).
-- **Description** : pas de mécanisme de backup automatique de Postgres documenté. Pas de cron `pg_dump`, pas d'upload off-site. Si le VPS plante / disque corrompu / `rm -rf` malheureux → **perte de toutes les données utilisateur**. Pour une app E2EE, l'impact est doublement grave : les blobs chiffrés sont perdus, et les utilisateur·ices ne peuvent pas les restaurer eux-mêmes.
-- **Tâches**
-  - [ ] Script `infra/scripts/backup.sh` qui fait `docker compose exec -T postgres pg_dump ...` → fichier daté → upload S3 / Backblaze B2 / quelque part off-site.
-  - [ ] Cron quotidien (4h du matin par exemple) qui le lance.
-  - [ ] **Tester la restauration** une fois — un backup non-restauré n'est pas un backup.
-  - [ ] Documenter dans `documentation/Operations.md` la procédure de restore + la rétention (7 jours quotidiens + 4 hebdo + 6 mensuels = standard).
+- **Effort** : M (~2h pour la partie app — script + doc)
+- **Statut** : **partagé** — la partie *« script `backup.sh` + doc procédure restore »* est app-side (vit dans le repo). La partie *« choix de provider off-site »* (Backblaze B2, S3, rsync) est dans [`server-config.md` REC-S7](../recommendations/server-config.md#rec-s7--storage-off-site-pour-les-backups-postgres).
+- **Zone concernée (app)** : `scripts/` (où `deploy.sh` vit déjà), `docs/`
+- **Description** : pas de script de backup automatique de Postgres dans le repo. Pas de procédure de restore documentée. Si le VPS plante / disque corrompu / `rm -rf` malheureux → **perte de toutes les données utilisateur**. Pour une app E2EE, l'impact est doublement grave : les blobs chiffrés sont perdus, et les utilisateur·ices ne peuvent pas les restaurer eux-mêmes.
+- **Tâches (app-side)**
+  - [ ] Créer `scripts/backup.sh` qui fait `docker compose exec -T postgres pg_dump ...` → fichier daté dans un dossier local (l'upload off-site est config VPS — voir REC-S7).
+  - [ ] Créer `scripts/restore.sh` qui prend un dump en argument et le pousse dans Postgres.
+  - [ ] Documenter dans `docs/Operations.md` (à créer — cf. OPS-14) : procédure de restore + rétention recommandée + lien vers REC-S7 pour le storage off-site.
+  - [ ] Ajouter un test (manuel ou e2e) : restore d'un dump dans une instance temporaire + smoke test sur un user de test.
 - **Risque** : faible (script en lecture seule sur la DB)
-- **Dépendances** : aucune
+- **Dépendances** : REC-S7 (provider off-site) pour la chaîne complète backup → off-site → restore.
 
 ### OPS-06 — E2E coverage thin : 2 specs pour 7+ flows auth critiques
 
@@ -395,34 +402,30 @@ détection est inexistante. »*
 - **Risque** : aucun
 - **Dépendances** : aucune (mais utile à coupler avec un système de release tagué semver)
 
-### OPS-13 — Pas d'environnement de staging
+### OPS-13 — Pas d'environnement de staging (serveur-side)
 
 - **Domaine** : CD
 - **Sévérité** : faible
-- **Effort** : N/A (décision business)
-- **Zone concernée** : déploiement
-- **Description** : un seul environnement prod, pas de staging entre `main` CI vert et le VPS de prod. Toute régression non rattrapée par les tests touche directement les utilisateur·ices.
-- **Tâches**
-  - [ ] **Décisionnel** : pondérer selon l'usage. Si Nodea reste self-host pour quelques amis, laisser tomber. Si Nodea s'ouvre à un user-base inconnu, monter un staging représentatif.
-  - [ ] Si décision « monter staging » : VPS supplémentaire + secrets séparés + DB séparée + déploiement auto de `main` vers staging + déploiement prod uniquement sur tag.
-- **Risque** : N/A
-- **Dépendances** : OPS-12 (CHANGELOG / tagging) si on bascule vers déploiement par tag.
+- **Statut** : **finding intégralement infra** — déplacé dans [`server-config.md` REC-S8](../recommendations/server-config.md#rec-s8--staging-environment-décision-business).
+- **Description courte** : un seul environnement prod, pas de staging entre `main` CI vert et le VPS de prod. Décision business (selon user-base + appétit pour un VPS supplémentaire).
+- **Tâches** : voir [`server-config.md` REC-S8](../recommendations/server-config.md#rec-s8--staging-environment-décision-business).
 
-### OPS-14 — Pas de SLO / SLI ni runbook
+### OPS-14 — Pas de runbook côté app (engagements SLO en infra)
 
-- **Domaine** : alerting
+- **Domaine** : documentation ops
 - **Sévérité** : faible
-- **Effort** : M (~3-4h pour la première version)
-- **Zone concernée** : `documentation/`
-- **Description** : pas de SLO documenté (*« 99 % de disponibilité mensuelle, P99 latence < 500 ms »*), pas de runbook (*« si l'api est down, voici les 3 commandes à lancer »*), pas de doc d'incident. Pour une équipe à 1 personne, c'est défendable — la connaissance vit dans la tête. Pour qu'un nouveau contributor ou un sysadmin de relève puisse intervenir, c'est un gap.
-- **Tâches**
-  - [ ] Créer `documentation/Operations.md` avec :
-    - SLO indicatif (disponibilité, latence)
-    - Runbook minimal : api down, postgres plein, certificate expiry, restoration backup
-    - Liens vers les commandes utiles (`docker compose`, `pg_dump`, etc.)
+- **Effort** : M (~3h pour la première version du runbook)
+- **Statut** : **partagé** — la partie *« doc runbook dans le repo »* est app-side. La partie *« engagements SLO »* (commitments à 99 % disponibilité, etc.) est dans [`server-config.md` REC-S12](../recommendations/server-config.md#rec-s12--slo--sli) parce que ça dépend du contexte d'opération.
+- **Zone concernée (app)** : `docs/Operations.md` (à créer)
+- **Description** : pas de runbook (*« si l'api est down, voici les 3 commandes à lancer »*), pas de doc d'incident. Pour une équipe à 1 personne, la connaissance vit dans la tête. Pour qu'un nouveau contributor ou un sysadmin de relève puisse intervenir, c'est un gap.
+- **Tâches (app-side)**
+  - [ ] Créer `docs/Operations.md` avec :
+    - Runbook minimal : api down, postgres plein, certificate expiry, restoration backup (lien vers OPS-05)
+    - Liens vers les commandes utiles (`docker compose`, `pg_dump`, `pnpm db:migrate`, etc.)
+    - Procédure de premier diagnostic d'incident (logs, healthcheck, état des containers)
   - [ ] À enrichir au fil des incidents — chaque incident résolu génère 1 paragraphe de runbook.
 - **Risque** : aucun
-- **Dépendances** : OPS-05 (backup procedure), OPS-01 (healthcheck), OPS-02 (alerting) à documenter dedans.
+- **Dépendances** : OPS-05 (procédure restore à documenter), OPS-01 (comportement healthcheck), OPS-02 (config alerting) doivent être livrés pour que le runbook les référence correctement.
 
 ### OPS-15 — Postgres exposé via `ports:` dans compose (cross-réf SEC-05)
 
@@ -566,4 +569,4 @@ Plus tard (à pondérer)
 - À chaque PR qui livre un fix, cocher les `[ ]` correspondants.
 - Quand toutes les tâches d'un finding sont cochées, ajouter `— résolu (commit `xxxxxxx`)` à côté du titre.
 - Quand un finding est résolu par une **décision documentée** (pas par un fix code — ex : « on garde main → prod direct, pas de staging »), pointer la décision dans le titre du finding.
-- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (cf. convention du repo dans `health.md` Statut).
+- Quand toute la roadmap est livrée, retirer le fichier de `docs/roadmap/` (convention du repo : les roadmaps sont des artefacts temporaires qui disparaissent quand leur travail est fait — comme `i18n.md` et `health.md` retirés post-livraison).
