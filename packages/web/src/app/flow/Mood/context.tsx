@@ -1,16 +1,14 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Context,
   type ReactNode,
 } from 'react';
 
 import { moodClient } from '@/core/api/modules/mood';
+import { createModuleContexts } from '@/core/react/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,
@@ -70,25 +68,16 @@ interface MoodActionsValue {
   deleteEntry: (entry: MoodEntry) => Promise<void>;
 }
 
-const MoodDataContext = createContext<MoodDataValue | null>(null);
-const MoodFiltersContext = createContext<MoodFiltersValue | null>(null);
-const MoodActionsContext = createContext<MoodActionsValue | null>(null);
+const {
+  Provider: MoodContexts,
+  useData: useMoodData,
+  useFilters: useMoodFilters,
+  useActions: useMoodActions,
+} = createModuleContexts<MoodDataValue, MoodFiltersValue, MoodActionsValue>(
+  'Mood',
+);
 
-function useRequiredContext<T>(ctx: Context<T | null>, name: string): T {
-  const v = useContext(ctx);
-  if (!v) throw new Error(`${name}() must be used inside <MoodProvider>`);
-  return v;
-}
-
-export function useMoodData(): MoodDataValue {
-  return useRequiredContext(MoodDataContext, 'useMoodData');
-}
-export function useMoodFilters(): MoodFiltersValue {
-  return useRequiredContext(MoodFiltersContext, 'useMoodFilters');
-}
-export function useMoodActions(): MoodActionsValue {
-  return useRequiredContext(MoodActionsContext, 'useMoodActions');
-}
+export { useMoodData, useMoodFilters, useMoodActions };
 
 /* ---- Provider --------------------------------------------------- */
 
@@ -259,12 +248,8 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <MoodDataContext.Provider value={dataValue}>
-      <MoodFiltersContext.Provider value={filtersValue}>
-        <MoodActionsContext.Provider value={actionsValue}>
-          {children}
-        </MoodActionsContext.Provider>
-      </MoodFiltersContext.Provider>
-    </MoodDataContext.Provider>
+    <MoodContexts data={dataValue} filters={filtersValue} actions={actionsValue}>
+      {children}
+    </MoodContexts>
   );
 }

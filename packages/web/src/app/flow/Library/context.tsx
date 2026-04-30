@@ -1,12 +1,9 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Context,
   type ReactNode,
 } from 'react';
 import {
@@ -20,6 +17,7 @@ import {
   libraryItemsClient,
   libraryReviewsClient,
 } from '@/core/api/modules/library';
+import { createModuleContexts } from '@/core/react/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,
@@ -136,29 +134,18 @@ interface LibraryActionsValue {
   pickBookForReview: (itemId: string, kind: ReviewKind) => void;
 }
 
-const LibraryDataContext = createContext<LibraryDataValue | null>(null);
-const LibraryFiltersContext = createContext<LibraryFiltersValue | null>(null);
-const LibraryActionsContext = createContext<LibraryActionsValue | null>(null);
+const {
+  Provider: LibraryContexts,
+  useData: useLibraryData,
+  useFilters: useLibraryFilters,
+  useActions: useLibraryActions,
+} = createModuleContexts<
+  LibraryDataValue,
+  LibraryFiltersValue,
+  LibraryActionsValue
+>('Library');
 
-function useRequiredContext<T>(ctx: Context<T | null>, hookName: string): T {
-  const value = useContext(ctx);
-  if (!value) {
-    throw new Error(`${hookName}() must be used inside <LibraryProvider>`);
-  }
-  return value;
-}
-
-export function useLibraryData(): LibraryDataValue {
-  return useRequiredContext(LibraryDataContext, 'useLibraryData');
-}
-
-export function useLibraryFilters(): LibraryFiltersValue {
-  return useRequiredContext(LibraryFiltersContext, 'useLibraryFilters');
-}
-
-export function useLibraryActions(): LibraryActionsValue {
-  return useRequiredContext(LibraryActionsContext, 'useLibraryActions');
-}
+export { useLibraryData, useLibraryFilters, useLibraryActions };
 
 /* ---- Provider --------------------------------------------------- */
 
@@ -489,12 +476,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <LibraryDataContext.Provider value={dataValue}>
-      <LibraryFiltersContext.Provider value={filtersValue}>
-        <LibraryActionsContext.Provider value={actionsValue}>
-          {children}
-        </LibraryActionsContext.Provider>
-      </LibraryFiltersContext.Provider>
-    </LibraryDataContext.Provider>
+    <LibraryContexts data={dataValue} filters={filtersValue} actions={actionsValue}>
+      {children}
+    </LibraryContexts>
   );
 }

@@ -1,18 +1,16 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Context,
   type ReactNode,
 } from 'react';
 import { splitThreads } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
 import { formatMonthLabel } from '@/core/i18n/date-fr';
+import { createModuleContexts } from '@/core/react/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,
@@ -79,25 +77,18 @@ interface JournalActionsValue {
   closeReader: () => void;
 }
 
-const JournalDataContext = createContext<JournalDataValue | null>(null);
-const JournalFiltersContext = createContext<JournalFiltersValue | null>(null);
-const JournalActionsContext = createContext<JournalActionsValue | null>(null);
+const {
+  Provider: JournalContexts,
+  useData: useJournalData,
+  useFilters: useJournalFilters,
+  useActions: useJournalActions,
+} = createModuleContexts<
+  JournalDataValue,
+  JournalFiltersValue,
+  JournalActionsValue
+>('Journal');
 
-function useRequiredContext<T>(ctx: Context<T | null>, name: string): T {
-  const v = useContext(ctx);
-  if (!v) throw new Error(`${name}() must be used inside <JournalProvider>`);
-  return v;
-}
-
-export function useJournalData(): JournalDataValue {
-  return useRequiredContext(JournalDataContext, 'useJournalData');
-}
-export function useJournalFilters(): JournalFiltersValue {
-  return useRequiredContext(JournalFiltersContext, 'useJournalFilters');
-}
-export function useJournalActions(): JournalActionsValue {
-  return useRequiredContext(JournalActionsContext, 'useJournalActions');
-}
+export { useJournalData, useJournalFilters, useJournalActions };
 
 /* ---- Provider --------------------------------------------------- */
 
@@ -295,12 +286,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <JournalDataContext.Provider value={dataValue}>
-      <JournalFiltersContext.Provider value={filtersValue}>
-        <JournalActionsContext.Provider value={actionsValue}>
-          {children}
-        </JournalActionsContext.Provider>
-      </JournalFiltersContext.Provider>
-    </JournalDataContext.Provider>
+    <JournalContexts data={dataValue} filters={filtersValue} actions={actionsValue}>
+      {children}
+    </JournalContexts>
   );
 }

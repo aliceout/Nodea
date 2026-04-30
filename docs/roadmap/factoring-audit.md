@@ -214,17 +214,20 @@ modifie une copie sans toucher l'autre.
        `creators[]` filtré, pas un champ direct. La raison de
        chaque décision est documentée dans la JSDoc des Lite
        — futur lecteur n'a pas à redécouvrir.
-- [ ] **`VALID_SCORES` / `VALID_STATUS`** : Homepage redéclare des
-       `Set` à partir des constantes `@nodea/shared` au lieu
-       d'importer les validateurs des modules. Une fois Homepage
-       passé en split, ces sets disparaissent au profit des
-       imports `Mood/lib/mappers.ts`.
-- [ ] **Pattern « 3 contextes »** identique sur Library / Goals /
-       Journal / Mood (~80 LOC × 4 modules de boilerplate
-       provider). À envisager une factory
-       `createModuleContexts<Data, Filters, Actions>()` **seulement
-       si** un 5e module en a besoin (Habits, Review). Sinon le
-       coût d'abstraction n'est pas justifié.
+- [x] **`VALID_SCORES` / `VALID_STATUS`** — `VALID_SCORES` est
+       maintenant exporté depuis [`Mood/lib/mappers.ts`](../../packages/web/src/app/flow/Mood/lib/mappers.ts)
+       et `VALID_STATUS` depuis [`Goals/lib/mappers.ts`](../../packages/web/src/app/flow/Goals/lib/mappers.ts).
+       Homepage les ré-importe au lieu de redéclarer ses propres
+       `Set` — même source de vérité, plus de risque de drift si
+       le domaine du score / statut change.
+- [x] **Pattern « 3 contextes »** factorisé dans
+       [`core/react/module-contexts.tsx`](../../packages/web/src/core/react/module-contexts.tsx)
+       (108 LOC). Library / Goals / Journal / Mood l'utilisent
+       via `createModuleContexts<Data, Filters, Actions>(name)`
+       — chaque module gagne ~15 LOC, le helper
+       `useRequiredContext` n'existe plus qu'à un seul endroit, et
+       Habits / Review n'auront qu'à appeler la factory pour
+       hériter du même pattern.
 
 ---
 

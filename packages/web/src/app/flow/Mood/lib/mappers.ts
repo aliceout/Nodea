@@ -7,8 +7,10 @@ import type { MoodEntry } from './types';
 
 /** Set of canonical score strings the schema accepts. Used by
  *  `normalizeScore` to short-circuit unknown values onto the
- *  legacy 0..10 → −2..+2 mapping. */
-const VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
+ *  legacy 0..10 → −2..+2 mapping. Exported so Homepage can reuse
+ *  it for its read-only projection — same source of truth, no
+ *  drift risk if the schema's score domain ever changes. */
+export const VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
 
 /**
  * Normalise a raw `payload.mood_score`. Canonical strings (`-2`,

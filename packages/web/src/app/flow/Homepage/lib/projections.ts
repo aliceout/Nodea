@@ -1,13 +1,14 @@
-import {
-  GOAL_STATUS_VALUES,
-  MOOD_SCORE_VALUES,
-  type GoalsPayload,
-  type LibraryItemPayload,
-  type MoodPayload,
-  type MoodScore,
+import type {
+  GoalsPayload,
+  LibraryItemPayload,
+  MoodPayload,
+  MoodScore,
 } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
+
+import { VALID_STATUS as GOAL_VALID_STATUS } from '@/app/flow/Goals/lib/mappers';
+import { VALID_SCORES as MOOD_VALID_SCORES } from '@/app/flow/Mood/lib/mappers';
 
 import type {
   GoalEntryLite,
@@ -15,9 +16,6 @@ import type {
   LibraryReadingLite,
   MoodEntryLite,
 } from './types';
-
-const MOOD_VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
-const GOAL_VALID_STATUS: ReadonlySet<string> = new Set(GOAL_STATUS_VALUES);
 
 /**
  * Project decrypted Mood records onto the home Lite shape.

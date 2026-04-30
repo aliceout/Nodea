@@ -1,17 +1,15 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Context,
   type ReactNode,
 } from 'react';
 import { splitThreads } from '@nodea/shared';
 
 import { goalsClient } from '@/core/api/modules/goals';
+import { createModuleContexts } from '@/core/react/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,
@@ -99,25 +97,16 @@ interface GoalsActionsValue {
   ) => Promise<void>;
 }
 
-const GoalsDataContext = createContext<GoalsDataValue | null>(null);
-const GoalsFiltersContext = createContext<GoalsFiltersValue | null>(null);
-const GoalsActionsContext = createContext<GoalsActionsValue | null>(null);
+const {
+  Provider: GoalsContexts,
+  useData: useGoalsData,
+  useFilters: useGoalsFilters,
+  useActions: useGoalsActions,
+} = createModuleContexts<GoalsDataValue, GoalsFiltersValue, GoalsActionsValue>(
+  'Goals',
+);
 
-function useRequiredContext<T>(ctx: Context<T | null>, name: string): T {
-  const v = useContext(ctx);
-  if (!v) throw new Error(`${name}() must be used inside <GoalsProvider>`);
-  return v;
-}
-
-export function useGoalsData(): GoalsDataValue {
-  return useRequiredContext(GoalsDataContext, 'useGoalsData');
-}
-export function useGoalsFilters(): GoalsFiltersValue {
-  return useRequiredContext(GoalsFiltersContext, 'useGoalsFilters');
-}
-export function useGoalsActions(): GoalsActionsValue {
-  return useRequiredContext(GoalsActionsContext, 'useGoalsActions');
-}
+export { useGoalsData, useGoalsFilters, useGoalsActions };
 
 /* ---- Provider --------------------------------------------------- */
 
@@ -420,12 +409,8 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <GoalsDataContext.Provider value={dataValue}>
-      <GoalsFiltersContext.Provider value={filtersValue}>
-        <GoalsActionsContext.Provider value={actionsValue}>
-          {children}
-        </GoalsActionsContext.Provider>
-      </GoalsFiltersContext.Provider>
-    </GoalsDataContext.Provider>
+    <GoalsContexts data={dataValue} filters={filtersValue} actions={actionsValue}>
+      {children}
+    </GoalsContexts>
   );
 }
