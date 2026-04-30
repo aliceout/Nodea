@@ -71,6 +71,12 @@ export function recoveryMnemonicToEntropy(
   try {
     return new Uint8Array(mnemonicToEntropy(cleaned, wordlist));
   } catch {
+    // `mnemonicToEntropy` throws on checksum mismatch. We've
+    // already validated the mnemonic above, but keep this as a
+    // belt-and-braces guard — a corrupted wordlist or a future
+    // lib version could surface a fresh failure mode here.
+    // null = "invalid mnemonic", same surface as the validation
+    // checks above.
     return null;
   }
 }

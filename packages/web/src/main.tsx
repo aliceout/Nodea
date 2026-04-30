@@ -15,7 +15,9 @@ import App from '@/app/App.tsx';
     const v = window.localStorage.getItem('nodea:theme');
     if (v === 'light' || v === 'dark' || v === 'system') initial = v;
   } catch {
-    // ignore
+    // localStorage can throw in private browsing / cookies-disabled
+    // mode. Fall through with the `system` default — the user just
+    // doesn't get their theme persisted across sessions.
   }
   applyTheme(initial);
 })();

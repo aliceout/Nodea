@@ -376,6 +376,10 @@ async function runCalibrationAssertion(
       optionsJSON: requestOptions as any,
     });
   } catch {
+    // User dismissed the WebAuthn prompt, or no credential was
+    // available for this rpId. Either way it's not an error worth
+    // surfacing — the caller treats null as "PRF unavailable" and
+    // falls back to a password-driven unlock.
     return null;
   }
 

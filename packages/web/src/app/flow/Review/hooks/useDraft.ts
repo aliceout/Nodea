@@ -43,6 +43,9 @@ async function decode(key: MainKeyMaterial, raw: string): Promise<ReviewPayload 
     );
     return JSON.parse(plain) as ReviewPayload;
   } catch {
+    // Stored slot from a previous main key (post password change)
+    // or an older JSON shape. Drop silently — the user will just
+    // see an empty year-compass start when they reopen.
     return null;
   }
 }

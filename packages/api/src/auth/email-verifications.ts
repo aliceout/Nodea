@@ -45,6 +45,10 @@ function constantTimeEqualHex(a: string, b: string): boolean {
   try {
     return timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
   } catch {
+    // `Buffer.from(_, 'hex')` returns truncated bytes on malformed
+    // input ; `timingSafeEqual` then throws if lengths mismatch.
+    // Either way the input wasn't a valid hex pair, so the answer
+    // is "not equal".
     return false;
   }
 }

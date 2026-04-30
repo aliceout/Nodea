@@ -57,6 +57,10 @@ async function decode(
     );
     return JSON.parse(plain) as JournalDraftPayload;
   } catch {
+    // Same fall-through as the Goals draft : stored slot decrypts
+    // under a stale key or the JSON shape changed. Drop silently
+    // and let the user start fresh — losing an in-progress draft
+    // is acceptable next to mounting an inconsistent form.
     return null;
   }
 }

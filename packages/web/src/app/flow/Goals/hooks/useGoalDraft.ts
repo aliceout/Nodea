@@ -65,6 +65,10 @@ async function decode(
     );
     return JSON.parse(plain) as GoalDraftPayload;
   } catch {
+    // Stored slot was written under a previous main key (post
+    // password change), or the JSON shape changed across versions.
+    // Either way the draft is unrecoverable — drop it silently and
+    // start fresh, the user just loses an in-progress entry.
     return null;
   }
 }

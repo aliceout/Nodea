@@ -272,10 +272,16 @@ Bilan concret :
 - [ ] Migrer les pages module (Account/views/IdentityTab,
        Library composer, Goals carry-over, etc.). Cousin
        direct du Tier 4 de [`i18n.md`](i18n.md).
-- [ ] Audit du repo pour `catch {}` non commenté (CLAUDE.md
-       exige une justification one-liner). Compléter ou
-       remplacer par `console.warn` (web) / `logger.warn`
-       (api).
+- [x] Audit `catch {}` non commenté — 46 catches recensés
+       côté web + api. **Aucun n'est vraiment silent** (chacun
+       fait quelque chose d'actionnable : return default, set
+       state, throw typed error, return error response). 7
+       d'entre eux manquaient juste du commentaire CLAUDE.md
+       — comblés (Goals/Journal/Review draft hooks,
+       passkey-flow, bip39, main.tsx theme bootstrap,
+       email-verifications constant-time hex). `safeJson` et
+       `loadDecryptedPreferences` ont déjà leur rationale dans
+       le doc-bloc du module, OK comme ça.
 
 ### 5. Promotion `shared/` au statut de keystone
 
