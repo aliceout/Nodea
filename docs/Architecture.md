@@ -424,8 +424,9 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   flow modules and the import/export plugins were migrated to
   TS-strict in `docs/roadmap/health.md` Tier A.2 ; only
   [`src/i18n/I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx)
-  remains in JSX (deferred to `docs/roadmap/i18n.md` Tier 2 where
-  the provider gets touched anyway). The shim in
+  remains in JSX — kept legacy on purpose (the pure logic was
+  factored out into `translate.ts` / `parity.ts` in TS strict ;
+  the `.jsx` is just React glue, no gain in migrating). The shim in
   [`src/types/legacy-modules.d.ts`](../packages/web/src/types/legacy-modules.d.ts)
   now covers only the i18n provider.
 - **Zustand** is the single application store, see

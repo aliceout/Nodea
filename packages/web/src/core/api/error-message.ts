@@ -8,7 +8,7 @@
  * known.
  *
  * Reference : `docs/roadmap/health.md` Tier B.4 +
- * `docs/roadmap/i18n.md` Tier 4.
+ * `docs/Internationalisation.md` § « Codes erreur API ».
  */
 
 import { isKnownApiErrorCode } from '@nodea/shared';

@@ -4,7 +4,7 @@ import { en } from './locales/en.ts';
 import { fr, type EmailLocaleShape } from './locales/fr.ts';
 
 /**
- * Email i18n — Tier 5 of `docs/roadmap/i18n.md`.
+ * Email i18n — see `docs/Internationalisation.md` § Emails.
  *
  * Decision: Option B (no `users.email_language` column). The
  * server reads the triggering request's `Accept-Language` header
