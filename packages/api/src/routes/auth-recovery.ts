@@ -251,7 +251,7 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
   // but never the email (per CLAUDE.md: no identifying metadata
   // in logs that aren't tied to the request being served).
   if (!constantTimeEqualHex(user.recoveryCodeHash, body.recoveryCodeHash)) {
-    // eslint-disable-next-line no-console
+     
     console.warn(`[auth/recover-kek] hash_mismatch user=${user.id}`);
     return c.json({ error: 'invalid_credentials' }, 401);
   }
@@ -302,7 +302,7 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
     });
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
+       
       console.warn('[auth/recover-kek] notification mail failed', err);
     }
   }

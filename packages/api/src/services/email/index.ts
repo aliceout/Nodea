@@ -42,7 +42,7 @@ export function getEmailService(): EmailService {
       // validation flags either as a deployment misconfiguration via
       // the startup log below.
       if (!cfg.SMTP_HOST) {
-        // eslint-disable-next-line no-console
+         
         console.warn(
           '[email] EMAIL_SERVICE_IMPL=smtp but SMTP_HOST is unset — ' +
             'falling back to console transport. Set SMTP_HOST or ' +

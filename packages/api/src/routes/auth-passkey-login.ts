@@ -247,7 +247,7 @@ authPasskeyLoginRoutes.post('/passkey/login/finish', loginLimiter, async (c) => 
         });
       } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
-          // eslint-disable-next-line no-console
+           
           console.warn('[auth/passkey] mfa-bypass-applied mail failed', err);
         }
       }

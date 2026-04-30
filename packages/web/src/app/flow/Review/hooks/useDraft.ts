@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { encryptAESGCM, decryptAESGCM } from '@/core/crypto/aes';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
-import type { Base64, CipherIV, EncryptedBlob } from '@nodea/shared';
+import type { Base64, CipherIV, EncryptedBlob, ReviewPayload  } from '@nodea/shared';
 import { useNodeaStore, selectMainKey } from '@/core/store/nodea-store';
-import type { ReviewPayload } from '@nodea/shared';
+
 
 /**
  * Auto-save for in-progress review drafts.

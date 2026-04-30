@@ -42,7 +42,7 @@ export function startCronScheduler(): void {
   // we keep the cleanup off-peak.
   cron.schedule('0 3 * * 1', () => {
     runCleanupUnactivatedAccounts().catch((err) => {
-      // eslint-disable-next-line no-console
+       
       console.error('[cron] cleanup-unactivated failed', err);
     });
   });

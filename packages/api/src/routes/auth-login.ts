@@ -190,7 +190,7 @@ authLoginRoutes.post('/login/finish', loginLimiter, async (c) => {
         });
       } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
-          // eslint-disable-next-line no-console
+           
           console.warn('[auth/login] mfa-bypass-applied mail failed', err);
         }
       }

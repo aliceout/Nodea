@@ -18,7 +18,7 @@ import {
   type ReauthPasswordStartResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { authFactors, sessions } from '../db/schema.ts';
+import { authFactors, sessions, opaqueRecords, users  } from '../db/schema.ts';
 import {
   finishLogin as opaqueFinishLogin,
   opaqueReady,
@@ -28,7 +28,6 @@ import {
   consumeLoginState,
   storeLoginState,
 } from '../auth/opaque-login-state.ts';
-import { opaqueRecords, users } from '../db/schema.ts';
 import { bumpSessionReauth } from '../auth/session.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';

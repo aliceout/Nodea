@@ -39,7 +39,7 @@ async function ensureDatabaseExists(): Promise<void> {
       // template literal because it'd want to bind the name as a
       // parameter; use unsafe() since we control the value.
       await admin.unsafe(`CREATE DATABASE "${dbName}"`);
-      // eslint-disable-next-line no-console
+       
       console.log(`[e2e/setup] created database ${dbName}`);
     }
   } finally {
@@ -80,6 +80,6 @@ export default async function globalSetup(): Promise<void> {
   await ensureDatabaseExists();
   runMigrations();
   await truncateAll();
-  // eslint-disable-next-line no-console
+   
   console.log('[e2e/setup] database ready');
 }

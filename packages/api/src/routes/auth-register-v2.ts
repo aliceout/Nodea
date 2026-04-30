@@ -335,7 +335,7 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
       tag: 'register-activate',
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('[auth/register] activation email send failed', err);
   }
 
@@ -362,7 +362,7 @@ authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
 
   const verification = result.verification;
   if (!verification.userId) {
-    // eslint-disable-next-line no-console
+     
     console.error(
       '[auth/register/activate] verification consumed but userId is null',
       { verificationId: verification.id },

@@ -89,7 +89,7 @@ adminRoutes.post('/invites', async (c) => {
   try {
     await sendInviteMail(invite.email, invite.token);
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('[admin/invites] email send failed', err);
     // Surface to admin since they need to know the email didn't fly.
     return c.json({ error: 'email_send_failed' }, 502);
@@ -136,7 +136,7 @@ adminRoutes.post('/invites/:id/resend', async (c) => {
   try {
     await sendInviteMail(refreshed.email, refreshed.token);
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('[admin/invites] resend email failed', err);
     return c.json({ error: 'email_send_failed' }, 502);
   }
