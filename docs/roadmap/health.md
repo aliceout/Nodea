@@ -566,42 +566,55 @@ via `db:studio` ; à refaire quand on remonte un cas concret
 Drift à corriger en continu, pas de chantier dédié sauf
 clarification du `docs/` vs `documentation/`.
 
-### 11. Doc-code reconciliation
+### 11. Doc-code reconciliation — livré
 
-**Pain** :
-- CLAUDE.md référence à la fois `docs/` et `documentation/`
-  comme s'il s'agissait d'un même dossier — alors qu'**un
-  seul existe** (à confirmer).
-- [`Modules.md`](../Modules.md) liste Habits + Library +
-  Review comme « non implémentés », mais Library est
-  largement développé maintenant.
-- [`security-audit.md`](../security-audit.md) et
-  [`global-audit.md`](../global-audit.md) référencés mais
-  absents (cf. Tier 8).
-- Les roadmaps cochées à 100 % doivent être archivées /
-  supprimées plutôt que de traîner — la convention vient
-  d'être appliquée sur `module-refacto.md` (commit `4e45616`)
-  et `factoring-audit.md` (commit `6e86135`), à reproduire
-  pour les suivantes.
+**Statut** : sweep fait. Trois corrections concrètes prises +
+deux faux positifs balayés (le doc déjà OK).
 
-**Coût** : 0,5 jour de sweep + discipline continue.
+Bilan détaillé :
 
-- [ ] Trancher : un seul dossier (recommandation : `docs/`
-      conforme à la convention React/TS, supprimer
-      `documentation/` si doublon vide). Mettre à jour
-      CLAUDE.md.
-- [ ] Mettre [`Modules.md`](../Modules.md) à jour : Library
-      passe de « documenté, non implémenté » à « implémenté »
-      avec la liste des features livrées.
-- [ ] Vérifier que [`Architecture.md`](../Architecture.md),
-      [`Database.md`](../Database.md),
-      [`Security.md`](../Security.md) reflètent le code à
-      jour (provider patterns, schema split, crypto
-      branded types).
-- [ ] Convention pour les roadmaps : quand 100 % cochée,
-      `git rm` du fichier (cas
-      [`module-refacto.md`](module-refacto.md)) plutôt que
-      le laisser comme bruit.
+  - **`docs/` vs `documentation/`** : seul `docs/` existe.
+    CLAUDE.md référençait 6 chemins en `documentation/` et
+    1 en `docs/` — incohérent. Tous remplacés par `docs/`
+    dans cette PR. La table des références doc obligatoires
+    a aussi été mise à jour (le `global-audit.md` fantôme
+    retiré ; ajout des roadmaps comme docs vivants à lire).
+  - **`global-audit.md` référencé mais inexistant** : retiré
+    de la table CLAUDE.md. La couverture est désormais
+    `security-audit.md` (Tier 8) + les roadmaps actives
+    (`health.md`, `i18n.md`). Si on en a besoin un jour,
+    on l'écrira — la roadmap actuelle suffit pour tracker
+    l'état général.
+  - **Architecture.md drift** : 2 paragraphes obsolètes
+    corrigés — le bloc « legacy-shaped adapters
+    (`goals-legacy.js`, `passage-legacy.js`) » mentionnait
+    des fichiers supprimés au Tier A.2. Réécrit pour pointer
+    vers la migration TS, et le bloc TypeScript-strict
+    aligné sur l'état actuel (seul `I18nProvider.jsx`
+    reste, deferred to i18n Tier 2).
+  - **`Modules.md` « non implémenté »** : faux positif. À
+    relecture, le doc ne dit pas ça — il décrit chaque
+    module en présent (« Bibliothèque (`items` + `reviews` +
+    `covers`) »). Une seule ligne est marquée
+    « (fiche à compléter) » : Passage. Mineur, à traiter
+    quand on touche au module.
+  - **Convention archive roadmap** : déjà appliquée pour
+    `module-refacto.md` (commit `4e45616`) et
+    `factoring-audit.md` (commit `6e86135`). À reproduire
+    quand `health.md` lui-même atteint 100 % (proche : 11/11
+    avec quelques follow-ups conditionnels).
+
+- [x] Trancher `docs/` vs `documentation/` : `docs/` (un seul
+       qui existe). CLAUDE.md aligné.
+- [x] `global-audit.md` retiré de la table CLAUDE.md ; pas
+       écrit (couvert par `security-audit.md` + roadmaps).
+- [x] `Architecture.md` aligné sur l'état post-Tier A.2.
+- [x] `Modules.md` : sweep fait, pas de drift réel (faux
+       positif initial).
+- [x] Convention archive roadmap déjà active (cf. les 2
+       commits ci-dessus).
+- [ ] **Follow-up mineur** : compléter la fiche `Passage` dans
+       `Modules.md` quand on touche au module. Pas urgent.
 
 ---
 

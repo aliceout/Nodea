@@ -18,19 +18,20 @@ The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work li
 
 **Documentation and code are a single source of truth. One must always reflect the other.**
 
-- Read the relevant `documentation/` file **before** working on a module — not after.
+- Read the relevant `docs/` file **before** working on a module — not after.
 - Any technical decision made during development (new dependency, new pattern, architecture decision) must be **immediately reflected in the documentation** before closing the task.
 - If code diverges from the docs, it is a documentation bug — fix it the same way you would fix a code bug.
-- Never leave a PR or commit that contradicts `documentation/` without having updated the docs in the same commit.
+- Never leave a PR or commit that contradicts `docs/` without having updated the docs in the same commit.
 
 | File | When to read |
 |---|---|
-| `documentation/Architecture.md` | Code structure, runtime flow |
-| `documentation/Security.md` | Before touching anything crypto, auth, or guards |
-| `documentation/Database.md` | Before touching schema, collections, or guard validation |
-| `documentation/Modules.md` + `documentation/Modules/*` | Before touching a specific module (Mood, Goals, Passage, Habits, Library, Review) |
-| `documentation/Internationalisation.md` | Before touching i18n files |
-| `documentation/security-audit.md` + `documentation/global-audit.md` | Reference for known findings — cross-check before closing any related task |
+| `docs/Architecture.md` | Code structure, runtime flow |
+| `docs/Security.md` | Before touching anything crypto, auth, or guards |
+| `docs/Database.md` | Before touching schema, collections, or guard validation |
+| `docs/Modules.md` + `docs/Modules/*` | Before touching a specific module (Mood, Goals, Passage, Habits, Library, Review) |
+| `docs/Internationalisation.md` | Before touching i18n files |
+| `docs/security-audit.md` | Findings list + per-area sweep — cross-check before closing any crypto / auth / response-leakage task |
+| `docs/roadmap/*.md` | Active roadmaps (health, i18n) — read before work in those areas |
 
 ---
 

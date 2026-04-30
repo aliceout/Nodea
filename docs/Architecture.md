@@ -420,11 +420,14 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 - **React 19** + **Vite 6** + **Tailwind 4** (via
   `@tailwindcss/vite`).
 - **TypeScript strict**, `allowJs: false`,
-  `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`. A few
-  flow-module entrypoints remain in JSX (Mood, Goals, Passage —
-  restored verbatim from the legacy); their types are stubbed via
-  ambient declarations in
-  [`src/types/legacy-modules.d.ts`](../packages/web/src/types/legacy-modules.d.ts).
+  `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`. The
+  flow modules and the import/export plugins were migrated to
+  TS-strict in `docs/roadmap/health.md` Tier A.2 ; only
+  [`src/i18n/I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx)
+  remains in JSX (deferred to `docs/roadmap/i18n.md` Tier 2 where
+  the provider gets touched anyway). The shim in
+  [`src/types/legacy-modules.d.ts`](../packages/web/src/types/legacy-modules.d.ts)
+  now covers only the i18n provider.
 - **Zustand** is the single application store, see
   [`src/core/store/nodea-store.ts`](../packages/web/src/core/store/nodea-store.ts).
   Slices: `auth`, `crypto`, `modules`, `preferences`, `notifications`,
@@ -475,10 +478,10 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   PATCH promote on create; decrypt on list; derive guard on update /
   delete. Every module's data client is one line on top of this
   factory.
-- **Legacy-shaped adapters** (`goals-legacy.js`, `passage-legacy.js`)
-  expose the PocketBase-style function signatures the restored JSX
-  modules were written against — they flatten the typed records into
-  the shape the view layer expects without a rewrite.
+- The legacy-shaped adapters that used to bridge PocketBase-era JSX
+  modules to the typed factory were retired during the JSX-to-TS
+  migration (Tier A.2 of `docs/roadmap/health.md`). All consumers
+  now import the typed clients directly.
 
 ### Crypto (`src/core/crypto/`)
 
