@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/EmptyHint';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -27,6 +28,7 @@ type Mode =
  * reading). The index just dispatches.
  */
 export default function ReviewIndex() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { keyMissing, moduleMissing } = useReview();
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
@@ -34,22 +36,18 @@ export default function ReviewIndex() {
   if (keyMissing) {
     return (
       <ModuleShell
-        topbar={<Topbar label="Review" onOpenMenu={() => setMobileMenuOpen(true)} />}
+        topbar={<Topbar label={t('review.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
       >
-        <EmptyHint>
-          Clé principale absente — reconnecte-toi pour voir tes bilans.
-        </EmptyHint>
+        <EmptyHint>{t('review.errors.keyMissing')}</EmptyHint>
       </ModuleShell>
     );
   }
   if (moduleMissing) {
     return (
       <ModuleShell
-        topbar={<Topbar label="Review" onOpenMenu={() => setMobileMenuOpen(true)} />}
+        topbar={<Topbar label={t('review.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
       >
-        <EmptyHint>
-          Active le module Review dans les paramètres pour commencer.
-        </EmptyHint>
+        <EmptyHint>{t('review.errors.moduleMissing')}</EmptyHint>
       </ModuleShell>
     );
   }

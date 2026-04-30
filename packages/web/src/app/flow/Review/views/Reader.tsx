@@ -1,4 +1,5 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -137,6 +138,7 @@ function renderMixed(type: MixedFieldType, value: unknown): React.ReactNode {
 }
 
 export default function ReviewReader({ record, onBack }: ReaderProps) {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const payload = record.payload as Record<string, unknown> & { year: number };
   const byGroup = new Map<Step['group'], Step[]>();
@@ -150,11 +152,11 @@ export default function ReviewReader({ record, onBack }: ReaderProps) {
     <ModuleShell
       topbar={
         <Topbar
-          label={`Review · Bilan ${payload.year}`}
+          label={t('review.topbar.readerLabel', { values: { year: payload.year } })}
           onOpenMenu={() => setMobileMenuOpen(true)}
         >
           <Button variant="ghost" size="sm" onClick={onBack}>
-            ← Retour
+            {t('review.reader.back')}
           </Button>
         </Topbar>
       }
@@ -165,7 +167,7 @@ export default function ReviewReader({ record, onBack }: ReaderProps) {
             YearCompass
           </p>
           <h1 className="font-serif text-[44px] leading-[1.05] tracking-[-0.01em] text-ink">
-            Bilan {payload.year}
+            {t('review.reader.yearTitle', { values: { year: payload.year } })}
           </h1>
         </header>
 

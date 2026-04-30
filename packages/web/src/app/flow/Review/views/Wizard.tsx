@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReviewPayload } from '@nodea/shared';
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import ModuleShell from '@/ui/dirk/ModuleShell';
@@ -63,6 +64,7 @@ export default function ReviewWizard({
   onDone,
   onCancel,
 }: WizardProps) {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { createReview, updateReview } = useReview();
   const {
@@ -92,13 +94,13 @@ export default function ReviewWizard({
     if (!hydrated) return;
     if (
       resume ||
-      window.confirm(`Un brouillon chiffré existe pour ${year}. Le reprendre ?`)
+      window.confirm(t('review.wizard.resumePrompt', { values: { year } }))
     ) {
       setPayload(hydrated);
     } else {
       clearDraft();
     }
-  }, [hydrating, hydrationOffered, hydrated, existing, resume, year, clearDraft]);
+  }, [hydrating, hydrationOffered, hydrated, existing, resume, year, clearDraft, t]);
 
   // Auto-save on every payload change (skip the initial empty state).
   useEffect(() => {
@@ -156,7 +158,7 @@ export default function ReviewWizard({
       onDone();
     } catch (err) {
       setFinalError(
-        err instanceof Error ? err.message : "Échec de l'enregistrement.",
+        err instanceof Error ? err.message : t('review.errors.saveFailed'),
       );
     } finally {
       setSubmitting(false);
@@ -171,8 +173,14 @@ export default function ReviewWizard({
   const qIndex = questionPosition(step);
   const topbarLabel =
     qIndex < 0
-      ? `Review · Bilan ${payload.year}`
-      : `Review · Bilan ${payload.year} · étape ${qIndex + 1}/${QUESTION_STEPS.length}`;
+      ? t('review.topbar.wizardLabelIntro', { values: { year: payload.year } })
+      : t('review.topbar.wizardLabelStep', {
+          values: {
+            year: payload.year,
+            position: qIndex + 1,
+            total: QUESTION_STEPS.length,
+          },
+        });
 
   return (
     <ModuleShell
@@ -182,7 +190,7 @@ export default function ReviewWizard({
           onOpenMenu={() => setMobileMenuOpen(true)}
         >
           <Button variant="ghost" size="sm" onClick={onCancel}>
-            Quitter
+            {t('review.wizard.quit')}
           </Button>
         </Topbar>
       }
@@ -197,7 +205,9 @@ export default function ReviewWizard({
         <div className="mx-auto max-w-3xl">
           <header className="mb-5">
             <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-              Bilan {payload.year} · {GROUP_LABELS[step.group]}
+              {t('review.wizard.eyebrow', {
+                values: { year: payload.year, group: GROUP_LABELS[step.group] },
+              })}
             </p>
             <h1 className="mt-2 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em] text-ink">
               {step.title}
@@ -226,7 +236,7 @@ export default function ReviewWizard({
         <footer className="mt-8 flex flex-wrap items-center gap-2 border-t border-hair pt-5">
           {index === 0 ? (
             <Button variant="neutral" size="sm" onClick={onCancel}>
-              Quitter
+              {t('review.wizard.quit')}
             </Button>
           ) : (
             <Button
@@ -234,7 +244,7 @@ export default function ReviewWizard({
               size="sm"
               onClick={() => goto(index - 1)}
             >
-              ← Précédent
+              {t('review.wizard.back')}
             </Button>
           )}
           <span className="flex-1" />
@@ -246,7 +256,7 @@ export default function ReviewWizard({
                   size="sm"
                   onClick={() => goto(index + 1)}
                 >
-                  Sauter
+                  {t('review.wizard.skip')}
                 </Button>
               ) : null}
               <Button
@@ -254,7 +264,9 @@ export default function ReviewWizard({
                 size="sm"
                 onClick={() => goto(index + 1)}
               >
-                {step.kind === 'intro' ? 'Commencer →' : 'Suivant →'}
+                {step.kind === 'intro'
+                  ? t('review.wizard.start')
+                  : t('review.wizard.next')}
               </Button>
             </>
           ) : (
@@ -265,10 +277,10 @@ export default function ReviewWizard({
               disabled={submitting}
             >
               {submitting
-                ? 'Enregistrement…'
+                ? t('review.wizard.submitting')
                 : existing
-                  ? 'Mettre à jour le bilan'
-                  : 'Finaliser le bilan'}
+                  ? t('review.wizard.update')
+                  : t('review.wizard.finalize')}
             </Button>
           )}
         </footer>

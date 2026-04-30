@@ -20,6 +20,7 @@ import frAdmin from "@/i18n/locales/fr/admin.json";
 import frModals from "@/i18n/locales/fr/modals.json";
 import frModules from "@/i18n/locales/fr/modules.json";
 import frErrors from "@/i18n/locales/fr/errors.json";
+import frReview from "@/i18n/locales/fr/review.json";
 
 import enCommon from "@/i18n/locales/en/common.json";
 import enLayout from "@/i18n/locales/en/layout.json";
@@ -34,6 +35,7 @@ import enAdmin from "@/i18n/locales/en/admin.json";
 import enModals from "@/i18n/locales/en/modals.json";
 import enModules from "@/i18n/locales/en/modules.json";
 import enErrors from "@/i18n/locales/en/errors.json";
+import enReview from "@/i18n/locales/en/review.json";
 
 const STORAGE_KEY = "nodea:language";
 const DEFAULT_LANGUAGE = "fr";
@@ -58,6 +60,7 @@ const RESOURCES = {
     modals: frModals,
     modules: frModules,
     errors: frErrors,
+    review: frReview,
   },
   en: {
     common: enCommon,
@@ -73,6 +76,7 @@ const RESOURCES = {
     modals: enModals,
     modules: enModules,
     errors: enErrors,
+    review: enReview,
   },
 };
 
@@ -211,6 +215,11 @@ export function I18nProvider({ children }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// `useI18n` and `translateKey` are the official non-component
+// exports of this provider — splitting would create three files
+// for what is conceptually one boundary. The exhaustive-deps
+// false positive is silenced.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useI18n() {
   const context = useContext(I18nContext);
   if (!context) {
@@ -219,6 +228,7 @@ export function useI18n() {
   return context;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function translateKey(key, options) {
   return translate(DEFAULT_LANGUAGE, key, options);
 }
