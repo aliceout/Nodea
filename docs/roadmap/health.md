@@ -43,47 +43,42 @@ Constats bruts au moment où ce document est posé :
 Quick wins à effet compounding. À traiter d'abord parce qu'ils
 ferment la porte aux régressions futures.
 
-### 1. ESLint + pre-commit (Phase 9)
+### 1. ESLint + pre-commit (Phase 9) — livré
 
-**Pain** : aucun garde-fou automatique. Chaque règle de
-CLAUDE.md (`no any`, `aria-*` partout, branded types crypto,
-`no-restricted-imports` sur les helpers crypto sauvages, pas de
-chaîne hardcodée hors whitelist) repose sur la vigilance
-humaine en review. Un `git commit` avec `: any` ou un
-`onClick` sur un `<div>` passe sans bruit.
+**Statut** : commits `e36b561` (config + cleanup + CI gate) +
+`935e55d` (husky + lint-staged). Lint passe en CI sur tous
+les workspaces, 0 erreurs / 68 warnings aspirationnels
+(`react-refresh/only-export-components` + `no-console` côté
+api seed).
 
-**Coût** : 1–2 jours pour un setup propre.
-
-- [ ] Choisir entre `eslint.config.ts` flat config (moderne, TS
-      natif) vs legacy `.eslintrc.cjs`. Recommandation : flat
-      config — c'est la voie supportée long-terme par
-      `typescript-eslint`.
-- [ ] Plugins de base : `@typescript-eslint`, `react`,
-      `react-hooks`, `react-refresh`, `jsx-a11y`,
-      `import` (ordering + no-cycle).
-- [ ] Règles spécifiques projet :
-  - `no-restricted-imports` : interdire l'import direct de
-    primitives crypto (`crypto.subtle`) — forcer le passage
-    par `core/crypto/*`.
-  - `no-restricted-imports` : interdire `console.log` côté
-    api (utiliser Pino).
-  - `react/jsx-no-target-blank`, `jsx-a11y/click-events-have-key-events`.
-  - Custom rule (ou `eslint-plugin-react-i18n`) qui interdit
-    les chaînes littérales > 3 caractères dans le JSX (cf.
-    [`docs/roadmap/i18n.md`](i18n.md) Tier 6).
-- [ ] Pre-commit hook via [`husky`](https://github.com/typicode/husky)
-      + [`lint-staged`](https://github.com/lint-staged/lint-staged)
-      sur les fichiers modifiés uniquement (sinon trop lent).
-      Exécute `eslint --fix` + `tsc --noEmit` sur le scope
-      pertinent.
-- [ ] Brancher dans CI (workflow GitHub Actions à créer si
-      absent) : `pnpm lint` doit échouer le build.
-- [ ] Mettre à jour `package.json` racine + per-workspace
-      (`web` et `api`) pour que `pnpm lint` traverse tout.
+- [x] Flat config livrée :
+      [`eslint.config.mjs`](../../eslint.config.mjs) — eslint
+      9.39.4, typescript-eslint 8.59.1, react / react-hooks /
+      react-refresh / jsx-a11y / import-x.
+- [x] Règles spécifiques CLAUDE.md :
+  - `@typescript-eslint/no-explicit-any` en error.
+  - `no-restricted-syntax` bloque `crypto.subtle.*` hors
+    `core/crypto/` (`crypto.randomUUID` et
+    `crypto.getRandomValues` restent libres).
+  - `no-console` warn côté api (Pino préféré).
+  - `no-unescaped-entities` ne forbid plus que `<>}`
+    (apostrophes FR n'étaient que du bruit).
+  - `jsx-a11y/label-has-associated-control` configuré pour
+    reconnaître les `Input` / `Textarea` / `Select` du projet.
+- [x] Pre-commit via husky 9.1.7 + lint-staged 16.4.0 — exécute
+      `eslint --fix --max-warnings=0` sur les fichiers staged
+      uniquement. Hook installé automatiquement à
+      `pnpm install` via le script `prepare`.
+- [x] Step `Lint` ajouté dans
+      [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
+      entre Install et Typecheck — `pnpm lint` doit passer
+      pour merger.
+- [x] `lint` script remplacé dans `packages/api` (était
+      `echo 'pending Phase 9'`). Web l'avait déjà.
 - [ ] Documenter dans
       [`documentation/Architecture.md`](../Architecture.md)
       la convention finale (config, où elle vit, comment
-      étendre).
+      étendre). À faire dans le Tier E.10.
 
 ### 2. Liquider la dette JSX/JS résiduelle
 
