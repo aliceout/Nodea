@@ -11,28 +11,6 @@
  */
 
 /* --------------------------------------------------------------------
- * UI primitives still in JSX. All of `ui/atoms/**` now ships as TSX
- * (#23 / R14) — the remaining legacy declarations here cover the
- * layout shell (Subheader) and the per-module flow entrypoints.
- * ------------------------------------------------------------------ */
-declare module '@/ui/layout/headers/Subheader' {
-  import type { ComponentType, ReactNode } from 'react';
-  const Subheader: ComponentType<{
-    tabs?: Array<{ id: string; label: string }>;
-    onTabSelect?: (id: string) => void;
-    className?: string;
-    children?: ReactNode;
-  }>;
-  export default Subheader;
-}
-declare module '@/ui/branding/LogoLong.jsx' {
-  import type { ComponentType } from 'react';
-  const LogoLong: ComponentType<{ className?: string }>;
-  export default LogoLong;
-}
-
-
-/* --------------------------------------------------------------------
  * i18n provider — named `useI18n` hook consumed from TSX
  * ------------------------------------------------------------------ */
 declare module '@/i18n/I18nProvider.jsx' {

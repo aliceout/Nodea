@@ -1,29 +1,29 @@
-import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Layout from "@/ui/layout/Layout";
-import ProtectedRoute from "@/core/auth/ProtectedRoute";
-import { ErrorBoundary } from "@/ui/atoms/feedback/ErrorBoundary";
-import { useNodeaStore, isModuleId } from "@/core/store/nodea-store";
-import NotFound from "./pages/NotFound";
+import { lazy, Suspense, useEffect, type ReactElement } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from '@/ui/layout/Layout';
+import ProtectedRoute from '@/core/auth/ProtectedRoute';
+import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
+import { useNodeaStore, isModuleId } from '@/core/store/nodea-store';
+import NotFound from './pages/NotFound';
 
 // Auth pages are lazy-loaded so their deps (react-hook-form, zod,
 // @zxcvbn-ts, OPAQUE wasm) stay out of the initial chunk.
-const Login = lazy(() => import("./pages/Login"));
-const LoginMfa = lazy(() => import("./pages/LoginMfa"));
-const Register = lazy(() => import("./pages/Register"));
-const Activate = lazy(() => import("./pages/Activate"));
-const ChangePassword = lazy(() => import("./pages/ChangePassword"));
-const RequestReset = lazy(() => import("./pages/RequestReset"));
-const Reset = lazy(() => import("./pages/Reset"));
-const RecoveryCode = lazy(() => import("./pages/RecoveryCode"));
-const Recover = lazy(() => import("./pages/Recover"));
-const Passkeys = lazy(() => import("./pages/Passkeys"));
-const Totp = lazy(() => import("./pages/Totp"));
-const SecurityMode = lazy(() => import("./pages/SecurityMode"));
-const BypassConfirm = lazy(() => import("./pages/BypassConfirm"));
-const Docs = lazy(() => import("./pages/Docs"));
+const Login = lazy(() => import('./pages/Login'));
+const LoginMfa = lazy(() => import('./pages/LoginMfa'));
+const Register = lazy(() => import('./pages/Register'));
+const Activate = lazy(() => import('./pages/Activate'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const RequestReset = lazy(() => import('./pages/RequestReset'));
+const Reset = lazy(() => import('./pages/Reset'));
+const RecoveryCode = lazy(() => import('./pages/RecoveryCode'));
+const Recover = lazy(() => import('./pages/Recover'));
+const Passkeys = lazy(() => import('./pages/Passkeys'));
+const Totp = lazy(() => import('./pages/Totp'));
+const SecurityMode = lazy(() => import('./pages/SecurityMode'));
+const BypassConfirm = lazy(() => import('./pages/BypassConfirm'));
+const Docs = lazy(() => import('./pages/Docs'));
 
-function lazyPage(node) {
+function lazyPage(node: ReactElement): ReactElement {
   return (
     <ErrorBoundary>
       <Suspense
@@ -45,13 +45,14 @@ function AppWithKeyModal() {
   // store so the back button restores the previous module without
   // changing the URL.
   useEffect(() => {
-    function handler(e) {
-      const id = e.state?.nodeaModule;
-      const next = isModuleId(id) ? id : "home";
+    function handler(e: PopStateEvent): void {
+      const state = e.state as { nodeaModule?: unknown } | null;
+      const id = state?.nodeaModule;
+      const next = isModuleId(id) ? id : 'home';
       useNodeaStore.getState().syncCurrentModule(next);
     }
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
   }, []);
 
   return (

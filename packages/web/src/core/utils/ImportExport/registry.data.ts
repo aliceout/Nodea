@@ -1,55 +1,81 @@
-// Chargeurs dynamiques par module (lazy import).
-//
-// Chaque plugin exporte `meta.id` (clé utilisée dans le JSON d'export/import)
-// et `meta.runtimeKey` (clé dans le Zustand modules slice, pour résoudre
-// le sid du module utilisateur courant).
-const loaders = {
-  mood: () => import("@/core/utils/ImportExport/Mood.jsx"),
-  goals: () => import("@/core/utils/ImportExport/Goals.jsx"),
-  habits_items: () => import("@/core/utils/ImportExport/HabitsItems.jsx"),
-  habits_logs: () => import("@/core/utils/ImportExport/HabitsLogs.jsx"),
-  library_items: () => import("@/core/utils/ImportExport/LibraryItems.jsx"),
-  library_reviews: () => import("@/core/utils/ImportExport/LibraryReviews.jsx"),
-  review: () => import("@/core/utils/ImportExport/Review.jsx"),
+/**
+ * Lazy plugin registry for the Import/Export pipeline.
+ *
+ * Each module ships a plugin under `./<Module>.ts` with the
+ * shape declared in [`./types.ts`](./types.ts) — `meta`,
+ * `importHandler`, `exportQuery`, etc. The registry imports
+ * them on demand (so a user who never opens the data panel
+ * doesn't pay for parsing the 7 plugins).
+ *
+ * `aliases` keeps backward compat with old export envelopes
+ * that used the pre-split keys « habits » / « library » (when
+ * Habits hadn't been split into items + logs and Library
+ * hadn't been split into items + reviews). Those collapse
+ * onto the « items » variant by default.
+ */
+
+import type { ImportExportPlugin } from './types.ts';
+
+type ModuleKey =
+  | 'mood'
+  | 'goals'
+  | 'habits_items'
+  | 'habits_logs'
+  | 'library_items'
+  | 'library_reviews'
+  | 'review';
+
+type PluginLoader = () => Promise<{ default: ImportExportPlugin }>;
+
+const loaders: Record<ModuleKey, PluginLoader> = {
+  mood: () => import('@/core/utils/ImportExport/Mood.ts'),
+  goals: () => import('@/core/utils/ImportExport/Goals.ts'),
+  habits_items: () => import('@/core/utils/ImportExport/HabitsItems.ts'),
+  habits_logs: () => import('@/core/utils/ImportExport/HabitsLogs.ts'),
+  library_items: () => import('@/core/utils/ImportExport/LibraryItems.ts'),
+  library_reviews: () =>
+    import('@/core/utils/ImportExport/LibraryReviews.ts'),
+  review: () => import('@/core/utils/ImportExport/Review.ts'),
 };
 
-// Alias de compatibilité : anciens exports pouvaient utiliser "habits" /
-// "library" avant le split items / logs (habits) ou items / reviews
-// (library). On les redirige vers la variante "items" par défaut.
-const aliases = {
-  habits: "habits_items",
-  library: "library_items",
+const aliases: Readonly<Record<string, ModuleKey>> = {
+  habits: 'habits_items',
+  library: 'library_items',
 };
 
-const cache = new Map();
+const cache = new Map<ModuleKey, ImportExportPlugin>();
+
+function isKnownKey(key: string): key is ModuleKey {
+  return Object.hasOwn(loaders, key);
+}
 
 /**
- * Retourne le plugin "data" d'un module.
- *
- * @param {string} moduleKey - ex: "mood" ou "habits_items"
- * @returns {Promise<object>} plugin (meta, importHandler, exportQuery, ...)
+ * Resolve a plugin by module key. Aliases (`habits`, `library`)
+ * collapse onto their canonical variant. Throws on unknown keys ;
+ * memoises so repeat calls return the same module instance.
  */
-export async function getDataPlugin(moduleKey) {
-  let key = String(moduleKey || "").toLowerCase();
-  if (aliases[key]) key = aliases[key];
-  if (!loaders[key]) {
-    throw new Error(`Module inconnu ou non configuré: "${moduleKey}"`);
+export async function getDataPlugin(
+  moduleKey: string,
+): Promise<ImportExportPlugin> {
+  const lowered = moduleKey.toLowerCase();
+  const resolved = aliases[lowered] ?? lowered;
+  if (!isKnownKey(resolved)) {
+    throw new Error(`Module inconnu ou non configuré : « ${moduleKey} »`);
   }
-  if (cache.has(key)) return cache.get(key);
+  const cached = cache.get(resolved);
+  if (cached) return cached;
 
-  const mod = await loaders[key]();
-  const plugin = mod?.default ?? mod;
-  cache.set(key, plugin);
-  return plugin;
+  const mod = await loaders[resolved]();
+  cache.set(resolved, mod.default);
+  return mod.default;
 }
 
-export function knownModules() {
-  return Object.keys(loaders);
+export function knownModules(): readonly ModuleKey[] {
+  return Object.keys(loaders) as ModuleKey[];
 }
 
-export function hasModule(moduleKey) {
-  const k = String(moduleKey || "").toLowerCase();
-  return Boolean(loaders[k] || loaders[aliases[k]]);
+export function hasModule(moduleKey: string): boolean {
+  const lowered = moduleKey.toLowerCase();
+  const resolved = aliases[lowered] ?? lowered;
+  return isKnownKey(resolved);
 }
-
-export default { getDataPlugin, knownModules, hasModule };

@@ -5,7 +5,7 @@ import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
 import { applyTheme } from '@/core/theme/themeManager';
 import '@/ui/theme/index.css';
 
-import App from '@/app/App.jsx';
+import App from '@/app/App.tsx';
 
 // Apply the theme before React mounts so the initial paint uses the
 // right palette. The subsequent state management lives in `useTheme`.

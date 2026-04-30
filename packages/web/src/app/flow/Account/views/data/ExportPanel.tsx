@@ -1,7 +1,10 @@
 import { useState } from 'react';
 
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
-import { getDataPlugin, knownModules } from '@/core/utils/ImportExport/registry.data.js';
+import {
+  getDataPlugin,
+  knownModules,
+} from '@/core/utils/ImportExport/registry.data.ts';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 

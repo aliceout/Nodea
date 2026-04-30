@@ -80,47 +80,49 @@ api seed).
       la convention finale (config, où elle vit, comment
       étendre). À faire dans le Tier E.10.
 
-### 2. Liquider la dette JSX/JS résiduelle
+### 2. Liquider la dette JSX/JS résiduelle — quasi livré
 
-**Pain** : 18 fichiers en JSX/JS dans
-[`packages/web/src/`](../../packages/web/src/) malgré la règle
-TS-strict. Le code legacy n'a pas le même contrat de
-type-safety que le reste — c'est un angle mort.
+**Statut** : 16 fichiers sur 17 traités. Restant : un seul,
+[`i18n/I18nProvider.jsx`](../../packages/web/src/i18n/I18nProvider.jsx)
+(225 LOC), volontairement laissé pour le Tier 2 de
+[`i18n.md`](i18n.md) où on touche au provider de toute
+façon (ajout du helper `tn`, migration EN parallèle).
 
-**Inventaire** (au moment où le document est posé) :
+Bilan concret :
+  - **4 fichiers morts** supprimés (`SubNavDesktop.jsx`,
+    `SubNavMobile.jsx`, `UserAvatar.jsx`,
+    `headers/Subheader.jsx`) — aucun consommateur réel après
+    le passage à K · Sauge. Le shim `Subheader` dans
+    [`types/legacy-modules.d.ts`](../../packages/web/src/types/legacy-modules.d.ts)
+    a été retiré dans la foulée.
+  - **`core/api/modules/passage-legacy.js`** également
+    supprimé — vues legacy remplacées, plus aucun appel.
+  - **`NotFound.jsx`** + **`App.jsx`** migrés en TS strict
+    (popstate handler typé, lazyPage typé `ReactElement`).
+  - **Bloc ImportExport (8 fichiers)** migré : nouveau
+    [`types.ts`](../../packages/web/src/core/utils/ImportExport/types.ts)
+    qui pose le contrat `ImportExportPlugin`, registry typé,
+    7 plugins (Mood, Goals, HabitsItems, HabitsLogs,
+    LibraryItems, LibraryReviews, Review) en TS strict.
+  - **Découverte au passage** : les plugins ImportExport
+    produisent des payloads qui ne matchent plus les schémas
+    Zod actuels — ce qui était silencieux en JS lève
+    désormais TS2345/TS2352. Cast au boundary
+    `client.create()` avec TODO référençant le **Tier B.7
+    ci-dessous**.
 
-| Fichier | Surface | Effort estimé |
-|---|---|---|
-| [`app/App.jsx`](../../packages/web/src/app/App.jsx) | Routeur global | Moyen — touche tous les imports |
-| [`app/pages/NotFound.jsx`](../../packages/web/src/app/pages/NotFound.jsx) | 1 page | Trivial |
-| [`i18n/I18nProvider.jsx`](../../packages/web/src/i18n/I18nProvider.jsx) | Provider central | Coordonné avec roadmap i18n Tier 2 |
-| [`core/utils/ImportExport/Goals.jsx`](../../packages/web/src/core/utils/ImportExport/Goals.jsx) + 6 autres | Export/import par module | Bloc cohérent à migrer ensemble |
-
-**Coût** : 1 jour pour les triviaux + 2–3 jours pour
-ImportExport (peu testé, à déchiffrer attentivement).
-
-- [ ] Migrer
-      [`NotFound.jsx`](../../packages/web/src/app/pages/NotFound.jsx)
-      en TS strict (le plus simple, sert de smoke-test).
-- [ ] Migrer
-      [`App.jsx`](../../packages/web/src/app/App.jsx) — typer
-      le routeur, les error boundaries, le `popstate`
-      listener mentionné dans CLAUDE.md.
-- [ ] Migrer le bloc
-      [`core/utils/ImportExport/`](../../packages/web/src/core/utils/ImportExport/)
-      en bundle cohérent (7 fichiers : `Goals`, `HabitsItems`,
-      `HabitsLogs`, `LibraryItems`, `LibraryReviews`, `Mood`,
-      `Review`). Vérifier en passant que le format d'export
-      respecte les schémas Zod de `@nodea/shared` (sinon les
-      sortir dans `shared/`).
-- [ ] Migrer
-      [`I18nProvider.jsx`](../../packages/web/src/i18n/I18nProvider.jsx)
-      — coordonné avec
-      [`docs/roadmap/i18n.md`](i18n.md) Tier 2 (où on touche
-      au provider de toute façon pour ajouter `tn`).
-- [ ] Recensement final :
+- [x] Tous les fichiers `.jsx`/`.js` morts supprimés.
+- [x] `NotFound.tsx`, `App.tsx`, `utils.ts`,
+       `registry.data.ts` et les 7 plugins ImportExport
+       livrés en TS strict.
+- [x] `types.ts` pose le contrat plugin pour la suite.
+- [x] Shim `Subheader` retiré de `legacy-modules.d.ts`.
+- [ ] **`I18nProvider.jsx`** — migré dans
+       [`i18n.md`](i18n.md) Tier 2 (pas ici, où on touche au
+       provider de toute façon pour ajouter `tn`).
+- [ ] Recensement final attendu après le Tier 2 i18n :
       `find packages -name "*.js" -o -name "*.jsx" | grep -v
-      node_modules | grep -v dist` → liste vide attendue.
+      node_modules | grep -v dist` → liste vide.
 
 ### 3. Carte de couverture des tests
 
@@ -241,6 +243,50 @@ ou 0 si on attend le 5ᵉ module.
       retourne `{ Provider, useData, useFilters, useActions }`.
       Test sur un seul module en isolation, ensuite
       propagation.
+
+### 7. Rewire ImportExport plugins → schémas Zod actuels
+
+**Pain** : la migration TS du Tier A.2 a mis en lumière que les
+7 plugins sous
+[`core/utils/ImportExport/`](../../packages/web/src/core/utils/ImportExport/)
+produisent des payloads qui ne matchent **plus** les schémas
+Zod canoniques de `@nodea/shared`. Exemples concrets :
+  - `LibraryReviews` parle de `note` ; le schéma actuel utilise
+    `content` + `kind` + `spoiler`.
+  - `LibraryItems` ne pose ni `cover_rid`, ni `format`, ni
+    `is_favorite` ; `type`/`status` sont des enums stricts.
+  - `Mood` envoie `mood_score: unknown` ; le schéma exige
+    `string`.
+  - `HabitsItems` envoie `category: string` ; le schéma a un
+    enum à 5 valeurs.
+  - `Review` ne pose pas le `updated_at` que le schéma
+    requiert.
+
+Pour passer le typecheck, le client API est appelé avec
+`as Parameters<typeof client.create>[2]` (cast au boundary)
+avec un TODO pointant ici dans chaque plugin. **Le runtime
+reste cassé** : importer un export ancien aujourd'hui lèvera
+des Zod validation errors, comme en JS — la migration TS n'a
+fait que rendre la dette visible.
+
+**Coût** : 1–2 jours pour réaligner les 7 plugins + un test
+par module qui round-trip un export → import → compare.
+
+- [ ] Réaligner chaque `normalizePayload` sur le schéma Zod
+       canonique de son module
+       (`MoodPayloadSchema`, `GoalsPayloadSchema`, etc.).
+- [ ] Réaligner les enveloppes d'export : la `version` du
+       plugin doit refléter la version de schéma. Si la shape
+       a divergé, bumper la version et garder un chemin de
+       migration pour les anciens exports stockés en JSON.
+- [ ] Retirer les casts `as Parameters<…>[2]` au boundary
+       `client.create()` une fois les payloads conformes.
+- [ ] Test round-trip par module : export N records → re-importer
+       → vérifier que toutes les natural keys matchent.
+- [ ] Si la rewire devient trop coûteuse vs l'usage réel,
+       envisager option B : rip out tout le sous-système
+       ImportExport (DataTab disparaît, JSON manuel via
+       admin tooling). Discuter en review avant.
 
 ---
 
