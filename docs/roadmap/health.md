@@ -318,28 +318,35 @@ Bilan détaillé :
        date-fr.ts` (devenu `date-format.ts`) dans shared si
        l'api en a besoin pour les emails.
 
-### 6. Factory `createModuleContexts<>()`
+### 6. Factory `createModuleContexts<>()` — livré
 
-**Pain** : 4 modules (Library / Goals / Journal / Mood)
-partagent le même squelette `Data/Filters/Actions Provider`,
-~80 LOC × 4 de boilerplate identique. Identifié pendant la
-clôture de l'ancien `factoring-audit` ; la décision avait
-été de **différer** avec un déclencheur explicite : « si
-Habits ou Review s'y mettent ».
+**Statut** : la décision initiale « wait-for-trigger » a été
+renversée — la factory a été extraite et déployée sur les 4
+modules existants pour préparer Habits + Review.
 
-**Coût** : 1 jour pour la factory + migration des 4 modules,
-ou 0 si on attend le 5ᵉ module.
+Implémentation :
+[`packages/web/src/core/react/module-contexts.tsx`](../../packages/web/src/core/react/module-contexts.tsx)
+expose `createModuleContexts<D, F, A>(moduleName)` qui retourne
+`{ Provider, useData, useFilters, useActions }`. Chaque hook
+porte le nom du module dans son message d'erreur (« must be
+used inside `<MoodProvider>` »), et la triple-nested JSX vit
+dans la factory au lieu d'être copiée dans chaque module.
 
-- [ ] Décider : extraction préventive ou wait-for-trigger.
-      Recommandation : attendre — l'abstraction sans 3ᵉ
-      consommateur est typiquement prématurée, et la
-      duplication actuelle est lisible. À reconsidérer si
-      Habits ou Review repassent en chantier actif.
-- [ ] Si on extrait : signature
-      `createModuleContexts<Data, Filters, Actions>()`
-      retourne `{ Provider, useData, useFilters, useActions }`.
-      Test sur un seul module en isolation, ensuite
-      propagation.
+Migration appliquée :
+  - [`flow/Goals/context.tsx`](../../packages/web/src/app/flow/Goals/context.tsx)
+  - [`flow/Journal/context.tsx`](../../packages/web/src/app/flow/Journal/context.tsx)
+  - [`flow/Library/context.tsx`](../../packages/web/src/app/flow/Library/context.tsx)
+  - [`flow/Mood/context.tsx`](../../packages/web/src/app/flow/Mood/context.tsx)
+
+Chaque module est passé de ~35 LOC de boilerplate (3 ×
+`createContext` + `useRequiredContext` + 3 hooks + JSX triple-
+nested) à ~5 lignes de déclaration via la factory.
+
+- [x] Factory `createModuleContexts<D, F, A>(moduleName)` posée.
+- [x] 4 modules migrés : Goals, Journal, Library, Mood.
+- [ ] **Follow-up** : Habits + Review (quand ils repassent en
+       chantier actif) suivront automatiquement le même contrat
+       — la factory est prête.
 
 ### 7. Rewire ImportExport plugins → schémas Zod actuels — livré
 
