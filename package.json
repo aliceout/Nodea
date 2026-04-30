@@ -11,7 +11,13 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix --max-warnings=0"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
@@ -22,6 +28,8 @@
     "eslint-plugin-react-hooks": "5.2.0",
     "eslint-plugin-react-refresh": "0.4.26",
     "globals": "16.5.0",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "8.59.1"
   },

@@ -1,0 +1,11 @@
+# Pre-commit gate.
+#
+# Runs ESLint (with --fix + --max-warnings=0) on the staged
+# files only — fast, scoped, doesn't punish the developer for
+# warnings elsewhere in the repo. Configured via the
+# `lint-staged` block in the root package.json.
+#
+# Bypass with `git commit --no-verify` if you genuinely need
+# to land WIP. CLAUDE.md asks not to abuse it — investigate
+# the underlying issue first.
+pnpm lint-staged
