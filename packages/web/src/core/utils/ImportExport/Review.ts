@@ -1,3 +1,7 @@
+import {
+  ReviewPayloadSchema,
+  type ReviewPayload,
+} from '@nodea/shared';
 import { reviewClient } from '@/core/api/modules/review';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -13,37 +17,23 @@ export const meta: ImportExportPluginMeta = {
   collection: 'review_entries',
 };
 
-interface RawReviewPayload {
-  year?: unknown;
-  last_year?: unknown;
-  next_year?: unknown;
-  closing?: unknown;
-}
-
-interface NormalisedReviewPayload {
-  year: number;
-  last_year: Record<string, unknown>;
-  next_year: Record<string, unknown>;
-  closing: Record<string, unknown>;
-}
-
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx?.moduleUserId) throw new Error('review: moduleUserId manquant.');
   if (!ctx.mainKey) throw new Error('review: mainKey manquante.');
 }
 
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
-function normalizePayload(input: unknown): NormalisedReviewPayload {
-  const p = (input ?? {}) as RawReviewPayload;
-  return {
+/**
+ * Schema-driven normalisation. The legacy export shape is mostly
+ * compatible with `ReviewPayloadSchema` ; we just coerce `year` to
+ * a number (was sometimes a string in old exports) and let Zod fill
+ * `updated_at` from its `.default('')`.
+ */
+function normalizePayload(input: unknown): ReviewPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  return ReviewPayloadSchema.parse({
+    ...p,
     year: Number(p.year),
-    last_year: isPlainObject(p.last_year) ? p.last_year : {},
-    next_year: isPlainObject(p.next_year) ? p.next_year : {},
-    closing: isPlainObject(p.closing) ? p.closing : {},
-  };
+  });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
@@ -63,14 +53,7 @@ export async function importHandler({
   if (!Number.isFinite(clear.year)) {
     throw new Error('review: year doit être un nombre.');
   }
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current ReviewPayloadSchema (missing required updated_at) ;
-  // cast until the rewire lands.
-  const rec = await reviewClient.create(
-    ctx.moduleUserId,
-    ctx.mainKey,
-    clear as Parameters<typeof reviewClient.create>[2],
-  );
+  const rec = await reviewClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 

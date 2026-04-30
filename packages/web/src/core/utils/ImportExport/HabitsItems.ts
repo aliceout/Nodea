@@ -1,3 +1,9 @@
+import {
+  HABIT_CATEGORY_VALUES,
+  HABIT_FREQUENCY_VALUES,
+  HabitsItemPayloadSchema,
+  type HabitsItemPayload,
+} from '@nodea/shared';
 import { habitsItemsClient } from '@/core/api/modules/habits';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -13,43 +19,37 @@ export const meta: ImportExportPluginMeta = {
   collection: 'habits_items_entries',
 };
 
-interface RawHabitsItemPayload {
-  title?: unknown;
-  category?: unknown;
-  frequency?: unknown;
-  started_at?: unknown;
-  archived?: unknown;
-  target?: unknown;
-  duration?: unknown;
-}
-
-interface NormalisedHabitsItemPayload {
-  title: string;
-  category: string;
-  frequency: string;
-  started_at: string;
-  archived: boolean;
-  target?: number;
-  duration?: string;
-}
+const HABIT_CATEGORY_SET: ReadonlySet<string> = new Set(HABIT_CATEGORY_VALUES);
+const HABIT_FREQUENCY_SET: ReadonlySet<string> = new Set(HABIT_FREQUENCY_VALUES);
 
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx?.moduleUserId) throw new Error('habits_items: moduleUserId manquant.');
   if (!ctx.mainKey) throw new Error('habits_items: mainKey manquante.');
 }
 
-function normalizePayload(input: unknown): NormalisedHabitsItemPayload {
-  const p = (input ?? {}) as RawHabitsItemPayload;
-  const out: NormalisedHabitsItemPayload = {
+/**
+ * Schema-driven normalisation. `category` and `frequency` are enum
+ * fields in `HabitsItemPayloadSchema` ; coerce unknown values back
+ * to their canonical default (`autre` / `weekly`) so legacy export
+ * files with free-form values still parse.
+ */
+function normalizePayload(input: unknown): HabitsItemPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  const category =
+    typeof p.category === 'string' && HABIT_CATEGORY_SET.has(p.category)
+      ? p.category
+      : 'autre';
+  const frequency =
+    typeof p.frequency === 'string' && HABIT_FREQUENCY_SET.has(p.frequency)
+      ? p.frequency
+      : 'weekly';
+  return HabitsItemPayloadSchema.parse({
+    ...p,
     title: String(p.title ?? ''),
-    category: typeof p.category === 'string' && p.category ? p.category : 'autre',
-    frequency: typeof p.frequency === 'string' && p.frequency ? p.frequency : 'weekly',
     started_at: String(p.started_at ?? ''),
-    archived: Boolean(p.archived),
-  };
-  if (p.target != null) out.target = Number(p.target);
-  if (p.duration) out.duration = String(p.duration);
-  return out;
+    category,
+    frequency,
+  });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
@@ -66,14 +66,7 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current HabitsItemPayloadSchema (category is a free string
-  // here, an enum there) ; cast until the rewire lands.
-  const rec = await habitsItemsClient.create(
-    ctx.moduleUserId,
-    ctx.mainKey,
-    clear as Parameters<typeof habitsItemsClient.create>[2],
-  );
+  const rec = await habitsItemsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 

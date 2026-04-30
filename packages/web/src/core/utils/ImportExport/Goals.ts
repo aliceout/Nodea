@@ -1,3 +1,7 @@
+import {
+  GoalsPayloadSchema,
+  type GoalsPayload,
+} from '@nodea/shared';
 import { goalsClient } from '@/core/api/modules/goals';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -12,48 +16,26 @@ export const meta: ImportExportPluginMeta = {
   collection: 'goals_entries',
 };
 
-const VALID_STATUSES = ['active', 'done', 'archived', 'open', 'wip'] as const;
-type GoalStatus = (typeof VALID_STATUSES)[number];
-
-interface RawGoalsPayload {
-  date?: unknown;
-  title?: unknown;
-  status?: unknown;
-  thread?: unknown;
-  note?: unknown;
-}
-
-interface NormalisedGoalsPayload {
-  date: string;
-  title: string;
-  status: GoalStatus;
-  thread: string;
-  note?: string;
-}
-
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx) throw new Error('goals: ctx manquant');
   if (!ctx.moduleUserId) throw new Error('goals: moduleUserId manquant dans ctx');
   if (!ctx.mainKey) throw new Error('goals: mainKey manquante dans ctx');
 }
 
-function isValidStatus(value: unknown): value is GoalStatus {
-  return (
-    typeof value === 'string' &&
-    (VALID_STATUSES as readonly string[]).includes(value)
-  );
-}
-
-function normalizePayload(input: unknown): NormalisedGoalsPayload {
-  const p = (input ?? {}) as RawGoalsPayload;
-  const out: NormalisedGoalsPayload = {
-    date: String(p.date ?? ''),
+/**
+ * Schema-driven normalisation. The legacy export shape mostly
+ * matches `GoalsPayloadSchema` already ; we just coerce `title`
+ * into a string (it's the only required-non-default field) and
+ * let Zod fill the rest from its `.default(...)` clauses, including
+ * the legacy `active` / `archived` aliases that the schema's
+ * status enum still accepts.
+ */
+function normalizePayload(input: unknown): GoalsPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  return GoalsPayloadSchema.parse({
+    ...p,
     title: String(p.title ?? ''),
-    status: isValidStatus(p.status) ? p.status : 'active',
-    thread: String(p.thread ?? ''),
-  };
-  if (p.note != null) out.note = String(p.note);
-  return out;
+  });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
@@ -72,14 +54,7 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current GoalsPayloadSchema ; cast at the boundary until the
-  // rewire lands.
-  const rec = await goalsClient.create(
-    ctx.moduleUserId,
-    ctx.mainKey,
-    clear as Parameters<typeof goalsClient.create>[2],
-  );
+  const rec = await goalsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 

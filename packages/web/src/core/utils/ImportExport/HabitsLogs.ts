@@ -1,3 +1,7 @@
+import {
+  HabitsLogPayloadSchema,
+  type HabitsLogPayload,
+} from '@nodea/shared';
 import { habitsLogsClient } from '@/core/api/modules/habits';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -13,30 +17,18 @@ export const meta: ImportExportPluginMeta = {
   collection: 'habits_logs_entries',
 };
 
-interface RawHabitsLogPayload {
-  date?: unknown;
-  item_rid?: unknown;
-  done?: unknown;
-}
-
-interface NormalisedHabitsLogPayload {
-  date: string;
-  item_rid: string;
-  done: boolean;
-}
-
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx?.moduleUserId) throw new Error('habits_logs: moduleUserId manquant.');
   if (!ctx.mainKey) throw new Error('habits_logs: mainKey manquante.');
 }
 
-function normalizePayload(input: unknown): NormalisedHabitsLogPayload {
-  const p = (input ?? {}) as RawHabitsLogPayload;
-  return {
+function normalizePayload(input: unknown): HabitsLogPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  return HabitsLogPayloadSchema.parse({
+    ...p,
     date: String(p.date ?? ''),
     item_rid: String(p.item_rid ?? ''),
-    done: Boolean(p.done ?? true),
-  };
+  });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
@@ -56,14 +48,7 @@ export async function importHandler({
   if (!clear.date || !clear.item_rid) {
     throw new Error('habits_logs: date et item_rid requis.');
   }
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current HabitsLogPayloadSchema (passthrough mode adds an
-  // index signature) ; cast until the rewire lands.
-  const rec = await habitsLogsClient.create(
-    ctx.moduleUserId,
-    ctx.mainKey,
-    clear as Parameters<typeof habitsLogsClient.create>[2],
-  );
+  const rec = await habitsLogsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 

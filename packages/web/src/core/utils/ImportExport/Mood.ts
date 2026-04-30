@@ -1,3 +1,7 @@
+import {
+  MoodPayloadSchema,
+  type MoodPayload,
+} from '@nodea/shared';
 import { moodClient } from '@/core/api/modules/mood';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -12,57 +16,32 @@ export const meta: ImportExportPluginMeta = {
   collection: 'mood_entries',
 };
 
-interface RawMoodPayload {
-  date?: unknown;
-  mood_score?: unknown;
-  mood_emoji?: unknown;
-  positive1?: unknown;
-  positive2?: unknown;
-  positive3?: unknown;
-  comment?: unknown;
-  question?: unknown;
-  answer?: unknown;
-}
-
-interface NormalisedMoodPayload {
-  date: string;
-  mood_score: unknown;
-  mood_emoji: unknown;
-  positive1: unknown;
-  positive2: unknown;
-  positive3: unknown;
-  comment?: string;
-  question?: string;
-  answer?: string;
-}
-
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx) throw new Error('mood: ctx manquant');
   if (!ctx.moduleUserId) throw new Error('mood: moduleUserId manquant dans ctx');
   if (!ctx.mainKey) throw new Error('mood: mainKey manquante dans ctx');
 }
 
-function normalizePayload(input: unknown): NormalisedMoodPayload {
-  const p = (input ?? {}) as RawMoodPayload;
-  const out: NormalisedMoodPayload = {
+/**
+ * Coerce + validate against the canonical schema. The schema fills
+ * defaults for `mood_emoji` / `positive1-3` / `comment`, so a legacy
+ * export missing those fields still parses cleanly. `mood_score` is
+ * coerced to string (the schema requires `z.string()` ; old exports
+ * sometimes shipped a number).
+ */
+function normalizePayload(input: unknown): MoodPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  return MoodPayloadSchema.parse({
+    ...p,
     date: String(p.date ?? ''),
-    mood_score: p.mood_score ?? '',
-    mood_emoji: p.mood_emoji ?? '',
-    positive1: p.positive1 ?? '',
-    positive2: p.positive2 ?? '',
-    positive3: p.positive3 ?? '',
-  };
-  if (p.comment) out.comment = String(p.comment);
-  if (p.question) out.question = String(p.question);
-  if (p.answer) out.answer = String(p.answer);
-  return out;
+    mood_score: String(p.mood_score ?? ''),
+  });
 }
 
 export function getNaturalKey(payload: unknown): string | null {
-  const p = payload as RawMoodPayload | null | undefined;
-  if (!p?.date) return null;
-  const d = String(p.date).slice(0, 10);
-  return normalizeKeyPart(d);
+  const date = (payload as { date?: unknown } | null | undefined)?.date;
+  if (!date) return null;
+  return normalizeKeyPart(String(date).slice(0, 10));
 }
 
 export async function listExistingKeys({
@@ -93,15 +72,7 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current Zod schemas (e.g. mood_score is typed `unknown` here
-  // but `string` in MoodPayloadSchema) ; the cast keeps the
-  // legacy import/export flow runnable until the rewire lands.
-  const rec = await moodClient.create(
-    ctx.moduleUserId,
-    ctx.mainKey,
-    clear as Parameters<typeof moodClient.create>[2],
-  );
+  const rec = await moodClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 

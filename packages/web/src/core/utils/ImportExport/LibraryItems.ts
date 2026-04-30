@@ -1,3 +1,9 @@
+import {
+  LIBRARY_FORMAT_VALUES,
+  LIBRARY_STATUS_VALUES,
+  LibraryItemPayloadSchema,
+  type LibraryItemPayload,
+} from '@nodea/shared';
 import { libraryItemsClient } from '@/core/api/modules/library';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -13,68 +19,63 @@ export const meta: ImportExportPluginMeta = {
   collection: 'library_items_entries',
 };
 
-interface RawLibraryItemPayload {
-  type?: unknown;
-  title?: unknown;
-  creators?: unknown;
-  status?: unknown;
-  tags?: unknown;
-  provider?: unknown;
-  external_id?: unknown;
-  year?: unknown;
-  language?: unknown;
-  cover_url?: unknown;
-  started_at?: unknown;
-  finished_at?: unknown;
-  rating?: unknown;
-}
-
-interface NormalisedLibraryItemPayload {
-  type: string;
-  title: string;
-  creators: string[];
-  status: string;
-  tags: string[];
-  provider?: string;
-  external_id?: string;
-  year?: number;
-  language?: string;
-  cover_url?: string;
-  started_at?: string;
-  finished_at?: string;
-  rating?: number;
-}
+const STATUS_SET: ReadonlySet<string> = new Set(LIBRARY_STATUS_VALUES);
+const FORMAT_SET: ReadonlySet<string> = new Set(LIBRARY_FORMAT_VALUES);
 
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx?.moduleUserId) throw new Error('library_items: moduleUserId manquant.');
   if (!ctx.mainKey) throw new Error('library_items: mainKey manquante.');
 }
 
-function normalizePayload(input: unknown): NormalisedLibraryItemPayload {
-  const p = (input ?? {}) as RawLibraryItemPayload;
-  const out: NormalisedLibraryItemPayload = {
-    type: typeof p.type === 'string' && p.type ? p.type : 'book',
+/**
+ * Schema-driven normalisation. Legacy export shape used a flat
+ * `provider` + `external_id` pair ; the canonical schema groups
+ * these into a `providers` object. We migrate on the fly so old
+ * export files still round-trip — the plugin `meta.version` stays
+ * `1` because the normalised output matches the current schema
+ * exactly.
+ */
+function normalizePayload(input: unknown): LibraryItemPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  const status =
+    typeof p.status === 'string' && STATUS_SET.has(p.status)
+      ? p.status
+      : 'planned';
+  const format =
+    typeof p.format === 'string' && FORMAT_SET.has(p.format)
+      ? p.format
+      : 'unknown';
+
+  // Legacy migration : flat provider/external_id → grouped `providers`.
+  let providers = p.providers as Record<string, unknown> | undefined;
+  if (!providers && (p.provider || p.external_id)) {
+    providers = {};
+    if (typeof p.provider === 'string' && typeof p.external_id === 'string') {
+      providers[p.provider] = p.external_id;
+    }
+  }
+
+  return LibraryItemPayloadSchema.parse({
+    ...p,
     title: String(p.title ?? ''),
-    creators: Array.isArray(p.creators) ? p.creators.map(String) : [],
-    status: typeof p.status === 'string' && p.status ? p.status : 'planned',
-    tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
-  };
-  if (p.provider) out.provider = String(p.provider);
-  if (p.external_id) out.external_id = String(p.external_id);
-  if (p.year != null) out.year = Number(p.year);
-  if (p.language) out.language = String(p.language);
-  if (p.cover_url) out.cover_url = String(p.cover_url);
-  if (p.started_at) out.started_at = String(p.started_at);
-  if (p.finished_at) out.finished_at = String(p.finished_at);
-  if (p.rating != null) out.rating = Number(p.rating);
-  return out;
+    status,
+    format,
+    ...(providers ? { providers } : {}),
+  });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
+  // Use `providers` (canonical) if present, otherwise fall back to
+  // the title alone — keeps imports of provider-less manual entries
+  // dedup-able by title.
+  const providerEntries = Object.entries(p.providers ?? {});
+  const providerKey = providerEntries.length
+    ? `${providerEntries[0]?.[0]}:${String(providerEntries[0]?.[1])}`
+    : '';
   return `${normalizeKeyPart(p.type)}::${normalizeKeyPart(
-    p.provider ?? '',
-  )}::${normalizeKeyPart(p.external_id ?? p.title)}`;
+    providerKey,
+  )}::${normalizeKeyPart(providerKey ? '' : p.title)}`;
 }
 
 export async function importHandler({
@@ -86,15 +87,7 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current LibraryItemPayloadSchema (missing cover_rid, format,
-  // is_favorite ; type/status are now enum-restricted) ; cast
-  // until the rewire lands.
-  const rec = await libraryItemsClient.create(
-    ctx.moduleUserId,
-    ctx.mainKey,
-    clear as unknown as Parameters<typeof libraryItemsClient.create>[2],
-  );
+  const rec = await libraryItemsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 

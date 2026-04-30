@@ -1,3 +1,8 @@
+import {
+  LIBRARY_REVIEW_KIND_VALUES,
+  LibraryReviewPayloadSchema,
+  type LibraryReviewPayload,
+} from '@nodea/shared';
 import { libraryReviewsClient } from '@/core/api/modules/library';
 import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
 import type {
@@ -13,44 +18,45 @@ export const meta: ImportExportPluginMeta = {
   collection: 'library_reviews_entries',
 };
 
-interface RawLibraryReviewPayload {
-  date?: unknown;
-  item_rid?: unknown;
-  note?: unknown;
-  page?: unknown;
-  snippet?: unknown;
-}
-
-interface NormalisedLibraryReviewPayload {
-  date: string;
-  item_rid: string;
-  note: string;
-  page?: number;
-  snippet?: string;
-}
+const KIND_SET: ReadonlySet<string> = new Set(LIBRARY_REVIEW_KIND_VALUES);
 
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
   if (!ctx?.moduleUserId) throw new Error('library_reviews: moduleUserId manquant.');
   if (!ctx.mainKey) throw new Error('library_reviews: mainKey manquante.');
 }
 
-function normalizePayload(input: unknown): NormalisedLibraryReviewPayload {
-  const p = (input ?? {}) as RawLibraryReviewPayload;
-  const out: NormalisedLibraryReviewPayload = {
-    date: String(p.date ?? ''),
+/**
+ * Legacy export files used a single `note` field for the review
+ * body, while the canonical `LibraryReviewPayloadSchema` splits it
+ * into `content` (the body) + `kind` (`quote` for an extract,
+ * `note` for free-form). When importing an older file we map
+ * `legacy.note` → `content` and pick `kind = 'note'` (the safer
+ * default) ; the page number, when present, gets carried through.
+ */
+function normalizePayload(input: unknown): LibraryReviewPayload {
+  const p = (input ?? {}) as Record<string, unknown>;
+  const content =
+    typeof p.content === 'string' && p.content
+      ? p.content
+      : typeof p.note === 'string'
+        ? p.note
+        : '';
+  const kind =
+    typeof p.kind === 'string' && KIND_SET.has(p.kind) ? p.kind : 'note';
+  return LibraryReviewPayloadSchema.parse({
+    ...p,
     item_rid: String(p.item_rid ?? ''),
-    note: String(p.note ?? ''),
-  };
-  if (p.page != null) out.page = Number(p.page);
-  if (p.snippet) out.snippet = String(p.snippet);
-  return out;
+    date: String(p.date ?? ''),
+    content,
+    kind,
+  });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
   return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(
     p.item_rid,
-  )}::${normalizeKeyPart(p.note.slice(0, 40))}`;
+  )}::${normalizeKeyPart(p.content.slice(0, 40))}`;
 }
 
 export async function importHandler({
@@ -62,17 +68,13 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  if (!clear.date || !clear.item_rid || !clear.note) {
-    throw new Error('library_reviews: date, item_rid et note requis.');
+  if (!clear.date || !clear.item_rid || !clear.content) {
+    throw new Error('library_reviews: date, item_rid et content requis.');
   }
-  // TODO(health.md Tier B.7) — plugin payload predates the
-  // current LibraryReviewPayloadSchema (which uses content/kind
-  // instead of note ; spoiler/title are required) ; cast until
-  // the rewire lands.
   const rec = await libraryReviewsClient.create(
     ctx.moduleUserId,
     ctx.mainKey,
-    clear as unknown as Parameters<typeof libraryReviewsClient.create>[2],
+    clear,
   );
   return { action: 'created', id: rec.id };
 }
