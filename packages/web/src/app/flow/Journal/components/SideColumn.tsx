@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { formatNumber } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Input from '@/ui/atoms/dirk/Input';
 import FilterChip from '@/ui/dirk/FilterChip';
@@ -96,7 +97,7 @@ export default function SideColumn() {
           <div className="flex items-baseline justify-between gap-2">
             <dt>{t('passage.side.statsWords')}</dt>
             <dd className="tabular-nums text-ink">
-              {stats.totalWords.toLocaleString(language === 'en' ? 'en-US' : 'fr-FR')}
+              {formatNumber(stats.totalWords, language)}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-2">

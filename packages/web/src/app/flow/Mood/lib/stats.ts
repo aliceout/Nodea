@@ -1,4 +1,5 @@
-import { DAY_NAMES_FR, SHORT_MONTHS_FR } from './constants';
+import { getDayNames, getMonthNames } from '@/core/i18n/date-format';
+
 import type { MoodEntry, Pattern } from './types';
 
 /** 30-day rolling average mood score. `null` when no entries
@@ -58,9 +59,15 @@ export function signedFormat(value: number): string {
 export function computePatterns(
   entries: ReadonlyArray<MoodEntry>,
   today: Date = new Date(),
+  language: string = 'fr',
 ): Pattern[] {
   const out: Pattern[] = [];
   if (entries.length < 5) return out;
+  const dayNamesLong = getDayNames(language, 'long');
+  const monthNamesShort = getMonthNames(language, 'short');
+  // Capitalise the day name for the « X est ton meilleur jour »
+  // label — Intl returns lowercase for FR.
+  const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
   // 1) Best / worst day of the week
   const buckets: number[][] = [[], [], [], [], [], [], []]; // Mon..Sun
@@ -92,13 +99,13 @@ export function computePatterns(
   }
   if (bestIdx >= 0) {
     out.push({
-      label: `${DAY_NAMES_FR[bestIdx]} est ton meilleur jour`,
+      label: `${cap(dayNamesLong[bestIdx]!)} est ton meilleur jour`,
       delta: `${signedFormat(bestMean - overallMean)} vs moyenne`,
     });
   }
   if (worstIdx >= 0 && worstIdx !== bestIdx) {
     out.push({
-      label: `${DAY_NAMES_FR[worstIdx]} reste ton point bas`,
+      label: `${cap(dayNamesLong[worstIdx]!)} reste ton point bas`,
       delta: `${signedFormat(worstMean - overallMean)} vs moyenne`,
     });
   }
@@ -129,7 +136,7 @@ export function computePatterns(
   if (bestCount >= 3 && bestStart && bestEnd) {
     out.push({
       label: `${bestCount} entrées ≥ 0 d’affilée`,
-      delta: formatStreakRange(bestStart, bestEnd),
+      delta: formatStreakRange(bestStart, bestEnd, monthNamesShort),
     });
   }
 
@@ -164,22 +171,28 @@ export function computePatterns(
 
 /** Format a streak's start..end ISO range for display. Same year :
  *  drops the year from the start so « du 12 mars au 18 mars 2026 »
- *  reads as « du 12 mars au 18 mars 2026 ». Cross-year keeps both. */
-function formatStreakRange(startIso: string, endIso: string): string {
+ *  reads compact. Cross-year keeps both. `monthNames` is the
+ *  locale-aware short-month array (Jan..Dec) the caller pulled
+ *  from `getMonthNames(language, 'short')`. */
+function formatStreakRange(
+  startIso: string,
+  endIso: string,
+  monthNames: ReadonlyArray<string>,
+): string {
   const start = new Date(startIso);
   const end = new Date(endIso);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return `${startIso} → ${endIso}`;
   }
   if (startIso === endIso) {
-    return `le ${formatShortDate(start)}`;
+    return `le ${formatShortDate(start, monthNames)}`;
   }
   if (start.getFullYear() === end.getFullYear()) {
-    return `du ${start.getDate()} ${SHORT_MONTHS_FR[start.getMonth()]} au ${formatShortDate(end)}`;
+    return `du ${start.getDate()} ${monthNames[start.getMonth()]} au ${formatShortDate(end, monthNames)}`;
   }
-  return `du ${formatShortDate(start)} au ${formatShortDate(end)}`;
+  return `du ${formatShortDate(start, monthNames)} au ${formatShortDate(end, monthNames)}`;
 }
 
-function formatShortDate(d: Date): string {
-  return `${d.getDate()} ${SHORT_MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
+function formatShortDate(d: Date, monthNames: ReadonlyArray<string>): string {
+  return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 }

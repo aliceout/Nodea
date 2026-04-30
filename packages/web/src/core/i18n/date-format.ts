@@ -167,3 +167,47 @@ export function formatLongDate(rawIso: string, language: string): string {
 export function formatNumber(n: number, language: string): string {
   return new Intl.NumberFormat(intlLocale(language)).format(n);
 }
+
+/**
+ * 12-element array of month names for `language`, either `'long'`
+ * (« janvier » / « January ») or `'short'` (« janv. » / « Jan »).
+ * Built on demand from `Intl.DateTimeFormat`. Used by surfaces
+ * that pick a month from an index (Mood section heading, streak
+ * formatter, MonthSelector chips).
+ *
+ * Output is never capitalised — call sites that need a leading
+ * capital (« Mars » as a heading) do `.charAt(0).toUpperCase()`
+ * themselves so the helper stays orthogonal to display rules.
+ */
+export function getMonthNames(
+  language: string,
+  style: 'long' | 'short' = 'long',
+): ReadonlyArray<string> {
+  const fmt = new Intl.DateTimeFormat(intlLocale(language), { month: style });
+  return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2000, i, 1)));
+}
+
+/**
+ * 7-element array of weekday names indexed Monday → Sunday — the
+ * convention used by Mood's stats and the heatmap. `Intl` returns
+ * Sunday-first (`Date.getDay() === 0`), so we rotate to the
+ * Monday-first ordering at the boundary here ; the call sites
+ * stay simple.
+ *
+ * `style` is `'long'` (« lundi » / « Monday ») or `'short'`
+ * (« lun. » / « Mon »). Output isn't capitalised — same rule as
+ * `getMonthNames`.
+ */
+export function getDayNames(
+  language: string,
+  style: 'long' | 'short' = 'long',
+): ReadonlyArray<string> {
+  const fmt = new Intl.DateTimeFormat(intlLocale(language), { weekday: style });
+  // 2024-01-01 was a Monday — pick that as the anchor.
+  const monday = new Date(2024, 0, 1);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return fmt.format(d);
+  });
+}

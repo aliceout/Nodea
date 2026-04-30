@@ -6,6 +6,7 @@ import type {
 } from '@nodea/shared';
 
 import type { ComposerType } from '@/core/store/nodea-store';
+import { intlLocale } from '@/core/i18n/date-format';
 
 /**
  * UI constants for the ComposerModal — labels, colour ramps,
@@ -19,23 +20,25 @@ import type { ComposerType } from '@/core/store/nodea-store';
  * to a shared atom can happen later if the labels start drifting.
  */
 
-/** Two-digit month codes + FR labels for the « date » selector
- *  shared by Goal / Library bodies. Lives at the top so the
- *  dropdown options render in calendar order. */
-export const MONTH_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: '01', label: 'Janvier' },
-  { value: '02', label: 'Février' },
-  { value: '03', label: 'Mars' },
-  { value: '04', label: 'Avril' },
-  { value: '05', label: 'Mai' },
-  { value: '06', label: 'Juin' },
-  { value: '07', label: 'Juillet' },
-  { value: '08', label: 'Août' },
-  { value: '09', label: 'Septembre' },
-  { value: '10', label: 'Octobre' },
-  { value: '11', label: 'Novembre' },
-  { value: '12', label: 'Décembre' },
-];
+/** Two-digit month codes + locale-aware long labels for the
+ *  « date » selector shared by Goal / Library bodies. Built
+ *  on demand from `Intl.DateTimeFormat` so EN / FR / a future
+ *  language all get their native month names. The first letter
+ *  is uppercased to match the legacy FR labels (« Janvier » not
+ *  « janvier ») and the EN convention. */
+export function genMonthOptions(
+  language: string,
+): ReadonlyArray<{ value: string; label: string }> {
+  const fmt = new Intl.DateTimeFormat(intlLocale(language), {
+    month: 'long',
+  });
+  return Array.from({ length: 12 }, (_, i) => {
+    const value = String(i + 1).padStart(2, '0');
+    const raw = fmt.format(new Date(2000, i, 1));
+    const label = raw.charAt(0).toUpperCase() + raw.slice(1);
+    return { value, label };
+  });
+}
 
 /** Top tab strip of the modal — picks which body renders.
  *  Library variants (`library-item`, `library-review`) are not

@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
+
+import { getMonthNames } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useMoodFilters } from '../context';
-import { MONTH_LABELS_SHORT } from '../lib/constants';
 
 /**
  * Month tab strip rendered to the right of the « Entrées · … »
@@ -15,8 +17,12 @@ import { MONTH_LABELS_SHORT } from '../lib/constants';
  * down).
  */
 export default function MonthSelector() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { month, setMonth } = useMoodFilters();
+  const monthNamesShort = useMemo(
+    () => getMonthNames(language, 'short'),
+    [language],
+  );
 
   return (
     <div role="tablist" aria-label={t('mood.selectors.monthAria')} className="flex flex-wrap gap-1">
@@ -34,7 +40,7 @@ export default function MonthSelector() {
       >
         {t('mood.selectors.monthAll')}
       </button>
-      {MONTH_LABELS_SHORT.map((label, i) => {
+      {monthNamesShort.map((label, i) => {
         const active = month === i;
         return (
           <button

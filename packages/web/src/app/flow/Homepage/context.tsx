@@ -16,6 +16,7 @@ import {
   selectModules,
   selectUser,
 } from '@/core/store/nodea-store';
+import { intlLocale } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { preferredName } from './lib/format';
@@ -54,6 +55,10 @@ interface HomepageDataValue {
 
 const HomepageDataContext = createContext<HomepageDataValue | null>(null);
 
+// `HomepageProvider` lives below — this hook is its consumer
+// counterpart. Splitting them across two files would only add
+// ceremony.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useHomepageData(): HomepageDataValue {
   const v = useContext(HomepageDataContext);
   if (!v) throw new Error('useHomepageData() must be used inside <HomepageProvider>');
@@ -142,8 +147,7 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   // formatter + a few date arithmetic ops).
   const formattedDate = useMemo(() => {
     const now = new Date();
-    const localeTag = language === 'en' ? 'en-US' : 'fr-FR';
-    const formatter = new Intl.DateTimeFormat(localeTag, {
+    const formatter = new Intl.DateTimeFormat(intlLocale(language), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',

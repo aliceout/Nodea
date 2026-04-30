@@ -16,7 +16,7 @@ import Footer from '../components/Footer';
 import MarkdownEditor from '../components/MarkdownEditor';
 import {
   GOAL_STATUS_ACTIVE_TONE,
-  MONTH_OPTIONS,
+  genMonthOptions,
   type GoalStatus,
 } from '../lib/constants';
 import { submitOnCmdEnter } from '../lib/format';
@@ -54,7 +54,8 @@ interface GoalBodyProps {
  * the previous value.
  */
 export default function GoalBody({ onClose }: GoalBodyProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const monthOptions = useMemo(() => genMonthOptions(language), [language]);
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['goals']?.moduleUserId ?? null;
@@ -299,7 +300,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
               disabled={submitting}
             >
               <option value="">{t('goals.composer.monthPlaceholder')}</option>
-              {MONTH_OPTIONS.map((m) => (
+              {monthOptions.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>

@@ -1,5 +1,8 @@
 import { ChevronUpIcon } from '@heroicons/react/24/outline';
 
+import { useMemo } from 'react';
+
+import { getMonthNames } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
@@ -8,7 +11,6 @@ import PageHeading from '@/ui/dirk/PageHeading';
 import MonthSelector from '../components/MonthSelector';
 import YearSelector from '../components/YearSelector';
 import { useMoodData, useMoodFilters } from '../context';
-import { MONTH_LABELS_LONG } from '../lib/constants';
 import Chart from './Chart';
 import EntryRow from './EntryRow';
 
@@ -23,10 +25,14 @@ import EntryRow from './EntryRow';
  *
  *  All state is read from the contexts ; no props. */
 export default function PrimaryColumn() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { entries, load } = useMoodData();
   const { year, month, chartCollapsed, filtered, toggleChart } =
     useMoodFilters();
+  const monthNamesLong = useMemo(
+    () => getMonthNames(language, 'long'),
+    [language],
+  );
 
   // Section heading describes the selected range plain-language so
   // a screen reader (and a glance) reads cleanly : « Entrées · En
@@ -68,7 +74,7 @@ export default function PrimaryColumn() {
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
             {t('mood.primary.entriesHeading')} · {yearLabel}
-            {showMonth ? ` · ${MONTH_LABELS_LONG[month]}` : ''}
+            {showMonth ? ` · ${monthNamesLong[month]}` : ''}
           </h2>
           <div className="flex items-center gap-2">
             {year !== null ? <MonthSelector /> : null}

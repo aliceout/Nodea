@@ -21,7 +21,7 @@ interface GoalRowProps {
  * context ; only the entry itself comes in as a prop.
  */
 export default function GoalRow({ entry }: GoalRowProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { editEntry, deleteEntry } = useGoalsActions();
   return (
     <li className="group flex items-start gap-3 border-b border-hair py-3 last:border-b-0">
@@ -37,7 +37,7 @@ export default function GoalRow({ entry }: GoalRowProps) {
           </p>
           {entry.date ? (
             <span className="text-[11px] tabular-nums text-muted">
-              {formatDate(entry.date)}
+              {formatDate(entry.date, language)}
             </span>
           ) : null}
         </div>

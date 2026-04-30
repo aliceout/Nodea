@@ -58,65 +58,8 @@ export const DONUT_ORDER: ReadonlyArray<MoodScore> = [
   '-2',
 ];
 
-/** Capitalised FR weekday names, Mon..Sun. Used by `computePatterns`
- *  for the « X est ton meilleur jour » label. */
-export const DAY_NAMES_FR: ReadonlyArray<string> = [
-  'Lundi',
-  'Mardi',
-  'Mercredi',
-  'Jeudi',
-  'Vendredi',
-  'Samedi',
-  'Dimanche',
-];
-
-/** Abbreviated FR month names — same shape as Intl's `month:
- *  'short'`, but stable across ICU versions. Used by the streak-
- *  range formatter inside `computePatterns`. */
-export const SHORT_MONTHS_FR: ReadonlyArray<string> = [
-  'janv.',
-  'févr.',
-  'mars',
-  'avr.',
-  'mai',
-  'juin',
-  'juil.',
-  'août',
-  'sept.',
-  'oct.',
-  'nov.',
-  'déc.',
-];
-
-/** Long FR month names for the entries section header (« Entrées ·
- *  2025 · mars »). */
-export const MONTH_LABELS_LONG: ReadonlyArray<string> = [
-  'janvier',
-  'février',
-  'mars',
-  'avril',
-  'mai',
-  'juin',
-  'juillet',
-  'août',
-  'septembre',
-  'octobre',
-  'novembre',
-  'décembre',
-];
-
-/** Capitalised short FR month names for the month selector chips. */
-export const MONTH_LABELS_SHORT: ReadonlyArray<string> = [
-  'Janv',
-  'Févr',
-  'Mars',
-  'Avr',
-  'Mai',
-  'Juin',
-  'Juil',
-  'Août',
-  'Sept',
-  'Oct',
-  'Nov',
-  'Déc',
-];
+// Tier 3 i18n removed the four FR-only weekday / month arrays
+// that lived here (DAY_NAMES_FR, SHORT_MONTHS_FR, MONTH_LABELS_LONG,
+// MONTH_LABELS_SHORT). Call sites pull from `getDayNames(language)` /
+// `getMonthNames(language, 'long' | 'short')` in `core/i18n/date-format.ts`
+// instead — Intl-driven, locale-aware, no FR hardcoding left.

@@ -34,11 +34,11 @@ import ScoreDonut from './ScoreDonut';
  * sidebar is a lifetime view by design.
  */
 export default function SideColumn() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { entries, today } = useMoodData();
   const patterns = useMemo(
-    () => computePatterns(entries, today),
-    [entries, today],
+    () => computePatterns(entries, today, language),
+    [entries, today, language],
   );
   // 30-day rolling mean — used to be displayed in the page
   // subtitle ; now lives in the Patterns block as a permanent
