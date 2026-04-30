@@ -3,6 +3,7 @@ import type { MouseEvent, ReactNode } from 'react';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 import Button from '@/ui/atoms/dirk/Button';
+import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 import ThemeSwitch from '@/ui/dirk/ThemeSwitch';
 import {
   useNodeaStore,
@@ -62,10 +63,7 @@ export default function DocsTopbar({ children }: DocsTopbarProps) {
             className="flex shrink-0 cursor-pointer items-center gap-2.5 self-center transition-opacity hover:opacity-80"
             aria-label="Retour à Nodea"
           >
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 shrink-0 rounded-full bg-accent"
-            />
+            <NodeaSymbol className="h-5 w-5 text-accent" />
             <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">
               Nodea{' '}
               <span className="font-normal text-muted">· Documentation</span>

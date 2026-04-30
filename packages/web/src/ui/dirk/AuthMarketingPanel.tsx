@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
+import NodeaSymbol from '@/ui/branding/NodeaSymbol';
+
 /**
  * Shared marketing aside used by every auth page (Login, Register,
  * Request-reset). The shell is identical — Nodea logo top-left,
@@ -32,7 +34,7 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
   return (
     <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
       <div className="flex items-center gap-2.5">
-        <span aria-hidden="true" className="h-3 w-3 rounded-full bg-accent" />
+        <NodeaSymbol className="h-5 w-5 text-accent" />
         <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
       </div>
 

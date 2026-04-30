@@ -9,6 +9,7 @@ import { useSession } from '@/core/auth/use-session';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
 /**
  * Top of the sidebar: brand mark + small user-menu icon strip
@@ -19,7 +20,7 @@ import Button from '@/ui/atoms/dirk/Button';
 export default function SidebarHeader() {
   return (
     <div className="flex items-center gap-2 px-2.5 pb-4 pt-1">
-      <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-accent" />
+      <NodeaSymbol className="h-4 w-4 text-accent" />
       <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
       <UserMenu />
     </div>
