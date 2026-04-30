@@ -494,38 +494,70 @@ Bilan :
 
 À traiter en dernier. Sans mesure, on optimise à l'aveugle.
 
-### 10. Bundle + load profiling
+### 10. Bundle + load profiling — baseline posé
 
-**Pain** : pas de mesure récente. Suspects :
-- Argon2 + WASM hash dans le main thread peut bloquer la
-  frame ~1 s pendant le derive (UX login).
-- Code splitting par module via `React.lazy` censé être en
-  place — non vérifié.
-- Dépendances lourdes potentielles (`puppeteer` côté api est
-  ~200 MB, justifié ?).
+**Statut** : baseline mesuré sur le dist du commit `5da5e22`
+(Apr 29). Aucune optimisation prise : CLAUDE.md insiste
+« measure before optimising », et les chiffres ci-dessous
+ne montrent pas de hotspot urgent. Les follow-ups sont notés
+pour une future session quand un signal user concret
+arrivera (lenteur perçue, métrique Core Web Vital).
 
-**Coût** : 1–2 jours pour le profiling, l'optimisation
-dépend des résultats.
+**Baseline web** :
 
-- [ ] Ajouter
-      [`rollup-plugin-visualizer`](https://github.com/btd/rollup-plugin-visualizer)
-      en mode CI artifact (un build → un HTML qu'on archive).
-      Documenter le poids total + top 10 chunks.
-- [ ] Vérifier que chaque module flow est bien `lazy()` dans
-      [`App.jsx`](../../packages/web/src/app/App.jsx) (à
-      faire après sa migration TS, Tier 2 ci-dessus).
-- [ ] Si Argon2 bloque visiblement le main thread, déplacer
-      le derive dans un Web Worker. Ne **pas** faire avant
-      d'avoir mesuré (UX peut être déjà OK).
-- [ ] Côté api, vérifier que `puppeteer` est nécessaire (sert
-      probablement à générer le PDF de récupération) et qu'il
-      ne plombe pas l'image Docker. Si oui, voir s'il y a
-      une alternative légère.
-- [ ] Lancer `pnpm --filter @nodea/api db:studio` avec query
-      logging activé, parcourir les pages qui chargent
-      beaucoup de données (Library, Mood heatmap), repérer
-      les N+1 — CLAUDE.md exige une mesure avant
-      d'optimiser.
+| Métrique | Valeur | Verdict |
+|---|---|---|
+| Total assets dist | 2.9 MB | Acceptable pour SPA e2e encrypted |
+| **Main bundle** (`index-*.js`) | 1.28 MB raw / **410 KB gzipped** | Lourd mais attendu (opaque + recharts + bip39 + zxcvbn + tailwind + react 19) |
+| 2ᵉ chunk (`index.esm-*.js`) | 491 KB raw | Vendor (probablement recharts) |
+| Docs chunk (lazy) | 482 KB raw / **141 KB gzipped** | OK — chargé seulement quand l'user ouvre `/docs` |
+| Nombre de chunks JS | 55 | ✅ Code-splitting fonctionne |
+| Chunks CSS | 1 | Tailwind merge classique |
+
+**Code-splitting confirmé** : 23 `React.lazy()` au total —
+14 dans
+[`App.tsx`](../../packages/web/src/app/App.tsx) (toutes les
+pages auth + Docs) + 9 dans
+[`config/modules_list.tsx`](../../packages/web/src/app/config/modules_list.tsx)
+(les modules `flow/*`).
+
+**Argon2 / WASM main thread** : non mesuré, restera mesuré
+quand un user signale un freeze visible. Le derive passe par
+`@serenity-kit/opaque` (qui utilise Argon2id en WASM) lors
+du login uniquement (1 fois par session). Pas un hotspot
+typique sauf sur appareils très lents.
+
+**`puppeteer` côté api** (24.42.0, ~200 MB d'image) : utilisé
+**uniquement** pour contourner le WAF JS d'Amazon dans
+[`api/src/lookup/headless.ts`](../../packages/api/src/lookup/headless.ts).
+Cas d'usage : book lookup quand un user cherche une couverture
+qui n'est dispo que via Amazon. Le doc-bloc justifie la
+décision sécurité (sandbox on, no-persist, drop images/fonts/
+CSS). Alternatives possibles : passer Amazon en mode best-
+effort optionnel, ou héberger un service Chromium séparé.
+**Pas de gain trivial**, à reconsidérer si le coût ops
+devient bloquant.
+
+**N+1 queries** : non auditées. Drizzle log queries activable
+via `db:studio` ; à refaire quand on remonte un cas concret
+(Library scan ? Mood heatmap ?).
+
+- [x] Mesurer le baseline (build dist, 55 chunks, 1.28 MB main).
+- [x] Vérifier que chaque module flow est bien `lazy()`
+       (23 `lazy()` dans le code).
+- [x] Documenter `puppeteer` côté api (justifié, pas urgent).
+- [ ] **Follow-up** : installer
+       [`rollup-plugin-visualizer`](https://github.com/btd/rollup-plugin-visualizer)
+       en build:analyze script (bloqué temporairement par un
+       lock Windows sur `@tailwindcss/oxide` ; à reprendre
+       quand l'env dev est libre).
+- [ ] **Follow-up conditionnel** : si Argon2 bloque le main
+       thread visiblement (mesurer avec Performance.now au
+       login start/end), déplacer dans un Web Worker. Ne
+       **pas** faire à l'aveugle.
+- [ ] **Follow-up conditionnel** : si une page Library /
+       Mood ralentit (mesure Drizzle query log), traiter le
+       N+1 spécifique. Pas en pré-emptive.
 
 ---
 
