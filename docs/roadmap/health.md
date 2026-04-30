@@ -283,32 +283,40 @@ Bilan concret :
        `loadDecryptedPreferences` ont déjà leur rationale dans
        le doc-bloc du module, OK comme ça.
 
-### 5. Promotion `shared/` au statut de keystone
+### 5. Promotion `shared/` au statut de keystone — audit posé
 
-**Pain** : CLAUDE.md insiste « as soon as both sides touch
-it, move it to shared ». 21 fichiers en place mais aucune
-passe d'audit récente — combien de schémas / unions /
-constantes vivent en double ? Spot check : codes machine
-d'erreur, types de payload module, formats de date. Tous
-candidats.
+**Statut** : audit fait. Sortie : moins de duplication
+que l'audit d'origine craignait, mais un manque de typage
+sur les module ids côté api. Action concrète prise dans le
+même commit : promotion de `MODULE_IDS` /
+`DATA_MODULE_IDS` / `ModuleId` / `DataModuleId` vers
+[`packages/shared/src/module-ids.ts`](../../packages/shared/src/module-ids.ts),
+re-export depuis `core/store/nodea-store.ts` (zéro changement
+pour les 6+ consommateurs web), et **typage strict** de
+`ensureModuleUserId` côté api seed.
 
-**Coût** : 1–2 jours pour l'audit + extraction.
+Bilan détaillé :
 
-- [ ] Diffuser depuis web vers shared : codes d'erreur (Tier
-      4 ci-dessus), types `*Lite` qui ressemblent aux
-      payloads canoniques, helpers de date FR (qui sont déjà
-      dans `core/i18n/date-fr.ts` mais pourraient migrer si
-      l'api en a besoin pour des emails par exemple — voir
-      Tier 5 i18n).
-- [ ] Diffuser depuis api vers shared : tout enum / status
-      union qui sert au front via les Zod schemas. Vérifier
-      qu'aucun `enum` Drizzle ne soit re-déclaré en TS côté
-      web.
-- [ ] Vérifier la **branded types** crypto : CLAUDE.md exige
-      `Base64`, `AesMainKey`, etc. Audit que ces types vivent
-      bien dans
-      [`packages/shared/src/crypto-types.ts`](../../packages/shared/src/crypto-types.ts)
-      (à créer si absent) et que les call-sites les utilisent.
+| Candidat | Verdict |
+|---|---|
+| **Module ids** (`mood`, `goals`, …) | ✅ Promu — `ModuleId` (routing, 9 entrées) + `DataModuleId` (modules_config keys, 6 entrées). Api `ensureModuleUserId` typé `DataModuleId`. |
+| **Codes d'erreur API** | ✅ Déjà fait (Tier B.4 → `error-codes.ts`). |
+| **Module enums** (`MOOD_SCORE_VALUES`, `GOAL_STATUS_VALUES`, `LIBRARY_STATUS_VALUES`, `LIBRARY_FORMAT_VALUES`) | ✅ Déjà dans `@nodea/shared/schemas/entries.ts`. Importés cleanly côté web. |
+| **Branded crypto types** (`Base64`, `AesMainKey`, etc.) | ✅ Déjà dans [`packages/shared/src/crypto-types.ts`](../../packages/shared/src/crypto-types.ts), utilisés correctement. |
+| **Helpers de date FR** ([`core/i18n/date-fr.ts`](../../packages/web/src/core/i18n/date-fr.ts)) | ⏳ FR-only avec `'fr-FR'` hardcodé. Migration vers shared bloquée par i18n Tier 3 (généralisation EN). |
+| **Types `*Lite`** (Homepage `MoodEntryLite` etc.) | ⏸ Décision déjà prise pendant `factoring-audit` Tier 3 : restent locaux, raison documentée (Goal status plus étroit, Library author dérivé). |
+
+- [x] Audit : pas de duplication structurelle massive ; le
+       projet était déjà discipliné sur les schémas Zod.
+- [x] Promotion `MODULE_IDS` / `DATA_MODULE_IDS` (+ guards) à
+       shared.
+- [x] Api `ensureModuleUserId(moduleId: DataModuleId, …)` —
+       typo-bug surface fermée. `purgeModuleKeys` reste typé
+       `string` pour permettre la purge de clés legacy.
+- [ ] **Follow-up** : quand i18n Tier 3 sera prêt (date
+       formatting généralisé EN), promouvoir `core/i18n/
+       date-fr.ts` (devenu `date-format.ts`) dans shared si
+       l'api en a besoin pour les emails.
 
 ### 6. Factory `createModuleContexts<>()`
 

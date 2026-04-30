@@ -16,42 +16,28 @@
  */
 import { create } from 'zustand';
 import type { MainKeyMaterial } from '../crypto/key-material.ts';
-import type {
-  GoalsPayload,
-  LibraryItemPayload,
-  LibraryReviewPayload,
-  MoodPayload,
-  PassagePayload,
-  UserPreferencesPayload,
+import {
+  MODULE_IDS,
+  DATA_MODULE_IDS,
+  isModuleId,
+  isDataModuleId,
+  type DataModuleId,
+  type GoalsPayload,
+  type LibraryItemPayload,
+  type LibraryReviewPayload,
+  type ModuleId,
+  type MoodPayload,
+  type PassagePayload,
+  type UserPreferencesPayload,
 } from '@nodea/shared';
 
-/**
- * The set of valid module ids the flow can show. Kept as a frozen
- * tuple so `ModuleId` is a strict union (no widening to plain
- * `string`) and so the popstate listener can discriminate a known
- * id from arbitrary garbage in `event.state`.
- *
- * `settings` (alias to `account`) is intentionally absent — it was
- * killed alongside the URL-routing rework. `home` is the cold-start
- * default ; `account` and `admin` are reachable but hidden from the
- * public module list (`display: false` in `modules_list.tsx`).
- */
-export const MODULE_IDS = [
-  'home',
-  'mood',
-  'journal',
-  'goals',
-  'habits',
-  'library',
-  'review',
-  'account',
-  'admin',
-] as const;
-export type ModuleId = (typeof MODULE_IDS)[number];
-
-export function isModuleId(value: unknown): value is ModuleId {
-  return typeof value === 'string' && (MODULE_IDS as readonly string[]).includes(value);
-}
+// Re-export the module-id surface for backward compat with the
+// existing `@/core/store/nodea-store` consumers (`App.tsx`,
+// `SidebarNav.tsx`, etc.). Single source lives in
+// `@nodea/shared/module-ids` so the api seed orchestrator types
+// its `ensureModuleUserId(moduleId, …)` arg against the same union.
+export { MODULE_IDS, DATA_MODULE_IDS, isModuleId, isDataModuleId };
+export type { ModuleId, DataModuleId };
 
 /**
  * Library has three lenses on the same encrypted catalogue : the

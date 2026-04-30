@@ -20,6 +20,7 @@
 
 import { randomBytes, randomUUID, webcrypto } from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import type { DataModuleId } from '@nodea/shared';
 import { db } from '../db/client.ts';
 import {
   modulesConfig,
@@ -185,13 +186,14 @@ interface ModulesRuntimeMap {
  * slot is enabled with a `moduleUserId`, re-encrypt and persist if
  * anything changed. Returns the (possibly newly-minted) sid.
  *
- * Module ids match the keys the web's runtime store uses (`mood`,
- * `goals`, `journal`, `library_items`, `library_reviews`,
- * `library_covers`, `review`).
+ * Module ids are the canonical {@link DataModuleId} union from
+ * `@nodea/shared/module-ids` (`mood`, `goals`, `journal`,
+ * `library`, `review`, `habits`) — same set the web's
+ * `modules_config` blob keys.
  */
 export async function ensureModuleUserId(
   userId: string,
-  moduleId: string,
+  moduleId: DataModuleId,
   aesKey: webcrypto.CryptoKey,
 ): Promise<string> {
   const [row] = await db
@@ -241,6 +243,11 @@ export async function ensureModuleUserId(
  */
 export async function purgeModuleKeys(
   userId: string,
+  // Accepts arbitrary string keys (not the {@link DataModuleId}
+  // canonical list) because callers may want to purge **legacy**
+  // entries that pre-date the canonical naming, e.g. the seed v1
+  // mistake that created split `library_items`/`library_reviews`
+  // keys instead of one shared `library`.
   moduleIds: ReadonlyArray<string>,
   aesKey: webcrypto.CryptoKey,
 ): Promise<string[]> {
