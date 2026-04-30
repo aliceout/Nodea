@@ -1,1 +1,33 @@
-{}
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "discard": "Discard",
+    "add": "Add",
+    "update": "Update",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "verify": "Verify",
+    "copy": "Copy",
+    "send": "Send",
+    "open": "Open",
+    "configure": "Set up",
+    "enable": "Enable",
+    "disable": "Disable",
+    "menu": "Actions"
+  },
+  "states": {
+    "saving": "Saving…",
+    "deleting": "Deleting…",
+    "adding": "Adding…",
+    "updating": "Updating…",
+    "loading": "Loading…",
+    "verifying": "Verifying…",
+    "submitting": "Sending…",
+    "enabling": "Enabling…",
+    "copied": "Copied"
+  }
+}

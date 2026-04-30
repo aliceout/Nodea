@@ -10,6 +10,7 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
@@ -37,6 +38,7 @@ interface LibraryReviewBodyProps {
  * even on creation (otherwise we'd have a dangling review).
  */
 export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
+  const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['library']?.moduleUserId ?? null;
@@ -153,7 +155,7 @@ export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
         onSubmit={handleSave}
         submitting={submitting}
         error={error}
-        submitLabel={isEditExisting ? 'Mettre à jour' : 'Enregistrer'}
+        submitLabel={isEditExisting ? t('common.actions.update') : t('common.actions.save')}
         submittingLabel={isEditExisting ? 'Mise à jour…' : 'Enregistrement…'}
       />
     </>

@@ -7,6 +7,7 @@ import {
   selectModules,
 } from '@/core/store/nodea-store';
 import { useGoalDraft } from '@/app/flow/Goals/hooks/useGoalDraft';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
@@ -54,6 +55,7 @@ interface GoalBodyProps {
  * the previous value.
  */
 export default function GoalBody({ onClose }: GoalBodyProps) {
+  const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['goals']?.moduleUserId ?? null;
@@ -399,7 +401,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
         onSubmit={handleSave}
         submitting={submitting}
         error={error}
-        submitLabel={isEdit ? 'Mettre à jour' : 'Enregistrer'}
+        submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
         submittingLabel={isEdit ? 'Mise à jour…' : 'Enregistrement…'}
       />
     </>

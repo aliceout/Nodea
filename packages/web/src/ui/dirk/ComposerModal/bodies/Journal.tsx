@@ -14,6 +14,7 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import Footer from '../components/Footer';
@@ -54,6 +55,7 @@ interface JournalBodyProps {
  * an in-flight typing session is never clobbered.
  */
 export default function JournalBody({ onClose }: JournalBodyProps) {
+  const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['journal']?.moduleUserId ?? null;
@@ -356,7 +358,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
         onSubmit={handleSave}
         submitting={submitting}
         error={error}
-        submitLabel={isEdit ? 'Mettre à jour' : 'Enregistrer'}
+        submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
         submittingLabel={isEdit ? 'Mise à jour…' : 'Enregistrement…'}
       />
     </>

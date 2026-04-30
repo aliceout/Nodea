@@ -7,6 +7,7 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkTextarea from '@/ui/atoms/dirk/Textarea';
@@ -44,6 +45,7 @@ interface MoodBodyProps {
  * text with an empty answer.
  */
 export default function MoodBody({ onClose }: MoodBodyProps) {
+  const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const moduleUserId = modules['mood']?.moduleUserId ?? null;
@@ -245,7 +247,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
         onSubmit={handleSave}
         submitting={submitting}
         error={error}
-        submitLabel={isEdit ? 'Mettre à jour' : 'Enregistrer'}
+        submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
         submittingLabel={isEdit ? 'Mise à jour…' : 'Enregistrement…'}
       />
     </>

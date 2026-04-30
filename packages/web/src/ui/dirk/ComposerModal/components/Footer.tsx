@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkButton from '@/ui/atoms/dirk/Button';
 
 interface FooterProps {
   onSubmit: () => void;
   submitting?: boolean;
   error?: string | null;
+  /** Submit copy. Defaults to `common.actions.save`. Pass an
+   *  override only when the body has a non-save semantic (« Mettre
+   *  à jour », « Confirmer »…). */
   submitLabel?: string;
+  /** Optional override for the in-flight label. Defaults to
+   *  `common.states.saving`. */
   submittingLabel?: string;
   /** Optional element rendered between the keyboard hints and
    *  the submit button — e.g. a body-specific toggle like
@@ -28,17 +34,21 @@ interface FooterProps {
  *     right.
  *
  * Each body decides its own submit copy via `submitLabel` /
- * `submittingLabel` (the defaults are « Enregistrer » /
- * « Enregistrement… »).
+ * `submittingLabel`. Defaults flow through `common.actions.save`
+ * + `common.states.saving` so a wording change in `common.json`
+ * propagates everywhere.
  */
 export default function Footer({
   onSubmit,
   submitting,
   error,
-  submitLabel = 'Enregistrer',
-  submittingLabel = 'Enregistrement…',
+  submitLabel,
+  submittingLabel,
   extra,
 }: FooterProps) {
+  const { t } = useI18n();
+  const submit = submitLabel ?? t('common.actions.save');
+  const inFlight = submittingLabel ?? t('common.states.saving');
   return (
     <div className="border-t border-hair bg-bg-2">
       {error ? (
@@ -55,15 +65,15 @@ export default function Footer({
             <kbd className="rounded-[3px] border border-hair bg-bg px-1.5 py-px font-mono text-[10px] text-ink-soft">
               ⌘↵
             </kbd>
-            envoyer
+            {t('modals.composer.kbdSend')}
           </span>
           <span className="hidden items-center gap-1.5 sm:inline-flex">
             <kbd className="rounded-[3px] border border-hair bg-bg px-1.5 py-px font-mono text-[10px] text-ink-soft">
               esc
             </kbd>
-            annuler
+            {t('modals.composer.kbdCancel')}
           </span>
-          <span>chiffré localement</span>
+          <span>{t('modals.composer.encryptedLocally')}</span>
         </div>
         <div className="flex items-center gap-2">
           {extra}
@@ -73,7 +83,7 @@ export default function Footer({
             onClick={onSubmit}
             disabled={submitting}
           >
-            {submitting ? submittingLabel : submitLabel}
+            {submitting ? inFlight : submit}
           </DirkButton>
         </div>
       </div>

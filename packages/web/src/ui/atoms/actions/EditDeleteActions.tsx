@@ -1,5 +1,7 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 interface EditDeleteActionsProps {
@@ -8,6 +10,10 @@ interface EditDeleteActionsProps {
   onDelete: () => void;
   onSave: () => void;
   onCancel: () => void;
+  /** All four labels default to `common.actions.{edit,delete,save,cancel}`.
+   *  Pass an override only when a row needs domain-specific copy
+   *  (rare — most consumers should let the default flow through so
+   *  a wording change in `common.json` propagates everywhere). */
   editLabel?: string;
   deleteLabel?: string;
   saveLabel?: string;
@@ -25,12 +31,18 @@ export default function EditDeleteActions({
   onDelete,
   onSave,
   onCancel,
-  editLabel = 'Éditer',
-  deleteLabel = 'Supprimer',
-  saveLabel = 'Enregistrer',
-  cancelLabel = 'Annuler',
+  editLabel,
+  deleteLabel,
+  saveLabel,
+  cancelLabel,
   className = '',
 }: EditDeleteActionsProps) {
+  const { t } = useI18n();
+  const editText = editLabel ?? t('common.actions.edit');
+  const deleteText = deleteLabel ?? t('common.actions.delete');
+  const saveText = saveLabel ?? t('common.actions.save');
+  const cancelText = cancelLabel ?? t('common.actions.cancel');
+  const menuTitle = t('common.actions.menu');
   if (isEditing) {
     return (
       <div className={`flex items-center ${className}`}>
@@ -38,8 +50,8 @@ export default function EditDeleteActions({
           variant="ghost"
           size="xs"
           iconOnly
-          title={saveLabel}
-          aria-label={saveLabel}
+          title={saveText}
+          aria-label={saveText}
           onClick={onSave}
         >
           <svg
@@ -60,8 +72,8 @@ export default function EditDeleteActions({
           variant="ghost"
           size="xs"
           iconOnly
-          title={cancelLabel}
-          aria-label={cancelLabel}
+          title={cancelText}
+          aria-label={cancelText}
           onClick={onCancel}
         >
           <svg
@@ -87,7 +99,7 @@ export default function EditDeleteActions({
     <div className={`flex items-center ${className}`}>
       <Menu as="div" className="relative inline-flex">
         <MenuButton
-          title="Actions"
+          title={menuTitle}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 transition focus-visible:outline-none cursor-pointer"
         >
           <EllipsisVerticalIcon className="h-4 w-4" />
@@ -105,7 +117,7 @@ export default function EditDeleteActions({
                   active ? 'bg-sky-50 text-slate-600' : 'text-slate-600'
                 }`}
               >
-                {editLabel}
+                {editText}
               </button>
             )}
           </MenuItem>
@@ -118,7 +130,7 @@ export default function EditDeleteActions({
                   active ? 'bg-rose-50 text-rose-600' : 'text-rose-600'
                 }`}
               >
-                {deleteLabel}
+                {deleteText}
               </button>
             )}
           </MenuItem>

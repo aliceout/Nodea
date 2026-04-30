@@ -14,5 +14,10 @@
       "snooze": "Plus tard",
       "close": "Fermer"
     }
+  },
+  "composer": {
+    "kbdSend": "envoyer",
+    "kbdCancel": "annuler",
+    "encryptedLocally": "chiffré localement"
   }
 }

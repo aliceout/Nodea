@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import type { FeedbackState } from '../lib/types';
@@ -40,6 +41,7 @@ export default function IdentityRow({
   onSave,
   children,
 }: IdentityRowProps) {
+  const { t } = useI18n();
   return (
     <section className="py-[24px] first:pt-0 last:pb-0">
       <h3 className="mb-2 text-[16px] font-semibold text-ink">{label}</h3>
@@ -48,7 +50,7 @@ export default function IdentityRow({
         <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[170px_1fr] lg:gap-x-6">
           <div>
             <Button variant="primary" size="sm" onClick={onEdit} aria-label={editLabel}>
-              Modifier
+              {t('common.actions.edit')}
             </Button>
           </div>
           <div className="min-w-0 text-[14px] text-ink">
@@ -64,10 +66,10 @@ export default function IdentityRow({
           <div className="min-w-0 flex-1">{children}</div>
           <div className="flex shrink-0 gap-2">
             <Button variant="primary" size="sm" onClick={onSave} disabled={submitting}>
-              {submitting ? 'Enregistrement…' : 'Enregistrer'}
+              {submitting ? t('common.states.saving') : t('common.actions.save')}
             </Button>
             <Button variant="danger-ghost" size="sm" onClick={onCancel} disabled={submitting}>
-              Abandonner
+              {t('common.actions.discard')}
             </Button>
           </div>
         </div>
