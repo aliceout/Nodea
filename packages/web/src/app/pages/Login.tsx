@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRightIcon, FingerPrintIcon } from '@heroicons/react/24/outline';
 import { LoginBodySchema, type LoginBody } from '@nodea/shared';
 import { useSession } from '@/core/auth/use-session';
-import { isApiError } from '@/core/api/client';
+import { apiErrorMessage } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
@@ -24,6 +25,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
  * primitive that would smother the design intent.
  */
 export default function LoginPage() {
+  const { t } = useI18n();
   const session = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -60,20 +62,15 @@ export default function LoginPage() {
         navigate('/flow', { replace: true });
       }
     } catch (err) {
-      if (isApiError(err)) {
-        if (err.status === 403 && err.error === 'account_not_activated') {
-          setServerError(
-            'Ton compte n’est pas encore activé. Clique sur le lien envoyé par e-mail pour l’activer.',
-          );
-        } else if (err.status === 401) {
-          setServerError('E-mail ou mot de passe incorrect.');
-        } else {
-          setServerError('Erreur de connexion. Réessaie.');
-        }
-      } else {
-        setServerError('Erreur de connexion. Réessaie.');
-        if (import.meta.env.DEV) console.warn('login failed', err);
-      }
+      // Single source of truth for the FR / EN message — see
+      // `core/api/error-message.ts` + `errors.json`. The previous
+      // inline switch fell out of sync with the API codes ; this
+      // helper resolves any known code, falls back to the generic
+      // « unknown » entry for anything new, and the « network »
+      // entry when the catch fired on a non-ApiError shape (fetch
+      // refused, JSON parse threw, etc.).
+      setServerError(apiErrorMessage(err, t));
+      if (import.meta.env.DEV) console.warn('login failed', err);
     }
   }
 
@@ -105,10 +102,8 @@ export default function LoginPage() {
     } catch (err) {
       if (isWebAuthnCancel(err)) {
         // User dismissed the picker — silent, no error.
-      } else if (isApiError(err) && err.status === 401) {
-        setServerError('Aucune passkey valide n’a répondu.');
       } else {
-        setServerError('Échec de la connexion par passkey.');
+        setServerError(apiErrorMessage(err, t));
         if (import.meta.env.DEV) console.warn('passkey login failed', err);
       }
     } finally {

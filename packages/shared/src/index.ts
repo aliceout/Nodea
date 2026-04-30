@@ -1,4 +1,5 @@
 export * from './crypto-types.ts';
+export * from './error-codes.ts';
 export * from './password-rules.ts';
 export * from './threads.ts';
 export * from './schemas/auth.ts';

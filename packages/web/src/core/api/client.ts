@@ -28,6 +28,7 @@
  */
 export type { ApiError } from './internal.ts';
 export { isApiError } from './internal.ts';
+export { apiErrorMessage } from './error-message.ts';
 
 export {
   apiChangeEmail,

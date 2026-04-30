@@ -27,9 +27,18 @@ export function apiBase(): string {
   );
 }
 
+import type { ApiErrorCode } from '@nodea/shared';
+
 export interface ApiError {
   status: number;
-  error: string;
+  /** Machine code from the canonical list in
+   *  [`@nodea/shared`](../../../shared/src/error-codes.ts).
+   *  Permissive alias `KnownApiErrorCode | (string & {})` —
+   *  autocomplete works on known codes, unknowns still type-check
+   *  with the « unknown » i18n fallback. */
+  error: ApiErrorCode;
+  /** Optional human-readable reason — typically reserved for
+   *  invariants we can't usefully translate (Zod path, etc.). */
   reason?: string;
 }
 

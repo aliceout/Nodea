@@ -1,1 +1,65 @@
-{}
+{
+  "api": {
+    "unknown": "Something unexpected happened. Try again in a moment.",
+    "network": "Cannot reach the server. Check your connection and try again.",
+
+    "account_not_activated": "Your account isn’t activated yet. Click the link we sent by e-mail to activate it.",
+    "invalid_credentials": "Wrong e-mail or password.",
+    "invalid_token": "Invalid or expired link. Request a new one.",
+    "passkey_required": "A passkey is required for this account.",
+    "totp_required": "A two-factor code is required.",
+    "unauthenticated": "You must be signed in to do this.",
+    "multi_factor_loss": "Several factors were lost at once — contact the administrator.",
+
+    "already_enabled": "This protection is already enabled.",
+    "already_enrolled": "This passkey is already enrolled.",
+    "backup_codes_unacknowledged": "You must confirm you’ve saved your backup codes before continuing.",
+    "challenge_expired": "Session expired. Start over from the beginning.",
+    "factor_not_required": "This step isn’t required for this account.",
+    "invalid_code": "Wrong code.",
+    "no_pending_challenge": "No pending request — start over.",
+    "no_pending_enrollment": "No pending enrolment — start over.",
+    "totp_not_enabled": "Two-factor authentication isn’t enabled on this account.",
+    "user_verification_required": "Device authentication is required.",
+    "verification_failed": "Verification failed — try again.",
+
+    "activation_failed": "Activation failed. The link may be expired or already used.",
+    "email_send_failed": "The e-mail couldn’t be sent. Try again in a moment.",
+    "email_taken": "This e-mail address is already used by another account.",
+    "register_failed": "Registration failed. Try again.",
+    "registration_closed": "Registration is currently closed.",
+    "user_already_exists": "An account already exists with this address.",
+
+    "bypass_already_active": "A recovery request is already in progress for this account.",
+
+    "cannot_delete_self": "You can’t delete your own admin account.",
+    "forbidden": "You don’t have permission to do this.",
+
+    "guard_already_promoted": "This record has already been validated — reload the page.",
+    "guard_mismatch": "The data changed mid-flight. Reload the page.",
+    "missing_guard_params": "Security parameters missing. Reload the page.",
+    "missing_id": "Missing identifier.",
+    "missing_sid": "Module not configured for this account.",
+    "not_found": "Item not found.",
+    "not_found_or_used": "Link not found or already used.",
+
+    "invalid_body": "Invalid input.",
+    "invalid_url": "Invalid URL.",
+    "no_body": "Missing input.",
+    "too_large": "File too large.",
+
+    "fetch_failed": "Fetch failed. Try again.",
+    "host_not_allowed": "This server isn’t allowed.",
+    "https_required": "An HTTPS connection is required.",
+    "lookup_failed": "Lookup failed. Try again.",
+    "missing_url": "Missing URL.",
+    "not_an_image": "The file isn’t a valid image.",
+
+    "rate_limited": "Too many attempts. Wait a moment before trying again.",
+
+    "insert_failed": "Save failed. Try again.",
+    "internal": "Server error. Try again in a moment.",
+    "internal_error": "Server error. Try again in a moment.",
+    "update_failed": "Update failed. Try again."
+  }
+}

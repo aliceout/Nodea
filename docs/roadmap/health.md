@@ -208,40 +208,62 @@ racine lance tout en parallèle.
 Continuités à apporter au code existant. Pas urgent, mais
 chaque jour de retard c'est de la dette qui s'accumule.
 
-### 4. Pattern d'erreurs unifié (API ↔ store ↔ UI)
+### 4. Pattern d'erreurs unifié (API ↔ store ↔ UI) — fondations livrées
 
-**Pain** : trois patterns d'erreurs coexistent sans
-canonisation —
-- `throw new Error('Erreur lors de…')` avec message FR
-  hardcodé directement dans le `catch`,
-- classe [`ApiError`](../../packages/web/src/core/api/internal.ts)
-  côté client (mieux structurée, mais pas systématiquement
-  utilisée),
-- `catch {}` silencieux ici et là.
+**Statut** : la liste canonique est posée, le helper de
+traduction marche, **Login.tsx** a été migré comme preuve
+de concept (les 6 strings hardcodées du `catch` sont
+remplacées par un `apiErrorMessage(err, t)` unique). Reste à
+diffuser sur les autres pages (Register, Recover,
+ChangePassword, RecoveryCode, Account/*) et auditer les
+`catch {}` silencieux du repo.
 
-Chaque page a sa propre table de traduction code machine →
-message FR ([`pages/Login.tsx:41-65`](../../packages/web/src/app/pages/Login.tsx#L41-L65)
-en a 6).
+Bilan concret :
+  - 46 codes machine recensés à partir d'un grep
+    `{ error: 'xxx' }` sur
+    [`packages/api/src/routes/`](../../packages/api/src/routes/).
+  - [`packages/shared/src/error-codes.ts`](../../packages/shared/src/error-codes.ts)
+    expose `KNOWN_API_ERROR_CODES` (array `as const`) +
+    type `KnownApiErrorCode` + alias permissif
+    `ApiErrorCode = KnownApiErrorCode | (string & {})`.
+    L'union reste **non-exhaustive** : un code fraîchement
+    ajouté côté api ne casse pas le compile front, juste
+    bascule sur le fallback générique le temps que i18n
+    rattrape.
+  - [`ApiError.error`](../../packages/web/src/core/api/internal.ts)
+    désormais typé `ApiErrorCode` (était `string`).
+  - [`apiErrorMessage(err, t)`](../../packages/web/src/core/api/error-message.ts)
+    re-exporté depuis `core/api/client.ts`. Pattern :
+    code connu → `errors.api.<code>` → fallback
+    `errors.api.unknown` → `errors.api.network` quand le
+    catch a fait feu sur autre chose qu'un `ApiError`.
+  - [`packages/web/src/i18n/locales/{fr,en}/errors.json`](../../packages/web/src/i18n/locales/fr/errors.json)
+    rempli avec une entrée par code (46) + `unknown` + `network`.
+  - [`error-message.test.ts`](../../packages/web/src/core/api/error-message.test.ts)
+    pose 5 tests qui verrouillent : code connu, code typé
+    mais sans entrée JSON, code totalement inconnu, exception
+    non-`ApiError`, JSON vide.
 
-**Coût** : 2–3 jours, mais cousin direct du Tier 4 i18n —
-à coordonner.
-
-- [ ] Recenser les codes machine renvoyés par les 25 routes
-      [`api/src/routes/`](../../packages/api/src/routes/) et
-      figer la liste canonique en
-      [`packages/shared/src/error-codes.ts`](../../packages/shared/src/error-codes.ts)
-      — type `ApiErrorCode = '…'`.
-- [ ] Étendre [`ApiError`](../../packages/web/src/core/api/internal.ts)
-      pour qu'il porte un `code: ApiErrorCode` typé.
-- [ ] Helper `apiErrorMessage(code, t)` dans
-      [`core/api/`](../../packages/web/src/core/api/) — toutes
-      les pages remplacent leur switch local.
+- [x] Liste canonique
+       [`error-codes.ts`](../../packages/shared/src/error-codes.ts)
+       + barrel `@nodea/shared`.
+- [x] Type `ApiErrorCode` permissif (`Known | (string & {})`).
+- [x] [`apiErrorMessage(value, t)`](../../packages/web/src/core/api/error-message.ts)
+       + 5 tests Vitest.
+- [x] `errors.api.*` rempli côté FR + EN (46 codes + 2
+       fallbacks).
+- [x] [`Login.tsx`](../../packages/web/src/app/pages/Login.tsx)
+       migré (les 2 `catch` du formulaire + de la passkey).
+- [ ] Migrer les autres pages auth (Register, Recover,
+       ChangePassword, RecoveryCode, Reset, Activate,
+       SecurityMode).
+- [ ] Migrer les pages module (Account/views/IdentityTab,
+       Library composer, Goals carry-over, etc.). Cousin
+       direct du Tier 4 de [`i18n.md`](i18n.md).
 - [ ] Audit du repo pour `catch {}` non commenté (CLAUDE.md
-      exige une justification one-liner). Compléter ou
-      remplacer par `console.warn` (côté web) /
-      `logger.warn` (côté api).
-- [ ] Une fois la liste canonique en place, le Tier 4 i18n
-      tombe naturellement.
+       exige une justification one-liner). Compléter ou
+       remplacer par `console.warn` (web) / `logger.warn`
+       (api).
 
 ### 5. Promotion `shared/` au statut de keystone
 

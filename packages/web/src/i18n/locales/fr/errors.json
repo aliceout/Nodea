@@ -1,1 +1,65 @@
-{}
+{
+  "api": {
+    "unknown": "Une erreur inattendue est survenue. Réessaie dans un instant.",
+    "network": "Connexion impossible. Vérifie ta connexion et réessaie.",
+
+    "account_not_activated": "Ton compte n’est pas encore activé. Clique sur le lien envoyé par e-mail pour l’activer.",
+    "invalid_credentials": "E-mail ou mot de passe incorrect.",
+    "invalid_token": "Lien invalide ou expiré. Demande un nouveau lien.",
+    "passkey_required": "Une passkey est requise pour ce compte.",
+    "totp_required": "Un code de double authentification est requis.",
+    "unauthenticated": "Tu dois être connecté·e pour effectuer cette action.",
+    "multi_factor_loss": "Plusieurs facteurs ont été perdus simultanément — contacte l’administrateur·rice.",
+
+    "already_enabled": "Cette protection est déjà activée.",
+    "already_enrolled": "Cette passkey est déjà enrôlée.",
+    "backup_codes_unacknowledged": "Tu dois confirmer avoir noté tes codes de secours avant de continuer.",
+    "challenge_expired": "La session a expiré. Recommence depuis le début.",
+    "factor_not_required": "Cette étape n’est pas requise pour ce compte.",
+    "invalid_code": "Code incorrect.",
+    "no_pending_challenge": "Aucune demande en cours — recommence.",
+    "no_pending_enrollment": "Aucun enrôlement en cours — recommence.",
+    "totp_not_enabled": "La double authentification n’est pas activée sur ce compte.",
+    "user_verification_required": "L’authentification de l’appareil est requise.",
+    "verification_failed": "Vérification échouée — réessaie.",
+
+    "activation_failed": "L’activation a échoué. Le lien est peut-être expiré ou déjà utilisé.",
+    "email_send_failed": "L’e-mail n’a pas pu être envoyé. Réessaie dans un instant.",
+    "email_taken": "Cette adresse e-mail est déjà associée à un compte.",
+    "register_failed": "L’inscription a échoué. Réessaie.",
+    "registration_closed": "Les inscriptions sont actuellement fermées.",
+    "user_already_exists": "Un compte existe déjà avec cette adresse.",
+
+    "bypass_already_active": "Une demande de récupération est déjà en cours sur ce compte.",
+
+    "cannot_delete_self": "Tu ne peux pas supprimer ton propre compte administrateur.",
+    "forbidden": "Tu n’as pas les droits pour effectuer cette action.",
+
+    "guard_already_promoted": "Cet enregistrement a déjà été validé — recharge la page.",
+    "guard_mismatch": "Les données ont changé en cours de route. Recharge la page.",
+    "missing_guard_params": "Paramètres de sécurité manquants. Recharge la page.",
+    "missing_id": "Identifiant manquant.",
+    "missing_sid": "Module non configuré pour ce compte.",
+    "not_found": "Élément introuvable.",
+    "not_found_or_used": "Lien introuvable ou déjà utilisé.",
+
+    "invalid_body": "Données invalides.",
+    "invalid_url": "URL invalide.",
+    "no_body": "Données manquantes.",
+    "too_large": "Fichier trop volumineux.",
+
+    "fetch_failed": "Récupération échouée. Réessaie.",
+    "host_not_allowed": "Ce serveur n’est pas autorisé.",
+    "https_required": "Une connexion HTTPS est requise.",
+    "lookup_failed": "Recherche échouée. Réessaie.",
+    "missing_url": "URL manquante.",
+    "not_an_image": "Le fichier n’est pas une image valide.",
+
+    "rate_limited": "Trop de tentatives. Attends un instant avant de réessayer.",
+
+    "insert_failed": "L’enregistrement a échoué. Réessaie.",
+    "internal": "Erreur serveur. Réessaie dans un instant.",
+    "internal_error": "Erreur serveur. Réessaie dans un instant.",
+    "update_failed": "La mise à jour a échoué. Réessaie."
+  }
+}
