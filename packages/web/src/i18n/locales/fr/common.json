@@ -19,6 +19,10 @@
     "disable": "Désactiver",
     "menu": "Actions"
   },
+  "time": {
+    "today": "Aujourd’hui",
+    "yesterday": "Hier"
+  },
   "states": {
     "saving": "Enregistrement…",
     "deleting": "Suppression…",

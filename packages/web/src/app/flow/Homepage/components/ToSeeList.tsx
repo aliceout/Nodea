@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import { toIsoDate } from '@/core/i18n/date-fr';
+import { toIsoDate } from '@/core/i18n/date-format';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 

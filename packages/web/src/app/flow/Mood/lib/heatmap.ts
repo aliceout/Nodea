@@ -1,6 +1,6 @@
 import type { MoodScore } from '@nodea/shared';
 
-import { toIsoDate } from '@/core/i18n/date-fr';
+import { toIsoDate } from '@/core/i18n/date-format';
 
 import { rangeFor } from './date-format';
 import type { HeatmapCell, MonthLabel, MoodEntry } from './types';

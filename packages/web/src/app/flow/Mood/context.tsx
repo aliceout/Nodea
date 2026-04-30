@@ -87,7 +87,7 @@ export { useMoodData, useMoodFilters, useMoodActions };
 /* ---- Provider --------------------------------------------------- */
 
 export function MoodProvider({ children }: { children: ReactNode }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   // ---- Pulled from the global store ----
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
@@ -126,12 +126,17 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     if (!mainKey || !moduleUserId) return undefined;
     let cancelled = false;
     setLoad({ status: 'loading' });
+    const labels = {
+      language,
+      todayLabel: t('common.time.today'),
+      yesterdayLabel: t('common.time.yesterday'),
+    };
     moodClient
       .list(moduleUserId, mainKey)
       .then((records) => {
         if (cancelled) return;
         const next = records
-          .map((r) => recordToEntry(r, today))
+          .map((r) => recordToEntry(r, today, labels))
           // Newest first — the EntryRow list reads top-down.
           .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
         setEntries(next);
@@ -146,7 +151,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, moodVersion, today, t]);
+  }, [mainKey, moduleUserId, moodVersion, today, t, language]);
 
   // ---- Derived ----
 

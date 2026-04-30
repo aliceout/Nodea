@@ -3,7 +3,8 @@ import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { LibraryReviewPayload } from '@nodea/shared';
 
 import DirkButton from '@/ui/atoms/dirk/Button';
-import { formatLongDate } from '@/core/i18n/date-fr';
+import { formatLongDate } from '@/core/i18n/date-format';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { JournalContent } from '@/lib/journal-markdown';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/EmptyHint';
@@ -104,7 +105,8 @@ interface FlatReviewRowProps {
 }
 
 function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
-  const dateLabel = formatLongDate(review.date);
+  const { language } = useI18n();
+  const dateLabel = formatLongDate(review.date, language);
   const accent = review.kind === 'quote';
   const bookTitle = book?.title ?? '(livre supprimé)';
   const bookAuthor = book?.creators?.[0]?.name ?? '';

@@ -9,7 +9,7 @@ import {
 import { splitThreads } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
-import { formatMonthLabel } from '@/core/i18n/date-fr';
+import { formatMonthLabel } from '@/core/i18n/date-format';
 import { createModuleContexts } from '@/core/react/module-contexts';
 import {
   useNodeaStore,
@@ -97,7 +97,7 @@ export { useJournalData, useJournalFilters, useJournalActions };
 /* ---- Provider --------------------------------------------------- */
 
 export function JournalProvider({ children }: { children: ReactNode }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   // ---- Pulled from the global store ----
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
@@ -129,6 +129,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     if (!mainKey || !moduleUserId) return undefined;
     let cancelled = false;
     setLoad({ status: 'loading' });
+    const labels = {
+      language,
+      todayLabel: t('common.time.today'),
+      yesterdayLabel: t('common.time.yesterday'),
+    };
     passageClient
       .list(moduleUserId, mainKey)
       .then((records) => {
@@ -136,7 +141,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const next = records
-          .map((r) => recordToEntry(r, today))
+          .map((r) => recordToEntry(r, today, labels))
           // Newest first.
           .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
         setEntries(next);
@@ -151,7 +156,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, journalVersion, t]);
+  }, [mainKey, moduleUserId, journalVersion, t, language]);
 
   // ---- Derived ----
   const stats = useMemo<JournalStats>(() => computeStats(entries), [entries]);
@@ -194,7 +199,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }
         return Array.from(map.entries())
           .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
-          .map(([k, items]) => [formatMonthLabel(k), items] as const);
+          .map(([k, items]) => [formatMonthLabel(k, language), items] as const);
       }
       // Default : group by thread (multi-thread entries land in
       // each of their thread buckets — same convention as Goals).
@@ -211,7 +216,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         a.localeCompare(b, 'fr'),
       );
     },
-    [filtered, groupBy],
+    [filtered, groupBy, language],
   );
 
   // ---- Actions ----

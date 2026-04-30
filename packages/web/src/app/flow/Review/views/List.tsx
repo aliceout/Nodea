@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUturnLeftIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { formatLongDate } from '@/core/i18n/date-fr';
+import { formatLongDate } from '@/core/i18n/date-format';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
@@ -201,11 +201,11 @@ interface ReviewRowProps {
 }
 
 function ReviewRow({ record, onOpen, onEdit, onDelete }: ReviewRowProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   // `payload.updated_at` is the in-payload write timestamp — the
   // entry-table wrapper no longer carries `updated_at` (minimum-
   // readable-surface design). Always set by the create/update hooks.
-  const updated = formatLongDate(record.payload.updated_at);
+  const updated = formatLongDate(record.payload.updated_at, language);
   return (
     <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
       <button

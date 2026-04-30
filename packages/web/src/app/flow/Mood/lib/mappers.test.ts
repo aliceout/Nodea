@@ -43,6 +43,12 @@ describe('normalizeScore', () => {
 });
 
 describe('recordToEntry', () => {
+  const LABELS = {
+    language: 'fr',
+    todayLabel: 'Aujourd’hui',
+    yesterdayLabel: 'Hier',
+  };
+
   function record(payload: Partial<MoodPayload>): DecryptedRecord<MoodPayload> {
     return {
       id: 'rec-1',
@@ -61,6 +67,7 @@ describe('recordToEntry', () => {
         positive3: 'c',
       }),
       TODAY,
+      LABELS,
     );
     expect(out.id).toBe('rec-1');
     expect(out.dateIso).toBe('2026-03-12');
@@ -70,11 +77,11 @@ describe('recordToEntry', () => {
 
   it('falls back to today when payload date is missing or malformed', () => {
     const todayIso = TODAY.toISOString().slice(0, 10);
-    expect(recordToEntry(record({ mood_score: '0' }), TODAY).dateIso).toBe(
-      todayIso,
-    );
     expect(
-      recordToEntry(record({ date: 'garbage', mood_score: '0' }), TODAY)
+      recordToEntry(record({ mood_score: '0' }), TODAY, LABELS).dateIso,
+    ).toBe(todayIso);
+    expect(
+      recordToEntry(record({ date: 'garbage', mood_score: '0' }), TODAY, LABELS)
         .dateIso,
     ).toBe(todayIso);
   });
@@ -83,6 +90,7 @@ describe('recordToEntry', () => {
     const out = recordToEntry(
       record({ date: '2026-03-12', mood_score: '0', comment: '   ' }),
       TODAY,
+      LABELS,
     );
     expect(out).not.toHaveProperty('comment');
     expect(out).not.toHaveProperty('question');
@@ -99,6 +107,7 @@ describe('recordToEntry', () => {
         answer: 'yes',
       }),
       TODAY,
+      LABELS,
     );
     expect(out.comment).toBe('tired');
     expect(out.question).toBe('q?');

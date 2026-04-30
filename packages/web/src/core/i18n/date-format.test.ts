@@ -4,11 +4,26 @@ import {
   formatEntryLabel,
   formatLongDate,
   formatMonthLabel,
+  formatNumber,
+  intlLocale,
   parseLocalDate,
   toIsoDate,
-} from './date-fr';
+  type EntryLabelOptions,
+} from './date-format';
 
 const TODAY = new Date(2026, 2, 15); // 15 mars 2026, midi local
+
+const FR_LABELS: EntryLabelOptions = {
+  language: 'fr',
+  todayLabel: 'Aujourd’hui',
+  yesterdayLabel: 'Hier',
+};
+
+const EN_LABELS: EntryLabelOptions = {
+  language: 'en',
+  todayLabel: 'Today',
+  yesterdayLabel: 'Yesterday',
+};
 
 describe('parseLocalDate', () => {
   it('reads YYYY-MM-DD as local midnight', () => {
@@ -45,64 +60,113 @@ describe('toIsoDate', () => {
   });
 });
 
+describe('intlLocale', () => {
+  it('maps fr → fr-FR', () => {
+    expect(intlLocale('fr')).toBe('fr-FR');
+  });
+
+  it('maps en → en-US', () => {
+    expect(intlLocale('en')).toBe('en-US');
+  });
+
+  it('forwards unknown languages verbatim', () => {
+    expect(intlLocale('ru')).toBe('ru');
+  });
+});
+
 describe('formatEntryLabel', () => {
-  it('returns « Aujourd’hui » when the entry matches today', () => {
-    expect(formatEntryLabel('2026-03-15', TODAY)).toBe('Aujourd’hui');
+  it('returns the today label when the entry matches today', () => {
+    expect(formatEntryLabel('2026-03-15', TODAY, FR_LABELS)).toBe('Aujourd’hui');
+    expect(formatEntryLabel('2026-03-15', TODAY, EN_LABELS)).toBe('Today');
   });
 
-  it('returns « Hier » for the previous day', () => {
-    expect(formatEntryLabel('2026-03-14', TODAY)).toBe('Hier');
+  it('returns the yesterday label for the previous day', () => {
+    expect(formatEntryLabel('2026-03-14', TODAY, FR_LABELS)).toBe('Hier');
+    expect(formatEntryLabel('2026-03-14', TODAY, EN_LABELS)).toBe('Yesterday');
   });
 
-  it('returns capitalised same-year label for older days', () => {
-    // 12 mars 2026 — « jeudi 12 mars » (capitalised first letter)
-    const out = formatEntryLabel('2026-03-12', TODAY);
+  it('returns capitalised same-year FR label for older days', () => {
+    const out = formatEntryLabel('2026-03-12', TODAY, FR_LABELS);
     expect(out).toMatch(/^[A-ZÀÂ]/);
     expect(out).toContain('mars');
     expect(out).not.toContain('2026'); // same year — no year suffix
   });
 
-  it('switches to cross-year label (with year, no weekday)', () => {
-    const out = formatEntryLabel('2024-03-12', TODAY);
+  it('switches to cross-year FR label (with year, no weekday)', () => {
+    const out = formatEntryLabel('2024-03-12', TODAY, FR_LABELS);
     expect(out).toContain('2024');
     expect(out).toContain('mars');
   });
 
-  it('falls back to raw input on parse failure', () => {
-    expect(formatEntryLabel('garbage', TODAY)).toBe('garbage');
+  it('renders an EN same-year label as « Thursday, March 12 » shape', () => {
+    const out = formatEntryLabel('2026-03-12', TODAY, EN_LABELS);
+    // First letter capitalised, contains the English month name,
+    // no year suffix (same year).
+    expect(out).toMatch(/^[A-Z]/);
+    expect(out).toContain('March');
+    expect(out).not.toContain('2026');
   });
 
-  it('survives a UTC midnight ISO without slipping to « hier »', () => {
-    // The pre-fix `new Date('2026-03-15')` parsed as UTC midnight,
-    // which became 2026-03-14 23:00 in UTC− zones — surfaced as
-    // « hier » where it should be « aujourd’hui ». parseLocalDate
-    // sidesteps the wobble.
-    expect(formatEntryLabel('2026-03-15T00:00:00Z', TODAY)).toBe('Aujourd’hui');
+  it('falls back to raw input on parse failure', () => {
+    expect(formatEntryLabel('garbage', TODAY, FR_LABELS)).toBe('garbage');
+  });
+
+  it('survives a UTC midnight ISO without slipping to « yesterday »', () => {
+    expect(formatEntryLabel('2026-03-15T00:00:00Z', TODAY, FR_LABELS)).toBe(
+      'Aujourd’hui',
+    );
   });
 });
 
 describe('formatMonthLabel', () => {
-  it('formats YYYY-MM as « Mars 2026 » (capitalised)', () => {
-    const out = formatMonthLabel('2026-03');
+  it('formats FR YYYY-MM as « Mars 2026 » (capitalised)', () => {
+    const out = formatMonthLabel('2026-03', 'fr');
     expect(out).toMatch(/^[A-ZÀ]/);
     expect(out).toContain('2026');
   });
 
+  it('formats EN YYYY-MM as « March 2026 »', () => {
+    expect(formatMonthLabel('2026-03', 'en')).toBe('March 2026');
+  });
+
   it('falls back to the raw key on malformed input', () => {
-    expect(formatMonthLabel('not-a-month')).toBe('not-a-month');
-    expect(formatMonthLabel('2026-')).toBe('2026-');
+    expect(formatMonthLabel('not-a-month', 'fr')).toBe('not-a-month');
+    expect(formatMonthLabel('2026-', 'fr')).toBe('2026-');
   });
 });
 
 describe('formatLongDate', () => {
-  it('formats a full ISO timestamp as day + month + year', () => {
-    const out = formatLongDate('2025-01-08T19:42:00.000Z');
+  it('formats a FR full ISO timestamp as day + month + year', () => {
+    const out = formatLongDate('2025-01-08T19:42:00.000Z', 'fr');
     expect(out).toContain('janvier');
     expect(out).toContain('2025');
   });
 
+  it('formats an EN ISO timestamp using English month names', () => {
+    const out = formatLongDate('2025-01-08T19:42:00.000Z', 'en');
+    expect(out).toContain('January');
+    expect(out).toContain('2025');
+  });
+
   it('returns the raw string when the ISO fails to parse', () => {
-    expect(formatLongDate('not-a-date')).toBe('not-a-date');
-    expect(formatLongDate('')).toBe('');
+    expect(formatLongDate('not-a-date', 'fr')).toBe('not-a-date');
+    expect(formatLongDate('', 'fr')).toBe('');
+  });
+});
+
+describe('formatNumber', () => {
+  it('uses FR thousand separator (narrow no-break space)', () => {
+    // Intl FR uses U+202F (narrow no-break space) as thousand separator.
+    const out = formatNumber(12345, 'fr');
+    expect(out).toMatch(/12.345/);
+  });
+
+  it('uses EN thousand separator (comma)', () => {
+    expect(formatNumber(12345, 'en')).toBe('12,345');
+  });
+
+  it('handles zero and small values without separators', () => {
+    expect(formatNumber(0, 'fr')).toBe('0');
+    expect(formatNumber(42, 'en')).toBe('42');
   });
 });

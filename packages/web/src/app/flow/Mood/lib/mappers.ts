@@ -1,7 +1,10 @@
 import { MOOD_SCORE_VALUES, type MoodPayload, type MoodScore } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
-import { formatEntryLabel } from '@/core/i18n/date-fr';
+import {
+  formatEntryLabel,
+  type EntryLabelOptions,
+} from '@/core/i18n/date-format';
 
 import type { MoodEntry } from './types';
 
@@ -39,6 +42,7 @@ export function normalizeScore(raw: string): MoodScore {
 export function recordToEntry(
   record: DecryptedRecord<MoodPayload>,
   today: Date,
+  labels: EntryLabelOptions,
 ): MoodEntry {
   const p = record.payload;
   const dateIso =
@@ -53,7 +57,7 @@ export function recordToEntry(
   const entry: MoodEntry = {
     id: record.id,
     dateIso,
-    date: formatEntryLabel(dateIso, today),
+    date: formatEntryLabel(dateIso, today, labels),
     score: normalizeScore(p.mood_score ?? '0'),
     positives,
   };

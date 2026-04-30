@@ -1,11 +1,11 @@
 /**
- * FR date formatters shared across `flow/` modules.
+ * Locale-aware date formatters shared across `flow/` modules.
  *
  * Lived in five copies before the post-`module-refacto` dedup —
  * Mood, Journal, Library, Review, Homepage all built their own
  * `Intl.DateTimeFormat('fr-FR', …)` instances and several
  * re-implemented `toIsoDate` / `parseLocalDate` from scratch.
- * Promoting them here keeps the « what counts as a French date »
+ * Promoting them here keeps the « what counts as a calendar date »
  * answer in one file ; when one caller needs a different layout,
  * that's a signal to fork *intentionally* rather than to silently
  * drift the copies.
@@ -13,42 +13,13 @@
  * Module-specific formatters that aren't re-used (`Review/`'s
  * « 12 mars 14:30 » draft timestamp, `Mood/`'s heatmap-internal
  * cell label) stay co-located with their callers.
+ *
+ * Tier 3 i18n made the module locale-aware : every formatter
+ * now takes the active `language` (from `useI18n().language`).
+ * « Aujourd'hui » / « Hier » are no longer baked in — they come
+ * from `common.time.{today,yesterday}` and are fed into
+ * `formatEntryLabel` as labels.
  */
-
-/** Long FR date for entries inside the current year — « samedi
- *  12 mars ». No year suffix to keep inline lists compact ; older
- *  entries flip to `ENTRY_CROSS_YEAR_FMT` instead. */
-const ENTRY_SAME_YEAR_FMT = new Intl.DateTimeFormat('fr-FR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
-
-/** Long FR date for cross-year entries — « 12 mars 2024 ». Drops
- *  the weekday since the year already takes the slot ; reading
- *  « lundi 12 mars 2024 » is heavy without adding info. */
-const ENTRY_CROSS_YEAR_FMT = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
-
-/** « mars 2026 » — month + year. Drives the « par mois » group
- *  headers in Journal and any other surface that buckets by
- *  calendar month. */
-const MONTH_LABEL_FMT = new Intl.DateTimeFormat('fr-FR', {
-  month: 'long',
-  year: 'numeric',
-});
-
-/** « 8 janvier 2025 » — day + month + year, no weekday. Used by
- *  the Library review header and the Review list (one entry per
- *  year, so the weekday wouldn't add info). */
-const LONG_DATE_FMT = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
 
 /**
  * Parse a `YYYY-MM-DD[T...]` ISO string as a local date at
@@ -79,10 +50,39 @@ export function toIsoDate(d: Date): string {
 }
 
 /**
+ * Map an app language to a `Intl.*` BCP-47 tag. Right now :
+ *   - `'fr'` → `'fr-FR'`
+ *   - `'en'` → `'en-US'`
+ *   - anything else → forwarded verbatim
+ *
+ * Centralised here so callers don't sprinkle `language === 'en' ?
+ * 'en-US' : 'fr-FR'` ternaries everywhere ; one edit lands the
+ * choice for every formatter at once.
+ */
+export function intlLocale(language: string): string {
+  if (language === 'fr') return 'fr-FR';
+  if (language === 'en') return 'en-US';
+  return language;
+}
+
+export interface EntryLabelOptions {
+  /** App language (`'fr'`, `'en'`). Maps to a BCP-47 tag for
+   *  `Intl.DateTimeFormat`. */
+  language: string;
+  /** Translated « Aujourd'hui » — comes from `t('common.time.today')`. */
+  todayLabel: string;
+  /** Translated « Hier » — comes from `t('common.time.yesterday')`. */
+  yesterdayLabel: string;
+}
+
+/**
  * Display label for a `dateIso` relative to `today` :
- *   - « Aujourd'hui » when the entry's day matches `today`
- *   - « Hier » when it's the previous day
- *   - the long FR form otherwise (with year if cross-year)
+ *   - `todayLabel` when the entry's day matches `today`
+ *   - `yesterdayLabel` when it's the previous day
+ *   - the long form otherwise (with year if cross-year), in
+ *     `language` via `Intl.DateTimeFormat`. First letter is
+ *     uppercased so list rows read « Samedi 12 mars » instead of
+ *     « samedi 12 mars ».
  *
  * Falls back to the raw input when the ISO can't be parsed —
  * defensive against legacy / malformed payloads. Both `today`
@@ -90,29 +90,41 @@ export function toIsoDate(d: Date): string {
  * the « today » / « yesterday » detection stays correct in every
  * timezone.
  */
-export function formatEntryLabel(dateIso: string, today: Date): string {
+export function formatEntryLabel(
+  dateIso: string,
+  today: Date,
+  options: EntryLabelOptions,
+): string {
   const d = parseLocalDate(dateIso);
   if (Number.isNaN(d.getTime())) return dateIso;
   const refToday = new Date(today);
   refToday.setHours(0, 0, 0, 0);
   const dayMs = 24 * 3600 * 1000;
   const diff = Math.floor((refToday.getTime() - d.getTime()) / dayMs);
-  if (diff === 0) return 'Aujourd’hui';
-  if (diff === 1) return 'Hier';
-  const fmt =
-    d.getFullYear() === refToday.getFullYear()
-      ? ENTRY_SAME_YEAR_FMT
-      : ENTRY_CROSS_YEAR_FMT;
+  if (diff === 0) return options.todayLabel;
+  if (diff === 1) return options.yesterdayLabel;
+
+  const locale = intlLocale(options.language);
+  const sameYear = d.getFullYear() === refToday.getFullYear();
+  // Long form for entries inside the current year — « samedi 12 mars »
+  // (no year). For cross-year, drop the weekday (« 12 mars 2024 »
+  // already takes the slot).
+  const fmt = new Intl.DateTimeFormat(
+    locale,
+    sameYear
+      ? { weekday: 'long', day: 'numeric', month: 'long' }
+      : { day: 'numeric', month: 'long', year: 'numeric' },
+  );
   const formatted = fmt.format(d);
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 /**
- * Render a `YYYY-MM` group key as « Mars 2026 ». Falls back to
- * the raw key if parsing fails (defensive — should never happen
- * on payloads we wrote ourselves).
+ * Render a `YYYY-MM` group key as « Mars 2026 » (FR) /
+ * « March 2026 » (EN). Falls back to the raw key if parsing fails
+ * (defensive — should never happen on payloads we wrote ourselves).
  */
-export function formatMonthLabel(yyyymm: string): string {
+export function formatMonthLabel(yyyymm: string, language: string): string {
   const [yStr, mStr] = yyyymm.split('-');
   const y = Number(yStr);
   const m = Number(mStr);
@@ -123,18 +135,35 @@ export function formatMonthLabel(yyyymm: string): string {
   if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
     return yyyymm;
   }
-  const formatted = MONTH_LABEL_FMT.format(new Date(y, m - 1, 1));
+  const fmt = new Intl.DateTimeFormat(intlLocale(language), {
+    month: 'long',
+    year: 'numeric',
+  });
+  const formatted = fmt.format(new Date(y, m - 1, 1));
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 /**
- * Long-form FR date — « 8 janvier 2025 », no weekday. Used by
- * the Library review header and the Review list. Returns the
- * raw input on parse failure so the UI keeps rendering rather
- * than crashing on a stale / malformed payload.
+ * Long-form date — « 8 janvier 2025 » (FR) / « January 8, 2025 »
+ * (EN), no weekday. Used by the Library review header and the
+ * Review list. Returns the raw input on parse failure so the UI
+ * keeps rendering rather than crashing on a stale / malformed
+ * payload.
  */
-export function formatLongDate(rawIso: string): string {
+export function formatLongDate(rawIso: string, language: string): string {
   const d = new Date(rawIso);
   if (Number.isNaN(d.getTime())) return rawIso;
-  return LONG_DATE_FMT.format(d);
+  const fmt = new Intl.DateTimeFormat(intlLocale(language), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return fmt.format(d);
+}
+
+/** Locale-aware number formatter — wraps `Intl.NumberFormat`
+ *  bound to `language` (via `intlLocale`). Used for the Journal
+ *  word count, the admin user count, etc. */
+export function formatNumber(n: number, language: string): string {
+  return new Intl.NumberFormat(intlLocale(language)).format(n);
 }
