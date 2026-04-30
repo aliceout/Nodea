@@ -162,6 +162,15 @@ export function I18nProvider({ children }) {
     window.localStorage.setItem(STORAGE_KEY, language);
   }, [language]);
 
+  // Keep <html lang> in sync so screen readers and `:lang(fr|en)`
+  // CSS selectors pick up the active locale. index.html ships
+  // `<html lang="en">` as a static placeholder — without this
+  // effect a FR user kept the EN attribute permanently.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.lang = language;
+  }, [language]);
+
   const setLanguage = useCallback(async (nextLanguage) => {
     const normalized = String(nextLanguage || "").toLowerCase();
     if (!SUPPORTED_LANGUAGES[normalized]) return;
