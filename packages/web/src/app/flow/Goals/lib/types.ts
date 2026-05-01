@@ -26,12 +26,3 @@ export interface GoalEntry {
 }
 
 export type SortBy = 'date' | 'updated' | 'alpha';
-
-/** Async lifecycle of the page-level fetch. The `<GoalsProvider>`
- *  exposes `entries` and `load` as separate slices ; `load` only
- *  carries the lifecycle status, never the data itself. */
-export type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };

@@ -160,27 +160,20 @@ fonctionnellement.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### REFACTO-01 — Centraliser le type `LoadState`
+### REFACTO-01 — Centraliser le type `LoadState` — livré
 
 - **Type** : dédup
-- **Sites** :
-  - [`Goals/lib/types.ts:33`](../../packages/web/src/app/flow/Goals/lib/types.ts#L33)
-  - [`Journal/lib/types.ts:26`](../../packages/web/src/app/flow/Journal/lib/types.ts#L26)
-  - [`Mood/lib/types.ts:26`](../../packages/web/src/app/flow/Mood/lib/types.ts#L26)
-  - [`Library/context.tsx:57`](../../packages/web/src/app/flow/Library/context.tsx#L57)
-- **Proposition** : créer `packages/web/src/core/types/load-state.ts`
-  ```ts
-  export type LoadState =
-    | { status: 'idle' }
-    | { status: 'loading' }
-    | { status: 'ready' }
-    | { status: 'error'; message: string };
-  ```
-  Optionnel : helpers `isReady`, `errorMessageOf`.
+- **Sites** (tous migrés) :
+  - `Goals/lib/types.ts` (déf locale supprimée)
+  - `Journal/lib/types.ts` (déf locale supprimée)
+  - `Mood/lib/types.ts` (déf locale supprimée)
+  - `Library/context.tsx` (déf locale supprimée)
+- **Source unique** : [`core/types/load-state.ts`](../../packages/web/src/core/types/load-state.ts)
+  expose le type + les helpers `isReady`, `errorMessageOf`.
 - **Tâches**
-  - [ ] Créer le fichier + tests minimaux (1 par variant).
-  - [ ] Migrer les 4 sites vers `import type { LoadState } from '@/core/types/load-state'`.
-  - [ ] Supprimer les 4 définitions locales.
+  - [x] Créer le fichier + tests minimaux (1 par variant + helpers).
+  - [x] Migrer les 4 sites vers `import type { LoadState } from '@/core/types/load-state'`.
+  - [x] Supprimer les 4 définitions locales.
 - **Gain** : 4 occurrences → 1 ; toute nouvelle page (Habits,
   Review v2) le réutilise gratis.
 - **Effort** : S — ~30 min

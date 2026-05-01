@@ -23,6 +23,7 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import type { LoadState } from '@/core/types/load-state';
 
 import { matchesCellFilter, type CellFilter } from './lib/cell-filter';
 import { buildGroups, type LibraryGroupBy } from './lib/grouping';
@@ -52,13 +53,6 @@ import type { LibraryGroup, LibraryItem, LibraryReview } from './lib/types';
  * Zustand store) is preserved — this provider is *page-local* state
  * only, never persisted, never sent to the server.
  */
-
-/** Async lifecycle of the page-level data fetch. */
-export type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };
 
 /** The five catalogue rendering modes. Persisted to localStorage so
  *  the user's choice sticks across sessions on the same device.
@@ -145,6 +139,7 @@ const {
   LibraryActionsValue
 >('Library');
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { useLibraryData, useLibraryFilters, useLibraryActions };
 
 /* ---- Provider --------------------------------------------------- */

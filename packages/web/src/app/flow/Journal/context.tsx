@@ -16,11 +16,12 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
-import type { JournalEntry, JournalStats, LoadState } from './lib/types';
+import type { JournalEntry, JournalStats } from './lib/types';
 
 /**
  * Journal page-local state, exposed through three React contexts so
@@ -91,6 +92,7 @@ const {
 
 // `JournalProvider` lives below — these hooks come from the
 // factory above; splitting would defeat its purpose.
+ 
 // eslint-disable-next-line react-refresh/only-export-components
 export { useJournalData, useJournalFilters, useJournalActions };
 

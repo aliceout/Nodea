@@ -15,16 +15,12 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import type { LoadState } from '@/core/types/load-state';
 
 import { recordToEntry } from './lib/mappers';
 import { byDateDesc } from './lib/sort';
 import { nextStatus } from './lib/status';
-import type {
-  CanonicalStatus,
-  GoalEntry,
-  LoadState,
-  SortBy,
-} from './lib/types';
+import type { CanonicalStatus, GoalEntry, SortBy } from './lib/types';
 
 /**
  * Goals page-local state, exposed through three React contexts so
@@ -106,6 +102,7 @@ const {
   'Goals',
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { useGoalsData, useGoalsFilters, useGoalsActions };
 
 /* ---- Provider --------------------------------------------------- */

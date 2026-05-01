@@ -18,17 +18,6 @@ export interface MoodEntry {
   answer?: string;
 }
 
-/** Async lifecycle of the page-level fetch. The `<MoodProvider>`
- *  exposes `entries` and `load` as separate slices ; `load`
- *  carries only the lifecycle status, never the data itself, so
- *  the data context's `entries` array stays the single source of
- *  truth. */
-export type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };
-
 /** One cell of the 52 × 7 heatmap grid. `null` is rendered as a
  *  faint outline (out-of-range or no entry) ; a populated cell
  *  carries its score, today flag, and a pre-formatted label for

@@ -20,15 +20,6 @@ export interface JournalEntry {
   attachments: PassageAttachment[];
 }
 
-/** Async lifecycle of the page-level fetch. The `<JournalProvider>`
- *  exposes `entries` and `load` as separate slices ; `load`
- *  carries only the lifecycle status, never the data itself. */
-export type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };
-
 /** Aggregate stats shown in the SideColumn « Stats » block. */
 export interface JournalStats {
   totalEntries: number;

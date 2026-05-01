@@ -14,11 +14,12 @@ import {
   selectMainKey,
   selectModules,
 } from '@/core/store/nodea-store';
+import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { rangeFor } from './lib/date-format';
 import { recordToEntry } from './lib/mappers';
-import type { LoadState, MoodEntry } from './lib/types';
+import type { MoodEntry } from './lib/types';
 
 /**
  * Mood page-local state, exposed through three React contexts so
@@ -81,6 +82,7 @@ const {
 // `MoodProvider` lives below — these hooks are bound by the
 // factory above. Splitting would defeat the purpose of
 // `createModuleContexts` (one source of truth per module).
+ 
 // eslint-disable-next-line react-refresh/only-export-components
 export { useMoodData, useMoodFilters, useMoodActions };
 
