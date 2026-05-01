@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
 import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
 import { generateModuleUserId } from '@/core/crypto/ids';
-import { MODULES } from '@/app/config/modules_list';
+import { MODULES } from '@/app/modules-registry';
 import {
   useNodeaStore,
   selectMainKey,

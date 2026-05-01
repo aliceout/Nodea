@@ -4,7 +4,7 @@ import {
   type LibraryReviewPayload,
 } from '@nodea/shared';
 import { libraryReviewsClient } from '@/core/api/modules/library';
-import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
+import { normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,

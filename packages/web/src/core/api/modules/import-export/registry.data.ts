@@ -28,14 +28,13 @@ type ModuleKey =
 type PluginLoader = () => Promise<{ default: ImportExportPlugin }>;
 
 const loaders: Record<ModuleKey, PluginLoader> = {
-  mood: () => import('@/core/utils/ImportExport/Mood.ts'),
-  goals: () => import('@/core/utils/ImportExport/Goals.ts'),
-  habits_items: () => import('@/core/utils/ImportExport/HabitsItems.ts'),
-  habits_logs: () => import('@/core/utils/ImportExport/HabitsLogs.ts'),
-  library_items: () => import('@/core/utils/ImportExport/LibraryItems.ts'),
-  library_reviews: () =>
-    import('@/core/utils/ImportExport/LibraryReviews.ts'),
-  review: () => import('@/core/utils/ImportExport/Review.ts'),
+  mood: () => import('./mood.ts'),
+  goals: () => import('./goals.ts'),
+  habits_items: () => import('./habits-items.ts'),
+  habits_logs: () => import('./habits-logs.ts'),
+  library_items: () => import('./library-items.ts'),
+  library_reviews: () => import('./library-reviews.ts'),
+  review: () => import('./review.ts'),
 };
 
 const aliases: Readonly<Record<string, ModuleKey>> = {

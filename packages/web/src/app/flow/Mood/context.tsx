@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import { moodClient } from '@/core/api/modules/mood';
-import { createModuleContexts } from '@/core/react/module-contexts';
+import { createModuleContexts } from '@/core/contexts/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,

@@ -1,7 +1,7 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import clsx from 'clsx';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { MODULES } from '@/app/config/modules_list';
+import { MODULES } from '@/app/modules-registry';
 import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
 import { generateModuleUserId } from '@/core/crypto/ids';
 import {

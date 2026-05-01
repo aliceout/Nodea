@@ -4,7 +4,7 @@ import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-
 import {
   getDataPlugin,
   knownModules,
-} from '@/core/utils/ImportExport/registry.data.ts';
+} from '@/core/api/modules/import-export/registry.data.ts';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 

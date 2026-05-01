@@ -10,7 +10,7 @@ import { splitThreads } from '@nodea/shared';
 
 import { passageClient } from '@/core/api/modules/passage';
 import { formatMonthLabel } from '@/core/i18n/date-format';
-import { createModuleContexts } from '@/core/react/module-contexts';
+import { createModuleContexts } from '@/core/contexts/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,

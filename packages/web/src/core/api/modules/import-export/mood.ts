@@ -3,7 +3,7 @@ import {
   type MoodPayload,
 } from '@nodea/shared';
 import { moodClient } from '@/core/api/modules/mood';
-import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
+import { normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,

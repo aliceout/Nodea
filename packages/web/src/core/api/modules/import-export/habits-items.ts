@@ -5,7 +5,7 @@ import {
   type HabitsItemPayload,
 } from '@nodea/shared';
 import { habitsItemsClient } from '@/core/api/modules/habits';
-import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
+import { normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,

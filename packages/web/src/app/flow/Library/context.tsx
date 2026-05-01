@@ -17,7 +17,7 @@ import {
   libraryItemsClient,
   libraryReviewsClient,
 } from '@/core/api/modules/library';
-import { createModuleContexts } from '@/core/react/module-contexts';
+import { createModuleContexts } from '@/core/contexts/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,

@@ -7,7 +7,7 @@ import {
   selectCurrentModule,
 } from '@/core/store/nodea-store';
 import { useSession } from '@/core/auth/use-session';
-import { usePreferences } from '@/core/preferences/usePreferences';
+import { usePreferences } from '@/core/auth/use-preferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
 import { useFirstRunSeed } from '@/core/modules/useFirstRunSeed';
 import Sidebar from '@/ui/dirk/Sidebar';

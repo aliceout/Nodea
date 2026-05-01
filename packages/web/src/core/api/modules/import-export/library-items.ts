@@ -5,7 +5,7 @@ import {
   type LibraryItemPayload,
 } from '@nodea/shared';
 import { libraryItemsClient } from '@/core/api/modules/library';
-import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
+import { normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,

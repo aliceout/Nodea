@@ -3,7 +3,7 @@ import {
   type GoalsPayload,
 } from '@nodea/shared';
 import { goalsClient } from '@/core/api/modules/goals';
-import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
+import { normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,

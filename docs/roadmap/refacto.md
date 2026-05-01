@@ -207,23 +207,24 @@ fonctionnellement.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### REFACTO-11 — Renommages cohérents (single-file folders + casse)
+### REFACTO-11 — Renommages cohérents (single-file folders + casse) — livré
 
 - **Type** : renommage / aplatissage
-- **Cibles**
+- **Cibles** (toutes livrées)
 
-| Avant | Après | Justification |
+| Avant | Après | Statut |
 |---|---|---|
-| `core/preferences/usePreferences.ts` | `core/auth/use-preferences.ts` (les prefs vivent avec la session) ou `core/use-preferences.ts` | dossier 1-fichier |
-| `core/react/module-contexts.tsx` | `core/contexts/module-contexts.tsx` | naming `react/` ambigu |
-| `app/config/modules_list.tsx` | `app/modules-registry.tsx` (kebab + flat) | seul snake_case du codebase |
-| `core/utils/ImportExport/` | `core/api/modules/import-export/` (fichiers en kebab-case) | seul PascalCase folder dans `core/utils/` |
+| `core/preferences/usePreferences.ts` | `core/auth/use-preferences.ts` | livré (les prefs vivent avec la session) |
+| `core/react/module-contexts.tsx` | `core/contexts/module-contexts.tsx` | livré |
+| `app/config/modules_list.tsx` | `app/modules-registry.tsx` | livré (kebab + flat) |
+| `core/utils/ImportExport/` | `core/api/modules/import-export/` (fichiers en kebab-case) | livré |
 
 - **Tâches**
-  - [ ] `git mv` chaque cible (préserve l'historique).
-  - [ ] Mettre à jour les imports (estimé < 20 sites).
-  - [ ] tsc + tests.
-- **Gain** : conventions homogènes, dossiers fantômes éliminés.
+  - [x] `git mv` chaque cible (préserve l'historique).
+  - [x] Mettre à jour les imports (estimé < 20 sites — 19 réels).
+  - [x] tsc + tests (302 unit tests verts).
+- **Gain** : conventions homogènes, 4 dossiers fantômes éliminés
+  (`core/preferences/`, `core/react/`, `app/config/`, `core/utils/`).
 - **Effort** : M — ~1h cumulée
 - **Risque** : faible
 - **Dépendances** : aucune

@@ -9,7 +9,7 @@ import {
 import { splitThreads } from '@nodea/shared';
 
 import { goalsClient } from '@/core/api/modules/goals';
-import { createModuleContexts } from '@/core/react/module-contexts';
+import { createModuleContexts } from '@/core/contexts/module-contexts';
 import {
   useNodeaStore,
   selectMainKey,

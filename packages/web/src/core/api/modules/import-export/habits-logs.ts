@@ -1,9 +1,9 @@
 import {
-  ReviewPayloadSchema,
-  type ReviewPayload,
+  HabitsLogPayloadSchema,
+  type HabitsLogPayload,
 } from '@nodea/shared';
-import { reviewClient } from '@/core/api/modules/review';
-import { normalizeKeyPart } from '@/core/utils/ImportExport/utils';
+import { habitsLogsClient } from '@/core/api/modules/habits';
+import { normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -11,34 +11,29 @@ import type {
 } from './types.ts';
 
 export const meta: ImportExportPluginMeta = {
-  id: 'review',
+  id: 'habits_logs',
   version: 1,
-  runtimeKey: 'review',
-  collection: 'review_entries',
+  runtimeKey: 'habits-logs',
+  collection: 'habits_logs_entries',
 };
 
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
-  if (!ctx?.moduleUserId) throw new Error('review: moduleUserId manquant.');
-  if (!ctx.mainKey) throw new Error('review: mainKey manquante.');
+  if (!ctx?.moduleUserId) throw new Error('habits_logs: moduleUserId manquant.');
+  if (!ctx.mainKey) throw new Error('habits_logs: mainKey manquante.');
 }
 
-/**
- * Schema-driven normalisation. The legacy export shape is mostly
- * compatible with `ReviewPayloadSchema` ; we just coerce `year` to
- * a number (was sometimes a string in old exports) and let Zod fill
- * `updated_at` from its `.default('')`.
- */
-function normalizePayload(input: unknown): ReviewPayload {
+function normalizePayload(input: unknown): HabitsLogPayload {
   const p = (input ?? {}) as Record<string, unknown>;
-  return ReviewPayloadSchema.parse({
+  return HabitsLogPayloadSchema.parse({
     ...p,
-    year: Number(p.year),
+    date: String(p.date ?? ''),
+    item_rid: String(p.item_rid ?? ''),
   });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
-  return normalizeKeyPart(String(p.year));
+  return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(p.item_rid)}`;
 }
 
 export async function importHandler({
@@ -50,10 +45,10 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  if (!Number.isFinite(clear.year)) {
-    throw new Error('review: year doit être un nombre.');
+  if (!clear.date || !clear.item_rid) {
+    throw new Error('habits_logs: date et item_rid requis.');
   }
-  const rec = await reviewClient.create(ctx.moduleUserId, ctx.mainKey, clear);
+  const rec = await habitsLogsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
 
@@ -63,7 +58,7 @@ export async function* exportQuery({
   ctx: ImportExportPluginCtx;
 }): AsyncIterable<unknown> {
   ensureContext(ctx);
-  const list = await reviewClient.list(ctx.moduleUserId, ctx.mainKey);
+  const list = await habitsLogsClient.list(ctx.moduleUserId, ctx.mainKey);
   for (const rec of list) yield normalizePayload(rec.payload);
 }
 
@@ -84,7 +79,7 @@ export async function listExistingKeys({
 }): Promise<Set<string>> {
   if (!sid || !mainKey) return new Set();
   const keys = new Set<string>();
-  const list = await reviewClient.list(sid, mainKey);
+  const list = await habitsLogsClient.list(sid, mainKey);
   for (const rec of list) {
     const k = getNaturalKey(rec.payload);
     if (k) keys.add(k);
@@ -92,7 +87,7 @@ export async function listExistingKeys({
   return keys;
 }
 
-const ReviewImportExport: ImportExportPlugin = {
+const HabitsLogsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
   exportQuery,
@@ -101,4 +96,4 @@ const ReviewImportExport: ImportExportPlugin = {
   listExistingKeys,
 };
 
-export default ReviewImportExport;
+export default HabitsLogsImportExport;
