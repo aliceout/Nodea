@@ -103,9 +103,26 @@ set +a
 #    Short form must match the docker-build workflow's metadata
 #    action (`type=sha,format=short,prefix=sha-` → 7 chars).
 cd "$DEPLOY_DIR"
+
+# Persistent Postgres data lives under the deploy user's home, NOT
+# under `/var/lib/docker/volumes/`. Reasons :
+#   1. `docker compose down -v` / `docker volume prune` cannot touch
+#      a bind mount — both have wiped prod data before.
+#   2. Standard host backup tooling targets `/home/$USER/...` —
+#      bind-mounted data gets backed up for free.
+#   3. Inspectable directly on the filesystem when we need to debug.
+# `docker-compose.yml` reads `${DATA_DIR}` for the postgres bind mount.
+export DATA_DIR="$HOME/data/nodea"
+mkdir -p "$DATA_DIR/postgres"
+log "data dir = $DATA_DIR (postgres bind mount)"
+
 export NODEA_IMAGE_TAG="${NODEA_IMAGE_TAG:-sha-$(git rev-parse --short=7 HEAD)}"
 log "pulling images (tag=$NODEA_IMAGE_TAG)"
 docker compose pull
+# Plain `up -d` — never `down -v`. The Postgres data directory is a
+# bind mount under `$DATA_DIR/postgres/`, persisted across deploys.
+# Drizzle migrations run on api boot and handle schema evolution
+# without touching user rows.
 log "docker compose up -d (no local build — images come from GHCR)"
 docker compose up -d
 

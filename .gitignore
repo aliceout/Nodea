@@ -13,6 +13,13 @@ dist-ssr
 coverage
 *.local
 
+# Postgres bind mount in dev — `docker-compose.yml` mounts
+# `${DATA_DIR:-./data}/postgres` into the postgres container.
+# Without DATA_DIR exported (the prod `deploy.sh` sets it to
+# `$HOME/data/nodea`), local dev falls back to `./data/postgres`
+# at the repo root. Never commit dev DB state.
+data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

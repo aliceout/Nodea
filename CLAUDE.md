@@ -46,7 +46,13 @@ The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work li
 - **Backend**: Node 22 · Hono · Drizzle ORM · PostgreSQL 16 · Zod · Pino · session cookies (not JWT)
 - **Frontend**: React 19 · Vite · Tailwind · React Router v7 · **TypeScript strict** · TanStack Query · Zustand · React Hook Form + Zod
 - **Monorepo**: pnpm workspaces (`packages/api`, `packages/web`, `packages/shared`)
-- **Deployment**: docker-compose (postgres + api + web)
+- **Deployment**: docker-compose (postgres + api + web). Postgres data
+  persists under `$HOME/data/nodea/postgres/` via a bind mount
+  (set by `infra/scripts/deploy.sh`). Drizzle migrations run on api
+  boot and evolve the schema without touching user rows — every
+  deploy is non-destructive. Never use `docker compose down -v` or
+  `docker volume prune` on a Nodea host: the bind mount makes both
+  no-ops, but the muscle memory is what kills prod data.
 - **Tests**: Vitest (+ optional testcontainers, Playwright)
 
 When writing new code, **target the target stack**. When modifying existing JSX/PB code, follow existing patterns but do not add to the legacy burden.
