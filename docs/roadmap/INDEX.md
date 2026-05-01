@@ -64,34 +64,34 @@ résout les deux.
 
 ---
 
-## Tier 0 — Free wins (~4h cumulées, 0 risque)
+## Tier 0 — Free wins (~7-8h cumulées, 0 risque)
 
 > **À faire en premier, en bloc.** Ces 11 chantiers sont
 > indépendants, sans risque, et débloquent immédiatement la
 > lisibilité du codebase + des roadmaps.
 
-### Cleanup code (~2h)
+### Cleanup code (~2h30)
 
 - [ ] **REFACTO-09** — Purge `ui/atoms/` du code mort (20 fichiers, ~1000 LOC, 30 min). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-10** — `Settings/components/ModulesManager.tsx` → `Account/components/` (10 min). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-01** — Centraliser le type `LoadState` dans `core/types/` (30 min). [`refacto.md`](./refacto.md)
-- [ ] **REFACTO-05** — Goals' `formatDate` → `core/i18n/date-fr` (30 min). [`refacto.md`](./refacto.md)
+- [ ] **REFACTO-05** — Promouvoir `core/i18n/date-fr.ts` en `core/i18n/date.ts` i18n-aware (lit la langue active depuis `useI18n()`) ; supprimer `Goals/lib/date-format.ts` (~1h30). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-11** — Renommages cohérents (`modules_list.tsx`, `core/preferences/`, `core/react/` → `core/contexts/`, `ImportExport/` → kebab) (~1h). [`refacto.md`](./refacto.md)
 
-### Documentation & coordination (~2h)
+### Documentation & coordination (~1h)
 
-- [ ] **ARCH-01** — Restructurer CLAUDE.md en *« Stack actuelle »* + *« Stack cible »* (1h). [`architecture.md`](./architecture.md)
-- [ ] **ARCH-13** — Codifier la convention « commentaire-en-tête de fichier > 50 LOC » dans CLAUDE.md (30 min). [`architecture.md`](./architecture.md)
+- [ ] **ARCH-01** — Retirer purement TanStack Query et Pino de CLAUDE.md et de toute doc qui les mentionne (pas adaptés au projet : single-instance + E2EE) (~30 min). [`architecture.md`](./architecture.md)
+- [ ] **ARCH-13** — Codifier la convention « commentaire-en-tête de fichier > 50 LOC » dans CLAUDE.md (~30 min). [`architecture.md`](./architecture.md)
 
-### A11y & SEO quick wins (~1h)
+### A11y & SEO quick wins (~3h)
 
-- [ ] **FRONT-01** — `alt={item.title}` sur les couvertures Library (BookWall, CoverGrid) (30 min). [`frontend.md`](./frontend.md)
-- [ ] **FRONT-14** — Skip-link sur `App.tsx` + `<main id="main">` (10 min). [`frontend.md`](./frontend.md)
-- [ ] **FRONT-11** — OG / Twitter meta dans `index.html` (15 min). [`frontend.md`](./frontend.md)
+- [ ] **FRONT-01** — `alt={item.title}` sur les couvertures Library (BookWall, CoverGrid) (~30 min). [`frontend.md`](./frontend.md)
+- [ ] **FRONT-14** — Skip-link sur `App.tsx` + `<main id="main">` (~10 min). [`frontend.md`](./frontend.md)
+- [ ] **FRONT-11 (élargi)** — URLs par onglet sur `/docs` (`/docs/:tab` avec tab ∈ `newbie | advanced | tech`) + anchor links sur les `<h2>`/`<h3>` (sélecteur `#` au survol, scroll-to-anchor au load si `#section-id`) + OG/Twitter meta dans `index.html`. ~2-3h. [`frontend.md`](./frontend.md)
 
 ### Endpoints utilitaires (~1h)
 
-- [ ] **API-15** — `GET /version` qui retourne `{ version, commit, build_date }` (1h). [`api.md`](./api.md)
+- [ ] **API-15** — `GET /version` qui retourne `{ commit, build_date, branch }` (pas de champ `version` semver — on ne tagge pas encore). 1h. [`api.md`](./api.md)
 
 ---
 
@@ -276,7 +276,7 @@ résout les deux.
 2. [ ] **OPS-01** — `/healthz` interroge la DB (30 min).
 3. [ ] **REFACTO-01** — Centraliser `LoadState` (30 min).
 4. [ ] **FRONT-01** — `alt={item.title}` sur Library covers (30 min).
-5. [ ] **ARCH-01** — CLAUDE.md *« actuel »* / *« cible »* (1h).
+5. [ ] **ARCH-01** — Retirer TanStack/Pino de CLAUDE.md et docs (30 min).
 
 **Total ~3h cumulées** — un demi-après-midi qui couvre 5
 roadmaps différentes et fait avancer chacune.
@@ -336,13 +336,13 @@ API-14 (split /auth/me/crypto — breaking)
 
 | Tier | Volume estimé | Risque | Bénéfice principal |
 |---|---|---|---|
-| Tier 0 | ~4h | nul | Code propre + roadmap navigable |
+| Tier 0 | ~7-8h | nul | Code propre + roadmap navigable + URLs publiques solides |
 | Tier 1 | ~6-8h | faible-moyen | Détection runtime + récupération |
 | Tier 2 | ~2-3 jours | moyen | Foundations pour scaler |
 | Tier 3 | ~3-5 jours | moyen | Polish + tests + doc |
 | Tier 4 | variable | dépend du chantier | À pondérer selon contexte |
 
-**Tier 0 + Tier 1** = ~12-13h cumulées sur ~1 semaine. C'est
+**Tier 0 + Tier 1** = ~15-17h cumulées sur ~1 semaine. C'est
 le palier qui transforme le projet d'*« en alpha non observée »*
 à *« en alpha observée et récupérable »*.
 

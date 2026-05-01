@@ -292,26 +292,34 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : FRONT-03
 
-### FRONT-11 — Pas d'OG / Twitter meta sur les pages publiques
+### FRONT-11 — URLs par onglet sur la doc publique + anchors sur titres + OG meta
 
-- **Catégorie** : SEO
+- **Catégorie** : SEO + UX partage
 - **Sévérité** : faible
-- **Impact utilisateur** : un·e user qui partage le lien `https://nodea.app/docs` sur Slack, Discord, Twitter, etc. — pas d'aperçu enrichi. Un lien gris au lieu d'une carte qui présente Nodea.
+- **Impact utilisateur** : aujourd'hui la page `/docs` est une URL unique avec 3 onglets (`L'essentiel` / `La mécanique` / `Sous le capot`) gérés par état local. Un user ne peut pas (a) bookmarker un onglet précis, (b) partager un lien direct vers une section précise (« regarde la partie *Code de récupération* dans la mécanique »), (c) revenir à un onglet via l'historique navigateur. Et le partage du lien `https://nodea.app/docs` dans une messagerie reste un lien nu sans prévisualisation.
 - **Fichiers** :
+  - [`packages/web/src/app/pages/Docs.tsx`](../../packages/web/src/app/pages/Docs.tsx) — gestion d'onglet via `useState` au lieu de l'URL
+  - [`packages/web/src/app/App.tsx`](../../packages/web/src/app/App.tsx) — route `/docs` actuelle
   - [`packages/web/index.html`](../../packages/web/index.html) — pas de `<meta property="og:*">`, pas de `<meta name="twitter:*">`, pas de `<meta name="description">`
-- **Description** : pour une app privée, peu importe. Pour `/docs` qui est public et a vocation à être partagé, ça vaut le coup d'avoir au moins :
-  ```html
-  <meta property="og:title" content="Nodea — journal et suivi personnel chiffré">
-  <meta property="og:description" content="Tout est chiffré dans ton navigateur, avant le serveur.">
-  <meta property="og:image" content="/nodea-lockup-horizontal.png">
-  <meta property="og:url" content="https://nodea.app">
-  <meta name="twitter:card" content="summary_large_image">
-  ```
+  - [`packages/web/src/app/pages/docs/primitives.tsx`](../../packages/web/src/app/pages/docs/primitives.tsx) — rehype-slug ajoute déjà des `id` sur les h2/h3, mais pas de # cliquable visible
+- **Note importante sur l'invariant `/flow`** : la règle *« une seule URL pour `/flow` »* vient du besoin de privacy (le module visité ne doit pas fuir dans les access logs serveur). Cette règle **ne s'applique pas à la doc publique** — `/docs` n'a pas de privacy à protéger, c'est du contenu public conçu pour être partagé. Découpler les URLs des onglets renforce l'UX sans toucher à l'invariant `/flow`.
 - **Tâches**
-  - [ ] Ajouter les meta dans `index.html`. Valeurs statiques pour la home.
-- **Effort** : S (~15 min)
-- **Risque** : aucun
-- **Dépendances** : aucune
+  - [ ] **Routing par onglet** : passer la route `/docs` à `/docs/:tab` avec `tab` ∈ `{'newbie', 'advanced', 'tech'}`. `/docs` redirige vers `/docs/newbie` (l'onglet par défaut). Tab change → `navigate('/docs/<id>')` au lieu de `setState`.
+  - [ ] **Anchor links sur les h2/h3** : ajouter dans `primitives.tsx` un sélecteur `# →` visible au survol sur chaque heading rendu, qui copie le lien `https://nodea.app/docs/<tab>#<slug>` dans le presse-papier ou navigue dessus directement.
+  - [ ] **Scroll-to-anchor au load** : si l'URL contient `#section-id`, scroller à la bonne hauteur après le rendu markdown (effet utile pour les liens partagés).
+  - [ ] **OG / Twitter meta dans `index.html`** :
+    ```html
+    <meta name="description" content="Nodea — journal et suivi personnel chiffré bout-en-bout. Tout est chiffré dans ton navigateur, avant le serveur.">
+    <meta property="og:title" content="Nodea — journal et suivi personnel chiffré">
+    <meta property="og:description" content="Tout est chiffré dans ton navigateur, avant le serveur.">
+    <meta property="og:image" content="/nodea-lockup-horizontal.png">
+    <meta property="og:url" content="https://nodea.app">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    ```
+- **Effort** : M (~2-3h pour le routing + anchors + meta)
+- **Risque** : faible (les onglets continuent de fonctionner, l'URL devient juste plus précise)
+- **Dépendances** : aucune (le système de slug heading via rehype-slug est déjà en place)
 
 ### FRONT-12 — Pas de `<link rel="canonical">` sur les pages publiques
 

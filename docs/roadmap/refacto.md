@@ -65,7 +65,7 @@ Dédup trouvée à la règle de trois :
 |---|---|---|
 | 4 fichiers | type `LoadState` discriminé identique caractère par caractère | dédup évidente |
 | 13 sites | garde `if (!mainKey \|\| !moduleUserId) return` répétée | hook manquant |
-| 1 fichier | `Goals/lib/date-format.ts` réimplémente `FRENCH_MONTHS` alors que `core/i18n/date-fr` les centralise déjà | scorie d'historique |
+| 1 fichier | `Goals/lib/date-format.ts` réimplémente `FRENCH_MONTHS` alors que `core/i18n/date-fr` les centralise déjà — et le module `date-fr` est lui-même FR-only | scorie d'historique + à promouvoir en `date.ts` i18n-aware (REFACTO-05) |
 
 Fichiers éléphants à splitter :
 
@@ -118,7 +118,7 @@ fonctionnellement.
 
 ## Tier 0 — Purge & quick wins
 
-> ~3h cumulées, risque nul à faible. **À faire en bloc, en
+> ~3h30 cumulées, risque nul à faible. **À faire en bloc, en
 > premier.** C'est le tier qui rend le rapport effort/gain le
 > plus élevé du document.
 
@@ -187,25 +187,47 @@ fonctionnellement.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### REFACTO-05 — `Goals/lib/date-format.ts` → `core/i18n/date-fr`
+### REFACTO-05 — Promouvoir `core/i18n/date-fr.ts` en `core/i18n/date.ts` i18n-aware
 
-- **Type** : centralisation
+- **Type** : centralisation + i18n
 - **Sites** :
-  [`Goals/lib/date-format.ts`](../../packages/web/src/app/flow/Goals/lib/date-format.ts)
-  (32 LOC, FRENCH_MONTHS array + `formatDate` YYYY-MM)
-- **Proposition** : exposer dans
-  [`core/i18n/date-fr.ts`](../../packages/web/src/core/i18n/date-fr.ts)
-  un `formatPartialDateFR(iso)` qui gère les deux formes
-  `YYYY-MM` et `YYYY-MM-DD`. Goals consomme. Supprimer le
-  fichier local + son test.
+  - [`core/i18n/date-fr.ts`](../../packages/web/src/core/i18n/date-fr.ts)
+    (helpers actuels, FR uniquement)
+  - [`Goals/lib/date-format.ts`](../../packages/web/src/app/flow/Goals/lib/date-format.ts)
+    (32 LOC, FRENCH_MONTHS array + `formatDate` YYYY-MM)
+- **Proposition (option B)** : remplacer `core/i18n/date-fr.ts` par
+  `core/i18n/date.ts` qui lit la langue active depuis `useI18n()`
+  et expose des helpers i18n-aware :
+  ```ts
+  // core/i18n/date.ts
+  export function useDateFmt() {
+    const { lang } = useI18n();
+    return {
+      formatPartialDate: (iso: string) => /* YYYY-MM ou YYYY-MM-DD */,
+      formatLongDate:    (iso: string) => /* dimanche 1 mai 2026 */,
+      formatRelative:    (iso: string) => /* il y a 3 jours / 3 days ago */,
+    };
+  }
+  ```
+  Tables MONTHS / WEEKDAYS / RELATIVE par langue,
+  bootstrappées avec `fr` et `en` (les deux langues actuelles
+  d'`I18nProvider`). Toute future langue ajoute juste une entrée.
 - **Tâches**
-  - [ ] Ajouter `formatPartialDateFR` + test dans `core/i18n/date-fr`.
-  - [ ] Migrer `Goals/views/GoalRow.tsx` (et tout site qui consomme `formatDate`).
+  - [ ] `git mv core/i18n/date-fr.ts core/i18n/date.ts` (préserve l'historique).
+  - [ ] Remplacer les constantes FR-only par des tables `MONTHS[lang]`, `WEEKDAYS[lang]`.
+  - [ ] Exposer un hook `useDateFmt()` qui consomme `useI18n()`.
+  - [ ] Garder une API non-hook `formatPartialDate(iso, lang)` pour les rares appelants hors composants.
+  - [ ] Migrer les sites consommant `date-fr` (grep `from .*core/i18n/date-fr`).
+  - [ ] Migrer `Goals/views/GoalRow.tsx` (et tout site qui consomme `formatDate` de `Goals/lib/date-format.ts`).
   - [ ] Supprimer `Goals/lib/date-format.ts` + `date-format.test.ts`.
-- **Gain** : single source of truth pour les noms de mois
-  français. -1 fichier.
-- **Effort** : S — ~30 min
-- **Risque** : faible (couverture de test existante à migrer)
+  - [ ] Tests : un par helper × FR + EN (round-trip de chaînes attendues).
+- **Gain** : single source of truth pour les dates,
+  vraie traduction des dates (plus de noms de mois français
+  en dur côté UI quand la langue active est `en`). -1 fichier
+  legacy (Goals).
+- **Effort** : M — ~1h30
+- **Risque** : faible (couverture de test à étendre, pas
+  de breaking côté serveur — purement frontend display).
 - **Dépendances** : aucune
 
 ### REFACTO-11 — Renommages cohérents (single-file folders + casse)
@@ -522,11 +544,11 @@ fonctionnellement.
 ## Sequencing recommandé
 
 ```
-Tier 0 (≈3h, en bloc, 1 PR)
+Tier 0 (≈3h30, en bloc, 1 PR)
   ├─ REFACTO-09  (purge ui/atoms)            ← absolument en premier
   ├─ REFACTO-10  (Settings → Account)
   ├─ REFACTO-01  (LoadState centralisé)
-  ├─ REFACTO-05  (Goals formatDate)
+  ├─ REFACTO-05  (date.ts i18n-aware)
   └─ REFACTO-11  (renommages)
 
 Tier 1 (≈1 jour, 3 PRs séparées)

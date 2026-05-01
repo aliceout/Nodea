@@ -391,13 +391,16 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
   - [ ] Ajouter `GET /version` (public) :
     ```json
     {
-      "version": "1.4.2",
       "commit": "f09d73c",
-      "api_version": "v1",
-      "build_date": "2026-04-30T..."
+      "build_date": "2026-04-30T15:42:11Z",
+      "branch": "main"
     }
     ```
-  - [ ] Injecter via build-time env vars (`pnpm build` lit le `git rev-parse HEAD`).
+    **Note** : pas de champ `version` semver — Nodea ne tagge pas
+    encore les releases. Quand un système de tags arrivera, on
+    ajoute `version`. Pas de `api_version` non plus tant que API-10
+    (stratégie de versionnement) n'est pas figée.
+  - [ ] Injecter via build-time env vars (`pnpm build` lit `git rev-parse HEAD`, `git rev-parse --abbrev-ref HEAD`, `date -Iseconds`).
   - [ ] Optionnel : exposer aussi dans `/healthz` pour les sondes monitoring.
 - **Effort** : S (~1h)
 - **Risque** : faible

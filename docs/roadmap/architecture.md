@@ -85,18 +85,16 @@ beaucoup, mais c'est de la dette **rendue visible**, donc
 traitable.
 
 Ce qui frappe **en mal**, et qui touche au cœur de cet audit :
-**CLAUDE.md décrit une architecture que le code n'a pas
-encore livrée**. Le doc dit *« TanStack Query »* — pas
-installé. *« Forms via React Hook Form + Zod resolver »* — 5
-pages auth utilisent encore `useState` brut. *« Pino
-structured logs »* — c'est `hono/logger()` qui tourne. Ce
-n'est pas du code malhonnête, c'est un **gap aspirationnel-
-vs-actuel** typique d'un projet qui a documenté sa cible
-avant de l'atteindre. Le coût réel : un nouvel·le
-développeur·euse qui lit CLAUDE.md d'abord va chercher
-`import { useQuery } from '@tanstack/react-query'` et ne
-trouvera rien — confusion 30 minutes avant de comprendre
-qu'il faut chercher dans `flow/<Module>/context.tsx`.
+**CLAUDE.md mentionne deux dépendances qui ne sont en réalité
+pas adaptées à Nodea** (TanStack Query, Pino). Le code ne les
+utilise pas et n'a pas besoin de les utiliser : Nodea est une
+app E2EE single-instance, le cache cross-page de TanStack
+Query n'apporterait rien, et `hono/logger()` suffit largement
+pour une app self-host. Décision (cf. ARCH-01) : on retire ces
+mentions purement plutôt que les garder comme aspirationnelles.
+La règle « React Hook Form + Zod resolver » reste, elle, une
+vraie cible de cohérence (cf. [`refacto.md`](./refacto.md)
+REFACTO-06).
 
 **Phrase pour qualifier la dette technique à un nouveau
 développeur** : *« La dette est presque entièrement de la
@@ -153,7 +151,7 @@ individuels plutôt que dans `documentation/API.md`).
 
 | Doc | Volume | État |
 |---|---|---|
-| `CLAUDE.md` (root) | ~12 KB | À jour, **partiellement aspirationnel** (TanStack Query, Pino — non livrés) |
+| `CLAUDE.md` (root) | ~12 KB | À jour. Mentions résiduelles de TanStack Query et Pino (pas adaptées au projet) à purger — cf. ARCH-01. |
 | `docs/Auth-Spec.md` | ~2700 lignes | Maintenu activement |
 | `docs/Database.md`, `docs/Modules.md`, `docs/Architecture.md` | varie | Synchronisation doc-code suivie historiquement dans `health.md` (livré). Ré-audit à prévoir si dérive. |
 | `docs/roadmap/` | 7 fichiers (~3000+ lignes cumulées) | Toutes en cours, format homogène |
@@ -164,18 +162,21 @@ individuels plutôt que dans `documentation/API.md`).
 
 ## Findings
 
-### ARCH-01 — `CLAUDE.md` aspirationnel : promesses non encore livrées
+### ARCH-01 — `CLAUDE.md` aspirationnel : retirer purement TanStack Query et Pino
 
 - **Type** : cohérence (doc-vs-code)
 - **Sévérité** : moyenne
 - **Subjectivité** : faible
-- **Zone concernée** : [`CLAUDE.md`](../../CLAUDE.md) — sections *« Stack target »*, *« Frontend rules »*, *« Error handling & logging »*
-- **Description** : CLAUDE.md décrit comme **acquis** ce qui est encore **prévu**. Trois exemples concrets : *« TanStack Query »* (pas installé — `grep "@tanstack" packages/web/package.json` = vide), *« Forms via React Hook Form + Zod resolver »* (5 pages auth en `useState` brut, cf. [`refacto.md`](./refacto.md) REFACTO-06), *« Structured logs via Pino on the api »* (c'est `hono/logger()` qui tourne, cf. [`security.md`](./security.md) SEC-01).
-- **Pourquoi c'est un problème concret** : un·e nouvel·le contributeur·ice qui lit CLAUDE.md en onboarding va chercher du code TanStack Query et ne trouvera rien → 30 min de confusion. Plus grave : les revues de PR peuvent demander à un·e contributeur·ice *« merci d'utiliser TanStack Query selon CLAUDE.md »* alors que **personne** ne le fait dans le code actuel. La doc devient un piège.
+- **Zone concernée** : [`CLAUDE.md`](../../CLAUDE.md) — sections *« Stack target »*, *« Frontend rules »*, *« Error handling & logging »*, et toute autre doc qui les mentionne (`docs/Architecture.md` notamment)
+- **Description** : CLAUDE.md décrit comme **acquis** ce qui n'est **pas adapté au projet**. Deux exemples concrets : *« TanStack Query »* (pas installé — `grep "@tanstack" packages/web/package.json` = vide ; et inutile pour Nodea : single-instance, E2EE, pas de cache cross-page utile), *« Structured logs via Pino on the api »* (c'est `hono/logger()` qui tourne ; Pino est overkill pour une app self-host). Décision : ces deux dépendances ne sont **pas** la cible — on retire les mentions, on ne les garde pas comme aspirationnelles.
+- **Pourquoi c'est un problème concret** : un·e nouvel·le contributeur·ice qui lit CLAUDE.md en onboarding va chercher du code TanStack Query / Pino et ne trouvera rien → 30 min de confusion. Plus grave : les revues de PR peuvent demander à un·e contributeur·ice *« merci d'utiliser TanStack Query selon CLAUDE.md »* alors que **personne** ne le fait. La doc devient un piège.
 - **Tâches**
-  - [ ] Restructurer CLAUDE.md en deux blocs nets : *« Stack actuelle »* (qui décrit ce qui tourne) + *« Stack cible »* (qui pointe vers les roadmaps `frontend.md` FRONT-13, `security.md` SEC-01, `refacto.md` REFACTO-06).
-  - [ ] OU marquer chaque ligne aspirationnelle d'un *« 🚧 prévu — voir `<roadmap>` »*.
-- **Effort** : S (~1h)
+  - [ ] Retirer toutes les mentions de **TanStack Query** dans `CLAUDE.md` (sections « Stack target » et « Data fetching »).
+  - [ ] Retirer toutes les mentions de **Pino** dans `CLAUDE.md` (sections « Stack target » et « Error handling & logging »).
+  - [ ] Sweep des autres docs : `documentation/Architecture.md`, `docs/recommendations/server-config.md`, et tout `docs/**/*.md` (`grep -rni "tanstack\|pino" docs/ documentation/ CLAUDE.md`). Retirer pareil.
+  - [ ] **Ne pas lister d'alternatives** : le but est un fichier court et lisible, pas un comparatif.
+  - [ ] Vérifier qu'aucun chantier de roadmap ne dépend de TanStack/Pino (sinon réécrire la dépendance ou clore le chantier).
+- **Effort** : S (~30 min)
 - **Risque** : aucun
 - **Dépendances** : aucune
 
@@ -193,7 +194,7 @@ individuels plutôt que dans `documentation/API.md`).
     - [ ] 0001 — layered + feature-first hybride
     - [ ] 0002 — Zustand single store + per-module contexts (justifie ARCH-03)
     - [ ] 0003 — frontière snake_case / camelCase JSON ([`api.md`](./api.md) API-01)
-    - [ ] 0004 — pas de TanStack Query (pour l'instant)
+    - [ ] 0004 — pas de TanStack Query (décision figée : single-instance + E2EE = pas de besoin)
     - [ ] 0005 — pas de SSR (E2EE-driven)
 - **Effort** : M (~3-4h pour les 5 premiers ADR)
 - **Risque** : aucun
@@ -440,7 +441,7 @@ individuels plutôt que dans `documentation/API.md`).
 
 ## Top 5 dettes structurelles à traiter (ratio impact / effort)
 
-1. **ARCH-01** — Restructurer CLAUDE.md en blocs *« actuel »* / *« cible »* (1h, gain énorme pour onboarding).
+1. **ARCH-01** — Retirer purement TanStack Query et Pino de CLAUDE.md et de la doc (30 min, gain énorme pour onboarding).
 2. **ARCH-12** — Validation Zod runtime sur les routes critiques côté client (3h, attrape les drifts API silencieux).
 3. **ARCH-07** — `docs/roadmap/INDEX.md` qui pointe vers les 6 roadmaps + le doc de recos serveur + top cross-cutting (1h, simplifie la coordination).
 4. **ARCH-14** — Purge `ui/atoms/` du code mort (cf. [`refacto.md`](./refacto.md) REFACTO-09 — 30 min, ~1000 LOC mortes).
@@ -452,7 +453,7 @@ individuels plutôt que dans `documentation/API.md`).
 
 | Refonte | Description | Coût | Ce qu'on PERD | Recommandation |
 |---|---|---|---|---|
-| **Migrer le data-fetching vers TanStack Query** | Remplace les 4 contextes de modules par TanStack Query + hooks `useGoals()` | ~5 jours dev (cf. [`frontend.md`](./frontend.md) FRONT-13) | Vélocité court terme, cohérence pendant la transition (1-2 semaines code parallèle), risque modéré sur les flows optimistic + rollback | **À envisager** seulement si une vraie limite des contextes émerge (race conditions visibles ou besoin de cache cross-page) |
+| ~~**Migrer le data-fetching vers TanStack Query**~~ | Décision prise (ARCH-01) : Nodea n'a pas besoin de TanStack Query (single-instance, E2EE, pas de cache cross-page utile). On retire la mention de la doc plutôt que de la traiter comme aspirationnelle. | — | — | **NE PAS LE FAIRE** |
 | **OpenAPI + client typé généré** | Cf. [`api.md`](./api.md) API-11. Génère un SDK TS + Swift/Kotlin si besoin | ~3-5 jours pour OpenAPI, +1-2 pour le générateur | Cohérence pendant transition (Zod ResponseSchema manquants à ajouter d'abord) | **Avant** d'ouvrir un mobile / SDK partenaire |
 | **Splitter `nodea-store` en 4 stores** | Cf. ARCH-03 Option B | ~1 jour | Cohérence cross-store (logout, key-missing) demande coordination explicite | **NE PAS LE FAIRE** — le store actuel marche, le coût ne vaut pas le bénéfice |
 | **Réorg `auth/` en services + domain + infra** | Cf. ARCH-08 | ~1 jour | Cohérence (tout ce qui touche à l'auth vivait au même endroit), 50 imports à changer | **NE PAS LE FAIRE** — domaine pas assez complexe |
@@ -489,7 +490,7 @@ individuels plutôt que dans `documentation/API.md`).
 
 ```
 Semaine 1 (quick wins doc + clarté, ~5h cumulées)
-  ├─ ARCH-01    (CLAUDE.md actuel vs cible)
+  ├─ ARCH-01    (retirer TanStack/Pino de CLAUDE.md et docs)
   ├─ ARCH-07    (INDEX.md pour les roadmaps)
   ├─ ARCH-13    (codifier convention commentaire-en-tête)
   └─ ARCH-14    (cf. refacto.md REFACTO-09 — purge ui/atoms)
@@ -516,7 +517,7 @@ Plus tard (à pondérer)
 |---|---|---|
 | `nodea-store` mono ou splitté ? | Garder (ARCH-03) / Splitter | ADR 0002 — préfère « garder + ADR explicite » |
 | Layered + feature-first hybride assumé ? | Documenter / Migrer vers full-feature | ADR 0001 — préfère « documenter » |
-| TanStack Query : non-now ou jamais ? | Pas maintenant (faute de contexte changeant) / Jamais (philosophie) | ADR 0004 — préfère « non-now » |
+| TanStack Query : non-now ou jamais ? | **Décision prise (ARCH-01)** : pas de TanStack Query (single-instance + E2EE = pas de besoin de cache cross-page) | ADR 0004 — figer cette décision |
 | `hc<AppType>` Hono RPC client : pourquoi pas ? | Préférence / Limite technique | ADR 0003 — documenter la décision réelle |
 | Pas de SSR | E2EE rend SSR inutile / autre raison | ADR 0005 |
 | Migrations DB : down ou pas ? | Pas de down, restore from backup / down obligatoire | ARCH-17 — décision à figer |
@@ -529,7 +530,7 @@ Plus tard (à pondérer)
 Ce qui demanderait de connaître l'historique, l'équipe, ou les contraintes business :
 
 1. **Pourquoi pas de SSR / Next.js** — décision pertinente dans le contexte E2EE (le serveur ne peut pas pré-render le contenu chiffré). Sans connaître l'historique, je le déduis ; un ADR le figerait.
-2. **Pourquoi pas de TanStack Query** — vraiment un choix conscient de simplicité ou un *« on n'a pas eu le temps »* ? CLAUDE.md mentionne TanStack Query comme cible, ce qui suggère plutôt le second.
+2. ~~**Pourquoi pas de TanStack Query**~~ — résolu : décision (ARCH-01) prise — pas de TanStack Query, single-instance + E2EE rend le cache cross-page inutile. À figer en ADR 0004.
 3. **Plan d'évolution mobile / SDK** — si c'est planifié à 6 mois, ARCH-12 + [`api.md`](./api.md) API-10 (versioning) deviennent prioritaires.
 4. **Stratégie de release** — les phases (`Phase 2C`, `Tier 5`...) suggèrent une cadence. Pas vu de `CHANGELOG.md`.
 5. **Scaling cible** — single instance self-host vs SaaS multi-tenant ? Change l'évaluation de plusieurs findings (ARCH-17 migrations down, [`frontend.md`](./frontend.md) FRONT-02 pagination).
