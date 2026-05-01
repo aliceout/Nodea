@@ -91,7 +91,7 @@ résout les deux.
 
 ### Endpoints utilitaires (~1h)
 
-- [ ] **API-15** — `GET /version` qui retourne `{ commit, build_date, branch }` (pas de champ `version` semver — on ne tagge pas encore). 1h. [`api.md`](./api.md)
+- [x] **API-15** — `GET /version` qui retourne `{ commit, build_date, branch }` (pas de champ `version` semver — on ne tagge pas encore). 1h. [`api.md`](./api.md)
 
 ---
 

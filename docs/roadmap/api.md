@@ -381,27 +381,18 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : faible (split rétro-compatible si la nouvelle route est ajoutée et l'ancienne purgée des champs en V2)
 - **Dépendances** : API-10 (versioning) si la migration doit être propre
 
-### API-15 — Pas d'endpoint `/version` ni d'info instance
+### API-15 — `GET /version` — livré
 
 - **Sévérité** : faible
 - **Type de breaking** : N/A (ajout)
-- **Endpoints** : seul `GET /healthz` existe ; retourne juste `{ status: 'ok' }`.
-- **Description** : un consommateur (debug, monitoring, support utilisateur, futur mobile client) ne peut pas savoir quelle version de Nodea tourne sur l'instance. Pas de SHA git, pas de tag de release, pas d'API version.
+- **Endpoints** : `GET /version` (public).
+- **Statut** : livré.
+- **Description** : un consommateur (debug, monitoring, support, futur mobile client) peut désormais savoir quelle build tourne sur l'instance via la SHA du commit + la date de build + la branche.
 - **Tâches**
-  - [ ] Ajouter `GET /version` (public) :
-    ```json
-    {
-      "commit": "f09d73c",
-      "build_date": "2026-04-30T15:42:11Z",
-      "branch": "main"
-    }
-    ```
-    **Note** : pas de champ `version` semver — Nodea ne tagge pas
-    encore les releases. Quand un système de tags arrivera, on
-    ajoute `version`. Pas de `api_version` non plus tant que API-10
-    (stratégie de versionnement) n'est pas figée.
-  - [ ] Injecter via build-time env vars (`pnpm build` lit `git rev-parse HEAD`, `git rev-parse --abbrev-ref HEAD`, `date -Iseconds`).
-  - [ ] Optionnel : exposer aussi dans `/healthz` pour les sondes monitoring.
+  - [x] Route `GET /version` ajoutée dans `packages/api/src/app.ts`. Retourne `{ commit, build_date, branch }` en lisant les env vars `BUILD_COMMIT`, `BUILD_DATE`, `BUILD_BRANCH` (toutes par défaut à `'unknown'` si absentes).
+  - [x] Schéma Zod du config étendu avec ces 3 vars (`packages/api/src/config.ts`).
+  - [x] Dockerfile api accepte 3 `ARG` correspondants et les transforme en `ENV` ; CI doit les passer via `--build-arg`.
+  - [x] Test d'intégration vitest qui assure que la route répond 200 et n'expose **que** ces 3 champs (pas de `version` semver, pas d'`api_version` tant qu'API-10 n'est pas figée).
 - **Effort** : S (~1h)
 - **Risque** : faible
 - **Dépendances** : aucune

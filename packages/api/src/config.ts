@@ -147,6 +147,23 @@ const EnvSchema = z.object({
    * them, pivot to a comma-separated list.
    */
   WEBAUTHN_ORIGIN: z.string().url(),
+
+  /**
+   * Build-time metadata exposed on the public `GET /version` endpoint.
+   *
+   * Set at image build time by the Dockerfile / CI pipeline (e.g.
+   * `docker build --build-arg BUILD_COMMIT=$(git rev-parse HEAD)`). All
+   * three default to `'unknown'` so the endpoint stays callable even
+   * when the api is run from a workspace install that didn't go through
+   * a build step (local dev `pnpm dev`).
+   *
+   * No semver `version` field — Nodea does not tag releases yet ; the
+   * commit SHA is the unambiguous identifier. When tags arrive, add a
+   * `BUILD_VERSION` env var and a `version` field on the response.
+   */
+  BUILD_COMMIT: z.string().min(1).default('unknown'),
+  BUILD_DATE: z.string().min(1).default('unknown'),
+  BUILD_BRANCH: z.string().min(1).default('unknown'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

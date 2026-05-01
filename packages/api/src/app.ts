@@ -17,6 +17,7 @@ import { userPreferencesRoutes } from './routes/user-preferences.ts';
 import { libraryLookupRoutes } from './routes/library-lookup.ts';
 import { createCollectionRoutes } from './routes/collection-factory.ts';
 import { COLLECTIONS } from './collections/registry.ts';
+import { getConfig } from './config.ts';
 import type { AuthVariables } from './middleware/require-user.ts';
 import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 
@@ -51,6 +52,21 @@ export function buildApp() {
   app.use('*', logger(redactingPrintFunc));
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
+
+  // Public build identity. Lets ops, support and a future mobile client
+  // tell which build is running on a given instance. No `version` semver
+  // field — Nodea doesn't tag releases yet ; the commit SHA is the
+  // unambiguous identifier (when tags arrive, add `version`).
+  // No `api_version` either as long as API-10 (versioning strategy)
+  // isn't figée.
+  app.get('/version', (c) => {
+    const cfg = getConfig();
+    return c.json({
+      commit: cfg.BUILD_COMMIT,
+      build_date: cfg.BUILD_DATE,
+      branch: cfg.BUILD_BRANCH,
+    });
+  });
 
   // Single-step register flow with magic-link activation
   // (Auth-Roadmap Phase 1 simplified). Mounted BEFORE the legacy
