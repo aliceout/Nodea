@@ -291,34 +291,20 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : FRONT-03
 
-### FRONT-11 — URLs par onglet sur la doc publique + anchors sur titres + OG meta
+### FRONT-11 — URLs par onglet sur la doc publique + anchors sur titres + OG meta — livré
 
 - **Catégorie** : SEO + UX partage
 - **Sévérité** : faible
-- **Impact utilisateur** : aujourd'hui la page `/docs` est une URL unique avec 3 onglets (`L'essentiel` / `La mécanique` / `Sous le capot`) gérés par état local. Un user ne peut pas (a) bookmarker un onglet précis, (b) partager un lien direct vers une section précise (« regarde la partie *Code de récupération* dans la mécanique »), (c) revenir à un onglet via l'historique navigateur. Et le partage du lien `https://nodea.app/docs` dans une messagerie reste un lien nu sans prévisualisation.
-- **Fichiers** :
-  - [`packages/web/src/app/pages/Docs.tsx`](../../packages/web/src/app/pages/Docs.tsx) — gestion d'onglet via `useState` au lieu de l'URL
-  - [`packages/web/src/app/App.tsx`](../../packages/web/src/app/App.tsx) — route `/docs` actuelle
-  - [`packages/web/index.html`](../../packages/web/index.html) — pas de `<meta property="og:*">`, pas de `<meta name="twitter:*">`, pas de `<meta name="description">`
-  - [`packages/web/src/app/pages/docs/primitives.tsx`](../../packages/web/src/app/pages/docs/primitives.tsx) — rehype-slug ajoute déjà des `id` sur les h2/h3, mais pas de # cliquable visible
-- **Note importante sur l'invariant `/flow`** : la règle *« une seule URL pour `/flow` »* vient du besoin de privacy (le module visité ne doit pas fuir dans les access logs serveur). Cette règle **ne s'applique pas à la doc publique** — `/docs` n'a pas de privacy à protéger, c'est du contenu public conçu pour être partagé. Découpler les URLs des onglets renforce l'UX sans toucher à l'invariant `/flow`.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] **Routing par onglet** : passer la route `/docs` à `/docs/:tab` avec `tab` ∈ `{'newbie', 'advanced', 'tech'}`. `/docs` redirige vers `/docs/newbie` (l'onglet par défaut). Tab change → `navigate('/docs/<id>')` au lieu de `setState`.
-  - [ ] **Anchor links sur les h2/h3** : ajouter dans `primitives.tsx` un sélecteur `# →` visible au survol sur chaque heading rendu, qui copie le lien `https://nodea.app/docs/<tab>#<slug>` dans le presse-papier ou navigue dessus directement.
-  - [ ] **Scroll-to-anchor au load** : si l'URL contient `#section-id`, scroller à la bonne hauteur après le rendu markdown (effet utile pour les liens partagés).
-  - [ ] **OG / Twitter meta dans `index.html`** :
-    ```html
-    <meta name="description" content="Nodea — journal et suivi personnel chiffré bout-en-bout. Tout est chiffré dans ton navigateur, avant le serveur.">
-    <meta property="og:title" content="Nodea — journal et suivi personnel chiffré">
-    <meta property="og:description" content="Tout est chiffré dans ton navigateur, avant le serveur.">
-    <meta property="og:image" content="/nodea-lockup-horizontal.png">
-    <meta property="og:url" content="https://nodea.app">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    ```
-- **Effort** : M (~2-3h pour le routing + anchors + meta)
-- **Risque** : faible (les onglets continuent de fonctionner, l'URL devient juste plus précise)
-- **Dépendances** : aucune (le système de slug heading via rehype-slug est déjà en place)
+  - [x] Routing par onglet : `/docs/:tab` avec `tab ∈ { newbie, advanced, tech }` ; `/docs` redirige vers `/docs/newbie`. Un `:tab` invalide (ex. `/docs/foo`) retombe sur `newbie` via un `useEffect` dans `Docs.tsx`. Liens internes (`AuthMarketingPanel`, `Login`) pointent désormais sur `/docs/newbie` directement.
+  - [x] Anchor links sur les `<h2>` / `<h3>` : helper `HeadingAnchor` dans `primitives.tsx` qui ajoute un `#` cliquable opacité 0 → 100 % au survol / focus du titre (group-hover + focus-visible). Les `id` viennent de `rehype-slug`, déjà câblé.
+  - [x] Scroll-to-anchor au load : `useEffect` dans `Docs.tsx` qui lit `window.location.hash`, attend une frame que le markdown soit monté, puis `scrollIntoView` sur l'élément. Re-déclenché à chaque changement de tier.
+  - [x] OG / Twitter meta dans `index.html` : `og:type`, `og:title`, `og:description`, `og:image` (1200×630), `og:url`, `og:locale`, `twitter:card=summary_large_image` + équivalents. Le placeholder `og-card.png` reste à fournir dans `public/`.
+- **Note privacy** : pas de conflit avec l'invariant `/flow` — celui-ci concerne les routes authentifiées (URLs ne doivent pas révéler le module visité dans les access logs). `/docs` est public, l'URL n'expose rien de sensible, et avoir un onglet par URL est précisément ce qui rend le partage et les deep-links utiles.
+- **Effort** : M (~2-3h)
+- **Risque** : faible
+- **Dépendances** : aucune
 
 ### FRONT-12 — Pas de `<link rel="canonical">` sur les pages publiques
 

@@ -123,7 +123,7 @@ export default function LoginPage() {
               reachable for skimmers) — the two entries are at
               different visual altitudes so they don't compete. */}
           <Link
-            to="/docs"
+            to="/docs/newbie"
             className="group inline-flex cursor-pointer items-center gap-1.5 pt-1 text-[15px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
           >
             Voir comment Nodea protège mes données

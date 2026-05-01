@@ -84,7 +84,7 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
             panel body (under PrivacyBody); this footer link is the
             always-reachable equivalent for skimmers. */}
         <Link
-          to="/docs"
+          to="/docs/newbie"
           className="cursor-pointer text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
         >
           Sécurité

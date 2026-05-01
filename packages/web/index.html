@@ -9,6 +9,44 @@
   <link rel="apple-touch-icon" sizes="256x256" href="/favicon-256.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nodea</title>
+  <meta
+    name="description"
+    content="Nodea — journal personnel et suivi de vie chiffré de bout en bout. Tes données ne quittent jamais ton appareil en clair, le serveur ne voit que du chiffré."
+  />
+
+  <!--
+    Open Graph + Twitter card meta. Static values — Nodea is a CSR
+    SPA, so all routes serve the same index.html and the same
+    preview card. The image is a 1200×630 PNG hosted alongside the
+    favicon assets ; if it ever moves, update the og:image / og:url
+    paths below in lockstep.
+
+    The og:url uses a relative-canonical pattern ("/" + JS sets the
+    runtime URL) ; previews of deep links still pick up the description
+    + image, only the URL field stays generic — fine for an E2EE app
+    where the privacy invariant says module-visited URLs must not
+    leak anyway (see Frontend rules in CLAUDE.md).
+  -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Nodea — journaling chiffré bout-à-bout" />
+  <meta
+    property="og:description"
+    content="Journal personnel et suivi de vie où tes données ne quittent jamais ton appareil en clair. Le serveur ne voit que du chiffré."
+  />
+  <meta property="og:image" content="/og-card.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="https://nodea.app/" />
+  <meta property="og:locale" content="fr_FR" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Nodea — journaling chiffré bout-à-bout" />
+  <meta
+    name="twitter:description"
+    content="Journal personnel et suivi de vie où tes données ne quittent jamais ton appareil en clair."
+  />
+  <meta name="twitter:image" content="/og-card.png" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import DocsLayout from '@/ui/dirk/DocsLayout';
 import DocsToc from '@/ui/dirk/DocsToc';
@@ -17,14 +18,23 @@ import DocsTierTech, {
 /**
  * Public docs page — Direction K · Sauge.
  *
- * Single URL `/docs` with three tabs (Newbie / Advanced / Tech).
+ * Three tabs (Newbie / Advanced / Tech), one URL per tab :
+ * `/docs/newbie`, `/docs/advanced`, `/docs/tech`. The plain
+ * `/docs` URL redirects to `/docs/newbie` upstream in `App.tsx`.
+ * An unknown `:tab` (e.g. `/docs/foo`) falls back to newbie, so
+ * stale or hand-typed URLs don't 404.
+ *
  * Tabs sit in the topbar (slotted via `DocsLayout.tabs`); the
  * left rail TOC is auto-derived from the active tier's markdown
- * headings.
+ * headings. h2 / h3 ids come from `rehype-slug` and can be deep-
+ * linked with `/docs/:tab#section-id` — `useEffect` below scrolls
+ * the matching heading into view at load.
  *
- * Active tier is component-local state — the URL stays `/docs`
- * regardless of the active tab. Default tier is `newbie` — assume
- * a brand-new visitor landing from the login page link.
+ * The /flow privacy invariant (URL must not leak the active
+ * module) does NOT apply here : /docs is public, the audience for
+ * each tab is broadly different anyway, and per-tab URLs are what
+ * make pasted links and anchor deep-links useful in the first
+ * place.
  *
  * Content is hand-curated markdown under `./docs/content/*.md` —
  * NOT pulled from `docs/*.md` (which target a more technical
@@ -50,13 +60,46 @@ const TIER_TOCS = {
   tech: techToc,
 } as const satisfies Record<TabId, unknown>;
 
+function isTabId(value: unknown): value is TabId {
+  return value === 'newbie' || value === 'advanced' || value === 'tech';
+}
+
 export default function DocsPage() {
-  const [level, setLevel] = useState<TabId>('newbie');
+  const { tab } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
+  const level: TabId = isTabId(tab) ? tab : 'newbie';
+
+  // Unknown :tab (e.g. /docs/foo) → silently rewrite to /docs/newbie
+  // so the URL stays in sync with the rendered tier.
+  useEffect(() => {
+    if (tab && !isTabId(tab)) {
+      navigate('/docs/newbie', { replace: true });
+    }
+  }, [tab, navigate]);
+
+  // Scroll to #section-id on load when the URL carries a hash.
+  // We wait one frame so the markdown content has had time to mount
+  // and `rehype-slug` has populated the heading ids. `scroll-mt-24`
+  // (set on the h2 / h3 components) keeps the anchor away from the
+  // sticky topbar. Re-runs when the active tier changes since
+  // each tier emits its own set of ids.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return undefined;
+    const raf = window.requestAnimationFrame(() => {
+      const el = document.getElementById(decodeURIComponent(hash));
+      if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [level]);
 
   function handleTabChange(next: TabId): void {
-    setLevel(next);
-    // Switching tabs is logically a new page — scroll to top so
-    // the reader doesn't end up halfway down a different document.
+    if (next === level) return;
+    // Push a fresh history entry per tab — back button takes the
+    // reader to the previous tab. Clear any anchor hash : switching
+    // tabs is a new page, the previous section id may not exist
+    // in the new tier.
+    navigate(`/docs/${next}`);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 

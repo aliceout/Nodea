@@ -50,6 +50,7 @@ interface TocSection {
  *  `###` is attached as a child of the most recent `##` above it.
  *  `###` headings before any `##` are dropped (no parent to attach
  *  to). */
+// eslint-disable-next-line react-refresh/only-export-components
 export function parseToc(source: string): ReadonlyArray<TocSection> {
   const slugger = new GithubSlugger();
   const sections: Array<{
@@ -89,21 +90,44 @@ export function parseToc(source: string): ReadonlyArray<TocSection> {
  * than fight `prose` defaults. Each rule below mirrors the styling
  * the previous JSX `<Section>` / `<Bullet>` carried.
  */
+// Hash-link emitted next to every h2 / h3 heading. Visible only on
+// hover/focus of the heading group, so the rail stays calm when the
+// reader isn't pointing at it. Clicking writes the anchor to the URL
+// (the browser scrolls to the heading thanks to `scroll-mt-24` set
+// on the heading itself) and keeps the focus on the link so a screen
+// reader user can copy-link from the keyboard.
+function HeadingAnchor({ id }: { id: string | undefined }) {
+  if (!id) return null;
+  return (
+    <a
+      href={`#${id}`}
+      aria-label={`Lien vers cette section : #${id}`}
+      className="ml-2 inline-block text-muted opacity-0 transition-opacity duration-100 group-hover:opacity-60 hover:opacity-100! focus-visible:opacity-100 focus-visible:outline-none"
+    >
+      #
+    </a>
+  );
+}
+
 const markdownComponents: Components = {
-  h2: ({ children, ...props }) => (
+  h2: ({ children, id, ...props }) => (
     <h2
       {...props}
-      className="mb-3 mt-10 scroll-mt-24 text-[22px] font-semibold tracking-[-0.01em] text-accent first:mt-0"
+      id={id}
+      className="group mb-3 mt-10 scroll-mt-24 text-[22px] font-semibold tracking-[-0.01em] text-accent first:mt-0"
     >
       {children}
+      <HeadingAnchor id={typeof id === 'string' ? id : undefined} />
     </h2>
   ),
-  h3: ({ children, ...props }) => (
+  h3: ({ children, id, ...props }) => (
     <h3
       {...props}
-      className="relative mb-3 mt-8 scroll-mt-24 pl-5 text-[18px] font-semibold tracking-[-0.005em] text-ink before:absolute before:left-0 before:top-1/2 before:h-2 before:w-2 before:-translate-y-1/2 before:rounded-full before:bg-accent before:content-['']"
+      id={id}
+      className="group relative mb-3 mt-8 scroll-mt-24 pl-5 text-[18px] font-semibold tracking-[-0.005em] text-ink before:absolute before:left-0 before:top-1/2 before:h-2 before:w-2 before:-translate-y-1/2 before:rounded-full before:bg-accent before:content-['']"
     >
       {children}
+      <HeadingAnchor id={typeof id === 'string' ? id : undefined} />
     </h3>
   ),
   p: ({ children }) => (

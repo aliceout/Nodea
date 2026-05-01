@@ -84,7 +84,15 @@ function AppWithKeyModal() {
       <Route path="/totp" element={lazyPage(<Totp />)} />
       <Route path="/security-mode" element={lazyPage(<SecurityMode />)} />
       <Route path="/auth/bypass/confirm" element={lazyPage(<BypassConfirm />)} />
-      <Route path="/docs" element={lazyPage(<Docs />)} />
+      {/* Public docs : /docs/:tab where tab ∈ { newbie, advanced, tech }.
+          /docs (no tab) redirects to the default tier (newbie). An
+          invalid :tab is detected inside <Docs/> and falls back to
+          newbie too. Per-tab URLs let pasted links land on the right
+          tier and let h2/h3 anchors be deep-linked (#section-id).
+          The /flow privacy invariant doesn't apply here — /docs is
+          public, no leak concern. */}
+      <Route path="/docs" element={<Navigate to="/docs/newbie" replace />} />
+      <Route path="/docs/:tab" element={lazyPage(<Docs />)} />
       <Route
         path="/flow"
         element={
