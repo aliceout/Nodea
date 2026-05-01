@@ -52,7 +52,7 @@ export default function AuthLayout({
   return (
     <div className="grid min-h-screen grid-cols-1 bg-bg text-ink lg:grid-cols-[1fr_480px]">
       <AuthMarketingPanel headline={headline}>{marketing}</AuthMarketingPanel>
-      <main className="flex items-center justify-center px-6 py-16 sm:px-14">
+      <main id="main" className="flex items-center justify-center px-6 py-16 sm:px-14">
         <div
           className={cn(
             'animate-fade-up w-full',

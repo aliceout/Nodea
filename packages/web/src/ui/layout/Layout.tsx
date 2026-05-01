@@ -96,7 +96,7 @@ export default function Layout() {
       ) : null}
 
       <Sidebar />
-      <main className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
+      <main id="main" className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
 
       <ComposerModal />
     </div>

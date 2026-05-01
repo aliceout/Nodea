@@ -353,21 +353,15 @@ catalogue se rend en une passe. »*
 - **Risque** : moyen (touche le data flow optimistic)
 - **Dépendances** : aucune
 
-### FRONT-14 — Pas de skip-link « passer au contenu principal »
+### FRONT-14 — Skip-link « passer au contenu principal » — livré
 
 - **Catégorie** : a11y
 - **Sévérité** : faible
-- **Impact utilisateur** : un·e utilisateur·ice clavier qui visite `/login` doit Tab à travers les liens du marketing panel + nav avant d'atteindre le formulaire. Pas dramatique sur 3-4 tabs, mais standard a11y.
-- **Fichiers** : aucun (l'absence est le finding)
-- **Description** : pas de `<a href="#main">Skip to content</a>` au début du body.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Ajouter dans `App.tsx` ou dans le `Layout` un skip-link visible-au-focus :
-    ```tsx
-    <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-bg focus:p-2">
-      Passer au contenu principal
-    </a>
-    ```
-  - [ ] Mettre `<main id="main">` sur le wrapper de la zone principale (Layout + AuthLayout).
+  - [x] Skip-link ajouté en tête de `App.tsx` (`<a href="#main">` avec `sr-only / focus:not-sr-only`, label via `useI18n()` → `common.a11y.skipToMain`).
+  - [x] `id="main"` ajouté sur `<main>` dans `Layout.tsx`, `AuthLayout.tsx`, `DocsLayout.tsx`, ainsi que sur le wrapper de `NotFound.tsx` (qui n'avait pas de `<main>`).
+  - [x] Clés i18n `common.a11y.skipToMain` ajoutées en FR + EN.
 - **Effort** : S (~10 min)
 - **Risque** : aucun
 - **Dépendances** : aucune

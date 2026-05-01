@@ -47,7 +47,7 @@ export default function DocsLayout({ children, aside, tabs }: DocsLayoutProps) {
         </div>
       ) : null}
 
-      <main className="flex-1">
+      <main id="main" className="flex-1">
         <div className="mx-auto max-w-[1180px] px-6 sm:px-9">
           <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-12">
             {/* Aside : sticky right under the topbar from scroll=0.

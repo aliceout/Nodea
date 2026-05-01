@@ -86,7 +86,7 @@ résout les deux.
 ### A11y & SEO quick wins (~3h)
 
 - [x] **FRONT-01** — `alt={item.title}` sur les couvertures Library (BookWall, CoverGrid) (~30 min). [`frontend.md`](./frontend.md)
-- [ ] **FRONT-14** — Skip-link sur `App.tsx` + `<main id="main">` (~10 min). [`frontend.md`](./frontend.md)
+- [x] **FRONT-14** — Skip-link sur `App.tsx` + `<main id="main">` (~10 min). [`frontend.md`](./frontend.md)
 - [ ] **FRONT-11 (élargi)** — URLs par onglet sur `/docs` (`/docs/:tab` avec tab ∈ `newbie | advanced | tech`) + anchor links sur les `<h2>`/`<h3>` (sélecteur `#` au survol, scroll-to-anchor au load si `#section-id`) + OG/Twitter meta dans `index.html`. ~2-3h. [`frontend.md`](./frontend.md)
 
 ### Endpoints utilitaires (~1h)

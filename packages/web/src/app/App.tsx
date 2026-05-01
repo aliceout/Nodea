@@ -4,6 +4,7 @@ import Layout from '@/ui/layout/Layout';
 import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
 import { useNodeaStore, isModuleId } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import NotFound from './pages/NotFound';
 
 // Auth pages are lazy-loaded so their deps (react-hook-form, zod,
@@ -36,6 +37,7 @@ function lazyPage(node: ReactElement): ReactElement {
 }
 
 function AppWithKeyModal() {
+  const { t } = useI18n();
   // Back/forward navigation listener. The privacy invariant is that
   // `/flow` is the *only* URL the server ever sees while a user is in
   // the app — but the browser's history API still tracks navigation
@@ -56,7 +58,18 @@ function AppWithKeyModal() {
   }, []);
 
   return (
-    <Routes>
+    <>
+      {/* Skip-link a11y : first focusable element on every page so a
+          keyboard / screen-reader user can jump past the marketing
+          panel + nav and land directly on the main content. Visually
+          hidden until focused (Tailwind sr-only / focus:not-sr-only). */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-bg focus:px-3 focus:py-2 focus:text-ink focus:shadow-[0_0_0_2px_var(--color-k-accent)] focus:outline-none"
+      >
+        {t('common.a11y.skipToMain')}
+      </a>
+      <Routes>
       <Route path="/" element={<Navigate to="/flow" replace />} />
       <Route path="/login" element={lazyPage(<Login />)} />
       <Route path="/login/mfa" element={lazyPage(<LoginMfa />)} />
@@ -86,6 +99,7 @@ function AppWithKeyModal() {
       <Route path="/flow/*" element={<Navigate to="/flow" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </>
   );
 }
 
