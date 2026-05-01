@@ -91,7 +91,7 @@ catalogue se rend en une passe. »*
 | Sujet | Constat |
 |---|---|
 | **Framework** | React **19.1** + Vite 6 + TypeScript strict. Mode de rendu : **CSR pure** (pas de SSR, pas de SSG, pas de RSC). |
-| **State** | **Zustand 5** pour le store global. **4 modules** ont leur Provider local via `createModuleContexts<D, F, A>` factory (Goals, Library, Journal, Mood). Pas de cache de requêtes type TanStack Query / SWR — choix volontaire (cf. ADR à figer). |
+| **State** | **Zustand 5** pour le store global. **4 modules** ont leur Provider local via `createModuleContexts<D, F, A>` factory (Goals, Library, Journal, Mood). Pas de cache de requêtes côté front — choix volontaire (cf. ADR à figer). |
 | **Routing** | **React Router v7** (`react-router-dom`). URL `/flow` invariante côté authentifié (privacy invariant — module visité ne fuit pas dans les access logs). 14 pages publiques + Layout gardé par `ProtectedRoute`. |
 | **Data fetching** | Manuel via `core/api/*.ts` — thin wrappers `fetch()` avec credentials + Zod-validated bodies. Pattern `LoadState` redéfini dans 4 modules (cf. [`refacto.md`](./refacto.md) REFACTO-01). |
 | **Design system** | **Maison** — `ui/atoms/dirk/*` (Direction K · Sauge), `ui/dirk/*` (composants composites). **Headless UI 2** pour les primitives complexes (Dialog, Listbox, Transition). |
@@ -334,7 +334,7 @@ catalogue se rend en une passe. »*
 - **Tâches**
   - [ ] **Court terme** : disabler le bouton pendant la mutation in-flight (déjà fait sur certains, à vérifier exhaustif).
   - [ ] **Moyen terme** : ajouter un `requestId` par mutation et ignorer le rollback si un `requestId` plus récent existe.
-  - [ ] **Long terme** : un système de cache de requêtes (TanStack Query / SWR / maison) résoudrait dedup + cache invalidation, mais c'est explicitement écarté pour l'instant — ne pas l'introduire pour ce seul finding.
+  - [ ] **Long terme** : un cache de requêtes côté front résoudrait dedup + invalidation gratuitement, mais c'est explicitement écarté pour Nodea (single-instance + E2EE) — ne pas l'introduire pour ce seul finding.
 - **Effort** : M (~2-3h pour le requestId pattern × 4 modules)
 - **Risque** : moyen (touche le data flow optimistic)
 - **Dépendances** : aucune
@@ -444,7 +444,7 @@ Plus tard (à pondérer)
 
 | Décision | Options | Impact |
 |---|---|---|
-| Cache de requêtes (TanStack Query / SWR / maison) ? | **Décision prise (ARCH-01)** : non. Single-instance + E2EE = pas de besoin de cache cross-page. À figer en ADR. | — |
+| Cache de requêtes côté front ? | **Décision prise (ARCH-01)** : non. Single-instance + E2EE = pas de besoin de cache cross-page. À figer en ADR. | — |
 | Skeletons ou texte « Chargement… » ? | Skeletons / Texte (actuel) / Texte amélioré | FRONT-05 — préfère texte + doc explicite de la philosophie |
 | Lighthouse CI sur quelles PRs ? | Toutes / Touchant `packages/web/` / Aucune (juste local) | FRONT-03 — préfère « touchant `packages/web/` » pour rester rapide |
 | `<ScrollRestoration />` natif ou popstate custom étendu ? | RR v7 natif / popstate custom (cohérent avec privacy invariant `/flow`) | FRONT-06 — préfère custom pour rester en contrôle de l'URL |
