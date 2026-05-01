@@ -145,15 +145,15 @@ fonctionnellement.
 - **Risque** : faible (0 import, donc 0 régression possible)
 - **Dépendances** : aucune
 
-### REFACTO-10 — Déplacer `Settings/components/ModulesManager` → `Account/components/`
+### REFACTO-10 — Déplacer `Settings/components/ModulesManager` → `Account/components/` — livré
 
 - **Type** : déplacement + suppression dossier fantôme
-- **Sites** : [`flow/Settings/components/ModulesManager.tsx`](../../packages/web/src/app/flow/Settings/components/ModulesManager.tsx),
+- **Sites** : `flow/Settings/components/ModulesManager.tsx`,
   consommé par [`flow/Account/views/ModulesTab.tsx`](../../packages/web/src/app/flow/Account/views/ModulesTab.tsx) seul.
 - **Tâches**
-  - [ ] `git mv packages/web/src/app/flow/Settings/components/ModulesManager.tsx packages/web/src/app/flow/Account/components/ModulesManager.tsx`
-  - [ ] Mettre à jour l'import dans `ModulesTab.tsx`.
-  - [ ] `rmdir` les dossiers `Settings/components/` et `Settings/` qui deviennent vides.
+  - [x] `git mv packages/web/src/app/flow/Settings/components/ModulesManager.tsx packages/web/src/app/flow/Account/components/ModulesManager.tsx`
+  - [x] Mettre à jour l'import dans `ModulesTab.tsx`.
+  - [x] `rmdir` les dossiers `Settings/components/` et `Settings/` qui deviennent vides.
 - **Gain** : élimination d'un pseudo-module, Account devient
   vraiment propriétaire du widget qu'il consomme exclusivement.
 - **Effort** : S — ~10 min

@@ -1,8 +1,8 @@
-import ModulesManager from '@/app/flow/Settings/components/ModulesManager';
+import ModulesManager from '@/app/flow/Account/components/ModulesManager';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
-/** « Modules » tab — defers everything to the existing
- *  `ModulesManager` (under `/flow/Settings/components/`) and adds
+/** « Modules » tab — defers everything to the local
+ *  `ModulesManager` (under `Account/components/`) and adds
  *  an explanatory sidebar. Disabling a module hides it from the
  *  sidebar without ever deleting its encrypted entries. */
 export default function ModulesTab() {
