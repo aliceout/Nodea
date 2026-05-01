@@ -123,12 +123,12 @@ résout les deux.
 
 ### Étape D — Hardening container & cookies (~1h)
 
-- [ ] **SEC-04** — `COOKIE_SECURE: default('true')` (15 min). [`security.md`](./security.md)
-- [ ] **OPS-03** — `USER` non-root dans `packages/api/Dockerfile` + `packages/web/Dockerfile` (30 min). [`ops.md`](./ops.md)
-- [ ] **SEC-05** — Retirer `ports:` du service `postgres` dans `docker-compose.yml` (15 min). [`security.md`](./security.md)
-- [ ] **SEC-03 app** — Lire le **dernier** hop de `X-Forwarded-For` dans `rate-limit.ts` (30 min). [`security.md`](./security.md)
-- [ ] **REC-S2** (côté serveur) — `proxy_set_header X-Forwarded-For $remote_addr;` sur l'upstream. [`server-config.md`](../recommendations/server-config.md)
-- [ ] **REC-S1** (côté serveur) — Déployer CSP en `Report-Only` sur l'upstream nginx, observer 1 semaine. [`server-config.md`](../recommendations/server-config.md)
+- [x] **SEC-04** — `COOKIE_SECURE: default('true')` (15 min). [`security.md`](./security.md)
+- [x] **OPS-03** — `USER` non-root dans `packages/api/Dockerfile` + `packages/web/Dockerfile` (30 min). [`ops.md`](./ops.md)
+- [x] **SEC-05** — Postgres `ports:` rebindé sur `127.0.0.1` (pas exposé sur 0.0.0.0) (15 min). [`security.md`](./security.md)
+- [x] **SEC-03 app** — Rate-limit lit le **dernier** hop de `X-Forwarded-For` ; nginx-container forwarde as-is (30 min). [`security.md`](./security.md)
+- [ ] **REC-S2** (côté serveur, [issue #76](https://github.com/aliceout/Nodea/issues/76)) — `proxy_set_header X-Forwarded-For $remote_addr;` sur l'upstream. [`server-config.md`](../recommendations/server-config.md)
+- [ ] **REC-S1** (côté serveur, [issue #77](https://github.com/aliceout/Nodea/issues/77)) — Déployer CSP en `Report-Only` sur l'upstream nginx, observer 1 semaine. [`server-config.md`](../recommendations/server-config.md)
 
 ### Étape E — Backups (~3h)
 

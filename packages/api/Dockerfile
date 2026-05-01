@@ -36,7 +36,16 @@ COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile --prod=false
 
+# OPS-03 : drop privileges before the long-running process starts.
+# The official `node:22-alpine` image already ships a `node` user
+# (UID 1000). We chown the workspace + the pnpm store so the
+# unprivileged process can read them, then switch via USER. The
+# api binds on 3000 (unprivileged port) so no CAP_NET_BIND_SERVICE
+# is needed. Migrations also run as `node` — Drizzle just needs
+# DB credentials, no host privileges.
+RUN chown -R node:node /app
 WORKDIR /app/packages/api
+USER node
 
 EXPOSE 3000
 

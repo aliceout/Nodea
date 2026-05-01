@@ -161,7 +161,7 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Description courte** : tous les autres headers défensifs sont en place sur `https://nodea.app/` (HSTS 2 ans, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy), **sauf la CSP**. Le fix est sur le reverse proxy upstream (hors-repo).
 - **Tâches** : voir [`server-config.md` REC-S1](../recommendations/server-config.md#rec-s1--content-security-policy).
 
-### SEC-03 — Rate limiter bypassable via `X-Forwarded-For` spoofé
+### SEC-03 — Rate limiter bypassable via `X-Forwarded-For` spoofé — livré
 
 - **Sévérité** : moyenne
 - **Exploitabilité** : triviale si l'API est joignable directement, conditionnelle derrière le proxy
@@ -171,15 +171,15 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Description** : la fonction extrait le **premier IP** de `X-Forwarded-For` comme clé de rate-limit. Sous l'hypothèse d'un reverse proxy upstream qui **n'a pas** strip l'entrant (cf. REC-S2), un client peut spoof `X-Forwarded-For: 1.2.3.4` et bypass le rate-limit. Le fix app-side est de lire le **dernier** hop (celui que l'upstream vient d'append) plutôt que le premier.
 - **Scénario d'exploitation** : un attaquant envoie 1000 requêtes `POST /auth/login/start` avec `X-Forwarded-For: ${random_ip}` à chaque coup. Chaque requête hit un bucket différent → rate-limit jamais déclenché. Bypass valable sur tous les endpoints rate-limités.
 - **Tâches (app-side)**
-  - [ ] Modifier `getClientKey` dans `rate-limit.ts` pour lire le **dernier** hop : `parts[parts.length - 1].trim()`.
-  - [ ] Documenter le contrat dans le commentaire du fichier : *« le rate limiter suppose un seul reverse proxy de confiance directement devant l'API, qui append son IP en dernier »*.
-  - [ ] Ajouter un test unit qui vérifie le comportement avec un `X-Forwarded-For` multi-hop.
+  - [x] Modifier `getClientKey` dans `rate-limit.ts` pour lire le **dernier** hop : `parts[parts.length - 1].trim()`.
+  - [x] Documenter le contrat dans le commentaire du fichier : *« le rate limiter suppose un seul reverse proxy de confiance directement devant l'API, qui append son IP en dernier »*.
+  - [x] Ajouter un test unit qui vérifie le comportement avec un `X-Forwarded-For` multi-hop.
 - **Tâches (server-side)** : voir [`server-config.md` REC-S2](../recommendations/server-config.md#rec-s2--x-forwarded-for-strip-de-lentrant).
 - **Effort (app)** : S (~30 min)
 - **Risque** : faible
 - **Dépendances** : REC-S2 (les deux fixes ensemble closent le finding)
 
-### SEC-04 — `COOKIE_SECURE` défaut à `false` (foot-gun pour self-hosters)
+### SEC-04 — `COOKIE_SECURE` défaut à `false` (foot-gun pour self-hosters) — livré
 
 - **Sévérité** : faible *(était moyenne avant confirmation par l'opérateur que `COOKIE_SECURE=true` est bien set en prod sur l'instance officielle)*
 - **Exploitabilité** : conditions particulières (oubli de configuration prod par un self-hoster tiers)
@@ -188,17 +188,17 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Description** : `COOKIE_SECURE` est défini avec `default('false')`. L'instance officielle force `true` via `.env` (Infisical), donc **pas de problème en prod actuelle**. Mais pour un·e self-hoster·euse qui clone et déploie sans setter explicitement la variable, les cookies ne portent pas le flag `Secure` et peuvent partir en clair. CLAUDE.md exige *« Session cookies ... Secure ; SameSite=Lax ; Signed »* — le défaut du code contredit cette exigence.
 - **Scénario** : un nouvel·le opérateur·ice déploie Nodea derrière un reverse proxy TLS mais oublie `COOKIE_SECURE=true`. Un user visite `http://instance.tld` (avant redirect HTTPS), le cookie part en clair. MITM passif (Wi-Fi public, ISP malveillant) sniffe le cookie et hijacke la session.
 - **Tâches**
-  - [ ] Inverser le défaut à `true` dans `config.ts` :
+  - [x] Inverser le défaut à `true` dans `config.ts` :
     ```ts
     COOKIE_SECURE: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
     ```
-  - [ ] Ajouter un override explicite pour le dev local dans `.env.example` : `COOKIE_SECURE=false  # Override pour dev HTTP local uniquement`.
-  - [ ] Mettre à jour `dev-setup.yaml` si la variable y est référencée.
+  - [x] Ajouter un override explicite pour le dev local dans `.env.example` : `COOKIE_SECURE=false  # Override pour dev HTTP local uniquement`.
+  - [x] Mettre à jour `dev-setup.yaml` si la variable y est référencée.
 - **Effort** : S (~15 min)
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### SEC-05 — Postgres exposé sur le host en prod (héritage docker-compose dev)
+### SEC-05 — Postgres exposé sur le host en prod (héritage docker-compose dev) — livré
 
 - **Sévérité** : moyenne
 - **Exploitabilité** : conditions particulières (mot de passe Postgres + accès réseau au host)
@@ -207,10 +207,10 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Description** : le service Postgres bind son port 5432 sur l'host (5433 par défaut). Commode en dev (psql depuis l'IDE) mais en prod ça expose Postgres au réseau du host. Si le host n'a pas de pare-feu strict ou si le port est forwardé par mégarde, Postgres devient publiquement atteignable. Mitigation actuelle : `POSTGRES_PASSWORD` requis. Mais la pratique recommandée est de ne pas exposer du tout — l'API y accède via le réseau Docker interne (`postgres:5432`).
 - **Scénario** : un sysadmin déploie sur un VPS, oublie iptables/ufw. Postgres devient atteignable sur `<vps_ip>:5433`. Brute-force du `POSTGRES_PASSWORD` ou exploit d'une CVE Postgres connue donne accès direct à toutes les rows (y compris emails, hashes, blobs chiffrés — qui restent illisibles sans la main key, mais qui sont déjà du dommage). À vérifier également côté firewall VPS.
 - **Tâches**
-  - [ ] Retirer la section `ports` du service `postgres` dans `docker-compose.yml`.
-  - [ ] Créer un override `docker-compose.dev.yml` qui ré-expose le port pour le dev (avec `profiles: ['dev']` ou un fichier séparé).
-  - [ ] Documenter l'accès psql en prod : `docker compose exec postgres psql -U nodea`.
-  - [ ] Vérifier l'état du firewall sur le VPS de prod (cf. *Angles morts*).
+  - [x] Retirer la section `ports` du service `postgres` dans `docker-compose.yml`.
+  - [x] Créer un override `docker-compose.dev.yml` qui ré-expose le port pour le dev (avec `profiles: ['dev']` ou un fichier séparé).
+  - [x] Documenter l'accès psql en prod : `docker compose exec postgres psql -U nodea`.
+  - [x] Vérifier l'état du firewall sur le VPS de prod (cf. *Angles morts*).
 - **Effort** : S (~30 min)
 - **Risque** : moyen (à coordonner avec workflows dev qui dépendent du port exposé)
 - **Dépendances** : aucune

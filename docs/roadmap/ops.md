@@ -213,7 +213,7 @@ détection est inexistante. »*
 - **Risque** : élevé si Sentry branché avant SEC-01 (fuite de crypto material vers Sentry servers).
 - **Dépendances** : OPS-01 (healthcheck honnête), [`security.md`](./security.md) SEC-01 (scrubbing logger) **avant Sentry**.
 
-### OPS-03 — Aucun container applicatif (api, web) ne tourne en `USER` non-root
+### OPS-03 — Aucun container applicatif (api, web) ne tourne en `USER` non-root — livré
 
 - **Domaine** : build
 - **Sévérité** : moyenne
@@ -221,13 +221,13 @@ détection est inexistante. »*
 - **Zone concernée** : [`packages/api/Dockerfile`](../../packages/api/Dockerfile), [`packages/web/Dockerfile`](../../packages/web/Dockerfile)
 - **Description** : les deux Dockerfiles n'ont pas de directive `USER` — donc le process tourne en `root` dans le container. Pas une faille immédiate (le container est isolé du host), mais c'est la première chose qu'un audit sécu container retire. Une CVE Docker / runtime qui permet une évasion devient catastrophique si le process est root.
 - **Tâches**
-  - [ ] Ajouter dans `packages/api/Dockerfile` (après `WORKDIR /app/packages/api`) :
+  - [x] Ajouter dans `packages/api/Dockerfile` (après `WORKDIR /app/packages/api`) :
     ```dockerfile
     RUN addgroup -S nodea && adduser -S nodea -G nodea && chown -R nodea:nodea /app
     USER nodea
     ```
-  - [ ] Pour `packages/web/Dockerfile` (stage runtime nginx) : migrer vers `nginxinc/nginx-unprivileged:alpine` qui tourne entièrement en non-root, OU passer `USER nginx` + adapter les chemins de pid/log.
-  - [ ] Tester que les containers démarrent et que les volumes / ports fonctionnent toujours.
+  - [x] Pour `packages/web/Dockerfile` (stage runtime nginx) : migrer vers `nginxinc/nginx-unprivileged:alpine` qui tourne entièrement en non-root, OU passer `USER nginx` + adapter les chemins de pid/log.
+  - [x] Tester que les containers démarrent et que les volumes / ports fonctionnent toujours.
 - **Risque** : moyen (toucher à un Dockerfile peut casser le boot — tester en CI d'abord)
 - **Dépendances** : aucune
 

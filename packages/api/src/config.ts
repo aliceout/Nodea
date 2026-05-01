@@ -13,12 +13,19 @@ const EnvSchema = z.object({
   SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 30),
 
   /**
-   * Trust cookies marked `Secure` — should be true in production behind TLS.
-   * Defaults to false in dev so cookies work on plain HTTP localhost.
+   * Cookies marked `Secure` — must be true in production behind TLS.
+   *
+   * **Fail-secure default (SEC-04).** Defaults to `'true'` so a deploy
+   * that doesn't explicitly set `COOKIE_SECURE` cannot accidentally
+   * issue session cookies over plain HTTP. For dev on `http://localhost`,
+   * set `COOKIE_SECURE=false` in `.env` (the dev bootstrap does this
+   * automatically). The fail-open default is gone — silently shipping
+   * an insecure cookie in prod is the kind of regression that wasn't
+   * worth the dev-friendliness it bought.
    */
   COOKIE_SECURE: z
     .enum(['true', 'false'])
-    .default('false')
+    .default('true')
     .transform((v) => v === 'true'),
 
   /**

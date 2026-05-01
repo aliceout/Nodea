@@ -37,8 +37,16 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-nodea}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nodea_dev}
       POSTGRES_DB: ${POSTGRES_DB:-nodea}
+    # SEC-05 : bind on 127.0.0.1 only — never on 0.0.0.0. The api
+    # container reaches Postgres via the docker-compose internal
+    # network (`postgres:5432`), so an external port is needed only
+    # for local dev tools (psql, DBeaver, `pnpm --filter @nodea/api
+    # dev` running on the host). Without the explicit `127.0.0.1:`
+    # prefix, Docker's default exposes the port on every host
+    # interface — a misconfigured firewall on a VPS would put
+    # Postgres on the public internet behind only its password.
     ports:
-      - '${POSTGRES_PORT:-5433}:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
     volumes:
       # Bind mount under `$HOME/data/nodea/postgres/` (see
       # `infra/scripts/deploy.sh`, which exports `DATA_DIR`
@@ -131,13 +139,20 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # OPS-03 : the container's nginx now runs as the unprivileged
+    # `nginx` user and listens on 8080 internally (binding port
+    # 80 would require root or CAP_NET_BIND_SERVICE). The host
+    # mapping translates the external `WEB_PORT` (default 8080)
+    # to the container's 8080, so the SPA is reachable at the
+    # usual external port.
     ports:
-      - '${WEB_PORT:-8080}:80'
+      - '${WEB_PORT:-8080}:8080'
     # nginx healthcheck — confirms the static SPA is being served. The
     # /api proxy depends on the api container which has its own
-    # healthcheck, so we don't double-proxy here.
+    # healthcheck, so we don't double-proxy here. Probes the
+    # internal port (8080), not the external mapping.
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q --spider http://localhost/ || exit 1']
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8080/ || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3
