@@ -1,3 +1,10 @@
+// Sentry must initialise BEFORE the rest of the app imports —
+// the SDK instruments `http`, `fs`, etc. at require time. Putting
+// `initSentryApi()` first keeps that contract honoured. No-op when
+// SENTRY_DSN is unset.
+import { initSentryApi } from './sentry.ts';
+initSentryApi();
+
 import { serve } from '@hono/node-server';
 import { buildApp } from './app.ts';
 import { getConfig } from './config.ts';
@@ -9,6 +16,7 @@ const app = buildApp();
 startCronScheduler();
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
+  // eslint-disable-next-line no-console
   console.log(`[api] listening on http://127.0.0.1:${info.port}`);
 });
 
@@ -21,9 +29,11 @@ const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
  * is still holding the cache directory open.
  */
 async function shutdown(signal: string): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log(`[api] received ${signal}, shutting down…`);
   // Stop accepting connections; in-flight requests get to finish.
   server.close(() => {
+    // eslint-disable-next-line no-console
     console.log('[api] http server closed');
   });
   await closeHeadlessBrowser();

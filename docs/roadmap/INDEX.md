@@ -118,7 +118,7 @@ résout les deux.
 
 - [x] **OPS-02 étape 1** — Middleware Hono qui POST vers webhook si `c.res.status >= 500`. URL via env var. **Sans dep à SEC-01** (pas de body envoyé). 30 min. [`ops.md`](./ops.md)
 - [ ] **REC-S6** (côté serveur, [issue #74](https://github.com/aliceout/Nodea/issues/74)) — Webhook Discord ou Slack pour recevoir les notifs. [`server-config.md`](../recommendations/server-config.md)
-- [ ] **OPS-02 étape 2** ([issue #73](https://github.com/aliceout/Nodea/issues/73)) — Sentry SDK côté API + web, avec `beforeSend` qui scrubbe agressivement. **APRÈS SEC-01** (livré). Reporté en issue : install bloqué par un lock Windows sur `@tailwindcss/oxide` pendant la session. ~1h une fois le lock relâché. [`ops.md`](./ops.md)
+- [x] **OPS-02 étape 2** — Sentry SDK côté API + web, avec `beforeSend` qui scrubbe agressivement. **APRÈS SEC-01** (livré). [`ops.md`](./ops.md)
 - [ ] **REC-S5** (côté serveur, [issue #75](https://github.com/aliceout/Nodea/issues/75)) — Sentry cloud free tier setup. [`server-config.md`](../recommendations/server-config.md)
 
 ### Étape D — Hardening container & cookies (~1h)

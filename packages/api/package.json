@@ -24,6 +24,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.7",
     "@nodea/shared": "workspace:*",
+    "@sentry/node": "^10.51.0",
     "@serenity-kit/opaque": "1.1.0",
     "@simplewebauthn/server": "13.3.0",
     "drizzle-orm": "^0.45.2",

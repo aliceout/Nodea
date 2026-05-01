@@ -100,6 +100,11 @@ services:
       # method + path + status + duration only — no body, headers,
       # or query string. See packages/api/src/middleware/error-webhook.ts
       ERROR_WEBHOOK_URL: ${ERROR_WEBHOOK_URL:-}
+      # Optional Sentry DSN for the api process. Leave empty to keep
+      # Sentry uninitialised (no events leave the process). When set,
+      # `beforeSend` strips bodies, cookies, query strings, and the
+      # X-Sid / X-Guard headers — see packages/api/src/sentry.ts.
+      SENTRY_DSN: ${SENTRY_DSN_API:-}
     expose:
       - '3000'
     # Honest healthcheck — hits /healthz which itself probes Postgres

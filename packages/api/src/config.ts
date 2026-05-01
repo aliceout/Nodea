@@ -177,6 +177,25 @@ const EnvSchema = z.object({
    * When unset (the default in dev), the middleware is a no-op.
    */
   ERROR_WEBHOOK_URL: z.string().url().optional(),
+
+  /**
+   * Optional Sentry DSN. When set, the api initialises `@sentry/node`
+   * with an aggressive `beforeSend` that strips request bodies,
+   * cookies, query strings and the `X-Sid` / `X-Guard` headers
+   * before any event leaves the process. See `sentry.ts`.
+   *
+   * **Privacy tradeoff acknowledged.** Sentry is a third-party cloud
+   * receiving stack traces + URLs + IPs. Even with maximum scrubbing,
+   * a stack trace can reveal which module a user has enabled (a
+   * crash in `Mood/context.tsx` says "this user uses Mood"). The
+   * `/flow` privacy invariant doesn't extend to Sentry once a crash
+   * happens — operators of Nodea who care about that should keep
+   * SENTRY_DSN unset and rely on `ERROR_WEBHOOK_URL` only.
+   *
+   * When unset (the default in dev), Sentry stays uninitialised and
+   * no events are captured.
+   */
+  SENTRY_DSN: z.string().url().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
