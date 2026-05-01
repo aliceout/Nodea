@@ -116,13 +116,14 @@ catalogue se rend en une passe. »*
   - [`ComposerModal/lookup/CoverGrid.tsx:45`](../../packages/web/src/ui/dirk/ComposerModal/lookup/CoverGrid.tsx#L45)
 - **Description** : `alt=""` (décoratif) est correct **uniquement** quand l'image est purement décorative ET que l'info qu'elle porte est disponible ailleurs dans l'arbre. Pour BookGrid et ItemRow où le titre est rendu en texte adjacent, `alt=""` reste défendable. Pour **BookWall** (vue mosaic, juste les couvertures, pas de texte) et le picker / cover-grid (où l'utilisateur choisit une couverture, donc l'info visuelle EST le contenu), `alt=""` est faux.
 - **Tâches**
-  - [ ] Pour BookWall : `alt={item.title}` (la couverture *est* l'item).
-  - [ ] Pour CoverGrid (composer lookup) : `alt={\`Couverture proposée par \${cover.source}\`}` ou similaire.
-  - [ ] Pour BookGrid / ItemRow : garder `alt=""` puisque le titre est lu juste à côté, mais ajouter `aria-hidden="true"` pour cohérence sémantique.
-  - [ ] Pour BookPickerModal : décider — si la modale liste des résultats avec titre adjacent, garder `alt=""` ; si pas de titre, mettre le titre en alt.
+  - [x] Pour BookWall : `alt={item.title}` — auteur ajouté en suffixe quand présent.
+  - [x] Pour CoverGrid (composer lookup) : `alt` = titre + premier créateur si dispo.
+  - [x] Pour BookGrid + ItemRow : `alt=""` + `aria-hidden="true"` — titre lu en texte adjacent, image purement décorative pour le lecteur d'écran.
+  - [x] Pour BookPickerModal : `alt=""` + `aria-hidden="true"` — la modale liste les résultats avec titre + auteur en texte adjacent.
 - **Effort** : S (~30 min)
 - **Risque** : faible
 - **Dépendances** : aucune
+- **Statut** : livré.
 
 ### FRONT-02 — Pas de virtualisation des listes longues (Library)
 

@@ -42,7 +42,11 @@ export default function CoverGrid({
               <span className="block aspect-[2/3] w-full overflow-hidden rounded-sm border border-hair bg-bg-2">
                 <img
                   src={book.cover_url ?? ''}
-                  alt=""
+                  alt={
+                    book.creators[0]?.name
+                      ? `${book.title} — ${book.creators[0].name}`
+                      : book.title
+                  }
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-150 group-hover:scale-[1.02]"
                 />

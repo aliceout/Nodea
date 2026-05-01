@@ -53,6 +53,7 @@ export default function BookGrid({ items }: BookGridProps) {
                 <img
                   src={cover}
                   alt=""
+                  aria-hidden="true"
                   className="aspect-[2/3] w-full object-cover"
                 />
               ) : (
