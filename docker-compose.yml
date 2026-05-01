@@ -95,6 +95,11 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      # Optional webhook URL pinged on every 5xx (Discord / Slack /
+      # custom relay). Leave empty to disable. The middleware sends
+      # method + path + status + duration only — no body, headers,
+      # or query string. See packages/api/src/middleware/error-webhook.ts
+      ERROR_WEBHOOK_URL: ${ERROR_WEBHOOK_URL:-}
     expose:
       - '3000'
     # Honest healthcheck — hits /healthz which itself probes Postgres

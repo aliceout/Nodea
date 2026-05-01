@@ -116,7 +116,7 @@ résout les deux.
 
 ### Étape C — Capture d'erreurs (après B) (~1h)
 
-- [ ] **OPS-02 étape 1** — Middleware Hono qui POST vers webhook si `c.res.status >= 500`. URL via env var. **Sans dep à SEC-01** (pas de body envoyé). 30 min. [`ops.md`](./ops.md)
+- [x] **OPS-02 étape 1** — Middleware Hono qui POST vers webhook si `c.res.status >= 500`. URL via env var. **Sans dep à SEC-01** (pas de body envoyé). 30 min. [`ops.md`](./ops.md)
 - [ ] **REC-S6** (côté serveur) — Webhook Discord ou Slack pour recevoir les notifs. [`server-config.md`](../recommendations/server-config.md)
 - [ ] **OPS-02 étape 2** — Sentry SDK côté API + web, avec `beforeSend` qui scrubbe agressivement. **APRÈS SEC-01.** ~1h. [`ops.md`](./ops.md)
 - [ ] **REC-S5** (côté serveur) — Sentry cloud free tier setup. [`server-config.md`](../recommendations/server-config.md)

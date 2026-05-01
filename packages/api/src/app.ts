@@ -19,6 +19,7 @@ import { createCollectionRoutes } from './routes/collection-factory.ts';
 import { COLLECTIONS } from './collections/registry.ts';
 import { getConfig } from './config.ts';
 import { sql } from './db/client.ts';
+import { errorWebhook } from './middleware/error-webhook.ts';
 import type { AuthVariables } from './middleware/require-user.ts';
 import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 
@@ -51,6 +52,12 @@ export function buildApp() {
   // forbids logging crypto material — see `docs/security-audit.md`
   // Finding 1.
   app.use('*', logger(redactingPrintFunc));
+
+  // Fire-and-forget webhook on every 5xx response (Tier 1 étape C
+  // pas 1, OPS-02). Sends method + path + status + duration only,
+  // no request data — see middleware/error-webhook.ts for the
+  // privacy contract. No-op when ERROR_WEBHOOK_URL is unset.
+  app.use('*', errorWebhook(getConfig().ERROR_WEBHOOK_URL));
 
   // Honest healthcheck — actually probes Postgres before returning OK.
   // Without this round-trip, `/healthz` would lie : the api process can

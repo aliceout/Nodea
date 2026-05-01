@@ -164,6 +164,19 @@ const EnvSchema = z.object({
   BUILD_COMMIT: z.string().min(1).default('unknown'),
   BUILD_DATE: z.string().min(1).default('unknown'),
   BUILD_BRANCH: z.string().min(1).default('unknown'),
+
+  /**
+   * Optional webhook URL pinged on every 5xx response. Discord
+   * incoming webhook, Slack incoming webhook, or any HTTP endpoint
+   * that accepts a JSON body with `content` / `text` fields.
+   *
+   * The middleware sends method + path (no query string) + status +
+   * duration only — no request body, no headers, no error message.
+   * See `middleware/error-webhook.ts` for the privacy contract.
+   *
+   * When unset (the default in dev), the middleware is a no-op.
+   */
+  ERROR_WEBHOOK_URL: z.string().url().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

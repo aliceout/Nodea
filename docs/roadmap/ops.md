@@ -207,9 +207,9 @@ détection est inexistante. »*
 - **⚠️ Caveat critique — Sentry dépend de SEC-01** :
   > **Ne PAS brancher Sentry avant que SEC-01 (scrubbing du logger) soit livré.** Sentry capture par défaut les request bodies + cookies dans les events. Tant que `hono/logger()` log les guards HMAC en query string et que les bodies ne sont pas scrubbés, **Sentry exfiltrerait du matériel cryptographique** vers ses serveurs. SEC-01 doit livrer en amont, et l'init Sentry doit utiliser `beforeSend` pour filtrer agressivement les bodies / headers / query.
 - **Tâches (app-side)**
-  - [ ] **Étape 1 (sans Sentry)** : middleware Hono qui fire un POST sur webhook si `c.res.status >= 500`. URL du webhook via env var `ERROR_WEBHOOK_URL`. ~30 min. **Pas de dépendance à SEC-01** (le webhook envoie juste *« 5xx sur la route X »*, pas de body).
-  - [ ] **Étape 2 (Sentry)** : ajouter `@sentry/node` côté API + `@sentry/react` côté web. **Après livraison de SEC-01.** Init avec `beforeSend` qui filtre les request bodies et les query strings sensibles. ~1h.
-  - [ ] **Étape 3** : config UptimeRobot ou équivalent côté infra (hors-app — voir REC-S4).
+  - [x] **Étape 1 (sans Sentry)** : middleware [`error-webhook.ts`](../../packages/api/src/middleware/error-webhook.ts) qui fire un POST sur webhook si `c.res.status >= 500`. URL du webhook via env var `ERROR_WEBHOOK_URL`, optionnelle (no-op quand vide). Le payload contient **uniquement** méthode + path (sans query string) + status + duration — **pas de body, pas de headers, pas de query string** (cf. test [`error-webhook.test.ts`](../../packages/api/src/middleware/error-webhook.test.ts) qui assure le contrat).
+  - [ ] **Étape 2 (Sentry)** : ajouter `@sentry/node` côté API + `@sentry/react` côté web. **Après livraison de SEC-01 (livré).** Init avec `beforeSend` qui filtre les request bodies et les query strings sensibles. ~1h.
+  - [ ] **Étape 3** : config UptimeRobot ou équivalent côté infra (hors-app — voir REC-S4 et issue #69).
 - **Risque** : élevé si Sentry branché avant SEC-01 (fuite de crypto material vers Sentry servers).
 - **Dépendances** : OPS-01 (healthcheck honnête), [`security.md`](./security.md) SEC-01 (scrubbing logger) **avant Sentry**.
 
