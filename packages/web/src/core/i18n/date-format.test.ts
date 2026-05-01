@@ -5,6 +5,7 @@ import {
   formatLongDate,
   formatMonthLabel,
   formatNumber,
+  formatPartialDate,
   intlLocale,
   parseLocalDate,
   toIsoDate,
@@ -132,6 +133,39 @@ describe('formatMonthLabel', () => {
   it('falls back to the raw key on malformed input', () => {
     expect(formatMonthLabel('not-a-month', 'fr')).toBe('not-a-month');
     expect(formatMonthLabel('2026-', 'fr')).toBe('2026-');
+  });
+});
+
+describe('formatPartialDate', () => {
+  it('formats FR YYYY-MM as « month YYYY »', () => {
+    // Intl FR short months — janvier abbreviated as "janv." on
+    // mainstream ICU builds, accept either with or without the
+    // trailing dot for forward-compat with future ICU versions.
+    expect(formatPartialDate('2025-01', 'fr')).toMatch(/^janv\.? 2025$/);
+    expect(formatPartialDate('2025-08', 'fr')).toBe('août 2025');
+    expect(formatPartialDate('2025-12', 'fr')).toMatch(/^déc\.? 2025$/);
+  });
+
+  it('formats FR YYYY-MM-DD as « DD month YYYY »', () => {
+    expect(formatPartialDate('2025-01-08', 'fr')).toMatch(/^08 janv\.? 2025$/);
+    expect(formatPartialDate('2024-03-15', 'fr')).toBe('15 mars 2024');
+  });
+
+  it('uses English short month names in EN', () => {
+    expect(formatPartialDate('2025-01', 'en')).toBe('Jan 2025');
+    expect(formatPartialDate('2025-08', 'en')).toBe('Aug 2025');
+    expect(formatPartialDate('2025-12', 'en')).toBe('Dec 2025');
+    expect(formatPartialDate('2025-01-08', 'en')).toBe('08 Jan 2025');
+  });
+
+  it('returns the raw string when the input does not match the date pattern', () => {
+    expect(formatPartialDate('not-a-date', 'fr')).toBe('not-a-date');
+    expect(formatPartialDate('', 'fr')).toBe('');
+    expect(formatPartialDate('2025', 'fr')).toBe('2025');
+  });
+
+  it('falls back to the raw month digits when the month index is out of range', () => {
+    expect(formatPartialDate('2025-13', 'fr')).toBe('13 2025');
   });
 });
 

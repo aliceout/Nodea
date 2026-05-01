@@ -65,7 +65,7 @@ Dédup trouvée à la règle de trois :
 |---|---|---|
 | 4 fichiers | type `LoadState` discriminé identique caractère par caractère | dédup évidente |
 | 13 sites | garde `if (!mainKey \|\| !moduleUserId) return` répétée | hook manquant |
-| 1 fichier | `Goals/lib/date-format.ts` réimplémente `FRENCH_MONTHS` alors que `core/i18n/date-fr` les centralise déjà — et le module `date-fr` est lui-même FR-only | scorie d'historique + à promouvoir en `date.ts` i18n-aware (REFACTO-05) |
+| 1 fichier | `Goals/lib/date-format.ts` dupliquait la logique short-month du module central déjà i18n-aware `core/i18n/date-format` | livré — `formatPartialDate` ajouté au module central, fichier Goals supprimé (REFACTO-05) |
 
 Fichiers éléphants à splitter :
 
@@ -180,47 +180,31 @@ fonctionnellement.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### REFACTO-05 — Promouvoir `core/i18n/date-fr.ts` en `core/i18n/date.ts` i18n-aware
+### REFACTO-05 — `core/i18n/date-format` exposé en source unique i18n-aware — livré
 
 - **Type** : centralisation + i18n
-- **Sites** :
-  - [`core/i18n/date-fr.ts`](../../packages/web/src/core/i18n/date-fr.ts)
-    (helpers actuels, FR uniquement)
-  - [`Goals/lib/date-format.ts`](../../packages/web/src/app/flow/Goals/lib/date-format.ts)
-    (32 LOC, FRENCH_MONTHS array + `formatDate` YYYY-MM)
-- **Proposition (option B)** : remplacer `core/i18n/date-fr.ts` par
-  `core/i18n/date.ts` qui lit la langue active depuis `useI18n()`
-  et expose des helpers i18n-aware :
-  ```ts
-  // core/i18n/date.ts
-  export function useDateFmt() {
-    const { lang } = useI18n();
-    return {
-      formatPartialDate: (iso: string) => /* YYYY-MM ou YYYY-MM-DD */,
-      formatLongDate:    (iso: string) => /* dimanche 1 mai 2026 */,
-      formatRelative:    (iso: string) => /* il y a 3 jours / 3 days ago */,
-    };
-  }
-  ```
-  Tables MONTHS / WEEKDAYS / RELATIVE par langue,
-  bootstrappées avec `fr` et `en` (les deux langues actuelles
-  d'`I18nProvider`). Toute future langue ajoute juste une entrée.
+- **Constat à l'audit (mis à jour à la livraison)** : le module
+  central [`core/i18n/date-format.ts`](../../packages/web/src/core/i18n/date-format.ts)
+  était **déjà i18n-aware** (chaque helper prend `language` en argument
+  et délègue à `Intl.DateTimeFormat` via `intlLocale`). Le seul reliquat
+  était `Goals/lib/date-format.ts` qui dupliquait la logique short-month
+  pour gérer le format hybride `YYYY-MM` / `YYYY-MM-DD`.
+- **Solution livrée** : promotion de la fonction `formatDate` (Goals)
+  en `formatPartialDate(dateIso, language)` dans le module central,
+  avec ses tests transposés (FR + EN). Goals migre vers cet import
+  partagé ; le fichier `Goals/lib/date-format.ts` et son test sont
+  supprimés.
 - **Tâches**
-  - [ ] `git mv core/i18n/date-fr.ts core/i18n/date.ts` (préserve l'historique).
-  - [ ] Remplacer les constantes FR-only par des tables `MONTHS[lang]`, `WEEKDAYS[lang]`.
-  - [ ] Exposer un hook `useDateFmt()` qui consomme `useI18n()`.
-  - [ ] Garder une API non-hook `formatPartialDate(iso, lang)` pour les rares appelants hors composants.
-  - [ ] Migrer les sites consommant `date-fr` (grep `from .*core/i18n/date-fr`).
-  - [ ] Migrer `Goals/views/GoalRow.tsx` (et tout site qui consomme `formatDate` de `Goals/lib/date-format.ts`).
-  - [ ] Supprimer `Goals/lib/date-format.ts` + `date-format.test.ts`.
-  - [ ] Tests : un par helper × FR + EN (round-trip de chaînes attendues).
-- **Gain** : single source of truth pour les dates,
-  vraie traduction des dates (plus de noms de mois français
-  en dur côté UI quand la langue active est `en`). -1 fichier
-  legacy (Goals).
-- **Effort** : M — ~1h30
-- **Risque** : faible (couverture de test à étendre, pas
-  de breaking côté serveur — purement frontend display).
+  - [x] Ajouter `formatPartialDate` + tests FR/EN dans `core/i18n/date-format`.
+  - [x] Migrer `Goals/views/GoalRow.tsx` (`formatDate` → `formatPartialDate`).
+  - [x] Supprimer `Goals/lib/date-format.ts` + `date-format.test.ts`.
+- **Gain** : -1 fichier legacy, single source of truth pour
+  toutes les dates (déjà la cible de fait, désormais sans exception).
+- **Effort** : S — ~30 min (la roadmap visait M ~1h30 sur la base
+  d'un audit antérieur où `core/i18n/date-fr.ts` existait encore et
+  était FR-only ; entre-temps il a été promu à `date-format.ts`
+  i18n-aware, ce qui a réduit le périmètre).
+- **Risque** : faible
 - **Dépendances** : aucune
 
 ### REFACTO-11 — Renommages cohérents (single-file folders + casse)

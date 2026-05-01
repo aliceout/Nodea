@@ -1,12 +1,12 @@
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
+import { formatPartialDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/HoverActions';
 import { cn } from '@/lib/utils';
 
 import { useGoalsActions } from '../context';
-import { formatDate } from '../lib/date-format';
 import type { GoalEntry } from '../lib/types';
 import StatusPill from './StatusPill';
 
@@ -37,7 +37,7 @@ export default function GoalRow({ entry }: GoalRowProps) {
           </p>
           {entry.date ? (
             <span className="text-[11px] tabular-nums text-muted">
-              {formatDate(entry.date, language)}
+              {formatPartialDate(entry.date, language)}
             </span>
           ) : null}
         </div>

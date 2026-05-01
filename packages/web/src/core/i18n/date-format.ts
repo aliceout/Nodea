@@ -144,6 +144,37 @@ export function formatMonthLabel(yyyymm: string, language: string): string {
 }
 
 /**
+ * Inline date for surfaces that may receive either a full ISO date
+ * (`YYYY-MM-DD`) or a year+month-only key (`YYYY-MM`, the legacy
+ * `DateMonthPicker` output). Renders the short month name :
+ *
+ *   - `'2025-01'`     → `'janv. 2025'` (FR) / `'Jan 2025'` (EN)
+ *   - `'2025-01-08'`  → `'08 janv. 2025'` (FR) / `'08 Jan 2025'` (EN)
+ *
+ * Leaves the raw input alone on parse failure or on out-of-range
+ * months — the Goals row falls back rather than crashing on a
+ * malformed payload.
+ */
+export function formatPartialDate(dateIso: string, language: string): string {
+  const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(dateIso);
+  if (!m) return dateIso;
+  const year = m[1] ?? '';
+  const monthIdx = Number(m[2]) - 1;
+  const day = m[3];
+  if (monthIdx < 0 || monthIdx > 11) {
+    // Defensive — caller normally feeds 01-12. Reuses the raw digits
+    // so the UI keeps rendering instead of crashing.
+    return day
+      ? `${day} ${m[2] ?? ''} ${year}`.trim()
+      : `${m[2] ?? ''} ${year}`.trim();
+  }
+  const month = new Intl.DateTimeFormat(intlLocale(language), {
+    month: 'short',
+  }).format(new Date(Number(year), monthIdx, 1));
+  return day ? `${day} ${month} ${year}` : `${month} ${year}`;
+}
+
+/**
  * Long-form date — « 8 janvier 2025 » (FR) / « January 8, 2025 »
  * (EN), no weekday. Used by the Library review header and the
  * Review list. Returns the raw input on parse failure so the UI

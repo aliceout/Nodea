@@ -75,7 +75,7 @@ résout les deux.
 - [x] **REFACTO-09** — Purge `ui/atoms/` du code mort (20 fichiers, ~1000 LOC, 30 min). [`refacto.md`](./refacto.md)
 - [x] **REFACTO-10** — `Settings/components/ModulesManager.tsx` → `Account/components/` (10 min). [`refacto.md`](./refacto.md)
 - [x] **REFACTO-01** — Centraliser le type `LoadState` dans `core/types/` (30 min). [`refacto.md`](./refacto.md)
-- [ ] **REFACTO-05** — Promouvoir `core/i18n/date-fr.ts` en `core/i18n/date.ts` i18n-aware (lit la langue active depuis `useI18n()`) ; supprimer `Goals/lib/date-format.ts` (~1h30). [`refacto.md`](./refacto.md)
+- [x] **REFACTO-05** — `formatPartialDate` ajouté à `core/i18n/date-format.ts` (le module central est déjà i18n-aware) ; suppression du fichier Goals legacy (30 min). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-11** — Renommages cohérents (`modules_list.tsx`, `core/preferences/`, `core/react/` → `core/contexts/`, `ImportExport/` → kebab) (~1h). [`refacto.md`](./refacto.md)
 
 ### Documentation & coordination (~1h)
