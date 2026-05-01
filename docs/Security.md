@@ -136,8 +136,10 @@ Every `<module>_entries` row has the shape:
 | `created_at` / `updated_at` | Server-side timestamps.                          |
 
 The API response strips `guard` on reads. Update and delete take the
-guard as a **query parameter** (`?d=<guard>`), so the server compares
-but never learns the main key.
+sid + guard as **request headers** `X-Sid` and `X-Guard` — never as
+query parameters — so the HMAC guard never lands in `hono/logger()`,
+nginx access logs, or browser referrers (SEC-01). The server compares
+the header against the stored row and never learns the main key.
 
 ---
 
@@ -150,11 +152,14 @@ guard = "g_" + hex( HMAC(hmacKey, `${module_user_id}:${record_id}`) )
 - **Two-phase creation.** On `POST /<collection>/records` the client
   sends `guard: "init"` (it doesn't know the record id yet). The
   server returns the `id`; the client immediately `PATCH`es with
-  `guard=init` in the query and the real `guard` in the body, and the
-  server promotes.
-- **Update / delete** require `?sid=<module_user_id>&d=<guard>`. The
-  server does a constant-time compare against the stored guard and
-  rejects on mismatch.
+  headers `X-Sid: <sid>`, `X-Guard: init` and the real `guard` in
+  the body, and the server promotes.
+- **Update / delete** require headers `X-Sid: <module_user_id>` and
+  `X-Guard: <guard>`. The server does a constant-time compare against
+  the stored guard and rejects on mismatch. **Headers, not query
+  params** — query strings would be logged by `hono/logger()` and
+  nginx access logs, and the guard IS crypto material derived from
+  the main key (CLAUDE.md §Error handling forbids logging it).
 - **Deterministic.** No cache, no network. Losing the main key means
   losing the ability to mutate any existing record.
 

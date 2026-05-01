@@ -60,8 +60,14 @@ export function createCollectionRoutes(table: EntryTable) {
   // ordering by date is no longer possible (no timestamp columns
   // exist) and is intentionally not provided ; the client is
   // expected to order client-side after decrypting the payload.
+  //
+  // The scope sid is read from the `X-Sid` header — see
+  // `requireGuard` for the rationale (SEC-01 : keep the access
+  // identifier and the HMAC guard out of URLs and therefore out of
+  // request logs). LIST does not require the guard ; reading rows
+  // requires only the sid + an authenticated session.
   router.get('/records', async (c) => {
-    const sid = c.req.query('sid');
+    const sid = c.req.header('x-sid');
     if (!sid) return c.json({ error: 'missing_sid' }, 400);
 
     const rows = await db

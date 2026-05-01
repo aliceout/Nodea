@@ -17,23 +17,29 @@ function constantTimeEqual(a: string, b: string): boolean {
 /**
  * Verify the caller provides the correct guard for the targeted entry.
  *
- * Query params:
- *   - `sid` = module_user_id
- *   - `d`   = current guard value ("init" before promotion, "g_<hex>" after)
+ * Required headers:
+ *   - `X-Sid`   = module_user_id (the access scope identifier)
+ *   - `X-Guard` = current guard value ("init" before promotion,
+ *                 "g_<hex>" after)
+ *
+ * **Headers, not query params** — moved out of the URL by SEC-01 so
+ * the HMAC guard never lands in `hono/logger()` output, nginx access
+ * logs, browser referrer, or any future log shipping pipeline.
+ * CLAUDE.md §Error handling forbids logging crypto material ; the
+ * guard is HMAC-derived from the main key, so a single leaked log
+ * line was enough to let any reader forge mutations on that record.
  *
  * Authorisation model — **sid + guard only**, no `user_id` involvement.
  * The server does not know which user an entry belongs to; access is
  * gated entirely on knowing the right `module_user_id` and the right
  * HMAC guard. Both require the user's main key to compute, so an
  * attacker without the key cannot mutate an entry even with a valid
- * session cookie. This restores the original PocketBase access model
- * (`@request.query.sid = module_user_id && @request.query.d = guard`)
- * after the regression introduced in commit 29b6e25.
+ * session cookie.
  *
  * Steps:
  *   1. Look up the record by id + moduleUserId — sid is the primary
  *      scope.
- *   2. Compare `d` to the stored guard via `timingSafeEqual` — no
+ *   2. Compare `X-Guard` to the stored guard via `timingSafeEqual` — no
  *      early return on mismatch to avoid leaking timing.
  *   3. On success, attach the loaded row to the context so the handler
  *      doesn't re-query.
@@ -51,8 +57,8 @@ function constantTimeEqual(a: string, b: string): boolean {
 export function requireGuard(table: EntryTable): MiddlewareHandler<{ Variables: GuardVariables }> {
   return async (c, next) => {
     const id = c.req.param('id');
-    const sid = c.req.query('sid');
-    const d = c.req.query('d');
+    const sid = c.req.header('x-sid');
+    const d = c.req.header('x-guard');
 
     if (!id) return c.json({ error: 'missing_id' }, 400);
     if (!sid || !d) return c.json({ error: 'missing_guard_params' }, 400);

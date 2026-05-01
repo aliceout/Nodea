@@ -354,7 +354,7 @@ détection est inexistante. »*
 - **Risque** : moyen — peut casser des PRs si la baseline a déjà des CVE high. À auditer en pré-flight.
 - **Dépendances** : aucune
 
-### OPS-09 — Logs non structurés (`hono/logger()`)
+### OPS-09 — Logs non structurés (`hono/logger()`) — livré (couplé SEC-01)
 
 - **Domaine** : logs
 - **Sévérité** : moyenne (déjà tracké)

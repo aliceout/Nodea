@@ -47,26 +47,35 @@ vivent dans le `payload` chiffré. Cf. `Auth-Spec.md §2.3` et
 
 Création en **deux temps**, géré par le client :
 
-1. **POST `/{collection}/records`** avec `guard: "init"` — le
-   serveur insère la ligne avec un guard sentinelle.
-2. **PATCH `/{collection}/records/:id?sid=...&d=init`** avec le
-   nouveau guard calculé localement (`g_<hex>`) — promote la ligne
-   en remplaçant `init` par le vrai guard.
+1. **POST `/{collection}/records`** avec `guard: "init"` dans le
+   body — le serveur insère la ligne avec un guard sentinelle.
+2. **PATCH `/{collection}/records/:id`** avec headers `X-Sid: <sid>`
+   et `X-Guard: init`, body `{ guard: "g_<hex>" }` — promote la
+   ligne en remplaçant `init` par le vrai guard calculé localement.
 
 Cette séparation existe parce que le guard dépend de l'`id`
 généré par le serveur ; on ne peut pas le calculer avant l'insert.
 Une fois promu, l'enregistrement est intègre.
 
-**Update / Delete** : `PATCH` ou `DELETE /{collection}/records/:id?sid=...&d=<guard>`.
-Le middleware `requireGuard` valide le tuple `(user, sid, guard)`
-dans une seule passe centralisée — aucun moyen d'oublier la
-validation pour une collection donnée.
+**Update / Delete** : `PATCH` ou `DELETE /{collection}/records/:id`
+avec les headers `X-Sid` + `X-Guard`. Le middleware `requireGuard`
+valide le tuple `(user, sid, guard)` dans une seule passe
+centralisée — aucun moyen d'oublier la validation pour une
+collection donnée.
 
-**Read** : `GET /{collection}/records?sid=<sid>` retourne uniquement
-les `id` / `module_user_id` / `cipher_iv` / `payload`. Le `guard`
-est **toujours retiré** des réponses (sa raison d'être étant d'être
-un secret partagé client/serveur). Pas de timestamps : le client
-trie après déchiffrement à partir de ce qu'il a stocké dans le
+**Sid + guard en headers, pas en query string** (SEC-01) — le
+HMAC guard est du matériel cryptographique dérivé de la clé
+maître ; les headers ne sont pas inclus dans `hono/logger()` ni
+dans les access logs nginx, donc le guard reste hors des logs
+même quand un opérateur agrège la sortie du serveur. Une route
+qui lirait `c.req.query('d')` serait un bug à reverter.
+
+**Read** : `GET /{collection}/records` avec header `X-Sid: <sid>`
+retourne uniquement les `id` / `module_user_id` / `cipher_iv` /
+`payload`. Le `guard` est **toujours retiré** des réponses (sa
+raison d'être étant d'être un secret partagé client/serveur). Pas
+de timestamps : le client trie après déchiffrement à partir de ce
+qu'il a stocké dans le
 payload chiffré.
 
 Le serveur ne voit jamais le contenu clair, ne sait pas à qui un

@@ -111,8 +111,8 @@ résout les deux.
 
 ### Étape B — Cleanup logs (préalable à toute capture d'erreurs externe) (~2-3h)
 
-- [ ] **SEC-01** — Déplacer `sid` + `d` du query string vers les headers `X-Sid` / `X-Guard` (Option A, ~2-3h). Migrer `requireGuard` + le client web. **Bloque l'étape C.** [`security.md`](./security.md)
-- [ ] **OPS-09** — Logs structurés (couplé avec SEC-01 — la même refonte du logger règle les deux). [`ops.md`](./ops.md)
+- [x] **SEC-01** — Déplacer `sid` + `d` du query string vers les headers `X-Sid` / `X-Guard` (Option A, ~2-3h). Migrer `requireGuard` + le client web. **Bloque l'étape C.** [`security.md`](./security.md)
+- [x] **OPS-09** — Logs structurés (couplé avec SEC-01 — la même refonte du logger règle les deux). [`ops.md`](./ops.md)
 
 ### Étape C — Capture d'erreurs (après B) (~1h)
 

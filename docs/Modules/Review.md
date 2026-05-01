@@ -14,9 +14,12 @@ passe centralisée par le `collection-factory`.
 
 **Accès** :
 
-* `list/view` : par `module_user_id` (query `?sid=`).
-* `update/delete` : `?sid=...&d=<guard>` ; le guard est validé
-  contre la valeur stockée serveur, jamais renvoyée en lecture.
+* `list/view` : par `module_user_id` (header `X-Sid: <sid>`).
+* `update/delete` : headers `X-Sid: <sid>` + `X-Guard: <guard>` ;
+  le guard est validé contre la valeur stockée serveur, jamais
+  renvoyée en lecture. Headers et non query params (SEC-01) — le
+  guard est du matériel HMAC dérivé de la main key, il ne doit pas
+  fuir dans les logs.
 
 **Champs système** (5 colonnes seulement, design surface minimum) :
 

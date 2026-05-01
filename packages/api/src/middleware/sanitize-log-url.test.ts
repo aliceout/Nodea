@@ -7,13 +7,19 @@ import {
 describe('redactQueryParams', () => {
   it('redacts the `d=` (guard) query param', () => {
     expect(
-      redactQueryParams('PATCH /mood/records/abc?sid=m_x&d=g_a3b4c5d6e7'),
-    ).toBe('PATCH /mood/records/abc?sid=m_x&d=__redacted__');
+      redactQueryParams('PATCH /mood/records/abc?d=g_a3b4c5d6e7'),
+    ).toBe('PATCH /mood/records/abc?d=__redacted__');
+  });
+
+  it('redacts the `sid=` param (post-SEC-01 belt-and-suspenders)', () => {
+    expect(redactQueryParams('GET /mood/records?sid=m_xxxx')).toBe(
+      'GET /mood/records?sid=__redacted__',
+    );
   });
 
   it('redacts when `d=` is the first query param', () => {
-    expect(redactQueryParams('GET /x?d=g_secret&sid=m_x')).toBe(
-      'GET /x?d=__redacted__&sid=m_x',
+    expect(redactQueryParams('GET /x?d=g_secret&page=2')).toBe(
+      'GET /x?d=__redacted__&page=2',
     );
   });
 
@@ -23,14 +29,35 @@ describe('redactQueryParams', () => {
     );
   });
 
-  it('redacts both `d=` and `token=` when both are present', () => {
-    expect(redactQueryParams('GET /x?d=g_xxx&token=tok_yyy&sid=m_z')).toBe(
-      'GET /x?d=__redacted__&token=__redacted__&sid=m_z',
+  it('redacts the `code=` param (TOTP / activation codes)', () => {
+    expect(redactQueryParams('GET /auth/totp/verify?code=123456')).toBe(
+      'GET /auth/totp/verify?code=__redacted__',
     );
   });
 
+  it('redacts the `recovery_code=` param', () => {
+    expect(redactQueryParams('POST /auth/recover?recovery_code=word-word-word')).toBe(
+      'POST /auth/recover?recovery_code=__redacted__',
+    );
+  });
+
+  it('redacts PII params (email, username) defensively', () => {
+    expect(redactQueryParams('GET /lookup?email=alice%40example.com')).toBe(
+      'GET /lookup?email=__redacted__',
+    );
+    expect(redactQueryParams('GET /lookup?username=alice')).toBe(
+      'GET /lookup?username=__redacted__',
+    );
+  });
+
+  it('redacts every sensitive param when several are present', () => {
+    expect(
+      redactQueryParams('GET /x?d=g_xxx&token=tok_yyy&sid=m_z&page=1'),
+    ).toBe('GET /x?d=__redacted__&token=__redacted__&sid=__redacted__&page=1');
+  });
+
   it('leaves non-secret params untouched', () => {
-    const input = 'GET /mood?sid=m_x&page=2&order=desc';
+    const input = 'GET /mood?page=2&order=desc&filter=open';
     expect(redactQueryParams(input)).toBe(input);
   });
 

@@ -291,9 +291,10 @@ AES sub-key derived from the user's main key via HKDF label
 
 `guard` is a deterministic HMAC-SHA-256 over `moduleUserId || ':' ||
 recordId`, keyed by the HMAC sub-key (HKDF label `"nodea:hmac"`). It
-is **hidden** in read responses and compared on update/delete as a
-query parameter (`?d=<guard>`), so the server never learns the main
-key.
+is **hidden** in read responses and compared on update/delete via
+the `X-Guard` request header (post-SEC-01 ; never as a query
+parameter, which would land in `hono/logger()` output). The server
+never learns the main key.
 
 The envelope for the user's KEK uses OPAQUE to derive an
 `exportKey` from the typed password (server never sees the

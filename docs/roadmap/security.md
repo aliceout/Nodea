@@ -133,7 +133,7 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 
 ## Findings
 
-### SEC-01 — Guard HMAC + sid loggés en clair sur chaque mutation
+### SEC-01 — Guard HMAC + sid loggés en clair sur chaque mutation — livré
 
 - **Sévérité** : élevée
 - **Exploitabilité** : conditions particulières (accès lecture aux logs API)
@@ -144,11 +144,11 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Description** : `hono/logger()` écrit `<-- ${method} ${path}` puis `--> ${method} ${path} ${status} ${ms}` sur stdout. `path` inclut le query string. Le middleware `requireGuard` lit le guard via `c.req.query('d')`, ce qui veut dire que sur chaque PATCH/DELETE d'une entrée chiffrée, la ligne logguée ressemble à : `PATCH /mood/records/abc-12...?sid=<sid>&d=g_<hex_guard> 200 5ms`. Le guard est du **matériel cryptographique HMAC dérivé de la main key** ; CLAUDE.md interdit explicitement *« No secrets, tokens, session cookies, or raw crypto material in logs — not even at debug »*.
 - **Scénario d'exploitation** : un sysadmin ou un service de log shipping (Loki, ELK, journalctl, docker logs aggregator) qui a accès aux logs API peut récupérer `sid + d` pour une entrée arbitraire. Avec ces deux valeurs il peut **modifier ou supprimer cette entrée** sans avoir la main key du user, puisque `requireGuard` valide uniquement `(id, sid, d)`. Un employé du fournisseur cloud ou un attaquant qui a compromis le pipeline de logs peut effacer ou écraser des entrées privées sans que la victime s'en rende compte avant qu'elle ouvre l'app.
 - **Tâches**
-  - [ ] Décider entre Option A (déplacer `sid` + `d` en headers `X-Sid` / `X-Guard`) ou Option B (logger custom qui élide les query params sensibles avant émission).
-  - [ ] Migrer `requireGuard` à lire `c.req.header('x-sid')` / `c.req.header('x-guard')` (Option A).
-  - [ ] Migrer le client web (`packages/web/src/core/api/modules/collection-client.ts`).
-  - [ ] Documenter le contrat dans `docs/Security.md`.
-  - [ ] Ajouter un test qui vérifie qu'aucune route de mutation ne log le query string (snapshot test sur la sortie du logger).
+  - [x] Décider entre Option A (déplacer `sid` + `d` en headers `X-Sid` / `X-Guard`) ou Option B (logger custom qui élide les query params sensibles avant émission).
+  - [x] Migrer `requireGuard` à lire `c.req.header('x-sid')` / `c.req.header('x-guard')` (Option A).
+  - [x] Migrer le client web (`packages/web/src/core/api/modules/collection-client.ts`).
+  - [x] Documenter le contrat dans `docs/Security.md`.
+  - [x] Ajouter un test qui vérifie qu'aucune route de mutation ne log le query string (snapshot test sur la sortie du logger).
 - **Effort** : M (~2-3h pour Option A en migrant côté serveur + client + tests)
 - **Risque** : faible (pas de breaking change visible côté user, juste une migration interne)
 - **Dépendances** : aucune

@@ -23,6 +23,21 @@ function jsonBody(body: unknown, cookie: string): RequestInit {
   };
 }
 
+/** SEC-01 — sid + guard travel as headers, never query params. */
+function authHeaders(
+  cookie: string,
+  sid: string,
+  guard?: string,
+): Record<string, string> {
+  const h: Record<string, string> = {
+    'content-type': 'application/json',
+    cookie,
+    'x-sid': sid,
+  };
+  if (guard !== undefined) h['x-guard'] = guard;
+  return h;
+}
+
 describe('Collection routes — Mood used as the representative', () => {
   it('goes through the full create → promote → update → list → delete flow', async () => {
     const cookie = await authFor('flow@example.com');
@@ -46,9 +61,9 @@ describe('Collection routes — Mood used as the representative', () => {
     const entryId = createdBody.id as string;
 
     // PROMOTE init → g_...
-    const promoted = await app.request(`/mood/records/${entryId}?sid=${sid}&d=init`, {
+    const promoted = await app.request(`/mood/records/${entryId}`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: authHeaders(cookie, sid, 'init'),
       body: JSON.stringify({ guard: FAKE_GUARD }),
     });
     expect(promoted.status).toBe(200);
@@ -56,21 +71,20 @@ describe('Collection routes — Mood used as the representative', () => {
     expect(promotedBody).not.toHaveProperty('guard');
 
     // UPDATE content with the real guard
-    const updated = await app.request(
-      `/mood/records/${entryId}?sid=${sid}&d=${FAKE_GUARD}`,
-      {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json', cookie },
-        body: JSON.stringify({ cipher_iv: 'iv-v2', payload: 'cipher-v2' }),
-      },
-    );
+    const updated = await app.request(`/mood/records/${entryId}`, {
+      method: 'PATCH',
+      headers: authHeaders(cookie, sid, FAKE_GUARD),
+      body: JSON.stringify({ cipher_iv: 'iv-v2', payload: 'cipher-v2' }),
+    });
     expect(updated.status).toBe(200);
     const updatedBody = (await updated.json()) as Record<string, unknown>;
     expect(updatedBody.cipher_iv).toBe('iv-v2');
     expect(updatedBody).not.toHaveProperty('guard');
 
     // LIST
-    const list = await app.request(`/mood/records?sid=${sid}`, { headers: { cookie } });
+    const list = await app.request('/mood/records', {
+      headers: { cookie, 'x-sid': sid },
+    });
     expect(list.status).toBe(200);
     const listBody = (await list.json()) as { records: Record<string, unknown>[] };
     expect(listBody.records).toHaveLength(1);
@@ -78,17 +92,17 @@ describe('Collection routes — Mood used as the representative', () => {
     expect(listBody.records[0]?.cipher_iv).toBe('iv-v2');
 
     // DELETE
-    const deleted = await app.request(
-      `/mood/records/${entryId}?sid=${sid}&d=${FAKE_GUARD}`,
-      { method: 'DELETE', headers: { cookie } },
-    );
+    const deleted = await app.request(`/mood/records/${entryId}`, {
+      method: 'DELETE',
+      headers: { cookie, 'x-sid': sid, 'x-guard': FAKE_GUARD },
+    });
     expect(deleted.status).toBe(200);
 
     const [row] = await db.select().from(moodEntries).where(eq(moodEntries.id, entryId));
     expect(row).toBeUndefined();
   });
 
-  it('rejects PATCH without the guard params (?d=)', async () => {
+  it('rejects PATCH without the guard header (X-Guard)', async () => {
     const cookie = await authFor('noguard@example.com');
     const sid = 'sid-noguard';
 
@@ -100,10 +114,10 @@ describe('Collection routes — Mood used as the representative', () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    // Missing ?d= → must be rejected before the handler runs.
-    const res = await app.request(`/mood/records/${id}?sid=${sid}`, {
+    // Missing X-Guard → must be rejected before the handler runs.
+    const res = await app.request(`/mood/records/${id}`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: { 'content-type': 'application/json', cookie, 'x-sid': sid },
       body: JSON.stringify({ cipher_iv: 'iv2' }),
     });
     expect(res.status).toBe(400);
@@ -121,9 +135,9 @@ describe('Collection routes — Mood used as the representative', () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    const res = await app.request(`/mood/records/${id}?sid=${sid}&d=init-wrong`, {
+    const res = await app.request(`/mood/records/${id}`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: authHeaders(cookie, sid, 'init-wrong'),
       body: JSON.stringify({ cipher_iv: 'iv2' }),
     });
     expect(res.status).toBe(403);
@@ -138,20 +152,17 @@ describe('Collection routes — Mood used as the representative', () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    await app.request(`/mood/records/${id}?sid=${sid}&d=init`, {
+    await app.request(`/mood/records/${id}`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: authHeaders(cookie, sid, 'init'),
       body: JSON.stringify({ guard: FAKE_GUARD }),
     });
 
-    const again = await app.request(
-      `/mood/records/${id}?sid=${sid}&d=${FAKE_GUARD}`,
-      {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json', cookie },
-        body: JSON.stringify({ guard: 'g_' + 'b'.repeat(64) }),
-      },
-    );
+    const again = await app.request(`/mood/records/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(cookie, sid, FAKE_GUARD),
+      body: JSON.stringify({ guard: 'g_' + 'b'.repeat(64) }),
+    });
     expect(again.status).toBe(400);
   });
 
@@ -179,15 +190,15 @@ describe('Collection routes — Mood used as the representative', () => {
       ...jsonBody({ sid: 'sid-bob', cipher_iv: 'B-iv', payload: 'B', guard: 'init' }, cookieB),
     });
 
-    const aList = await app.request('/mood/records?sid=sid-alice', {
-      headers: { cookie: cookieA },
+    const aList = await app.request('/mood/records', {
+      headers: { cookie: cookieA, 'x-sid': 'sid-alice' },
     });
     const aBody = (await aList.json()) as { records: Array<{ payload: string }> };
     expect(aBody.records).toHaveLength(1);
     expect(aBody.records[0]?.payload).toBe('A');
 
-    const bList = await app.request('/mood/records?sid=sid-bob', {
-      headers: { cookie: cookieB },
+    const bList = await app.request('/mood/records', {
+      headers: { cookie: cookieB, 'x-sid': 'sid-bob' },
     });
     const bBody = (await bList.json()) as { records: Array<{ payload: string }> };
     expect(bBody.records).toHaveLength(1);
@@ -196,18 +207,25 @@ describe('Collection routes — Mood used as the representative', () => {
 
   it('requires authentication on every route', async () => {
     const unauthed = await Promise.all([
-      app.request('/mood/records?sid=x'),
+      app.request('/mood/records', { headers: { 'x-sid': 'x' } }),
       app.request('/mood/records', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{}',
       }),
-      app.request('/mood/records/anything?sid=x&d=init', {
+      app.request('/mood/records/anything', {
         method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-sid': 'x',
+          'x-guard': 'init',
+        },
         body: '{}',
       }),
-      app.request('/mood/records/anything?sid=x&d=init', { method: 'DELETE' }),
+      app.request('/mood/records/anything', {
+        method: 'DELETE',
+        headers: { 'x-sid': 'x', 'x-guard': 'init' },
+      }),
     ]);
     for (const res of unauthed) expect(res.status).toBe(401);
   });
@@ -227,17 +245,17 @@ describe('Every registered collection is mounted and guard-protected', () => {
     const { id } = (await create.json()) as { id: string };
 
     // Guard missing → 400
-    const badPatch = await app.request(`/${name}/records/${id}?sid=sid-x`, {
+    const badPatch = await app.request(`/${name}/records/${id}`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: { 'content-type': 'application/json', cookie, 'x-sid': 'sid-x' },
       body: JSON.stringify({ cipher_iv: 'iv2' }),
     });
     expect(badPatch.status).toBe(400);
 
     // Correct guard → 200
-    const goodPatch = await app.request(`/${name}/records/${id}?sid=sid-x&d=init`, {
+    const goodPatch = await app.request(`/${name}/records/${id}`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: authHeaders(cookie, 'sid-x', 'init'),
       body: JSON.stringify({ cipher_iv: 'iv2' }),
     });
     expect(goodPatch.status).toBe(200);
