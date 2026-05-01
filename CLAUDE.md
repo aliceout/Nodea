@@ -159,6 +159,7 @@ If a shape is only used by one side, it stays local. As soon as both sides touch
 - **No commented-out code.** Delete it — git remembers.
 - **Small commits, imperative mood** (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`). Keep diffs minimal; no reformatting unrelated code.
 - **`git mv` to rename/move files** — never delete + recreate. History matters.
+- **File-overview header on every non-trivial file (> 50 LOC).** Start the file with a short JSDoc block that answers three questions: (1) **what** the file does, (2) **where** it sits architecturally (which layer, which module, why here vs elsewhere), (3) **what assumptions / decisions** are baked in that aren't obvious from the code (e.g. "single store on purpose — not split per slice", "snake_case preserved for PocketBase parity", "guards in headers because logger leaked them in query strings"). One paragraph is usually enough; the goal is that someone opening the file in 6 months understands its place without grep+blame. This convention is the project's main onboarding lever — preserve it on new files, extend it when refactoring an existing one.
 
 ---
 

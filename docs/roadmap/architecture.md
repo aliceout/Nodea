@@ -346,7 +346,7 @@ individuels plutôt que dans `documentation/API.md`).
 - **Risque** : faible
 - **Dépendances** : [`api.md`](./api.md) API-11 (Zod ResponseSchema manquants)
 
-### ARCH-13 — Convention « commentaire-en-tête de fichier » très tenue — à conserver
+### ARCH-13 — Convention « commentaire-en-tête de fichier » très tenue — à conserver — codifiée
 
 - **Type** : documentation (point fort)
 - **Sévérité** : N/A — positif
@@ -355,7 +355,7 @@ individuels plutôt que dans `documentation/API.md`).
 - **Description** : la majorité des fichiers de plus de 50 LOC commencent par un commentaire JSDoc qui explique : (1) ce que fait le fichier, (2) son **placement architectural**, (3) les **décisions assumées**. C'est rare et précieux. Le commentaire de `requireGuard` (39 lignes pour un middleware de 30) est exemplaire.
 - **Pourquoi c'est un point fort** : sans ces commentaires, comprendre *« pourquoi `auth/` contient un fichier `opaque-login-state.ts` »* nécessite git-blame + lecture transversale. Avec, c'est 5 secondes.
 - **Tâches**
-  - [ ] **Conserver et codifier** dans `CLAUDE.md` — *« tout fichier > 50 LOC doit commencer par un commentaire JSDoc qui explique son rôle, son placement, et les décisions non-évidentes ».*
+  - [x] **Conserver et codifier** dans `CLAUDE.md` — bullet ajoutée à *« Code conventions »* qui formalise la règle (what / where / decisions baked-in) et explicite le seuil > 50 LOC.
   - [ ] **Optionnel** : ajouter une règle ESLint `jsdoc/require-file-overview` qui le force.
 - **Effort** : S (~30 min pour la règle CLAUDE.md)
 - **Risque** : aucun

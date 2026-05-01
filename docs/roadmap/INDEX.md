@@ -81,7 +81,7 @@ résout les deux.
 ### Documentation & coordination (~1h)
 
 - [x] **ARCH-01** — Retirer purement TanStack Query et Pino de CLAUDE.md et de toute doc qui les mentionne (pas adaptés au projet : single-instance + E2EE) (~30 min). [`architecture.md`](./architecture.md)
-- [ ] **ARCH-13** — Codifier la convention « commentaire-en-tête de fichier > 50 LOC » dans CLAUDE.md (~30 min). [`architecture.md`](./architecture.md)
+- [x] **ARCH-13** — Codifier la convention « commentaire-en-tête de fichier > 50 LOC » dans CLAUDE.md (~30 min). [`architecture.md`](./architecture.md)
 
 ### A11y & SEO quick wins (~3h)
 
