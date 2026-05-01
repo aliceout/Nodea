@@ -128,7 +128,6 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - ❌ Pas de Content-Security-Policy
 - ❌ Pas de helmet ou équivalent côté Hono
 - ❌ Pas de scanner CVE en CI (pas de `dependabot.yml`, pas de `pnpm audit` automatique)
-- ❌ Pas de Pino malgré la promesse CLAUDE.md ; `hono/logger()` à la place
 
 ---
 
@@ -145,10 +144,10 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Description** : `hono/logger()` écrit `<-- ${method} ${path}` puis `--> ${method} ${path} ${status} ${ms}` sur stdout. `path` inclut le query string. Le middleware `requireGuard` lit le guard via `c.req.query('d')`, ce qui veut dire que sur chaque PATCH/DELETE d'une entrée chiffrée, la ligne logguée ressemble à : `PATCH /mood/records/abc-12...?sid=<sid>&d=g_<hex_guard> 200 5ms`. Le guard est du **matériel cryptographique HMAC dérivé de la main key** ; CLAUDE.md interdit explicitement *« No secrets, tokens, session cookies, or raw crypto material in logs — not even at debug »*.
 - **Scénario d'exploitation** : un sysadmin ou un service de log shipping (Loki, ELK, journalctl, docker logs aggregator) qui a accès aux logs API peut récupérer `sid + d` pour une entrée arbitraire. Avec ces deux valeurs il peut **modifier ou supprimer cette entrée** sans avoir la main key du user, puisque `requireGuard` valide uniquement `(id, sid, d)`. Un employé du fournisseur cloud ou un attaquant qui a compromis le pipeline de logs peut effacer ou écraser des entrées privées sans que la victime s'en rende compte avant qu'elle ouvre l'app.
 - **Tâches**
-  - [ ] Décider entre Option A (déplacer `sid` + `d` en headers `X-Sid` / `X-Guard`) ou Option B (logger custom Pino qui élide les query params).
+  - [ ] Décider entre Option A (déplacer `sid` + `d` en headers `X-Sid` / `X-Guard`) ou Option B (logger custom qui élide les query params sensibles avant émission).
   - [ ] Migrer `requireGuard` à lire `c.req.header('x-sid')` / `c.req.header('x-guard')` (Option A).
   - [ ] Migrer le client web (`packages/web/src/core/api/modules/collection-client.ts`).
-  - [ ] Documenter le contrat dans `documentation/Security.md`.
+  - [ ] Documenter le contrat dans `docs/Security.md`.
   - [ ] Ajouter un test qui vérifie qu'aucune route de mutation ne log le query string (snapshot test sur la sortie du logger).
 - **Effort** : M (~2-3h pour Option A en migrant côté serveur + client + tests)
 - **Risque** : faible (pas de breaking change visible côté user, juste une migration interne)
@@ -364,7 +363,7 @@ Semaine 3+ (compliance + propreté)
 |---|---|---|
 | `sid + d` en headers ou en body ? | Headers (rapide), body (plus REST) | SEC-01 — préfère headers pour limiter le diff |
 | CSP `script-src` strict ou avec nonce ? | `'self'` strict / nonce per-request | SEC-02 — `'self'` strict suffit, l'app ne génère pas de scripts inline |
-| Logger : Pino ou rester sur `hono/logger` corrigé ? | Pino (lourd, mais structuré) / hono/logger custom-wrapped | SEC-01 — Pino aligne avec CLAUDE.md, mais coût migration ~1 jour |
+| Logger : `hono/logger` custom-wrapped suffit-il ? | hono/logger + serializer custom (élide les query params sensibles) / refonte complète | SEC-01 — préfère hono/logger wrapped : Nodea est single-instance, le besoin est le scrubbing pas la structure |
 | `COOKIE_SECURE` default | `true` (fail-secure) / `false` (dev-friendly) | SEC-04 — préfère `true`, override explicite en dev |
 | `SameSite='Strict'` ou rester `Lax` ? | Strict (plus sûr, casse les liens email vers app) / Lax (actuel) | SEC-08 — vérifier d'abord que les liens depuis email continuent à porter le cookie en Strict (sinon login forcé) |
 

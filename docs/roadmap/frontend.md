@@ -49,15 +49,13 @@ La gestion d'état est **distribuée mais lisible** : un seul
 store Zustand global (`nodea-store`) pour la session + l'état
 UI cross-module, et 4 contextes React page-locales pour les
 modules complexes (Goals, Library, Journal, Mood) via une
-factory réutilisable `createModuleContexts`. CLAUDE.md
-mentionne TanStack Query comme cible mais **TanStack Query
-n'est pas installé** ; le data-fetching se fait à la main dans
-les contextes via le pattern `LoadState` (`idle | loading |
-ready | error`). C'est cohérent et le projet sait où vit chaque
-morceau d'état, mais ça veut dire que des fonctionnalités
-gratuites de TanStack Query (cache invalidation, refetch on
-focus, optimistic updates structuré, query dedup) sont
-réimplémentées à la main dans chaque contexte.
+factory réutilisable `createModuleContexts`. Le data-fetching
+se fait à la main dans les contextes via le pattern `LoadState`
+(`idle | loading | ready | error`) ; pas de cache cross-page,
+pas de dedup automatique. C'est cohérent et le projet sait où
+vit chaque morceau d'état, et c'est volontairement minimal —
+Nodea est single-instance E2EE, le besoin d'un cache de requêtes
+ne s'est pas matérialisé.
 
 Ce qui frappe en premier : **le composant `Field` atom**
 ([`packages/web/src/ui/atoms/dirk/Field.tsx`](../../packages/web/src/ui/atoms/dirk/Field.tsx))
@@ -93,7 +91,7 @@ catalogue se rend en une passe. »*
 | Sujet | Constat |
 |---|---|
 | **Framework** | React **19.1** + Vite 6 + TypeScript strict. Mode de rendu : **CSR pure** (pas de SSR, pas de SSG, pas de RSC). |
-| **State** | **Zustand 5** pour le store global. **4 modules** ont leur Provider local via `createModuleContexts<D, F, A>` factory (Goals, Library, Journal, Mood). Pas de TanStack Query / SWR malgré la mention CLAUDE.md. |
+| **State** | **Zustand 5** pour le store global. **4 modules** ont leur Provider local via `createModuleContexts<D, F, A>` factory (Goals, Library, Journal, Mood). Pas de cache de requêtes type TanStack Query / SWR — choix volontaire (cf. ADR à figer). |
 | **Routing** | **React Router v7** (`react-router-dom`). URL `/flow` invariante côté authentifié (privacy invariant — module visité ne fuit pas dans les access logs). 14 pages publiques + Layout gardé par `ProtectedRoute`. |
 | **Data fetching** | Manuel via `core/api/*.ts` — thin wrappers `fetch()` avec credentials + Zod-validated bodies. Pattern `LoadState` redéfini dans 4 modules (cf. [`refacto.md`](./refacto.md) REFACTO-01). |
 | **Design system** | **Maison** — `ui/atoms/dirk/*` (Direction K · Sauge), `ui/dirk/*` (composants composites). **Headless UI 2** pour les primitives complexes (Dialog, Listbox, Transition). |
@@ -139,7 +137,7 @@ catalogue se rend en une passe. »*
 - **Description** : 87 occurrences de `.map()` dans `app/flow/`. Aucune des 4 vues catalogue Library + EntriesList Journal n'utilise de virtualisation. Pour Mood/Goals/Habits le volume reste borné par la nature du module. Pour Library et Journal, le volume peut exploser.
 - **Tâches**
   - [ ] **Court terme** : ajouter une pagination cursor-based côté API (cf. [`api.md`](./api.md) API-08) et limiter le rendu côté client à N=200 par défaut avec scroll-pagination.
-  - [ ] **Moyen terme** : intégrer `@tanstack/react-virtual` (~3 KB gzip) sur BookGrid et BookWall.
+  - [ ] **Moyen terme** : intégrer une lib de virtualisation (~3 KB gzip) sur BookGrid et BookWall — choisir au moment du besoin.
   - [ ] **Décisionnel** : ne pas faire ça avant qu'un user réel ait le problème — c'est conditionnel au volume.
 - **Effort** : M (~3h pour Library + tests)
 - **Risque** : faible (param optionnel + virtualisation coïncide avec rendu identique)
@@ -349,7 +347,7 @@ catalogue se rend en une passe. »*
 - **Tâches**
   - [ ] **Court terme** : disabler le bouton pendant la mutation in-flight (déjà fait sur certains, à vérifier exhaustif).
   - [ ] **Moyen terme** : ajouter un `requestId` par mutation et ignorer le rollback si un `requestId` plus récent existe.
-  - [ ] **Long terme** : si TanStack Query est adopté, la dedup + cache invalidation est gratuite.
+  - [ ] **Long terme** : un système de cache de requêtes (TanStack Query / SWR / maison) résoudrait dedup + cache invalidation, mais c'est explicitement écarté pour l'instant — ne pas l'introduire pour ce seul finding.
 - **Effort** : M (~2-3h pour le requestId pattern × 4 modules)
 - **Risque** : moyen (touche le data flow optimistic)
 - **Dépendances** : aucune
@@ -412,7 +410,7 @@ dans FRONT-08 ci-dessus.
 
 1. **FRONT-03** — Setup `web-vitals` + bundle analyzer + Lighthouse CI. ~1 jour pour le tout. Pose les bases de toute future décision perf.
 2. **FRONT-02** — Pagination cursor-based côté API ([`api.md`](./api.md) API-08) + virtualisation Library. ~2-3 jours combiné.
-3. **FRONT-13** — Migrer le data-fetching vers TanStack Query (CLAUDE.md le promettait — pas livré). Résout les race conditions, simplifie les contextes par module, dedup automatique. **Très gros chantier** (~5 jours), à pondérer.
+3. **FRONT-13** — Ajouter un `requestId` par mutation pour dedup les rollbacks optimistes (cf. fiche FRONT-13). Pas une migration cache-de-requêtes (explicitement écartée — Nodea single-instance n'en a pas besoin), juste le fix ciblé des race conditions.
 4. **FRONT-06** — `<ScrollRestoration />` ou équivalent pour le `popstate` listener custom. ~1h pour le code, mais affecte tous les modules.
 5. **FRONT-04 + FRONT-11 + FRONT-12** combinés — refonte SEO + meta des pages publiques. ~3-4h.
 
@@ -465,7 +463,7 @@ Plus tard (à pondérer)
 
 | Décision | Options | Impact |
 |---|---|---|
-| Adopter TanStack Query ou rester sur les contextes maison ? | Migration ~5 jours / Garder + corriger FRONT-13 ad-hoc | FRONT-13 — préfère garder pour l'instant, migrer si Habits/Mood s'enrichissent |
+| Cache de requêtes (TanStack Query / SWR / maison) ? | **Décision prise (ARCH-01)** : non. Single-instance + E2EE = pas de besoin de cache cross-page. À figer en ADR. | — |
 | Skeletons ou texte « Chargement… » ? | Skeletons / Texte (actuel) / Texte amélioré | FRONT-05 — préfère texte + doc explicite de la philosophie |
 | Lighthouse CI sur quelles PRs ? | Toutes / Touchant `packages/web/` / Aucune (juste local) | FRONT-03 — préfère « touchant `packages/web/` » pour rester rapide |
 | `<ScrollRestoration />` natif ou popstate custom étendu ? | RR v7 natif / popstate custom (cohérent avec privacy invariant `/flow`) | FRONT-06 — préfère custom pour rester en contrôle de l'URL |

@@ -84,17 +84,12 @@ roadmaps actives tracent les chantiers en flight ; c'est
 beaucoup, mais c'est de la dette **rendue visible**, donc
 traitable.
 
-Ce qui frappe **en mal**, et qui touche au cœur de cet audit :
-**CLAUDE.md mentionne deux dépendances qui ne sont en réalité
-pas adaptées à Nodea** (TanStack Query, Pino). Le code ne les
-utilise pas et n'a pas besoin de les utiliser : Nodea est une
-app E2EE single-instance, le cache cross-page de TanStack
-Query n'apporterait rien, et `hono/logger()` suffit largement
-pour une app self-host. Décision (cf. ARCH-01) : on retire ces
-mentions purement plutôt que les garder comme aspirationnelles.
-La règle « React Hook Form + Zod resolver » reste, elle, une
-vraie cible de cohérence (cf. [`refacto.md`](./refacto.md)
-REFACTO-06).
+Ce qui frappait **en mal** à la pose de l'audit était un
+gap aspirationnel-vs-actuel dans CLAUDE.md ; ARCH-01 l'a
+traité (mentions retirées plutôt que gardées comme cibles).
+La seule cible de cohérence qui reste à honorer à 100 %
+côté frontend : React Hook Form + Zod resolver pour les pages
+auth (cf. [`refacto.md`](./refacto.md) REFACTO-06).
 
 **Phrase pour qualifier la dette technique à un nouveau
 développeur** : *« La dette est presque entièrement de la
@@ -151,7 +146,7 @@ individuels plutôt que dans `documentation/API.md`).
 
 | Doc | Volume | État |
 |---|---|---|
-| `CLAUDE.md` (root) | ~12 KB | À jour. Mentions résiduelles de TanStack Query et Pino (pas adaptées au projet) à purger — cf. ARCH-01. |
+| `CLAUDE.md` (root) | ~12 KB | À jour (cf. ARCH-01 livré : nettoyé des dépendances aspirationnelles non adaptées). |
 | `docs/Auth-Spec.md` | ~2700 lignes | Maintenu activement |
 | `docs/Database.md`, `docs/Modules.md`, `docs/Architecture.md` | varie | Synchronisation doc-code suivie historiquement dans `health.md` (livré). Ré-audit à prévoir si dérive. |
 | `docs/roadmap/` | 7 fichiers (~3000+ lignes cumulées) | Toutes en cours, format homogène |
@@ -162,21 +157,19 @@ individuels plutôt que dans `documentation/API.md`).
 
 ## Findings
 
-### ARCH-01 — `CLAUDE.md` aspirationnel : retirer purement TanStack Query et Pino
+### ARCH-01 — `CLAUDE.md` aspirationnel : retirer purement TanStack Query et Pino — livré
 
 - **Type** : cohérence (doc-vs-code)
 - **Sévérité** : moyenne
 - **Subjectivité** : faible
-- **Zone concernée** : [`CLAUDE.md`](../../CLAUDE.md) — sections *« Stack target »*, *« Frontend rules »*, *« Error handling & logging »*, et toute autre doc qui les mentionne (`docs/Architecture.md` notamment)
-- **Description** : CLAUDE.md décrit comme **acquis** ce qui n'est **pas adapté au projet**. Deux exemples concrets : *« TanStack Query »* (pas installé — `grep "@tanstack" packages/web/package.json` = vide ; et inutile pour Nodea : single-instance, E2EE, pas de cache cross-page utile), *« Structured logs via Pino on the api »* (c'est `hono/logger()` qui tourne ; Pino est overkill pour une app self-host). Décision : ces deux dépendances ne sont **pas** la cible — on retire les mentions, on ne les garde pas comme aspirationnelles.
-- **Pourquoi c'est un problème concret** : un·e nouvel·le contributeur·ice qui lit CLAUDE.md en onboarding va chercher du code TanStack Query / Pino et ne trouvera rien → 30 min de confusion. Plus grave : les revues de PR peuvent demander à un·e contributeur·ice *« merci d'utiliser TanStack Query selon CLAUDE.md »* alors que **personne** ne le fait. La doc devient un piège.
+- **Zone concernée** : [`CLAUDE.md`](../../CLAUDE.md), `docs/Architecture.md`, `docs/Security.md`, `docs/Auth-Spec.md`, `docs/recommendations/server-config.md`, et tous les fichiers de `docs/roadmap/`
+- **Description** : CLAUDE.md décrivait comme **acquis** ce qui n'est **pas adapté au projet** : TanStack Query (pas installé, inutile pour single-instance + E2EE) et Pino (le `hono/logger()` actuel suffit pour une app self-host ; le besoin réel est le scrubbing, pas la structure). Décision figée : ces deux dépendances ne sont **pas** la cible — on retire les mentions, on ne les garde pas comme aspirationnelles.
 - **Tâches**
-  - [ ] Retirer toutes les mentions de **TanStack Query** dans `CLAUDE.md` (sections « Stack target » et « Data fetching »).
-  - [ ] Retirer toutes les mentions de **Pino** dans `CLAUDE.md` (sections « Stack target » et « Error handling & logging »).
-  - [ ] Sweep des autres docs : `documentation/Architecture.md`, `docs/recommendations/server-config.md`, et tout `docs/**/*.md` (`grep -rni "tanstack\|pino" docs/ documentation/ CLAUDE.md`). Retirer pareil.
-  - [ ] **Ne pas lister d'alternatives** : le but est un fichier court et lisible, pas un comparatif.
-  - [ ] Vérifier qu'aucun chantier de roadmap ne dépend de TanStack/Pino (sinon réécrire la dépendance ou clore le chantier).
-- **Effort** : S (~30 min)
+  - [x] Retirer toutes les mentions de **TanStack Query** dans `CLAUDE.md` (sections « Stack target », « Data fetching », checklist Reuse).
+  - [x] Retirer toutes les mentions de **Pino** dans `CLAUDE.md` (sections « Stack target », « Error handling & logging »).
+  - [x] Sweep des autres docs (`docs/Architecture.md`, `docs/Security.md`, `docs/Auth-Spec.md`, `docs/recommendations/server-config.md`, `docs/roadmap/*.md`) — toutes les mentions remplacées par des termes génériques (« logger », « cache de requêtes ») ou supprimées quand purement aspirationnelles.
+  - [x] Vérifier qu'aucun chantier de roadmap ne dépend de TanStack/Pino : SEC-01 / OPS-09 / FRONT-13 reformulés (scrubbing logger / dedup via requestId), pas de chantier purement « adopter X ».
+- **Effort** : S (~30 min effectif ; ~1h avec le sweep des roadmaps)
 - **Risque** : aucun
 - **Dépendances** : aucune
 

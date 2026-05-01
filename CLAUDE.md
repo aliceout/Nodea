@@ -43,8 +43,8 @@ The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work li
 - **Crypto**: WebCrypto (AES-GCM + HMAC-SHA-256) · `argon2-wasm` · `hash-wasm`
 
 ### Target (current stack)
-- **Backend**: Node 22 · Hono · Drizzle ORM · PostgreSQL 16 · Zod · Pino · session cookies (not JWT)
-- **Frontend**: React 19 · Vite · Tailwind · React Router v7 · **TypeScript strict** · TanStack Query · Zustand · React Hook Form + Zod
+- **Backend**: Node 22 · Hono · Drizzle ORM · PostgreSQL 16 · Zod · session cookies (not JWT)
+- **Frontend**: React 19 · Vite · Tailwind · React Router v7 · **TypeScript strict** · Zustand · React Hook Form + Zod
 - **Monorepo**: pnpm workspaces (`packages/api`, `packages/web`, `packages/shared`)
 - **Deployment**: docker-compose (postgres + api + web). Postgres data
   persists under `$HOME/data/nodea/postgres/` via a bind mount
@@ -104,17 +104,16 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 - State shape, selectors, actions all live in `packages/web/src/core/store/`.
 - Subscribe with Zustand selectors, not `useContext` + reducer.
 
-### Data fetching — TanStack Query
+### Data fetching
 - All API calls go through the typed Hono client (`hc<ApiType>` from `packages/shared`).
 - No direct `fetch()` in components. No axios. No `pb.send()` in new code.
-- Cache keys: derived from a factory per entity. No hardcoded string arrays.
 
 ### Forms
 - React Hook Form + Zod resolver. Zod schema lives in `packages/shared/src/schemas/` — one source of truth, reused for backend validation and frontend form validation.
 - Password fields: show zxcvbn strength + min length. Never a silent "too weak" acceptance.
 
 ### Routing
-- **URL stays at `/flow` regardless of which module is active.** The active module lives in the Zustand `flow` slice (`currentModule: ModuleId`), never in the URL or query string. **Privacy invariant** — module-visited / sub-view metadata must not leak through Nginx access logs, Hono/Pino request logs, or browser referrers. No `/flow/:moduleId` paths, no `?subview=`, no `?tab=`. (See `App.jsx` `popstate` listener for the back-button sync that preserves UX without exposing the module in the URL.)
+- **URL stays at `/flow` regardless of which module is active.** The active module lives in the Zustand `flow` slice (`currentModule: ModuleId`), never in the URL or query string. **Privacy invariant** — module-visited / sub-view metadata must not leak through Nginx access logs, Hono request logs, or browser referrers. No `/flow/:moduleId` paths, no `?subview=`, no `?tab=`. (See `App.jsx` `popstate` listener for the back-button sync that preserves UX without exposing the module in the URL.)
 - Every module component lazy-loaded via `React.lazy()`. Wrap in `<Suspense>`. No JSX instantiated at module import.
 - `ErrorBoundary` at two levels: global in `App.tsx`, and per-module inside the router resolver. A crashed module must not take down the whole app.
 - Public routes (`/login`, `/register`, `/docs`, `/recover`, `/totp`, `/passkeys`, etc.) keep their own URLs — the privacy rule applies to the authenticated `/flow` surface only, where leakage would reveal *what an authenticated user is doing*.
@@ -189,9 +188,9 @@ Deleting then recreating breaks git history and loses traceability of past chang
 ## Error handling & logging
 
 - **Fail loud on developer errors** (bugs, misconfig, invariant violations). Throw early, let the global handler surface them in dev; don't catch-and-ignore to make the screen stop complaining.
-- **Fail soft on user input.** Zod validation errors become 4xx responses with actionable messages; they never reach the global error handler or a Pino `error` line.
+- **Fail soft on user input.** Zod validation errors become 4xx responses with actionable messages; they never reach the global error handler or surface as an `error` log line.
 - **Never swallow errors silently.** If a `catch {}` is intentional, document *why* in a one-line comment (e.g. `// stale blob on logout — expected`). A silent catch without rationale is a code-review block.
-- **Structured logs** via Pino on the api. Include request id, user id when available, and the operation name. No secrets, tokens, session cookies, or raw crypto material in logs — not even at `debug`. If you need to log a key for debugging, log its presence (`hasMainKey: true`), never its value.
+- **No secrets, tokens, session cookies, or raw crypto material in logs** — not even at `debug`. If you need to log a key for debugging, log its presence (`hasMainKey: true`), never its value. The api currently uses `hono/logger()` (request line + status + duration), which is enough for a single-instance self-host ; structured logging would be added the day a real need shows up.
 
 ---
 
@@ -226,7 +225,6 @@ Before marking a PR as ready:
 - [ ] Is the Zod schema in `packages/shared/src/schemas/` (not redefined locally)?
 - [ ] Is the Update DTO derived from Create via `.partial()`?
 - [ ] Are form fields using shared field components (not raw inline `<input>`)?
-- [ ] Is the TanStack Query hook generated from a factory, not hand-rolled?
 - [ ] Is the UI using an existing `ui/atoms/*` primitive, or does it actually need a new one?
 - [ ] Is any new base64/random/crypto helper calling the central module (not reimplementing it)?
 

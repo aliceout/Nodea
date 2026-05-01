@@ -80,7 +80,7 @@ résout les deux.
 
 ### Documentation & coordination (~1h)
 
-- [ ] **ARCH-01** — Retirer purement TanStack Query et Pino de CLAUDE.md et de toute doc qui les mentionne (pas adaptés au projet : single-instance + E2EE) (~30 min). [`architecture.md`](./architecture.md)
+- [x] **ARCH-01** — Retirer purement TanStack Query et Pino de CLAUDE.md et de toute doc qui les mentionne (pas adaptés au projet : single-instance + E2EE) (~30 min). [`architecture.md`](./architecture.md)
 - [ ] **ARCH-13** — Codifier la convention « commentaire-en-tête de fichier > 50 LOC » dans CLAUDE.md (~30 min). [`architecture.md`](./architecture.md)
 
 ### A11y & SEO quick wins (~3h)
@@ -112,7 +112,7 @@ résout les deux.
 ### Étape B — Cleanup logs (préalable à toute capture d'erreurs externe) (~2-3h)
 
 - [ ] **SEC-01** — Déplacer `sid` + `d` du query string vers les headers `X-Sid` / `X-Guard` (Option A, ~2-3h). Migrer `requireGuard` + le client web. **Bloque l'étape C.** [`security.md`](./security.md)
-- [ ] **OPS-09** — Pino structured logs (couplé avec SEC-01 — la même refonte du logger règle les deux). [`ops.md`](./ops.md)
+- [ ] **OPS-09** — Logs structurés (couplé avec SEC-01 — la même refonte du logger règle les deux). [`ops.md`](./ops.md)
 
 ### Étape C — Capture d'erreurs (après B) (~1h)
 
@@ -200,7 +200,7 @@ résout les deux.
 
 ### Documentation & process (~1 jour)
 
-- [ ] **ARCH-02** — Créer `docs/adr/` + 5 premiers ADR (layered hybride, Zustand mono-store, snake/camel frontière, pas de TanStack Query, pas de SSR). ~3-4h. [`architecture.md`](./architecture.md)
+- [ ] **ARCH-02** — Créer `docs/adr/` + 5 premiers ADR (layered hybride, Zustand mono-store, snake/camel frontière, pas de cache de requêtes, pas de SSR). ~3-4h. [`architecture.md`](./architecture.md)
 - [ ] **ARCH-10** — Sweep des références *« Phase N »* / *« Tier X »* livrées dans le code. ~2h. [`architecture.md`](./architecture.md)
 - [ ] **OPS-12** — `CHANGELOG.md` (manuel ou release-please). ~30 min initial. [`ops.md`](./ops.md)
 - [ ] **OPS-14** — `docs/Operations.md` runbook minimal. ~3h. [`ops.md`](./ops.md)
@@ -249,7 +249,7 @@ résout les deux.
 
 ### Refontes lourdes (à pondérer)
 
-- [ ] **FRONT-13** — Migrer le data-fetching vers TanStack Query (~5 jours). **À envisager** quand une vraie limite des contextes émerge.
+- [ ] **FRONT-13** — `requestId` par mutation pour éviter les race conditions de rollback optimiste (~2-3h). Pas de migration cache-de-requêtes — décision figée par ARCH-01.
 - [ ] **FRONT-02** — Pagination cursor + virtualisation Library (~3 jours). **Quand un user atteint ~500 livres.**
 - [ ] **API-08** — Pagination cursor-based côté API (~3h). **Préalable à FRONT-02.**
 - [ ] **ARCH-05** — Branded types pour IDs métier (~1 jour). **Quand le projet grossit.**
@@ -289,7 +289,7 @@ Les dépendances explicites (chantier B suppose chantier A
 livré) :
 
 ```
-SEC-01 (guards en headers ou Pino)
+SEC-01 (guards en headers ou logger qui scrub les query strings)
   ↓ permet
 OPS-02 étape 2 (Sentry SDK avec beforeSend propre)
   ↓ permet

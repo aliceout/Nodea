@@ -448,8 +448,8 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   `?subview=`) are gone ; `/flow/*` is a catch-all redirect to
   `/flow`. **Known gap** : the API itself still mounts per-module
   endpoints (`/mood-entries/records`, `/library-items/records`,
-  etc.), so the operator can correlate Nginx + Pino logs against
-  the `sessions` table to attribute « user U acted on module M at
+  etc.), so the operator can correlate Nginx + api request logs
+  against the `sessions` table to attribute « user U acted on module M at
   time T ». See [Security.md](./Security.md) invariant 6 for the
   full picture and the planned `/records` unification fix. Every
   module is `React.lazy()` so opening "Mood" for the first time

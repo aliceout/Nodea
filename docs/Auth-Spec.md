@@ -1578,8 +1578,8 @@ Server :
 Le body de `POST /auth/recover-kek/finish` contient un hash
 sensible (et le password en clair n'y est pas, mais `recovery_code_hash`
 permet une vérif offline si DB compromise — non-crackable mais
-quand même à protéger). **Pino doit black-lister le body de cette
-route.** Cf. §14.
+quand même à protéger). **Le logger doit black-lister le body de
+cette route.** Cf. §14.
 
 #### Régénération depuis Settings
 
@@ -2446,7 +2446,7 @@ job :
 
 1. **Ne JAMAIS** logger un `export_key`, `prf_output`, `recovery_code`,
    `kek`, `main_key`, `wrapped_*`, **secret TOTP**. Même en dev.
-   Même en debug. Même en `pino.trace`.
+   Même en debug. Même au niveau `trace` du logger.
 2. **Ne JAMAIS** stocker un facteur ou la KEK en localStorage,
    sessionStorage, IndexedDB, ou window.*.
 3. **Ne JAMAIS** faire repasser la KEK ou la main key par le réseau
@@ -2485,8 +2485,7 @@ job :
     crypto. Si l'échec est attendu, commenter la raison
     (ex : `// stale blob on logout`).
 18. **Ne JAMAIS** logger le body **ou la réponse** d'une route
-    `/auth/*` mutante. Le redactor Pino doit appliquer **deux**
-    couches :
+    `/auth/*` mutante. Le logger doit appliquer **deux** couches :
 
     **Couche A — blacklist par route (path patterns)** :
     `["/auth/register/*", "/auth/login/*", "/auth/passkey/*",
@@ -2497,15 +2496,14 @@ job :
     `/auth/me` peuvent logger leur body.
 
     **Couche B — redaction field-level (defense-in-depth)** : sur
-    **toute** la sortie Pino, redact les clés JSON suivantes :
+    **toute** la sortie du logger, redact les clés JSON suivantes :
     `["password", "current_password", "new_password",
       "code", "token", "secret", "envelope", "export_key",
       "prf_output", "wrapped_*", "recovery_*", "challenge",
-      "signature", "credential_id", "code_hash", "*_hash"]`.
-    Pino expose ce mécanisme via `redact: { paths: [...], censor: '[REDACTED]' }`.
-    Cette deuxième couche protège même si une route oublie sa
-    blacklist Couche A, ou si du code applicatif logge des objets
-    sensibles depuis ailleurs.
+      "signature", "credential_id", "code_hash", "*_hash"]`,
+    avec un censeur du type `[REDACTED]`. Cette deuxième couche
+    protège même si une route oublie sa blacklist Couche A, ou si
+    du code applicatif logge des objets sensibles depuis ailleurs.
 19. **Ne JAMAIS** construire une AAD AES-GCM autrement que via
     `buildAAD()` de `@nodea/shared/crypto-types`. Le linter / les
     tests doivent fail-loud sur tout autre usage.

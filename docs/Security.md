@@ -292,8 +292,8 @@ exceptions doivent être justifiées en commentaire au-dessus du
    entries/records` (e.g. `/mood-entries/records`,
    `/library-items/records`). Any read or write action triggers a
    request to that endpoint. Cross-referencing Nginx access logs
-   (path + IP + timestamp), Pino request logs (request_id +
-   user_id when present), and the `sessions` table (user_id ↔ IP
+   (path + IP + timestamp), the api's request logs (request id +
+   user id when present), and the `sessions` table (user_id ↔ IP
    mapping) lets the operator reconstruct « user U did a list /
    create / update on module M at time T », even though the row
    contents stay encrypted and the rows themselves carry no

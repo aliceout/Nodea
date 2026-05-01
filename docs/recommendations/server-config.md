@@ -127,7 +127,7 @@ externe sondera un endpoint qui ment.
 - **Sévérité** (ops) : élevée
 
 **Pré-requis applicatif** : `docs/roadmap/security.md` SEC-01
-(Pino + scrubbing des query strings sensibles) **doit être
+(scrubbing des query strings sensibles côté logger) **doit être
 livré avant**. Sinon Sentry capturera potentiellement les
 guards HMAC, sids opaques, ou d'autres données sensibles dans
 les events. **Ne pas brancher Sentry avant SEC-01.**
@@ -279,8 +279,8 @@ roadmap `security.md` SEC-05.
 - **Source** : `docs/roadmap/ops.md` (top améliorations équipe mature)
 - **Sévérité** (ops) : faible — à long terme
 
-**Pré-requis applicatif** : Pino structured logs
-(`security.md` SEC-01).
+**Pré-requis applicatif** : logs structurés côté api
+(`security.md` SEC-01 — scrubbing + format JSON).
 
 **Options** :
 

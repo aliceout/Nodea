@@ -233,7 +233,7 @@ Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`), 
 
 ### Pas d'identifiants dans les logs
 
-La politique de logs interdit toute métadonnée identifiante qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs Pino côté API portent un `request_id` + un `user_id` quand pertinent, et l'opération.
+La politique de logs interdit toute métadonnée identifiante qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs côté API portent la méthode + le path + le statut + la durée — le minimum nécessaire pour corréler une erreur à une requête.
 
 ### Anti-patterns interdits
 
@@ -432,7 +432,7 @@ L'équipe Nodea, l'hébergeur de l'instance, et l'interlocuteur d'une réquisiti
 
 Pour les vecteurs qui restent même si l'équipe Nodea, l'hébergeur et l'autorité judiciaire ne sont pas tous corrompus :
 
-- **Action × module × utilisateur·ice par croisement de logs.** Les endpoints API sont nommés par module (`/mood-entries/records`, `/library-items/records`, etc.) — une requête est tirée à chaque lecture, écriture, édition, suppression. En croisant les logs Nginx (path + IP + horodatage), les logs Pino (request_id + user_id quand présent) et la table `sessions` (user_id ↔ IP), un opérateur peut reconstruire « user U a fait une opération sur le module M à l'heure T ». Le contenu reste chiffré et les rows ne portent toujours pas de `user_id`, mais l'attribution user → module → action → timestamp est triviale par jointure des logs. **Mitigation prévue** : unifier les endpoints `*-entries/records` en un seul `/records` agnostique au module, pour que le path ne révèle plus rien — pas encore implémenté.
+- **Action × module × utilisateur·ice par croisement de logs.** Les endpoints API sont nommés par module (`/mood-entries/records`, `/library-items/records`, etc.) — une requête est tirée à chaque lecture, écriture, édition, suppression. En croisant les logs Nginx (path + IP + horodatage), les logs API (path + statut + durée + user_id quand présent) et la table `sessions` (user_id ↔ IP), un opérateur peut reconstruire « user U a fait une opération sur le module M à l'heure T ». Le contenu reste chiffré et les rows ne portent toujours pas de `user_id`, mais l'attribution user → module → action → timestamp est triviale par jointure des logs. **Mitigation prévue** : unifier les endpoints `*-entries/records` en un seul `/records` agnostique au module, pour que le path ne révèle plus rien — pas encore implémenté.
 - **Taille des blobs chiffrés** (ordre de grandeur du contenu).
 - **Ordre d'insertion physique** Postgres / WAL (corrélation statistique forensic).
 - **Fréquence et timestamps de connexion** des sessions.

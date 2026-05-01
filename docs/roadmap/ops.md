@@ -51,8 +51,8 @@ de Datadog, pas de webhook Slack en cas de 5xx, rien) ;
 (2) le `/healthz` répond `{ status: 'ok' }` **même si Postgres
 est mort** — il ne vérifie que le process Node, pas la
 chaîne ; (3) les logs sont du `hono/logger()` (texte non
-structuré, pas de request_id, pas de Pino malgré CLAUDE.md),
-donc impossible de corréler des requêtes liées ; (4) il n'y a
+structuré, pas de request_id), donc impossible de corréler
+des requêtes liées ; (4) il n'y a
 **aucune métrique applicative** (latence, throughput, taux
 d'erreur), donc on ne peut pas dire *« est-ce que ça a
 toujours été lent ou ça vient de se dégrader »*. Le projet va
@@ -137,7 +137,7 @@ détection est inexistante. »*
 
 | Catégorie | État |
 |---|---|
-| **Logs** | `hono/logger()` (texte console.log) côté api. `console.log/warn/error` ad hoc côté web. **Pas de Pino** malgré CLAUDE.md (cf. [`security.md`](./security.md) SEC-01). |
+| **Logs** | `hono/logger()` (texte console.log) côté api. `console.log/warn/error` ad hoc côté web. Le scrubbing des query strings sensibles est traité par [`security.md`](./security.md) SEC-01. |
 | **Métriques** | **Aucune**. Pas d'exporter Prometheus, pas de `/metrics`, pas de StatsD. |
 | **Tracing** | **Aucun**. Pas d'OpenTelemetry. |
 | **Sentry / Bugsnag / Rollbar** | **Non installé**. |
@@ -205,13 +205,13 @@ détection est inexistante. »*
   - [`packages/web/src/main.tsx`](../../packages/web/src/main.tsx) — pas de Sentry init côté front
 - **Description** : aucune capture d'exceptions runtime, aucun webhook sur 5xx, aucun ping externe sur `/healthz`. Si l'instance crashe ou que la DB tombe, **personne ne sera notifié**. La seule détection possible est *« un user m'a écrit pour dire que l'app marche pas »*.
 - **⚠️ Caveat critique — Sentry dépend de SEC-01** :
-  > **Ne PAS brancher Sentry avant que SEC-01 (Pino + scrubbing) soit livré.** Sentry capture par défaut les request bodies + cookies dans les events. Tant que `hono/logger()` log les guards HMAC en query string et que les bodies ne sont pas scrubbés, **Sentry exfiltrerait du matériel cryptographique** vers ses serveurs. SEC-01 doit livrer en amont, et l'init Sentry doit utiliser `beforeSend` pour filtrer agressivement les bodies / headers / query.
+  > **Ne PAS brancher Sentry avant que SEC-01 (scrubbing du logger) soit livré.** Sentry capture par défaut les request bodies + cookies dans les events. Tant que `hono/logger()` log les guards HMAC en query string et que les bodies ne sont pas scrubbés, **Sentry exfiltrerait du matériel cryptographique** vers ses serveurs. SEC-01 doit livrer en amont, et l'init Sentry doit utiliser `beforeSend` pour filtrer agressivement les bodies / headers / query.
 - **Tâches (app-side)**
   - [ ] **Étape 1 (sans Sentry)** : middleware Hono qui fire un POST sur webhook si `c.res.status >= 500`. URL du webhook via env var `ERROR_WEBHOOK_URL`. ~30 min. **Pas de dépendance à SEC-01** (le webhook envoie juste *« 5xx sur la route X »*, pas de body).
   - [ ] **Étape 2 (Sentry)** : ajouter `@sentry/node` côté API + `@sentry/react` côté web. **Après livraison de SEC-01.** Init avec `beforeSend` qui filtre les request bodies et les query strings sensibles. ~1h.
   - [ ] **Étape 3** : config UptimeRobot ou équivalent côté infra (hors-app — voir REC-S4).
 - **Risque** : élevé si Sentry branché avant SEC-01 (fuite de crypto material vers Sentry servers).
-- **Dépendances** : OPS-01 (healthcheck honnête), [`security.md`](./security.md) SEC-01 (Pino + scrubbing) **avant Sentry**.
+- **Dépendances** : OPS-01 (healthcheck honnête), [`security.md`](./security.md) SEC-01 (scrubbing logger) **avant Sentry**.
 
 ### OPS-03 — Aucun container applicatif (api, web) ne tourne en `USER` non-root
 
@@ -354,15 +354,15 @@ détection est inexistante. »*
 - **Risque** : moyen — peut casser des PRs si la baseline a déjà des CVE high. À auditer en pré-flight.
 - **Dépendances** : aucune
 
-### OPS-09 — Logs non structurés (`hono/logger()` au lieu de Pino)
+### OPS-09 — Logs non structurés (`hono/logger()`)
 
 - **Domaine** : logs
 - **Sévérité** : moyenne (déjà tracké)
 - **Effort** : voir [`security.md`](./security.md) SEC-01
 - **Zone concernée** : voir [`security.md`](./security.md) SEC-01
 - **Description** : déjà flaggé dans l'audit sécu. Impact ops complémentaire : pas de request_id pour corréler des logs liés à une requête, pas de log structuré JSON donc pas d'agrégation propre, pas de niveaux de log applicatifs.
-- **Tâches** : voir [`security.md`](./security.md) SEC-01 (option B : Pino + serializer qui élide les query params sensibles).
-- **Cross-référence** : à traiter en bloc avec OPS-02 — un Pino bien câblé permet d'envoyer les `error` à Sentry automatiquement.
+- **Tâches** : voir [`security.md`](./security.md) SEC-01 — un wrapper `hono/logger` custom qui élide les query params sensibles règle aussi le format JSON et le request_id si on le veut.
+- **Cross-référence** : à traiter en bloc avec OPS-02 — un logger bien câblé permet d'envoyer les `error` à Sentry automatiquement.
 
 ### OPS-10 — Pas de migrations DB *« down »*
 
@@ -466,7 +466,7 @@ détection est inexistante. »*
 
 ## Top 5 améliorations pour une équipe déjà mature
 
-1. **Pino structured logs + request_id** (cf. [`security.md`](./security.md) SEC-01 + OPS-09). Permet l'agrégation centralisée + corrélation traces.
+1. **Logs JSON structurés + request_id** (cf. [`security.md`](./security.md) SEC-01 + OPS-09). Permet l'agrégation centralisée + corrélation traces.
 2. **Métriques Prometheus** : `/metrics` endpoint via `prom-client` ou `@hono/prometheus`. Latence par endpoint, taux d'erreur, throughput. Précondition pour SLO.
 3. **OpenTelemetry tracing** : traces distribuées api → DB. Inutile à la taille actuelle (single-instance), mais à monter quand la complexité augmente.
 4. **Lighthouse CI** sur les PR `packages/web/` (cf. [`frontend.md`](./frontend.md) FRONT-03). Régressions perf détectées en PR.
@@ -530,7 +530,7 @@ Semaine 3 (tests + deps, ~1.5 jour)
   └─ OPS-08    (pnpm audit + Trivy en CI)
 
 Plus tard (à pondérer)
-  ├─ OPS-09    (Pino — couplé avec security.md SEC-01)
+  ├─ OPS-09    (logs structurés — couplé avec security.md SEC-01)
   ├─ OPS-12    (CHANGELOG)
   ├─ OPS-13    (staging — décision business)
   └─ OPS-14    (Operations.md + runbook)
@@ -547,7 +547,7 @@ Plus tard (à pondérer)
 | Outil d'alerting | UptimeRobot (gratuit, basique) / Sentry (free tier 10k events) / Better Stack (free tier) / self-host (Sentry self-hosted) | OPS-02 — recommandé : UptimeRobot pour ping + Sentry free tier pour les exceptions |
 | Stratégie de backup | Daily local + sync off-site / S3 versioning / Backblaze B2 | OPS-05 — recommandé : Backblaze B2 (10 GB gratuits) ou Wasabi |
 | Seuil bloquant `pnpm audit` | high / critical / aucun (informatif) | OPS-08 — préfère `high` mais auditer la baseline avant |
-| Pino vs hono/logger custom | Pino (lourd, structuré) / hono/logger wrapped + serializer custom | OPS-09 — voir security.md SEC-01 |
+| Logger : `hono/logger` wrapped suffit-il ? | hono/logger + serializer custom (élide les query params sensibles, format JSON) / refonte plus lourde | OPS-09 — voir security.md SEC-01 ; préfère wrapped (single-instance) |
 | Staging envt | Oui (1 VPS supplémentaire) / Non (rester direct main → prod) | OPS-13 — décision business, dépend du user-base |
 
 ---
