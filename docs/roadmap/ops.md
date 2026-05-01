@@ -194,7 +194,7 @@ détection est inexistante. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### OPS-02 — Aucune intégration runtime de capture d'erreurs ni de webhook 5xx (côté app)
+### OPS-02 — Aucune intégration runtime de capture d'erreurs ni de webhook 5xx (côté app) — livré
 
 - **Domaine** : alerting
 - **Sévérité** : élevée
