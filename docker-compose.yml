@@ -97,6 +97,17 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
     expose:
       - '3000'
+    # Honest healthcheck — hits /healthz which itself probes Postgres
+    # (see packages/api/src/app.ts). A 503 body still produces a
+    # non-zero wget exit so the container goes `unhealthy` whenever
+    # the api can't reach the DB. start_period gives Drizzle's
+    # auto-migrate room to run before the first probe lands.
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:3000/healthz || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   web:
     image: ghcr.io/aliceout/nodea-web:${NODEA_IMAGE_TAG:-main}
@@ -108,9 +119,18 @@ services:
     container_name: nodea-web
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - '${WEB_PORT:-8080}:80'
+    # nginx healthcheck — confirms the static SPA is being served. The
+    # /api proxy depends on the api container which has its own
+    # healthcheck, so we don't double-proxy here.
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost/ || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Dev-only SMTP sink. Captures every email sent by the API (password
   # reset, …) and exposes them in a web UI at http://localhost:8025 —

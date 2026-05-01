@@ -18,6 +18,7 @@ import { libraryLookupRoutes } from './routes/library-lookup.ts';
 import { createCollectionRoutes } from './routes/collection-factory.ts';
 import { COLLECTIONS } from './collections/registry.ts';
 import { getConfig } from './config.ts';
+import { sql } from './db/client.ts';
 import type { AuthVariables } from './middleware/require-user.ts';
 import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 
@@ -51,7 +52,27 @@ export function buildApp() {
   // Finding 1.
   app.use('*', logger(redactingPrintFunc));
 
-  app.get('/healthz', (c) => c.json({ status: 'ok' }));
+  // Honest healthcheck — actually probes Postgres before returning OK.
+  // Without this round-trip, `/healthz` would lie : the api process can
+  // be alive while Postgres is dead (network split, restart in
+  // progress, disk full), and an external monitor (UptimeRobot, Docker
+  // healthcheck) would never fire. The probe is a tiny `SELECT 1` with
+  // a hard 1500 ms ceiling so a slow DB never holds the request open
+  // long enough to be itself a problem ; on miss we surface a 503 with
+  // a snake_case reason so monitoring dashboards can distinguish a DB
+  // outage from a cold start or a genuine 5xx.
+  app.get('/healthz', async (c) => {
+    try {
+      const probe = sql`SELECT 1`;
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('db_probe_timeout')), 1500),
+      );
+      await Promise.race([probe, timeout]);
+      return c.json({ status: 'ok' });
+    } catch {
+      return c.json({ status: 'degraded', error: 'db_unreachable' }, 503);
+    }
+  });
 
   // Public build identity. Lets ops, support and a future mobile client
   // tell which build is running on a given instance. No `version` semver

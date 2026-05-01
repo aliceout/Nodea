@@ -103,9 +103,9 @@ résout les deux.
 
 ### Étape A — Healthcheck honnête + containers monitorés (~1h, sans dep)
 
-- [ ] **OPS-01** — `/healthz` interroge la DB et retourne 503 si KO (30 min). [`ops.md`](./ops.md)
-- [ ] **OPS-04** — Healthcheck dans `docker-compose.yml` pour api + web (15 min). [`ops.md`](./ops.md)
-- [ ] **REC-S4** (côté serveur) — Brancher UptimeRobot ou Better Stack sur `/healthz` (10 min). [`server-config.md`](../recommendations/server-config.md)
+- [x] **OPS-01** — `/healthz` interroge la DB et retourne 503 si KO (30 min). [`ops.md`](./ops.md)
+- [x] **OPS-04** — Healthcheck dans `docker-compose.yml` pour api + web (15 min). [`ops.md`](./ops.md)
+- [ ] **REC-S4** (côté serveur, [issue #69](https://github.com/aliceout/Nodea/issues/69)) — Brancher UptimeRobot/Better Stack/Healthchecks.io sur `/healthz`. [`server-config.md`](../recommendations/server-config.md)
 
 > **Après cette étape, tu sais déjà quand l'instance est down.**
 

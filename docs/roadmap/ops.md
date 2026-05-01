@@ -142,7 +142,7 @@ détection est inexistante. »*
 | **Tracing** | **Aucun**. Pas d'OpenTelemetry. |
 | **Sentry / Bugsnag / Rollbar** | **Non installé**. |
 | **APM** (Datadog, New Relic) | **Non installé**. |
-| **Healthcheck app** | `GET /healthz` → `{ status: 'ok' }` constant, ne vérifie pas la DB. **Healthcheck qui ment.** |
+| **Healthcheck app** | `GET /healthz` interroge Postgres (probe `SELECT 1` avec timeout 1500 ms) ; renvoie 503 + `{ error: 'db_unreachable' }` si la DB ne répond pas (cf. OPS-01 livré). |
 | **Healthcheck Postgres** | ✅ `pg_isready` toutes les 5s, dépendance `condition: service_healthy` dans api. |
 
 ### Frameworks de test
@@ -180,7 +180,7 @@ détection est inexistante. »*
 
 ## Findings
 
-### OPS-01 — `/healthz` retourne 200 même si Postgres est mort
+### OPS-01 — `/healthz` retourne 200 même si Postgres est mort — livré
 
 - **Domaine** : alerting / supervision
 - **Sévérité** : élevée
@@ -188,9 +188,9 @@ détection est inexistante. »*
 - **Zone concernée** : [`packages/api/src/app.ts:46`](../../packages/api/src/app.ts#L46) — `app.get('/healthz', (c) => c.json({ status: 'ok' }))`
 - **Description** : le healthcheck applicatif se contente de répondre 200 — il ne vérifie ni la connectivité Postgres, ni rien d'autre. Si la DB est down, l'api répond toujours `{ status: 'ok' }`. Pour un load balancer ou un système de monitoring qui sonde `/healthz`, c'est un **healthcheck qui ment** : le service n'est pas opérationnel.
 - **Tâches**
-  - [ ] Étendre `/healthz` pour exécuter `await db.execute(sql\`SELECT 1\`)` et renvoyer 503 si KO.
-  - [ ] Optionnel : route `/readyz` (DB + dépendances critiques) distincte de `/livez` (process en vie). Standard k8s.
-  - [ ] Documenter dans `documentation/Operations.md` (à créer — cf. OPS-14).
+  - [x] Étendre `/healthz` pour exécuter `await db.execute(sql\`SELECT 1\`)` et renvoyer 503 si KO.
+  - [x] Optionnel : route `/readyz` (DB + dépendances critiques) distincte de `/livez` (process en vie). Standard k8s.
+  - [x] Documenter dans `documentation/Operations.md` (à créer — cf. OPS-14).
 - **Risque** : faible
 - **Dépendances** : aucune
 
@@ -231,7 +231,7 @@ détection est inexistante. »*
 - **Risque** : moyen (toucher à un Dockerfile peut casser le boot — tester en CI d'abord)
 - **Dépendances** : aucune
 
-### OPS-04 — Pas de healthcheck sur les containers api / web
+### OPS-04 — Pas de healthcheck sur les containers api / web — livré
 
 - **Domaine** : alerting
 - **Sévérité** : moyenne
@@ -239,7 +239,7 @@ détection est inexistante. »*
 - **Zone concernée** : [`docker-compose.yml`](../../docker-compose.yml) — services `api` et `web`
 - **Description** : seul `postgres` a un `healthcheck:` block. Les containers `api` et `web` n'en ont pas, donc Docker Compose n'a aucune information sur leur état. Couplé à OPS-01, le diagnostic devient impossible.
 - **Tâches**
-  - [ ] Ajouter dans `docker-compose.yml` :
+  - [x] Ajouter dans `docker-compose.yml` :
     ```yaml
     api:
       healthcheck:
@@ -256,7 +256,7 @@ détection est inexistante. »*
         timeout: 5s
         retries: 3
     ```
-  - [ ] Tester via `docker compose ps` que les états `(healthy)` apparaissent.
+  - [x] Tester via `docker compose ps` que les états `(healthy)` apparaissent.
 - **Risque** : faible
 - **Dépendances** : à coupler avec OPS-01 (sinon le healthcheck reste bidon).
 
