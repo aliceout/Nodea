@@ -509,8 +509,14 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 ### UI
 
 - `packages/web/src/ui/atoms/` is TSX-only as of #23 / R14. Small typed
-  primitives (Button, Modal, Input, Select, Textarea, Surface,
-  SurfaceCard, TableShell, …).
+  primitives live in domain-specific subfolders: `auth/` (password and
+  recovery widgets), `dirk/` (the canonical Button / Input / Select /
+  Textarea / Field set used by composer and forms), `feedback/`
+  (InlineAlert, ErrorBoundary), `layout/` (Surface, Modal), and
+  `specifics/` (KeyMissingModal, SurfaceCard) for the rare components
+  that don't fit elsewhere. The legacy flat sub-folders (`base/`,
+  `data/`, `form/`, `typography/`, `actions/`) were purged in REFACTO-09
+  — every file there had zero imports.
 - Per-module pages live at `src/app/flow/<Module>/`. Mood, Goals and
   Passage kept their legacy JSX subtree (restored from `fb68d85`) — the
   subtree as a whole is lazy-loaded and behind an ambient declaration

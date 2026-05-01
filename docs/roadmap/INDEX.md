@@ -72,7 +72,7 @@ résout les deux.
 
 ### Cleanup code (~2h30)
 
-- [ ] **REFACTO-09** — Purge `ui/atoms/` du code mort (20 fichiers, ~1000 LOC, 30 min). [`refacto.md`](./refacto.md)
+- [x] **REFACTO-09** — Purge `ui/atoms/` du code mort (20 fichiers, ~1000 LOC, 30 min). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-10** — `Settings/components/ModulesManager.tsx` → `Account/components/` (10 min). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-01** — Centraliser le type `LoadState` dans `core/types/` (30 min). [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-05** — Promouvoir `core/i18n/date-fr.ts` en `core/i18n/date.ts` i18n-aware (lit la langue active depuis `useI18n()`) ; supprimer `Goals/lib/date-format.ts` (~1h30). [`refacto.md`](./refacto.md)

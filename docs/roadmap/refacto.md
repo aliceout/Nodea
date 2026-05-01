@@ -122,22 +122,22 @@ fonctionnellement.
 > premier.** C'est le tier qui rend le rapport effort/gain le
 > plus élevé du document.
 
-### REFACTO-09 — Purger `ui/atoms/` du code mort
+### REFACTO-09 — Purger `ui/atoms/` du code mort — livré
 
 - **Type** : suppression
-- **Sites** (20 fichiers) :
-  - [`ui/atoms/actions/EditDeleteActions.tsx`](../../packages/web/src/ui/atoms/actions/EditDeleteActions.tsx)
-  - [`ui/atoms/base/{Alert,Button,Card,Modal}.tsx`](../../packages/web/src/ui/atoms/base/)
-  - [`ui/atoms/data/TableShell.tsx`](../../packages/web/src/ui/atoms/data/TableShell.tsx)
-  - [`ui/atoms/feedback/{Badge,StatusBanner}.tsx`](../../packages/web/src/ui/atoms/feedback/)
-  - [`ui/atoms/form/{DateMonthPicker,FormError,FormField,Input,Select,SuggestInput,Textarea}.tsx`](../../packages/web/src/ui/atoms/form/)
-  - [`ui/atoms/specifics/{AccountSettingsCard,EncryptedActionGate,LanguageSelector,ThemeSelector}.tsx`](../../packages/web/src/ui/atoms/specifics/)
-  - [`ui/atoms/typography/SectionHeader.tsx`](../../packages/web/src/ui/atoms/typography/SectionHeader.tsx)
+- **Sites** (20 fichiers, supprimés) :
+  - `ui/atoms/actions/EditDeleteActions.tsx`
+  - `ui/atoms/base/{Alert,Button,Card,Modal}.tsx`
+  - `ui/atoms/data/TableShell.tsx`
+  - `ui/atoms/feedback/{Badge,StatusBanner}.tsx`
+  - `ui/atoms/form/{DateMonthPicker,FormError,FormField,Input,Select,SuggestInput,Textarea}.tsx`
+  - `ui/atoms/specifics/{AccountSettingsCard,EncryptedActionGate,LanguageSelector,ThemeSelector}.tsx`
+  - `ui/atoms/typography/SectionHeader.tsx`
 - **Tâches**
-  - [ ] Vérifier 1 dernière fois (grep strict par chemin) que chaque fichier a 0 import.
-  - [ ] `git rm` les 20 fichiers + retirer les dossiers vides résultants (`actions/`, `base/`, `data/`, `form/`, `typography/`).
-  - [ ] Le tsc doit passer sans modif (le code est déjà mort).
-  - [ ] Documenter la nouvelle structure dans [`documentation/Architecture.md`](../../documentation/Architecture.md).
+  - [x] Vérifier 1 dernière fois (grep strict par chemin) que chaque fichier a 0 import.
+  - [x] `git rm` les 20 fichiers + retirer les dossiers vides résultants (`actions/`, `base/`, `data/`, `form/`, `typography/`).
+  - [x] Le tsc doit passer sans modif (le code est déjà mort).
+  - [x] Documenter la nouvelle structure dans [`docs/Architecture.md`](../Architecture.md).
 - **Gain** : ~1000 LOC mortes en moins, plus d'ambiguïté
   « quel Modal/Button/Input importer » (les vrais sont dans
   `dirk/`, `feedback/`, `layout/`, `auth/`).
