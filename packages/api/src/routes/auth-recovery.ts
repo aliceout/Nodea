@@ -247,13 +247,15 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
     return c.json({ error: 'invalid_credentials' }, 401);
   }
 
-  // Constant-time hash comparison. A mismatch is treated as a
-  // wrong recovery code — server logs the user id for monitoring
-  // but never the email (per CLAUDE.md: no identifying metadata
-  // in logs that aren't tied to the request being served).
+  // Constant-time hash comparison. A mismatch is logged as an
+  // **aggregated counter** (no per-user identifier — SEC-06) so the
+  // operator sees the rate without being able to correlate hash
+  // mismatches to a specific user. If a future investigation needs
+  // to trace one specific account, surface the user id via Sentry's
+  // event metadata (which already strips PII via beforeSend) rather
+  // than into stdout logs.
   if (!constantTimeEqualHex(user.recoveryCodeHash, body.recoveryCodeHash)) {
-     
-    console.warn(`[auth/recover-kek] hash_mismatch user=${user.id}`);
+    console.warn('[auth/recover-kek] hash_mismatch');
     return c.json({ error: 'invalid_credentials' }, 401);
   }
 

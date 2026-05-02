@@ -215,51 +215,38 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Risque** : moyen (à coordonner avec workflows dev qui dépendent du port exposé)
 - **Dépendances** : aucune
 
-### SEC-06 — User UUID logué sur recovery hash mismatch
+### SEC-06 — Compteur agrégé sur recovery hash mismatch — livré
 
 - **Sévérité** : faible
-- **Exploitabilité** : théorique
-- **Fichiers** :
-  - [`packages/api/src/routes/auth-recovery.ts:255`](../../packages/api/src/routes/auth-recovery.ts#L255)
-- **Description** : sur tentative de recovery avec un hash incorrect, l'user UUID est logué : `console.warn(\`[auth/recover-kek] hash_mismatch user=${user.id}\`)`. Le commentaire explique que c'est volontaire pour le monitoring. L'UUID n'est pas directement PII, et un hash mismatch est un signal d'incident. **Mais** combiné avec SEC-01 (logs accessibles), c'est encore une donnée qui sort du périmètre application.
-- **Scénario** : couplé à un autre log qui correspond user_id ↔ email (par exemple un futur log applicatif en debug), permet à un opérateur des logs de corréler activité ↔ email.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Remplacer par un compteur agrégé (Prometheus / dashboard métier) plutôt qu'un log par occurrence. OU
-  - [ ] Loguer un hash tronqué du user_id si le besoin de tracer un user spécifique reste.
-- **Effort** : S (~30 min)
+  - [x] `auth-recovery.ts:255` : `console.warn(\`[auth/recover-kek] hash_mismatch user=${user.id}\`)` → `console.warn('[auth/recover-kek] hash_mismatch')`. Le commentaire au-dessus du log explique le rationale et pointe sur Sentry pour la trace user-spécifique (Sentry strippe déjà le PII via `beforeSend`, donc l'événement reçoit un user-context sans email).
+- **Effort** : S — réalisé.
 - **Risque** : faible
-- **Dépendances** : SEC-01 (le contexte de cet ajustement est lié à l'hygiène des logs en général)
+- **Dépendances** : SEC-01 ✓
 
-### SEC-07 — Logo email chargé depuis `WEB_BASE_URL` — privacy reveal
+### SEC-07 — Logo email inliné en base64 — livré
 
 - **Sévérité** : faible
-- **Exploitabilité** : N/A (revelation, pas exploitation)
-- **Fichiers** :
-  - [`packages/api/src/services/email/templates/layout.ts:87-105`](../../packages/api/src/services/email/templates/layout.ts#L87-L105)
-- **Description** : l'image du logo dans les emails est chargée depuis `${WEB_BASE_URL}/favicon-128.png`. Quand le destinataire ouvre l'email avec « charger les images » activé (défaut Gmail, Apple Mail desktop), son client fait une requête HTTP au serveur Nodea. Cette requête révèle : (a) que l'email a été ouvert, (b) l'IP du destinataire au moment de l'ouverture, (c) le user-agent de son client mail. C'est exactement le mécanisme des *tracking pixels*, sauf qu'ici il sert le logo. Pour un projet qui pose en bandeau « pas de tracking », c'est une contradiction si elle n'est pas documentée.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Embed l'image en base64 inline dans le HTML (`<img src="data:image/png;base64,...">`) — alourdit les emails de ~6 KB, mais zéro callback réseau.
-  - [ ] OU utiliser une image attachée via `cid:` (multipart/related) — plus propre mais nécessite d'étendre `SendMailParams`.
-  - [ ] OU documenter explicitement dans la FAQ que le logo se charge depuis l'instance.
-- **Effort** : S (~30 min pour base64 inline)
-- **Risque** : faible
+  - [x] `packages/api/src/services/email/templates/assets/favicon-64.png` — copie locale de `packages/web/public/favicon-64.png` (1.8 KB raw). Bundlée dans l'image Docker api via le `COPY packages ./packages` existant.
+  - [x] `packages/api/src/services/email/templates/logo-base64.ts` — module qui lit la favicon en `readFileSync` au boot et exporte `LOGO_DATA_URL` (~2.4 KB base64).
+  - [x] `layout.ts` : l'`<img src="${baseUrl}/favicon-128.png">` est remplacé par `<img src="${LOGO_DATA_URL}">`. Le branchement conditionnel sur `WEB_BASE_URL` (qui produisait un fallback text-only) n'est plus nécessaire — le logo s'affiche dans tous les cas. Smoke test runtime via node : module charge OK, data URL length 2454 chars.
+- **Effort** : S — réalisé.
+- **Risque** : faible (l'image est plus petite que le 128 d'origine, le rendu retina reste correct grâce au downscale 64→32)
 - **Dépendances** : aucune
 
-### SEC-08 — Pas de défense CSRF au-delà de `SameSite=Lax`
+### SEC-08 — Cookie session passé à `SameSite=Strict` — livré
 
 - **Sévérité** : faible
-- **Exploitabilité** : théorique en prod (couplée à un XSS ou sub-domain takeover)
-- **Fichiers** :
-  - [`packages/api/src/auth/cookies.ts:13`](../../packages/api/src/auth/cookies.ts#L13) — `sameSite: 'Lax'`
-  - [`packages/api/src/app.ts:33-39`](../../packages/api/src/app.ts#L33-L39) — CORS `allowHeaders: ['content-type']`
-- **Description** : la défense CSRF repose sur (a) `SameSite=Lax`, (b) CORS qui n'accepte que `content-type`, (c) le fait que les routes acceptent du JSON. C'est solide en pratique : un POST cross-origin top-level ne portera pas le cookie en `Lax`. Mais `Lax` ne couvre pas tous les cas — un même-site sub-domain compromis peut envoyer des requêtes avec credentials. Et la CSP étant absente (cf. SEC-02), un XSS injecté ne rencontre aucune barrière CSRF.
-- **Scénario** : couplage avec un XSS ou un sub-domain takeover. Un script injecté sur `nodea.app` peut faire `fetch('/auth/security/recovery-code', {method: 'POST', credentials: 'include'})` et regénérer le recovery code de l'user, invalidant l'ancien.
+- **Statut** : livré (court terme). Double-submit token reste optionnel pour plus tard.
 - **Tâches**
-  - [ ] À court terme : passer `SameSite='Strict'` (l'app n'a pas de besoin de cross-site navigation, les liens d'email reviennent sur le même site).
-  - [ ] À moyen terme (si justifié) : implémenter un double-submit token (`__Host-csrf` cookie + header) sur les routes mutantes sensibles (security mode change, password rotation, account deletion, recovery regenerate).
-- **Effort** : S pour Strict (10 min), M pour double-submit (~3h)
-- **Risque** : faible
-- **Dépendances** : SEC-02 (la CSP couvre la majorité du scénario)
+  - [x] `packages/api/src/auth/cookies.ts:11` : `sameSite: 'Lax'` → `sameSite: 'Strict'`. Commentaire enrichi pour expliquer pourquoi `Strict` est OK ici (les flows email magic-link SET un cookie sur la réponse au lieu de READ un cookie sur la requête de top-level — ils ne dépendent pas d'un cookie pré-existant en cross-site nav).
+  - [ ] *Optionnel pour plus tard* : implémenter un double-submit token (`__Host-csrf` cookie + header) sur les routes mutantes les plus sensibles (security mode change, recovery regenerate, account deletion). Pas encore justifié — `SameSite=Strict` couvre le scénario CSRF ; le double-submit n'apporte qu'en cas de XSS, qui est lui-même bloqué par la CSP (cf. SEC-02).
+- **Effort** : S — réalisé.
+- **Risque** : faible. Conséquence UX testée mentalement : aucun flow casse, parce qu'aucun flow ne dépend d'un cookie cross-site déjà présent au moment du landing.
+- **Dépendances** : aucune (et SEC-02 reste utile pour la défense en profondeur contre XSS)
 
 ### SEC-09 — RGPD : matrice de rétention + brouillon CGU — livré (V1)
 

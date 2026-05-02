@@ -1,5 +1,6 @@
-import { getConfig } from '../../../config.ts';
 import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
+
+import { LOGO_DATA_URL } from './logo-base64.ts';
 
 /**
  * Common email layout — Auth-Spec.md §10.3.
@@ -18,13 +19,13 @@ import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
  *   - Web-safe font stack — system fonts on every major OS.
  *   - Light theme only in V1. `prefers-color-scheme` is supported by
  *     enough clients to be worth doing later, not now.
- *   - Header logo is served from `${WEB_BASE_URL}/favicon-128.png`
- *     (128 px source rendered at 32 px = sharp on retina). When
- *     `WEB_BASE_URL` is unset (some dev / test setups) we fall back
- *     to the text-only header so the email still renders cleanly.
- *     Empty `alt=""` because the adjacent `<h1>Nodea</h1>` already
- *     carries the brand's accessible name — assistive tech that
- *     announces both would say "Nodea Nodea".
+ *   - Header logo is **inlined as a base64 data URL** (SEC-07) via
+ *     `logo-base64.ts` — zero network callback at email open time, so
+ *     no tracking-pixel side-effect. Source = `assets/favicon-64.png`
+ *     (64 px rendered at 32 px = sharp on retina). Empty `alt=""`
+ *     because the adjacent `<h1>Nodea</h1>` already carries the brand's
+ *     accessible name — assistive tech that announces both would say
+ *     "Nodea Nodea".
  *
  * Localisation : Tier 5 i18n — caller passes `language`, the layout
  * pipes it through `emailT(language, 'layout.*')` for the footer
@@ -94,32 +95,25 @@ function buildFooterHtml(language: SupportedEmailLanguage): string {
 }
 
 function renderHeader(): string {
-  const baseUrl = (getConfig().WEB_BASE_URL ?? '').replace(/\/$/, '');
   const wordmark =
     '<h1 style="margin:0;font-size:20px;font-weight:600;color:#111827;letter-spacing:-0.01em;">Nodea</h1>';
-
-  // No base URL configured → text-only header, no broken-image
-  // placeholder. Same chrome as before this asset shipped.
-  if (!baseUrl) {
-    return [
-      '<tr>',
-      '  <td style="padding:32px 40px 24px 40px;border-bottom:1px solid #e5e7eb;">',
-      `    ${wordmark}`,
-      '  </td>',
-      '</tr>',
-    ].join('\n');
-  }
 
   // Inner table to align the symbol + wordmark on the same baseline.
   // `vertical-align:middle` on each cell is the only cross-client
   // reliable way to baseline-align an image and an h1 in a table row.
+  //
+  // The logo is inlined as a base64 data URL (SEC-07) — see
+  // `logo-base64.ts` for the rationale. Zero network callback when
+  // the recipient opens the email = no tracking-pixel side-effect.
+  // Same chrome whether or not WEB_BASE_URL is set, because the asset
+  // is bundled with the api package now.
   return [
     '<tr>',
     '  <td style="padding:32px 40px 24px 40px;border-bottom:1px solid #e5e7eb;">',
     '    <table cellpadding="0" cellspacing="0" border="0" role="presentation">',
     '      <tr>',
     '        <td style="padding-right:12px;vertical-align:middle;">',
-    `          <img src="${baseUrl}/favicon-128.png" alt="" width="32" height="32" style="display:block;width:32px;height:32px;border:0;" />`,
+    `          <img src="${LOGO_DATA_URL}" alt="" width="32" height="32" style="display:block;width:32px;height:32px;border:0;" />`,
     '        </td>',
     '        <td style="vertical-align:middle;">',
     `          ${wordmark}`,

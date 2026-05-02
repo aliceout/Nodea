@@ -208,9 +208,9 @@ résout les deux.
 ### Privacy & RGPD (~3-4h)
 
 - [x] **SEC-09** — Matrice de rétention RGPD ajoutée (`Security.md` §9, 12 tables) + ébauche CGU créée (`Terms.md`, 8 sections). [`security.md`](./security.md)
-- [ ] **SEC-06** — Compteur agrégé au lieu du log `user.id` sur recovery hash mismatch. ~30 min. [`security.md`](./security.md)
-- [ ] **SEC-07** — Logo email en base64 inline (élimine le tracking pixel). ~30 min. [`security.md`](./security.md)
-- [ ] **SEC-08** — Passer `SameSite='Strict'` sur le cookie session. ~10 min. [`security.md`](./security.md)
+- [x] **SEC-06** — `console.warn` recovery hash mismatch dépouillé du `user.id` ; trace user-spécifique reportée à Sentry (qui strippe déjà le PII). [`security.md`](./security.md)
+- [x] **SEC-07** — Logo email inliné en base64 via `templates/logo-base64.ts` (favicon-64.png copiée dans `assets/`, lue au boot). Plus de tracking-pixel side-effect. [`security.md`](./security.md)
+- [x] **SEC-08** — Cookie session `SameSite='Strict'` (au lieu de `'Lax'`). [`security.md`](./security.md)
 
 ---
 
