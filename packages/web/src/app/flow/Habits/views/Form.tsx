@@ -43,7 +43,7 @@ export default function HabitsFormView() {
       title: title.trim(),
       category,
       frequency,
-      started_at: startedAt || today(),
+      startedAt: startedAt || today(),
       archived: false,
       ...(targetNum != null ? { target: targetNum } : {}),
       ...(duration.trim() ? { duration: duration.trim() } : {}),

@@ -19,16 +19,16 @@ import { daysAgo, monthsAgo } from './shared.ts';
  *
  * Each fixture is a (item, reviews[]) pair so the seeder can
  * insert items first, capture their freshly-minted ids, then
- * insert reviews with the right `item_rid`. Covers are skipped
+ * insert reviews with the right `itemRid`. Covers are skipped
  * v1 — base64 cover blobs would inflate the seed for little
  * test value, and the manual Composer flow exercises that path.
  */
 
-interface LibraryItemFixture extends Omit<LibraryItemPayload, 'cover_rid'> {
-  cover_rid: null;
+interface LibraryItemFixture extends Omit<LibraryItemPayload, 'coverRid'> {
+  coverRid: null;
 }
 
-type LibraryReviewFixture = Omit<LibraryReviewPayload, 'item_rid'>;
+type LibraryReviewFixture = Omit<LibraryReviewPayload, 'itemRid'>;
 
 export interface LibrarySeedFixture {
   /** Stable handle used to wire reviews to their parent item — the
@@ -48,18 +48,18 @@ export function buildLibraryFixtures(): LibrarySeedFixture[] {
         creators: [{ name: 'Cal Newport', role: 'author' }],
         year: 2024,
         language: 'fr',
-        original_language: 'en',
+        originalLanguage: 'en',
         publisher: 'Alisio',
         summary:
           'Trois principes pour faire moins, mieux, plus longtemps : choisir peu de choses, travailler à un rythme naturel, viser la qualité.',
-        cover_rid: null,
+        coverRid: null,
         status: 'in_progress',
         format: 'paper',
-        started_at: monthsAgo(1),
-        finished_at: null,
+        startedAt: monthsAgo(1),
+        finishedAt: null,
         rating: null,
         tags: ['essai', 'travail'],
-        is_favorite: false,
+        isFavorite: false,
       },
       reviews: [
         {
@@ -90,19 +90,19 @@ export function buildLibraryFixtures(): LibrarySeedFixture[] {
         creators: [{ name: 'Yukio Mishima', role: 'author' }],
         year: 1956,
         language: 'fr',
-        original_language: 'jp',
+        originalLanguage: 'jp',
         publisher: 'Gallimard',
         collection: 'Folio',
         summary:
           'Confession romanesque d’un jeune moine bouddhiste qui finit par incendier le temple le plus beau du monde.',
-        cover_rid: null,
+        coverRid: null,
         status: 'in_progress',
         format: 'paper',
-        started_at: monthsAgo(2),
-        finished_at: null,
+        startedAt: monthsAgo(2),
+        finishedAt: null,
         rating: null,
         tags: ['fiction', 'classique', 'japon'],
-        is_favorite: true,
+        isFavorite: true,
       },
       reviews: [
         {
@@ -127,14 +127,14 @@ export function buildLibraryFixtures(): LibrarySeedFixture[] {
         publisher: 'La Volte',
         summary:
           'Vingt-trois êtres humains marchent contre le vent depuis l’Aval jusqu’à l’Extrême-Amont, à la recherche de l’origine du vent.',
-        cover_rid: null,
+        coverRid: null,
         status: 'finished',
         format: 'paper',
-        started_at: monthsAgo(8),
-        finished_at: monthsAgo(5),
+        startedAt: monthsAgo(8),
+        finishedAt: monthsAgo(5),
         rating: 5,
         tags: ['fiction', 'sf', 'coup de cœur'],
-        is_favorite: true,
+        isFavorite: true,
       },
       reviews: [
         {
@@ -159,14 +159,14 @@ export function buildLibraryFixtures(): LibrarySeedFixture[] {
         publisher: 'Argyll',
         summary:
           'Une société post-effondrement où l’abondance n’est plus une promesse mais une contrainte douce.',
-        cover_rid: null,
+        coverRid: null,
         status: 'planned',
         format: 'paper',
-        started_at: null,
-        finished_at: null,
+        startedAt: null,
+        finishedAt: null,
         rating: null,
         tags: ['fiction', 'utopie'],
-        is_favorite: false,
+        isFavorite: false,
       },
       reviews: [],
     },
@@ -178,18 +178,18 @@ export function buildLibraryFixtures(): LibrarySeedFixture[] {
         creators: [{ name: 'Yuval Noah Harari', role: 'author' }],
         year: 2014,
         language: 'fr',
-        original_language: 'he',
+        originalLanguage: 'he',
         publisher: 'Albin Michel',
         summary:
           'Survol des grandes ruptures de l’histoire humaine — révolution cognitive, agricole, scientifique.',
-        cover_rid: null,
+        coverRid: null,
         status: 'abandoned',
         format: 'audio',
-        started_at: monthsAgo(10),
-        finished_at: null,
+        startedAt: monthsAgo(10),
+        finishedAt: null,
         rating: 2,
         tags: ['essai', 'histoire'],
-        is_favorite: false,
+        isFavorite: false,
       },
       reviews: [
         {
@@ -214,14 +214,14 @@ export function buildLibraryFixtures(): LibrarySeedFixture[] {
         publisher: 'Grasset',
         summary:
           'Trois femmes, trois continents, trois combats reliés par un fil qu’on ne voit qu’à la fin.',
-        cover_rid: null,
+        coverRid: null,
         status: 'finished',
         format: 'ebook',
-        started_at: monthsAgo(3),
-        finished_at: monthsAgo(3),
+        startedAt: monthsAgo(3),
+        finishedAt: monthsAgo(3),
         rating: 4,
         tags: ['fiction'],
-        is_favorite: false,
+        isFavorite: false,
       },
       reviews: [],
     },

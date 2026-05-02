@@ -31,7 +31,7 @@ export function buildReviewFixtures(): ReviewPayload[] {
   return [
     {
       year: lastYear,
-      last_year: {
+      lastYear: {
         agenda_review: [
           'Janvier — déménagement Lyon',
           'Mars — départ mission longue, soulagement',
@@ -106,7 +106,7 @@ export function buildReviewFixtures(): ReviewPayload[] {
             'Au revoir 2025. Merci pour les voyages, les longues marches, et la liste des choses que je ne ferai plus.',
         },
       },
-      next_year: {
+      nextYear: {
         dream_big:
           'Je me vois écrivant une heure chaque matin avant de regarder un écran. Une *vraie heure*, pas dix minutes grappillées. Je me vois avec un projet d’écriture qui dure six mois et qui finit. Je me vois avec deux ou trois soirées par semaine sans rien — vraiment rien.',
         life_areas: {
@@ -189,12 +189,12 @@ export function buildReviewFixtures(): ReviewPayload[] {
         secret_wish:
           'Recevoir une lettre acceptant un texte dans une revue. Même petite. Juste une.',
       },
-      updated_at: monthsAgo(1),
+      updatedAt: monthsAgo(1),
     },
     {
       // Bilan partiel de l'année antérieure — exercise des sections vides.
       year: yearBeforeLast,
-      last_year: {
+      lastYear: {
         agenda_review: [
           'Quitter Paris',
           'Premier mois en province, surprise',
@@ -208,10 +208,10 @@ export function buildReviewFixtures(): ReviewPayload[] {
           farewell: 'Au revoir Paris. C’était le bon moment.',
         },
       },
-      next_year: {
+      nextYear: {
         word_of_year: 'commencer',
       },
-      updated_at: monthsAgo(13),
+      updatedAt: monthsAgo(13),
     },
   ];
 }

@@ -16,7 +16,7 @@ import PrimaryColumn from './views/PrimaryColumn';
  * three positives, a −2..+2 note, an optional « question du jour »
  * answer and an optional free-form comment. Emoji has been dropped
  * per the redesign ; old entries that still carry one are
- * read-tolerant via `MoodPayloadSchema.mood_emoji.optional()`.
+ * read-tolerant via `MoodPayloadSchema.moodEmoji.optional()`.
  *
  * Architecture (matches Library / Goals / Journal) :
  *   - `<MoodProvider>` (`./context.tsx`) owns the page-local state

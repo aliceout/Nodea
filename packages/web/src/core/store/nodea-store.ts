@@ -240,7 +240,7 @@ export type ComposerEditing =
        * editing entry is omitted — but we may still need to know
        * which item the review is being created against. The item
        * version uses `id` for the existing review id when editing,
-       * and the body reads `payload.item_rid` from the prefilled
+       * and the body reads `payload.itemRid` from the prefilled
        * payload to pin the relation. */
     };
 

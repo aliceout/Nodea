@@ -145,7 +145,7 @@ async function editionToNormalised(
     creators,
     year: extractYear(edition.publish_date ?? null),
     language,
-    original_language: null,
+    originalLanguage: null,
     publisher: edition.publishers?.[0] ?? null,
     collection: null,
     summary: description,
@@ -153,7 +153,7 @@ async function editionToNormalised(
     isbn10: isbn10 ?? null,
     format: inferFormat(edition.physical_format),
     series: seriesName ? parseSeriesString(seriesName) : null,
-    cover_url: coverId
+    coverUrl: coverId
       ? `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`
       : null,
     providers: olKey ? { openlibrary: olKey } : {},
@@ -186,7 +186,7 @@ function searchDocToNormalised(
     // edition list — it means an edition in that language exists.
     // Fallback to `[0]` when no hint or no match.
     language: pickLanguage(doc.language, langHint),
-    original_language: null,
+    originalLanguage: null,
     publisher: doc.publisher?.[0] ?? null,
     collection: null,
     summary: doc.first_sentence?.[0] ?? null,
@@ -194,7 +194,7 @@ function searchDocToNormalised(
     isbn10: isbn10 ? isbn10.replace(/[-\s]/g, '') : null,
     format: null,
     series: seriesName ? parseSeriesString(seriesName) : null,
-    cover_url: doc.cover_i
+    coverUrl: doc.cover_i
       ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
       : null,
     providers: doc.key ? { openlibrary: doc.key } : {},

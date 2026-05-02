@@ -83,7 +83,7 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
   const filteredItems = useMemo<LibraryItem[]>(() => {
     return items.filter((it) => {
       if (statusFilter === 'favorites') {
-        if (!it.is_favorite) return false;
+        if (!it.isFavorite) return false;
       } else if (statusFilter !== 'all' && it.status !== statusFilter) {
         return false;
       }

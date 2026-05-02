@@ -13,14 +13,14 @@ const sampleItemPayload: LibraryItemPayload = {
   title: 'Les Misérables',
   creators: [{ name: 'Victor HUGO', role: 'author' }],
   year: 1862,
-  cover_rid: null,
+  coverRid: null,
   status: 'finished',
   format: 'paper',
-  started_at: null,
-  finished_at: null,
+  startedAt: null,
+  finishedAt: null,
   rating: null,
   tags: [],
-  is_favorite: false,
+  isFavorite: false,
 };
 
 describe('itemFromRecord', () => {
@@ -41,7 +41,7 @@ describe('itemFromRecord', () => {
 describe('reviewFromRecord', () => {
   it('flattens the record into id + payload fields', () => {
     const payload: LibraryReviewPayload = {
-      item_rid: 'item-42',
+      itemRid: 'item-42',
       date: '2025-01-08T19:42:00.000Z',
       kind: 'quote',
       title: null,
@@ -56,7 +56,7 @@ describe('reviewFromRecord', () => {
     };
     const review = reviewFromRecord(record);
     expect(review.id).toBe('rev-1');
-    expect(review.item_rid).toBe('item-42');
+    expect(review.itemRid).toBe('item-42');
     expect(review.kind).toBe('quote');
     expect(review.page).toBe(318);
   });
@@ -73,22 +73,22 @@ describe('buildCoverMap', () => {
         id: 'cov-a',
         moduleUserId: 'sid-x',
         payload: {
-          item_rid: 'item-a',
+          itemRid: 'item-a',
           mime: 'image/jpeg',
-          blob_b64: 'AAA',
-          fetched_from: null,
-          fetched_at: null,
+          blobB64: 'AAA',
+          fetchedFrom: null,
+          fetchedAt: null,
         },
       },
       {
         id: 'cov-b',
         moduleUserId: 'sid-x',
         payload: {
-          item_rid: 'item-b',
+          itemRid: 'item-b',
           mime: 'image/png',
-          blob_b64: 'BBB',
-          fetched_from: null,
-          fetched_at: null,
+          blobB64: 'BBB',
+          fetchedFrom: null,
+          fetchedAt: null,
         },
       },
     ];

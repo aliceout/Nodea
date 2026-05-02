@@ -58,8 +58,8 @@ export interface SaveLibraryItemFields {
 export interface SaveLibraryItemInput {
   ctx: ModuleClient | null;
   /** When non-null, switches the orchestrator to the update path —
-   *  preserves `cover_rid` / `started_at` / `finished_at` / `rating`
-   *  / `is_favorite` from `payload` (those aren't editable in the
+   *  preserves `coverRid` / `startedAt` / `finishedAt` / `rating`
+   *  / `isFavorite` from `payload` (those aren't editable in the
    *  composer) and patches the rest. */
   editing: { id: string; payload: LibraryItemPayload } | null;
   fields: SaveLibraryItemFields;
@@ -113,13 +113,13 @@ export async function saveLibraryItem(
       creators: normalisedAuthor
         ? [{ name: normalisedAuthor, role: 'author' }]
         : [],
-      cover_rid: basePayload?.cover_rid ?? null,
+      coverRid: basePayload?.coverRid ?? null,
       status: fields.status,
       format: fields.format,
-      started_at: basePayload?.started_at ?? null,
-      finished_at: basePayload?.finished_at ?? null,
+      startedAt: basePayload?.startedAt ?? null,
+      finishedAt: basePayload?.finishedAt ?? null,
       rating: basePayload?.rating ?? null,
-      is_favorite: basePayload?.is_favorite ?? false,
+      isFavorite: basePayload?.isFavorite ?? false,
       tags,
       ...(Object.keys(providers).length > 0
         ? { providers }
@@ -149,7 +149,7 @@ export async function saveLibraryItem(
     if (editing) {
       // Edit path: cover swap mid-edit isn't wired (would need to
       // delete the old encrypted blob row and create a new one).
-      // We just update the item, keeping the existing `cover_rid`
+      // We just update the item, keeping the existing `coverRid`
       // from `basePayload`. If the user wants to add a cover to a
       // book that didn't have one, that's still supported below.
       await libraryItemsClient.update(
@@ -158,7 +158,7 @@ export async function saveLibraryItem(
         editing.id,
         payload,
       );
-      if (fields.coverUrl && !basePayload?.cover_rid) {
+      if (fields.coverUrl && !basePayload?.coverRid) {
         // Late-add a cover to an existing item: download via the
         // proxy, store the encrypted blob, then patch the item to
         // point at it. Best-effort — failure leaves the book without
@@ -170,11 +170,11 @@ export async function saveLibraryItem(
               ctx.moduleUserId,
               ctx.mainKey,
               {
-                item_rid: editing.id,
+                itemRid: editing.id,
                 mime: fetched.mime,
-                blob_b64: fetched.blob_b64,
-                fetched_from: fields.coverUrl,
-                fetched_at: new Date().toISOString(),
+                blobB64: fetched.blobB64,
+                fetchedFrom: fields.coverUrl,
+                fetchedAt: new Date().toISOString(),
               },
             );
             await libraryItemsClient.update(
@@ -183,7 +183,7 @@ export async function saveLibraryItem(
               editing.id,
               {
                 ...payload,
-                cover_rid: newCover.id,
+                coverRid: newCover.id,
               },
             );
           } catch (err) {
@@ -213,11 +213,11 @@ export async function saveLibraryItem(
             ctx.moduleUserId,
             ctx.mainKey,
             {
-              item_rid: newItem.id,
+              itemRid: newItem.id,
               mime: fetchedCover.mime,
-              blob_b64: fetchedCover.blob_b64,
-              fetched_from: fields.coverUrl,
-              fetched_at: new Date().toISOString(),
+              blobB64: fetchedCover.blobB64,
+              fetchedFrom: fields.coverUrl,
+              fetchedAt: new Date().toISOString(),
             },
           );
           await libraryItemsClient.update(
@@ -226,7 +226,7 @@ export async function saveLibraryItem(
             newItem.id,
             {
               ...newItem.payload,
-              cover_rid: newCover.id,
+              coverRid: newCover.id,
             },
           );
         } catch (err) {

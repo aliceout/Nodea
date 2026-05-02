@@ -12,7 +12,7 @@ import { daysAgo, monthsAgo, nowMinusDays } from './shared.ts';
  *     so the « — sans thread — » bucket is exercised.
  *   - Mix of `YYYY-MM` (intention dates) and bare `YYYY` (vague,
  *     « cette année ») so `formatDate` is exercised end-to-end.
- *   - One done goal carries `completed_at` so the « date de
+ *   - One done goal carries `completedAt` so the « date de
  *     complétion » path is wired ; another stays null so we
  *     also test the « date inconnue » fallback.
  *   - Notes use the lightweight Markdown subset (`**bold**`,
@@ -27,8 +27,8 @@ type GoalFixture = Pick<
   | 'note'
   | 'status'
   | 'thread'
-  | 'completed_at'
-  | 'updated_at'
+  | 'completedAt'
+  | 'updatedAt'
 >;
 
 export function buildGoalsFixtures(): GoalFixture[] {
@@ -46,8 +46,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
         '- Mailing list opt-in à brancher plus tard',
       status: 'wip',
       thread: 'pro',
-      completed_at: null,
-      updated_at: nowMinusDays(2),
+      completedAt: null,
+      updatedAt: nowMinusDays(2),
     },
     {
       date: `${yyyy()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -55,8 +55,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
       note: 'Plutôt fin d’aprem qu’en pleine journée. Tracker via Habits dès qu’il est livré.',
       status: 'wip',
       thread: 'perso',
-      completed_at: null,
-      updated_at: nowMinusDays(0),
+      completedAt: null,
+      updatedAt: nowMinusDays(0),
     },
     {
       date: `${yyyy()}-09`,
@@ -67,8 +67,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
         '- Faire suivre courrier (3 mois)',
       status: 'done',
       thread: 'perso',
-      completed_at: nowMinusDays(45),
-      updated_at: nowMinusDays(45),
+      completedAt: nowMinusDays(45),
+      updatedAt: nowMinusDays(45),
     },
     {
       date: `${yyyy()}-06`,
@@ -77,8 +77,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
         'Rendu propre, pas de retours bloquants. **Bilan : ne plus accepter ce type de scope sans cadrage écrit.**',
       status: 'done',
       thread: 'pro',
-      completed_at: nowMinusDays(120),
-      updated_at: nowMinusDays(120),
+      completedAt: nowMinusDays(120),
+      updatedAt: nowMinusDays(120),
     },
     {
       date: `${yyyy()}-${String(((new Date().getMonth() + 2) % 12) + 1).padStart(2, '0')}`,
@@ -86,8 +86,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
       note: 'Trois jours suffisent. Train réservé tôt = -40 % sur le billet.',
       status: 'open',
       thread: 'perso',
-      completed_at: null,
-      updated_at: nowMinusDays(7),
+      completedAt: null,
+      updatedAt: nowMinusDays(7),
     },
     {
       date: yyyy(),
@@ -98,8 +98,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
         '- Pas de pression sur la longueur — un essai court compte',
       status: 'wip',
       thread: 'perso, lecture',
-      completed_at: null,
-      updated_at: nowMinusDays(1),
+      completedAt: null,
+      updatedAt: nowMinusDays(1),
     },
     {
       date: `${yyyy()}-${String(((new Date().getMonth() + 4) % 12) + 1).padStart(2, '0')}`,
@@ -107,8 +107,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
       note: 'Pas urgent. Bloquer un dimanche entier plutôt que grignoter en soirée.',
       status: 'open',
       thread: 'pro',
-      completed_at: null,
-      updated_at: monthsAgo(2),
+      completedAt: null,
+      updatedAt: monthsAgo(2),
     },
     {
       date: `${yyyy(-1)}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -116,8 +116,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
       note: 'Faire le carnet *avant* le 31 décembre, pas après. Bloquer une demi-journée.',
       status: 'done',
       thread: '',
-      completed_at: null, // legacy : ce goal a été fini avant qu'on ait le timestamp
-      updated_at: monthsAgo(11),
+      completedAt: null, // legacy : ce goal a été fini avant qu'on ait le timestamp
+      updatedAt: monthsAgo(11),
     },
     {
       // Legacy goal that landed in the system without a precise
@@ -127,8 +127,8 @@ export function buildGoalsFixtures(): GoalFixture[] {
       note: 'Posée depuis trois ans. Voir si je veux vraiment, ou si c’est juste de la nostalgie.',
       status: 'open',
       thread: 'perso',
-      completed_at: null,
-      updated_at: daysAgo(60),
+      completedAt: null,
+      updatedAt: daysAgo(60),
     },
   ];
 }

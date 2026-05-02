@@ -41,8 +41,8 @@ export function mergeOnce(books: NormalisedBook[]): NormalisedBook | null {
     if (!merged.title || merged.title === '(sans titre)') merged.title = b.title;
     if (!merged.year && b.year) merged.year = b.year;
     if (!merged.language && b.language) merged.language = b.language;
-    if (!merged.original_language && b.original_language) {
-      merged.original_language = b.original_language;
+    if (!merged.originalLanguage && b.originalLanguage) {
+      merged.originalLanguage = b.originalLanguage;
     }
     if (!merged.publisher && b.publisher) merged.publisher = b.publisher;
     if (!merged.collection && b.collection) merged.collection = b.collection;
@@ -54,10 +54,10 @@ export function mergeOnce(books: NormalisedBook[]): NormalisedBook | null {
     // higher resolution and more consistently present than OL's).
     // Otherwise FIFO so the earliest provider with a cover gets to
     // contribute.
-    if (b.source === 'amazon' && b.cover_url) {
-      merged.cover_url = b.cover_url;
-    } else if (!merged.cover_url && b.cover_url) {
-      merged.cover_url = b.cover_url;
+    if (b.source === 'amazon' && b.coverUrl) {
+      merged.coverUrl = b.coverUrl;
+    } else if (!merged.coverUrl && b.coverUrl) {
+      merged.coverUrl = b.coverUrl;
     }
     if (!merged.series && b.series) merged.series = b.series;
     else if (merged.series && b.series) {

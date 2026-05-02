@@ -22,7 +22,7 @@ export default function BookWall({ items }: BookWallProps) {
   return (
     <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
       {items.map((it) => {
-        const cover = it.cover_rid ? covers.get(it.cover_rid) ?? null : null;
+        const cover = it.coverRid ? covers.get(it.coverRid) ?? null : null;
         const author = it.creators?.[0]?.name ?? '';
         return (
           <li key={it.id} className="group relative min-w-0">
@@ -63,7 +63,7 @@ export default function BookWall({ items }: BookWallProps) {
                   <span className="block truncate opacity-80">{author}</span>
                 ) : null}
               </span>
-              {it.is_favorite ? (
+              {it.isFavorite ? (
                 <span
                   className="absolute top-1 left-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-bg/85 text-accent"
                   aria-label="Favori"

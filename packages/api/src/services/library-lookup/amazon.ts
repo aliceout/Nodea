@@ -165,7 +165,7 @@ function parseSearchHtml(html: string, limit: number): NormalisedBook[] {
       // `null` when nothing in the tile names a language — the
       // dispatcher's filter keeps `null` records on purpose.
       language: extractLanguage(tile, title),
-      original_language: null,
+      originalLanguage: null,
       publisher: null,
       collection: null,
       summary: null,
@@ -173,7 +173,7 @@ function parseSearchHtml(html: string, limit: number): NormalisedBook[] {
       isbn10: looksLikeIsbn10 ? asin.toUpperCase() : null,
       format: null,
       series: null,
-      cover_url: cover,
+      coverUrl: cover,
       providers: { amazon: asin },
       source: 'amazon',
     });

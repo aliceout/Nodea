@@ -22,8 +22,8 @@ function moodRecord(
     moduleUserId: 'sid-x',
     payload: {
       date: '',
-      mood_score: '0',
-      mood_emoji: '',
+      moodScore: '0',
+      moodEmoji: '',
       positive1: '',
       positive2: '',
       positive3: '',
@@ -46,8 +46,8 @@ function goalRecord(
       note: '',
       status: 'open',
       thread: '',
-      completed_at: null,
-      updated_at: '2026-03-15T00:00:00Z',
+      completedAt: null,
+      updatedAt: '2026-03-15T00:00:00Z',
       ...payload,
     } as GoalsPayload,
   };
@@ -67,8 +67,8 @@ function libraryRecord(
 describe('projectMoodEntries', () => {
   it('keeps records with a valid date and a canonical score', () => {
     const out = projectMoodEntries([
-      moodRecord('a', { date: '2026-03-15', mood_score: '2' }),
-      moodRecord('b', { date: '2026-03-14T08:42:00Z', mood_score: '-1' }),
+      moodRecord('a', { date: '2026-03-15', moodScore: '2' }),
+      moodRecord('b', { date: '2026-03-14T08:42:00Z', moodScore: '-1' }),
     ]);
     expect(out).toEqual([
       { dateIso: '2026-03-15', score: '2', createdAt: '2026-03-15' },
@@ -78,17 +78,17 @@ describe('projectMoodEntries', () => {
 
   it('drops records with a missing or malformed date', () => {
     const out = projectMoodEntries([
-      moodRecord('a', { date: '', mood_score: '0' }),
-      moodRecord('b', { date: 'garbage', mood_score: '0' }),
-      moodRecord('c', { date: '15/03/2026', mood_score: '0' }),
+      moodRecord('a', { date: '', moodScore: '0' }),
+      moodRecord('b', { date: 'garbage', moodScore: '0' }),
+      moodRecord('c', { date: '15/03/2026', moodScore: '0' }),
     ]);
     expect(out).toEqual([]);
   });
 
   it('drops records with an unexpected mood score', () => {
     const out = projectMoodEntries([
-      moodRecord('a', { date: '2026-03-15', mood_score: '99' }),
-      moodRecord('b', { date: '2026-03-14', mood_score: 'neutre' }),
+      moodRecord('a', { date: '2026-03-15', moodScore: '99' }),
+      moodRecord('b', { date: '2026-03-14', moodScore: 'neutre' }),
     ]);
     expect(out).toEqual([]);
   });
@@ -125,7 +125,7 @@ describe('projectGoalEntries', () => {
       goalRecord('rec-1', {
         title: 'Hello',
         thread: '#alpha,#beta',
-        updated_at: '2026-04-01T00:00:00Z',
+        updatedAt: '2026-04-01T00:00:00Z',
       }),
     ]);
     expect(out[0]).toMatchObject({
@@ -175,7 +175,7 @@ describe('projectLibraryReadings', () => {
       libraryRecord('b', {
         title: 'B',
         status: 'in_progress',
-        is_favorite: true,
+        isFavorite: true,
       }),
     ]);
     expect(out[0]?.isFavorite).toBe(false);

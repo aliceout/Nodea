@@ -26,7 +26,7 @@ import { buildLibraryFixtures } from './library.fixtures.ts';
  * manual Composer flow (the lookup-by-ISBN path) and inflate the
  * fixture for little test value.
  *
- * Cross-reference handling : reviews carry an `item_rid` pointing to
+ * Cross-reference handling : reviews carry an `itemRid` pointing to
  * their parent item's record id. The id is generated at insert time,
  * so we insert items first and remap each fixture's stable handle
  * to the freshly-minted id before encrypting the matching reviews.
@@ -97,7 +97,7 @@ export async function seedLibrary(ctx: SeedContext): Promise<SeedResult> {
     for (const review of fx.reviews) {
       const payload = LibraryReviewPayloadSchema.parse({
         ...review,
-        item_rid: itemRid,
+        itemRid: itemRid,
       });
       const id = randomUUID();
       const guard = await deriveGuard(ctx.hmacKey, sid, id);

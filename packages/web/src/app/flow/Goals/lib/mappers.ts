@@ -39,10 +39,10 @@ export function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry 
     note: p.note ?? '',
     status: normalizeStatus(p.status),
     thread: p.thread ?? '',
-    // `payload.updated_at` is the in-payload timestamp the writer
+    // `payload.updatedAt` is the in-payload timestamp the writer
     // bumps on every save — server-side timestamps were dropped in
     // the minimum-readable-surface refactor.
-    updatedAt: p.updated_at,
-    completedAt: typeof p.completed_at === 'string' ? p.completed_at : null,
+    updatedAt: p.updatedAt,
+    completedAt: typeof p.completedAt === 'string' ? p.completedAt : null,
   };
 }

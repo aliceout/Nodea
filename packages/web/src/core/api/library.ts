@@ -23,7 +23,7 @@ export async function apiLibraryLookupByIsbn(
 export interface LibraryCoverFetchResult {
   mime: string;
   /** Base64 (no `data:` prefix) of the raw image bytes. */
-  blob_b64: string;
+  blobB64: string;
 }
 
 /**
@@ -32,7 +32,7 @@ export interface LibraryCoverFetchResult {
  * Books / Amazon don't expose CORS for arbitrary fetches (only
  * `<img>` tag loading). The proxy validates the URL against an
  * allowlist of provider hosts, downloads the bytes server-side,
- * and hands them back as `{ mime, blob_b64 }`.
+ * and hands them back as `{ mime, blobB64 }`.
  *
  * Returns `null` on any failure (provider 404, host not allowed,
  * timeout, oversized, network error). The caller treats a missing
@@ -49,9 +49,9 @@ export async function apiLibraryFetchCover(
     if (
       isRecord(raw) &&
       typeof raw.mime === 'string' &&
-      typeof raw.blob_b64 === 'string'
+      typeof raw.blobB64 === 'string'
     ) {
-      return { mime: raw.mime, blob_b64: raw.blob_b64 };
+      return { mime: raw.mime, blobB64: raw.blobB64 };
     }
     return null;
   } catch {

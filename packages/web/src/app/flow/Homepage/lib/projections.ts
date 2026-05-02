@@ -36,11 +36,11 @@ export function projectMoodEntries(
   for (const r of records) {
     const p = r.payload;
     if (!p.date || !/^\d{4}-\d{2}-\d{2}/.test(p.date)) continue;
-    if (!MOOD_VALID_SCORES.has(p.mood_score)) continue;
+    if (!MOOD_VALID_SCORES.has(p.moodScore)) continue;
     const dateIso = p.date.slice(0, 10);
     out.push({
       dateIso,
-      score: p.mood_score as MoodScore,
+      score: p.moodScore as MoodScore,
       createdAt: dateIso,
     });
   }
@@ -79,10 +79,10 @@ export function projectGoalEntries(
       title,
       status,
       thread: p.thread ?? '',
-      // `payload.updated_at` is the in-payload timestamp the
+      // `payload.updatedAt` is the in-payload timestamp the
       // Goals writer bumps on every save (server-side
       // timestamps were dropped).
-      updatedAt: p.updated_at,
+      updatedAt: p.updatedAt,
     });
   }
   return out;
@@ -117,7 +117,7 @@ export function projectLibraryReadings(
       id: r.id,
       title,
       author,
-      isFavorite: p.is_favorite ?? false,
+      isFavorite: p.isFavorite ?? false,
     });
   }
   return out;

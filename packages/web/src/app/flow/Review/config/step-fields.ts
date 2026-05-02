@@ -8,8 +8,8 @@ import type { KeyLabel, MixedKeyLabel } from './step-types.ts';
  */
 
 /** Page 5 + 15 — eight life areas, exactly as the booklet lists
- *  them. Reused for both `last_year.life_areas` and
- *  `next_year.life_areas`. */
+ *  them. Reused for both `lastYear.life_areas` and
+ *  `nextYear.life_areas`. */
 export const LIFE_AREAS_FIELDS: KeyLabel[] = [
   { key: 'personal_family', label: 'Vie personnelle, famille' },
   { key: 'career_studies', label: 'Carrière, études' },

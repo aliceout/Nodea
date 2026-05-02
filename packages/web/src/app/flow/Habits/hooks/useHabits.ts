@@ -113,7 +113,7 @@ export function useHabits(): HabitsContext {
       if (!mainKey || !logsSid) return;
       await habitsLogsClient.create(logsSid, mainKey, {
         date,
-        item_rid: itemId,
+        itemRid: itemId,
         done: true,
       });
       await refresh();

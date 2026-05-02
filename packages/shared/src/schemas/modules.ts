@@ -18,7 +18,7 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------
 
 /**
- * Valid `mood_score` strings — Direction K · Sauge mood scale
+ * Valid `moodScore` strings — Direction K · Sauge mood scale
  * (`très bas → très bon`). Stored as a string for forwards-compat
  * with legacy entries; the UI binds these to a 5-segment selector.
  */
@@ -28,14 +28,14 @@ export type MoodScore = (typeof MOOD_SCORE_VALUES)[number];
 export const MoodPayloadSchema = z
   .object({
     date: z.string().min(1),
-    mood_score: z.string(),
+    moodScore: z.string(),
     /**
      * Pre-Direction-K entries used to carry an emoji alongside the
      * note. The Sauge redesign drops it from the form, but old
      * records still hold a string here — kept optional + default
      * so existing payloads decrypt cleanly.
      */
-    mood_emoji: z.string().optional().default(''),
+    moodEmoji: z.string().optional().default(''),
     positive1: z.string().default(''),
     positive2: z.string().default(''),
     positive3: z.string().default(''),
@@ -70,14 +70,14 @@ export const GoalsPayloadSchema = z
      *  `done` goals don't have one and the front renders « date
      *  inconnue » in that case. Drives time-to-completion stats
      *  and the « cette année » archive view. */
-    completed_at: z.string().nullable().default(null),
+    completedAt: z.string().nullable().default(null),
     /** ISO timestamp of the last write to this goal. Lives in the
      *  encrypted payload (not the entry-table wrapper) so the
      *  server never sees write activity per goal — the
      *  minimum-readable-surface design forbids per-row server-
      *  side timestamps. The Goals page bumps it on every save ;
      *  the « Récent » sort reads it. */
-    updated_at: z.string().default(''),
+    updatedAt: z.string().default(''),
   })
   .passthrough();
 export type GoalsPayload = z.infer<typeof GoalsPayloadSchema>;
@@ -140,7 +140,7 @@ export const HabitsItemPayloadSchema = z
     target: z.number().int().positive().optional(),
     /** ISO 8601 duration, e.g. "P6M" for "6 months". */
     duration: z.string().optional(),
-    started_at: z.string().min(1),
+    startedAt: z.string().min(1),
     archived: z.boolean().default(false),
   })
   .passthrough();
@@ -151,7 +151,7 @@ export const HabitsLogPayloadSchema = z
   .object({
     date: z.string().min(1),
     /** Client-side identifier of the associated habits_items record. */
-    item_rid: z.string().min(1),
+    itemRid: z.string().min(1),
     done: z.boolean().default(true),
   })
   .passthrough();
@@ -237,7 +237,7 @@ export const LibraryItemPayloadSchema = z
     creators: z.array(LibraryCreatorSchema).default([]),
     year: z.number().int().optional(),
     language: z.string().optional(),
-    original_language: z.string().optional(),
+    originalLanguage: z.string().optional(),
     publisher: z.string().optional(),
     /** Collection éditoriale (e.g. "Folio classique", "Pléiade",
      * "Babel"). Distinct from `series` which is a multi-volume work.
@@ -247,15 +247,15 @@ export const LibraryItemPayloadSchema = z
     series: LibrarySeriesSchema.optional(),
 
     /** rid of the matching `library_covers_entries` row, or null. */
-    cover_rid: z.string().nullable().default(null),
+    coverRid: z.string().nullable().default(null),
 
     status: z.enum(LIBRARY_STATUS_VALUES).default('planned'),
     format: z.enum(LIBRARY_FORMAT_VALUES).default('unknown'),
-    started_at: z.string().nullable().default(null),
-    finished_at: z.string().nullable().default(null),
+    startedAt: z.string().nullable().default(null),
+    finishedAt: z.string().nullable().default(null),
     rating: z.number().min(0).max(5).nullable().default(null),
     tags: z.array(z.string()).default([]),
-    is_favorite: z.boolean().default(false),
+    isFavorite: z.boolean().default(false),
   })
   .passthrough();
 export type LibraryItemPayload = z.infer<typeof LibraryItemPayloadSchema>;
@@ -268,7 +268,7 @@ export type LibraryItemPayload = z.infer<typeof LibraryItemPayloadSchema>;
  */
 export const LibraryReviewPayloadSchema = z
   .object({
-    item_rid: z.string().min(1),
+    itemRid: z.string().min(1),
     date: z.string().min(1),
     kind: z.enum(LIBRARY_REVIEW_KIND_VALUES).default('note'),
     title: z.string().nullable().default(null),
@@ -286,11 +286,11 @@ export type LibraryReviewPayload = z.infer<typeof LibraryReviewPayloadSchema>;
  */
 export const LibraryCoverPayloadSchema = z
   .object({
-    item_rid: z.string().min(1),
+    itemRid: z.string().min(1),
     mime: z.string().min(1),
-    blob_b64: z.string().min(1),
-    fetched_from: z.string().nullable().default(null),
-    fetched_at: z.string().nullable().default(null),
+    blobB64: z.string().min(1),
+    fetchedFrom: z.string().nullable().default(null),
+    fetchedAt: z.string().nullable().default(null),
   })
   .passthrough();
 export type LibraryCoverPayload = z.infer<typeof LibraryCoverPayloadSchema>;
@@ -300,7 +300,7 @@ export type LibraryCoverPayload = z.infer<typeof LibraryCoverPayloadSchema>;
 // ---------------------------------------------------------------------
 
 /**
- * The Review payload is a deep structure (`last_year` / `next_year` /
+ * The Review payload is a deep structure (`lastYear` / `nextYear` /
  * `closing`, each with nested objects and arrays). Constraining every
  * field here would bloat the schema without adding safety — the UI
  * builds the object step by step and the server only stores the
@@ -312,14 +312,14 @@ export type LibraryCoverPayload = z.infer<typeof LibraryCoverPayloadSchema>;
 export const ReviewPayloadSchema = z
   .object({
     year: z.number().int(),
-    last_year: z.record(z.string(), z.unknown()).optional(),
-    next_year: z.record(z.string(), z.unknown()).optional(),
+    lastYear: z.record(z.string(), z.unknown()).optional(),
+    nextYear: z.record(z.string(), z.unknown()).optional(),
     closing: z.record(z.string(), z.unknown()).optional(),
     /** ISO timestamp of the last write — lives in the encrypted
      *  payload (server-side timestamps were dropped in the
      *  minimum-readable-surface refactor). The List view uses it
      *  to surface the « modifié le … » label. */
-    updated_at: z.string().default(''),
+    updatedAt: z.string().default(''),
   })
   .passthrough();
 export type ReviewPayload = z.infer<typeof ReviewPayloadSchema>;

@@ -24,8 +24,8 @@ function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is I
 
 /**
  * Coerce + validate against the canonical schema. The schema fills
- * defaults for `mood_emoji` / `positive1-3` / `comment`, so a legacy
- * export missing those fields still parses cleanly. `mood_score` is
+ * defaults for `moodEmoji` / `positive1-3` / `comment`, so a legacy
+ * export missing those fields still parses cleanly. `moodScore` is
  * coerced to string (the schema requires `z.string()` ; old exports
  * sometimes shipped a number).
  */
@@ -34,7 +34,7 @@ function normalizePayload(input: unknown): MoodPayload {
   return MoodPayloadSchema.parse({
     ...p,
     date: String(p.date ?? ''),
-    mood_score: String(p.mood_score ?? ''),
+    moodScore: String(p.moodScore ?? p.mood_score ?? ''),
   });
 }
 

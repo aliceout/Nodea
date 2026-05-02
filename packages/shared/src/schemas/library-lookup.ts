@@ -24,7 +24,7 @@ export const NormalisedBookSchema = z.object({
     .default([]),
   year: z.number().int().nullable().default(null),
   language: z.string().nullable().default(null),
-  original_language: z.string().nullable().default(null),
+  originalLanguage: z.string().nullable().default(null),
   publisher: z.string().nullable().default(null),
   /** Collection éditoriale (e.g. "Folio classique"). */
   collection: z.string().nullable().default(null),
@@ -48,7 +48,7 @@ export const NormalisedBookSchema = z.object({
     .default(null),
   /** Remote URL of the cover image — the client may download +
    * cache it as an encrypted blob via `library_covers_entries`. */
-  cover_url: z.string().nullable().default(null),
+  coverUrl: z.string().nullable().default(null),
   /** External identifiers, keyed by provider — used to dedupe and
    * to follow up with provider-specific URLs ("voir sur OL"). */
   providers: z

@@ -12,7 +12,7 @@
  * keep this file declarative.
  */
 
-export type StepGroup = 'welcome' | 'last_year' | 'next_year';
+export type StepGroup = 'welcome' | 'lastYear' | 'nextYear';
 
 export type StepKind =
   | 'intro' // welcome screen, no payload
@@ -47,7 +47,7 @@ export interface MixedKeyLabel {
 export interface BaseStep {
   id: string;
   group: StepGroup;
-  /** Dotted path inside the payload (e.g. `last_year.six_phrases`).
+  /** Dotted path inside the payload (e.g. `lastYear.six_phrases`).
    *  Empty string for `intro` steps that don't persist anything. */
   path: string;
   title: string;

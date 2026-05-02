@@ -10,7 +10,7 @@ interface CoverGridProps {
  * seule » mode, metadata is irrelevant — the only signal that
  * matters is the cover thumbnail. Render a tile grid sized to
  * roughly four columns at modal width, dropping any result
- * whose provider didn't return a `cover_url` (Wikidata /
+ * whose provider didn't return a `coverUrl` (Wikidata /
  * Google Books sometimes do, Open Library always does when
  * the work is indexed). Falls back to a hint when no result
  * has a cover at all so the user isn't staring at an empty
@@ -20,7 +20,7 @@ export default function CoverGrid({
   results,
   onPick,
 }: CoverGridProps): React.ReactElement {
-  const withCover = results.filter((b) => b.cover_url);
+  const withCover = results.filter((b) => b.coverUrl);
   if (withCover.length === 0) {
     return (
       <div className="mt-2 flex min-h-0 flex-1 items-center justify-center rounded-sm border border-hair bg-bg p-6 text-center text-[12px] text-muted">
@@ -41,7 +41,7 @@ export default function CoverGrid({
             >
               <span className="block aspect-[2/3] w-full overflow-hidden rounded-sm border border-hair bg-bg-2">
                 <img
-                  src={book.cover_url ?? ''}
+                  src={book.coverUrl ?? ''}
                   alt={
                     book.creators[0]?.name
                       ? `${book.title} — ${book.creators[0].name}`

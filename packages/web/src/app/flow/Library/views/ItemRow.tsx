@@ -32,7 +32,7 @@ export default function ItemRow({ item, showCover }: ItemRowProps) {
   const { editItem, deleteItem, toggleFavorite } = useLibraryActions();
 
   const cover =
-    showCover && item.cover_rid ? covers.get(item.cover_rid) ?? null : null;
+    showCover && item.coverRid ? covers.get(item.coverRid) ?? null : null;
   const author = authorsLabel(item);
   const publisher = item.publisher?.trim() ?? '';
   const langCode = item.language?.toLowerCase() ?? '';
@@ -155,19 +155,19 @@ export default function ItemRow({ item, showCover }: ItemRowProps) {
             type="button"
             onClick={() => toggleFavorite(item)}
             aria-label={
-              item.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'
+              item.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'
             }
             title={
-              item.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'
+              item.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'
             }
             className={cn(
               'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm transition-colors',
-              item.is_favorite
+              item.isFavorite
                 ? 'text-accent hover:bg-accent-soft'
                 : 'text-muted opacity-0 hover:bg-bg-2 hover:text-ink group-hover:opacity-100 group-focus-within:opacity-100',
             )}
           >
-            {item.is_favorite ? (
+            {item.isFavorite ? (
               <StarSolidIcon className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
               <StarIcon className="h-3.5 w-3.5" aria-hidden="true" />

@@ -11,14 +11,14 @@ function fixture(
   return {
     type: 'book',
     creators: [],
-    cover_rid: null,
+    coverRid: null,
     status: 'planned',
     format: 'unknown',
-    started_at: null,
-    finished_at: null,
+    startedAt: null,
+    finishedAt: null,
     rating: null,
     tags: [],
-    is_favorite: false,
+    isFavorite: false,
     ...partial,
   };
 }

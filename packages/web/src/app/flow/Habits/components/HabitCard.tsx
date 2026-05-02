@@ -23,7 +23,7 @@ export default function HabitCard({
   onToggleArchive,
   onDelete,
 }: HabitCardProps) {
-  const logsForItem = logs.filter((l) => l.payload.item_rid === item.id);
+  const logsForItem = logs.filter((l) => l.payload.itemRid === item.id);
   const rate = regularityRate(item, logs);
   const archived = item.payload.archived === true;
 

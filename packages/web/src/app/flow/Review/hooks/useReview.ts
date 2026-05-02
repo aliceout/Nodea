@@ -66,7 +66,7 @@ export function useReview(): ReviewContext {
   const createReview = useCallback(
     async (payload: ReviewPayload) => {
       if (!mainKey || !sid) return undefined;
-      const stamped = { ...payload, updated_at: new Date().toISOString() };
+      const stamped = { ...payload, updatedAt: new Date().toISOString() };
       const rec = await reviewClient.create(sid, mainKey, stamped);
       await refresh();
       return rec;
@@ -76,7 +76,7 @@ export function useReview(): ReviewContext {
   const updateReview = useCallback(
     async (id: string, payload: ReviewPayload) => {
       if (!mainKey || !sid) return;
-      const stamped = { ...payload, updated_at: new Date().toISOString() };
+      const stamped = { ...payload, updatedAt: new Date().toISOString() };
       await reviewClient.update(sid, mainKey, id, stamped);
       await refresh();
     },

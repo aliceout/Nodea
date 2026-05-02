@@ -205,8 +205,8 @@ libraryLookupRoutes.get('/cover-fetch', coverLimiter, async (c) => {
       chunks.push(value);
     }
     const buffer = Buffer.concat(chunks.map((c) => Buffer.from(c)));
-    const blob_b64 = buffer.toString('base64');
-    return c.json({ mime, blob_b64 });
+    const blobB64 = buffer.toString('base64');
+    return c.json({ mime, blobB64 });
   } catch (err) {
     console.error('[library-lookup] cover-fetch error', err);
     return c.json({ error: 'fetch_failed' }, 502);

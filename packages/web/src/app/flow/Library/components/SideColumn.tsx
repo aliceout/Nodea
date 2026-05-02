@@ -43,7 +43,7 @@ export default function SideColumn() {
   const counts = useMemo(
     () => ({
       all: items.length,
-      favorites: items.filter((it) => it.is_favorite).length,
+      favorites: items.filter((it) => it.isFavorite).length,
       planned: items.filter((it) => it.status === 'planned').length,
       in_progress: items.filter((it) => it.status === 'in_progress').length,
       finished: items.filter((it) => it.status === 'finished').length,

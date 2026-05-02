@@ -46,7 +46,7 @@ function normalizePayload(input: unknown): HabitsItemPayload {
   return HabitsItemPayloadSchema.parse({
     ...p,
     title: String(p.title ?? ''),
-    started_at: String(p.started_at ?? ''),
+    startedAt: String(p.startedAt ?? p.started_at ?? ''),
     category,
     frequency,
   });
@@ -54,7 +54,7 @@ function normalizePayload(input: unknown): HabitsItemPayload {
 
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
-  return `${normalizeKeyPart(p.title)}::${normalizeKeyPart(p.started_at)}`;
+  return `${normalizeKeyPart(p.title)}::${normalizeKeyPart(p.startedAt)}`;
 }
 
 export async function importHandler({

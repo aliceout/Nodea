@@ -37,7 +37,7 @@ type ReviewKind = 'quote' | 'note';
 
 /** UI state for the « + Nouvel extrait » / « + Nouvelle note » two-
  *  step flow : the user picks a parent book first, then the standard
- *  composer opens with the kind + item_rid pre-filled. */
+ *  composer opens with the kind + itemRid pre-filled. */
 export type LibraryReviewPickerState =
   | { open: false }
   | { open: true; kind: ReviewKind };
@@ -116,13 +116,13 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
       const previousItems = itemsRef.current;
       const previousReviews = reviewsRef.current;
       setItems((prev) => prev.filter((i) => i.id !== it.id));
-      setReviews((prev) => prev.filter((r) => r.item_rid !== it.id));
+      setReviews((prev) => prev.filter((r) => r.itemRid !== it.id));
       try {
         // Delete reviews first so we never leave orphans if the
         // item delete fails. They're encrypted but unreachable, so
         // failing here is a soft warning rather than a hard error.
         const orphanReviews = previousReviews.filter(
-          (r) => r.item_rid === it.id,
+          (r) => r.itemRid === it.id,
         );
         await Promise.all(
           orphanReviews.map((r) =>
@@ -145,15 +145,15 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
   const toggleFavorite = useCallback(
     (it: LibraryItem) => {
       if (!ctx) return;
-      const next = !it.is_favorite;
+      const next = !it.isFavorite;
       const previous = itemsRef.current;
       setItems((prev) =>
-        prev.map((i) => (i.id === it.id ? { ...i, is_favorite: next } : i)),
+        prev.map((i) => (i.id === it.id ? { ...i, isFavorite: next } : i)),
       );
       libraryItemsClient
         .update(ctx.moduleUserId, ctx.mainKey, it.id, {
           ...(it as LibraryItemPayload),
-          is_favorite: next,
+          isFavorite: next,
         })
         .then(() => bumpItemsVersion())
         .catch((err) => {
@@ -171,7 +171,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
         type: 'library-review',
         id: '',
         payload: {
-          item_rid: itemId,
+          itemRid: itemId,
           date: new Date().toISOString(),
           kind: 'note',
           title: null,
@@ -228,7 +228,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
 
   /** Called by the picker once the user chose which book the new
    *  review attaches to. Closes the picker and opens the standard
-   *  review composer with the kind + item_rid pre-filled. */
+   *  review composer with the kind + itemRid pre-filled. */
   const pickBookForReview = useCallback(
     (itemId: string, kind: ReviewKind) => {
       setReviewPicker({ open: false });
@@ -236,7 +236,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
         type: 'library-review',
         id: '',
         payload: {
-          item_rid: itemId,
+          itemRid: itemId,
           date: new Date().toISOString(),
           kind,
           title: null,

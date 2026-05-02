@@ -46,7 +46,7 @@ export function regularityRate(
   if (expected == null || expected === 0) return null;
 
   const count = logs.filter((log) => {
-    if (log.payload.item_rid !== item.id) return false;
+    if (log.payload.itemRid !== item.id) return false;
     const d = new Date(log.payload.date);
     if (Number.isNaN(d.getTime())) return false;
     return d >= from && d <= now;

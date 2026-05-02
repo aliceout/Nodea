@@ -27,13 +27,13 @@ function normalizePayload(input: unknown): HabitsLogPayload {
   return HabitsLogPayloadSchema.parse({
     ...p,
     date: String(p.date ?? ''),
-    item_rid: String(p.item_rid ?? ''),
+    itemRid: String(p.itemRid ?? p.item_rid ?? ''),
   });
 }
 
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
-  return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(p.item_rid)}`;
+  return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(p.itemRid)}`;
 }
 
 export async function importHandler({
@@ -45,8 +45,8 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  if (!clear.date || !clear.item_rid) {
-    throw new Error('habits_logs: date et item_rid requis.');
+  if (!clear.date || !clear.itemRid) {
+    throw new Error('habits_logs: date et itemRid requis.');
   }
   const rec = await habitsLogsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };

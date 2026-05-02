@@ -34,7 +34,7 @@ async function freshMainKeys() {
 
 interface RawRecord {
   id: string;
-  module_user_id: string;
+  moduleUserId: string;
   cipherIv: string;
   payload: string;
 }
@@ -81,8 +81,8 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
 
     const payload: MoodPayload = {
       date: '2026-04-17',
-      mood_score: '7',
-      mood_emoji: '🙂',
+      moodScore: '7',
+      moodEmoji: '🙂',
       positive1: 'slept well',
       positive2: 'finished Phase 6',
       positive3: 'coffee',
@@ -149,8 +149,8 @@ describe('Goals module — full encrypted round-trip', () => {
       note: 'end-to-end encrypted',
       status: 'open',
       thread: 'nodea',
-      completed_at: null,
-      updated_at: '2026-04-17T10:00:00.000Z',
+      completedAt: null,
+      updatedAt: '2026-04-17T10:00:00.000Z',
     };
 
     await createPromoted(cookie, 'goals', keys, sid, payload);
@@ -233,13 +233,13 @@ describe('Habits — items and logs encrypted round-trip', () => {
       category: 'sport',
       frequency: 'weekly',
       target: 1,
-      started_at: '2025-08-01',
+      startedAt: '2025-08-01',
       archived: false,
     };
     const item = await createPromoted(cookie, 'habits-items', keys, itemSid, itemPayload);
 
-    const log1: HabitsLogPayload = { date: '2025-08-05', item_rid: item.id, done: true };
-    const log2: HabitsLogPayload = { date: '2025-08-12', item_rid: item.id, done: true };
+    const log1: HabitsLogPayload = { date: '2025-08-05', itemRid: item.id, done: true };
+    const log2: HabitsLogPayload = { date: '2025-08-12', itemRid: item.id, done: true };
     await createPromoted(cookie, 'habits-logs', keys, logSid, log1);
     await createPromoted(cookie, 'habits-logs', keys, logSid, log2);
 
@@ -254,7 +254,7 @@ describe('Habits — items and logs encrypted round-trip', () => {
     );
     const dates = decrypted.map((d) => d.date).sort();
     expect(dates).toEqual(['2025-08-05', '2025-08-12']);
-    expect(decrypted.every((d) => d.item_rid === item.id)).toBe(true);
+    expect(decrypted.every((d) => d.itemRid === item.id)).toBe(true);
   });
 });
 
@@ -274,17 +274,17 @@ describe('Library — items and reviews encrypted round-trip', () => {
       language: 'fr',
       status: 'in_progress',
       format: 'paper',
-      cover_rid: null,
-      started_at: null,
-      finished_at: null,
+      coverRid: null,
+      startedAt: null,
+      finishedAt: null,
       rating: null,
       tags: ['roman'],
-      is_favorite: false,
+      isFavorite: false,
     };
     const item = await createPromoted(cookie, 'library-items', keys, itemSid, book);
 
     const r1: LibraryReviewPayload = {
-      item_rid: item.id,
+      itemRid: item.id,
       date: '2025-08-20',
       kind: 'quote',
       title: null,
@@ -293,7 +293,7 @@ describe('Library — items and reviews encrypted round-trip', () => {
       spoiler: false,
     };
     const r2: LibraryReviewPayload = {
-      item_rid: item.id,
+      itemRid: item.id,
       date: '2025-08-22',
       kind: 'note',
       title: null,
@@ -330,7 +330,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
 
     const payload: ReviewPayload = {
       year: 2025,
-      last_year: {
+      lastYear: {
         agenda_review: ['séjour à Tana', 'départ mission'],
         life_areas: {
           family: ['plus proche de ma sœur'],
@@ -339,7 +339,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
         best_moments: ['soirée plage'],
         three_challenges: ['burnout'],
       },
-      next_year: {
+      nextYear: {
         dream_big: 'poste qui me correspond',
         word_of_year: 'ancrage',
       },
@@ -348,7 +348,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
         signature: 'Alice',
         date: '2025-08-25',
       },
-      updated_at: '2025-08-25T10:00:00.000Z',
+      updatedAt: '2025-08-25T10:00:00.000Z',
     };
 
     await createPromoted(cookie, 'review', keys, sid, payload);
@@ -362,8 +362,8 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
       list.records[0]!.payload,
     );
     expect(got.year).toBe(2025);
-    expect(got.next_year).toBeDefined();
-    const nextYear = got.next_year as Record<string, unknown>;
+    expect(got.nextYear).toBeDefined();
+    const nextYear = got.nextYear as Record<string, unknown>;
     expect(nextYear.word_of_year).toBe('ancrage');
   });
 });

@@ -24,8 +24,8 @@ export function reviewFromRecord(
 
 /**
  * Turn the bulk-decrypted cover records into a Map keyed by the
- * cover row's id (which is the value stored as `cover_rid` on the
- * matching item). The data URL is `data:<mime>;base64,<blob_b64>`
+ * cover row's id (which is the value stored as `coverRid` on the
+ * matching item). The data URL is `data:<mime>;base64,<blobB64>`
  * — directly usable as `<img src>`. No URL.createObjectURL overhead
  * (which would require revocation on unmount).
  */
@@ -34,7 +34,7 @@ export function buildCoverMap(
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const r of records) {
-    const url = `data:${r.payload.mime};base64,${r.payload.blob_b64}`;
+    const url = `data:${r.payload.mime};base64,${r.payload.blobB64}`;
     map.set(r.id, url);
   }
   return map;

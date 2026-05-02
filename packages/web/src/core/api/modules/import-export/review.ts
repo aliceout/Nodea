@@ -26,7 +26,7 @@ function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is I
  * Schema-driven normalisation. The legacy export shape is mostly
  * compatible with `ReviewPayloadSchema` ; we just coerce `year` to
  * a number (was sometimes a string in old exports) and let Zod fill
- * `updated_at` from its `.default('')`.
+ * `updatedAt` from its `.default('')`.
  */
 function normalizePayload(input: unknown): ReviewPayload {
   const p = (input ?? {}) as Record<string, unknown>;

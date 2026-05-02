@@ -23,7 +23,7 @@ import ReviewsList from './views/ReviewsList';
  * Books-only personal library. Items live in `library_items_entries`,
  * notes / extracts in `library_reviews_entries`, covers (encrypted
  * blobs) in `library_covers_entries` ; all three are loaded and
- * decrypted at mount and joined client-side via `review.item_rid →
+ * decrypted at mount and joined client-side via `review.itemRid →
  * item.id`.
  *
  * The catalogue exposes three lenses on the same data — the books

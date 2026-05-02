@@ -62,8 +62,8 @@ export const STEPS: Step[] = [
   // ---- L'année passée -----------------------------------------------
   {
     id: 'agenda_review',
-    group: 'last_year',
-    path: 'last_year.agenda_review',
+    group: 'lastYear',
+    path: 'lastYear.agenda_review',
     kind: 'string_list',
     title: 'Consulte ton agenda',
     subtitle:
@@ -72,8 +72,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'life_areas_last',
-    group: 'last_year',
-    path: 'last_year.life_areas',
+    group: 'lastYear',
+    path: 'lastYear.life_areas',
     kind: 'keyed_list',
     title: "Voici ce qu'a été mon année passée",
     subtitle:
@@ -82,24 +82,24 @@ export const STEPS: Step[] = [
   },
   {
     id: 'six_phrases_last',
-    group: 'last_year',
-    path: 'last_year.six_phrases',
+    group: 'lastYear',
+    path: 'lastYear.six_phrases',
     kind: 'keyed_text',
     title: 'Six phrases à propos de mon année précédente',
     fields: SIX_PHRASES_LAST,
   },
   {
     id: 'six_questions',
-    group: 'last_year',
-    path: 'last_year.six_questions',
+    group: 'lastYear',
+    path: 'lastYear.six_questions',
     kind: 'keyed_mixed',
     title: 'Six questions à propos de mon année précédente',
     fields: SIX_QUESTIONS,
   },
   {
     id: 'best_moments',
-    group: 'last_year',
-    path: 'last_year.best_moments',
+    group: 'lastYear',
+    path: 'lastYear.best_moments',
     kind: 'textarea',
     title: 'Les meilleurs moments',
     subtitle:
@@ -108,16 +108,16 @@ export const STEPS: Step[] = [
   },
   {
     id: 'successes_and_challenges',
-    group: 'last_year',
-    path: 'last_year.successes_and_challenges',
+    group: 'lastYear',
+    path: 'lastYear.successes_and_challenges',
     kind: 'keyed_mixed',
     title: 'Mes trois plus grands succès et mes trois plus grands défis',
     fields: SUCCESSES_AND_CHALLENGES,
   },
   {
     id: 'forgiveness',
-    group: 'last_year',
-    path: 'last_year.forgiveness',
+    group: 'lastYear',
+    path: 'lastYear.forgiveness',
     kind: 'textarea',
     title: 'Pardonner',
     subtitle:
@@ -127,8 +127,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'letting_go',
-    group: 'last_year',
-    path: 'last_year.letting_go',
+    group: 'lastYear',
+    path: 'lastYear.letting_go',
     kind: 'textarea',
     title: 'Lâcher prise',
     subtitle:
@@ -137,8 +137,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'closing_last',
-    group: 'last_year',
-    path: 'last_year.closing',
+    group: 'lastYear',
+    path: 'lastYear.closing',
     kind: 'keyed_mixed',
     title: "Clôture de l'année écoulée",
     fields: CLOSING_LAST,
@@ -147,8 +147,8 @@ export const STEPS: Step[] = [
   // ---- L'année devant toi ------------------------------------------
   {
     id: 'dream_big',
-    group: 'next_year',
-    path: 'next_year.dream_big',
+    group: 'nextYear',
+    path: 'nextYear.dream_big',
     kind: 'textarea',
     title: 'Ose rêver en grand !',
     subtitle:
@@ -157,8 +157,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'life_areas_next',
-    group: 'next_year',
-    path: 'next_year.life_areas',
+    group: 'nextYear',
+    path: 'nextYear.life_areas',
     kind: 'keyed_list',
     title: 'Cette nouvelle année ressemblera à ça pour moi',
     subtitle:
@@ -167,8 +167,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'triplets',
-    group: 'next_year',
-    path: 'next_year.triplets',
+    group: 'nextYear',
+    path: 'nextYear.triplets',
     kind: 'keyed_list',
     title: "Le triplet magique pour l'année à venir",
     subtitle: 'Trois choses par thème : ce qui guidera ton année.',
@@ -176,16 +176,16 @@ export const STEPS: Step[] = [
   },
   {
     id: 'six_phrases_next',
-    group: 'next_year',
-    path: 'next_year.six_phrases',
+    group: 'nextYear',
+    path: 'nextYear.six_phrases',
     kind: 'keyed_text',
     title: 'Six phrases sur mon année à venir',
     fields: SIX_PHRASES_NEXT,
   },
   {
     id: 'word_of_year',
-    group: 'next_year',
-    path: 'next_year.word_of_year',
+    group: 'nextYear',
+    path: 'nextYear.word_of_year',
     kind: 'textarea',
     title: "Mon mot pour l'année prochaine",
     subtitle:
@@ -194,8 +194,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'secret_wish',
-    group: 'next_year',
-    path: 'next_year.secret_wish',
+    group: 'nextYear',
+    path: 'nextYear.secret_wish',
     kind: 'textarea',
     title: 'Souhait secret',
     subtitle:
@@ -206,8 +206,8 @@ export const STEPS: Step[] = [
 
 export const GROUP_LABELS: Record<StepGroup, string> = {
   welcome: 'Bienvenue',
-  last_year: "L'année passée",
-  next_year: "L'année devant toi",
+  lastYear: "L'année passée",
+  nextYear: "L'année devant toi",
 };
 
 /**

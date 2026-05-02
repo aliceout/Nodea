@@ -61,7 +61,7 @@ describe('recordToEntry', () => {
     const out = recordToEntry(
       record({
         date: '2026-03-12',
-        mood_score: '1',
+        moodScore: '1',
         positive1: 'a',
         positive2: 'b',
         positive3: 'c',
@@ -78,17 +78,17 @@ describe('recordToEntry', () => {
   it('falls back to today when payload date is missing or malformed', () => {
     const todayIso = TODAY.toISOString().slice(0, 10);
     expect(
-      recordToEntry(record({ mood_score: '0' }), TODAY, LABELS).dateIso,
+      recordToEntry(record({ moodScore: '0' }), TODAY, LABELS).dateIso,
     ).toBe(todayIso);
     expect(
-      recordToEntry(record({ date: 'garbage', mood_score: '0' }), TODAY, LABELS)
+      recordToEntry(record({ date: 'garbage', moodScore: '0' }), TODAY, LABELS)
         .dateIso,
     ).toBe(todayIso);
   });
 
   it('omits empty optional fields (comment / question / answer)', () => {
     const out = recordToEntry(
-      record({ date: '2026-03-12', mood_score: '0', comment: '   ' }),
+      record({ date: '2026-03-12', moodScore: '0', comment: '   ' }),
       TODAY,
       LABELS,
     );
@@ -101,7 +101,7 @@ describe('recordToEntry', () => {
     const out = recordToEntry(
       record({
         date: '2026-03-12',
-        mood_score: '0',
+        moodScore: '0',
         comment: 'tired',
         question: 'q?',
         answer: 'yes',

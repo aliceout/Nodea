@@ -51,8 +51,8 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
       : null,
   );
 
-  const initialScore = editing && isMoodScoreString(editing.payload.mood_score)
-    ? (editing.payload.mood_score as MoodScore)
+  const initialScore = editing && isMoodScoreString(editing.payload.moodScore)
+    ? (editing.payload.moodScore as MoodScore)
     : null;
   const initialPositives: [string, string, string] = editing
     ? [
@@ -114,8 +114,8 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
       const trimmedAnswer = answer.trim();
       const payload = {
         date: dateIso,
-        mood_score: score,
-        mood_emoji: editing?.payload.mood_emoji ?? '',
+        moodScore: score,
+        moodEmoji: editing?.payload.moodEmoji ?? '',
         positive1: positives[0],
         positive2: positives[1],
         positive3: positives[2],

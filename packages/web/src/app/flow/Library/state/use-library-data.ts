@@ -28,7 +28,7 @@ export interface LibraryDataState {
   items: LibraryItem[];
   reviews: LibraryReview[];
   /** Decrypted cover blobs, keyed by the cover record's id (= the
-   *  value stored on `item.cover_rid`). Built once at mount from the
+   *  value stored on `item.coverRid`). Built once at mount from the
    *  bulk decrypt of the `library-covers` collection. */
   covers: Map<string, string>;
   load: LoadState;

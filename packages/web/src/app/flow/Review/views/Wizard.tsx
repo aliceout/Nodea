@@ -35,13 +35,13 @@ interface WizardProps {
 function emptyPayload(year: number): ReviewPayload {
   return {
     year,
-    last_year: {},
-    next_year: {},
+    lastYear: {},
+    nextYear: {},
     closing: {},
-    // `updated_at` is bumped to now() by useReview's create/update
+    // `updatedAt` is bumped to now() by useReview's create/update
     // wrappers on every save ; this empty placeholder is just to
     // satisfy the Zod-inferred shape at construction time.
-    updated_at: '',
+    updatedAt: '',
   };
 }
 

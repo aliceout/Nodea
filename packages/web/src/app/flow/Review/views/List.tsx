@@ -202,10 +202,10 @@ interface ReviewRowProps {
 
 function ReviewRow({ record, onOpen, onEdit, onDelete }: ReviewRowProps) {
   const { t, language } = useI18n();
-  // `payload.updated_at` is the in-payload write timestamp — the
-  // entry-table wrapper no longer carries `updated_at` (minimum-
+  // `payload.updatedAt` is the in-payload write timestamp — the
+  // entry-table wrapper no longer carries `updatedAt` (minimum-
   // readable-surface design). Always set by the create/update hooks.
-  const updated = formatLongDate(record.payload.updated_at, language);
+  const updated = formatLongDate(record.payload.updatedAt, language);
   return (
     <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
       <button

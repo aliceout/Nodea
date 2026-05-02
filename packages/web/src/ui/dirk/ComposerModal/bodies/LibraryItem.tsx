@@ -80,7 +80,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   const [summaryMode, setSummaryMode] = useState<'visual' | 'markdown'>('visual');
   // Cover URL preview — populated when the user picks a search
   // result (`applyResult`). Not persisted yet: the schema stores
-  // covers as encrypted blobs (`cover_rid`), so wiring the upload
+  // covers as encrypted blobs (`coverRid`), so wiring the upload
   // pipeline is its own story. For now this is a visual hint in
   // the form so the user can confirm they picked the right book.
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -117,7 +117,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
       // user typed it. Useful when the existing metadata is fine
       // but the user wants a different cover (or the seed didn't
       // come with one).
-      setCoverUrl(book.cover_url);
+      setCoverUrl(book.coverUrl);
       setCoverLoadFailed(false);
       lookup.dismiss();
       // Keep the search input in cover-only mode so the user can
@@ -137,7 +137,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     if (book.format) setFormat(book.format);
     if (book.isbn13) setIsbn(book.isbn13);
     else if (book.isbn10) setIsbn(book.isbn10);
-    setCoverUrl(book.cover_url);
+    setCoverUrl(book.coverUrl);
     setCoverLoadFailed(false);
     lookup.dismiss();
     lookup.setInput('');
@@ -170,12 +170,12 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   }, [editingId]);
 
   // Load the existing cover when editing an item that has a
-  // `cover_rid`. We list every cover record under the user's sid,
+  // `coverRid`. We list every cover record under the user's sid,
   // pick the one whose record id matches, and reconstruct the data
   // URL — same recipe as the Library page's `buildCoverMap`. Bulk
   // list is cheaper than a 1-record fetch endpoint we don't have,
   // and the cover collection is small per user.
-  const editingCoverRid = editingPayload?.cover_rid ?? null;
+  const editingCoverRid = editingPayload?.coverRid ?? null;
   useEffect(() => {
     if (!isEdit || !editingCoverRid || !ctx) return undefined;
     let cancelled = false;
@@ -185,7 +185,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         if (cancelled) return;
         const match = records.find((r) => r.id === editingCoverRid);
         if (match) {
-          setCoverUrl(`data:${match.payload.mime};base64,${match.payload.blob_b64}`);
+          setCoverUrl(`data:${match.payload.mime};base64,${match.payload.blobB64}`);
           setCoverLoadFailed(false);
         }
       })

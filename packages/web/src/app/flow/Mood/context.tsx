@@ -197,8 +197,8 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         id: entry.id,
         payload: {
           date: entry.dateIso,
-          mood_score: entry.score,
-          mood_emoji: '',
+          moodScore: entry.score,
+          moodEmoji: '',
           positive1: entry.positives[0],
           positive2: entry.positives[1],
           positive3: entry.positives[2],

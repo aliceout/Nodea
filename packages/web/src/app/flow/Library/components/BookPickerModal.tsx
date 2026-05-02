@@ -10,14 +10,14 @@ import { normaliseForSearch } from '../lib/search';
 /**
  * Picker shown after the user clicks « + Nouvel extrait » /
  * « + Nouvelle note ». A review is constrained to belong to a
- * specific book (`item_rid`), so we ask which one before opening
+ * specific book (`itemRid`), so we ask which one before opening
  * the actual composer.
  *
  * UX : a small dialog with an autofocused search input and a
  * filtered list. Matches on title and first author, case- and
  * diacritic-insensitive (folk knowledge : « ernaux » should match
  * « Annie ERNAUX »). Clicking a row routes to the existing review
- * composer with the right kind + item_rid baked in. Esc / backdrop
+ * composer with the right kind + itemRid baked in. Esc / backdrop
  * click closes.
  *
  * Self-conditional : returns `null` when the picker isn't open, so
@@ -89,8 +89,8 @@ export default function BookPickerModal() {
             </li>
           ) : (
             filtered.map((it) => {
-              const cover = it.cover_rid
-                ? covers.get(it.cover_rid) ?? null
+              const cover = it.coverRid
+                ? covers.get(it.coverRid) ?? null
                 : null;
               const author = it.creators?.[0]?.name ?? '—';
               const yearLabel = it.year ? String(it.year) : '';

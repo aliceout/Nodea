@@ -67,7 +67,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     async (entry: GoalEntry) => {
       if (!ctx) return;
       const next = nextStatus(entry.status);
-      // Capture or clear `completed_at` whenever the status crosses
+      // Capture or clear `completedAt` whenever the status crosses
       // the `done` boundary. Going *into* done seeds a fresh
       // timestamp ; cycling out of done back to open clears it.
       // Re-entering done (after a clear) seeds a new timestamp —
@@ -92,8 +92,8 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           note: entry.note,
           status: next,
           thread: entry.thread,
-          completed_at: nextCompletedAt,
-          updated_at: new Date().toISOString(),
+          completedAt: nextCompletedAt,
+          updatedAt: new Date().toISOString(),
         });
         bumpGoalsVersion();
       } catch (err) {
@@ -116,8 +116,8 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           note: entry.note,
           status: entry.status,
           thread: entry.thread,
-          completed_at: entry.completedAt,
-          updated_at: entry.updatedAt,
+          completedAt: entry.completedAt,
+          updatedAt: entry.updatedAt,
         },
       });
     },
@@ -175,8 +175,8 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
             note: e.note,
             status: e.status,
             thread: e.thread,
-            completed_at: e.completedAt,
-            updated_at: now,
+            completedAt: e.completedAt,
+            updatedAt: now,
           });
         }
         bumpGoalsVersion();

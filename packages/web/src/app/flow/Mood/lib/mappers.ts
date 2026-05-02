@@ -16,7 +16,7 @@ import type { MoodEntry } from './types';
 export const VALID_SCORES: ReadonlySet<string> = new Set(MOOD_SCORE_VALUES);
 
 /**
- * Normalise a raw `payload.mood_score`. Canonical strings (`-2`,
+ * Normalise a raw `payload.moodScore`. Canonical strings (`-2`,
  * `-1`, `0`, `1`, `2`) pass through ; legacy 0..10 values get
  * linearly mapped onto −2..+2 so older entries don't disappear
  * under the new scale. Anything non-finite collapses to `0`.
@@ -31,8 +31,8 @@ export function normalizeScore(raw: string): MoodScore {
 
 /**
  * Map a decrypted Mood record onto the page-local `MoodEntry`
- * shape. Tolerates legacy values : `mood_emoji` is ignored, a
- * legacy 0..10 `mood_score` gets linearly mapped onto −2..+2.
+ * shape. Tolerates legacy values : `moodEmoji` is ignored, a
+ * legacy 0..10 `moodScore` gets linearly mapped onto −2..+2.
  *
  * `today` is a parameter so the date label stays deterministic in
  * tests ; falls back to today's ISO if the payload's `date` is
@@ -58,7 +58,7 @@ export function recordToEntry(
     id: record.id,
     dateIso,
     date: formatEntryLabel(dateIso, today, labels),
-    score: normalizeScore(p.mood_score ?? '0'),
+    score: normalizeScore(p.moodScore ?? '0'),
     positives,
   };
   if (p.comment && p.comment.trim().length > 0) entry.comment = p.comment;

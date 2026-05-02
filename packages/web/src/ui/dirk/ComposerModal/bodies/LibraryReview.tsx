@@ -31,7 +31,7 @@ interface LibraryReviewBodyProps {
  * fiche-bilan). The detail page renders them differently.
  *
  * The review *requires* a parent item — the Library page
- * passes the item id via `composer.editing.payload.item_rid`
+ * passes the item id via `composer.editing.payload.itemRid`
  * even on creation (otherwise we'd have a dangling review).
  */
 export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
@@ -45,7 +45,7 @@ export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
   );
 
   const editingPayload = editing?.payload;
-  const itemRid = editingPayload?.item_rid ?? '';
+  const itemRid = editingPayload?.itemRid ?? '';
   const isEditExisting = editing !== null && (editing.id?.length ?? 0) > 0;
 
   const [kind, setKind] = useState<LibraryReviewKind>(editingPayload?.kind ?? 'note');
@@ -77,7 +77,7 @@ export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
         ? (editingPayload?.date ?? new Date().toISOString())
         : new Date().toISOString();
       const payload = {
-        item_rid: itemRid,
+        itemRid: itemRid,
         date: dateIso,
         kind,
         title: null,

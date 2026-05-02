@@ -38,7 +38,7 @@ export default function BookGrid({ items }: BookGridProps) {
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
       {items.map((it) => {
-        const cover = it.cover_rid ? covers.get(it.cover_rid) ?? null : null;
+        const cover = it.coverRid ? covers.get(it.coverRid) ?? null : null;
         const author = it.creators?.[0]?.name ?? '';
         const yearLabel = it.year ? String(it.year) : '';
         return (
@@ -75,7 +75,7 @@ export default function BookGrid({ items }: BookGridProps) {
               >
                 {STATUS_LABEL[it.status]}
               </span>
-              {it.is_favorite ? (
+              {it.isFavorite ? (
                 <span
                   className="absolute top-1.5 right-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-bg/80 text-accent shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
                   aria-label="Favori"
@@ -98,16 +98,16 @@ export default function BookGrid({ items }: BookGridProps) {
                 <button
                   type="button"
                   onClick={() => toggleFavorite(it)}
-                  aria-label={it.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                  title={it.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  aria-label={it.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  title={it.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                   className={cn(
                     'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm transition-colors',
-                    it.is_favorite
+                    it.isFavorite
                       ? 'text-accent hover:bg-accent-soft'
                       : 'text-muted opacity-0 hover:bg-bg-2 hover:text-ink group-hover:opacity-100 group-focus-within:opacity-100',
                   )}
                 >
-                  {it.is_favorite ? (
+                  {it.isFavorite ? (
                     <StarSolidIcon className="h-3 w-3" aria-hidden="true" />
                   ) : (
                     <StarIcon className="h-3 w-3" aria-hidden="true" />

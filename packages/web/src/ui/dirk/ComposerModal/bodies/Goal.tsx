@@ -45,7 +45,7 @@ interface GoalBodyProps {
  * is gated on every input being empty, so an in-flight typing
  * session is never clobbered.
  *
- * `completed_at` is managed across the form too — same boundary
+ * `completedAt` is managed across the form too — same boundary
  * logic as the Goals page's status toggle. Flipping into `done`
  * seeds `now`, flipping out clears, staying-in-done preserves
  * the previous value.
@@ -215,8 +215,8 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
     setSubmitting(true);
     try {
       const previousCompletedAt =
-        typeof editing?.payload.completed_at === 'string'
-          ? editing.payload.completed_at
+        typeof editing?.payload.completedAt === 'string'
+          ? editing.payload.completedAt
           : null;
       const previousStatus = isCanonicalGoalStatus(editing?.payload.status)
         ? editing!.payload.status
@@ -233,8 +233,8 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
         note,
         status,
         thread: thread.trim(),
-        completed_at: nextCompletedAt,
-        updated_at: new Date().toISOString(),
+        completedAt: nextCompletedAt,
+        updatedAt: new Date().toISOString(),
       };
       if (editing) {
         await goalsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);

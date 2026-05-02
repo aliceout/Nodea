@@ -140,7 +140,7 @@ function volumeToNormalised(volume: GoogleBookVolume): NormalisedBook {
     })),
     year: extractYear(info.publishedDate ?? null),
     language: info.language ?? null,
-    original_language: null,
+    originalLanguage: null,
     publisher: info.publisher ?? null,
     collection: null,
     summary: info.description ?? null,
@@ -148,7 +148,7 @@ function volumeToNormalised(volume: GoogleBookVolume): NormalisedBook {
     isbn10: isbn10 ? isbn10.replace(/[-\s]/g, '') : null,
     format: null,
     series: null,
-    cover_url: coverUrl,
+    coverUrl: coverUrl,
     providers: volume.id ? { googlebooks: volume.id } : {},
     source: 'googlebooks',
   };

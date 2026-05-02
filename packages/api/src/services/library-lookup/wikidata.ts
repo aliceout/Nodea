@@ -108,7 +108,7 @@ function groupRowsByWork(
         creators: [],
         year: extractYear(bindingValue(row, 'date') ?? null),
         language,
-        original_language: language,
+        originalLanguage: language,
         publisher: null,
         collection: null,
         summary: null,
@@ -116,7 +116,7 @@ function groupRowsByWork(
         isbn10: isbn10 ? isbn10.replace(/[-\s]/g, '') : null,
         format: null,
         series: null,
-        cover_url: null,
+        coverUrl: null,
         providers: { wikidata: wikidataId },
         source: 'wikidata',
       });

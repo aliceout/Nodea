@@ -99,7 +99,7 @@ function groupRowsByManif(
         creators: [],
         year: extractYear(bindingValue(row, 'date') ?? null),
         language: 'es',
-        original_language: 'es',
+        originalLanguage: 'es',
         publisher: bindingValue(row, 'publisher') ?? null,
         collection: null,
         summary: null,
@@ -107,7 +107,7 @@ function groupRowsByManif(
         isbn10,
         format: null,
         series: null,
-        cover_url: null,
+        coverUrl: null,
         providers: { bne: manifUri },
         source: 'bne',
       });

@@ -16,7 +16,7 @@ export interface GoalEntry {
   note: string;
   status: CanonicalStatus;
   thread: string;
-  /** ISO timestamp from the saved record's `updated_at` payload
+  /** ISO timestamp from the saved record's `updatedAt` payload
    *  field. Drives the « Récemment modifié » sort option. */
   updatedAt: string;
   /** ISO timestamp captured when the goal flipped to `done`,

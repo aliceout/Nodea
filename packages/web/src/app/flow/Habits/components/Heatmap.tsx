@@ -43,7 +43,7 @@ export default function Heatmap({ itemId, logs, days = 365 }: HeatmapProps) {
 
     const counts = new Map<string, number>();
     for (const log of logs) {
-      if (log.payload.item_rid !== itemId) continue;
+      if (log.payload.itemRid !== itemId) continue;
       const key = String(log.payload.date).slice(0, 10);
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }

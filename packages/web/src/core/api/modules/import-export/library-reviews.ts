@@ -45,7 +45,7 @@ function normalizePayload(input: unknown): LibraryReviewPayload {
     typeof p.kind === 'string' && KIND_SET.has(p.kind) ? p.kind : 'note';
   return LibraryReviewPayloadSchema.parse({
     ...p,
-    item_rid: String(p.item_rid ?? ''),
+    itemRid: String(p.itemRid ?? p.item_rid ?? ''),
     date: String(p.date ?? ''),
     content,
     kind,
@@ -55,7 +55,7 @@ function normalizePayload(input: unknown): LibraryReviewPayload {
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
   return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(
-    p.item_rid,
+    p.itemRid,
   )}::${normalizeKeyPart(p.content.slice(0, 40))}`;
 }
 
@@ -68,8 +68,8 @@ export async function importHandler({
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
   const clear = normalizePayload(payload);
-  if (!clear.date || !clear.item_rid || !clear.content) {
-    throw new Error('library_reviews: date, item_rid et content requis.');
+  if (!clear.date || !clear.itemRid || !clear.content) {
+    throw new Error('library_reviews: date, itemRid et content requis.');
   }
   const rec = await libraryReviewsClient.create(
     ctx.moduleUserId,

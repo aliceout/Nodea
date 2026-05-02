@@ -44,7 +44,7 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
 
   // Build a quick lookup so each review row can show its book's
   // title / author without having to re-scan `items` linearly. The
-  // reviews collection has `item_rid` pointing to the item id.
+  // reviews collection has `itemRid` pointing to the item id.
   const itemsById = useMemo(() => {
     const map = new Map<string, LibraryItem>();
     for (const it of items) map.set(it.id, it);
@@ -83,7 +83,7 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
             <FlatReviewRow
               key={r.id}
               review={r}
-              book={itemsById.get(r.item_rid) ?? null}
+              book={itemsById.get(r.itemRid) ?? null}
               onEdit={() => editReview(r)}
               onDelete={() => deleteReview(r)}
             />

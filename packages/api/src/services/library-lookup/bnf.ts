@@ -105,7 +105,7 @@ function groupRowsByWork(
         creators: [],
         year: extractYear(bindingValue(row, 'date') ?? null),
         language: bindingValue(row, 'language') ?? null,
-        original_language: null,
+        originalLanguage: null,
         publisher: bindingValue(row, 'publisher') ?? null,
         collection: bindingValue(row, 'collectionName') ?? null,
         summary: null,
@@ -113,7 +113,7 @@ function groupRowsByWork(
         isbn10,
         format: null,
         series: null,
-        cover_url: null,
+        coverUrl: null,
         providers: { bnf: workUri },
         source: 'bnf',
       });
