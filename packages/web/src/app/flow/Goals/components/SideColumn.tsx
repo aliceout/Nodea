@@ -4,7 +4,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
-import FilterChip from '@/ui/dirk/FilterChip';
+import FilterChip from '@/ui/dirk/module/FilterChip';
 
 import { useGoalsActions, useGoalsData, useGoalsFilters } from '../context';
 import { CANONICAL_STATUSES } from '../lib/constants';

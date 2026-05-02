@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
-import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 import LoginForm from './LoginForm';

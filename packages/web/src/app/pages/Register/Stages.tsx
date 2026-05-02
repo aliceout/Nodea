@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 /** Pre-form spinner — surfaced while the registration mode
  *  (`closed` / `invited` / `open`) is being resolved against

@@ -5,11 +5,11 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
-import EmptyHint from '@/ui/dirk/EmptyHint';
-import GroupBlock from '@/ui/dirk/GroupBlock';
-import HoverActions from '@/ui/dirk/HoverActions';
-import ModuleShell from '@/ui/dirk/ModuleShell';
-import PageHeading from '@/ui/dirk/PageHeading';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import GroupBlock from '@/ui/dirk/module/GroupBlock';
+import HoverActions from '@/ui/dirk/module/HoverActions';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 import { QUESTION_STEPS } from '../config/steps';
 import {

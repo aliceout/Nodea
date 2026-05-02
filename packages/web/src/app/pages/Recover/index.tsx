@@ -10,7 +10,7 @@ import { useSession } from '@/core/auth/use-session';
 import { apiErrorMessage, isApiError } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import FormPanel from './FormPanel';
 

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 
 import Button from '@/ui/atoms/dirk/Button';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 /**
  * Entry-point fork (REFACTO-12 split) : ask whether the user has

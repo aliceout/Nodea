@@ -3,7 +3,7 @@ import { type FormEvent } from 'react';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 import { sanitizeTotpInput } from './lib/validation';
 import LostFlow, { type LostState } from './LostFlow';

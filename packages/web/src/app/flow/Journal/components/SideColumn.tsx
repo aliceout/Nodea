@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { formatNumber } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Input from '@/ui/atoms/dirk/Input';
-import FilterChip from '@/ui/dirk/FilterChip';
+import FilterChip from '@/ui/dirk/module/FilterChip';
 
 import { useJournalData, useJournalFilters } from '../context';
 

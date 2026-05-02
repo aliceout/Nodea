@@ -1,6 +1,6 @@
 import type { NormalisedBook } from '@nodea/shared';
 import type { ProviderAdapter } from './types.ts';
-import { getConfig } from '../config.ts';
+import { getConfig } from '../../config.ts';
 import { fetchWithTimeout } from './fetch-with-timeout.ts';
 import { extractYear, normaliseAuthorName, normaliseIsbn } from './names.ts';
 

@@ -4,7 +4,7 @@ import {
   LibraryLookupByIsbnBodySchema,
   LibraryLookupByQueryBodySchema,
 } from '@nodea/shared';
-import { lookupByIsbn, streamLookupByQuery } from '../lookup/dispatcher.ts';
+import { lookupByIsbn, streamLookupByQuery } from '../services/library-lookup/dispatcher.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 

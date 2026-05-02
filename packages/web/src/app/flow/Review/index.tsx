@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import EmptyHint from '@/ui/dirk/EmptyHint';
-import ModuleShell from '@/ui/dirk/ModuleShell';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import { useReview, type ReviewRecord } from './hooks/useReview';
 import ReviewListView from './views/List';

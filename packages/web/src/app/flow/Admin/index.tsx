@@ -16,7 +16,7 @@ import {
   type AdminInviteRow,
 } from '@/core/api/client';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-import EmptyHint from '@/ui/dirk/EmptyHint';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import Tabs from '@/ui/dirk/Tabs';
 import Topbar from '@/ui/dirk/Topbar';
 import UserTable from './components/UserTable';

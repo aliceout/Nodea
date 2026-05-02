@@ -1,8 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 import ChangePasswordForm from './ChangePasswordForm';
 

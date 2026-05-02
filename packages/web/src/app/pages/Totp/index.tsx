@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSession } from '@/core/auth/use-session';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import DisableView from './DisableView';
 import ListView from './ListView';

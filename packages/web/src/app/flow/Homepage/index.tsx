@@ -1,7 +1,7 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
-import ModuleShell from '@/ui/dirk/ModuleShell';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
 import { HomepageProvider, useHomepageData } from './context';

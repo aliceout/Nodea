@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 /** Surface shown when the user lands on `/reset` without a
  *  `?token=…` query param (or with a malformed one). The token

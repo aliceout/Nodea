@@ -4,7 +4,7 @@ import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 import Button from '@/ui/atoms/dirk/Button';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
-import ThemeSwitch from '@/ui/dirk/ThemeSwitch';
+import ThemeSwitch from '@/ui/dirk/preferences/ThemeSwitch';
 import {
   useNodeaStore,
   selectIsAuthenticated,

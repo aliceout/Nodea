@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 import Warning from './Warning';
 

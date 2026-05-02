@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { and, eq, isNull, lt } from 'drizzle-orm';
-import { db } from '../db/client.ts';
-import { emailVerifications, sessions, users } from '../db/schema.ts';
+import { db } from './db/client.ts';
+import { emailVerifications, sessions, users } from './db/schema.ts';
 
 /**
  * Background cron jobs (Auth-Spec.md §13.2).

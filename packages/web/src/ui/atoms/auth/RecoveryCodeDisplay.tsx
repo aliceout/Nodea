@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
 import Button from '@/ui/atoms/dirk/Button';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
-import RowCard from '@/ui/dirk/RowCard';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
+import RowCard from '@/ui/dirk/module/RowCard';
 
 interface RecoveryCodeDisplayProps {
   /** Eyebrow above the heading — distinguishes the surface

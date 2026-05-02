@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 interface FormPanelProps {
   isRegenerate: boolean;

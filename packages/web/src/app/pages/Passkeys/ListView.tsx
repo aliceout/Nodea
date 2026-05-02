@@ -3,8 +3,8 @@ import type { PasskeyListItem } from '@nodea/shared';
 
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
-import RowCard from '@/ui/dirk/RowCard';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
+import RowCard from '@/ui/dirk/module/RowCard';
 
 interface ListViewProps {
   passkeys: PasskeyListItem[] | null;

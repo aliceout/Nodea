@@ -1,8 +1,8 @@
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 import { useNodeaStore } from '@/core/store/nodea-store';
-import EmptyHint from '@/ui/dirk/EmptyHint';
-import ModuleShell from '@/ui/dirk/ModuleShell';
-import PageHeading from '@/ui/dirk/PageHeading';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
 import { useHabits } from './hooks/useHabits';
 

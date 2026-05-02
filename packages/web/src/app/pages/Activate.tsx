@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRegisterActivate, isApiError } from '@/core/api/client';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 /**
  * Activate — landing page for the magic-link in the activation email.

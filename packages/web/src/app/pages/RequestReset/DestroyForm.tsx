@@ -7,7 +7,7 @@ import { apiErrorMessage, apiRequestPasswordReset } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 import Warning from './Warning';

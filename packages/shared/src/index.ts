@@ -19,3 +19,4 @@ export * from './schemas/announcements.ts';
 export * from './schemas/preferences.ts';
 export * from './schemas/library-lookup.ts';
 export * from './schemas/admin-sources.ts';
+export * from './schemas/admin-settings.ts';

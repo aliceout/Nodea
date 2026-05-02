@@ -5,8 +5,8 @@ import { useMemo } from 'react';
 import { getMonthNames } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
-import EmptyHint from '@/ui/dirk/EmptyHint';
-import PageHeading from '@/ui/dirk/PageHeading';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import MonthSelector from '../components/MonthSelector';
 import YearSelector from '../components/YearSelector';

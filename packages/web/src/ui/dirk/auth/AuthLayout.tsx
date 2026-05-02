@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-import AuthMarketingPanel from '@/ui/dirk/AuthMarketingPanel';
+import AuthMarketingPanel from '@/ui/dirk/auth/AuthMarketingPanel';
 
 export type AuthFormWidth = '360' | '400' | '420';
 

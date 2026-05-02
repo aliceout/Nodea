@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import DestroyForm from './DestroyForm';
 import ForkPanel from './ForkPanel';

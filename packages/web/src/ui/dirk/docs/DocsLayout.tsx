@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import DocsTopbar from '@/ui/dirk/DocsTopbar';
+import DocsTopbar from '@/ui/dirk/docs/DocsTopbar';
 
 interface DocsLayoutProps {
   children: ReactNode;

@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { useDocumentTitle } from '@/lib/use-document-title';
-import DocsLayout from '@/ui/dirk/DocsLayout';
-import DocsToc from '@/ui/dirk/DocsToc';
+import DocsLayout from '@/ui/dirk/docs/DocsLayout';
+import DocsToc from '@/ui/dirk/docs/DocsToc';
 import Tabs from '@/ui/dirk/Tabs';
 
 import DocsTierNewbie, {

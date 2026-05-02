@@ -6,7 +6,7 @@ import {
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
-import HoverActions from '@/ui/dirk/HoverActions';
+import HoverActions from '@/ui/dirk/module/HoverActions';
 
 import { useJournalActions } from '../context';
 import { attachmentSrc } from '../hooks/imageResize';

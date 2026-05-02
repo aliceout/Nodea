@@ -18,8 +18,16 @@ import { cn } from '@/lib/utils';
 
 /**
  * Tri-state theme picker (light / system / dark) rendered as a
- * dropdown — same visual footprint as the sidebar's
+ * **dropdown** — same visual footprint as the sidebar's
  * `<LanguageToggle>` so the two read as peer widgets.
+ *
+ * **Pick this variant or `<ThemeSwitch>`** : ces deux composants
+ * coexistent volontairement (REFACTO-13 audité, pas une
+ * duplication). Use `<ThemeToggle>` quand l'espace est contraint
+ * (sidebar) — la dropdown garde une empreinte visuelle minimale.
+ * Use `<ThemeSwitch>` quand on a la place pour 3 boutons icônes
+ * toujours visibles (docs topbar) — le switch segmenté évite le
+ * clic supplémentaire.
  *
  * Why Headless UI's `Listbox` rather than a native `<select>`: the
  * user wanted an icon next to each option, and `<option>` only

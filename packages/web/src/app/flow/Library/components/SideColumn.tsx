@@ -5,7 +5,7 @@ import {
   useNodeaStore,
   selectLibrarySubview,
 } from '@/core/store/nodea-store';
-import FilterChip from '@/ui/dirk/FilterChip';
+import FilterChip from '@/ui/dirk/module/FilterChip';
 
 import { useLibraryData, useLibraryFilters } from '../context';
 import { STATUS_LABEL } from '../lib/constants';

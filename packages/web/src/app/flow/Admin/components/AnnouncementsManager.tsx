@@ -11,7 +11,7 @@ import {
 import type { AnnouncementResponse } from '@nodea/shared';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
-import EmptyHint from '@/ui/dirk/EmptyHint';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 const INITIAL_FORM = { title: '', body: '' };
 

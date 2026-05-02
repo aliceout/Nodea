@@ -2,7 +2,7 @@ import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
-import HoverActions from '@/ui/dirk/HoverActions';
+import HoverActions from '@/ui/dirk/module/HoverActions';
 
 import NoteBadge from '../components/NoteBadge';
 import { useMoodActions } from '../context';

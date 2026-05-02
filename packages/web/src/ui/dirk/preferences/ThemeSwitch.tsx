@@ -43,13 +43,19 @@ export interface ThemeSwitchProps {
 }
 
 /**
- * Tri-state segmented switch — light / system / dark.
+ * Tri-state **segmented switch** — light / system / dark.
  *
  * Direction K · Sauge variant of the theme picker. Three icon-only
  * buttons sit in a hairline-bordered pill; the active one carries the
- * sage-soft fill. Visually distinct from `<ThemeToggle>` (the Listbox
- * dropdown used in the sidebar) — used in the docs topbar where a
- * compact always-visible switch reads better than a dropdown.
+ * sage-soft fill.
+ *
+ * **Pick this variant or `<ThemeToggle>`** : ces deux composants
+ * coexistent volontairement (REFACTO-13 audité, pas une duplication).
+ * Use `<ThemeSwitch>` quand on a la place pour 3 boutons icônes
+ * toujours visibles (docs topbar) — le switch segmenté évite le clic
+ * supplémentaire de la dropdown. Use `<ThemeToggle>` quand l'espace
+ * est contraint (sidebar) — la dropdown garde une empreinte visuelle
+ * minimale.
  *
  * Pairs the same `useTheme` hook as `ThemeToggle` so preferences flow
  * through the same persistence chain (localStorage + encrypted blob

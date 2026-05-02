@@ -1,6 +1,6 @@
-import EmptyHint from '@/ui/dirk/EmptyHint';
-import GroupBlock from '@/ui/dirk/GroupBlock';
-import PageHeading from '@/ui/dirk/PageHeading';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import GroupBlock from '@/ui/dirk/module/GroupBlock';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import { useLibraryData, useLibraryFilters } from '../context';
 import { CELL_FILTER_LABEL } from '../lib/cell-filter';

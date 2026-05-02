@@ -10,7 +10,7 @@ import {
   libraryCoversEntries,
   reviewEntries,
   type EntryTable,
-} from '../db/schema.ts';
+} from './db/schema.ts';
 
 export interface CollectionDef {
   name: CollectionName;

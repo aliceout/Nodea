@@ -1,7 +1,7 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
 import type { AdminUserRow } from '@/core/api/client';
 import Button from '@/ui/atoms/dirk/Button';
-import EmptyHint from '@/ui/dirk/EmptyHint';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 export interface UserTableProps {
   users: AdminUserRow[];

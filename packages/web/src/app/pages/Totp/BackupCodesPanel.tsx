@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 
 import Button from '@/ui/atoms/dirk/Button';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
-import RowCard from '@/ui/dirk/RowCard';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
+import RowCard from '@/ui/dirk/module/RowCard';
 
 interface BackupCodesPanelProps {
   /** Eyebrow above the title — distinguishes the surface :

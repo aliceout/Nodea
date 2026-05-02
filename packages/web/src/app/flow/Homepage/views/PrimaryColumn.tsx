@@ -1,4 +1,4 @@
-import PageHeading from '@/ui/dirk/PageHeading';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import RecentPassage from '../components/RecentPassage';
 import ReadingBlock from '../components/ReadingBlock';

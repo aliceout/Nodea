@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
 import { CreateInviteBodySchema } from '@nodea/shared/schemas/auth';
+import { AdminSettingsPatchBodySchema } from '@nodea/shared/schemas/admin-settings';
 import {
   AnnouncementCreateBodySchema,
   AnnouncementUpdateBodySchema,
@@ -12,7 +12,7 @@ import { db } from '../db/client.ts';
 import { announcements, invites, users } from '../db/schema.ts';
 import { requireUser, requireAdmin, type AuthVariables } from '../middleware/require-user.ts';
 import { serialize as serializeAnnouncement } from './announcements-serialize.ts';
-import { probeLibraryProviders } from '../lookup/dispatcher.ts';
+import { probeLibraryProviders } from '../services/library-lookup/dispatcher.ts';
 import {
   isOpenRegistration,
   setOpenRegistration,
@@ -200,10 +200,6 @@ adminRoutes.delete('/invites/:id', async (c) => {
 
 // --- App settings -----------------------------------------------------
 
-const SettingsPatchBodySchema = z.object({
-  open_registration: z.boolean().optional(),
-});
-
 /** Read every setting the UI exposes. Currently just open_registration. */
 adminRoutes.get('/settings', async (c) => {
   return c.json({
@@ -218,7 +214,7 @@ adminRoutes.get('/settings', async (c) => {
  */
 adminRoutes.patch('/settings', async (c) => {
   const raw = await c.req.json().catch(() => null);
-  const parsed = SettingsPatchBodySchema.safeParse(raw);
+  const parsed = AdminSettingsPatchBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const admin = c.get('user');
 

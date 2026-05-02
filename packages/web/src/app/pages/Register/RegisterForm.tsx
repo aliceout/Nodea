@@ -18,7 +18,7 @@ import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import PasswordRulesList from '@/ui/atoms/auth/PasswordRulesList';
 import StrengthBar from '@/ui/atoms/auth/StrengthBar';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 const RegisterFormSchema = z
   .object({

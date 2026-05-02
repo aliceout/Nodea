@@ -7,8 +7,8 @@ import { useSession } from '@/core/auth/use-session';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 import ModeSelector, { type ModeOption } from './ModeSelector';
 import PasswordProofForm from './PasswordProofForm';

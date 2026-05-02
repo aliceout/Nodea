@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { apiMfaBypassConfirm } from '@/core/api/client';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import ErrorPanel, { type ErrorReason } from './ErrorPanel';
 import PendingPanel from './PendingPanel';

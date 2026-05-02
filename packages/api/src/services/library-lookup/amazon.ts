@@ -1,6 +1,6 @@
 import type { NormalisedBook } from '@nodea/shared';
 import type { ProviderAdapter } from './types.ts';
-import { getConfig } from '../config.ts';
+import { getConfig } from '../../config.ts';
 import { fetchRendered } from './headless.ts';
 import { extractYear, normaliseAuthorName, normaliseIsbn } from './names.ts';
 

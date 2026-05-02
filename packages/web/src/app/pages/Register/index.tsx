@@ -9,8 +9,8 @@ import {
   apiRegisterMode,
 } from '@/core/api/client';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import RegisterForm from './RegisterForm';
 import {

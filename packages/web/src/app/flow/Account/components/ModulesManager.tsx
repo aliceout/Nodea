@@ -12,7 +12,7 @@ import {
   type ModulesRuntime,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
-import EmptyHint from '@/ui/dirk/EmptyHint';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 /**
  * ModulesManager (TSX).

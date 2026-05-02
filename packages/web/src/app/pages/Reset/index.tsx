@@ -20,7 +20,7 @@ import {
   clientRegisterStart,
   opaqueReady,
 } from '@/core/auth/opaque';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import DonePanel from './DonePanel';
 import InvalidLinkPanel from './InvalidLinkPanel';

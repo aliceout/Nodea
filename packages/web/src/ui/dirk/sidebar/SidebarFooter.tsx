@@ -1,5 +1,5 @@
-import LanguageToggle from '@/ui/dirk/LanguageToggle';
-import ThemeToggle from '@/ui/dirk/ThemeToggle';
+import LanguageToggle from '@/ui/dirk/preferences/LanguageToggle';
+import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
 
 /**
  * Bottom of the sidebar: sync indicator on top, then a row that

@@ -1,5 +1,5 @@
 import Button from '@/ui/atoms/dirk/Button';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 /** State machine for the « lost factor » email-recovery flow. */
 export type LostState =

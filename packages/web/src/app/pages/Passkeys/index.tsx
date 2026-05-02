@@ -5,7 +5,7 @@ import type { PasskeyListItem } from '@nodea/shared';
 import { apiPasskeyList, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import AddView from './AddView';
 import ListView from './ListView';

@@ -16,7 +16,7 @@ import { modulesConfigRoutes } from './routes/modules-config.ts';
 import { userPreferencesRoutes } from './routes/user-preferences.ts';
 import { libraryLookupRoutes } from './routes/library-lookup.ts';
 import { createCollectionRoutes } from './routes/collection-factory.ts';
-import { COLLECTIONS } from './collections/registry.ts';
+import { COLLECTIONS } from './collections.ts';
 import { getConfig } from './config.ts';
 import { sql } from './db/client.ts';
 import { errorWebhook } from './middleware/error-webhook.ts';

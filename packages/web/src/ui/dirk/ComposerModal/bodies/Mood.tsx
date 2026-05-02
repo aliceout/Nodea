@@ -9,7 +9,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkTextarea from '@/ui/atoms/dirk/Textarea';
-import SectionLabel from '@/ui/dirk/SectionLabel';
+import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import Footer from '../components/Footer';
 import { POSITIVE_PLACEHOLDERS } from '../lib/constants';

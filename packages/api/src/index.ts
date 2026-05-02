@@ -8,8 +8,8 @@ initSentryApi();
 import { serve } from '@hono/node-server';
 import { buildApp } from './app.ts';
 import { getConfig } from './config.ts';
-import { startCronScheduler } from './cron/index.ts';
-import { closeHeadlessBrowser } from './lookup/headless.ts';
+import { startCronScheduler } from './cron.ts';
+import { closeHeadlessBrowser } from './services/library-lookup/headless.ts';
 
 const { PORT } = getConfig();
 const app = buildApp();

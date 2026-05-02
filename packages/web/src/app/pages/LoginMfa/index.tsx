@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import {
   isValidBackupCode,

@@ -3,7 +3,7 @@ import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { formatPartialDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
-import HoverActions from '@/ui/dirk/HoverActions';
+import HoverActions from '@/ui/dirk/module/HoverActions';
 import { cn } from '@/lib/utils';
 
 import { useGoalsActions } from '../context';

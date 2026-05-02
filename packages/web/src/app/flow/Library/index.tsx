@@ -3,7 +3,7 @@ import {
   selectLibrarySubview,
 } from '@/core/store/nodea-store';
 import DirkButton from '@/ui/atoms/dirk/Button';
-import ModuleShell from '@/ui/dirk/ModuleShell';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
 import BookPickerModal from './components/BookPickerModal';

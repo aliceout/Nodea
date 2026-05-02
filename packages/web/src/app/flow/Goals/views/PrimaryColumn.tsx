@@ -1,7 +1,7 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import EmptyHint from '@/ui/dirk/EmptyHint';
-import GroupBlock from '@/ui/dirk/GroupBlock';
-import PageHeading from '@/ui/dirk/PageHeading';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import GroupBlock from '@/ui/dirk/module/GroupBlock';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import { useGoalsData, useGoalsFilters } from '../context';
 import GoalRow from './GoalRow';

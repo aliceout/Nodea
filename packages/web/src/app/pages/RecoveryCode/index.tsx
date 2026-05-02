@@ -7,7 +7,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
-import AuthLayout from '@/ui/dirk/AuthLayout';
+import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
 import FormPanel from './FormPanel';
 

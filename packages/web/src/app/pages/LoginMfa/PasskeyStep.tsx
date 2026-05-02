@@ -1,6 +1,6 @@
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
+import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 import LostFlow, { type LostState } from './LostFlow';
 
