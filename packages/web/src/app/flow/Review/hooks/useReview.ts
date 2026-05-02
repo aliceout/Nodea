@@ -23,6 +23,16 @@ export interface ReviewContext {
   deleteReview(id: string): Promise<void>;
 }
 
+/**
+ * Single hook for the Review module.
+ *
+ * **Why bare `selectMainKey + selectModules` instead of
+ * `useModuleClient('review')`** : the views consume `keyMissing` vs
+ * `moduleMissing` separately to render different empty states (no
+ * session vs session-but-module-not-seeded). `useModuleClient`
+ * collapses both into a single `null`, losing the discriminator.
+ * Using the bare selectors here is intentional, not legacy.
+ */
 export function useReview(): ReviewContext {
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);

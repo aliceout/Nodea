@@ -299,28 +299,45 @@ fonctionnellement.
   existants)
 - **Dépendances** : aucune
 
-### REFACTO-04 — Splitter `bodies/LibraryItem.tsx`
+### REFACTO-04 — Splitter `bodies/LibraryItem.tsx` — livré
 
 - **Type** : split fichier
-- **Sites** :
-  [`ui/dirk/ComposerModal/bodies/LibraryItem.tsx`](../../packages/web/src/ui/dirk/ComposerModal/bodies/LibraryItem.tsx)
-  (662 LOC, 25 `useState`, ~6 sections logiques)
-- **Proposition** : créer
-  `ui/dirk/ComposerModal/bodies/library-item/`
-  - `index.tsx` (orchestration form, ~150 LOC)
-  - `CoverSection.tsx` (lookup + thumbnail)
-  - `MetadataFields.tsx` (titre, auteur, ISBN, année)
-  - `StatusBlock.tsx` (statut + favoris)
-  - `TagsInput.tsx` (chips + input)
-  - `DatesBlock.tsx` (lu le, ajouté le)
+- **Statut** : livré (commit `51bf6c4`).
+- **Réalité du split** : la proposition initiale (6 sub-components
+  par section visuelle) a été abandonnée au profit d'un découpage
+  par **responsabilité logique** plutôt que visuelle :
+  - [`ui/dirk/ComposerModal/bodies/LibraryItem.tsx`](../../packages/web/src/ui/dirk/ComposerModal/bodies/LibraryItem.tsx)
+    (438 LOC) — ne porte plus que l'état du formulaire + le rendu JSX.
+  - [`bodies/library-item/save.ts`](../../packages/web/src/ui/dirk/ComposerModal/bodies/library-item/save.ts)
+    (245 LOC) — fonction pure `saveLibraryItem({ ctx, editing,
+    fields })` qui enchaîne validation + assemblage payload + create/
+    update + persistance best-effort de la couverture. Aucune
+    dépendance React.
+  - [`bodies/library-item/use-lookup.ts`](../../packages/web/src/ui/dirk/ComposerModal/bodies/library-item/use-lookup.ts)
+    (166 LOC) — hook `useLibraryLookup()` qui encapsule le ballet
+    de recherche (routage ISBN vs free-text, abort-on-new-run,
+    snapshots NDJSON, gestion d'erreurs, cleanup unmount).
+- **Pourquoi ce split plutôt que 6 sub-components** : la complexité
+  cachée de LibraryItem n'était pas dans le rendu (qui est plat) mais
+  dans l'orchestration `handleSave` (~150 LOC) et le ballet streaming
+  de la lookup (~70 LOC). Découper le rendu en 6 fichiers visuels
+  aurait propagé 13 props + 13 setters sur chaque sub-component sans
+  réduire la complexité réelle. Extraire les deux moteurs (save +
+  lookup) en pièces testables indépendamment a un meilleur ratio.
 - **Tâches**
-  - [ ] Découper en sub-components, props fines.
-  - [ ] Préserver le comportement form (création + édition).
-  - [ ] Vérifier e2e Playwright si une spec existe pour Library.
-- **Gain** : chaque fichier ~100-150 LOC, responsabilité claire.
-- **Effort** : M — ~3h
-- **Risque** : moyen (le plus gros body composer, à tester
-  manuellement aussi).
+  - [x] Sortir `saveLibraryItem` en fonction pure dans `save.ts`.
+  - [x] Sortir le ballet recherche en hook `useLibraryLookup` dans
+    `use-lookup.ts`.
+  - [x] LibraryItem.tsx réduit à 438 LOC (sous le plafond 200-300
+    LOC du factor-early pour un body composer, mais acceptable car
+    le JSX porte 13 champs de formulaire).
+  - [x] Comportement form préservé (création + édition + lookup).
+  - [x] Aucune spec Playwright pour Library aujourd'hui ; vérifier
+    manuellement reste recommandé.
+- **Gain** : moteurs save + lookup testables sans React, shell JSX
+  lisible, plafond factor-early respecté sur les nouveaux fichiers.
+- **Effort** : M — réalisé.
+- **Risque** : faible une fois les 313 tests verts.
 - **Dépendances** : aucune
 
 ---

@@ -331,20 +331,42 @@ individuels plutôt que dans `documentation/API.md`).
 - **Risque** : faible
 - **Dépendances** : suit REFACTO-11
 
-### ARCH-12 — Pas de validation runtime côté client des réponses API
+### ARCH-12 — Validation runtime des réponses API en dev/test — livré
 
 - **Type** : typage / contrats
 - **Sévérité** : moyenne
-- **Subjectivité** : faible
-- **Zone concernée** : [`packages/web/src/core/api/internal.ts:request()`](../../packages/web/src/core/api/internal.ts), tous les call-sites
-- **Description** : le client web fait `request<T>(...)` qui renvoie `Promise<T>` mais **ne valide pas runtime** que la réponse matche `T`. Si le serveur renvoie un shape différent (régression côté API non rattrapée par TS), le client crashera plus tard à un endroit imprévisible (ex : `user.email.toLowerCase()` sur un `null`).
-- **Pourquoi c'est un problème concret** : couplé à [`api.md`](./api.md) API-11 (~50 % des routes n'ont pas de `*ResponseSchema`), les contrats serveur peuvent dériver sans rien rattraper côté client. Un test e2e attraperait, mais en local, un dev voit `TypeError: Cannot read properties of null` au lieu de *« le serveur a renvoyé un shape inattendu »*.
+- **Statut** : livré (commit `9d2d502`).
+- **Solution** : le wrapper `request<T>()` accepte un quatrième
+  paramètre optionnel `responseSchema?: ResponseParser<T>` (cf.
+  [`packages/web/src/core/api/internal.ts`](../../packages/web/src/core/api/internal.ts)).
+  Si présent **et** qu'on tourne en `import.meta.env.DEV` ou
+  `MODE === 'test'`, le payload passe par `schema.parse()` — toute
+  dérive api/web fait sauter un `ZodError` direct dans la console
+  du dev. En prod le schéma est ignoré (zéro coût runtime, on fait
+  confiance au contrat puisque api et web déploient ensemble depuis
+  le même monorepo).
+- **Pourquoi pas en prod** : api/web sont buildés ensemble dans le
+  même CI ; un drift de contrat en prod sans rebuild correspondant
+  est impossible. Le signal recherché est *« le dev qui touche à
+  un endpoint sait immédiatement qu'il a cassé le client »*, pas
+  *« le runtime prod doit s'auto-protéger »*. Aligné avec la règle
+  CLAUDE.md *« Fail loud on developer errors »*.
 - **Tâches**
-  - [ ] **Court terme** : pour les routes critiques (login, register, /me), parser la réponse via Zod côté client : `LoginResponseSchema.parse(await res.json())`. Throw un `SchemaError` clair si dérive.
-  - [ ] **Long terme** : générer un client typé depuis OpenAPI (cf. [`api.md`](./api.md) API-11) qui fait ça automatiquement.
-- **Effort** : M (~3h pour les routes critiques)
+  - [x] **Court terme** : wrapper en place, le paramètre est
+    opt-in donc backward-compatible (les call sites sans schéma
+    castent comme avant).
+  - [x] **Câblage** des routes existantes : voir [`api.md`](./api.md)
+    API-11 — 26+ schémas Zod câblés sur auth/passkey/mfa/totp/library/
+    admin via le 4ᵉ argument.
+  - [x] **Tests** dans `packages/web/src/core/api/internal.test.ts`
+    couvrent les 4 cas (no-schema cast, schema parse, ZodError on
+    drift en mode test, type-narrowing forwarding).
+  - [ ] **Long terme** : générer un client typé depuis OpenAPI (cf.
+    [`api.md`](./api.md) API-11) qui poserait ces schémas
+    automatiquement. Reste ouvert.
+- **Effort** : S (le wrapper) + M (câblage + tests) — réalisés.
 - **Risque** : faible
-- **Dépendances** : [`api.md`](./api.md) API-11 (Zod ResponseSchema manquants)
+- **Dépendances** : aucune
 
 ### ARCH-13 — Convention « commentaire-en-tête de fichier » très tenue — à conserver — codifiée
 

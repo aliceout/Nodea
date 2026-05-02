@@ -149,7 +149,7 @@ résout les deux.
 
 - [x] **REFACTO-02** — Hook `useModuleClient(moduleId)` qui remplace les 20 occurrences (le code a grossi depuis l'audit) de `if (!mainKey || !moduleUserId) return`. ~3h. [`refacto.md`](./refacto.md)
 - [x] **REFACTO-07** — Splitter `core/auth/passkey-flow.ts` en `passkey/{enroll,login,shared,index}.ts`. ~2h. [`refacto.md`](./refacto.md)
-- [ ] **REFACTO-04** — Splitter `bodies/LibraryItem.tsx` (662 LOC) en sous-components. ~3h. [`refacto.md`](./refacto.md)
+- [x] **REFACTO-04** — `LibraryItem.tsx` (707 LOC) splitté : `library-item/save.ts` (245) + `library-item/use-lookup.ts` (166), shell à 438 LOC. [`refacto.md`](./refacto.md)
 
 ### Préparation OpenAPI + validation runtime (~1 jour)
 
