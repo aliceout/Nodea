@@ -347,31 +347,29 @@ fonctionnellement.
 > Effort élevé, risque moyen. Décollent quand le Tier 1 a
 > stabilisé les hooks de base.
 
-### REFACTO-08 — Splitter `Library/context.tsx` et `Goals/context.tsx`
+### REFACTO-08 — Splitter `Library/context.tsx` et `Goals/context.tsx` — livré
 
 - **Type** : split fichier (×2)
-- **Sites** : [`Library/context.tsx`](../../packages/web/src/app/flow/Library/context.tsx)
-  (483) + [`Goals/context.tsx`](../../packages/web/src/app/flow/Goals/context.tsx)
-  (416)
-- **Proposition** : pour chaque module, créer `flow/<X>/state/`
-  - `data.ts` — effect de chargement, state `{ entries, load, stats }`
-  - `filters.ts` — filtering dérivé + setters
-  - `actions.ts` — handlers (toggleStatus, edit, delete, carryOver…)
-    avec rollback optimiste
-  - Le `context.tsx` devient le wiring : import des 3 + appel à
-    `createModuleContexts.Provider`
-- **Tâches** (par module)
-  - [ ] Library : créer `state/`, déplacer en 3 fichiers, garder Provider dans `context.tsx`.
-  - [ ] Goals : idem.
-  - [ ] Vérifier les closures (les actions captent souvent des refs).
-  - [ ] Mettre à jour le commentaire d'architecture en haut de chaque `context.tsx`.
-- **Gain** : chaque fichier ~150 LOC, isolation testable des
-  handlers indépendamment du Provider.
-- **Effort** : L — ~1 jour/module = 2 jours
-- **Risque** : moyen (les 3 zones se réfèrent l'une à l'autre
-  via refs, attention aux closures stale).
-- **Dépendances** : faire **après REFACTO-02** (les effects
-  utiliseront `useModuleClient` à ce stade).
+- **Statut** : livré.
+- **Réalité du split** :
+  - **Library** : `context.tsx` 477 → 191 LOC (-60 %). Trois sous-hooks dans `flow/Library/state/` :
+    - [`use-library-data.ts`](../../packages/web/src/app/flow/Library/state/use-library-data.ts) (79 LOC) — fetch parallèle items + reviews + covers + LoadState.
+    - [`use-library-filters.ts`](../../packages/web/src/app/flow/Library/state/use-library-filters.ts) (116 LOC) — statut/tag/group-by/viewMode + dérivés (allTags, filteredItems, groups) + persistence localStorage du viewMode.
+    - [`use-library-actions.ts`](../../packages/web/src/app/flow/Library/state/use-library-actions.ts) (265 LOC) — 11 callbacks (add/edit/delete item, toggleFavorite, add/edit/delete review, picker open/close/pick) avec refs internes pour l'optimistic-rollback.
+  - **Goals** : `context.tsx` 408 → 155 LOC (-62 %). Trois sous-hooks dans `flow/Goals/state/` :
+    - [`use-goals-data.ts`](../../packages/web/src/app/flow/Goals/state/use-goals-data.ts) (81 LOC) — fetch + LoadState + stats (sur la full array, pas sur filtered).
+    - [`use-goals-filters.ts`](../../packages/web/src/app/flow/Goals/state/use-goals-filters.ts) (112 LOC) — statusFilter/groupBy/search/sortBy/hideDone + filtered + groups.
+    - [`use-goals-actions.ts`](../../packages/web/src/app/flow/Goals/state/use-goals-actions.ts) (204 LOC) — cycleStatus/edit/delete/carryOver + carry-over dialog state.
+- **Pattern refs internes** : chaque actions hook gère `useRef(items|entries|reviews)` mirrorée dans `useEffect`, et les callbacks lisent via la ref. Résultat : les identités de callbacks restent stables entre fetches, ce qui est tout l'intérêt de séparer `actions` de `data` / `filters`. Sans ça, lister `items` dans la dep array invaliderait chaque callback à chaque fetch et re-renderait tous les consumers du context actions.
+- **Tâches**
+  - [x] Library : créer `state/`, déplacer en 3 fichiers, Provider orchestre.
+  - [x] Goals : idem.
+  - [x] Closures vérifiées : pattern refs internes maintenu, identités callbacks stables.
+  - [x] Commentaires d'en-tête mis à jour sur les deux `context.tsx` pour décrire le nouveau découpage.
+- **Gain réalisé** : chaque fichier <300 LOC, isolation testable des handlers indépendamment du Provider, lecture facilitée (data fetch et filter logic plus mêlés au cycle de vie React du Provider).
+- **Effort** : L — réalisé.
+- **Risque** : moyen, validé par 313/313 vitests + tsc clean. Le run UI manuel reste recommandé sur les flows Library/Goals avant déploiement (les callbacks d'actions touchent du code crypto e2e côté optimistic update).
+- **Dépendances** : REFACTO-02 ✓
 
 ### REFACTO-12 — Harmoniser pages auth (flat vs folder)
 

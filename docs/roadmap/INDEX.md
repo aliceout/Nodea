@@ -195,7 +195,7 @@ résout les deux.
 
 ### Splits structurels (~2 jours)
 
-- [ ] **REFACTO-08** — Splitter `Library/context.tsx` (483 LOC) + `Goals/context.tsx` (416 LOC) en `state/{data,filters,actions}.ts`. ~2 jours. **Dépend de REFACTO-02.** [`refacto.md`](./refacto.md)
+- [x] **REFACTO-08** — Library context 477 → 191 LOC + 3 hooks ; Goals context 408 → 155 LOC + 3 hooks. Pattern refs internes pour stabilité des callbacks d'actions. [`refacto.md`](./refacto.md)
 - [ ] **REFACTO-12** + **REFACTO-06** combinés — Harmoniser pages auth (flat→folder) + standardiser RHF. ~1-2 jours. **Couple les deux.** [`refacto.md`](./refacto.md)
 
 ### Documentation & process (~1 jour)
