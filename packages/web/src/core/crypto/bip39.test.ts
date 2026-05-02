@@ -39,14 +39,26 @@ describe('BIP39 recovery code helpers', () => {
 
   it('returns null on a bad checksum (typo in last word)', () => {
     const { mnemonic } = generateRecoveryMnemonic();
-    // Replace the last word with another valid BIP39 word that
-    // (almost certainly) breaks the 4-bit checksum.
     const words = mnemonic.split(' ');
-    words[words.length - 1] = words[0]!;
-    const tampered = words.join(' ');
-    // Could occasionally pass if word[0] === word[-1] — pick a
-    // different replacement in that pathological case.
-    if (tampered === mnemonic) return;
+    // The BIP39 checksum is 4 bits → only 16 possible values, so a
+    // single-word substitution has ~1/16 chance of accidentally
+    // landing on a still-valid mnemonic. Try up to 12 distinct
+    // replacements (one for each existing word position) until we
+    // hit a substitution that genuinely invalidates the checksum.
+    // Probability of all 12 attempts being lucky-valid is (1/16)^12,
+    // i.e. round-zero — the test is now deterministic in practice.
+    let tampered = mnemonic;
+    for (let i = 0; i < words.length; i += 1) {
+      const candidate = [...words];
+      candidate[candidate.length - 1] = words[i]!;
+      const next = candidate.join(' ');
+      if (next === mnemonic) continue; // word[i] === word[-1], skip
+      if (recoveryMnemonicToEntropy(next) === null) {
+        tampered = next;
+        break;
+      }
+    }
+    expect(tampered).not.toBe(mnemonic);
     expect(recoveryMnemonicToEntropy(tampered)).toBeNull();
   });
 
