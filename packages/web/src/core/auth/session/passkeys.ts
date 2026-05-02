@@ -15,7 +15,7 @@ import {
   enrollPasskey,
   loginWithPasskey,
   type EnrollPasskeyResult,
-} from '../passkey-flow.ts';
+} from '../passkey/index.ts';
 import type { SessionUser } from '../../store/nodea-store.ts';
 
 import { freshenReauth } from './freshen-reauth.ts';

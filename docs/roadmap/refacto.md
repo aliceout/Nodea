@@ -276,7 +276,7 @@ fonctionnellement.
 - **Dépendances** : faire **après REFACTO-01** (le LoadState
   partagé sera utilisé par les mêmes sites).
 
-### REFACTO-07 — Splitter `core/auth/passkey-flow.ts`
+### REFACTO-07 — Splitter `core/auth/passkey-flow.ts` — livré
 
 - **Type** : split fichier
 - **Sites** :
@@ -289,9 +289,9 @@ fonctionnellement.
   - `shared.ts` — helpers communs (PRF zero-padding, etc.)
   - `index.ts` — re-exports pour backward-compat des imports
 - **Tâches**
-  - [ ] Créer les 4 fichiers + déplacer le contenu.
-  - [ ] Vérifier que la frontière enroll/login/shared est nette (pas d'imports croisés non triviaux).
-  - [ ] Mettre à jour les imports (~5 sites).
+  - [x] Créer les 4 fichiers + déplacer le contenu.
+  - [x] Vérifier que la frontière enroll/login/shared est nette (pas d'imports croisés non triviaux).
+  - [x] Mettre à jour les imports (~5 sites).
 - **Gain** : -1 fichier 530 LOC → 3 fichiers ~150 LOC, navigation
   enroll vs login évidente.
 - **Effort** : M — ~2h

@@ -1,48 +1,67 @@
 /**
- * Passkey enrollment / login orchestrators (Auth-Roadmap Phase 4,
+ * Passkey enrollment orchestrator (Auth-Roadmap Phase 4,
  * Auth-Spec §7.3 + §9).
  *
- * The hooks in `use-session.ts` are getting heavy as each phase
- * adds another credential flow. Phase 4 splits the WebAuthn dance
- * out into this dedicated module — the hook just imports and
- * coordinates with the store.
+ * Split out of the original `passkey-flow.ts` (REFACTO-07) — the
+ * enrollment dance is independent of the login one (which lives
+ * in [`./login.ts`](./login.ts)) and the two were sharing a
+ * single 530-LOC file. Common helpers live in
+ * [`./shared.ts`](./shared.ts).
  *
- * Two orchestrators:
- *
- *   - `enrollPasskey({ user, currentPassword, label })`
- *     Re-derives the export_key via OPAQUE login, unwraps the KEK,
- *     runs WebAuthn registration, extracts the PRF output if
- *     surfaced at registration, wraps the KEK under it, posts to
- *     `/auth/passkey/enroll/finish`. Returns the new credential
- *     metadata.
- *
- *   - `loginWithPasskey({ email })` (Phase 4C — added there)
+ * Flow (Auth-Spec §9.2) :
+ *   1. OPAQUE password proof → unwrap KEK locally.
+ *   2. POST `/auth/passkey/enroll/start` with the proof.
+ *   3. Server returns WebAuthn `creationOptions` carrying the PRF
+ *      extension request. Persist the challenge on the session row.
+ *   4. `startRegistration(creationOptions)` triggers the browser /
+ *      OS passkey UI. User confirms with PIN/biometric.
+ *   5. Inspect the resulting `clientExtensionResults.prf` for
+ *      whether the authenticator surfaced a PRF output :
+ *      - PRF output present (Safari, some Chromium builds) → derive
+ *        `wk_passkey = HKDF(prf, …)`, wrap KEK, register as
+ *        PRF-capable.
+ *      - PRF declared (`enabled: true`) but no output (Bitwarden,
+ *        1Password browser extensions, Chrome platform passkeys
+ *        >= v123 — they defer the output to the first assertion) →
+ *        run an immediate **calibration assertion** locally to
+ *        extract the output, then wrap as above. The assertion is
+ *        never submitted to the server ; it's a purely local
+ *        extraction (the user gets a second OS prompt right after
+ *        registration).
+ *      - No PRF at all → register as login-only with a warning.
+ *   6. POST `/auth/passkey/enroll/finish` with the attestation,
+ *      label, prfSupported flag, wrap blobs.
  */
 import {
   startAuthentication,
   startRegistration,
 } from '@simplewebauthn/browser';
+import type { Base64 } from '@nodea/shared';
+
 import {
   apiLoginStart,
   apiPasskeyEnrollFinish,
   apiPasskeyEnrollStart,
-} from '../api/client.ts';
+} from '../../api/client.ts';
+import {
+  bytesToBase64Url,
+  randomBytes,
+} from '../../crypto/base64.ts';
 import {
   buildKekAAD,
   unwrapKekUnderFactor,
-} from '../crypto/factor-wrap.ts';
+} from '../../crypto/factor-wrap.ts';
 import {
   PRF_INPUT_V1,
-  credentialIdToB64Url,
   wrapKekUnderPrf,
-} from '../crypto/passkey-prf.ts';
+} from '../../crypto/passkey-prf.ts';
+import { clientLoginFinish, clientLoginStart, opaqueReady } from '../opaque.ts';
+
 import {
-  bytesToBase64Url,
-  base64UrlToBytes,
-  randomBytes,
-} from '../crypto/base64.ts';
-import { clientLoginFinish, clientLoginStart, opaqueReady } from './opaque.ts';
-import type { Base64 } from '@nodea/shared';
+  augmentWithPrfEval,
+  readPrfEnabled,
+  readPrfFirst,
+} from './shared.ts';
 
 /* ============================================================================
  * Types
@@ -71,55 +90,6 @@ export interface EnrollPasskeyResult {
    *  credential. False = login-only — the user keeps needing their
    *  password to unlock data on this credential. */
   prfSupported: boolean;
-}
-
-/* ============================================================================
- * Helper: get PRF output from clientExtensionResults
- * ========================================================================== */
-
-interface PrfClientOutput {
-  enabled?: boolean;
-  results?: {
-    first?: ArrayBuffer | Uint8Array;
-    second?: ArrayBuffer | Uint8Array;
-  };
-}
-
-/**
- * Extract the PRF `first` output from `clientExtensionResults`.
- * Returns `null` when the authenticator didn't surface one (either
- * non-PRF, or PRF support was reported via `enabled: true` but
- * results are deferred to the next assertion).
- *
- * The `prf` field isn't in DOM lib types yet, so we narrow through
- * an `unknown`-keyed record.
- */
-function readPrfFirst(
-  results: Record<string, unknown> | undefined,
-): Uint8Array | null {
-  if (!results || typeof results !== 'object') return null;
-  const prf = (results as { prf?: unknown }).prf;
-  if (!prf || typeof prf !== 'object') return null;
-  const out = prf as PrfClientOutput;
-  const first = out.results?.first;
-  if (!first) return null;
-  return first instanceof Uint8Array ? first : new Uint8Array(first);
-}
-
-/**
- * Detect `prf.enabled === true` in the registration response. Some
- * authenticators (Bitwarden, 1Password browser extensions, Chrome
- * platform passkeys >= v123) return this flag without a populated
- * `results.first` — the PRF output is deferred to the first assertion.
- * When this is true but `readPrfFirst` returned `null`, we do an
- * immediate calibration assertion to extract the output before
- * finishing enrollment.
- */
-function readPrfEnabled(results: Record<string, unknown> | undefined): boolean {
-  if (!results || typeof results !== 'object') return false;
-  const prf = (results as { prf?: unknown }).prf;
-  if (!prf || typeof prf !== 'object') return false;
-  return (prf as { enabled?: unknown }).enabled === true;
 }
 
 /* ============================================================================
@@ -186,33 +156,6 @@ async function deriveKekFromPassword(
  * enrollPasskey
  * ========================================================================== */
 
-/**
- * Drive a full passkey enrollment.
- *
- * Flow (Auth-Spec §9.2):
- *   1. OPAQUE password proof → unwrap KEK locally.
- *   2. POST `/auth/passkey/enroll/start` with the proof.
- *   3. Server returns WebAuthn `creationOptions` carrying the PRF
- *      extension request. Persist the challenge on the session row.
- *   4. `startRegistration(creationOptions)` triggers the browser /
- *      OS passkey UI. User confirms with PIN/biometric.
- *   5. Inspect the resulting `clientExtensionResults.prf` for
- *      whether the authenticator surfaced a PRF output:
- *      - PRF output present (Safari, some Chromium builds) → derive
- *        `wk_passkey = HKDF(prf, …)`, wrap KEK, register as
- *        PRF-capable.
- *      - PRF declared (`enabled: true`) but no output (Bitwarden,
- *        1Password browser extensions, Chrome platform passkeys
- *        >= v123 — they defer the output to the first assertion) →
- *        run an immediate **calibration assertion** locally to
- *        extract the output, then wrap as above. The assertion is
- *        never submitted to the server; it's a purely local
- *        extraction (the user gets a second OS prompt right after
- *        registration).
- *      - No PRF at all → register as login-only with a warning.
- *   6. POST `/auth/passkey/enroll/finish` with the attestation,
- *      label, prfSupported flag, wrap blobs.
- */
 export async function enrollPasskey(
   input: EnrollPasskeyInput,
 ): Promise<EnrollPasskeyResult> {
@@ -389,147 +332,11 @@ async function runCalibrationAssertion(
 }
 
 /* ============================================================================
- * Helpers (private)
+ * Helpers (private to enroll)
  * ========================================================================== */
-
-/**
- * Inject our fixed PRF input into the creationOptions before handing
- * them to `startRegistration`. The server doesn't include the
- * concrete bytes — it only signals "PRF extension requested". Adding
- * `eval.first` here keeps the constant in one place
- * (`passkey-prf.ts`) and lets the server stay agnostic about which
- * version of the PRF input the client is using.
- *
- * **Critical encoding note**: `prf.eval.first` MUST be a `BufferSource`
- * (Uint8Array / ArrayBuffer), not a base64url string. The
- * `@simplewebauthn/browser` lib does not decode extension values
- * before forwarding the options to `navigator.credentials.{create,get}`
- * — it spreads `optionsJSON` and only converts the well-known fields
- * (challenge, user.id, excludeCredentials.id, allowCredentials.id).
- * Anything passed as a string here gets ignored silently by
- * Firefox / Chrome, the authenticator never sees the PRF request,
- * and `prf.enabled` is absent from the response. We therefore keep
- * raw bytes here.
- */
-function augmentWithPrfEval(
-  options: Record<string, unknown>,
-): Record<string, unknown> {
-  const cloned: Record<string, unknown> = { ...options };
-  const existingExt =
-    (cloned.extensions as Record<string, unknown> | undefined) ?? {};
-  cloned.extensions = {
-    ...existingExt,
-    prf: {
-      eval: {
-        first: PRF_INPUT_V1,
-      },
-    },
-  };
-  return cloned;
-}
-
-/**
- * Same trick for assertion options — used by Phase 4C login. Lives
- * here so both flows share the implementation.
- */
-export function augmentRequestWithPrfEval(
-  options: Record<string, unknown>,
-): Record<string, unknown> {
-  return augmentWithPrfEval(options);
-}
 
 function readTransports(attestation: { response?: { transports?: string[] } }): string | null {
   const t = attestation.response?.transports;
   if (!t || t.length === 0) return null;
   return t.join(',');
 }
-
-/* ============================================================================
- * Login (Phase 4C)
- * ========================================================================== */
-
-export interface PasskeyLoginInput {
-  /** Optional. Server returns generic options with no
-   *  `allowCredentials` filter when omitted (discoverable-creds path,
-   *  user picks the account from the OS UI). */
-  email?: string;
-}
-
-export interface PasskeyLoginRawResult {
-  userId: string;
-  credentialId: string;
-  prfSupported: boolean;
-  /** PRF output, surfaced from `clientExtensionResults.prf.results.first`.
-   *  Always present when `prfSupported = true` AND the authenticator
-   *  honours the eval input on assertion (which all PRF-supporting
-   *  browsers do — Chrome / Safari). */
-  prfOutput: Uint8Array | null;
-  /** Wrap blobs returned alongside the session — the caller unwraps
-   *  the KEK + main key from these (Phase 4C orchestration). */
-  wrappedKek: string | null;
-  wrappedKekIv: string | null;
-  wrappedMainKey: string;
-  wrappedMainKeyIv: string;
-  /** Phase 5C — when `users.security_mode != 'password_or_passkey'`,
-   *  the server emits a `mfa_pending` session instead of a `full`
-   *  one and surfaces the additional factors the client must drive
-   *  before the session is promoted. `false` = already full. */
-  needsMfa: boolean;
-  factorsNeeded: ReadonlyArray<'totp' | 'passkey' | 'password'>;
-}
-
-/**
- * Drive the WebAuthn assertion for a passkey login. Wraps
- * `apiPasskeyLoginStart` + `startAuthentication` + `apiPasskeyLoginFinish`,
- * extracts the PRF output, and returns the raw blobs for the
- * caller to unwrap.
- *
- * The session cookie is set by the server on /finish — this helper
- * only deals with credential / wrap material.
- */
-export async function loginWithPasskey(
-  input: PasskeyLoginInput,
-): Promise<PasskeyLoginRawResult> {
-  const { apiPasskeyLoginStart, apiPasskeyLoginFinish } = await import(
-    '../api/client.ts'
-  );
-
-  const startRes = await apiPasskeyLoginStart(
-    input.email !== undefined ? { email: input.email } : {},
-  );
-
-  const optionsJSON = augmentWithPrfEval(startRes.requestOptions);
-  const assertion = await startAuthentication({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    optionsJSON: optionsJSON as any,
-  });
-
-  const finishRes = await apiPasskeyLoginFinish({
-    loginToken: startRes.loginToken,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    assertionResponse: assertion as any,
-  });
-
-  const prfOutput = readPrfFirst(
-    assertion.clientExtensionResults as Record<string, unknown> | undefined,
-  );
-
-  return {
-    userId: finishRes.userId,
-    credentialId: finishRes.credentialId,
-    prfSupported: finishRes.prfSupported,
-    prfOutput,
-    wrappedKek: finishRes.wrappedKek,
-    wrappedKekIv: finishRes.wrappedKekIv,
-    wrappedMainKey: finishRes.wrappedMainKey,
-    wrappedMainKeyIv: finishRes.wrappedMainKeyIv,
-    needsMfa: finishRes.needsMfa,
-    factorsNeeded: finishRes.factorsNeeded,
-  };
-}
-
-// `credentialIdToB64Url` + `base64UrlToBytes` are imported because
-// the rest of this module sometimes needs them inline; they're
-// already in the types we export for the consumer's unwrap step.
-void credentialIdToB64Url;
-void base64UrlToBytes;
