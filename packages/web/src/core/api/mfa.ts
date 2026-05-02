@@ -1,13 +1,17 @@
-import type {
-  MfaBypassConfirmResponse,
-  MfaBypassRequestBody,
-  MfaBypassRequestResponse,
-  MfaPasskeyFinishBody,
-  MfaPasskeyFinishResponse,
-  MfaPasskeyStartBody,
-  MfaPasskeyStartResponse,
-  MfaTotpVerifyBody,
-  MfaTotpVerifyResponse,
+import {
+  MfaBypassRequestResponseSchema,
+  MfaPasskeyFinishResponseSchema,
+  MfaPasskeyStartResponseSchema,
+  MfaTotpVerifyResponseSchema,
+  type MfaBypassConfirmResponse,
+  type MfaBypassRequestBody,
+  type MfaBypassRequestResponse,
+  type MfaPasskeyFinishBody,
+  type MfaPasskeyFinishResponse,
+  type MfaPasskeyStartBody,
+  type MfaPasskeyStartResponse,
+  type MfaTotpVerifyBody,
+  type MfaTotpVerifyResponse,
 } from '@nodea/shared';
 
 import { apiBase, request } from './internal.ts';
@@ -30,7 +34,12 @@ import { apiBase, request } from './internal.ts';
 export async function apiMfaTotpVerify(
   body: MfaTotpVerifyBody,
 ): Promise<MfaTotpVerifyResponse> {
-  return request<MfaTotpVerifyResponse>('POST', '/auth/mfa/totp/verify', body);
+  return request(
+    'POST',
+    '/auth/mfa/totp/verify',
+    body,
+    MfaTotpVerifyResponseSchema,
+  );
 }
 
 /** Passkey-as-second-factor — Phase 5D, used for mode `maximum`
@@ -41,13 +50,23 @@ export async function apiMfaTotpVerify(
 export async function apiMfaPasskeyStart(
   body: MfaPasskeyStartBody,
 ): Promise<MfaPasskeyStartResponse> {
-  return request<MfaPasskeyStartResponse>('POST', '/auth/mfa/passkey/start', body);
+  return request(
+    'POST',
+    '/auth/mfa/passkey/start',
+    body,
+    MfaPasskeyStartResponseSchema,
+  );
 }
 
 export async function apiMfaPasskeyFinish(
   body: MfaPasskeyFinishBody,
 ): Promise<MfaPasskeyFinishResponse> {
-  return request<MfaPasskeyFinishResponse>('POST', '/auth/mfa/passkey/finish', body);
+  return request(
+    'POST',
+    '/auth/mfa/passkey/finish',
+    body,
+    MfaPasskeyFinishResponseSchema,
+  );
 }
 
 /* ----------------------------------------------------------------
@@ -60,7 +79,12 @@ export async function apiMfaPasskeyFinish(
 export async function apiMfaBypassRequest(
   body: MfaBypassRequestBody,
 ): Promise<MfaBypassRequestResponse> {
-  return request<MfaBypassRequestResponse>('POST', '/auth/mfa/bypass/request', body);
+  return request(
+    'POST',
+    '/auth/mfa/bypass/request',
+    body,
+    MfaBypassRequestResponseSchema,
+  );
 }
 
 /** Confirm a bypass via the email link. Reads the body even on 4xx

@@ -1,9 +1,11 @@
-import type {
-  TotpEnrollStartBody,
-  TotpEnrollStartResponse,
-  TotpEnrollVerifyBody,
-  TotpManagementBody,
-  TotpRegenerateBackupCodesResponse,
+import {
+  TotpEnrollStartResponseSchema,
+  TotpRegenerateBackupCodesResponseSchema,
+  type TotpEnrollStartBody,
+  type TotpEnrollStartResponse,
+  type TotpEnrollVerifyBody,
+  type TotpManagementBody,
+  type TotpRegenerateBackupCodesResponse,
 } from '@nodea/shared';
 
 import { request } from './internal.ts';
@@ -15,7 +17,12 @@ import { request } from './internal.ts';
 export async function apiTotpEnrollStart(
   body: TotpEnrollStartBody,
 ): Promise<TotpEnrollStartResponse> {
-  return request<TotpEnrollStartResponse>('POST', '/auth/totp/enroll/start', body);
+  return request(
+    'POST',
+    '/auth/totp/enroll/start',
+    body,
+    TotpEnrollStartResponseSchema,
+  );
 }
 
 export async function apiTotpEnrollVerify(
@@ -35,9 +42,10 @@ export async function apiTotpDisable(body: TotpManagementBody): Promise<void> {
 export async function apiTotpRegenerateBackupCodes(
   body: TotpManagementBody,
 ): Promise<TotpRegenerateBackupCodesResponse> {
-  return request<TotpRegenerateBackupCodesResponse>(
+  return request(
     'POST',
     '/auth/totp/backup-codes/regenerate',
     body,
+    TotpRegenerateBackupCodesResponseSchema,
   );
 }

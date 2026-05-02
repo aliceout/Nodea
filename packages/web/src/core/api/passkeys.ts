@@ -1,15 +1,20 @@
-import type {
-  PasskeyDeleteBody,
-  PasskeyEnrollFinishBody,
-  PasskeyEnrollFinishResponse,
-  PasskeyEnrollStartBody,
-  PasskeyEnrollStartResponse,
-  PasskeyListResponse,
-  PasskeyLoginFinishBody,
-  PasskeyLoginFinishResponse,
-  PasskeyLoginStartBody,
-  PasskeyLoginStartResponse,
-  PasskeyRenameWithProofBody,
+import {
+  PasskeyEnrollFinishResponseSchema,
+  PasskeyEnrollStartResponseSchema,
+  PasskeyListResponseSchema,
+  PasskeyLoginFinishResponseSchema,
+  PasskeyLoginStartResponseSchema,
+  type PasskeyDeleteBody,
+  type PasskeyEnrollFinishBody,
+  type PasskeyEnrollFinishResponse,
+  type PasskeyEnrollStartBody,
+  type PasskeyEnrollStartResponse,
+  type PasskeyListResponse,
+  type PasskeyLoginFinishBody,
+  type PasskeyLoginFinishResponse,
+  type PasskeyLoginStartBody,
+  type PasskeyLoginStartResponse,
+  type PasskeyRenameWithProofBody,
 } from '@nodea/shared';
 
 import { request } from './internal.ts';
@@ -23,10 +28,11 @@ import { request } from './internal.ts';
 export async function apiPasskeyEnrollStart(
   body: PasskeyEnrollStartBody,
 ): Promise<PasskeyEnrollStartResponse> {
-  return request<PasskeyEnrollStartResponse>(
+  return request(
     'POST',
     '/auth/passkey/enroll/start',
     body,
+    PasskeyEnrollStartResponseSchema,
   );
 }
 
@@ -35,15 +41,16 @@ export async function apiPasskeyEnrollStart(
 export async function apiPasskeyEnrollFinish(
   body: PasskeyEnrollFinishBody,
 ): Promise<PasskeyEnrollFinishResponse> {
-  return request<PasskeyEnrollFinishResponse>(
+  return request(
     'POST',
     '/auth/passkey/enroll/finish',
     body,
+    PasskeyEnrollFinishResponseSchema,
   );
 }
 
 export async function apiPasskeyList(): Promise<PasskeyListResponse> {
-  return request<PasskeyListResponse>('GET', '/auth/passkey/list');
+  return request('GET', '/auth/passkey/list', undefined, PasskeyListResponseSchema);
 }
 
 export async function apiPasskeyRename(
@@ -66,10 +73,11 @@ export async function apiPasskeyRemove(
 export async function apiPasskeyLoginStart(
   body: PasskeyLoginStartBody,
 ): Promise<PasskeyLoginStartResponse> {
-  return request<PasskeyLoginStartResponse>(
+  return request(
     'POST',
     '/auth/passkey/login/start',
     body,
+    PasskeyLoginStartResponseSchema,
   );
 }
 
@@ -78,9 +86,10 @@ export async function apiPasskeyLoginStart(
 export async function apiPasskeyLoginFinish(
   body: PasskeyLoginFinishBody,
 ): Promise<PasskeyLoginFinishResponse> {
-  return request<PasskeyLoginFinishResponse>(
+  return request(
     'POST',
     '/auth/passkey/login/finish',
     body,
+    PasskeyLoginFinishResponseSchema,
   );
 }

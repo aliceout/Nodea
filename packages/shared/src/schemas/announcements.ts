@@ -33,3 +33,11 @@ export const AnnouncementResponseSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 export type AnnouncementResponse = z.infer<typeof AnnouncementResponseSchema>;
+
+/** Envelope returned by `GET /admin/announcements`. The list is
+ *  wrapped in an object so future fields (pagination cursor, total
+ *  count) can land without breaking the wire shape. */
+export const AnnouncementListResponseSchema = z.object({
+  announcements: z.array(AnnouncementResponseSchema),
+});
+export type AnnouncementListResponse = z.infer<typeof AnnouncementListResponseSchema>;

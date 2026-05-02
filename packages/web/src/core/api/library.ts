@@ -12,8 +12,12 @@ import { apiBase, isRecord, request, safeJson, type ApiError } from './internal.
 export async function apiLibraryLookupByIsbn(
   body: LibraryLookupByIsbnBody,
 ): Promise<LibraryLookupResponse> {
-  const raw = await request<unknown>('POST', '/library/lookup/by-isbn', body);
-  return LibraryLookupResponseSchema.parse(raw);
+  return request(
+    'POST',
+    '/library/lookup/by-isbn',
+    body,
+    LibraryLookupResponseSchema,
+  );
 }
 
 export interface LibraryCoverFetchResult {

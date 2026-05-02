@@ -1,5 +1,7 @@
 import {
   AdminSourcesResponseSchema,
+  AnnouncementListResponseSchema,
+  AnnouncementResponseSchema,
   type AdminSourcesResponse,
   type AnnouncementCreateBody,
   type AnnouncementResponse,
@@ -98,8 +100,7 @@ export async function apiAdminDeleteInvite(inviteId: string): Promise<void> {
  * "Sources" tab.
  */
 export async function apiAdminSources(): Promise<AdminSourcesResponse> {
-  const raw = await request<unknown>('GET', '/admin/sources');
-  return AdminSourcesResponseSchema.parse(raw);
+  return request('GET', '/admin/sources', undefined, AdminSourcesResponseSchema);
 }
 
 /* ----------------------------------------------------------------
@@ -121,9 +122,11 @@ export async function apiAdminPatchSettings(
  * -------------------------------------------------------------- */
 
 export async function apiAdminListAnnouncements(): Promise<AnnouncementResponse[]> {
-  const { announcements } = await request<{ announcements: AnnouncementResponse[] }>(
+  const { announcements } = await request(
     'GET',
     '/admin/announcements',
+    undefined,
+    AnnouncementListResponseSchema,
   );
   return announcements;
 }
@@ -131,17 +134,18 @@ export async function apiAdminListAnnouncements(): Promise<AnnouncementResponse[
 export async function apiAdminCreateAnnouncement(
   body: AnnouncementCreateBody,
 ): Promise<AnnouncementResponse> {
-  return request<AnnouncementResponse>('POST', '/admin/announcements', body);
+  return request('POST', '/admin/announcements', body, AnnouncementResponseSchema);
 }
 
 export async function apiAdminUpdateAnnouncement(
   id: string,
   body: AnnouncementUpdateBody,
 ): Promise<AnnouncementResponse> {
-  return request<AnnouncementResponse>(
+  return request(
     'PATCH',
     `/admin/announcements/${encodeURIComponent(id)}`,
     body,
+    AnnouncementResponseSchema,
   );
 }
 

@@ -1,5 +1,14 @@
 import {
   AuthMeResponseSchema,
+  ChangePasswordStartResponseSchema,
+  OpaqueLoginFinishResponseSchema,
+  OpaqueLoginStartResponseSchema,
+  OpaqueRegisterStartResponseSchema,
+  ReauthOkResponseSchema,
+  ReauthPasskeyStartResponseSchema,
+  ReauthPasswordStartResponseSchema,
+  RecoverKekStartResponseSchema,
+  ResetPasswordStartResponseSchema,
   type AuthMeResponse,
   type ChangeEmailBody,
   type ChangePasswordFinishBody,
@@ -31,10 +40,12 @@ import {
   type ResetPasswordStartBody,
   type ResetPasswordStartResponse,
 } from '@nodea/shared';
-import type {
-  InviteInfoResponse,
-  RegisterActivateBody,
-  RegisterModeResponse,
+import {
+  InviteInfoResponseSchema,
+  RegisterModeResponseSchema,
+  type InviteInfoResponse,
+  type RegisterActivateBody,
+  type RegisterModeResponse,
 } from '@nodea/shared/schemas/auth-register-v2';
 
 import { isApiError, request } from './internal.ts';
@@ -60,7 +71,12 @@ export async function apiRegister(body: RegisterBody): Promise<{ id: string }> {
  * and "show invitation-only" panel.
  */
 export async function apiRegisterMode(): Promise<RegisterModeResponse> {
-  return request<RegisterModeResponse>('GET', '/auth/register/mode');
+  return request(
+    'GET',
+    '/auth/register/mode',
+    undefined,
+    RegisterModeResponseSchema,
+  );
 }
 
 /**
@@ -74,9 +90,11 @@ export async function apiRegisterInviteInfo(
   token: string,
 ): Promise<InviteInfoResponse | null> {
   try {
-    return await request<InviteInfoResponse>(
+    return await request(
       'GET',
       `/auth/register/invite-info?token=${encodeURIComponent(token)}`,
+      undefined,
+      InviteInfoResponseSchema,
     );
   } catch (err) {
     if (isApiError(err) && err.status === 404) return null;
@@ -92,7 +110,12 @@ export async function apiRegisterInviteInfo(
 export async function apiRegisterStart(
   body: OpaqueRegisterStartBody,
 ): Promise<OpaqueRegisterStartResponse> {
-  return request<OpaqueRegisterStartResponse>('POST', '/auth/register/start', body);
+  return request(
+    'POST',
+    '/auth/register/start',
+    body,
+    OpaqueRegisterStartResponseSchema,
+  );
 }
 
 /**
@@ -133,7 +156,12 @@ export async function apiRegisterActivate(
 export async function apiLoginStart(
   body: OpaqueLoginStartBody,
 ): Promise<OpaqueLoginStartResponse> {
-  return request<OpaqueLoginStartResponse>('POST', '/auth/login/start', body);
+  return request(
+    'POST',
+    '/auth/login/start',
+    body,
+    OpaqueLoginStartResponseSchema,
+  );
 }
 
 /**
@@ -152,7 +180,12 @@ export async function apiLoginStart(
 export async function apiLoginFinish(
   body: OpaqueLoginFinishBody,
 ): Promise<OpaqueLoginFinishResponse> {
-  return request<OpaqueLoginFinishResponse>('POST', '/auth/login/finish', body);
+  return request(
+    'POST',
+    '/auth/login/finish',
+    body,
+    OpaqueLoginFinishResponseSchema,
+  );
 }
 
 export async function apiLogout(): Promise<void> {
@@ -161,8 +194,7 @@ export async function apiLogout(): Promise<void> {
 
 export async function apiMe(): Promise<AuthMeResponse | null> {
   try {
-    const raw = await request<unknown>('GET', '/auth/me');
-    return AuthMeResponseSchema.parse(raw);
+    return await request('GET', '/auth/me', undefined, AuthMeResponseSchema);
   } catch (err) {
     if (isApiError(err) && err.status === 401) return null;
     throw err;
@@ -184,33 +216,45 @@ export async function apiMe(): Promise<AuthMeResponse | null> {
 export async function apiReauthPasswordStart(
   body: ReauthPasswordStartBody,
 ): Promise<ReauthPasswordStartResponse> {
-  return request<ReauthPasswordStartResponse>(
+  return request(
     'POST',
     '/auth/reauth/password/start',
     body,
+    ReauthPasswordStartResponseSchema,
   );
 }
 
 export async function apiReauthPasswordFinish(
   body: ReauthPasswordFinishBody,
 ): Promise<ReauthOkResponse> {
-  return request<ReauthOkResponse>('POST', '/auth/reauth/password/finish', body);
+  return request(
+    'POST',
+    '/auth/reauth/password/finish',
+    body,
+    ReauthOkResponseSchema,
+  );
 }
 
 export async function apiReauthPasskeyStart(
   body: ReauthPasskeyStartBody,
 ): Promise<ReauthPasskeyStartResponse> {
-  return request<ReauthPasskeyStartResponse>(
+  return request(
     'POST',
     '/auth/reauth/passkey/start',
     body,
+    ReauthPasskeyStartResponseSchema,
   );
 }
 
 export async function apiReauthPasskeyFinish(
   body: ReauthPasskeyFinishBody,
 ): Promise<ReauthOkResponse> {
-  return request<ReauthOkResponse>('POST', '/auth/reauth/passkey/finish', body);
+  return request(
+    'POST',
+    '/auth/reauth/passkey/finish',
+    body,
+    ReauthOkResponseSchema,
+  );
 }
 
 /* ----------------------------------------------------------------
@@ -220,10 +264,11 @@ export async function apiReauthPasskeyFinish(
 export async function apiChangePasswordStart(
   body: ChangePasswordStartBody,
 ): Promise<ChangePasswordStartResponse> {
-  return request<ChangePasswordStartResponse>(
+  return request(
     'POST',
     '/auth/change-password/start',
     body,
+    ChangePasswordStartResponseSchema,
   );
 }
 
@@ -277,7 +322,12 @@ export async function apiRecoveryCodeUpsert(
 export async function apiRecoverKekStart(
   body: RecoverKekStartBody,
 ): Promise<RecoverKekStartResponse> {
-  return request<RecoverKekStartResponse>('POST', '/auth/recover-kek/start', body);
+  return request(
+    'POST',
+    '/auth/recover-kek/start',
+    body,
+    RecoverKekStartResponseSchema,
+  );
 }
 
 export async function apiRecoverKekFinish(
@@ -289,7 +339,12 @@ export async function apiRecoverKekFinish(
 export async function apiResetPasswordStart(
   body: ResetPasswordStartBody,
 ): Promise<ResetPasswordStartResponse> {
-  return request<ResetPasswordStartResponse>('POST', '/auth/reset/start', body);
+  return request(
+    'POST',
+    '/auth/reset/start',
+    body,
+    ResetPasswordStartResponseSchema,
+  );
 }
 
 export async function apiResetPasswordFinish(
