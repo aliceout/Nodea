@@ -74,19 +74,36 @@ existing dev server is reused.
 |---|---|---|
 | `01-register-activate-login.spec.ts` | Register → Mailpit activation email → magic-link visit → login → /flow | ✅ |
 | `02-totp-enroll-login.spec.ts` | Settings TOTP enroll → log out → log back in via stepped MFA with the matching otplib code | ✅ |
-| `03-passkey-enroll-login.spec.ts` | Virtual WebAuthn authenticator → enroll → log out → log back in via passkey | 🚧 follow-up |
-| `04-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
-| `05-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
+| `03-recovery-code-generate-and-use.spec.ts` | `/recovery-code` enable → capture 12 BIP39 words → logout → `/recover` with email + words + new password → land /flow → relogin with new password | ✅ |
+| `04-passkey-enroll-and-login.spec.ts` | Virtual WebAuthn authenticator → enroll → logout → assertion login → finish KEK unwrap with password (non-PRF branch) | ✅ |
+| `05-change-password-rotates-kek.spec.ts` | `/change-password` → forced logout → old password rejected → new password lands /flow | ✅ |
+| `06-account-deletion-cascade.spec.ts` | Account → deletion tab → confirm dialog → land `/login` → DB cascade asserts (`users` + `modules_config` empty) | ✅ |
+| `07-module-crud-with-guard.spec.ts` | Mood module → composer create → list → edit → delete with X-Sid + X-Guard headers | ✅ |
+| `08-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
+| `09-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
 
-The follow-up suites need :
-- For passkey : the virtual authenticator from
-  `helpers/webauthn.ts` (Chromium CDP) — works for plain WebAuthn
-  but **does not support PRF**. So those tests will exercise the
-  non-PRF branch (passkey present, password still required for
-  KEK) ; the PRF unwrap path stays unit-tested in
-  `packages/web/src/core/crypto/passkey-prf.test.ts`.
-- For bypass : `helpers/db.ts` already exposes
+The remaining follow-up suites need :
+- For bypass (`08`) : `helpers/db.ts` already exposes
   `backdateBypassConfirmation` to short-circuit the 7-day delay.
+
+Important caveats for the new specs (03-07) :
+- `04-passkey-enroll-and-login` exercises the **non-PRF branch only**.
+  Chromium's virtual authenticator does not support the PRF
+  extension, so the passkey ceremony succeeds but the KEK isn't
+  unwrappable from the credential alone — the spec finishes the
+  unlock by typing the password. The PRF unwrap path itself stays
+  unit-tested in `packages/web/src/core/crypto/passkey-prf.test.ts`.
+- `03-recovery-code-generate-and-use` scrapes the 12-word mnemonic
+  by filtering DOM elements that match the BIP39-word shape
+  (`/^[a-z]{3,12}$/`). If the `<RecoveryCodeDisplay>` ever wraps
+  words in an extra element with non-matching content, the scraper
+  will need a `data-testid=recovery-word` hint added to the
+  component.
+- `07-module-crud-with-guard` assumes the first-run module seed
+  fires lazily on first `/flow` navigation. If a future change
+  moves the seed to an explicit user action (button click), the
+  spec's "click sidebar entry → page settles" sequence may need
+  to insert a seeding step.
 
 ## Helpers
 

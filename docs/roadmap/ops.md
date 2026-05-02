@@ -276,26 +276,20 @@ détection est inexistante. »*
 - **Risque** : faible (script en lecture seule sur la DB)
 - **Dépendances** : REC-S7 (provider off-site) pour la chaîne complète backup → off-site → restore.
 
-### OPS-06 — E2E coverage thin : 2 specs pour 7+ flows auth critiques
+### OPS-06 — Coverage e2e étendue (5 nouveaux specs) — livré
 
 - **Domaine** : tests stratégie
 - **Sévérité** : moyenne
-- **Effort** : L (~1 jour pour 5 nouveaux specs)
-- **Zone concernée** : [`packages/e2e/tests/`](../../packages/e2e/tests/) — 2 specs
-- **Description** : 2 specs e2e pour une app avec MFA, passkeys, recovery code, bypass MFA, change password, change email, account deletion. Les flows critiques non couverts en e2e :
-  - Recovery code generation + use (perte de mot de passe)
-  - Passkey enrollment + login (PRF + non-PRF)
-  - MFA bypass (clic-de-lien email + délai 7 jours)
-  - Change password (re-encryption KEK)
-  - Account deletion (cascade FK + clés détruites)
-  - Module CRUD (création + lecture + update guard + delete)
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Ajouter `03-recovery-code-generate-and-use.spec.ts`
-  - [ ] Ajouter `04-passkey-enroll-and-login.spec.ts`
-  - [ ] Ajouter `05-change-password-rotates-kek.spec.ts`
-  - [ ] Ajouter `06-account-deletion-cascade.spec.ts`
-  - [ ] Ajouter `07-module-crud-with-guard.spec.ts`
-- **Risque** : faible (lecture-seule de la stack, tests Playwright isolés)
+  - [x] `03-recovery-code-generate-and-use.spec.ts` — enable → capture 12 BIP39 words → /recover → relogin avec nouveau mot de passe.
+  - [x] `04-passkey-enroll-and-login.spec.ts` — virtual authenticator Chromium CDP → enroll → assertion login → password finit l'unlock (branche non-PRF, le virtual auth ne supporte pas PRF). La branche PRF reste unit-testée dans `passkey-prf.test.ts`.
+  - [x] `05-change-password-rotates-kek.spec.ts` — /change-password → forced logout → ancien mdp refusé → nouveau mdp landed /flow.
+  - [x] `06-account-deletion-cascade.spec.ts` — confirm dialog → redirect /login → asserts DB (`users` + `modules_config` vides via FK cascade).
+  - [x] `07-module-crud-with-guard.spec.ts` — Mood : create → list → update → delete via la composer modal, avec X-Sid + X-Guard implicitement validés à chaque appel.
+  - [x] README mis à jour avec la table de couverture étendue + caveats (PRF non couvert, scraping mnémonique BIP39, hypothèse first-run seed).
+- **Note exécution** : les 5 specs n'ont pas été lancés depuis la session de dev (Postgres + Mailpit + Chromium nécessaires). Tsc OK sur `@nodea/e2e`. Premier `pnpm --filter @nodea/e2e test` à faire pour confirmer chaque spec ; certains sélecteurs (ex. recovery word locator, module sidebar) sont permissifs et peuvent demander un ajustement après le premier run.
+- **Risque** : faible (lecture-seule de la stack, tests isolés)
 - **Dépendances** : aucune
 
 ### OPS-07 — Dependabot configuré (npm + github-actions + docker) — livré

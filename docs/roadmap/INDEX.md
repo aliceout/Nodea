@@ -191,7 +191,7 @@ résout les deux.
 
 ### Tests e2e (~1 jour)
 
-- [ ] **OPS-06** — 5 specs e2e supplémentaires : recovery, passkey, change-password, account-deletion, modules CRUD. ~1 jour. [`ops.md`](./ops.md)
+- [x] **OPS-06** — 5 specs e2e ajoutés (`03..07`) : recovery, passkey non-PRF, change-password, account-deletion, modules CRUD. À runner localement (Postgres + Mailpit + Chromium requis). [`ops.md`](./ops.md)
 
 ### Splits structurels (~2 jours)
 
