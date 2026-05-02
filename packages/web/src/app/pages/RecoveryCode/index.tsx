@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiErrorMessage } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
 import AuthLayout from '@/ui/dirk/AuthLayout';
@@ -39,6 +40,7 @@ type Stage =
   | { kind: 'done' };
 
 export default function RecoveryCodePage() {
+  useDocumentTitle('Code de récupération');
   const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();

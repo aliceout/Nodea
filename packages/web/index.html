@@ -15,6 +15,14 @@
   />
 
   <!--
+    Canonical URL (FRONT-12). Default points at the home ; `Docs.tsx`
+    overrides per-tab at runtime to `/docs/<tab>` so each tier gets
+    its own authoritative URL for search engines. The /flow surface
+    keeps this default — privacy invariant, no per-module canonical.
+  -->
+  <link rel="canonical" href="https://nodea.app/" />
+
+  <!--
     Open Graph + Twitter card meta. Static values — Nodea is a CSR
     SPA, so all routes serve the same index.html and the same
     preview card. The image is a 1200×630 PNG hosted alongside the

@@ -8,6 +8,7 @@ import {
   apiResetPasswordStart,
 } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { randomBytes } from '@/core/crypto/base64';
 import {
   buildKekAAD,
@@ -52,6 +53,7 @@ zxcvbnOptions.setOptions({
  * action.
  */
 export default function ResetPage() {
+  useDocumentTitle('Nouveau mot de passe');
   const { t } = useI18n();
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';

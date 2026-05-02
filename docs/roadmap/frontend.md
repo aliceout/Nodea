@@ -157,7 +157,7 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### FRONT-04 — `document.title` jamais mis à jour selon la route
+### FRONT-04 — `document.title` par page publique — livré
 
 - **Catégorie** : SEO + DX (onglet du navigateur)
 - **Sévérité** : faible
@@ -167,10 +167,11 @@ catalogue se rend en une passe. »*
   - Aucun `document.title = ...` ni `react-helmet` dans le code
 - **Description** : pas de gestion dynamique du titre. CSR pure → pas de SSR pour pré-render le bon titre. Pour les pages publiques (`/docs`, `/login`, `/register`), un titre par page améliorerait le SEO + l'UX onglets. Pour les pages authentifiées, c'est moins urgent (privacy invariant — on **ne veut pas** que le titre révèle le module actif).
 - **Tâches**
-  - [ ] Pour `/docs` : ajouter dans `Docs.tsx` un `useEffect(() => { document.title = 'Documentation — Nodea'; }, [])`.
-  - [ ] Pour `/login`, `/register`, `/recovery-code`, etc. : pareil, un titre par page.
-  - [ ] Pour `/flow` (authentifié) : **garder « Nodea »** générique pour la privacy. Documenter dans `CLAUDE.md` (privacy invariant) que le titre du tab ne doit jamais refléter le module actif.
-- **Effort** : S (~1h pour 8 pages publiques)
+  - [x] Hook `useDocumentTitle(string)` créé dans `packages/web/src/lib/use-document-title.ts` — appose " — Nodea", restaure le titre précédent au unmount.
+  - [x] Câblé sur 14 pages publiques : Login, Register, Activate, ChangePassword, RequestReset, Reset, RecoveryCode, Recover, Passkeys, Totp, SecurityMode, BypassConfirm, LoginMfa, NotFound (titres FR hardcodés).
+  - [x] Docs.tsx : titre dynamique par tier (« L'essentiel — Documentation », etc.), couplé avec FRONT-12.
+  - [x] /flow garde le titre statique « Nodea » de `index.html` — invariant privacy documenté dans `CLAUDE.md` § Routing : « `document.title` on `/flow` must stay generic — never per-module ». Une nouvelle règle pour les futurs modules.
+- **Effort** : S — réalisé.
 - **Risque** : faible
 - **Dépendances** : aucune
 
@@ -190,7 +191,7 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### FRONT-06 — Pas de scroll restoration sur la navigation back/forward intra-`/flow`
+### FRONT-06 — Scroll restoration sur navigation back/forward intra-`/flow` — livré
 
 - **Catégorie** : routing
 - **Sévérité** : faible
@@ -201,14 +202,14 @@ catalogue se rend en une passe. »*
   - Le seul `scrollTo` explicite est [`Docs.tsx:60`](../../packages/web/src/app/pages/Docs.tsx#L60) sur changement d'onglet docs
 - **Description** : React Router v7 propose `<ScrollRestoration />` qui sauvegarde scrollY par entrée d'historique et le restaure au back. Le projet n'utilise pas ce composant. Les modules changent via `setModule()` du store qui pushState avec `{ nodeaModule: id }` dans le state, mais sans le scrollY.
 - **Tâches**
-  - [ ] Étendre le pushState pour inclure `scrollY: window.scrollY`.
-  - [ ] Au popstate dans `App.tsx`, restaurer `window.scrollTo({ top: e.state?.scrollY ?? 0, behavior: 'instant' })`.
-  - [ ] Tester sur Library + Journal (les deux modules à listes longues).
-- **Effort** : S (~1h)
+  - [x] `setModule` dans `nodea-store.ts` : `replaceState` pour stamper `scrollY: window.scrollY` sur l'entrée sortante avant le `pushState` du nouveau module (stamp lui-même starts at scrollY 0). Scroll-to-top instantané sur le module entrant.
+  - [x] Popstate handler dans `App.tsx` : lit `state.scrollY` après `syncCurrentModule`, restaure via `requestAnimationFrame(() => window.scrollTo({ top, behavior: 'instant' }))` pour laisser React render avant le scroll.
+  - [ ] Test manuel à faire sur Library + Journal après merge — les seuls modules avec listes assez longues pour que le scroll reset soit visible.
+- **Effort** : S — code livré, test manuel restant.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### FRONT-07 — Possible double `<h1>` sur les pages auth (à vérifier)
+### FRONT-07 — Vérification double `<h1>` sur pages auth — livré (no-op)
 
 - **Catégorie** : a11y / sémantique
 - **Sévérité** : faible
@@ -219,10 +220,9 @@ catalogue se rend en une passe. »*
   - [`AuthPanelHeader.tsx`](../../packages/web/src/ui/dirk/AuthPanelHeader.tsx) — composant utilisé sur les forms, à inspecter
 - **Description** : la marketing panel pose un grand `<h1>` (probablement bon UX visuellement). Si la page form contient un autre `<h1>` (par exemple « Créer mon compte ») on a 2 h1.
 - **Tâches**
-  - [ ] **Vérifier** chaque page auth pour confirmer le diagnostic (curl / inspect).
-  - [ ] **Si 2 h1 confirmés** : démoter le headline du `AuthPanelHeader` à `<h2>` (le marketing panel garde son `<h1>` car il est l'élément dominant visuel de la page).
-- **Effort** : S (~30 min vérif + fix)
-- **Risque** : faible
+  - [x] Vérification : `AuthPanelHeader.tsx:39` utilise déjà `<h2>` (pas `<h1>`). Aucune page auth n'a de `<h1>` propre — grep `<h1` retourne uniquement `Docs.tsx` (pas une page auth) et `NotFound.tsx` (pas un AuthLayout). Pas de double `<h1>` à corriger.
+- **Effort** : S — vérification seulement, aucun code touché.
+- **Risque** : aucun
 - **Dépendances** : aucune
 
 ### FRONT-08 — `recharts` retiré (jamais utilisé) — livré
@@ -285,20 +285,17 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### FRONT-12 — Pas de `<link rel="canonical">` sur les pages publiques
+### FRONT-12 — `<link rel="canonical">` sur pages publiques — livré
 
 - **Catégorie** : SEO + a11y
 - **Sévérité** : faible
-- **Impact utilisateur** : Google peut indexer plusieurs URL comme pages distinctes. Pas critique pour une SPA privée, plus important pour `/docs/`.
-- **Fichiers** :
-  - [`packages/web/index.html:2`](../../packages/web/index.html#L2)
-- **Description** : pas de `<link rel="canonical">` du tout. Le `<html lang>` est mis à jour côté runtime depuis le commit `d87c821 fix(i18n): sync <html lang> with active language`.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Ajouter dans `index.html` un `<link rel="canonical" href="https://nodea.app">` sur la home.
-  - [ ] Dans `Docs.tsx`, un effet qui met à jour le canonical en `https://nodea.app/docs` (couplé avec FRONT-04 sur `document.title`).
-- **Effort** : S (~30 min)
+  - [x] `index.html` : ajout d'un `<link rel="canonical" href="https://nodea.app/">` statique sous le bloc description, avec commentaire explicatif (override par tab côté Docs.tsx, statique pour /flow → privacy invariant).
+  - [x] `Docs.tsx` : effet qui upsert un `<link rel="canonical" href="https://nodea.app/docs/<tab>">` à chaque changement de tier. Cleanup au unmount restaure la valeur précédente.
+- **Effort** : S — réalisé.
 - **Risque** : faible
-- **Dépendances** : aucune
+- **Dépendances** : couplé avec FRONT-04 (déjà livré dans le même commit)
 
 ### FRONT-13 — Race conditions potentielles sur les mutations optimistes
 

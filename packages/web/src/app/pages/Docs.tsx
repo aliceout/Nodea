@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { useDocumentTitle } from '@/lib/use-document-title';
 import DocsLayout from '@/ui/dirk/DocsLayout';
 import DocsToc from '@/ui/dirk/DocsToc';
 import Tabs from '@/ui/dirk/Tabs';
@@ -54,6 +55,14 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'tech', label: 'Sous le capot' },
 ];
 
+const DOC_TITLES: Record<TabId, string> = {
+  newbie: "L'essentiel — Documentation",
+  advanced: 'La mécanique — Documentation',
+  tech: 'Sous le capot — Documentation',
+};
+
+const CANONICAL_BASE = 'https://nodea.app';
+
 const TIER_TOCS = {
   newbie: newbieToc,
   advanced: advancedToc,
@@ -68,6 +77,29 @@ export default function DocsPage() {
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
   const level: TabId = isTabId(tab) ? tab : 'newbie';
+
+  useDocumentTitle(DOC_TITLES[level]);
+
+  // Update the canonical link to point at the active tier
+  // (FRONT-12). The static one in `index.html` covers the home ;
+  // here we override per-tab so search engines pick `/docs/<tab>`
+  // as the authoritative URL for each tier's content.
+  useEffect(() => {
+    const target = `${CANONICAL_BASE}/docs/${level}`;
+    let link = document.querySelector<HTMLLinkElement>('link[rel=canonical]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
+    const previous = link.href;
+    link.href = target;
+    return () => {
+      // Revert to the static home canonical when leaving /docs so a
+      // back-nav to / doesn't keep pointing at the doc page.
+      link.href = previous || `${CANONICAL_BASE}/`;
+    };
+  }, [level]);
 
   // Unknown :tab (e.g. /docs/foo) → silently rewrite to /docs/newbie
   // so the URL stays in sync with the rendered tier.

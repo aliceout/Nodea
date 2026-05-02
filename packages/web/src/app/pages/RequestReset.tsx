@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiErrorMessage, apiRequestPasswordReset } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import AuthLayout from '@/ui/dirk/AuthLayout';
@@ -30,6 +31,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 type Stage = 'fork' | 'destroy' | 'sent';
 
 export default function RequestResetPage() {
+  useDocumentTitle('Demander une réinitialisation');
   const { t } = useI18n();
   const [stage, setStage] = useState<Stage>('fork');
   const [email, setEmail] = useState('');

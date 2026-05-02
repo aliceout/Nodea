@@ -4,6 +4,7 @@ import { apiErrorMessage, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthLayout from '@/ui/dirk/AuthLayout';
@@ -36,6 +37,7 @@ interface ModeOption {
 }
 
 export default function SecurityModePage() {
+  useDocumentTitle('Mode de sécurité');
   const { t } = useI18n();
   const navigate = useNavigate();
   const setModule = useNodeaStore((s) => s.setModule);

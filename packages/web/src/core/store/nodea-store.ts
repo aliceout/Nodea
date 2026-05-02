@@ -315,7 +315,21 @@ export const useNodeaStore = create<NodeaState>()((set, get) => ({
     const current = get().flow.currentModule;
     if (current === id) return;
     if (typeof window !== 'undefined') {
-      window.history.pushState({ nodeaModule: id }, '', '/flow');
+      // Stamp the current scrollY onto the entry we're about to
+      // leave so back-navigation can restore the user's position
+      // (FRONT-06). Without this, the browser snaps to the top when
+      // we pushState — the new entry has no scroll memory of its
+      // own. We `replaceState` first to add `scrollY` to the
+      // outgoing entry, then `pushState` the new module entry at
+      // top.
+      const currentState =
+        (window.history.state as { nodeaModule?: unknown } | null) ?? {};
+      window.history.replaceState(
+        { ...currentState, scrollY: window.scrollY },
+        '',
+      );
+      window.history.pushState({ nodeaModule: id, scrollY: 0 }, '', '/flow');
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
     set((state) => ({ flow: { ...state.flow, currentModule: id } }));
   },

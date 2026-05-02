@@ -8,6 +8,7 @@ import {
   apiRegisterInviteInfo,
   apiRegisterMode,
 } from '@/core/api/client';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
@@ -49,6 +50,7 @@ type Mode =
   | { kind: 'closed' };
 
 export default function RegisterPage() {
+  useDocumentTitle('Inscription');
   const session = useSession();
   const [params] = useSearchParams();
   const [mode, setMode] = useState<Mode>({ kind: 'loading' });

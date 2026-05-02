@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useSession } from '@/core/auth/use-session';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
@@ -34,6 +35,7 @@ import type { Stage } from './types';
  * `/recovery-code`).
  */
 export default function TotpPage() {
+  useDocumentTitle('Authentification à deux facteurs');
   const navigate = useNavigate();
   const session = useSession();
   const user = useNodeaStore(selectUser);

@@ -177,10 +177,10 @@ résout les deux.
 
 ### A11y & SEO (~2h)
 
-- [ ] **FRONT-04** — `document.title` par page publique. ~1h. [`frontend.md`](./frontend.md)
-- [ ] **FRONT-07** — Vérifier double `<h1>` sur pages auth + démoter si confirmé. ~30 min. [`frontend.md`](./frontend.md)
-- [ ] **FRONT-12** — `<link rel="canonical">` dans `index.html`. ~30 min. [`frontend.md`](./frontend.md)
-- [ ] **FRONT-06** — Scroll restoration sur navigation back/forward intra-`/flow`. ~1h. [`frontend.md`](./frontend.md)
+- [x] **FRONT-04** — Hook `useDocumentTitle` câblé sur 14 pages publiques + invariant privacy `/flow` documenté dans CLAUDE.md. [`frontend.md`](./frontend.md)
+- [x] **FRONT-07** — Vérifié : AuthPanelHeader déjà en `<h2>`, pas de double `<h1>` à corriger (no-op). [`frontend.md`](./frontend.md)
+- [x] **FRONT-12** — Canonical statique dans `index.html` + override dynamique par tab dans `Docs.tsx`. [`frontend.md`](./frontend.md)
+- [x] **FRONT-06** — `setModule` stamp `scrollY` sur l'entrée sortante, popstate restore via rAF. Test UI manuel à faire. [`frontend.md`](./frontend.md)
 
 ### API consolidation non-breaking (~3h)
 

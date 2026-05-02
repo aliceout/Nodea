@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
 import {
@@ -45,6 +46,7 @@ type Factor = 'totp' | 'passkey' | 'password';
  * and the input validation in `lib/validation.ts` (with tests).
  */
 export default function LoginMfaPage() {
+  useDocumentTitle('Vérification 2FA');
   const session = useSession();
   const navigate = useNavigate();
   const [step, setStep] = useState<'totp' | 'passkey'>('totp');

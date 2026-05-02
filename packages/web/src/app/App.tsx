@@ -48,10 +48,20 @@ function AppWithKeyModal() {
   // changing the URL.
   useEffect(() => {
     function handler(e: PopStateEvent): void {
-      const state = e.state as { nodeaModule?: unknown } | null;
+      const state = e.state as
+        | { nodeaModule?: unknown; scrollY?: unknown }
+        | null;
       const id = state?.nodeaModule;
       const next = isModuleId(id) ? id : 'home';
       useNodeaStore.getState().syncCurrentModule(next);
+      // Restore scroll position stamped on the entry by `setModule`
+      // (FRONT-06). Defer one frame so React has rendered the
+      // restored module — otherwise the page may not yet be tall
+      // enough for the target scrollY.
+      const scrollY = typeof state?.scrollY === 'number' ? state.scrollY : 0;
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+      });
     }
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);

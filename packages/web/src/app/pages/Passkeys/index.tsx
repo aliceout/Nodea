@@ -4,6 +4,7 @@ import type { PasskeyListItem } from '@nodea/shared';
 
 import { apiPasskeyList, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
 import AddView from './AddView';
@@ -43,6 +44,7 @@ type Stage =
   | { kind: 'rename'; passkey: PasskeyListItem };
 
 export default function PasskeysPage() {
+  useDocumentTitle('Passkeys');
   const navigate = useNavigate();
   const session = useSession();
   const [stage, setStage] = useState<Stage>({ kind: 'list' });

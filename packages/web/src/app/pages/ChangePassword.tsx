@@ -13,6 +13,7 @@ import {
 import { useSession } from '@/core/auth/use-session';
 import { apiErrorMessage } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
@@ -58,6 +59,7 @@ type ChangePasswordForm = z.infer<typeof ChangePasswordFormSchema>;
  * the auth surface stays one continuous design language.
  */
 export default function ChangePasswordPage() {
+  useDocumentTitle('Changer le mot de passe');
   const { t } = useI18n();
   const session = useSession();
   const user = useNodeaStore(selectUser);

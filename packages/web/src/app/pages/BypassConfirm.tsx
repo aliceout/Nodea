@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiMfaBypassConfirm } from '@/core/api/client';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 
@@ -35,6 +36,7 @@ type Status =
     };
 
 export default function BypassConfirmPage() {
+  useDocumentTitle('Confirmation MFA');
   const [params] = useSearchParams();
   const [status, setStatus] = useState<Status>({ state: 'pending' });
   const calledRef = useRef(false);

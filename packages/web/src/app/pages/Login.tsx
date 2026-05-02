@@ -8,6 +8,7 @@ import { useSession } from '@/core/auth/use-session';
 import { apiErrorMessage } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/AuthPanelHeader';
 import Button from '@/ui/atoms/dirk/Button';
@@ -25,6 +26,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
  * primitive that would smother the design intent.
  */
 export default function LoginPage() {
+  useDocumentTitle('Connexion');
   const { t } = useI18n();
   const session = useSession();
   const navigate = useNavigate();

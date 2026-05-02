@@ -1,6 +1,8 @@
 import { useI18n } from "@/i18n/I18nProvider.jsx";
+import { useDocumentTitle } from "@/lib/use-document-title";
 
 export default function NotFound() {
+  useDocumentTitle("Page introuvable");
   const { t } = useI18n();
   return (
     <main

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRegisterActivate, isApiError } from '@/core/api/client';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { PrivacyBody } from '@/ui/dirk/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
@@ -32,6 +33,7 @@ type ActivationStatus =
     };
 
 export default function ActivatePage() {
+  useDocumentTitle('Activation du compte');
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<ActivationStatus>({ state: 'pending' });

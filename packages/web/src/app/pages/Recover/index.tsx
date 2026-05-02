@@ -9,6 +9,7 @@ import {
 import { useSession } from '@/core/auth/use-session';
 import { apiErrorMessage, isApiError } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
@@ -43,6 +44,7 @@ type Stage =
   | { kind: 'done' };
 
 export default function RecoverPage() {
+  useDocumentTitle('Récupération du compte');
   const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();
