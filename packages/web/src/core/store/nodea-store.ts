@@ -57,7 +57,16 @@ export function isLibrarySubview(value: unknown): value is LibrarySubview {
 
 export type AuthStatus = 'unauthenticated' | 'loading' | 'authenticated';
 
-/** Public-safe user shape returned by `/auth/me`. Never includes secrets. */
+/**
+ * Public-safe user shape returned by `/auth/me`. Never includes secrets.
+ *
+ * **API-14 split** : the OPAQUE wrap blobs (`wrappedMainKey`,
+ * `wrappedKekPassword`, …) used to live here. They moved to
+ * `GET /auth/me/crypto` so the lean `/me` payload doesn't ship
+ * ~2 KB of unused crypto on every page load. Consumers that need
+ * to unwrap (change-password, recovery-code setup, passkey
+ * enroll) call `apiMeCrypto()` at the moment of need.
+ */
 export interface SessionUser {
   id: string;
   email: string;
@@ -66,14 +75,6 @@ export interface SessionUser {
   role: 'user' | 'admin';
   onboardingStatus: 'pending' | 'complete';
   onboardingVersion: string;
-  /** Base64 AES-GCM ciphertext of the random main key under the
-   *  random KEK. Set ONCE at register, never re-wrapped. */
-  wrappedMainKey: string | null;
-  wrappedMainKeyIv: string | null;
-  /** Base64 AES-GCM ciphertext of the KEK under an HKDF sub-key of
-   *  the OPAQUE `exportKey`. Re-wrapped at change-password. */
-  wrappedKekPassword: string | null;
-  wrappedKekPasswordIv: string | null;
   /** True when the user has set up a BIP39 recovery code (Phase 3).
    *  Drives the sidebar warning + the Settings setup vs regenerate
    *  affordance. */

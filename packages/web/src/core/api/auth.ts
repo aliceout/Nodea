@@ -1,4 +1,5 @@
 import {
+  AuthMeCryptoResponseSchema,
   AuthMeResponseSchema,
   ChangePasswordStartResponseSchema,
   OpaqueLoginFinishResponseSchema,
@@ -9,6 +10,7 @@ import {
   ReauthPasswordStartResponseSchema,
   RecoverKekStartResponseSchema,
   ResetPasswordStartResponseSchema,
+  type AuthMeCryptoResponse,
   type AuthMeResponse,
   type ChangeEmailBody,
   type ChangePasswordFinishBody,
@@ -199,6 +201,21 @@ export async function apiMe(): Promise<AuthMeResponse | null> {
     if (isApiError(err) && err.status === 401) return null;
     throw err;
   }
+}
+
+/**
+ * `GET /auth/me/crypto` — OPAQUE wrap blobs (API-14 split). Called
+ * only at unwrap moments (change-password, recovery-code setup,
+ * passkey enrollment). The lean `/auth/me` no longer carries these
+ * blobs to keep page-load payloads small.
+ */
+export async function apiMeCrypto(): Promise<AuthMeCryptoResponse> {
+  return request(
+    'GET',
+    '/auth/me/crypto',
+    undefined,
+    AuthMeCryptoResponseSchema,
+  );
 }
 
 /* ----------------------------------------------------------------

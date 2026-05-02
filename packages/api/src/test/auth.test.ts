@@ -189,7 +189,7 @@ describe('end-to-end auth lifecycle (register → login → change-password → 
 });
 
 describe('GET /auth/me', () => {
-  it('returns the current user with the OPAQUE credential blobs', async () => {
+  it('returns the lean profile shape — no crypto blobs (API-14 split)', async () => {
     await seedUser('me@example.com');
     const cookie = await loginAs(app, 'me@example.com', TEST_PASSWORD);
 
@@ -197,17 +197,44 @@ describe('GET /auth/me', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.email).toBe('me@example.com');
-    // Phase 2D dropped the legacy password / envelope columns —
-    // the response no longer carries them.
+    // Phase 2D dropped the legacy password / envelope columns.
     expect(body).not.toHaveProperty('passwordHash');
     expect(body).not.toHaveProperty('encryptionSalt');
     expect(body).not.toHaveProperty('encryptedKey');
-    expect(body).toHaveProperty('wrappedMainKey');
-    expect(body).toHaveProperty('wrappedKekPassword');
+    // API-14 split — wrap blobs moved to /auth/me/crypto.
+    expect(body).not.toHaveProperty('wrappedMainKey');
+    expect(body).not.toHaveProperty('wrappedMainKeyIv');
+    expect(body).not.toHaveProperty('wrappedKekPassword');
+    expect(body).not.toHaveProperty('wrappedKekPasswordIv');
   });
 
   it('returns 401 without a cookie', async () => {
     const res = await app.request('/auth/me');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /auth/me/crypto', () => {
+  it('returns the OPAQUE wrap blobs — split out of /auth/me (API-14)', async () => {
+    await seedUser('crypto@example.com');
+    const cookie = await loginAs(app, 'crypto@example.com', TEST_PASSWORD);
+
+    const res = await app.request('/auth/me/crypto', { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('wrappedMainKey');
+    expect(body).toHaveProperty('wrappedMainKeyIv');
+    expect(body).toHaveProperty('wrappedKekPassword');
+    expect(body).toHaveProperty('wrappedKekPasswordIv');
+    // No identity leaks on the crypto endpoint — it's strictly the
+    // wrap blobs.
+    expect(body).not.toHaveProperty('email');
+    expect(body).not.toHaveProperty('id');
+    expect(body).not.toHaveProperty('role');
+  });
+
+  it('returns 401 without a cookie', async () => {
+    const res = await app.request('/auth/me/crypto');
     expect(res.status).toBe(401);
   });
 });

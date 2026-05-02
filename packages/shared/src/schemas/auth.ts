@@ -221,21 +221,16 @@ export const CreateInviteBodySchema = z.object({
 export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
 
 /**
- * Response bodies — what the client can rely on without decrypting.
+ * `GET /auth/me` — identity, role, MFA flags. Called on every page
+ * load (sidebar, header, ProtectedRoute), so the response stays
+ * lean : no crypto blobs.
  *
- * OPAQUE-only since Phase 2D dropped the legacy Argon2id columns.
- * The 2-layer wrap is:
- *   - main key under a random KEK → `wrappedMainKey` /
- *     `wrappedMainKeyIv` (set ONCE at register, never re-wrapped).
- *   - KEK under an HKDF sub-key of OPAQUE's `exportKey` →
- *     `wrappedKekPassword` / `wrappedKekPasswordIv` (re-wrapped at
- *     change-password and reset).
- *
- * The fields are still nullable because the user row is created
- * during register-finish and these blobs come with it — but during
- * brief windows (e.g. tests inserting a row by hand) they could be
- * absent. The client treats null as "this account is broken /
- * unrecoverable" and surfaces a key-missing prompt.
+ * The OPAQUE wrap blobs (`wrappedMainKey`, `wrappedKekPassword`, …)
+ * live behind a separate endpoint, [`AuthMeCryptoResponseSchema`]
+ * below — fetched only at the moments where the client actually
+ * unwraps the KEK (change-password, recovery code setup, passkey
+ * enrollment). API-14 split rationale: ~2 KB per `/me` hit was
+ * spent shipping crypto blobs that 95 % of callers never touch.
  */
 export const AuthMeResponseSchema = z.object({
   id: z.string(),
@@ -244,10 +239,6 @@ export const AuthMeResponseSchema = z.object({
   role: z.enum(['user', 'admin']),
   onboardingStatus: z.enum(['pending', 'complete']),
   onboardingVersion: z.string(),
-  wrappedMainKey: Base64ish.nullable(),
-  wrappedMainKeyIv: Base64ish.nullable(),
-  wrappedKekPassword: Base64ish.nullable(),
-  wrappedKekPasswordIv: Base64ish.nullable(),
   /** True when the user has set up a recovery code (Auth-Roadmap
    *  Phase 3). The actual `users.recovery_code_hash` value never
    *  leaves the server; we just flag presence so the UI can show
@@ -273,3 +264,31 @@ export const AuthMeResponseSchema = z.object({
   securityMode: z.enum(['password_or_passkey', 'always_totp', 'maximum']),
 });
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
+
+/**
+ * `GET /auth/me/crypto` — OPAQUE wrap blobs (API-14 split).
+ *
+ * 2-layer wrap (Auth-Spec §7.1) :
+ *   - main key under a random KEK → `wrappedMainKey` /
+ *     `wrappedMainKeyIv` (set ONCE at register, never re-wrapped).
+ *   - KEK under an HKDF sub-key of OPAQUE's `exportKey` →
+ *     `wrappedKekPassword` / `wrappedKekPasswordIv` (re-wrapped at
+ *     change-password and reset).
+ *
+ * Fields are nullable because a user row created without an
+ * envelope (test seed inserting a row by hand) reads back as null.
+ * The client treats null as « this account is broken /
+ * unrecoverable » and surfaces a key-missing prompt.
+ *
+ * Called only at unwrap moments :
+ *   - change-password : derive KEK from old password, re-wrap under new.
+ *   - recovery-code setup : derive KEK from password, wrap under code.
+ *   - passkey enroll : derive KEK from password, wrap under PRF.
+ */
+export const AuthMeCryptoResponseSchema = z.object({
+  wrappedMainKey: Base64ish.nullable(),
+  wrappedMainKeyIv: Base64ish.nullable(),
+  wrappedKekPassword: Base64ish.nullable(),
+  wrappedKekPasswordIv: Base64ish.nullable(),
+});
+export type AuthMeCryptoResponse = z.infer<typeof AuthMeCryptoResponseSchema>;

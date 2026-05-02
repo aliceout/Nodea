@@ -4,6 +4,7 @@ import {
   apiChangePasswordFinish,
   apiChangePasswordStart,
   apiMe,
+  apiMeCrypto,
 } from '../../api/client.ts';
 import {
   buildKekAAD,
@@ -38,11 +39,16 @@ export async function changePassword(
 ): Promise<void> {
   const user = deps.user;
   if (!user) throw new Error('changePassword: no authenticated user');
+
+  // Fetch the OPAQUE wrap blobs (API-14 split — the lean /auth/me
+  // no longer carries them; we hit /auth/me/crypto only at unwrap
+  // moments like this one).
+  const crypto = await apiMeCrypto();
   if (
-    user.wrappedMainKey === null ||
-    user.wrappedMainKeyIv === null ||
-    user.wrappedKekPassword === null ||
-    user.wrappedKekPasswordIv === null
+    crypto.wrappedMainKey === null ||
+    crypto.wrappedMainKeyIv === null ||
+    crypto.wrappedKekPassword === null ||
+    crypto.wrappedKekPasswordIv === null
   ) {
     throw new Error('changePassword: user row is missing the OPAQUE wrap blobs');
   }
@@ -59,8 +65,8 @@ export async function changePassword(
   // Step 2: unwrap the current KEK using `currentExportKey`.
   const kekBytes = await unwrapKekUnderFactor(
     {
-      wrappedKek: user.wrappedKekPassword as unknown as Base64,
-      wrappedKekIv: user.wrappedKekPasswordIv as unknown as Base64,
+      wrappedKek: crypto.wrappedKekPassword as unknown as Base64,
+      wrappedKekIv: crypto.wrappedKekPasswordIv as unknown as Base64,
     },
     currentExportKey,
     buildKekAAD(user.id, 'password'),
@@ -108,8 +114,8 @@ export async function changePassword(
 
     const rawMainKey = await unwrapMainKeyUnderKek(
       {
-        wrappedMainKey: user.wrappedMainKey as unknown as Base64,
-        wrappedMainKeyIv: user.wrappedMainKeyIv as unknown as Base64,
+        wrappedMainKey: crypto.wrappedMainKey as unknown as Base64,
+        wrappedMainKeyIv: crypto.wrappedMainKeyIv as unknown as Base64,
       },
       kekBytes,
       buildMainKeyAAD(user.id),

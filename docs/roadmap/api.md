@@ -367,18 +367,25 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### API-14 — `/auth/me` over-exposes les blobs wrappedKek/IV
+### API-14 — `/auth/me` over-exposait les blobs wrappedKek/IV — livré
 
 - **Sévérité** : faible
-- **Type de breaking** : breaking si on les retire
-- **Endpoints** : [`GET /auth/me`](../../packages/api/src/routes/auth-account.ts#L49)
-- **Description** : la réponse contient `wrappedMainKey`, `wrappedMainKeyIv`, `wrappedKekPassword`, `wrappedKekPasswordIv` — utiles au login pour déchiffrer la KEK, mais inutiles à 95 % des appels `/me` (sidebar, page Account, header...). L'over-exposition n'est pas un risque sécu (tout est chiffré), mais c'est ~2 KB de payload supplémentaire à chaque hit.
+- **Type de breaking** : breaking (les blobs ne sont plus dans `/auth/me`).
+- **Statut** : livré (Tier 4 / Phase 2). Décision de splitter prise en anticipation du chantier mobile à venir — au moment où l'app mobile sera le « consommateur externe » qui justifie le split.
+- **Endpoints** :
+  - [`GET /auth/me`](../../packages/api/src/routes/auth-account.ts) — profil seul (id, email, role, onboarding, MFA flags).
+  - [`GET /auth/me/crypto`](../../packages/api/src/routes/auth-account.ts) — wrap blobs (wrappedMainKey, wrappedMainKeyIv, wrappedKekPassword, wrappedKekPasswordIv).
+- **Description** : la réponse `/auth/me` contenait `wrappedMainKey`, `wrappedMainKeyIv`, `wrappedKekPassword`, `wrappedKekPasswordIv` — utiles au login pour déchiffrer la KEK, mais inutiles à 95 % des appels (sidebar, page Account, header, ProtectedRoute). ~2 KB de payload superflu à chaque hit page-load. Pas un risque sécu (tout est chiffré), juste de la bande passante.
 - **Tâches**
-  - [ ] **Garder en l'état** si la simplicité prime (un seul endpoint pour tout).
-  - [ ] **OU** séparer en `/auth/me` (profil seul) + `/auth/me/crypto` (blobs wrapped) ; le client n'appelle le second qu'au login / change-password / recovery.
-- **Effort** : M (~3h split + migration client)
-- **Risque** : faible (split rétro-compatible si la nouvelle route est ajoutée et l'ancienne purgée des champs en V2)
-- **Dépendances** : API-10 (versioning) si la migration doit être propre
+  - [x] Schéma `AuthMeCryptoResponseSchema` ajouté dans `packages/shared/src/schemas/auth.ts`. `AuthMeResponseSchema` allégé des 4 fields wrapped*.
+  - [x] Route `GET /auth/me/crypto` ajoutée (même `requireUser` que `/me`).
+  - [x] Client web : `apiMeCrypto()` ajouté ; les 4 consommateurs qui lisaient `user.wrapped*` (login, change-password, recovery-code setup, passkey enroll) appellent la nouvelle route au moment du déballage de la KEK.
+  - [x] `SessionUser` (Zustand store) débarrassé des fields wrapped*.
+  - [x] Tests intégration `/auth/me` adaptés + nouveaux tests `/auth/me/crypto`.
+  - [x] Docs alignées (Auth-Spec §7.2 schéma de login, §18 logger blacklist, Architecture.md §slices/auth + §shared schemas).
+- **Effort** : M — réalisé.
+- **Risque** : faible
+- **Dépendances** : aucune
 
 ### API-15 — `GET /version` — livré
 
@@ -454,7 +461,7 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 2. **API-05** — POST de création → 201. Mineur, mais certains tests vitest checkent peut-être `expect(res.status).toBe(200)` sur des creates.
 3. **API-06** — Choisir une convention finale d'enveloppe `{ ok }` vs `{ data, meta }`. Réécrit toutes les routes.
 4. **API-04** — `PUT /modules-config` → `PATCH /modules-config`. Non urgent, mais s'aligner sur PATCH = partial update.
-5. **API-14** — Sortir les blobs `wrappedKek*` de `/auth/me` vers `/auth/me/crypto`. Bonne hygiène mais coût migration.
+5. **API-14** — Sortir les blobs `wrappedKek*` de `/auth/me` vers `/auth/me/crypto`. ✅ livré.
 
 ---
 
@@ -537,7 +544,7 @@ Semaine 2 (cohérence interne, sans casser)
 Semaine 3+ (doc + figer les conventions)
   ├─ Créer documentation/API.md (consolide API-01, API-02, API-03, API-04, API-06, API-07, API-09)
   ├─ API-10    (préparer versioning avant le 1er consommateur externe)
-  └─ API-14    (split /auth/me/crypto si décidé)
+  └─ API-14    (split /auth/me/crypto) ✅ livré
 
 Plus tard (si SDK / mobile / partenaires)
   ├─ API-01    (uniformisation snake/camel — breaking)
@@ -554,7 +561,7 @@ Plus tard (si SDK / mobile / partenaires)
 | Stratégie de versionnement | URL (`/v1/...`) / Header (Accept) / Aucune | API-10 — préfère URL pour debugger facile, à figer **avant** premier breaking |
 | Enveloppe `{ ok: true, ...flags }` | Garder + doc / Renommer `ok` en `done` / Enveloppe globale `{ data, meta }` | API-06 — préfère « garder + doc », option C trop coûteuse |
 | OpenAPI servi public ou gated ? | Public sur `/api/docs` / `requireUser` / `requireAdmin` / Pas servi | API-11 — préfère gated `requireAdmin` pour pas exposer la surface aux scrappers |
-| `/auth/me/crypto` séparation | Garder fusionné / Séparer en V2 | API-14 — préfère garder tant qu'aucun consommateur externe |
+| `/auth/me/crypto` séparation | Garder fusionné / Séparer en V2 | API-14 — **séparé** (Tier 4 / Phase 2). Anticipation du chantier mobile imminent qui justifie le split (consommateur externe = mobile). |
 
 ---
 

@@ -1144,8 +1144,11 @@ Client                                Server
    │  { id }   + Set-Cookie: nodea_session
    │◀────────────────────────────────────│
    │                                     │
-   │  GET /auth/me  → wrappedKekPassword,│
-   │                  wrappedMainKey, …  │
+   │  GET /auth/me/crypto                │
+   │       → wrappedKekPassword,         │
+   │         wrappedMainKey, …           │
+   │  (lean GET /auth/me hit pour le     │
+   │   reste du profil, API-14 split)    │
    │                                     │
    │  unwrapKekUnderFactor(exportKey)    │
    │   → KEK                             │
@@ -2491,9 +2494,12 @@ job :
     `["/auth/register/*", "/auth/login/*", "/auth/passkeys/*",
       "/auth/totp/*", "/auth/mfa/*", "/auth/migrate/*",
       "/auth/recover-kek/*", "/auth/change-password",
-      "/auth/change-email/*", "/auth/security/*"]`.
+      "/auth/change-email/*", "/auth/security/*",
+      "/auth/me/crypto"]`.
     Seules les routes `/auth/sessions` (lecture liste) et
-    `/auth/me` peuvent logger leur body.
+    `/auth/me` (profil sans crypto, API-14 split) peuvent
+    logger leur body. `/auth/me/crypto` reste blacklisté —
+    c'est la route qui transporte les wrap blobs.
 
     **Couche B — redaction field-level (defense-in-depth)** : sur
     **toute** la sortie du logger, redact les clés JSON suivantes :

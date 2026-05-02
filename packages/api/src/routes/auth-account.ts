@@ -4,6 +4,7 @@ import {
   ChangeEmailBodySchema,
   ChangeUsernameBodySchema,
   DeleteSelfBodySchema,
+  type AuthMeCryptoResponse,
   type AuthMeResponse,
 } from '@nodea/shared';
 
@@ -39,16 +40,18 @@ const changeEmailLimiter = rateLimit({
 });
 
 /**
- * Authenticated user introspection. Surfaces enough state for
- * the front to drive the sidebar tip + Settings without a
- * separate round-trip per concern (passkeys, TOTP, recovery
- * code, security mode all read off this single response).
+ * Authenticated user introspection. Surfaces identity + role +
+ * MFA flags so the front can drive the sidebar tip + Settings
+ * + ProtectedRoute without a separate round-trip per concern.
  *
- * OPAQUE-only since Phase 2D dropped the legacy Argon2id
- * columns. `wrapped*` blobs are the exclusive credential
- * surface ; the client unwraps the KEK via the OPAQUE
- * `exportKey` derived at login, then unwraps the main key
- * under the KEK.
+ * **What's NOT here** : the OPAQUE wrap blobs
+ * (`wrappedMainKey`, `wrappedKekPassword`, …). API-14 split
+ * them off to [`GET /auth/me/crypto`](#me-crypto) — this
+ * endpoint is hit on every page load (sidebar, header,
+ * ProtectedRoute) and shipping ~2 KB of crypto blobs that 95 %
+ * of callers never touch is wasteful. The client fetches the
+ * crypto endpoint only at unwrap moments (change-password,
+ * recovery-code setup, passkey enroll).
  *
  * Phase 4 added the passkey counts so the sidebar tip +
  * Settings can branch on enrollment state without a separate
@@ -110,16 +113,37 @@ authAccountRoutes.get('/me', requireUser, async (c) => {
     role: user.role,
     onboardingStatus: user.onboardingStatus,
     onboardingVersion: user.onboardingVersion,
-    wrappedMainKey: user.wrappedMainKey ?? null,
-    wrappedMainKeyIv: user.wrappedMainKeyIv ?? null,
-    wrappedKekPassword: user.wrappedKekPassword ?? null,
-    wrappedKekPasswordIv: user.wrappedKekPasswordIv ?? null,
     recoveryCodeSet: user.recoveryCodeHash !== null,
     passkeysCount: totalRow?.value ?? 0,
     passkeysPrfCount: prfRow?.value ?? 0,
     totpEnabled,
     totpBackupCodesRemaining,
     securityMode: user.securityMode,
+  };
+  return c.json(body);
+});
+
+/**
+ * <a id="me-crypto"></a>
+ * `GET /auth/me/crypto` — OPAQUE wrap blobs (API-14 split).
+ *
+ * Read by the client only at the moments where it actually
+ * unwraps the KEK : change-password, recovery-code setup,
+ * passkey enrollment. Keeping these blobs out of `/auth/me`
+ * saves ~2 KB on every page load (sidebar / header / route
+ * guard) where the crypto data is never used.
+ *
+ * Same auth as `/me` (`requireUser`). The blobs are themselves
+ * encrypted (E2E), so their over-exposure is a bandwidth
+ * concern, not a security one.
+ */
+authAccountRoutes.get('/me/crypto', requireUser, async (c) => {
+  const user = c.get('user');
+  const body: AuthMeCryptoResponse = {
+    wrappedMainKey: user.wrappedMainKey ?? null,
+    wrappedMainKeyIv: user.wrappedMainKeyIv ?? null,
+    wrappedKekPassword: user.wrappedKekPassword ?? null,
+    wrappedKekPasswordIv: user.wrappedKekPasswordIv ?? null,
   };
   return c.json(body);
 });

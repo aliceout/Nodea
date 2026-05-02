@@ -106,9 +106,14 @@ the factory loops over. There is nowhere to forget a guard.
     when NULL), creates a session, sets the signed cookie. No
     more dummy-hash timing trick — the legacy `POST /auth/login`
     is gone.
-  - `GET /auth/me` surfaces the OPAQUE credential blobs
-    (`wrappedMainKey{,Iv}` + `wrappedKekPassword{,Iv}`). Phase 2D
-    dropped the legacy `encryptionSalt` / `encryptedKey` fields.
+  - `GET /auth/me` returns the lean profile (id, email, role,
+    onboarding state, MFA flags). API-14 split — the OPAQUE
+    credential blobs (`wrappedMainKey{,Iv}` +
+    `wrappedKekPassword{,Iv}`) live behind `GET /auth/me/crypto`,
+    fetched only at the moments the client unwraps the KEK
+    (login, change-password, recovery-code setup, passkey
+    enroll). Phase 2D dropped the legacy `encryptionSalt` /
+    `encryptedKey` fields.
 
 - **Change password** (OPAQUE 2-step via
   `/auth/change-password/start` + `/finish`, Phase 2D):
@@ -537,7 +542,7 @@ Zod schemas live under `src/schemas/`:
 
 - `auth.ts` — register/login/change-password/change-email/change-username
   /delete-self/request-reset/reset-password bodies + `/auth/me`
-  response.
+  + `/auth/me/crypto` (API-14 split) response shapes.
 - `entries.ts` — the generic 1:1 `modules_config` body wrapper.
 - `modules.ts` — decrypted payload schemas for each module (Mood,
   Goals, Passage, Habits items + logs, Library items + reviews,

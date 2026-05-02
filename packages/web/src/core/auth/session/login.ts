@@ -4,6 +4,7 @@ import {
   apiLoginFinish,
   apiLoginStart,
   apiMe,
+  apiMeCrypto,
   apiMfaPasskeyFinish,
   apiMfaPasskeyStart,
   apiMfaTotpVerify,
@@ -125,23 +126,23 @@ export async function login(
   if (!me) throw new Error('login succeeded but /auth/me returned null');
   deps.setAuth(me);
 
+  // API-14 split — wrap blobs come from /auth/me/crypto, not /me.
   // Phase 2D dropped the legacy fallback — every authenticated
   // user has the OPAQUE blobs at this point (the seed enrolls the
-  // admin via OPAQUE too). The Base64 brand check passes at
-  // compile time because Zod has already validated the blobs as
-  // non-empty strings via `AuthMeResponseSchema`.
+  // admin via OPAQUE too).
+  const crypto = await apiMeCrypto();
   if (
-    me.wrappedMainKey === null ||
-    me.wrappedMainKeyIv === null ||
-    me.wrappedKekPassword === null ||
-    me.wrappedKekPasswordIv === null
+    crypto.wrappedMainKey === null ||
+    crypto.wrappedMainKeyIv === null ||
+    crypto.wrappedKekPassword === null ||
+    crypto.wrappedKekPasswordIv === null
   ) {
     throw new Error('login: user row is missing the OPAQUE wrap blobs');
   }
   const kekBytes = await unwrapKekUnderFactor(
     {
-      wrappedKek: me.wrappedKekPassword as unknown as Base64,
-      wrappedKekIv: me.wrappedKekPasswordIv as unknown as Base64,
+      wrappedKek: crypto.wrappedKekPassword as unknown as Base64,
+      wrappedKekIv: crypto.wrappedKekPasswordIv as unknown as Base64,
     },
     finished.exportKey,
     buildKekAAD(me.id, 'password'),
@@ -150,8 +151,8 @@ export async function login(
   try {
     rawBytes = await unwrapMainKeyUnderKek(
       {
-        wrappedMainKey: me.wrappedMainKey as unknown as Base64,
-        wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
+        wrappedMainKey: crypto.wrappedMainKey as unknown as Base64,
+        wrappedMainKeyIv: crypto.wrappedMainKeyIv as unknown as Base64,
       },
       kekBytes,
       buildMainKeyAAD(me.id),

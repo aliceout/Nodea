@@ -2,6 +2,7 @@ import type { Base64 } from '@nodea/shared';
 
 import {
   apiMe,
+  apiMeCrypto,
   apiPasskeyRemove,
   apiPasskeyRename,
 } from '../../api/client.ts';
@@ -46,12 +47,16 @@ export async function enrollPasskeyFlow(
   const user = deps.user;
   if (!user) throw new Error('enrollPasskey: no authenticated user');
 
+  // Fetch wrap blobs (API-14 split — /auth/me no longer carries
+  // them). Passed down to enrollPasskey for the password-derived
+  // KEK unwrap step.
+  const crypto = await apiMeCrypto();
   const result = await enrollPasskey({
     user: {
       id: user.id,
       email: user.email,
-      wrappedKekPassword: user.wrappedKekPassword,
-      wrappedKekPasswordIv: user.wrappedKekPasswordIv,
+      wrappedKekPassword: crypto.wrappedKekPassword,
+      wrappedKekPasswordIv: crypto.wrappedKekPasswordIv,
     },
     currentPassword,
     label,
@@ -205,11 +210,14 @@ export async function passkeyLogin(
     throw new Error('passkey-login: server accepted assertion but /me returned null');
   }
   deps.setAuth(me);
+
+  // Fetch wrap blobs (API-14 split). Only the main-key wrap is
+  // used here — the KEK comes from the PRF output below, not
+  // from the password.
+  const crypto = await apiMeCrypto();
   if (
-    me.wrappedMainKey === null ||
-    me.wrappedMainKeyIv === null ||
-    me.wrappedKekPassword === null ||
-    me.wrappedKekPasswordIv === null
+    crypto.wrappedMainKey === null ||
+    crypto.wrappedMainKeyIv === null
   ) {
     throw new Error('passkey-login: user row missing OPAQUE wrap blobs');
   }
@@ -245,8 +253,8 @@ export async function passkeyLogin(
     try {
       rawMainKey = await unwrapMainKeyUnderKek(
         {
-          wrappedMainKey: me.wrappedMainKey as unknown as Base64,
-          wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
+          wrappedMainKey: crypto.wrappedMainKey as unknown as Base64,
+          wrappedMainKeyIv: crypto.wrappedMainKeyIv as unknown as Base64,
         },
         kekBytes,
         buildMainKeyAAD(me.id),

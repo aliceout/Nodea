@@ -2,6 +2,7 @@ import type { Base64 } from '@nodea/shared';
 
 import {
   apiMe,
+  apiMeCrypto,
   apiRecoverKekFinish,
   apiRecoverKekStart,
   apiRecoveryCodeUpsert,
@@ -67,9 +68,12 @@ export async function setupRecoveryCode(
 ): Promise<SessionRecoveryCodeResult> {
   const user = deps.user;
   if (!user) throw new Error('setupRecoveryCode: no authenticated user');
+
+  // Fetch wrap blobs (API-14 split — /auth/me no longer ships them).
+  const crypto = await apiMeCrypto();
   if (
-    user.wrappedKekPassword === null ||
-    user.wrappedKekPasswordIv === null
+    crypto.wrappedKekPassword === null ||
+    crypto.wrappedKekPasswordIv === null
   ) {
     throw new Error(
       'setupRecoveryCode: user row is missing the OPAQUE wrap blobs',
@@ -82,8 +86,8 @@ export async function setupRecoveryCode(
 
   const kekBytes = await unwrapKekUnderFactor(
     {
-      wrappedKek: user.wrappedKekPassword as unknown as Base64,
-      wrappedKekIv: user.wrappedKekPasswordIv as unknown as Base64,
+      wrappedKek: crypto.wrappedKekPassword as unknown as Base64,
+      wrappedKekIv: crypto.wrappedKekPasswordIv as unknown as Base64,
     },
     exportKey,
     buildKekAAD(user.id, 'password'),
@@ -224,23 +228,23 @@ export async function recoverWithCode(
       // password credential. Hydrate `/me` so the rest of the app
       // picks up the new state — including `recoveryCodeSet:
       // false` so the « configure a recovery code » sidebar tip
-      // reappears.
+      // reappears. Then fetch `/me/crypto` (API-14 split) to get
+      // the unchanged `wrappedMainKey` blob — we still need it to
+      // derive the in-memory main-key material with the KEK we
+      // just unwrapped.
       const me = await apiMe();
       if (me) deps.setAuth(me);
 
-      // Derive main-key material from the in-memory KEK we just
-      // unwrapped (the wrapped_main_key blob didn't change). The
-      // user lands on the app fully signed in.
+      const crypto = await apiMeCrypto();
       if (
-        me?.wrappedMainKey !== undefined &&
-        me?.wrappedMainKey !== null &&
-        me?.wrappedMainKeyIv !== undefined &&
-        me?.wrappedMainKeyIv !== null
+        me &&
+        crypto.wrappedMainKey !== null &&
+        crypto.wrappedMainKeyIv !== null
       ) {
         const rawMainKey = await unwrapMainKeyUnderKek(
           {
-            wrappedMainKey: me.wrappedMainKey as unknown as Base64,
-            wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
+            wrappedMainKey: crypto.wrappedMainKey as unknown as Base64,
+            wrappedMainKeyIv: crypto.wrappedMainKeyIv as unknown as Base64,
           },
           kekBytes,
           buildMainKeyAAD(me.id),

@@ -41,6 +41,7 @@ export {
   apiLoginStart,
   apiLogout,
   apiMe,
+  apiMeCrypto,
   apiReauthPasskeyFinish,
   apiReauthPasskeyStart,
   apiReauthPasswordFinish,
