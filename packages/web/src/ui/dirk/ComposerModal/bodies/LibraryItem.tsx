@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LIBRARY_FORMAT_VALUES,
   LIBRARY_STATUS_VALUES,
@@ -7,16 +7,7 @@ import {
   type NormalisedBook,
 } from '@nodea/shared';
 
-import {
-  apiLibraryFetchCover,
-  apiLibraryLookupByIsbn,
-  isApiError,
-  streamLibraryLookupByQuery,
-} from '@/core/api/client';
-import {
-  libraryCoversClient,
-  libraryItemsClient,
-} from '@/core/api/modules/library';
+import { libraryCoversClient } from '@/core/api/modules/library';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -29,8 +20,11 @@ import {
   LIBRARY_FORMAT_LABEL,
   LIBRARY_STATUS_LABEL,
 } from '../lib/constants';
-import { normaliseAuthorName, submitOnCmdEnter } from '../lib/format';
+import { submitOnCmdEnter } from '../lib/format';
 import LookupBar from '../lookup/LookupBar';
+
+import { saveLibraryItem } from './library-item/save';
+import { useLibraryLookup } from './library-item/use-lookup';
 
 interface LibraryItemBodyProps {
   onClose: () => void;
@@ -97,13 +91,12 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Lookup state — only relevant on creation (the search bar is
-  // hidden on edit since the user presumably knows their own data).
-  const [searchInput, setSearchInput] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<NormalisedBook[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
+  // Lookup state lives in a dedicated hook (REFACTO-04) — keeps
+  // the search dance (ISBN routing, abort-on-new-run, streaming
+  // snapshots, error handling) self-contained and out of this
+  // component. The hook exposes everything the LookupBar consumes
+  // plus the unmount-time abort effect.
+  const lookup = useLibraryLookup();
   // Default the search language to the user's Nodea app language —
   // it's the right choice 99 % of the time, and the user can flip
   // it via the `<select>` next to the search button. ISBN searches
@@ -115,86 +108,8 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   // Surfaced as a small dropdown next to the search button on the
   // edit path.
   const [searchMode, setSearchMode] = useState<'all' | 'cover-only'>('all');
-  // AbortController for the in-flight streaming search. We cancel
-  // the previous run when the user fires a new search before the
-  // old one finished — otherwise late snapshots from the old query
-  // would clobber the new results, and the API keeps doing wasted
-  // work on connections nobody reads from.
-  const searchAbortRef = useRef<AbortController | null>(null);
 
   const isEdit = editing !== null;
-
-  /**
-   * Run a metadata lookup. ISBN-shaped input goes through the
-   * dedicated by-isbn endpoint (one merged result, batch). Free-text
-   * goes through the NDJSON streaming endpoint: snapshots arrive as
-   * each provider settles (Google Books in ~1 s, Open Library in
-   * ~10 s, etc.) so the user sees results progressively rather than
-   * staring at a spinner for the slowest provider's full window.
-   */
-  async function runSearch(): Promise<void> {
-    const q = searchInput.trim();
-    if (!q) return;
-    // Cancel any prior stream — its late snapshots would otherwise
-    // overwrite our fresh results, and its `finally` would flip the
-    // spinner off mid-new-run.
-    searchAbortRef.current?.abort();
-    const ac = new AbortController();
-    searchAbortRef.current = ac;
-    setSearchError(null);
-    setSearching(true);
-    setSearchOpen(true);
-    setSearchResults([]);
-    try {
-      const stripped = q.replace(/[\s-]/g, '');
-      const isPossibleIsbn = /^\d{10}$|^\d{13}$|^\d{9}[\dX]$/i.test(stripped);
-      if (isPossibleIsbn) {
-        // ISBN: a 13-digit code is unambiguous, no point streaming.
-        const response = await apiLibraryLookupByIsbn({ isbn: stripped });
-        if (searchAbortRef.current !== ac) return; // superseded
-        setSearchResults(response.results);
-        if (response.results.length === 0) {
-          setSearchError('Aucun résultat. Tu peux saisir manuellement.');
-        }
-        return;
-      }
-      // Free-text: stream snapshots in. Each snapshot is the full
-      // accumulated state, so we just replace.
-      let lastResults: NormalisedBook[] = [];
-      await streamLibraryLookupByQuery(
-        { q, lang: searchLang },
-        {
-          signal: ac.signal,
-          onSnapshot: (snap) => {
-            // Drop late snapshots from a superseded run.
-            if (searchAbortRef.current !== ac) return;
-            lastResults = snap.results;
-            setSearchResults(snap.results);
-          },
-        },
-      );
-      if (searchAbortRef.current !== ac) return; // superseded
-      if (lastResults.length === 0) {
-        setSearchError('Aucun résultat. Tu peux saisir manuellement.');
-      }
-    } catch (err) {
-      // AbortError on stream cancellation is expected and not user-
-      // facing — happens when the user fires a new search.
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      if (searchAbortRef.current !== ac) return; // superseded
-      if (isApiError(err) && err.status === 429) {
-        setSearchError('Trop de recherches récentes — patiente une minute.');
-      } else {
-        setSearchError('Recherche indisponible. Tu peux saisir manuellement.');
-        if (import.meta.env.DEV) console.warn('library lookup failed', err);
-      }
-    } finally {
-      // Only flip the spinner off if we're still the latest run —
-      // otherwise an aborted stream would clear the indicator out
-      // from under the new search that just started.
-      if (searchAbortRef.current === ac) setSearching(false);
-    }
-  }
 
   function applyResult(book: NormalisedBook): void {
     if (searchMode === 'cover-only') {
@@ -204,8 +119,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
       // come with one).
       setCoverUrl(book.cover_url);
       setCoverLoadFailed(false);
-      setSearchOpen(false);
-      setSearchResults([]);
+      lookup.dismiss();
       // Keep the search input in cover-only mode so the user can
       // browse another result without re-typing.
       return;
@@ -225,27 +139,9 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     else if (book.isbn10) setIsbn(book.isbn10);
     setCoverUrl(book.cover_url);
     setCoverLoadFailed(false);
-    setSearchOpen(false);
-    setSearchResults([]);
-    setSearchInput('');
+    lookup.dismiss();
+    lookup.setInput('');
   }
-
-  function dismissSearch(): void {
-    searchAbortRef.current?.abort();
-    setSearchOpen(false);
-    setSearchResults([]);
-    setSearchError(null);
-    setSearching(false);
-  }
-
-  // Abort any in-flight stream when the body unmounts (modal closes
-  // mid-search). The fetch / reader stop cleanly, the API stops
-  // pushing snapshots into a connection nobody is reading.
-  useEffect(() => {
-    return () => {
-      searchAbortRef.current?.abort();
-    };
-  }, []);
 
   // On edit-mount, pre-seed the LookupBar query with the book's
   // current ISBN (if any), else its `title author` combo. Lets the
@@ -258,17 +154,18 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     if (!isEdit || !editingId) return;
     const trimmedIsbn = editingIsbn.trim();
     if (trimmedIsbn) {
-      setSearchInput(trimmedIsbn);
+      lookup.setInput(trimmedIsbn);
       return;
     }
     const trimmedTitle = (editingPayload?.title ?? '').trim();
     const trimmedAuthor = editingCreatorName.trim();
     const seed = [trimmedTitle, trimmedAuthor].filter(Boolean).join(' ');
-    if (seed) setSearchInput(seed);
+    if (seed) lookup.setInput(seed);
     // We deliberately depend only on `editingId` — the seed is
     // a one-shot on Composer open, not a live mirror of the
     // form's state (the user can adjust the search input freely
-    // after that).
+    // after that). `lookup.setInput` is a stable reference from
+    // useState, no need to list it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
@@ -304,149 +201,33 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   async function handleSave(): Promise<void> {
     if (submitting) return;
     setError(null);
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      setError('Le titre est requis.');
-      return;
-    }
-    if (!ctx) {
-      setError('Module Library non configuré ou clé absente — reconnecte-toi.');
-      return;
-    }
-    if (year && !/^\d{4}$/.test(year)) {
-      setError('L’année doit être un nombre à 4 chiffres.');
-      return;
-    }
     setSubmitting(true);
-    try {
-      const trimmedAuthor = author.trim();
-      const normalisedAuthor = trimmedAuthor ? normaliseAuthorName(trimmedAuthor) : '';
-      const isbnTrimmed = isbn.replace(/[\s-]/g, '');
-      const providers: Record<string, string> = {};
-      if (isbnTrimmed.length === 13) providers.isbn13 = isbnTrimmed;
-      else if (isbnTrimmed.length === 10) providers.isbn10 = isbnTrimmed;
-
-      const tags = tagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0);
-
-      const basePayload = editingPayload ?? null;
-      const payload = {
-        // Schema defaults are not applied by zod on the input side
-        // (they're "fill-in-on-parse"), so the create/update typing
-        // requires every nullable field to be explicitly present.
-        // We seed with sensible defaults, then let the editing
-        // payload override what the user already had.
-        type: 'book' as const,
-        title: trimmedTitle,
-        creators: normalisedAuthor
-          ? [{ name: normalisedAuthor, role: 'author' }]
-          : [],
-        cover_rid: basePayload?.cover_rid ?? null,
+    const result = await saveLibraryItem({
+      ctx,
+      editing: editing
+        ? { id: editing.id, payload: editing.payload }
+        : null,
+      fields: {
+        title,
+        author,
+        isbn,
+        year,
+        publisher,
+        collection,
+        summary,
+        seriesName,
+        seriesPosition,
         status,
         format,
-        started_at: basePayload?.started_at ?? null,
-        finished_at: basePayload?.finished_at ?? null,
-        rating: basePayload?.rating ?? null,
-        is_favorite: basePayload?.is_favorite ?? false,
-        tags,
-        ...(Object.keys(providers).length > 0
-          ? { providers }
-          : basePayload?.providers
-            ? { providers: basePayload.providers }
-            : {}),
-        ...(year ? { year: Number(year) } : {}),
-        ...(publisher.trim() ? { publisher: publisher.trim() } : {}),
-        ...(collection.trim() ? { collection: collection.trim() } : {}),
-        ...(summary.trim() ? { summary: summary.trim() } : {}),
-        ...(seriesName.trim()
-          ? {
-              series: {
-                name: seriesName.trim(),
-                ...(seriesPosition && /^\d+$/.test(seriesPosition)
-                  ? { position: Number(seriesPosition) }
-                  : {}),
-              },
-            }
-          : {}),
-      };
-      if (editing) {
-        // Edit path: cover swap mid-edit isn't wired (would need to
-        // delete the old encrypted blob row and create a new one).
-        // We just update the item, keeping the existing `cover_rid`
-        // from `basePayload`. If the user wants to add a cover to a
-        // book that didn't have one, that's still supported below.
-        await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
-        if (coverUrl && !basePayload?.cover_rid) {
-          // Late-add a cover to an existing item: download via the
-          // proxy, store the encrypted blob, then patch the item to
-          // point at it. Best-effort — failure leaves the book without
-          // a cover but doesn't roll back the rest of the edit.
-          const fetched = await apiLibraryFetchCover(coverUrl);
-          if (fetched) {
-            try {
-              const newCover = await libraryCoversClient.create(
-                ctx.moduleUserId,
-                ctx.mainKey,
-                {
-                  item_rid: editing.id,
-                  mime: fetched.mime,
-                  blob_b64: fetched.blob_b64,
-                  fetched_from: coverUrl,
-                  fetched_at: new Date().toISOString(),
-                },
-              );
-              await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, {
-                ...payload,
-                cover_rid: newCover.id,
-              });
-            } catch (err) {
-              if (import.meta.env.DEV) console.warn('cover persist failed', err);
-            }
-          }
-        }
-      } else {
-        // Create path: race the item insert and the cover download —
-        // they're independent (cover proxy lives on library-lookup,
-        // not on the encrypted-records pipeline). Total wall-clock
-        // is bounded by `max(itemCreate, coverFetch)` rather than
-        // their sum.
-        const [newItem, fetchedCover] = await Promise.all([
-          libraryItemsClient.create(ctx.moduleUserId, ctx.mainKey, payload),
-          coverUrl ? apiLibraryFetchCover(coverUrl) : Promise.resolve(null),
-        ]);
-        if (coverUrl && fetchedCover) {
-          // Cover save is best-effort on create: if the encrypted-blob
-          // round-trip fails we still keep the book record. Better
-          // than losing the typed-out form to a flaky cover proxy.
-          try {
-            const newCover = await libraryCoversClient.create(
-              ctx.moduleUserId,
-              ctx.mainKey,
-              {
-                item_rid: newItem.id,
-                mime: fetchedCover.mime,
-                blob_b64: fetchedCover.blob_b64,
-                fetched_from: coverUrl,
-                fetched_at: new Date().toISOString(),
-              },
-            );
-            await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, newItem.id, {
-              ...newItem.payload,
-              cover_rid: newCover.id,
-            });
-          } catch (err) {
-            if (import.meta.env.DEV) console.warn('cover persist failed', err);
-          }
-        }
-      }
+        tagsInput,
+        coverUrl,
+      },
+    });
+    if (result.ok) {
       bumpItemsVersion();
       onClose();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
-      );
+    } else {
+      setError(result.error);
       setSubmitting(false);
     }
   }
@@ -460,7 +241,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   // path : letting the form stay visible would squeeze the result
   // list to a 100 px slice at the top of the modal — when the user
   // is browsing search results, they're not editing the form.
-  const showFormFields = !searchOpen || searchResults.length === 0;
+  const showFormFields = !lookup.open || lookup.results.length === 0;
 
   return (
     <>
@@ -479,15 +260,15 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           refresh from BNF / Google / OpenLibrary without retyping
           their book's identity. */}
       <LookupBar
-        value={searchInput}
-        onChange={setSearchInput}
-        onSearch={runSearch}
-        searching={searching}
-        error={searchError}
-        results={searchResults}
-        open={searchOpen}
+        value={lookup.input}
+        onChange={lookup.setInput}
+        onSearch={() => lookup.runSearch(searchLang)}
+        searching={lookup.searching}
+        error={lookup.error}
+        results={lookup.results}
+        open={lookup.open}
         onApply={applyResult}
-        onDismiss={dismissSearch}
+        onDismiss={lookup.dismiss}
         disabled={submitting}
         lang={searchLang}
         onLangChange={setSearchLang}
