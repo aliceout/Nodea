@@ -144,17 +144,15 @@ catalogue se rend en une passe. »*
 - **Risque** : faible (param optionnel + virtualisation coïncide avec rendu identique)
 - **Dépendances** : API-08 (pagination cursor) côté API
 
-### FRONT-03 — Aucun monitoring des Core Web Vitals ni Lighthouse en CI
+### FRONT-03 — Monitoring des Core Web Vitals + bundle analyzer — livré (étapes 1+2)
 
 - **Catégorie** : perf chargement / runtime
 - **Sévérité** : moyenne
-- **Impact utilisateur** : N/A directement, mais l'équipe ne **sait pas** si la prod régresse en LCP / CLS / INP. Une PR qui dégrade à -10 % du score passe sous le radar.
-- **Fichiers** : aucun (l'absence est le finding)
-- **Description** : pas de package `web-vitals` installé, pas de hook `onCLS`/`onLCP`/`onINP`. Pas de Lighthouse CI dans `.github/workflows/`. Pas de bundle analyzer au build.
+- **Statut** : étapes 1 et 2 livrées. Étape 3 (Lighthouse CI) reste optionnelle, à reprendre si besoin.
 - **Tâches**
-  - [ ] **Étape 1** : ajouter [`web-vitals`](https://github.com/GoogleChrome/web-vitals) en dev dep, hook minimal dans `main.tsx` qui logue `console.info` en dev pour les Core Web Vitals.
-  - [ ] **Étape 2** : ajouter [`rollup-plugin-visualizer`](https://www.npmjs.com/package/rollup-plugin-visualizer) en build prod pour voir la taille des chunks. Inspecter le rapport à chaque release.
-  - [ ] **Étape 3** (optionnelle) : Lighthouse CI ([`@lhci/cli`](https://github.com/GoogleChrome/lighthouse-ci)) en GitHub Action sur les PRs touchant `packages/web/`.
+  - [x] **Étape 1** — `web-vitals` ajouté en dep, dynamic import gated `import.meta.env.DEV` dans `main.tsx`. Logge `[web-vitals] CLS=… LCP=… INP=… FCP=… TTFB=…` dans la console en dev. La lib n'est jamais fetchée en prod (le `if (DEV)` est statiquement faux après substitution Vite).
+  - [x] **Étape 2** — `rollup-plugin-visualizer` ajouté en dev dep, plugin attaché au pipeline build. Génère `dist/stats.html` à chaque `pnpm build` (treemap, gzip + brotli). Premier rapport baseline post-FRONT-10 : main bundle 791 KB (229 KB gz), crypto chunk 442 KB (164 KB gz), markdown 149 KB (45 KB gz).
+  - [ ] **Étape 3** (optionnelle, non livrée) : Lighthouse CI ([`@lhci/cli`](https://github.com/GoogleChrome/lighthouse-ci)) en GitHub Action sur les PRs touchant `packages/web/`.
 - **Effort** : S pour étape 1 (~30 min), S pour étape 2 (~30 min), M pour étape 3 (~3h)
 - **Risque** : faible
 - **Dépendances** : aucune
@@ -227,69 +225,50 @@ catalogue se rend en une passe. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### FRONT-08 — `recharts` peut-être pas vraiment utilisé (audit + retrait potentiel)
-
-> Consolide l'ancien FRONT-15. Un seul finding, un seul fix.
+### FRONT-08 — `recharts` retiré (jamais utilisé) — livré
 
 - **Catégorie** : perf chargement / dette
 - **Sévérité** : faible
-- **Impact utilisateur** : si recharts est dans le bundle Habits, il pèse ~95 KB gzip. Ouvrir Habits pour la première fois → fetch un chunk de cette taille. Sur connexion lente, ~500 ms ajoutés au premier accès Habits.
-- **Fichiers** :
-  - [`Habits/components/Heatmap.tsx`](../../packages/web/src/app/flow/Habits/components/Heatmap.tsx) — **seul site qui importe `recharts`** dans tout le repo
-- **Description** : `recharts` est dans `package.json` mais ne semble être consommé qu'à un seul endroit (Heatmap.tsx). Le code visible de Heatmap.tsx suggère des **SVG hand-rolled** (`<title>` inline pour tooltips). Très probablement la lib est importée *« par habitude »* sans être réellement utilisée — à vérifier.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] **Étape 1 — audit (~30 min)** : ouvrir `Heatmap.tsx`, identifier précisément quels symboles de `recharts` sont consommés.
-  - [ ] **Étape 2 — décision** :
-    - Si rien d'essentiel n'est utilisé → **retirer la dep** de `package.json` + retirer l'import.
-    - Si quelque chose est utilisé → vérifier si `recharts/es6/<component>` (sub-imports) tree-shake mieux que l'import racine.
-  - [ ] **Étape 3 — confirmation** : rebuild + bundle analyzer (cf. FRONT-03) pour confirmer le gain.
-- **Effort** : S (~30 min audit) à M (~1h si migration sub-imports)
-- **Risque** : faible (ou aucun si suppression pure)
-- **Dépendances** : FRONT-03 (bundle analyzer pour valider le gain)
+  - [x] **Audit** — un seul `import 'recharts'` dans tout `packages/web` : `Heatmap.tsx`. Inspection du fichier confirme **zéro symbole consommé** — le composant rend du SVG hand-rolled (`<rect>` + `<title>` inline). La dep était orpheline.
+  - [x] **Suppression** — `recharts` retiré de `package.json` via `pnpm remove`. Aucun import à toucher.
+  - [x] **Confirmation** — build OK, bundle analyzer ne montre plus aucune trace de recharts.
+- **Effort** : S
+- **Risque** : aucun (suppression pure)
+- **Dépendances** : aucune
 
-### FRONT-09 — `@zxcvbn-ts/language-common` importé en `import *` sur 4 pages auth
+### FRONT-09 — Vérification zxcvbn-common chunk — livré (no-op)
 
 - **Catégorie** : perf chargement
 - **Sévérité** : faible
-- **Impact utilisateur** : chaque page auth qui doit calculer la force du password (`Register`, `Reset`, `Recover`, `ChangePassword`) charge ~50-80 KB gzip de dictionnaire commun zxcvbn. C'est dans des chunks lazy-loaded → impact uniquement quand la page est visitée.
-- **Fichiers** :
-  - [`ChangePassword.tsx:7`](../../packages/web/src/app/pages/ChangePassword.tsx#L7), [`Recover/index.tsx:4`](../../packages/web/src/app/pages/Recover/index.tsx#L4), [`Register/index.tsx:4`](../../packages/web/src/app/pages/Register/index.tsx#L4), [`Reset/index.tsx:4`](../../packages/web/src/app/pages/Reset/index.tsx#L4)
-- **Description** : 4 imports star du dictionnaire commun. Vite va probablement créer **un chunk partagé** puisque les 4 pages le réfèrent — donc duplication évitée à la fin. À vérifier au build.
+- **Statut** : livré (pas d'action requise).
 - **Tâches**
-  - [ ] **Vérifier** au build (`pnpm --filter @nodea/web build` puis inspecter `packages/web/dist/assets/`) que zxcvbn-common est dans **un seul chunk** partagé.
-  - [ ] Si oui : rien à faire.
-  - [ ] Si non : factoriser dans un module `core/zxcvbn.ts` qui exporte un singleton `getZxcvbn()` async-init.
-- **Effort** : S (vérif) à M (refonte si nécessaire)
-- **Risque** : faible
-- **Dépendances** : FRONT-03 (bundle analyzer pour vérifier)
+  - [x] **Vérifié au build** post-FRONT-10 : `zxcvbn` n'apparaît que dans **un seul chunk** (`index.esm-*.js`) partagé entre les 4 pages auth. Aucune duplication. Vite a fait le bon split tout seul. Pas besoin du singleton `getZxcvbn()` proposé en fallback.
+- **Effort** : S
+- **Risque** : aucun
+- **Dépendances** : FRONT-03 (analyzer)
 
-### FRONT-10 — Pas de `manualChunks` Vite — risque de chunks gros sur libs partagées
+### FRONT-10 — `manualChunks` Vite (react-vendor / headlessui / crypto / markdown) — livré
 
 - **Catégorie** : perf chargement
 - **Sévérité** : faible
-- **Impact utilisateur** : difficile à mesurer sans bundle analyzer. Vite par défaut split par dynamic import + un chunk vendor pour `node_modules`. Les libs lourdes finissent dans le bundle vendor unique → 1 chunk volumineux téléchargé au premier hit.
-- **Fichiers** :
-  - [`packages/web/vite.config.js`](../../packages/web/vite.config.js) — pas de `build.rollupOptions.output.manualChunks`
-- **Description** : pas de finding bloquant — Vite est intelligent, et le route-based splitting via `lazy()` fait déjà le gros boulot. Mais explicit `manualChunks` permet de séparer (par exemple) `recharts` dans son propre chunk lazy.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] **Avant tout** : faire FRONT-03 (bundle analyzer) pour voir où vivent les KB.
-  - [ ] **Si nécessaire** : ajouter dans vite.config :
-    ```js
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'headlessui': ['@headlessui/react'],
-            'crypto': ['@serenity-kit/opaque', '@simplewebauthn/browser', '@scure/bip39'],
-          }
-        }
-      }
-    }
-    ```
-- **Effort** : S (~30 min)
+  - [x] **Baseline** mesurée via FRONT-03 analyzer : main bundle 1 416 KB / 455 KB gzip. Tout le code app + libs partagées dans un seul chunk.
+  - [x] **`manualChunks`** ajouté dans `vite.config.js` avec 4 buckets :
+    - `react-vendor` (react, react-dom, react-router-dom)
+    - `headlessui` (@headlessui/react)
+    - `crypto` (@serenity-kit/opaque, @simplewebauthn/browser, @scure/bip39)
+    - `markdown` (react-markdown + remark/rehype graph)
+  - [x] **Résultat post-split** :
+    - main bundle : 1 416 KB → **791 KB** (-44 %), 455 KB gz → **229 KB gz** (-50 %)
+    - `crypto` chunk isolé : 442 KB / 164 KB gz — cache long-terme, ne change que sur upgrade lib
+    - `markdown` chunk isolé : 149 KB / 45 KB gz — n'est plus chargé que sur les pages qui en ont besoin (Composer, Library, Docs)
+    - Docs page chunk : 510 KB → 361 KB (-29 %) car markdown sorti
+- **Effort** : S
 - **Risque** : faible
-- **Dépendances** : FRONT-03
+- **Dépendances** : FRONT-03 ✓
 
 ### FRONT-11 — URLs par onglet sur la doc publique + anchors sur titres + OG meta — livré
 

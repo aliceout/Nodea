@@ -153,15 +153,15 @@ résout les deux.
 
 ### Préparation OpenAPI + validation runtime (~1 jour)
 
-- [ ] **API-11** — Compléter les `*ResponseSchema` Zod manquants (~25 routes). ~1 jour. [`api.md`](./api.md)
-- [ ] **ARCH-12** — Validation Zod runtime côté client sur les routes critiques (login, register, /me). ~3h. **Couple avec API-11.** [`architecture.md`](./architecture.md)
+- [x] **API-11** — `*ResponseSchema` câblés sur auth/passkey/mfa/totp/library/admin via wrapper ARCH-12. [`api.md`](./api.md)
+- [x] **ARCH-12** — `request<T>(method, path, body?, schema?)` valide en dev/test, skip prod. [`architecture.md`](./architecture.md)
 
 ### Mesure perf + bundle (~3-4h)
 
-- [ ] **FRONT-03** — Setup `web-vitals` (étape 1) + `rollup-plugin-visualizer` (étape 2). ~1h. [`frontend.md`](./frontend.md)
-- [ ] **FRONT-08** — Audit recharts dans Heatmap → potentiel -95 KB. ~30 min. [`frontend.md`](./frontend.md)
-- [ ] **FRONT-09** — Vérifier que zxcvbn-common est dans un seul chunk partagé après build. **Dépend de FRONT-03.** ~30 min. [`frontend.md`](./frontend.md)
-- [ ] **FRONT-10** — `manualChunks` Vite si nécessaire. **Dépend de FRONT-03.** ~30 min. [`frontend.md`](./frontend.md)
+- [x] **FRONT-03** — `web-vitals` + `rollup-plugin-visualizer` livrés (étapes 1+2). Étape 3 Lighthouse CI optionnelle. [`frontend.md`](./frontend.md)
+- [x] **FRONT-08** — `recharts` retiré (jamais consommé). [`frontend.md`](./frontend.md)
+- [x] **FRONT-09** — Vérifié : zxcvbn dans un chunk partagé unique, no-op. [`frontend.md`](./frontend.md)
+- [x] **FRONT-10** — `manualChunks` Vite (react-vendor / headlessui / crypto / markdown) — main bundle -44 %. [`frontend.md`](./frontend.md)
 
 ### CI sécurité (~1h)
 
