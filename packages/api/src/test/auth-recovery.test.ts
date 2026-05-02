@@ -359,8 +359,6 @@ describe('POST /auth/recover-kek/finish', () => {
       registrationResponse: start.registrationResponse!,
     });
 
-    const newEntropy = new Uint8Array(16);
-    webcrypto.getRandomValues(newEntropy);
     const res = await app.request(
       '/auth/recover-kek/finish',
       jsonPost({
@@ -369,20 +367,22 @@ describe('POST /auth/recover-kek/finish', () => {
         registrationRecord: finished.registrationRecord,
         wrappedKekPassword: 'rotated-wp',
         wrappedKekPasswordIv: 'rotated-wpiv',
-        wrappedKekRecoveryNew: 'rotated-wkr',
-        wrappedKekRecoveryNewIv: 'rotated-wkriv',
-        recoveryCodeHashNew: sha256Hex(newEntropy),
       }),
     );
     expect(res.status).toBe(200);
     const setCookie = res.headers.get('set-cookie');
     expect(setCookie).toContain('nodea_session=');
 
-    // DB rotated.
+    // Password rotated; recovery code consumed (Tier 3 design — the
+    // user is dropped to « no recovery code configured » so the
+    // sidebar tip reappears, they define a new one at their leisure
+    // via /recovery-code).
     const [row] = await db.select().from(users).where(eq(users.id, u.id));
     expect(row!.wrappedKekPassword).toBe('rotated-wp');
-    expect(row!.wrappedKekRecovery).toBe('rotated-wkr');
-    expect(row!.recoveryCodeHash).toBe(sha256Hex(newEntropy));
+    expect(row!.wrappedKekPasswordIv).toBe('rotated-wpiv');
+    expect(row!.wrappedKekRecovery).toBeNull();
+    expect(row!.wrappedKekRecoveryIv).toBeNull();
+    expect(row!.recoveryCodeHash).toBeNull();
 
     // OLD password no longer works.
     await expect(
@@ -420,17 +420,12 @@ describe('POST /auth/recover-kek/finish', () => {
       registrationResponse: start.registrationResponse!,
     });
 
-    const newEntropy = new Uint8Array(16);
-    webcrypto.getRandomValues(newEntropy);
     const finishBody = {
       recoverSessionId: start.recoverSessionId,
       recoveryCodeHash: sha256Hex(setup.entropy),
       registrationRecord: finished.registrationRecord,
       wrappedKekPassword: 'wp',
       wrappedKekPasswordIv: 'wpiv',
-      wrappedKekRecoveryNew: 'wkrn',
-      wrappedKekRecoveryNewIv: 'wkrniv',
-      recoveryCodeHashNew: sha256Hex(newEntropy),
     };
 
     // First call consumes the session.
