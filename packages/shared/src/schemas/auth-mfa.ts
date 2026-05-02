@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Stepped MFA schemas (Auth-Roadmap Phase 5C, Auth-Spec §7.4).
  *
  * When `users.security_mode != 'password_or_passkey'`, the primary
- * login route (`/auth/login/finish` or `/auth/passkey/login/finish`)
+ * login route (`/auth/login/finish` or `/auth/passkeys/login/finish`)
  * emits a `mfa_pending` session instead of a `full` one and returns
  * a needsMfa-discriminated response. The client then drives the
  * stepped flow:

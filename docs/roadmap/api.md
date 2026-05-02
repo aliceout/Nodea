@@ -91,7 +91,7 @@ importante du rapport.
 ### Style
 
 - **Hybride REST + RPC**, par segmentation domaine :
-  - **RPC** : `/auth/login/{start,finish}`, `/auth/passkey/login/{start,finish}`, `/auth/passkey/enroll/{options,verify}`, `/auth/totp/enroll/{start,verify}`, `/auth/totp/{disable,regen}`, `/auth/recover-kek/{start,finish}`, `/auth/reset/{start,finish}`, `/auth/reauth/{password,passkey}/{start,finish}`, `/auth/mfa/{totp,passkey}/{verify,start,finish}`
+  - **RPC** : `/auth/login/{start,finish}`, `/auth/passkeys/login/{start,finish}`, `/auth/passkeys/enroll/{options,verify}`, `/auth/totp/enroll/{start,verify}`, `/auth/totp/{disable,regen}`, `/auth/recover-kek/{start,finish}`, `/auth/reset/{start,finish}`, `/auth/reauth/{password,passkey}/{start,finish}`, `/auth/mfa/{totp,passkey}/{verify,start,finish}`
   - **REST** : `/admin/users`, `/admin/invites`, `/admin/announcements`, `/<module>/records/:id` (×6 modules)
   - **Hybride** : `/auth/me` (REST singular), `/auth/email`, `/auth/username` (action-flavored sur sous-ressources), `/auth/onboarding/complete` (verb-in-URL)
   - **Streaming** : `/library/lookup/by-query/stream` (NDJSON)

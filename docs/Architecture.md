@@ -313,7 +313,7 @@ the factory loops over. There is nowhere to forget a guard.
     `400 passkey_required`). Downgrades to `password_or_passkey`
     are always accepted.
   - The primary login routes (`/auth/login/finish` and
-    `/auth/passkey/login/finish`) compute required factors via
+    `/auth/passkeys/login/finish`) compute required factors via
     `auth/mfa-policy.ts` and emit `mfa_pending` instead of `full`
     when `security_mode != 'password_or_passkey'`. The wrap blobs
     ride along the response since `/auth/me` refuses pending
@@ -352,7 +352,7 @@ the factory loops over. There is nowhere to forget a guard.
     bypass for X is allowed. Failure → 409 `multi_factor_loss` →
     UI redirects to `/request-reset` (destructive).
   - Lazy application (`applyConsumableBypass`) runs at the start
-    of `/auth/login/finish` and `/auth/passkey/login/finish` BEFORE
+    of `/auth/login/finish` and `/auth/passkeys/login/finish` BEFORE
     computing required factors. A confirmed-past-delay bypass:
     disables TOTP + purges backup codes (totp factor) OR deletes
     every `auth_factors kind='passkey'` (passkey factor); auto-
@@ -363,7 +363,7 @@ the factory loops over. There is nowhere to forget a guard.
   - Auto-cancel on full-session promotion
     (`cancelPendingBypassesForUser`) flips `cancelled_at` on every
     pending request whenever the user lands a full session — at
-    `/auth/login/finish`, `/auth/passkey/login/finish`,
+    `/auth/login/finish`, `/auth/passkeys/login/finish`,
     `/auth/mfa/{totp,passkey}/finish`, and after a recovery-code
     reset. Rationale: a successful login proves the user still
     controls the factor they claimed to have lost (and defangs an

@@ -55,7 +55,7 @@ test('passkey — enroll + login (non-PRF, password finishes unlock)', async ({
       .click();
 
     // Password proof step — the page calls /auth/reauth/password
-    // before /auth/passkey/enroll/start.
+    // before /auth/passkeys/enroll/start.
     await page
       .getByLabel(/^Mot de passe.*actuel$|^Current password$/i)
       .fill(user.password);

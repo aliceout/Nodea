@@ -53,7 +53,7 @@ const WebAuthnResponseJSON = z.record(z.string(), z.unknown());
  * ========================================================================== */
 
 /**
- * `POST /auth/passkey/enroll/start` — body. Empty in V2 (Phase 7B):
+ * `POST /auth/passkeys/enroll/start` — body. Empty in V2 (Phase 7B):
  * fresh-password gating moved to the `requireFreshPassword`
  * middleware. Kept as an explicit schema for symmetry.
  */
@@ -61,7 +61,7 @@ export const PasskeyEnrollStartBodySchema = z.object({}).passthrough();
 export type PasskeyEnrollStartBody = z.infer<typeof PasskeyEnrollStartBodySchema>;
 
 /**
- * `POST /auth/passkey/enroll/start` — response. Returns the WebAuthn
+ * `POST /auth/passkeys/enroll/start` — response. Returns the WebAuthn
  * `creationOptions` ready to feed `navigator.credentials.create`. The
  * challenge is stored on the user's `sessions` row
  * (`pending_webauthn_challenge`, TTL 5 min, single-use at /finish).
@@ -74,7 +74,7 @@ export type PasskeyEnrollStartResponse = z.infer<
 >;
 
 /**
- * `POST /auth/passkey/enroll/finish` — body. The `attestationResponse`
+ * `POST /auth/passkeys/enroll/finish` — body. The `attestationResponse`
  * is the `RegistrationResponseJSON` produced by
  * `@simplewebauthn/browser`'s `startRegistration`. `prfSupported` plus
  * the optional `wrappedKek{,Iv}` carry the per-credential KEK wrap
@@ -133,7 +133,7 @@ export const PasskeyRenameBodySchema = z.object({
 export type PasskeyRenameBody = z.infer<typeof PasskeyRenameBodySchema>;
 
 /**
- * `POST /auth/passkey/:id/remove` and `PATCH /auth/passkey/:id/label`
+ * `POST /auth/passkeys/:id/remove` and `PATCH /auth/passkeys/:id/label`
  * both require a fresh password (matrice §6). Phase 7B moved that
  * gate to the `requireFreshPassword` middleware so the bodies carry
  * only the route-specific payload (delete has none; rename has the
@@ -154,7 +154,7 @@ export type PasskeyRenameWithProofBody = z.infer<
  * ========================================================================== */
 
 /**
- * `POST /auth/passkey/login/start` — body. `email` is optional: the
+ * `POST /auth/passkeys/login/start` — body. `email` is optional: the
  * browser supports "discoverable" credentials (the user picks the
  * account from a system UI) so the server returns generic
  * `requestOptions` with no `allowCredentials` filter. When `email` is
@@ -167,7 +167,7 @@ export const PasskeyLoginStartBodySchema = z.object({
 export type PasskeyLoginStartBody = z.infer<typeof PasskeyLoginStartBodySchema>;
 
 /**
- * `POST /auth/passkey/login/start` — response. Server-side state is
+ * `POST /auth/passkeys/login/start` — response. Server-side state is
  * keyed on `loginToken` (single-use, 5 min TTL); the challenge lives
  * inside the returned `requestOptions` AND is mirrored in the pending
  * entry so /finish can verify it without trusting the client to echo
@@ -188,7 +188,7 @@ export const PasskeyLoginFinishBodySchema = z.object({
 export type PasskeyLoginFinishBody = z.infer<typeof PasskeyLoginFinishBodySchema>;
 
 /**
- * `POST /auth/passkey/login/finish` — response. The session cookie is
+ * `POST /auth/passkeys/login/finish` — response. The session cookie is
  * already set by the time the body comes back. The body carries the
  * KEK wrap blobs the client needs to unwrap data:
  *

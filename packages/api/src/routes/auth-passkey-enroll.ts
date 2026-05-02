@@ -31,11 +31,11 @@ import {
 export const authPasskeyEnrollRoutes = new Hono<{ Variables: AuthVariables }>();
 
 /* ============================================================================
- * POST /auth/passkey/enroll/start
+ * POST /auth/passkeys/enroll/start
  * ========================================================================== */
 
 authPasskeyEnrollRoutes.post(
-  '/passkey/enroll/start',
+  '/passkeys/enroll/start',
   requireUser,
   requireFreshPassword,
   enrollLimiter,
@@ -111,11 +111,11 @@ authPasskeyEnrollRoutes.post(
 );
 
 /* ============================================================================
- * POST /auth/passkey/enroll/finish
+ * POST /auth/passkeys/enroll/finish
  * ========================================================================== */
 
 authPasskeyEnrollRoutes.post(
-  '/passkey/enroll/finish',
+  '/passkeys/enroll/finish',
   requireUser,
   enrollLimiter,
   async (c) => {

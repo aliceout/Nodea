@@ -13,13 +13,13 @@ import { authPasskeyManageRoutes } from './auth-passkey-manage.ts';
  * list / rename / remove, plus two anonymous routes for the
  * passkey-first login flow :
  *
- *   - `POST /auth/passkey/enroll/start`   (auth, password proof)
- *   - `POST /auth/passkey/enroll/finish`  (auth)
- *   - `GET  /auth/passkey/list`           (auth)
- *   - `PATCH /auth/passkey/:id/label`     (auth, password proof)
- *   - `POST /auth/passkey/:id/remove`     (auth, password proof)
- *   - `POST /auth/passkey/login/start`    (anon)
- *   - `POST /auth/passkey/login/finish`   (anon)
+ *   - `POST /auth/passkeys/enroll/start`   (auth, password proof)
+ *   - `POST /auth/passkeys/enroll/finish`  (auth)
+ *   - `GET  /auth/passkeys/list`           (auth)
+ *   - `PATCH /auth/passkeys/:id/label`     (auth, password proof)
+ *   - `POST /auth/passkeys/:id/remove`     (auth, password proof)
+ *   - `POST /auth/passkeys/login/start`    (anon)
+ *   - `POST /auth/passkeys/login/finish`   (anon)
  *
  * Server-side WebAuthn primitives come from
  * `@simplewebauthn/server`. Challenges are persisted on the
@@ -37,7 +37,7 @@ import { authPasskeyManageRoutes } from './auth-passkey-manage.ts';
  * Architecture : the 800-LOC monolith was split into three
  * sub-routers + a helpers module ; the aggregate
  * `authPasskeyRoutes` below mounts each at `/` so the
- * external surface (`POST /auth/passkey/enroll/start` etc.)
+ * external surface (`POST /auth/passkeys/enroll/start` etc.)
  * stays unchanged.
  *   - `auth-passkey-enroll.ts` — start + finish (with the
  *     `auth_factors_credential_id_unique` collision handling).

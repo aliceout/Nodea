@@ -58,7 +58,7 @@ id; rights and TTL live here so logout/revocation is immediate.
 | `mfa_password_verified`         | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when password is the primary factor (Phase 5C). |
 | `mfa_passkey_verified`          | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when passkey is the primary factor or after passkey 2nd-factor verify. |
 | `mfa_totp_verified`             | `bool`    | Stepped-MFA flag set after `/auth/mfa/totp/verify` succeeds. |
-| `pending_webauthn_challenge`    | `text?`   | WebAuthn challenge persisted on the row for `/auth/passkey/{enroll,login}/finish` and `/auth/reauth/passkey/finish` (Phase 4 / 7A). |
+| `pending_webauthn_challenge`    | `text?`   | WebAuthn challenge persisted on the row for `/auth/passkeys/{enroll,login}/finish` and `/auth/reauth/passkey/finish` (Phase 4 / 7A). |
 | `pending_webauthn_challenge_at` | `ts+tz?`  | TTL anchor on the challenge — 5 min, after which the value is rejected. |
 | `ip_hash`                       | `text?`   | Per-deployment salted hash. Audit trail only.             |
 | `user_agent`                    | `text?`   | Audit trail only.                                         |

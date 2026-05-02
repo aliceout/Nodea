@@ -191,7 +191,7 @@ authMfaRoutes.post(
     const config = getConfig();
 
     // Build allowCredentials from the user's enrolled passkeys —
-    // unlike the public /auth/passkey/login/start, here the user is
+    // unlike the public /auth/passkeys/login/start, here the user is
     // already known (we authenticated them on the primary factor)
     // so anti-enum doesn't apply.
     const rows = await db

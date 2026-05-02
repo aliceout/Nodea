@@ -100,8 +100,8 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 
 | Catégorie | Exemples | Auth |
 |---|---|---|
-| Public | `/healthz`, `/auth/login/start\|finish`, `/auth/register/*`, `/auth/recover-kek/*`, `/auth/passkey/login/*`, `/auth/reset/*`, `/auth/mfa/bypass/{confirm,cancel}` | rate-limited |
-| Authentifié (`requireUser`) | `/<collection>/records/*` (×6), `/auth/me`, `/auth/logout`, `/modules-config`, `/user-preferences`, `/library/lookup`, `/auth/reauth/*`, `/auth/passkey/{enroll,manage}`, `/auth/totp/*`, `/auth/security-mode` | sessionId obligatoire |
+| Public | `/healthz`, `/auth/login/start\|finish`, `/auth/register/*`, `/auth/recover-kek/*`, `/auth/passkeys/login/*`, `/auth/reset/*`, `/auth/mfa/bypass/{confirm,cancel}` | rate-limited |
+| Authentifié (`requireUser`) | `/<collection>/records/*` (×6), `/auth/me`, `/auth/logout`, `/modules-config`, `/user-preferences`, `/library/lookup`, `/auth/reauth/*`, `/auth/passkeys/{enroll,manage}`, `/auth/totp/*`, `/auth/security-mode` | sessionId obligatoire |
 | Admin (`requireAdmin`) | `/admin/*` (users, invites, settings, sources) | role=admin |
 | Avec `requireGuard` | mutations `/<collection>/records/:id` | sid + guard HMAC |
 

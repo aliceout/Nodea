@@ -1222,7 +1222,7 @@ fuite, juste un état mort qui se résout au reload.
 ```
 Client                                Server
    │                                     │
-   │  POST /auth/passkey/login/start     │
+   │  POST /auth/passkeys/login/start     │
    │  { email? }   (email optionnel —    │
    │               WebAuthn supporte le  │
    │               flow "discoverable")  │
@@ -1236,7 +1236,7 @@ Client                                Server
    │  avec PRF eval input fixe           │
    │  → assertion + prf_output           │
    │                                     │
-   │  POST /auth/passkey/login/finish    │
+   │  POST /auth/passkeys/login/finish    │
    │  { credential_id, signature, ... }  │
    │────────────────────────────────────▶│
    │                                     │  vérifie signature
@@ -1288,7 +1288,7 @@ manque `mfa_password_verified`), le client appelle à nouveau
   `/auth/login/finish` avec le cookie `__Host-nodea_mfa` actif. Le
   serveur détecte la session pending (au lieu d'en créer une
   nouvelle) et bump `mfa_password_verified=true`.
-- Pour ajouter une vérif passkey : `POST /auth/passkey/login/start`
+- Pour ajouter une vérif passkey : `POST /auth/passkeys/login/start`
   puis `/finish`. Bump `mfa_passkey_verified=true`.
 - Pour ajouter une vérif TOTP : `POST /auth/mfa/totp/verify`. Bump
   `mfa_totp_verified=true`.
@@ -1634,7 +1634,7 @@ possible silencieusement).
 > (lost-factor links + inline confirm dialog) et Settings →
 > Sécurité (active-bypass row + cancel button). Lazy application
 > au login : `applyConsumableBypass` est appelé depuis
-> `/auth/login/finish` ET `/auth/passkey/login/finish` avant le
+> `/auth/login/finish` ET `/auth/passkeys/login/finish` avant le
 > calcul des facteurs requis. Pas de cron — la consommation est
 > triggered par l'auth.
 
@@ -1721,7 +1721,7 @@ disparaissent quand le reste passe sous 24h).
 **Pas de lien email d'annulation**. Une demande pendante est
 auto-annulée à la prochaine promotion en session `full`
 (`cancelPendingBypassesForUser` câblé sur `/auth/login/finish`,
-`/auth/passkey/login/finish`, `/auth/mfa/{totp,passkey}/finish`,
+`/auth/passkeys/login/finish`, `/auth/mfa/{totp,passkey}/finish`,
 et le reset recovery code). Un login complet réussi prouve que
 l'user contrôle toujours le facteur prétendu perdu — la demande
 est moot et annulée. Le legit owner d'un compte attaqué n'a donc
@@ -1736,7 +1736,7 @@ coexister.
 #### Application du bypass au login
 
 Au login suivant. Après `/auth/login/finish` (ou
-`/auth/passkey/login/finish`), si le facteur `<factor>` est requis
+`/auth/passkeys/login/finish`), si le facteur `<factor>` est requis
 et non vérifié, le serveur checke :
 
 ```sql
@@ -1980,7 +1980,7 @@ en clair (affichés une seule fois).
 
 ### 9.2 Enrollment
 
-`POST /auth/passkey/enroll/start`
+`POST /auth/passkeys/enroll/start`
 
 Préconditions : `requireFreshPassword` (ou parcours register
 étape 6).
@@ -2002,7 +2002,7 @@ Client :
    mémoire après login récent ou register en cours) :
    `wrapped_kek = AES-GCM(wk_passkey, kek,
    AAD=users.id||"passkey"||credential_id)`.
-4. POST `/auth/passkey/enroll/finish` avec :
+4. POST `/auth/passkeys/enroll/finish` avec :
    - WebAuthn attestation response
    - `prf_supported: bool`
    - `wrapped_kek` + IV (si PRF)
@@ -2100,7 +2100,7 @@ l'enrollment et ne se rallume jamais (un credential qui passe en
 
 ### 9.7 Add/remove
 
-`GET /auth/passkey/list` : liste des credentials avec `label`,
+`GET /auth/passkeys/list` : liste des credentials avec `label`,
 `created_at`, `last_used_at`, `prf_supported`, `transports`.
 
 L'UI Settings doit **distinguer visuellement** les passkeys
@@ -2111,7 +2111,7 @@ distinction est cruciale pour que l'user comprenne pourquoi le mode
 PRF-capable. La liste affiche aussi le compteur "X passkey(s)
 PRF-capable enrôlée(s)" en en-tête.
 
-`POST /auth/passkey/:id/remove` : `requireFreshPassword`. DELETE
+`POST /auth/passkeys/:id/remove` : `requireFreshPassword`. DELETE
 ligne dans une transaction qui inclut le downgrade auto :
 
 - Si `count(auth_factors WHERE kind='passkey' AND prf_supported=true)
@@ -2488,7 +2488,7 @@ job :
     `/auth/*` mutante. Le logger doit appliquer **deux** couches :
 
     **Couche A — blacklist par route (path patterns)** :
-    `["/auth/register/*", "/auth/login/*", "/auth/passkey/*",
+    `["/auth/register/*", "/auth/login/*", "/auth/passkeys/*",
       "/auth/totp/*", "/auth/mfa/*", "/auth/migrate/*",
       "/auth/recover-kek/*", "/auth/change-password",
       "/auth/change-email/*", "/auth/security/*"]`.

@@ -27,7 +27,7 @@ import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
  * window covers this route for 5 minutes.
  *
  * Downgrade auto (§6.1) is wired separately on the de-enrollment
- * routes (`/auth/totp/disable`, `/auth/passkey/:id/remove`); this
+ * routes (`/auth/totp/disable`, `/auth/passkeys/:id/remove`); this
  * route only handles upgrades / explicit re-selections.
  */
 export const authSecurityModeRoutes = new Hono<{ Variables: AuthVariables }>();

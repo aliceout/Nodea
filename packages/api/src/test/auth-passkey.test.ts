@@ -4,12 +4,12 @@
  *
  * Routes under test:
  *   - GET    /auth/me                          (passkey counts)
- *   - POST   /auth/passkey/enroll/start        (auth, password proof)
- *   - GET    /auth/passkey/list                (auth)
- *   - PATCH  /auth/passkey/:id/label           (auth, password proof)
- *   - POST   /auth/passkey/:id/remove          (auth, password proof,
+ *   - POST   /auth/passkeys/enroll/start        (auth, password proof)
+ *   - GET    /auth/passkeys/list                (auth)
+ *   - PATCH  /auth/passkeys/:id/label           (auth, password proof)
+ *   - POST   /auth/passkeys/:id/remove          (auth, password proof,
  *                                               §6.1 downgrade auto)
- *   - POST   /auth/passkey/login/start         (anon, anti-enum)
+ *   - POST   /auth/passkeys/login/start         (anon, anti-enum)
  *
  * What we DON'T cover here:
  *   - `enroll/finish` and `login/finish` exercise full WebAuthn
@@ -106,12 +106,12 @@ describe('GET /auth/me — passkey counts', () => {
 });
 
 /* ============================================================================
- * POST /auth/passkey/enroll/start
+ * POST /auth/passkeys/enroll/start
  * ========================================================================== */
 
-describe('POST /auth/passkey/enroll/start', () => {
+describe('POST /auth/passkeys/enroll/start', () => {
   it('401 unauthenticated without a cookie', async () => {
-    const res = await app.request('/auth/passkey/enroll/start', jsonPost({}));
+    const res = await app.request('/auth/passkeys/enroll/start', jsonPost({}));
     expect(res.status).toBe(401);
   });
 
@@ -128,7 +128,7 @@ describe('POST /auth/passkey/enroll/start', () => {
       .update(sessions)
       .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
       .where(eq(sessions.id, sessionId));
-    const res = await app.request('/auth/passkey/enroll/start', {
+    const res = await app.request('/auth/passkeys/enroll/start', {
       ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
@@ -144,7 +144,7 @@ describe('POST /auth/passkey/enroll/start', () => {
     // Login already stamped reauth_password_at, so the
     // requireFreshPassword middleware passes naturally.
 
-    const res = await app.request('/auth/passkey/enroll/start', {
+    const res = await app.request('/auth/passkeys/enroll/start', {
       ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
@@ -159,12 +159,12 @@ describe('POST /auth/passkey/enroll/start', () => {
 });
 
 /* ============================================================================
- * GET /auth/passkey/list
+ * GET /auth/passkeys/list
  * ========================================================================== */
 
-describe('GET /auth/passkey/list', () => {
+describe('GET /auth/passkeys/list', () => {
   it('401 unauthenticated', async () => {
-    const res = await app.request('/auth/passkey/list');
+    const res = await app.request('/auth/passkeys/list');
     expect(res.status).toBe(401);
   });
 
@@ -174,7 +174,7 @@ describe('GET /auth/passkey/list', () => {
     await seedPasskey(u.id, { prfSupported: false, label: 'Yubikey' });
     const cookie = await loginAs(app, 'list-passkeys@example.com', TEST_PASSWORD);
 
-    const res = await app.request('/auth/passkey/list', {
+    const res = await app.request('/auth/passkeys/list', {
       headers: { cookie },
     });
     expect(res.status).toBe(200);
@@ -197,7 +197,7 @@ describe('GET /auth/passkey/list', () => {
     await seedPasskey(b.id, { label: 'B1' });
     const cookieA = await loginAs(app, 'list-a@example.com', TEST_PASSWORD);
 
-    const res = await app.request('/auth/passkey/list', {
+    const res = await app.request('/auth/passkeys/list', {
       headers: { cookie: cookieA },
     });
     const body = (await res.json()) as {
@@ -208,16 +208,16 @@ describe('GET /auth/passkey/list', () => {
 });
 
 /* ============================================================================
- * PATCH /auth/passkey/:id/label
+ * PATCH /auth/passkeys/:id/label
  * ========================================================================== */
 
-describe('PATCH /auth/passkey/:id/label', () => {
+describe('PATCH /auth/passkeys/:id/label', () => {
   it('renames the passkey on a fresh-password session', async () => {
     const u = await seedUser('rename-ok@example.com');
     const pk = await seedPasskey(u.id, { label: 'old' });
     const cookie = await loginAs(app, 'rename-ok@example.com', TEST_PASSWORD);
 
-    const res = await app.request(`/auth/passkey/${pk.id}/label`, {
+    const res = await app.request(`/auth/passkeys/${pk.id}/label`, {
       ...jsonPatch({ label: 'new' }),
       headers: { 'content-type': 'application/json', cookie },
     });
@@ -236,7 +236,7 @@ describe('PATCH /auth/passkey/:id/label', () => {
     const pkB = await seedPasskey(b.id);
     const cookieA = await loginAs(app, 'rename-a@example.com', TEST_PASSWORD);
 
-    const res = await app.request(`/auth/passkey/${pkB.id}/label`, {
+    const res = await app.request(`/auth/passkeys/${pkB.id}/label`, {
       ...jsonPatch({ label: 'hijack' }),
       headers: { 'content-type': 'application/json', cookie: cookieA },
     });
@@ -245,16 +245,16 @@ describe('PATCH /auth/passkey/:id/label', () => {
 });
 
 /* ============================================================================
- * POST /auth/passkey/:id/remove + §6.1 downgrade auto
+ * POST /auth/passkeys/:id/remove + §6.1 downgrade auto
  * ========================================================================== */
 
-describe('POST /auth/passkey/:id/remove', () => {
+describe('POST /auth/passkeys/:id/remove', () => {
   it('removes the passkey on a fresh-password session', async () => {
     const u = await seedUser('remove-ok@example.com');
     const pk = await seedPasskey(u.id);
     const cookie = await loginAs(app, 'remove-ok@example.com', TEST_PASSWORD);
 
-    const res = await app.request(`/auth/passkey/${pk.id}/remove`, {
+    const res = await app.request(`/auth/passkeys/${pk.id}/remove`, {
       ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
@@ -278,7 +278,7 @@ describe('POST /auth/passkey/:id/remove', () => {
 
     const cookie = await loginAs(app, 'downgrade@example.com', TEST_PASSWORD);
 
-    const res = await app.request(`/auth/passkey/${pk.id}/remove`, {
+    const res = await app.request(`/auth/passkeys/${pk.id}/remove`, {
       ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
@@ -318,7 +318,7 @@ describe('POST /auth/passkey/:id/remove', () => {
 
     // Removing the non-PRF passkey leaves the PRF one in place — mode
     // must stay at 'maximum'.
-    const res = await app.request(`/auth/passkey/${nonPrfPk.id}/remove`, {
+    const res = await app.request(`/auth/passkeys/${nonPrfPk.id}/remove`, {
       ...jsonPost({}),
       headers: { 'content-type': 'application/json', cookie },
     });
@@ -340,13 +340,13 @@ describe('POST /auth/passkey/:id/remove', () => {
 });
 
 /* ============================================================================
- * POST /auth/passkey/login/start (anonymous, anti-enum)
+ * POST /auth/passkeys/login/start (anonymous, anti-enum)
  * ========================================================================== */
 
-describe('POST /auth/passkey/login/start', () => {
+describe('POST /auth/passkeys/login/start', () => {
   it('returns generic options without `allowCredentials` for unknown email', async () => {
     const res = await app.request(
-      '/auth/passkey/login/start',
+      '/auth/passkeys/login/start',
       jsonPost({ email: 'nobody-here@example.com' }),
     );
     expect(res.status).toBe(200);
@@ -369,7 +369,7 @@ describe('POST /auth/passkey/login/start', () => {
     const pk = await seedPasskey(u.id);
 
     const res = await app.request(
-      '/auth/passkey/login/start',
+      '/auth/passkeys/login/start',
       jsonPost({ email: 'login-start-known@example.com' }),
     );
     expect(res.status).toBe(200);
@@ -382,7 +382,7 @@ describe('POST /auth/passkey/login/start', () => {
 
   it('400 invalid_body for malformed JSON', async () => {
     const res = await app.request(
-      '/auth/passkey/login/start',
+      '/auth/passkeys/login/start',
       jsonPost({ email: 'not-an-email' }),
     );
     expect(res.status).toBe(400);

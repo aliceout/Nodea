@@ -20,11 +20,11 @@ import { manageLimiter } from './passkey-helpers.ts';
 export const authPasskeyManageRoutes = new Hono<{ Variables: AuthVariables }>();
 
 /* ============================================================================
- * GET /auth/passkey/list
+ * GET /auth/passkeys/list
  * ========================================================================== */
 
 authPasskeyManageRoutes.get(
-  '/passkey/list',
+  '/passkeys/list',
   requireUser,
   manageLimiter,
   async (c) => {
@@ -57,11 +57,11 @@ authPasskeyManageRoutes.get(
 );
 
 /* ============================================================================
- * PATCH /auth/passkey/:id/label
+ * PATCH /auth/passkeys/:id/label
  * ========================================================================== */
 
 authPasskeyManageRoutes.patch(
-  '/passkey/:id/label',
+  '/passkeys/:id/label',
   requireUser,
   requireFreshPassword,
   manageLimiter,
@@ -85,7 +85,7 @@ authPasskeyManageRoutes.patch(
 );
 
 /* ============================================================================
- * POST /auth/passkey/:id/remove
+ * POST /auth/passkeys/:id/remove
  * ========================================================================== */
 
 /**
@@ -99,7 +99,7 @@ authPasskeyManageRoutes.patch(
  * goes out — an SMTP hiccup must not flip the route to 5xx.
  */
 authPasskeyManageRoutes.post(
-  '/passkey/:id/remove',
+  '/passkeys/:id/remove',
   requireUser,
   requireFreshPassword,
   manageLimiter,

@@ -44,10 +44,10 @@ import {
 export const authPasskeyLoginRoutes = new Hono<{ Variables: AuthVariables }>();
 
 /* ============================================================================
- * POST /auth/passkey/login/start (anonymous)
+ * POST /auth/passkeys/login/start (anonymous)
  * ========================================================================== */
 
-authPasskeyLoginRoutes.post('/passkey/login/start', loginLimiter, async (c) => {
+authPasskeyLoginRoutes.post('/passkeys/login/start', loginLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = PasskeyLoginStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -105,10 +105,10 @@ authPasskeyLoginRoutes.post('/passkey/login/start', loginLimiter, async (c) => {
 });
 
 /* ============================================================================
- * POST /auth/passkey/login/finish (anonymous)
+ * POST /auth/passkeys/login/finish (anonymous)
  * ========================================================================== */
 
-authPasskeyLoginRoutes.post('/passkey/login/finish', loginLimiter, async (c) => {
+authPasskeyLoginRoutes.post('/passkeys/login/finish', loginLimiter, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = PasskeyLoginFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);

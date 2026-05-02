@@ -130,7 +130,7 @@ export function buildApp() {
   // and would otherwise win on the trie.
   app.route('/auth', authRecoveryRoutes);
   // Passkey routes (Auth-Roadmap Phase 4) — same ordering rationale:
-  // mounted before the general `authRoutes` so /auth/passkey/* wins
+  // mounted before the general `authRoutes` so /auth/passkeys/* wins
   // the trie before any catch-alls in the legacy router.
   app.route('/auth', authPasskeyRoutes);
   // TOTP routes (Auth-Roadmap Phase 5B). Same ordering — mounted

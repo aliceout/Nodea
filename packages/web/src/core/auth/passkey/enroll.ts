@@ -10,7 +10,7 @@
  *
  * Flow (Auth-Spec §9.2) :
  *   1. OPAQUE password proof → unwrap KEK locally.
- *   2. POST `/auth/passkey/enroll/start` with the proof.
+ *   2. POST `/auth/passkeys/enroll/start` with the proof.
  *   3. Server returns WebAuthn `creationOptions` carrying the PRF
  *      extension request. Persist the challenge on the session row.
  *   4. `startRegistration(creationOptions)` triggers the browser /
@@ -29,7 +29,7 @@
  *        extraction (the user gets a second OS prompt right after
  *        registration).
  *      - No PRF at all → register as login-only with a warning.
- *   6. POST `/auth/passkey/enroll/finish` with the attestation,
+ *   6. POST `/auth/passkeys/enroll/finish` with the attestation,
  *      label, prfSupported flag, wrap blobs.
  */
 import { startRegistration } from '@simplewebauthn/browser';

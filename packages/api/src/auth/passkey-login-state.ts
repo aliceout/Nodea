@@ -2,8 +2,8 @@
  * Per-process state holder for the passkey login 2-step flow
  * (Auth-Roadmap Phase 4, Auth-Spec §7.3).
  *
- * `/auth/passkey/login/start` returns a `loginToken`; the client
- * comes back with it at `/auth/passkey/login/finish`. The stored
+ * `/auth/passkeys/login/start` returns a `loginToken`; the client
+ * comes back with it at `/auth/passkeys/login/finish`. The stored
  * entry binds the token to the WebAuthn `challenge` (and an
  * optional `userId` when the start was email-bound) so /finish can
  * verify the assertion was produced for the challenge we issued —

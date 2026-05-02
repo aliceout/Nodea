@@ -30,7 +30,7 @@ export async function apiPasskeyEnrollStart(
 ): Promise<PasskeyEnrollStartResponse> {
   return request(
     'POST',
-    '/auth/passkey/enroll/start',
+    '/auth/passkeys/enroll/start',
     body,
     PasskeyEnrollStartResponseSchema,
   );
@@ -43,28 +43,28 @@ export async function apiPasskeyEnrollFinish(
 ): Promise<PasskeyEnrollFinishResponse> {
   return request(
     'POST',
-    '/auth/passkey/enroll/finish',
+    '/auth/passkeys/enroll/finish',
     body,
     PasskeyEnrollFinishResponseSchema,
   );
 }
 
 export async function apiPasskeyList(): Promise<PasskeyListResponse> {
-  return request('GET', '/auth/passkey/list', undefined, PasskeyListResponseSchema);
+  return request('GET', '/auth/passkeys/list', undefined, PasskeyListResponseSchema);
 }
 
 export async function apiPasskeyRename(
   id: string,
   body: PasskeyRenameWithProofBody,
 ): Promise<void> {
-  await request<void>('PATCH', `/auth/passkey/${id}/label`, body);
+  await request<void>('PATCH', `/auth/passkeys/${id}/label`, body);
 }
 
 export async function apiPasskeyRemove(
   id: string,
   body: PasskeyDeleteBody,
 ): Promise<void> {
-  await request<void>('POST', `/auth/passkey/${id}/remove`, body);
+  await request<void>('POST', `/auth/passkeys/${id}/remove`, body);
 }
 
 /** Anonymous: request WebAuthn `requestOptions` for a passkey login.
@@ -75,7 +75,7 @@ export async function apiPasskeyLoginStart(
 ): Promise<PasskeyLoginStartResponse> {
   return request(
     'POST',
-    '/auth/passkey/login/start',
+    '/auth/passkeys/login/start',
     body,
     PasskeyLoginStartResponseSchema,
   );
@@ -88,7 +88,7 @@ export async function apiPasskeyLoginFinish(
 ): Promise<PasskeyLoginFinishResponse> {
   return request(
     'POST',
-    '/auth/passkey/login/finish',
+    '/auth/passkeys/login/finish',
     body,
     PasskeyLoginFinishResponseSchema,
   );

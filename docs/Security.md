@@ -237,9 +237,9 @@ chaque limite séparément.
 | `POST /auth/totp/enroll/{start,verify}` | 10 / 15min | `totp-enroll` | Setup d'un nouveau secret — utilisé une fois en pratique |
 | `POST /auth/totp/{disable,…}` | 30 / 15min | `totp-manage` | Lecture/écriture régulière depuis Settings, plafond confortable |
 | `POST /auth/security/recovery-code` | 5 / 1h | `recovery-code-setup` | Setup ou regenerate du code de récupération — opération rare |
-| `POST /auth/passkey/enroll/{options,finish}` | 10 / 15min | `passkey-enroll` | Setup d'un nouveau passkey, idem TOTP |
-| `POST /auth/passkey/{login-options,login-finish}` | 20 / 15min | `passkey-login` | Login passkey-first : tolérant aux annulations utilisateur sur le prompt OS |
-| `*    /auth/passkey/:id/...` (rename, remove) | 30 / 15min | `passkey-manage` | Lecture/écriture Settings |
+| `POST /auth/passkeys/enroll/{options,finish}` | 10 / 15min | `passkey-enroll` | Setup d'un nouveau passkey, idem TOTP |
+| `POST /auth/passkeys/{login-options,login-finish}` | 20 / 15min | `passkey-login` | Login passkey-first : tolérant aux annulations utilisateur sur le prompt OS |
+| `*    /auth/passkeys/:id/...` (rename, remove) | 30 / 15min | `passkey-manage` | Lecture/écriture Settings |
 
 **Non-auth (lookup externes)**
 

@@ -56,7 +56,7 @@ export const registerState = pgEnum('register_state', [
  * - `full` — fully authenticated, can hit any non-auth route.
  * - `mfa_pending` — first factor verified, awaiting MFA.
  *   Scoped to `/auth/mfa/*` and `/auth/login/*` /
- *   `/auth/passkey/login/*` for stepped MFA (Auth-Spec §7.4).
+ *   `/auth/passkeys/login/*` for stepped MFA (Auth-Spec §7.4).
  * - `register` — multi-step register in progress. Scoped to
  *   `/auth/register/*`, 24h TTL.
  * - `migrate` — vestigial. Used during the Phase 2C lazy

@@ -125,7 +125,7 @@ export const users = pgTable(
  * operations. `mfa_*_verified` flags accumulate during
  * stepped MFA in `mfa_pending` sessions until promotion to
  * `full`. `pending_webauthn_challenge` carries the
- * per-session challenge across `/auth/passkey/{enroll,login}/start`
+ * per-session challenge across `/auth/passkeys/{enroll,login}/start`
  * → `/finish` without needing Redis (V1 single-instance
  * assumption).
  */
