@@ -356,18 +356,17 @@ détection est inexistante. »*
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### OPS-12 — Pas de CHANGELOG.md
+### OPS-12 — `CHANGELOG.md` racine — livré (option manuelle)
 
 - **Domaine** : maintenance
 - **Sévérité** : faible
-- **Effort** : S (~30 min initial)
-- **Zone concernée** : racine du repo
-- **Description** : pas de `CHANGELOG.md`. Les changements sont tracés dans `git log` (commits conventionnels) mais pas de release notes lisibles. Pour un self-hoster qui veut savoir *« qu'est-ce qui a changé entre `:main` d'il y a 1 mois et `:main` d'aujourd'hui »* → il doit lire git log.
+- **Statut** : livré (option manuelle ; option `release-please` automatique reste ouverte).
 - **Tâches**
-  - [ ] **Option manuelle** : créer `CHANGELOG.md` au format [Keep a Changelog](https://keepachangelog.com/) + maintenir manuellement.
-  - [ ] **Option automatique** : `release-please` (Google) qui génère le CHANGELOG depuis les commits conventionnels — déjà en place côté convention.
+  - [x] [`CHANGELOG.md`](../../CHANGELOG.md) créé au format Keep a Changelog. Section `[Unreleased]` documentée avec les 4 tiers du cycle d'audit en cours (Tier 0 / 1 / 2 / 3) et un récap des chantiers livrés. Section « Avant le cycle d'audit (legacy) » qui pointe sur `git log --grep` pour l'archéologie pre-Phase-1.
+  - [ ] *Optionnel pour plus tard* : adopter `release-please` (Google) pour générer automatiquement les entrées depuis les commits conventionnels. La discipline de commits (`feat:`, `fix:`, etc.) est déjà en place — il suffirait d'activer le workflow.
+- **Effort** : S — réalisé.
 - **Risque** : aucun
-- **Dépendances** : aucune (mais utile à coupler avec un système de release tagué semver)
+- **Dépendances** : aucune
 
 ### OPS-13 — Pas d'environnement de staging (serveur-side)
 
@@ -377,22 +376,26 @@ détection est inexistante. »*
 - **Description courte** : un seul environnement prod, pas de staging entre `main` CI vert et le VPS de prod. Décision business (selon user-base + appétit pour un VPS supplémentaire).
 - **Tâches** : voir [`server-config.md` REC-S8](../recommendations/server-config.md#rec-s8--staging-environment-décision-business).
 
-### OPS-14 — Pas de runbook côté app (engagements SLO en infra)
+### OPS-14 — Runbook `docs/Operations.md` (app-side) — livré
 
 - **Domaine** : documentation ops
 - **Sévérité** : faible
-- **Effort** : M (~3h pour la première version du runbook)
-- **Statut** : **partagé** — la partie *« doc runbook dans le repo »* est app-side. La partie *« engagements SLO »* (commitments à 99 % disponibilité, etc.) est dans [`server-config.md` REC-S12](../recommendations/server-config.md#rec-s12--slo--sli) parce que ça dépend du contexte d'opération.
-- **Zone concernée (app)** : `docs/Operations.md` (à créer)
-- **Description** : pas de runbook (*« si l'api est down, voici les 3 commandes à lancer »*), pas de doc d'incident. Pour une équipe à 1 personne, la connaissance vit dans la tête. Pour qu'un nouveau contributor ou un sysadmin de relève puisse intervenir, c'est un gap.
-- **Tâches (app-side)**
-  - [ ] Créer `docs/Operations.md` avec :
-    - Runbook minimal : api down, postgres plein, certificate expiry, restoration backup (lien vers OPS-05)
-    - Liens vers les commandes utiles (`docker compose`, `pg_dump`, `pnpm db:migrate`, etc.)
-    - Procédure de premier diagnostic d'incident (logs, healthcheck, état des containers)
-  - [ ] À enrichir au fil des incidents — chaque incident résolu génère 1 paragraphe de runbook.
+- **Statut** : livré (app-side). La partie engagements SLO reste dans [`server-config.md` REC-S12](../recommendations/server-config.md#rec-s12--slo--sli).
+- **Tâches**
+  - [x] [`docs/Operations.md`](../Operations.md) créé en 10 sections :
+    1. Diagnostic en premier (4 commandes one-shot)
+    2. L'API ne répond pas (502/timeout) — symptômes + causes + procédure
+    3. Postgres saturé en disque — identifier la table + cleanup + VACUUM FULL
+    4. Certificats TLS expirés — Caddy + certbot
+    5. Restoration d'un backup — séquence stop-drop-restore avec warning E2EE
+    6. Migration de schéma DB (Drizzle auto au boot)
+    7. Logs (où, format, rotation) — référence à `Security.md` §9 pour la rétention
+    8. Snapshot d'incident en une commande (à mettre dans `/usr/local/bin/`)
+    9. Engagements opérationnels (renvoi à server-config.md REC-S12)
+    10. Convention « enrichi au fil des incidents »
+- **Effort** : M — réalisé.
 - **Risque** : aucun
-- **Dépendances** : OPS-05 (procédure restore à documenter), OPS-01 (comportement healthcheck), OPS-02 (config alerting) doivent être livrés pour que le runbook les référence correctement.
+- **Dépendances** : OPS-01 ✓, OPS-02 ✓, OPS-04 ✓ (tous livrés). OPS-05 (procédure backup/restore documentée) reste pour un opérateur d'instance officielle ; le runbook référence la procédure générique mais l'opérateur doit poser sa propre cron de backup.
 
 ### OPS-15 — Postgres exposé via `ports:` dans compose (cross-réf SEC-05)
 

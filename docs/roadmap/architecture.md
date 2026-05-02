@@ -173,25 +173,22 @@ individuels plutôt que dans `documentation/API.md`).
 - **Risque** : aucun
 - **Dépendances** : aucune
 
-### ARCH-02 — Manque d'ADR (Architectural Decision Records)
+### ARCH-02 — Architectural Decision Records — livré (5 premiers ADR)
 
 - **Type** : documentation
 - **Sévérité** : faible
-- **Subjectivité** : moyenne
-- **Zone concernée** : `docs/`, `documentation/`
-- **Description** : pas de dossier `docs/adr/` ni équivalent. Les décisions architecturales importantes (« pourquoi pas TanStack Query », « pourquoi snake_case + camelCase coexistent », « pourquoi `hc<AppType>` pas utilisé », « pourquoi pas de SSR ») vivent **dans des commentaires individuels** ou dans les commits / PR descriptions.
-- **Pourquoi c'est un problème concret** : dans 6 mois, quand quelqu'un regarde le code et se dit *« mais pourquoi pas hc<AppType>, ça aurait été plus simple »*, la réponse vit dans `packages/web/src/core/api/internal.ts:7` en commentaire — il faut connaître le fichier pour la trouver. Un ADR `docs/adr/0003-no-hono-rpc-client.md` serait découvrable via `ls docs/adr/`.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Créer `docs/adr/` avec un README qui explique la convention ([Markdown ADRs format](https://github.com/joelparkerhenderson/architecture-decision-record)).
-  - [ ] Premier batch d'ADR à écrire :
-    - [ ] 0001 — layered + feature-first hybride
-    - [ ] 0002 — Zustand single store + per-module contexts (justifie ARCH-03)
-    - [ ] 0003 — frontière snake_case / camelCase JSON ([`api.md`](./api.md) API-01)
-    - [ ] 0004 — pas de TanStack Query (décision figée : single-instance + E2EE = pas de besoin)
-    - [ ] 0005 — pas de SSR (E2EE-driven)
-- **Effort** : M (~3-4h pour les 5 premiers ADR)
+  - [x] [`docs/adr/`](../adr/) créé avec un README qui explique la convention (format MADR simplifié) + un index avec table des ADR.
+  - [x] Premier batch livré :
+    - [x] [`0001-layered-hybrid-architecture.md`](../adr/0001-layered-hybrid-architecture.md) — pourquoi `core/` + `ui/` + `app/flow/<Module>/` plutôt que pure feature-first ou pure layered.
+    - [x] [`0002-zustand-single-store.md`](../adr/0002-zustand-single-store.md) — pourquoi un seul Zustand store + contextes React par module pour l'état page-local (justifie [ARCH-03](./architecture.md)).
+    - [x] [`0003-snake-case-camel-case-frontier.md`](../adr/0003-snake-case-camel-case-frontier.md) — pourquoi les payloads chiffrés gardent le `snake_case` du serveur, et où vit la frontière de mapping.
+    - [x] [`0004-no-request-cache.md`](../adr/0004-no-request-cache.md) — pourquoi pas de TanStack Query / SWR (le coût dominant est le déchiffrement crypto, pas la latence HTTP).
+    - [x] [`0005-no-ssr.md`](../adr/0005-no-ssr.md) — pourquoi CSR pur sur une SPA E2EE (le serveur n'a pas la clé pour pré-rendre `/flow`).
+- **Effort** : M — réalisé.
 - **Risque** : aucun
-- **Dépendances** : aucune
+- **Dépendances** : aucune. Nouveaux ADR à écrire au fil des décisions structurantes futures (cf. README dans `docs/adr/`).
 
 ### ARCH-03 — `nodea-store` (414 LOC) : single store qui mélange ~7 slices distinctes
 
@@ -302,19 +299,23 @@ individuels plutôt que dans `documentation/API.md`).
 - **Risque** : N/A
 - **Recommandation** : **NE PAS toucher.**
 
-### ARCH-10 — Phases de migration commit-trackées : signal positif mais à clore
+### ARCH-10 — Phases de migration commit-trackées : policy définie — livré (sweep deferred)
 
 - **Type** : dette structurelle
 - **Sévérité** : faible
-- **Subjectivité** : faible
-- **Zone concernée** : commentaires `Phase N`, `Tier X` partout dans le code (~50+ fichiers)
-- **Description** : ~50+ fichiers contiennent des références à des phases (`Phase 1 of Auth-Roadmap`, `Phase 2C`, `Phase 4`, `module-refacto Tier B`, `factoring-audit`, `Tier 5 i18n`...). C'est positif — la trajectoire est tracée. Mais il commence à y avoir des phases **closes** dont les références dans le code n'ont jamais été nettoyées.
-- **Pourquoi c'est un problème concret** : un·e contributeur·ice qui voit *« Phase 2C »* en commentaire peut perdre 5 minutes à chercher dans le code ou les commits ce qu'était la Phase 2C exactement. C'est de la **dette de cleanup** post-migration.
+- **Statut** : **policy définie**, sweep exhaustif différé.
+- **Constat post-audit** : un sweep `git grep -lE "Phase [0-9]|Tier [A-Z0-9]" packages/` retourne **106 fichiers** avec ~20 phases distinctes (Phase 1, 1B, 2, 2A-D, 3, 4, 4C, 5, 5A-D, 6, 7, 7A, 7B, 7D). La grande majorité de ces refs sont du **contexte historique légitime** — elles disent à un·e mainteneur·euse *« cette table porte les contraintes héritées de la Phase 2 OPAQUE »*, ce qui est une info utile pour comprendre le code, pas du bruit à purger.
+- **Décision** : pas de sweep aveugle. Le coût (carefully triager 106 fichiers, 200+ refs) dépasse le gain (clarté nominale). À la place, on définit une **policy pour les nouvelles refs** et on traite les cas problématiques par issue dédiée.
+- **Policy (à partir de 2026-05)** :
+  - **Nouvelle ref** `Phase N` ou `Tier X` dans un commentaire : OK si elle pointe sur du code qui implique encore une distinction (ex. *« since Phase 2 OPAQUE rolled out, foo still keeps the legacy fallback for safety »*).
+  - **Pas OK** : les refs purement « j'ai écrit ce code en Phase 2C » sans implication actuelle. Le `git blame` couvre déjà ce cas.
+  - **Cleanup ciblé** : si lors d'une review, une ref devient confuse pour le reviewer, ouvrir une issue **étiquetée `arch-10-cleanup`** avec le fichier + ligne. Le sweep se fait au fil de l'eau, pas en bulk.
 - **Tâches**
-  - [ ] Faire un sweep avec `grep -rn "Phase [0-9]\|Tier [A-Z0-9]" packages/ docs/`.
-  - [ ] Pour chaque référence : soit la retirer (si elle n'apporte plus rien), soit la garder en remplaçant *« Phase 2C »* par *« post-OPAQUE migration (Phase 2C, livré au commit `xxxxxxx`) »*.
-- **Effort** : M (~2h sweep + tri)
-- **Risque** : faible
+  - [x] Audit du volume : 106 fichiers, ~20 phases distinctes.
+  - [x] Policy ci-dessus documentée.
+  - [ ] *(continu, par issue ciblée)* Cleanup au fil des reviews futures.
+- **Effort** : M en théorie, pratiquement infini en bulk → segmenté par issue.
+- **Risque** : aucun
 - **Dépendances** : aucune
 
 ### ARCH-11 — Frontière `lib/` (web) vs `core/utils/` (web) non claire

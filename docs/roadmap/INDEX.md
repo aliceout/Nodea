@@ -200,10 +200,10 @@ résout les deux.
 
 ### Documentation & process (~1 jour)
 
-- [ ] **ARCH-02** — Créer `docs/adr/` + 5 premiers ADR (layered hybride, Zustand mono-store, snake/camel frontière, pas de cache de requêtes, pas de SSR). ~3-4h. [`architecture.md`](./architecture.md)
-- [ ] **ARCH-10** — Sweep des références *« Phase N »* / *« Tier X »* livrées dans le code. ~2h. [`architecture.md`](./architecture.md)
-- [ ] **OPS-12** — `CHANGELOG.md` (manuel ou release-please). ~30 min initial. [`ops.md`](./ops.md)
-- [ ] **OPS-14** — `docs/Operations.md` runbook minimal. ~3h. [`ops.md`](./ops.md)
+- [x] **ARCH-02** — `docs/adr/` créé avec README + 5 premiers ADR (architecture hybride, Zustand single store, frontière snake/camelCase, pas de cache de requêtes, pas de SSR). [`architecture.md`](./architecture.md)
+- [x] **ARCH-10** — Policy définie pour les nouvelles refs `Phase N` / `Tier X`. Sweep exhaustif différé (106 fichiers, contexte historique souvent légitime — cleanup ciblé par issue au fil des reviews). [`architecture.md`](./architecture.md)
+- [x] **OPS-12** — `CHANGELOG.md` racine en format Keep a Changelog, avec récap des Tier 0/1/2/3 livrés et entrée legacy pre-cutover. [`ops.md`](./ops.md)
+- [x] **OPS-14** — `docs/Operations.md` runbook 10 sections (diagnostic, api/postgres/TLS/restore, logs, snapshot incident, SLO renvoyé infra). [`ops.md`](./ops.md)
 
 ### Privacy & RGPD (~3-4h)
 
