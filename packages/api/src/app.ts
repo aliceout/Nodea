@@ -112,7 +112,7 @@ export function buildApp() {
     const cfg = getConfig();
     return c.json({
       commit: cfg.BUILD_COMMIT,
-      build_date: cfg.BUILD_DATE,
+      buildDate: cfg.BUILD_DATE,
       branch: cfg.BUILD_BRANCH,
     });
   });

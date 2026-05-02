@@ -29,15 +29,15 @@ collection sans validation guard.
 **Surface lisible minimum.** Le serveur ne voit que le strict
 nécessaire au routing et à la cryptographie — pas de `user_id`, pas
 de timestamps colonnes. Le mapping `user → sids` vit chiffré dans
-`modules_config` ; les timestamps applicatifs (`updated_at` etc.)
+`modules_config` ; les timestamps applicatifs (`updatedAt` etc.)
 vivent dans le `payload` chiffré. Cf. `Auth-Spec.md §2.3` et
 `Database.md`.
 
-| Champ           | Description                                                                  |
-|-----------------|------------------------------------------------------------------------------|
-| `id`            | UUID généré côté serveur (PK). Sert uniquement de handle pour les URLs `/records/:id`. Aucun contenu utilisateur. |
-| `module_user_id`| Identifiant secondaire opaque, dérivé localement via la clé maître. **Seule clé d'accès** — le serveur ne sait jamais à qui un sid appartient (le mapping est chiffré dans `modules_config`). |
-| `cipher_iv`     | IV 96 bits aléatoire (base64) utilisé pour le chiffrement AES-GCM. Requis pour déchiffrer le payload. |
+| Champ          | Description                                                                  |
+|----------------|------------------------------------------------------------------------------|
+| `id`           | UUID généré côté serveur (PK). Sert uniquement de handle pour les URLs `/records/:id`. Aucun contenu utilisateur. |
+| `moduleUserId` | Identifiant secondaire opaque, dérivé localement via la clé maître. **Seule clé d'accès** — le serveur ne sait jamais à qui un sid appartient (le mapping est chiffré dans `modules_config`). Côté DB la colonne reste `module_user_id` (convention Postgres) ; Drizzle map sur `moduleUserId` côté code TS et c'est la version qui sort sur le wire. |
+| `cipherIv`     | IV 96 bits aléatoire (base64) utilisé pour le chiffrement AES-GCM. Requis pour déchiffrer le payload. Côté DB la colonne reste `cipher_iv`. |
 | `payload`       | Contenu JSON chiffré AES-GCM (base64). **Tout** le contenu utilisateur, **plus** les timestamps applicatifs que le module veut conserver. **Le serveur ne déchiffre jamais.** |
 | `guard`         | HMAC-SHA-256 stocké côté serveur, jamais renvoyé en lecture. Cf. §3.         |
 
@@ -71,7 +71,7 @@ même quand un opérateur agrège la sortie du serveur. Une route
 qui lirait `c.req.query('d')` serait un bug à reverter.
 
 **Read** : `GET /{collection}/records` avec header `X-Sid: <sid>`
-retourne uniquement les `id` / `module_user_id` / `cipher_iv` /
+retourne uniquement les `id` / `moduleUserId` / `cipherIv` /
 `payload`. Le `guard` est **toujours retiré** des réponses (sa
 raison d'être étant d'être un secret partagé client/serveur). Pas
 de timestamps : le client trie après déchiffrement à partir de ce
@@ -151,7 +151,7 @@ accidentels.
 2. **Création en deux temps** — POST init → PATCH promotion. Le
    guard ne peut être calculé qu'après que le serveur a attribué
    un `id`.
-3. **Lecture par `sid`** — le `module_user_id` découple l'identité
+3. **Lecture par `sid`** — le `moduleUserId` découple l'identité
    utilisateur du contenu module (utile pour les futurs partages
    intra-utilisateur ; aujourd'hui, un seul `sid` par module).
 4. **Mutations gardées** — `requireGuard` valide systématiquement

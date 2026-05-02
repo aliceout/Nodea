@@ -25,10 +25,10 @@ describe('GET /user-preferences', () => {
     const res = await app.request('/user-preferences', { headers: { cookie } });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      cipher_iv: string | null;
+      cipherIv: string | null;
       payload: string | null;
     };
-    expect(body.cipher_iv).toBeNull();
+    expect(body.cipherIv).toBeNull();
     expect(body.payload).toBeNull();
   });
 
@@ -44,25 +44,25 @@ describe('PUT /user-preferences', () => {
 
     const put = await app.request(
       '/user-preferences',
-      jsonBody('PUT', { cipher_iv: 'iv-a', payload: 'blob-a' }, cookie),
+      jsonBody('PUT', { cipherIv: 'iv-a', payload: 'blob-a' }, cookie),
     );
     expect(put.status).toBe(200);
 
     const get1 = await app.request('/user-preferences', { headers: { cookie } });
-    const body1 = (await get1.json()) as { cipher_iv: string; payload: string };
-    expect(body1.cipher_iv).toBe('iv-a');
+    const body1 = (await get1.json()) as { cipherIv: string; payload: string };
+    expect(body1.cipherIv).toBe('iv-a');
     expect(body1.payload).toBe('blob-a');
 
     // Second PUT overwrites the same row (1:1 on user_id).
     const put2 = await app.request(
       '/user-preferences',
-      jsonBody('PUT', { cipher_iv: 'iv-b', payload: 'blob-b' }, cookie),
+      jsonBody('PUT', { cipherIv: 'iv-b', payload: 'blob-b' }, cookie),
     );
     expect(put2.status).toBe(200);
 
     const get2 = await app.request('/user-preferences', { headers: { cookie } });
-    const body2 = (await get2.json()) as { cipher_iv: string; payload: string };
-    expect(body2.cipher_iv).toBe('iv-b');
+    const body2 = (await get2.json()) as { cipherIv: string; payload: string };
+    expect(body2.cipherIv).toBe('iv-b');
     expect(body2.payload).toBe('blob-b');
   });
 
@@ -70,7 +70,7 @@ describe('PUT /user-preferences', () => {
     const cookie = await cookieFor('pref3@example.com');
     const res = await app.request(
       '/user-preferences',
-      jsonBody('PUT', { cipher_iv: '', payload: '' }, cookie),
+      jsonBody('PUT', { cipherIv: '', payload: '' }, cookie),
     );
     expect(res.status).toBe(400);
   });
@@ -81,18 +81,18 @@ describe('PUT /user-preferences', () => {
 
     await app.request(
       '/user-preferences',
-      jsonBody('PUT', { cipher_iv: 'A-iv', payload: 'A-blob' }, cookieA),
+      jsonBody('PUT', { cipherIv: 'A-iv', payload: 'A-blob' }, cookieA),
     );
     await app.request(
       '/user-preferences',
-      jsonBody('PUT', { cipher_iv: 'B-iv', payload: 'B-blob' }, cookieB),
+      jsonBody('PUT', { cipherIv: 'B-iv', payload: 'B-blob' }, cookieB),
     );
 
     const a = await app.request('/user-preferences', { headers: { cookie: cookieA } });
     const b = await app.request('/user-preferences', { headers: { cookie: cookieB } });
-    const bodyA = (await a.json()) as { cipher_iv: string };
-    const bodyB = (await b.json()) as { cipher_iv: string };
-    expect(bodyA.cipher_iv).toBe('A-iv');
-    expect(bodyB.cipher_iv).toBe('B-iv');
+    const bodyA = (await a.json()) as { cipherIv: string };
+    const bodyB = (await b.json()) as { cipherIv: string };
+    expect(bodyA.cipherIv).toBe('A-iv');
+    expect(bodyB.cipherIv).toBe('B-iv');
   });
 });

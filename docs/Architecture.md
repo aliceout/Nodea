@@ -74,7 +74,7 @@ the factory loops over. There is nowhere to forget a guard.
   table and `c.set('user', …)`.
 - `requireAdmin` — stacks on `requireUser` and 403s non-admin roles.
 - `requireGuard` — inside `collection-factory`, validates the
-  `(module_user_id, guard)` query parameters on update/delete
+  `(moduleUserId, guard)` headers on update/delete
   operations. **No `user_id` involvement** : entry rows carry no FK
   to `users`, the server cannot link a row to a specific user. The
   guard + sid combo is the only access decision (both require the

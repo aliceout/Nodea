@@ -48,7 +48,7 @@ describe('Collection routes — Mood used as the representative', () => {
       ...jsonBody(
         {
           sid,
-          cipher_iv: 'iv-v1',
+          cipherIv: 'iv-v1',
           payload: 'cipher-v1',
           guard: 'init',
         },
@@ -74,11 +74,11 @@ describe('Collection routes — Mood used as the representative', () => {
     const updated = await app.request(`/mood/records/${entryId}`, {
       method: 'PATCH',
       headers: authHeaders(cookie, sid, FAKE_GUARD),
-      body: JSON.stringify({ cipher_iv: 'iv-v2', payload: 'cipher-v2' }),
+      body: JSON.stringify({ cipherIv: 'iv-v2', payload: 'cipher-v2' }),
     });
     expect(updated.status).toBe(200);
     const updatedBody = (await updated.json()) as Record<string, unknown>;
-    expect(updatedBody.cipher_iv).toBe('iv-v2');
+    expect(updatedBody.cipherIv).toBe('iv-v2');
     expect(updatedBody).not.toHaveProperty('guard');
 
     // LIST
@@ -89,7 +89,7 @@ describe('Collection routes — Mood used as the representative', () => {
     const listBody = (await list.json()) as { records: Record<string, unknown>[] };
     expect(listBody.records).toHaveLength(1);
     expect(listBody.records[0]).not.toHaveProperty('guard');
-    expect(listBody.records[0]?.cipher_iv).toBe('iv-v2');
+    expect(listBody.records[0]?.cipherIv).toBe('iv-v2');
 
     // DELETE
     const deleted = await app.request(`/mood/records/${entryId}`, {
@@ -108,7 +108,7 @@ describe('Collection routes — Mood used as the representative', () => {
 
     const created = await app.request('/mood/records', {
       ...jsonBody(
-        { sid, cipher_iv: 'iv', payload: 'c', guard: 'init' },
+        { sid, cipherIv: 'iv', payload: 'c', guard: 'init' },
         cookie,
       ),
     });
@@ -118,7 +118,7 @@ describe('Collection routes — Mood used as the representative', () => {
     const res = await app.request(`/mood/records/${id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie, 'x-sid': sid },
-      body: JSON.stringify({ cipher_iv: 'iv2' }),
+      body: JSON.stringify({ cipherIv: 'iv2' }),
     });
     expect(res.status).toBe(400);
   });
@@ -129,7 +129,7 @@ describe('Collection routes — Mood used as the representative', () => {
 
     const created = await app.request('/mood/records', {
       ...jsonBody(
-        { sid, cipher_iv: 'iv', payload: 'c', guard: 'init' },
+        { sid, cipherIv: 'iv', payload: 'c', guard: 'init' },
         cookie,
       ),
     });
@@ -138,7 +138,7 @@ describe('Collection routes — Mood used as the representative', () => {
     const res = await app.request(`/mood/records/${id}`, {
       method: 'PATCH',
       headers: authHeaders(cookie, sid, 'init-wrong'),
-      body: JSON.stringify({ cipher_iv: 'iv2' }),
+      body: JSON.stringify({ cipherIv: 'iv2' }),
     });
     expect(res.status).toBe(403);
   });
@@ -148,7 +148,7 @@ describe('Collection routes — Mood used as the representative', () => {
     const sid = 'sid-nore';
 
     const created = await app.request('/mood/records', {
-      ...jsonBody({ sid, cipher_iv: 'iv', payload: 'c', guard: 'init' }, cookie),
+      ...jsonBody({ sid, cipherIv: 'iv', payload: 'c', guard: 'init' }, cookie),
     });
     const { id } = (await created.json()) as { id: string };
 
@@ -167,7 +167,7 @@ describe('Collection routes — Mood used as the representative', () => {
   });
 
   it('scopes rows by sid only — distinct sids never collide', async () => {
-    // Post-`user_id` removal: scoping is by `module_user_id` (sid)
+    // Post-`user_id` removal: scoping is by `moduleUserId` (sid)
     // alone. Sids are derived client-side from the user's main key
     // + module-specific entropy (32 bytes random), so accidental
     // collisions are cryptographically negligible. Knowing another
@@ -184,10 +184,10 @@ describe('Collection routes — Mood used as the representative', () => {
     const cookieB = await authFor('bob@example.com');
 
     await app.request('/mood/records', {
-      ...jsonBody({ sid: 'sid-alice', cipher_iv: 'A-iv', payload: 'A', guard: 'init' }, cookieA),
+      ...jsonBody({ sid: 'sid-alice', cipherIv: 'A-iv', payload: 'A', guard: 'init' }, cookieA),
     });
     await app.request('/mood/records', {
-      ...jsonBody({ sid: 'sid-bob', cipher_iv: 'B-iv', payload: 'B', guard: 'init' }, cookieB),
+      ...jsonBody({ sid: 'sid-bob', cipherIv: 'B-iv', payload: 'B', guard: 'init' }, cookieB),
     });
 
     const aList = await app.request('/mood/records', {
@@ -239,7 +239,7 @@ describe('Every registered collection is mounted and guard-protected', () => {
     const create = await app.request(`/${name}/records`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ sid: 'sid-x', cipher_iv: 'iv', payload: 'c', guard: 'init' }),
+      body: JSON.stringify({ sid: 'sid-x', cipherIv: 'iv', payload: 'c', guard: 'init' }),
     });
     expect(create.status).toBe(201);
     const { id } = (await create.json()) as { id: string };
@@ -248,7 +248,7 @@ describe('Every registered collection is mounted and guard-protected', () => {
     const badPatch = await app.request(`/${name}/records/${id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie, 'x-sid': 'sid-x' },
-      body: JSON.stringify({ cipher_iv: 'iv2' }),
+      body: JSON.stringify({ cipherIv: 'iv2' }),
     });
     expect(badPatch.status).toBe(400);
 
@@ -256,7 +256,7 @@ describe('Every registered collection is mounted and guard-protected', () => {
     const goodPatch = await app.request(`/${name}/records/${id}`, {
       method: 'PATCH',
       headers: authHeaders(cookie, 'sid-x', 'init'),
-      body: JSON.stringify({ cipher_iv: 'iv2' }),
+      body: JSON.stringify({ cipherIv: 'iv2' }),
     });
     expect(goodPatch.status).toBe(200);
   });
@@ -267,8 +267,8 @@ describe('/modules-config (no guard)', () => {
     const cookie = await authFor('cfg1@example.com');
     const res = await app.request('/modules-config', { headers: { cookie } });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { cipher_iv: string | null };
-    expect(body.cipher_iv).toBeNull();
+    const body = (await res.json()) as { cipherIv: string | null };
+    expect(body.cipherIv).toBeNull();
   });
 
   it('upserts via PUT and reads it back', async () => {
@@ -277,20 +277,20 @@ describe('/modules-config (no guard)', () => {
     const put = await app.request('/modules-config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ cipher_iv: 'iv-cfg', payload: 'blob-1' }),
+      body: JSON.stringify({ cipherIv: 'iv-cfg', payload: 'blob-1' }),
     });
     expect(put.status).toBe(200);
 
     const get = await app.request('/modules-config', { headers: { cookie } });
     const body = (await get.json()) as Record<string, unknown>;
-    expect(body.cipher_iv).toBe('iv-cfg');
+    expect(body.cipherIv).toBe('iv-cfg');
     expect(body.payload).toBe('blob-1');
 
     // Second PUT overwrites.
     await app.request('/modules-config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ cipher_iv: 'iv-cfg-2', payload: 'blob-2' }),
+      body: JSON.stringify({ cipherIv: 'iv-cfg-2', payload: 'blob-2' }),
     });
     const get2 = await app.request('/modules-config', { headers: { cookie } });
     const body2 = (await get2.json()) as Record<string, unknown>;

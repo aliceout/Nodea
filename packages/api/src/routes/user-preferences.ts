@@ -29,11 +29,11 @@ userPreferencesRoutes.get('/', async (c) => {
     .from(userPreferences)
     .where(eq(userPreferences.userId, user.id))
     .limit(1);
-  if (!row) return c.json({ cipher_iv: null, payload: null });
+  if (!row) return c.json({ cipherIv: null, payload: null });
   return c.json({
-    cipher_iv: row.cipherIv,
+    cipherIv: row.cipherIv,
     payload: row.payload,
-    updated_at: row.updatedAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   });
 });
 
@@ -45,7 +45,7 @@ userPreferencesRoutes.put('/', async (c) => {
 
   const values = {
     userId: user.id,
-    cipherIv: parsed.data.cipher_iv,
+    cipherIv: parsed.data.cipherIv,
     payload: parsed.data.payload,
     updatedAt: new Date(),
   };
@@ -63,8 +63,8 @@ userPreferencesRoutes.put('/', async (c) => {
     });
 
   return c.json({
-    cipher_iv: values.cipherIv,
+    cipherIv: values.cipherIv,
     payload: values.payload,
-    updated_at: values.updatedAt.toISOString(),
+    updatedAt: values.updatedAt.toISOString(),
   });
 });

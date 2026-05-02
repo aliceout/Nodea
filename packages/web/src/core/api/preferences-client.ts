@@ -27,11 +27,11 @@ export async function loadDecryptedPreferences(
   aesKey: AesMainKey,
 ): Promise<UserPreferencesPayload> {
   const res = await apiGetUserPreferences();
-  if (!res.cipher_iv || !res.payload) return {};
+  if (!res.cipherIv || !res.payload) return {};
   try {
     const clear = await decryptAESGCM(
       {
-        iv: res.cipher_iv as Base64 as CipherIV,
+        iv: res.cipherIv as Base64 as CipherIV,
         data: res.payload as Base64 as EncryptedBlob,
       },
       aesKey,
@@ -48,5 +48,5 @@ export async function saveEncryptedPreferences(
 ): Promise<void> {
   const validated = UserPreferencesPayloadSchema.parse(prefs);
   const blob = await encryptAESGCM(JSON.stringify(validated), aesKey);
-  await apiPutUserPreferences({ cipher_iv: blob.iv, payload: blob.data });
+  await apiPutUserPreferences({ cipherIv: blob.iv, payload: blob.data });
 }

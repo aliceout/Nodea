@@ -35,7 +35,7 @@ async function freshMainKeys() {
 interface RawRecord {
   id: string;
   module_user_id: string;
-  cipher_iv: string;
+  cipherIv: string;
   payload: string;
 }
 
@@ -50,7 +50,7 @@ async function createPromoted(
   const createRes = await app.request(`/${collection}/records`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie },
-    body: JSON.stringify({ sid, cipher_iv: blob.iv, payload: blob.data, guard: 'init' }),
+    body: JSON.stringify({ sid, cipherIv: blob.iv, payload: blob.data, guard: 'init' }),
   });
   expect(createRes.status).toBe(201);
   const created = (await createRes.json()) as RawRecord;
@@ -99,7 +99,7 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
     expect(list.records).toHaveLength(1);
     const decoded = await simDecryptPayload<MoodPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
+      list.records[0]!.cipherIv,
       list.records[0]!.payload,
     );
     expect(decoded.comment).toBe('ok day');
@@ -117,13 +117,13 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
         'x-sid': sid,
         'x-guard': guard,
       },
-      body: JSON.stringify({ cipher_iv: newBlob.iv, payload: newBlob.data }),
+      body: JSON.stringify({ cipherIv: newBlob.iv, payload: newBlob.data }),
     });
     expect(upd.status).toBe(200);
     const updated = (await upd.json()) as RawRecord;
     const reDecoded = await simDecryptPayload<MoodPayload>(
       keys.aesKey,
-      updated.cipher_iv,
+      updated.cipherIv,
       updated.payload,
     );
     expect(reDecoded.comment).toBe('great day after all');
@@ -160,7 +160,7 @@ describe('Goals module — full encrypted round-trip', () => {
     expect(list.records).toHaveLength(1);
     const got = await simDecryptPayload<GoalsPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
+      list.records[0]!.cipherIv,
       list.records[0]!.payload,
     );
     expect(got.title).toBe('Ship Phase 6');
@@ -189,7 +189,7 @@ describe('Passage module — full encrypted round-trip', () => {
     const list = (await listRes.json()) as { records: RawRecord[] };
     const got = await simDecryptPayload<PassagePayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
+      list.records[0]!.cipherIv,
       list.records[0]!.payload,
     );
     expect(got.title).toBe('Phase 6 notes');
@@ -249,7 +249,7 @@ describe('Habits — items and logs encrypted round-trip', () => {
 
     const decrypted = await Promise.all(
       list.records.map((r) =>
-        simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipher_iv, r.payload),
+        simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipherIv, r.payload),
       ),
     );
     const dates = decrypted.map((d) => d.date).sort();
@@ -311,7 +311,7 @@ describe('Library — items and reviews encrypted round-trip', () => {
     expect(list.records).toHaveLength(2);
     const notes = await Promise.all(
       list.records.map((r) =>
-        simDecryptPayload<LibraryReviewPayload>(keys.aesKey, r.cipher_iv, r.payload),
+        simDecryptPayload<LibraryReviewPayload>(keys.aesKey, r.cipherIv, r.payload),
       ),
     );
     const byDate = notes.sort((a, b) => a.date.localeCompare(b.date));
@@ -358,7 +358,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
     expect(list.records).toHaveLength(1);
     const got = await simDecryptPayload<ReviewPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
+      list.records[0]!.cipherIv,
       list.records[0]!.payload,
     );
     expect(got.year).toBe(2025);

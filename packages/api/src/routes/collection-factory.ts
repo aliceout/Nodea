@@ -14,22 +14,22 @@ import { requireGuard, type GuardVariables } from '../middleware/require-guard.t
 /**
  * Public view of an entry. The minimum-readable-surface design only
  * exposes :
- *   - `id`         server-generated UUID handle (used in /records/:id)
- *   - `module_user_id`  the access scope sid
- *   - `cipher_iv`  AES-GCM IV (required to decrypt the payload)
- *   - `payload`    encrypted JSON
+ *   - `id`             server-generated UUID handle (used in /records/:id)
+ *   - `moduleUserId`   the access scope sid
+ *   - `cipherIv`       AES-GCM IV (required to decrypt the payload)
+ *   - `payload`        encrypted JSON
  *
  * `guard` is never returned (it's the shared secret authenticating
  * mutations). Timestamps are not stored at all server-side ; any
- * created_at / updated_at the client wants must live inside the
+ * createdAt / updatedAt the client wants must live inside the
  * encrypted payload (so the operator can't correlate write activity
  * across modules to deanonymise users).
  */
 function toView(row: EntryRow) {
   return {
     id: row.id,
-    module_user_id: row.moduleUserId,
-    cipher_iv: row.cipherIv,
+    moduleUserId: row.moduleUserId,
+    cipherIv: row.cipherIv,
     payload: row.payload,
   };
 }
@@ -102,7 +102,7 @@ export function createCollectionRoutes(table: EntryTable) {
       .values({
         id,
         moduleUserId: body.sid,
-        cipherIv: body.cipher_iv,
+        cipherIv: body.cipherIv,
         payload: body.payload,
         guard: INIT_GUARD,
       })
@@ -127,7 +127,7 @@ export function createCollectionRoutes(table: EntryTable) {
     const body = parsed.data;
 
     const updates: Partial<typeof table.$inferInsert> = {};
-    if (body.cipher_iv !== undefined) updates.cipherIv = body.cipher_iv;
+    if (body.cipherIv !== undefined) updates.cipherIv = body.cipherIv;
     if (body.payload !== undefined) updates.payload = body.payload;
 
     if (body.guard !== undefined) {

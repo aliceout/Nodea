@@ -11,7 +11,7 @@ describe('GET /version', () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(body).toEqual({
       commit: expect.any(String),
-      build_date: expect.any(String),
+      buildDate: expect.any(String),
       branch: expect.any(String),
     });
   });
@@ -19,6 +19,6 @@ describe('GET /version', () => {
   it('does not expose any other fields (no `version`, no `api_version`)', async () => {
     const res = await app.request('/version');
     const body = (await res.json()) as Record<string, unknown>;
-    expect(Object.keys(body).sort()).toEqual(['branch', 'build_date', 'commit']);
+    expect(Object.keys(body).sort()).toEqual(['branch', 'buildDate', 'commit']);
   });
 });

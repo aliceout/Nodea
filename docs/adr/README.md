@@ -30,7 +30,7 @@ On suit le format [MADR](https://adr.github.io/madr/) (Markdown ADR), version si
 |---|---|---|
 | [0001](./0001-layered-hybrid-architecture.md) | Architecture en couches hybride (layered + feature-first) | Accepted |
 | [0002](./0002-zustand-single-store.md) | Zustand single store + per-module React contexts | Accepted |
-| [0003](./0003-snake-case-camel-case-frontier.md) | Frontière snake_case ↔ camelCase entre serveur et client | Accepted |
+| [0003](./0003-snake-case-camel-case-frontier.md) | Frontière snake_case ↔ camelCase entre serveur et client | Superseded by [0012](./0012-camel-case-only-on-the-wire.md) |
 | [0004](./0004-no-request-cache.md) | Pas de cache de requêtes (TanStack Query, SWR, etc.) | Accepted |
 | [0005](./0005-no-ssr.md) | Pas de SSR — CSR pur, single-page application | Accepted |
 | [0006](./0006-zustand-mono-store-rationale.md) | `nodea-store` en un seul fichier vs splitté en plusieurs slices | Accepted |
@@ -39,6 +39,7 @@ On suit le format [MADR](https://adr.github.io/madr/) (Markdown ADR), version si
 | [0009](./0009-library-lookup-as-service.md) | `library-lookup` déménagé en `services/library-lookup/` | Accepted |
 | [0010](./0010-getconfig-singleton.md) | `getConfig()` en singleton global | Accepted |
 | [0011](./0011-drizzle-forward-only-migrations.md) | Migrations Drizzle forward-only, sans rollback | Accepted |
+| [0012](./0012-camel-case-only-on-the-wire.md) | Tout-camelCase sur le wire (supersède 0003) | Accepted |
 
 ## Quand écrire un nouvel ADR
 

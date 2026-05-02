@@ -49,7 +49,7 @@ describe('Runtime opacity — request logs', () => {
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({
         sid,
-        cipher_iv: 'iv-opacity',
+        cipherIv: 'iv-opacity',
         payload: 'payload-opacity',
         guard: 'init',
       }),

@@ -1,7 +1,8 @@
 # 0003 — Frontière snake_case ↔ camelCase entre serveur et client
 
-- **Status** : Accepted
+- **Status** : Superseded by [ADR-0012](./0012-camel-case-only-on-the-wire.md)
 - **Date** : 2026-02
+- **Superseded** : 2026-05 — la décision « tout-camelCase » a remplacé la frontière. Le contenu ci-dessous décrit l'état antérieur du code et reste utile comme contexte historique.
 
 ## Context
 

@@ -5,9 +5,9 @@ import { request } from './internal.ts';
  * -------------------------------------------------------------- */
 
 export interface ModulesConfigResponse {
-  cipher_iv: string | null;
+  cipherIv: string | null;
   payload: string | null;
-  updated_at?: string;
+  updatedAt?: string;
 }
 
 export async function apiGetModulesConfig(): Promise<ModulesConfigResponse> {
@@ -15,7 +15,7 @@ export async function apiGetModulesConfig(): Promise<ModulesConfigResponse> {
 }
 
 export async function apiPutModulesConfig(body: {
-  cipher_iv: string;
+  cipherIv: string;
   payload: string;
 }): Promise<ModulesConfigResponse> {
   return request<ModulesConfigResponse>('PUT', '/modules-config', body);
@@ -26,9 +26,9 @@ export async function apiPutModulesConfig(body: {
  * -------------------------------------------------------------- */
 
 export interface UserPreferencesResponse {
-  cipher_iv: string | null;
+  cipherIv: string | null;
   payload: string | null;
-  updated_at?: string;
+  updatedAt?: string;
 }
 
 export async function apiGetUserPreferences(): Promise<UserPreferencesResponse> {
@@ -36,7 +36,7 @@ export async function apiGetUserPreferences(): Promise<UserPreferencesResponse> 
 }
 
 export async function apiPutUserPreferences(body: {
-  cipher_iv: string;
+  cipherIv: string;
   payload: string;
 }): Promise<UserPreferencesResponse> {
   return request<UserPreferencesResponse>('PUT', '/user-preferences', body);

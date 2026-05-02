@@ -19,15 +19,15 @@ import type { Base64, CipherIV, EncryptedBlob } from '@nodea/shared';
 
 export interface EncryptedRecord {
   id: string;
-  module_user_id: string;
-  cipher_iv: string;
+  moduleUserId: string;
+  cipherIv: string;
   payload: string;
 }
 
 /**
  * Decrypted record handed back to module code. The server-side
  * minimum-readable-surface design dropped per-row timestamps —
- * any `created_at` / `updated_at` a module needs lives inside
+ * any `createdAt` / `updatedAt` a module needs lives inside
  * the encrypted payload (`T`). Module clients that want
  * chronological ordering pull dates from `payload.*` after
  * decryption rather than from the wrapper.
@@ -108,13 +108,13 @@ export interface CollectionClient<TSchema extends ZodTypeAny> {
 
 /**
  * Pack an `AesBlob` into the request shape `CreateEntryBodySchema` /
- * `UpdateEntryBodySchema` enforce server-side: `cipher_iv` + `payload`.
+ * `UpdateEntryBodySchema` enforce server-side: `cipherIv` + `payload`.
  * The earlier `{ iv, data }` keys never matched either schema — every
  * create / update silently 400'd. Renamed once so both `create` and
  * `update` share the right wire format.
  */
-function packBlob(blob: AesBlob): { cipher_iv: CipherIV; payload: EncryptedBlob } {
-  return { cipher_iv: blob.iv, payload: blob.data };
+function packBlob(blob: AesBlob): { cipherIv: CipherIV; payload: EncryptedBlob } {
+  return { cipherIv: blob.iv, payload: blob.data };
 }
 
 export function createCollectionClient<TSchema extends ZodTypeAny>(
@@ -148,8 +148,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     return Promise.all(
       records.map(async (r) => ({
         id: r.id,
-        moduleUserId: r.module_user_id,
-        payload: await decodePayload(key, r.cipher_iv, r.payload),
+        moduleUserId: r.moduleUserId,
+        payload: await decodePayload(key, r.cipherIv, r.payload),
       })),
     );
   }
@@ -181,8 +181,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     );
     return {
       id: promoted.id,
-      moduleUserId: promoted.module_user_id,
-      payload: await decodePayload(key, promoted.cipher_iv, promoted.payload),
+      moduleUserId: promoted.moduleUserId,
+      payload: await decodePayload(key, promoted.cipherIv, promoted.payload),
     };
   }
 
@@ -201,8 +201,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     );
     return {
       id: updated.id,
-      moduleUserId: updated.module_user_id,
-      payload: await decodePayload(key, updated.cipher_iv, updated.payload),
+      moduleUserId: updated.moduleUserId,
+      payload: await decodePayload(key, updated.cipherIv, updated.payload),
     };
   }
 
