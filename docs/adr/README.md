@@ -33,6 +33,12 @@ On suit le format [MADR](https://adr.github.io/madr/) (Markdown ADR), version si
 | [0003](./0003-snake-case-camel-case-frontier.md) | Frontière snake_case ↔ camelCase entre serveur et client | Accepted |
 | [0004](./0004-no-request-cache.md) | Pas de cache de requêtes (TanStack Query, SWR, etc.) | Accepted |
 | [0005](./0005-no-ssr.md) | Pas de SSR — CSR pur, single-page application | Accepted |
+| [0006](./0006-zustand-mono-store-rationale.md) | `nodea-store` en un seul fichier vs splitté en plusieurs slices | Accepted |
+| [0007](./0007-hand-rolled-api-client.md) | Client API web : 14 fonctions dédiées vs `hc<AppType>` de Hono | Accepted |
+| [0008](./0008-auth-routes-flat.md) | Dossier `auth/` plat plutôt que séparé en couches | Accepted |
+| [0009](./0009-library-lookup-as-service.md) | `library-lookup` déménagé en `services/library-lookup/` | Accepted |
+| [0010](./0010-getconfig-singleton.md) | `getConfig()` en singleton global | Accepted |
+| [0011](./0011-drizzle-forward-only-migrations.md) | Migrations Drizzle forward-only, sans rollback | Accepted |
 
 ## Quand écrire un nouvel ADR
 
