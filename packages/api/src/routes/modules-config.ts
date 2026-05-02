@@ -19,6 +19,13 @@ import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
  *
  * This exemption is intentional and documented in CLAUDE.md and the
  * Migration Roadmap.
+ *
+ * **Method choice — PUT, not PATCH** (audit API-04). The body
+ * `{ cipher_iv, payload }` is an indivisible pair: an IV without its
+ * ciphertext (or a ciphertext without its IV) cannot be decrypted, so
+ * a partial update has no meaning here. PUT signals « replace the
+ * entire encrypted blob » and is idempotent — two identical calls
+ * yield the same row state.
  */
 export const modulesConfigRoutes = new Hono<{ Variables: AuthVariables }>();
 

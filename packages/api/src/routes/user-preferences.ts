@@ -12,6 +12,11 @@ import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
  *
  * `requireUser` is the only middleware needed: there is no record id
  * to prove ownership of, the session's user IS the record.
+ *
+ * **Method choice — PUT, not PATCH** (audit API-04). Same rationale
+ * as `/modules-config` : `{ cipher_iv, payload }` is an indivisible
+ * pair (decryption requires both), so a partial update has no
+ * meaning. PUT = « replace the whole encrypted blob », idempotent.
  */
 export const userPreferencesRoutes = new Hono<{ Variables: AuthVariables }>();
 

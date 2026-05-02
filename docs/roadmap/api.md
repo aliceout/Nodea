@@ -220,17 +220,18 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### API-04 — `PUT` utilisé pour upsert-replace au lieu de `PATCH` partiel
+### API-04 — `PUT` utilisé pour upsert-replace au lieu de `PATCH` partiel — livré
 
 - **Sévérité** : faible
 - **Type de breaking** : breaking si on bouge en PATCH
+- **Statut** : livré (Tier 4 / Phase 2). Choix PUT confirmé : la paire `{ cipher_iv, payload }` est indivisible (l'IV sans son ciphertext n'a aucune utilité), un PATCH partiel n'a pas de sens. PUT signale « remplace l'intégralité du blob chiffré » et est idempotent.
 - **Endpoints** :
   - [`PUT /modules-config`](../../packages/api/src/routes/modules-config.ts#L42)
   - [`PUT /user-preferences`](../../packages/api/src/routes/user-preferences.ts#L35)
 - **Description** : ces deux routes prennent un body `{ cipher_iv, payload }` et font un upsert remplaçant la ligne entière. Sémantiquement c'est bien un `PUT` (replace, idempotent). Le finding est faible — c'est correct mais à doc.
 - **Tâches**
-  - [ ] Documenter dans `documentation/API.md` que `PUT` est utilisé ici pour signifier *« remplace l'intégralité du blob chiffré »* (opposé à un PATCH partiel).
-- **Effort** : S
+  - [x] Justification PUT vs PATCH ajoutée dans les JSDocs des deux routes (option « note minime in-place » plutôt que création d'un `documentation/API.md` séparé). Le choix est ainsi documenté à la lecture du code, sans dupliquer dans un fichier doc à maintenir séparément.
+- **Effort** : S — réalisé.
 - **Risque** : faible
 - **Dépendances** : aucune
 
