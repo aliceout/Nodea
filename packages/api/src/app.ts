@@ -28,14 +28,21 @@ export function buildApp() {
   const app = new Hono<{ Variables: AuthVariables }>();
 
   // CORS for the dev web origin. In prod the web is served behind the
-  // same origin as the API so CORS is a no-op. `credentials: true` is
-  // required so the browser forwards the session cookie.
+  // same origin as the API so CORS is a no-op — we explicitly refuse
+  // every cross-origin request to close a residual attack surface
+  // (e.g. a malicious app running on the user's localhost would
+  // otherwise get credentialed CORS access). `credentials: true` is
+  // required in dev so the browser forwards the session cookie when
+  // Vite (port 8089) hits the api (port 3000).
+  const isProd = getConfig().NODE_ENV === 'production';
   app.use(
     '*',
     cors({
       origin: (origin) => {
         if (!origin) return '';
-        // Accept any localhost / 127.0.0.1 dev origin
+        if (isProd) return ''; // Same-origin only in prod, no exception.
+        // Dev only: accept any localhost / 127.0.0.1 origin so Vite
+        // on a non-default port still works.
         if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin;
         return '';
       },
@@ -52,6 +59,20 @@ export function buildApp() {
   // forbids logging crypto material — see `docs/security-audit.md`
   // Finding 1.
   app.use('*', logger(redactingPrintFunc));
+
+  // Cache-Control on every API response (Tier 3 follow-up — the
+  // « no proxy ever caches authenticated data » rule). Without it,
+  // a corporate proxy or browser bfcache can serve one user's
+  // /auth/me / /<module>/records to another user. `/healthz` and
+  // `/version` are public and idempotent — they may be cached, so
+  // we leave them alone.
+  app.use('*', async (c, next) => {
+    await next();
+    const path = c.req.path;
+    if (path === '/healthz' || path === '/version') return;
+    c.header('Cache-Control', 'no-store, must-revalidate');
+    c.header('Pragma', 'no-cache');
+  });
 
   // Fire-and-forget webhook on every 5xx response (Tier 1 étape C
   // pas 1, OPS-02). Sends method + path + status + duration only,

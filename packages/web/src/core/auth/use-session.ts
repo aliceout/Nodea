@@ -116,7 +116,7 @@ export function useSession() {
     login: (body: Parameters<typeof loginAction>[1]) =>
       loginAction({ setAuth, setMainKey }, body),
     submitRegistration: submitRegistrationAction,
-    logout: async (): Promise<void> => {
+    logout: async (redirectTo: string = '/login'): Promise<void> => {
       try {
         await apiLogout();
       } finally {
@@ -124,6 +124,17 @@ export function useSession() {
         // same React session re-runs the /auth/me round-trip.
         hydrationStarted = false;
         resetAll();
+        // Force a full reload (CLAUDE.md crypto rule 7 : « Full purge
+        // = location.reload() »). `wipeMainKeyMaterial` cannot erase
+        // the `CryptoKey` references kept on the JS heap, and the
+        // browser's bfcache can otherwise restore an authenticated
+        // page on Back. `replace` (not `assign`) drops the current
+        // entry so Back doesn't even land on it. The `redirectTo`
+        // override lets callers like ChangePassword land on
+        // `/login?password-changed=1` to surface the success banner.
+        if (typeof window !== 'undefined') {
+          window.location.replace(redirectTo);
+        }
       }
     },
     changePassword: (input: Parameters<typeof changePasswordAction>[1]) =>

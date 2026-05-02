@@ -269,7 +269,7 @@ export const fr: EmailLocaleShape = {
     summaryHtml:
       "Quelqu'un (toi ?) vient de <strong>réinitialiser le mot de passe</strong> de ton compte Nodea via le code de récupération à 12 mots.",
     sessionsRevoked:
-      "Toutes tes sessions actives ont été révoquées et un nouveau code de récupération a été généré (l'ancien ne fonctionne plus).",
+      "Toutes tes sessions actives ont été révoquées. Le code de récupération que tu viens d'utiliser est désormais invalide — pense à en configurer un nouveau dans tes réglages, sans quoi tu n'auras plus de filet en cas d'oubli du mot de passe.",
     legitText:
       "Si c'est bien toi : tout est en ordre, tu peux te reconnecter avec ton nouveau mot de passe.",
     legitHtml:

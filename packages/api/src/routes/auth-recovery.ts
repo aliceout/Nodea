@@ -265,15 +265,23 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
       .set({ envelope: body.registrationRecord })
       .where(eq(opaqueRecords.userId, user.id));
 
+    // Tier 3 : the old code is consumed, NOT rotated in-place.
+    // We null `recoveryCodeHash` + `wrappedKekRecovery{,Iv}` so the
+    // typed mnemonic becomes useless, AND the user is dropped in the
+    // « no recovery code configured » state — the sidebar tip
+    // reappears (driven by `recoveryCodeSet: false` on /auth/me) and
+    // they can define a new code at their leisure via /recovery-code.
+    // `recoveryAcknowledgedAt` is also reset since the next code
+    // setup will set it again.
     await tx
       .update(users)
       .set({
         wrappedKekPassword: body.wrappedKekPassword,
         wrappedKekPasswordIv: body.wrappedKekPasswordIv,
-        wrappedKekRecovery: body.wrappedKekRecoveryNew,
-        wrappedKekRecoveryIv: body.wrappedKekRecoveryNewIv,
-        recoveryCodeHash: body.recoveryCodeHashNew,
-        recoveryAcknowledgedAt: new Date(),
+        wrappedKekRecovery: null,
+        wrappedKekRecoveryIv: null,
+        recoveryCodeHash: null,
+        recoveryAcknowledgedAt: null,
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));

@@ -87,13 +87,13 @@ test('recovery code — generate, then use to reset password', async ({ page }) 
     .getByRole('button', { name: /Réinitialiser|Reset|Récupérer|Recover/i })
     .click();
 
-  /* -------- 5. Acknowledge the new code, land on /flow -------- */
-  // Same `<RecoveryCodeDisplay>` flow — wait for it, ack, close.
-  const ack2 = page.getByRole('checkbox', { name: /noté|saved|sauvegardé/i });
-  if (await ack2.count() > 0) {
-    await ack2.check({ timeout: 10_000 });
-  }
-  await page.getByRole('button', { name: /Terminé|Done/i }).click();
+  /* -------- 5. Lands directly on /flow -------- */
+  // The new design (Tier 3 follow-up) doesn't rotate the recovery
+  // code in-place anymore — the server nulls `recovery_code_hash`
+  // server-side and the user is dropped on /flow with the sidebar
+  // « configure a recovery code » tip reappearing. No mnemonic to
+  // acknowledge. The notification email mentions the old code is
+  // now invalid.
   await expect(page).toHaveURL(/\/flow/, { timeout: 10_000 });
 
   /* -------- 6. Logout + relogin with NEW password -------- */

@@ -111,13 +111,13 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    // Force a logout + redirect to /login. The server already
-    // revoked every session in the change-password transaction;
-    // we drop the in-memory main-key material here too so the UI
-    // can't keep operating on stale state. The redirect lands on
-    // /login with a marker so the page can show a friendly notice.
-    await session.logout().catch(() => undefined);
-    navigate('/login?password-changed=1', { replace: true });
+    // Force a logout + redirect. The server already revoked every
+    // session in the change-password transaction ; passing the
+    // redirect URL to `session.logout` lets it do the full
+    // `location.replace` itself (CLAUDE.md crypto rule 7 : full
+    // RAM purge), landing on /login with a marker so the page can
+    // show the success banner.
+    await session.logout('/login?password-changed=1').catch(() => undefined);
   }
 
   const newPasswordRegister = field('newPassword', {

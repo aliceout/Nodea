@@ -10,7 +10,6 @@ import { useSession } from '@/core/auth/use-session';
 import { apiErrorMessage, isApiError } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
-import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
 import AuthLayout from '@/ui/dirk/AuthLayout';
 
 import FormPanel from './FormPanel';
@@ -24,39 +23,33 @@ zxcvbnOptions.setOptions({
  * `/recover` — non-destructive password recovery via BIP39 code
  * (Auth-Roadmap Phase 3, Auth-Spec §7.7).
  *
- * Three stages:
- *   1. **Form**: email + 12 words + new password (typed twice).
- *   2. **Display new code**: the recover flow rotates the recovery
- *      code along with the password (the OLD code is invalidated
- *      server-side as soon as /finish runs), so we show a new
- *      mnemonic with the same 4×3 grid + ack pattern as
- *      `/recovery-code`.
- *   3. **Done**: redirect to `/flow` — the server has minted a
- *      fresh session cookie at /finish so the user lands signed in.
+ * Two stages :
+ *   1. **Form** : email + 12 words + new password (typed twice).
+ *   2. **Done** : the server replaced the password credential AND
+ *      nulled the recovery code (the typed mnemonic is consumed —
+ *      useless if leaked). The user is redirected to `/flow` and
+ *      lands signed in. The sidebar « configure a recovery code »
+ *      tip reappears (driven by `recoveryCodeSet: false` on
+ *      `/auth/me`) prompting the user to define a new code at
+ *      their leisure. The notification email also tells them the
+ *      old code is now invalid.
  *
- * Throughout: anti-enum on unknown emails, anti-enum on wrong
+ * Throughout : anti-enum on unknown emails, anti-enum on wrong
  * recovery code (both surface as a generic "code invalide" with no
  * differentiation in the UI).
  */
-type Stage =
-  | { kind: 'form' }
-  | { kind: 'displaying'; mnemonic: string }
-  | { kind: 'done' };
-
 export default function RecoverPage() {
   useDocumentTitle('Récupération du compte');
   const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();
 
-  const [stage, setStage] = useState<Stage>({ kind: 'form' });
   const [email, setEmail] = useState('');
   const [mnemonic, setMnemonic] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [acknowledged, setAcknowledged] = useState(false);
 
   const rules = useMemo(() => checkPasswordRules(password), [password]);
   const rulesOk = passwordRulesPassed(rules);
@@ -85,16 +78,19 @@ export default function RecoverPage() {
 
     setSubmitting(true);
     try {
-      const result = await session.recoverWithCode({
+      await session.recoverWithCode({
         email,
         mnemonic,
         newPassword: password,
       });
-      setStage({ kind: 'displaying', mnemonic: result.mnemonic });
-      // Wipe the entered values from React state once accepted.
+      // Wipe the entered values from React state. The server has
+      // minted a fresh session cookie + nulled the recovery code,
+      // so we land on /flow and the sidebar tip will prompt the
+      // user to configure a new code when they're ready.
       setMnemonic('');
       setPassword('');
       setConfirm('');
+      navigate('/flow', { replace: true });
     } catch (err) {
       // Bad mnemonic shape (validated client-side) AND server-side
       // wrong-code AND unknown email all surface as the same
@@ -121,11 +117,6 @@ export default function RecoverPage() {
     }
   }
 
-  function handleDone(): void {
-    setStage({ kind: 'done' });
-    navigate('/flow', { replace: true });
-  }
-
   return (
     <AuthLayout
       headline="Récupère sans tout perdre."
@@ -138,52 +129,33 @@ export default function RecoverPage() {
             existantes.
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Tu repars avec un nouveau mot de passe et un nouveau code de
-            récupération. L’ancien code est invalidé immédiatement.
+            Ton ancien code de récupération est invalidé dès cette étape. Tu en
+            définiras un nouveau quand tu veux depuis tes réglages — un email te
+            confirmera l’invalidation.
           </p>
         </>
       }
     >
-      {stage.kind === 'form' ? (
-        <FormPanel
-          email={email}
-          setEmail={setEmail}
-          mnemonic={mnemonic}
-          setMnemonic={setMnemonic}
-          password={password}
-          setPassword={setPassword}
-          confirm={confirm}
-          setConfirm={setConfirm}
-          rules={rules}
-          rulesOk={rulesOk}
-          strength={strength}
-          confirmMismatch={confirmMismatch}
-          wordCount={wordCount}
-          emailLooksValid={emailLooksValid}
-          error={error}
-          submitting={submitting}
-          canSubmit={canSubmit}
-          onSubmit={onSubmit}
-        />
-      ) : null}
-
-      {stage.kind === 'displaying' ? (
-        <RecoveryCodeDisplay
-          eyebrow="Récupération"
-          title="Compte récupéré ✓"
-          subtitle={
-            <>
-              Ton ancien code a été invalidé. Voici le nouveau, à noter
-              immédiatement.
-            </>
-          }
-          mnemonic={stage.mnemonic}
-          acknowledged={acknowledged}
-          setAcknowledged={setAcknowledged}
-          doneLabel="Aller à l’accueil"
-          onDone={handleDone}
-        />
-      ) : null}
+      <FormPanel
+        email={email}
+        setEmail={setEmail}
+        mnemonic={mnemonic}
+        setMnemonic={setMnemonic}
+        password={password}
+        setPassword={setPassword}
+        confirm={confirm}
+        setConfirm={setConfirm}
+        rules={rules}
+        rulesOk={rulesOk}
+        strength={strength}
+        confirmMismatch={confirmMismatch}
+        wordCount={wordCount}
+        emailLooksValid={emailLooksValid}
+        error={error}
+        submitting={submitting}
+        canSubmit={canSubmit}
+        onSubmit={onSubmit}
+      />
     </AuthLayout>
   );
 }

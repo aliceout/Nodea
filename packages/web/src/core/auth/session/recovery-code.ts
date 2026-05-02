@@ -124,19 +124,21 @@ export async function setupRecoveryCode(
 }
 
 /**
- * Drive the full recover-with-code flow: typed mnemonic + new
+ * Drive the full recover-with-code flow : typed mnemonic + new
  * password → unwrap KEK locally → fresh OPAQUE registration on
- * the new password → re-wrap KEK under the new `exportKey` AND
- * under a freshly-generated BIP39 entropy → ship to /finish.
- * Server replaces every credential blob in a transaction and
- * mints a fresh session cookie.
+ * the new password → re-wrap KEK under the new `exportKey` →
+ * ship to /finish.
  *
- * The OLD recovery code is invalidated (its `wrappedKekRecovery`
- * blob is gone after /finish). The returned mnemonic is the NEW
- * code the user must save; show it once and prompt for the
- * "j'ai noté" acknowledgement before navigating away.
+ * The OLD recovery code is invalidated server-side (the
+ * `wrappedKekRecovery` blob + `recoveryCodeHash` are nulled out).
+ * The user is dropped in the « no recovery code configured » state
+ * — the sidebar tip reappears (driven by `recoveryCodeSet: false`
+ * on `/auth/me`) and they can define a new code at their leisure
+ * via `/recovery-code`. No same-flow rotation, no new mnemonic to
+ * memorise on the spot. The notification email mentions the old
+ * code is now invalid.
  *
- * Throws on:
+ * Throws on :
  *   - Bad mnemonic shape (wrong word count, unknown word, bad
  *     checksum) → `Error('invalid_recovery_code')`.
  *   - Wrong code (server `recovery_code_hash` mismatch) →
@@ -148,7 +150,7 @@ export async function setupRecoveryCode(
 export async function recoverWithCode(
   deps: { setAuth: SetAuth; setMainKey: SetMainKey },
   input: SessionRecoverInput,
-): Promise<SessionRecoveryCodeResult> {
+): Promise<void> {
   await opaqueReady;
 
   const entropy = recoveryMnemonicToEntropy(input.mnemonic);
@@ -204,66 +206,51 @@ export async function recoverWithCode(
         buildKekAAD(start.userId, 'password'),
       );
 
-      // Step 6: generate a NEW BIP39 mnemonic — the old code is
-      // invalidated as soon as /finish runs, so we must be ready
-      // to display the replacement.
-      const { mnemonic: newMnemonic, entropy: newEntropy } =
-        generateRecoveryMnemonic();
-      try {
-        const newRecoveryWrap = await wrapKekUnderFactor(
+      // Step 6: ship to /finish. Server replaces the password
+      // credential AND nulls out the recovery code (the typed
+      // mnemonic is now consumed, useless if leaked elsewhere).
+      const { sha256Hex } = await import('../../crypto/bip39.ts');
+      const oldHash = await sha256Hex(entropy);
+
+      await apiRecoverKekFinish({
+        recoverSessionId: start.recoverSessionId,
+        recoveryCodeHash: oldHash,
+        registrationRecord: newReg.registrationRecord,
+        wrappedKekPassword: newKekWrap.wrappedKek,
+        wrappedKekPasswordIv: newKekWrap.wrappedKekIv,
+      });
+
+      // Server has minted a fresh session cookie + replaced the
+      // password credential. Hydrate `/me` so the rest of the app
+      // picks up the new state — including `recoveryCodeSet:
+      // false` so the « configure a recovery code » sidebar tip
+      // reappears.
+      const me = await apiMe();
+      if (me) deps.setAuth(me);
+
+      // Derive main-key material from the in-memory KEK we just
+      // unwrapped (the wrapped_main_key blob didn't change). The
+      // user lands on the app fully signed in.
+      if (
+        me?.wrappedMainKey !== undefined &&
+        me?.wrappedMainKey !== null &&
+        me?.wrappedMainKeyIv !== undefined &&
+        me?.wrappedMainKeyIv !== null
+      ) {
+        const rawMainKey = await unwrapMainKeyUnderKek(
+          {
+            wrappedMainKey: me.wrappedMainKey as unknown as Base64,
+            wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
+          },
           kekBytes,
-          newEntropy,
-          buildKekAAD(start.userId, 'recovery'),
+          buildMainKeyAAD(me.id),
         );
-        const { sha256Hex } = await import('../../crypto/bip39.ts');
-        const newHash = await sha256Hex(newEntropy);
-        const oldHash = await sha256Hex(entropy);
-
-        await apiRecoverKekFinish({
-          recoverSessionId: start.recoverSessionId,
-          recoveryCodeHash: oldHash,
-          registrationRecord: newReg.registrationRecord,
-          wrappedKekPassword: newKekWrap.wrappedKek,
-          wrappedKekPasswordIv: newKekWrap.wrappedKekIv,
-          wrappedKekRecoveryNew: newRecoveryWrap.wrappedKek,
-          wrappedKekRecoveryNewIv: newRecoveryWrap.wrappedKekIv,
-          recoveryCodeHashNew: newHash,
-        });
-
-        // Server has minted a fresh session cookie + replaced
-        // every credential blob. Hydrate `/me` so the rest of
-        // the app picks up the new state.
-        const me = await apiMe();
-        if (me) deps.setAuth(me);
-
-        // Derive main-key material from the in-memory KEK we
-        // just unwrapped (the wrapped_main_key blob didn't
-        // change). The user lands on the app fully signed in.
-        if (
-          me?.wrappedMainKey !== undefined &&
-          me?.wrappedMainKey !== null &&
-          me?.wrappedMainKeyIv !== undefined &&
-          me?.wrappedMainKeyIv !== null
-        ) {
-          const rawMainKey = await unwrapMainKeyUnderKek(
-            {
-              wrappedMainKey: me.wrappedMainKey as unknown as Base64,
-              wrappedMainKeyIv: me.wrappedMainKeyIv as unknown as Base64,
-            },
-            kekBytes,
-            buildMainKeyAAD(me.id),
-          );
-          try {
-            const material = await deriveMainKeys(rawMainKey);
-            deps.setMainKey(material);
-          } finally {
-            rawMainKey.fill(0);
-          }
+        try {
+          const material = await deriveMainKeys(rawMainKey);
+          deps.setMainKey(material);
+        } finally {
+          rawMainKey.fill(0);
         }
-
-        return { mnemonic: newMnemonic, regenerated: true };
-      } finally {
-        newEntropy.fill(0);
       }
     } finally {
       kekBytes.fill(0);

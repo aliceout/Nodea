@@ -102,20 +102,24 @@ export type RecoverKekStartResponse = z.infer<
 
 /**
  * `POST /auth/recover-kek/finish` — consumes the recover session,
- * validates the recovery-code hash in constant time, replaces
- * everything in a transaction.
+ * validates the recovery-code hash in constant time, replaces the
+ * password credential, and **invalidates the old recovery code**
+ * (Tier 3 follow-up).
  *
  *   - `recoverSessionId` from /start (single-use).
  *   - `recoveryCodeHash` (SHA-256 hex) — anti-DoS gate, compared
  *     constant-time against the stored value.
- *   - The full new credential set:
+ *   - New password credential :
  *     - OPAQUE `registrationRecord` (new password)
  *     - `wrappedKekPassword{,Iv}` (KEK re-wrapped under new exportKey)
- *     - `wrappedKekRecoveryNew{,Iv}` + `recoveryCodeHashNew` (the
- *       old code is invalidated; the user must save the new one).
  *
- * The new BIP39 mnemonic is generated client-side and shown on
- * success; it never crosses the wire.
+ * The recovery code itself is **not rotated in this flow** : the
+ * server simply nulls `recoveryCodeHash` + `wrappedKekRecovery{,Iv}`
+ * after a successful recovery, the notification email tells the user
+ * the code is now invalid, and the sidebar « configure a recovery
+ * code » tip reappears (driven by `recoveryCodeSet === false` on
+ * `/auth/me`). The user defines a new code at their leisure via
+ * `/recovery-code`, no longer locked into a same-flow rotation.
  */
 export const RecoverKekFinishBodySchema = z.object({
   recoverSessionId: z.string().min(1).max(2048),
@@ -123,8 +127,5 @@ export const RecoverKekFinishBodySchema = z.object({
   registrationRecord: OpaqueBlob,
   wrappedKekPassword: Base64ish,
   wrappedKekPasswordIv: Base64ish,
-  wrappedKekRecoveryNew: Base64ish,
-  wrappedKekRecoveryNewIv: Base64ish,
-  recoveryCodeHashNew: Sha256Hex,
 });
 export type RecoverKekFinishBody = z.infer<typeof RecoverKekFinishBodySchema>;

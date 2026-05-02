@@ -131,7 +131,7 @@ export const en: EmailLocale = {
     summaryHtml:
       'Someone (you?) just <strong>reset the password</strong> on your Nodea account using the 12-word recovery code.',
     sessionsRevoked:
-      "Every active session was revoked and a new recovery code was generated (the old one no longer works).",
+      "Every active session was revoked. The recovery code you just used is now invalid — please configure a new one in your settings, otherwise you'll have no fallback if you forget your password.",
     legitText:
       "If that's you: everything is in order, you can sign in again with your new password.",
     legitHtml:

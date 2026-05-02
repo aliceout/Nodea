@@ -16,11 +16,27 @@ import {
   users,
 } from '../db/schema.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
+import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 
 import { isUniqueViolation } from './auth-shared.ts';
 
 export const authAccountRoutes = new Hono<{ Variables: AuthVariables }>();
+
+/**
+ * Rate limit on email change : one change per IP per 24 h. Closes
+ * a hijack scenario where a stolen session cookie would otherwise
+ * let an attacker swap the account email silently and then trigger
+ * `/request-reset` on their own address to lock the legitimate
+ * user out. The 24 h window is wide enough that an honest user
+ * who mistypes never hits it twice in the same day ; narrow enough
+ * that a real attack triggers the limiter on the first try.
+ */
+const changeEmailLimiter = rateLimit({
+  max: 1,
+  windowMs: 24 * 60 * 60 * 1000,
+  keyPrefix: 'rl:change-email',
+});
 
 /**
  * Authenticated user introspection. Surfaces enough state for
@@ -119,7 +135,7 @@ authAccountRoutes.get('/me', requireUser, async (c) => {
  * IS the email — that's a separate spec section (§7.6) and
  * not implemented here.
  */
-authAccountRoutes.patch('/email', requireUser, requireFreshPassword, async (c) => {
+authAccountRoutes.patch('/email', changeEmailLimiter, requireUser, requireFreshPassword, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ChangeEmailBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
