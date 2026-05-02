@@ -393,3 +393,95 @@ own Infisical / `.env`.
   `encrypted_key`. Keep the integration test that asserts this.
 - Crypto additions use branded types (`AesMainKey`, `HmacMainKey`, …)
   so mixing primitives fails at compile time.
+
+---
+
+## 9. Data retention & RGPD
+
+> See also the user-facing draft in [`Terms.md`](./Terms.md), which
+> consumes this matrix and turns it into plain-language commitments.
+
+Nodea processes personal data under **legitimate interest** (running
+the service requested by the user) for everything operational, and
+under **explicit consent** for the encrypted journal content (the user
+opens an account knowing they're storing E2E-encrypted notes).
+
+### 9.1 Retention matrix
+
+Every table that holds personal-or-derived data is listed below, with
+its retention rule and the FK cascade that fires on account deletion.
+Tables not listed (e.g. `app_settings`, `announcements`) hold no
+personal data.
+
+| Table | Holds | Retention | Erased on `DELETE /auth/me` |
+|---|---|---|---|
+| `users` | id, email, username, role, OPAQUE wrap blobs, security mode | While the account exists | Yes |
+| `opaque_records` | OPAQUE envelope (per-user) | Lifetime of the user row | Yes (FK cascade) |
+| `auth_factors` | Passkey credentials (id, label, transports, wrap blobs, prfSupported) | Lifetime of the user row, or until user removes the credential | Yes (FK cascade) |
+| `mfa_totp` | TOTP secret (encrypted) + enabled flag | Lifetime of the user row, or until user disables TOTP | Yes (FK cascade) |
+| `mfa_totp_recovery_codes` | Hashed backup codes | Lifetime of the user row, single-use (consumed rows kept for audit) | Yes (FK cascade) |
+| `mfa_bypass_requests` | Bypass tokens (hashed), confirm/cancel timestamps | Currently kept indefinitely for audit; rows are functionally inert after consume/cancel/expire | Yes (FK cascade) |
+| `email_verifications` | One-time tokens for register/reset/change-email | `register` kind purged weekly when expired (cron). Other kinds kept indefinitely until consumed | Yes (FK cascade) |
+| `password_reset_tokens` | One-time tokens for password reset | Currently kept indefinitely; functionally inert after consume/expire | Yes (FK cascade) |
+| `sessions` | Session cookies + expiry | Purged weekly when `expires_at` past (cron) | Yes (FK cascade) |
+| `modules_config` | Per-module HMAC guard + encrypted user-id mapping | Lifetime of the user row | Yes (FK cascade) |
+| `user_preferences` | Encrypted UI settings blob | Lifetime of the user row | Yes (FK cascade) |
+| `entries_*` (per module) | E2E-encrypted journal content + AAD | Lifetime of the user row, or until user deletes the entry | Yes (FK cascade) |
+
+### 9.2 Right to erasure (RGPD art. 17)
+
+`DELETE /auth/me` (route at
+[`packages/api/src/routes/auth-account.ts`](../packages/api/src/routes/auth-account.ts))
+deletes the `users` row with `requireFreshPassword`. **Every other
+table FK-cascades on `user_id`**, so a single DELETE wipes the entire
+tree atomically. The route emits no email and surfaces no audit row
+on the user side — the user disappears completely, by design.
+
+Operator-side, the deletion is visible in the next cron run's logs as
+`{ users: N, sessions: M }` deltas. There is no soft-delete and no
+recovery — once the row is gone, the encrypted blobs become
+mathematical noise (the KEK and main key derived from the password
+are never persisted anywhere except as wraps gated by the user's
+password proof).
+
+### 9.3 Right to portability (RGPD art. 20)
+
+The `Account` view exposes a per-module export that downloads the
+decrypted JSON of every entry the user owns. Decryption happens
+client-side; the server never sees the cleartext. This satisfies
+portability without weakening the E2E model.
+
+### 9.4 Server-side logs
+
+`hono/logger()` writes one line per HTTP request to stdout — method,
+path, status, duration. **No body, no headers, no cookies, no
+session id**. The `X-Sid` / `X-Guard` headers added in SEC-01 stay
+out of access logs by virtue of being headers (not query strings).
+
+In production, stdout is captured by the container runtime. Operator
+responsibility: configure log retention at the runtime level
+(`docker logs --max-size`, journald, etc.). Recommended:
+**rotate at 7 days**, never archive raw logs offsite.
+
+### 9.5 Sentry telemetry
+
+When `VITE_SENTRY_DSN` / `SENTRY_DSN` are set, the SDK ships error
+events to Sentry. The `beforeSend` hook (`packages/api/src/sentry.ts`,
+`packages/web/src/sentry.ts`) strips cookies, query strings, request
+bodies, headers, and `event.user` before transmission. What reaches
+Sentry: the stack trace, the route, the status code. No personal
+data, no E2E content.
+
+### 9.6 What's NOT yet purged automatically (known gaps)
+
+The following rows accumulate over time and are kept for audit
+purposes:
+- `mfa_bypass_requests` after `consumed_at` / `cancelled_at`
+- `password_reset_tokens` after `consumed_at`
+- `email_verifications` of kinds other than `register`
+
+For a tighter retention envelope, extend
+[`packages/api/src/cron/index.ts`](../packages/api/src/cron/index.ts)
+with delete-where clauses past a chosen audit window (e.g. 90 days).
+This is left as an operator decision — the audit value of those rows
+is non-zero, and the volumes are tiny in V1.

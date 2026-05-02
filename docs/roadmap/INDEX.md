@@ -207,7 +207,7 @@ résout les deux.
 
 ### Privacy & RGPD (~3-4h)
 
-- [ ] **SEC-09** — Matrice de rétention RGPD + ébauche de CGU. ~3h. [`security.md`](./security.md)
+- [x] **SEC-09** — Matrice de rétention RGPD ajoutée (`Security.md` §9, 12 tables) + ébauche CGU créée (`Terms.md`, 8 sections). [`security.md`](./security.md)
 - [ ] **SEC-06** — Compteur agrégé au lieu du log `user.id` sur recovery hash mismatch. ~30 min. [`security.md`](./security.md)
 - [ ] **SEC-07** — Logo email en base64 inline (élimine le tracking pixel). ~30 min. [`security.md`](./security.md)
 - [ ] **SEC-08** — Passer `SameSite='Strict'` sur le cookie session. ~10 min. [`security.md`](./security.md)

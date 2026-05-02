@@ -261,23 +261,22 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Risque** : faible
 - **Dépendances** : SEC-02 (la CSP couvre la majorité du scénario)
 
-### SEC-09 — RGPD : pas de durée de conservation documentée
+### SEC-09 — RGPD : matrice de rétention + brouillon CGU — livré (V1)
 
 - **Sévérité** : faible
-- **Exploitabilité** : N/A (compliance)
-- **Fichiers** :
-  - [`packages/api/src/db/schema.ts`](../../packages/api/src/db/schema.ts) (table `sessions`)
-  - [`packages/api/src/cron/index.ts`](../../packages/api/src/cron/index.ts) — purge jobs
-- **Description** : les `sessions` rows expirent (`expires_at`) et le cron purge les `sessions` expirées + les utilisateurs `pre_register` non activés. **Mais** : pas de purge documentée des hash de bypass tokens consommés, des blobs d'entrées orphelines après suppression de compte (mentionné dans la roadmap publique comme « nettoyage périodique » mais pas vérifié dans le code), des IPs loggées par `hono/logger()`. RGPD exige une base légale (intérêt légitime ici, OK) **et** une durée de conservation documentée.
-- **Scénario** : non-conformité RGPD si la CNIL ou un user demande un audit. Pas d'exploitation technique.
+- **Statut** : livré pour la V1 doc — la version définitive des CGU passera par un·e juriste avant signature, et la matrice peut être resserrée si l'opérateur veut une rétention plus stricte.
 - **Tâches**
-  - [ ] Vérifier dans `cron/index.ts` la purge des blobs orphelins (rows dont le user parent a disparu).
-  - [ ] Documenter la matrice : table × durée de conservation × base légale × possibilité d'effacement à la demande, dans `documentation/Security.md` (à créer).
-  - [ ] Ajouter ces engagements dans la future CGU mentionnée dans `newbie.md` (« il n'y a pas encore de CGU formelles »).
-  - [ ] Implémenter une route `DELETE /auth/me` qui consomme ces engagements (cf. § *Suppression du compte* dans `advanced.md`).
-- **Effort** : M (~3h documentation + audit du cron)
+  - [x] Audit cron : confirmé que les FK CASCADE sur `user_id` empêchent les blobs orphelins (un `DELETE FROM users WHERE id = X` cascade vers chaque table E2E + auth + modules). Aucun nettoyage code-side supplémentaire requis pour l'orphan-free invariant.
+  - [x] Matrice complète table × rétention × erasure-on-demand documentée dans [`docs/Security.md` §9](../Security.md#9-data-retention--rgpd) (12 tables couvertes, dont les 3 gaps connus de purge automatique : `mfa_bypass_requests` / `password_reset_tokens` / `email_verifications` non-`register` — kept indefinitely for audit, à durcir par l'opérateur si besoin).
+  - [x] Brouillon CGU créé : [`docs/Terms.md`](../Terms.md) — 8 sections (qui propose, ce que tu confies, engagements, ce que tu acceptes, logs/télémétrie, emails, modification, contact) + glossaire. Marqué explicitement « ébauche de travail, pas encore juridique ».
+  - [x] Lien depuis `newbie.md` (FAQ « Mes données sont stockées où ? ») vers `Terms.md` ajouté.
+  - [x] Route `DELETE /auth/me` déjà en place ([`auth-account.ts:208`](../../packages/api/src/routes/auth-account.ts#L208)) avec `requireUser` + `requireFreshPassword` ; les FK CASCADE assurent l'effacement complet en une transaction. Documenté dans la matrice.
+- **Décisions explicites non prises ici** :
+  - Pas de modification du cron : durcir la rétention au-delà de l'audit (90 j ?) est une décision opérateur, pas une obligation RGPD tant qu'on documente la rétention en cours.
+  - Pas d'envoi d'email à la suppression compte : la documentation actuelle dit « le user disparaît complètement, by design » — voulu pour respecter le « droit à l'oubli ».
+- **Effort** : M — réalisé en doc seulement (pas de code touché).
 - **Risque** : faible
-- **Dépendances** : aucune (mais à coordonner avec la rédaction des CGU)
+- **Dépendances** : aucune (mais à coordonner avec la review juridique des CGU avant publication)
 
 ### SEC-10 — `WEB_BASE_URL` optionnel — fallback en URL relative dans les emails
 
