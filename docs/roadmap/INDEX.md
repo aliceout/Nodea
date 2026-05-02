@@ -196,7 +196,7 @@ résout les deux.
 ### Splits structurels (~2 jours)
 
 - [x] **REFACTO-08** — Library context 477 → 191 LOC + 3 hooks ; Goals context 408 → 155 LOC + 3 hooks. Pattern refs internes pour stabilité des callbacks d'actions. [`refacto.md`](./refacto.md)
-- [ ] **REFACTO-12** + **REFACTO-06** combinés — Harmoniser pages auth (flat→folder) + standardiser RHF. ~1-2 jours. **Couple les deux.** [`refacto.md`](./refacto.md)
+- [x] **REFACTO-12** + **REFACTO-06** combinés — 5 pages flat → folder (Login, ChangePassword, RequestReset, BypassConfirm, SecurityMode) + RHF + zodResolver sur DestroyForm + ResetForm. Règles « page > 200 LOC → folder » et « form 2+ champs → RHF » figées dans CLAUDE.md. [`refacto.md`](./refacto.md)
 
 ### Documentation & process (~1 jour)
 

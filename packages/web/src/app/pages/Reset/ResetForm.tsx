@@ -1,54 +1,87 @@
-import type { FormEvent } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
+import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
-interface ResetFormProps {
-  password: string;
-  setPassword: (next: string) => void;
-  confirm: string;
-  setConfirm: (next: string) => void;
-  passwordsMatch: boolean;
-  strength: { score: number; warning: string | null } | null;
-  acknowledged: boolean;
-  setAcknowledged: (next: boolean) => void;
-  error: string | null;
-  submitting: boolean;
-  canSubmit: boolean;
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
-}
+zxcvbnOptions.setOptions({
+  dictionary: zxcvbnCommon.dictionary,
+  graphs: zxcvbnCommon.adjacencyGraphs,
+});
+
+const ResetFormSchema = z
+  .object({
+    password: z.string().min(12),
+    confirm: z.string().min(1),
+    acknowledged: z.literal(true),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ['confirm'],
+    message: 'Les deux mots de passe ne correspondent pas.',
+  });
+type ResetFormValues = z.infer<typeof ResetFormSchema>;
 
 /**
  * Destructive reset form — new password (typed twice) +
- * acknowledgement checkbox. Doesn't surface the full
- * `<PasswordRulesList>` + `<StrengthBar>` rig because the reset
- * flow is intentionally a destructive « last resort » : the
- * `password ≥ 12 chars` + `zxcvbn ≥ 3` gate is enough for the
- * orchestrator to accept the submission, the educational rule
- * checklist would feel out of place next to the danger banner.
+ * acknowledgement checkbox.
+ *
+ * Migrated to React Hook Form + Zod resolver as part of REFACTO-06.
+ * Doesn't surface the full `<PasswordRulesList>` + `<StrengthBar>`
+ * rig because the reset flow is intentionally a destructive « last
+ * resort » : the `password ≥ 12 chars` + `zxcvbn ≥ 3` gate is
+ * enough, the educational rule checklist would feel out of place
+ * next to the danger banner.
  *
  * The acknowledgement checkbox is the user's last-chance gate
- * against accidental clicks — without it ticked, the submit
- * button stays disabled even when the password is strong.
+ * against accidental clicks — without it ticked (Zod
+ * `z.literal(true)`), submission stays blocked even when the
+ * password is strong.
+ *
+ * The crypto-heavy submission stays in the parent — the form
+ * just calls `onValidSubmit(password)` on a clean validation. The
+ * parent handles the OPAQUE registration + AES-GCM wraps + the
+ * `submitting` / `error` state so the form stays presentation +
+ * form state only.
  */
-export default function ResetForm(props: ResetFormProps) {
+export default function ResetForm({
+  submitting,
+  error,
+  onValidSubmit,
+}: {
+  submitting: boolean;
+  error: string | null;
+  onValidSubmit: (password: string) => Promise<void>;
+}) {
   const {
-    password,
-    setPassword,
-    confirm,
-    setConfirm,
-    passwordsMatch,
-    strength,
-    acknowledged,
-    setAcknowledged,
-    error,
-    submitting,
-    canSubmit,
-    onSubmit,
-  } = props;
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isValid },
+  } = useForm<ResetFormValues>({
+    resolver: zodResolver(ResetFormSchema),
+    mode: 'onChange',
+    defaultValues: { password: '', confirm: '', acknowledged: false as never },
+  });
+
+  const password = watch('password');
+  const strength = useMemo(() => {
+    if (!password) return null;
+    const { score, feedback } = zxcvbn(password);
+    return { score, warning: feedback.warning ?? null };
+  }, [password]);
+  const strengthOk = (strength?.score ?? 0) >= 3;
+
+  async function onSubmit(values: ResetFormValues): Promise<void> {
+    if (!strengthOk) return;
+    await onValidSubmit(values.password);
+  }
 
   return (
     <>
@@ -74,48 +107,38 @@ export default function ResetForm(props: ResetFormProps) {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field
           label="Nouveau mot de passe (≥ 12 caractères)"
           type="password"
           autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           minLength={12}
           required
+          error={errors.password?.message}
           legend={
             strength ? (
-              <span
-                className={cn(
-                  strength.score >= 3 ? 'text-accent-deep' : 'text-muted',
-                )}
-              >
+              <span className={cn(strengthOk ? 'text-accent-deep' : 'text-muted')}>
                 Force : {strength.score} / 4
                 {strength.warning ? ` — ${strength.warning}` : ''}
               </span>
             ) : undefined
           }
+          {...register('password')}
         />
         <Field
           label="Confirmation"
           type="password"
           autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
           required
-          error={
-            confirm && !passwordsMatch
-              ? 'Les deux mots de passe ne correspondent pas.'
-              : undefined
-          }
+          error={errors.confirm?.message}
+          {...register('confirm')}
         />
 
         <label className="mb-3.5 flex items-start gap-2 text-[12.5px] text-ink-soft">
           <input
             type="checkbox"
-            checked={acknowledged}
-            onChange={(e) => setAcknowledged(e.target.checked)}
             className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
+            {...register('acknowledged')}
           />
           <span>
             Je comprends que toutes mes données existantes seront supprimées lors de
@@ -129,7 +152,7 @@ export default function ResetForm(props: ResetFormProps) {
           type="submit"
           variant="danger-outline"
           size="lg"
-          disabled={!canSubmit}
+          disabled={!isValid || !strengthOk || submitting}
           className="mt-2 w-full"
         >
           {submitting ? 'Réinitialisation…' : 'Réinitialiser et effacer mes données'}

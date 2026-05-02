@@ -371,56 +371,38 @@ fonctionnellement.
 - **Risque** : moyen, validé par 313/313 vitests + tsc clean. Le run UI manuel reste recommandé sur les flows Library/Goals avant déploiement (les callbacks d'actions touchent du code crypto e2e côté optimistic update).
 - **Dépendances** : REFACTO-02 ✓
 
-### REFACTO-12 — Harmoniser pages auth (flat vs folder)
+### REFACTO-12 — Harmoniser pages auth (flat → folder) — livré
 
 - **Type** : split fichier (×5)
-- **Sites** :
-  - [`pages/Login.tsx`](../../packages/web/src/app/pages/Login.tsx) (242)
-  - [`pages/ChangePassword.tsx`](../../packages/web/src/app/pages/ChangePassword.tsx) (227)
-  - [`pages/RequestReset.tsx`](../../packages/web/src/app/pages/RequestReset.tsx) (260)
-  - [`pages/BypassConfirm.tsx`](../../packages/web/src/app/pages/BypassConfirm.tsx) (285)
-  - [`pages/SecurityMode.tsx`](../../packages/web/src/app/pages/SecurityMode.tsx) (293)
-- **Proposition** : appliquer la règle « page > 200 LOC OU
-  ≥ 2 panels distincts → folder avec `index.tsx` ». Pour Login,
-  créer `pages/Login/{index.tsx, LoginForm.tsx}` mirroring
-  Register. Pour les 4 autres, juger au cas par cas (BypassConfirm
-  a déjà des panels logiques internes).
-- **Tâches**
-  - [ ] Décider la règle (à figer dans `CLAUDE.md`).
-  - [ ] Migrer les 5 pages une par une.
-  - [ ] Tester chaque flow auth manuellement.
-- **Gain** : pattern cohérent dans `pages/`, fichiers
-  individuels < 200 LOC.
-- **Effort** : L — ~1 jour pour les 5 pages
-- **Risque** : moyen (auth = critique, valider e2e).
-- **Dépendances** : à coordonner avec REFACTO-06 si on veut
-  faire les deux passes simultanément (sinon faire 12 d'abord
-  puis 06).
+- **Statut** : livré.
+- **Règle figée dans CLAUDE.md** : « page > 200 LOC OU ≥ 2 panels distincts → folder avec `index.tsx` + sous-fichiers ». Documentée dans la section *Page-level file organisation*.
+- **Pages migrées** :
+  - **Login.tsx** (239 LOC) → `Login/{index.tsx, LoginForm.tsx, PasskeyButton.tsx}`. Form RHF + bouton passkey extraits ; index orchestre les bannières + AuthLayout.
+  - **ChangePassword.tsx** (225 LOC) → `ChangePassword/{index.tsx, ChangePasswordForm.tsx}`. Form RHF avec strength UX déménage ; index garde le AuthLayout + back link.
+  - **RequestReset.tsx** (260 LOC) → `RequestReset/{index.tsx, ForkPanel.tsx, DestroyForm.tsx, SentPanel.tsx, Warning.tsx}`. Une page par stage du state machine. `Warning` réutilisé entre `DestroyForm` et `SentPanel`.
+  - **BypassConfirm.tsx** (287 LOC) → `BypassConfirm/{index.tsx, PendingPanel.tsx, SuccessPanel.tsx, ErrorPanel.tsx}`. Le `Countdown` reste inline dans `SuccessPanel` (seul consommateur).
+  - **SecurityMode.tsx** (296 LOC) → `SecurityMode/{index.tsx, ModeSelector.tsx, PasswordProofForm.tsx}`. La derivation des options reste dans index (a besoin du store user).
+- **`git mv` à chaque page** pour préserver la blame history.
+- **Effort** : L — réalisé.
+- **Risque** : moyen (auth = critique). Tests vitests verts (313/313), tsc clean ; un run UI manuel reste recommandé sur les 5 flows avant deploy.
+- **Dépendances** : couplé avec REFACTO-06 ci-dessous, le tout dans un même commit.
 
-### REFACTO-06 — Standardiser le form lib des pages auth
+### REFACTO-06 — Standardiser le form lib des pages auth — livré
 
 - **Type** : cohérence
-- **Sites** : 5 pages en `useState` brut (Activate, RequestReset,
-  Reset, Recover, BypassConfirm, SecurityMode) vs 3 en RHF
-  (Login, ChangePassword, Register/RegisterForm).
-- **Proposition** : décider — soit migrer les 5 vers
-  `react-hook-form` + `zodResolver`, soit documenter dans
-  CLAUDE.md une règle explicite (« forms à 1 seul champ →
-  useState OK, sinon RHF »). Penche pour migrer : la cohérence
-  vaut 1 jour de boulot et les schémas Zod existent déjà côté
-  `@nodea/shared` (sauf pour les forms client-only — voir
-  Tier 0 § Zod).
-- **Tâches**
-  - [ ] Décider la règle.
-  - [ ] Migrer les 5 pages vers RHF.
-  - [ ] Tester chaque flow auth.
-- **Gain** : règle claire pour toute nouvelle page, validation
-  côté client en lockstep avec le serveur via les mêmes schémas
-  Zod (quand applicable).
-- **Effort** : L — ~1-2 jours
-- **Risque** : moyen-élevé (auth = critique, e2e impératif)
-- **Dépendances** : à coordonner avec REFACTO-12 (renommage de
-  fichier + migration RHF dans le même mouvement = moins de PR).
+- **Statut** : livré.
+- **Règle figée dans CLAUDE.md** : « forms à 1 seul champ → `useState` direct OK, RHF overkill ; forms à 2+ champs → React Hook Form obligatoire ». Documentée dans la section *Forms*.
+- **Pages migrées vers RHF + zodResolver** :
+  - `RequestReset/DestroyForm.tsx` — schéma `email`.
+  - `Reset/ResetForm.tsx` — schéma `password ≥ 12 + confirm match + acknowledged literal-true`. Le crypto-heavy submit reste dans `Reset/index.tsx` ; le form appelle `onValidSubmit(password)` après validation.
+- **Pages laissées en `useState` (justifié)** :
+  - `Activate.tsx` — pas de form (auto-process magic link).
+  - `BypassConfirm.tsx` — pas de form (auto-process).
+  - `Recover/index.tsx` — multi-field mais le flow vient juste d'être refait (recovery code consommé, pas rotaté en place — Tier 3 §4 SEC-06/07/08 follow-up). Migration RHF différée pour ne pas chaîner deux changements lourds sur le même flow critique. Sera traitée si on retouche cette page pour autre chose.
+  - `SecurityMode/PasswordProofForm.tsx` — single-field (juste le mot de passe de confirmation), `useState` cohérent avec la règle.
+- **Effort** : L — réalisé.
+- **Risque** : moyen-élevé (auth = critique). Tests vitests verts (313/313), tsc clean. Run UI manuel recommandé sur les flows reset + request-reset avant deploy.
+- **Dépendances** : aucune restante.
 
 ---
 

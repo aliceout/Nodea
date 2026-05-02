@@ -1,7 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
-import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
+
 import {
   apiErrorMessage,
   apiResetPasswordFinish,
@@ -27,11 +26,6 @@ import DonePanel from './DonePanel';
 import InvalidLinkPanel from './InvalidLinkPanel';
 import ResetForm from './ResetForm';
 
-zxcvbnOptions.setOptions({
-  dictionary: zxcvbnCommon.dictionary,
-  graphs: zxcvbnCommon.adjacencyGraphs,
-});
-
 /**
  * Consume a reset token — Direction K · Sauge.
  *
@@ -42,15 +36,19 @@ zxcvbnOptions.setOptions({
  * registration record. The server purges all old encrypted data in
  * a single transaction before rotating the credentials.
  *
- * A confirmation checkbox forces the user to acknowledge the data loss
- * before the destructive request goes out. The main key bytes are
- * zeroed in memory as soon as the wrap is done.
- *
  * Two-column shell mirrors Login / Register / RequestReset so the
  * auth surface stays one continuous design language. The marketing
  * panel here keeps a recovery-specific body — the standard
  * `<PrivacyBody />` would feel oddly upbeat next to a destructive
  * action.
+ *
+ * Split (REFACTO-12 + REFACTO-06) :
+ *   - `ResetForm` owns its own state (RHF + Zod schema with
+ *     `password ≥ 12` + match + ack literal-true) and calls back
+ *     with the validated password.
+ *   - This index orchestrates : URL token read, the destructive
+ *     crypto pipeline (OPAQUE register + AES-GCM wraps), the
+ *     stage state machine (form → done / invalid-link).
  */
 export default function ResetPage() {
   useDocumentTitle('Nouveau mot de passe');
@@ -58,33 +56,18 @@ export default function ResetPage() {
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
 
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [acknowledged, setAcknowledged] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const strength = useMemo(() => {
-    if (!password) return null;
-    const { score, feedback } = zxcvbn(password);
-    return { score, warning: feedback.warning ?? null };
-  }, [password]);
-
-  const passwordsMatch = password.length > 0 && password === confirm;
-  const canSubmit =
-    token.length > 0 &&
-    password.length >= 12 &&
-    passwordsMatch &&
-    acknowledged &&
-    (strength?.score ?? 0) >= 3 &&
-    !submitting;
-
-  async function onSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
-    e.preventDefault();
+  /**
+   * Called by `ResetForm` when its validation passes. The form
+   * already enforced the password length, the confirmation match,
+   * and the destructive-acknowledgement checkbox — here we run the
+   * crypto pipeline that actually destroys the account's old data.
+   */
+  async function handleValidSubmit(password: string): Promise<void> {
     setError(null);
-    if (!canSubmit) return;
-
     setSubmitting(true);
     const kek = randomBytes(32);
     const rawMainKey = randomBytes(32);
@@ -164,22 +147,11 @@ export default function ResetPage() {
         <DonePanel />
       ) : (
         <ResetForm
-          password={password}
-          setPassword={setPassword}
-          confirm={confirm}
-          setConfirm={setConfirm}
-          passwordsMatch={passwordsMatch}
-          strength={strength}
-          acknowledged={acknowledged}
-          setAcknowledged={setAcknowledged}
-          error={error}
           submitting={submitting}
-          canSubmit={canSubmit}
-          onSubmit={onSubmit}
+          error={error}
+          onValidSubmit={handleValidSubmit}
         />
       )}
     </AuthLayout>
   );
 }
-
-

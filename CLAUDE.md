@@ -111,6 +111,13 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 ### Forms
 - React Hook Form + Zod resolver. Zod schema lives in `packages/shared/src/schemas/` — one source of truth, reused for backend validation and frontend form validation.
 - Password fields: show zxcvbn strength + min length. Never a silent "too weak" acceptance.
+- **Forms à 1 seul champ** (genre email d'un magic-link, ou un seul bouton de confirmation) → `useState` direct est OK, RHF est overkill.
+- **Forms à 2+ champs** → React Hook Form obligatoire. Pas de `useState` à la main pour gérer plusieurs inputs : la cohérence (validation, error state, dirty tracking) coûte moins cher en boilerplate avec RHF.
+
+### Page-level file organisation
+- **Page sous 200 LOC + un seul panel logique** → fichier flat dans `pages/<Name>.tsx`.
+- **Page > 200 LOC OU ≥ 2 panels distincts** → dossier `pages/<Name>/` avec `index.tsx` (orchestration) + sous-fichiers (un par panel ou par responsabilité). Pattern de référence : `pages/Register/{index.tsx, RegisterForm.tsx, Stages.tsx}`.
+- Cette règle s'applique à toute page nouvelle ou retouchée. Une page existante qui passe le seuil sur une PR mérite la migration dans la même PR.
 
 ### Routing
 - **URL stays at `/flow` regardless of which module is active.** The active module lives in the Zustand `flow` slice (`currentModule: ModuleId`), never in the URL or query string. **Privacy invariant** — module-visited / sub-view metadata must not leak through Nginx access logs, Hono request logs, or browser referrers. No `/flow/:moduleId` paths, no `?subview=`, no `?tab=`. (See `App.jsx` `popstate` listener for the back-button sync that preserves UX without exposing the module in the URL.)
