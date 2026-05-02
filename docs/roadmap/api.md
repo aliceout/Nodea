@@ -246,22 +246,22 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### API-06 — Enveloppe de succès incohérente
+### API-06 — Enveloppe de succès incohérente — livré (listes)
 
 - **Sévérité** : moyenne
-- **Type de breaking** : breaking si on harmonise (option B)
-- **Endpoints** : 4 patterns coexistent
-  - **`{ ok: true }`** — actions void : logout, change email/username, onboarding/complete, delete account, delete invite, totp/disable, etc.
-  - **`{ ok: true, ...flags }`** — actions avec extras : `recover-kek/finish` → `{ ok: true, regenerated: bool }`, `register/finish` → `{ ok: true, activated: bool, email?: string }`
-  - **`{ <collection>: [...] }`** — listes : `{ users: [...] }`, `{ announcements: [...] }`, `{ records: [...] }`, `{ invites: [...] }`
-  - **Resource brute** — singletons : `GET /auth/me`, `GET /modules-config`, créations qui retournent la ressource via `toView(row)`
-- **Description** : il n'y a pas d'enveloppe globale type `{ data: ..., error: ... }`. Les 4 patterns ont chacun leur logique mais le consommateur doit savoir lequel s'applique. Le pattern `{ ok: true, ...flags }` est traître : un caller qui fait `if (response.ok)` confond le booléen avec la propriété `Response.ok` de l'API fetch.
+- **Type de breaking** : breaking sur les 7 endpoints listes (le client web a été migré dans le même commit).
+- **Statut** : livré pour les listes (Tier 4 / Phase 2). Décision : option B partielle — enveloppe `{ data, meta }` uniforme sur **toutes les listes**, mais `{ ok: true }` conservé sur les actions void et resources brutes singleton (changement non justifié pour un solo dev avec mobile imminent).
+- **Pattern final** :
+  - **Listes** : `{ data: [...], meta: {...} }` — uniforme, `meta` peut être vide.
+  - **Actions void** : `{ ok: true }` — inchangé.
+  - **Actions avec extras** : `{ ok: true, ...flags }` — inchangé. Le mobile devra distinguer mais le pattern reste compact.
+  - **Resources brutes singleton** (`/auth/me`, `/modules-config`, etc.) : inchangé.
 - **Tâches**
-  - [ ] **Option A (légère, non-breaking-ish)** : renommer `ok` en `done` ou `applied` dans toutes les réponses void. Ou laisser `ok` mais figer dans `documentation/API.md`.
-  - [ ] **Option B (lourde, breaking)** : enveloppe globale `{ data: ..., meta?: ... }` partout. Migration 6 mois minimum.
-  - [ ] **Recommandation** : option A + figer la règle dans la doc.
-- **Effort** : S pour option A (juste doc), L pour option B
-- **Risque** : faible pour A, élevé pour B
+  - [x] Helper `listResponseSchema()` ajouté dans `packages/shared/src/schemas/envelope.ts`. Les 7 endpoints listes ré-écrits en `{ data, meta }`.
+  - [x] Client web `apiPasskeyList()` flatten `meta.prfCount` pour les composants existants. `apiAdminSources` re-groupe par module client-side.
+  - [x] Tests intégration adaptés (admin, announcements, auth-passkey, entries, modules-e2e). 278/278 verts.
+- **Effort** : L — réalisé.
+- **Risque** : breaking accepté
 - **Dépendances** : aucune
 
 ### API-07 — Enveloppe d'erreur uniforme — point fort à conserver
@@ -451,7 +451,7 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 
 1. **API-01** — Uniformiser snake_case ↔ camelCase. ✅ livré (camelCase partout, ADR-0012).
 2. **API-05** — POST de création → 201. Mineur, mais certains tests vitest checkent peut-être `expect(res.status).toBe(200)` sur des creates.
-3. **API-06** — Choisir une convention finale d'enveloppe `{ ok }` vs `{ data, meta }`. Réécrit toutes les routes.
+3. **API-06** — Choisir une convention finale d'enveloppe `{ ok }` vs `{ data, meta }`. ✅ livré (listes en `{ data, meta }`, actions void en `{ ok }` inchangées).
 4. **API-04** — `PUT /modules-config` → `PATCH /modules-config`. Non urgent, mais s'aligner sur PATCH = partial update.
 5. **API-14** — Sortir les blobs `wrappedKek*` de `/auth/me` vers `/auth/me/crypto`. ✅ livré.
 
