@@ -42,10 +42,39 @@ export interface ApiError {
   reason?: string;
 }
 
+/**
+ * Structural shape of a Zod schema's `.parse()` method. We don't
+ * import `ZodType` directly here because we want callers from any
+ * Zod-compatible schema lib (and to keep the `internal.ts` import
+ * graph minimal). Any `{ parse(data: unknown): T }` works.
+ */
+export interface ResponseParser<T> {
+  parse(data: unknown): T;
+}
+
+/**
+ * Validate a payload against a response schema in dev/test only.
+ * In prod we trust the server contract — running Zod on every
+ * response would add ms per call for no payoff (the server is the
+ * only writer, and api/web ship together so a real contract drift
+ * is caught by tsc + integration tests before deploy).
+ *
+ * In dev (`import.meta.env.DEV` true) and in tests (`MODE === 'test'`),
+ * we run the schema and let `ZodError` bubble — that surfaces drift
+ * loudly during development. Per CLAUDE.md « Fail loud on developer
+ * errors » : an unvalidated response that parses through a stale
+ * schema is a developer error, never a user one.
+ */
+function shouldValidateResponses(): boolean {
+  const env = import.meta.env as { DEV?: boolean; MODE?: string };
+  return env.DEV === true || env.MODE === 'test';
+}
+
 export async function request<T = unknown>(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT',
   path: string,
   body?: unknown,
+  responseSchema?: ResponseParser<T>,
 ): Promise<T> {
   const init: RequestInit = {
     method,
@@ -70,6 +99,13 @@ export async function request<T = unknown>(
       err.reason = payload.reason;
     }
     throw err;
+  }
+  if (responseSchema && shouldValidateResponses()) {
+    // `.parse()` throws ZodError on mismatch — let it propagate so
+    // the dev sees the exact path that drifted. The caller keeps
+    // its `<T>` type guarantee in both modes (cast in prod, validated
+    // in dev).
+    return responseSchema.parse(payload);
   }
   return payload as T;
 }
