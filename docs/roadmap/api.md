@@ -168,27 +168,19 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 
 ## Findings
 
-### API-01 — Mixed snake_case / camelCase dans les payloads JSON
+### API-01 — Mixed snake_case / camelCase dans les payloads JSON — livré
 
 - **Sévérité** : élevée
-- **Type de breaking** : breaking change si on uniformise (clients à mettre à jour ; pas de SDK externe à casser)
-- **Endpoints concernés** :
-  - **snake_case** :
-    [`/<module>/records/*`](../../packages/api/src/routes/collection-factory.ts) (`module_user_id`, `cipher_iv`, `payload`),
-    [`/modules-config`](../../packages/api/src/routes/modules-config.ts) (`cipher_iv`, `payload`, `updated_at`),
-    [`/user-preferences`](../../packages/api/src/routes/user-preferences.ts)
-  - **camelCase** :
-    [`/auth/me`](../../packages/api/src/routes/auth-account.ts#L49) (`wrappedMainKey`, `wrappedMainKeyIv`, `passkeysCount`, `onboardingStatus`),
-    [`/admin/users`](../../packages/api/src/routes/admin.ts#L231) (`createdAt`, `updatedAt`, `onboardingStatus`),
-    [`/admin/invites`](../../packages/api/src/routes/admin.ts#L157),
-    [`/admin/announcements`](../../packages/api/src/routes/admin.ts#L288)
-- **Description** : la même API émet deux styles de naming pour les clés JSON. Les routes héritées du modèle PocketBase (entries chiffrées) ont gardé snake_case ; les routes user/admin écrites pendant la migration Hono ont adopté camelCase. La frontière est lisible (snake_case = blob crypto, camelCase = data structurée) mais nulle part documentée comme contrat.
+- **Type de breaking** : breaking — données chiffrées existantes invalides après migration (ADR-0012 §Consequences). Ok parce que le projet est encore au stade solo dev avec son propre compte.
+- **Statut** : livré (Tier 4 / Phase 2). Décision : option lourde (camelCase partout) plutôt que doc-only, anticipation du chantier mobile imminent.
+- **Décision figée** : [ADR-0012](../adr/0012-camel-case-only-on-the-wire.md) — supersède [ADR-0003](../adr/0003-snake-case-camel-case-frontier.md). Tout-camelCase sur le wire (wrappers + payloads chiffrés). Les colonnes DB restent en snake_case (Drizzle map automatiquement vers camelCase côté code TS).
 - **Tâches**
-  - [ ] **Étape 1** (non-breaking) : documenter la convention dans `documentation/API.md` (à créer — cf. API-11). *« snake_case sur les endpoints qui transportent des blobs chiffrés (entries, modules-config, user-preferences) — héritage PocketBase préservé volontairement. camelCase partout ailleurs. »*
-  - [ ] **Étape 2** (option lourde) : si un SDK ou un mobile sont prévus, planifier une migration `/v2` qui émet en camelCase, garder l'ancienne sous `/v1/...`. Demande versioning d'URL (cf. API-10).
-- **Effort** : S pour étape 1 (~1h doc), L pour étape 2 (~plusieurs jours)
-- **Risque** : faible pour étape 1, moyen-élevé pour étape 2
-- **Dépendances** : étape 2 dépend d'API-10 (versioning)
+  - [x] Wire-level migration : `cipher_iv`, `module_user_id`, `updated_at`, `build_date` → camelCase. Touche schémas `entries.ts` + `preferences.ts`, routes `collection-factory.ts` + `modules-config.ts` + `user-preferences.ts` + `/version`, clients web `storage`/`modules-config-client`/`preferences-client`/`collection-client`. Commit `892f96a`.
+  - [x] Payload-level migration : `mood_score`, `mood_emoji`, `completed_at`, `started_at`, `finished_at`, `item_rid`, `cover_rid`, `cover_url`, `original_language`, `is_favorite`, `blob_b64`, `fetched_from`, `fetched_at`, `last_year`, `next_year` → camelCase. Touche schémas `modules.ts` + `library-lookup.ts` et ~58 fichiers consommateurs (mappers, pages, services lookup, seeds). Commit `a8e6f54`.
+  - [x] ADR-0003 marqué Superseded ; ADR-0012 acte la nouvelle convention.
+- **Effort** : L — réalisé.
+- **Risque** : breaking accepté
+- **Dépendances** : aucune
 
 ### API-02 — URL naming mixé : pluriel/singulier, verbes-in-URL
 
@@ -457,7 +449,7 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 
 ## Top 5 qui demandent un plan de migration (breaking)
 
-1. **API-01** — Uniformiser snake_case ↔ camelCase. Demande versioning d'URL (cf. API-10) ou double-exposition pendant 6 mois.
+1. **API-01** — Uniformiser snake_case ↔ camelCase. ✅ livré (camelCase partout, ADR-0012).
 2. **API-05** — POST de création → 201. Mineur, mais certains tests vitest checkent peut-être `expect(res.status).toBe(200)` sur des creates.
 3. **API-06** — Choisir une convention finale d'enveloppe `{ ok }` vs `{ data, meta }`. Réécrit toutes les routes.
 4. **API-04** — `PUT /modules-config` → `PATCH /modules-config`. Non urgent, mais s'aligner sur PATCH = partial update.
