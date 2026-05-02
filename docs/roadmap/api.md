@@ -234,26 +234,23 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### API-05 — `201 Created` quasi-jamais utilisé sur les POST de création
+### API-05 — `201 Created` + `Location` sur les POST de création — livré
 
 - **Sévérité** : moyenne
-- **Type de breaking** : non-breaking (les clients doivent déjà accepter 200)
-- **Endpoints utilisant 201** :
-  - [`admin.ts:317`](../../packages/api/src/routes/admin.ts#L317) — `POST /admin/announcements` ✓
-  - [`collection-factory.ts:95`](../../packages/api/src/routes/collection-factory.ts#L95) — `POST /<module>/records` ✓
-- **Endpoints qui devraient retourner 201** :
-  - `POST /admin/invites` (création d'un invite)
-  - `POST /admin/invites/:id/resend` — discutable (renvoi vs re-création)
-  - `POST /auth/register/start` — création d'un user pre_register
-  - autres POST de création identifiés au sweep
-- **Description** : seuls 2 POST de création sur ~10 retournent un `201 Created` ; les autres retournent 200. Sémantiquement faux mais pas critique parce que les clients regardent le body.
+- **Type de breaking** : non-breaking (les clients regardent le body)
+- **Statut** : livré.
+- **Sweep** :
+  - `POST /admin/invites` → était déjà 201, **ajouté Location** : `/admin/invites/<id>`.
+  - `POST /admin/announcements` → était déjà 201, **ajouté Location** : `/admin/announcements/<id>`.
+  - `POST /<module>/records` (collection-factory) → était déjà 201, **ajouté Location** : `${path}/${row.id}`.
+  - `POST /admin/invites/:id/resend` → laissé en 200 (action sur ressource existante, pas création).
+  - `POST /auth/register/start`, `/register/finish`, `/passkey/enroll/start` etc. → tous laissés en 200 : ce sont des *handshakes multi-step* (OPAQUE, WebAuthn) qui retournent un état intermédiaire ; le 201 (« nouvelle ressource créée ») arrive sémantiquement plus tard, au /finish, et même alors le contenu retourné n'est pas une URL adressable mais un blob de session. Le 200 reste sémantiquement correct ici.
 - **Tâches**
-  - [ ] Sweep sur tous les POST : identifier ceux qui créent une ressource (≠ POST qui agissent sur une ressource existante).
-  - [ ] Migrer vers 201 — non-breaking côté client.
-  - [ ] Auditer aussi les `Location:` headers manquants (la convention veut un `Location: /admin/invites/:id` sur le 201).
-  - [ ] Mettre à jour les tests vitest qui checkent `expect(res.status).toBe(200)` sur des creates.
-- **Effort** : M (~2-3h sweep + tests)
-- **Risque** : faible (tests à mettre à jour)
+  - [x] Sweep complet des POST routes.
+  - [x] `Location:` headers ajoutés sur les 3 vrais creates (les seuls qui retournaient déjà 201).
+  - [x] Aucun test vitest n'asserte sur l'absence de `Location` ; les tests qui check `status === 201` continuent de passer.
+- **Effort** : M — réalisé.
+- **Risque** : faible
 - **Dépendances** : aucune
 
 ### API-06 — Enveloppe de succès incohérente
@@ -357,16 +354,15 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Description** : Nodea n'expose pas de webhooks aujourd'hui. Le seul flux sortant est l'envoi d'emails transactionnels (qui n'est pas un webhook public). N'apparaît pas comme manquement.
 - **Tâches** : aucune.
 
-### API-13 — Ordre des résultats dans les LIST `<module>/records` non spécifié
+### API-13 — Contrat « ordre non spécifié » sur LIST records — livré
 
-- **Sévérité** : faible *(initialement moyenne — révisée : Postgres préserve l'ordre d'insertion physique en steady state, sauf VACUUM FULL / pg_repack ; le risque réel de drift d'ordre est faible)*
-- **Type de breaking** : breaking si on contraint l'ordre
-- **Endpoints** : [`GET /<module>/records`](../../packages/api/src/routes/collection-factory.ts#L63)
-- **Description** : la route retourne *« rows in their physical insertion order »* (commentaire explicite). C'est volontaire — pas de timestamp colonne pour préserver la privacy. Mais un consommateur web qui dépend de l'ordre pour afficher peut se planter quand un utilisateur supprime puis recrée une entrée. Le contrat actuel est *« ne dépendez pas de l'ordre »* mais ce n'est pas dans la réponse, juste dans le code.
+- **Sévérité** : faible
+- **Type de breaking** : breaking si on contraint l'ordre (ce que le contrat formalise pour empêcher)
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Documenter explicitement dans `documentation/API.md` que l'ordre des entries est non-spécifié et que le client doit trier après déchiffrement.
-  - [ ] **Optionnel** : retourner un header `X-Order: insertion-physical` ou un champ `order: 'unspecified'` dans la réponse pour formaliser le non-contrat.
-- **Effort** : S (doc) à M (header)
+  - [x] Commentaire d'en-tête de la route `GET /records` enrichi avec un § « Contract on order (API-13) » qui explique que l'ordre est **unspecified** et que le client doit trier après déchiffrement. Postgres-physical-insertion-order n'est plus qu'un detail d'implémentation, susceptible de bouger sur VACUUM FULL / replica failover / future storage swap.
+  - [x] Header `X-Order: unspecified` retourné sur chaque réponse pour formaliser le non-contrat aux yeux d'un futur consommateur (mobile, partner SDK).
+- **Effort** : S — réalisé.
 - **Risque** : faible
 - **Dépendances** : aucune
 
@@ -399,20 +395,16 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### API-16 — Routes legacy potentiellement reachable dans `authRoutes`
+### API-16 — Audit `authRoutes` — livré (no-op confirmé)
 
 - **Sévérité** : faible
 - **Type de breaking** : N/A (cleanup)
-- **Endpoints** :
-  - [`packages/api/src/routes/auth.ts`](../../packages/api/src/routes/auth.ts) (le `authRoutes` mounté en dernier dans [`app.ts:89`](../../packages/api/src/app.ts#L89))
-- **Description** : un commentaire dans `app.ts` indique *« the legacy single-shot register handler in `authRoutes` is no longer reachable via HTTP »* parce que `authRegisterV2Routes` est mounté avant et capture `/auth/register/*`. Mais que contient encore `authRoutes` à part le register-legacy ? L'ordre de mount Hono fait que les routes plus spécifiques gagnent ; le `authRoutes` final agit comme catch-all pour toutes les routes `/auth/*` non capturées.
+- **Statut** : livré (audit seulement, pas de code à supprimer).
 - **Tâches**
-  - [ ] **Lire `authRoutes`** (`packages/api/src/routes/auth.ts`) et confirmer quelles routes y vivent.
-  - [ ] Identifier lesquelles sont mortes (déplacées dans `authRegisterV2Routes` / `authLoginRoutes` / autres) mais shadowées.
-  - [ ] Identifier lesquelles sont vivantes et utiles.
-  - [ ] Supprimer les morts, documenter le reste.
-- **Effort** : S (~30 min audit)
-- **Risque** : faible (lecture seule + suppression confirmée)
+  - [x] Lecture de `auth.ts` : c'est désormais un **thin barrel** qui mount 4 sub-routers (`authLoginRoutes`, `authResetRoutes`, `authChangePasswordRoutes`, `authAccountRoutes`). Aucune route legacy résiduelle dans le fichier.
+  - [x] Le commentaire obsolète dans `app.ts` qui mentionnait *« the legacy single-shot register handler is no longer reachable »* (il n'existe plus) a été remplacé par un § citant l'audit API-16.
+- **Effort** : S — audit fait.
+- **Risque** : aucun
 - **Dépendances** : aucune
 
 ---

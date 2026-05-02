@@ -61,6 +61,16 @@ export function createCollectionRoutes(table: EntryTable) {
   // exist) and is intentionally not provided ; the client is
   // expected to order client-side after decrypting the payload.
   //
+  // **Contract on order (API-13)** — the response order is
+  // **unspecified**. Clients MUST sort after decryption ; the
+  // physical insertion order Postgres surfaces today is an
+  // implementation detail, not a guarantee. A `VACUUM FULL`,
+  // `pg_repack`, replica failover, or a future replacement of the
+  // storage layer can all change the order without notice. We surface
+  // a `X-Order: unspecified` header on the response so any future
+  // consumer (mobile client, partner SDK) sees the contract without
+  // having to read this comment.
+  //
   // The scope sid is read from the `X-Sid` header — see
   // `requireGuard` for the rationale (SEC-01 : keep the access
   // identifier and the HMAC guard out of URLs and therefore out of
@@ -75,6 +85,7 @@ export function createCollectionRoutes(table: EntryTable) {
       .from(table)
       .where(eq(table.moduleUserId, sid));
 
+    c.header('x-order', 'unspecified');
     return c.json({ records: rows.map(toView) });
   });
 
@@ -98,6 +109,12 @@ export function createCollectionRoutes(table: EntryTable) {
       .returning();
 
     if (!row) return c.json({ error: 'insert_failed' }, 500);
+    // `c.req.path` is `/<module>/records` here (the path the router
+    // saw); `Location` points to the canonical sub-URL of the new
+    // row (API-05). Even when no `GET /<module>/records/:id` exists
+    // today, the convention lets future tooling resolve the resource
+    // without inferring the URL.
+    c.header('location', `${c.req.path}/${row.id}`);
     return c.json(toView(row), 201);
   });
 

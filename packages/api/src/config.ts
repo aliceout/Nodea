@@ -29,10 +29,17 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true'),
 
   /**
-   * Base URL the web app is served from. Used to build absolute `reset`
-   * links in emails. No trailing slash. Example: `https://nodea.example.org`.
+   * Base URL the web app is served from. Used to build absolute links
+   * in emails (activation, reset, invite, MFA bypass confirm). No
+   * trailing slash. Example: `https://nodea.example.org`.
+   *
+   * **Required** (SEC-10). Without it, every email link would render
+   * as a relative URL — useless to the recipient because mail clients
+   * can't resolve a relative path. The fail-fast at boot is preferable
+   * to silently shipping broken links and forcing users to copy-paste
+   * tokens from the email body.
    */
-  WEB_BASE_URL: z.string().url().optional(),
+  WEB_BASE_URL: z.string().url(),
 
   /**
    * SMTP transport. All optional — when unset, the mailer falls back

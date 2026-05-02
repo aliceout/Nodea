@@ -184,10 +184,10 @@ résout les deux.
 
 ### API consolidation non-breaking (~3h)
 
-- [ ] **API-05** — POST de création → 201 + `Location:` header. ~2h. [`api.md`](./api.md)
-- [ ] **API-13** — Documenter contrat *« ordre non spécifié »* sur `<module>/records`. ~30 min. [`api.md`](./api.md)
-- [ ] **API-16** — Audit + cleanup des routes legacy dans `authRoutes`. ~30 min. [`api.md`](./api.md)
-- [ ] **SEC-10** — `WEB_BASE_URL` required dans le schéma Zod. ~10 min. [`security.md`](./security.md)
+- [x] **API-05** — `Location:` headers ajoutés sur les 3 vrais creates (invites, announcements, records). [`api.md`](./api.md)
+- [x] **API-13** — Header `X-Order: unspecified` + commentaire d'en-tête formalisant le contrat. [`api.md`](./api.md)
+- [x] **API-16** — Audit `authRoutes` : c'est déjà un thin barrel, no-op. Commentaire obsolète d'`app.ts` mis à jour. [`api.md`](./api.md)
+- [x] **SEC-10** — `WEB_BASE_URL` `z.string().url()` (required). `.env.example` + CI .env mis à jour. [`security.md`](./security.md)
 
 ### Tests e2e (~1 jour)
 

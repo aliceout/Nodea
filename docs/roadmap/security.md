@@ -278,19 +278,17 @@ rejouant un guard depuis un journal. À fixer cette semaine. »*
 - **Risque** : faible
 - **Dépendances** : aucune (mais à coordonner avec la review juridique des CGU avant publication)
 
-### SEC-10 — `WEB_BASE_URL` optionnel — fallback en URL relative dans les emails
+### SEC-10 — `WEB_BASE_URL` rendu obligatoire — livré
 
 - **Sévérité** : faible
-- **Exploitabilité** : conditions particulières (misconfig opérateur)
-- **Fichiers** :
-  - [`packages/api/src/config.ts:28`](../../packages/api/src/config.ts#L28) (`WEB_BASE_URL: z.string().url().optional()`)
-  - [`packages/api/src/routes/admin.ts:38`](../../packages/api/src/routes/admin.ts#L38), [`auth-register-v2.ts:325`](../../packages/api/src/routes/auth-register-v2.ts#L325), [`auth-reset.ts:55`](../../packages/api/src/routes/auth-reset.ts#L55), [`auth-mfa-bypass.ts:140`](../../packages/api/src/routes/auth-mfa-bypass.ts#L140)
-- **Description** : si `WEB_BASE_URL` n'est pas set, les liens dans les emails (activation, reset, invite, MFA bypass) deviennent des URLs **relatives**. Pour le destinataire d'un email, une URL relative ne se résout pas correctement → lien cassé. Effet sécu indirect : un user qui ne peut pas confirmer son email peut copier le token et l'envoyer manuellement par un autre canal, exposant le token à des écrans / captures.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Passer `WEB_BASE_URL` en `z.string().url()` (required). Refuser le boot en l'absence de valeur.
-  - [ ] Mettre à jour `.env.example` pour marquer la variable `# REQUIRED` clairement.
-- **Effort** : S (~10 min)
-- **Risque** : faible (fail-fast meilleur que silent broken)
+  - [x] `packages/api/src/config.ts` : `WEB_BASE_URL: z.string().url()` (plus d'`.optional()`). Commentaire enrichi pour expliquer pourquoi le fail-fast au boot est préférable à des liens email cassés silencieusement.
+  - [x] `.env.example` : section dédiée renommée « Web base URL (REQUIRED) » avec une valeur par défaut `http://localhost:8089` (au lieu d'être commentée). Marqué clairement REQUIRED.
+  - [x] `.github/workflows/ci.yml` : ajout de `WEB_BASE_URL=http://localhost:8089` dans le `.env` généré pour les tests CI (sinon le boot du test app échouerait).
+  - [x] Les call sites (`admin.ts`, `auth-register-v2.ts`, `auth-reset.ts`, `auth-mfa-bypass.ts`, `email/templates/layout.ts`) gardent leurs `?? ''` ou `?? config.WEBAUTHN_ORIGIN` fallbacks — devenus dead code mais inoffensifs ; nettoyage en suivi optionnel.
+- **Effort** : S — réalisé.
+- **Risque** : faible (fail-fast au boot meilleur que silent-broken-emails)
 - **Dépendances** : aucune
 
 ### SEC-11 — HSTS éligible au preload list (serveur-side)

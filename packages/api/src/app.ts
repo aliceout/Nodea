@@ -97,11 +97,11 @@ export function buildApp() {
   });
 
   // Single-step register flow with magic-link activation
-  // (Auth-Roadmap Phase 1 simplified). Mounted BEFORE the legacy
-  // `authRoutes` so the more specific path catches everything under
-  // `/auth/register/*` AND the bare `POST /auth/register` route. The
-  // legacy single-shot register handler in `authRoutes` is no longer
-  // reachable via HTTP — admin seeding uses direct DB inserts.
+  // (Auth-Roadmap Phase 1 simplified). Mount-order doesn't matter
+  // anymore — the legacy register handler in `authRoutes` was removed
+  // when `auth.ts` was reduced to a thin barrel re-exporting the four
+  // sub-routers (login / reset / change-password / account). API-16
+  // audit confirmed `authRoutes` carries no dead routes today.
   app.route('/auth/register', authRegisterV2Routes);
   // Recovery-code KEK routes (Auth-Roadmap Phase 3) — mounted
   // BEFORE `authRoutes` so the recover-kek/* and security/recovery-

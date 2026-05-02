@@ -100,6 +100,7 @@ adminRoutes.post('/invites', async (c) => {
     return c.json({ error: 'email_send_failed' }, 502);
   }
 
+  c.header('location', `/admin/invites/${invite.id}`);
   return c.json(
     {
       id: invite.id,
@@ -319,6 +320,7 @@ adminRoutes.post('/announcements', async (c) => {
     .returning();
 
   if (!row) return c.json({ error: 'internal_error' }, 500);
+  c.header('location', `/admin/announcements/${row.id}`);
   return c.json(serializeAnnouncement(row), 201);
 });
 
