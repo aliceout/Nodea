@@ -324,20 +324,18 @@ Le seul indice de version est le filename `auth-register-v2.ts`.
 - **Risque** : moyen-élevé
 - **Dépendances** : aucune (mais à figer avant tout consommateur externe)
 
-### API-11 — `*ResponseSchema` Zod câblés sur les call sites — livré (court terme)
+### API-11 — `*ResponseSchema` Zod câblés sur les call sites — livré (court + moyen terme)
 
 - **Sévérité** : moyenne
 - **Type de breaking** : non-breaking (ajout de doc + de schémas)
-- **Statut** : court terme livré (commit `87fba4c`). Moyen terme (OpenAPI) et long terme (client multi-langues) restent à faire.
-- **Description initiale** : 16 fichiers `packages/shared/src/schemas/*.ts` exposaient des `*BodySchema` pour tous les bodies de requête, mais les `*ResponseSchema` n'étaient définis que pour ~50 % des routes, et même quand ils existaient, ils n'étaient quasiment jamais consommés côté client (sauf `apiMe` et `apiLibraryLookupByIsbn` qui parsaient manuellement).
+- **Statut** : court terme livré (commit `87fba4c`). **Moyen terme livré** (OpenAPI complet via `@hono/zod-openapi`, commit `303bdf6`). Long terme (client multi-langues à partir de la spec) ouvert mais débloqué — la spec OpenAPI 3.1 est désormais publiée et stable.
+- **Décision figée** : OpenAPI dérivé directement des déclarations `createRoute` (pas de registry parallèle, pas de dérive silencieuse). Spec gated `requireAdmin` pour ne pas exposer la surface aux scrappers.
 - **Tâches**
-  - [x] **Court terme** : ajouter un `*ResponseSchema` Zod pour chaque route GET / mutation qui retourne plus que `{ ok: true }`. Audit pré-câblage : 26 schémas existaient déjà ; un seul manquait (`AnnouncementListResponseSchema` pour l'enveloppe `{ announcements }` de `GET /admin/announcements`) — ajouté.
-  - [x] **Câblage call sites** : les 26 schémas existants + le nouveau sont passés au quatrième argument du wrapper `request()` (cf. ARCH-12) sur `auth.ts` (11 sites), `passkeys.ts` (5), `mfa.ts` (4), `totp.ts` (2), `library.ts` (1), `admin.ts` (4). Les endpoints à réponse triviale (`{ ok: true }`, void, `{ id: string }`) ne sont volontairement pas câblés — pas de payoff pour le coût d'un schéma dédié.
-  - [x] Suppression des `.parse()` manuels dans `apiMe()` et `apiLibraryLookupByIsbn()` — désormais routés via le wrapper, validés en dev/test seulement.
-  - [ ] **Moyen terme** : générer un OpenAPI à partir des schémas Zod via `@hono/zod-openapi` ou `zod-to-openapi`. Servir un Swagger UI sur `/api/docs` (gated derrière `requireUser` ? `requireAdmin` ? public ? — décision design).
-  - [ ] **Long terme** : générer un client typé (TS, Swift, Kotlin) à partir de l'OpenAPI.
+  - [x] **Court terme** : `*ResponseSchema` Zod ajoutés/câblés sur `request()`.
+  - [x] **Moyen terme** : `@hono/zod-openapi@0.19.10` branché. 75 routes migrées. `GET /api/docs/openapi.json` (spec brute) + `GET /api/docs` (Swagger UI), tous deux gated `requireUser` + `requireAdmin`. Module `packages/api/src/openapi/` factorise les helpers (factory `OpenAPIHono`, `jsonContent`/`errorContent`/`okContent`, `defaultHook` qui préserve `{ error: 'invalid_body' }`).
+  - [ ] **Long terme** : générer un client typé Swift / Kotlin à partir de la spec quand le mobile démarre. La spec est déjà consommable par `swagger-codegen` / `openapi-typescript` / etc.
   - [ ] Créer `documentation/API.md` qui consolide les conventions tirées des autres findings (cf. *Mini-styleguide* en bas).
-- **Effort** : M pour le court terme — réalisé. L pour OpenAPI complet, ouvert.
+- **Effort** : M (court terme) + L (OpenAPI complet) — réalisés.
 - **Risque** : faible
 - **Dépendances** : ARCH-12 ✓ (le wrapper de validation)
 
