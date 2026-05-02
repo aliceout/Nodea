@@ -41,7 +41,7 @@ authPasskeyManageRoutes.get(
       .from(authFactors)
       .where(eq(authFactors.userId, user.id));
 
-    const passkeys: PasskeyListItem[] = rows.map((row) => ({
+    const data: PasskeyListItem[] = rows.map((row) => ({
       id: row.id,
       label: row.label,
       prfSupported: row.prfSupported,
@@ -49,9 +49,13 @@ authPasskeyManageRoutes.get(
       createdAt: row.createdAt.toISOString(),
       lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
     }));
-    const prfCount = passkeys.filter((p) => p.prfSupported).length;
+    const prfCount = data.filter((p) => p.prfSupported).length;
 
-    const response: PasskeyListResponse = { passkeys, prfCount };
+    // Uniform `{ data, meta }` envelope (audit API-06). `prfCount`
+    // moved from a top-level field into `meta` ; the client surfaces
+    // it through `apiPasskeyList()` without consumers having to
+    // know about the envelope.
+    const response: PasskeyListResponse = { data, meta: { prfCount } };
     return c.json(response);
   },
 );

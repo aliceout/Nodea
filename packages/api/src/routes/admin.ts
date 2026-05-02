@@ -173,14 +173,16 @@ adminRoutes.get('/invites', async (c) => {
     .where(isNull(invites.usedBy))
     .orderBy(desc(invites.createdAt));
 
+  // Uniform `{ data, meta }` envelope (audit API-06).
   return c.json({
-    invites: rows.map((r) => ({
+    data: rows.map((r) => ({
       id: r.id,
       email: r.email,
       createdBy: r.createdBy,
       expiresAt: r.expiresAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     })),
+    meta: {},
   });
 });
 
@@ -243,8 +245,9 @@ adminRoutes.get('/users', async (c) => {
     })
     .from(users)
     .orderBy(asc(users.email));
+  // Uniform `{ data, meta }` envelope (audit API-06).
   return c.json({
-    users: rows.map((r) => ({
+    data: rows.map((r) => ({
       id: r.id,
       email: r.email,
       username: r.username ?? null,
@@ -253,6 +256,7 @@ adminRoutes.get('/users', async (c) => {
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     })),
+    meta: {},
   });
 });
 
@@ -292,7 +296,8 @@ adminRoutes.get('/announcements', async (c) => {
     .select()
     .from(announcements)
     .orderBy(desc(announcements.createdAt));
-  return c.json({ announcements: rows.map(serializeAnnouncement) });
+  // Uniform `{ data, meta }` envelope (audit API-06).
+  return c.json({ data: rows.map(serializeAnnouncement), meta: {} });
 });
 
 adminRoutes.post('/announcements', async (c) => {
@@ -376,9 +381,13 @@ adminRoutes.delete('/announcements/:id', async (c) => {
 // response `modules` map without touching the route.
 adminRoutes.get('/sources', async (c) => {
   const library = await probeLibraryProviders();
+  // Uniform `{ data, meta }` envelope (audit API-06). `data` flattens
+  // every source across every module; each `SourceHealth.module` lets
+  // the client group by module without the server having to nest.
+  // `meta.generatedAt` carries the single timestamp the batch ran at.
   const response: AdminSourcesResponse = {
-    generatedAt: new Date().toISOString(),
-    modules: { library },
+    data: [...library],
+    meta: { generatedAt: new Date().toISOString() },
   };
   return c.json(response);
 });

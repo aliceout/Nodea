@@ -140,13 +140,16 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     moduleUserId: string,
     key: MainKeyMaterial,
   ): Promise<DecryptedRecord<Payload>[]> {
-    const { records } = await request<{ records: EncryptedRecord[] }>(
+    // Uniform `{ data, meta }` envelope (audit API-06). The factory
+    // ignores `meta` for now — it's reserved for future per-list
+    // metadata that doesn't belong inside the encrypted payload.
+    const { data } = await request<{ data: EncryptedRecord[]; meta: Record<string, unknown> }>(
       'GET',
       `/${collectionName}/records`,
       { sid: moduleUserId },
     );
     return Promise.all(
-      records.map(async (r) => ({
+      data.map(async (r) => ({
         id: r.id,
         moduleUserId: r.moduleUserId,
         payload: await decodePayload(key, r.cipherIv, r.payload),

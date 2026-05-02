@@ -86,7 +86,11 @@ export function createCollectionRoutes(table: EntryTable) {
       .where(eq(table.moduleUserId, sid));
 
     c.header('x-order', 'unspecified');
-    return c.json({ records: rows.map(toView) });
+    // Uniform `{ data, meta }` envelope (audit API-06). `meta` is
+    // empty for now — order/pagination metadata would land here if
+    // it ever ships. Keeping the same envelope across every list
+    // endpoint lets the upcoming mobile client share one parser.
+    return c.json({ data: rows.map(toView), meta: {} });
   });
 
   // --- CREATE (only accepts guard: "init") ---

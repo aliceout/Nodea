@@ -179,12 +179,12 @@ describe('GET /auth/passkeys/list', () => {
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      passkeys: { label: string | null; prfSupported: boolean }[];
-      prfCount: number;
+      data: { label: string | null; prfSupported: boolean }[];
+      meta: { prfCount: number };
     };
-    expect(body.passkeys).toHaveLength(2);
-    expect(body.prfCount).toBe(1);
-    expect(body.passkeys.map((p) => p.label).sort()).toEqual([
+    expect(body.data).toHaveLength(2);
+    expect(body.meta.prfCount).toBe(1);
+    expect(body.data.map((p) => p.label).sort()).toEqual([
       'Yubikey',
       'iPhone',
     ]);
@@ -201,9 +201,10 @@ describe('GET /auth/passkeys/list', () => {
       headers: { cookie: cookieA },
     });
     const body = (await res.json()) as {
-      passkeys: { label: string | null }[];
+      data: { label: string | null }[];
+      meta: { prfCount: number };
     };
-    expect(body.passkeys.map((p) => p.label)).toEqual(['A1']);
+    expect(body.data.map((p) => p.label)).toEqual(['A1']);
   });
 });
 

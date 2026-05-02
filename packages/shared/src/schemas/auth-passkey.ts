@@ -119,11 +119,23 @@ export const PasskeyListItemSchema = z.object({
 });
 export type PasskeyListItem = z.infer<typeof PasskeyListItemSchema>;
 
-export const PasskeyListResponseSchema = z.object({
-  passkeys: z.array(PasskeyListItemSchema),
-  /** `auth_factors WHERE kind='passkey' AND prf_supported=true` count.
-   *  Drives §6.1 mode-max activation gates client-side. */
+/**
+ * `meta` payload for the passkey list. `prfCount` was a top-level
+ * field before the API-06 envelope migration; it now lives inside
+ * `meta` so the response shape matches the rest of the GET-list
+ * endpoints.
+ *
+ * `auth_factors WHERE kind='passkey' AND prf_supported=true` count.
+ * Drives §6.1 mode-max activation gates client-side.
+ */
+export const PasskeyListMetaSchema = z.object({
   prfCount: z.number().int().nonnegative(),
+});
+export type PasskeyListMeta = z.infer<typeof PasskeyListMetaSchema>;
+
+export const PasskeyListResponseSchema = z.object({
+  data: z.array(PasskeyListItemSchema),
+  meta: PasskeyListMetaSchema,
 });
 export type PasskeyListResponse = z.infer<typeof PasskeyListResponseSchema>;
 

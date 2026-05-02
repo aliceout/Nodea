@@ -86,10 +86,13 @@ describe('Collection routes — Mood used as the representative', () => {
       headers: { cookie, 'x-sid': sid },
     });
     expect(list.status).toBe(200);
-    const listBody = (await list.json()) as { records: Record<string, unknown>[] };
-    expect(listBody.records).toHaveLength(1);
-    expect(listBody.records[0]).not.toHaveProperty('guard');
-    expect(listBody.records[0]?.cipherIv).toBe('iv-v2');
+    const listBody = (await list.json()) as {
+      data: Record<string, unknown>[];
+      meta: Record<string, unknown>;
+    };
+    expect(listBody.data).toHaveLength(1);
+    expect(listBody.data[0]).not.toHaveProperty('guard');
+    expect(listBody.data[0]?.cipherIv).toBe('iv-v2');
 
     // DELETE
     const deleted = await app.request(`/mood/records/${entryId}`, {
@@ -193,16 +196,22 @@ describe('Collection routes — Mood used as the representative', () => {
     const aList = await app.request('/mood/records', {
       headers: { cookie: cookieA, 'x-sid': 'sid-alice' },
     });
-    const aBody = (await aList.json()) as { records: Array<{ payload: string }> };
-    expect(aBody.records).toHaveLength(1);
-    expect(aBody.records[0]?.payload).toBe('A');
+    const aBody = (await aList.json()) as {
+      data: Array<{ payload: string }>;
+      meta: Record<string, unknown>;
+    };
+    expect(aBody.data).toHaveLength(1);
+    expect(aBody.data[0]?.payload).toBe('A');
 
     const bList = await app.request('/mood/records', {
       headers: { cookie: cookieB, 'x-sid': 'sid-bob' },
     });
-    const bBody = (await bList.json()) as { records: Array<{ payload: string }> };
-    expect(bBody.records).toHaveLength(1);
-    expect(bBody.records[0]?.payload).toBe('B');
+    const bBody = (await bList.json()) as {
+      data: Array<{ payload: string }>;
+      meta: Record<string, unknown>;
+    };
+    expect(bBody.data).toHaveLength(1);
+    expect(bBody.data[0]?.payload).toBe('B');
   });
 
   it('requires authentication on every route', async () => {

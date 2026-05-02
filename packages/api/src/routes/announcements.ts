@@ -33,5 +33,6 @@ announcementsRoutes.get('/', requireUser, async (c) => {
     .orderBy(desc(announcements.createdAt))
     .limit(limit);
 
-  return c.json({ announcements: rows.map(serialize) });
+  // Uniform `{ data, meta }` envelope (audit API-06).
+  return c.json({ data: rows.map(serialize), meta: {} });
 });

@@ -49,8 +49,23 @@ export async function apiPasskeyEnrollFinish(
   );
 }
 
-export async function apiPasskeyList(): Promise<PasskeyListResponse> {
-  return request('GET', '/auth/passkeys/list', undefined, PasskeyListResponseSchema);
+/**
+ * Wire shape is the uniform `{ data, meta }` envelope (audit API-06)
+ * with `meta.prfCount`. We surface it to callers as
+ * `{ passkeys, prfCount }` so the page-level code keeps reading the
+ * count without having to know about the envelope.
+ */
+export async function apiPasskeyList(): Promise<{
+  passkeys: PasskeyListResponse['data'];
+  prfCount: number;
+}> {
+  const response = await request(
+    'GET',
+    '/auth/passkeys/list',
+    undefined,
+    PasskeyListResponseSchema,
+  );
+  return { passkeys: response.data, prfCount: response.meta.prfCount };
 }
 
 export async function apiPasskeyRename(

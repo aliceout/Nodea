@@ -95,12 +95,12 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
     const listRes = await app.request('/mood/records', {
       headers: { cookie, 'x-sid': sid },
     });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(1);
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(1);
     const decoded = await simDecryptPayload<MoodPayload>(
       keys.aesKey,
-      list.records[0]!.cipherIv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(decoded.comment).toBe('ok day');
     expect(decoded.positive1).toBe('slept well');
@@ -156,12 +156,12 @@ describe('Goals module — full encrypted round-trip', () => {
     await createPromoted(cookie, 'goals', keys, sid, payload);
 
     const listRes = await app.request('/goals/records', { headers: { cookie, 'x-sid': sid } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(1);
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(1);
     const got = await simDecryptPayload<GoalsPayload>(
       keys.aesKey,
-      list.records[0]!.cipherIv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(got.title).toBe('Ship Phase 6');
     expect(got.status).toBe('open');
@@ -186,11 +186,11 @@ describe('Passage module — full encrypted round-trip', () => {
     await createPromoted(cookie, 'passage', keys, sid, payload);
 
     const listRes = await app.request('/passage/records', { headers: { cookie, 'x-sid': sid } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
     const got = await simDecryptPayload<PassagePayload>(
       keys.aesKey,
-      list.records[0]!.cipherIv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(got.title).toBe('Phase 6 notes');
     expect(got.type).toBe('passage.entry');
@@ -212,8 +212,8 @@ describe('Passage module — full encrypted round-trip', () => {
     const listRes = await app.request('/passage/records', {
       headers: { cookie, 'x-sid': sid },
     });
-    const list = (await listRes.json()) as { records: unknown[] };
-    expect(list.records[0]).not.toHaveProperty('guard');
+    const list = (await listRes.json()) as { data: unknown[]; meta: Record<string, unknown> };
+    expect(list.data[0]).not.toHaveProperty('guard');
   });
 });
 
@@ -244,11 +244,11 @@ describe('Habits — items and logs encrypted round-trip', () => {
     await createPromoted(cookie, 'habits-logs', keys, logSid, log2);
 
     const listRes = await app.request('/habits-logs/records', { headers: { cookie, 'x-sid': logSid } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(2);
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(2);
 
     const decrypted = await Promise.all(
-      list.records.map((r) =>
+      list.data.map((r) =>
         simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipherIv, r.payload),
       ),
     );
@@ -307,10 +307,10 @@ describe('Library — items and reviews encrypted round-trip', () => {
     const listRes = await app.request('/library-reviews/records', {
       headers: { cookie, 'x-sid': reviewSid },
     });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(2);
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(2);
     const notes = await Promise.all(
-      list.records.map((r) =>
+      list.data.map((r) =>
         simDecryptPayload<LibraryReviewPayload>(keys.aesKey, r.cipherIv, r.payload),
       ),
     );
@@ -354,12 +354,12 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
     await createPromoted(cookie, 'review', keys, sid, payload);
 
     const listRes = await app.request('/review/records', { headers: { cookie, 'x-sid': sid } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(1);
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(1);
     const got = await simDecryptPayload<ReviewPayload>(
       keys.aesKey,
-      list.records[0]!.cipherIv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(got.year).toBe(2025);
     expect(got.nextYear).toBeDefined();

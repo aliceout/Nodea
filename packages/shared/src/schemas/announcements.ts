@@ -34,10 +34,15 @@ export const AnnouncementResponseSchema = z.object({
 });
 export type AnnouncementResponse = z.infer<typeof AnnouncementResponseSchema>;
 
-/** Envelope returned by `GET /admin/announcements`. The list is
- *  wrapped in an object so future fields (pagination cursor, total
- *  count) can land without breaking the wire shape. */
+/** Envelope returned by `GET /admin/announcements` and the public
+ *  `GET /announcements`. Both share the same shape — the difference
+ *  is filtering (admin sees every row, users see live ones only).
+ *
+ *  Uniform `{ data, meta }` shape (audit API-06) — `meta` is empty
+ *  today, kept as a passthrough so future fields (pagination cursor,
+ *  total count) land without breaking the wire contract. */
 export const AnnouncementListResponseSchema = z.object({
-  announcements: z.array(AnnouncementResponseSchema),
+  data: z.array(AnnouncementResponseSchema),
+  meta: z.object({}).passthrough(),
 });
 export type AnnouncementListResponse = z.infer<typeof AnnouncementListResponseSchema>;

@@ -37,10 +37,24 @@ export const SourceHealthSchema = z.object({
 });
 export type SourceHealth = z.infer<typeof SourceHealthSchema>;
 
-export const AdminSourcesResponseSchema = z.object({
+/** `meta` payload for `GET /admin/sources`. Carries the timestamp
+ *  the probe ran at — used in the admin UI to show "last checked at". */
+export const AdminSourcesMetaSchema = z.object({
   /** ISO timestamp of when the checks were run. */
   generatedAt: z.string(),
-  /** Per-module list of provider health entries. */
-  modules: z.record(z.string(), z.array(SourceHealthSchema)),
+});
+export type AdminSourcesMeta = z.infer<typeof AdminSourcesMetaSchema>;
+
+/**
+ * `GET /admin/sources` response (audit API-06 — uniform `{ data, meta }`).
+ *
+ * `data` is the flat list of every probed source ; each item carries
+ * its `module` field, so the UI can group client-side without the
+ * server having to nest by module. `meta.generatedAt` carries the
+ * single timestamp the whole batch ran at.
+ */
+export const AdminSourcesResponseSchema = z.object({
+  data: z.array(SourceHealthSchema),
+  meta: AdminSourcesMetaSchema,
 });
 export type AdminSourcesResponse = z.infer<typeof AdminSourcesResponseSchema>;

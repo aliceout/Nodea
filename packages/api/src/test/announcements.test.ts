@@ -77,8 +77,9 @@ describe('GET /admin/announcements', () => {
     const b = await createAnnouncement(cookie, { title: 'B', body: 'b', active: false });
 
     const res = await app.request('/admin/announcements', { headers: { cookie } });
-    const { announcements: rows } = (await res.json()) as {
-      announcements: AnnouncementResponse[];
+    const { data: rows } = (await res.json()) as {
+      data: AnnouncementResponse[];
+      meta: Record<string, unknown>;
     };
     expect(rows).toHaveLength(2);
     const ids = rows.map((r) => r.id);
@@ -127,8 +128,9 @@ describe('DELETE /admin/announcements/:id', () => {
     expect(res.status).toBe(200);
 
     const list = await app.request('/admin/announcements', { headers: { cookie } });
-    const { announcements: rows } = (await list.json()) as {
-      announcements: AnnouncementResponse[];
+    const { data: rows } = (await list.json()) as {
+      data: AnnouncementResponse[];
+      meta: Record<string, unknown>;
     };
     expect(rows.find((r) => r.id === created.id)).toBeUndefined();
   });
@@ -152,8 +154,9 @@ describe('GET /announcements (public feed)', () => {
     const userC = await userCookie();
     const res = await app.request('/announcements', { headers: { cookie: userC } });
     expect(res.status).toBe(200);
-    const { announcements: rows } = (await res.json()) as {
-      announcements: AnnouncementResponse[];
+    const { data: rows } = (await res.json()) as {
+      data: AnnouncementResponse[];
+      meta: Record<string, unknown>;
     };
     const ids = rows.map((r) => r.id);
     expect(ids).toContain(live.id);

@@ -41,8 +41,12 @@ export interface AdminSettings {
  * -------------------------------------------------------------- */
 
 export async function apiAdminListUsers(): Promise<AdminUserRow[]> {
-  const { users } = await request<{ users: AdminUserRow[] }>('GET', '/admin/users');
-  return users;
+  // Uniform `{ data, meta }` envelope (audit API-06).
+  const { data } = await request<{ data: AdminUserRow[]; meta: Record<string, unknown> }>(
+    'GET',
+    '/admin/users',
+  );
+  return data;
 }
 
 export async function apiAdminDeleteUser(userId: string): Promise<void> {
@@ -50,11 +54,12 @@ export async function apiAdminDeleteUser(userId: string): Promise<void> {
 }
 
 export async function apiAdminListInvites(): Promise<AdminInviteRow[]> {
-  const { invites } = await request<{ invites: AdminInviteRow[] }>(
+  // Uniform `{ data, meta }` envelope (audit API-06).
+  const { data } = await request<{ data: AdminInviteRow[]; meta: Record<string, unknown> }>(
     'GET',
     '/admin/invites',
   );
-  return invites;
+  return data;
 }
 
 /**
@@ -122,13 +127,14 @@ export async function apiAdminPatchSettings(
  * -------------------------------------------------------------- */
 
 export async function apiAdminListAnnouncements(): Promise<AnnouncementResponse[]> {
-  const { announcements } = await request(
+  // Uniform `{ data, meta }` envelope (audit API-06).
+  const { data } = await request(
     'GET',
     '/admin/announcements',
     undefined,
     AnnouncementListResponseSchema,
   );
-  return announcements;
+  return data;
 }
 
 export async function apiAdminCreateAnnouncement(

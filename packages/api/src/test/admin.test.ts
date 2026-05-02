@@ -46,9 +46,10 @@ describe('GET /admin/invites', () => {
     const list = await app.request('/admin/invites', { headers: { cookie } });
     expect(list.status).toBe(200);
     const body = (await list.json()) as {
-      invites: Array<{ id: string; email: string }>;
+      data: Array<{ id: string; email: string }>;
+      meta: Record<string, unknown>;
     };
-    const byId = new Map(body.invites.map((i) => [i.id, i]));
+    const byId = new Map(body.data.map((i) => [i.id, i]));
     expect(byId.get(id1)?.email).toBe('invite-a@example.com');
     expect(byId.get(id2)?.email).toBe('invite-b@example.com');
   });
@@ -99,10 +100,11 @@ describe('GET /admin/users', () => {
     const res = await app.request('/admin/users', { headers: { cookie } });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      users: Array<Record<string, unknown>>;
+      data: Array<Record<string, unknown>>;
+      meta: Record<string, unknown>;
     };
-    expect(body.users.length).toBeGreaterThanOrEqual(3);
-    for (const u of body.users) {
+    expect(body.data.length).toBeGreaterThanOrEqual(3);
+    for (const u of body.data) {
       expect(u).not.toHaveProperty('passwordHash');
       expect(u).toHaveProperty('email');
     }

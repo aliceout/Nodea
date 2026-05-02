@@ -52,7 +52,7 @@ export default function SourcesPanel() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-[12px] text-muted">
           {data
-            ? `Dernière vérification : ${new Date(data.generatedAt).toLocaleTimeString('fr-FR')}`
+            ? `Dernière vérification : ${new Date(data.meta.generatedAt).toLocaleTimeString('fr-FR')}`
             : 'En attente de la première vérification…'}
         </p>
         <Button
@@ -80,13 +80,29 @@ export default function SourcesPanel() {
 
       {data ? (
         <div className="divide-y divide-hair">
-          {Object.entries(data.modules).map(([moduleName, sources]) => (
+          {Object.entries(groupByModule(data.data)).map(([moduleName, sources]) => (
             <ModuleBlock key={moduleName} moduleName={moduleName} sources={sources} />
           ))}
         </div>
       ) : null}
     </div>
   );
+}
+
+/**
+ * Group the flat `data` array (uniform `{ data, meta }` envelope from
+ * the API) by `module`, preserving the order the server returned. Lets
+ * the UI keep its per-module sections without the server having to
+ * nest the response.
+ */
+function groupByModule(sources: SourceHealth[]): Record<string, SourceHealth[]> {
+  const grouped: Record<string, SourceHealth[]> = {};
+  for (const source of sources) {
+    const bucket = grouped[source.module] ?? [];
+    bucket.push(source);
+    grouped[source.module] = bucket;
+  }
+  return grouped;
 }
 
 const MODULE_LABELS: Record<string, string> = {
