@@ -32,10 +32,7 @@
  *   6. POST `/auth/passkey/enroll/finish` with the attestation,
  *      label, prfSupported flag, wrap blobs.
  */
-import {
-  startAuthentication,
-  startRegistration,
-} from '@simplewebauthn/browser';
+import { startRegistration } from '@simplewebauthn/browser';
 import type { Base64 } from '@nodea/shared';
 
 import {
@@ -44,19 +41,13 @@ import {
   apiPasskeyEnrollStart,
 } from '../../api/client.ts';
 import {
-  bytesToBase64Url,
-  randomBytes,
-} from '../../crypto/base64.ts';
-import {
   buildKekAAD,
   unwrapKekUnderFactor,
 } from '../../crypto/factor-wrap.ts';
-import {
-  PRF_INPUT_V1,
-  wrapKekUnderPrf,
-} from '../../crypto/passkey-prf.ts';
+import { wrapKekUnderPrf } from '../../crypto/passkey-prf.ts';
 import { clientLoginFinish, clientLoginStart, opaqueReady } from '../opaque.ts';
 
+import { runCalibrationAssertion } from './calibration.ts';
 import {
   augmentWithPrfEval,
   readPrfEnabled,
@@ -241,94 +232,6 @@ export async function enrollPasskey(
   } finally {
     kekBytes.fill(0);
   }
-}
-
-/* ============================================================================
- * Calibration assertion — extract PRF output from a deferred-PRF cred
- * ========================================================================== */
-
-interface CalibrationInput {
-  /** Original creationOptions — we read `rp.id` from here so the
-   *  assertion targets the right relying party. */
-  creationOptions: Record<string, unknown>;
-  /** Just-enrolled credential id (base64url). */
-  credentialIdB64Url: string;
-  /** Transports we got back from registration, fed into the
-   *  assertion's `allowCredentials` to hint the browser. `null`
-   *  means we don't constrain. */
-  transports: string | null;
-}
-
-/**
- * Drive a `startAuthentication` call locally to extract the PRF
- * output for a credential whose authenticator deferred it past
- * registration.
- *
- * The challenge is generated client-side (32 bytes random) and the
- * resulting assertion is **never submitted to the server** — we
- * only consume `clientExtensionResults.prf.results.first` and throw
- * the rest away. That bypasses the need for a server round-trip
- * and keeps the calibration step entirely local.
- *
- * Returns `null` when:
- *   - the user cancels the OS prompt (`NotAllowedError`);
- *   - the authenticator silently refuses (no output surfaces);
- *   - any other WebAuthn error.
- *
- * Caller falls back to login-only enrollment in those cases.
- */
-async function runCalibrationAssertion(
-  input: CalibrationInput,
-): Promise<Uint8Array | null> {
-  const { creationOptions, credentialIdB64Url, transports } = input;
-
-  const rpId =
-    (creationOptions.rp as Record<string, unknown> | undefined)?.id;
-  const challenge = bytesToBase64Url(randomBytes(32));
-
-  const transportsList =
-    transports !== null && transports.length > 0
-      ? transports.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
-      : undefined;
-
-  const requestOptions: Record<string, unknown> = {
-    challenge,
-    userVerification: 'required',
-    allowCredentials: [
-      transportsList !== undefined
-        ? {
-            id: credentialIdB64Url,
-            type: 'public-key',
-            transports: transportsList,
-          }
-        : { id: credentialIdB64Url, type: 'public-key' },
-    ],
-    // PRF eval input MUST be raw bytes here for the same reason as
-    // augmentWithPrfEval — see the note there. base64url string would
-    // be silently dropped by the browser.
-    extensions: { prf: { eval: { first: PRF_INPUT_V1 } } },
-  };
-  if (typeof rpId === 'string' && rpId.length > 0) {
-    requestOptions.rpId = rpId;
-  }
-
-  let assertion;
-  try {
-    assertion = await startAuthentication({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      optionsJSON: requestOptions as any,
-    });
-  } catch {
-    // User dismissed the WebAuthn prompt, or no credential was
-    // available for this rpId. Either way it's not an error worth
-    // surfacing — the caller treats null as "PRF unavailable" and
-    // falls back to a password-driven unlock.
-    return null;
-  }
-
-  return readPrfFirst(
-    assertion.clientExtensionResults as Record<string, unknown> | undefined,
-  );
 }
 
 /* ============================================================================
