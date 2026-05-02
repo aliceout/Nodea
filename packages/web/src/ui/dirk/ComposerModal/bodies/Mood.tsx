@@ -3,11 +3,8 @@ import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
 
 import { pickQuestion } from '@/app/flow/Mood/data/questions';
 import { moodClient } from '@/core/api/modules/mood';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
@@ -46,9 +43,7 @@ interface MoodBodyProps {
  */
 export default function MoodBody({ onClose }: MoodBodyProps) {
   const { t, language } = useI18n();
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['mood']?.moduleUserId ?? null;
+  const ctx = useModuleClient('mood');
   const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
   const editing = useNodeaStore((s) =>
     s.composer.editing && s.composer.editing.type === 'mood'
@@ -100,7 +95,7 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
       setError(t('mood.composer.errors.scoreRequired'));
       return;
     }
-    if (!mainKey || !moduleUserId) {
+    if (!ctx) {
       setError(t('mood.composer.errors.missingConfig'));
       return;
     }
@@ -128,9 +123,9 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
         ...(trimmedAnswer ? { question, answer: trimmedAnswer } : {}),
       };
       if (editing) {
-        await moodClient.update(moduleUserId, mainKey, editing.id, payload);
+        await moodClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
       } else {
-        await moodClient.create(moduleUserId, mainKey, payload);
+        await moodClient.create(ctx.moduleUserId, ctx.mainKey, payload);
       }
       bumpMoodVersion();
       onClose();

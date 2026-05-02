@@ -18,11 +18,8 @@ import {
   libraryReviewsClient,
 } from '@/core/api/modules/library';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 
 import { matchesCellFilter, type CellFilter } from './lib/cell-filter';
@@ -146,9 +143,7 @@ export { useLibraryData, useLibraryFilters, useLibraryActions };
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
   // ---- Pulled from the global store ----
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['library']?.moduleUserId ?? null;
+  const ctx = useModuleClient('library');
   const itemsVersion = useNodeaStore((s) => s.libraryItemsVersion);
   const reviewsVersion = useNodeaStore((s) => s.libraryReviewsVersion);
   const bumpItemsVersion = useNodeaStore((s) => s.bumpLibraryItemsVersion);
@@ -199,13 +194,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   // Initial load (and re-load on bump).
   useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
+    if (!ctx) return undefined;
     let cancelled = false;
     setLoad({ status: 'loading' });
     Promise.all([
-      libraryItemsClient.list(moduleUserId, mainKey),
-      libraryReviewsClient.list(moduleUserId, mainKey),
-      libraryCoversClient.list(moduleUserId, mainKey),
+      libraryItemsClient.list(ctx.moduleUserId, ctx.mainKey),
+      libraryReviewsClient.list(ctx.moduleUserId, ctx.mainKey),
+      libraryCoversClient.list(ctx.moduleUserId, ctx.mainKey),
     ])
       .then(([itemRecords, reviewRecords, coverRecords]) => {
         if (cancelled) return;
@@ -225,7 +220,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, itemsVersion, reviewsVersion]);
+  }, [ctx, itemsVersion, reviewsVersion]);
 
   // ---- Derived ----
   const allTags = useMemo<string[]>(() => {
@@ -272,7 +267,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const deleteItem = useCallback(
     async (it: LibraryItem) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       if (!window.confirm(`Supprimer « ${it.title} » et ses reviews ?`)) return;
       const previousItems = itemsRef.current;
       const previousReviews = reviewsRef.current;
@@ -287,10 +282,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         );
         await Promise.all(
           orphanReviews.map((r) =>
-            libraryReviewsClient.remove(moduleUserId, mainKey, r.id),
+            libraryReviewsClient.remove(ctx.moduleUserId, ctx.mainKey, r.id),
           ),
         );
-        await libraryItemsClient.remove(moduleUserId, mainKey, it.id);
+        await libraryItemsClient.remove(ctx.moduleUserId, ctx.mainKey, it.id);
         bumpItemsVersion();
         bumpReviewsVersion();
       } catch (err) {
@@ -300,19 +295,19 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           console.warn('library: delete item failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpItemsVersion, bumpReviewsVersion],
+    [ctx, bumpItemsVersion, bumpReviewsVersion],
   );
 
   const toggleFavorite = useCallback(
     (it: LibraryItem) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       const next = !it.is_favorite;
       const previous = itemsRef.current;
       setItems((prev) =>
         prev.map((i) => (i.id === it.id ? { ...i, is_favorite: next } : i)),
       );
       libraryItemsClient
-        .update(moduleUserId, mainKey, it.id, {
+        .update(ctx.moduleUserId, ctx.mainKey, it.id, {
           ...(it as LibraryItemPayload),
           is_favorite: next,
         })
@@ -323,7 +318,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
             console.warn('library: favorite toggle failed', err);
         });
     },
-    [mainKey, moduleUserId, bumpItemsVersion],
+    [ctx, bumpItemsVersion],
   );
 
   const addReview = useCallback(
@@ -359,12 +354,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const deleteReview = useCallback(
     async (review: LibraryReview) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       if (!window.confirm('Supprimer cette review ?')) return;
       const previous = reviewsRef.current;
       setReviews((prev) => prev.filter((r) => r.id !== review.id));
       try {
-        await libraryReviewsClient.remove(moduleUserId, mainKey, review.id);
+        await libraryReviewsClient.remove(
+          ctx.moduleUserId,
+          ctx.mainKey,
+          review.id,
+        );
         bumpReviewsVersion();
       } catch (err) {
         setReviews(previous);
@@ -372,7 +371,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           console.warn('library: delete review failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpReviewsVersion],
+    [ctx, bumpReviewsVersion],
   );
 
   const openReviewPicker = useCallback((kind: ReviewKind) => {

@@ -10,11 +10,8 @@ import { splitThreads } from '@nodea/shared';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 
 import { recordToEntry } from './lib/mappers';
@@ -109,9 +106,7 @@ export { useGoalsData, useGoalsFilters, useGoalsActions };
 
 export function GoalsProvider({ children }: { children: ReactNode }) {
   // ---- Pulled from the global store ----
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['goals']?.moduleUserId ?? null;
+  const ctx = useModuleClient('goals');
   const goalsVersion = useNodeaStore((s) => s.goalsVersion);
   const bumpGoalsVersion = useNodeaStore((s) => s.bumpGoalsVersion);
   const openComposer = useNodeaStore((s) => s.openComposer);
@@ -140,11 +135,11 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
 
   // Initial load (and re-load on bump).
   useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
+    if (!ctx) return undefined;
     let cancelled = false;
     setLoad({ status: 'loading' });
     goalsClient
-      .list(moduleUserId, mainKey)
+      .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
         const next = records.map(recordToEntry).sort(byDateDesc);
@@ -162,7 +157,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, goalsVersion]);
+  }, [ctx, goalsVersion]);
 
   // ---- Derived ----
   const stats = useMemo<GoalsStats>(
@@ -232,7 +227,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
 
   const cycleStatus = useCallback(
     async (entry: GoalEntry) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       const next = nextStatus(entry.status);
       // Capture or clear `completed_at` whenever the status crosses
       // the `done` boundary. Going *into* done seeds a fresh
@@ -253,7 +248,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
         ),
       );
       try {
-        await goalsClient.update(moduleUserId, mainKey, entry.id, {
+        await goalsClient.update(ctx.moduleUserId, ctx.mainKey, entry.id, {
           date: entry.date,
           title: entry.title,
           note: entry.note,
@@ -269,7 +264,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
           console.warn('goals: toggle status failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpGoalsVersion],
+    [ctx, bumpGoalsVersion],
   );
 
   const editEntry = useCallback(
@@ -293,19 +288,19 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
 
   const deleteEntry = useCallback(
     async (entry: GoalEntry) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       if (!window.confirm(`Supprimer « ${entry.title} » ?`)) return;
       const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
-        await goalsClient.remove(moduleUserId, mainKey, entry.id);
+        await goalsClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
         bumpGoalsVersion();
       } catch (err) {
         setEntries(previous);
         if (import.meta.env.DEV) console.warn('goals: delete failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpGoalsVersion],
+    [ctx, bumpGoalsVersion],
   );
 
   const openCarryOver = useCallback(() => setCarryOverOpen(true), []);
@@ -313,7 +308,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
 
   const carryOver = useCallback(
     async (from: number, to: number, affected: GoalEntry[]) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       if (affected.length === 0) {
         setCarryOverOpen(false);
         return;
@@ -336,7 +331,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
         const now = new Date().toISOString();
         for (const e of affected) {
           const newDate = renumbered.get(e.id)!;
-          await goalsClient.update(moduleUserId, mainKey, e.id, {
+          await goalsClient.update(ctx.moduleUserId, ctx.mainKey, e.id, {
             date: newDate,
             title: e.title,
             note: e.note,
@@ -356,7 +351,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       // stays explicit.
       void from;
     },
-    [mainKey, moduleUserId, bumpGoalsVersion],
+    [ctx, bumpGoalsVersion],
   );
 
   // ---- Memoised context values ----

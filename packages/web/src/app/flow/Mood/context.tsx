@@ -9,11 +9,8 @@ import {
 
 import { moodClient } from '@/core/api/modules/mood';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -91,9 +88,7 @@ export { useMoodData, useMoodFilters, useMoodActions };
 export function MoodProvider({ children }: { children: ReactNode }) {
   const { t, language } = useI18n();
   // ---- Pulled from the global store ----
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['mood']?.moduleUserId ?? null;
+  const ctx = useModuleClient('mood');
   const moodVersion = useNodeaStore((s) => s.moodVersion);
   const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
   const openComposer = useNodeaStore((s) => s.openComposer);
@@ -125,7 +120,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
 
   // Initial load (and re-load on bump).
   useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
+    if (!ctx) return undefined;
     let cancelled = false;
     setLoad({ status: 'loading' });
     const labels = {
@@ -134,7 +129,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       yesterdayLabel: t('common.time.yesterday'),
     };
     moodClient
-      .list(moduleUserId, mainKey)
+      .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
         const next = records
@@ -153,7 +148,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, moodVersion, today, t, language]);
+  }, [ctx, moodVersion, today, t, language]);
 
   // ---- Derived ----
 
@@ -218,20 +213,20 @@ export function MoodProvider({ children }: { children: ReactNode }) {
 
   const deleteEntry = useCallback(
     async (entry: MoodEntry) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       if (!window.confirm(t('mood.context.confirmDelete', { values: { date: entry.date } })))
         return;
       const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
-        await moodClient.remove(moduleUserId, mainKey, entry.id);
+        await moodClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
         bumpMoodVersion();
       } catch (err) {
         setEntries(previous);
         if (import.meta.env.DEV) console.warn('mood: delete failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpMoodVersion, t],
+    [ctx, bumpMoodVersion, t],
   );
 
   // ---- Memoised context values ----

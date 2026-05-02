@@ -11,11 +11,8 @@ import { splitThreads } from '@nodea/shared';
 import { passageClient } from '@/core/api/modules/passage';
 import { formatMonthLabel } from '@/core/i18n/date-format';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -101,9 +98,7 @@ export { useJournalData, useJournalFilters, useJournalActions };
 export function JournalProvider({ children }: { children: ReactNode }) {
   const { t, language } = useI18n();
   // ---- Pulled from the global store ----
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['journal']?.moduleUserId ?? null;
+  const ctx = useModuleClient('journal');
   const journalVersion = useNodeaStore((s) => s.journalVersion);
   const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
   const openComposer = useNodeaStore((s) => s.openComposer);
@@ -128,7 +123,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   // Initial load (and re-load on bump).
   useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
+    if (!ctx) return undefined;
     let cancelled = false;
     setLoad({ status: 'loading' });
     const labels = {
@@ -137,7 +132,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       yesterdayLabel: t('common.time.yesterday'),
     };
     passageClient
-      .list(moduleUserId, mainKey)
+      .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
         const today = new Date();
@@ -158,7 +153,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId, journalVersion, t, language]);
+  }, [ctx, journalVersion, t, language]);
 
   // ---- Derived ----
   const stats = useMemo<JournalStats>(() => computeStats(entries), [entries]);
@@ -243,21 +238,21 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const deleteEntry = useCallback(
     async (entry: JournalEntry) => {
-      if (!mainKey || !moduleUserId) return;
+      if (!ctx) return;
       const label = entry.title ?? entry.dateLabel;
       if (!window.confirm(t('passage.context.confirmDelete', { values: { label } })))
         return;
       const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
-        await passageClient.remove(moduleUserId, mainKey, entry.id);
+        await passageClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
         bumpJournalVersion();
       } catch (err) {
         setEntries(previous);
         if (import.meta.env.DEV) console.warn('journal: delete failed', err);
       }
     },
-    [mainKey, moduleUserId, bumpJournalVersion, t],
+    [ctx, bumpJournalVersion, t],
   );
 
   const openReader = useCallback((id: string) => setReadingId(id), []);

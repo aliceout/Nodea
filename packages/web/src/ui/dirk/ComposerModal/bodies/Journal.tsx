@@ -9,11 +9,8 @@ import {
 } from '@/app/flow/Journal/hooks/imageResize';
 import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
 import { pickJournalPrompt } from '@/app/flow/Journal/prompts';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
@@ -56,9 +53,7 @@ interface JournalBodyProps {
  */
 export default function JournalBody({ onClose }: JournalBodyProps) {
   const { t, language } = useI18n();
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['journal']?.moduleUserId ?? null;
+  const ctx = useModuleClient('journal');
   const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
   const editing = useNodeaStore((s) =>
     s.composer.editing && s.composer.editing.type === 'journal'
@@ -185,10 +180,10 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
   // the dropdown simply stays empty rather than showing an
   // error inside the form.
   useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
+    if (!ctx) return undefined;
     let cancelled = false;
     passageClient
-      .list(moduleUserId, mainKey)
+      .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
         const set = new Set<string>();
@@ -210,7 +205,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId]);
+  }, [ctx]);
 
   async function handleSave(): Promise<void> {
     if (submitting) return;
@@ -225,7 +220,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
       setError('Le contenu est requis.');
       return;
     }
-    if (!mainKey || !moduleUserId) {
+    if (!ctx) {
       setError('Module Journal non configuré ou clé absente — reconnecte-toi.');
       return;
     }
@@ -241,9 +236,9 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
         attachments,
       };
       if (editing) {
-        await passageClient.update(moduleUserId, mainKey, editing.id, payload);
+        await passageClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
       } else {
-        await passageClient.create(moduleUserId, mainKey, payload);
+        await passageClient.create(ctx.moduleUserId, ctx.mainKey, payload);
         // Successful save → wipe the draft slot so the next
         // open starts fresh instead of resurrecting what the
         // user just submitted.

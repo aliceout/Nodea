@@ -5,11 +5,8 @@ import {
 } from '@nodea/shared';
 
 import { libraryReviewsClient } from '@/core/api/modules/library';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
@@ -39,9 +36,7 @@ interface LibraryReviewBodyProps {
  */
 export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
   const { t } = useI18n();
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['library']?.moduleUserId ?? null;
+  const ctx = useModuleClient('library');
   const bumpReviewsVersion = useNodeaStore((s) => s.bumpLibraryReviewsVersion);
   const editing = useNodeaStore((s) =>
     s.composer.editing && s.composer.editing.type === 'library-review'
@@ -72,7 +67,7 @@ export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
       setError('Aucun livre rattaché — ouvre la review depuis la page du livre.');
       return;
     }
-    if (!mainKey || !moduleUserId) {
+    if (!ctx) {
       setError('Module Library non configuré ou clé absente — reconnecte-toi.');
       return;
     }
@@ -91,9 +86,9 @@ export default function LibraryReviewBody({ onClose }: LibraryReviewBodyProps) {
         spoiler: editingPayload?.spoiler ?? false,
       };
       if (isEditExisting && editing) {
-        await libraryReviewsClient.update(moduleUserId, mainKey, editing.id, payload);
+        await libraryReviewsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
       } else {
-        await libraryReviewsClient.create(moduleUserId, mainKey, payload);
+        await libraryReviewsClient.create(ctx.moduleUserId, ctx.mainKey, payload);
       }
       bumpReviewsVersion();
       onClose();

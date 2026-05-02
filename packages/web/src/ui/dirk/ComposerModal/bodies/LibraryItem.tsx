@@ -17,11 +17,8 @@ import {
   libraryCoversClient,
   libraryItemsClient,
 } from '@/core/api/modules/library';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
@@ -49,9 +46,7 @@ interface LibraryItemBodyProps {
  * decision documented in Library.md §3.1.
  */
 export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['library']?.moduleUserId ?? null;
+  const ctx = useModuleClient('library');
   // The user's Nodea-app language (synced from encrypted preferences,
   // falling back to localStorage / navigator on first paint). Passed
   // to the lookup as a *soft boost*, not a filter — providers still
@@ -285,10 +280,10 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
   // and the cover collection is small per user.
   const editingCoverRid = editingPayload?.cover_rid ?? null;
   useEffect(() => {
-    if (!isEdit || !editingCoverRid || !mainKey || !moduleUserId) return undefined;
+    if (!isEdit || !editingCoverRid || !ctx) return undefined;
     let cancelled = false;
     libraryCoversClient
-      .list(moduleUserId, mainKey)
+      .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
         const match = records.find((r) => r.id === editingCoverRid);
@@ -304,7 +299,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, editingCoverRid, mainKey, moduleUserId]);
+  }, [isEdit, editingCoverRid, ctx]);
 
   async function handleSave(): Promise<void> {
     if (submitting) return;
@@ -314,7 +309,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
       setError('Le titre est requis.');
       return;
     }
-    if (!mainKey || !moduleUserId) {
+    if (!ctx) {
       setError('Module Library non configuré ou clé absente — reconnecte-toi.');
       return;
     }
@@ -382,7 +377,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         // We just update the item, keeping the existing `cover_rid`
         // from `basePayload`. If the user wants to add a cover to a
         // book that didn't have one, that's still supported below.
-        await libraryItemsClient.update(moduleUserId, mainKey, editing.id, payload);
+        await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
         if (coverUrl && !basePayload?.cover_rid) {
           // Late-add a cover to an existing item: download via the
           // proxy, store the encrypted blob, then patch the item to
@@ -392,8 +387,8 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           if (fetched) {
             try {
               const newCover = await libraryCoversClient.create(
-                moduleUserId,
-                mainKey,
+                ctx.moduleUserId,
+                ctx.mainKey,
                 {
                   item_rid: editing.id,
                   mime: fetched.mime,
@@ -402,7 +397,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
                   fetched_at: new Date().toISOString(),
                 },
               );
-              await libraryItemsClient.update(moduleUserId, mainKey, editing.id, {
+              await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, {
                 ...payload,
                 cover_rid: newCover.id,
               });
@@ -418,7 +413,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
         // is bounded by `max(itemCreate, coverFetch)` rather than
         // their sum.
         const [newItem, fetchedCover] = await Promise.all([
-          libraryItemsClient.create(moduleUserId, mainKey, payload),
+          libraryItemsClient.create(ctx.moduleUserId, ctx.mainKey, payload),
           coverUrl ? apiLibraryFetchCover(coverUrl) : Promise.resolve(null),
         ]);
         if (coverUrl && fetchedCover) {
@@ -427,8 +422,8 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
           // than losing the typed-out form to a flaky cover proxy.
           try {
             const newCover = await libraryCoversClient.create(
-              moduleUserId,
-              mainKey,
+              ctx.moduleUserId,
+              ctx.mainKey,
               {
                 item_rid: newItem.id,
                 mime: fetchedCover.mime,
@@ -437,7 +432,7 @@ export default function LibraryItemBody({ onClose }: LibraryItemBodyProps) {
                 fetched_at: new Date().toISOString(),
               },
             );
-            await libraryItemsClient.update(moduleUserId, mainKey, newItem.id, {
+            await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, newItem.id, {
               ...newItem.payload,
               cover_rid: newCover.id,
             });

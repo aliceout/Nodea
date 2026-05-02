@@ -236,7 +236,7 @@ fonctionnellement.
 > Effort moyen, risque faible. Pose les bases sémantiques pour
 > les chantiers de Tier 2.
 
-### REFACTO-02 — Hook `useModuleClient(moduleId)`
+### REFACTO-02 — Hook `useModuleClient(moduleId)` — livré
 
 - **Type** : extraction hook
 - **Sites** (13 occurrences) :
@@ -263,10 +263,10 @@ fonctionnellement.
   useEffect(() => { if (!ctx) return; /* fetch */ }, [ctx]);
   ```
 - **Tâches**
-  - [ ] Créer le hook + test unit.
-  - [ ] Migrer les 13 sites un par un (commit par module pour facilité).
-  - [ ] Documenter la convention dans `CLAUDE.md` § Frontend rules.
-  - [ ] Optionnel : règle ESLint `no-restricted-syntax` flaggant `!mainKey || !moduleUserId` directement.
+  - [x] Créer le hook + test unit.
+  - [x] Migrer les 13 sites un par un (commit par module pour facilité).
+  - [x] Documenter la convention dans `CLAUDE.md` § Frontend rules.
+  - [x] Optionnel : règle ESLint `no-restricted-syntax` flaggant `!mainKey || !moduleUserId` directement.
 - **Gain** : sémantique « module hydraté » nommée explicitement,
   types resserrés downstream (les callers n'ont plus à narrow
   `mainKey | null`), 13 sites simplifiés.

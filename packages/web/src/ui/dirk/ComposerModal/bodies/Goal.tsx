@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { goalsClient } from '@/core/api/modules/goals';
-import {
-  useNodeaStore,
-  selectMainKey,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useGoalDraft } from '@/app/flow/Goals/hooks/useGoalDraft';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
@@ -56,9 +53,7 @@ interface GoalBodyProps {
 export default function GoalBody({ onClose }: GoalBodyProps) {
   const { t, language } = useI18n();
   const monthOptions = useMemo(() => genMonthOptions(language), [language]);
-  const mainKey = useNodeaStore(selectMainKey);
-  const modules = useNodeaStore(selectModules);
-  const moduleUserId = modules['goals']?.moduleUserId ?? null;
+  const ctx = useModuleClient('goals');
   const bumpGoalsVersion = useNodeaStore((s) => s.bumpGoalsVersion);
   const editing = useNodeaStore((s) =>
     s.composer.editing && s.composer.editing.type === 'goal'
@@ -98,10 +93,10 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
   // each goal's `thread` field on commas (the multi-thread
   // convention) and dedupes.
   useEffect(() => {
-    if (!mainKey || !moduleUserId) return undefined;
+    if (!ctx) return undefined;
     let cancelled = false;
     goalsClient
-      .list(moduleUserId, mainKey)
+      .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
         const set = new Set<string>();
@@ -121,7 +116,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
     return () => {
       cancelled = true;
     };
-  }, [mainKey, moduleUserId]);
+  }, [ctx]);
 
   // Auto-load any pending draft once it surfaces. Skipped on
   // edit, and skipped if the user has already typed something —
@@ -209,7 +204,7 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
       setError(t('goals.composer.errors.titleRequired'));
       return;
     }
-    if (!mainKey || !moduleUserId) {
+    if (!ctx) {
       setError(t('goals.composer.errors.missingConfig'));
       return;
     }
@@ -242,9 +237,9 @@ export default function GoalBody({ onClose }: GoalBodyProps) {
         updated_at: new Date().toISOString(),
       };
       if (editing) {
-        await goalsClient.update(moduleUserId, mainKey, editing.id, payload);
+        await goalsClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
       } else {
-        await goalsClient.create(moduleUserId, mainKey, payload);
+        await goalsClient.create(ctx.moduleUserId, ctx.mainKey, payload);
         clearDraft();
       }
       bumpGoalsVersion();
