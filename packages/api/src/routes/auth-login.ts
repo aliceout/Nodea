@@ -85,11 +85,37 @@ authLoginRoutes.post('/login/start', loginLimiter, async (c) => {
     serverLoginState = result.serverLoginState;
     loginResponse = result.loginResponse;
   } catch {
-    // Malformed `startLoginRequest` (truncated base64, bad
-    // point). Same shape as the success path so a probing
-    // attacker can't tell it apart from « unknown identifier »
-    // without trying the full handshake.
-    return c.json({ error: 'invalid_body' }, 400);
+    // The first attempt threw — most commonly because the
+    // stored `registrationRecord` is incompatible with the
+    // current `OPAQUE_SERVER_SETUP` (envelope predates a
+    // rotation). The original implementation returned 400
+    // `invalid_body` here, which leaked the « known-but-stale
+    // envelope » signal AND surfaced as a misleading error to
+    // legit users. Anti-enum requires the response shape match
+    // the unknown-email path, so we retry with
+    // `registrationRecord: null` — same code path the lib runs
+    // for a genuinely unknown identifier. The client's
+    // `finishLogin` will reject the resulting blob and the UI
+    // sees `invalid_credentials` at /finish, identical to a
+    // wrong-password attempt.
+    //
+    // Only when this second pass also throws is the request
+    // itself truly malformed (e.g. truncated base64,
+    // non-curve-point in `startLoginRequest`). In that case we
+    // fall back to 401 `invalid_credentials` — consistent with
+    // /finish's failure shape, no anti-enum signal lost since
+    // the client never gets a usable `loginToken`.
+    try {
+      const fallback = opaqueStartLogin({
+        userIdentifier,
+        registrationRecord: null,
+        startLoginRequest: body.startLoginRequest,
+      });
+      serverLoginState = fallback.serverLoginState;
+      loginResponse = fallback.loginResponse;
+    } catch {
+      return c.json({ error: 'invalid_credentials' }, 401);
+    }
   }
 
   const loginToken = storeLoginState(serverLoginState, userIdentifier);

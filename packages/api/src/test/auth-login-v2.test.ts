@@ -14,7 +14,7 @@ import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { users } from '../db/schema.ts';
+import { opaqueRecords, users } from '../db/schema.ts';
 import { TEST_PASSWORD, extractCookie, seedUser } from './helpers.ts';
 
 const app = buildApp();
@@ -82,7 +82,14 @@ describe('POST /auth/login/start', () => {
     // error.
   });
 
-  it('rejects 400 invalid_body on a malformed startLoginRequest', async () => {
+  it('rejects 401 invalid_credentials on a genuinely malformed startLoginRequest', async () => {
+    // The blob is unparseable (truncated base64 / non-curve point).
+    // The route now retries with `registrationRecord: null` to
+    // preserve the anti-enum shape ; both passes throw because the
+    // request itself is broken, so the route bails out with the
+    // same 401 invalid_credentials shape /finish uses on bad
+    // credentials. Pre-fix this surfaced as 400 invalid_body —
+    // misleading UX *and* a faint enum signal.
     await seedUser('login-malformed@example.com');
     const res = await app.request(
       '/auth/login/start',
@@ -91,16 +98,45 @@ describe('POST /auth/login/start', () => {
         startLoginRequest: 'not-a-real-opaque-blob',
       }),
     );
-    expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: 'invalid_body' });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: 'invalid_credentials' });
   });
 
   it('rejects 400 invalid_body on a missing field', async () => {
+    // Schema validation fails before the OPAQUE call, so this stays
+    // 400 invalid_body — the body shape itself is wrong. Distinct
+    // from the « valid shape but unusable contents » case above.
     const res = await app.request(
       '/auth/login/start',
       jsonPost({ email: 'no-blob@example.com' }),
     );
     expect(res.status).toBe(400);
+  });
+
+  it('returns the anti-enum success shape when the stored envelope is incompatible with the current OPAQUE_SERVER_SETUP', async () => {
+    // Simulate a server-setup rotation : the user exists and has an
+    // opaque_records row, but the envelope was written under a
+    // different OPAQUE_SERVER_SETUP and no longer parses. Pre-fix
+    // the route returned 400 invalid_body — leaking the « known
+    // email but stale envelope » signal. Post-fix the route falls
+    // back to the registrationRecord:null path (same response
+    // shape as an unknown email), and /finish's invalid_credentials
+    // surfaces the failure to the legit user.
+    const user = await seedUser('login-stale-envelope@example.com');
+    await db
+      .update(opaqueRecords)
+      .set({ envelope: 'definitely-not-a-real-envelope' })
+      .where(eq(opaqueRecords.userId, user.id));
+
+    const start = await callLoginStart(
+      'login-stale-envelope@example.com',
+      TEST_PASSWORD,
+    );
+    // 200 with a syntactically valid response — same shape as a
+    // request for an unknown identifier (anti-enum invariant).
+    expect(start.status).toBe(200);
+    expect(start.loginResponse).toBeTypeOf('string');
+    expect(start.loginToken).toBeTypeOf('string');
   });
 });
 
