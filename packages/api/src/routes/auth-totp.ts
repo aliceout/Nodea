@@ -1,10 +1,11 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   TotpEnrollStartBodySchema,
+  TotpEnrollStartResponseSchema,
   TotpEnrollVerifyBodySchema,
   TotpManagementBodySchema,
+  TotpRegenerateBackupCodesResponseSchema,
   type TotpEnrollStartResponse,
   type TotpRegenerateBackupCodesResponse,
 } from '@nodea/shared';
@@ -26,8 +27,16 @@ import { getEmailService } from '../services/email/index.ts';
 import { renderSecurityModeDowngradedEmail } from '../services/email/templates/security-mode-downgraded.ts';
 import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * TOTP routes (Auth-Roadmap Phase 5B, Auth-Spec §8).
@@ -54,7 +63,7 @@ import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
  * routes are scoped to a session-full caller acting on their own
  * TOTP record.
  */
-export const authTotpRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authTotpRoutes = makeAuthedRouter();
 
 const enrollLimiter = rateLimit({
   max: 10,
@@ -68,6 +77,72 @@ const manageLimiter = rateLimit({
   keyPrefix: 'totp-manage',
 });
 
+const TotpVerifyOkSchema = z.object({
+  ok: z.literal(true),
+  enabledAt: z.string().datetime(),
+});
+
+const enrollStartRoute = createRoute({
+  method: 'post',
+  path: '/totp/enroll/start',
+  tags: ['auth-totp'],
+  summary: 'Start TOTP enrollment (re-auth gated)',
+  middleware: [requireUser, requireFreshPassword, enrollLimiter] as const,
+  request: { body: { content: { 'application/json': { schema: TotpEnrollStartBodySchema } } } },
+  responses: {
+    200: jsonContent(TotpEnrollStartResponseSchema, 'Secret + backup codes'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated or stale re-auth'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const enrollVerifyRoute = createRoute({
+  method: 'post',
+  path: '/totp/enroll/verify',
+  tags: ['auth-totp'],
+  summary: 'Verify enrollment code, flip enabled_at',
+  middleware: [requireUser, enrollLimiter] as const,
+  request: { body: { content: { 'application/json': { schema: TotpEnrollVerifyBodySchema } } } },
+  responses: {
+    200: jsonContent(TotpVerifyOkSchema, 'TOTP enabled'),
+    400: errorContent('Invalid body, missing ack, or no pending enrollment'),
+    401: errorContent('Invalid code'),
+    409: errorContent('Already enabled'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const disableRoute = createRoute({
+  method: 'post',
+  path: '/totp/disable',
+  tags: ['auth-totp'],
+  summary: 'Disable TOTP (re-auth gated, may auto-downgrade mode)',
+  middleware: [requireUser, requireFreshPassword, manageLimiter] as const,
+  request: { body: { content: { 'application/json': { schema: TotpManagementBodySchema } } } },
+  responses: {
+    200: okContent('TOTP disabled'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated or stale re-auth'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const regenerateRoute = createRoute({
+  method: 'post',
+  path: '/totp/backup-codes/regenerate',
+  tags: ['auth-totp'],
+  summary: 'Regenerate backup codes (re-auth gated)',
+  middleware: [requireUser, requireFreshPassword, manageLimiter] as const,
+  request: { body: { content: { 'application/json': { schema: TotpManagementBodySchema } } } },
+  responses: {
+    200: jsonContent(TotpRegenerateBackupCodesResponseSchema, 'Fresh backup codes'),
+    400: errorContent('Invalid body or TOTP not enabled'),
+    401: errorContent('Unauthenticated or stale re-auth'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
 /* ============================================================================
  * POST /auth/totp/enroll/start
  *
@@ -76,12 +151,7 @@ const manageLimiter = rateLimit({
  * via `POST /auth/reauth/password`.
  * ========================================================================== */
 
-authTotpRoutes.post(
-  '/totp/enroll/start',
-  requireUser,
-  requireFreshPassword,
-  enrollLimiter,
-  async (c) => {
+authTotpRoutes.openapi(enrollStartRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = TotpEnrollStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -150,14 +220,14 @@ authTotpRoutes.post(
     otpauthUri: buildTotpUri(secret),
     backupCodes,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
  * POST /auth/totp/enroll/verify
  * ========================================================================== */
 
-authTotpRoutes.post('/totp/enroll/verify', requireUser, enrollLimiter, async (c) => {
+authTotpRoutes.openapi(enrollVerifyRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = TotpEnrollVerifyBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -210,19 +280,14 @@ authTotpRoutes.post('/totp/enroll/verify', requireUser, enrollLimiter, async (c)
     }
   });
 
-  return c.json({ ok: true, enabledAt: enabledAt.toISOString() });
+  return c.json({ ok: true as const, enabledAt: enabledAt.toISOString() }, 200);
 });
 
 /* ============================================================================
  * POST /auth/totp/disable
  * ========================================================================== */
 
-authTotpRoutes.post(
-  '/totp/disable',
-  requireUser,
-  requireFreshPassword,
-  manageLimiter,
-  async (c) => {
+authTotpRoutes.openapi(disableRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = TotpManagementBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -271,67 +336,61 @@ authTotpRoutes.post(
       });
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
-         
+
         console.warn('[auth/totp] downgrade notification mail failed', err);
       }
     }
   }
 
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 /* ============================================================================
  * POST /auth/totp/backup-codes/regenerate
  * ========================================================================== */
 
-authTotpRoutes.post(
-  '/totp/backup-codes/regenerate',
-  requireUser,
-  requireFreshPassword,
-  manageLimiter,
-  async (c) => {
-    const raw = await c.req.json().catch(() => null);
-    const parsed = TotpManagementBodySchema.safeParse(raw);
-    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
-    const user = c.get('user');
+authTotpRoutes.openapi(regenerateRoute, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = TotpManagementBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
 
-    // Refuse to regen into a dead pool — TOTP must be fully enabled.
-    const [totp] = await db
-      .select({ enabledAt: mfaTotp.enabledAt })
-      .from(mfaTotp)
-      .where(eq(mfaTotp.userId, user.id))
-      .limit(1);
-    if (!totp || totp.enabledAt === null) {
-      return c.json({ error: 'totp_not_enabled' }, 400);
+  // Refuse to regen into a dead pool — TOTP must be fully enabled.
+  const [totp] = await db
+    .select({ enabledAt: mfaTotp.enabledAt })
+    .from(mfaTotp)
+    .where(eq(mfaTotp.userId, user.id))
+    .limit(1);
+  if (!totp || totp.enabledAt === null) {
+    return c.json({ error: 'totp_not_enabled' }, 400);
+  }
+
+  const backupCodes = generateBackupCodes();
+  const backupCodeHashes = backupCodes.map((code) => {
+    const normalised = normaliseBackupCode(code);
+    if (normalised === null) {
+      throw new Error('generateBackupCodes produced an invalid code');
     }
+    return hashBackupCode(normalised);
+  });
 
-    const backupCodes = generateBackupCodes();
-    const backupCodeHashes = backupCodes.map((code) => {
-      const normalised = normaliseBackupCode(code);
-      if (normalised === null) {
-        throw new Error('generateBackupCodes produced an invalid code');
-      }
-      return hashBackupCode(normalised);
-    });
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(mfaTotpRecoveryCodes)
+      .where(eq(mfaTotpRecoveryCodes.userId, user.id));
+    await tx.insert(mfaTotpRecoveryCodes).values(
+      backupCodeHashes.map((codeHash) => ({
+        id: randomUUID(),
+        userId: user.id,
+        codeHash,
+        usedAt: null,
+      })),
+    );
+  });
 
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(mfaTotpRecoveryCodes)
-        .where(eq(mfaTotpRecoveryCodes.userId, user.id));
-      await tx.insert(mfaTotpRecoveryCodes).values(
-        backupCodeHashes.map((codeHash) => ({
-          id: randomUUID(),
-          userId: user.id,
-          codeHash,
-          usedAt: null,
-        })),
-      );
-    });
-
-    const response: TotpRegenerateBackupCodesResponse = { backupCodes };
-    return c.json(response);
-  },
-);
+  const response: TotpRegenerateBackupCodesResponse = { backupCodes };
+  return c.json(response, 200);
+});
 
 // `currentWindow` + `BACKUP_CODES_PER_USER` are imported because
 // future Phase 5C consumers will lean on them; reference once to

@@ -1,15 +1,23 @@
 import { randomUUID } from 'node:crypto';
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import {
   CreateEntryBodySchema,
+  EntryViewSchema,
   UpdateEntryBodySchema,
   INIT_GUARD,
 } from '@nodea/shared/schemas/entries';
+import { OpenAPIHono } from '@hono/zod-openapi';
 import { db } from '../db/client.ts';
 import type { EntryRow, EntryTable } from '../db/schema.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import { requireGuard, type GuardVariables } from '../middleware/require-guard.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  okContent,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * Public view of an entry. The minimum-readable-surface design only
@@ -34,6 +42,11 @@ function toView(row: EntryRow) {
   };
 }
 
+const EntryListResponseSchema = z.object({
+  data: z.array(EntryViewSchema),
+  meta: z.object({}).passthrough(),
+});
+
 /**
  * Build the 4 REST routes for a given encrypted collection.
  *
@@ -51,9 +64,92 @@ function toView(row: EntryRow) {
  * is impossible to forget the guard validation.
  */
 export function createCollectionRoutes(table: EntryTable) {
-  const router = new Hono<{ Variables: GuardVariables }>();
+  const router = new OpenAPIHono<{ Variables: GuardVariables }>({
+    defaultHook: (result, c) => {
+      if (!result.success) return c.json({ error: 'invalid_body' }, 400);
+      return undefined;
+    },
+  });
 
-  router.use('*', requireUser);
+  const listRoute = createRoute({
+    method: 'get',
+    path: '/records',
+    tags: ['records'],
+    summary: 'List records for the given access scope (sid)',
+    middleware: [requireUser] as const,
+    request: {
+      headers: z.object({
+        'x-sid': z.string().min(1).openapi({ description: 'Module access scope sid' }),
+      }),
+    },
+    responses: {
+      200: jsonContent(EntryListResponseSchema, 'Records for the given sid'),
+      400: errorContent('Missing X-Sid header'),
+      401: errorContent('Unauthenticated'),
+    },
+  });
+
+  const createRoute_ = createRoute({
+    method: 'post',
+    path: '/records',
+    tags: ['records'],
+    summary: 'Create a new encrypted record',
+    middleware: [requireUser] as const,
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: CreateEntryBodySchema },
+        },
+      },
+    },
+    responses: {
+      201: jsonContent(EntryViewSchema, 'Record created'),
+      400: errorContent('Invalid body'),
+      401: errorContent('Unauthenticated'),
+      500: errorContent('Insert failed'),
+    },
+  });
+
+  const updateRoute = createRoute({
+    method: 'patch',
+    path: '/records/{id}',
+    tags: ['records'],
+    summary: 'Update an encrypted record (guard-protected)',
+    middleware: [requireUser, requireGuard(table)] as const,
+    request: {
+      params: z.object({ id: z.string() }),
+      body: {
+        content: {
+          'application/json': { schema: UpdateEntryBodySchema },
+        },
+      },
+    },
+    responses: {
+      200: jsonContent(EntryViewSchema, 'Updated record'),
+      400: errorContent('Invalid body or guard already promoted'),
+      401: errorContent('Unauthenticated'),
+      403: errorContent('Guard mismatch'),
+      404: errorContent('Record not found'),
+      500: errorContent('Update failed'),
+    },
+  });
+
+  const deleteRoute = createRoute({
+    method: 'delete',
+    path: '/records/{id}',
+    tags: ['records'],
+    summary: 'Delete an encrypted record (guard-protected)',
+    middleware: [requireUser, requireGuard(table)] as const,
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: okContent('Deleted'),
+      401: errorContent('Unauthenticated'),
+      403: errorContent('Guard mismatch'),
+      404: errorContent('Record not found'),
+    },
+  });
 
   // --- LIST ---
   // Returns rows in their physical insertion order. Server-side
@@ -76,7 +172,7 @@ export function createCollectionRoutes(table: EntryTable) {
   // identifier and the HMAC guard out of URLs and therefore out of
   // request logs). LIST does not require the guard ; reading rows
   // requires only the sid + an authenticated session.
-  router.get('/records', async (c) => {
+  router.openapi(listRoute, async (c) => {
     const sid = c.req.header('x-sid');
     if (!sid) return c.json({ error: 'missing_sid' }, 400);
 
@@ -90,11 +186,11 @@ export function createCollectionRoutes(table: EntryTable) {
     // empty for now — order/pagination metadata would land here if
     // it ever ships. Keeping the same envelope across every list
     // endpoint lets the upcoming mobile client share one parser.
-    return c.json({ data: rows.map(toView), meta: {} });
+    return c.json({ data: rows.map(toView), meta: {} }, 200);
   });
 
   // --- CREATE (only accepts guard: "init") ---
-  router.post('/records', async (c) => {
+  router.openapi(createRoute_, async (c) => {
     const raw = await c.req.json().catch(() => null);
     const parsed = CreateEntryBodySchema.safeParse(raw);
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -123,7 +219,7 @@ export function createCollectionRoutes(table: EntryTable) {
   });
 
   // --- UPDATE (guard-protected; supports one-time promotion init → g_...) ---
-  router.patch('/records/:id', requireGuard(table), async (c) => {
+  router.openapi(updateRoute, async (c) => {
     const entry = c.get('entry');
     const raw = await c.req.json().catch(() => null);
     const parsed = UpdateEntryBodySchema.safeParse(raw);
@@ -144,7 +240,7 @@ export function createCollectionRoutes(table: EntryTable) {
     }
 
     if (Object.keys(updates).length === 0) {
-      return c.json(toView(entry));
+      return c.json(toView(entry), 200);
     }
 
     const [row] = await db
@@ -154,14 +250,14 @@ export function createCollectionRoutes(table: EntryTable) {
       .returning();
 
     if (!row) return c.json({ error: 'update_failed' }, 500);
-    return c.json(toView(row));
+    return c.json(toView(row), 200);
   });
 
   // --- DELETE (guard-protected) ---
-  router.delete('/records/:id', requireGuard(table), async (c) => {
+  router.openapi(deleteRoute, async (c) => {
     const entry = c.get('entry');
     await db.delete(table).where(eq(table.id, entry.id));
-    return c.json({ ok: true });
+    return c.json({ ok: true as const }, 200);
   });
 
   return router;

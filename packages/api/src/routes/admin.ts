@@ -1,16 +1,18 @@
-import { Hono } from 'hono';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { CreateInviteBodySchema } from '@nodea/shared/schemas/auth';
-import { AdminSettingsPatchBodySchema } from '@nodea/shared/schemas/admin-settings';
 import {
+  AdminSettingsPatchBodySchema,
+  AdminSourcesResponseSchema,
   AnnouncementCreateBodySchema,
+  AnnouncementListResponseSchema,
+  AnnouncementResponseSchema,
   AnnouncementUpdateBodySchema,
-} from '@nodea/shared/schemas/announcements';
+  CreateInviteBodySchema,
+} from '@nodea/shared';
 import { createInvite } from '../auth/invites.ts';
 import { db } from '../db/client.ts';
 import { announcements, invites, users } from '../db/schema.ts';
-import { requireUser, requireAdmin, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser, requireAdmin } from '../middleware/require-user.ts';
 import { serialize as serializeAnnouncement } from './announcements-serialize.ts';
 import { probeLibraryProviders } from '../services/library-lookup/dispatcher.ts';
 import {
@@ -22,10 +24,48 @@ import { getEmailService } from '../services/email/index.ts';
 import { renderInviteEmail } from '../services/email/templates/invite.ts';
 import { extractEmailLanguage, type SupportedEmailLanguage } from '../services/email/i18n.ts';
 import type { AdminSourcesResponse } from '@nodea/shared';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+  z,
+} from '../openapi/index.ts';
 
-export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
+export const adminRoutes = makeAuthedRouter();
 
-adminRoutes.use('*', requireUser, requireAdmin);
+const InviteRowSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  expiresAt: z.string().datetime().nullable(),
+});
+const InviteListItemSchema = InviteRowSchema.extend({
+  createdBy: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+const InviteListResponseSchema = z.object({
+  data: z.array(InviteListItemSchema),
+  meta: z.object({}).passthrough(),
+});
+
+const SettingsResponseSchema = z.object({
+  open_registration: z.boolean(),
+});
+
+const UserListItemSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  username: z.string().nullable(),
+  role: z.string(),
+  onboardingStatus: z.string(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+const UserListResponseSchema = z.object({
+  data: z.array(UserListItemSchema),
+  meta: z.object({}).passthrough(),
+});
 
 // --- Invites (email-bound, Bitwarden-style) ---------------------------
 
@@ -57,13 +97,212 @@ async function sendInviteMail(
   });
 }
 
+const adminMiddlewares = [requireUser, requireAdmin];
+
+const createInviteRoute = createRoute({
+  method: 'post',
+  path: '/invites',
+  tags: ['admin-invites'],
+  summary: 'Create + email a fresh invite',
+  middleware: adminMiddlewares,
+  request: { body: { content: { 'application/json': { schema: CreateInviteBodySchema } } } },
+  responses: {
+    201: jsonContent(InviteRowSchema, 'Invite created'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    409: errorContent('User already exists'),
+    502: errorContent('Email send failed'),
+  },
+});
+
+const resendInviteRoute = createRoute({
+  method: 'post',
+  path: '/invites/{id}/resend',
+  tags: ['admin-invites'],
+  summary: 'Re-issue an invite (rotate token + resend email)',
+  middleware: adminMiddlewares,
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: jsonContent(InviteRowSchema, 'Invite re-issued'),
+    400: errorContent('Missing id'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    404: errorContent('Invite not found or already used'),
+    502: errorContent('Email send failed'),
+  },
+});
+
+const listInvitesRoute = createRoute({
+  method: 'get',
+  path: '/invites',
+  tags: ['admin-invites'],
+  summary: 'List redeemable invites',
+  middleware: adminMiddlewares,
+  responses: {
+    200: jsonContent(InviteListResponseSchema, 'Pending invites'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+  },
+});
+
+const deleteInviteRoute = createRoute({
+  method: 'delete',
+  path: '/invites/{id}',
+  tags: ['admin-invites'],
+  summary: 'Delete an unused invite',
+  middleware: adminMiddlewares,
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: okContent('Invite deleted'),
+    400: errorContent('Missing id'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    404: errorContent('Invite not found or already used'),
+  },
+});
+
+const getSettingsRoute = createRoute({
+  method: 'get',
+  path: '/settings',
+  tags: ['admin-settings'],
+  summary: 'Read admin settings',
+  middleware: adminMiddlewares,
+  responses: {
+    200: jsonContent(SettingsResponseSchema, 'Settings snapshot'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+  },
+});
+
+const patchSettingsRoute = createRoute({
+  method: 'patch',
+  path: '/settings',
+  tags: ['admin-settings'],
+  summary: 'Patch admin settings',
+  middleware: adminMiddlewares,
+  request: { body: { content: { 'application/json': { schema: AdminSettingsPatchBodySchema } } } },
+  responses: {
+    200: jsonContent(SettingsResponseSchema, 'Updated settings'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+  },
+});
+
+const listUsersRoute = createRoute({
+  method: 'get',
+  path: '/users',
+  tags: ['admin-users'],
+  summary: 'List every user',
+  middleware: adminMiddlewares,
+  responses: {
+    200: jsonContent(UserListResponseSchema, 'User list'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+  },
+});
+
+const deleteUserRoute = createRoute({
+  method: 'delete',
+  path: '/users/{id}',
+  tags: ['admin-users'],
+  summary: 'Delete a user (cascades all rows)',
+  middleware: adminMiddlewares,
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: okContent('User deleted'),
+    400: errorContent('Missing id or self-delete attempt'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    404: errorContent('User not found'),
+  },
+});
+
+const listAnnouncementsAdminRoute = createRoute({
+  method: 'get',
+  path: '/announcements',
+  tags: ['admin-announcements'],
+  summary: 'List every announcement (incl. inactive)',
+  middleware: adminMiddlewares,
+  responses: {
+    200: jsonContent(AnnouncementListResponseSchema, 'All announcements'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+  },
+});
+
+const createAnnouncementRoute = createRoute({
+  method: 'post',
+  path: '/announcements',
+  tags: ['admin-announcements'],
+  summary: 'Create an announcement',
+  middleware: adminMiddlewares,
+  request: { body: { content: { 'application/json': { schema: AnnouncementCreateBodySchema } } } },
+  responses: {
+    201: jsonContent(AnnouncementResponseSchema, 'Announcement created'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    500: errorContent('Internal error'),
+  },
+});
+
+const updateAnnouncementRoute = createRoute({
+  method: 'patch',
+  path: '/announcements/{id}',
+  tags: ['admin-announcements'],
+  summary: 'Update an announcement',
+  middleware: adminMiddlewares,
+  request: {
+    params: z.object({ id: z.string() }),
+    body: { content: { 'application/json': { schema: AnnouncementUpdateBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(AnnouncementResponseSchema, 'Updated announcement'),
+    400: errorContent('Invalid body or missing id'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    404: errorContent('Announcement not found'),
+  },
+});
+
+const deleteAnnouncementRoute = createRoute({
+  method: 'delete',
+  path: '/announcements/{id}',
+  tags: ['admin-announcements'],
+  summary: 'Delete an announcement',
+  middleware: adminMiddlewares,
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: okContent('Announcement deleted'),
+    400: errorContent('Missing id'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+    404: errorContent('Announcement not found'),
+  },
+});
+
+const sourcesRoute = createRoute({
+  method: 'get',
+  path: '/sources',
+  tags: ['admin-sources'],
+  summary: 'Probe external metadata providers',
+  middleware: adminMiddlewares,
+  responses: {
+    200: jsonContent(AdminSourcesResponseSchema, 'Sources health snapshot'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Forbidden'),
+  },
+});
+
 /**
  * Send a fresh invite to an email address. Generates a 32-byte token,
  * stores its hash + the email, emails the link to the recipient. The
  * clear token is NEVER surfaced in the response — it lives only in
  * the email's link.
  */
-adminRoutes.post('/invites', async (c) => {
+adminRoutes.openapi(createInviteRoute, async (c) => {
   const raw = await c.req.json().catch(() => ({}));
   const parsed = CreateInviteBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -94,7 +333,6 @@ adminRoutes.post('/invites', async (c) => {
   try {
     await sendInviteMail(invite.email, invite.token, extractEmailLanguage(c));
   } catch (err) {
-
     console.error('[admin/invites] email send failed', err);
     // Surface to admin since they need to know the email didn't fly.
     return c.json({ error: 'email_send_failed' }, 502);
@@ -117,7 +355,7 @@ adminRoutes.post('/invites', async (c) => {
  * and send a new email. Used when the recipient says "I never got
  * the link" or the link expired.
  */
-adminRoutes.post('/invites/:id/resend', async (c) => {
+adminRoutes.openapi(resendInviteRoute, async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'missing_id' }, 400);
 
@@ -142,16 +380,18 @@ adminRoutes.post('/invites/:id/resend', async (c) => {
   try {
     await sendInviteMail(refreshed.email, refreshed.token, extractEmailLanguage(c));
   } catch (err) {
-
     console.error('[admin/invites] resend email failed', err);
     return c.json({ error: 'email_send_failed' }, 502);
   }
 
-  return c.json({
-    id: refreshed.id,
-    email: refreshed.email,
-    expiresAt: refreshed.expiresAt.toISOString(),
-  });
+  return c.json(
+    {
+      id: refreshed.id,
+      email: refreshed.email,
+      expiresAt: refreshed.expiresAt.toISOString(),
+    },
+    200,
+  );
 });
 
 /**
@@ -160,7 +400,7 @@ adminRoutes.post('/invites/:id/resend', async (c) => {
  * never carries it. UI offers a "Resend" action when the admin needs
  * to surface a fresh link.
  */
-adminRoutes.get('/invites', async (c) => {
+adminRoutes.openapi(listInvitesRoute, async (c) => {
   const rows = await db
     .select({
       id: invites.id,
@@ -174,20 +414,23 @@ adminRoutes.get('/invites', async (c) => {
     .orderBy(desc(invites.createdAt));
 
   // Uniform `{ data, meta }` envelope (audit API-06).
-  return c.json({
-    data: rows.map((r) => ({
-      id: r.id,
-      email: r.email,
-      createdBy: r.createdBy,
-      expiresAt: r.expiresAt?.toISOString() ?? null,
-      createdAt: r.createdAt.toISOString(),
-    })),
-    meta: {},
-  });
+  return c.json(
+    {
+      data: rows.map((r) => ({
+        id: r.id,
+        email: r.email,
+        createdBy: r.createdBy,
+        expiresAt: r.expiresAt?.toISOString() ?? null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      meta: {},
+    },
+    200,
+  );
 });
 
 /** Delete an unused invite. Used ones are immutable audit history. */
-adminRoutes.delete('/invites/:id', async (c) => {
+adminRoutes.openapi(deleteInviteRoute, async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'missing_id' }, 400);
 
@@ -197,16 +440,19 @@ adminRoutes.delete('/invites/:id', async (c) => {
     .returning({ id: invites.id });
 
   if (result.length === 0) return c.json({ error: 'not_found_or_used' }, 404);
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 // --- App settings -----------------------------------------------------
 
 /** Read every setting the UI exposes. Currently just open_registration. */
-adminRoutes.get('/settings', async (c) => {
-  return c.json({
-    open_registration: await isOpenRegistration(),
-  });
+adminRoutes.openapi(getSettingsRoute, async (c) => {
+  return c.json(
+    {
+      open_registration: await isOpenRegistration(),
+    },
+    200,
+  );
 });
 
 /**
@@ -214,7 +460,7 @@ adminRoutes.get('/settings', async (c) => {
  * touched; absent fields stay as-is. Each setting tracks its
  * `updatedBy` for audit.
  */
-adminRoutes.patch('/settings', async (c) => {
+adminRoutes.openapi(patchSettingsRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = AdminSettingsPatchBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -224,15 +470,18 @@ adminRoutes.patch('/settings', async (c) => {
     await setOpenRegistration(parsed.data.open_registration, admin.id);
   }
 
-  return c.json({
-    open_registration: await isOpenRegistration(),
-  });
+  return c.json(
+    {
+      open_registration: await isOpenRegistration(),
+    },
+    200,
+  );
 });
 
 // --- Users ------------------------------------------------------------
 
 /** List every user. Payload never includes password_hash. */
-adminRoutes.get('/users', async (c) => {
+adminRoutes.openapi(listUsersRoute, async (c) => {
   const rows = await db
     .select({
       id: users.id,
@@ -246,18 +495,21 @@ adminRoutes.get('/users', async (c) => {
     .from(users)
     .orderBy(asc(users.email));
   // Uniform `{ data, meta }` envelope (audit API-06).
-  return c.json({
-    data: rows.map((r) => ({
-      id: r.id,
-      email: r.email,
-      username: r.username ?? null,
-      role: r.role,
-      onboardingStatus: r.onboardingStatus,
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-    })),
-    meta: {},
-  });
+  return c.json(
+    {
+      data: rows.map((r) => ({
+        id: r.id,
+        email: r.email,
+        username: r.username ?? null,
+        role: r.role,
+        onboardingStatus: r.onboardingStatus,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+      })),
+      meta: {},
+    },
+    200,
+  );
 });
 
 /**
@@ -268,7 +520,7 @@ adminRoutes.get('/users', async (c) => {
  * An admin cannot delete themselves through this endpoint — would be
  * easy to lock yourself out and there's no recovery path.
  */
-adminRoutes.delete('/users/:id', async (c) => {
+adminRoutes.openapi(deleteUserRoute, async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'missing_id' }, 400);
 
@@ -281,7 +533,7 @@ adminRoutes.delete('/users/:id', async (c) => {
     .returning({ id: users.id });
 
   if (result.length === 0) return c.json({ error: 'not_found' }, 404);
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 // --- Announcements ----------------------------------------------------
@@ -291,16 +543,16 @@ adminRoutes.delete('/users/:id', async (c) => {
  * The public `/announcements` endpoint in `routes/announcements.ts`
  * filters to the live ones for normal users.
  */
-adminRoutes.get('/announcements', async (c) => {
+adminRoutes.openapi(listAnnouncementsAdminRoute, async (c) => {
   const rows = await db
     .select()
     .from(announcements)
     .orderBy(desc(announcements.createdAt));
   // Uniform `{ data, meta }` envelope (audit API-06).
-  return c.json({ data: rows.map(serializeAnnouncement), meta: {} });
+  return c.json({ data: rows.map(serializeAnnouncement), meta: {} }, 200);
 });
 
-adminRoutes.post('/announcements', async (c) => {
+adminRoutes.openapi(createAnnouncementRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = AnnouncementCreateBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -325,7 +577,7 @@ adminRoutes.post('/announcements', async (c) => {
   return c.json(serializeAnnouncement(row), 201);
 });
 
-adminRoutes.patch('/announcements/:id', async (c) => {
+adminRoutes.openapi(updateAnnouncementRoute, async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'missing_id' }, 400);
 
@@ -348,10 +600,10 @@ adminRoutes.patch('/announcements/:id', async (c) => {
     .returning();
 
   if (!row) return c.json({ error: 'not_found' }, 404);
-  return c.json(serializeAnnouncement(row));
+  return c.json(serializeAnnouncement(row), 200);
 });
 
-adminRoutes.delete('/announcements/:id', async (c) => {
+adminRoutes.openapi(deleteAnnouncementRoute, async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'missing_id' }, 400);
 
@@ -361,7 +613,7 @@ adminRoutes.delete('/announcements/:id', async (c) => {
     .returning({ id: announcements.id });
 
   if (result.length === 0) return c.json({ error: 'not_found' }, 404);
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 // --- Sources health (admin "Sources" tab) ----------------------------
@@ -379,7 +631,7 @@ adminRoutes.delete('/announcements/:id', async (c) => {
 // Phase 2 covers Library only; future modules with their own
 // providers (audio-visual when it lands) get an extra entry in the
 // response `modules` map without touching the route.
-adminRoutes.get('/sources', async (c) => {
+adminRoutes.openapi(sourcesRoute, async (c) => {
   const library = await probeLibraryProviders();
   // Uniform `{ data, meta }` envelope (audit API-06). `data` flattens
   // every source across every module; each `SourceHealth.module` lets
@@ -389,5 +641,5 @@ adminRoutes.get('/sources', async (c) => {
     data: [...library],
     meta: { generatedAt: new Date().toISOString() },
   };
-  return c.json(response);
+  return c.json(response, 200);
 });

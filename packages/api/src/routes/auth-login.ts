@@ -1,8 +1,9 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import {
   OpaqueLoginFinishBodySchema,
+  OpaqueLoginFinishResponseSchema,
   OpaqueLoginStartBodySchema,
+  OpaqueLoginStartResponseSchema,
   type OpaqueLoginFinishResponse,
   type OpaqueLoginStartResponse,
 } from '@nodea/shared';
@@ -31,14 +32,79 @@ import {
 } from '../auth/cookies.ts';
 import { db } from '../db/client.ts';
 import { mfaTotp, opaqueRecords, users } from '../db/schema.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { extractEmailLanguage } from '../services/email/i18n.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+} from '../openapi/index.ts';
 
 import { loginLimiter } from './auth-shared.ts';
 
-export const authLoginRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authLoginRoutes = makeAuthedRouter();
+
+const loginStartRoute = createRoute({
+  method: 'post',
+  path: '/login/start',
+  tags: ['auth-login'],
+  summary: 'OPAQUE login — step 1 (anti-enum)',
+  middleware: [loginLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: OpaqueLoginStartBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: jsonContent(OpaqueLoginStartResponseSchema, 'OPAQUE login response + token'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const loginFinishRoute = createRoute({
+  method: 'post',
+  path: '/login/finish',
+  tags: ['auth-login'],
+  summary: 'OPAQUE login — step 2 (session or mfa_pending)',
+  middleware: [loginLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: OpaqueLoginFinishBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: jsonContent(
+      OpaqueLoginFinishResponseSchema,
+      'Login finished — full session or mfa_pending session',
+    ),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials'),
+    403: errorContent('Account not activated'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const logoutRoute = createRoute({
+  method: 'post',
+  path: '/logout',
+  tags: ['auth-login'],
+  summary: 'Revoke the current session',
+  middleware: [requireUser] as const,
+  responses: {
+    200: okContent('Session revoked'),
+    401: errorContent('Unauthenticated'),
+  },
+});
 
 /**
  * OPAQUE login — step 1 (Auth-Roadmap Phase 2C).
@@ -55,7 +121,7 @@ export const authLoginRoutes = new Hono<{ Variables: AuthVariables }>();
  * an in-memory map (`opaque-login-state.ts`) keyed by
  * `loginToken`. Single-use, 5-minute TTL.
  */
-authLoginRoutes.post('/login/start', loginLimiter, async (c) => {
+authLoginRoutes.openapi(loginStartRoute, async (c) => {
   await opaqueReady;
 
   const raw = await c.req.json().catch(() => null);
@@ -121,7 +187,7 @@ authLoginRoutes.post('/login/start', loginLimiter, async (c) => {
   const loginToken = storeLoginState(serverLoginState, userIdentifier);
 
   const response: OpaqueLoginStartResponse = { loginResponse, loginToken };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /**
@@ -140,7 +206,7 @@ authLoginRoutes.post('/login/start', loginLimiter, async (c) => {
  * password, expired token, and tampered finishLoginRequest —
  * anti-enum.
  */
-authLoginRoutes.post('/login/finish', loginLimiter, async (c) => {
+authLoginRoutes.openapi(loginFinishRoute, async (c) => {
   await opaqueReady;
 
   const raw = await c.req.json().catch(() => null);
@@ -218,7 +284,7 @@ authLoginRoutes.post('/login/finish', loginLimiter, async (c) => {
         });
       } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
-           
+
           console.warn('[auth/login] mfa-bypass-applied mail failed', err);
         }
       }
@@ -278,7 +344,7 @@ authLoginRoutes.post('/login/finish', loginLimiter, async (c) => {
       needsMfa: false,
       id: user.id,
     };
-    return c.json(response);
+    return c.json(response, 200);
   }
 
   // Stepped path : mfa_pending session with the primary
@@ -299,12 +365,12 @@ authLoginRoutes.post('/login/finish', loginLimiter, async (c) => {
     wrappedKekPassword: user.wrappedKekPassword,
     wrappedKekPasswordIv: user.wrappedKekPasswordIv,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
-authLoginRoutes.post('/logout', requireUser, async (c) => {
+authLoginRoutes.openapi(logoutRoute, async (c) => {
   const sessionId = c.get('sessionId');
   await revokeSession(sessionId);
   clearSessionCookie(c);
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });

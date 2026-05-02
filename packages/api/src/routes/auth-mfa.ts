@@ -1,9 +1,11 @@
-import { Hono } from 'hono';
 import { and, eq, isNull } from 'drizzle-orm';
 import {
   MfaPasskeyFinishBodySchema,
+  MfaPasskeyFinishResponseSchema,
   MfaPasskeyStartBodySchema,
+  MfaPasskeyStartResponseSchema,
   MfaTotpVerifyBodySchema,
+  MfaTotpVerifyResponseSchema,
   type MfaPasskeyFinishResponse,
   type MfaPasskeyStartResponse,
   type MfaTotpVerifyResponse,
@@ -16,6 +18,7 @@ import type {
   AuthenticationResponseJSON,
   AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
+import { OpenAPIHono } from '@hono/zod-openapi';
 import { db } from '../db/client.ts';
 import {
   authFactors,
@@ -38,6 +41,7 @@ import {
   requireMfaPending,
   type MfaPendingVariables,
 } from '../middleware/require-mfa-pending.ts';
+import { createRoute, errorContent, jsonContent } from '../openapi/index.ts';
 
 /**
  * Stepped MFA routes (Auth-Roadmap Phase 5C, Auth-Spec §7.4).
@@ -57,7 +61,12 @@ import {
  * Backup codes are single-use (Auth-Spec §8.3): each consumed code
  * flips `used_at` and the row stays for audit.
  */
-export const authMfaRoutes = new Hono<{ Variables: MfaPendingVariables }>();
+export const authMfaRoutes = new OpenAPIHono<{ Variables: MfaPendingVariables }>({
+  defaultHook: (result, c) => {
+    if (!result.success) return c.json({ error: 'invalid_body' }, 400);
+    return undefined;
+  },
+});
 
 const verifyLimiter = rateLimit({
   max: 10,
@@ -71,11 +80,68 @@ const passkeyMfaLimiter = rateLimit({
   keyPrefix: 'mfa-passkey',
 });
 
+const totpVerifyRoute = createRoute({
+  method: 'post',
+  path: '/mfa/totp/verify',
+  tags: ['auth-mfa'],
+  summary: 'Verify TOTP / backup code on a `mfa_pending` session',
+  middleware: [requireMfaPending, verifyLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: MfaTotpVerifyBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(MfaTotpVerifyResponseSchema, 'Finalized or missing factors'),
+    400: errorContent('Invalid body or TOTP not enabled'),
+    401: errorContent('Invalid code or pending session'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const passkeyStartRoute = createRoute({
+  method: 'post',
+  path: '/mfa/passkey/start',
+  tags: ['auth-mfa'],
+  summary: 'Start passkey-as-second-factor on a `mfa_pending` session',
+  middleware: [requireMfaPending, passkeyMfaLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: MfaPasskeyStartBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(MfaPasskeyStartResponseSchema, 'WebAuthn requestOptions'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Pending session missing or expired'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const passkeyFinishRoute = createRoute({
+  method: 'post',
+  path: '/mfa/passkey/finish',
+  tags: ['auth-mfa'],
+  summary: 'Finish passkey-as-second-factor on a `mfa_pending` session',
+  middleware: [requireMfaPending, passkeyMfaLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: MfaPasskeyFinishBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(MfaPasskeyFinishResponseSchema, 'Finalized or missing factors'),
+    400: errorContent('Invalid body, no pending challenge, or expired'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
 /* ============================================================================
  * POST /auth/mfa/totp/verify
  * ========================================================================== */
 
-authMfaRoutes.post('/mfa/totp/verify', requireMfaPending, verifyLimiter, async (c) => {
+authMfaRoutes.openapi(totpVerifyRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = MfaTotpVerifyBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -164,195 +230,185 @@ authMfaRoutes.post('/mfa/totp/verify', requireMfaPending, verifyLimiter, async (
     const fullSession = await finalizeMfaSession(sessionId);
     await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
     const response: MfaTotpVerifyResponse = { finalized: true };
-    return c.json(response);
+    return c.json(response, 200);
   }
 
   const response: MfaTotpVerifyResponse = {
     finalized: false,
     missing: missing as ('totp' | 'passkey' | 'password')[],
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
  * POST /auth/mfa/passkey/start  — passkey-as-second-factor (mode max)
  * ========================================================================== */
 
-authMfaRoutes.post(
-  '/mfa/passkey/start',
-  requireMfaPending,
-  passkeyMfaLimiter,
-  async (c) => {
-    const raw = await c.req.json().catch(() => null);
-    const parsed = MfaPasskeyStartBodySchema.safeParse(raw);
-    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
-    const user = c.get('user');
-    const sessionId = c.get('sessionId');
-    const config = getConfig();
+authMfaRoutes.openapi(passkeyStartRoute, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = MfaPasskeyStartBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
+  const sessionId = c.get('sessionId');
+  const config = getConfig();
 
-    // Build allowCredentials from the user's enrolled passkeys —
-    // unlike the public /auth/passkeys/login/start, here the user is
-    // already known (we authenticated them on the primary factor)
-    // so anti-enum doesn't apply.
-    const rows = await db
-      .select({
-        credentialId: authFactors.credentialId,
-        transports: authFactors.transports,
-      })
-      .from(authFactors)
-      .where(eq(authFactors.userId, user.id));
+  // Build allowCredentials from the user's enrolled passkeys —
+  // unlike the public /auth/passkeys/login/start, here the user is
+  // already known (we authenticated them on the primary factor)
+  // so anti-enum doesn't apply.
+  const rows = await db
+    .select({
+      credentialId: authFactors.credentialId,
+      transports: authFactors.transports,
+    })
+    .from(authFactors)
+    .where(eq(authFactors.userId, user.id));
 
-    const allowCredentials = rows.map((row) => {
-      const transports = parseTransports(row.transports);
-      return transports !== undefined
-        ? { id: row.credentialId, transports }
-        : { id: row.credentialId };
-    });
+  const allowCredentials = rows.map((row) => {
+    const transports = parseTransports(row.transports);
+    return transports !== undefined
+      ? { id: row.credentialId, transports }
+      : { id: row.credentialId };
+  });
 
-    const requestOptions = await generateAuthenticationOptions({
-      rpID: config.WEBAUTHN_RP_ID,
-      userVerification: 'required',
-      allowCredentials,
-    });
+  const requestOptions = await generateAuthenticationOptions({
+    rpID: config.WEBAUTHN_RP_ID,
+    userVerification: 'required',
+    allowCredentials,
+  });
 
-    // Persist the challenge on the pending row so /finish can verify
-    // it. Reusing the existing `pending_webauthn_challenge` column.
-    await db
-      .update(sessions)
-      .set({
-        pendingWebauthnChallenge: requestOptions.challenge,
-        pendingWebauthnChallengeAt: new Date(),
-      })
-      .where(eq(sessions.id, sessionId));
+  // Persist the challenge on the pending row so /finish can verify
+  // it. Reusing the existing `pending_webauthn_challenge` column.
+  await db
+    .update(sessions)
+    .set({
+      pendingWebauthnChallenge: requestOptions.challenge,
+      pendingWebauthnChallengeAt: new Date(),
+    })
+    .where(eq(sessions.id, sessionId));
 
-    const response: MfaPasskeyStartResponse = {
-      requestOptions: requestOptions as unknown as Record<string, unknown>,
-    };
-    return c.json(response);
-  },
-);
+  const response: MfaPasskeyStartResponse = {
+    requestOptions: requestOptions as unknown as Record<string, unknown>,
+  };
+  return c.json(response, 200);
+});
 
 /* ============================================================================
  * POST /auth/mfa/passkey/finish — verify assertion + maybe finalize
  * ========================================================================== */
 
-authMfaRoutes.post(
-  '/mfa/passkey/finish',
-  requireMfaPending,
-  passkeyMfaLimiter,
-  async (c) => {
-    const raw = await c.req.json().catch(() => null);
-    const parsed = MfaPasskeyFinishBodySchema.safeParse(raw);
-    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
-    const user = c.get('user');
-    const sessionId = c.get('sessionId');
-    const pendingSession = c.get('pendingSession');
+authMfaRoutes.openapi(passkeyFinishRoute, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = MfaPasskeyFinishBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
+  const sessionId = c.get('sessionId');
+  const pendingSession = c.get('pendingSession');
 
-    if (
-      !pendingSession.pendingWebauthnChallenge ||
-      !pendingSession.pendingWebauthnChallengeAt
-    ) {
-      return c.json({ error: 'no_pending_challenge' }, 400);
-    }
-    // 5-minute TTL on the challenge (Auth-Spec §9.2 reuse).
-    if (
-      Date.now() - pendingSession.pendingWebauthnChallengeAt.getTime() >
-      5 * 60_000
-    ) {
-      return c.json({ error: 'challenge_expired' }, 400);
-    }
+  if (
+    !pendingSession.pendingWebauthnChallenge ||
+    !pendingSession.pendingWebauthnChallengeAt
+  ) {
+    return c.json({ error: 'no_pending_challenge' }, 400);
+  }
+  // 5-minute TTL on the challenge (Auth-Spec §9.2 reuse).
+  if (
+    Date.now() - pendingSession.pendingWebauthnChallengeAt.getTime() >
+    5 * 60_000
+  ) {
+    return c.json({ error: 'challenge_expired' }, 400);
+  }
 
-    const assertion = parsed.data.assertionResponse as unknown as AuthenticationResponseJSON;
-    const assertionId = assertion.id;
-    if (typeof assertionId !== 'string' || assertionId.length === 0) {
+  const assertion = parsed.data.assertionResponse as unknown as AuthenticationResponseJSON;
+  const assertionId = assertion.id;
+  if (typeof assertionId !== 'string' || assertionId.length === 0) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  // Cred must belong to THIS user — reject any assertion from a
+  // foreign credential even if its signature would otherwise pass.
+  const [factor] = await db
+    .select()
+    .from(authFactors)
+    .where(eq(authFactors.credentialId, assertionId))
+    .limit(1);
+  if (!factor || factor.userId !== user.id) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  const config = getConfig();
+  const transports = parseTransports(factor.transports);
+  let verification: Awaited<ReturnType<typeof verifyAuthenticationResponse>>;
+  try {
+    verification = await verifyAuthenticationResponse({
+      response: assertion,
+      expectedChallenge: pendingSession.pendingWebauthnChallenge,
+      expectedOrigin: config.WEBAUTHN_ORIGIN,
+      expectedRPID: config.WEBAUTHN_RP_ID,
+      requireUserVerification: true,
+      credential: {
+        id: factor.credentialId,
+        publicKey: base64UrlToBytes(factor.publicKey),
+        counter: factor.signCount,
+        ...(transports !== undefined ? { transports } : {}),
+      },
+    });
+  } catch {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+  if (!verification.verified || !verification.authenticationInfo.userVerified) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  // Sign-counter handling — same logic as the primary login flow
+  // (Auth-Spec §9.6).
+  const newCounter = verification.authenticationInfo.newCounter;
+  if (factor.signCountStrict) {
+    if (newCounter > 0 && newCounter <= factor.signCount) {
       return c.json({ error: 'invalid_credentials' }, 401);
     }
+  }
+  const nextStrict =
+    factor.signCountStrict && newCounter === 0 && factor.signCount === 0
+      ? false
+      : factor.signCountStrict;
+  await db
+    .update(authFactors)
+    .set({
+      signCount: newCounter,
+      signCountStrict: nextStrict,
+      lastUsedAt: new Date(),
+    })
+    .where(eq(authFactors.id, factor.id));
 
-    // Cred must belong to THIS user — reject any assertion from a
-    // foreign credential even if its signature would otherwise pass.
-    const [factor] = await db
-      .select()
-      .from(authFactors)
-      .where(eq(authFactors.credentialId, assertionId))
-      .limit(1);
-    if (!factor || factor.userId !== user.id) {
-      return c.json({ error: 'invalid_credentials' }, 401);
-    }
+  // Mark passkey verified on the pending row + clear the
+  // single-use challenge.
+  await db
+    .update(sessions)
+    .set({
+      mfaPasskeyVerified: true,
+      pendingWebauthnChallenge: null,
+      pendingWebauthnChallengeAt: null,
+    })
+    .where(eq(sessions.id, sessionId));
 
-    const config = getConfig();
-    const transports = parseTransports(factor.transports);
-    let verification: Awaited<ReturnType<typeof verifyAuthenticationResponse>>;
-    try {
-      verification = await verifyAuthenticationResponse({
-        response: assertion,
-        expectedChallenge: pendingSession.pendingWebauthnChallenge,
-        expectedOrigin: config.WEBAUTHN_ORIGIN,
-        expectedRPID: config.WEBAUTHN_RP_ID,
-        requireUserVerification: true,
-        credential: {
-          id: factor.credentialId,
-          publicKey: base64UrlToBytes(factor.publicKey),
-          counter: factor.signCount,
-          ...(transports !== undefined ? { transports } : {}),
-        },
-      });
-    } catch {
-      return c.json({ error: 'invalid_credentials' }, 401);
-    }
-    if (!verification.verified || !verification.authenticationInfo.userVerified) {
-      return c.json({ error: 'invalid_credentials' }, 401);
-    }
+  const updatedPending = { ...pendingSession, mfaPasskeyVerified: true };
+  const missing = missingFactors(user, updatedPending);
 
-    // Sign-counter handling — same logic as the primary login flow
-    // (Auth-Spec §9.6).
-    const newCounter = verification.authenticationInfo.newCounter;
-    if (factor.signCountStrict) {
-      if (newCounter > 0 && newCounter <= factor.signCount) {
-        return c.json({ error: 'invalid_credentials' }, 401);
-      }
-    }
-    const nextStrict =
-      factor.signCountStrict && newCounter === 0 && factor.signCount === 0
-        ? false
-        : factor.signCountStrict;
-    await db
-      .update(authFactors)
-      .set({
-        signCount: newCounter,
-        signCountStrict: nextStrict,
-        lastUsedAt: new Date(),
-      })
-      .where(eq(authFactors.id, factor.id));
+  if (missing.length === 0) {
+    await cancelPendingBypassesForUser(user.id);
+    const fullSession = await finalizeMfaSession(sessionId);
+    await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
+    const response: MfaPasskeyFinishResponse = { finalized: true };
+    return c.json(response, 200);
+  }
 
-    // Mark passkey verified on the pending row + clear the
-    // single-use challenge.
-    await db
-      .update(sessions)
-      .set({
-        mfaPasskeyVerified: true,
-        pendingWebauthnChallenge: null,
-        pendingWebauthnChallengeAt: null,
-      })
-      .where(eq(sessions.id, sessionId));
-
-    const updatedPending = { ...pendingSession, mfaPasskeyVerified: true };
-    const missing = missingFactors(user, updatedPending);
-
-    if (missing.length === 0) {
-      await cancelPendingBypassesForUser(user.id);
-      const fullSession = await finalizeMfaSession(sessionId);
-      await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
-      const response: MfaPasskeyFinishResponse = { finalized: true };
-      return c.json(response);
-    }
-
-    const response: MfaPasskeyFinishResponse = {
-      finalized: false,
-      missing: missing as ('totp' | 'passkey' | 'password')[],
-    };
-    return c.json(response);
-  },
-);
+  const response: MfaPasskeyFinishResponse = {
+    finalized: false,
+    missing: missing as ('totp' | 'passkey' | 'password')[],
+  };
+  return c.json(response, 200);
+});
 
 /* ============================================================================
  * Local helpers

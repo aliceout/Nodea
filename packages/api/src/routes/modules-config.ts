@@ -1,9 +1,15 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { ModulesConfigBodySchema } from '@nodea/shared/schemas/entries';
 import { db } from '../db/client.ts';
 import { modulesConfig } from '../db/schema.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * Modules config — per-user settings (which modules are active + per-module
@@ -27,26 +33,65 @@ import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
  * entire encrypted blob » and is idempotent — two identical calls
  * yield the same row state.
  */
-export const modulesConfigRoutes = new Hono<{ Variables: AuthVariables }>();
+export const modulesConfigRoutes = makeAuthedRouter();
 
-modulesConfigRoutes.use('*', requireUser);
+const ModulesConfigResponseSchema = z.object({
+  cipherIv: z.string().nullable(),
+  payload: z.string().nullable(),
+  updatedAt: z.string().datetime().optional(),
+});
 
-modulesConfigRoutes.get('/', async (c) => {
+const getModulesConfigRoute = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['modules-config'],
+  summary: 'Read current user modules config',
+  middleware: [requireUser] as const,
+  responses: {
+    200: jsonContent(ModulesConfigResponseSchema, 'Current modules config blob'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+const putModulesConfigRoute = createRoute({
+  method: 'put',
+  path: '/',
+  tags: ['modules-config'],
+  summary: 'Replace modules config (atomic, encrypted blob)',
+  middleware: [requireUser] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: ModulesConfigBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: jsonContent(ModulesConfigResponseSchema, 'Updated config blob'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+modulesConfigRoutes.openapi(getModulesConfigRoute, async (c) => {
   const user = c.get('user');
   const [row] = await db
     .select()
     .from(modulesConfig)
     .where(eq(modulesConfig.userId, user.id))
     .limit(1);
-  if (!row) return c.json({ cipherIv: null, payload: null });
-  return c.json({
-    cipherIv: row.cipherIv,
-    payload: row.payload,
-    updatedAt: row.updatedAt.toISOString(),
-  });
+  if (!row) return c.json({ cipherIv: null, payload: null }, 200);
+  return c.json(
+    {
+      cipherIv: row.cipherIv,
+      payload: row.payload,
+      updatedAt: row.updatedAt.toISOString(),
+    },
+    200,
+  );
 });
 
-modulesConfigRoutes.put('/', async (c) => {
+modulesConfigRoutes.openapi(putModulesConfigRoute, async (c) => {
   const user = c.get('user');
   const raw = await c.req.json().catch(() => null);
   const parsed = ModulesConfigBodySchema.safeParse(raw);
@@ -71,9 +116,12 @@ modulesConfigRoutes.put('/', async (c) => {
       },
     });
 
-  return c.json({
-    cipherIv: values.cipherIv,
-    payload: values.payload,
-    updatedAt: values.updatedAt.toISOString(),
-  });
+  return c.json(
+    {
+      cipherIv: values.cipherIv,
+      payload: values.payload,
+      updatedAt: values.updatedAt.toISOString(),
+    },
+    200,
+  );
 });

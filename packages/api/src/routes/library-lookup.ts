@@ -1,12 +1,19 @@
-import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import {
   LibraryLookupByIsbnBodySchema,
   LibraryLookupByQueryBodySchema,
+  LibraryLookupResponseSchema,
 } from '@nodea/shared';
 import { lookupByIsbn, streamLookupByQuery } from '../services/library-lookup/dispatcher.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * `/library/lookup/by-isbn` (one-shot JSON) and
@@ -26,9 +33,7 @@ import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
  * which lets the rate limiter key on user id (so one user can't
  * starve another sharing the same NAT egress IP).
  */
-export const libraryLookupRoutes = new Hono<{ Variables: AuthVariables }>();
-
-libraryLookupRoutes.use('*', requireUser);
+export const libraryLookupRoutes = makeAuthedRouter();
 
 const isbnLimiter = rateLimit({
   max: 30,
@@ -70,13 +75,89 @@ const COVER_HOST_ALLOWLIST: readonly string[] = [
 
 const COVER_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — covers run 30-300 KB
 
-libraryLookupRoutes.post('/by-isbn', isbnLimiter, async (c) => {
+const CoverFetchResponseSchema = z.object({
+  mime: z.string(),
+  blobB64: z.string(),
+});
+
+const byIsbnRoute = createRoute({
+  method: 'post',
+  path: '/by-isbn',
+  tags: ['library-lookup'],
+  summary: 'Lookup a book by ISBN across configured providers',
+  middleware: [requireUser, isbnLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: LibraryLookupByIsbnBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: jsonContent(LibraryLookupResponseSchema, 'Lookup result'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    429: errorContent('Rate limit exceeded'),
+    502: errorContent('Upstream lookup failed'),
+  },
+});
+
+const byQueryStreamRoute = createRoute({
+  method: 'post',
+  path: '/by-query/stream',
+  tags: ['library-lookup'],
+  summary: 'Stream lookup snapshots (NDJSON)',
+  description:
+    'Streams `LibraryLookupStreamSnapshot` records as NDJSON, one per line. The final line carries `done: true`.',
+  middleware: [requireUser, queryLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: LibraryLookupByQueryBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description:
+        'NDJSON stream of LibraryLookupStreamSnapshot, one per line. Final line carries `done: true`.',
+    },
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const coverFetchRoute = createRoute({
+  method: 'get',
+  path: '/cover-fetch',
+  tags: ['library-lookup'],
+  summary: 'Fetch a cover image (proxied, allowlisted hosts only)',
+  middleware: [requireUser, coverLimiter] as const,
+  request: {
+    query: z.object({
+      url: z.string().url().openapi({ description: 'HTTPS URL on an allowlisted host' }),
+    }),
+  },
+  responses: {
+    200: jsonContent(CoverFetchResponseSchema, 'Cover image as base64 + MIME type'),
+    400: errorContent('Missing/invalid URL or non-HTTPS scheme'),
+    401: errorContent('Unauthenticated'),
+    403: errorContent('Host not in allowlist'),
+    413: errorContent('Cover too large'),
+    415: errorContent('Upstream did not return an image MIME'),
+    429: errorContent('Rate limit exceeded'),
+    502: errorContent('Upstream fetch failed'),
+  },
+});
+
+libraryLookupRoutes.openapi(byIsbnRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = LibraryLookupByIsbnBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   try {
     const response = await lookupByIsbn(parsed.data.isbn);
-    return c.json(response);
+    return c.json(response, 200);
   } catch (err) {
     console.error('[library-lookup] by-isbn error', err);
     return c.json({ error: 'lookup_failed' }, 502);
@@ -98,7 +179,7 @@ libraryLookupRoutes.post('/by-isbn', isbnLimiter, async (c) => {
  * buffering on common reverse proxies (nginx, Cloud Run) so the
  * stream actually surfaces in real time.
  */
-libraryLookupRoutes.post('/by-query/stream', queryLimiter, async (c) => {
+libraryLookupRoutes.openapi(byQueryStreamRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = LibraryLookupByQueryBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -107,6 +188,11 @@ libraryLookupRoutes.post('/by-query/stream', queryLimiter, async (c) => {
   // Run) hold streamed responses unless asked otherwise.
   c.header('Cache-Control', 'no-cache, no-transform');
   c.header('X-Accel-Buffering', 'no');
+  // `stream()` returns a generic `Response` ; the route type is a
+  // union per status code where the 200 arm is also `Response`
+  // (NDJSON isn't JSON-like per zod-openapi's IsJson check).
+  // TypeScript narrows the union to the JSON arm for the early
+  // 400 return, so we cast back to the raw return shape here.
   return stream(c, async (s) => {
     try {
       for await (const snapshot of streamLookupByQuery(
@@ -151,7 +237,7 @@ libraryLookupRoutes.post('/by-query/stream', queryLimiter, async (c) => {
  * proxy bytes through to the client which encrypts them and posts
  * them back via the standard `library-covers` collection client.
  */
-libraryLookupRoutes.get('/cover-fetch', coverLimiter, async (c) => {
+libraryLookupRoutes.openapi(coverFetchRoute, async (c) => {
   const url = c.req.query('url');
   if (typeof url !== 'string' || url.length === 0) {
     return c.json({ error: 'missing_url' }, 400);
@@ -206,7 +292,7 @@ libraryLookupRoutes.get('/cover-fetch', coverLimiter, async (c) => {
     }
     const buffer = Buffer.concat(chunks.map((c) => Buffer.from(c)));
     const blobB64 = buffer.toString('base64');
-    return c.json({ mime, blobB64 });
+    return c.json({ mime, blobB64 }, 200);
   } catch (err) {
     console.error('[library-lookup] cover-fetch error', err);
     return c.json({ error: 'fetch_failed' }, 502);

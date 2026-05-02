@@ -1,4 +1,3 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import {
   generateAuthenticationOptions,
@@ -10,7 +9,9 @@ import type {
 } from '@simplewebauthn/server';
 import {
   PasskeyLoginFinishBodySchema,
+  PasskeyLoginFinishResponseSchema,
   PasskeyLoginStartBodySchema,
+  PasskeyLoginStartResponseSchema,
   type PasskeyLoginFinishResponse,
   type PasskeyLoginStartResponse,
 } from '@nodea/shared';
@@ -29,10 +30,15 @@ import { createSession } from '../auth/session.ts';
 import { getConfig } from '../config.ts';
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, users } from '../db/schema.ts';
-import type { AuthVariables } from '../middleware/require-user.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { extractEmailLanguage } from '../services/email/i18n.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+} from '../openapi/index.ts';
 
 import {
   base64UrlToBytes,
@@ -41,13 +47,50 @@ import {
   type AuthenticationExtensionsClientInputsLike,
 } from './passkey-helpers.ts';
 
-export const authPasskeyLoginRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authPasskeyLoginRoutes = makeAuthedRouter();
+
+const loginStartRoute = createRoute({
+  method: 'post',
+  path: '/passkeys/login/start',
+  tags: ['auth-passkey'],
+  summary: 'Start passkey-first login (anonymous, anti-enum)',
+  middleware: [loginLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: PasskeyLoginStartBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(PasskeyLoginStartResponseSchema, 'WebAuthn requestOptions + token'),
+    400: errorContent('Invalid body'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const loginFinishRoute = createRoute({
+  method: 'post',
+  path: '/passkeys/login/finish',
+  tags: ['auth-passkey'],
+  summary: 'Finish passkey-first login (anonymous)',
+  middleware: [loginLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: PasskeyLoginFinishBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(PasskeyLoginFinishResponseSchema, 'Login finished — full session or mfa_pending'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
 
 /* ============================================================================
  * POST /auth/passkeys/login/start (anonymous)
  * ========================================================================== */
 
-authPasskeyLoginRoutes.post('/passkeys/login/start', loginLimiter, async (c) => {
+authPasskeyLoginRoutes.openapi(loginStartRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = PasskeyLoginStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -101,14 +144,14 @@ authPasskeyLoginRoutes.post('/passkeys/login/start', loginLimiter, async (c) => 
     requestOptions: requestOptions as unknown as Record<string, unknown>,
     loginToken,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
  * POST /auth/passkeys/login/finish (anonymous)
  * ========================================================================== */
 
-authPasskeyLoginRoutes.post('/passkeys/login/finish', loginLimiter, async (c) => {
+authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = PasskeyLoginFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -249,7 +292,7 @@ authPasskeyLoginRoutes.post('/passkeys/login/finish', loginLimiter, async (c) =>
         });
       } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
-           
+
           console.warn('[auth/passkey] mfa-bypass-applied mail failed', err);
         }
       }
@@ -298,7 +341,7 @@ authPasskeyLoginRoutes.post('/passkeys/login/finish', loginLimiter, async (c) =>
       needsMfa: true,
       factorsNeeded: [...baseRequired],
     };
-    return c.json(response);
+    return c.json(response, 200);
   }
 
   // Successful passkey-only login : defang any pending
@@ -321,5 +364,5 @@ authPasskeyLoginRoutes.post('/passkeys/login/finish', loginLimiter, async (c) =>
     needsMfa: false,
     factorsNeeded: [],
   };
-  return c.json(response);
+  return c.json(response, 200);
 });

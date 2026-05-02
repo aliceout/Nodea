@@ -1,9 +1,15 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { UserPreferencesBodySchema } from '@nodea/shared/schemas/preferences';
 import { db } from '../db/client.ts';
 import { userPreferences } from '../db/schema.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * User preferences — 1:1 on `user_id`, E2E encrypted just like
@@ -18,26 +24,65 @@ import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
  * pair (decryption requires both), so a partial update has no
  * meaning. PUT = « replace the whole encrypted blob », idempotent.
  */
-export const userPreferencesRoutes = new Hono<{ Variables: AuthVariables }>();
+export const userPreferencesRoutes = makeAuthedRouter();
 
-userPreferencesRoutes.use('*', requireUser);
+const UserPreferencesResponseSchema = z.object({
+  cipherIv: z.string().nullable(),
+  payload: z.string().nullable(),
+  updatedAt: z.string().datetime().optional(),
+});
 
-userPreferencesRoutes.get('/', async (c) => {
+const getUserPreferencesRoute = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['user-preferences'],
+  summary: 'Read current user preferences (encrypted)',
+  middleware: [requireUser] as const,
+  responses: {
+    200: jsonContent(UserPreferencesResponseSchema, 'Current preferences blob'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+const putUserPreferencesRoute = createRoute({
+  method: 'put',
+  path: '/',
+  tags: ['user-preferences'],
+  summary: 'Replace user preferences (atomic, encrypted blob)',
+  middleware: [requireUser] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: UserPreferencesBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: jsonContent(UserPreferencesResponseSchema, 'Updated preferences blob'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+userPreferencesRoutes.openapi(getUserPreferencesRoute, async (c) => {
   const user = c.get('user');
   const [row] = await db
     .select()
     .from(userPreferences)
     .where(eq(userPreferences.userId, user.id))
     .limit(1);
-  if (!row) return c.json({ cipherIv: null, payload: null });
-  return c.json({
-    cipherIv: row.cipherIv,
-    payload: row.payload,
-    updatedAt: row.updatedAt.toISOString(),
-  });
+  if (!row) return c.json({ cipherIv: null, payload: null }, 200);
+  return c.json(
+    {
+      cipherIv: row.cipherIv,
+      payload: row.payload,
+      updatedAt: row.updatedAt.toISOString(),
+    },
+    200,
+  );
 });
 
-userPreferencesRoutes.put('/', async (c) => {
+userPreferencesRoutes.openapi(putUserPreferencesRoute, async (c) => {
   const user = c.get('user');
   const raw = await c.req.json().catch(() => null);
   const parsed = UserPreferencesBodySchema.safeParse(raw);
@@ -62,9 +107,12 @@ userPreferencesRoutes.put('/', async (c) => {
       },
     });
 
-  return c.json({
-    cipherIv: values.cipherIv,
-    payload: values.payload,
-    updatedAt: values.updatedAt.toISOString(),
-  });
+  return c.json(
+    {
+      cipherIv: values.cipherIv,
+      payload: values.payload,
+      updatedAt: values.updatedAt.toISOString(),
+    },
+    200,
+  );
 });

@@ -1,9 +1,9 @@
-import { Hono } from 'hono';
 import { eq, isNotNull } from 'drizzle-orm';
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   RecoverKekFinishBodySchema,
   RecoverKekStartBodySchema,
+  RecoverKekStartResponseSchema,
   RecoveryCodeUpsertBodySchema,
   type RecoverKekStartResponse,
 } from '@nodea/shared';
@@ -27,8 +27,16 @@ import { getEmailService } from '../services/email/index.ts';
 import { renderRecoveryAppliedEmail } from '../services/email/templates/recovery-applied.ts';
 import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * Recovery-code KEK routes (Auth-Roadmap Phase 3, Auth-Spec §7.7).
@@ -56,7 +64,7 @@ import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
  *     replaces every credential blob in a transaction, mints a
  *     fresh session.
  */
-export const authRecoveryRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authRecoveryRoutes = makeAuthedRouter();
 
 const recoverLimiter = rateLimit({
   max: 5,
@@ -68,6 +76,61 @@ const recoverySetupLimiter = rateLimit({
   max: 5,
   windowMs: 60 * 60_000,
   keyPrefix: 'recovery-code-setup',
+});
+
+const RecoverySetupResponseSchema = z.object({
+  ok: z.literal(true),
+  regenerated: z.boolean(),
+});
+
+const setupRoute = createRoute({
+  method: 'post',
+  path: '/security/recovery-code',
+  tags: ['auth-recovery'],
+  summary: 'Setup or regenerate recovery code (re-auth gated)',
+  middleware: [requireUser, requireFreshPassword, recoverySetupLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: RecoveryCodeUpsertBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(RecoverySetupResponseSchema, 'Recovery code stored'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated or stale re-auth'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const recoverStartRoute = createRoute({
+  method: 'post',
+  path: '/recover-kek/start',
+  tags: ['auth-recovery'],
+  summary: 'Recover KEK — step 1 (anonymous, anti-enum)',
+  middleware: [recoverLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: RecoverKekStartBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(RecoverKekStartResponseSchema, 'Recovery blobs + OPAQUE response'),
+    400: errorContent('Invalid body'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const recoverFinishRoute = createRoute({
+  method: 'post',
+  path: '/recover-kek/finish',
+  tags: ['auth-recovery'],
+  summary: 'Recover KEK — step 2 (rotate credentials, mint session)',
+  middleware: [recoverLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: RecoverKekFinishBodySchema } } },
+  },
+  responses: {
+    200: okContent('Recovery completed'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
 });
 
 /* ============================================================================
@@ -93,12 +156,7 @@ function constantTimeEqualHex(a: string, b: string): boolean {
  * Settings goes through the standard re-auth modal first.
  * ========================================================================== */
 
-authRecoveryRoutes.post(
-  '/security/recovery-code',
-  requireUser,
-  requireFreshPassword,
-  recoverySetupLimiter,
-  async (c) => {
+authRecoveryRoutes.openapi(setupRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RecoveryCodeUpsertBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -118,9 +176,8 @@ authRecoveryRoutes.post(
     })
     .where(eq(users.id, user.id));
 
-  return c.json({ ok: true, regenerated: isRegenerate });
-  },
-);
+  return c.json({ ok: true as const, regenerated: isRegenerate }, 200);
+});
 
 /* ============================================================================
  * POST /auth/recover-kek/start
@@ -153,7 +210,7 @@ function fakeRecoveryBlobs(): FakeBlobs {
   };
 }
 
-authRecoveryRoutes.post('/recover-kek/start', recoverLimiter, async (c) => {
+authRecoveryRoutes.openapi(recoverStartRoute, async (c) => {
   await opaqueReady;
 
   const raw = await c.req.json().catch(() => null);
@@ -217,7 +274,7 @@ authRecoveryRoutes.post('/recover-kek/start', recoverLimiter, async (c) => {
     userId: blobs.userId,
     registrationResponse,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
@@ -225,7 +282,7 @@ authRecoveryRoutes.post('/recover-kek/start', recoverLimiter, async (c) => {
  * Consume the recover session, validate the hash, rotate everything.
  * ========================================================================== */
 
-authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
+authRecoveryRoutes.openapi(recoverFinishRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RecoverKekFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -313,12 +370,12 @@ authRecoveryRoutes.post('/recover-kek/finish', recoverLimiter, async (c) => {
     });
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
-       
+
       console.warn('[auth/recover-kek] notification mail failed', err);
     }
   }
 
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 // `isNotNull` is imported for upcoming queries; reference it once

@@ -1,6 +1,4 @@
-import { Hono } from 'hono';
-
-import type { AuthVariables } from '../middleware/require-user.ts';
+import { makeAuthedRouter } from '../openapi/index.ts';
 
 import { authPasskeyEnrollRoutes } from './auth-passkey-enroll.ts';
 import { authPasskeyLoginRoutes } from './auth-passkey-login.ts';
@@ -56,7 +54,7 @@ import { authPasskeyManageRoutes } from './auth-passkey-manage.ts';
  * `isUniqueViolation` lives in `auth-shared.ts` (was
  * duplicated locally before the dedup).
  */
-export const authPasskeyRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authPasskeyRoutes = makeAuthedRouter();
 
 authPasskeyRoutes.route('/', authPasskeyEnrollRoutes);
 authPasskeyRoutes.route('/', authPasskeyManageRoutes);

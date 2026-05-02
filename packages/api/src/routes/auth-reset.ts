@@ -1,9 +1,9 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import {
   RequestResetBodySchema,
   ResetPasswordFinishBodySchema,
   ResetPasswordStartBodySchema,
+  ResetPasswordStartResponseSchema,
   type ResetPasswordStartResponse,
 } from '@nodea/shared';
 
@@ -27,13 +27,79 @@ import {
   userPreferences,
   users,
 } from '../db/schema.ts';
-import type { AuthVariables } from '../middleware/require-user.ts';
 import { renderPasswordResetEmail } from '../services/email/templates/password-reset.ts';
 import { extractEmailLanguage } from '../services/email/i18n.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+} from '../openapi/index.ts';
 
 import { requestResetLimiter, resetLimiter } from './auth-shared.ts';
 
-export const authResetRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authResetRoutes = makeAuthedRouter();
+
+const requestResetRoute = createRoute({
+  method: 'post',
+  path: '/request-reset',
+  tags: ['auth-reset'],
+  summary: 'Request a reset email (always 200, anti-enum)',
+  middleware: [requestResetLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: RequestResetBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: okContent('Reset email queued (or no-op if email unknown)'),
+    400: errorContent('Invalid body'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const resetStartRoute = createRoute({
+  method: 'post',
+  path: '/reset/start',
+  tags: ['auth-reset'],
+  summary: 'Reset — step 1 (token validation + OPAQUE start)',
+  middleware: [resetLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: ResetPasswordStartBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: jsonContent(ResetPasswordStartResponseSchema, 'OPAQUE registration response + reset token'),
+    400: errorContent('Invalid body or token'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const resetFinishRoute = createRoute({
+  method: 'post',
+  path: '/reset/finish',
+  tags: ['auth-reset'],
+  summary: 'Reset — step 2 (rotate envelope + purge user blobs)',
+  middleware: [resetLimiter] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: ResetPasswordFinishBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: okContent('Reset completed'),
+    400: errorContent('Invalid body or token'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
 
 /**
  * Start a password-reset flow.
@@ -44,7 +110,7 @@ export const authResetRoutes = new Hono<{ Variables: AuthVariables }>();
  * happy branch). Rate limited to 5 requests per IP per hour
  * to blunt enumeration attempts.
  */
-authResetRoutes.post('/request-reset', requestResetLimiter, async (c) => {
+authResetRoutes.openapi(requestResetRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RequestResetBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -73,7 +139,7 @@ authResetRoutes.post('/request-reset', requestResetLimiter, async (c) => {
     }
   }
 
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 /**
@@ -93,7 +159,7 @@ authResetRoutes.post('/request-reset', requestResetLimiter, async (c) => {
  *
  * Wrong / expired / already-used token → 400 `invalid_token`.
  */
-authResetRoutes.post('/reset/start', resetLimiter, async (c) => {
+authResetRoutes.openapi(resetStartRoute, async (c) => {
   await opaqueReady;
   const raw = await c.req.json().catch(() => null);
   const parsed = ResetPasswordStartBodySchema.safeParse(raw);
@@ -126,7 +192,7 @@ authResetRoutes.post('/reset/start', resetLimiter, async (c) => {
     resetToken,
     userId: user.id,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /**
@@ -156,7 +222,7 @@ authResetRoutes.post('/reset/start', resetLimiter, async (c) => {
  * server never links user to data » (cf. `docs/Modules.md`).
  * Bounded growth, accepted.
  */
-authResetRoutes.post('/reset/finish', resetLimiter, async (c) => {
+authResetRoutes.openapi(resetFinishRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ResetPasswordFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -212,5 +278,5 @@ authResetRoutes.post('/reset/finish', resetLimiter, async (c) => {
   });
 
   await revokeAllUserSessions(user.id);
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });

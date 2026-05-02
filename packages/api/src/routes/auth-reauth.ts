@@ -1,4 +1,3 @@
-import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import {
   generateAuthenticationOptions,
@@ -11,14 +10,16 @@ import type {
 import {
   ReauthPasskeyFinishBodySchema,
   ReauthPasskeyStartBodySchema,
+  ReauthPasskeyStartResponseSchema,
   ReauthPasswordFinishBodySchema,
   ReauthPasswordStartBodySchema,
+  ReauthPasswordStartResponseSchema,
   type ReauthOkResponse,
   type ReauthPasskeyStartResponse,
   type ReauthPasswordStartResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { authFactors, sessions, opaqueRecords, users  } from '../db/schema.ts';
+import { authFactors, sessions, opaqueRecords, users } from '../db/schema.ts';
 import {
   finishLogin as opaqueFinishLogin,
   opaqueReady,
@@ -31,7 +32,14 @@ import {
 import { bumpSessionReauth } from '../auth/session.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+} from '../openapi/index.ts';
 
 /**
  * Re-auth routes (Auth-Roadmap Phase 7A, Auth-Spec §5.3).
@@ -48,7 +56,7 @@ import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
  * `auth_factors.user_id = session.user_id`. Either way, an attacker
  * holding A's session cookie can't pass a proof against B's record.
  */
-export const authReauthRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authReauthRoutes = makeAuthedRouter();
 
 const limiter = rateLimit({
   max: 10,
@@ -56,11 +64,71 @@ const limiter = rateLimit({
   keyPrefix: 'reauth',
 });
 
+const reauthPasswordStartRoute = createRoute({
+  method: 'post',
+  path: '/reauth/password/start',
+  tags: ['auth-reauth'],
+  summary: 'Reauth password — step 1 (OPAQUE start)',
+  middleware: [requireUser, limiter] as const,
+  request: { body: { content: { 'application/json': { schema: ReauthPasswordStartBodySchema } } } },
+  responses: {
+    200: jsonContent(ReauthPasswordStartResponseSchema, 'OPAQUE login response + token'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const reauthPasswordFinishRoute = createRoute({
+  method: 'post',
+  path: '/reauth/password/finish',
+  tags: ['auth-reauth'],
+  summary: 'Reauth password — step 2 (bump freshness)',
+  middleware: [requireUser, limiter] as const,
+  request: { body: { content: { 'application/json': { schema: ReauthPasswordFinishBodySchema } } } },
+  responses: {
+    200: okContent('Freshness bumped'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const reauthPasskeyStartRoute = createRoute({
+  method: 'post',
+  path: '/reauth/passkey/start',
+  tags: ['auth-reauth'],
+  summary: 'Reauth passkey — step 1 (challenge)',
+  middleware: [requireUser, limiter] as const,
+  request: { body: { content: { 'application/json': { schema: ReauthPasskeyStartBodySchema } } } },
+  responses: {
+    200: jsonContent(ReauthPasskeyStartResponseSchema, 'WebAuthn requestOptions'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const reauthPasskeyFinishRoute = createRoute({
+  method: 'post',
+  path: '/reauth/passkey/finish',
+  tags: ['auth-reauth'],
+  summary: 'Reauth passkey — step 2 (verify + bump freshness)',
+  middleware: [requireUser, limiter] as const,
+  request: { body: { content: { 'application/json': { schema: ReauthPasskeyFinishBodySchema } } } },
+  responses: {
+    200: okContent('Freshness bumped'),
+    400: errorContent('Invalid body, no challenge, or expired'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
 /* ============================================================================
  * Password
  * ========================================================================== */
 
-authReauthRoutes.post('/reauth/password/start', requireUser, limiter, async (c) => {
+authReauthRoutes.openapi(reauthPasswordStartRoute, async (c) => {
   await opaqueReady;
   const raw = await c.req.json().catch(() => null);
   const parsed = ReauthPasswordStartBodySchema.safeParse(raw);
@@ -91,10 +159,10 @@ authReauthRoutes.post('/reauth/password/start', requireUser, limiter, async (c) 
 
   const loginToken = storeLoginState(serverLoginState, userIdentifier);
   const response: ReauthPasswordStartResponse = { loginResponse, loginToken };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
-authReauthRoutes.post('/reauth/password/finish', requireUser, limiter, async (c) => {
+authReauthRoutes.openapi(reauthPasswordFinishRoute, async (c) => {
   await opaqueReady;
   const raw = await c.req.json().catch(() => null);
   const parsed = ReauthPasswordFinishBodySchema.safeParse(raw);
@@ -121,14 +189,14 @@ authReauthRoutes.post('/reauth/password/finish', requireUser, limiter, async (c)
 
   await bumpSessionReauth(sessionId, 'password');
   const response: ReauthOkResponse = { ok: true };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
  * Passkey
  * ========================================================================== */
 
-authReauthRoutes.post('/reauth/passkey/start', requireUser, limiter, async (c) => {
+authReauthRoutes.openapi(reauthPasskeyStartRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ReauthPasskeyStartBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -172,10 +240,10 @@ authReauthRoutes.post('/reauth/passkey/start', requireUser, limiter, async (c) =
   const response: ReauthPasskeyStartResponse = {
     requestOptions: requestOptions as unknown as Record<string, unknown>,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
-authReauthRoutes.post('/reauth/passkey/finish', requireUser, limiter, async (c) => {
+authReauthRoutes.openapi(reauthPasskeyFinishRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ReauthPasskeyFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -267,7 +335,7 @@ authReauthRoutes.post('/reauth/passkey/finish', requireUser, limiter, async (c) 
   await bumpSessionReauth(sessionId, 'passkey');
 
   const response: ReauthOkResponse = { ok: true };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================

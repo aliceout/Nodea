@@ -1,6 +1,8 @@
-import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { swaggerUI } from '@hono/swagger-ui';
+import { OpenAPIHono } from './openapi/index.ts';
+import { requireAdmin, requireUser } from './middleware/require-user.ts';
 import { authRoutes } from './routes/auth.ts';
 import { authMfaRoutes } from './routes/auth-mfa.ts';
 import { authMfaBypassRoutes } from './routes/auth-mfa-bypass.ts';
@@ -25,7 +27,12 @@ import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 
 /** Build a fresh Hono app. Exported so tests can assemble an app without side-effects. */
 export function buildApp() {
-  const app = new Hono<{ Variables: AuthVariables }>();
+  const app = new OpenAPIHono<{ Variables: AuthVariables }>({
+    defaultHook: (result, c) => {
+      if (!result.success) return c.json({ error: 'invalid_body' }, 400);
+      return undefined;
+    },
+  });
 
   // CORS for the dev web origin. In prod the web is served behind the
   // same origin as the API so CORS is a no-op — we explicitly refuse
@@ -167,6 +174,31 @@ export function buildApp() {
   for (const collection of COLLECTIONS) {
     app.route(`/${collection.name}`, createCollectionRoutes(collection.table));
   }
+
+  // OpenAPI spec + Swagger UI — both gated behind `requireAdmin` so
+  // the surface stays an admin-only ops affordance. Note the URL is
+  // `/api/docs` from the public side (Nginx strips the `/api` prefix
+  // before reaching the Hono app), but inside the app the routes are
+  // simply `/docs/openapi.json` and `/docs`. Same convention as every
+  // other route — see `index.ts` for the prefix story.
+  app.get('/docs/openapi.json', requireUser, requireAdmin, (c) => {
+    const doc = app.getOpenAPIDocument({
+      openapi: '3.1.0',
+      info: {
+        title: 'Nodea API',
+        version: '1.0.0',
+        description: 'Self-hosted E2E-encrypted journaling app.',
+      },
+      servers: [{ url: '/api' }],
+    });
+    return c.json(doc);
+  });
+  app.get(
+    '/docs',
+    requireUser,
+    requireAdmin,
+    swaggerUI({ url: '/api/docs/openapi.json' }),
+  );
 
   app.onError((err, c) => {
     console.error('[api] unhandled error', err);

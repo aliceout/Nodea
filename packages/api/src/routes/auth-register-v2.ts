@@ -1,14 +1,17 @@
-import { Hono } from 'hono';
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
+  InviteInfoResponseSchema,
   OpaqueRegisterStartBodySchema,
+  OpaqueRegisterStartResponseSchema,
   OpaqueRegisterFinishBodySchema,
   RegisterActivateBodySchema,
+  RegisterModeResponseSchema,
   type OpaqueRegisterStartResponse,
   type RegisterModeResponse,
   type InviteInfoResponse,
 } from '@nodea/shared';
+import { OpenAPIHono } from '@hono/zod-openapi';
 import { db } from '../db/client.ts';
 import { opaqueRecords, users } from '../db/schema.ts';
 import {
@@ -30,6 +33,12 @@ import { renderRegisterActivateEmail } from '../services/email/templates/registe
 import { extractEmailLanguage } from '../services/email/i18n.ts';
 import { getConfig } from '../config.ts';
 import { isOpenRegistration } from '../services/settings.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * Register flow — OPAQUE 2-step (Auth-Roadmap Phase 2B).
@@ -59,7 +68,12 @@ import { isOpenRegistration } from '../services/settings.ts';
  * GET /mode, GET /invite-info, POST /activate stay unchanged from
  * Phase 1 — they're orthogonal to the credential exchange.
  */
-export const authRegisterV2Routes = new Hono();
+export const authRegisterV2Routes = new OpenAPIHono({
+  defaultHook: (result, c) => {
+    if (!result.success) return c.json({ error: 'invalid_body' }, 400);
+    return undefined;
+  },
+});
 
 const startLimiter = rateLimit({
   max: 10,
@@ -85,16 +99,113 @@ const inviteInfoLimiter = rateLimit({
   keyPrefix: 'register-invite-info',
 });
 
+const RegisterFinishResponseSchema = z.object({
+  ok: z.literal(true),
+  activated: z.boolean().optional(),
+  email: z.string().email().optional(),
+});
+
+const RegisterActivateResponseSchema = z.object({
+  ok: z.literal(true),
+  email: z.string().email(),
+});
+
+const modeRoute = createRoute({
+  method: 'get',
+  path: '/mode',
+  tags: ['auth-register'],
+  summary: 'Public registration mode flag',
+  responses: {
+    200: jsonContent(RegisterModeResponseSchema, 'Open or invite-only'),
+  },
+});
+
+const inviteInfoRoute = createRoute({
+  method: 'get',
+  path: '/invite-info',
+  tags: ['auth-register'],
+  summary: 'Peek invite token info (anti-enum 404)',
+  middleware: [inviteInfoLimiter] as const,
+  request: {
+    // `token` is validated inside the handler (length + presence) so a
+    // missing / too-short token returns 404 (anti-enum) rather than the
+    // 400 the lib's default validation hook would emit. Keeping the
+    // schema permissive at the OpenAPI layer matches the existing
+    // wire contract.
+    query: z.object({ token: z.string().optional() }),
+  },
+  responses: {
+    200: jsonContent(InviteInfoResponseSchema, 'Invite info'),
+    404: errorContent('Invalid or expired token'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const startRoute = createRoute({
+  method: 'post',
+  path: '/start',
+  tags: ['auth-register'],
+  summary: 'Register — step 1 (OPAQUE start)',
+  middleware: [startLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: OpaqueRegisterStartBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(OpaqueRegisterStartResponseSchema, 'OPAQUE response + tentative userId'),
+    400: errorContent('Invalid body or email mismatch'),
+    401: errorContent('Invalid invite token'),
+    403: errorContent('Registration closed'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const finishRoute = createRoute({
+  method: 'post',
+  path: '/finish',
+  tags: ['auth-register'],
+  summary: 'Register — step 2 (insert user + envelope)',
+  middleware: [finishLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: OpaqueRegisterFinishBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(RegisterFinishResponseSchema, 'Registration completed'),
+    400: errorContent('Invalid body or email mismatch'),
+    401: errorContent('Invalid invite token'),
+    403: errorContent('Registration closed'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const activateRoute = createRoute({
+  method: 'post',
+  path: '/activate',
+  tags: ['auth-register'],
+  summary: 'Activate account from magic link',
+  middleware: [activateLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: RegisterActivateBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(RegisterActivateResponseSchema, 'Account activated'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid token or already consumed'),
+    410: errorContent('Token expired'),
+    429: errorContent('Rate limit exceeded'),
+    500: errorContent('Internal error'),
+  },
+});
+
 /* ============================================================================
  * GET /auth/register/mode
  * Public. Tells the frontend whether open registration is on so the
  * UI can branch between the form and the "invitation only" page.
  * ========================================================================== */
-authRegisterV2Routes.get('/mode', async (c) => {
+authRegisterV2Routes.openapi(modeRoute, async (c) => {
   const response: RegisterModeResponse = {
     openRegistration: await isOpenRegistration(),
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
@@ -103,7 +214,7 @@ authRegisterV2Routes.get('/mode', async (c) => {
  * so the register page can pre-fill (read-only) the email field.
  * 404 on invalid/expired/consumed tokens.
  * ========================================================================== */
-authRegisterV2Routes.get('/invite-info', inviteInfoLimiter, async (c) => {
+authRegisterV2Routes.openapi(inviteInfoRoute, async (c) => {
   const token = c.req.query('token');
   if (!token || token.length < 16) {
     return c.json({ error: 'invalid_token' }, 404);
@@ -114,7 +225,7 @@ authRegisterV2Routes.get('/invite-info', inviteInfoLimiter, async (c) => {
     email: info.email,
     expiresAt: info.expiresAt ? info.expiresAt.toISOString() : null,
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
@@ -130,7 +241,7 @@ authRegisterV2Routes.get('/invite-info', inviteInfoLimiter, async (c) => {
  * embeds in its AAD computations. The userId only becomes
  * authoritative when /finish actually inserts the user row.
  * ========================================================================== */
-authRegisterV2Routes.post('/start', startLimiter, async (c) => {
+authRegisterV2Routes.openapi(startRoute, async (c) => {
   await opaqueReady;
 
   const raw = await c.req.json().catch(() => null);
@@ -181,7 +292,7 @@ authRegisterV2Routes.post('/start', startLimiter, async (c) => {
     registrationResponse,
     userId: randomUUID(),
   };
-  return c.json(response);
+  return c.json(response, 200);
 });
 
 /* ============================================================================
@@ -207,7 +318,7 @@ authRegisterV2Routes.post('/start', startLimiter, async (c) => {
  * the existing user's id; the original activation email is still
  * valid).
  * ========================================================================== */
-authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
+authRegisterV2Routes.openapi(finishRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = OpaqueRegisterFinishBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -264,7 +375,7 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
       return c.json({ error: 'register_failed', reason: result.reason }, status);
     }
 
-    return c.json({ ok: true, activated: true, email: result.result.email });
+    return c.json({ ok: true as const, activated: true, email: result.result.email }, 200);
   }
 
   // ---- Open path ----------------------------------------------------
@@ -289,7 +400,7 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
     // submitted blobs don't match the existing row. The original
     // activation email (if any) is still valid; admin can resend
     // out-of-band if the user lost it.
-    return c.json({ ok: true, activated: false });
+    return c.json({ ok: true as const, activated: false }, 200);
   }
 
   try {
@@ -312,7 +423,7 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
   } catch {
     // Race: someone created the user between SELECT and INSERT, or
     // the client reused a stale userId. Anti-enum bail.
-    return c.json({ ok: true, activated: false });
+    return c.json({ ok: true as const, activated: false }, 200);
   }
 
   await invalidatePendingVerifications(email, 'register');
@@ -339,11 +450,11 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
       tag: 'register-activate',
     });
   } catch (err) {
-     
+
     console.error('[auth/register] activation email send failed', err);
   }
 
-  return c.json({ ok: true, activated: false });
+  return c.json({ ok: true as const, activated: false }, 200);
 });
 
 /* ============================================================================
@@ -353,7 +464,7 @@ authRegisterV2Routes.post('/finish', finishLimiter, async (c) => {
  * never hit this — their account is activated at /finish.
  * Unchanged from Phase 1 — orthogonal to the credential exchange.
  * ========================================================================== */
-authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
+authRegisterV2Routes.openapi(activateRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = RegisterActivateBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -366,7 +477,7 @@ authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
 
   const verification = result.verification;
   if (!verification.userId) {
-     
+
     console.error(
       '[auth/register/activate] verification consumed but userId is null',
       { verificationId: verification.id },
@@ -387,5 +498,5 @@ authRegisterV2Routes.post('/activate', activateLimiter, async (c) => {
     );
   }
 
-  return c.json({ ok: true, email: updated.email });
+  return c.json({ ok: true as const, email: updated.email }, 200);
 });

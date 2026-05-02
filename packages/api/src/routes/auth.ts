@@ -1,6 +1,4 @@
-import { Hono } from 'hono';
-
-import type { AuthVariables } from '../middleware/require-user.ts';
+import { makeAuthedRouter } from '../openapi/index.ts';
 
 import { authAccountRoutes } from './auth-account.ts';
 import { authChangePasswordRoutes } from './auth-change-password.ts';
@@ -36,12 +34,13 @@ import { authResetRoutes } from './auth-reset.ts';
  * `auth-register-v2.ts`, `auth-security-mode.ts`.
  *
  * The export below stays as `authRoutes` for back-compat with
- * `app.ts`'s mount ; under the hood it's a thin Hono app
- * that mounts each sub-router at the same root so the
+ * `app.ts`'s mount ; under the hood it's a thin OpenAPIHono
+ * app that mounts each sub-router at the same root so the
  * external surface (`POST /auth/login/start` etc.) is
- * unchanged.
+ * unchanged AND the OpenAPI doc aggregates routes from every
+ * sub-router.
  */
-export const authRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authRoutes = makeAuthedRouter();
 
 authRoutes.route('/', authLoginRoutes);
 authRoutes.route('/', authResetRoutes);

@@ -1,6 +1,7 @@
-import { Hono } from 'hono';
 import { and, count, eq } from 'drizzle-orm';
 import {
+  AuthMeCryptoResponseSchema,
+  AuthMeResponseSchema,
   ChangeEmailBodySchema,
   ChangeUsernameBodySchema,
   DeleteSelfBodySchema,
@@ -18,11 +19,18 @@ import {
 } from '../db/schema.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  okContent,
+} from '../openapi/index.ts';
 
 import { isUniqueViolation } from './auth-shared.ts';
 
-export const authAccountRoutes = new Hono<{ Variables: AuthVariables }>();
+export const authAccountRoutes = makeAuthedRouter();
 
 /**
  * Rate limit on email change : one change per IP per 24 h. Closes
@@ -39,6 +47,104 @@ const changeEmailLimiter = rateLimit({
   keyPrefix: 'rl:change-email',
 });
 
+const meRoute = createRoute({
+  method: 'get',
+  path: '/me',
+  tags: ['auth-account'],
+  summary: 'Read authenticated user identity + factor flags',
+  middleware: [requireUser] as const,
+  responses: {
+    200: jsonContent(AuthMeResponseSchema, 'User profile + MFA state'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+const meCryptoRoute = createRoute({
+  method: 'get',
+  path: '/me/crypto',
+  tags: ['auth-account'],
+  summary: 'Read OPAQUE wrap blobs for KEK unwrap operations',
+  middleware: [requireUser] as const,
+  responses: {
+    200: jsonContent(AuthMeCryptoResponseSchema, 'OPAQUE wrap envelope'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+const changeEmailRoute = createRoute({
+  method: 'patch',
+  path: '/email',
+  tags: ['auth-account'],
+  summary: 'Change account email (re-auth gated)',
+  middleware: [changeEmailLimiter, requireUser, requireFreshPassword] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: ChangeEmailBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: okContent('Email updated (or no-op)'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated or stale re-auth'),
+    409: errorContent('Email already taken'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const changeUsernameRoute = createRoute({
+  method: 'patch',
+  path: '/username',
+  tags: ['auth-account'],
+  summary: 'Change display username',
+  middleware: [requireUser] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: ChangeUsernameBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: okContent('Username updated'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+const onboardingCompleteRoute = createRoute({
+  method: 'post',
+  path: '/onboarding/complete',
+  tags: ['auth-account'],
+  summary: 'Mark onboarding complete (idempotent)',
+  middleware: [requireUser] as const,
+  responses: {
+    200: okContent('Onboarding completed'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+const deleteSelfRoute = createRoute({
+  method: 'delete',
+  path: '/me',
+  tags: ['auth-account'],
+  summary: 'Self-delete account (re-auth gated, cascades to all rows)',
+  middleware: [requireUser, requireFreshPassword] as const,
+  request: {
+    body: {
+      content: {
+        'application/json': { schema: DeleteSelfBodySchema },
+      },
+    },
+  },
+  responses: {
+    200: okContent('Account deleted'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated or stale re-auth'),
+  },
+});
+
 /**
  * Authenticated user introspection. Surfaces identity + role +
  * MFA flags so the front can drive the sidebar tip + Settings
@@ -46,12 +152,12 @@ const changeEmailLimiter = rateLimit({
  *
  * **What's NOT here** : the OPAQUE wrap blobs
  * (`wrappedMainKey`, `wrappedKekPassword`, …). API-14 split
- * them off to [`GET /auth/me/crypto`](#me-crypto) — this
- * endpoint is hit on every page load (sidebar, header,
- * ProtectedRoute) and shipping ~2 KB of crypto blobs that 95 %
- * of callers never touch is wasteful. The client fetches the
- * crypto endpoint only at unwrap moments (change-password,
- * recovery-code setup, passkey enroll).
+ * them off to `GET /auth/me/crypto` — this endpoint is hit on
+ * every page load (sidebar, header, ProtectedRoute) and shipping
+ * ~2 KB of crypto blobs that 95 % of callers never touch is
+ * wasteful. The client fetches the crypto endpoint only at
+ * unwrap moments (change-password, recovery-code setup, passkey
+ * enroll).
  *
  * Phase 4 added the passkey counts so the sidebar tip +
  * Settings can branch on enrollment state without a separate
@@ -65,7 +171,7 @@ const changeEmailLimiter = rateLimit({
  * verify step (Auth-Spec §8.2) — pending enrollments read as
  * « not enabled » so the UI can resume / restart the flow.
  */
-authAccountRoutes.get('/me', requireUser, async (c) => {
+authAccountRoutes.openapi(meRoute, async (c) => {
   const user = c.get('user');
 
   const [totalRow] = await db
@@ -120,11 +226,10 @@ authAccountRoutes.get('/me', requireUser, async (c) => {
     totpBackupCodesRemaining,
     securityMode: user.securityMode,
   };
-  return c.json(body);
+  return c.json(body, 200);
 });
 
 /**
- * <a id="me-crypto"></a>
  * `GET /auth/me/crypto` — OPAQUE wrap blobs (API-14 split).
  *
  * Read by the client only at the moments where it actually
@@ -137,7 +242,7 @@ authAccountRoutes.get('/me', requireUser, async (c) => {
  * encrypted (E2E), so their over-exposure is a bandwidth
  * concern, not a security one.
  */
-authAccountRoutes.get('/me/crypto', requireUser, async (c) => {
+authAccountRoutes.openapi(meCryptoRoute, async (c) => {
   const user = c.get('user');
   const body: AuthMeCryptoResponse = {
     wrappedMainKey: user.wrappedMainKey ?? null,
@@ -145,7 +250,7 @@ authAccountRoutes.get('/me/crypto', requireUser, async (c) => {
     wrappedKekPassword: user.wrappedKekPassword ?? null,
     wrappedKekPasswordIv: user.wrappedKekPasswordIv ?? null,
   };
-  return c.json(body);
+  return c.json(body, 200);
 });
 
 /**
@@ -159,7 +264,7 @@ authAccountRoutes.get('/me/crypto', requireUser, async (c) => {
  * IS the email — that's a separate spec section (§7.6) and
  * not implemented here.
  */
-authAccountRoutes.patch('/email', changeEmailLimiter, requireUser, requireFreshPassword, async (c) => {
+authAccountRoutes.openapi(changeEmailRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ChangeEmailBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -167,7 +272,7 @@ authAccountRoutes.patch('/email', changeEmailLimiter, requireUser, requireFreshP
   const user = c.get('user');
 
   const newEmail = body.newEmail.toLowerCase();
-  if (newEmail === user.email) return c.json({ ok: true });
+  if (newEmail === user.email) return c.json({ ok: true as const }, 200);
 
   try {
     await db
@@ -181,7 +286,7 @@ authAccountRoutes.patch('/email', changeEmailLimiter, requireUser, requireFreshP
     throw err;
   }
 
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 /**
@@ -194,21 +299,21 @@ authAccountRoutes.patch('/email', changeEmailLimiter, requireUser, requireFreshP
  * (and `email` for login). Pass `null` to clear the current
  * value.
  */
-authAccountRoutes.patch('/username', requireUser, async (c) => {
+authAccountRoutes.openapi(changeUsernameRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = ChangeUsernameBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
   const newUsername = parsed.data.username;
 
-  if ((user.username ?? null) === newUsername) return c.json({ ok: true });
+  if ((user.username ?? null) === newUsername) return c.json({ ok: true as const }, 200);
 
   await db
     .update(users)
     .set({ username: newUsername, updatedAt: new Date() })
     .where(eq(users.id, user.id));
 
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 /**
@@ -220,16 +325,16 @@ authAccountRoutes.patch('/username', requireUser, async (c) => {
  * (modules, preferences) are persisted through their own
  * encrypted endpoints.
  */
-authAccountRoutes.post('/onboarding/complete', requireUser, async (c) => {
+authAccountRoutes.openapi(onboardingCompleteRoute, async (c) => {
   const user = c.get('user');
-  if (user.onboardingStatus === 'complete') return c.json({ ok: true });
+  if (user.onboardingStatus === 'complete') return c.json({ ok: true as const }, 200);
 
   await db
     .update(users)
     .set({ onboardingStatus: 'complete', updatedAt: new Date() })
     .where(eq(users.id, user.id));
 
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
 
 /**
@@ -245,7 +350,7 @@ authAccountRoutes.post('/onboarding/complete', requireUser, async (c) => {
  * also explicitly cleared in the response so the browser
  * forgets it.
  */
-authAccountRoutes.delete('/me', requireUser, requireFreshPassword, async (c) => {
+authAccountRoutes.openapi(deleteSelfRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = DeleteSelfBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -253,5 +358,5 @@ authAccountRoutes.delete('/me', requireUser, requireFreshPassword, async (c) => 
 
   await db.delete(users).where(eq(users.id, user.id));
   clearSessionCookie(c);
-  return c.json({ ok: true });
+  return c.json({ ok: true as const }, 200);
 });
