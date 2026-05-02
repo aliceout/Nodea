@@ -74,6 +74,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # CVE scan on the dep tree (OPS-08). Fails the build on `high`
+      # or `critical` advisories — the seuil that the team has agreed
+      # to surface as blocking. `moderate` and below are surfaced via
+      # `pnpm audit` locally on demand. Dependabot (OPS-07) is what
+      # keeps the tree close enough to upstream for this to stay green.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+
       - name: Lint
         run: pnpm lint
 

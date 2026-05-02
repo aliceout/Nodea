@@ -1,0 +1,42 @@
+# Dependabot — auto-PRs for dependency updates (OPS-07).
+#
+# Versions in this repo are strictly pinned (CLAUDE.md « Pin versions »),
+# which is good for reproducibility but means CVE patches don't land
+# automatically. Dependabot opens weekly PRs grouping minor + patch
+# updates so we can audit + merge in batches without losing track of
+# what changed.
+#
+# Per CLAUDE.md, Dependabot PRs stay open until the user decides — do
+# not delete their branches, do not auto-merge.
+version: 2
+updates:
+  # npm (pnpm reads the same lockfile through this ecosystem).
+  # Group minor + patch into one PR per week so the queue doesn't
+  # explode on busy weeks; majors stay individual so each one gets
+  # its own review.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions in `.github/workflows/`.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
+  # Docker base images. We track api + web Dockerfiles separately so
+  # the PR title carries the package name.
+  - package-ecosystem: "docker"
+    directory: "/packages/api"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "docker"
+    directory: "/packages/web"
+    schedule:
+      interval: "monthly"

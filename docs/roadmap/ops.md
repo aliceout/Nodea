@@ -298,61 +298,34 @@ détection est inexistante. »*
 - **Risque** : faible (lecture-seule de la stack, tests Playwright isolés)
 - **Dépendances** : aucune
 
-### OPS-07 — Pas de Dependabot / Renovate
+### OPS-07 — Dependabot configuré (npm + github-actions + docker) — livré
 
 - **Domaine** : dépendances
 - **Sévérité** : moyenne
-- **Effort** : S (~30 min)
-- **Zone concernée** : `.github/` — pas de `dependabot.yml` ni `renovate.json`
-- **Description** : les versions sont strictement épinglées (CLAUDE.md *« Pin versions (no `^` / `~`) in the new stack »*) — bonne pratique. Mais sans automatisation, les bumps de version se font à la main. À 6 mois, le `pnpm audit` va révéler des CVE non patchées qui s'accumulent silencieusement.
+- **Statut** : livré.
 - **Tâches**
-  - [ ] Ajouter `.github/dependabot.yml` :
-    ```yaml
-    version: 2
-    updates:
-      - package-ecosystem: 'npm'
-        directory: '/'
-        schedule:
-          interval: 'weekly'
-        open-pull-requests-limit: 5
-        groups:
-          minor-and-patch:
-            update-types: ['minor', 'patch']
-      - package-ecosystem: 'github-actions'
-        directory: '/'
-        schedule:
-          interval: 'monthly'
-      - package-ecosystem: 'docker'
-        directory: '/packages/api'
-        schedule:
-          interval: 'monthly'
-      - package-ecosystem: 'docker'
-        directory: '/packages/web'
-        schedule:
-          interval: 'monthly'
-    ```
-  - [ ] Documenter le rythme de review attendu (CLAUDE.md précise déjà *« Dependabot PRs stay open until the user decides »*).
+  - [x] `.github/dependabot.yml` créé avec 4 ecosystems :
+    - `npm` (racine, weekly, limite 5 PRs ouvertes, groupage `minor + patch` en une seule PR).
+    - `github-actions` (racine, monthly).
+    - `docker` (`/packages/api` + `/packages/web`, monthly).
+  - [x] Documenté dans le commentaire d'en-tête : « PRs stay open until the user decides » (CLAUDE.md), pas d'auto-merge.
+- **Effort** : S
 - **Risque** : faible
 - **Dépendances** : aucune
 
-### OPS-08 — Pas de scan de sécurité CVE en CI
+### OPS-08 — Scan CVE CI (pnpm audit + Trivy sur images Docker) — livré
 
 - **Domaine** : CI
 - **Sévérité** : moyenne
-- **Effort** : S (~30 min)
-- **Zone concernée** : [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
-- **Description** : aucun step ne fait `pnpm audit`, aucun scan d'image Docker (Trivy, Grype). Une CVE critique dans une dep peut passer le CI sans alerte. Couplé à OPS-07, la dette CVE peut s'accumuler.
+- **Statut** : livré.
+- **Pré-flight** : audit baseline avant ajout du step a remonté 1 high (Playwright < 1.55.1, GHSA-7mvr-c777-76hp). Bumpé `@playwright/test` à 1.55.1 dans `packages/e2e`. `pnpm audit --audit-level=high` revient à 0 finding.
 - **Tâches**
-  - [ ] Ajouter un step dans `ci.yml` :
-    ```yaml
-    - name: Audit dependencies
-      run: pnpm audit --audit-level=high
-      continue-on-error: false
-    ```
-  - [ ] Ajouter dans `docker-build.yml` un job qui fait `aquasecurity/trivy-action` après le push de l'image.
-  - [ ] Décider du seuil bloquant (`high`, `critical`).
-- **Risque** : moyen — peut casser des PRs si la baseline a déjà des CVE high. À auditer en pré-flight.
-- **Dépendances** : aucune
+  - [x] Step `Audit dependencies` dans `ci.yml` après l'install : `pnpm audit --audit-level=high`. Bloque sur `high` ou `critical`.
+  - [x] Step `Trivy scan` dans `docker-build.yml` après le push de chaque image (api + web). Scan via `aquasecurity/trivy-action@0.28.0` sur `image@<digest>` (pas sur `:latest` — évite les races avec d'autres pushes). Seuils `HIGH,CRITICAL`, `ignore-unfixed: true` (les vulns sans fix amont seraient juste du bruit).
+  - [x] Seuil cohérent entre `pnpm audit` et Trivy : `high` minimum bloque dans les deux pipelines.
+- **Effort** : S
+- **Risque** : moyen — la baseline était propre après le bump Playwright ; les futures CVE >= high feront échouer le CI le temps qu'on bump. C'est l'effet recherché.
+- **Dépendances** : aucune (mais OPS-07 garde la dette CVE basse)
 
 ### OPS-09 — Logs non structurés (`hono/logger()`) — livré (couplé SEC-01)
 

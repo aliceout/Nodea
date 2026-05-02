@@ -165,8 +165,8 @@ résout les deux.
 
 ### CI sécurité (~1h)
 
-- [ ] **OPS-07** — `.github/dependabot.yml` (npm + github-actions + docker). ~30 min. [`ops.md`](./ops.md)
-- [ ] **OPS-08** — `pnpm audit --audit-level=high` step dans CI + Trivy sur images. ~30 min. [`ops.md`](./ops.md)
+- [x] **OPS-07** — `.github/dependabot.yml` créé (npm weekly + github-actions/docker monthly). [`ops.md`](./ops.md)
+- [x] **OPS-08** — `pnpm audit --audit-level=high` step CI + Trivy sur image@digest dans docker-build. Baseline clean après bump Playwright 1.55.1. [`ops.md`](./ops.md)
 
 ---
 
