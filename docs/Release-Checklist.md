@@ -1,15 +1,14 @@
 # Release Checklist
 
-À suivre à chaque tag `v*` qui passe en main. Court par design — si
-ça grossit au point qu'on rate des étapes, on factorise vers du
-script.
+Run this for every `v*` tag that lands on main. Short by design — if it
+grows enough that we miss steps, we factor it into a script.
 
-## Pré-requis
+## Prerequisites
 
-- [ ] La branche `main` contient le commit à publier
-- [ ] CI verte sur ce commit
-- [ ] Migration DB documentée si schéma changé (cf. `Database.md`)
-- [ ] Release notes rédigées (format à décider quand on tagguera V1)
+- [ ] `main` branch contains the commit to publish
+- [ ] CI green on that commit
+- [ ] DB migration documented if the schema changed (cf. `Database.md`)
+- [ ] Release notes drafted (format to be decided when we tag V1)
 
 ## Tag + GitHub Release
 
@@ -19,28 +18,27 @@ git push --tags
 gh release create vX.Y.Z --notes-file release-notes.md
 ```
 
-## Attacher le manifest d'intégrité (SHA-384 du bundle web)
+## Attach the integrity manifest (SHA-384 of the web bundle)
 
-C'est ce qui permet aux self-hosters de vérifier que leur
-déploiement n'a pas été altéré (cf. `nodea.app/docs/security/tech`,
-section « Intégrité du bundle »). **Sans
-cette étape, la mitigation est cosmétique.**
+This is what lets self-hosters verify their deployment hasn't been
+tampered with (cf. `nodea.app/docs/security/tech`, "Intégrité du bundle"
+section). **Without this step, the mitigation is cosmetic.**
 
-Récupérer depuis le CI (préféré — c'est le bundle exact que CI a
-buildé, signé par le runner GitHub) :
+Pull it from CI (preferred — that's the exact bundle CI built, signed
+by the GitHub runner):
 
 ```bash
-# Trouver le run-id du commit tagué
+# Find the run-id of the tagged commit
 gh run list --commit vX.Y.Z --limit 1
 
-# Télécharger l'artifact correspondant (nom = web-integrity-<sha>)
+# Download the matching artifact (name = web-integrity-<sha>)
 gh run download <run-id> -n web-integrity-<commit-sha>
 
-# Attacher à la release
+# Attach to the release
 gh release upload vX.Y.Z INTEGRITY.txt
 ```
 
-Ou regénérer localement (utile si la release est cuttée hors CI) :
+Or regenerate locally (useful when the release is cut outside CI):
 
 ```bash
 pnpm install --frozen-lockfile
@@ -48,14 +46,14 @@ pnpm --filter @nodea/web build
 gh release upload vX.Y.Z packages/web/dist/INTEGRITY.txt
 ```
 
-## Image Docker
+## Docker image
 
-Si la release ship une image Docker, le workflow `docker-build.yml`
-pousse vers le registry à chaque tag. Vérifier que le tag d'image
-correspond à `vX.Y.Z`.
+If the release ships a Docker image, the `docker-build.yml` workflow
+pushes to the registry on every tag. Verify the image tag matches
+`vX.Y.Z`.
 
-## Annonce
+## Announcement
 
-- [ ] Mettre à jour le README si besoin (badges, install)
-- [ ] Communiquer la release aux users existants (changelog,
-      breaking changes notables)
+- [ ] Update the README if needed (badges, install)
+- [ ] Communicate the release to existing users (changelog, notable
+      breaking changes)
