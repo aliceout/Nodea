@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "i18n:diff": "node scripts/i18n-diff.mjs"
+    "i18n:diff": "node scripts/i18n-diff.mjs",
+    "bundle-size": "node scripts/measure-bundle.mjs",
+    "bundle-size:skip-build": "node scripts/measure-bundle.mjs --skip-build"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
