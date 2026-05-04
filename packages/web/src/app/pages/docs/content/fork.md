@@ -74,6 +74,57 @@ Avant de remettre en cause un pattern, lis l'ADR correspondant. Il y a souvent u
 
 Les autres ADR couvrent l'architecture en couches, le client API web, le routing flat de auth/, la stratégie « pas de cache de requêtes », etc.
 
+## Rebrander ta fork
+
+Si tu veux distinguer ta fork de l'instance officielle (autre nom, autres couleurs, autre logo), voilà où ça vit.
+
+### Tokens couleurs
+
+Définis dans `packages/web/src/ui/theme/global.css`. Les noms sémantiques sont volontairement non-anglophones pour ne pas être confondus avec des classes Tailwind par défaut.
+
+| Nom | Hex | Rôle |
+|---|---|---|
+| Sauge | `#5a7a5e` | Accent principal (boutons primaires, liens, focus) |
+| Sauge clarifié | `#9bbf9f` | Variante dark mode du sauge |
+| Encre | `#161614` | Texte principal sur fond clair |
+| Papier | `#fcfcfa` | Fond clair |
+| Nuit chaude | `#1d1c18` | Fond dark mode |
+
+Wordmark : Instrument Serif, `font-weight: 400`, `letter-spacing: -0.015em`.
+
+### Fichiers logo et favicons
+
+Tous dans `packages/web/public/` (recopiés tels quels dans `dist/` au build) :
+
+- `nodea-symbol-{sauge,ink,paper,sauge-bright}.svg` — le symbole seul (un trait monoline ouvert, jamais rempli — c'est un cycle qui ne revient pas au même point).
+- `nodea-lockup-horizontal{,-mono-sauge,-mono-ink,-dark}.svg` + `nodea-lockup-vertical.svg` — symbole + wordmark « Nodea ».
+- `favicon.svg` + `favicon-{16,32,48,64,128,256,512}.png` — favicons web.
+- `app-icon-{paper-bg,paper-bg-rounded,sauge-bg,dark-bg}.svg` + `app-icon-1024-{paper,sauge,dark}.png` — icônes pour iOS/Android/macOS (avec fond plein).
+
+Pour rebrander : remplace ces fichiers par les tiens (mêmes noms, ou renomme-les et ajuste les références dans `packages/web/index.html` + `packages/web/src/ui/branding/NodeaSymbol.tsx`).
+
+### HTML `<head>`
+
+Dans `packages/web/index.html` :
+
+```html
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" sizes="256x256" href="/favicon-256.png">
+```
+
+### Si tu gardes les assets Nodea originaux
+
+Quelques règles pour rester cohérent avec la marque d'origine :
+
+- **Ne jamais remplir le symbole** — c'est un trait ouvert, le remplir change le sens.
+- Trait : `stroke-width: 6.5` sur viewBox 100×100. À l'échelle, scale en restant proportionnel.
+- Espacement min autour du logo : ½ de la hauteur du symbole.
+- Taille minimum du symbole seul : 16 px (favicon ok).
+- Taille minimum du lockup horizontal : 96 px de large (sinon utiliser le symbole seul).
+- Les fonts sont appelées via `@import` Google Fonts dans les SVG de lockup — autonomes mais nécessitent une connexion. Pour un export sans dépendance, exporter en PNG ou tracer le wordmark en path.
+
 ## Si tu veux contribuer upstream
 
 Tu modifies pour toi : tu es libre, c'est ta fork. Tu modifies pour soumettre une PR sur le repo officiel : il y a quelques conventions à respecter (style de commit, `pnpm test` qui passe, etc.) — vois le `CONTRIBUTING.md` du repo GitHub (rangé dans `.github/`) pour le détail.
