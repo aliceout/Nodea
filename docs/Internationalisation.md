@@ -34,7 +34,7 @@ packages/web/src/i18n/
     │   ├── modals.json
     │   ├── modules.json
     │   ├── mood.json
-    │   ├── passage.json
+    │   ├── journal.json
     │   ├── review.json
     │   └── settings.json
     └── en/

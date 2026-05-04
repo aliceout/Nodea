@@ -521,10 +521,9 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   that don't fit elsewhere. The legacy flat sub-folders (`base/`,
   `data/`, `form/`, `typography/`, `actions/`) were purged in REFACTO-09
   — every file there had zero imports.
-- Per-module pages live at `src/app/flow/<Module>/`. Mood, Goals and
-  Passage kept their legacy JSX subtree (restored from `fb68d85`) — the
-  subtree as a whole is lazy-loaded and behind an ambient declaration
-  so TSX code sees a typed shape.
+- Per-module pages live at `src/app/flow/<Module>/`. Each module is
+  lazy-loaded behind an `ErrorBoundary` so a crash stays confined to
+  the module that raised it.
 
 ### Tests
 
@@ -544,7 +543,7 @@ Zod schemas live under `src/schemas/`:
   + `/auth/me/crypto` (API-14 split) response shapes.
 - `entries.ts` — the generic 1:1 `modules_config` body wrapper.
 - `modules.ts` — decrypted payload schemas for each module (Mood,
-  Goals, Passage, Habits items + logs, Library items + reviews,
+  Goals, Journal, Habits items + logs, Library items + reviews,
   Review).
 - `announcements.ts` — create / update / response for the admin feed.
 - `preferences.ts` — `UserPreferencesBodySchema` wrapper +

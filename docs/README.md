@@ -18,7 +18,7 @@ tu pourrais lui confier des données personnelles ?
 
 | Lis | Pourquoi |
 |---|---|
-| [Modules.md](./Modules.md) | Vue d'ensemble des modules : Mood (humeur quotidienne), Goals (objectifs), Habits (habitudes), Library (bibliothèque), Review (bilan annuel YearCompass), Passage (entrées libres) |
+| [Modules.md](./Modules.md) | Vue d'ensemble des modules : Mood (humeur quotidienne), Goals (objectifs), Habits (habitudes), Library (bibliothèque), Review (bilan annuel YearCompass), Journal (entrées libres) |
 | [Security.md](./Security.md) | Comment fonctionne le chiffrement bout-en-bout, ce que le serveur peut / ne peut pas voir, les limites du modèle web |
 | [Modules/*.md](./Modules/) | Détail fonctionnel de chaque module (champs, règles, formats d'export) |
 

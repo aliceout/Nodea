@@ -9,7 +9,7 @@ temps avec validation HMAC, des données illisibles côté serveur.
 |---|---|---|
 | **Mood** | Humeur quotidienne, trois positifs, question d'introspection optionnelle | [Modules/Mood.md](./Modules/Mood.md) |
 | **Goals** | Objectifs annuels avec statuts `open` / `wip` / `done`, regroupables par tag | [Modules/Goals.md](./Modules/Goals.md) |
-| **Passage** | Entrées longues (titre + contenu en thread), pour journal libre | (fiche à compléter) |
+| **Journal** | Entrées longues groupées par thread (titre + Markdown + attachments inline) | [Modules/Journal.md](./Modules/Journal.md) |
 | **Habits** | Habitudes (`items`) + occurrences datées (`logs`) → heatmap, taux de régularité | [Modules/Habits.md](./Modules/Habits.md) |
 | **Library** | Bibliothèque (`items` + `reviews` + `covers`) — œuvres lues/vues, notes, vignettes chiffrées | [Modules/Library.md](./Modules/Library.md) |
 | **Review** | Bilan annuel guidé, parcours YearCompass en 15 sections | [Modules/Review.md](./Modules/Review.md) |

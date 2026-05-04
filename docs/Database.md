@@ -214,7 +214,7 @@ introduced during the Hono migration. Cf. `Auth-Spec.md §2.3` and
 | --------------------------- | --------------------------------------------- |
 | `mood_entries`              | Mood journal (date, score, emoji, positives). |
 | `goals_entries`             | Goals with lifecycle statuses.                |
-| `passage_entries`           | Passage entries grouped by thread.            |
+| `passage_entries`           | Journal entries grouped by thread.            |
 | `habits_items_entries`      | Habit definitions (frequency, target).        |
 | `habits_logs_entries`       | Per-day occurrences, linked to an item via the encrypted payload. |
 | `library_items_entries`     | Library works (book/movie/tv/doc).            |

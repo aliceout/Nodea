@@ -192,7 +192,7 @@ there is no record id to authenticate, the user *is* the record, and
 - **Response serialisation** never returns `guard` or another user's
   `encrypted_key`.
 - **Surface lisible minimum sur les entry tables** (Mood, Goals,
-  Habits, Library, Review, Passage…). Aucune ligne ne porte de
+  Habits, Library, Review, Journal…). Aucune ligne ne porte de
   `user_id`, ni de `created_at` / `updated_at` colonne. Le serveur
   ne peut pas linker une entrée à un user en plain SQL, ni dater
   une écriture côté DB. Les modules qui ont besoin d'un timestamp

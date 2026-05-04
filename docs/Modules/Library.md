@@ -24,28 +24,6 @@ streaming) sont assez différentes pour mériter leur propre surface.
 
 ---
 
-## 2. Disparition du module Passage
-
-Le module Passage **disparaît purement** — pas de migration, pas de
-données à préserver :
-
-- les rows existantes dans `passage_entries` rattachées au
-  `module_user_id` du module **Passage** sont **supprimées** (wipe).
-  C'étaient des données de test ;
-- la configuration côté frontend (`modules_list.tsx`, sidebar, store,
-  i18n) retire l'entrée `passage` ;
-- le module **Journal reste totalement intact**. Il utilise la même
-  table `passage_entries` avec son propre `module_user_id` —
-  aucune ligne du Journal n'est touchée par le wipe, aucun code
-  Journal n'est modifié.
-
-L'idée originale de Passage — **noter les extraits qu'on aime dans
-ses lectures** — est reprise ici sous la forme des reviews
-`kind: "quote"` (cf. §3.2). C'est la seule chose qui survit du
-concept Passage, et elle vit désormais dans Library.
-
----
-
 ## 3. Schéma des données
 
 Trois tables chiffrées E2E (mêmes règles crypto que Mood / Goals /
@@ -129,8 +107,7 @@ lecture, ou la fiche-bilan.
 ```
 
 - **`quote`** = un extrait du livre, souvent court, avec une page de
-  référence. Reprend l'usage Passage : « les passages qu'on aime
-  dans les livres qu'on lit ».
+  référence — les extraits qu'on aime dans les livres qu'on lit.
 - **`note`** = tout le reste : réflexion en cours, fiche-bilan
   finale, impression, lien avec d'autres lectures…
 
@@ -339,7 +316,6 @@ l'usage le réclame, sans casser le format existant.
 | Q2 | Fetch métadonnées | **Proxy serveur** avec clé API partagée par instance Nodea. Toggle dans Préférences pour désactiver. |
 | Q3 | Couvertures | **Blob chiffré** dans table dédiée `library_covers_entries`. |
 | Q4 | Imports prioritaires | **Babelio** (format confirmé, cf. §5.1), **Inventaire.io**, puis **Goodreads** / **StoryGraph** / CSV générique. |
-| Q5 | Migration Passage | **Wipe** des rows Passage existantes (données fakes). |
 | Q6 | Multi-lectures | **Pas de tableau `reads[]`** — `started_at` / `finished_at` flat. |
 | Q7 | Distinction reviews | **Deux kinds** : `quote` (extraits / passages) et `note` (le reste). |
 | Q8 | Tags | **Libres** au MVP, pas de taxonomie pré-définie. |
@@ -373,7 +349,6 @@ l'usage le réclame, sans casser le format existant.
 - ✅ Modal `BookPickerModal` pour le flow « + Nouvel extrait /
   Nouvelle note » : choisir d'abord le livre parent, puis le
   composer s'ouvre pré-rempli.
-- ✅ Wipe Passage + retrait du module Passage côté front.
 
 > Drift par rapport au plan initial : **les sous-vues, les 4 modes
 > d'affichage et les 5 axes de regroupement ne figuraient pas dans
