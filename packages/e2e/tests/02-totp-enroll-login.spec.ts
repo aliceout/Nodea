@@ -67,19 +67,17 @@ test('TOTP enroll + login with code', async ({ page }) => {
 
   // SecretPanel (Activation TOTP · 1/2) — QR + masked base32 + 6-digit
   // code field. The base32 secret is masked with bullets by default ;
-  // reveal it via the eye button (aria-label « Afficher la clé »)
-  // before scraping.
+  // reveal it via the eye button before scraping. The secret <p>
+  // carries `data-testid=totp-secret` so we don't accidentally match
+  // some other font-mono <p> elsewhere on the page.
   await page
     .getByRole('button', { name: /^Afficher la cl.$|^Reveal the key$/i })
     .click();
-  const secretLocator = page
-    .locator('p.font-mono')
-    .filter({ hasText: /^[A-Z2-7\s]{16,}$/ })
-    .first();
+  const secretLocator = page.locator('[data-testid=totp-secret]');
   await expect(secretLocator).toBeVisible({ timeout: 10_000 });
   const secret =
     (await secretLocator.textContent())?.replace(/\s+/g, '') ?? '';
-  expect(secret.length).toBeGreaterThanOrEqual(16);
+  expect(secret).toMatch(/^[A-Z2-7]{16,}$/);
 
   // Generate the matching TOTP code and type it.
   const code = await totpCode(secret);

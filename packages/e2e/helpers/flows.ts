@@ -47,9 +47,18 @@ export async function registerAndActivate(
   await expect(page).toHaveURL(/\/login\?activated=1/);
 
   // 3. Type the password back to obtain a real session cookie.
-  await page.fill('input[type=email]', email);
-  await page.fill('input[type=password]', password);
-  await page.getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i }).click();
+  // Use getByLabel rather than `input[type=*]` selectors : the
+  // login page may render auxiliary inputs (banners, toasts) that
+  // also match `type=email`/`type=password` and silently take the
+  // .fill, leaving the real form empty so the submit button stays
+  // disabled. getByLabel pins the inputs to the form's
+  // accessible labels (cf. test 01 which uses the same pattern
+  // and passes).
+  await page.getByLabel(/E-?mail/i).fill(email);
+  await page.getByLabel(/^Mot de passe$|^Password$/i).fill(password);
+  await page
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
+    .click();
 
   // 4. Land on the flow home — proves a `full` session exists.
   await expect(page).toHaveURL(/\/flow(\/home)?/);
@@ -59,9 +68,11 @@ export async function registerAndActivate(
 /** Log in an already-activated user. Asserts we land on /flow. */
 export async function login(page: Page, user: SeededUser): Promise<void> {
   await page.goto('/login');
-  await page.fill('input[type=email]', user.email);
-  await page.fill('input[type=password]', user.password);
-  await page.getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i }).click();
+  await page.getByLabel(/E-?mail/i).fill(user.email);
+  await page.getByLabel(/^Mot de passe$|^Password$/i).fill(user.password);
+  await page
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
+    .click();
   await expect(page).toHaveURL(/\/flow(\/home)?/);
 }
 

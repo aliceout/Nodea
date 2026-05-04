@@ -175,7 +175,10 @@ export default function SecretPanel({
             </Button>
           </div>
         </div>
-        <p className="mt-1 break-all text-left font-mono text-[12px] text-ink">
+        <p
+          data-testid="totp-secret"
+          className="mt-1 break-all text-left font-mono text-[12px] text-ink"
+        >
           {secretRevealed ? data.secretBase32 : maskedSecret}
         </p>
       </div>
