@@ -60,7 +60,7 @@ Si tu auto-héberges, ça ne dépend que de toi.
 
 ### Mes données sont stockées où, juridiquement ?
 
-L'instance officielle tourne sur des serveurs en France. Une **ébauche de CGU** ([`docs/Terms.md`](https://github.com/aliceout/Nodea/blob/main/docs/Terms.md)) existe — pas encore de version définitive signée par un·e juriste ; si tu utilises l'instance officielle aujourd'hui, c'est dans un cadre informel.
+L'instance officielle tourne sur des serveurs en France. Une **ébauche de CGU** ([`packages/web/src/app/pages/Terms/content.md`](https://github.com/aliceout/Nodea/blob/main/packages/web/src/app/pages/Terms/content.md)) existe — pas encore de version définitive signée par un·e juriste ; si tu utilises l'instance officielle aujourd'hui, c'est dans un cadre informel.
 
 Si tu auto-héberges, c'est toi qui choisis la juridiction.
 
