@@ -91,7 +91,7 @@ the factory loops over. There is nowhere to forget a guard.
 > [`Auth-Spec.md`](./Auth-Spec.md). The summary below captures what
 > the V1 code actually implements.
 
-- **Login** (OPAQUE 2-step via `routes/auth.ts`, Phase 2C):
+- **Login** (OPAQUE 2-step via `routes/auth.ts`):
   - `POST /auth/login/start` runs `server.startLogin` and returns
     `{ loginResponse, loginToken }`. Anti-enum is built into the
     OPAQUE library: an unknown email gets a syntactically valid
@@ -103,20 +103,17 @@ the factory loops over. There is nowhere to forget a guard.
     256-bit base64url token. Single-use, 5-minute TTL.
   - `POST /auth/login/finish` runs `server.finishLogin`, gates
     the user on `email_verified_at` (403 `account_not_activated`
-    when NULL), creates a session, sets the signed cookie. No
-    more dummy-hash timing trick — the legacy `POST /auth/login`
-    is gone.
+    when NULL), creates a session, sets the signed cookie.
   - `GET /auth/me` returns the lean profile (id, email, role,
     onboarding state, MFA flags). API-14 split — the OPAQUE
     credential blobs (`wrappedMainKey{,Iv}` +
     `wrappedKekPassword{,Iv}`) live behind `GET /auth/me/crypto`,
     fetched only at the moments the client unwraps the KEK
     (login, change-password, recovery-code setup, passkey
-    enroll). Phase 2D dropped the legacy `encryptionSalt` /
-    `encryptedKey` fields.
+    enroll).
 
 - **Change password** (OPAQUE 2-step via
-  `/auth/change-password/start` + `/finish`, Phase 2D):
+  `/auth/change-password/start` + `/finish`):
   - The client first re-derives the current `exportKey` via a
     `/auth/login/start` round-trip with the typed current
     password. The resulting proof goes in the body.
@@ -167,7 +164,7 @@ the factory loops over. There is nowhere to forget a guard.
     indistinguishable from a known-user path.
 
 - **Reset password** (OPAQUE 2-step via `/auth/reset/start` +
-  `/finish`, Phase 2D):
+  `/finish`):
   - The reset email's token is the auth proof; `/start` validates
     it, runs `createRegistrationResponse`, returns `{ registration
     Response, resetToken, userId }`.
@@ -183,8 +180,7 @@ the factory loops over. There is nowhere to forget a guard.
     The caller has run `/auth/reauth/password` within the last
     5 minutes, which stamps `sessions.reauth_password_at`.
 
-- **Re-auth foundation + matrix wiring** (Phase 7A + 7B —
-  `routes/auth-reauth.ts`,
+- **Re-auth foundation + matrix wiring** (`routes/auth-reauth.ts`,
   `middleware/require-fresh-reauth.ts`):
   - Two timestamps live on the session row:
     `reauth_password_at` and `reauth_passkey_at`. They're stamped
@@ -212,17 +208,14 @@ the factory loops over. There is nowhere to forget a guard.
     assertion against the calling user's enrolled credentials
     (re-uses the `pending_webauthn_challenge` column on the full
     session row, TTL 5 min — same as the stepped-MFA path).
-  - Phase 7B applied the middlewares to every mutating Settings
-    route (security-mode, totp, passkey, recovery-code,
-    change-password, change-email, delete-self) and dropped the
-    embedded `proofLoginToken` body shape that pre-7B routes
-    accepted. Front-end migrated from `derivePasswordProof` (one
-    OPAQUE round-trip per action, embedded in body) to
-    `freshenPasswordReauth` (one round-trip via
-    `/auth/reauth/password`, then a session-fresh action call).
+  - The middlewares are applied to every mutating Settings route
+    (security-mode, totp, passkey, recovery-code, change-password,
+    change-email, delete-self). Body does not accept embedded
+    `proofLoginToken` — the client uses `freshenPasswordReauth`
+    to call `/auth/reauth/password` once, then issues the
+    session-fresh action call.
 
-- **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`,
-  Phase 2B):
+- **Register** (OPAQUE 2-step via `routes/auth-register-v2.ts`):
   - The form requires email + **username** (public display name,
     "prénom ou pseudo") + password. Username is a free-form
     display name with no uniqueness check — duplicates are allowed
@@ -252,9 +245,8 @@ the factory loops over. There is nowhere to forget a guard.
     `registration_closed`. The frontend gates this case via
     `GET /auth/register/mode` so users see a panel instead of an
     error.
-  - The legacy single-shot `POST /auth/register` is gone; admin /
-    seed scripts insert directly into the `users` table with
-    `email_verified_at = now()` to bypass the activation gate.
+  - Admin / seed scripts insert directly into the `users` table
+    with `email_verified_at = now()` to bypass the activation gate.
 - **Login**: always runs `verifyPassword` to keep timing identical
   between "unknown email" and "wrong password". Dummy hash used when
   the email doesn't match any row. **Refuses 403
@@ -262,15 +254,15 @@ the factory loops over. There is nowhere to forget a guard.
   surfaced as a precise UI message ("Ton compte n'est pas encore
   activé").
 - **Change password / reset / change-email / delete-self**: see the
-  dedicated bullets above — all four moved to OPAQUE proof bodies in
-  Phase 2D. Reset still purges every user-owned encrypted row before
-  rotating credentials (the old main key is unrecoverable once the
-  password is forgotten); change-password rotates the KEK envelope
-  but leaves the main-key wrap untouched, preserving every existing
-  ciphertext. Reset-token shape unchanged: 32-byte random, SHA-256
-  hashed, 1h TTL (R13 / #22).
+  dedicated bullets above — all four use OPAQUE proof bodies. Reset
+  purges every user-owned encrypted row before rotating credentials
+  (the old main key is unrecoverable once the password is
+  forgotten); change-password rotates the KEK envelope but leaves
+  the main-key wrap untouched, preserving every existing ciphertext.
+  Reset-token shape: 32-byte random, SHA-256 hashed, 1h TTL
+  (R13 / #22).
 
-- **Passkey (WebAuthn + PRF)** (Phase 4 — `routes/auth-passkey.ts`):
+- **Passkey (WebAuthn + PRF)** (`routes/auth-passkey.ts`):
   - Five authenticated routes (`enroll/start`, `enroll/finish`,
     `list`, `:id/label`, `:id/remove`) for Settings, two anonymous
     routes (`login/start`, `login/finish`) for the login flow.
@@ -295,7 +287,7 @@ the factory loops over. There is nowhere to forget a guard.
     only exposes high-level `enrollPasskey` / `loginWithPasskey` /
     `removePasskey` / `renamePasskey` surfaces.
 
-- **TOTP + stepped MFA + security mode** (Phase 5 — `routes/auth-totp.ts`,
+- **TOTP + stepped MFA + security mode** (`routes/auth-totp.ts`,
   `routes/auth-mfa.ts`, `routes/auth-security-mode.ts`):
   - `auth-totp.ts` — 4 authenticated routes for the management
     surface: `enroll/start`, `enroll/verify`, `disable`,
@@ -340,8 +332,8 @@ the factory loops over. There is nowhere to forget a guard.
     password confirm form + UI gates that grey out modes whose
     prerequisites aren't met.
 
-- **MFA bypass by email (TOTP / passkey, 7 days)** (Phase 6 —
-  `routes/auth-mfa-bypass.ts`, `auth/mfa-bypass.ts`):
+- **MFA bypass by email (TOTP / passkey, 7 days)**
+  (`routes/auth-mfa-bypass.ts`, `auth/mfa-bypass.ts`):
   - 2 routes: `POST /auth/mfa/bypass/request` (mfa_pending) and
     `GET /auth/mfa/bypass/confirm?t=<token>` (anonymous). No cancel
     email link — auto-cancel-on-login defangs forged requests when
@@ -426,14 +418,13 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   `@tailwindcss/vite`).
 - **TypeScript strict**, `allowJs: false`,
   `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`. The
-  flow modules and the import/export plugins were migrated to
-  TS-strict ; only
+  flow modules and the import/export plugins are in TS strict.
   [`src/i18n/I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx)
-  remains in JSX — kept legacy on purpose (the pure logic was
-  factored out into `translate.ts` / `parity.ts` in TS strict ;
-  the `.jsx` is just React glue, no gain in migrating). The shim in
+  is the lone `.jsx` (pure logic extracted to `translate.ts` /
+  `parity.ts` in TS strict; the `.jsx` is just React glue). The
+  shim in
   [`src/types/legacy-modules.d.ts`](../packages/web/src/types/legacy-modules.d.ts)
-  now covers only the i18n provider.
+  covers only the i18n provider.
 - **Zustand** is the single application store, see
   [`src/core/store/nodea-store.ts`](../packages/web/src/core/store/nodea-store.ts).
   Slices: `auth`, `crypto`, `modules`, `preferences`, `notifications`,
@@ -484,9 +475,8 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   PATCH promote on create; decrypt on list; derive guard on update /
   delete. Every module's data client is one line on top of this
   factory.
-- The legacy-shaped adapters that used to bridge PocketBase-era JSX
-  modules to the typed factory were retired during the JSX-to-TS
-  migration. All consumers now import the typed clients directly.
+- All module data clients import the typed clients directly from
+  the collection client factory.
 
 ### Crypto (`src/core/crypto/`)
 
@@ -507,8 +497,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   under an HKDF sub-key of the OPAQUE `exportKey` (label
   `nodea:wrap-kek`). AAD bound to `users.id` (+ a per-factor tag
   for the KEK wrap) so a row-swap on the server can't pass off
-  one user's blob as another's. The legacy single-step Argon2id
-  envelope (`envelope.ts`) was removed in Phase 2D.
+  one user's blob as another's.
 
 ### UI
 
@@ -518,9 +507,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   Textarea / Field set used by composer and forms), `feedback/`
   (InlineAlert, ErrorBoundary), `layout/` (Surface, Modal), and
   `specifics/` (KeyMissingModal, SurfaceCard) for the rare components
-  that don't fit elsewhere. The legacy flat sub-folders (`base/`,
-  `data/`, `form/`, `typography/`, `actions/`) were purged in REFACTO-09
-  — every file there had zero imports.
+  that don't fit elsewhere.
 - Per-module pages live at `src/app/flow/<Module>/`. Each module is
   lazy-loaded behind an `ErrorBoundary` so a crash stays confined to
   the module that raised it.

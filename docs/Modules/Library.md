@@ -350,12 +350,7 @@ l'usage le réclame, sans casser le format existant.
   Nouvelle note » : choisir d'abord le livre parent, puis le
   composer s'ouvre pré-rempli.
 
-> Drift par rapport au plan initial : **les sous-vues, les 4 modes
-> d'affichage et les 5 axes de regroupement ne figuraient pas dans
-> le plan original**. Ils ont été ajoutés au fur et à mesure et la
-> doc rattrape ici.
-
-### Phase 2 — Proxy métadonnées · **livrée (avec extras)**
+### Phase 2 — Proxy métadonnées · **livrée**
 
 - ✅ Endpoints `POST /library/lookup/by-isbn` et
   `POST /library/lookup/by-query`.

@@ -24,7 +24,7 @@ Central identity row.
 | --------------------- | --------- | ---------------------------------------------------------------------------- |
 | `id`                  | `text` PK | UUID generated server-side.                                                  |
 | `email`               | `text`    | Lowercased on insert. Unique.                                                |
-| `username`            | `text?`   | Public display name. **Required** at register since Phase 1 (`UsernameField`). **Not unique** — duplicates are allowed (it's a free-form display name; identity lives in `id` + `email`). Column stays nullable so users can clear theirs. |
+| `username`            | `text?`   | Public display name. **Required** at register (`UsernameField`). **Not unique** — duplicates are allowed (it's a free-form display name; identity lives in `id` + `email`). Column stays nullable so users can clear theirs. |
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
 | `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
@@ -32,7 +32,7 @@ Central identity row.
 | `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. Multi-step register state machine (Auth-Spec §4.1). |
 | `wrapped_main_key{,_iv}` | `text?` | AES-GCM(main key) under random KEK. Set ONCE at register, never re-wrapped. AAD = `nodea:v1\x1f<id>\x1fmain`. |
 | `wrapped_kek_password{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of OPAQUE `exportKey`. Re-wrapped at change-password / reset / recovery. AAD = `nodea:v1\x1f<id>\x1fpassword`. |
-| `wrapped_kek_recovery{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of BIP39 entropy (Phase 3 ✅). NULL until the user sets up a recovery code. AAD = `nodea:v1\x1f<id>\x1frecovery`. |
+| `wrapped_kek_recovery{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of BIP39 entropy. NULL until the user sets up a recovery code. AAD = `nodea:v1\x1f<id>\x1frecovery`. |
 | `recovery_code_hash` | `text?` | SHA-256 hex of the 16-byte BIP39 entropy. Anti-DoS gate at `/auth/recover-kek/finish` — the server never sees the entropy itself. |
 | `recovery_acknowledged_at` | `ts+tz?` | Set on first-time setup AND every regenerate (`/auth/security/recovery-code`) AND every recover-kek/finish. UI uses it to show "code régénéré le …". |
 | `onboarding_status`   | `enum`    | `'pending' \| 'complete'`. Reset to `'pending'` on password reset.           |
@@ -52,13 +52,13 @@ id; rights and TTL live here so logout/revocation is immediate.
 | ------------------------------- | --------- | --------------------------------------------------------- |
 | `id`                            | `text` PK | Signed value stored in the `nodea_session` cookie.        |
 | `user_id`                       | `text`    | FK → `users.id`, **ON DELETE CASCADE**.                   |
-| `kind`                          | `enum`    | `'full' \| 'mfa_pending' \| 'register' \| 'migrate'`. `'migrate'` is vestigial (Phase 2C lazy migration completed in 2D); no code path mints it any more. The others are live: `full` after login, `mfa_pending` between primary auth and MFA verification, `register` during the multi-step inscription. |
-| `reauth_password_at`            | `ts+tz?`  | Fresh-password timestamp gating mutating Settings routes via `requireFreshPassword` (5 min window, Auth-Spec §5.3 / §6, Phase 7A). |
+| `kind`                          | `enum`    | `'full' \| 'mfa_pending' \| 'register' \| 'migrate'`. `'migrate'` is vestigial; no code path mints it any more. The others are live: `full` after login, `mfa_pending` between primary auth and MFA verification, `register` during the multi-step inscription. |
+| `reauth_password_at`            | `ts+tz?`  | Fresh-password timestamp gating mutating Settings routes via `requireFreshPassword` (5 min window, Auth-Spec §5.3 / §6). |
 | `reauth_passkey_at`             | `ts+tz?`  | Fresh-passkey timestamp — `requireFreshPasswordOrPasskey` accepts either factor. |
-| `mfa_password_verified`         | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when password is the primary factor (Phase 5C). |
+| `mfa_password_verified`         | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when password is the primary factor. |
 | `mfa_passkey_verified`          | `bool`    | Stepped-MFA flag set on `mfa_pending` rows when passkey is the primary factor or after passkey 2nd-factor verify. |
 | `mfa_totp_verified`             | `bool`    | Stepped-MFA flag set after `/auth/mfa/totp/verify` succeeds. |
-| `pending_webauthn_challenge`    | `text?`   | WebAuthn challenge persisted on the row for `/auth/passkeys/{enroll,login}/finish` and `/auth/reauth/passkey/finish` (Phase 4 / 7A). |
+| `pending_webauthn_challenge`    | `text?`   | WebAuthn challenge persisted on the row for `/auth/passkeys/{enroll,login}/finish` and `/auth/reauth/passkey/finish`. |
 | `pending_webauthn_challenge_at` | `ts+tz?`  | TTL anchor on the challenge — 5 min, after which the value is rejected. |
 | `ip_hash`                       | `text?`   | Per-deployment salted hash. Audit trail only.             |
 | `user_agent`                    | `text?`   | Audit trail only.                                         |
@@ -202,13 +202,11 @@ All 9 entry tables share the exact same shape, produced by the
 is what lets the route factory loop over a single array of collections
 (`src/collections/registry.ts`) without per-module branches.
 
-**Minimum-readable-surface design.** The original PocketBase schema
-scoped access by `module_user_id` + `guard` only — the server is
-never told which entry belongs to which user. That property was
-restored in migration 0012 (drop `user_id` column) and 0013 (drop
-`created_at` / `updated_at` columns), reversing a regression
-introduced during the Hono migration. Cf. `Auth-Spec.md §2.3` and
-`Modules.md §1` for the rationale.
+**Minimum-readable-surface design.** The server is never told
+which entry belongs to which user — access is scoped by
+`module_user_id` + `guard` only. The entry tables carry no
+`user_id`, no `created_at` / `updated_at` columns. Cf.
+`Auth-Spec.md §2.3` and `Modules.md §1` for the rationale.
 
 | Table                       | Records                                       |
 | --------------------------- | --------------------------------------------- |
@@ -309,43 +307,11 @@ for the exact flow.
 
 ## 4. Migrations
 
-```
-drizzle/
-├── 0000_mixed_killer_shrike.sql      # initial users + sessions + invites
-├── 0001_wandering_angel.sql          # 8 entry tables + modules_config
-├── 0002_good_meteorite.sql           # users.username + partial unique index
-├── 0003_peaceful_stephen_strange.sql # announcements
-├── 0004_smooth_titanium_man.sql      # user_preferences
-├── 0005_gray_red_hulk.sql            # password_reset_tokens
-├── 0006_petite_gauntlet.sql          # (legacy housekeeping)
-├── 0007_perpetual_tyrannus.sql       # Auth-Roadmap Phase 0: auth-v2 columns on
-│                                     # users + sessions, new Phase 2+ scaffold
-│                                     # tables (opaque_records, auth_factors,
-│                                     # mfa_totp / mfa_totp_recovery_codes /
-│                                     # mfa_bypass_requests, email_verifications)
-├── 0008_ambiguous_eternity.sql       # Auth-Roadmap Phase 1 v2: invites.email
-│                                     # column + app_settings table; preface
-│                                     # `DELETE FROM invites` to clear legacy
-│                                     # rows the new NOT NULL email column
-│                                     # would have rejected.
-├── 0009_milky_brother_voodoo.sql     # Auth-Roadmap Phase 2B: legacy
-│                                     # users.{password_hash, encryption_salt,
-│                                     # encrypted_key} relaxed to nullable so
-│                                     # OPAQUE-registered accounts can land
-│                                     # without dummy values. Columns dropped
-│                                     # entirely in Phase 2D.
-├── 0010_oval_hairball.sql            # DROP `users_username_unique` —
-│                                     # username is a free-form display
-│                                     # name, duplicates allowed.
-└── 0011_little_morg.sql              # Auth-Roadmap Phase 2D: drop
-                                      # users.{password_hash,
-                                      # encryption_salt, encrypted_key}.
-                                      # OPAQUE blobs are now the only
-                                      # credential surface.
-```
+Drizzle forward-only migrations live under
+[`packages/api/drizzle/`](../packages/api/drizzle/) and are applied
+on api boot. See [ADR-0011](./adr/0011-drizzle-forward-only-migrations.md)
+for the rationale.
 
 The test harness (`packages/api/src/test/setup.ts`) truncates every
-row-holding table before each test via `TRUNCATE … CASCADE` —
-`announcements`, `password_reset_tokens`, `email_verifications`, and
-the Phase 2+ scaffold tables are in that list so the suites stay
-hermetic.
+row-holding table before each test via `TRUNCATE … CASCADE` so the
+suites stay hermetic.

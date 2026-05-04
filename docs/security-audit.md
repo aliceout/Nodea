@@ -14,8 +14,8 @@
 > correctif.
 >
 > **Date de la baseline** : 2026-04-30. **Prochaine revue
-> obligatoire** : à la livraison d'Auth Phase 5+, ou dans 6 mois,
-> selon ce qui arrive en premier.
+> obligatoire** : à la prochaine modification crypto / auth
+> majeure, ou dans 6 mois, selon ce qui arrive en premier.
 
 L'app est e2e encrypted : la clé maîtresse est dérivée côté
 navigateur via OPAQUE, le serveur ne stocke que des ciphertexts +

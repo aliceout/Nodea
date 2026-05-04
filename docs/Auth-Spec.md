@@ -325,17 +325,8 @@ un bug à fail-loud (assert au build/runtime côté test).
 
 ## 4. Schéma de base de données
 
-> **Statut**. Les tables et colonnes décrites ici existent toutes en
-> DB depuis la migration Drizzle de Phase 0 — leur définition côté
-> code (`packages/api/src/db/schema.ts`) est à jour. **Mais** la
-> majorité des tables auth-v2 ne sont *pas encore peuplées* en V1 :
-> elles attendent Phase 2 (OPAQUE) et au-delà.
->
-> Légende :
-> - **✅ V1 livré** = utilisé en production / dev. Les tests et le
->   code applicatif s'en servent.
-> - **🚧 Phase 2+ table prête, code à venir** = la migration a créé
->   la table mais aucun handler n'écrit dedans encore.
+> Les tables et colonnes décrites ici reflètent
+> `packages/api/src/db/schema.ts`.
 
 ### 4.0 Tables existantes préservées (hors scope auth)
 
@@ -581,11 +572,11 @@ serveur :
 
 (Cf. §7.9 — récap pour la migration Drizzle.)
 
-**Note importante** : depuis migration 0012, les tables d'entrées
-modules ne portent plus de `user_id` — le serveur ne peut donc
-plus les identifier ni les purger au reset. Les rows existantes
-deviennent orphelines (clé maîtresse perdue, illisibles). Le
-reset purge seulement les tables 1:1-FK-cascade-able sur l'user.
+**Note importante** : les tables d'entrées modules ne portent
+pas de `user_id` — le serveur ne peut donc pas les identifier ni
+les purger au reset. Les rows orphelines restent (clé maîtresse
+perdue, illisibles). Le reset purge seulement les tables
+1:1-FK-cascade-able sur l'user.
 
 ```sql
 -- Tables modules : pas de purge possible (pas de user_id colonne).
@@ -625,7 +616,7 @@ Toute la séquence dans **une transaction**.
 |---|---|---|---|---|
 | `__Host-nodea_register` ✅ | 24h | `/auth/register/*` | Après vérif email réussie (étape 2 du wizard) | Effacé à la fin du register |
 | `__Host-nodea_mfa` ✅ | 5 min | `/auth/mfa/*` | Après OPAQUE/passkey login finish | `__Host-nodea_session` quand MFA complète |
-| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | Après login legacy Argon2id réussi (n'est plus émis depuis Phase 2D) | `__Host-nodea_session` après migration crypto |
+| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | Plus émis — aucun code path n'en mint depuis l'élimination du modèle Argon2id | `__Host-nodea_session` après migration crypto |
 | `nodea_session` ✅ | 7 jours (fixe, **pas** de slide) | tout le reste | Login complet | Re-login forcé après 7j ou révocation |
 
 Tous les cookies :
@@ -668,12 +659,12 @@ middleware `loadSession` :
 
 ### 5.3 Re-auth fresh
 
-✅ **Phase 7A + 7B livrées** : middlewares + endpoints
-`/auth/reauth/*`, timestamps stampés sur tous les chemins d'auth,
-matrice câblée sur toutes les routes mutantes (security-mode,
-totp, passkey, recovery-code, change-password, change-email,
-delete-self) + drop du `proofLoginToken` embarqué dans les bodies
-(pattern Phase 5D MVP). Front migré vers `freshenPasswordReauth`.
+Middlewares + endpoints `/auth/reauth/*` ; timestamps stampés sur
+tous les chemins d'auth ; matrice câblée sur toutes les routes
+mutantes (security-mode, totp, passkey, recovery-code,
+change-password, change-email, delete-self). Le front utilise
+`freshenPasswordReauth` (pas de `proofLoginToken` embarqué dans
+les bodies).
 
 La matrice (§6) demande "re-auth fraîche < 5 min". Implémentation :
 
@@ -857,7 +848,7 @@ par le client pour calculer les AAD bindings (`buildKekAAD(userId,
 }
 ```
 
-`username` est **obligatoire** depuis Phase 1 — règles `UsernameField`
+`username` est **obligatoire** au register — règles `UsernameField`
 (2-32 chars, lettres/chiffres/`_`/`-`/`.`, accents OK). Présenté à
 l'utilisateur comme "un prénom ou un pseudo". **Pas d'unicité** :
 deux comptes peuvent porter le même display name (l'identifiant
@@ -888,15 +879,11 @@ côté client (cf. §3.2) :
        wrappedMainKey, wrappedMainKeyIv,
        wrappedKekPassword, wrappedKekPasswordIv,
        emailVerifiedAt: now(), registerState: 'complete' }`.
-       (Les colonnes Argon2id legacy ont été droppées en Phase 2D —
-       `opaque_records.envelope` + les blobs `wrapped_*` sont la
-       seule surface credential.)
      - INSERT `opaque_records { user_id: userId, envelope:
        registrationRecord }`.
      - UPDATE `invites { usedBy, usedAt }`.
    - Réponse `200 { ok: true, activated: true, email }`. Aucun
-     cookie émis — l'user retape son password à `/login` (Phase 2C
-     pour OPAQUE login).
+     cookie émis — l'user retape son password à `/login`.
 
 2. **Open registration** (pas de token, toggle ON) :
    - Vérifier `app_settings.open_registration === true` (défense en
@@ -904,7 +891,7 @@ côté client (cf. §3.2) :
    - Si `users` (actif OU inactif) existe déjà avec cet email →
      silent 200 (anti-enum). Le retry sur ligne inactive **n'est
      plus** une réutilisation parce que les AAD du nouveau
-     `/start` userId divergent de l'ancien — l'email d'activation
+     `/start` userId divergent du précédent — l'email d'activation
      d'origine reste valide, l'admin peut renvoyer hors-bande.
    - Sinon : INSERT `users { id: userId, …,
      emailVerifiedAt: NULL }` + INSERT `opaque_records`, dans
@@ -918,14 +905,10 @@ côté client (cf. §3.2) :
    - 403 `registration_closed`. Le frontend gate ce cas en amont
      via `GET /register/mode` (voir ci-dessous).
 
-**Mode Argon2id legacy** : remplacé entièrement par l'OPAQUE
-2-step en Phase 2B (register), 2C (login), 2D (change-password,
-reset, change-email, delete-self). Les colonnes
-`users.{password_hash, encryption_salt, encrypted_key}` ont été
-droppées en Phase 2D (migration `0011_little_morg`). Aucun chemin
-de code n'utilise plus Argon2id pour l'auth — le seul Argon2id
-restant est celui qu'`@serenity-kit/opaque` fait tourner en
-interne dans la suite OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id.
+**Argon2id côté Nodea** : aucun chemin de code n'utilise Argon2id
+pour l'auth ; le seul Argon2id restant est celui que
+`@serenity-kit/opaque` fait tourner en interne dans la suite
+OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id.
 
 #### `POST /auth/register/activate`
 

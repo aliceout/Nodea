@@ -254,8 +254,8 @@ listé ici.
 * **Dessins → texte** : trois rubriques où le livret demande de
   dessiner (best_moments, letting_go, dream_big) acceptent du
   texte libre.
-* **Pas d'image symbolique** : le `year_image` de l'ancienne version
-  n'existe pas dans le livret, il a été retiré.
+* **Pas d'image symbolique** : aucun champ `year_image` — le livret
+  ne le prévoit pas.
 * **Confidentialité totale** : tout est chiffré côté client (AES-GCM
   + HMAC guard). Rien ne quitte le navigateur en clair.
 * **Rythme** : 1 entrée par an, mais on peut en refaire quand on
