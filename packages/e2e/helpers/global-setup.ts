@@ -76,10 +76,24 @@ async function truncateAll(): Promise<void> {
   }
 }
 
+async function resetRateLimits(): Promise<void> {
+  // The in-process rate-limit buckets in `packages/api/src/middleware/rate-limit.ts`
+  // survive a `reuseExistingServer: true` Playwright run. Hitting the dev
+  // test endpoint flushes them so the 13-spec sequence doesn't run into
+  // /auth/register's 10/h bucket halfway through.
+  const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  try {
+    await fetch(`${apiUrl}/__test__/reset-rate-limits`, { method: 'POST' });
+  } catch {
+    // Endpoint may not exist on a custom prod-like build; skip silently.
+  }
+}
+
 export default async function globalSetup(): Promise<void> {
   await ensureDatabaseExists();
   runMigrations();
   await truncateAll();
-   
+  await resetRateLimits();
+
   console.log('[e2e/setup] database ready');
 }

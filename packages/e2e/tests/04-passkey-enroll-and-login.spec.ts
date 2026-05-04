@@ -66,7 +66,9 @@ test('passkey — enroll + login (non-PRF, password finishes unlock)', async ({
       await labelField.first().fill('e2e-virtual');
     }
     await page
-      .getByRole('button', { name: /Continuer|Continue|Enregistrer|Save/i })
+      .getByRole('button', {
+        name: /^Confirmer avec ma passkey$|^Enregistrement…$|^Confirm with my passkey$/i,
+      })
       .click();
 
     // The virtual authenticator auto-approves. After enroll, the

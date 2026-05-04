@@ -33,16 +33,18 @@ test('recovery code — generate, then use to reset password', async ({ page }) 
 
   /* -------- 2. Generate the recovery code -------- */
   await page.goto('/recovery-code');
-  // The page may show « Configurer » or « Régénérer » depending on
-  // whether the user already has a code — for a freshly-registered
-  // user it's « Configurer ».
+  // Single-form flow (FormPanel) : password field + submit. The submit
+  // label is « Générer mes 12 mots » for setup, « Régénérer » when the
+  // user already has a code (cf. RecoveryCode/FormPanel.tsx). For a
+  // freshly-registered user it's setup.
   await page
-    .getByRole('button', { name: /Configurer|Set up/i })
-    .click();
-  await page
-    .getByLabel(/^Mot de passe.*actuel$|^Current password$/i)
+    .getByLabel(/^Mot de passe actuel$|^Current password$/i)
     .fill(user.password);
-  await page.getByRole('button', { name: /Continuer|Continue/i }).click();
+  await page
+    .getByRole('button', {
+      name: /^G.n.rer mes 12 mots$|^R.g.n.rer$|^Generate my 12 words$/i,
+    })
+    .click();
 
   // The display shows 12 BIP39 words. They live inside a grid
   // structure rendered by `<RecoveryCodeDisplay>`. Scrape every

@@ -54,38 +54,51 @@ test('TOTP enroll + login with code', async ({ page }) => {
 
   /* -------- 2. Enroll TOTP -------- */
   await page.goto('/totp');
-  // The first stage is "Activer" — clicking it opens the password
-  // proof form.
-  await page.getByRole('button', { name: /Activer/i }).click();
-  // Password proof form. The page calls /auth/reauth/password
-  // before /auth/totp/enroll/start.
-  await page.getByLabel(/^Mot de passe.*actuel|Current password/i).fill(STRONG_PASSWORD);
-  await page.getByRole('button', { name: /Continuer|Continue/i }).click();
+  // ListView (disabled state) — single form : password + « Activer TOTP »
+  // button. The button gates on `password.length > 0` (cf.
+  // packages/web/src/app/pages/Totp/ListView.tsx). The click triggers
+  // /auth/reauth/password + /auth/totp/enroll/start in one go.
+  await page
+    .getByLabel(/^Mot de passe actuel$|^Current password$/i)
+    .fill(STRONG_PASSWORD);
+  await page
+    .getByRole('button', { name: /^Activer TOTP$|^Enable TOTP$/i })
+    .click();
 
-  // Once enrollment-start succeeds, the page displays the secret
-  // base32 string + the 10 backup codes. Scrape the secret.
-  const secretLocator = page.locator('[data-testid=totp-secret], code, pre').filter({
-    hasText: /^[A-Z2-7]{16,}$/,
-  });
-  await expect(secretLocator.first()).toBeVisible({ timeout: 10_000 });
-  const secret = (await secretLocator.first().textContent())?.replace(/\s+/g, '') ?? '';
+  // SecretPanel (Activation TOTP · 1/2) — QR + masked base32 + 6-digit
+  // code field. The base32 secret is masked with bullets by default ;
+  // reveal it via the eye button (aria-label « Afficher la clé »)
+  // before scraping.
+  await page
+    .getByRole('button', { name: /^Afficher la cl.$|^Reveal the key$/i })
+    .click();
+  const secretLocator = page
+    .locator('p.font-mono')
+    .filter({ hasText: /^[A-Z2-7\s]{16,}$/ })
+    .first();
+  await expect(secretLocator).toBeVisible({ timeout: 10_000 });
+  const secret =
+    (await secretLocator.textContent())?.replace(/\s+/g, '') ?? '';
   expect(secret.length).toBeGreaterThanOrEqual(16);
 
   // Generate the matching TOTP code and type it.
   const code = await totpCode(secret);
-  await page.getByLabel(/Code|TOTP/i).fill(code);
+  await page.getByLabel(/^Code à 6 chiffres/i).fill(code);
+  await page.getByRole('button', { name: /^Activer$|^Activation…$/i }).click();
 
-  // Acknowledge backup codes saved.
-  const ack = page.getByRole('checkbox', { name: /noté|saved|sauvegardé/i });
-  if (await ack.count() > 0) await ack.check();
+  // BackupCodesPanel (Activation TOTP · 2/2) — ack the 10 codes, click
+  // « Terminé ». The button gates on the ack checkbox.
+  await page
+    .getByRole('checkbox', { name: /not.|saved|sauvegard./i })
+    .check();
+  await page.getByRole('button', { name: /^Terminé$|^Done$/i }).click();
 
-  await page.getByRole('button', { name: /Activer|Verify|Confirmer/i }).click();
-
-  // After verify, /me reports `totpEnabled = true`. The page
-  // transitions to the idle state for an enabled user.
-  await expect(page.getByText(/désactiver|disable/i)).toBeVisible({
-    timeout: 10_000,
-  });
+  // After done, the parent flips back to the enabled-state ListView ;
+  // /me reports `totpEnabled = true` and the page renders « Désactiver
+  // TOTP » as the destructive CTA.
+  await expect(
+    page.getByRole('button', { name: /^Désactiver TOTP$|^Disable TOTP$/i }),
+  ).toBeVisible({ timeout: 10_000 });
 
   /* -------- 3. Log out -------- */
   await page.evaluate(async () => {

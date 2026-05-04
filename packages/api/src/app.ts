@@ -22,6 +22,7 @@ import { COLLECTIONS } from './collections.ts';
 import { getConfig } from './config.ts';
 import { sql } from './db/client.ts';
 import { errorWebhook } from './middleware/error-webhook.ts';
+import { __resetRateLimits } from './middleware/rate-limit.ts';
 import type { AuthVariables } from './middleware/require-user.ts';
 import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 
@@ -123,6 +124,19 @@ export function buildApp() {
       branch: cfg.BUILD_BRANCH,
     });
   });
+
+  // Test-only escape hatch — Playwright's global-setup hits this so
+  // a sequence of register/login attempts doesn't run into the
+  // in-process rate-limit buckets that survive across runs (the dev
+  // api process is reused via reuseExistingServer, so the buckets
+  // never reset on their own). Guarded by NODE_ENV so prod cannot
+  // hit it.
+  if (getConfig().NODE_ENV !== 'production') {
+    app.post('/__test__/reset-rate-limits', (c) => {
+      __resetRateLimits();
+      return c.json({ ok: true });
+    });
+  }
 
   // Single-step register flow with magic-link activation
   // (Auth-Roadmap Phase 1 simplified). Mount-order doesn't matter

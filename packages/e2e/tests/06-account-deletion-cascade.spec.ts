@@ -37,7 +37,12 @@ test('account deletion — cascades all user-owned rows', async ({ page }) => {
   // /flow because of the privacy invariant. We navigate via the
   // sidebar / topbar Account entry.
   await page.goto('/flow');
-  await page.getByRole('link', { name: /Compte|Account/i }).first().click();
+  // Sidebar/menu entry is a <button>, not a link (cf. modules-registry.tsx).
+  // Label comes from i18n modules.json: « Mon compte » / « My account ».
+  await page
+    .getByRole('button', { name: /^Mon compte$|^My account$/i })
+    .first()
+    .click();
   // Switch to the deletion tab.
   await page
     .getByRole('button', { name: /Suppression du compte|Account deletion/i })
