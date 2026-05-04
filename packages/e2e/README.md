@@ -79,14 +79,15 @@ existing dev server is reused.
 | `05-change-password-rotates-kek.spec.ts` | `/change-password` → forced logout → old password rejected → new password lands /flow | ✅ |
 | `06-account-deletion-cascade.spec.ts` | Account → deletion tab → confirm dialog → land `/login` → DB cascade asserts (`users` + `modules_config` empty) | ✅ |
 | `07-module-crud-with-guard.spec.ts` | Mood module → composer create → list → edit → delete with X-Sid + X-Guard headers | ✅ |
-| `08-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
-| `09-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
+| `08-goals-crud.spec.ts` | Goals module → composer create → list → edit → delete (mirror of `07`, second « finished » module covered) | ✅ |
+| `09-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
+| `10-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
 
 The remaining follow-up suites need :
 - For bypass (`08`) : `helpers/db.ts` already exposes
   `backdateBypassConfirmation` to short-circuit the 7-day delay.
 
-Important caveats for the new specs (03-07) :
+Important caveats for the specs (03-08) :
 - `04-passkey-enroll-and-login` exercises the **non-PRF branch only**.
   Chromium's virtual authenticator does not support the PRF
   extension, so the passkey ceremony succeeds but the KEK isn't
@@ -104,6 +105,13 @@ Important caveats for the new specs (03-07) :
   moves the seed to an explicit user action (button click), the
   spec's "click sidebar entry → page settles" sequence may need
   to insert a seeding step.
+- `08-goals-crud` follows the same first-run seed assumption as
+  `07`. It picks « Goals » via its sidebar entry (i18n title kept
+  as `Goals` in both FR and EN) and uses the module-specific
+  topbar CTA `+ Nouvel objectif` / `+ New goal` rather than the
+  generic Composer trigger. The pencil / trash actions are matched
+  on their `aria-label` (`Modifier l'objectif` / `Supprimer
+  l'objectif`) so the test stays robust to row-layout tweaks.
 
 ## Helpers
 
