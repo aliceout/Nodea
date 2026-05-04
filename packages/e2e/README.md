@@ -80,8 +80,9 @@ existing dev server is reused.
 | `06-account-deletion-cascade.spec.ts` | Account → deletion tab → confirm dialog → land `/login` → DB cascade asserts (`users` + `modules_config` empty) | ✅ |
 | `07-module-crud-with-guard.spec.ts` | Mood module → composer create → list → edit → delete with X-Sid + X-Guard headers | ✅ |
 | `08-goals-crud.spec.ts` | Goals module → composer create → list → edit → delete (mirror of `07`, second « finished » module covered) | ✅ |
-| `09-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
-| `10-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
+| `09-account-changes.spec.ts` | Settings → Mon compte → username change + email change with re-auth gate | ✅ |
+| `10-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
+| `11-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
 
 The remaining follow-up suites need :
 - For bypass (`08`) : `helpers/db.ts` already exposes
@@ -112,6 +113,14 @@ Important caveats for the specs (03-08) :
   generic Composer trigger. The pencil / trash actions are matched
   on their `aria-label` (`Modifier l'objectif` / `Supprimer
   l'objectif`) so the test stays robust to row-layout tweaks.
+- `09-account-changes` exercises the username + email change paths
+  on the Settings → Mon compte page. The email change gates on a
+  fresh password proof (`requireFreshPassword` middleware, Phase
+  7B). The spec deliberately STOPS after asserting the new email
+  is visible in the row — it does NOT re-login with the new email,
+  because V1 doesn't re-bind the OPAQUE envelope to the new
+  `userIdentifier` (cf. JSDoc on `auth-account.ts` `PATCH /email`).
+  Re-login with the new email is a Phase 2+ deliverable.
 
 ## Helpers
 
