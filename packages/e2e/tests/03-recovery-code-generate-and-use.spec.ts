@@ -104,7 +104,7 @@ test('recovery code — generate, then use to reset password', async ({ page }) 
   await page.getByLabel(/E-?mail/i).fill(user.email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(NEW_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   await expect(page).toHaveURL(/\/flow/, { timeout: 10_000 });
 });

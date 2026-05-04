@@ -48,7 +48,7 @@ test('TOTP enroll + login with code', async ({ page }) => {
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   await expect(page).toHaveURL(/\/flow/, { timeout: 10_000 });
 
@@ -97,7 +97,7 @@ test('TOTP enroll + login with code', async ({ page }) => {
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   await expect(page).toHaveURL(/\/login\/mfa/, { timeout: 10_000 });
 

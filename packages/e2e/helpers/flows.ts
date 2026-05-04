@@ -49,7 +49,7 @@ export async function registerAndActivate(
   // 3. Type the password back to obtain a real session cookie.
   await page.fill('input[type=email]', email);
   await page.fill('input[type=password]', password);
-  await page.getByRole('button', { name: /Se connecter|Sign in|Connexion/i }).click();
+  await page.getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i }).click();
 
   // 4. Land on the flow home — proves a `full` session exists.
   await expect(page).toHaveURL(/\/flow(\/home)?/);
@@ -61,7 +61,7 @@ export async function login(page: Page, user: SeededUser): Promise<void> {
   await page.goto('/login');
   await page.fill('input[type=email]', user.email);
   await page.fill('input[type=password]', user.password);
-  await page.getByRole('button', { name: /Se connecter|Sign in|Connexion/i }).click();
+  await page.getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i }).click();
   await expect(page).toHaveURL(/\/flow(\/home)?/);
 }
 

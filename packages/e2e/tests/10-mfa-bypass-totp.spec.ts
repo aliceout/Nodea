@@ -69,7 +69,7 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   await expect(page).toHaveURL(/\/flow/, { timeout: 10_000 });
 
@@ -136,7 +136,7 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   await expect(page).toHaveURL(/\/login\/mfa/, { timeout: 10_000 });
 
@@ -186,7 +186,7 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
 
   // Le bypass est consommé au login finish — pas de page MFA, on

@@ -60,7 +60,7 @@ test('register → activate via email → login → /flow', async ({ page }) => 
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
 
   // 5. Land on the flow home — proves a `full` session exists.

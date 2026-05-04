@@ -58,7 +58,7 @@ test('change password — old refused, new accepted', async ({ page }) => {
   await page.getByLabel(/E-?mail/i).fill(user.email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(oldPassword);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   // We stay on /login because the credentials are wrong. The error
   // message wording varies (`identifiants invalides` / `invalid_credentials`),
@@ -70,7 +70,7 @@ test('change password — old refused, new accepted', async ({ page }) => {
   await page.getByLabel(/E-?mail/i).fill(user.email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(newPassword);
   await page
-    .getByRole('button', { name: /Se connecter|Sign in|Connexion/i })
+    .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$/i })
     .click();
   await expect(page).toHaveURL(/\/flow/, { timeout: 10_000 });
 });

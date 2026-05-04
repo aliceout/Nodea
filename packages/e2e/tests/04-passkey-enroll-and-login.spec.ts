@@ -107,7 +107,7 @@ test('passkey — enroll + login (non-PRF, password finishes unlock)', async ({
         .getByLabel(/^Mot de passe$|^Password$/i)
         .fill(user.password);
       await page
-        .getByRole('button', { name: /Se connecter|Sign in|Connexion|Continuer/i })
+        .getByRole('button', { name: /^Se connecter$|^Sign in$|^Connexion$|^Continuer$/i })
         .click();
       await expect(page).toHaveURL(/\/flow/, { timeout: 10_000 });
     }
