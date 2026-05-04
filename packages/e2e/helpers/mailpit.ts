@@ -62,12 +62,30 @@ async function getMessage(id: string): Promise<MailpitMessage> {
 }
 
 /** Empty the Mailpit inbox — call between tests so a search by
- *  subject doesn't pick up a stale message from earlier. */
+ *  subject doesn't pick up a stale message from earlier.
+ *
+ *  Also resets the api's in-process rate-limit buckets via the
+ *  test-only endpoint added in `packages/api/src/app.ts`. The
+ *  buckets accumulate across the 13-spec sequence (login is
+ *  10/min, register is 10/h) and the global-setup's one-shot
+ *  reset isn't enough — we need a reset before every test that
+ *  registers + logs in. Piggybacking on `clearInbox` keeps the
+ *  spec files unchanged (every spec already calls clearInbox in
+ *  its beforeEach). Silent-fail if the api isn't reachable so a
+ *  prod-like build without the test endpoint doesn't break the
+ *  whole suite. */
 export async function clearInbox(): Promise<void> {
   const res = await fetch(`${MAILPIT_BASE}/api/v1/messages`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error(`Mailpit DELETE → ${res.status}`);
+
+  const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  try {
+    await fetch(`${apiUrl}/__test__/reset-rate-limits`, { method: 'POST' });
+  } catch {
+    // Endpoint may not exist on a custom build ; skip.
+  }
 }
 
 /* ============================================================================
