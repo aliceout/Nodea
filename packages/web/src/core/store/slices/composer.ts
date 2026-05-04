@@ -10,10 +10,10 @@
 import type { StateCreator } from 'zustand';
 import type {
   GoalsPayload,
+  JournalPayload,
   LibraryItemPayload,
   LibraryReviewPayload,
   MoodPayload,
-  PassagePayload,
 } from '@nodea/shared';
 import type { NodeaState } from '../nodea-store.ts';
 
@@ -35,14 +35,14 @@ export type ComposerType =
 /**
  * Discriminated record passed to `openComposer` when editing an
  * existing entry. Each body that supports edit reads the editing
- * slot (narrowed on `type`) and prefills its form. Passages /
- * Habits / Notes stay create-only for now — extend this union when
- * each gets its own rich body + edit flow.
+ * slot (narrowed on `type`) and prefills its form. Habits and Notes
+ * stay create-only for now — extend this union when each gets its
+ * own rich body + edit flow.
  */
 export type ComposerEditing =
   | { type: 'goal'; id: string; payload: GoalsPayload }
   | { type: 'mood'; id: string; payload: MoodPayload }
-  | { type: 'journal'; id: string; payload: PassagePayload }
+  | { type: 'journal'; id: string; payload: JournalPayload }
   | { type: 'library-item'; id: string; payload: LibraryItemPayload }
   | {
       type: 'library-review';

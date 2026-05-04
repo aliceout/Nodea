@@ -20,7 +20,7 @@ export default function PrimaryColumn() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading>{t('passage.title')}</PageHeading>
+      <PageHeading>{t('journal.title')}</PageHeading>
 
       {load.status === 'error' ? (
         <p
@@ -33,16 +33,16 @@ export default function PrimaryColumn() {
 
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
-          <EmptyHint>{t('passage.list.loading')}</EmptyHint>
+          <EmptyHint>{t('journal.list.loading')}</EmptyHint>
         ) : groups.length === 0 ? (
-          <EmptyHint>{t('passage.list.empty')}</EmptyHint>
+          <EmptyHint>{t('journal.list.empty')}</EmptyHint>
         ) : (
           groups.map(([groupLabel, items]) => (
             <GroupBlock
               key={groupLabel}
               label={groupLabel}
               count={items.length}
-              countNoun={t('passage.list.groupCountNoun')}
+              countNoun={t('journal.list.groupCountNoun')}
               variant={groupVariant}
             >
               {items.map((entry) => (

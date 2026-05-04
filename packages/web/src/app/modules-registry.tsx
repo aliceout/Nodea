@@ -75,16 +75,11 @@ export const MODULES: readonly ModuleDef[] = [
     display: true,
   },
   {
-    /**
-     * Free-form journal grouped by thread. Backed by the existing
-     * `passage_entries` table — the schema matches and no migration
-     * is needed. The legacy `passage` module that used the same
-     * table is gone; its quote-saving idea moved to Library reviews
-     * (`kind: "quote"`).
-     */
+    /** Free-form journal grouped by thread. Backed by the
+     *  `journal_entries` table. */
     id: 'journal',
     label: 'modules.journal.label',
-    collection: 'passage_entries',
+    collection: 'journal_entries',
     element: lazyModule('journal', Journal),
     to_toggle: true,
     description: 'modules.journal.description',

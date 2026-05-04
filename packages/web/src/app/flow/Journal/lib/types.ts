@@ -1,4 +1,4 @@
-import type { PassageAttachment } from '@nodea/shared';
+import type { JournalAttachment } from '@nodea/shared';
 
 /** Decrypted journal record + display-ready label. The K UI uses
  *  `dateLabel` for the inline list (« Aujourd'hui » / « Hier » /
@@ -17,7 +17,7 @@ export interface JournalEntry {
   thread: string;
   title: string | null;
   content: string;
-  attachments: PassageAttachment[];
+  attachments: JournalAttachment[];
 }
 
 /** Aggregate stats shown in the SideColumn « Stats » block. */

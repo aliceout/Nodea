@@ -1,4 +1,4 @@
-import type { PassagePayload } from '@nodea/shared';
+import type { JournalPayload } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import {
@@ -8,14 +8,14 @@ import {
 
 import type { JournalEntry } from './types';
 
-/** Flatten a decrypted Passage record into the in-memory shape the
+/** Flatten a decrypted journal record into the in-memory shape the
  *  Journal page hands around. `today` + `labels` are parameters so
  *  the date label stays deterministic in tests and locale-aware in
  *  production. Falls back to today's ISO if the payload's `date`
  *  is missing — defensive against legacy / malformed records, the
  *  UI doesn't crash. */
 export function recordToEntry(
-  record: DecryptedRecord<PassagePayload>,
+  record: DecryptedRecord<JournalPayload>,
   today: Date,
   labels: EntryLabelOptions,
 ): JournalEntry {

@@ -16,16 +16,9 @@ import ReaderShell from './views/ReaderShell';
 /**
  * Journal — Direction K · Sauge.
  *
- * What the legacy `passage` module used to be (date / thread /
- * title / content) : a free-form journal grouped by thread (or
- * month) for life-transition moments and evening writes. The K
- * Passages module redesigned itself around literary book quotes,
- * so the journaling shape moved here under a new name.
- *
- * Backed by the existing `passage_entries` table (the schema
- * already matches and we don't pay a migration) ; each module gets
- * its own `moduleUserId`, so journal entries are isolated from any
- * data the legacy `passage` module wrote.
+ * Free-form journal grouped by thread (or month), for evening
+ * writes and life-transition moments. Date / thread / title /
+ * content shape, attachments inline.
  *
  * Architecture :
  *   - `<JournalProvider>` (`./context.tsx`) owns the page-local
@@ -65,14 +58,14 @@ function JournalView() {
     return <ReaderShell />;
   }
 
-  const topbarLabel = tn('passage.topbar.label', entries.length);
+  const topbarLabel = tn('journal.topbar.label', entries.length);
 
   return (
     <ModuleShell
       topbar={
         <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
           <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
-            {t('passage.topbar.newCta')}
+            {t('journal.topbar.newCta')}
           </Button>
         </Topbar>
       }

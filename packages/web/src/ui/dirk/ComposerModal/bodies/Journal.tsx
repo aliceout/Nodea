@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import type { PassageAttachment } from '@nodea/shared';
+import type { JournalAttachment } from '@nodea/shared';
 
-import { passageClient } from '@/core/api/modules/passage';
+import { journalClient } from '@/core/api/modules/journal';
 import {
   attachmentSrc,
   resizeImageFile,
@@ -23,20 +23,15 @@ interface JournalBodyProps {
 }
 
 /**
- * Journal entry form — uses the legacy passage shape under
- * the new « Journal » module : thread (required, single-valued
- * — no comma multi anymore), content (required, the heart of
- * the entry, with lightweight Markdown formatting), up to 3
- * inline image attachments.
+ * Journal entry form : thread (required, single-valued — no
+ * comma multi anymore), content (required, the heart of the
+ * entry, with lightweight Markdown formatting), up to 3 inline
+ * image attachments.
  *
  * Title was dropped : now that thread is mandatory, every
  * entry is already filed under a fil. A title on top of that
  * became redundant noise — the K Journal page surfaces date +
  * content directly inside the thread group.
- *
- * Backed by `passageClient` since the `passage_entries` table
- * is the journal-shaped one — the K Passages module (book
- * quotes) gets its own future schema.
  *
  * Branches between **create** and **update** based on
  * `composer.editing` : the Journal page's pencil icon prefills
@@ -72,7 +67,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
 
   const [thread, setThread] = useState(editing?.payload.thread ?? '');
   const [content, setContent] = useState(editing?.payload.content ?? '');
-  const [attachments, setAttachments] = useState<PassageAttachment[]>(
+  const [attachments, setAttachments] = useState<JournalAttachment[]>(
     editing?.payload.attachments ?? [],
   );
   const [threadOptions, setThreadOptions] = useState<string[]>([]);
@@ -182,7 +177,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
   useEffect(() => {
     if (!ctx) return undefined;
     let cancelled = false;
-    passageClient
+    journalClient
       .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
@@ -228,7 +223,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
     try {
       const dateIso = editing ? editing.payload.date : new Date().toISOString();
       const payload = {
-        type: 'passage.entry' as const,
+        type: 'journal.entry' as const,
         date: dateIso,
         thread: trimmedThread,
         title: null,
@@ -236,9 +231,9 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
         attachments,
       };
       if (editing) {
-        await passageClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
+        await journalClient.update(ctx.moduleUserId, ctx.mainKey, editing.id, payload);
       } else {
-        await passageClient.create(ctx.moduleUserId, ctx.mainKey, payload);
+        await journalClient.create(ctx.moduleUserId, ctx.mainKey, payload);
         // Successful save → wipe the draft slot so the next
         // open starts fresh instead of resurrecting what the
         // user just submitted.
@@ -354,7 +349,7 @@ export default function JournalBody({ onClose }: JournalBodyProps) {
         submitting={submitting}
         error={error}
         submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
-        submittingLabel={isEdit ? t('passage.composer.submittingUpdate') : t('common.states.saving')}
+        submittingLabel={isEdit ? t('journal.composer.submittingUpdate') : t('common.states.saving')}
       />
     </>
   );

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /** Small bold-uppercase header used at the top of every Home
- *  block (« À voir », « Mood », « Goals », « Passage récent »…).
+ *  block (« À voir », « Mood », « Goals », « Journal récent »…).
  *  Tighter top margin than the Goals / Journal version because
  *  the Home blocks stack closer together. */
 export default function SectionLabel({ children }: { children: ReactNode }) {

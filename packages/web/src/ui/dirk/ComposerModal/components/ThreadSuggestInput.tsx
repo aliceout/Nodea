@@ -14,10 +14,9 @@ interface ThreadSuggestInputProps {
 
 /**
  * Free-text thread input with dropdown suggestions drawn from
- * the user's existing threads. Mirrors the legacy
- * `SuggestInput` pattern used by the old Passage form : type
- * to filter, pick from the dropdown to commit a known fil, or
- * just keep typing to create a new one.
+ * the user's existing threads : type to filter, pick from the
+ * dropdown to commit a known fil, or just keep typing to create
+ * a new one.
  *
  * Single-valued : an entry belongs to exactly one thread.
  * Pre-existing comma-separated values from earlier iterations

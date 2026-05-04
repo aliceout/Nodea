@@ -27,7 +27,7 @@ import SourcesPanel from './components/SourcesPanel';
 /**
  * Admin — Direction K · Sauge.
  *
- * Sticky topbar like Mood / Account / Passages, single column at
+ * Sticky topbar like Mood / Account / Journal, single column at
  * 880px, four tabs: Utilisateur·ice·s · Invitations · Annonces ·
  * Sources. Same tab interaction model as Account: keyed
  * `animate-fade-up` so each switch replays the entrance.

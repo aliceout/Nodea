@@ -35,7 +35,7 @@ export default function EntryRow({ entry }: EntryRowProps) {
         type="button"
         onClick={onRead}
         className="w-[110px] shrink-0 cursor-pointer text-left text-[12px] tabular-nums text-muted transition-colors hover:text-accent"
-        aria-label={t('passage.row.openAria', {
+        aria-label={t('journal.row.openAria', {
           values: { label: entry.title ?? entry.dateLabel },
         })}
       >
@@ -55,8 +55,8 @@ export default function EntryRow({ entry }: EntryRowProps) {
                 type="button"
                 onClick={onRead}
                 className="h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-hair bg-bg-2 transition-opacity hover:opacity-80"
-                aria-label={t('passage.row.imageAria')}
-                title={t('passage.row.imageTitle')}
+                aria-label={t('journal.row.imageAria')}
+                title={t('journal.row.imageTitle')}
               >
                 <img
                   src={attachmentSrc(att)}
@@ -75,8 +75,8 @@ export default function EntryRow({ entry }: EntryRowProps) {
           size="sm"
           iconOnly
           onClick={onRead}
-          aria-label={t('passage.row.readAria')}
-          title={t('passage.row.readTitle')}
+          aria-label={t('journal.row.readAria')}
+          title={t('journal.row.readTitle')}
         >
           <BookOpenIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
@@ -85,7 +85,7 @@ export default function EntryRow({ entry }: EntryRowProps) {
           size="sm"
           iconOnly
           onClick={() => editEntry(entry)}
-          aria-label={t('passage.row.editAria')}
+          aria-label={t('journal.row.editAria')}
           title={t('common.actions.edit')}
         >
           <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -95,7 +95,7 @@ export default function EntryRow({ entry }: EntryRowProps) {
           size="sm"
           iconOnly
           onClick={() => void deleteEntry(entry)}
-          aria-label={t('passage.row.deleteAria')}
+          aria-label={t('journal.row.deleteAria')}
           title={t('common.actions.delete')}
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />

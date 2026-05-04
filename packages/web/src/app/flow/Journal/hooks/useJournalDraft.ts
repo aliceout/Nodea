@@ -4,7 +4,7 @@ import type {
   Base64,
   CipherIV,
   EncryptedBlob,
-  PassageAttachment,
+  JournalAttachment,
 } from '@nodea/shared';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
 import { useNodeaStore, selectMainKey } from '@/core/store/nodea-store';
@@ -31,7 +31,7 @@ const STORAGE_KEY = 'nodea:journal:draft:new';
 export interface JournalDraftPayload {
   thread: string;
   content: string;
-  attachments: PassageAttachment[];
+  attachments: JournalAttachment[];
 }
 
 async function encode(

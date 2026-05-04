@@ -17,7 +17,7 @@ import frAccount from "@/i18n/locales/fr/account.json";
 import frSettings from "@/i18n/locales/fr/settings.json";
 import frGoals from "@/i18n/locales/fr/goals.json";
 import frMood from "@/i18n/locales/fr/mood.json";
-import frPassage from "@/i18n/locales/fr/passage.json";
+import frJournal from "@/i18n/locales/fr/journal.json";
 import frAdmin from "@/i18n/locales/fr/admin.json";
 import frModals from "@/i18n/locales/fr/modals.json";
 import frModules from "@/i18n/locales/fr/modules.json";
@@ -32,7 +32,7 @@ import enAccount from "@/i18n/locales/en/account.json";
 import enSettings from "@/i18n/locales/en/settings.json";
 import enGoals from "@/i18n/locales/en/goals.json";
 import enMood from "@/i18n/locales/en/mood.json";
-import enPassage from "@/i18n/locales/en/passage.json";
+import enJournal from "@/i18n/locales/en/journal.json";
 import enAdmin from "@/i18n/locales/en/admin.json";
 import enModals from "@/i18n/locales/en/modals.json";
 import enModules from "@/i18n/locales/en/modules.json";
@@ -57,7 +57,7 @@ const RESOURCES = {
     settings: frSettings,
     goals: frGoals,
     mood: frMood,
-    passage: frPassage,
+    journal: frJournal,
     admin: frAdmin,
     modals: frModals,
     modules: frModules,
@@ -73,7 +73,7 @@ const RESOURCES = {
     settings: enSettings,
     goals: enGoals,
     mood: enMood,
-    passage: enPassage,
+    journal: enJournal,
     admin: enAdmin,
     modals: enModals,
     modules: enModules,

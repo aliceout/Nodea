@@ -1,13 +1,13 @@
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
-import RecentPassage from '../components/RecentPassage';
+import RecentJournal from '../components/RecentJournal';
 import ReadingBlock from '../components/ReadingBlock';
 import ToSeeList from '../components/ToSeeList';
 import { useHomepageData } from '../context';
 
 /** Primary column for the Home page : H1 « Bonjour … » + the
  *  three blocks stacked vertically (« À voir », « En cours de
- *  lecture », « Passage récent »). All blocks read from the
+ *  lecture », « Journal récent »). All blocks read from the
  *  Homepage data context themselves — no prop drilling. */
 export default function PrimaryColumn() {
   const { displayName } = useHomepageData();
@@ -22,7 +22,7 @@ export default function PrimaryColumn() {
 
       <ToSeeList />
       <ReadingBlock />
-      <RecentPassage />
+      <RecentJournal />
     </section>
   );
 }

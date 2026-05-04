@@ -105,19 +105,19 @@ export default function ReaderShell() {
     <ModuleShell
       topbar={
         <Topbar
-          label={t('passage.topbar.readerLabel', { values: { position, total } })}
+          label={t('journal.topbar.readerLabel', { values: { position, total } })}
           onOpenMenu={() => setMobileMenuOpen(true)}
         >
           <Button variant="ghost" size="sm" onClick={() => editEntry(entry)}>
             <PencilSquareIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            {t('passage.reader.edit')}
+            {t('journal.reader.edit')}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             iconOnly
             onClick={closeReader}
-            aria-label={t('passage.reader.close')}
+            aria-label={t('journal.reader.close')}
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -128,7 +128,7 @@ export default function ReaderShell() {
         <header className="mb-7">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-              {entry.thread || t('passage.reader.noThreadEyebrow')}
+              {entry.thread || t('journal.reader.noThreadEyebrow')}
             </p>
             <p className="text-[12px] tabular-nums text-muted">
               {entry.dateLabel}
@@ -166,7 +166,7 @@ export default function ReaderShell() {
             disabled={onPrev === null}
           >
             <ArrowLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            {t('passage.reader.prev')}
+            {t('journal.reader.prev')}
           </Button>
           <span className="text-[11px] tabular-nums text-muted">
             {position} / {total}
@@ -177,7 +177,7 @@ export default function ReaderShell() {
             onClick={onNext ?? (() => undefined)}
             disabled={onNext === null}
           >
-            {t('passage.reader.next')}
+            {t('journal.reader.next')}
             <ArrowRightIcon className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </footer>

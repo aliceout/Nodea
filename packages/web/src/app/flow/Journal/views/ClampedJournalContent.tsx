@@ -63,7 +63,7 @@ export default function ClampedJournalContent({
           onClick={onExpand}
           className="mt-1 cursor-pointer text-[12px] text-accent underline-offset-2 transition-colors hover:underline"
         >
-          {t('passage.clamped.readMore')}
+          {t('journal.clamped.readMore')}
         </button>
       ) : null}
     </div>

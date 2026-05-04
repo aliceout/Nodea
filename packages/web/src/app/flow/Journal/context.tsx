@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { splitThreads } from '@nodea/shared';
 
-import { passageClient } from '@/core/api/modules/passage';
+import { journalClient } from '@/core/api/modules/journal';
 import { formatMonthLabel } from '@/core/i18n/date-format';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
@@ -131,7 +131,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       todayLabel: t('common.time.today'),
       yesterdayLabel: t('common.time.yesterday'),
     };
-    passageClient
+    journalClient
       .list(ctx.moduleUserId, ctx.mainKey)
       .then((records) => {
         if (cancelled) return;
@@ -147,7 +147,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       .catch((err: unknown) => {
         if (cancelled) return;
         const message =
-          err instanceof Error ? err.message : t('passage.context.loadFailed');
+          err instanceof Error ? err.message : t('journal.context.loadFailed');
         setLoad({ status: 'error', message });
       });
     return () => {
@@ -224,7 +224,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         type: 'journal',
         id: entry.id,
         payload: {
-          type: 'passage.entry',
+          type: 'journal.entry',
           date: entry.dateIso,
           thread: entry.thread,
           title: entry.title,
@@ -240,12 +240,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     async (entry: JournalEntry) => {
       if (!ctx) return;
       const label = entry.title ?? entry.dateLabel;
-      if (!window.confirm(t('passage.context.confirmDelete', { values: { label } })))
+      if (!window.confirm(t('journal.context.confirmDelete', { values: { label } })))
         return;
       const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
-        await passageClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
+        await journalClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
         bumpJournalVersion();
       } catch (err) {
         setEntries(previous);

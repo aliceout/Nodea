@@ -8,18 +8,9 @@
  * so multi-slice mutations are a single render. The split is
  * acted in ADR-0013 as a complement to ADR-0006.
  *
- * Public surface preserved verbatim : every consumer imports from
- * `@/core/store/nodea-store` and that path keeps re-exporting the
+ * Public surface : every consumer imports from
+ * `@/core/store/nodea-store` and that path re-exports the
  * full surface (slice types, selectors, module-id helpers).
- *
- * Replaces two legacy systems that ran in parallel before the
- * Hono migration:
- *   1. `StoreProvider.jsx` (useReducer + Context): app-wide state
- *   2. `modulesRuntime.js` (singleton via useSyncExternalStore): per-module
- *      decrypted runtime config
- * The legacy `.js` files remain in place during Phases 5–6 so the
- * still-JSX modules (Mood, Goals, Passage) keep working. Phase 6 will
- * migrate their imports to this store and the old files get deleted.
  */
 import { create } from 'zustand';
 import {

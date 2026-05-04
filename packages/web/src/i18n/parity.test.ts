@@ -24,8 +24,8 @@ import frModules from '@/i18n/locales/fr/modules.json';
 import enModules from '@/i18n/locales/en/modules.json';
 import frMood from '@/i18n/locales/fr/mood.json';
 import enMood from '@/i18n/locales/en/mood.json';
-import frPassage from '@/i18n/locales/fr/passage.json';
-import enPassage from '@/i18n/locales/en/passage.json';
+import frJournal from '@/i18n/locales/fr/journal.json';
+import enJournal from '@/i18n/locales/en/journal.json';
 import frReview from '@/i18n/locales/fr/review.json';
 import enReview from '@/i18n/locales/en/review.json';
 import frSettings from '@/i18n/locales/fr/settings.json';
@@ -49,7 +49,7 @@ const NAMESPACES: ReadonlyArray<readonly [string, Bag, Bag]> = [
   ['modals', frModals as Bag, enModals as Bag],
   ['modules', frModules as Bag, enModules as Bag],
   ['mood', frMood as Bag, enMood as Bag],
-  ['passage', frPassage as Bag, enPassage as Bag],
+  ['journal', frJournal as Bag, enJournal as Bag],
   ['review', frReview as Bag, enReview as Bag],
   ['settings', frSettings as Bag, enSettings as Bag],
 ];
