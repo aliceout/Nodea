@@ -29,7 +29,7 @@ Active work lives on `refacto-design-v2` until it merges to `main`.
 | `packages/web/src/app/pages/docs/content/tech.md` (rendered at `nodea.app/docs/security/tech`) | Before touching anything crypto, auth, or guards — single source of truth |
 | `docs/Database.md` | Before touching schema, collections, or guard validation |
 | `docs/Modules/<Module>.md` (per-module spec) + `docs/Architecture.md` §7 (cross-module schema + invariants) | Before touching a specific module (Mood, Goals, Journal, Habits, Library, Review) |
-| `docs/Auth-Spec.md` | Before touching anything in the auth flows (OPAQUE, MFA, recovery, re-auth) |
+| `docs/Auth-Spec.md` (threat model + DB + sessions + cross-cutting) + `docs/auth/<Flow>.md` (per-flow detail : Register, Login, ChangePassword, ChangeEmail, Recovery, BypassMfa, Lifecycle) | Before touching anything in the auth flows (OPAQUE, MFA, recovery, re-auth) |
 | `docs/Internationalisation.md` | Before touching i18n files |
 | `docs/security-audit.md` | Findings list + per-area sweep — cross-check before closing any crypto / auth / response-leakage task |
 | `docs/adr/` | Before changing an architectural decision documented in an ADR |

@@ -7,7 +7,7 @@
  * branching off any time during the 7-day delay if the user
  * logs in normally with the still-active factor.
  *
- * Mirrors `docs/Auth-Spec.md §7.8`. The visual emphasises the
+ * Mirrors `docs/auth/BypassMfa.md`. The visual emphasises the
  * 7-day delay segment (where the cancel branch can fire) since
  * that's the security-relevant part of the design.
  */

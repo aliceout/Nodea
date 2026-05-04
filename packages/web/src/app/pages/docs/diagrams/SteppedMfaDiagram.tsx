@@ -8,7 +8,7 @@
  * must finalize via factor-verify routes before getting a
  * `full` session.
  *
- * Mirrors `docs/Auth-Spec.md §7.4`. Hand-coded SVG so the visual
+ * Mirrors `docs/auth/Login.md` (stepped MFA finalisation). Hand-coded SVG so the visual
  * fits the K · Sauge tokens (`fill-bg-2`, `stroke-hair`,
  * `stroke-accent` for terminal `full` states).
  */

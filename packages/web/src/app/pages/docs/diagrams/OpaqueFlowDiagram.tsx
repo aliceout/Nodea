@@ -4,7 +4,7 @@
  * Sequence diagram (UML-flavoured) showing the four-message
  * exchange between client and server during an OPAQUE login,
  * plus the two client-side computations that bracket the
- * network round-trips. Mirrors `docs/Auth-Spec.md §7.2`.
+ * network round-trips. Mirrors `docs/auth/Login.md` (login password-first).
  *
  * Hand-coded SVG so the visual reads as part of the K · Sauge
  * design (hairline column dividers, accent on the activation

@@ -5,7 +5,7 @@ import { emailVerifications, type EmailVerification } from '../db/schema.ts';
 
 /**
  * Magic-link tokens for the post-submit account activation flow
- * (Auth-Roadmap Phase 1, Auth-Spec.md §7.1 simplified) and for the
+ * (Auth-Roadmap Phase 1, docs/auth/Register.md simplified) and for the
  * upcoming change-email flow (`kind: 'email_change'`).
  *
  * Tokens are 32 random bytes encoded as base64url (~256 bits) — well
