@@ -32,10 +32,10 @@ export async function registerAndActivate(
   // field must be filled before the click.
   await page.goto('/register');
   await page.getByLabel(/E-?mail/i).fill(email);
-  await page.getByLabel(/Nom d.utilisateur|Username/i).fill(emailBase);
+  await page.getByLabel(/^Nom d.utilisateur.*$|^Username$/i).fill(emailBase);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(password);
-  await page.getByLabel(/Confirmer|Confirm/i).fill(password);
-  await page.getByRole('button', { name: /Cr.er mon compte|Create account/i }).click();
+  await page.getByLabel(/^Confirmer le mot de passe$|^Confirm password$/i).fill(password);
+  await page.getByRole('button', { name: /^Cr.er mon compte$|^Create account$/i }).click();
 
   // The register flow shows a "check your email" panel and emits
   // the activation email. Wait for it.

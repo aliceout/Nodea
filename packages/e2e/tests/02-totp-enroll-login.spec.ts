@@ -32,16 +32,16 @@ test('TOTP enroll + login with code', async ({ page }) => {
   /* -------- 1. Register + activate -------- */
   await page.goto('/register');
   await expect(
-    page.getByRole('button', { name: /Cr.er mon compte|Create account/i }),
+    page.getByRole('button', { name: /^Cr.er mon compte$|^Create account$/i }),
   ).toBeVisible({ timeout: 10_000 });
   await page.getByLabel(/E-?mail/i).fill(email);
-  await page.getByLabel(/Nom d.utilisateur|Username/i).fill(username);
+  await page.getByLabel(/^Nom d.utilisateur.*$|^Username$/i).fill(username);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   const confirmField = page.getByLabel(/Confirmer|Confirm/i);
   if (await confirmField.count() > 0) {
     await confirmField.fill(STRONG_PASSWORD);
   }
-  await page.getByRole('button', { name: /Cr.er mon compte|Create account/i }).click();
+  await page.getByRole('button', { name: /^Cr.er mon compte$|^Create account$/i }).click();
   const link = await waitForActivationLink(email);
   await page.goto(link);
   await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
