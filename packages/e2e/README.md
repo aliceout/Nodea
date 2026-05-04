@@ -10,6 +10,75 @@ This is **Auth-Roadmap Phase 7D** — the framework + a smoke test
 the MFA bypass scenario are tracked as follow-up issues
 (see "Coverage" below).
 
+---
+
+## Lancement rapide (de zéro)
+
+Si c'est ton premier passage, ces 4 commandes te permettent
+d'aller de « rien d'installé » à « les tests passent » :
+
+```sh
+# 1. Postgres sur :5433 (la base dev partagée). La base
+#    nodea_e2e est créée automatiquement au premier run.
+docker compose up -d postgres
+
+# 2. Mailpit sur :1025 (SMTP) + :8025 (API HTTP). Requis pour
+#    les specs qui attendent un email (register, recovery,
+#    MFA bypass).
+docker compose up -d mailpit
+# Si tu n'as pas mailpit dans ton compose :
+#   docker run -d --name nodea-mailpit \
+#     -p 1025:1025 -p 8025:8025 axllent/mailpit
+
+# 3. Binaire Chromium pour Playwright. **One-shot par machine** —
+#    Playwright le télécharge dans ~/AppData/Local (Windows) ou
+#    ~/.cache/ms-playwright (Linux / macOS). Sans cette étape,
+#    chaque test échoue avec « Executable doesn't exist ».
+pnpm --filter @nodea/e2e install:browsers
+
+# 4. Lancer la suite. Le runner démarre API et web en arrière-
+#    plan, attend que /healthz réponde, exécute les 13 specs
+#    sériellement (fullyParallel: false, workers: 1).
+pnpm --filter @nodea/e2e test
+```
+
+**Variantes utiles** :
+
+```sh
+# Inspecteur Playwright (pas-à-pas, voir les selectors)
+pnpm --filter @nodea/e2e test:ui
+
+# Browser visible — utile quand un selector pète et qu'on
+# veut voir ce que le test voit
+pnpm --filter @nodea/e2e test:headed
+
+# Rapport HTML du dernier run (screenshots + videos sur les
+# échecs, traces sur les retries)
+pnpm --filter @nodea/e2e report
+
+# Une seule spec à la fois
+pnpm --filter @nodea/e2e test tests/08-goals-crud.spec.ts
+```
+
+---
+
+## Index des tests du repo
+
+Trois suites de tests cohabitent. Sache laquelle lancer selon
+ce que tu veux vérifier :
+
+| Suite | Couverture | Lancer |
+|---|---|---|
+| **`packages/api/src/test/*.test.ts`** | Tests d'intégration des routes Hono : DB réelle, OPAQUE handshakes, guards, validation Zod, AAD bindings. ~278 tests, ~3 min. | `pnpm --filter @nodea/api test` |
+| **`packages/web/src/**/*.test.{ts,tsx}`** | Tests unitaires React : mappers, hooks, store Zustand, crypto round-trips, formatters i18n. ~319 tests, ~5 s. | `pnpm --filter @nodea/web test` |
+| **`packages/e2e/tests/*.spec.ts`** *(ce package)* | Tests end-to-end : navigateur réel (Chromium), WebAuthn, emails Mailpit, flux complet auth + module CRUD. 13 specs, ~3-5 min. | `pnpm --filter @nodea/e2e test` |
+
+**Tester un changement de schéma Zod** → web + api (les deux le consomment).
+**Tester une régression dans l'UI Settings** → e2e (specs 02 / 09 / 10).
+**Tester une régression de chiffrement** → web (round-trips AES-GCM, HKDF) + api (envelopes OPAQUE).
+
+---
+
 ## Pre-requisites
 
 The Playwright runner does NOT bootstrap these — make sure
