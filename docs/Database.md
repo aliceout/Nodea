@@ -205,8 +205,9 @@ is what lets the route factory loop over a single array of collections
 **Minimum-readable-surface design.** The server is never told
 which entry belongs to which user — access is scoped by
 `module_user_id` + `guard` only. The entry tables carry no
-`user_id`, no `created_at` / `updated_at` columns. Cf.
-`Auth-Spec.md §2.3` and `Modules.md §1` for the rationale.
+`user_id`, no `created_at` / `updated_at` columns. See
+[`Modules.md §1`](./Modules.md#1-structure-commune) for the
+rationale.
 
 | Table                       | Records                                       |
 | --------------------------- | --------------------------------------------- |

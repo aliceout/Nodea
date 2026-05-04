@@ -186,17 +186,12 @@ sans rouvrir la spec :
   passkey est le reset destructif. Documenté à l'inscription, écran
   bloquant avec checkbox.
 - **Surface lisible minimum sur les entry tables.** Aucune ligne
-  d'entrée (`mood_entries`, `goals_entries`, …) ne porte de
-  `user_id`, ni de `created_at` / `updated_at` colonne. Le serveur
-  ne peut pas faire `SELECT … WHERE user_id = X` ni dater les
-  écritures par row côté DB. Conséquence : pas de cascade FK sur
-  user delete — les entrées deviennent orphelines (illisibles, la
-  clé est partie). Self-delete est client-driven (le client énumère
-  ses sids depuis `modules_config`, supprime ses entrées par sid +
-  guard, puis appelle `DELETE /auth/me`). Les modules qui ont
-  besoin d'un timestamp applicatif (Goals « Récent », Review
-  « modifié le ») le mettent dans le payload chiffré, pas dans une
-  colonne en clair. Cf. `Database.md`, `Modules.md §1`.
+  d'entrée ne porte de `user_id`, ni de timestamp colonne. Le
+  serveur ne peut pas linker une entrée à un user en plain SQL
+  ni dater les écritures par row. Self-delete est client-driven
+  (énumération des sids depuis `modules_config` puis suppression
+  par sid + guard). Détails et rationale dans
+  [`Modules.md §1`](Modules.md#1-structure-commune).
 
 ---
 

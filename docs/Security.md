@@ -106,15 +106,12 @@ there is no record id to authenticate, the user *is* the record, and
   `/admin/users/:id` — the route refuses `self.id === id`.
 - **Response serialisation** never returns `guard` or another user's
   `encrypted_key`.
-- **Surface lisible minimum sur les entry tables** (Mood, Goals,
-  Habits, Library, Review, Journal…). Aucune ligne ne porte de
-  `user_id`, ni de `created_at` / `updated_at` colonne. Le serveur
-  ne peut pas linker une entrée à un user en plain SQL, ni dater
-  une écriture côté DB. Les modules qui ont besoin d'un timestamp
-  applicatif le mettent dans le `payload` chiffré. Conséquences :
-  pas de cascade FK sur user delete (entrées orphelines acceptées,
-  illisibles puisque la clé maîtresse est partie), self-delete
-  client-driven. Cf. `Auth-Spec.md §2.3`, `Database.md`.
+- **Surface lisible minimum sur les entry tables.** Le serveur
+  ne peut pas linker une entrée à un user en plain SQL ni dater
+  une écriture côté DB. Conséquence sécu : pas de cascade FK sur
+  user delete — les entrées deviennent orphelines, illisibles
+  sans la clé maîtresse. Self-delete est client-driven. Détails
+  et rationale dans [`Modules.md §1`](./Modules.md#1-structure-commune).
 
 ### 4.1 Rate-limit table
 
