@@ -166,7 +166,16 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     const startTime = start.getTime();
     const dataEndTime = dataEnd.getTime();
     return entries.filter((entry) => {
-      const d = new Date(entry.dateIso);
+      // `entry.dateIso` is a bare YYYY-MM-DD string and `new Date(...)`
+      // parses it as UTC midnight. The window bounds (`start`, `dataEnd`)
+      // are LOCAL midnight via `setHours(0,0,0,0)`. In timezones east of
+      // UTC, today's entry (e.g. local "2026-05-04") becomes
+      // 02:00 LOCAL on May 4 once parsed as UTC, which compares strictly
+      // greater than `today` and gets excluded from the rolling view.
+      // Parsing the components directly into a local Date keeps both
+      // sides on the same axis.
+      const [yyyy, mm, dd] = entry.dateIso.split('-').map(Number);
+      const d = new Date(yyyy ?? 0, (mm ?? 1) - 1, dd ?? 1);
       const t = d.getTime();
       if (t < startTime || t > dataEndTime) return false;
       if (month !== null && d.getMonth() !== month) return false;
