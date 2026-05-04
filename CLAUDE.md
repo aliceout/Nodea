@@ -44,7 +44,7 @@ Active work lives on `refacto-design-v2` until it merges to `main`.
 - **Crypto**: WebCrypto (AES-GCM + HMAC-SHA-256) + OPAQUE via `@serenity-kit/opaque` + WebAuthn via `@simplewebauthn/{server,browser}`
 - **Deployment**: docker-compose (postgres + api + web). Postgres data
   persists under `$HOME/data/nodea/postgres/` via a bind mount
-  (set by `infra/scripts/deploy.sh`). Drizzle migrations run on api
+  (set by `scripts/deploy.sh`). Drizzle migrations run on api
   boot and evolve the schema without touching user rows — every
   deploy is non-destructive. Never use `docker compose down -v` or
   `docker volume prune` on a Nodea host: the bind mount makes both

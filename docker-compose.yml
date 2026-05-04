@@ -23,7 +23,7 @@
 #
 # Postgres persistence: the data lives under `$DATA_DIR/postgres/` as a
 # bind mount (default in dev: `./data/postgres/`, gitignored ; in prod:
-# `$HOME/data/nodea/postgres/`, set by `infra/scripts/deploy.sh`). NOT a
+# `$HOME/data/nodea/postgres/`, set by `scripts/deploy.sh`). NOT a
 # named Docker volume — those are wipeable by `docker compose down -v`
 # or `docker volume prune` and have killed prod data before. Drizzle
 # migrations run on api boot ; user data survives every deploy.
@@ -49,7 +49,7 @@ services:
       - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
     volumes:
       # Bind mount under `$HOME/data/nodea/postgres/` (see
-      # `infra/scripts/deploy.sh`, which exports `DATA_DIR`
+      # `scripts/deploy.sh`, which exports `DATA_DIR`
       # before invoking docker compose). Bind mount, not a
       # named Docker volume — the latter lives under
       # `/var/lib/docker/volumes/` and is wipeable by
