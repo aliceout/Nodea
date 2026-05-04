@@ -53,7 +53,7 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
   /* -------- 1. Register + activate -------- */
   await page.goto('/register');
   await expect(
-    page.getByRole('button', { name: /S.inscrire|Register/i }),
+    page.getByRole('button', { name: /Cr.er mon compte|Create account/i }),
   ).toBeVisible({ timeout: 10_000 });
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/Identifiant|Username/i).fill(username);
@@ -62,7 +62,7 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
   if (await confirmField.count() > 0) {
     await confirmField.fill(STRONG_PASSWORD);
   }
-  await page.getByRole('button', { name: /S.inscrire|Register/i }).click();
+  await page.getByRole('button', { name: /Cr.er mon compte|Create account/i }).click();
   const activationLink = await waitForActivationLink(email);
   await page.goto(activationLink);
   await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });

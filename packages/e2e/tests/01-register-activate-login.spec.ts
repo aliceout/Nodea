@@ -31,7 +31,7 @@ test('register → activate via email → login → /flow', async ({ page }) => 
   await page.goto('/register');
   // Wait for the open-mode form to mount (the page resolves its
   // mode async so the inputs aren't there on first paint).
-  await expect(page.getByRole('button', { name: /S.inscrire|Register/i })).toBeVisible({
+  await expect(page.getByRole('button', { name: /Cr.er mon compte|Create account/i })).toBeVisible({
     timeout: 10_000,
   });
 
@@ -45,7 +45,7 @@ test('register → activate via email → login → /flow', async ({ page }) => 
     await confirmField.fill(STRONG_PASSWORD);
   }
 
-  await page.getByRole('button', { name: /S.inscrire|Register/i }).click();
+  await page.getByRole('button', { name: /Cr.er mon compte|Create account/i }).click();
 
   // 2. Wait for the activation email + extract the magic link.
   const link = await waitForActivationLink(email);
