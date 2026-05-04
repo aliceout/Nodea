@@ -33,19 +33,21 @@ test('account deletion — cascades all user-owned rows', async ({ page }) => {
   expect(userId).not.toBeNull();
 
   /* -------- 2. Reach the deletion form -------- */
-  // Account is the legacy `/flow` Account view ; the URL stays at
-  // /flow because of the privacy invariant. We navigate via the
-  // sidebar / topbar Account entry.
-  await page.goto('/flow');
-  // Sidebar/menu entry is a <button>, not a link (cf. modules-registry.tsx).
-  // Label comes from i18n modules.json: « Mon compte » / « My account ».
+  // We're already on /flow after registerAndActivate. We must NOT
+  // do `page.goto('/flow')` here : the in-memory main key would be
+  // wiped by the navigation and the `KeyMissingModal` would block
+  // every subsequent click. Just open the Account view via the
+  // sidebar UserMenu — its icon-only button carries the i18n
+  // `layout.userMenu.profile` aria-label (« Votre profil » FR /
+  // « Your profile » EN, cf. SidebarHeader.tsx).
   await page
-    .getByRole('button', { name: /^Mon compte$|^My account$/i })
+    .getByRole('button', { name: /^Votre profil$|^Your profile$/i })
     .first()
     .click();
-  // Switch to the deletion tab.
+  // Switch to the deletion tab. Tabs use role="tab" (cf.
+  // ui/dirk/Tabs.tsx) — `getByRole('button')` doesn't match them.
   await page
-    .getByRole('button', { name: /Suppression du compte|Account deletion/i })
+    .getByRole('tab', { name: /Suppression du compte|Account deletion/i })
     .click();
 
   /* -------- 3. Fill confirmation + accept window.confirm -------- */
@@ -73,8 +75,11 @@ test('account deletion — cascades all user-owned rows', async ({ page }) => {
   `;
   expect(usersLeft.length).toBe(0);
 
+  // `modules_config` est PK sur `user_id` (cf. CLAUDE.md
+   // « Backend rules ») — pas de colonne `id`. On lit user_id
+   // directement.
   const modulesLeft = await db()`
-    SELECT id FROM modules_config WHERE user_id = ${userId} LIMIT 1
+    SELECT user_id FROM modules_config WHERE user_id = ${userId} LIMIT 1
   `;
   expect(modulesLeft.length).toBe(0);
 });

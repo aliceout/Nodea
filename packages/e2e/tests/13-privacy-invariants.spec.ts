@@ -99,13 +99,31 @@ test('privacy invariants — URL stays /flow + title stays Nodea + no token/guar
   await expectPathnameAndTitle(page, '/flow');
 
   /* -------- 7. Invariant 3 : pas de token/guard/sid en query string -------- */
-  // Cherche tout `?token=`, `?t=`, `?d=`, `?sid=`, `?guard=`
-  // dans n'importe quelle URL capturée pendant la session.
-  // Les liens email d'activation sont gérés AVANT cette session
-  // (registerAndActivate fait `goto(activationLink)` qui contient
-  // `?token=…`) — on filtre ceux-là.
+  // L'invariant porte sur les requêtes qui hitent NOTRE api (= URLs
+  // sur le path `/api/` côté SPA, ou directement sur le port 3000)
+  // et sur les pages applicatives. Vite dev sert tout l'intérieur
+  // de `/src/` et `/node_modules/` avec ses propres `?import` /
+  // `?t=<timestamp>` (cache buster HMR) — ces URLs ne touchent
+  // jamais le request logger Hono ni les access logs Nginx, donc
+  // elles ne sont pas une fuite de privacy au sens du SEC-01.
+  // On filtre donc UNIQUEMENT les URLs « applicatives » :
+  // celles qui passent par `/api/...` ou les pages SPA bare-path.
   const forbiddenPattern = /[?&](token|t|d|sid|guard)=/i;
+  const isApplicationUrl = (url: string): boolean => {
+    try {
+      const u = new URL(url);
+      // Vite dev sert : `/src/...`, `/node_modules/...`,
+      // `/@vite/...`, `/@react-refresh`, `/@fs/...`, `/@id/...`
+      if (/^\/(?:src|node_modules|@vite|@react-refresh|@fs|@id)\//.test(u.pathname)) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
   const leaks = capturedUrls.filter((url) => {
+    if (!isApplicationUrl(url)) return false;
     if (!forbiddenPattern.test(url)) return false;
     // Whitelist : les URLs `/activate?token=…` venant de Mailpit
     // sont en setup, pas une fuite. On les exclut explicitement.

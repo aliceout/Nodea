@@ -86,8 +86,14 @@ test('module CRUD — Mood: create → read → update → delete', async ({ pag
     await fallback.nth(1).fill('Soleil');
     await fallback.nth(2).fill('Bonne nuit');
   }
-  // Score buttons : -2, -1, 0, +1, +2. Click +1.
-  await page.getByRole('button', { name: /^\+?1$/ }).first().click();
+  // Score buttons : -2..+2. Each button's accessible name is the
+  // composed score + label, e.g. « +1 good » / « +1 bien » — the
+  // pure « +1 » regex misses them. Anchor on the score prefix +
+  // a space so we don't grab « +1 » in some unrelated control.
+  await page
+    .getByRole('button', { name: /^\+1\s/ })
+    .first()
+    .click();
   // Save.
   await page
     .getByRole('button', { name: /^Enregistrer$|^Save$/i })

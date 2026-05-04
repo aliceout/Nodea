@@ -5,7 +5,7 @@ import {
   promoteToAdmin,
 } from '../helpers/db.ts';
 import { clearInbox } from '../helpers/mailpit.ts';
-import { registerAndActivate } from '../helpers/flows.ts';
+import { login, registerAndActivate } from '../helpers/flows.ts';
 
 /**
  * Admin → Annonces : créer / activer-désactiver / supprimer.
@@ -44,11 +44,22 @@ test('admin announcements — create + toggle active + delete', async ({ page })
   /* -------- 1. Register + activate -------- */
   const user = await registerAndActivate(page, 'adminann');
 
-  /* -------- 2. Promote → reload pour que /me ramène le nouveau rôle -------- */
+  /* -------- 2. Promote → re-login pour que /me ramène le nouveau rôle -------- */
+  // On ne peut PAS faire `page.reload()` ici : le rechargement vide
+  // la main key in-memory et déclenche `KeyMissingModal` qui bloque
+  // tous les clics suivants. À la place, on logout via l'API puis
+  // on relogin proprement — la dérivation OPAQUE re-crée la clé en
+  // mémoire ET le `/me` du login renvoie le rôle admin tout frais.
   const userId = await getUserIdByEmail(user.email);
   expect(userId).not.toBeNull();
   await promoteToAdmin(userId!);
-  await page.reload();
+  await page.evaluate(async () => {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+  });
+  await login(page, user);
   await page.waitForLoadState('networkidle');
 
   /* -------- 3. Sidebar → Admin → Annonces -------- */
@@ -61,8 +72,10 @@ test('admin announcements — create + toggle active + delete', async ({ page })
 
   // Onglet « Annonces ». Les tabs admin n'ont pas encore reçu d'i18n
   // (label en dur dans index.tsx), donc on match juste le FR.
+  // Le composant `Tabs` rend `role="tab"` (cf. ui/dirk/Tabs.tsx) —
+  // un `getByRole('button')` ne les voit pas.
   await page
-    .getByRole('button', { name: /^Annonces$/ })
+    .getByRole('tab', { name: /^Annonces$/ })
     .first()
     .click();
 

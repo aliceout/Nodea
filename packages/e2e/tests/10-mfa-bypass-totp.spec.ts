@@ -108,26 +108,18 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
     page.getByRole('button', { name: /^Désactiver TOTP$|^Disable TOTP$/i }),
   ).toBeVisible({ timeout: 10_000 });
 
-  /* -------- 3. Passer security_mode → always_totp -------- */
+  /* -------- 3. Vérifier que security_mode est déjà always_totp -------- */
+  // Pas besoin de switcher manuellement : l'API `auth-totp.ts`
+  // auto-promote `security_mode` de `password_or_passkey` à
+  // `always_totp` au moment où on verify l'enroll (cf.
+  // `routes/auth-totp.ts:278`). On confirme juste que la carte
+  // « TOTP requis » est marquée comme courante (`aria-pressed=true`)
+  // pour qu'on n'envoie pas le test sur la suite si l'auto-promotion
+  // a régressé.
   await page.goto('/security-mode');
-  // Cliquer la carte « TOTP requis » — mode `always_totp`.
-  await page
-    .getByRole('button', { name: /TOTP requis|Require TOTP/i })
-    .first()
-    .click();
-  // Le formulaire de proof de mot de passe apparaît.
-  await page
-    .getByPlaceholder(/Mot de passe|Password/i)
-    .first()
-    .fill(STRONG_PASSWORD);
-  await page
-    .getByRole('button', { name: /^Confirmer$|^Confirm$/i })
-    .first()
-    .click();
-  // Attendre le feedback de succès « Mode mis à jour ».
-  await expect(page.getByText(/Mode mis à jour|Mode updated/i)).toBeVisible({
-    timeout: 10_000,
-  });
+  await expect(
+    page.getByRole('button', { name: /TOTP requis/ }).first(),
+  ).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
 
   /* -------- 4. Logout -------- */
   await page.evaluate(async () => {
@@ -170,10 +162,16 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
 
   /* -------- 8. Visiter le lien → confirmer le bypass -------- */
   await page.goto(bypassLink);
-  // BypassConfirm/SuccessPanel.tsx affiche le succès. On accepte
-  // toute URL sous /auth/bypass/* qui rend (la page peut rester
-  // sur le confirm path ou rediriger).
-  await expect(page).toHaveURL(/\/auth\/bypass/, { timeout: 10_000 });
+  // BypassConfirm appelle l'API en useEffect — on attend que le
+  // SuccessPanel rende (« Demande validée » / « Demande déjà
+  // confirmée »), preuve que `confirmed_at` est bien posé en DB.
+  // Sans ça, le `backdateBypassConfirmation` qui suit court le
+  // risque de tourner avant le `UPDATE confirmed_at = now`, ne
+  // matcherait aucune ligne (filtre `confirmed_at IS NOT NULL`),
+  // et le re-login échouerait — le bypass jamais consumable.
+  await expect(
+    page.getByText(/Demande validée|Demande déjà confirmée/),
+  ).toBeVisible({ timeout: 10_000 });
 
   /* -------- 9. Time-shift le confirmed_at à -8 jours -------- */
   const userId = await getUserIdByEmail(email);

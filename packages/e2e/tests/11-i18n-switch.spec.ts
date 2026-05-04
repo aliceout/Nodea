@@ -27,6 +27,21 @@ test.beforeEach(async () => {
 });
 
 test('i18n FR ↔ EN — switch via sidebar + persistance + libellés clés', async ({ page }) => {
+  // Playwright lance Chromium en `en-US` par défaut, donc
+  // `navigator.language === 'en'` et `I18nProvider.detectInitialLanguage`
+  // retombe sur EN au premier paint. On force FR en seedant
+  // `localStorage` AVANT que l'app monte — sans ça la sidebar serait
+  // déjà en EN au moment où on cherche « Votre profil ».
+  // `addInitScript` rejoue à CHAQUE navigation (y compris le `reload`
+  // de l'étape 5), donc on ne touche au storage QUE s'il est vide :
+  // une fois que l'utilisateur a switché en EN à l'étape 2,
+  // l'override doit céder la main pour que le test de persistance
+  // soit valide.
+  await page.addInitScript(() => {
+    if (window.localStorage.getItem('nodea:language') == null) {
+      window.localStorage.setItem('nodea:language', 'fr');
+    }
+  });
   await registerAndActivate(page, 'i18nswitch');
 
   /* -------- 1. Confirmer FR par défaut sur la sidebar -------- */

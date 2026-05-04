@@ -91,7 +91,7 @@ test('account changes — username + email update via Settings UI, persist acros
   /* -------- 4. Email change (with re-auth gate) -------- */
   await page
     .getByRole('button', {
-      name: /Modifier l.adresse e-mail|Edit e-mail address/i,
+      name: /Modifier l.adresse e-?mail|Edit e-?mail address/i,
     })
     .first()
     .click();
