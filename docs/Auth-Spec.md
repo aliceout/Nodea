@@ -1,30 +1,8 @@
 # Auth-Spec — Spécification complète Authentification + MFA
 
-> **Statut (post-Phase 8, 2026-04-28).** Le chantier auth est
-> **livré dans son intégralité** : Phase 0 (spec) → Phase 8 (cleanup
-> + audit). Les sections marquées `✅` décrivent la réalité actuelle
-> du code. Les rares sections encore marquées `🚧` sont des archives
-> du design original conservées pour traçabilité (ex. variantes de
-> register multi-étapes proposées et abandonnées) ou des points de
-> design future hors scope auth (ex. re-vérification email lors d'un
-> change-email — table prête, route à compléter).
->
-> - **✅ livré** — implémenté, testé, en prod-like.
-> - **🚧** — design archive ou point future hors scope auth Phase 0-8.
->
 > **Précédence.** Code et doc = source unique de vérité (CLAUDE.md).
-> Pour tout ce qui est marqué V1 livré, le code prime sur la spec en
-> cas d'écart constaté → corriger le code OU la spec dans le même PR
-> que la divergence est introduite.
->
-> **Phase 1 livrée diverge sciemment du design initial** : on a
-> simplifié l'inscription (single-form + magic-link activation au
-> lieu du wizard 7-étapes), basculé les invitations sur du
-> email-bound + token (Bitwarden-style, plus de codes à copier), et
-> ajouté un toggle `open_registration` côté admin. Les sections ci-
-> dessous ont été ré-alignées sur cette réalité ; le wizard 7-étapes
-> et tout ce qui dépend d'OPAQUE / TOTP / passkey reste documenté
-> comme cible Phase 2+ mais explicitement marqué.
+> Le code prime sur la spec en cas d'écart constaté → corriger le
+> code OU la spec dans le même PR que la divergence est introduite.
 
 ---
 
@@ -42,12 +20,10 @@
 9. [Passkey — détails](#9-passkey--détails)
 10. [Service email](#10-service-email)
 11. [Middlewares serveur](#11-middlewares-serveur)
-12. [Migration depuis Argon2id direct](#12-migration-depuis-argon2id-direct)
 13. [Algorithmes & paramètres figés](#13-algorithmes--paramètres-figés)
 14. [Anti-patterns interdits](#14-anti-patterns-interdits)
 15. [Test matrix](#15-test-matrix)
 16. [Pièges récapitulés](#16-pièges-récapitulés)
-17. [Open questions / futur](#17-open-questions--futur)
 
 ---
 
@@ -77,36 +53,23 @@
 
 ### 1.1 Objectifs
 
-L'auth Nodea évolue en deux temps :
+L'auth Nodea repose sur un modèle multi-facteurs E2E qui :
 
-**Phase 1 — ✅ livré.**
-- Inscription en un seul formulaire (email + password) + activation
-  via lien magique reçu par email.
-- Invitations email-bound (admin → adresse → lien direct, pas de
-  code à copier-coller).
-- Toggle admin `open_registration` pour basculer entre invitation-
-  only et signup libre.
-- Reset destructif comme chemin de récupération de dernier recours.
-
-**Phase 2-7 — ✅ tous livrés.** Le modèle multi-facteurs cible :
 - préserve l'E2E **même quand le serveur est compromis** (vs juste
-  "honest-but-curious") — KEK dérivée d'OPAQUE `export_key`
-  (Phase 2C/D), pas d'Argon2id côté serveur sur le password ;
-- accepte les passkeys (WebAuthn, Phase 4) avec dérivation de KEK
-  via PRF quand l'authenticator le supporte ;
-- ajoute un gate TOTP optionnel pour les sessions (Phase 5) ;
+  "honest-but-curious") — KEK dérivée d'OPAQUE `export_key`, pas
+  d'Argon2id côté serveur sur le password ;
+- accepte les passkeys (WebAuthn) avec dérivation de KEK via PRF
+  quand l'authenticator le supporte ;
+- ajoute un gate TOTP optionnel pour les sessions ;
 - offre un **chemin de récupération crypto** explicite (recovery
-  code BIP39, Phase 3) qui n'érode pas la propriété E2E ;
-- bypass MFA email 7 jours pour récupérer un facteur perdu sans
-  reset destructif (Phase 6) ;
+  code BIP39) qui n'érode pas la propriété E2E ;
+- propose un bypass MFA email 7 jours pour récupérer un facteur
+  perdu sans reset destructif ;
 - expose une matrice de re-auth cohérente pour toutes les
-  modifications sensibles (Phase 7).
-
-**Phase 8 — ✅ livré.** Cleanup + audit final (commentaires
-synchronisés avec le code, audit des dépendances tierces, revue
-sécurité cross-checked, bundle integrity SRI + INTEGRITY.txt
-mitige le threat model "serveur compromis qui sert du JS
-altéré").
+  modifications sensibles ;
+- mitige le threat model "serveur compromis qui sert du JS altéré"
+  via SRI sur l'entry chunk + manifest INTEGRITY.txt à chaque
+  release.
 
 ### 1.2 Invariants permanents
 
@@ -126,25 +89,6 @@ Quoi qu'il arrive, ces invariants tiennent :
 6. **Reset destructif** conservé en filet de dernier recours.
 7. **Aucun "logged-in sans clé"** : status `crypto.missing` →
    `KeyMissingModal` bloquant.
-
-### 1.3 Évolution V1 → Phase 2+
-
-> **Note** : depuis Phase 2D, OPAQUE est livré pour register / login
-> / change-password / reset / change-email / delete-self, et les
-> colonnes legacy `users.{password_hash, encryption_salt,
-> encrypted_key}` ont été droppées (migration `0011_little_morg`).
-> Le tableau ci-dessous garde la trace du delta initial pour
-> contexte historique.
-
-| V1 livré | Phase 2+ cible |
-|---|---|
-| Inscription single-form + activation par lien email | ✅ inchangé (le modèle simplifié reste, OPAQUE a remplacé la dérivation crypto interne en 2B) |
-| Argon2id côté serveur (`password_hash`) + KEK dérivée du password | ✅ remplacé (Phase 2C) — OPAQUE (RFC 9497) côté client + serveur ; KEK random wrappée par chaque facteur |
-| Pas de second facteur | ✅ livré — Passkey (Phase 4) + TOTP (Phase 5) optionnels selon `security_mode` ; bypass MFA email 7 jours (Phase 6) |
-| Reset destructif uniquement | ✅ livré — Recovery code KEK BIP39 (Phase 3) ; reset destructif déjà OPAQUE depuis 2D ; bypass TOTP/passkey email Phase 6 |
-| `users.password_hash` + `users.encryption_salt` + `users.encrypted_key` (legacy) | ✅ droppées en Phase 2D (`0011_little_morg`) ; `opaque_records.envelope` + `wrapped_main_key{,_iv}` + `wrapped_kek_password{,_iv}` sont la seule surface credential restante |
-| Invitations email-bound (`invites.email + token`) | ✅ inchangé |
-| Toggle `open_registration` (`app_settings`) | ✅ inchangé |
 
 ---
 
@@ -204,8 +148,6 @@ sans rouvrir la spec :
    armant `email_changed_at = now()` à la fin du reset destructif.
 
 ### 2.3 Trade-offs documentés
-
-À reproduire dans `Security.md` après Phase 8 :
 
 - **TOTP est un gate de session, pas un gate cryptographique.** Le
   secret TOTP doit être stocké en clair côté serveur (exigence du
@@ -333,21 +275,6 @@ KEK est wrappée par CHAQUE FACTEUR :
   code → opération longue, équivalente à un re-onboarding crypto).
   **Hors scope V1.**
 
-### 3.3 Pourquoi un KEK intermédiaire ?
-
-Alternative étudiée : wrapper directement la main key sous chaque
-facteur. Rejetée parce que :
-
-- Add/remove passkey nécessiterait de connaître la main key (pas un
-  blocker mais plus de matériel sensible en mémoire).
-- Multiplication des `wrapped_main_key_*`, plus difficile à auditer.
-- Change-password recopierait les 32 bytes de main key dans une
-  nouvelle wrap au lieu de re-wrap juste la KEK.
-
-L'indirection KEK coûte un AES-GCM en plus à chaque login (≪ 1ms)
-et clarifie la sémantique "la KEK est ce que les facteurs
-déverrouillent ; la KEK déverrouille la main key".
-
 ### 3.4 AAD & domain separation
 
 #### Labels HKDF (figés)
@@ -412,10 +339,7 @@ un bug à fail-loud (assert au build/runtime côté test).
 
 ### 4.0 Tables existantes préservées (hors scope auth)
 
-Les tables suivantes existent depuis le code legacy. Phase 1 a
-**modifié** `invites` (ajout de `email`, sémantique du `code_hash`
-qui est maintenant un token magic-link au lieu d'un code court).
-Le reste est inchangé :
+Tables qui existent indépendamment du chantier auth :
 
 | Table | Usage | Touchée par destructive reset (§4.3) ? |
 |---|---|---|
@@ -601,7 +525,7 @@ export const sessionKind = pgEnum('session_kind', [
   'mfa_pending',  // OPAQUE/passkey OK, MFA requis avant promotion
   'register',    // inscription en cours, scope restreint à /auth/register/*
   'migrate',     // legacy user en cours de migration Argon2id → OPAQUE
-                  // scope /auth/migrate/*, TTL 30 min, cf. §12
+                  // scope /auth/migrate/*, TTL 30 min
 ]);
 
 export const sessions = pgTable('sessions', {
@@ -694,14 +618,6 @@ Toute la séquence dans **une transaction**.
 ---
 
 ## 5. Cookies & sessions
-
-> **Statut V1 livré.** Un seul cookie en V1 : `nodea_session` (sans
-> préfixe `__Host-` pour rester compatible `COOKIE_SECURE=false` en
-> dev). Les cookies `__Host-nodea_register / _mfa / _migrate`
-> ci-dessous sont Phase 2+ — ils dépendent du wizard multi-étapes
-> (réécrit en simplifié, cf. §7.1) et de OPAQUE (§12). Le rename
-> en `__Host-*` du cookie session se fera quand HTTPS sera
-> obligatoire en dev (Phase 8 cleanup).
 
 ### 5.1 Cookies
 
@@ -861,13 +777,7 @@ qui rend "perdu 2 = niqué" par construction.
 
 ## 7. Flows complets
 
-### 7.1 Register — single-form + activation magic link (✅ V1 livré)
-
-> Phase 1 a remplacé le wizard 7-étapes du design initial par ce
-> modèle plus simple. Le wizard reste documenté en archive en
-> §7.1.bis pour servir de référence au futur design Phase 2+ qui
-> ré-introduira progressivement TOTP / passkey / recovery code,
-> mais sans imposer 7 écrans à la création d'un compte.
+### 7.1 Register — single-form + activation magic link
 
 #### Vue d'ensemble
 
@@ -1085,31 +995,7 @@ Cron Monday 03:00 (cf. §13.2) :
 
 ---
 
-### 7.1.bis Register multi-étapes (🚧 Phase 2+ design — archive)
-
-> **Statut.** Cette sous-section décrit le wizard 7-étapes initial
-> du design. **Pas implémenté en V1**, pas prévu en l'état pour
-> Phase 2+. Conservée comme référence du raisonnement initial autour
-> de l'enrollment progressif (TOTP, passkey, recovery code KEK
-> intercalés dans le flow d'inscription).
->
-> Phase 2+ devra reprendre les éléments suivants **séparément** du
-> register simplifié de §7.1 :
->
-> - Setup recovery code KEK (BIP39 12 mots) : nudge post-activation
->   ou écran dédié dans `/settings`.
-> - Enrollment TOTP : `/settings/security/totp` avec QR + backup
->   codes. Issue [#42](https://github.com/aliceout/Nodea/issues/42)
->   pour le pattern de nudge.
-> - Enrollment passkey : `/settings/security/passkeys` avec
->   WebAuthn + PRF derivation. Idem.
->
-> Le passage à OPAQUE pour le password derivation reste valable et
-> doit s'inscrire dans le flow §7.1 actuel : remplacer la dérivation
-> Argon2id du KEK par OPAQUE `export_key`, sans toucher à l'UX du
-> form unique. Voir §12 pour la migration legacy → OPAQUE.
-
-### 7.2 Login password-first (V1 ✅ OPAQUE 2-step, Phase 2C)
+### 7.2 Login password-first
 
 ```
 Client                                Server
@@ -1157,68 +1043,6 @@ Client                                Server
    │  deriveMainKeys(mainKey)            │
    │   → aesKey + hmacKey                │
 ```
-
-### 7.2.bis Login original — version stepped MFA (🚧 Phase 4+)
-
-> Schéma préservé pour la phase suivante : une fois TOTP/passkey en
-> place, `/auth/login/finish` émettra un cookie `mfa_pending`
-> (5 min, scope `/auth/mfa/*`) plutôt qu'un `nodea_session` complet.
-> La session full sera promue par `POST /auth/mfa/finalize` une fois
-> tous les facteurs additionnels validés.
-
-```
-Client                                Server
-   │                                     │
-   │  POST /auth/login/start             │
-   │  { email, opaque_KE1 }              │
-   │────────────────────────────────────▶│
-   │                                     │  charge opaque_records
-   │                                     │  produit opaque_KE2
-   │  { opaque_KE2 }                     │
-   │◀────────────────────────────────────│
-   │                                     │
-   │  (client génère opaque_KE3,         │
-   │   dérive export_key)                │
-   │  POST /auth/login/finish            │
-   │  { email, opaque_KE3 }              │
-   │────────────────────────────────────▶│
-   │                                     │  vérifie opaque_KE3
-   │                                     │  charge security_mode
-   │                                     │  émet mfa_pending session
-   │                                     │   - mfa_password_verified=true
-   │  { needs_mfa: ['totp'?], factors }  │
-   │◀────────────────────────────────────│
-   │                                     │
-   │  client unwrap KEK via export_key   │
-   │  client unwrap main_key             │
-   │  client dérive aes_main + hmac_main │
-   │                                     │
-   │  Si mode = password_or_passkey :    │
-   │     POST /auth/mfa/finalize         │
-   │     (rien de spécial requis)        │
-   │     ─▶ promotion en session full    │
-   │                                     │
-   │  Si mode = always_totp ou maximum : │
-   │     POST /auth/mfa/totp/verify      │
-   │     { code }                        │
-   │                                     │
-   │  Si mode = maximum :                │
-   │     POST /auth/mfa/passkey/start    │
-   │     ... assertion ...               │
-   │     POST /auth/mfa/passkey/finish   │
-   │                                     │
-   │  Une fois tous les facteurs requis  │
-   │  vérifiés, server delete            │
-   │  mfa_pending et émet session full   │
-```
-
-**Détail clé** : la KEK est unwrappée **dès** que `export_key` est
-disponible côté client (après `login/finish`), même si la session
-n'est pas encore promue. Si l'utilisateur·ice abandonne la MFA
-(ex: ferme l'onglet), la session full n'est jamais émise, mais le
-client a déjà la main key — sauf qu'il n'a pas non plus de cookie
-session full pour faire des requêtes. Donc en pratique : pas de
-fuite, juste un état mort qui se résout au reload.
 
 ### 7.3 Login passkey-first
 
@@ -1323,7 +1147,7 @@ sur la même `mfa_pending` jusqu'au `/auth/mfa/finalize`.
    - Émet `__Host-nodea_session`.
 5. Réponse `200 { user, ...some pubic info }`.
 
-### 7.5 Change password (V1 ✅ OPAQUE 2-step, Phase 2D)
+### 7.5 Change password
 
 OPAQUE re-registration ne peut pas tenir dans un seul POST : le
 client a besoin de la `registrationResponse` du serveur (calculée
@@ -1411,16 +1235,15 @@ La rotation de l'ID après un changement de privilège (changement
 de password, change-mode, etc.) est un anti-pattern de session
 fixation classique — on l'applique systématiquement.
 
-### 7.6 Change email (🚧 design partiel — full flow non livré)
+### 7.6 Change email (design partiel — full flow non livré)
 
-> **Statut.** La route `PATCH /auth/email` (✅ livrée Phase 7B)
-> fait juste l'`UPDATE users.email` après un re-auth password
-> fresh. Le flow ci-dessous décrit la version complète envisagée
-> avec re-vérification email + cooldown 7 jours + re-register
-> OPAQUE (parce que le `userIdentifier` baked dans l'envelope IS
-> l'email). À implémenter dans une issue dédiée si on veut le
-> verrou complet ; pour l'instant la simple route fait le boulot
-> minimal.
+> **Statut.** La route `PATCH /auth/email` fait juste l'`UPDATE
+> users.email` après un re-auth password fresh. Le flow ci-dessous
+> décrit la version complète envisagée avec re-vérification email +
+> cooldown 7 jours + re-register OPAQUE (parce que le
+> `userIdentifier` baked dans l'envelope IS l'email). À implémenter
+> dans une issue dédiée si on veut le verrou complet ; pour
+> l'instant la simple route fait le boulot minimal.
 
 Plus lourd qu'on aimerait. Trois étapes.
 
@@ -1478,19 +1301,19 @@ Server (transaction) :
 4. Revoke toutes les autres sessions.
 5. Réponse `200`.
 
-### 7.7 Recovery via KEK code (V1 ✅ Phase 3)
+### 7.7 Recovery via KEK code
 
-> **Statut.** Livré en Phase 3. Setup opt-in depuis Settings →
-> Security (l'utilisateur·ice ne voit pas le flow à l'inscription —
-> UX choice). Sidebar warning rouge non-dismissable tant que pas
-> configuré. Recovery flow accessible via `/recover` ou via le
-> lien "Tu as un code ?" sur `/request-reset`.
+> Setup opt-in depuis Settings → Security (l'utilisateur·ice ne
+> voit pas le flow à l'inscription). Sidebar warning rouge
+> non-dismissable tant que pas configuré. Recovery flow accessible
+> via `/recover` ou via le lien "Tu as un code ?" sur
+> `/request-reset`.
 >
-> Le wire format réel est légèrement plus serré que le design
-> ci-dessous (le OPAQUE register handshake est folded dans le
-> `/start` plutôt que d'avoir une 3e route séparée). Voir le code
-> dans `packages/api/src/routes/auth-recovery.ts` pour la source
-> de vérité ; cette section décrit l'intention.
+> Source de vérité : code dans
+> `packages/api/src/routes/auth-recovery.ts`. Cette section décrit
+> l'intention ; le wire format réel est légèrement plus serré (le
+> OPAQUE register handshake est folded dans le `/start` plutôt que
+> d'avoir une 3e route séparée).
 
 #### Modèle d'autorisation
 
@@ -1628,11 +1451,10 @@ Pas d'email de notification (l'opération est explicite côté
 utilisateur·ice + re-auth password fresh = pas de takeover
 possible silencieusement).
 
-### 7.8 Bypass d'un facteur MFA par email (✅ Phase 6 livrée)
+### 7.8 Bypass d'un facteur MFA par email
 
-> **Statut.** Phase 6 livrée. Routes
-> `packages/api/src/routes/auth-mfa-bypass.ts`, helpers
-> `packages/api/src/auth/mfa-bypass.ts`, email templates
+> Code : routes `packages/api/src/routes/auth-mfa-bypass.ts`,
+> helpers `packages/api/src/auth/mfa-bypass.ts`, email templates
 > `services/email/templates/mfa-bypass.ts`. UI sur `/login/mfa`
 > (lost-factor links + inline confirm dialog) et Settings →
 > Sécurité (active-bypass row + cancel button). Lazy application
@@ -1840,18 +1662,18 @@ Réponse `200`. Cookie effacé.
 
 ---
 
-## 8. TOTP — détails (✅ Phase 5 livrée)
+## 8. TOTP — détails
 
-> **Statut.** Phase 5 livrée. Routes
-> `packages/api/src/routes/auth-totp.ts` (enroll / disable /
-> regenerate) + `packages/api/src/routes/auth-mfa.ts` (verify-step
-> + passkey-as-second-factor) + `packages/api/src/routes/auth-security-mode.ts`
-> (mode change). Page Settings dédiée `/totp` (QR + clé masquée
-> + œil/copier + verify inline) et page `/login/mfa` (stepped MFA
-> avec TOTP puis passkey). Le sidebar tip ambre dismissable invite
-> à activer TOTP tant que `totpEnabled === false`. Backup codes :
-> 10 × 120 bits / 24 base32 chars, single-use enforced par
-> `UPDATE … WHERE used_at IS NULL`.
+> Code : routes `packages/api/src/routes/auth-totp.ts` (enroll /
+> disable / regenerate) + `packages/api/src/routes/auth-mfa.ts`
+> (verify-step + passkey-as-second-factor) +
+> `packages/api/src/routes/auth-security-mode.ts` (mode change).
+> Page Settings dédiée `/totp` (QR + clé masquée + œil/copier +
+> verify inline) et page `/login/mfa` (stepped MFA avec TOTP puis
+> passkey). Le sidebar tip ambre dismissable invite à activer TOTP
+> tant que `totpEnabled === false`. Backup codes : 10 × 120 bits /
+> 24 base32 chars, single-use enforced par `UPDATE … WHERE used_at
+> IS NULL`.
 
 ### 8.1 Paramètres figés
 
@@ -1952,19 +1774,19 @@ en clair (affichés une seule fois).
 
 ---
 
-## 9. Passkey — détails (✅ Phase 4 livrée)
+## 9. Passkey — détails
 
-> **Statut.** Phase 4 livrée. Routes
-> `packages/api/src/routes/auth-passkey.ts`, orchestrateur client
-> `packages/web/src/core/auth/passkey-flow.ts`, page Settings dédiée
-> `/passkeys` (et SecuritySection « Passkey » dans Account →
-> Sécurité). Sidebar tip ambre dismissable invite à enroller quand
-> `passkeysCount === 0` (cohérent avec la décision : pas de passkey
-> au register, opt-in post-activation). Limitation connue : les
-> authenticators qui ne surfacent pas `prf.results.first` au
-> registration sont enrôlés en login-only ; le chemin
-> "promote-to-PRF" via une assertion de calibration arrivera dans
-> une itération ultérieure.
+> Code : routes `packages/api/src/routes/auth-passkey.ts`,
+> orchestrateur client `packages/web/src/core/auth/passkey-flow.ts`,
+> page Settings dédiée `/passkeys` (et SecuritySection « Passkey »
+> dans Account → Sécurité). Sidebar tip ambre dismissable invite à
+> enroller quand `passkeysCount === 0` (cohérent avec la décision :
+> pas de passkey au register, opt-in post-activation).
+>
+> **Limitation connue** : les authenticators qui ne surfacent pas
+> `prf.results.first` au registration sont enrôlés en login-only ;
+> le chemin "promote-to-PRF" via une assertion de calibration
+> arrivera dans une itération ultérieure.
 
 ### 9.1 Choix structurels
 
@@ -2227,91 +2049,6 @@ front intercepte le `reauth_required` et affiche un modal :
   "Re-auth passkey".
 
 Après succès, retry automatique de la requête originale.
-
----
-
-## 12. Migration depuis Argon2id direct (🚧 Phase 2)
-
-> **Statut.** Pas démarré. Le V1 vit *encore* sur le modèle Argon2id
-> direct (legacy) — c'est l'objet précis de cette section. La
-> migration vers OPAQUE est l'enjeu de Phase 2 d'Auth-Roadmap.
-
-### 12.1 État de départ (legacy)
-
-Sur chaque utilisateur·ice existant·e :
-- `users.password_hash` (Argon2id de `password`).
-- `users.encryption_salt` (16 bytes random).
-- `users.encrypted_key` = AES-GCM(KEK_legacy, main_key) où
-  KEK_legacy = Argon2id(password + encryption_salt).
-
-### 12.2 Stratégie : lazy migration au login
-
-Pas de migration en masse. Chaque utilisateur·ice migre à son
-prochain login.
-
-#### Étape 1 — Login legacy détecté
-
-`POST /auth/login` (route existante, conservée pendant la
-transition) :
-
-Server :
-1. Charge `users` par email. Si `password_hash IS NULL` (déjà
-   migré·e) → 404 (utiliser `/auth/login/start` OPAQUE).
-2. Vérifie Argon2id contre `password_hash`. Si KO → 401.
-3. Émet une session **transitoire** `kind: 'migrate'` — TTL 30 min,
-   scope `/auth/migrate/*` (cf. §5.1, cookie dédié
-   `__Host-nodea_migrate`). `register_state` reste à `'complete'`
-   (l'user est un compte établi, pas un nouveau register).
-4. Réponse 200 `{ migration_required: true }`.
-
-#### Étape 2 — Migration
-
-Client :
-1. Dérive KEK_legacy via Argon2id côté client (le client a déjà
-   le code pour ça, c'est l'actuel).
-2. Unwrap `encrypted_key` → `main_key` (32 bytes).
-3. Génère `kek` aléatoire 32 bytes (nouveau).
-4. Wrap main_key sous KEK : `wrapped_main_key`.
-5. Lance OPAQUE registration côté serveur (on a le password en
-   plain en RAM). Récupère export_key.
-6. Wrap KEK sous export_key : `wrapped_kek_password`.
-7. Génère recovery code BIP39 12 mots, le wrap →
-   `wrapped_kek_recovery` + calcule `recovery_code_hash`.
-8. POST `/auth/migrate/finish` avec tous ces blobs + l'OPAQUE
-   record + le code recovery acknowledgement (checkbox).
-
-`POST /auth/migrate/finish` (server) :
-
-Transaction :
-1. INSERT `opaque_records`.
-2. UPDATE `users` :
-   - `password_hash = NULL`
-   - `encryption_salt = NULL`
-   - `encrypted_key = NULL`
-   - `wrapped_main_key`, `wrapped_kek_password`,
-     `wrapped_kek_recovery` populés.
-   - `recovery_code_hash` populé.
-   - `recovery_acknowledged_at = now()`.
-   - `register_state = 'complete'`.
-3. DELETE session migration (kind = 'migrate').
-4. INSERT session full.
-
-#### Étape 3 — Vérification email rétroactive
-
-À l'étape 1, si `users.email_verified_at IS NULL` (legacy users
-n'ont pas vérifié leur email à l'inscription) → on **insère** un
-écran "Vérifie ton email" avant la migration crypto. On envoie un
-code, on le valide, on continue.
-
-Pas optionnel : la matrice s'appuie sur l'email vérifié pour le
-bypass TOTP. Forçage à l'occasion de la migration.
-
-### 12.3 Fin de la transition
-
-Quand 100% des comptes sont migrés (mesuré par
-`SELECT count(*) FROM users WHERE password_hash IS NOT NULL`) :
-- Phase 8 : DROP COLUMN `password_hash`, `encryption_salt`,
-  `encrypted_key`. Drop de la route `/auth/login` legacy.
 
 ---
 
@@ -2689,52 +2426,6 @@ Tests obligatoires **avant** le merge de chaque phase. Localisation :
 
 ---
 
-## 17. Open questions / futur
-
-À ne pas trancher en V1, à ouvrir comme issues quand on en a besoin :
-
-- **Rotation de la clé statique serveur OPAQUE** : tracked dans
-  [issue #39](https://github.com/aliceout/Nodea/issues/39). À
-  prendre après livraison Phase 8 (deux migrations imbriquées =
-  trop de risque en V1).
-- **Rotation de la KEK** (compromission suspectée) : tracked dans
-  [issue #40](https://github.com/aliceout/Nodea/issues/40).
-  Workflow inverse de la migration legacy : unwrap main key, génère
-  nouvelle KEK, re-wrap main key, re-wrap toutes les passkey
-  credentials, régénère recovery code. Long, mais possible.
-- **Backup d'un trousseau de passkeys** entre devices via passkey
-  sync (iCloud Keychain le fait nativement, Bitwarden aussi). La
-  passkey sync préserve le PRF si l'écosystème le supporte (Apple
-  oui, Google oui en cours, Bitwarden oui). À revérifier
-  périodiquement.
-- **Support FIDO2 attestation enterprise** : pour des comptes
-  pro qui exigent du matériel certifié. Hors scope.
-- **WebAuthn conditional UI** (autocomplete passkey) : amélioration
-  UX du login passkey-first. Pas en V1.
-- **Audit trail** des opérations sensibles (mode change, factor
-  add/remove, etc.) visible côté user. Utile pour la transparence.
-  Phase 8+.
-- **Limites de session par appareil** (max N sessions full en
-  parallèle). Non urgent.
-- **OPAQUE session resumption** (RFC 9497 §6.1) : éviter le
-  full handshake à chaque login. Optimisation.
-- **Argon2 params calibration** : benchmarks sur le serveur de
-  prod pour ajuster m/t/p au matériel réel. Phase 8.
-- **Notifications in-app** (alternative à l'email) pour les
-  opérations sensibles. Reporté V2 par décision explicite.
-- **Multi-tenancy / orgs** (utilisateurs partagés, admin org…) :
-  pas dans le modèle Nodea actuel, hors scope.
-- **Bootstrap admin** : comportement actuel conservé — le **premier
-  utilisateur·ice qui complète l'inscription** se voit attribuer
-  `users.is_admin = true` automatiquement (heuristique
-  `count(users) == 1` dans la transaction de finalisation register).
-  Tous les suivants démarrent en non-admin. Pas d'env var
-  `BOOTSTRAP_ADMIN_EMAIL` en V1 (Nodea = self-hosted single-user
-  ou small-team, l'heuristique suffit). Si un jour on veut un autre
-  modèle, ouvrir une issue dédiée.
-
----
-
 ## Annexe A — Glossaire
 
 | Terme | Définition |
@@ -2755,21 +2446,3 @@ Tests obligatoires **avant** le merge de chaque phase. Localisation :
 | **Bypass TOTP** | Mécanisme de récupération en cas de perte du TOTP + backup codes. Email + 7 jours delay. |
 | **Stepped MFA** | Login en deux phases : facteur principal (password OPAQUE ou passkey) → cookie pending → facteurs additionnels → cookie full. |
 
----
-
-## Annexe B — Checklist PR par phase
-
-À recopier dans la description de PR de chaque phase de
-[`Auth-Roadmap.md`](Auth-Roadmap.md) :
-
-- [ ] Tous les algos / params utilisés sont listés en §13.
-- [ ] Tous les nouveaux labels HKDF sont en §3.4.
-- [ ] Tous les nouveaux blobs AES-GCM ont une AAD documentée en §3.4.
-- [ ] Toute nouvelle table est en §4.
-- [ ] Toute nouvelle route est référencée par son flow en §7.
-- [ ] Toute nouvelle opération sensible apparaît en §6 (matrice).
-- [ ] Tests obligatoires de la phase listés en §15 sont verts.
-- [ ] Aucun anti-pattern §14 introduit.
-- [ ] `Security.md` mis à jour si la section 1.3 (changements) est
-      affectée.
-- [ ] Notification Windows envoyée à la fin (CLAUDE.md).
