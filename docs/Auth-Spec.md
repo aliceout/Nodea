@@ -1,240 +1,237 @@
-# Auth-Spec — Spécification complète Authentification + MFA
+# Auth-Spec — Authentication + MFA full specification
 
-> **Précédence.** Code et doc = source unique de vérité (CLAUDE.md).
-> Le code prime sur la spec en cas d'écart constaté → corriger le
-> code OU la spec dans le même PR que la divergence est introduite.
+> **Precedence.** Code and doc = single source of truth (CLAUDE.md).
+> Code wins over the spec when divergence is observed → fix the
+> code OR the spec in the same PR that introduces the divergence.
 
 ---
 
-## Table des matières
+## Table of contents
 
-0. [Lecture rapide](#0-lecture-rapide)
-1. [Vue d'ensemble](#1-vue-densemble)
+0. [Quick read](#0-quick-read)
+1. [Overview](#1-overview)
 2. [Threat model](#2-threat-model)
-3. [Modèle cryptographique](#3-modèle-cryptographique)
-4. [Schéma de base de données](#4-schéma-de-base-de-données)
+3. [Cryptographic model](#3-cryptographic-model)
+4. [Database schema](#4-database-schema)
 5. [Cookies & sessions](#5-cookies--sessions)
-6. [Matrice de re-auth](#6-matrice-de-re-auth)
-7. [Flows complets](#7-flows-complets)
-8. [TOTP — détails](#8-totp--détails)
-9. [Passkey — détails](#9-passkey--détails)
-10. [Service email](#10-service-email)
-11. [Middlewares serveur](#11-middlewares-serveur)
-13. [Algorithmes & paramètres figés](#13-algorithmes--paramètres-figés)
-14. [Anti-patterns interdits](#14-anti-patterns-interdits)
+6. [Re-auth matrix](#6-re-auth-matrix)
+7. [Full flows](#7-full-flows)
+8. [TOTP — details](#8-totp--details)
+9. [Passkey — details](#9-passkey--details)
+10. [Email service](#10-email-service)
+11. [Server middlewares](#11-server-middlewares)
+13. [Frozen algorithms & parameters](#13-frozen-algorithms--parameters)
+14. [Forbidden anti-patterns](#14-forbidden-anti-patterns)
 15. [Test matrix](#15-test-matrix)
-16. [Pièges récapitulés](#16-pièges-récapitulés)
+16. [Pitfalls recap](#16-pitfalls-recap)
 
 ---
 
-## 0. Lecture rapide
+## 0. Quick read
 
-### 0.1 État courant (post-Phase 8)
+### 0.1 Current state (post-Phase 8)
 
-| Question | Réponse courte | Détail |
+| Question | Short answer | Detail |
 |---|---|---|
-| Comment crée-t-on un compte ? | Form unique `email + password` ; activation via lien email magique avant que le compte soit utilisable | §7.1 |
-| Comment fonctionnent les invitations ? | Admin entre une adresse e-mail, le serveur envoie un lien `?invite=<token>` ; pas de code à copier-coller | §7.1 |
-| Qu'est-ce qui gate le login ? | `users.email_verified_at IS NOT NULL` + facteurs requis selon `security_mode` (Auth-Spec §6) | §7.2, §6 |
-| Open registration ? | Toggle admin `open_registration`, défaut OFF | §7.1 |
-| Qu'est-ce qui dérive la KEK ? | OPAQUE `export_key` (Phase 2) **ou** WebAuthn PRF (Phase 4) **ou** recovery code BIP39 (Phase 3) | §3.2 |
-| Le TOTP dérive quelque chose ? | **Non** — gate de session uniquement, secret en clair serveur (cf. §2.3). | §2.3, §8 |
-| Identifiant OPAQUE ? | `users.email` (changer l'email = re-register OPAQUE — la route le fera quand §7.6 sera complétée) | §7.6 |
-| Combien de wraps de la KEK ? | 1 password + N passkeys PRF + 1 recovery code | §3.2 |
-| Mode "Sécurité maximale" = split crypto ? | **Non**, gate UX uniquement | §2.3 |
-| Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
-| Un opérateur serveur peut lire mes données ? | **Non** — la KEK n'est jamais côté serveur | §2.1 |
-| Un opérateur serveur peut bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
-| Un serveur web compromis pourrait-il exfiltrer ma clé via JS injecté ? | **Limite inhérente du modèle web** — mitigée par SRI sur l'entry chunk + INTEGRITY.txt manifest publié à chaque release, recommandation explicite d'auto-hébergement pour usages sensibles | `nodea.app/docs/security/tech` (« Intégrité du bundle ») |
+| How is an account created? | Single `email + password` form; activation via a magic email link before the account is usable | §7.1 |
+| How do invitations work? | Admin enters an email address, the server emails a `?invite=<token>` link; no copy-paste code | §7.1 |
+| What gates login? | `users.email_verified_at IS NOT NULL` + factors required by `security_mode` (Auth-Spec §6) | §7.2, §6 |
+| Open registration? | Admin toggle `open_registration`, default OFF | §7.1 |
+| What derives the KEK? | OPAQUE `export_key` (Phase 2) **or** WebAuthn PRF (Phase 4) **or** BIP39 recovery code (Phase 3) | §3.2 |
+| Does TOTP derive anything? | **No** — session gate only, secret in cleartext on the server (cf. §2.3). | §2.3, §8 |
+| OPAQUE identifier? | `users.email` (changing email = OPAQUE re-register — the route will do it once §7.6 is completed) | §7.6 |
+| How many KEK wraps? | 1 password + N PRF passkeys + 1 recovery code | §3.2 |
+| Is "Maximum security" mode a crypto split? | **No**, UX gate only | §2.3 |
+| Yubikey without PIN accepted? | **No** — UV `'required'`, passkey without unlock refused | §9.3 |
+| Can a server operator read my data? | **No** — the KEK never sits on the server | §2.1 |
+| Can a server operator bypass TOTP? | **Yes** (TOTP = partial-trust server) | §2.2 |
+| Could a compromised web server exfiltrate my key via injected JS? | **Inherent limit of the web model** — mitigated by SRI on the entry chunk + an INTEGRITY.txt manifest published with each release, plus an explicit recommendation to self-host for sensitive use | `nodea.app/docs/security/tech` ("Intégrité du bundle") |
 
 ---
 
-## 1. Vue d'ensemble
+## 1. Overview
 
-### 1.1 Objectifs
+### 1.1 Goals
 
-L'auth Nodea repose sur un modèle multi-facteurs E2E qui :
+Nodea auth rests on a multi-factor E2E model that:
 
-- préserve l'E2E **même quand le serveur est compromis** (vs juste
-  "honest-but-curious") — KEK dérivée d'OPAQUE `export_key`, pas
-  d'Argon2id côté serveur sur le password ;
-- accepte les passkeys (WebAuthn) avec dérivation de KEK via PRF
-  quand l'authenticator le supporte ;
-- ajoute un gate TOTP optionnel pour les sessions ;
-- offre un **chemin de récupération crypto** explicite (recovery
-  code BIP39) qui n'érode pas la propriété E2E ;
-- propose un bypass MFA email 7 jours pour récupérer un facteur
-  perdu sans reset destructif ;
-- expose une matrice de re-auth cohérente pour toutes les
-  modifications sensibles ;
-- mitige le threat model "serveur compromis qui sert du JS altéré"
-  via SRI sur l'entry chunk + manifest INTEGRITY.txt à chaque
+- preserves E2E **even when the server is compromised** (vs just
+  "honest-but-curious") — KEK derived from the OPAQUE `export_key`,
+  no server-side Argon2id over the password;
+- accepts passkeys (WebAuthn) with KEK derivation via PRF when the
+  authenticator supports it;
+- adds an optional TOTP gate for sessions;
+- offers an explicit **crypto recovery path** (BIP39 recovery code)
+  that doesn't erode the E2E property;
+- offers a 7-day MFA email bypass to recover a lost factor without
+  destructive reset;
+- exposes a coherent re-auth matrix for every sensitive change;
+- mitigates the "compromised server serves tampered JS" threat model
+  via SRI on the entry chunk + an INTEGRITY.txt manifest at every
   release.
 
-### 1.2 Invariants permanents
+### 1.2 Permanent invariants
 
-Quoi qu'il arrive, ces invariants tiennent :
+Whatever happens, these invariants hold:
 
-1. **Main key client-only.** Aléatoire 32 bytes générés à
-   l'inscription. Jamais transmise. Wrapée côté serveur sous une
-   clé que le serveur n'a pas.
-2. **HKDF domain separation** entre `aes` et `hmac` — labels
-   `nodea:aes` et `nodea:hmac`, inchangés.
-3. **Non-extractable `CryptoKey`** importé une fois, vit en mémoire
-   jusqu'au logout.
-4. **Branded types** TypeScript (`Base64`, `AesMainKey`,
-   `HmacMainKey`, etc.) en `packages/shared/src/crypto-types.ts`.
-5. **Guards HMAC** sur les mutations d'entrées, dérivés depuis la
-   sub-key HMAC.
-6. **Reset destructif** conservé en filet de dernier recours.
-7. **Aucun "logged-in sans clé"** : status `crypto.missing` →
-   `KeyMissingModal` bloquant.
+1. **Client-only main key.** 32 random bytes generated at signup.
+   Never transmitted. Wrapped server-side under a key the server
+   doesn't have.
+2. **HKDF domain separation** between `aes` and `hmac` — labels
+   `nodea:aes` and `nodea:hmac`, unchanged.
+3. **Non-extractable `CryptoKey`** imported once, lives in memory
+   until logout.
+4. **Branded TypeScript types** (`Base64`, `AesMainKey`,
+   `HmacMainKey`, etc.) in `packages/shared/src/crypto-types.ts`.
+5. **HMAC guards** on entry mutations, derived from the HMAC
+   sub-key.
+6. **Destructive reset** kept as a last-resort safety net.
+7. **No "logged-in without key"**: status `crypto.missing` →
+   blocking `KeyMissingModal`.
 
 ---
 
 ## 2. Threat model
 
-### 2.1 Ce qu'on défend (et comment)
+### 2.1 What we defend against (and how)
 
-| Adversaire | Moyens | Ce qu'on garantit | Mécanisme |
+| Adversary | Capability | What we guarantee | Mechanism |
 |---|---|---|---|
-| **Opérateur serveur honest-but-curious** | Lecture complète DB + logs | **Aucune** plaintext lisible. KEK et main key restent inaccessibles. | OPAQUE (export_key client-only), PRF (prf_output client-only), AES-GCM auth-tag, AAD lié à `users.id` |
-| **Attaquant réseau (TLS rompu localement)** | MitM | Aucune fuite si TLS OK ; OPAQUE résiste partiellement à un serveur menteur | OPAQUE binding au server static key, HSTS prod, `Secure` cookies |
-| **Voleur de sessions** (cookie session volé) | Cookie en clair | Lifetime borné, revocation par DELETE FROM sessions, SameSite=Lax. Mode max impose passkey + TOTP au renouvellement. | §5 |
-| **Voleur de device avec session active** | OS access | Limité à la durée de session ; cold reload purge la main key (status `missing`) ; mode max nécessite passkey/TOTP au renouvellement | §5 |
-| **Voleur d'email (compte mail compromis)** | Reset destructif possible, bypass TOTP possible après 7 jours | **Perte de données potentielle** (reset destructif) ou **bypass TOTP** (avec 7 jours delay) ; pas de fuite de plaintext sans password OPAQUE ou recovery code | §7.8, §7.9 |
-| **Phisher** | Faux site Nodea | Passkey FIDO résistante par origin-binding. OPAQUE n'est **pas** anti-phishing (un faux site peut faire register OPAQUE chez l'attaquant). | Documenté §2.3 |
-| **Brute-forceur online** | Tentatives répétées | Rate-limit sur `/auth/login`, OPAQUE intègre Argon2id côté serveur | §13 |
-| **Brute-forceur offline (DB exfiltrée)** | Cracking sur dump | OPAQUE = pas de hash de password offline-crackable ; Argon2id paramètres élevés en cas de fallback | §13 |
-| **Cross-user attaque par swap de blob** | Bidouille DB | AAD `users.id` lie chaque blob à son propriétaire | §3.4 |
+| **Honest-but-curious server operator** | Full DB + log read | **No** readable plaintext. KEK and main key remain inaccessible. | OPAQUE (export_key client-only), PRF (prf_output client-only), AES-GCM auth-tag, AAD bound to `users.id` |
+| **Network attacker (locally broken TLS)** | MitM | No leakage if TLS is OK; OPAQUE partially resists a lying server | OPAQUE binds to the server static key, HSTS in prod, `Secure` cookies |
+| **Session thief** (stolen session cookie) | Cookie in the clear | Bounded lifetime, revocation via DELETE FROM sessions, SameSite=Lax. Maximum mode requires passkey + TOTP at renewal. | §5 |
+| **Device thief with active session** | OS access | Bounded by session lifetime; cold reload purges the main key (status `missing`); maximum mode requires passkey/TOTP at renewal | §5 |
+| **Email thief (compromised mail account)** | Destructive reset possible, TOTP bypass possible after 7 days | **Potential data loss** (destructive reset) or **TOTP bypass** (with 7-day delay); no plaintext leakage without the OPAQUE password or recovery code | §7.8, §7.9 |
+| **Phisher** | Fake Nodea site | FIDO passkey resistant via origin-binding. OPAQUE is **not** anti-phishing (a fake site can run OPAQUE register on its own server). | Documented in §2.3 |
+| **Online brute-forcer** | Repeated attempts | Rate-limit on `/auth/login`, OPAQUE includes server-side Argon2id | §13 |
+| **Offline brute-forcer (DB exfil)** | Cracking on a dump | OPAQUE = no offline-crackable password hash; high Argon2id parameters as fallback | §13 |
+| **Cross-user blob-swap attack** | DB tampering | AAD `users.id` binds each blob to its owner | §3.4 |
 
-### 2.2 Ce qu'on ne défend pas
+### 2.2 What we don't defend against
 
-Énoncé explicitement pour qu'aucun PR ne prétende fixer ces angles
-sans rouvrir la spec :
+Stated explicitly so no PR claims to fix these angles without
+re-opening the spec:
 
-1. **Serveur compromis avec tampering du bundle JS livré** :
-   - TOTP devient bypassable (le serveur contrôle la vérification).
-   - Passkey signature peut être bypassée si le serveur accepte
-     n'importe quelle réponse.
-   - **Ce qui reste protégé** : la KEK derrière OPAQUE export_key et
-     PRF prf_output (calculés dans le client). Tant que le navigateur
-     exécute le bundle officiel et que la passkey est utilisée
-     correctement, l'attaquant ne récupère pas la main key.
-   - Le mode "Sécurité maximale" **n'augmente pas** la protection
-     crypto contre cet adversaire — c'est un gate UX.
-2. **Malware actif sur la machine de l'utilisateur·ice** : keylogger,
-   extension malveillante avec accès au DOM, autofill compromis. On
-   n'a aucun moyen de défendre cette surface depuis le serveur ou le
-   bundle.
-3. **Passkey sans gesture (UV manquant)** : refusée par construction
-   à l'enrollment (UV `'required'`, cf. §9.3). Ce vecteur est
-   éliminé en amont, pas dans la couche crypto.
-4. **Coercition (rubber-hose)** : si l'utilisateur·ice est forcé·e
-   de donner password + passkey + TOTP, on perd. C'est un problème
-   physique, pas crypto.
-5. **Side channels** : timing attacks fines sur OPAQUE, fuites par
-   cache, microarchitecture. Hors scope.
-6. **Perte simultanée** de password + tous les passkeys + recovery
-   code + email : reset destructif uniquement. **Données perdues**.
-   L'utilisateur·ice est prévenu·e à chaque étape.
-7. **Cooldown change-email contournable via reset destructif**.
-   Un attaquant qui prend l'email victime peut déclencher un reset
-   destructif puis un change-email immédiat (le cooldown 7j n'est
-   pas (re-)armé par le reset). **Risque résiduel accepté V1** : le
-   reset destructif efface toutes les données, le compte récupéré
-   est vide, donc l'incentive à rouvrir un compte volé sous une
-   autre adresse est faible. Si on observe ce vecteur, mitiger en
-   armant `email_changed_at = now()` à la fin du reset destructif.
+1. **Compromised server with tampered JS bundle**:
+   - TOTP becomes bypassable (the server controls verification).
+   - Passkey signatures can be bypassed if the server accepts any
+     response.
+   - **What stays protected**: the KEK behind the OPAQUE export_key
+     and the PRF prf_output (computed in the client). As long as
+     the browser runs the official bundle and the passkey is used
+     correctly, the attacker doesn't recover the main key.
+   - "Maximum security" mode **does not increase** crypto protection
+     against this adversary — it's a UX gate.
+2. **Active malware on the user's machine**: keylogger, malicious
+   extension with DOM access, compromised autofill. We have no way
+   to defend this surface from the server or the bundle.
+3. **Passkey without gesture (missing UV)**: refused by construction
+   at enrollment time (UV `'required'`, cf. §9.3). This vector is
+   eliminated upstream, not in the crypto layer.
+4. **Coercion (rubber-hose)**: if the user is forced to hand over
+   password + passkey + TOTP, we lose. That's a physical problem,
+   not a crypto one.
+5. **Side channels**: fine timing attacks on OPAQUE, cache leaks,
+   microarchitecture. Out of scope.
+6. **Simultaneous loss** of password + every passkey + recovery
+   code + email: destructive reset only. **Data lost.** The user
+   is warned at every step.
+7. **Change-email cooldown bypassable via destructive reset**.
+   An attacker who takes over the victim's email can trigger a
+   destructive reset followed immediately by a change-email (the
+   7-day cooldown is not (re-)armed by the reset). **V1 residual
+   risk accepted**: destructive reset wipes all data, the recovered
+   account is empty, so the incentive to re-open a stolen account
+   under another address is low. If we observe this vector,
+   mitigate by setting `email_changed_at = now()` at the end of
+   the destructive reset.
 
-### 2.3 Trade-offs documentés
+### 2.3 Documented trade-offs
 
-- **TOTP est un gate de session, pas un gate cryptographique.** Le
-  secret TOTP doit être stocké en clair côté serveur (exigence du
-  protocole : le serveur doit pouvoir vérifier le code). Donc un
-  opérateur serveur qui aurait obtenu le password OPAQUE peut
-  techniquement bypass TOTP côté serveur et obtenir les
-  `wrapped_kek_*`. La protection TOTP repose **entièrement** sur
-  l'intégrité du serveur. OPAQUE et PRF restent E2E même serveur
-  compromis.
-- **Mode "Sécurité maximale" est un gate UX, pas un Shamir 2-of-2.**
-  Refuser l'option Shamir évite l'explosion de complexité (changement
-  de mode = re-split, perte d'une passkey en mode max = perte de
-  données sauf via recovery code, etc.). Le mode max augmente la
-  résistance au vol d'appareil ou à la session volée, pas la
-  résistance au serveur compromis.
-- **Passkeys avec UV `'required'`.** Toute passkey sans gesture de
-  déverrouillage (PIN, biométrie, ou unlock du gestionnaire) est
-  refusée à l'enrollment. Conséquences pratiques :
-  - Yubikey sans PIN configuré → le navigateur déclenche le setup
-    PIN, ou enrollment bloqué.
-  - Passkeys logicielles (Bitwarden, iCloud Keychain, 1Password,
-    Google PM) → OK, déverrouillage du gestionnaire = UV.
+- **TOTP is a session gate, not a cryptographic gate.** The TOTP
+  secret has to be stored in the clear on the server (protocol
+  requirement: the server must be able to verify the code). So a
+  server operator who has obtained the OPAQUE password can
+  technically bypass TOTP server-side and obtain the
+  `wrapped_kek_*`. TOTP protection rests **entirely** on server
+  integrity. OPAQUE and PRF stay E2E even with a compromised
+  server.
+- **"Maximum security" mode is a UX gate, not a Shamir 2-of-2.**
+  Refusing the Shamir option avoids complexity blowup (mode change
+  = re-split, losing a passkey in max mode = data loss except via
+  recovery code, etc.). Maximum mode raises resistance to device
+  theft or stolen sessions, not to a compromised server.
+- **Passkeys with UV `'required'`.** Any passkey without an unlock
+  gesture (PIN, biometric, manager unlock) is refused at
+  enrollment. Practical consequences:
+  - Yubikey without a configured PIN → the browser triggers PIN
+    setup, or enrollment is blocked.
+  - Software passkeys (Bitwarden, iCloud Keychain, 1Password,
+    Google PM) → OK, manager unlock = UV.
   - TouchID / FaceID / Windows Hello → OK.
-  Le vol pur de matériel sans gesture ne suffit donc plus à
-  unwrap la KEK.
-- **Phishing.** OPAQUE n'est pas anti-phishing. Un faux site peut
-  capturer le password en lançant un OPAQUE register sur son propre
-  serveur. La passkey FIDO **est** anti-phishing (origin-bound). On
-  encourage l'usage des passkeys mais on ne les rend pas obligatoires.
-- **Identifiant OPAQUE = email.** Changer l'email implique un
-  re-register OPAQUE complet (qui nécessite le password en clair côté
-  client à ce moment-là, déjà disponible via re-auth fraîche). Lourd
-  mais cohérent.
-- **Recovery code KEK affiché une seule fois.** Si l'utilisateur·ice
-  ne le note pas, le seul recours en cas de perte de password +
-  passkey est le reset destructif. Documenté à l'inscription, écran
-  bloquant avec checkbox.
-- **Surface lisible minimum sur les entry tables.** Aucune ligne
-  d'entrée ne porte de `user_id`, ni de timestamp colonne. Le
-  serveur ne peut pas linker une entrée à un user en plain SQL
-  ni dater les écritures par row. Self-delete est client-driven
-  (énumération des sids depuis `modules_config` puis suppression
-  par sid + guard). Détails et rationale dans
+  Pure hardware theft without a gesture therefore no longer
+  unlocks the KEK.
+- **Phishing.** OPAQUE is not anti-phishing. A fake site can
+  capture the password by running an OPAQUE register on its own
+  server. FIDO passkeys **are** anti-phishing (origin-bound). We
+  encourage passkeys but don't make them mandatory.
+- **OPAQUE identifier = email.** Changing the email implies a full
+  OPAQUE re-register (which needs the plaintext password
+  client-side at that moment, already available via fresh
+  re-auth). Heavy but consistent.
+- **KEK recovery code shown only once.** If the user doesn't note
+  it down, the only recourse on password + passkey loss is the
+  destructive reset. Documented at signup, blocking screen with a
+  checkbox.
+- **Minimum readable surface on entry tables.** No entry row
+  carries a `user_id` or a column timestamp. The server cannot
+  link an entry to a user in plain SQL or date a row write.
+  Self-delete is client-driven (sids enumerated from
+  `modules_config`, then deletion by sid + guard). Details and
+  rationale in
   [`Architecture.md §7`](Architecture.md#7-schéma-commun-des-modules).
 
 ---
 
-## 3. Modèle cryptographique
+## 3. Cryptographic model
 
-Le détail des primitives, de la hiérarchie de clés (KEK / main key /
-wraps), des labels HKDF figés (`nodea:wrap-kek`, `nodea:wrap-main`,
-`nodea:aes`, `nodea:hmac`) et de la construction d'AAD via
-`buildAAD()` vit dans la doc « Modèle cryptographique » de
+The detail of primitives, key hierarchy (KEK / main key / wraps),
+frozen HKDF labels (`nodea:wrap-kek`, `nodea:wrap-main`,
+`nodea:aes`, `nodea:hmac`), and AAD construction via `buildAAD()`
+lives in the "Modèle cryptographique" doc in
 [`tech.md`](../packages/web/src/app/pages/docs/content/tech.md)
-(rendu sur [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)).
-Cette doc-là est la source de vérité ; toute évolution se fait
-dedans, pas ici.
+(rendered at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)).
+That doc is the source of truth; any evolution happens there, not
+here.
 
-**Conséquences directes** spécifiques à l'auth (pour mémoire) :
+**Direct consequences** specific to auth (for memory):
 
-- Login = unwrap KEK via **un** facteur → unwrap main key → HKDF AES + HMAC.
-- Add/remove passkey = ajouter/retirer un blob `wrapped_kek_passkey_*`. Aucun impact sur les autres facteurs ; la main key bytes ne changent jamais.
-- Change password = re-wrap **uniquement** `wrapped_kek_password`. La KEK ne change pas, la main key ne change pas, **aucun ciphertext existant n'est touché**.
-- Régénération recovery code = re-wrap **uniquement** `wrapped_kek_recovery`. Idem.
-- Régénération KEK : hors scope V1 (équivalent à un re-onboarding crypto).
+- Login = unwrap KEK via **one** factor → unwrap main key → HKDF AES + HMAC.
+- Add/remove passkey = add/remove a `wrapped_kek_passkey_*` blob. No impact on the other factors; the main key bytes never change.
+- Change password = re-wrap **only** `wrapped_kek_password`. The KEK doesn't change, the main key doesn't change, **no existing ciphertext is touched**.
+- Recovery code regeneration = re-wrap **only** `wrapped_kek_recovery`. Same.
+- KEK regeneration: out of scope V1 (equivalent to a crypto re-onboarding).
 
 ---
 
-## 4. Schéma de base de données
+## 4. Database schema
 
-> Les tables et colonnes décrites ici reflètent
+> Tables and columns described here mirror
 > `packages/api/src/db/schema.ts`.
 
-### 4.0 Tables existantes préservées (hors scope auth)
+### 4.0 Existing preserved tables (out of auth scope)
 
-Tables qui existent indépendamment du chantier auth :
+Tables that exist independently of the auth chantier:
 
-| Table | Usage | Touchée par destructive reset (§4.3) ? |
+| Table | Use | Touched by destructive reset (§4.3)? |
 |---|---|---|
-| `invites` | ✅ V1 — invitations email-bound (Bitwarden-style) ; `email + token_hash` ; cf. §7.1 | non (consommée à l'inscription) |
-| `app_settings` | ✅ V1 — clé/valeur key-value pour la config d'app (V1 stocke `open_registration` ; futurs réglages mode TOTP, etc.) | non |
-| `modules_config` | Config par module et par user, chiffrée | oui (DELETE WHERE user_id) |
-| `user_preferences` | Préférences UI par user, chiffrées | oui |
-| `mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` | Données chiffrées par module | **non** (depuis migration 0012 — pas de `user_id` sur ces tables, le serveur ne peut pas identifier les entrées d'un user à purger ; rows orphelines acceptées) |
+| `invites` | ✅ V1 — email-bound invitations (Bitwarden-style); `email + token_hash`; cf. §7.1 | no (consumed at signup) |
+| `app_settings` | ✅ V1 — key/value store for app config (V1 stores `open_registration`; future settings: TOTP mode, etc.) | no |
+| `modules_config` | Per-module per-user config, encrypted | yes (DELETE WHERE user_id) |
+| `user_preferences` | Per-user UI prefs, encrypted | yes |
+| `mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` | Encrypted module data | **no** (since migration 0012 — no `user_id` on these tables, the server can't identify a user's entries to purge; orphan rows accepted) |
 
-Toutes les autres tables (auth + MFA + sessions) sont définies
-en §4.1.
+All other tables (auth + MFA + sessions) are defined in §4.1.
 
 ### 4.1 Tables (Drizzle PostgreSQL)
 
@@ -242,17 +239,17 @@ en §4.1.
 // packages/api/src/db/schema/users.ts
 
 export const securityMode = pgEnum('security_mode', [
-  'password_or_passkey', // défaut : un facteur unlock
-  'always_totp',         // TOTP requis après password OU passkey
-  'maximum',             // password + passkey + TOTP, tous les trois
+  'password_or_passkey', // default: one factor unlocks
+  'always_totp',         // TOTP required after password OR passkey
+  'maximum',             // password + passkey + TOTP, all three
 ]);
 
 export const registerState = pgEnum('register_state', [
-  'pre_register',     // ligne créée, email pas encore vérifié
-  'email_verified',   // code email validé, peut continuer
-  'password_set',     // OPAQUE registration faite
-  'recovery_set',     // recovery code KEK affiché et acknowledgé
-  'complete',         // facultatifs (TOTP, passkey) traités, session full émise
+  'pre_register',     // row created, email not verified yet
+  'email_verified',   // email code validated, can continue
+  'password_set',     // OPAQUE registration done
+  'recovery_set',     // KEK recovery code shown and acknowledged
+  'complete',         // optionals (TOTP, passkey) handled, full session emitted
 ]);
 
 export const users = pgTable('users', {
@@ -262,21 +259,21 @@ export const users = pgTable('users', {
   isAdmin: boolean('is_admin').notNull().default(false),
   securityMode: securityMode('security_mode').notNull().default('password_or_passkey'),
   registerState: registerState('register_state').notNull().default('pre_register'),
-  // Wrap principal : la main key sous la KEK. UNE FOIS, jamais re-wrappée.
+  // Main wrap: the main key under the KEK. ONCE, never re-wrapped.
   wrappedMainKey: text('wrapped_main_key'),  // base64(AES-GCM(...))
   wrappedMainKeyIv: text('wrapped_main_key_iv'),
-  // Wrap KEK par password (OPAQUE) : 1:1 avec users.
+  // KEK wrap by password (OPAQUE): 1:1 with users.
   wrappedKekPassword: text('wrapped_kek_password'),
   wrappedKekPasswordIv: text('wrapped_kek_password_iv'),
-  // Wrap KEK par recovery code : 1:1 avec users.
+  // KEK wrap by recovery code: 1:1 with users.
   wrappedKekRecovery: text('wrapped_kek_recovery'),
   wrappedKekRecoveryIv: text('wrapped_kek_recovery_iv'),
-  // SHA-256 hex de l'entropie BIP39 (16 bytes pour 12 mots) du recovery code.
-  // Permet au serveur d'autoriser le flow recover-kek sans connaître le code
+  // SHA-256 hex of the BIP39 entropy (16 bytes for 12 words) of the recovery code.
+  // Lets the server authorise the recover-kek flow without knowing the code
   // (130 bits → uncrackable offline). Cf. §7.7.
   recoveryCodeHash: text('recovery_code_hash'),
   recoveryAcknowledgedAt: timestamp('recovery_acknowledged_at', { withTimezone: true }),
-  // Cooldown change-email (cf. §7.6) : 7 jours entre deux changes
+  // Change-email cooldown (cf. §7.6): 7 days between two changes
   emailChangedAt: timestamp('email_changed_at', { withTimezone: true }),
   onboardingStatus: text('onboarding_status').notNull().default('pending'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -287,16 +284,16 @@ export const users = pgTable('users', {
 ```ts
 // packages/api/src/db/schema/opaque.ts
 
-// 1:1 avec users. Pas de PK séparée — clé sur user_id.
-// La table existe pour découpler la rotation OPAQUE des autres champs.
+// 1:1 with users. No separate PK — keyed on user_id.
+// The table exists to decouple OPAQUE rotation from other fields.
 export const opaqueRecords = pgTable('opaque_records', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   envelope: bytea('envelope').notNull(),       // OPAQUE registration record
-  // Version de la clé statique serveur OPAQUE utilisée pour cet envelope.
-  // Permet la rotation de la clé statique (issue #39) sans casser
-  // les comptes existants. La clé courante vit dans `OPAQUE_SERVER_SETUP`
-  // (env var) ; les anciennes versions seront stockées dans une table
-  // `opaque_server_keys` quand on attaquera #39.
+  // Version of the OPAQUE server static key used for this envelope.
+  // Allows server static key rotation (issue #39) without breaking
+  // existing accounts. The current key lives in `OPAQUE_SERVER_SETUP`
+  // (env var); previous versions will be stored in an
+  // `opaque_server_keys` table when we tackle #39.
   serverKeyVersion: integer('server_key_version').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -315,17 +312,17 @@ export const authFactors = pgTable('auth_factors', {
   credentialId: bytea('credential_id').notNull().unique(),
   publicKey: bytea('public_key').notNull(),    // COSE-encoded
   signCount: integer('sign_count').notNull().default(0),
-  // Désactivé pour les authenticators qui ne maintiennent pas le compteur
-  // (Apple notamment). Heuristique : signCount = 0 sur >=3 assertions
-  // consécutives → flip à false. Cf. §9.6.
+  // Disabled for authenticators that don't maintain the counter
+  // (notably Apple). Heuristic: signCount = 0 on >=3 consecutive
+  // assertions → flip to false. Cf. §9.6.
   signCountStrict: boolean('sign_count_strict').notNull().default(true),
-  transports: text('transports'),              // CSV : "usb,nfc,internal"
+  transports: text('transports'),              // CSV: "usb,nfc,internal"
   prfSupported: boolean('prf_supported').notNull().default(false),
-  // Wrap KEK par PRF (NULL si non-PRF passkey)
+  // KEK wrap by PRF (NULL for non-PRF passkey)
   wrappedKek: text('wrapped_kek'),
   wrappedKekIv: text('wrapped_kek_iv'),
-  // Métadonnées
-  label: text('label'),                        // user-facing : "Yubikey perso", "iPhone"
+  // Metadata
+  label: text('label'),                        // user-facing: "Personal Yubikey", "iPhone"
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
 }, (table) => ({
@@ -338,7 +335,7 @@ export const authFactors = pgTable('auth_factors', {
 
 export const mfaTotp = pgTable('mfa_totp', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  secret: bytea('secret').notNull(),           // 20 bytes random, EN CLAIR (cf. §2.3)
+  secret: bytea('secret').notNull(),           // 20 random bytes, IN CLEARTEXT (cf. §2.3)
   algo: text('algo').notNull().default('SHA1'),
   digits: integer('digits').notNull().default(6),
   period: integer('period').notNull().default(30),
@@ -361,7 +358,7 @@ export const mfaFactor = pgEnum('mfa_factor', ['totp', 'passkey']);
 export const mfaBypassRequests = pgTable('mfa_bypass_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  factor: mfaFactor('factor').notNull(),       // 'totp' ou 'passkey'
+  factor: mfaFactor('factor').notNull(),       // 'totp' or 'passkey'
   confirmTokenHash: text('confirm_token_hash').notNull(),
   cancelTokenHash: text('cancel_token_hash').notNull(),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
@@ -370,8 +367,8 @@ export const mfaBypassRequests = pgTable('mfa_bypass_requests', {
   consumedAt: timestamp('consumed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  // Une seule request active à la fois par user, toutes factors confondues.
-  // Empêche le chaînage instantané passkey-bypass + totp-bypass.
+  // Only one active request at a time per user, across factors.
+  // Prevents instant chaining of passkey-bypass + totp-bypass.
   uniqueActive: uniqueIndex('mfa_bypass_one_active')
     .on(table.userId)
     .where(sql`cancelled_at IS NULL AND consumed_at IS NULL`),
@@ -382,16 +379,16 @@ export const mfaBypassRequests = pgTable('mfa_bypass_requests', {
 // packages/api/src/db/schema/email-verifications.ts
 
 export const emailVerificationKind = pgEnum('email_verification_kind', [
-  'register',     // étape 2 du register multi-étapes
-  'email_change', // changement d'email depuis Settings
+  'register',     // step 2 of multi-step register
+  'email_change', // email change from Settings
 ]);
 
 export const emailVerifications = pgTable('email_verifications', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  email: text('email').notNull(),              // email cible (peut différer de users.email pendant un change)
+  email: text('email').notNull(),              // target email (may differ from users.email during a change)
   kind: emailVerificationKind('kind').notNull(),
-  codeHash: text('code_hash').notNull(),       // SHA-256 du code 6 chiffres
+  codeHash: text('code_hash').notNull(),       // SHA-256 of the 6-digit code
   attempts: integer('attempts').notNull().default(0),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   consumedAt: timestamp('consumed_at', { withTimezone: true }),
@@ -405,10 +402,10 @@ export const emailVerifications = pgTable('email_verifications', {
 // packages/api/src/db/schema/sessions.ts
 
 export const sessionKind = pgEnum('session_kind', [
-  'full',         // session authentifiée complète
-  'mfa_pending',  // OPAQUE/passkey OK, MFA requis avant promotion
-  'register',    // inscription en cours, scope restreint à /auth/register/*
-  'migrate',     // legacy user en cours de migration Argon2id → OPAQUE
+  'full',         // fully authenticated session
+  'mfa_pending',  // OPAQUE/passkey OK, MFA required before promotion
+  'register',    // registration in progress, scope restricted to /auth/register/*
+  'migrate',     // legacy user mid-migration Argon2id → OPAQUE
                   // scope /auth/migrate/*, TTL 30 min
 ]);
 
@@ -416,18 +413,18 @@ export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   kind: sessionKind('kind').notNull(),
-  // Marquage de fraîcheur des facteurs (matrice de re-auth)
+  // Factor freshness markers (re-auth matrix)
   reauthPasswordAt: timestamp('reauth_password_at', { withTimezone: true }),
   reauthPasskeyAt: timestamp('reauth_passkey_at', { withTimezone: true }),
-  // Pour mfa_pending : facteurs déjà vérifiés
+  // For mfa_pending: factors already verified
   mfaPasswordVerified: boolean('mfa_password_verified').notNull().default(false),
   mfaPasskeyVerified: boolean('mfa_passkey_verified').notNull().default(false),
   mfaTotpVerified: boolean('mfa_totp_verified').notNull().default(false),
-  // Challenge WebAuthn éphémère pour cette session (5 min TTL).
-  // Permet enrollment + assertion sans dépendance Redis (cf. §9.2).
+  // Ephemeral WebAuthn challenge for this session (5 min TTL).
+  // Allows enrollment + assertion without a Redis dependency (cf. §9.2).
   pendingWebauthnChallenge: text('pending_webauthn_challenge'),
   pendingWebauthnChallengeAt: timestamp('pending_webauthn_challenge_at', { withTimezone: true }),
-  // Métadonnées
+  // Metadata
   ipHash: text('ip_hash'),
   userAgent: text('user_agent'),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -438,43 +435,41 @@ export const sessions = pgTable('sessions', {
 }));
 ```
 
-### 4.2 Contraintes & invariants DB
+### 4.2 DB constraints & invariants
 
-À enforcer via contraintes ou triggers, sinon vérifier dans le code
-serveur :
+To enforce via constraints or triggers, otherwise check in server
+code:
 
-1. `users.wrapped_main_key` est NOT NULL **après** transition vers
-   `register_state >= 'password_set'`. NULL toléré seulement avant.
-2. `users.wrapped_kek_password` NOT NULL après `password_set`.
-3. `users.wrapped_kek_recovery` NOT NULL après `recovery_set`.
-4. `users.recovery_code_hash` NOT NULL après `recovery_set`
-   (parallèle à 3 — toujours stocké en même temps que le wrap blob).
-5. **Mode `maximum`** : `users.security_mode = 'maximum'` implique
-   `mfa_totp.enabled_at IS NOT NULL` **ET** au moins une ligne
-   `auth_factors WHERE kind = 'passkey' AND prf_supported = true`.
-   Enforcé côté serveur par §6.1 (activation + downgrade auto).
-6. Une seule `mfa_bypass_requests` non-cancelled-non-consumed par
-   user (unique index conditionnel ci-dessus).
+1. `users.wrapped_main_key` is NOT NULL **after** transition to
+   `register_state >= 'password_set'`. NULL only tolerated before.
+2. `users.wrapped_kek_password` NOT NULL after `password_set`.
+3. `users.wrapped_kek_recovery` NOT NULL after `recovery_set`.
+4. `users.recovery_code_hash` NOT NULL after `recovery_set`
+   (parallel to 3 — always stored alongside the wrap blob).
+5. **`maximum` mode**: `users.security_mode = 'maximum'` implies
+   `mfa_totp.enabled_at IS NOT NULL` **AND** at least one
+   `auth_factors WHERE kind = 'passkey' AND prf_supported = true`
+   row. Enforced server-side by §6.1 (activation + auto downgrade).
+6. Only one `mfa_bypass_requests` not-cancelled-not-consumed per
+   user (conditional unique index above).
 7. `auth_factors.wrapped_kek IS NULL` ⟺ `prf_supported = false`.
-8. `mfa_totp.enabled_at IS NULL` = enrollment en cours, pas encore
-   utilisable au login.
-9. `email_verifications.attempts <= 5`. Au-delà, la ligne est
-   purgée par un job + nouvelle demande forcée.
+8. `mfa_totp.enabled_at IS NULL` = enrollment in progress, not yet
+   usable for login.
+9. `email_verifications.attempts <= 5`. Beyond, the row is purged
+   by a job + a new request is forced.
 
-### 4.3 Données purgées au reset destructif
+### 4.3 Data purged at destructive reset
 
-(Cf. §7.9 — récap pour la migration Drizzle.)
+(Cf. §7.9 — recap for the Drizzle migration.)
 
-**Note importante** : les tables d'entrées modules ne portent
-pas de `user_id` — le serveur ne peut donc pas les identifier ni
-les purger au reset. Les rows orphelines restent (clé maîtresse
-perdue, illisibles). Le reset purge seulement les tables
-1:1-FK-cascade-able sur l'user.
+**Important note**: the module entry tables don't carry a `user_id`
+— the server therefore can't identify or purge them at reset time.
+Orphan rows stay (lost main key, unreadable). The reset only purges
+the 1:1-FK-cascadeable tables on the user.
 
 ```sql
--- Tables modules : pas de purge possible (pas de user_id colonne).
--- Les rows survivent, illisibles, jusqu'à un éventuel cleanup
--- ops manuel.
+-- Module tables: no purge possible (no user_id column).
+-- Rows survive, unreadable, until possible manual ops cleanup.
 
 DELETE FROM modules_config WHERE user_id = $1;
 DELETE FROM user_preferences WHERE user_id = $1;
@@ -492,12 +487,12 @@ UPDATE users SET
   recovery_code_hash = NULL,
   recovery_acknowledged_at = NULL,
   security_mode = 'password_or_passkey',
-  register_state = 'email_verified',  -- on conserve email vérifié
+  register_state = 'email_verified',  -- email-verified is preserved
   onboarding_status = 'pending'
 WHERE id = $1;
 ```
 
-Toute la séquence dans **une transaction**.
+The whole sequence in **one transaction**.
 
 ---
 
@@ -505,227 +500,224 @@ Toute la séquence dans **une transaction**.
 
 ### 5.1 Cookies
 
-| Cookie | Durée | Routes acceptées (middleware) | Émis quand | Promu en quoi |
+| Cookie | Lifetime | Routes accepted (middleware) | Issued when | Promoted to |
 |---|---|---|---|---|
-| `__Host-nodea_register` ✅ | 24h | `/auth/register/*` | Après vérif email réussie (étape 2 du wizard) | Effacé à la fin du register |
-| `__Host-nodea_mfa` ✅ | 5 min | `/auth/mfa/*` | Après OPAQUE/passkey login finish | `__Host-nodea_session` quand MFA complète |
-| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | Plus émis — aucun code path n'en mint depuis l'élimination du modèle Argon2id | `__Host-nodea_session` après migration crypto |
-| `nodea_session` ✅ | 7 jours (fixe, **pas** de slide) | tout le reste | Login complet | Re-login forcé après 7j ou révocation |
+| `__Host-nodea_register` ✅ | 24h | `/auth/register/*` | After successful email verification (wizard step 2) | Cleared at the end of register |
+| `__Host-nodea_mfa` ✅ | 5 min | `/auth/mfa/*` | After OPAQUE/passkey login finish | `__Host-nodea_session` once MFA completes |
+| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | No longer issued — no code path mints it since the Argon2id model was removed | `__Host-nodea_session` after crypto migration |
+| `nodea_session` ✅ | 7 days (fixed, **no** slide) | everything else | Full login | Forced re-login after 7 days or revocation |
 
-Tous les cookies :
+Every cookie:
 - `HttpOnly`
-- `Secure` en prod (et tous les environnements non-localhost)
+- `Secure` in prod (and every non-localhost environment)
 - `SameSite=Lax`
-- Signés (`COOKIE_SECRET`, min 32 chars)
-- Préfixe `__Host-` (verrouille au domaine, **impose** `Path=/` côté
-  navigateur, et requiert `Secure`).
+- Signed (`COOKIE_SECRET`, min 32 chars)
+- `__Host-` prefix (locks to the domain, **forces** `Path=/` on
+  the browser side, and requires `Secure`).
 
-**Note importante sur le scoping** : le préfixe `__Host-` impose
-`Path=/`, donc tous les cookies voyagent avec **toutes** les
-requêtes vers le domaine. La colonne "Routes acceptées" du tableau
-ci-dessus n'est **pas** un attribut du cookie : c'est ce que le
-middleware `loadSession` vérifie. Les middlewares `requireUser`,
-`requireRegisterSession`, `requireMfaPending`, `requireMigrate` ne
-lisent **que** leur cookie attendu et refusent les autres. Si
-plusieurs cookies sont présents, chacun est valide uniquement sur
-son set de routes.
+**Important note on scoping**: the `__Host-` prefix forces
+`Path=/`, so every cookie travels with **every** request to the
+domain. The "Routes accepted" column above is **not** a cookie
+attribute: it's what the `loadSession` middleware checks. The
+`requireUser`, `requireRegisterSession`, `requireMfaPending`,
+`requireMigrate` middlewares only read **their** expected cookie
+and refuse the others. If multiple cookies are present, each is
+valid only on its own route set.
 
-Ce choix sacrifie un peu de "least-privilege" côté navigateur en
-faveur de la propriété anti-subdomain de `__Host-` (pas de cookie
-pollué par un sous-domaine compromis). Compromis assumé.
+This choice sacrifices a bit of "least-privilege" on the browser
+side in favor of `__Host-`'s anti-subdomain property (no cookie
+poisoned by a compromised subdomain). Trade-off accepted.
 
-### 5.2 Modèle de session unifié
+### 5.2 Unified session model
 
-Les quatre types vivent dans `sessions` avec colonne `kind`. Le
-middleware `loadSession` :
+The four kinds live in `sessions` with a `kind` column. The
+`loadSession` middleware:
 
-1. Lit le cookie correspondant à la route :
+1. Reads the cookie matching the route:
    - `/auth/register/*` → `__Host-nodea_register` → `kind = 'register'`
    - `/auth/mfa/*` → `__Host-nodea_mfa` → `kind = 'mfa_pending'`
    - `/auth/migrate/*` → `__Host-nodea_migrate` → `kind = 'migrate'`
-   - sinon → `__Host-nodea_session` → `kind = 'full'`
-2. Charge la ligne, vérifie `kind` correct + `expires_at > now()`.
-3. Refuse silencieusement (cookie ignoré) si le `kind` ne matche pas
-   la route.
-4. Met à jour `last_seen_at` (atomique, debounced à 1 min pour ne
-   pas spammer la DB).
+   - otherwise → `__Host-nodea_session` → `kind = 'full'`
+2. Loads the row, checks correct `kind` + `expires_at > now()`.
+3. Silently refuses (cookie ignored) if the `kind` doesn't match
+   the route.
+4. Updates `last_seen_at` (atomic, debounced to 1 min to avoid
+   spamming the DB).
 
 ### 5.3 Re-auth fresh
 
-Middlewares + endpoints `/auth/reauth/*` ; timestamps stampés sur
-tous les chemins d'auth ; matrice câblée sur toutes les routes
-mutantes (security-mode, totp, passkey, recovery-code,
-change-password, change-email, delete-self). Le front utilise
-`freshenPasswordReauth` (pas de `proofLoginToken` embarqué dans
-les bodies).
+Middlewares + `/auth/reauth/*` endpoints; timestamps stamped on
+every auth path; matrix wired into every mutating route
+(security-mode, totp, passkey, recovery-code, change-password,
+change-email, delete-self). The front uses
+`freshenPasswordReauth` (no `proofLoginToken` embedded in
+bodies).
 
-La matrice (§6) demande "re-auth fraîche < 5 min". Implémentation :
+The matrix (§6) requires "fresh re-auth < 5 min". Implementation:
 
-- `requireFreshPassword` middleware : checke
-  `session.reauth_password_at >= now() - 5min`. Sinon 401 avec code
+- `requireFreshPassword` middleware: checks
+  `session.reauth_password_at >= now() - 5min`. Otherwise 401 with
   `reauth_required: 'password'`.
-- `requireFreshPasswordOrPasskey` : checke l'un OU l'autre.
-- Routes de re-auth dédiées :
-  - `POST /auth/reauth/password` → OPAQUE login lite, met à jour
-    `reauth_password_at` sur la session courante.
-  - `POST /auth/reauth/passkey` → WebAuthn assertion, met à jour
+- `requireFreshPasswordOrPasskey`: checks one OR the other.
+- Dedicated re-auth routes:
+  - `POST /auth/reauth/password` → OPAQUE login lite, updates
+    `reauth_password_at` on the current session.
+  - `POST /auth/reauth/passkey` → WebAuthn assertion, updates
     `reauth_passkey_at`.
-- Expiration `reauth_*_at` au logout, au change-password, au change
-  de mode de sécurité.
+- `reauth_*_at` expires at logout, change-password, security-mode
+  change.
 
 ### 5.4 Revocation
 
-- **Logout** (`DELETE /auth/sessions/current`) : delete la ligne
-  session.
-- **Logout all** (`DELETE /auth/sessions/all`) : delete toutes les
-  sessions de cet user, incluant la courante.
-- **Change password** : *rotation complète d'ID* — delete toutes les
-  sessions de cet user (y compris la courante), insert une fresh
-  session, émet un nouveau cookie signé. Anti session-fixation.
-- **Change mode security** (n'importe lequel) : même rotation que
-  change-password (delete toutes, fresh session, nouveau cookie).
-- **Bypass MFA appliqué** : delete toutes les sessions sauf la
-  courante (qui vient d'être promue depuis mfa_pending). Force
-  re-enrollment du facteur bypassé avant nouvelle session ailleurs.
-- **Account deletion** : cascade DB (toutes les sessions partent
-  avec).
+- **Logout** (`DELETE /auth/sessions/current`): delete the session
+  row.
+- **Logout all** (`DELETE /auth/sessions/all`): delete every
+  session for this user, including the current one.
+- **Change password**: *full ID rotation* — delete every session
+  for this user (current included), insert a fresh session, issue
+  a new signed cookie. Anti session-fixation.
+- **Change security mode** (any kind): same rotation as
+  change-password (delete all, fresh session, new cookie).
+- **Applied MFA bypass**: delete every session except the current
+  one (just promoted from mfa_pending). Forces re-enrollment of
+  the bypassed factor before another session anywhere else.
+- **Account deletion**: DB cascade (every session goes with).
 
 ---
 
-## 6. Matrice de re-auth
+## 6. Re-auth matrix
 
-| Opération | Re-auth fresh (< 5 min) | Notes |
+| Operation | Fresh re-auth (< 5 min) | Notes |
 |---|---|---|
-| Changer `security_mode` | password | Les autres sessions sont revoked |
-| Ajouter une passkey | password | |
-| Retirer une passkey | password | |
-| Activer TOTP | password | |
-| Désactiver TOTP | password | Interdit depuis une session protégée *par* le mode lui-même sans re-auth |
-| Régénérer backup codes TOTP | password | |
-| Régénérer recovery code KEK | password | Invalide l'ancien `wrapped_kek_recovery` |
-| Changer le password | password **OU** passkey | Le password est le seul facteur changeable via un facteur alternatif |
-| Changer l'email | password | Déclenche re-register OPAQUE + re-vérification email |
-| Supprimer un compte | password **ET** (passkey si activée) **ET** (TOTP si activé) | Confirmation par phrase tapée |
-| Reveal recovery code | **N/A** : non-supporté en V1 | Code généré une seule fois à l'inscription, jamais re-affiché |
-| Démarrer un bypass TOTP | password (pas frais — login OPAQUE direct) | C'est l'écran "j'ai perdu mon TOTP" sur le `mfa_pending` |
-| Logout courant | aucun | |
-| Logout all sessions | password | |
-| Voir la liste des sessions | session full | Pas de re-auth |
+| Change `security_mode` | password | Other sessions are revoked |
+| Add a passkey | password | |
+| Remove a passkey | password | |
+| Enable TOTP | password | |
+| Disable TOTP | password | Forbidden from a session protected *by* the mode itself without re-auth |
+| Regenerate TOTP backup codes | password | |
+| Regenerate KEK recovery code | password | Invalidates the previous `wrapped_kek_recovery` |
+| Change password | password **OR** passkey | Password is the only factor changeable via an alternative factor |
+| Change email | password | Triggers OPAQUE re-register + email re-verification |
+| Delete account | password **AND** (passkey if enabled) **AND** (TOTP if enabled) | Confirmation by typed phrase |
+| Reveal recovery code | **N/A**: not supported in V1 | Code generated once at signup, never re-shown |
+| Start a TOTP bypass | password (not fresh — direct OPAQUE login) | This is the "I lost my TOTP" screen on `mfa_pending` |
+| Current logout | none | |
+| Logout every session | password | |
+| List sessions | full session | No re-auth |
 
-**Logique sous-jacente** :
+**Underlying logic**:
 
-> *Toute modification de la policy de sécurité = password (le
-> facteur le plus durable et celui que tu n'oublies pas même si tu
-> l'utilises peu) ; le password lui-même est le seul truc qui peut
-> être changé via un facteur alternatif (parce que c'est ce que tu
-> fais quand tu l'as oublié).*
+> *Any change to the security policy = password (the most durable
+> factor and the one you don't forget even with rare use); the
+> password itself is the only thing that can be changed via an
+> alternative factor (because that's what you do when you've
+> forgotten it).*
 
-### 6.1 Règles d'activation et downgrade des modes
+### 6.1 Mode activation and downgrade rules
 
-| Mode | Activation requise | Downgrade auto vers |
+| Mode | Activation requires | Auto downgrades to |
 |---|---|---|
-| `password_or_passkey` | Toujours disponible (défaut) | — |
-| `always_totp` | TOTP enabled (`mfa_totp.enabled_at IS NOT NULL`) | `password_or_passkey` si TOTP désactivé ou bypassé |
-| `maximum` | TOTP enabled **ET** au moins une passkey PRF-capable enrôlée | `password_or_passkey` si TOTP désactivé/bypassé OU dernière passkey retirée/bypassée |
+| `password_or_passkey` | Always available (default) | — |
+| `always_totp` | TOTP enabled (`mfa_totp.enabled_at IS NOT NULL`) | `password_or_passkey` if TOTP disabled or bypassed |
+| `maximum` | TOTP enabled **AND** at least one PRF-capable passkey enrolled | `password_or_passkey` if TOTP disabled/bypassed OR last passkey removed/bypassed |
 
-**Côté serveur**, `POST /auth/security-mode/change` valide
-l'éligibilité avant d'accepter le passage. Mode demandé sans les
-facteurs requis → 400 avec message clair :
-- `400 totp_required` : "Active TOTP avant de choisir mode max."
-- `400 passkey_required` : "Enrôle au moins une passkey avant de
-  choisir mode max."
+**Server-side**, `POST /auth/security-mode/change` validates
+eligibility before accepting the switch. Requested mode without
+the required factors → 400 with a clear message:
+- `400 totp_required`: "Enable TOTP before choosing maximum mode."
+- `400 passkey_required`: "Enroll at least one passkey before
+  choosing maximum mode."
 
-**Le downgrade est appliqué dans la même transaction** que la
-suppression du facteur (TOTP disable, last passkey removed/bypassed).
-Email de notification systématique : "Ton mode de sécurité a été
-abaissé à <mode> parce que <raison>."
+**Downgrade is applied in the same transaction** as the factor
+removal (TOTP disable, last passkey removed/bypassed). Systematic
+notification email: "Your security mode was lowered to <mode>
+because <reason>."
 
-### 6.2 Récupération en cas de perte d'un facteur
+### 6.2 Recovery on factor loss
 
-Politique : **un facteur perdu = récupérable, deux facteurs perdus
-simultanément = reset destructif (perte de données)**.
+Policy: **one factor lost = recoverable, two factors lost
+simultaneously = destructive reset (data loss)**.
 
-| Facteur perdu | Chemin de récupération | Conditions |
+| Lost factor | Recovery path | Conditions |
 |---|---|---|
-| Password | Recovery code KEK (cf. §7.7) | Il faut connaître le recovery code |
-| TOTP | Bypass email 7 jours (cf. §7.8) | Password OK + (passkey OK si mode max) |
-| Passkey (la dernière) | Bypass email 7 jours (cf. §7.8) | Password OK + (TOTP OK si mode `always_totp`/`maximum`) |
-| Recovery code | Régénérer depuis Settings (re-auth password) | Compte encore accessible |
-| 2 facteurs simultanés (passkey + TOTP, password + passkey, etc.) | **Reset destructif uniquement** (cf. §7.9) | Données perdues, l'user est prévenu·e |
+| Password | KEK recovery code (cf. §7.7) | Need to know the recovery code |
+| TOTP | 7-day email bypass (cf. §7.8) | Password OK + (passkey OK if max mode) |
+| Passkey (the last one) | 7-day email bypass (cf. §7.8) | Password OK + (TOTP OK if `always_totp`/`maximum` mode) |
+| Recovery code | Regenerate from Settings (password re-auth) | Account still accessible |
+| 2 simultaneous factors (passkey + TOTP, password + passkey, etc.) | **Destructive reset only** (cf. §7.9) | Data lost, the user is warned |
 
-**Enforcement** : §7.8 refuse de démarrer un bypass si le facteur
-**autre** requis par le mode courant n'est pas vérifiable. C'est ce
-qui rend "perdu 2 = niqué" par construction.
+**Enforcement**: §7.8 refuses to start a bypass if the **other**
+factor required by the current mode isn't verifiable. That's what
+makes "lost 2 = locked out" by construction.
 
 ---
 
-## 7. Flows complets
+## 7. Full flows
 
-Le détail de chaque flow vit dans son propre fichier sous
-[`docs/auth/`](./auth/) — découpage par flow plutôt qu'un mur
-monolithique de 880 lignes. Chaque fichier reprend les sub-flows
-et leurs édges cases ; ce qui suit n'est qu'un index.
+The detail of each flow lives in its own file under
+[`docs/auth/`](./auth/) — one file per flow rather than one 880-line
+monolith. Each file covers the sub-flows and edge cases; what
+follows is just an index.
 
-| Flow | Fichier |
+| Flow | File |
 |---|---|
-| 7.1 Register — single-form + activation magic link | [`auth/Register.md`](./auth/Register.md) |
+| 7.1 Register — single form + activation magic link | [`auth/Register.md`](./auth/Register.md) |
 | 7.2 Login password-first | [`auth/Login.md`](./auth/Login.md) |
 | 7.3 Login passkey-first | [`auth/Login.md`](./auth/Login.md) |
 | 7.4 Stepped MFA — finalisation | [`auth/Login.md`](./auth/Login.md) |
 | 7.5 Change password | [`auth/ChangePassword.md`](./auth/ChangePassword.md) |
-| 7.6 Change email (design partiel) | [`auth/ChangeEmail.md`](./auth/ChangeEmail.md) |
+| 7.6 Change email (partial design) | [`auth/ChangeEmail.md`](./auth/ChangeEmail.md) |
 | 7.7 Recovery via KEK code | [`auth/Recovery.md`](./auth/Recovery.md) |
-| 7.8 Bypass d'un facteur MFA par email | [`auth/BypassMfa.md`](./auth/BypassMfa.md) |
-| 7.9 Reset destructif | [`auth/Lifecycle.md`](./auth/Lifecycle.md) |
+| 7.8 MFA factor bypass by email | [`auth/BypassMfa.md`](./auth/BypassMfa.md) |
+| 7.9 Destructive reset | [`auth/Lifecycle.md`](./auth/Lifecycle.md) |
 | 7.10 Logout | [`auth/Lifecycle.md`](./auth/Lifecycle.md) |
-| 7.11 Suppression de compte | [`auth/Lifecycle.md`](./auth/Lifecycle.md) |
+| 7.11 Account deletion | [`auth/Lifecycle.md`](./auth/Lifecycle.md) |
 
-Les sections suivantes (§8 TOTP, §9 Passkey, §10 Service email,
-etc.) couvrent les composants qui sont consommés par plusieurs
-flows et restent dans ce fichier.
+The next sections (§8 TOTP, §9 Passkey, §10 Email service, etc.)
+cover components consumed by several flows and stay in this file.
 
 ---
 
-## 8. TOTP — détails
+## 8. TOTP — details
 
-> Code : routes `packages/api/src/routes/auth-totp.ts` (enroll /
+> Code: routes `packages/api/src/routes/auth-totp.ts` (enroll /
 > disable / regenerate) + `packages/api/src/routes/auth-mfa.ts`
 > (verify-step + passkey-as-second-factor) +
 > `packages/api/src/routes/auth-security-mode.ts` (mode change).
-> Page Settings dédiée `/totp` (QR + clé masquée + œil/copier +
-> verify inline) et page `/login/mfa` (stepped MFA avec TOTP puis
-> passkey). Le sidebar tip ambre dismissable invite à activer TOTP
-> tant que `totpEnabled === false`. Backup codes : 10 × 120 bits /
-> 24 base32 chars, single-use enforced par `UPDATE … WHERE used_at
-> IS NULL`.
+> Dedicated Settings page `/totp` (QR + masked key + eye/copy +
+> inline verify) and `/login/mfa` page (stepped MFA with TOTP then
+> passkey). The dismissable amber sidebar tip prompts the user to
+> enable TOTP while `totpEnabled === false`. Backup codes:
+> 10 × 120 bits / 24 base32 chars, single-use enforced by
+> `UPDATE … WHERE used_at IS NULL`.
 
-### 8.1 Paramètres figés
+### 8.1 Frozen parameters
 
-| Param | Valeur | Justification |
+| Param | Value | Justification |
 |---|---|---|
-| Algo | SHA1 | RFC 6238, compat universelle (Authy, Google Auth, etc.) |
+| Algo | SHA1 | RFC 6238, universal compat (Authy, Google Auth, etc.) |
 | Digits | 6 | Standard |
 | Period | 30s | Standard |
-| Secret | 20 bytes random | RFC recommande min 20 bytes |
-| Skew accepté | ±1 fenêtre (30s avant/après) | Suffit pour les horloges typiques |
-| Anti-replay | `last_window` | Refuse `window <= last_window` |
-| Backup codes | 10, 130 bits, base32 (26 chars), SHA-256 hashés | Single-use |
+| Secret | 20 random bytes | RFC recommends min 20 bytes |
+| Skew accepted | ±1 window (30s before/after) | Enough for typical clocks |
+| Anti-replay | `last_window` | Refuses `window <= last_window` |
+| Backup codes | 10, 130 bits, base32 (26 chars), SHA-256 hashed | Single-use |
 
 ### 8.2 Enrollment
 
 `POST /auth/totp/enroll/start`
 
-Préconditions : `requireFreshPassword` (depuis Settings) **OU**
-session register avec `register_state = 'recovery_set'` (étape 5
-du parcours d'inscription, cf. §7.1).
+Preconditions: `requireFreshPassword` (from Settings) **OR** a
+register session with `register_state = 'recovery_set'` (step 5
+of the signup journey, cf. §7.1).
 
-Server :
-1. Génère secret 20 bytes random.
-2. INSERT `mfa_totp { user_id, secret, enabled_at: NULL }` (ou
-   UPDATE si existe en pending).
-3. Génère 10 backup codes (130 bits chacun), hash SHA-256, INSERT
-   `mfa_totp_recovery_codes`.
-4. Réponse :
+Server:
+1. Generates a 20 random byte secret.
+2. INSERT `mfa_totp { user_id, secret, enabled_at: NULL }` (or
+   UPDATE if pending).
+3. Generates 10 backup codes (130 bits each), hashes SHA-256,
+   INSERT into `mfa_totp_recovery_codes`.
+4. Response:
    ```json
    {
      "secret_base32": "JBSWY3DPEHPK3PXP",
@@ -734,250 +726,249 @@ Server :
    }
    ```
 
-   `otpauth` label = `Nodea` (sans email ni user_id — minimaliste,
-   évite toute fuite par screenshots des apps authenticator).
-   Conséquence assumée : si l'user a plusieurs comptes Nodea dans
-   le même authenticator, les entrées ne sont pas distinguées par
-   le label.
+   `otpauth` label = `Nodea` (no email, no user_id — minimalist,
+   avoids any leak via authenticator-app screenshots). Accepted
+   consequence: if the user has several Nodea accounts in the same
+   authenticator, the entries aren't distinguished by the label.
 
 `POST /auth/totp/enroll/verify`
 
-Body : `{ code: "123456", backup_codes_acknowledged: true }`.
+Body: `{ code: "123456", backup_codes_acknowledged: true }`.
 
-Server :
-1. Vérifie le code TOTP avec le secret pending.
-2. Refuse si `backup_codes_acknowledged !== true`.
+Server:
+1. Verifies the TOTP code with the pending secret.
+2. Refuses if `backup_codes_acknowledged !== true`.
 3. UPDATE `mfa_totp.enabled_at = now()`,
    `mfa_totp.last_window = current_window`.
-4. Réponse `200 { enabled_at }`.
+4. Response `200 { enabled_at }`.
 
-### 8.3 Vérification
+### 8.3 Verification
 
 `POST /auth/mfa/totp/verify`
 
-Body : `{ code: "123456" }`.
+Body: `{ code: "123456" }`.
 
-Server :
-1. Charge `mfa_totp` (refuse si `enabled_at IS NULL`).
-2. Calcule TOTP pour windows `[current-1, current, current+1]`.
-3. Compare en temps constant.
-4. Si match :
+Server:
+1. Loads `mfa_totp` (refuses if `enabled_at IS NULL`).
+2. Computes TOTP for windows `[current-1, current, current+1]`.
+3. Compares constant-time.
+4. On match:
    - `last_window = matched_window` (anti-replay).
-   - `mfaTotpVerified = true` sur la session pending.
-5. Sinon : essaie les backup codes.
+   - `mfaTotpVerified = true` on the pending session.
+5. Otherwise: try the backup codes.
 
 `POST /auth/mfa/totp/verify-backup`
 
-Body : `{ code: "xxxx-xxxx-xx" }` (l'utilisateur·ice peut entrer un
-backup code dans le même champ — UI distingue par format).
+Body: `{ code: "xxxx-xxxx-xx" }` (the user can enter a backup
+code in the same field — UI distinguishes by format).
 
-Server :
-1. Hash SHA-256.
+Server:
+1. SHA-256 hash.
 2. SELECT FROM `mfa_totp_recovery_codes WHERE user_id = $1 AND
    code_hash = $2 AND used_at IS NULL`.
-3. Si trouvé : `used_at = now()` (single-use).
+3. If found: `used_at = now()` (single-use).
 4. `mfaTotpVerified = true`.
-5. Si tous les backup codes usés : email "Tu as utilisé ton dernier
-   backup code. Régénère-en de nouveaux dans Settings."
+5. If every backup code is used: email "You used your last backup
+   code. Regenerate new ones in Settings."
 
-### 8.4 Désactivation
+### 8.4 Disable
 
-`POST /auth/totp/disable` : `requireFreshPassword`.
+`POST /auth/totp/disable`: `requireFreshPassword`.
 
-Server : `enabled_at = NULL`, DELETE backup codes. Si
-`security_mode in ('always_totp', 'maximum')` → bascule mode à
-`password_or_passkey` automatiquement (et email de notification).
+Server: `enabled_at = NULL`, DELETE backup codes. If
+`security_mode in ('always_totp', 'maximum')` → switches mode to
+`password_or_passkey` automatically (and notification email).
 
-### 8.5 Régénération backup codes
+### 8.5 Backup-code regeneration
 
-`POST /auth/totp/backup-codes/regenerate` :
+`POST /auth/totp/backup-codes/regenerate`:
 `requireFreshPassword`.
 
-Server : DELETE anciens, INSERT 10 nouveaux. Réponse avec les codes
-en clair (affichés une seule fois).
+Server: DELETE old, INSERT 10 new ones. Response with the codes
+in cleartext (shown only once).
 
 ---
 
-## 9. Passkey — détails
+## 9. Passkey — details
 
-> Code : routes `packages/api/src/routes/auth-passkey.ts`,
-> orchestrateur client `packages/web/src/core/auth/passkey-flow.ts`,
-> page Settings dédiée `/passkeys` (et SecuritySection « Passkey »
-> dans Account → Sécurité). Sidebar tip ambre dismissable invite à
-> enroller quand `passkeysCount === 0` (cohérent avec la décision :
-> pas de passkey au register, opt-in post-activation).
+> Code: routes `packages/api/src/routes/auth-passkey.ts`, client
+> orchestrator `packages/web/src/core/auth/passkey-flow.ts`,
+> dedicated Settings page `/passkeys` (and the "Passkey"
+> SecuritySection in Account → Security). Dismissable amber
+> sidebar tip prompts enrollment when `passkeysCount === 0`
+> (consistent with the decision: no passkey at register, opt-in
+> post-activation).
 >
-> **Limitation connue** : les authenticators qui ne surfacent pas
-> `prf.results.first` au registration sont enrôlés en login-only ;
-> le chemin "promote-to-PRF" via une assertion de calibration
-> arrivera dans une itération ultérieure.
+> **Known limitation**: authenticators that don't surface
+> `prf.results.first` at registration are enrolled as login-only;
+> the "promote-to-PRF" path via a calibration assertion will land
+> in a later iteration.
 
-### 9.1 Choix structurels
+### 9.1 Structural choices
 
-- `userVerification: 'required'` (cf. §2.3). Toute tentative
-  d'enrollment ou d'auth sans gesture est refusée par le navigateur
-  ou par le serveur en validation finale.
-- `attestation: 'none'` — on ne demande pas d'attestation
-  matériel·le. Pas de tracking de vendeur.
-- `authenticatorSelection.residentKey: 'preferred'` — autorise
-  les discoverable credentials (login sans email).
+- `userVerification: 'required'` (cf. §2.3). Any enrollment or
+  auth attempt without a gesture is refused by the browser or by
+  the server in final validation.
+- `attestation: 'none'` — we don't request hardware attestation.
+  No vendor tracking.
+- `authenticatorSelection.residentKey: 'preferred'` — allows
+  discoverable credentials (login without email).
 - `pubKeyCredParams: [{type: 'public-key', alg: -7}, // ES256
   {type: 'public-key', alg: -257}]` // RS256.
-- Extension PRF activée : `extensions: { prf: { eval: { first:
+- PRF extension enabled: `extensions: { prf: { eval: { first:
   PRF_INPUT_FIXED } } }`.
 
 ### 9.2 Enrollment
 
 `POST /auth/passkeys/enroll/start`
 
-Préconditions : `requireFreshPassword` (ou parcours register
-étape 6).
+Preconditions: `requireFreshPassword` (or register journey
+step 6).
 
-Server :
-1. Génère challenge 32 bytes random.
-2. Stocke sur la session courante : `pending_webauthn_challenge` +
-   `pending_webauthn_challenge_at = now()`. TTL 5 min validé au
-   moment de `/finish` (refus si `now() - challenge_at > 5min`).
-   Pas de Redis en V1.
-3. Renvoie options WebAuthn `PublicKeyCredentialCreationOptions`.
+Server:
+1. Generates a 32 random byte challenge.
+2. Stores on the current session: `pending_webauthn_challenge` +
+   `pending_webauthn_challenge_at = now()`. 5 min TTL validated at
+   `/finish` time (refuses if `now() - challenge_at > 5min`). No
+   Redis in V1.
+3. Returns WebAuthn `PublicKeyCredentialCreationOptions`.
 
-Client :
+Client:
 1. `navigator.credentials.create(options)`.
-2. Récupère `prf_output` si supporté
+2. Captures `prf_output` if supported
    (`getClientExtensionResults().prf.results.first`).
-3. Si PRF supporté : dérive `wk_passkey = HKDF(prf_output,
-   "nodea:wrap-kek")`, wrappe la KEK existante (que le client a en
-   mémoire après login récent ou register en cours) :
+3. If PRF supported: derives `wk_passkey = HKDF(prf_output,
+   "nodea:wrap-kek")`, wraps the existing KEK (which the client
+   has in memory after a recent login or in-progress register):
    `wrapped_kek = AES-GCM(wk_passkey, kek,
    AAD=users.id||"passkey"||credential_id)`.
-4. POST `/auth/passkeys/enroll/finish` avec :
+4. POST `/auth/passkeys/enroll/finish` with:
    - WebAuthn attestation response
    - `prf_supported: bool`
-   - `wrapped_kek` + IV (si PRF)
+   - `wrapped_kek` + IV (if PRF)
    - `label: string` (user-facing)
 
-Server :
-1. Vérifie l'attestation (challenge match, signature OK).
+Server:
+1. Verifies the attestation (challenge match, signature OK).
 2. INSERT `auth_factors { kind: 'passkey', credential_id,
    public_key, sign_count, transports, prf_supported,
    wrapped_kek?, wrapped_kek_iv?, label }`.
-3. Si `prf_supported = false` et c'est la **seule** passkey
-   configurée → afficher un avertissement clair côté UI :
-   "Cette passkey ne peut pas, seule, déchiffrer tes données. Tu
-   auras toujours besoin de ton mot de passe ou d'une autre
-   passkey PRF-capable. Continuer ?".
+3. If `prf_supported = false` and it's the **only** configured
+   passkey → display a clear UI warning: "This passkey can't
+   alone decrypt your data. You'll still need your password or
+   another PRF-capable passkey. Continue?".
 
-### 9.3 UV `'required'` — passkeys sans gesture refusées
+### 9.3 UV `'required'` — passkeys without a gesture refused
 
-Une passkey n'est utile que si un gesture (PIN, biométrie, unlock du
-gestionnaire) prouve la présence de l'utilisateur·ice **en plus** de
-la possession du device. Sans ça, le simple vol matériel suffit à
-déverrouiller le compte et déchiffrer la KEK — angle qui invalide
-tout le reste du modèle.
+A passkey is only useful when a gesture (PIN, biometric, manager
+unlock) proves the user's presence **on top of** device possession.
+Without it, plain hardware theft suffices to unlock the account
+and decrypt the KEK — an angle that invalidates the whole rest of
+the model.
 
-**Décision V1** : `userVerification: 'required'` pour
-l'enrollment **et** pour l'authentication. Le serveur valide
-`authData.flags.uv === true` à chaque assertion. Refus 400 sinon.
+**V1 decision**: `userVerification: 'required'` for both
+enrollment and authentication. The server validates
+`authData.flags.uv === true` on every assertion. 400 refusal
+otherwise.
 
-À l'enrollment, le navigateur lui-même refuse les authenticators qui
-ne supportent pas UV (ou qui ne l'ont pas configuré — pour une
-Yubikey, il propose le setup PIN). Côté UI, on affiche en clair :
+At enrollment time, the browser itself refuses authenticators
+that don't support UV (or don't have it configured — for a
+Yubikey, it offers PIN setup). UI text:
 
-> **Une passkey doit pouvoir te demander un PIN, une empreinte ou
-> ton FaceID.** Si tu utilises une clé hardware (Yubikey, etc.)
-> sans PIN configuré, configure le PIN avant de continuer.
+> **A passkey must be able to ask you for a PIN, fingerprint, or
+> FaceID.** If you use a hardware key (Yubikey, etc.) without a
+> PIN configured, configure the PIN before continuing.
 
-Authenticators acceptés :
+Accepted authenticators:
 - Bitwarden, 1Password, iCloud Keychain, Google Password Manager
-  (UV = unlock du gestionnaire) ;
-- TouchID, FaceID, Windows Hello, Android biometric ;
-- Yubikey / Solokey / Titan **avec PIN configuré**.
+  (UV = manager unlock);
+- TouchID, FaceID, Windows Hello, Android biometric;
+- Yubikey / Solokey / Titan **with PIN configured**.
 
-Authenticators refusés :
-- Yubikey en mode tactile pur (sans PIN) ;
-- Tout authenticator sans gesture.
+Refused authenticators:
+- Yubikey in pure-touch mode (no PIN);
+- Any authenticator without a gesture.
 
 ### 9.4 Login & PRF
 
 Cf. §7.3.
 
-**Cas non-PRF** :
-- L'authenticator ne supporte pas l'extension PRF.
-- L'enrollment a stocké `prf_supported = false`, `wrapped_kek =
-  NULL`.
-- Au login, signature OK = `mfa_passkey_verified = true`. Mais le
-  client ne peut pas dériver la KEK depuis cette passkey.
-- Conséquence : il faut **soit** le password OPAQUE en plus
-  (login enchaîné password après passkey), **soit** une autre
-  passkey PRF.
-- L'UI doit guider clairement : "Cette passkey valide ton identité
-  mais ne peut pas seule déchiffrer tes données. Saisis ton mot de
-  passe pour continuer."
+**Non-PRF case**:
+- The authenticator doesn't support the PRF extension.
+- Enrollment stored `prf_supported = false`, `wrapped_kek = NULL`.
+- At login, signature OK = `mfa_passkey_verified = true`. But the
+  client cannot derive the KEK from this passkey.
+- Consequence: needs **either** the OPAQUE password on top
+  (chained password login after passkey), **or** another PRF
+  passkey.
+- The UI must guide clearly: "This passkey validates your identity
+  but can't alone decrypt your data. Type your password to
+  continue."
 
-### 9.5 PRF input fixe
+### 9.5 Fixed PRF input
 
 ```ts
 const PRF_INPUT_V1 = new Uint8Array([
   0x6e, 0x6f, 0x64, 0x65, 0x61, 0x3a, 0x70, 0x72, 0x66, 0x2d, 0x76, 0x31,
-  // padding zero jusqu'à 32 bytes
+  // zero padding to 32 bytes
   ...new Uint8Array(20)
 ]);
 // "nodea:prf-v1" + zero-padding
 ```
 
-Versionné (`v1`) au cas où on veuille pivoter dans le futur. Toute
-rotation = re-wrap des KEKs sous les nouvelles PRF outputs.
+Versioned (`v1`) in case we want to pivot in the future. Any
+rotation = re-wrap the KEKs under the new PRF outputs.
 
 ### 9.6 Signature counter
 
-WebAuthn fournit un `signCount`. Si une assertion arrive avec
-`signCount <= stored_signCount` **et** `auth_factors.sign_count_strict
-= true`, c'est suspect (clone de credential). Action : refuser le
-login + email d'alerte.
+WebAuthn provides a `signCount`. If an assertion arrives with
+`signCount <= stored_signCount` **and**
+`auth_factors.sign_count_strict = true`, that's suspicious
+(credential clone). Action: refuse the login + alert email.
 
-Exception : certains authenticators (notamment Apple) ne maintiennent
-pas le compteur — `signCount` reste à 0. Heuristique : sur 3
-assertions consécutives valides avec `signCount = 0`, le serveur
-flip `auth_factors.sign_count_strict = false` pour cette credential
-spécifique. À partir de ce moment, le check signCount est désactivé
-**uniquement** pour ce credential.
+Exception: some authenticators (Apple notably) don't maintain the
+counter — `signCount` stays at 0. Heuristic: on 3 consecutive
+valid assertions with `signCount = 0`, the server flips
+`auth_factors.sign_count_strict = false` for that specific
+credential. From then on, the signCount check is disabled
+**only** for that credential.
 
-La colonne `signCountStrict` (cf. §4.1) est `true` par défaut à
-l'enrollment et ne se rallume jamais (un credential qui passe en
-`false` y reste).
+The `signCountStrict` column (cf. §4.1) is `true` by default at
+enrollment and never re-armed (a credential that flips to `false`
+stays there).
 
 ### 9.7 Add/remove
 
-`GET /auth/passkeys/list` : liste des credentials avec `label`,
+`GET /auth/passkeys/list`: list of credentials with `label`,
 `created_at`, `last_used_at`, `prf_supported`, `transports`.
 
-L'UI Settings doit **distinguer visuellement** les passkeys
-PRF-capable (badge "déchiffre tes données") des login-only
-(badge "connexion uniquement, ne déchiffre pas tes données"). Cette
-distinction est cruciale pour que l'user comprenne pourquoi le mode
-`maximum` peut être indisponible : il exige au moins une passkey
-PRF-capable. La liste affiche aussi le compteur "X passkey(s)
-PRF-capable enrôlée(s)" en en-tête.
+The Settings UI must **visually distinguish** PRF-capable
+passkeys (badge "decrypts your data") from login-only ones
+(badge "login only, doesn't decrypt your data"). This distinction
+is critical so the user understands why `maximum` mode may be
+unavailable: it requires at least one PRF-capable passkey. The
+list also shows a "X PRF-capable passkey(s) enrolled" counter at
+the top.
 
-`POST /auth/passkeys/:id/remove` : `requireFreshPassword`. DELETE
-ligne dans une transaction qui inclut le downgrade auto :
+`POST /auth/passkeys/:id/remove`: `requireFreshPassword`. DELETE
+row in a transaction that includes the auto downgrade:
 
-- Si `count(auth_factors WHERE kind='passkey' AND prf_supported=true)
-  == 1` (cette suppression retire la dernière passkey PRF-capable)
-  **et** `users.security_mode = 'maximum'` → bascule
-  `users.security_mode = 'password_or_passkey'` dans la même
+- If `count(auth_factors WHERE kind='passkey' AND prf_supported=true)
+  == 1` (this delete removes the last PRF-capable passkey)
+  **and** `users.security_mode = 'maximum'` → switch
+  `users.security_mode = 'password_or_passkey'` in the same
   transaction.
-- Email de notification : "Ton mode de sécurité est passé à
-  `password_or_passkey` parce que tu as retiré ta dernière passkey
-  PRF-capable."
+- Notification email: "Your security mode dropped to
+  `password_or_passkey` because you removed your last PRF-capable
+  passkey."
 
-V1 = downgrade auto, **jamais de refus 400**. L'utilisateur·ice
-garde toujours la main sur la suppression de ses passkeys ; le mode
-de sécurité s'adapte automatiquement.
+V1 = auto downgrade, **never a 400 refusal**. The user always
+keeps control over deleting their passkeys; the security mode
+adjusts automatically.
 
 ---
 
-## 10. Service email
+## 10. Email service
 
 ### 10.1 Interface
 
@@ -988,71 +979,71 @@ export interface EmailService {
   send(params: {
     to: string;
     subject: string;
-    text: string;       // version texte obligatoire
-    html?: string;      // version HTML facultative
-    tag?: string;       // pour les logs : 'verify-register', 'totp-bypass-confirm', etc.
+    text: string;       // text version mandatory
+    html?: string;      // HTML version optional
+    tag?: string;       // for logs: 'verify-register', 'totp-bypass-confirm', etc.
   }): Promise<void>;
 }
 ```
 
-### 10.2 Implémentations
+### 10.2 Implementations
 
-| Env | Impl | Comportement |
+| Env | Impl | Behaviour |
 |---|---|---|
-| `dev` (recommandé) | `SmtpEmailService` pointant **Mailpit** | Vrai transport SMTP vers le conteneur `mailpit` du compose-profile `dev`. Les emails sont visibles dans l'UI web `http://localhost:8025`, rien ne quitte la machine. Permet de tester le **path SMTP réel** (templates rendus, encoding, multipart) plutôt qu'un log. |
-| `dev` (fallback) | `ConsoleEmailService` | Log JSON sur stdout. Utile quand on lance `pnpm dev` en bare metal sans Docker (donc sans Mailpit). À éviter sinon. |
-| `test` | `RecordingEmailService` | Stocke en mémoire, exposé via fixtures Vitest. |
-| `prod` | `SmtpEmailService` | nodemailer + SMTP Infomaniak. Credentials via `SMTP_*` env vars (sourcées depuis Infisical au déploiement). Cf. §13.1. |
+| `dev` (recommended) | `SmtpEmailService` pointing at **Mailpit** | Real SMTP transport to the `mailpit` container of the `dev` compose-profile. Emails visible at `http://localhost:8025`, nothing leaves the machine. Lets you test the **real SMTP path** (rendered templates, encoding, multipart) instead of a log. |
+| `dev` (fallback) | `ConsoleEmailService` | Logs JSON to stdout. Useful when running `pnpm dev` bare-metal without Docker (and therefore without Mailpit). Otherwise avoid. |
+| `test` | `RecordingEmailService` | In-memory store, exposed via Vitest fixtures. |
+| `prod` | `SmtpEmailService` | nodemailer + Infomaniak SMTP. Credentials via `SMTP_*` env vars (sourced from Infisical at deploy). Cf. §13.1. |
 
-L'impl est sélectionnée par `EMAIL_SERVICE_IMPL` (`smtp` / `console` /
-`recording`). Pour dev, le défaut est **`smtp`** combiné avec
-`SMTP_HOST=mailpit` (dans Docker) ou `SMTP_HOST=127.0.0.1` +
-`SMTP_PORT=1025` (depuis l'host).
+The impl is selected by `EMAIL_SERVICE_IMPL` (`smtp` / `console` /
+`recording`). For dev, the default is **`smtp`** combined with
+`SMTP_HOST=mailpit` (in Docker) or `SMTP_HOST=127.0.0.1` +
+`SMTP_PORT=1025` (from the host).
 
 ### 10.3 Templates
 
-Tous en français + UTF-8. Stockés dans
+All in French + UTF-8. Stored in
 `packages/api/src/services/email/templates/`.
 
-| Template | Usage |
+| Template | Use |
 |---|---|
-| `verify-register.txt` | Code d'activation à l'inscription |
-| `verify-email-change.txt` | Code de vérification au changement d'email |
-| `totp-bypass-confirm.txt` | Liens confirm + cancel pour bypass TOTP |
-| `totp-bypass-applied.txt` | Notification post-bypass |
-| `password-reset.txt` | Token de reset destructif (existant) |
-| `passkey-clone-detected.txt` | Alerte signCount |
-| `last-backup-code-used.txt` | Notification backup codes |
+| `verify-register.txt` | Activation code at signup |
+| `verify-email-change.txt` | Verification code at email change |
+| `totp-bypass-confirm.txt` | Confirm + cancel links for TOTP bypass |
+| `totp-bypass-applied.txt` | Post-bypass notification |
+| `password-reset.txt` | Destructive reset token (existing) |
+| `passkey-clone-detected.txt` | signCount alert |
+| `last-backup-code-used.txt` | Backup codes notification |
 
 ### 10.4 Anti-spam / rate-limit
 
-Per-email rate-limits (par défaut, ajustables via env) :
-- `verify-register` : 3 / heure
-- `verify-email-change` : 3 / heure
-- `totp-bypass-confirm` : 1 / heure
-- `password-reset` : 3 / heure
+Per-email rate-limits (default, env-tunable):
+- `verify-register`: 3 / hour
+- `verify-email-change`: 3 / hour
+- `totp-bypass-confirm`: 1 / hour
+- `password-reset`: 3 / hour
 
 ---
 
-## 11. Middlewares serveur
+## 11. Server middlewares
 
-### 11.1 Liste
+### 11.1 List
 
-| Nom | Vérifie | Sortie en cas d'échec |
+| Name | Checks | Failure output |
 |---|---|---|
-| `loadSession` | Cookie + ligne sessions | 401 |
+| `loadSession` | Cookie + sessions row | 401 |
 | `requireUser` | `loadSession` + `kind = 'full'` | 401 |
 | `requireRegisterSession` | `kind = 'register'` | 401 |
 | `requireMfaPending` | `kind = 'mfa_pending'` | 401 |
 | `requireMigrate` | `kind = 'migrate'` | 401 |
 | `requireFreshPassword` | `reauth_password_at > now-5min` | 401 `{ reauth_required: 'password' }` |
-| `requireFreshPasswordOrPasskey` | l'un OU l'autre | 401 `{ reauth_required: 'password_or_passkey' }` |
+| `requireFreshPasswordOrPasskey` | one OR the other | 401 `{ reauth_required: 'password_or_passkey' }` |
 | `requireAdmin` | `requireUser` + `users.is_admin` | 403 |
-| `rateLimit(opts)` | Rate-limit par IP/email | 429 |
+| `rateLimit(opts)` | Per-IP/email rate-limit | 429 |
 
 ### 11.2 Composition
 
-Chaque route déclare ses prérequis :
+Each route declares its prerequisites:
 
 ```ts
 // packages/api/src/routes/auth.ts
@@ -1066,54 +1057,53 @@ const route = createRoute({
 
 ### 11.3 Reauth fresh — UX
 
-Quand un middleware refuse pour cause de re-auth manquante, le
-front intercepte le `reauth_required` et affiche un modal :
-- `password` → champ password unique → POST `/auth/reauth/password`.
-- `password_or_passkey` → boutons "Re-auth password" /
-  "Re-auth passkey".
+When a middleware refuses for missing re-auth, the front intercepts
+the `reauth_required` and shows a modal:
+- `password` → single password field → POST `/auth/reauth/password`.
+- `password_or_passkey` → "Re-auth password" / "Re-auth passkey"
+  buttons.
 
-Après succès, retry automatique de la requête originale.
+After success, the original request is automatically retried.
 
 ---
 
-## 13. Algorithmes & paramètres figés
+## 13. Frozen algorithms & parameters
 
-(Tableau récapitulatif. Tout changement d'un de ces paramètres
-demande une PR dédiée + révision de cette section + plan de
-rotation.)
+(Recap table. Any change to these parameters requires a dedicated
+PR + this section's revision + a rotation plan.)
 
-| Domaine | Paramètre | Valeur |
+| Domain | Parameter | Value |
 |---|---|---|
-| OPAQUE | librairie | `@serenity-kit/opaque` (Rust + WASM, audit Cure53) |
-| OPAQUE | suite | OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id (par défaut de la lib) |
+| OPAQUE | library | `@serenity-kit/opaque` (Rust + WASM, audited Cure53) |
+| OPAQUE | suite | OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id (lib default) |
 | OPAQUE | Argon2 m | 64 MiB |
 | OPAQUE | Argon2 t | 3 |
 | OPAQUE | Argon2 p | 4 |
 | HKDF | hash | SHA-256 |
-| HKDF labels | `nodea:wrap-kek` | dériver wrapping key depuis facteur |
-| HKDF labels | `nodea:wrap-main` | dériver wrapping key main key depuis KEK |
-| HKDF labels | `nodea:aes` | sub-key AES module (existant) |
-| HKDF labels | `nodea:hmac` | sub-key HMAC guards (existant) |
+| HKDF labels | `nodea:wrap-kek` | derive a wrapping key from a factor |
+| HKDF labels | `nodea:wrap-main` | derive the wrapping key for the main key from the KEK |
+| HKDF labels | `nodea:aes` | module AES sub-key (existing) |
+| HKDF labels | `nodea:hmac` | HMAC guards sub-key (existing) |
 | AES-GCM | key size | 256 bits |
-| AES-GCM | IV size | 96 bits, random/encryption |
+| AES-GCM | IV size | 96 bits, random per encryption |
 | AES-GCM | tag size | 128 bits |
 | HMAC | hash | SHA-256 |
 | TOTP | algo | SHA1 |
 | TOTP | digits | 6 |
 | TOTP | period | 30 s |
 | TOTP | secret size | 20 bytes |
-| TOTP | skew | ±1 fenêtre |
-| Recovery code KEK | entropie | 128 bits (12 mots BIP39 = 132 bits dont 4 de checksum) |
-| Recovery code KEK | encoding | BIP39 12 mots (wordlist anglaise standard) |
-| Backup codes TOTP | nombre | 10 |
-| Backup codes TOTP | entropie | 130 bits chacun |
-| Backup codes TOTP | hash storage | SHA-256 |
+| TOTP | skew | ±1 window |
+| KEK recovery code | entropy | 128 bits (12 BIP39 words = 132 bits including 4 of checksum) |
+| KEK recovery code | encoding | BIP39 12 words (standard English wordlist) |
+| TOTP backup codes | count | 10 |
+| TOTP backup codes | entropy | 130 bits each |
+| TOTP backup codes | hash storage | SHA-256 |
 | WebAuthn | UV | `'required'` (enrollment + assertion) |
-| WebAuthn | rpId | depuis env `WEBAUTHN_RP_ID`, défaut prod `nodea.app` |
+| WebAuthn | rpId | from env `WEBAUTHN_RP_ID`, prod default `nodea.app` |
 | WebAuthn | attestation | `'none'` |
 | WebAuthn | algos | ES256 (-7), RS256 (-257) |
 | WebAuthn | PRF input v1 | `"nodea:prf-v1"` + zero-padding 32 bytes |
-| Cookie | session full TTL | 7 jours fixe (pas de slide) |
+| Cookie | full session TTL | 7 days fixed (no slide) |
 | Cookie | rate-limit storage | in-process RAM (V1 single-instance) |
 | Cookie | mfa_pending TTL | 5 min |
 | Cookie | register TTL | 24 h |
@@ -1121,359 +1111,354 @@ rotation.)
 | Email verification code | digits | 6 |
 | Email verification code | TTL | 10 min |
 | Email verification code | max attempts | 5 |
-| Bypass TOTP | delay réel | 7 j après confirmation |
-| Bypass TOTP | request TTL | 7j |
+| TOTP bypass | actual delay | 7 days after confirmation |
+| TOTP bypass | request TTL | 7 days |
 | Password policy | zxcvbn min score | 3 |
 | Password policy | min length | 8 |
 | Rate limits | `/auth/register/*` | 5/h IP, 3/h email |
 | Rate limits | `/auth/login/*` | 10/min IP, 20/h email |
-| Rate limits | `/auth/migrate/*` | 10/min IP, 20/h email (aligné login) |
-| Rate limits | `/auth/recover-kek/*` | 5/h IP, 3/h email (130 bits BIP39 protège déjà du brute-force) |
+| Rate limits | `/auth/migrate/*` | 10/min IP, 20/h email (aligned with login) |
+| Rate limits | `/auth/recover-kek/*` | 5/h IP, 3/h email (130 bits BIP39 already protect from brute-force) |
 | Rate limits | `/auth/mfa/*` | 5/min session |
-| Cooldown | change-email (entre deux changes) | 7 jours |
+| Cooldown | change-email (between changes) | 7 days |
 
-### 13.1 Variables d'environnement
+### 13.1 Environment variables
 
-Tous les secrets et paramètres d'infra spécifiques au déploiement
-passent par des variables d'environnement (ou Infisical). **Aucune**
-de ces valeurs n'est hardcodée dans le code applicatif.
+Every secret and infra-specific deploy parameter goes through env
+vars (or Infisical). **None** of these values are hardcoded in
+application code.
 
-| Variable | Usage | Exemple / défaut |
+| Variable | Use | Example / default |
 |---|---|---|
-| `WEBAUTHN_RP_ID` | rpId WebAuthn (origin lié aux passkeys) | `nodea.app` |
-| `WEBAUTHN_RP_NAME` | Nom user-facing de la RP | `Nodea` |
-| `WEBAUTHN_ORIGIN` | Origin attendue dans les assertions | `https://nodea.app` |
-| `OPAQUE_SERVER_SETUP` | Server static setup (sortie de `server.setupServer()` de la lib) | base64 |
-| `COOKIE_SECRET` | Signature des cookies, ≥ 32 chars | random base64 |
-| `SMTP_HOST` | Serveur SMTP (Infomaniak) | `mail.infomaniak.com` |
-| `SMTP_PORT` | Port SMTP | `587` |
-| `SMTP_USER` | Identifiant SMTP | depuis Infisical |
-| `SMTP_PASS` | Password SMTP | depuis Infisical |
-| `SMTP_FROM` | Adresse expéditrice | `noreply@nodea.app` |
-| `SMTP_FROM_NAME` | Nom expéditeur | `Nodea` |
-| `EMAIL_SERVICE_IMPL` | Choix d'impl : `console` / `recording` / `smtp` | `console` en dev, `smtp` en prod |
+| `WEBAUTHN_RP_ID` | WebAuthn rpId (origin tied to passkeys) | `nodea.app` |
+| `WEBAUTHN_RP_NAME` | User-facing RP name | `Nodea` |
+| `WEBAUTHN_ORIGIN` | Origin expected in assertions | `https://nodea.app` |
+| `OPAQUE_SERVER_SETUP` | Server static setup (output of the lib's `server.setupServer()`) | base64 |
+| `COOKIE_SECRET` | Cookie signing, ≥ 32 chars | random base64 |
+| `SMTP_HOST` | SMTP server (Infomaniak) | `mail.infomaniak.com` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `SMTP_USER` | SMTP user | from Infisical |
+| `SMTP_PASS` | SMTP password | from Infisical |
+| `SMTP_FROM` | From address | `noreply@nodea.app` |
+| `SMTP_FROM_NAME` | From name | `Nodea` |
+| `EMAIL_SERVICE_IMPL` | Impl choice: `console` / `recording` / `smtp` | `console` in dev, `smtp` in prod |
 | `DATABASE_URL` | Postgres | `postgres://...` |
-| `RATE_LIMIT_DRIVER` | `memory` (V1) / `redis` (futur) | `memory` |
-| `HSTS_ENABLED` | Active `Strict-Transport-Security` header | `true` en prod |
-| `HSTS_MAX_AGE` | `max-age` du header HSTS, en secondes | `31536000` (1 an) |
-| `HSTS_INCLUDE_SUBDOMAINS` | Inclut les sous-domaines | `true` |
-| `HSTS_PRELOAD` | Eligible HSTS preload list | `false` (V1, à activer après stabilisation domaine) |
+| `RATE_LIMIT_DRIVER` | `memory` (V1) / `redis` (future) | `memory` |
+| `HSTS_ENABLED` | Enables `Strict-Transport-Security` header | `true` in prod |
+| `HSTS_MAX_AGE` | HSTS header `max-age`, in seconds | `31536000` (1 year) |
+| `HSTS_INCLUDE_SUBDOMAINS` | Includes subdomains | `true` |
+| `HSTS_PRELOAD` | Eligible for HSTS preload list | `false` (V1, enable after domain stabilisation) |
 
-**Règle** : toute nouvelle config d'infra ajoute une ligne ici **et**
-une entrée dans `.env.example` (sans valeur sensible).
+**Rule**: any new infra config adds a row here **and** an entry in
+`.env.example` (without sensitive values).
 
-**Source des secrets en prod** : Infisical → `.env` au déploiement.
-Le repo ne contient jamais de credentials, ni de fichier `.env`
-committé.
+**Source of secrets in prod**: Infisical → `.env` at deploy time.
+The repo never contains credentials, nor a committed `.env` file.
 
-### 13.2 Tâches d'arrière-plan (cleanup)
+### 13.2 Background tasks (cleanup)
 
-#### ✅ V1 livré
+#### ✅ V1 shipped
 
-Un seul job : `cleanup-unactivated-accounts`, schedulé via
-`node-cron` à **03:00 chaque lundi (UTC, container TZ)**, en
-process API. Cf. `packages/api/src/cron/index.ts` —
-`startCronScheduler()` est appelé depuis `index.ts` au démarrage.
+A single job: `cleanup-unactivated-accounts`, scheduled via
+`node-cron` at **03:00 every Monday (UTC, container TZ)**, in the
+API process. Cf. `packages/api/src/cron/index.ts` —
+`startCronScheduler()` is called from `index.ts` at startup.
 
-| Cible | Condition de purge | Pourquoi |
+| Target | Purge condition | Why |
 |---|---|---|
-| `email_verifications` `kind='register'` | `expires_at < now()` | Tokens d'activation périmés, libère la table |
-| `users` `email_verified_at IS NULL` | aucune `email_verifications` pending restante | Comptes inactifs dont la fenêtre de 7j s'est écoulée. CASCADE supprime sessions / email_verifications consommées au passage |
-| `sessions` | `expires_at < now()` | Sessions expirées définitivement |
+| `email_verifications` `kind='register'` | `expires_at < now()` | Expired activation tokens, frees the table |
+| `users` `email_verified_at IS NULL` | no `email_verifications` pending left | Inactive accounts whose 7-day window elapsed. CASCADE removes consumed sessions / email_verifications along the way |
+| `sessions` | `expires_at < now()` | Permanently expired sessions |
 
-Le job logge un résumé sur stdout :
+The job logs a summary on stdout:
 ```
 [cron] cleanup-unactivated done {"verifications":N,"users":N,"sessions":N}
 ```
 
-En cas d'erreur, le job loggue et passe — la donnée orpheline
-coûte moins qu'une suppression buggée. Pas d'endpoint admin de
-trigger manuel en V1 (à ajouter quand le besoin se manifeste).
+On error, the job logs and skips — orphan data costs less than a
+buggy delete. No admin trigger endpoint in V1 (to add when needed).
 
 #### 🚧 Phase 2+
 
-Quand TOTP / passkey / bypass MFA arrivent, ajouter dans le même
-job :
+When TOTP / passkey / MFA bypass land, add to the same job:
 
-| Cible | Condition de purge |
+| Target | Purge condition |
 |---|---|
-| `mfa_bypass_requests` | (`cancelled_at`, `consumed_at`, ou `expires_at`) `< now() - 30j` (audit window) |
-| Email verifications avec `attempts >= 5` | tout de suite (force re-demande) |
-| `email_verifications` `kind='email_change'` consommés ou expirés | `> 7j` |
+| `mfa_bypass_requests` | (`cancelled_at`, `consumed_at`, or `expires_at`) `< now() - 30d` (audit window) |
+| Email verifications with `attempts >= 5` | immediately (forces re-request) |
+| `email_verifications` `kind='email_change'` consumed or expired | `> 7d` |
 
 ---
 
-## 14. Anti-patterns interdits
+## 14. Forbidden anti-patterns
 
-> Cette liste complète la « Checklist crypto pour les devs » de
+> This list complements the "Checklist crypto pour les devs" in
 > [`tech.md`](../packages/web/src/app/pages/docs/content/tech.md)
-> avec les règles **auth-spécifiques** (sessions, MFA, backup codes,
-> AAD, redaction des logs auth). Les règles génériques (HKDF, no-key-
-> material-at-rest, no-leak-of-guard) vivent dans tech.md ; les
-> deux listes ne se contredisent jamais.
+> with the **auth-specific** rules (sessions, MFA, backup codes,
+> AAD, auth-log redaction). Generic rules (HKDF, no-key-material-
+> at-rest, no-leak-of-guard) live in tech.md; the two lists never
+> contradict each other.
 
-À recopier dans les checks PR ou les linters custom :
+To copy into PR checks or custom linters:
 
-1. **Ne JAMAIS** logger un `export_key`, `prf_output`, `recovery_code`,
-   `kek`, `main_key`, `wrapped_*`, **secret TOTP**. Même en dev.
-   Même en debug. Même au niveau `trace` du logger.
-2. **Ne JAMAIS** stocker un facteur ou la KEK en localStorage,
-   sessionStorage, IndexedDB, ou window.*.
-3. **Ne JAMAIS** faire repasser la KEK ou la main key par le réseau
-   (c'est le sens de l'E2E).
-4. **Ne JAMAIS** importer le même raw byte sous deux primitives
-   différentes (HKDF avant import obligatoire, labels distincts).
-5. **Ne JAMAIS** oublier l'AAD dans un `AES-GCM(...)`. Vide ≠
-   absence — le code doit refuser de chiffrer/déchiffrer sans AAD
-   explicite (pas d'overload qui omette ce paramètre).
-6. **Ne JAMAIS** wrapper le secret TOTP. Il doit être en clair côté
-   serveur.
-7. **Ne JAMAIS** exposer un endpoint qui révèle :
-   - Le `recovery code` (jamais re-affichable).
-   - Le secret TOTP (récupération = nouveau enrollment).
-   - Les backup codes en clair (sauf à la régénération).
-   - Le `wrapped_kek_*` ou `encrypted_key` d'un autre user.
-8. **Ne JAMAIS** utiliser `users.email` comme PK. PK = `users.id`
-   UUID, immuable.
-9. **Ne JAMAIS** désactiver une 2FA depuis une session protégée par
-   ce facteur sans re-auth password fresh. La matrice est
+1. **NEVER** log an `export_key`, `prf_output`, `recovery_code`,
+   `kek`, `main_key`, `wrapped_*`, **TOTP secret**. Not in dev.
+   Not in debug. Not at logger `trace` level.
+2. **NEVER** store a factor or the KEK in localStorage,
+   sessionStorage, IndexedDB, or window.*.
+3. **NEVER** put the KEK or the main key back on the wire (that's
+   the whole point of E2E).
+4. **NEVER** import the same raw bytes under two different
+   primitives (HKDF before import mandatory, distinct labels).
+5. **NEVER** forget the AAD in an `AES-GCM(...)`. Empty ≠ absent —
+   the code must refuse to encrypt/decrypt without an explicit AAD
+   (no overload omitting that parameter).
+6. **NEVER** wrap the TOTP secret. It must be in cleartext on the
+   server.
+7. **NEVER** expose an endpoint that reveals:
+   - The `recovery code` (never re-displayable).
+   - The TOTP secret (recovery = new enrollment).
+   - Backup codes in cleartext (except at regeneration).
+   - Another user's `wrapped_kek_*` or `encrypted_key`.
+8. **NEVER** use `users.email` as a PK. PK = `users.id` UUID,
+   immutable.
+9. **NEVER** disable a 2FA from a session protected by that
+   factor without a fresh password re-auth. The matrix is
    inviolable.
-10. **Ne JAMAIS** émettre une session full sans avoir fait passer
-    par `mfa_pending` quand `security_mode != password_or_passkey`.
-11. **Ne JAMAIS** valider un code TOTP sans bumper `last_window`.
-12. **Ne JAMAIS** valider un backup code sans le marquer `used_at`.
-13. **Ne JAMAIS** utiliser `==`/`!=` sur des hashes ou tokens.
-    Toujours comparaison à temps constant
-    (`crypto.timingSafeEqual`).
-14. **Ne JAMAIS** construire une string SQL par concaténation. Toujours
-    Drizzle `eq()` etc.
-15. **Ne JAMAIS** retourner `guard`, `wrapped_*`, `secret` (TOTP),
-    `code_hash` (backup) dans une réponse API.
-16. **Ne JAMAIS** committer un `if (env.NODE_ENV === 'development')
-    console.log(secret)` "temporaire". Aucun.
-17. **Ne JAMAIS** ajouter un `catch (e) {}` muet dans une fonction
-    crypto. Si l'échec est attendu, commenter la raison
-    (ex : `// stale blob on logout`).
-18. **Ne JAMAIS** logger le body **ou la réponse** d'une route
-    `/auth/*` mutante. Le logger doit appliquer **deux** couches :
+10. **NEVER** issue a full session without going through
+    `mfa_pending` when `security_mode != password_or_passkey`.
+11. **NEVER** validate a TOTP code without bumping `last_window`.
+12. **NEVER** validate a backup code without marking `used_at`.
+13. **NEVER** use `==`/`!=` on hashes or tokens. Always
+    constant-time comparison (`crypto.timingSafeEqual`).
+14. **NEVER** build a SQL string by concatenation. Always Drizzle
+    `eq()` etc.
+15. **NEVER** return `guard`, `wrapped_*`, `secret` (TOTP),
+    `code_hash` (backup) in an API response.
+16. **NEVER** commit a "temporary" `if (env.NODE_ENV === 'development')
+    console.log(secret)`. None.
+17. **NEVER** add a silent `catch (e) {}` in a crypto function.
+    If the failure is expected, comment the reason
+    (e.g. `// stale blob on logout`).
+18. **NEVER** log the body **or the response** of a mutating
+    `/auth/*` route. The logger must apply **two** layers:
 
-    **Couche A — blacklist par route (path patterns)** :
+    **Layer A — per-route blacklist (path patterns)**:
     `["/auth/register/*", "/auth/login/*", "/auth/passkeys/*",
       "/auth/totp/*", "/auth/mfa/*", "/auth/migrate/*",
       "/auth/recover-kek/*", "/auth/change-password",
       "/auth/change-email/*", "/auth/security/*",
       "/auth/me/crypto"]`.
-    Seules les routes `/auth/sessions` (lecture liste) et
-    `/auth/me` (profil sans crypto, API-14 split) peuvent
-    logger leur body. `/auth/me/crypto` reste blacklisté —
-    c'est la route qui transporte les wrap blobs.
+    Only `/auth/sessions` (list read) and `/auth/me` (profile
+    without crypto, API-14 split) routes may log their bodies.
+    `/auth/me/crypto` stays blacklisted — that's the route that
+    transports the wrap blobs.
 
-    **Couche B — redaction field-level (defense-in-depth)** : sur
-    **toute** la sortie du logger, redact les clés JSON suivantes :
+    **Layer B — field-level redaction (defense-in-depth)**: across
+    **all** logger output, redact the following JSON keys:
     `["password", "current_password", "new_password",
       "code", "token", "secret", "envelope", "export_key",
       "prf_output", "wrapped_*", "recovery_*", "challenge",
       "signature", "credential_id", "code_hash", "*_hash"]`,
-    avec un censeur du type `[REDACTED]`. Cette deuxième couche
-    protège même si une route oublie sa blacklist Couche A, ou si
-    du code applicatif logge des objets sensibles depuis ailleurs.
-19. **Ne JAMAIS** construire une AAD AES-GCM autrement que via
-    `buildAAD()` de `@nodea/shared/crypto-types`. Le linter / les
-    tests doivent fail-loud sur tout autre usage.
+    with a `[REDACTED]` censor. This second layer protects even
+    when a route forgets its Layer A blacklist, or when application
+    code logs sensitive objects from elsewhere.
+19. **NEVER** build an AES-GCM AAD other than via `buildAAD()`
+    from `@nodea/shared/crypto-types`. The linter / tests must
+    fail loudly on any other usage.
 
 ---
 
 ## 15. Test matrix
 
-Tests obligatoires **avant** le merge de chaque phase. Localisation :
+Mandatory tests **before** merging each phase. Locations:
 
-- Vitest unit : `packages/api/test/auth/**` et
+- Vitest unit: `packages/api/test/auth/**` and
   `packages/web/test/auth/**`.
-- Vitest integration : `packages/api/test/integration/auth.test.ts`
-  (avec `testcontainers` PostgreSQL).
-- Playwright : `packages/web/e2e/auth.spec.ts`.
+- Vitest integration: `packages/api/test/integration/auth.test.ts`
+  (with `testcontainers` PostgreSQL).
+- Playwright: `packages/web/e2e/auth.spec.ts`.
 
 ### 15.1 Crypto unit tests
 
 | Test | Scope |
 |---|---|
-| Round-trip AES-GCM avec AAD | unit |
-| HKDF labels distincts produisent des clés différentes | unit |
-| `buildAAD([users.id, "password"])` est déterministe | unit |
-| `buildAAD([a, b])` ≠ `buildAAD([a+b])` (length-prefix prévient collisions) | unit |
-| `buildAAD([])` retourne 0 byte (cas dégénéré) | unit |
-| `buildAAD` refuse une part > 65535 bytes (limite u16) | unit |
-| Wrap/unwrap KEK sous wk_password (export_key fixe) | unit |
-| Wrap/unwrap KEK sous wk_passkey (prf_output fixe) | unit |
-| Wrap/unwrap KEK sous wk_recovery (recovery_code fixe) | unit |
-| Unwrap KEK avec mauvaise AAD échoue | unit |
-| Unwrap KEK avec mauvais wrap blob échoue | unit |
-| Recovery proof match attendu | unit |
+| AES-GCM round-trip with AAD | unit |
+| Distinct HKDF labels produce different keys | unit |
+| `buildAAD([users.id, "password"])` is deterministic | unit |
+| `buildAAD([a, b])` ≠ `buildAAD([a+b])` (length-prefix prevents collisions) | unit |
+| `buildAAD([])` returns 0 bytes (degenerate case) | unit |
+| `buildAAD` refuses a part > 65535 bytes (u16 limit) | unit |
+| KEK wrap/unwrap under wk_password (fixed export_key) | unit |
+| KEK wrap/unwrap under wk_passkey (fixed prf_output) | unit |
+| KEK wrap/unwrap under wk_recovery (fixed recovery_code) | unit |
+| KEK unwrap with wrong AAD fails | unit |
+| KEK unwrap with wrong wrap blob fails | unit |
+| Recovery proof matches expected value | unit |
 
 ### 15.2 OPAQUE integration
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
-| Register OPAQUE → login → unwrap main key → ciphertext existant lisible | integration |
-| Wrong password → login fail côté serveur (pas de leak) | integration |
-| Stale session après change-password rejetée | integration |
-| OPAQUE handles unknown identifier sans timing leak | integration |
+| OPAQUE register → login → unwrap main key → existing ciphertext readable | integration |
+| Wrong password → server-side login fail (no leak) | integration |
+| Stale session after change-password rejected | integration |
+| OPAQUE handles unknown identifier without timing leak | integration |
 
 ### 15.3 Passkey integration
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
-| Enroll PRF passkey → login passkey-first → unwrap KEK | integration |
-| Enroll non-PRF passkey → login passkey-first → fallback password | integration |
-| Multiples passkeys, retirer une seule préserve les autres | integration |
-| signCount régression → login refusé + email envoyé | integration |
-| signCount = 0 sur 3 assertions consécutives → `signCountStrict = false`, login OK | integration |
-| Après `signCountStrict = false`, signCount régression accepté | integration |
-| Enrollment avec `authData.flags.uv = false` → refus serveur 400 | integration |
-| Assertion login avec `authData.flags.uv = false` → refus serveur 400 | integration |
-| Activer mode `maximum` sans TOTP enrôlé → 400 `totp_required` | integration |
-| Activer mode `maximum` sans passkey enrôlée → 400 `passkey_required` | integration |
-| Retirer la dernière passkey en mode `maximum` → mode auto-downgrade vers `password_or_passkey` + email | integration |
-| Désactiver TOTP en mode `maximum` → mode auto-downgrade + email | integration |
+| Enroll PRF passkey → login passkey-first → KEK unwrap | integration |
+| Enroll non-PRF passkey → login passkey-first → password fallback | integration |
+| Multiple passkeys, removing one preserves the others | integration |
+| signCount regression → login refused + email sent | integration |
+| signCount = 0 on 3 consecutive assertions → `signCountStrict = false`, login OK | integration |
+| After `signCountStrict = false`, signCount regression accepted | integration |
+| Enrollment with `authData.flags.uv = false` → server 400 | integration |
+| Login assertion with `authData.flags.uv = false` → server 400 | integration |
+| Switch to `maximum` mode without TOTP enrolled → 400 `totp_required` | integration |
+| Switch to `maximum` mode without passkey enrolled → 400 `passkey_required` | integration |
+| Remove the last passkey in `maximum` mode → auto downgrade to `password_or_passkey` + email | integration |
+| Disable TOTP in `maximum` mode → auto downgrade + email | integration |
 
 ### 15.4 TOTP integration
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
 | Enrollment + verify → enabled_at set | integration |
-| Replay (même code, même window) rejeté | integration |
-| Skew accepté à -30s, +30s ; rejeté à ±60s | integration |
+| Replay (same code, same window) rejected | integration |
+| Skew accepted at -30s, +30s; rejected at ±60s | integration |
 | Backup code single-use | integration |
-| Backup code après usage rejeté | integration |
-| Last backup code → email envoyé | integration |
-| Désactivation depuis session protégée par TOTP sans re-auth → 401 | integration |
-| Désactivation après re-auth password OK | integration |
+| Backup code rejected after use | integration |
+| Last backup code → email sent | integration |
+| Disable from a TOTP-protected session without re-auth → 401 | integration |
+| Disable after password re-auth OK | integration |
 
-### 15.5 Bypass MFA factor (TOTP / passkey)
+### 15.5 MFA factor bypass (TOTP / passkey)
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
-| Request TOTP → email envoyé avec confirm + cancel tokens | integration |
-| Request passkey → email envoyé (template différent) | integration |
-| Confirm sans 7 jours → bypass refusé | integration |
-| Confirm + 7 jours TOTP → bypass appliqué, `mfa_totp.enabled_at = NULL`, backup codes purgés | integration |
-| Confirm + 7 jours passkey → toutes les `auth_factors kind='passkey'` deleted | integration |
-| Cancel pendant la fenêtre invalide la request | integration |
-| Nouvelle request invalide la précédente (toutes factors confondues) | integration |
-| Bypass TOTP en mode `maximum` → downgrade auto vers `password_or_passkey` | integration |
-| Bypass passkey en mode `maximum` → downgrade auto vers `password_or_passkey` | integration |
-| Bypass appliqué → notification email | integration |
-| **Multi-factor loss** : mode max, passkey ET TOTP non vérifiés → request bypass `factor=totp` retournée 409 `multi_factor_loss` | integration |
-| **Multi-factor loss** : mode max, passkey ET TOTP non vérifiés → request bypass `factor=passkey` retournée 409 | integration |
-| Bypass passkey démarré pendant qu'un bypass TOTP est actif → 409 `bypass_already_active` | integration |
+| TOTP request → email sent with confirm + cancel tokens | integration |
+| Passkey request → email sent (different template) | integration |
+| Confirm without 7 days → bypass refused | integration |
+| Confirm + 7 days TOTP → bypass applied, `mfa_totp.enabled_at = NULL`, backup codes purged | integration |
+| Confirm + 7 days passkey → every `auth_factors kind='passkey'` deleted | integration |
+| Cancel during the window invalidates the request | integration |
+| New request invalidates the previous one (across factors) | integration |
+| TOTP bypass in `maximum` mode → auto downgrade to `password_or_passkey` | integration |
+| Passkey bypass in `maximum` mode → auto downgrade to `password_or_passkey` | integration |
+| Bypass applied → notification email | integration |
+| **Multi-factor loss**: max mode, passkey AND TOTP unverified → bypass request `factor=totp` returns 409 `multi_factor_loss` | integration |
+| **Multi-factor loss**: max mode, passkey AND TOTP unverified → bypass request `factor=passkey` returns 409 | integration |
+| Passkey bypass started while a TOTP bypass is active → 409 `bypass_already_active` | integration |
 
 ### 15.6 Multi-step register
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
-| Step 1 → email envoyé en dev console | integration |
-| Step 2 mauvais code → attempts++ ; 5 attempts → 410 | integration |
-| Step 2 OK → cookie register émis | integration |
-| Reprise après fermeture navigateur → bonne étape | integration |
-| Cookie register expiré → forçage step 1 | integration |
-| Step 7 finalize → cookie session full | integration |
+| Step 1 → email sent in dev console | integration |
+| Step 2 wrong code → attempts++; 5 attempts → 410 | integration |
+| Step 2 OK → register cookie issued | integration |
+| Resume after browser close → correct step | integration |
+| Expired register cookie → forces step 1 | integration |
+| Step 7 finalize → full session cookie | integration |
 
-### 15.7 Recovery KEK
+### 15.7 KEK Recovery
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
-| Recovery code valide → unwrap KEK + new password OK + recovery code régénéré | integration |
-| Recovery code avec checksum BIP39 invalide → rejet client (pas de hit serveur) | integration |
-| `recovery_code_hash` KO côté serveur → 401, **aucune** mutation appliquée | integration |
-| `recovery_code_hash` KO loggué comme `auth.recover.hash_mismatch` | integration |
-| Régénération en Settings → ancien `wrapped_kek_recovery` + ancien `recovery_code_hash` invalidés simultanément | integration |
-| Reset destructif → `wrapped_kek_recovery` + `recovery_code_hash` NULL | integration |
-| `recovery_session_id` consommé une seule fois | integration |
-| `/start` sur email inconnu → réponse opaque indistinguable d'un email connu (timing) | integration |
+| Valid recovery code → KEK unwrap + new password OK + recovery code regenerated | integration |
+| Recovery code with invalid BIP39 checksum → client-side rejection (no server hit) | integration |
+| `recovery_code_hash` mismatch on the server → 401, **no** mutation applied | integration |
+| `recovery_code_hash` mismatch logged as `auth.recover.hash_mismatch` | integration |
+| Regeneration in Settings → old `wrapped_kek_recovery` + old `recovery_code_hash` invalidated simultaneously | integration |
+| Destructive reset → `wrapped_kek_recovery` + `recovery_code_hash` NULL | integration |
+| `recovery_session_id` consumed only once | integration |
+| `/start` on unknown email → opaque response indistinguishable from a known email (timing) | integration |
 
-### 15.8 Matrice de re-auth
+### 15.8 Re-auth matrix
 
-| Test | Scénario |
+| Test | Scenario |
 |---|---|
-| Change mode sans re-auth → 401 reauth_required | integration |
-| Change mode avec re-auth password fresh → OK | integration |
-| Change password avec re-auth passkey → OK | integration |
-| Change password sans aucune re-auth → 401 | integration |
-| Account deletion : password seul si aucun second facteur | integration |
-| Account deletion : password + passkey + TOTP si tous configurés | integration |
+| Change mode without re-auth → 401 reauth_required | integration |
+| Change mode with fresh password re-auth → OK | integration |
+| Change password with passkey re-auth → OK | integration |
+| Change password without any re-auth → 401 | integration |
+| Account deletion: password alone if no second factor | integration |
+| Account deletion: password + passkey + TOTP if all configured | integration |
 
 ### 15.9 End-to-end Playwright
 
-| Scénario | Description |
+| Scenario | Description |
 |---|---|
 | `register-happy-path` | Step 1 → ... → step 7 → onboarding |
-| `register-resume` | Step 3 → ferme navigateur → revient → reprend step 4 |
+| `register-resume` | Step 3 → close browser → return → resumes step 4 |
 | `login-password-first-mode-max` | password → passkey → TOTP → home |
 | `login-passkey-first-mode-max` | passkey → password → TOTP → home |
-| `bypass-totp-full-flow` | Lost TOTP → email confirm → 7 jours passe → login skip TOTP → re-enrollment |
-| `change-password-via-passkey` | login → settings → re-auth passkey → change password OK |
-| `migration-legacy-user` | login legacy → migration prompt → set recovery code → home |
+| `bypass-totp-full-flow` | Lost TOTP → email confirm → 7 days pass → login skips TOTP → re-enrollment |
+| `change-password-via-passkey` | login → settings → passkey re-auth → change password OK |
+| `migration-legacy-user` | legacy login → migration prompt → set recovery code → home |
 
-### 15.10 Coverage cible
+### 15.10 Coverage targets
 
-- `packages/api/src/auth/**` : ≥ 90 %
-- `packages/web/src/core/crypto/**` : ≥ 95 %
-- `packages/shared/src/crypto-types.ts` : ≥ 95 %
-
----
-
-## 16. Pièges récapitulés
-
-À garder visibles, en haut des PR de chaque phase :
-
-1. **TOTP n'est pas un facteur crypto.** Il ne wrappe rien, il
-   n'unlock rien. C'est un ralentisseur de session, pas un gardien
-   de KEK. Un opérateur serveur malveillant peut le bypass.
-2. **`export_key` est sensible.** Aussi sensible que la KEK
-   elle-même. Zero les bytes après usage. Ne jamais persister.
-3. **`prf_output` est sensible.** Idem.
-4. **`recovery code` n'est jamais stocké en clair côté serveur.**
-   Le serveur stocke `wrapped_kek_recovery` (blob non déchiffrable
-   sans le code) et `recovery_code_hash = SHA-256(entropie)`
-   (uncrackable offline avec 128 bits d'entropie BIP39). Le code lui-même
-   n'est jamais persisté.
-5. **Le main key bytes ne change pas après l'inscription.**
-   Change-password = re-wrap KEK. Add-passkey = ajouter un wrap
-   de KEK. Recovery = unwrap puis re-wrap (la main key reste la
-   même). Tout ciphertext existant est protégé par cette
-   immutabilité.
-6. **AAD obligatoire à chaque wrap/unwrap.** Pas de défaut, pas de
-   helper qui l'omet.
-7. **Mode change requiert re-auth password fresh.** Pas de chemin
-   contournant la matrice — même via API admin.
-8. **OPAQUE id = email.** Changer l'email = re-register OPAQUE.
-   Lourd mais cohérent. L'identifiant interne `users.id` reste
-   immuable.
-9. **Une seule mfa_bypass_request active à la fois.** Unique index
-   conditionnel.
-10. **Passkeys sans UV refusées.** UV `'required'` enforced à
-    l'enrollment et à chaque assertion. Yubikey sans PIN configuré
-    → enrollment refusé.
+- `packages/api/src/auth/**`: ≥ 90 %
+- `packages/web/src/core/crypto/**`: ≥ 95 %
+- `packages/shared/src/crypto-types.ts`: ≥ 95 %
 
 ---
 
-## Annexe A — Glossaire
+## 16. Pitfalls recap
 
-| Terme | Définition |
+To keep visible at the top of every phase's PR:
+
+1. **TOTP isn't a crypto factor.** It wraps nothing, unlocks
+   nothing. It's a session slow-down, not a KEK guardian. A
+   malicious server operator can bypass it.
+2. **`export_key` is sensitive.** As sensitive as the KEK itself.
+   Zero the bytes after use. Never persist.
+3. **`prf_output` is sensitive.** Same.
+4. **The `recovery code` is never stored in cleartext on the
+   server.** The server stores `wrapped_kek_recovery` (blob
+   undecryptable without the code) and `recovery_code_hash =
+   SHA-256(entropy)` (uncrackable offline with 128 bits of BIP39
+   entropy). The code itself is never persisted.
+5. **The main key bytes don't change after signup.** Change-password
+   = re-wrap KEK. Add-passkey = add a KEK wrap. Recovery = unwrap
+   then re-wrap (the main key stays the same). Every existing
+   ciphertext is protected by this immutability.
+6. **AAD mandatory at every wrap/unwrap.** No default, no helper
+   that omits it.
+7. **Mode change requires fresh password re-auth.** No path
+   bypassing the matrix — not even via admin API.
+8. **OPAQUE id = email.** Changing the email = OPAQUE re-register.
+   Heavy but consistent. The internal identifier `users.id` stays
+   immutable.
+9. **Only one mfa_bypass_request active at a time.** Conditional
+   unique index.
+10. **Passkeys without UV refused.** UV `'required'` enforced at
+    enrollment and on every assertion. Yubikey without a
+    configured PIN → enrollment refused.
+
+---
+
+## Appendix A — Glossary
+
+| Term | Definition |
 |---|---|
-| **OPAQUE** | aPAKE (asymmetric Password-Authenticated Key Exchange) qui permet à un client de prouver la connaissance d'un password au serveur sans révéler le password ni un hash crackable, et de dériver un `export_key` partagé. RFC 9497. |
-| **export_key** | Clé symétrique 32 bytes dérivée par OPAQUE après authentification réussie. Connue uniquement du client. |
-| **WebAuthn** | API web standardisée pour FIDO2. Permet l'auth via passkeys (clés cryptographiques liées à un origin). |
-| **PRF** | Pseudo-Random Function. Extension WebAuthn qui permet à l'authenticator de produire une sortie déterministe à partir d'un input fourni par le client. Utilisé ici pour dériver une wrapping key sans envoyer de matériel sensible au serveur. |
-| **prf_output** | Sortie de l'extension PRF. 32 bytes typiquement. Connue uniquement du client (jamais transmise au serveur). |
+| **OPAQUE** | aPAKE (asymmetric Password-Authenticated Key Exchange) that lets a client prove knowledge of a password to the server without revealing the password or a crackable hash, and derive a shared `export_key`. RFC 9497. |
+| **export_key** | 32-byte symmetric key derived by OPAQUE after successful authentication. Known only to the client. |
+| **WebAuthn** | Standardised web API for FIDO2. Enables auth via passkeys (cryptographic keys bound to an origin). |
+| **PRF** | Pseudo-Random Function. WebAuthn extension that lets the authenticator produce a deterministic output from a client-supplied input. Used here to derive a wrapping key without sending sensitive material to the server. |
+| **prf_output** | Output of the PRF extension. Typically 32 bytes. Known only to the client (never transmitted to the server). |
 | **TOTP** | Time-based One-Time Password. RFC 6238. |
-| **KEK** | Key Encryption Key. Ici, clé aléatoire 32 bytes qui wrappe la main key. Wrappée elle-même par chaque facteur. |
-| **Main key** | Clé aléatoire 32 bytes générée à l'inscription. Source de vérité crypto pour les sub-keys AES et HMAC. Ne change jamais. |
-| **Sub-keys (aes_main, hmac_main)** | Dérivées par HKDF depuis main_key, importées non-extractables dans WebCrypto. |
-| **AAD** | Additional Authenticated Data. Données qui sont authentifiées par AES-GCM mais non chiffrées. Lient un blob à son contexte. |
+| **KEK** | Key Encryption Key. Here, a 32-byte random key wrapping the main key. Itself wrapped by each factor. |
+| **Main key** | 32-byte random key generated at signup. Crypto source of truth for the AES and HMAC sub-keys. Never changes. |
+| **Sub-keys (aes_main, hmac_main)** | Derived via HKDF from main_key, imported non-extractable in WebCrypto. |
+| **AAD** | Additional Authenticated Data. Data authenticated by AES-GCM but not encrypted. Binds a blob to its context. |
 | **HKDF** | HMAC-based Key Derivation Function. RFC 5869. |
-| **Recovery code KEK** | Code haute entropie (~130 bits) généré au moment où l'user configure le code de récupération (étape post-inscription fortement recommandée), affiché une seule fois. Dérive une wrapping key qui wrappe la KEK. |
-| **Backup codes TOTP** | 10 codes single-use générés à l'enrollment TOTP, hashés côté serveur, en cas de perte de l'authenticator. |
-| **Bypass TOTP** | Mécanisme de récupération en cas de perte du TOTP + backup codes. Email + 7 jours delay. |
-| **Stepped MFA** | Login en deux phases : facteur principal (password OPAQUE ou passkey) → cookie pending → facteurs additionnels → cookie full. |
+| **KEK recovery code** | High-entropy code (~130 bits) generated when the user configures the recovery code (a strongly recommended post-signup step), shown only once. Derives a wrapping key that wraps the KEK. |
+| **TOTP backup codes** | 10 single-use codes generated at TOTP enrollment, server-hashed, in case the authenticator is lost. |
+| **TOTP bypass** | Recovery mechanism for TOTP + backup-codes loss. Email + 7-day delay. |
+| **Stepped MFA** | Two-phase login: primary factor (OPAQUE password or passkey) → pending cookie → additional factors → full cookie. |
 
