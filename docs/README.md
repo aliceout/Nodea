@@ -49,10 +49,12 @@ agencé sous le capot ?
 
 | Lis | Pourquoi |
 |---|---|
+| [Development.md](./Development.md) | **Point d'entrée dev** : setup local, lancer les tests (api / web / e2e), recettes pour ajouter un module / une route / une migration, conventions code |
 | [Architecture.md](./Architecture.md) | Layout du monorepo (api / web / shared), runtime backend, stack frontend, conventions |
 | [Database.md](./Database.md) | Schéma Postgres complet, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
 | [Auth-Spec.md](./Auth-Spec.md) | **Spécification technique exhaustive** de l'auth (OPAQUE + Passkey + TOTP + recovery + bypass MFA + stepped MFA + session re-auth). Référence complète, pas une lecture rapide |
 | [Security.md](./Security.md) | Invariants crypto, politique de rate-limit (§4.1), gestes interdits |
+| [adr/](./adr/) | Décisions architecturales avec leurs alternatives — lis l'ADR concerné avant de remettre en cause un pattern |
 
 **Avant de toucher un module** : la fiche `Modules/<Module>.md`
 décrit le payload clair et les règles. Avant de toucher l'auth :
