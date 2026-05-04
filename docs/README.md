@@ -49,7 +49,7 @@ agencé sous le capot ?
 
 | Lis | Pourquoi |
 |---|---|
-| [Development.md](./Development.md) | **Point d'entrée dev** : setup local, lancer les tests (api / web / e2e), recettes pour ajouter un module / une route / une migration, conventions code |
+| [`nodea.app/docs/contribute`](https://nodea.app/docs/contribute) | **Point d'entrée dev** : setup local, lancer les tests (api / web / e2e), recettes pour ajouter un module / une route / une migration, conventions code. Source de vérité user-facing — le détail technique reste ici dans Architecture / Database / Auth-Spec / Security ci-dessous |
 | [Architecture.md](./Architecture.md) | Layout du monorepo (api / web / shared), runtime backend, stack frontend, conventions |
 | [Database.md](./Database.md) | Schéma Postgres complet, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
 | [Auth-Spec.md](./Auth-Spec.md) | **Spécification technique exhaustive** de l'auth (OPAQUE + Passkey + TOTP + recovery + bypass MFA + stepped MFA + session re-auth). Référence complète, pas une lecture rapide |

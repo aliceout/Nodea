@@ -10,16 +10,16 @@ and `requireFreshPassword` / stepped-MFA UX paths.
 ## Where to find what
 
 - **Comment lancer les tests** (commandes pnpm, pré-requis machine,
-  variantes debug) → [`docs/Development.md §2 Tests`](../../docs/Development.md#2-tests).
+  variantes debug) → [`nodea.app/docs/contribute`](https://nodea.app/docs/contribute).
 - **Setup local** (Postgres, Mailpit, env vars, premier seed) →
-  [`docs/Development.md §1 Setup local`](../../docs/Development.md#1-setup-local-de-z%C3%A9ro).
+  [`nodea.app/docs/contribute`](https://nodea.app/docs/contribute) (section setup local).
 - **Caveats par spec** (sélecteurs, behaviors Playwright spécifiques) →
   ce README, sections « Coverage » et « Important caveats » ci-dessous.
 - **Helpers** (`helpers/db.ts`, `helpers/mailpit.ts`, etc.) → fin de
   ce README.
 
 Le contenu transversal (« lancer les 3 suites », recettes pour ajouter
-une route ou un module) vit dans `docs/Development.md` — une seule
+une route ou un module) vit sur `nodea.app/docs/contribute` — une seule
 source de vérité.
 
 ---

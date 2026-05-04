@@ -308,8 +308,8 @@ long terme).
 | Self-hosters tiers | Pas concerné — chacun son SLO |
 
 **Note** : la partie *« runbook »* (procédures d'incident)
-reste dans le repo (`docs/Operations.md`). C'est uniquement
-les **engagements de niveau** qui sont infra (ce document).
+vit sur `nodea.app/docs/self-host`. C'est uniquement les
+**engagements de niveau** qui sont infra (ce document).
 
 ---
 
