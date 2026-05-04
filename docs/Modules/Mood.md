@@ -1,12 +1,13 @@
-# Module Mood (`mood_entries`)
+# Mood module (`mood_entries`)
 
-## Description fonctionnelle
+## Functional description
 
-Module quotidien pour suivre l’humeur et consigner trois éléments positifs.  
-- Rythme idéal : une entrée par jour (facultatif).  
-- UI : score d’humeur (−2 à +2), emoji, trois positifs, commentaire facultatif, éventuellement une question/réponse d’introspection.
+Daily module for tracking mood and recording three positive things.
+- Ideal cadence: one entry per day (optional).
+- UI: mood score (−2 to +2), emoji, three positives, optional comment,
+  optionally an introspection question / answer.
 
-## Payload clair attendu
+## Expected cleartext payload
 
 ```json
 {
@@ -22,27 +23,27 @@ Module quotidien pour suivre l’humeur et consigner trois éléments positifs.
 }
 ```
 
-Les champs `positive1..3` sont requis (objectif « gratitude »). `question`/`answer` alimentent les modules d’analyse ultérieurs.
+The `positive1..3` fields are required (the "gratitude" goal).
+`question` / `answer` feed downstream analysis modules.
 
-## Sécurité
+## Security
 
-Mood applique les règles communes à tous les modules — voir
-[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) pour le détail
-(AES-GCM, guard HMAC, création en deux temps, validation
-`requireGuard`).
+Mood follows the rules shared by every module — see
+[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) for the detail
+(AES-GCM, HMAC guard, two-phase creation, `requireGuard` validation).
 
 ## Export / Import
 
-- Export clair : tableau `modules.mood[]` dans `export.json`.
-- Import : re-chiffre localement puis rejoue le flux POST init →
-  PATCH promotion.
-- Clé naturelle de déduplication : la `date` (une entrée par jour
-  au maximum côté client).
-- Pagination de la lecture : 200 entrées par requête.
-- Les payloads illisibles (clé maître changée, corruption) sont
-  loggés localement et ignorés — pas de blocage de l'import.  
+- Cleartext export: `modules.mood[]` array in `export.json`.
+- Import: re-encrypts locally, then replays the POST init → PATCH
+  promotion flow.
+- Natural deduplication key: the `date` (one entry per day max on the
+  client side).
+- Read pagination: 200 entries per request.
+- Unreadable payloads (main key changed, corruption) are logged
+  locally and skipped — no import-blocker.
 
-### Exemple d’export
+### Export sample
 
 ```json
 {
@@ -52,21 +53,22 @@ Mood applique les règles communes à tous les modules — voir
         "date": "2025-08-20",
         "mood_score": 1,
         "mood_emoji": "😊",
-        "positive1": "Balade avec Eva",
-        "positive2": "Avancé sur Nodea",
-        "positive3": "Bon repas",
-        "comment": "Journée plutôt calme et constructive",
-        "question": "Qu’est-ce qui m’a donné de l’énergie ?",
-        "answer": "Le soleil et les échanges avec Anouk"
+        "positive1": "Walk with Eva",
+        "positive2": "Made progress on Nodea",
+        "positive3": "Good meal",
+        "comment": "Quiet, productive day",
+        "question": "What gave me energy?",
+        "answer": "Sunlight and conversation with Anouk"
       }
     ]
   }
 }
 ```
 
-## Points clés
+## Key points
 
-1. Une entrée = une journée (mais pas obligatoire).  
-2. Serveur aveugle : le contenu clair n’existe qu’après déchiffrement dans le navigateur.  
-3. Les guards empêchent toute modification serveur sans la clé maîtresse.  
-4. L’export clair est lisible et réimportable sans perte.
+1. One entry = one day (but not mandatory).
+2. Blind server: the cleartext only exists after decryption in the
+   browser.
+3. Guards prevent any server-side modification without the main key.
+4. Cleartext export is human-readable and reimportable without loss.

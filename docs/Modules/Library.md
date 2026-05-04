@@ -1,44 +1,44 @@
-# Module Library
+# Library module
 
-> Statut : **Phase 1 et 2 livrées · Phase 3 partielle · Phase 4 non démarrée.**
-> Décisions de cadrage validées le 2026-04-26 (cf. §9). Code shippé sur
-> `refacto-design-v2` ; une refacto interne du fichier `Library/index.tsx`
-> (1438 lignes monolithiques) est nécessaire avant Phase 4.
-
----
-
-## 1. Objet & cadrage
-
-Library est le module **bibliothèque personnelle de livres** : les
-ouvrages que la personne a lus / abandonnés / a en cours, avec ses
-notes, extraits et impressions.
-
-L'objectif explicite est de **remplacer Babelio / Goodreads /
-StoryGraph** dans une version auto-hébergée et chiffrée bout en bout.
-Le serveur ne sait jamais ce que la personne lit.
-
-**Livres uniquement.** Les médias audiovisuels (films, séries,
-documentaires) feront l'objet d'un module séparé — leurs APIs
-(TMDB) et leurs sémantiques (épisodes, runtime, plateformes de
-streaming) sont assez différentes pour mériter leur propre surface.
+> Status: **Phases 1 and 2 shipped · Phase 3 partial · Phase 4 not started.**
+> Scoping decisions ratified 2026-04-26 (cf. §9). Code shipped on
+> `refacto-design-v2`; an internal refactor of `Library/index.tsx`
+> (1438 monolithic lines) is required before Phase 4.
 
 ---
 
-## 3. Schéma des données
+## 1. Purpose & scope
 
-Trois tables chiffrées E2E (mêmes règles crypto que Mood / Goals /
-Journal — `module_user_id`, `payload` AES-GCM, `cipher_iv`, `guard`
-HMAC déterministe, création en deux temps).
+Library is the **personal book library** module: the works the user
+has read / abandoned / has in progress, with notes, quotes, and
+impressions.
 
-### 3.1 `library_items_entries` (œuvres)
+The explicit goal is to **replace Babelio / Goodreads / StoryGraph**
+with a self-hosted, end-to-end-encrypted version. The server never
+knows what the user is reading.
+
+**Books only.** Audiovisual media (films, TV series, documentaries)
+are out of scope and will get a separate module — their APIs (TMDB)
+and semantics (episodes, runtime, streaming platforms) are different
+enough to deserve their own surface.
+
+---
+
+## 3. Data schema
+
+Three E2E-encrypted tables (same crypto rules as Mood / Goals /
+Journal — `module_user_id`, AES-GCM `payload`, `cipher_iv`,
+deterministic HMAC `guard`, two-phase creation).
+
+### 3.1 `library_items_entries` (works)
 
 ```jsonc
 {
   "type": "book",
-  "title": "Les Misérables",         // requis
+  "title": "Les Misérables",         // required
 
-  // Identité externe — pour fetch métadonnées + dédup à l'import.
-  // Tous optionnels (saisie manuelle possible).
+  // External identity — for metadata fetch + import dedup.
+  // All optional (manual entry is allowed).
   "providers": {
     "openlibrary": "OL45804W",
     "googlebooks": "abc123",
@@ -46,360 +46,358 @@ HMAC déterministe, création en deux temps).
     "isbn10": "2070409228"
   },
 
-  // Métadonnées descriptives — figées au fetch (snapshot).
-  // Convention de nom : `<Prénom> <NOM>` avec le NOM en MAJUSCULES.
-  // Appliquée à la saisie manuelle, à l'import (Babelio livre les
-  // noms inversés et en casse normale, on flippe et on uppercase),
-  // et aux résultats des providers (Open Library / Google Books
-  // donnent souvent juste un blob de texte qu'on normalise).
+  // Descriptive metadata — frozen at fetch time (snapshot).
+  // Naming convention: `<First name> <LAST NAME>` with the LAST
+  // NAME in CAPS. Applied to manual entry, to imports (Babelio
+  // hands over names inverted and in normal case — we flip and
+  // uppercase), and to provider results (Open Library / Google
+  // Books often return a raw text blob that we normalise).
   "creators": [
     { "name": "Victor HUGO", "role": "author" }
   ],
   "year": 1862,
-  "language": "fr",                  // langue de l'édition lue
+  "language": "fr",                  // language of the read edition
   "original_language": "fr",
   "page_count": 1463,
   "publisher": "Folio classique",
-  "summary": "Texte court, optionnel",
-  "series": {                        // optionnel
+  "summary": "Short text, optional",
+  "series": {                        // optional
     "name": "Les Misérables",
     "position": 2,
     "of": 5
   },
 
-  // Cover stockée en blob chiffré dans `library_covers_entries`
-  // (cf. §6). On ne garde ici qu'un pointeur logique.
-  "cover_rid": "rec_cov_xyz",        // null si pas de cover
+  // Cover stored as an encrypted blob in `library_covers_entries`
+  // (cf. §6). Only a logical pointer is kept here.
+  "cover_rid": "rec_cov_xyz",        // null if no cover
 
-  // État et expérience personnelle.
+  // State and personal experience.
   "status": "in_progress",           // planned | in_progress | finished | abandoned
   "format": "paper",                 // paper | ebook | audio | unknown
-  "started_at": "2024-11-03",        // optionnel
-  "finished_at": null,               // null tant que pas terminé
-  "current_page": 318,               // utile pour status === in_progress
-  "rating": 4,                       // 0..5, optionnel
-  "tags": ["classique", "à offrir"], // libre, propre à la personne
+  "started_at": "2024-11-03",        // optional
+  "finished_at": null,               // null until finished
+  "current_page": 318,               // useful when status === in_progress
+  "rating": 4,                       // 0..5, optional
+  "tags": ["classic", "to gift"],    // free, user-specific
   "is_favorite": false
 }
 ```
 
-> **Pas de tableau de relectures.** Si la personne relit, elle peut
-> mettre à jour la note ou ajouter une review datée — mais on ne
-> conserve pas l'historique des dates de lecture. C'est un comportement
-> de machine, pas d'humain·e (validé 2026-04-26).
+> **No re-read array.** If the user re-reads, they can update the
+> rating or add a dated review — but we don't keep a history of
+> reading dates. That's machine behaviour, not human (ratified
+> 2026-04-26).
 
-### 3.2 `library_reviews_entries` (notes & extraits)
+### 3.2 `library_reviews_entries` (notes & quotes)
 
-Une œuvre peut avoir **plusieurs reviews datées**. C'est la place où
-on consigne les extraits qu'on aime, les pensées en cours de
-lecture, ou la fiche-bilan.
+A work can have **several dated reviews**. That's where quotes the
+user likes, mid-reading thoughts, or the wrap-up notes live.
 
 ```jsonc
 {
-  "item_rid": "rec_abc123",          // requis — id de l'œuvre liée
+  "item_rid": "rec_abc123",          // required — id of the related work
   "date": "2025-01-08T19:42:00.000Z",
   "kind": "quote",                   // quote | note
-  "title": "Chapitre 12 — Cosette",  // optionnel
-  "content": "Markdown libre…",      // requis
-  "page": 318,                       // optionnel (typique pour quote)
-  "spoiler": false                   // toggle de masquage côté UI
+  "title": "Chapter 12 — Cosette",   // optional
+  "content": "Free Markdown…",       // required
+  "page": 318,                       // optional (typical for quote)
+  "spoiler": false                   // UI-side hide toggle
 }
 ```
 
-- **`quote`** = un extrait du livre, souvent court, avec une page de
-  référence — les extraits qu'on aime dans les livres qu'on lit.
-- **`note`** = tout le reste : réflexion en cours, fiche-bilan
-  finale, impression, lien avec d'autres lectures…
+- **`quote`** = a passage from the book, often short, with a page
+  reference — quotes the user likes from books they read.
+- **`note`** = everything else: in-flight reflection, final wrap-up,
+  impression, links to other reads…
 
-L'UI rendra les deux différemment (italique + indentation pour les
-quotes, prose normale pour les notes) sans forker le modèle.
+The UI renders the two differently (italic + indent for quotes,
+normal prose for notes) without forking the model.
 
-### 3.3 `library_covers_entries` (couvertures, table dédiée)
+### 3.3 `library_covers_entries` (covers, dedicated table)
 
 ```jsonc
 {
-  "item_rid": "rec_abc123",          // requis — clé de jointure
+  "item_rid": "rec_abc123",          // required — join key
   "mime": "image/jpeg",
-  "blob_b64": "/9j/4AAQSkZJRgABAQ…", // taille raisonnable (≤80 KB)
-  "fetched_from": "openlibrary",     // info, peut être null
+  "blob_b64": "/9j/4AAQSkZJRgABAQ…", // reasonable size (≤80 KB)
+  "fetched_from": "openlibrary",     // info, can be null
   "fetched_at": "2026-04-26T12:00:00Z"
 }
 ```
 
-> Table dédiée (plutôt qu'inline dans `library_items_entries`) pour
-> garder les payloads d'items légers et permettre une suppression /
-> re-fetch de la cover indépendamment.
+> Dedicated table (rather than inline in `library_items_entries`) to
+> keep item payloads light and to allow deletion / re-fetch of the
+> cover independently.
 
 ---
 
-## 4. Métadonnées externes — proxy Nodea
+## 4. External metadata — Nodea proxy
 
-Architecture validée : **proxy via le serveur Nodea**. Les requêtes
-client passent par `POST /library/lookup` côté API Nodea, qui :
+Architecture ratified: **proxy through the Nodea server**. Client
+requests go through `POST /library/lookup` on the Nodea API, which:
 
-1. Cache la réponse (clé : ISBN ou query normalisée).
-2. Si miss, appelle le provider externe avec **la clé API de
-   l'instance Nodea** (clé partagée par tous les utilisateur·ice·s
-   de cette instance — pas par utilisateur·ice).
-3. Renvoie au client le résultat normalisé.
+1. Caches the response (key: ISBN or normalised query).
+2. On a miss, calls the external provider with **the Nodea
+   instance's API key** (key shared by every user of that
+   instance — not per-user).
+3. Returns the normalised result to the client.
 
-Le provider externe ne voit qu'**une IP par instance Nodea** sans
-corrélation entre comptes. Le serveur Nodea voit les recherches —
-acceptable puisque la personne est aussi celle qui héberge.
+The external provider only sees **one IP per Nodea instance** with
+no cross-account correlation. The Nodea server does see the
+searches — acceptable since the user is also the host.
 
-### 4.1 Providers retenus
+### 4.1 Selected providers
 
-| Provider | Auth | Couverture | Notes |
+| Provider | Auth | Coverage | Notes |
 |---|---|---|---|
-| **Open Library** | aucune | très bonne, livres internationaux | par défaut |
-| **Google Books** | clé API | bonne, résumés | utile pour les éditions récentes / françaises mal couvertes par OL |
-| **BNF (data.bnf.fr)** | aucune | livres FR, autorité auteur | en complément, surtout pour la langue française |
-| **BNE (datos.bne.es)** | aucune | livres espagnols, autorité auteur | équivalent BNF côté ES |
-| **Wikidata / SPARQL** | aucune | universelle, reliée Open Library / GB | utilisée pour résoudre les Q-numbers (notamment imports Inventaire.io) |
-| **Amazon (scraping headless)** | aucune | éditions FR/EN/ES | dernier recours quand les bases bibliographiques ne renvoient rien — TLD figé à `amazon.fr` aujourd'hui (cf. issue #38) |
+| **Open Library** | none | very good, international books | default |
+| **Google Books** | API key | good, summaries | useful for recent / French editions poorly covered by OL |
+| **BNF (data.bnf.fr)** | none | FR books, author authority | complement, especially for French |
+| **BNE (datos.bne.es)** | none | Spanish books, author authority | BNF-equivalent on the ES side |
+| **Wikidata / SPARQL** | none | universal, cross-linked with Open Library / GB | used to resolve Q-numbers (notably Inventaire.io imports) |
+| **Amazon (headless scraping)** | none | FR/EN/ES editions | last resort when bibliographic databases return nothing — TLD currently locked to `amazon.fr` (cf. issue #38) |
 
-> **Clé API partagée** : la valeur vit dans la config serveur
-> (variable d'environnement type `LIBRARY_GOOGLE_BOOKS_API_KEY`).
-> Aucun secret côté client.
+> **Shared API key**: lives in the server config (env var like
+> `LIBRARY_GOOGLE_BOOKS_API_KEY`). No client-side secret.
 
-### 4.2 Endpoints proxy (côté API Nodea)
+### 4.2 Proxy endpoints (Nodea API side)
 
 ```
 POST /library/lookup/by-isbn      { "isbn": "9782070409228" }
 POST /library/lookup/by-query     { "q": "les misérables hugo" }
-GET  /library/cover/proxy?u=<...>  // optionnel — sert au download
-                                   // d'une URL distante côté serveur
-                                   // pour stockage en blob ensuite
+GET  /library/cover/proxy?u=<...>  // optional — server-side download
+                                   // of a remote URL for later blob
+                                   // storage
 ```
 
-Toutes les routes sont rate-limitées (alignées sur `auth/login`
-~10/min/IP) et tracent les requêtes a minima (pas de payload, pas
-d'utilisateur·ice).
+All routes are rate-limited (aligned with `auth/login`,
+~10/min/IP) and log requests minimally (no payload, no user).
 
-### 4.3 Toggle Préférences
+### 4.3 Preferences toggle
 
-Une option dans Préférences permet de **désactiver complètement**
-les appels externes (saisie manuelle uniquement). Par défaut activé.
+A Preferences option lets the user **fully disable** external calls
+(manual entry only). Enabled by default.
 
 ---
 
 ## 5. Import
 
-Sources, par priorité de support :
+Sources, by support priority:
 
-1. **Babelio** — CSV avec format confirmé (cf. §5.1).
-2. **Inventaire.io** — service libre fédéré basé sur Wikidata
-   ([inventaire.io](https://inventaire.io/)). Export disponible côté
-   utilisateur·ice ; format à confirmer à l'implémentation. Bonus :
-   les œuvres ont déjà des Wikidata IDs (Q-numbers) qui permettent
-   de retrouver les métadonnées sans appeler Open Library.
-3. **Goodreads** — CSV très standard et stable.
+1. **Babelio** — CSV with confirmed format (cf. §5.1).
+2. **Inventaire.io** — federated free service backed by Wikidata
+   ([inventaire.io](https://inventaire.io/)). Export available on
+   the user side; format to confirm at implementation time. Bonus:
+   works already carry Wikidata IDs (Q-numbers) that fetch metadata
+   without hitting Open Library.
+3. **Goodreads** — very standard, stable CSV.
 4. **The StoryGraph** — CSV.
-5. **Format générique CSV** — colonnes mappables manuellement.
+5. **Generic CSV format** — manually mappable columns.
 
-### 5.1 Format Babelio (confirmé)
+### 5.1 Babelio format (confirmed)
 
-Séparateur `;`, double-quotes autour de chaque champ, encodage
-UTF-8. Header :
+Separator `;`, double quotes around each field, UTF-8 encoding.
+Header:
 
 ```
 ISBN;Titre;Auteur;Editeur;Date de publication;Date d'entrée dans Babelio;Statut;Note
 ```
 
-Mapping vers le schéma Nodea :
+Mapping to the Nodea schema:
 
 | Babelio | Nodea | Notes |
 |---|---|---|
-| `ISBN` | `providers.isbn13` ou `providers.isbn10` | détection par longueur (13 ou 10) |
-| `Titre` | `title` | tel quel |
-| `Auteur` | `creators[0].name` | Babelio livre `Nom Prénom` (« Hugo Victor »). On **flippe** et on met le NOM en **MAJUSCULES** → « Victor HUGO ». Convention valable partout dans Library (§3.1). |
-| `Editeur` | `publisher` | tel quel |
-| `Date de publication` | `year` | extraire `YYYY` depuis `YYYY-MM-DD` ; `0000-00-00` → `null` |
-| `Date d'entrée dans Babelio` | (ignoré) | métadonnée Babelio, pas pertinent côté Nodea |
-| `Statut` | `status` | `Lu` → `finished` ; `A lire` → `planned` ; `En cours` → `in_progress` |
-| `Note` | `rating` | parseFloat puis arrondi sur 0..5 ; `0.0` est traité comme « pas de note » → `null` (Babelio met 0.0 par défaut quand non noté) |
+| `ISBN` | `providers.isbn13` or `providers.isbn10` | length-based detection (13 or 10) |
+| `Titre` | `title` | as-is |
+| `Auteur` | `creators[0].name` | Babelio hands over `Lastname Firstname` ("Hugo Victor"). We **flip** and CAP the LAST NAME → "Victor HUGO". Convention applied everywhere in Library (§3.1). |
+| `Editeur` | `publisher` | as-is |
+| `Date de publication` | `year` | extract `YYYY` from `YYYY-MM-DD`; `0000-00-00` → `null` |
+| `Date d'entrée dans Babelio` | (ignored) | Babelio metadata, irrelevant on the Nodea side |
+| `Statut` | `status` | `Lu` → `finished`; `A lire` → `planned`; `En cours` → `in_progress` |
+| `Note` | `rating` | parseFloat then rounded to 0..5; `0.0` is treated as "no rating" → `null` (Babelio defaults to 0.0 for unrated) |
 
-> **Subtilité** : Babelio ne distingue pas « note 0 explicite » et
-> « pas de note » — les deux sortent `0.0` dans l'export. Comme noter
-> 0/5 explicitement est un usage très rare, on traite `0.0` comme
-> « non noté ». Si la personne veut conserver les 0 explicites, on
-> ajoutera un toggle à l'import.
+> **Subtlety**: Babelio doesn't distinguish "explicit 0 rating" from
+> "no rating" — both export as `0.0`. Since explicit 0/5 ratings are
+> rare, we treat `0.0` as "unrated". If users want to keep explicit
+> zeros, we'll add an import toggle.
 
 ### 5.1 Pipeline
 
 ```
-fichier CSV
+CSV file
    │
    ▼
-parser spécifique (Goodreads / Babelio / …)
-   │  → normalise vers `library_items_entries`
+provider-specific parser (Goodreads / Babelio / …)
+   │  → normalise to `library_items_entries`
    ▼
-(optionnel) enrichissement métadonnées via /library/lookup
-   │  → ISBN connu → fetch cover + page_count si manquants
+(optional) metadata enrichment via /library/lookup
+   │  → known ISBN → fetch missing cover + page_count
    ▼
-chiffrement local + upload (POST guard:"init" → PATCH promotion)
+local encryption + upload (POST guard:"init" → PATCH promote)
    │
    ▼
-mapping reviews
-   │  → "My Review" Goodreads → entrée `library_reviews_entries`
-   │     kind="note"
+review mapping
+   │  → Goodreads "My Review" → `library_reviews_entries`
+   │     entry kind="note"
    ▼
-récap : X œuvres, Y reviews, Z doublons fusionnés sur ISBN
+summary: X works, Y reviews, Z duplicates merged on ISBN
 ```
 
-### 5.2 Déduplication
+### 5.2 Deduplication
 
-Clé de dédup, par ordre de priorité :
+Dedup key, in priority order:
 1. `providers.isbn13`
 2. `providers.isbn10`
-3. `(title, creators[0].name)` normalisés (lowercased, sans accents)
-4. fallback : pas de fusion automatique, l'UI propose un merge manuel.
+3. `(title, creators[0].name)` normalised (lowercased, accent-stripped)
+4. fallback: no automatic merge, the UI offers manual merging.
 
-### 5.3 Format export Nodea
+### 5.3 Nodea export format
 
 ```jsonc
 {
   "meta": { "version": 2, "exported_at": "2026-04-26T12:00:00Z", "app": "Nodea" },
   "modules": {
-    "library_items": [ /* … schéma §3.1 … */ ],
-    "library_reviews": [ /* … schéma §3.2 … */ ],
-    "library_covers": [ /* … schéma §3.3 … */ ]
+    "library_items": [ /* … schema §3.1 … */ ],
+    "library_reviews": [ /* … schema §3.2 … */ ],
+    "library_covers": [ /* … schema §3.3 … */ ]
   }
 }
 ```
 
 ---
 
-## 6. Sécurité
+## 6. Security
 
-- **Confidentialité** : titres, notes, ratings, tags, lus — tout est
-  chiffré E2E. Le serveur stocke `payload` AES-GCM + `guard` HMAC.
-- **Métadonnées externes** : voir §4. Le proxy serveur évite la
-  fuite directe vers les providers ; le serveur Nodea voit les
-  requêtes mais c'est l'instance auto-hébergée de la personne.
-- **Couvertures** : blob chiffré local, pas de leak au rendu.
-- **Imports** : fichier traité côté client, jamais transmis brut au
-  serveur.
-
----
-
-## 7. Stats & intégration Goals — V2
-
-Possibilités évoquées, **hors MVP** :
-
-- Compteur "X livres lus en 2026" sur Home + page Library.
-- Heatmap des sessions de lecture (similaire à Mood).
-- Goal "Lire 30 livres en 2026" auto-coché à `status: finished`.
-
-À cadrer après le MVP. Rien n'est requis tant que la base ne marche
-pas de bout en bout.
+- **Confidentiality**: titles, notes, ratings, tags, reads — all
+  E2E-encrypted. The server stores AES-GCM `payload` + HMAC `guard`.
+- **External metadata**: see §4. The server proxy avoids direct
+  leakage to providers; the Nodea server sees the requests but it
+  is the user's self-hosted instance.
+- **Covers**: encrypted blob locally, no leak at render time.
+- **Imports**: file processed client-side, never transmitted raw to
+  the server.
 
 ---
 
-## 8. Tags — à laisser libre au MVP
+## 7. Stats & Goals integration — V2
 
-Les tags restent **free-form** (chaîne libre, séparée par virgules
-dans l'UI, suggestions sur les tags déjà utilisés — comme le
-ThreadSuggestInput du Journal).
+Possibilities discussed, **out of MVP**:
 
-Une éventuelle taxonomie de genres pré-définie (roman / essai /
-poésie / théâtre / BD / etc.) pourra être ajoutée plus tard si
-l'usage le réclame, sans casser le format existant.
+- "X books read in 2026" counter on Home + Library page.
+- Heatmap of reading sessions (similar to Mood).
+- "Read 30 books in 2026" goal auto-checked at `status: finished`.
+
+To scope after the MVP. Nothing is required as long as the basics
+don't work end to end.
 
 ---
 
-## 9. Décisions de cadrage (validées 2026-04-26)
+## 8. Tags — keep free at MVP
 
-| # | Sujet | Décision |
+Tags stay **free-form** (free string, comma-separated in the UI,
+suggestions over already-used tags — same as the Journal's
+ThreadSuggestInput).
+
+A potential pre-defined genre taxonomy (novel / essay / poetry /
+play / comic / etc.) can be added later if usage demands it,
+without breaking the existing format.
+
+---
+
+## 9. Scoping decisions (ratified 2026-04-26)
+
+| # | Topic | Decision |
 |---|---|---|
-| Q1 | Périmètre média | **Livres only.** Audiovisuel = module séparé, ultérieur. |
-| Q2 | Fetch métadonnées | **Proxy serveur** avec clé API partagée par instance Nodea. Toggle dans Préférences pour désactiver. |
-| Q3 | Couvertures | **Blob chiffré** dans table dédiée `library_covers_entries`. |
-| Q4 | Imports prioritaires | **Babelio** (format confirmé, cf. §5.1), **Inventaire.io**, puis **Goodreads** / **StoryGraph** / CSV générique. |
-| Q6 | Multi-lectures | **Pas de tableau `reads[]`** — `started_at` / `finished_at` flat. |
-| Q7 | Distinction reviews | **Deux kinds** : `quote` (extraits / passages) et `note` (le reste). |
-| Q8 | Tags | **Libres** au MVP, pas de taxonomie pré-définie. |
+| Q1 | Media scope | **Books only.** Audiovisual = separate, later module. |
+| Q2 | Metadata fetch | **Server proxy** with API key shared per Nodea instance. Preferences toggle to disable. |
+| Q3 | Covers | **Encrypted blob** in dedicated `library_covers_entries` table. |
+| Q4 | Priority imports | **Babelio** (format confirmed, cf. §5.1), **Inventaire.io**, then **Goodreads** / **StoryGraph** / generic CSV. |
+| Q6 | Multi-reads | **No `reads[]` array** — flat `started_at` / `finished_at`. |
+| Q7 | Review distinction | **Two kinds**: `quote` (passages / quotes) and `note` (everything else). |
+| Q8 | Tags | **Free-form** at MVP, no pre-defined taxonomy. |
 
 ---
 
-## 10. État d'avancement
+## 10. Status
 
-### Phase 1 — Fondations · **livrée**
+### Phase 1 — Foundations · **shipped**
 
-- ✅ Schémas Zod dans `@nodea/shared` (`LibraryItemPayload`,
+- ✅ Zod schemas in `@nodea/shared` (`LibraryItemPayload`,
   `LibraryReviewPayload`, `LibraryCoverPayload`).
-- ✅ Tables Drizzle : `library_items_entries`,
+- ✅ Drizzle tables: `library_items_entries`,
   `library_reviews_entries`, `library_covers_entries`.
-- ✅ Routes back via `collection-factory`.
-- ✅ Page K du module avec catalogue et trois sous-vues pilotées
-  par l'URL (`?subview=livres|extraits|notes`) :
-  - **`livres`** : catalogue groupé, quatre modes d'affichage
-    (`list-plain` / `list-cover` / `grid` / `wall`), choix
-    persisté en localStorage.
-  - **`extraits`** : flat list des reviews `kind=quote` avec
-    contexte du livre.
-  - **`notes`** : flat list des reviews `kind=note`.
-- ✅ Filtres : statut (`all` / `planned` / `in_progress` / `finished`
-  / `abandoned`) + favoris + chip-tag.
-- ✅ Cinq axes de regroupement : `status` (par défaut), `author`,
-  `tag`, `publisher`, `collection`. L'axe `tag` autorise un livre
-  à apparaître dans plusieurs groupes (intentionnel).
-- ✅ Composer ajout / édition d'items et de reviews via le
-  `ComposerModal` global.
-- ✅ Modal `BookPickerModal` pour le flow « + Nouvel extrait /
-  Nouvelle note » : choisir d'abord le livre parent, puis le
-  composer s'ouvre pré-rempli.
+- ✅ Backend routes via `collection-factory`.
+- ✅ K-page module with catalog and three URL-driven sub-views
+  (`?subview=livres|extraits|notes`):
+  - **`livres`**: grouped catalog, four display modes
+    (`list-plain` / `list-cover` / `grid` / `wall`), choice
+    persisted in localStorage.
+  - **`extraits`**: flat list of `kind=quote` reviews with the
+    parent book's context.
+  - **`notes`**: flat list of `kind=note` reviews.
+- ✅ Filters: status (`all` / `planned` / `in_progress` /
+  `finished` / `abandoned`) + favourites + chip-tag.
+- ✅ Five grouping axes: `status` (default), `author`, `tag`,
+  `publisher`, `collection`. The `tag` axis lets a book appear in
+  several groups (intentional).
+- ✅ Composer add / edit of items and reviews via the global
+  `ComposerModal`.
+- ✅ `BookPickerModal` for the "+ New quote / New note" flow:
+  pick the parent book first, then the composer opens pre-filled.
 
-### Phase 2 — Proxy métadonnées · **livrée**
+### Phase 2 — Metadata proxy · **shipped**
 
-- ✅ Endpoints `POST /library/lookup/by-isbn` et
-  `POST /library/lookup/by-query`.
-- ✅ Cache en mémoire côté serveur (`packages/api/src/lookup/cache.ts`).
-- ✅ Six adapters : Open Library, Google Books, BNF, BNE, Wikidata
-  (via SPARQL), Amazon scraping headless (cf. §4.1). Plus que les
-  trois prévus initialement.
-- ⚠️ **À faire** : toggle Préférences « Métadonnées externes » + bandeau
-  d'info (la fonctionnalité existe en backend mais n'est pas
-  désactivable côté UI).
+- ✅ `POST /library/lookup/by-isbn` and
+  `POST /library/lookup/by-query` endpoints.
+- ✅ In-memory server-side cache
+  (`packages/api/src/lookup/cache.ts`).
+- ✅ Six adapters: Open Library, Google Books, BNF, BNE, Wikidata
+  (via SPARQL), Amazon headless scraping (cf. §4.1). One more than
+  the three originally planned.
+- ⚠️ **TODO**: Preferences "External metadata" toggle + info
+  banner (the feature exists in the backend but isn't disableable
+  via the UI).
 
-### Phase 3 — Couvertures · **partielle**
+### Phase 3 — Covers · **partial**
 
-- ✅ Stockage : table `library_covers_entries` chiffrée, déchiffrement
-  bulk au mount, mappée par `cover_rid` côté front (`<img src>` en
-  data URL `data:<mime>;base64,…`).
-- ⚠️ **À faire** : endpoint `/library/cover/proxy` pour download serveur
-  d'URLs distantes (évite mixed-content + leaks IP côté client).
-- ⚠️ **À faire** : récupération automatique de la couverture au moment
-  de l'ajout d'un item via le composer enrichi.
+- ✅ Storage: encrypted `library_covers_entries` table, bulk
+  decryption at mount, mapped front-side by `cover_rid` (`<img src>`
+  as a `data:<mime>;base64,…` URL).
+- ⚠️ **TODO**: `/library/cover/proxy` endpoint for server-side
+  download of remote URLs (avoids mixed-content + client-side IP
+  leaks).
+- ⚠️ **TODO**: automatic cover fetch when adding an item via the
+  enriched composer.
 
-### Phase 4 — Imports · **non démarrée**
+### Phase 4 — Imports · **not started**
 
-Parsers à implémenter (priorité décroissante, cf. §5) :
+Parsers to implement (descending priority, cf. §5):
 
-- Babelio CSV (format confirmé §5.1).
-- Inventaire.io (export JSON probable, Wikidata IDs disponibles).
+- Babelio CSV (format confirmed §5.1).
+- Inventaire.io (probably JSON export, Wikidata IDs available).
 - Goodreads CSV.
 - The StoryGraph CSV.
-- CSV générique avec mapping manuel des colonnes.
-- UI d'import : upload → preview → mapping → progress + récap.
+- Generic CSV with manual column mapping.
+- Import UI: upload → preview → mapping → progress + summary.
 
-### Refacto interne · **à prévoir avant Phase 4**
+### Internal refactor · **plan before Phase 4**
 
-`packages/web/src/app/flow/Library/index.tsx` fait **1438 lignes** et
-porte 11 responsabilités distinctes (orchestrateur + 5 vues + 2 modals
-+ 3 modules de logique). Une découpe vers le pattern
-`flow/<Module>/{components,views,hooks,lib}/` (déjà appliqué dans
-`Habits/` et `Review/`) est nécessaire avant d'ajouter une UI d'import
-et un composer enrichi — sinon le fichier devient ingérable.
+`packages/web/src/app/flow/Library/index.tsx` is **1438 lines** and
+carries 11 distinct responsibilities (orchestrator + 5 views +
+2 modals + 3 logic modules). A split toward the
+`flow/<Module>/{components,views,hooks,lib}/` pattern (already
+applied in `Habits/` and `Review/`) is required before adding an
+import UI and an enriched composer — otherwise the file becomes
+unmaintainable.
 
 ---
 
-## 11. Références
+## 11. References
 
-- Composer / éditeur Markdown réutilisé : `packages/web/src/ui/dirk/ComposerModal.tsx`
-- Page modèle K : `packages/web/src/app/flow/Journal/index.tsx`
-  (liste groupée + Markdown viewer)
-- Pattern `collection-client` : `packages/web/src/core/api/modules/collection-client.ts`
-- Factory routes back : `packages/api/src/routes/collection-factory.ts`
-- Pattern de découpe modulaire (à imiter pour la refacto) :
-  `packages/web/src/app/flow/Habits/` et `packages/web/src/app/flow/Review/`
+- Reused composer / Markdown editor: `packages/web/src/ui/dirk/ComposerModal.tsx`
+- K-page model: `packages/web/src/app/flow/Journal/index.tsx`
+  (grouped list + Markdown viewer)
+- `collection-client` pattern: `packages/web/src/core/api/modules/collection-client.ts`
+- Backend routes factory: `packages/api/src/routes/collection-factory.ts`
+- Modular split pattern (to mirror in the refactor):
+  `packages/web/src/app/flow/Habits/` and `packages/web/src/app/flow/Review/`

@@ -1,68 +1,66 @@
-# Module Journal (`passage_entries`)
+# Journal module (`passage_entries`)
 
-## Description fonctionnelle
+## Functional description
 
-Module de **journal libre** — entrées longues groupées par thread,
-pour prises de notes au fil de l'eau, journal intime, ou suivi
-structuré en fils thématiques.
+**Free journaling** module — long entries grouped by thread, for
+running notes, personal journals, or structured tracking along
+thematic threads.
 
-- Une entrée = un texte daté avec un titre optionnel et un contenu
-  en Markdown.
-- Regroupement par **thread** (chaîne libre type `#voyage`,
-  `#thérapie`, `#projet-X`) — autocomplete sur les threads existants
-  via le `ThreadSuggestInput`.
-- Attachments inline : 0 à 3 photos par entrée, base64 dans le
-  payload chiffré.
+- One entry = a dated text with an optional title and Markdown
+  content.
+- Grouping by **thread** (free string like `#travel`, `#therapy`,
+  `#project-X`) — autocomplete over existing threads via
+  `ThreadSuggestInput`.
+- Inline attachments: 0 to 3 photos per entry, base64-encoded in the
+  encrypted payload.
 
-## Payload clair attendu
+## Expected cleartext payload
 
 ```jsonc
 {
   "type": "passage.entry",
   "date": "YYYY-MM-DD",
-  "thread": "string",                       // fil thématique libre, optionnel
-  "title": "string|null",                   // titre, optionnel
-  "content": "string",                      // Markdown libre, requis
+  "thread": "string",                       // free thematic thread, optional
+  "title": "string|null",                   // title, optional
+  "content": "string",                      // free Markdown, required
   "attachments": [
     {
-      "id": "string",                       // identifiant local unique
+      "id": "string",                       // unique local identifier
       "mime": "image/png|jpeg|jpg|webp|gif",
-      "data": "base64..."                   // bytes bruts en base64 (pas de préfixe data:)
+      "data": "base64..."                   // raw bytes in base64 (no `data:` prefix)
     }
   ]
 }
 ```
 
-- `content` est requis ; tout le reste est optionnel.
-- `attachments` est inline tant que le volume reste raisonnable
-  (~quelques centaines de KB par entrée). Si l'usage demande plus,
-  une collection séparée `journal_attachments` mirrorant
-  `library_covers_entries` sera ajoutée.
+- `content` is required; everything else is optional.
+- `attachments` are kept inline as long as the volume stays
+  reasonable (~a few hundred KB per entry). If usage demands more,
+  a separate `journal_attachments` collection mirroring
+  `library_covers_entries` will be added.
 
-## Sécurité
+## Security
 
-Journal applique les règles communes à tous les modules — voir
-[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) pour le détail
-(AES-GCM, guard HMAC, création en deux temps, validation
-`requireGuard`).
+Journal follows the rules shared by every module — see
+[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) for the detail
+(AES-GCM, HMAC guard, two-phase creation, `requireGuard` validation).
 
 ## Export / Import
 
-- Export clair : tableau `modules.passage[]` dans `export.json`.
-- Import : re-chiffre localement puis rejoue le flux POST init →
-  PATCH promotion.
-- Pagination de la lecture : 200 entrées par requête.
-- Pas de clé naturelle de déduplication : l'utilisateur·ice peut
-  écrire plusieurs entrées le même jour sur le même thread.
-  L'import ne dédoublonne pas.
+- Cleartext export: `modules.passage[]` array in `export.json`.
+- Import: re-encrypts locally, then replays the POST init → PATCH
+  promotion flow.
+- Read pagination: 200 entries per request.
+- No natural deduplication key: the user can write several entries
+  on the same day in the same thread. Import doesn't deduplicate.
 
-## Points clés
+## Key points
 
-1. Une entrée = un texte daté libre, sans contrainte de nombre par jour.
-2. Le **thread** sert de regroupement libre — pas de hiérarchie
-   imposée. L'UI affiche les entrées agrégées par thread, ordre
-   anti-chronologique.
-3. Les attachments restent inline (base64) — adaptés à l'usage
-   « 0-3 petites photos par entrée ».
-4. Serveur aveugle : titre, contenu, photos, threads — tout est
-   chiffré, rien n'apparaît en plain SQL.
+1. One entry = a dated free-form text, no constraint on count per
+   day.
+2. The **thread** is a free grouping — no imposed hierarchy. The UI
+   displays entries grouped by thread in reverse chronological order.
+3. Attachments stay inline (base64) — sized for the "0-3 small
+   photos per entry" use case.
+4. Blind server: title, content, photos, threads — everything is
+   encrypted, nothing surfaces in plain SQL.

@@ -1,34 +1,35 @@
-# Module Habits (Suivi des habitudes)
+# Habits module (habit tracking)
 
-## Structure
+## Layout
 
-Deux tables, comme pour Library :
+Two tables, like Library:
 
 1. **`habits_items_entries`**
-   → Une entrée = une habitude que tu veux suivre (ex. « tennis », « méditation »).
+   → One entry = one habit you want to track (e.g. "tennis",
+   "meditation").
 
 2. **`habits_logs_entries`**
-   → Une entrée = une occurrence datée (ex. « j'ai fait tennis le 2025-08-25 »).
-   → Sert de base pour une heatmap / mesure de régularité.
+   → One entry = one dated occurrence (e.g. "did tennis on
+   2025-08-25").
+   → Powers the heatmap / consistency metric.
 
-Les règles de sécurité et de chiffrement sont identiques à tous
-les autres modules — voir [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules)
-pour le détail (AES-GCM, guard HMAC, création en deux temps,
-validation `requireGuard`).
+Encryption and security rules are identical to every other module —
+see [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) for the detail (AES-GCM,
+HMAC guard, two-phase creation, `requireGuard` validation).
 
 ---
 
-## Payload clair attendu
+## Expected cleartext payload
 
-### A) `habits_items_entries` (habitudes)
+### A) `habits_items_entries` (habits)
 
 ```json
 {
-  "title": "string",           // ex. "Tennis"
-  "category": "sport|santé|créativité|relation|autre",
+  "title": "string",           // e.g. "Tennis"
+  "category": "sport|health|creativity|relationship|other",
   "frequency": "daily|weekly|monthly|custom",
-  "target": "number|optional", // nb/jour ou nb/sem si applicable
-  "duration": "P6M|optional",  // période prévue, format ISO8601
+  "target": "number|optional", // count/day or count/week if applicable
+  "duration": "P6M|optional",  // expected period, ISO 8601 format
   "started_at": "YYYY-MM-DD",
   "archived": "boolean|optional"
 }
@@ -39,7 +40,7 @@ validation `requireGuard`).
 ```json
 {
   "date": "YYYY-MM-DD",
-  "item_rid": "string",  // UUID de l'habitude associée (id côté serveur)
+  "item_rid": "string",  // UUID of the related habit (server-side id)
   "done": true
 }
 ```
@@ -48,7 +49,7 @@ validation `requireGuard`).
 
 ## Export / Import
 
-Format clair d'export (comme Mood/Goals/Library) :
+Cleartext export format (same shape as Mood / Goals / Library):
 
 ```json
 {
@@ -72,18 +73,23 @@ Format clair d'export (comme Mood/Goals/Library) :
 }
 ```
 
-* Export : uniquement les payloads clairs, jamais `guard`, `cipher_iv`, ni `payload` chiffré.
-* Import : flux 2 temps habituel (chiffrement local, POST init, PATCH promotion).
+* Export: only the cleartext payloads, never `guard`, `cipher_iv`,
+  or the encrypted `payload`.
+* Import: standard two-phase flow (encrypt locally, POST init, PATCH
+  promote).
 
 ---
 
-## Points importants
+## Key points
 
-* **Tout est chiffré E2E** (le serveur ne sait pas quelles habitudes tu suis ni quand tu les as faites).
-* **Simplicité** :
-  * `items` = définition des habitudes,
-  * `logs` = enregistrements de « fait/pas fait » à une date.
-* **Analyse** :
-  * tu peux générer une **heatmap** à la GitHub sur base des `logs`,
-  * calculer un taux de respect (nb de logs / nb attendu via `frequency+target`).
-* **Souplesse** : si une habitude s'arrête → `archived:true` dans l'item, sans effacer les logs.
+* **Everything is end-to-end encrypted** — the server doesn't know
+  which habits you track or when you did them.
+* **Simplicity**:
+  * `items` = habit definitions,
+  * `logs` = "done / not done" records at a date.
+* **Analytics**:
+  * generate a GitHub-style **heatmap** from the `logs`,
+  * compute a completion rate (number of logs / expected count via
+    `frequency + target`).
+* **Flexibility**: when a habit stops → `archived: true` on the item,
+  without erasing the logs.

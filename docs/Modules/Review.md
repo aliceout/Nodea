@@ -1,123 +1,123 @@
-# Module Review
+# Review module
 
-Version numérique du carnet **YearCompass** (https://yearcompass.com/fr/),
-fidèle au livret A4 imprimable. Chaque rubrique du carnet correspond à
-une étape du parcours guidé ; les libellés et l'ordre suivent le livret
-exactement.
+Digital version of the **YearCompass** booklet (https://yearcompass.com/),
+faithful to the printable A4 booklet. Each section of the booklet
+maps to a step in the guided journey; labels and order match the
+booklet exactly.
 
-## 1. Table `review_entries`
+## 1. `review_entries` table
 
-Schéma commun à tous les modules (cf. [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules)).
-Validation des mutations via `requireGuard(reviewEntries)` côté
-api — le tuple `(user, sid, guard)` est vérifié dans une seule
-passe centralisée par le `collection-factory`.
+Schema shared by every module (cf. [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules)).
+Mutations validated via `requireGuard(reviewEntries)` on the api side
+— the `(user, sid, guard)` tuple is checked in a single centralised
+pass by the `collection-factory`.
 
-**Accès** :
+**Access**:
 
-* `list/view` : par `module_user_id` (header `X-Sid: <sid>`).
-* `update/delete` : headers `X-Sid: <sid>` + `X-Guard: <guard>` ;
-  le guard est validé contre la valeur stockée serveur, jamais
-  renvoyée en lecture. Headers et non query params (SEC-01) — le
-  guard est du matériel HMAC dérivé de la main key, il ne doit pas
-  fuir dans les logs.
+* `list/view`: by `module_user_id` (header `X-Sid: <sid>`).
+* `update/delete`: headers `X-Sid: <sid>` + `X-Guard: <guard>`; the
+  guard is checked against the server-stored value, never returned
+  on read. Headers and not query params (SEC-01) — the guard is
+  HMAC material derived from the main key, it must not leak into
+  logs.
 
-**Champs système** (5 colonnes seulement, design surface minimum) :
+**System fields** (5 columns only, minimum-readable-surface design):
 
-| Champ            | Type           | Requis | Notes                                          |
-| ---------------- | -------------- | ------ | ---------------------------------------------- |
-| `id`             | `text` PK      | oui    | UUID généré côté serveur, handle pour `/records/:id` |
-| `module_user_id` | `text`         | oui    | Sid opaque — **seule clé d'accès** (le mapping user→sid vit chiffré dans `modules_config`) |
-| `payload`        | `text`         | oui    | Base64 d'un blob AES-GCM (contenu chiffré, **+ `updated_at` applicatif** pour le tri « modifié le ») |
-| `cipher_iv`      | `text`         | oui    | IV AES-GCM (12 octets, base64)                 |
-| `guard`          | `text`         | oui    | HMAC stocké, jamais renvoyé en lecture         |
+| Field            | Type          | Required | Notes                                          |
+| ---------------- | ------------- | -------- | ---------------------------------------------- |
+| `id`             | `text` PK     | yes      | UUID generated server-side, handle for `/records/:id` |
+| `module_user_id` | `text`        | yes      | Opaque sid — **the only access key** (the user → sid mapping lives encrypted in `modules_config`) |
+| `payload`        | `text`        | yes      | Base64 of an AES-GCM blob (encrypted content, **+ application-level `updated_at`** for the "modified on" sort) |
+| `cipher_iv`      | `text`        | yes      | AES-GCM IV (12 bytes, base64)                  |
+| `guard`          | `text`        | yes      | Stored HMAC, never returned on read            |
 
-**Pas de `user_id`, pas de timestamps colonnes.** Le serveur ne sait pas à qui appartient une review ni quand elle a été écrite côté DB.
+**No `user_id`, no timestamp columns.** The server doesn't know who
+a review belongs to or when it was written at the DB level.
 
 ---
 
-## 2. Payload clair attendu (chiffré côté client)
+## 2. Expected cleartext payload (encrypted client-side)
 
-L'ordre et les noms reprennent le livret YearCompass, page par page.
-Le schéma `ReviewPayloadSchema` (`packages/shared/src/schemas/modules.ts`)
-est `passthrough` — ajouter ou retirer un champ ne casse pas la
-validation, mais le wizard et le reader ne rendront que ce qui est
-listé ici.
+Order and names follow the YearCompass booklet, page by page. The
+`ReviewPayloadSchema` (`packages/shared/src/schemas/modules.ts`) is
+`passthrough` — adding or removing a field doesn't break validation,
+but the wizard and the reader only render what's listed here.
 
 ```json
 {
   "year": 2026,
 
   "last_year": {
-    // Page 4 — Consulte ton agenda
+    // Page 4 — Review your calendar
     "agenda_review": ["string"],
 
-    // Page 5 — Voici ce qu'a été mon année passée
-    // (huit domaines de vie, exactement comme le livret)
+    // Page 5 — This is what my past year was like
+    // (eight life areas, exactly as in the booklet)
     "life_areas": {
-      "personal_family":   ["string"],   // vie personnelle, famille
-      "career_studies":    ["string"],   // carrière, études
-      "friends_community": ["string"],   // amis, communauté
-      "leisure_creativity":["string"],   // relaxation, loisirs, créativité
-      "physical_health":   ["string"],   // santé physique, vitalité
-      "mental_health":     ["string"],   // santé mentale, émotionnelle
-      "habits":            ["string"],   // habitudes qui te définissent
-      "better_world":      ["string"]    // un avenir meilleur (note de bas de page)
+      "personal_family":   ["string"],   // personal life, family
+      "career_studies":    ["string"],   // career, studies
+      "friends_community": ["string"],   // friends, community
+      "leisure_creativity":["string"],   // relaxation, hobbies, creativity
+      "physical_health":   ["string"],   // physical health, vitality
+      "mental_health":     ["string"],   // mental and emotional health
+      "habits":            ["string"],   // habits that define you
+      "better_world":      ["string"]    // a better future (booklet footnote)
     },
 
-    // Page 6 — Six phrases à propos de mon année précédente
-    // (ordre du livret)
+    // Page 6 — Six sentences about my past year
+    // (booklet order)
     "six_phrases": {
-      "wisest_decision":       "string", // La décision la plus sage que j'ai prise…
-      "biggest_lesson":        "string", // La plus grande leçon que j'ai apprise…
-      "biggest_risk":          "string", // Le plus gros risque que j'ai pris…
-      "biggest_surprise":      "string", // La plus grande surprise de l'année…
-      "service_rendered":      "string", // Le plus grand service que j'ai rendu à d'autres…
-      "biggest_accomplishment":"string"  // La plus grande chose que j'ai accomplie…
+      "wisest_decision":       "string", // The wisest decision I made…
+      "biggest_lesson":        "string", // The biggest lesson I learned…
+      "biggest_risk":          "string", // The biggest risk I took…
+      "biggest_surprise":      "string", // The biggest surprise of the year…
+      "service_rendered":      "string", // The greatest service I did for others…
+      "biggest_accomplishment":"string"  // The biggest thing I accomplished…
     },
 
-    // Page 7 — Six questions à propos de mon année précédente
-    // (ordre du livret)
+    // Page 7 — Six questions about my past year
+    // (booklet order)
     "six_questions": {
-      "proud_of":            "string",   // De quoi es-tu le plus fier·ère ?
-      "influenced_by":       ["string"], // Trois personnes qui ont eu le plus d'influence sur toi
-      "influenced":          ["string"], // Trois personnes sur lesquelles tu as eu le plus d'influence
-      "not_realized":        "string",   // Qu'est-ce que tu n'as pas pu réaliser ?
-      "best_self_discovery": "string",   // La meilleure chose que tu aies découverte en toi
-      "gratitude":           "string"    // De quoi es-tu le ou la plus reconnaissant·e ?
+      "proud_of":            "string",   // What are you most proud of?
+      "influenced_by":       ["string"], // Three people who influenced you the most
+      "influenced":          ["string"], // Three people you influenced the most
+      "not_realized":        "string",   // What couldn't you accomplish?
+      "best_self_discovery": "string",   // The best thing you discovered about yourself
+      "gratitude":           "string"    // What are you most grateful for?
     },
 
-    // Page 8 — Les meilleurs moments (texte libre, remplace le dessin)
+    // Page 8 — The best moments (free text, replaces the drawing)
     "best_moments": "string",
 
-    // Page 9 — Mes trois plus grands succès + Mes trois plus grands défis
-    // (les deux blocs cohabitent sur la même page du livret)
+    // Page 9 — My three biggest successes + my three biggest challenges
+    // (both blocks share the same booklet page)
     "successes_and_challenges": {
-      "three_successes":  ["string"], // Note tes trois plus grandes réussites
-      "successes_how":    "string",   // Qu'as-tu fait pour les accomplir ? Qui t'a aidé, comment ?
-      "three_challenges": ["string"], // Note tes trois plus grandes épreuves
-      "challenges_how":   "string"    // Qui ou quoi t'a aidé ? Qu'as-tu appris sur toi-même ?
+      "three_successes":  ["string"], // Note your three biggest successes
+      "successes_how":    "string",   // What did you do to achieve them? Who helped, how?
+      "three_challenges": ["string"], // Note your three biggest challenges
+      "challenges_how":   "string"    // Who or what helped you? What did you learn about yourself?
     },
 
-    // Page 10 — Pardonner
+    // Page 10 — Forgiveness
     "forgiveness": "string",
 
-    // Page 11 — Lâcher prise (texte libre, remplace le dessin)
+    // Page 11 — Letting go (free text, replaces the drawing)
     "letting_go": "string",
 
-    // Page 12 — Clôture de l'année écoulée
+    // Page 12 — Closing the past year
     "closing": {
-      "three_words": ["string"], // L'année précédente en trois mots
-      "book_title":  "string",   // Le livre / film de mon année dernière
-      "farewell":    "string"    // Dis au revoir à ton année passée
+      "three_words": ["string"], // The past year in three words
+      "book_title":  "string",   // The book / film of my past year
+      "farewell":    "string"    // Say goodbye to your past year
     }
   },
 
   "next_year": {
-    // Page 14 — Ose rêver en grand !
+    // Page 14 — Dare to dream big!
     "dream_big": "string",
 
-    // Page 15 — Cette nouvelle année ressemblera à ça pour moi
-    // (mêmes huit domaines que last_year)
+    // Page 15 — This new year will look like this for me
+    // (same eight life areas as last_year)
     "life_areas": {
       "personal_family":   ["string"],
       "career_studies":    ["string"],
@@ -129,63 +129,62 @@ listé ici.
       "better_world":      ["string"]
     },
 
-    // Pages 16-17 — Le triplet magique pour l'année à venir
-    // (ordre exact du livret)
+    // Pages 16-17 — The magical triplet for the year ahead
+    // (exact booklet order)
     "triplets": {
-      "self_love":       ["string"], // trois choses à propos de moi que je vais aimer
-      "let_go":          ["string"], // trois choses sur lesquelles je suis prêt·e à lâcher prise
-      "main_goals":      ["string"], // trois choses les plus importantes que je veux accomplir
-      "support":         ["string"], // trois personnes qui seront mon soutien
-      "discover":        ["string"], // trois choses que je vais oser découvrir
-      "say_no":          ["string"], // trois choses auxquelles j'aurai le pouvoir de dire non
-      "environment":     ["string"], // trois choses pour rendre mon environnement plus confortable
-      "morning_routines":["string"], // trois choses que je ferai tous les matins
-      "self_care":       ["string"], // trois choses pour prendre soin de moi régulièrement
-      "places":          ["string"], // trois endroits que je visiterai
-      "get_closer":      ["string"], // trois manières de me rapprocher de ceux que j'aime
-      "rewards":         ["string"]  // trois récompenses pour mes succès
+      "self_love":       ["string"], // three things about myself I'm going to love
+      "let_go":          ["string"], // three things I'm ready to let go of
+      "main_goals":      ["string"], // three most important things I want to accomplish
+      "support":         ["string"], // three people who'll be my support
+      "discover":        ["string"], // three things I'll dare to discover
+      "say_no":          ["string"], // three things I'll have the power to say no to
+      "environment":     ["string"], // three things to make my environment more comfortable
+      "morning_routines":["string"], // three things I'll do every morning
+      "self_care":       ["string"], // three things to take care of myself regularly
+      "places":          ["string"], // three places I'll visit
+      "get_closer":      ["string"], // three ways to grow closer to those I love
+      "rewards":         ["string"]  // three rewards for my successes
     },
 
-    // Page 18 — Six phrases sur mon année à venir
-    // (ordre du livret)
+    // Page 18 — Six sentences about my year ahead
+    // (booklet order)
     "six_phrases": {
-      "no_procrastination":"string", // Cette année, je ne remettrai plus à demain de…
-      "energy_source":     "string", // Cette année, je tirerai le plus de mon énergie de…
-      "courage":           "string", // Cette année je vais être le·la plus courageux·se quand…
-      "positive_answer":   "string", // Cette année, je répondrai positivement lorsque…
-      "advice":            "string", // Pour cette nouvelle année, je me conseille de…
-      "special_because":   "string"  // Cette année sera spéciale pour moi, parce que…
+      "no_procrastination":"string", // This year, I won't put off any longer…
+      "energy_source":     "string", // This year, I'll get most of my energy from…
+      "courage":           "string", // This year I'll be most courageous when…
+      "positive_answer":   "string", // This year, I'll answer positively when…
+      "advice":            "string", // For this new year, I advise myself to…
+      "special_because":   "string"  // This year will be special for me because…
     },
 
-    // Page 19 — Mon mot pour l'année prochaine
+    // Page 19 — My word for next year
     "word_of_year": "string",
 
-    // Page 19 — Souhait secret
+    // Page 19 — Secret wish
     "secret_wish": "string"
   }
 }
 ```
 
-### Différences voulues avec le livret papier
+### Intended differences from the paper booklet
 
-* **Pages 2-3 (Bienvenue / Prépare-toi)** sont remplacées par un
-  écran d'intro court adapté au ton de l'app (calme, brouillon
-  chiffré, pas de jugement) — pas de payload associé.
-* **Dessins** (best_moments, letting_go, dream_big) deviennent du
-  texte libre — l'écriture remplace le dessin.
-* **Pages 12-13 (transition entre parties)** ne sont pas un écran
-  séparé : le wizard enchaîne directement, la barre de progression
-  marque le passage à la deuxième moitié.
-* **Page 20 (date + signature sous le credo)** retirée — le
-  timestamp `updatedAt` du record et l'identité du compte
-  remplacent le rituel papier ; le souhait secret (page 19)
-  ferme le parcours.
+* **Pages 2-3 (Welcome / Get ready)** are replaced by a short intro
+  screen tuned to the app's tone (calm, encrypted draft, no
+  judgement) — no associated payload.
+* **Drawings** (best_moments, letting_go, dream_big) become free
+  text — writing replaces drawing.
+* **Pages 12-13 (transition between halves)** are not a separate
+  screen: the wizard moves on directly, the progress bar marks the
+  switch to the second half.
+* **Page 20 (date + signature under the credo)** is dropped — the
+  record's `updatedAt` and the account identity replace the paper
+  ritual; the secret wish (page 19) closes the journey.
 
 ---
 
 ## 3. Export / Import
 
-**Export clair** (comme Mood/Goals) :
+**Cleartext export** (same shape as Mood / Goals):
 
 ```json
 {
@@ -199,41 +198,41 @@ listé ici.
       {
         "year": 2026,
         "last_year": {
-          "agenda_review": ["séjour à Tana", "départ mission"],
+          "agenda_review": ["trip to Tana", "leaving the mission"],
           "life_areas": {
-            "personal_family":    ["plus proche de ma sœur"],
-            "career_studies":     ["terminé un projet"],
-            "friends_community":  ["voyage avec Eva"],
-            "leisure_creativity": ["atelier écriture"],
-            "physical_health":    ["plus de sport"],
-            "mental_health":      ["thérapie démarrée"],
-            "habits":             ["lecture quotidienne"],
-            "better_world":       ["bénévolat régulier"]
+            "personal_family":    ["closer to my sister"],
+            "career_studies":     ["finished a project"],
+            "friends_community":  ["trip with Eva"],
+            "leisure_creativity": ["writing workshop"],
+            "physical_health":    ["more sport"],
+            "mental_health":      ["started therapy"],
+            "habits":             ["daily reading"],
+            "better_world":       ["regular volunteering"]
           },
           "six_phrases":  { "wisest_decision": "…", "...": "..." },
           "six_questions":{ "proud_of": "…", "...": "..." },
-          "best_moments": "soirée plage avec Anouk…",
+          "best_moments": "evening on the beach with Anouk…",
           "successes_and_challenges": {
-            "three_successes":  ["création Nodea"],
-            "successes_how":    "j'ai pris le temps, j'ai appris à demander de l'aide",
+            "three_successes":  ["building Nodea"],
+            "successes_how":    "I took the time, I learned to ask for help",
             "three_challenges": ["burnout"],
-            "challenges_how":   "ma sœur m'a sortie la tête de l'eau"
+            "challenges_how":   "my sister pulled me back up"
           },
-          "forgiveness": "je pardonne à…",
-          "letting_go":  "je laisse partir…",
+          "forgiveness": "I forgive…",
+          "letting_go":  "I let go of…",
           "closing": {
-            "three_words": ["fatigue", "apprentissage", "amour"],
-            "book_title":  "Un long chemin",
-            "farewell":    "Au revoir 2025, merci pour tout."
+            "three_words": ["tired", "learning", "love"],
+            "book_title":  "A long road",
+            "farewell":    "Goodbye 2025, thanks for everything."
           }
         },
         "next_year": {
-          "dream_big": "m'imaginer en poste qui me correspond",
+          "dream_big": "see myself in a job that fits",
           "life_areas": { "...": "..." },
-          "triplets":   { "self_love": ["mes mains"], "...": "..." },
-          "six_phrases":{ "no_procrastination": "écrire", "...": "..." },
-          "word_of_year": "ancrage",
-          "secret_wish":  "me sentir plus libre"
+          "triplets":   { "self_love": ["my hands"], "...": "..." },
+          "six_phrases":{ "no_procrastination": "writing", "...": "..." },
+          "word_of_year": "grounding",
+          "secret_wish":  "feel more free"
         }
       }
     ]
@@ -241,25 +240,23 @@ listé ici.
 }
 ```
 
-* **Export** : jamais `payload`, `cipher_iv`, `guard`, `id`.
-* **Import** : re-chiffrement local, flux `POST init` → `PATCH promotion`.
+* **Export**: never `payload`, `cipher_iv`, `guard`, `id`.
+* **Import**: local re-encryption, `POST init` → `PATCH promote`
+  flow.
 
 ---
 
-## 4. Points importants
+## 4. Key points
 
-* **Fidèle au livret YearCompass** : libellés, ordre des questions
-  et regroupement (page 9 succès+défis, page 12 trois sections de
-  clôture, etc.) reproduisent le livret papier.
-* **Dessins → texte** : trois rubriques où le livret demande de
-  dessiner (best_moments, letting_go, dream_big) acceptent du
-  texte libre.
-* **Pas d'image symbolique** : aucun champ `year_image` — le livret
-  ne le prévoit pas.
-* **Confidentialité totale** : tout est chiffré côté client (AES-GCM
-  + HMAC guard). Rien ne quitte le navigateur en clair.
-* **Rythme** : 1 entrée par an, mais on peut en refaire quand on
-  veut.
-* **UX** : parcours guidé question par question, comme tourner les
-  pages du carnet. Auto-save chiffrée en `localStorage` pendant la
-  saisie.
+* **Faithful to the YearCompass booklet**: labels, question order
+  and grouping (page 9 successes + challenges, page 12 three
+  closing sections, etc.) reproduce the paper booklet.
+* **Drawings → text**: three sections where the booklet asks for
+  drawings (best_moments, letting_go, dream_big) accept free text.
+* **No symbolic image**: no `year_image` field — the booklet
+  doesn't have one.
+* **Full confidentiality**: everything is encrypted client-side
+  (AES-GCM + HMAC guard). Nothing leaves the browser in cleartext.
+* **Cadence**: one entry per year, but it can be redone any time.
+* **UX**: guided, question-by-question, like turning the booklet's
+  pages. Encrypted auto-save in `localStorage` while writing.

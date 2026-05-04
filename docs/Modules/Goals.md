@@ -1,43 +1,47 @@
-# Module Goals (`goals_entries`)
+# Goals module (`goals_entries`)
 
-## Description fonctionnelle
+## Functional description
 
-Suivi des objectifs annuels (ou pluri-annuels).
-- Une entrée = un objectif.
-- Possibilité de grouper par thread (tag libre) et de filtrer par statut (`open` → `wip` → `done`).
-- Pas de logs automatiques. Le payload chiffré porte un `updated_at` que le client bumpe à chaque save (utilisé par le tri « Récent ») et un `completed_at` quand le statut passe à `done`.
+Tracking of annual (or multi-year) goals.
+- One entry = one goal.
+- Goals can be grouped by thread (free tag) and filtered by status
+  (`open` → `wip` → `done`).
+- No automatic logs. The encrypted payload carries an `updated_at`
+  that the client bumps on every save (used by the "Recent" sort) and
+  a `completed_at` set when the status flips to `done`.
 
-## Payload clair attendu
+## Expected cleartext payload
 
 ```json
 {
-  "date": "YYYY-MM-DD",        // date de référence (création, échéance…)
-  "title": "string",           // intitulé
-  "note": "string|optional",   // description libre
+  "date": "YYYY-MM-DD",        // reference date (creation, deadline...)
+  "title": "string",           // headline
+  "note": "string|optional",   // free description
   "status": "open|wip|done",   // progression
-  "thread": "string"           // tag / groupe libre (optionnel)
+  "thread": "string"           // free tag / group (optional)
 }
 ```
 
-- `title` et `status` sont obligatoires.
-- `thread` est utilisé par l'historique et pour l'autocomplétion côté formulaire.
+- `title` and `status` are required.
+- `thread` powers the history view and the form autocomplete.
 
-## Sécurité
+## Security
 
-Goals applique les règles communes à tous les modules — voir
-[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) pour le détail
-(AES-GCM, guard HMAC, création en deux temps, validation
-`requireGuard`).
+Goals follows the rules shared by every module — see
+[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) for the detail
+(AES-GCM, HMAC guard, two-phase creation, `requireGuard` validation).
 
 ## Export / Import
 
-- Export clair : `modules.goals[]`.
-- Import : re-chiffre localement puis rejoue le flux POST init →
-  PATCH promotion.
-- Clé naturelle de déduplication : tuple `(thread, date, title)`.
-- Pagination de la lecture : 200 entrées par requête. Les enregistrements illisibles sont signalés dans le UI d'import via un `legend` listant les payloads manquants.
+- Cleartext export: `modules.goals[]`.
+- Import: re-encrypts locally, then replays the POST init → PATCH
+  promotion flow.
+- Natural deduplication key: the `(thread, date, title)` tuple.
+- Read pagination: 200 entries per request. Unreadable records are
+  surfaced in the import UI via a `legend` listing the missing
+  payloads.
 
-### Exemple d'export
+### Export sample
 
 ```json
 {
@@ -45,14 +49,14 @@ Goals applique les règles communes à tous les modules — voir
     "goals": [
       {
         "date": "2025-01-01",
-        "title": "Apprendre React",
-        "note": "Faire un mini-projet perso",
+        "title": "Learn React",
+        "note": "Build a small side project",
         "status": "wip",
-        "thread": "#apprentissage"
+        "thread": "#learning"
       },
       {
         "date": "2025-03-15",
-        "title": "Tennis chaque semaine",
+        "title": "Tennis every week",
         "status": "open",
         "thread": "#sport"
       }
@@ -61,9 +65,14 @@ Goals applique les règles communes à tous les modules — voir
 }
 ```
 
-## Points clés
+## Key points
 
-1. Interface : formulaire détaillé (date, statut, tags) + historique filtrable / groupable.
-2. Les mutations rapides (toggle de statut) utilisent les guards HMAC calculés localement.
-3. Serveur aveugle : les objectifs sont entièrement chiffrés. Seuls `id` (UUID handle), `module_user_id` (sid d'accès) et `cipher_iv` (IV AES-GCM) sont visibles. Pas de `user_id`, pas de timestamps colonnes — l'opérateur ne peut pas lier un objectif à un user, ni dater une écriture côté DB.
-4. Export/Import respectent la même structure que les payloads métier, facilitant l'archivage utilisateur.
+1. UI: detailed form (date, status, tags) + filterable / groupable
+   history view.
+2. Fast mutations (status toggle) use HMAC guards computed locally.
+3. Blind server: goals are fully encrypted. Only `id` (UUID handle),
+   `module_user_id` (access sid) and `cipher_iv` (AES-GCM IV) are
+   visible. No `user_id`, no timestamp columns — the operator cannot
+   link a goal to a user, nor date a write at the DB level.
+4. Export / Import preserve the business payload structure, making
+   user archiving straightforward.
