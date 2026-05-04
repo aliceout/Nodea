@@ -1,11 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-} from '@headlessui/react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 import { useDocumentTitle } from '@/lib/use-document-title';
@@ -238,59 +232,13 @@ function TopNav({
 }: TopNavProps) {
   return (
     <div className="flex h-full items-stretch gap-6" role="tablist">
-      {/* Sécurité — dropdown trigger (Headless UI Menu).
-          Le bouton hérite du même style que les autres onglets pour
-          que la nav reste visuellement cohérente. */}
-      <Menu as="div" className="relative inline-flex h-full items-stretch">
-        <MenuButton
-          className={cn(
-            'inline-flex h-full cursor-pointer items-center gap-1 border-b-2 px-1 text-[13px] transition-colors duration-200',
-            activeSection === 'security'
-              ? 'border-accent font-semibold text-ink'
-              : 'border-transparent text-muted hover:text-ink',
-          )}
-          aria-label="Sécurité (3 niveaux de lecture)"
-        >
-          Sécurité
-          <ChevronDownIcon
-            className="h-3.5 w-3.5 shrink-0"
-            aria-hidden="true"
-          />
-        </MenuButton>
-        <MenuItems
-          anchor="bottom start"
-          className={cn(
-            'z-50 mt-1 min-w-[200px] rounded-md border border-hair bg-bg p-1 shadow-[0_8px_20px_rgba(0,0,0,0.08)] [--anchor-gap:6px]',
-            'focus:outline-none',
-          )}
-        >
-          {SECURITY_TIERS.map((t) => {
-            const isActive = activeSection === 'security' && activeTier === t.id;
-            return (
-              <MenuItem key={t.id}>
-                {({ focus }) => (
-                  <button
-                    type="button"
-                    onClick={() => onTierClick(t.id)}
-                    className={cn(
-                      'flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] transition-colors',
-                      isActive
-                        ? 'bg-accent-soft font-semibold text-accent-deep'
-                        : focus
-                          ? 'bg-bg-2 text-ink'
-                          : 'text-ink-soft',
-                    )}
-                  >
-                    {t.label}
-                  </button>
-                )}
-              </MenuItem>
-            );
-          })}
-        </MenuItems>
-      </Menu>
+      <SecurityDropdown
+        activeSection={activeSection}
+        activeTier={activeTier}
+        onTierClick={onTierClick}
+      />
 
-      {/* Contribuer + Auto-héberger : onglets simples. */}
+      {/* Contribuer + Auto-héberger : onglets simples, navigation au clic. */}
       {SECTIONS.filter((s) => s.id !== 'security').map((s) => {
         const isActive = activeSection === s.id;
         return (
@@ -312,6 +260,115 @@ function TopNav({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Sécurité dropdown — s'ouvre au survol, se ferme 150 ms après la
+ * sortie de la souris. Le délai laisse à l'utilisateur·ice le temps
+ * de traverser le petit gap entre le bouton et le panneau d'items
+ * sans que le menu se replie. Le clic sur le bouton bascule aussi
+ * (fallback clavier / tactile).
+ */
+function SecurityDropdown({
+  activeSection,
+  activeTier,
+  onTierClick,
+}: {
+  activeSection: Section;
+  activeTier: SecurityTier;
+  onTierClick: (target: SecurityTier) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
+
+  function handleEnter(): void {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setOpen(true);
+  }
+  function handleLeave(): void {
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      closeTimerRef.current = null;
+    }, 150);
+  }
+
+  // Cleanup au démontage : si le composant disparaît avant que le
+  // timer ait fired, on ne veut pas qu'un setOpen tardif tape sur
+  // une instance morte. React émettrait un warning sinon.
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const isActive = activeSection === 'security';
+
+  return (
+    <div
+      className="relative inline-flex h-full items-stretch"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Sécurité (3 niveaux de lecture)"
+        className={cn(
+          'inline-flex h-full cursor-pointer items-center gap-1 border-b-2 px-1 text-[13px] transition-colors duration-200',
+          isActive
+            ? 'border-accent font-semibold text-ink'
+            : 'border-transparent text-muted hover:text-ink',
+        )}
+      >
+        Sécurité
+        <ChevronDownIcon
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+          aria-hidden="true"
+        />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className={cn(
+            'absolute top-full left-0 z-50 mt-1 min-w-[200px] rounded-md border border-hair bg-bg p-1 shadow-[0_8px_20px_rgba(0,0,0,0.08)]',
+          )}
+        >
+          {SECURITY_TIERS.map((tier) => {
+            const tierActive = activeSection === 'security' && activeTier === tier.id;
+            return (
+              <button
+                key={tier.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onTierClick(tier.id);
+                  setOpen(false);
+                }}
+                className={cn(
+                  'flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] transition-colors',
+                  tierActive
+                    ? 'bg-accent-soft font-semibold text-accent-deep'
+                    : 'text-ink-soft hover:bg-bg-2 hover:text-ink',
+                )}
+              >
+                {tier.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
