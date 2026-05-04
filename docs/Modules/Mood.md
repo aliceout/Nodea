@@ -27,7 +27,7 @@ Les champs `positive1..3` sont requis (objectif « gratitude »). `question`
 ## Sécurité
 
 Mood applique les règles communes à tous les modules — voir
-[Modules.md §1-3](../Modules.md#1-structure-commune) pour le détail
+[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) pour le détail
 (AES-GCM, guard HMAC, création en deux temps, validation
 `requireGuard`).
 

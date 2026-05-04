@@ -574,3 +574,94 @@ knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
   files.
 - Crypto additions respect HKDF domain separation and use branded
   types.
+
+---
+
+## 7. Schéma commun des modules
+
+Les six modules (Mood, Goals, Journal, Habits, Library, Review) reposent
+sur la même base technique chiffrée : une table `*_entries` par module,
+une création en deux temps avec validation HMAC, des données
+illisibles côté serveur. Voir
+[`docs/Modules/<Module>.md`](./Modules/) pour le payload clair et les
+règles propres à chaque module.
+
+### 7.1. Champs lisibles côté serveur
+
+Chaque ligne d'une table `*_entries` ne porte que le strict minimum
+nécessaire au routing et à la cryptographie — pas de `user_id`, pas
+de timestamps colonnes (cf. [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech),
+section « Modèle de données »).
+
+| Champ | Description |
+|---|---|
+| `id` | UUID généré côté serveur (PK). Sert uniquement de handle pour les URLs `/records/:id`. Aucun contenu utilisateur. |
+| `moduleUserId` | Identifiant secondaire opaque, dérivé localement via la clé maître. **Seule clé d'accès** — le serveur ne sait jamais à qui un sid appartient (le mapping est chiffré dans `modules_config`). Côté DB la colonne reste `module_user_id` ; Drizzle map sur `moduleUserId` et c'est la version qui sort sur le wire. |
+| `cipherIv` | IV 96 bits aléatoire (base64) utilisé pour le chiffrement AES-GCM. Côté DB la colonne reste `cipher_iv`. |
+| `payload` | Contenu JSON chiffré AES-GCM (base64). **Tout** le contenu utilisateur, **plus** les timestamps applicatifs que le module veut conserver. **Le serveur ne déchiffre jamais.** |
+| `guard` | HMAC-SHA-256 stocké côté serveur, jamais renvoyé en lecture (cf. tech.md « Hardening serveur > Guards HMAC »). |
+
+### 7.2. Création en deux temps
+
+Le `guard` dépend de l'`id` de la ligne, généré côté serveur — donc
+impossible à calculer avant l'INSERT. Le client passe par deux
+étapes :
+
+1. `POST /<collection>/records` avec `guard: "init"` → le serveur
+   insère avec un guard sentinelle.
+2. `PATCH /<collection>/records/:id` avec headers `X-Sid` + `X-Guard: init`,
+   body `{ guard: "g_<hex>" }` → promote le sentinel en vrai guard.
+
+UPDATE / DELETE ultérieurs : `PATCH` ou `DELETE /<collection>/records/:id`
+avec headers `X-Sid` + `X-Guard`. Le middleware `requireGuard` valide
+le tuple `(user, sid, guard)` en une passe.
+
+Détail complet du protocole + formule du guard sur
+[`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+(section « Hardening serveur »).
+
+### 7.3. Import / Export
+
+Format commun, produit et consommé exclusivement côté navigateur :
+
+```json
+{
+  "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
+  "modules": {
+    "<module>": [ ...payloads clairs... ]
+  }
+}
+```
+
+- **Export** : le client liste page par page (200 entrées), déchiffre
+  chaque payload localement, agrège dans le JSON. Le serveur ne voit
+  jamais le clair.
+- **Import** : le client re-chiffre chaque payload avec la clé maître
+  courante puis rejoue le flux POST + PATCH. Modules à doublons
+  potentiels (Mood, Goals, Habits) ont une clé naturelle documentée
+  dans leur fiche pour la déduplication.
+- Formats acceptés : export Nodea v1, NDJSON (une ligne par payload),
+  tableau brut pour la rétrocompatibilité Mood.
+
+### 7.4. Invariants tous modules confondus
+
+Toute nouvelle fonctionnalité module doit s'aligner sur ces six
+invariants — le modèle E2E ne tolère pas d'exception silencieuse.
+
+1. **Clé maître uniquement côté client.** Aléatoire, stockée chiffrée
+   (KEK + OPAQUE `exportKey`), importée comme `CryptoKey` non-extractible
+   au login.
+2. **Création en deux temps** (cf. §7.2). Le guard ne peut être calculé
+   qu'après l'attribution de l'`id` côté serveur.
+3. **Lecture par `sid`** — le `moduleUserId` découple l'identité
+   utilisateur du contenu module (utile pour de futurs partages
+   intra-utilisateur ; aujourd'hui un seul `sid` par module).
+4. **Mutations gardées** — `requireGuard` valide systématiquement
+   `(user, sid, guard)` côté serveur. Forger un guard nécessite la
+   clé maître ; la clé maître nécessite le mot de passe ou une passkey
+   PRF. Pas de raccourci.
+5. **Import/Export E2E** — chiffrement et déchiffrement exclusivement
+   dans le navigateur (cf. §7.3).
+6. **Logout = perte de clé** — le store Zustand purge le `CryptoKey` ;
+   toute tentative de mutation post-logout déclenche le `KeyMissingModal`
+   et redirige vers la connexion.

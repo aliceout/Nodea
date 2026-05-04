@@ -1,75 +1,48 @@
-# Documentation Nodea
+# Documentation Nodea (côté repo)
 
-**Nodea** est une application web auto-hébergée de journaling et de
-suivi de vie, **chiffrée de bout en bout**. Toutes tes données sont
-chiffrées dans le navigateur avec une clé dérivée de ton mot de passe
-— le serveur ne stocke que du chiffré, il ne voit jamais ton contenu.
+Cette doc est **réservée aux contributeur·rice·s** qui modifient
+le code. Le détail à destination des utilisateur·ice·s, des
+self-hosters et des forkers vit en ligne dans l'app :
 
-Cette documentation est organisée en trois pôles selon ton intérêt :
-**les curieux**, **les hébergeurs**, **les contributeurs**. Choisis
-ton entrée selon ce que tu cherches.
+- [`nodea.app/docs/security`](https://nodea.app/docs/security/newbie) — comment fonctionne le chiffrement bout-en-bout, 3 tiers de lecture (les bases / la mécanique / sous le capot).
+- [`nodea.app/docs/fork`](https://nodea.app/docs/fork) — reprendre Nodea pour soi (setup local, structure, tests, invariants à respecter, rebrand).
+- [`nodea.app/docs/self-host`](https://nodea.app/docs/self-host) — installer ta propre instance.
+
+Si tu cherches le **workflow de contribution upstream** (ouvrir une
+issue, faire une PR, conventions de commit), c'est dans
+[`.github/CONTRIBUTING.md`](../.github/CONTRIBUTING.md).
 
 ---
 
-## Pour les curieux — comprendre Nodea
+## Référence technique repo-side
 
-Tu te demandes ce qu'est Nodea, ce qu'on peut y faire, et pourquoi
-tu pourrais lui confier des données personnelles ?
+Documents prescriptifs lus avant un chantier sur la zone concernée.
+Source de vérité unique : code et doc doivent être alignés, une
+divergence est un bug-doc à corriger dans le PR qui l'introduit.
 
-| Lis | Pourquoi |
+| Lis | Avant de toucher |
 |---|---|
-| [Modules.md](./Modules.md) | Vue d'ensemble des modules : Mood (humeur quotidienne), Goals (objectifs), Habits (habitudes), Library (bibliothèque), Review (bilan annuel YearCompass), Journal (entrées libres) |
-| [`nodea.app/docs/security`](https://nodea.app/docs/security/newbie) | Comment fonctionne le chiffrement bout-en-bout, ce que le serveur peut / ne peut pas voir, les limites du modèle web — 3 tiers (les bases / la mécanique / sous le capot) |
-| [Modules/*.md](./Modules/) | Détail fonctionnel de chaque module (champs, règles, formats d'export) |
+| [Architecture.md](./Architecture.md) | Code structure, runtime flow, middleware stack, schéma commun des modules (§7) |
+| [Auth-Spec.md](./Auth-Spec.md) | OPAQUE, MFA, recovery, bypass, stepped MFA, session re-auth — référence exhaustive, pas une lecture rapide |
+| [Database.md](./Database.md) | Schéma Postgres, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
+| [Modules/`<Module>`.md](./Modules/) | Payload clair + règles métier propres au module (Goals, Habits, Journal, Library, Mood, Review) |
+| [Internationalisation.md](./Internationalisation.md) | Système i18n, ajouter une clé, ajouter une langue, parité FR/EN |
+| [Release-Checklist.md](./Release-Checklist.md) | Étapes à valider avant de tagger une release |
+| [adr/](./adr/) | Décisions architecturales avec leurs alternatives — l'ADR concerné se lit avant de remettre en cause un pattern |
+
+**Avant de toucher la crypto** : la doc « sous le capot » sur
+[`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+est prescriptive (HKDF, AAD, branded types, rate-limit catalogue,
+RGPD, anti-patterns). Source dans
+[`packages/web/src/app/pages/docs/content/tech.md`](../packages/web/src/app/pages/docs/content/tech.md).
 
 ---
 
-## Pour les hébergeurs — déployer Nodea
+## Conventions
 
-Tu veux installer ton propre Nodea, sur ton serveur ou ton NAS,
-pour toi seul·e ou pour un cercle restreint ?
-
-| Lis | Pourquoi |
-|---|---|
-| [Architecture.md §5](./Architecture.md#5-docker-deployment) | Le bundle docker-compose (postgres + api + web), variables d'environnement, ports |
-| [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (section « Intégrité du bundle ») | La limite **fondamentale** du modèle web (un serveur compromis peut servir du JS modifié) et les mitigations en place : SRI, manifest `INTEGRITY.txt`, recommandation auto-hébergement |
-| [Release-Checklist.md](./Release-Checklist.md) | Étapes à valider avant de tagger une release auto-hébergeable |
-| [Internationalisation.md](./Internationalisation.md) | Comment ajouter une langue ou modifier les traductions |
-
-**Recommandation forte** pour un usage sensible : auto-héberge.
-Le code est conçu pour qu'une instance personnelle réduise au minimum
-la surface d'attaque ; voir `nodea.app/docs/security/tech` (section
-« Intégrité du bundle »).
-
----
-
-## Pour les contributeurs — modifier Nodea
-
-Tu veux porter une feature, corriger un bug, comprendre comment c'est
-agencé sous le capot ?
-
-| Lis | Pourquoi |
-|---|---|
-| [`nodea.app/docs/fork`](https://nodea.app/docs/fork) | **Reprendre le projet** : setup local, lancer les tests (api / web / e2e), comprendre la structure, invariants crypto à respecter quand on modifie. Pour le workflow de contribution upstream (PR, conventions de commit) voir le `CONTRIBUTING.md` du repo. Le détail technique reste ici dans Architecture / Database / Auth-Spec / Security ci-dessous |
-| [Architecture.md](./Architecture.md) | Layout du monorepo (api / web / shared), runtime backend, stack frontend, conventions |
-| [Database.md](./Database.md) | Schéma Postgres complet, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
-| [Auth-Spec.md](./Auth-Spec.md) | **Spécification technique exhaustive** de l'auth (OPAQUE + Passkey + TOTP + recovery + bypass MFA + stepped MFA + session re-auth). Référence complète, pas une lecture rapide |
-| [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (source : [`packages/web/src/app/pages/docs/content/tech.md`](../packages/web/src/app/pages/docs/content/tech.md)) | Invariants crypto, politique de rate-limit, RGPD, gestes interdits — la version « sous le capot » du modèle de sécurité, prescriptive avant tout chantier crypto |
-| [adr/](./adr/) | Décisions architecturales avec leurs alternatives — lis l'ADR concerné avant de remettre en cause un pattern |
-
-**Avant de toucher un module** : la fiche `Modules/<Module>.md`
-décrit le payload clair et les règles. Avant de toucher l'auth :
-`Auth-Spec.md`. Avant de toucher la crypto : la doc « sous le capot »
-sur `nodea.app/docs/security/tech` est prescriptive (HKDF, AAD,
-branded types, anti-patterns).
-
----
-
-## Conventions de cette documentation
-
-- **Source de vérité unique.** Code et doc doivent être alignés ;
-  une divergence est un bug-doc à corriger comme un bug-code, dans le
-  même PR que la divergence est introduite.
+- **Source de vérité unique.** Code et doc alignés ; une divergence
+  est un bug-doc à corriger comme un bug-code, dans le même PR que
+  la divergence est introduite.
 - **Le code prime sur la spec** en cas d'écart constaté pour ce qui
   est livré (`Auth-Spec.md` rappelle ce point dans son préambule).
 - **Français inclusif** pour les humain·e·s ; pas pour les objets
@@ -78,12 +51,18 @@ branded types, anti-patterns).
 
 ---
 
-## Fichiers connexes (pas dans cette doc)
+## Fichiers connexes
 
 - [`/CLAUDE.md`](../CLAUDE.md) — instructions internes pour
   l'assistant IA qui contribue au code. Pas un document utilisateur,
   mais expose les règles dures (crypto, monorepo, conventions).
-- [`/README.md`](../README.md) — le README repo, point d'entrée
+- [`/README.md`](../README.md) — README repo, point d'entrée
   développeur (install, dev, tests).
 - [`/.env.example`](../.env.example) — variables d'environnement
   documentées.
+- [`/.github/CONTRIBUTING.md`](../.github/CONTRIBUTING.md) — workflow
+  de contribution upstream (issues, PR, conventions de commit).
+- [`/.github/CODE_OF_CONDUCT.md`](../.github/CODE_OF_CONDUCT.md) — Code
+  of Conduct (Citizen Code of Conduct, CC BY-SA).
+- [`/.github/SECURITY.md`](../.github/SECURITY.md) — politique de
+  divulgation de vulnérabilités.

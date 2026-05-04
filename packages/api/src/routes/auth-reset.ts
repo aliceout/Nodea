@@ -219,7 +219,7 @@ authResetRoutes.openapi(resetStartRoute, async (c) => {
  * rows become orphans : encrypted with the lost main key,
  * unreadable by anyone, taking up space in the table
  * indefinitely. This is the documented trade-off of « the
- * server never links user to data » (cf. `docs/Modules.md`).
+ * server never links user to data » (cf. `docs/Architecture.md` §7).
  * Bounded growth, accepted.
  */
 authResetRoutes.openapi(resetFinishRoute, async (c) => {

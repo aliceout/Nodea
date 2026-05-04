@@ -191,7 +191,7 @@ sans rouvrir la spec :
   ni dater les écritures par row. Self-delete est client-driven
   (énumération des sids depuis `modules_config` puis suppression
   par sid + guard). Détails et rationale dans
-  [`Modules.md §1`](Modules.md#1-structure-commune).
+  [`Architecture.md §7`](Architecture.md#7-schéma-commun-des-modules).
 
 ---
 

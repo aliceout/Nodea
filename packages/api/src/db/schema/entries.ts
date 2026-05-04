@@ -33,7 +33,7 @@ import { index, pgTable, text } from 'drizzle-orm/pg-core';
  *     decrypts `modules_config`, enumerates its sids, and
  *     deletes its entries one by one via the standard
  *     guard-protected DELETE route before the final
- *     `DELETE /auth/me`. Cf. `Modules.md §6`.
+ *     `DELETE /auth/me`. Cf. `docs/Architecture.md` §7.4.
  *   - Admin delete (or destructive password reset) leaves
  *     entries orphaned in the entry tables. They become
  *     unreadable (the main key required to decrypt the

@@ -12,7 +12,7 @@ Deux tables, comme pour Library :
    → Sert de base pour une heatmap / mesure de régularité.
 
 Les règles de sécurité et de chiffrement sont identiques à tous
-les autres modules — voir [Modules.md §1-3](../Modules.md#1-structure-commune)
+les autres modules — voir [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules)
 pour le détail (AES-GCM, guard HMAC, création en deux temps,
 validation `requireGuard`).
 

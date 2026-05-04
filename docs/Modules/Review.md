@@ -7,7 +7,7 @@ exactement.
 
 ## 1. Table `review_entries`
 
-Schéma commun à tous les modules (cf. [Modules.md §1](../Modules.md#1-structure-commune)).
+Schéma commun à tous les modules (cf. [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules)).
 Validation des mutations via `requireGuard(reviewEntries)` côté
 api — le tuple `(user, sid, guard)` est vérifié dans une seule
 passe centralisée par le `collection-factory`.

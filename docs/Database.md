@@ -206,7 +206,7 @@ is what lets the route factory loop over a single array of collections
 which entry belongs to which user — access is scoped by
 `module_user_id` + `guard` only. The entry tables carry no
 `user_id`, no `created_at` / `updated_at` columns. See
-[`Modules.md §1`](./Modules.md#1-structure-commune) for the
+[`Architecture.md §7`](./Architecture.md#7-schéma-commun-des-modules) for the
 rationale.
 
 | Table                       | Records                                       |
