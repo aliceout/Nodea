@@ -1,81 +1,81 @@
-# Code de conduite
+# Code of Conduct
 
-## 1. Objectif
+## 1. Purpose
 
-L'un des principaux objectifs de Nodea est de permettre l'existence d'un espace de contribution et d'échange sans oppression. À ce titre, nous nous engageons à fournir un environnement amical, sûr et accueillant pour tous·tes, indépendamment du genre, de l'orientation sexuelle, des capacités, de l'origine, de la couleur de peau, du statut socio-économique et de la religion (ou de l'absence de religion), ou de tout autre critère.
+A primary goal of Nodea is to be a contribution and exchange space free from oppression. As such, we are committed to providing a friendly, safe and welcoming environment for all, regardless of gender, sexual orientation, ability, ethnicity, skin color, socioeconomic status, and religion (or lack thereof), or any other criterion.
 
-Ce code de conduite décrit nos attentes à l'égard de tous·tes ceux qui participent à notre communauté, ainsi que les conséquences d'un comportement inacceptable.
+This Code of Conduct outlines our expectations for all those who participate in our community, as well as the consequences for unacceptable behavior.
 
-Nous invitons tous·tes ceux qui participent à Nodea à nous aider à créer des expériences sûres et positives pour tous·tes.
+We invite all those who participate in Nodea to help us create safe and positive experiences for everyone.
 
-## 2. Engagement ouvert
+## 2. Open Citizenship
 
-Un objectif supplémentaire de ce code de conduite est d'encourager les participant·e·s à reconnaître et à renforcer les relations entre nos actions et leurs effets sur notre communauté.
+A supplemental goal of this Code of Conduct is to encourage participants to recognize and strengthen the relationships between our actions and their effects on our community.
 
-Les communautés sont le reflet des sociétés dans lesquelles elles existent et une action positive est essentielle pour contrecarrer les nombreuses formes d'inégalité, de discriminations systémiques et d'abus de pouvoir qui existent dans la société.
+Communities mirror the societies in which they exist and positive action is essential to counteract the many forms of inequality, systemic discrimination, and abuses of power that exist in society.
 
-Si vous voyez quelqu'un qui fait un effort supplémentaire pour s'assurer que notre communauté est accueillante, amicale et encourage tous·tes les participant·e·s à contribuer pleinement, nous voulons le savoir.
+If you see someone going out of their way to ensure our community is welcoming, friendly, and encouraging all participants to contribute fully, we want to hear about it.
 
-## 3. Comportement attendu
+## 3. Expected Behavior
 
-Les comportements suivants sont attendus et demandés à tous·tes les membres de la communauté :
+The following behaviors are expected and requested of all community members:
 
-- Participer de manière authentique et active. Ce faisant, vous contribuez à la santé et à la longévité de cette communauté.
-- Faites preuve de considération et de respect dans vos paroles et vos actions.
-- Essayez de collaborer avant d'entrer en conflit.
-- Abstenez-vous de tout comportement ou discours dégradant, discriminatoire ou harcelant.
-- Soyez attentif à votre environnement et aux autres participant·e·s. Alertez les responsables de la communauté si vous remarquez une situation dangereuse, une personne en détresse ou des violations du présent code de conduite, même si elles semblent sans conséquence.
-- N'oubliez pas que les lieux où se déroulent les événements communautaires peuvent être partagés avec des membres du public ; soyez respectueux de tous·tes les usager·ère·s de ces lieux.
+- Participate in an authentic and active way. In doing so, you contribute to the health and longevity of this community.
+- Exercise consideration and respect in your speech and actions.
+- Attempt collaboration before conflict.
+- Refrain from demeaning, discriminatory, or harassing behavior and speech.
+- Be mindful of your surroundings and of your fellow participants. Alert community leaders if you notice a dangerous situation, someone in distress, or violations of this Code of Conduct, even if they seem inconsequential.
+- Remember that community event venues may be shared with members of the public; please be respectful to all patrons of these locations.
 
-## 4. Comportement inacceptable
+## 4. Unacceptable Behavior
 
-Les comportements suivants sont considérés comme du harcèlement et sont inacceptables au sein de notre communauté :
+The following behaviors are considered harassment and are unacceptable within our community:
 
-- La violence, les menaces de violence ou les propos violents à l'encontre d'une autre personne.
-- Blagues et langage sexistes, racistes, homophobes, transphobes, validistes, grossophobes ou autrement discriminatoires.
-- La publication ou l'affichage de matériel sexuellement explicite ou violent.
-- Publier ou menacer de publier des informations d'identification personnelle d'autres personnes (« doxing »).
-- Insultes personnelles, en particulier celles liées au genre, à l'orientation sexuelle, à l'origine, à la couleur de peau, à la religion ou au handicap.
-- La photographie ou l'enregistrement inappropriés.
-- Contact physique inapproprié. Vous devez obtenir le consentement d'une personne avant de la toucher.
-- Attention sexuelle importune. Cela inclut les commentaires ou plaisanteries à caractère sexuel, les attouchements inappropriés, les tripotages et les avances sexuelles non désirées.
-- L'intimidation délibérée, la traque ou le suivi (en ligne ou en personne).
-- La promotion ou l'encouragement de l'un des comportements susmentionnés.
-- Perturbation durable d'événements communautaires, y compris de conférences et de présentations.
+- Violence, threats of violence, or violent language directed against another person.
+- Sexist, racist, homophobic, transphobic, ableist, fatphobic or otherwise discriminatory jokes and language.
+- Posting or displaying sexually explicit or violent material.
+- Posting or threatening to post other people's personally identifying information ("doxing").
+- Personal insults, particularly those related to gender, sexual orientation, ethnicity, skin color, religion or disability.
+- Inappropriate photography or recording.
+- Inappropriate physical contact. You should have someone's consent before touching them.
+- Unwelcome sexual attention. This includes sexualized comments or jokes, inappropriate touching, groping, and unwelcome sexual advances.
+- Deliberate intimidation, stalking or following (online or in person).
+- Advocating for, or encouraging, any of the above behavior.
+- Sustained disruption of community events, including talks and presentations.
 
-## 5. Conséquences d'un comportement inacceptable
+## 5. Consequences of Unacceptable Behavior
 
-Aucun comportement inacceptable de la part d'un·e membre de la communauté, y compris les parrains/marraines et les personnes ayant un pouvoir de décision, ne sera toléré.
+Unacceptable behavior from any community member, including sponsors and those with decision-making authority, will not be tolerated.
 
-Toute personne à qui l'on demande de mettre fin à un comportement inacceptable est censée s'y conformer immédiatement.
+Anyone asked to stop unacceptable behavior is expected to comply immediately.
 
-Si un·e membre de la communauté adopte un comportement inacceptable, les organisateur·ice·s de la communauté peuvent prendre toute mesure qu'iels jugent appropriée, pouvant aller jusqu'à une interdiction temporaire ou une expulsion permanente de la communauté sans avertissement.
+If a community member engages in unacceptable behavior, the community organizers may take any action they deem appropriate, up to and including a temporary ban or permanent expulsion from the community without warning.
 
-## 6. Lignes directrices en matière de signalement
+## 6. Reporting Guidelines
 
-Si vous êtes sujet ou témoin d'un comportement inacceptable, ou si vous avez d'autres préoccupations, veuillez en informer un·e organisateur·ice communautaire dès que possible.
+If you are subject to or witness unacceptable behavior, or have any other concerns, please notify a community organizer as soon as possible.
 
-En outre, les organisateur·ice·s communautaires sont à la disposition des membres de la communauté pour aider les personnes victimes de comportements inacceptables à se sentir en sécurité.
+Additionally, community organizers are available to help community members engage with local law enforcement or to otherwise help those experiencing unacceptable behavior feel safe.
 
-## 7. Traitement des griefs
+## 7. Addressing Grievances
 
-Si vous estimez avoir été accusé·e à tort ou injustement d'avoir enfreint le présent code de conduite, vous devez en informer les administrateur·ice·s en décrivant brièvement votre grief. Votre grief sera traité conformément à nos politiques de gouvernance existantes.
+If you feel you have been falsely or unfairly accused of violating this Code of Conduct, you should notify the administrators with a concise description of your grievance. Your grievance will be handled in accordance with our existing governing policies.
 
-## 8. Champ d'application
+## 8. Scope
 
-Nous attendons de tous·tes les participant·e·s à la communauté (contributeur·ice·s, rémunéré·e·s ou non, sponsors et autres invité·e·s) qu'iels respectent le présent code de conduite dans toutes les activités de la communauté — en ligne et en personne — ainsi que dans toutes les communications individuelles relatives aux affaires de la communauté.
+We expect all community participants (contributors, paid or otherwise; sponsors; and other guests) to abide by this Code of Conduct in all community venues — online and in person — as well as in all one-on-one communications pertaining to community business.
 
-Ce code de conduite et ses procédures connexes s'appliquent également aux comportements inacceptables survenant en dehors du cadre des activités de la communauté, lorsque ces comportements sont susceptibles de nuire à la sécurité et au bien-être des membres de la communauté.
+This Code of Conduct and its related procedures also apply to unacceptable behavior occurring outside the scope of community activities when such behavior has the potential to adversely affect the safety and well-being of community members.
 
-## 9. Coordonnées
+## 9. Contact Info
 
-Administrateur·ice·s de l'organisation Nodea sur GitHub. Pour signaler un comportement, ouvre un signalement privé via le repo GitHub (onglet Security → Report a vulnerability fonctionne aussi pour ce type de signalement, le contenu reste privé entre toi et les mainteneur·euse·s) ou contacte directement un·e mainteneur·euse listé·e sur le repo.
+Administrators of the Nodea organization on GitHub. To report behavior, open a private report through the GitHub repo (the Security → Report a vulnerability tab also works for this kind of report — content stays private between you and the maintainers), or contact a maintainer listed on the repo directly.
 
-## 10. Licence et attribution
+## 10. License and Attribution
 
-- Ce code de conduite est celui du [Citizen Code of Conduct](http://citizencodeofconduct.org/). Il est distribué sous une licence Creative Commons Attribution-ShareAlike.
-- Certaines parties du texte sont tirées du [Code de conduite de Django](https://www.djangoproject.com/conduct/) et de la [Politique anti-harcèlement du féminisme geek](https://geekfeminism.fandom.com/wiki/Community_anti-harassment).
+- This Code of Conduct is the [Citizen Code of Conduct](http://citizencodeofconduct.org/). It is distributed under a Creative Commons Attribution-ShareAlike license.
+- Portions of text derived from the [Django Code of Conduct](https://www.djangoproject.com/conduct/) and the [Geek Feminism Anti-Harassment Policy](https://geekfeminism.fandom.com/wiki/Community_anti-harassment).
 
-- Révision 2.2. Publiée le 6 mars 2017.
-- Révision 2.1. Publiée le 4 février 2015.
-- Révision 2.0, adoptée par le conseil d'administration du Stumptown Syndicate le 10 janvier 2013. Publié le 17 mars 2013.
+- Revision 2.2. Posted March 6, 2017.
+- Revision 2.1. Posted February 4, 2015.
+- Revision 2.0, adopted by the Stumptown Syndicate board of directors on January 10, 2013. Posted March 17, 2013.

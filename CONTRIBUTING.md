@@ -1,172 +1,172 @@
-# Guide de contribution
+# Contributing Guide
 
-Bienvenue dans le guide de contribution de **Nodea**.
+Welcome to the **Nodea** contributing guide.
 
-Merci d'investir ton temps pour contribuer à ce projet — un suivi personnel chiffré de bout en bout, auto-hébergeable, qu'on construit pour qu'il reste honnête avec ses utilisateur·rice·s même si le code change de mainteneur·euse demain.
+Thank you for investing your time in this project — an end-to-end-encrypted, self-hostable personal-tracking app, built so it stays honest with its users even if maintainers change tomorrow.
 
-Ce guide couvre le flux de contribution **upstream** : ouvrir une issue, créer une pull request, faire reviewer, fusionner. Si tu cherches plutôt à **télécharger Nodea pour t'en faire ta propre version** (forker pour toi sans soumettre upstream), va voir [`nodea.app/docs/fork`](https://nodea.app/docs/fork) — audience différente, contraintes différentes.
+This guide covers the **upstream** contribution flow: open an issue, create a pull request, get it reviewed, get it merged. If you're instead looking to **download Nodea and make it your own** (forking for yourself without submitting upstream), see [`nodea.app/docs/fork`](https://nodea.app/docs/fork) — different audience, different constraints.
 
 ## Contributions
 
-De nombreuses manières de contribuer existent, et écrire du code n'est pas la seule.
+Many ways to contribute exist, and writing code is not the only one.
 
-Liste non-exhaustive :
+Non-exhaustive list:
 
-- Signaler un bug que tu as croisé en utilisant Nodea (instance officielle ou ta fork).
-- Améliorer la documentation publique sur [`nodea.app/docs`](https://nodea.app/docs) (sections Sécurité / Reprendre le projet / Auto-héberger).
-- Traduire (FR / EN sont déjà actifs ; toute autre langue passe par les fichiers de `packages/web/src/i18n/locales/`).
-- Améliorer l'accessibilité — Nodea touche à des données personnelles sensibles, l'app doit être utilisable par tout le monde.
-- Auditer le code crypto et signaler les findings — toute revue extérieure est précieuse, surtout sur la couche OPAQUE / WebAuthn / AES-GCM.
-- Tester une PR ouverte et commenter ce qui marche / ne marche pas.
-- Participer aux discussions sur les issues — un point de vue extérieur sur un trade-off est souvent ce qui fait avancer.
+- Report a bug you ran into while using Nodea (the official instance or your fork).
+- Improve the public docs at [`nodea.app/docs`](https://nodea.app/docs) (Security / Reprendre le projet / Self-host sections).
+- Translate (FR / EN are already live; any other language goes through the files in `packages/web/src/i18n/locales/`).
+- Improve accessibility — Nodea handles personal sensitive data, the app must be usable by everyone.
+- Audit the crypto code and report findings — any external review is precious, especially on the OPAQUE / WebAuthn / AES-GCM layer.
+- Test an open PR and comment on what works / what doesn't.
+- Take part in issue discussions — an outside perspective on a trade-off is often what moves things forward.
 
-D'autres pistes : <https://opensource.guide/fr/how-to-contribute>
+More leads: <https://opensource.guide/how-to-contribute>
 
-### Ouvrir une nouvelle issue
+### Opening a new issue
 
-Avant de poser une issue, vérifie qu'une issue similaire n'existe pas déjà (cherche en particulier dans les issues fermées). S'il n'y en a pas, ouvre une nouvelle issue avec :
+Before opening an issue, check that a similar one doesn't already exist (search closed issues in particular). If none, open a new one with:
 
-- Un **titre descriptif** : « Le bouton X ne fonctionne pas sur Firefox » plutôt que « bug ».
-- La **version de Nodea** concernée (commit SHA visible sur `/version`).
-- Le **navigateur + OS**, surtout pour les bugs UI.
-- **Étapes de reproduction**, en numérotant les actions.
-- Le **comportement attendu** vs **observé**.
-- Des captures d'écran ou un extrait de log si pertinent — **jamais** de cookies de session, de mots de passe ou de tokens dans les logs partagés.
+- A **descriptive title**: "The X button doesn't work on Firefox" rather than "bug".
+- The **Nodea version** affected (commit SHA visible at `/version`).
+- The **browser + OS**, especially for UI bugs.
+- **Reproduction steps**, numbered.
+- **Expected** vs **observed** behavior.
+- Screenshots or a log excerpt if relevant — **never** session cookies, passwords, or tokens in shared logs.
 
-### Résoudre un problème
+### Solving an issue
 
-Parcours les issues existantes pour trouver une qui t'intéresse. Tu peux filtrer par label (`good first issue`, `bug`, `feature`, `crypto`, etc.).
+Browse existing issues to find one you're interested in. You can filter by label (`good first issue`, `bug`, `feature`, `crypto`, etc.).
 
-Si tu prends une issue, **assigne-toi-la** ou laisse un commentaire « je m'en occupe » — ça évite que deux personnes travaillent en parallèle sur la même chose. Si tu finis par ne pas avoir le temps, dis-le, quelqu'un d'autre pourra reprendre.
+If you take an issue, **assign yourself** or leave a "I'm on it" comment — this avoids two people working on the same thing in parallel. If you end up running out of time, say so, and someone else can pick it up.
 
-### Reproduire un bug signalé
+### Reproducing a reported bug
 
-Tu peux contribuer en confirmant qu'une issue se reproduit (ou ne se reproduit pas) sur ta machine, et en ajoutant les détails manquants. C'est un service immense pour les mainteneur·euse·s.
+You can contribute by confirming an issue reproduces (or doesn't) on your machine, and adding the missing details. It's a huge service to maintainers.
 
-### Tester une pull request
+### Testing a pull request
 
-Tu peux fusionner une PR localement dans ta copie du projet, lancer la suite de tests (`pnpm --filter @nodea/api test && pnpm --filter @nodea/web test`), naviguer dans l'app pour valider le comportement, puis commenter ton retour sur la PR.
+You can merge a PR locally into your copy of the project, run the test suite (`pnpm --filter @nodea/api test && pnpm --filter @nodea/web test`), navigate the app to validate behavior, then comment your feedback on the PR.
 
-### Apporter des modifications au code
+### Submitting code changes
 
-#### 1. Forker le repo
+#### 1. Fork the repo
 
-Tu peux ainsi modifier sans affecter le projet original jusqu'à ce que tu sois prêt·e à proposer la fusion.
+This way you can modify without affecting the original project until you're ready to propose the merge.
 
-#### 2. Setup local
+#### 2. Local setup
 
-Détaillé sur [`nodea.app/docs/fork`](https://nodea.app/docs/fork). En version express :
+Detailed at [`nodea.app/docs/fork`](https://nodea.app/docs/fork). Express version:
 
 ```bash
-git clone https://github.com/<toi>/Nodea.git
+git clone https://github.com/<you>/Nodea.git
 cd Nodea
 pnpm install
 cp .env.example .env
-# édite .env (au moins COOKIE_SECRET et OPAQUE_SERVER_SETUP)
+# edit .env (at least COOKIE_SECRET and OPAQUE_SERVER_SETUP)
 docker compose up -d postgres mailpit
 pnpm --filter @nodea/api db:migrate
 ```
 
-#### 3. Créer une branche de travail
+#### 3. Create a working branch
 
-À partir de la branche de dev courante (voir [Organisation des branches](#organisation-des-branches) ci-dessous). Convention de nommage : `<type>-<description_courte>` en snake_case.
+From the current dev branch (see [Branch organisation](#branch-organisation) below). Naming convention: `<type>-<short_description>` in snake_case.
 
 ```bash
 git checkout -b feature-add_review_export
 ```
 
-#### 4. Faire ses modifications
+#### 4. Make your changes
 
-Garde la PR **focalisée** : un seul sujet par PR. Ajoute / mets à jour les tests. Lance les suites avant de commiter pour catcher les régressions :
+Keep the PR **focused**: one subject per PR. Add / update tests. Run the suites before committing to catch regressions:
 
 ```bash
 pnpm --filter @nodea/api typecheck && pnpm --filter @nodea/api test
 pnpm --filter @nodea/web typecheck && pnpm --filter @nodea/web test
 ```
 
-#### 5. Valider les changements
+#### 5. Commit your changes
 
-Format de commit : préfixe + message à l'impératif, en français ou en anglais (cohérent dans toute la PR).
+Commit format: prefix + imperative message, in English or French (consistent across the whole PR).
 
 ```text
-feat(library): support import Goodreads
-fix(auth): empêche la double-soumission du formulaire register
-docs(security): clarifier le modèle de menaces sur change-email
-refactor(store): déplacer les sélecteurs dans selectors.ts
+feat(library): support Goodreads import
+fix(auth): prevent double-submit on register form
+docs(security): clarify threat model on change-email
+refactor(store): move selectors into selectors.ts
 chore(deps): bump react-hook-form 7.54 → 7.55
 ```
 
-Préfixes acceptés : `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `style`, `perf`, `ci`. Évite `wip` ou `tmp` — squash-merge les nettoie côté reviewer mais autant ne pas les introduire.
+Accepted prefixes: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `style`, `perf`, `ci`. Avoid `wip` or `tmp` — squash-merge cleans them up on the reviewer side, but better not to introduce them.
 
-#### 6. Ouvrir la pull request
+#### 6. Open the pull request
 
-- **Titre** : court, descriptif (le préfixe `feat:` ou `fix:` est dans le message du commit, pas obligé dans le titre PR).
-- **Description** : explique le **pourquoi** (l'utilisateur·rice voit quel changement de comportement ?) plus que le **quoi** (la diff parle d'elle-même).
-- **Lier l'issue** si tu en résous une (`Closes #42`).
-- **Cocher la case « Allow edits from maintainers »** pour qu'on puisse mettre à jour ta branche en cas de conflit avant merge.
-- **Ne marque pas comme "Ready for review"** tant que ta PR est en draft — une PR en draft signale au reviewer que tu sais qu'il reste du travail.
+- **Title**: short, descriptive (the `feat:` / `fix:` prefix lives in the commit message, not necessarily in the PR title).
+- **Description**: explain the **why** (what user-visible behavior changes?) more than the **what** (the diff speaks for itself).
+- **Link the issue** if you resolve one (`Closes #42`).
+- **Tick "Allow edits from maintainers"** so we can update your branch in case of conflict before merging.
+- **Don't mark as "Ready for review"** while your PR is in draft — a draft PR signals to the reviewer that you know there's still work to do.
 
-Si tu n'es pas familier·ière avec le système de pull request :
+If you're not familiar with the pull request workflow:
 
 - <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests>
 - <https://www.dataschool.io/how-to-contribute-on-github>
 
-#### 7. Process de revue
+#### 7. Review process
 
-Une fois ta PR ouverte, un·e mainteneur·euse va l'examiner. **Délai : variable** — Nodea n'a pas de mainteneur·euse à plein temps, compte plusieurs jours pour une première réponse. Si rien après 2 semaines, n'hésite pas à un commentaire de relance polie sur la PR.
+Once your PR is open, a maintainer will examine it. **Timing: variable** — Nodea has no full-time maintainer, expect several days for a first reply. If nothing after 2 weeks, feel free to leave a polite ping comment on the PR.
 
-Pendant la revue :
+During review:
 
-- Il se peut qu'on pose des questions ou demande des précisions — l'objectif est de comprendre le contexte de ton changement, pas de te faire réécrire.
-- Il se peut qu'on demande des modifications avant fusion (suggestions inline, ou commentaires de revue).
-- Au fur et à mesure que tu mets à jour ta PR, marque chaque conversation comme **résolue** quand le sujet est traité.
-- Si tu rencontres un conflit de merge, ce tutoriel git aide : <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts>.
+- We may ask questions or request clarifications — the goal is to understand the context of your change, not to make you rewrite it.
+- We may request modifications before merging (inline suggestions or review comments).
+- As you update your PR, mark each conversation as **resolved** once the topic is addressed.
+- If you hit a merge conflict, this git tutorial helps: <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts>.
 
-#### 8. Ta PR est fusionnée
+#### 8. Your PR is merged
 
-Bravo 🎉 Merci pour ta contribution ✨ — elle apparaît dans le `CHANGELOG.md` de la prochaine release.
+Congrats 🎉 Thanks for your contribution ✨ — it shows up in the next release's `CHANGELOG.md`.
 
-## Organisation des branches
+## Branch organisation
 
-### Principes
+### Principles
 
-- La **branche de production** est `main`. Publiée sur <https://nodea.app>.
-- La **branche de développement** est la branche de refacto courante (ex. `refacto-design-v2` aujourd'hui). C'est la branche cible de la plupart des PR. Une fois stabilisée, elle est mergée dans `main` et une nouvelle branche de refacto est créée si besoin.
-- Une **branche dédiée par feature / bugfix / chore**, partant de la branche de dev courante.
+- The **production branch** is `main`. Published at <https://nodea.app>.
+- The **development branch** is the current refactor branch (e.g. `refacto-design-v2` today). Most PRs target it. Once stabilized, it merges into `main` and a new refactor branch is created if needed.
+- A **dedicated branch per feature / bugfix / chore**, branched off the current dev branch.
 
-### Schéma
+### Diagram
 
 ```text
 main
-└── refacto-design-v2  (branche de dev courante)
+└── refacto-design-v2  (current dev branch)
     ├── feature-add_review_export
     ├── bugfix-double_submit_register
     ├── docs-clarify_threat_model
     └── chore-bump_react_hook_form
 ```
 
-### Nommer ses branches
+### Naming branches
 
-#### Types de branche
+#### Branch types
 
-Le préfixe rend le but de la branche immédiatement lisible :
+The prefix makes the branch's purpose immediately readable:
 
-- **feature** : ajout d'une nouvelle fonctionnalité.
-- **bugfix** : correction d'un bug.
-- **hotfix** : correction d'un bug critique en prod (rare).
-- **refactor** : restructuration sans changement de comportement.
-- **chore** : tâche de maintenance (deps, CI, build).
-- **docs** : documentation seulement.
-- **test** : ajout / modification de tests.
-- **experiment** : exploration, pas garantie d'être mergée.
+- **feature**: adding a new feature.
+- **bugfix**: fixing a bug.
+- **hotfix**: fixing a critical bug in prod (rare).
+- **refactor**: restructuring without behavior change.
+- **chore**: maintenance task (deps, CI, build).
+- **docs**: documentation only.
+- **test**: adding / modifying tests.
+- **experiment**: exploration, no guarantee of being merged.
 
 #### Format
 
-- Préfixe + tiret + description en snake_case.
-- Moins de 50 caractères au total.
-- Description courte mais explicite : `feature-add_review_export` plutôt que `feature-export`.
+- Prefix + dash + snake_case description.
+- Less than 50 chars total.
+- Description short but explicit: `feature-add_review_export` rather than `feature-export`.
 
-Exemples :
+Examples:
 
 ```text
 feature-add_review_export
@@ -177,102 +177,102 @@ chore-bump_drizzle_kit
 docs-clarify_threat_model
 ```
 
-### Versionnement
+### Versioning
 
-Numéro de version sur le format `a.b.c` ([SemVer](https://semver.org/lang/fr/)) :
+Version number in the format `a.b.c` ([SemVer](https://semver.org/)):
 
-- **a — Major** : changement breaking pour les clients (mobile, API consumers). Ex. retrait d'un endpoint, changement de contrat OPAQUE.
-- **b — Minor** : nouvelle fonctionnalité non-breaking. Ex. nouveau module, nouveau champ optionnel.
-- **c — Patch** : correction de bug, changement minime imperceptible. Ex. fix d'un selector mal écrit, dépendance bumpée.
+- **a — Major**: breaking change for clients (mobile, API consumers). E.g. removing an endpoint, changing the OPAQUE contract.
+- **b — Minor**: new non-breaking feature. E.g. new module, new optional field.
+- **c — Patch**: bug fix, imperceptible minimal change. E.g. fixing a botched selector, dependency bump.
 
-### Sens de fusion
+### Merge direction
 
 ```text
 feature-add_review_export
-│ Tests verts dans ta fork ?
-│ Si oui → pull request
+│ Tests green in your fork?
+│ If yes → pull request
 │
-└── refacto-design-v2 (branche de dev)
-    │ Roadmap de la branche complétée + revue ?
-    │ Si oui → merge
+└── refacto-design-v2 (dev branch)
+    │ Branch roadmap completed + reviewed?
+    │ If yes → merge
     │
     └── main
-        │ Mise en production sur https://nodea.app
+        │ Production deploy on https://nodea.app
 ```
 
-## Convention de codage
+## Coding conventions
 
-### Logique générale
+### General
 
-Nodea est un logiciel **open source AGPL**. Le code est lu par autant de personnes qu'il en est écrit — fais en sorte qu'il soit agréable à lire.
+Nodea is **open-source AGPL** software. The code is read by as many people as write it — make it pleasant to read.
 
-C'est comme conduire : tu peux faire des dérapages quand tu es seul·e, c'est ton truc. Mais avec des passagers, l'objectif est de rendre la conduite aussi douce que possible.
+It's like driving: you can pull stunts when you're alone, that's your business. With passengers, the goal is to make the ride as smooth as possible.
 
-### Lisibilité
+### Readability
 
-- **TypeScript strict** — pas de `any` dans le code de production. Si tu dois échapper temporairement, `// eslint-disable-next-line` avec une justification d'une ligne.
-- **2 espaces** pour l'indentation (jamais de tab).
-- **Espaces après les éléments de liste et les paramètres de méthode** : `[1, 2, 3]` pas `[1,2,3]`. Autour des opérateurs : `x += 1` pas `x+=1`.
-- **Pas de commented-out code.** Git se souvient. Si tu hésites, supprime — la commande `git log -p` retrouve.
-- **Commentaires en anglais**, mais textes utilisateur en français (i18n via `t()`).
-- **Inclusif·ve français** uniquement pour les humain·e·s (« utilisateur·rice·s »), pas pour les objets (« un critère actif », pas « actif·ve »).
+- **Strict TypeScript** — no `any` in production code. If you must escape briefly, `// eslint-disable-next-line` with a one-line justification.
+- **2 spaces** for indentation (never tabs).
+- **Spaces after list items and method parameters**: `[1, 2, 3]` not `[1,2,3]`. Around operators: `x += 1` not `x+=1`.
+- **No commented-out code.** Git remembers. If you hesitate, delete — `git log -p` recovers.
+- **Comments in English**, but user-facing strings in French (i18n via `t()`).
+- **Inclusive French** only for humans (« utilisateur·rice·s »), not for objects (« un critère actif », not « actif·ve »).
 
 ### Tailwind CSS
 
-- Préférer `flex` et `grid` aux marges manuelles.
-- Éviter les `margin` entre éléments d'un même groupe — utiliser `gap`.
-- Réutiliser les primitives `ui/atoms/` avant de créer un nouveau composant.
+- Prefer `flex` and `grid` over manual margins.
+- Avoid `margin` between elements of the same group — use `gap`.
+- Reuse the `ui/atoms/` primitives before creating a new component.
 
-### Accessibilité
+### Accessibility
 
-Nodea est utilisé pour des données personnelles sensibles — il doit être accessible par défaut, pas après-coup.
+Nodea is used for sensitive personal data — it must be accessible by default, not as an afterthought.
 
-- Toute image porte un `alt` (vide si décorative : `alt=""`).
-- Tout bouton à icône seule porte un `aria-label` ou un `<span class="sr-only">`.
-- Tout input de formulaire a un `<label>` associé (par `htmlFor` ou wrapping).
-- Contraste de couleur WCAG AA minimum (le design token système le respecte par défaut).
-- Tout élément cliquable est focusable au clavier ET a un focus visible (`focus-visible:*` Tailwind).
+- Every image carries an `alt` (empty if decorative: `alt=""`).
+- Every icon-only button carries an `aria-label` or a `<span class="sr-only">`.
+- Every form input has an associated `<label>` (via `htmlFor` or wrapping).
+- Color contrast at WCAG AA minimum (the design token system respects it by default).
+- Every clickable element is keyboard-focusable AND has a visible focus ring (`focus-visible:*` Tailwind).
 
-### Invariants crypto à respecter
+### Crypto invariants to respect
 
-Nodea est chiffré de bout en bout. Quelques règles cassent silencieusement la sécurité :
+Nodea is end-to-end encrypted. A few rules silently break security:
 
-- **Jamais de `CryptoKey` ou de matériel cryptographique brut dans un log, le DOM, ou `localStorage`.** Pas de `console.log(mainKey)`, pas de `window.mainKey`. La clé maître vit en mémoire WebCrypto en `extractable: false`.
-- **HKDF avec étiquettes distinctes** entre AES-GCM et HMAC-SHA-256 (`"nodea:aes"` et `"nodea:hmac"`).
-- **Une seule source pour `randomBytes` et le base64.** Le module partagé existe.
-- **Les guards HMAC ne sont JAMAIS persistés en `localStorage`.** Cache mémoire uniquement.
-- **Branded types** (`Base64`, `AesMainKey`, `HmacMainKey`, `CipherIV`) — confondre les types doit échouer à la compilation.
+- **Never a `CryptoKey` or raw crypto material in a log, the DOM, or `localStorage`.** No `console.log(mainKey)`, no `window.mainKey`. The main key lives in WebCrypto memory as `extractable: false`.
+- **HKDF with distinct labels** between AES-GCM and HMAC-SHA-256 (`"nodea:aes"` and `"nodea:hmac"`).
+- **One single source for `randomBytes` and base64.** The shared module already exists.
+- **HMAC guards are NEVER persisted to `localStorage`.** In-memory cache only.
+- **Branded types** (`Base64`, `AesMainKey`, `HmacMainKey`, `CipherIV`) — confusing types must fail at compile time.
 
-Le détail des invariants et leur justification vit sur [`nodea.app/docs/fork`](https://nodea.app/docs/fork) et dans le repo : `docs/Security.md` (prescriptif).
+The full list of invariants and their rationale lives at [`nodea.app/docs/fork`](https://nodea.app/docs/fork) and in the repo: `docs/Security.md` (prescriptive).
 
 ### Tests
 
-Avant d'ouvrir une PR, lance les 3 suites :
+Before opening a PR, run the 3 suites:
 
 ```bash
 pnpm --filter @nodea/api test  # ~3 min
 pnpm --filter @nodea/web test  # ~5 s
-pnpm --filter @nodea/e2e test  # ~3-5 min, prérequis Postgres + Mailpit + Chromium
+pnpm --filter @nodea/e2e test  # ~3-5 min, requires Postgres + Mailpit + Chromium
 ```
 
-Une PR avec des tests rouges sera mise en attente de fix avant revue.
+A PR with red tests will be put on hold until fixed before review.
 
-Pour le détail de la structure de tests, voir [`nodea.app/docs/fork`](https://nodea.app/docs/fork) section « Lancer les tests ».
+For the test structure detail, see [`nodea.app/docs/fork`](https://nodea.app/docs/fork) section "Running the tests".
 
-## Licence
+## License
 
-Nodea est sous **AGPL-3.0-or-later**. C'est une licence copyleft « réseau » — toute version dérivée distribuée (y compris servie via un serveur) doit elle aussi être publiée sous AGPL.
+Nodea is under **AGPL-3.0-or-later**. It's a "network" copyleft license — any derivative version distributed (including served via a server) must itself be published under AGPL.
 
-En contribuant, tu acceptes que ton code soit publié sous cette même licence. C'est ce qui garantit que Nodea reste libre, même si quelqu'un le fork et le commercialise.
+By contributing, you agree your code is published under that same license. That's what guarantees Nodea stays free, even if someone forks and commercializes it.
 
-## Code de conduite
+## Code of Conduct
 
-Ce projet adopte un [Code de conduite](./CODE_OF_CONDUCT.md) (basé sur le *Citizen Code of Conduct*). En participant — issue, PR, commentaire, traduction — tu t'engages à le respecter.
+This project adopts a [Code of Conduct](./CODE_OF_CONDUCT.md) (based on the *Citizen Code of Conduct*). By participating — issue, PR, comment, translation — you agree to follow it.
 
-En résumé : désaccord technique OK, désaccord sur la personne pas OK. Pas de harcèlement, pas de gatekeeping. Les mainteneur·euse·s se réservent le droit de fermer une issue ou une PR sans réponse si le ton est inacceptable.
+In short: technical disagreement OK, personal disagreement not OK. No harassment, no gatekeeping. Maintainers reserve the right to close an issue or PR without reply if the tone is unacceptable.
 
-Pour signaler un comportement, voir la section 9 du Code de conduite.
+To report behavior, see section 9 of the Code of Conduct.
 
 ---
 
-Merci encore pour ta contribution. Le projet existe parce que des gens comme toi s'y mettent.
+Thanks again for contributing. The project exists because people like you show up.
