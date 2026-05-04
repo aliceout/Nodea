@@ -1,26 +1,25 @@
 # Internationalisation
 
-Le client utilise un provider React maison
+The client uses an in-house React provider
 ([`packages/web/src/i18n/I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx))
-qui charge toutes les ressources de traduction depuis des fichiers
-JSON statiques. La langue active est persistée dans `localStorage`
-(`nodea:language`) **et** dans le blob chiffré
-`user_preferences` (sync cross-device une fois loggué·e). Elle
-peut être changée depuis la page **Paramètres → Langue de
-l'application**.
+that loads every translation resource from static JSON files. The active
+language is persisted in `localStorage` (`nodea:language`) **and** in
+the encrypted `user_preferences` blob (cross-device sync once the user
+is logged in). It can be changed from the **Settings → Application
+language** page.
 
-Langues actuellement supportées : **français** (`fr`, défaut),
-**anglais** (`en`).
+Languages currently supported: **French** (`fr`, default), **English**
+(`en`).
 
-## Structure des ressources
+## Resource layout
 
 ```
 packages/web/src/i18n/
-├── I18nProvider.jsx        ← provider React + helpers t / tn
-├── translate.ts            ← logique pure (resolution, plurals)
+├── I18nProvider.jsx        ← React provider + t / tn helpers
+├── translate.ts            ← pure logic (resolution, plurals)
 ├── translate.test.ts
-├── parity.ts               ← compareNamespaces (factorisé)
-├── parity.test.ts          ← test CI : FR ↔ EN keys match
+├── parity.ts               ← compareNamespaces (factored)
+├── parity.test.ts          ← CI test: FR ↔ EN keys match
 └── locales/
     ├── fr/
     │   ├── account.json
@@ -38,152 +37,146 @@ packages/web/src/i18n/
     │   ├── review.json
     │   └── settings.json
     └── en/
-        └── ... (mêmes fichiers, mêmes clés — vérifié en CI)
+        └── ... (same files, same keys — verified in CI)
 ```
 
-Chaque fichier JSON est un namespace. Les clés sont stables ; ce
-sont les valeurs qui changent par langue.
+Each JSON file is one namespace. Keys are stable; values change per
+language.
 
-## API du provider
+## Provider API
 
 ```ts
 const { t, tn, language, setLanguage, availableLanguages } = useI18n();
 
-t('account.tabs.identity');                        // → 'Identité'
-t('errors.api.invalid_credentials');               // → 'E-mail ou mot de passe incorrect.'
+t('account.tabs.identity');                        // → 'Identity'
+t('errors.api.invalid_credentials');               // → 'Wrong email or password.'
 t('goals.carryOver.summary.one', { values: { count: 1, fromYear: 2025, toYear: 2026 } });
 
 // Plural-aware — picks .one / .other / .few / .many / .other via
 // Intl.PluralRules(language). `count` is auto-injected into values.
-tn('mood.topbar.label', total);                    // « Mood · 3 entrées »
+tn('mood.topbar.label', total);                    // "Mood · 3 entries"
 tn('account.security.passkey.count', passkeysCount); // FR/EN one/other
 ```
 
-### Conventions de clés
+### Key conventions
 
-- **Pluriels** : sous-clés `<key>.{one,other}` (et `few/many/zero`
-  si la 3ᵉ langue le demande). Toujours via `tn(...)`, pas un
-  ternaire `count === 1 ? t('xxxOne') : t('xxxOther')`.
-- **Interpolation** : `{token}` dans la valeur, `values: { token: ... }`
-  côté call-site. Token absent → remplacé par chaîne vide (uniquement
-  quand `values` est passé).
-- **Codes erreur API** : un seul namespace `errors.api.<code>` ; le
-  helper `apiErrorMessage(err, t)` (depuis `@/core/api/client`)
-  fait le routage avec fallback `errors.api.unknown` /
-  `errors.api.network`. Les pages auth ne switchent plus sur
-  `err.error` localement.
+- **Plurals**: subkeys `<key>.{one,other}` (and `few/many/zero` if a
+  third language requires them). Always via `tn(...)`, never a ternary
+  `count === 1 ? t('xxxOne') : t('xxxOther')`.
+- **Interpolation**: `{token}` in the value, `values: { token: ... }`
+  at the call site. Missing tokens → replaced with the empty string
+  (only when `values` is passed).
+- **API error codes**: a single `errors.api.<code>` namespace; the
+  `apiErrorMessage(err, t)` helper (from `@/core/api/client`) handles
+  routing with `errors.api.unknown` / `errors.api.network` fallbacks.
+  Auth pages no longer switch on `err.error` locally.
 
-## Helpers locale-aware
+## Locale-aware helpers
 
 ### Dates
 
 [`packages/web/src/core/i18n/date-format.ts`](../packages/web/src/core/i18n/date-format.ts)
-expose les formatters partagés. Toutes les fonctions prennent la
-langue active :
+exposes the shared formatters. Every function takes the active
+language:
 
 ```ts
 formatEntryLabel(iso, today, { language, todayLabel, yesterdayLabel });
-formatMonthLabel('2026-03', language);    // FR : « Mars 2026 », EN : « March 2026 »
-formatLongDate(iso, language);            // FR : « 8 janvier 2025 », EN : « January 8, 2025 »
-formatNumber(12345, language);            // FR : « 12 345 », EN : « 12,345 »
+formatMonthLabel('2026-03', language);    // FR: "Mars 2026", EN: "March 2026"
+formatLongDate(iso, language);            // FR: "8 janvier 2025", EN: "January 8, 2025"
+formatNumber(12345, language);            // FR: "12 345", EN: "12,345"
 intlLocale('fr');                         // → 'fr-FR' (BCP-47 mapping)
 getMonthNames('fr', 'short');             // → ['janv.', 'févr.', ...]
 getDayNames('fr', 'long');                // → ['lundi', 'mardi', ...] (Mon → Sun)
 ```
 
-Les labels « Aujourd'hui » / « Hier » viennent de
-`common.time.{today,yesterday}` ; les call-sites les passent à
+The "Today" / "Yesterday" labels come from
+`common.time.{today,yesterday}`; call sites pass them to
 `formatEntryLabel`.
 
-### Contenu éditorial hors namespace
+### Editorial content outside namespaces
 
-Deux tableaux de prompts (~100 entrées par langue chacun) ne
-vivent pas dans le `t()` mais sous `data/` à côté du module qui
-les consomme :
+Two prompt arrays (~100 entries per language each) live outside `t()`,
+under `data/` next to the module that consumes them:
 
 - [`packages/web/src/app/flow/Mood/data/questions-{fr,en}.json`](../packages/web/src/app/flow/Mood/data/) +
   `questions.ts` (`pickQuestion(language)`).
 - [`packages/web/src/app/flow/Journal/data/prompts-{fr,en}.json`](../packages/web/src/app/flow/Journal/data/) +
   `prompts.ts` (`pickJournalPrompt(language)`).
 
-**Raison** : `t()` retourne un `string`, pas un array ; les
-helpers `pickXxx(language)` font le tirage et le fallback FR
-quand une langue n'a pas sa propre liste. Adopter la même règle
-pour tout dataset éditorial > ~50 entrées.
+**Why**: `t()` returns a `string`, not an array; the
+`pickXxx(language)` helpers do the random pick and the FR fallback
+when a language doesn't have its own list. Adopt the same rule for
+any editorial dataset > ~50 entries.
 
-### Sous-arbre FR-only (par décision)
+### FR-only subtree (by design)
 
-Les diagrammes pédagogiques sous
+The pedagogical diagrams under
 [`packages/web/src/app/pages/docs/`](../packages/web/src/app/pages/docs/)
-restent **FR-only** tant qu'aucune audience EN réelle ne le
-justifie. Idem pour le contenu YearCompass de Review
-(`config/steps.ts` + `config/step-fields.ts`) — ~174 lignes
-éditoriales inventées à partir d'un livret FR pédagogique. Les
-boutons / nav / erreurs du module Review sont, eux, dans
-`review.json` et passent par `t()`.
+stay **FR-only** until a real EN audience justifies the work. Same
+goes for the YearCompass content in Review (`config/steps.ts` +
+`config/step-fields.ts`) — ~174 lines of editorial copy adapted
+from a French pedagogical booklet. Buttons, nav, and errors of the
+Review module are in `review.json` and go through `t()`.
 
-## CI : parité FR ↔ EN
+## CI: FR ↔ EN parity
 
-Deux outils gardent les locales alignés :
+Two tools keep the locales aligned:
 
-1. **Test Vitest** (`parity.test.ts`) — itère les 14 namespaces
-   et `expect(... onlyFr / onlyEn)` à `[]`. Passe automatiquement
-   en CI dans `pnpm test`.
-2. **Script CLI** : `pnpm --filter @nodea/web i18n:diff` imprime
-   un récap namespace par namespace (`✓` / `✗ FR-only : ... / EN-only : ...`).
-   Utile en review locale ou avant de pousser. Exit code 1 quand
-   un drift est détecté.
+1. **Vitest test** (`parity.test.ts`) — iterates over the 14
+   namespaces and `expect(... onlyFr / onlyEn)` to be `[]`. Runs
+   automatically in CI via `pnpm test`.
+2. **CLI script**: `pnpm --filter @nodea/web i18n:diff` prints a
+   namespace-by-namespace summary (`✓` /
+   `✗ FR-only: ... / EN-only: ...`). Useful in local review or
+   before pushing. Exit code 1 when a drift is detected.
 
-Les deux comparent les **clés feuilles** (paths dotés à la
-résolution finale, pas juste les top-level) : un côté qui aurait
-`x.count.one / .other` et l'autre seulement `x.count` est attrapé.
+Both compare **leaf keys** (full dotted paths at final resolution,
+not just top-level): one side that has `x.count.one / .other` and
+the other only `x.count` is caught.
 
-## Ajouter une nouvelle langue
+## Adding a new language
 
-1. **Créer les fichiers de ressources**
-   - Dupliquer `packages/web/src/i18n/locales/fr/` vers
-     `packages/web/src/i18n/locales/<code ISO>/`.
-   - Remplir chaque fichier JSON avec les traductions ; conserver
-     les mêmes clés. Lancer `pnpm i18n:diff` pour vérifier la
-     parité au fur et à mesure.
+1. **Create the resource files**
+   - Duplicate `packages/web/src/i18n/locales/fr/` to
+     `packages/web/src/i18n/locales/<ISO code>/`.
+   - Fill in each JSON file with the translations; keep the same
+     keys. Run `pnpm i18n:diff` to check parity as you go.
 
-2. **Enregistrer la langue dans le provider**
-   - Dans [`I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx),
-     importer chaque JSON de la nouvelle langue et l'ajouter aux
-     constantes `RESOURCES` et `SUPPORTED_LANGUAGES` (code ISO +
-     label humain).
+2. **Register the language in the provider**
+   - In [`I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx),
+     import each JSON of the new language and add it to the
+     `RESOURCES` and `SUPPORTED_LANGUAGES` constants (ISO code +
+     human label).
 
-3. **Étendre le BCP-47 mapping**
-   - Si le code ISO ne mappe pas trivialement vers une locale
-     Intl (ex. `pt` → `pt-PT` ou `pt-BR` ?), enrichir
-     `intlLocale(language)` dans `core/i18n/date-format.ts`.
+3. **Extend the BCP-47 mapping**
+   - If the ISO code doesn't trivially map to an Intl locale
+     (e.g. `pt` → `pt-PT` or `pt-BR`?), extend
+     `intlLocale(language)` in `core/i18n/date-format.ts`.
 
-4. **Vérifier les pluriels**
-   - Pour les langues à formes riches (russe, polonais, arabe…),
-     vérifier que les sous-clés `zero / one / two / few / many /
-     other` sont toutes renseignées sur les `tn(...)` qui en ont
-     besoin (test de parité ne flague pas une absence de `.few`
-     en RU si le FR n'en a pas — c'est un trou résiduel).
+4. **Verify the plurals**
+   - For languages with rich plural forms (Russian, Polish, Arabic…),
+     verify that the `zero / one / two / few / many / other`
+     subkeys are filled in on every `tn(...)` that needs them (the
+     parity test does NOT flag a missing `.few` in RU if FR doesn't
+     have one — that's a residual gap).
 
-5. **Datasets éditoriaux**
-   - Ajouter `questions-<lang>.json` à `flow/Mood/data/` et
-     `prompts-<lang>.json` à `flow/Journal/data/`. Les sélecteurs
-     fallback sur FR si la langue n'a pas sa liste, donc une
-     nouvelle langue marche dès le jour 1 sans retraduire les
-     prompts.
+5. **Editorial datasets**
+   - Add `questions-<lang>.json` to `flow/Mood/data/` and
+     `prompts-<lang>.json` to `flow/Journal/data/`. The selectors
+     fall back to FR if the language has no list, so a new language
+     works on day 1 without re-translating the prompts.
 
-6. **Tester la bascule**
-   - `pnpm dev`, **Paramètres → Langue**, sélectionner la
-     nouvelle langue. Vérifier qu'aucun fallback `defaultValue`
-     n'apparaît, et que `pnpm test` reste vert.
+6. **Test the switch**
+   - `pnpm dev`, **Settings → Language**, pick the new language.
+     Verify no `defaultValue` fallback shows up, and that
+     `pnpm test` stays green.
 
-## Emails (côté API)
+## Emails (API side)
 
-Les 7 templates d'emails transactionnels (`invite`,
-`password-reset`, `register-activate`, `mfa-bypass` request +
-applied, `recovery-applied`, `security-mode-downgraded`) sont
-bilingues via un mécanisme distinct du provider web — pas de
-React côté Node, juste une fonction pure.
+The 7 transactional email templates (`invite`, `password-reset`,
+`register-activate`, `mfa-bypass` request + applied, `recovery-applied`,
+`security-mode-downgraded`) are bilingual via a mechanism distinct from
+the web provider — no React in Node, just a pure function.
 
 ```ts
 import { emailT, extractEmailLanguage } from '@/services/email/i18n';
@@ -191,49 +184,46 @@ import { emailT, extractEmailLanguage } from '@/services/email/i18n';
 emailT('fr', 'invite.subject');                          // → 'Tu es invité·e à créer ton espace Nodea'
 emailT('en', 'invite.validity', { values: { ttl: 7 } }); // → 'The link is valid for 7 days.'
 
-extractEmailLanguage(c);                                 // 'fr' | 'en' (parse `Accept-Language`)
+extractEmailLanguage(c);                                 // 'fr' | 'en' (parses `Accept-Language`)
 ```
 
-- **Sources** :
+- **Sources**:
   [`packages/api/src/services/email/locales/{fr,en}.ts`](../packages/api/src/services/email/locales/) —
-  arbres profonds (subject / preheader / heading / texte / HTML
-  par template). Le shape `EmailLocaleShape` est exporté depuis
-  `fr.ts` ; une clé manquante côté EN est une erreur TS au build.
-- **Détection de langue** : pas de colonne `users.email_language`
-  en clair (déclassée pour garder la frontière de chiffrement
-  propre). On lit `Accept-Language` de la requête qui déclenche
-  l'email — ça matche le browser du user pour les flux
-  self-service (register, reset, MFA bypass) et l'admin pour les
-  invites. Les emails sans contexte (futurs cron) tombent sur
-  `DEFAULT_LANGUAGE` (FR).
-- **Parité FR ↔ EN** :
+  deep trees (subject / preheader / heading / text / HTML per
+  template). The `EmailLocaleShape` shape is exported from `fr.ts`;
+  a missing EN key is a TS error at build.
+- **Language detection**: no `users.email_language` column in
+  cleartext (deliberately removed to keep the encryption boundary
+  clean). We read `Accept-Language` from the request that triggers
+  the email — that matches the user's browser for self-service flows
+  (register, reset, MFA bypass) and the admin's for invites. Emails
+  with no context (future cron jobs) fall back to `DEFAULT_LANGUAGE`
+  (FR).
+- **FR ↔ EN parity**:
   [`packages/api/src/services/email/parity.test.ts`](../packages/api/src/services/email/parity.test.ts) —
-  même invariant que côté web, leaf-paths comparés.
-- **Layout partagé** : le footer (« — L'équipe Nodea » /
-  « — The Nodea team » + ligne « envoyé automatiquement ») et
-  l'attribut `<html lang>` viennent de `emailT('layout.*')`.
-  Aucun template n'a besoin de re-traduire ces blocs.
+  same invariant as the web side, leaf paths compared.
+- **Shared layout**: the footer ("— L'équipe Nodea" / "— The Nodea
+  team" + the "sent automatically" line) and the `<html lang>`
+  attribute come from `emailT('layout.*')`. No template needs to
+  re-translate these blocks.
 
-Pour ajouter une 3ᵉ langue côté emails : créer
-`locales/<code>.ts` mirroir de `fr.ts`, étendre
-`SupportedEmailLanguage` dans
+To add a third language on the email side: create `locales/<code>.ts`
+mirroring `fr.ts`, extend `SupportedEmailLanguage` in
 [`packages/api/src/services/email/i18n.ts`](../packages/api/src/services/email/i18n.ts),
-ajouter le bag dans `RESOURCES`, et ajuster
-`parseAcceptLanguage` pour reconnaître le tag primaire.
+add the bag to `RESOURCES`, and adjust `parseAcceptLanguage` to
+recognise the primary tag.
 
 ## Notes
 
-- Les locales sont chargées **statiquement** : toute nouvelle
-  ressource doit être importée à la main dans `I18nProvider`.
-  C'est volontaire — le bundle reste prédictible et `tsc` valide
-  les imports manquants au build.
-- La langue est persistée dans **deux** stores : `localStorage`
-  (avant login) et `user_preferences` chiffré (après login). Le
-  serveur ne lit jamais le blob ; la sync cross-device passe par
-  un re-login.
-- Conserver les fichiers JSON en **UTF-8 sans BOM**, accents
-  préservés (les fichiers FR contiennent `é`, `à`, `ç`, etc.
-  directement, pas d'échappement Unicode).
-- **Inclusivité française** : `utilisateur·ice·s` pour les
-  humain·e·s, jamais pour les objets (« un critère actif », pas
-  « actif·ve »).
+- Locales are loaded **statically**: any new resource must be
+  imported by hand in `I18nProvider`. Deliberate — the bundle stays
+  predictable and `tsc` validates missing imports at build.
+- The language is persisted in **two** stores: `localStorage`
+  (before login) and the encrypted `user_preferences` (after login).
+  The server never reads the blob; cross-device sync goes through a
+  re-login.
+- Keep JSON files in **UTF-8 without BOM**, with accents preserved
+  (FR files contain `é`, `à`, `ç`, etc. directly, no Unicode
+  escapes).
+- **Inclusive French**: `utilisateur·ice·s` for people, never for
+  objects (« un critère actif », not « actif·ve »).
