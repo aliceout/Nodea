@@ -267,11 +267,11 @@ En contribuant, tu acceptes que ton code soit publié sous cette même licence. 
 
 ## Code de conduite
 
-On veut que cet espace reste accessible à toustes — débutant·e·s comme expert·e·s, indépendamment du genre, de l'âge, de l'expérience technique.
+Ce projet adopte un [Code de conduite](./CODE_OF_CONDUCT.md) (basé sur le *Citizen Code of Conduct*). En participant — issue, PR, commentaire, traduction — tu t'engages à le respecter.
 
-Pas de commentaire offensant, pas de harcèlement, pas de gatekeeping. Désaccord technique OK — désaccord sur la personne pas OK. Les mainteneur·euse·s se réservent le droit de fermer une issue ou une PR sans réponse si le ton est inacceptable.
+En résumé : désaccord technique OK, désaccord sur la personne pas OK. Pas de harcèlement, pas de gatekeeping. Les mainteneur·euse·s se réservent le droit de fermer une issue ou une PR sans réponse si le ton est inacceptable.
 
-Tu vois un comportement qui te met mal à l'aise ? Ouvre une issue privée ou contacte directement la personne mainteneur sur le repo.
+Pour signaler un comportement, voir la section 9 du Code de conduite.
 
 ---
 
