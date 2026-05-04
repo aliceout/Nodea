@@ -8,9 +8,9 @@ This file is read automatically by Claude Code at the start of every session. It
 
 **Nodea** is a self-hosted, **end-to-end encrypted** journaling / life-tracking web app. Data is encrypted in the browser with a user-derived main key — the server stores only ciphertext + HMAC guards, never plaintext, never keys.
 
-Current modules: **Mood** · **Goals** · **Passage** (implemented). **Habits** · **Library** · **Review** (documented, not yet implemented).
+Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **Review** (all implemented; Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md)).
 
-The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work lives on the `refacto` branch until it merges to `main`.
+Active work lives on `refacto-design-v2` until it merges to `main`.
 
 ---
 
@@ -28,24 +28,20 @@ The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work li
 | `docs/Architecture.md` | Code structure, runtime flow |
 | `docs/Security.md` | Before touching anything crypto, auth, or guards |
 | `docs/Database.md` | Before touching schema, collections, or guard validation |
-| `docs/Modules.md` + `docs/Modules/*` | Before touching a specific module (Mood, Goals, Passage, Habits, Library, Review) |
+| `docs/Modules.md` + `docs/Modules/*` | Before touching a specific module (Mood, Goals, Journal, Habits, Library, Review) |
+| `docs/Auth-Spec.md` | Before touching anything in the auth flows (OPAQUE, MFA, recovery, re-auth) |
 | `docs/Internationalisation.md` | Before touching i18n files |
 | `docs/security-audit.md` | Findings list + per-area sweep — cross-check before closing any crypto / auth / response-leakage task |
-| `docs/roadmap/*.md` | Active roadmaps (health, i18n) — read before work in those areas |
+| `docs/adr/` | Before changing an architectural decision documented in an ADR |
 
 ---
 
 ## Stack
 
-### Current (being phased out)
-- **Backend**: PocketBase (SQLite + Go hooks in `config/pocketbase/pb_hooks`)
-- **Frontend**: React 19 · Vite · Tailwind CSS · React Router v7 · JavaScript (JSX)
-- **Crypto**: WebCrypto (AES-GCM + HMAC-SHA-256) · `argon2-wasm` · `hash-wasm`
-
-### Target (current stack)
 - **Backend**: Node 22 · Hono · Drizzle ORM · PostgreSQL 16 · Zod · session cookies (not JWT)
 - **Frontend**: React 19 · Vite · Tailwind · React Router v7 · **TypeScript strict** · Zustand · React Hook Form + Zod
 - **Monorepo**: pnpm workspaces (`packages/api`, `packages/web`, `packages/shared`)
+- **Crypto**: WebCrypto (AES-GCM + HMAC-SHA-256) + OPAQUE via `@serenity-kit/opaque` + WebAuthn via `@simplewebauthn/{server,browser}`
 - **Deployment**: docker-compose (postgres + api + web). Postgres data
   persists under `$HOME/data/nodea/postgres/` via a bind mount
   (set by `infra/scripts/deploy.sh`). Drizzle migrations run on api
@@ -53,9 +49,7 @@ The PocketBase → Hono/Drizzle/PostgreSQL migration is complete. Active work li
   deploy is non-destructive. Never use `docker compose down -v` or
   `docker volume prune` on a Nodea host: the bind mount makes both
   no-ops, but the muscle memory is what kills prod data.
-- **Tests**: Vitest (+ optional testcontainers, Playwright)
-
-When writing new code, **target the target stack**. When modifying existing JSX/PB code, follow existing patterns but do not add to the legacy burden.
+- **Tests**: Vitest + Playwright (e2e)
 
 ---
 
@@ -80,8 +74,8 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 
 ## Backend rules (new stack — Hono + Drizzle)
 
-1. **All queries are parameterized** via Drizzle (`eq(x.field, value)`). Never string-interpolate user input — the legacy `Register.jsx` filter injection must never reappear.
-2. **Every record mutation goes through a guard middleware.** The factory of module routes must be driven by a single typed array of collections — adding a collection must automatically enroll it in guard validation. `guard.pb.js` currently misses collections; the new design must make that impossible.
+1. **All queries are parameterized** via Drizzle (`eq(x.field, value)`). Never string-interpolate user input.
+2. **Every record mutation goes through a guard middleware.** The factory of module routes must be driven by a single typed array of collections — adding a collection automatically enrolls it in guard validation.
 3. **`modules_config` is keyed PK on `user_id`** and does not need a guard; `requireUser` is sufficient. Document this in the route.
 4. **Invite codes stored hashed**, never in clear. Validation happens only inside `/auth/register`, never exposed via a standalone "check" endpoint. Rate-limit `/auth/*`.
 5. **Session cookies, not JWT.** `httpOnly; Secure; SameSite=Lax; Signed`. Server-side logout must invalidate the session immediately.
@@ -100,13 +94,13 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 - `any` is forbidden in new code. Use `unknown` + narrowing, or proper types.
 
 ### State — Zustand (single source)
-- There is **one** store. Never add a parallel singleton module that holds app state (the legacy `modulesRuntime.js` pattern is being removed).
+- There is **one** store. Never add a parallel singleton module that holds app state.
 - State shape, selectors, actions all live in `packages/web/src/core/store/`.
 - Subscribe with Zustand selectors, not `useContext` + reducer.
 
 ### Data fetching
-- All API calls go through the typed Hono client (`hc<ApiType>` from `packages/shared`).
-- No direct `fetch()` in components. No axios. No `pb.send()` in new code.
+- All API calls go through the typed clients in `packages/web/src/core/api/`.
+- No direct `fetch()` in components. No axios.
 
 ### Forms
 - React Hook Form + Zod resolver. Zod schema lives in `packages/shared/src/schemas/` — one source of truth, reused for backend validation and frontend form validation.
@@ -120,7 +114,7 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 - Cette règle s'applique à toute page nouvelle ou retouchée. Une page existante qui passe le seuil sur une PR mérite la migration dans la même PR.
 
 ### Routing
-- **URL stays at `/flow` regardless of which module is active.** The active module lives in the Zustand `flow` slice (`currentModule: ModuleId`), never in the URL or query string. **Privacy invariant** — module-visited / sub-view metadata must not leak through Nginx access logs, Hono request logs, or browser referrers. No `/flow/:moduleId` paths, no `?subview=`, no `?tab=`. (See `App.jsx` `popstate` listener for the back-button sync that preserves UX without exposing the module in the URL.)
+- **URL stays at `/flow` regardless of which module is active.** The active module lives in the Zustand `flow` slice (`currentModule: ModuleId`), never in the URL or query string. **Privacy invariant** — module-visited / sub-view metadata must not leak through Nginx access logs, Hono request logs, or browser referrers. No `/flow/:moduleId` paths, no `?subview=`, no `?tab=`. (See `App.tsx` `popstate` listener for the back-button sync that preserves UX without exposing the module in the URL.)
 - **`document.title` on `/flow` must stay generic ("Nodea") — never per-module.** The browser tab title is read by every screen-recording / sharing tool, every "what's on my screen" plugin, and every shoulder-surfer. A title like *« Mood — Nodea »* leaks the active module just as much as a `/flow/mood` URL would. Same privacy invariant. Public routes (`/login`, `/docs`, etc.) DO set per-page titles via `useDocumentTitle` (see `lib/use-document-title.ts`) — the leak risk only applies to the authenticated surface. If you add a new module/sub-view, do NOT call `useDocumentTitle` from inside `/flow`.
 - Every module component lazy-loaded via `React.lazy()`. Wrap in `<Suspense>`. No JSX instantiated at module import.
 - `ErrorBoundary` at two levels: global in `App.tsx`, and per-module inside the router resolver. A crashed module must not take down the whole app.
@@ -167,7 +161,7 @@ If a shape is only used by one side, it stays local. As soon as both sides touch
 - **No commented-out code.** Delete it — git remembers.
 - **Small commits, imperative mood** (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`). Keep diffs minimal; no reformatting unrelated code.
 - **`git mv` to rename/move files** — never delete + recreate. History matters.
-- **File-overview header on every non-trivial file (> 50 LOC).** Start the file with a short JSDoc block that answers three questions: (1) **what** the file does, (2) **where** it sits architecturally (which layer, which module, why here vs elsewhere), (3) **what assumptions / decisions** are baked in that aren't obvious from the code (e.g. "single store on purpose — not split per slice", "snake_case preserved for PocketBase parity", "guards in headers because logger leaked them in query strings"). One paragraph is usually enough; the goal is that someone opening the file in 6 months understands its place without grep+blame. This convention is the project's main onboarding lever — preserve it on new files, extend it when refactoring an existing one.
+- **File-overview header on every non-trivial file (> 50 LOC).** Start the file with a short JSDoc block that answers three questions: (1) **what** the file does, (2) **where** it sits architecturally (which layer, which module, why here vs elsewhere), (3) **what assumptions / decisions** are baked in that aren't obvious from the code (e.g. "single store on purpose — not split per slice", "guards in headers because logger leaked them in query strings", "camelCase only on the wire — see ADR-0012"). One paragraph is usually enough; the goal is that someone opening the file in 6 months understands its place without grep+blame. This convention is the project's main onboarding lever — preserve it on new files, extend it when refactoring an existing one.
 
 ---
 
@@ -242,7 +236,7 @@ Before marking a PR as ready:
 ## Git hygiene
 
 - **Never commit without the user explicitly asking.** "It works, should I commit?" — ask. Don't preempt.
-- **Never push to `main` directly.** Work happens on `refacto` (current migration branch) or feature branches off it.
+- **Never push to `main` directly.** Work happens on `refacto-design-v2` (current dev branch) or feature branches off it.
 - **Never force-push shared branches.** Never `--no-verify`, `--no-gpg-sign`, `--amend` on pushed commits.
 - **Dependabot PRs stay open** until the user decides — do not delete their branches.
 - After any push, if CI is configured, check `gh run list` and fix failures before moving on.
