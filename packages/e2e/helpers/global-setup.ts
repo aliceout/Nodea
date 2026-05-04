@@ -66,7 +66,7 @@ async function truncateAll(): Promise<void> {
     await sql`TRUNCATE TABLE
       users, invites, password_reset_tokens, app_settings,
       announcements, modules_config, user_preferences,
-      mood_entries, goals_entries, passage_entries,
+      mood_entries, goals_entries, journal_entries,
       habits_items_entries, habits_logs_entries,
       library_items_entries, library_reviews_entries,
       review_entries

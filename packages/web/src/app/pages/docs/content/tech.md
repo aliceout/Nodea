@@ -262,7 +262,7 @@ C'est la limite la plus honnête de Nodea : un serveur compromis peut servir du
 
 ### Surface lisible côté serveur — minimum strict
 
-Pour chaque ligne d'une table `*_entries` (Mood, Goals, Habits, Library, Review, Passage…), le serveur ne voit que le strict minimum nécessaire au routing et à la cryptographie :
+Pour chaque ligne d'une table `*_entries` (Mood, Goals, Journal, Habits, Library, Review…), le serveur ne voit que le strict minimum nécessaire au routing et à la cryptographie :
 
 | Champ | Visible serveur | Rôle |
 |---|---|---|
@@ -373,7 +373,7 @@ Le `payload` de ces deux tables est chiffré (`modules_config` contient le mappi
 
 #### Tables modules (rappel)
 
-`mood_entries`, `goals_entries`, `passage_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` — décrites dans le tableau « surface lisible côté serveur — minimum strict » plus haut. **Pas de `user_id`, pas de timestamps colonnes.**
+`mood_entries`, `goals_entries`, `journal_entries`, `habits_*_entries`, `library_*_entries`, `review_entries` — décrites dans le tableau « surface lisible côté serveur — minimum strict » plus haut. **Pas de `user_id`, pas de timestamps colonnes.**
 
 #### Le reste (chiffré ou haché)
 
