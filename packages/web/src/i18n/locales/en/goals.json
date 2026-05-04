@@ -14,7 +14,8 @@
   },
   "row": {
     "editAria": "Edit goal",
-    "deleteAria": "Delete goal"
+    "deleteAria": "Delete goal",
+    "confirmDelete": "Delete « {title} » ?"
   },
   "statusPill": {
     "ariaLabel": "Status: {label}, click to cycle",

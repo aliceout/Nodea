@@ -17,5 +17,39 @@
   "states": {
     "loading": "Loading…",
     "error": "Something went wrong."
+  },
+  "announcementsManager": {
+    "newHeading": "New announcement",
+    "titlePlaceholder": "Title",
+    "titleAria": "Title",
+    "messagePlaceholder": "Message",
+    "messageAria": "Message",
+    "publishHint": "Published immediately on the homepage — visible to everyone.",
+    "publish": "Publish",
+    "publishing": "Publishing…",
+    "existingHeading": "Existing announcements",
+    "loading": "Loading…",
+    "empty": "No announcement published.",
+    "active": "active",
+    "inactive": "inactive",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "deleteAria": "Delete",
+    "deleteTitle": "Delete",
+    "confirmDelete": "Delete this announcement?",
+    "errors": {
+      "loadFailed": "Unable to load.",
+      "publishFailed": "Unable to publish.",
+      "updateFailed": "Update failed.",
+      "deleteFailed": "Deletion failed."
+    }
+  },
+  "userTable": {
+    "empty": "No account registered.",
+    "noName": "— no name —",
+    "self": "(you)",
+    "deleteAria": "Delete user",
+    "deleteTitle": "Delete user",
+    "confirmDelete": "Delete the account « {label} »?\n\nThe account, its sessions and all encrypted data will be deleted (FK cascade)."
   }
 }

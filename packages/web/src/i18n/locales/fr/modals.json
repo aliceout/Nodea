@@ -20,6 +20,21 @@
     "kbdCancel": "annuler",
     "encryptedLocally": "chiffré localement",
     "markdownContentAria": "Contenu de l’entrée",
-    "markdownDefaultPlaceholder": "Ce qui te traverse aujourd’hui — au long, sans contrainte."
+    "markdownDefaultPlaceholder": "Ce qui te traverse aujourd’hui — au long, sans contrainte.",
+    "lookup": {
+      "searchPlaceholder": "Rechercher par titre, auteur·rice ou ISBN…",
+      "languageAria": "Langue de la recherche",
+      "languagePlaceholder": "Langue…",
+      "closeAria": "Fermer les résultats",
+      "closeTitle": "Fermer (Esc)",
+      "searchNeedsLanguage": "Choisis une langue avant de chercher",
+      "filterBy": "Filtrer par",
+      "filterAuthor": "Auteur·ice",
+      "filterTitle": "Titre",
+      "filterFormat": "Format"
+    },
+    "threadSuggest": {
+      "placeholder": "Fil — choisis-en un existant ou crée-en un nouveau"
+    }
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { NormalisedBook } from '@nodea/shared';
 
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
@@ -77,6 +78,7 @@ export default function LookupBar({
   mode,
   onModeChange,
 }: LookupBarProps) {
+  const { t } = useI18n();
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -154,18 +156,18 @@ export default function LookupBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Rechercher par titre, auteur·rice ou ISBN…"
+          placeholder={t('modals.composer.lookup.searchPlaceholder')}
           disabled={disabled}
         />
         <DirkSelect
           value={lang}
           onChange={(e) => onLangChange(e.target.value)}
-          aria-label="Langue de la recherche"
+          aria-label={t('modals.composer.lookup.languageAria')}
           disabled={disabled}
           className="w-auto shrink-0"
         >
           <option value="" disabled>
-            Langue…
+            {t('modals.composer.lookup.languagePlaceholder')}
           </option>
           {SEARCH_LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>
@@ -176,7 +178,7 @@ export default function LookupBar({
         <SearchButton
           searching={searching}
           disabled={disabled || searching || value.trim().length < 2 || !lang}
-          title={!lang ? 'Choisis une langue avant de chercher' : undefined}
+          title={!lang ? t('modals.composer.lookup.searchNeedsLanguage') : undefined}
           onSearch={() => void onSearch()}
           mode={mode}
           onModeChange={onModeChange}
@@ -185,8 +187,8 @@ export default function LookupBar({
           <DirkButton
             variant="secondary"
             onClick={onDismiss}
-            aria-label="Fermer les résultats"
-            title="Fermer (Esc)"
+            aria-label={t('modals.composer.lookup.closeAria')}
+            title={t('modals.composer.lookup.closeTitle')}
             className="px-2"
           >
             ✕
@@ -202,7 +204,7 @@ export default function LookupBar({
         <div className="mt-2 flex flex-col gap-1">
           {matchCounts.author > 0 || matchCounts.title > 0 ? (
             <FilterRow<'author' | 'title'>
-              label="Filtrer par"
+              label={t('modals.composer.lookup.filterBy')}
               active={matchFilter}
               onChange={setMatchFilter}
               entries={[
@@ -210,7 +212,7 @@ export default function LookupBar({
                   ? [
                       {
                         value: 'author' as const,
-                        label: 'Auteur·ice',
+                        label: t('modals.composer.lookup.filterAuthor'),
                         count: matchCounts.author,
                       },
                     ]
@@ -219,7 +221,7 @@ export default function LookupBar({
                   ? [
                       {
                         value: 'title' as const,
-                        label: 'Titre',
+                        label: t('modals.composer.lookup.filterTitle'),
                         count: matchCounts.title,
                       },
                     ]
@@ -229,7 +231,7 @@ export default function LookupBar({
           ) : null}
           {formatCounts.length > 1 ? (
             <FilterRow<NormalisedBook['format']>
-              label="Format"
+              label={t('modals.composer.lookup.filterFormat')}
               active={formatFilter}
               onChange={setFormatFilter}
               entries={formatCounts.map((c) => ({

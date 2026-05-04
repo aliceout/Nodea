@@ -23,6 +23,7 @@ import { goalsClient } from '@/core/api/modules/goals';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
 import type { ComposerEditing, ComposerType } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { nextStatus } from '../lib/status';
 import type { GoalEntry } from '../lib/types';
@@ -56,6 +57,7 @@ interface GoalsActionsDeps {
 
 export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const { ctx, entries, setEntries, bumpGoalsVersion, openComposer } = deps;
+  const { t } = useI18n();
 
   const [carryOverOpen, setCarryOverOpen] = useState(false);
 
@@ -150,7 +152,12 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const deleteEntry = useCallback(
     async (entry: GoalEntry) => {
       if (!ctx) return;
-      if (!window.confirm(`Supprimer « ${entry.title} » ?`)) return;
+      if (
+        !window.confirm(
+          t('goals.row.confirmDelete', { values: { title: entry.title } }),
+        )
+      )
+        return;
       const token = trackerRef.current.begin(entry.id);
       const indexBefore = entriesRef.current.findIndex((e) => e.id === entry.id);
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
@@ -174,7 +181,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         if (import.meta.env.DEV) console.warn('goals: delete failed', err);
       }
     },
-    [ctx, bumpGoalsVersion, setEntries],
+    [ctx, bumpGoalsVersion, setEntries, t],
   );
 
   const openCarryOver = useCallback(() => setCarryOverOpen(true), []);

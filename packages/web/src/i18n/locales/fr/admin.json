@@ -17,5 +17,39 @@
   "states": {
     "loading": "Chargement...",
     "error": "Une erreur est survenue."
+  },
+  "announcementsManager": {
+    "newHeading": "Nouvelle annonce",
+    "titlePlaceholder": "Titre",
+    "titleAria": "Titre",
+    "messagePlaceholder": "Message",
+    "messageAria": "Message",
+    "publishHint": "Publiée immédiatement sur la page d’accueil — visible par tout le monde.",
+    "publish": "Publier",
+    "publishing": "Publication…",
+    "existingHeading": "Annonces existantes",
+    "loading": "Chargement…",
+    "empty": "Aucune annonce publiée.",
+    "active": "actif",
+    "inactive": "inactif",
+    "activate": "Activer",
+    "deactivate": "Désactiver",
+    "deleteAria": "Supprimer",
+    "deleteTitle": "Supprimer",
+    "confirmDelete": "Supprimer cette annonce ?",
+    "errors": {
+      "loadFailed": "Impossible de charger.",
+      "publishFailed": "Impossible de publier.",
+      "updateFailed": "Mise à jour impossible.",
+      "deleteFailed": "Suppression impossible."
+    }
+  },
+  "userTable": {
+    "empty": "Aucun compte enregistré.",
+    "noName": "— sans nom —",
+    "self": "(toi)",
+    "deleteAria": "Supprimer l’utilisateur·ice",
+    "deleteTitle": "Supprimer l’utilisateur·ice",
+    "confirmDelete": "Supprimer le compte « {label} » ?\n\nLe compte, ses sessions et toutes ses données chiffrées seront supprimés (cascade FK)."
   }
 }

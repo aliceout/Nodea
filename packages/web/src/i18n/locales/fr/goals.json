@@ -14,7 +14,8 @@
   },
   "row": {
     "editAria": "Modifier l’objectif",
-    "deleteAria": "Supprimer l’objectif"
+    "deleteAria": "Supprimer l’objectif",
+    "confirmDelete": "Supprimer « {title} » ?"
   },
   "statusPill": {
     "ariaLabel": "Statut : {label}, cliquer pour cycler",

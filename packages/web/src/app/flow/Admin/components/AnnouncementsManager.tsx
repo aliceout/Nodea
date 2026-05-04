@@ -10,6 +10,7 @@ import {
 } from '@/core/api/client';
 import type { AnnouncementResponse } from '@nodea/shared';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
@@ -24,6 +25,7 @@ const INITIAL_FORM = { title: '', body: '' };
  * without deleting them, which preserves the audit trail.
  */
 export default function AnnouncementsManager() {
+  const { t, language } = useI18n();
   const [form, setForm] = useState(INITIAL_FORM);
   const [items, setItems] = useState<AnnouncementResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +41,11 @@ export default function AnnouncementsManager() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Impossible de charger.');
+        setError(
+          err instanceof Error
+            ? err.message
+            : t('admin.announcementsManager.errors.loadFailed'),
+        );
         if (isApiError(err) && import.meta.env.DEV) console.warn('list announcements failed', err);
       })
       .finally(() => {
@@ -48,7 +54,7 @@ export default function AnnouncementsManager() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const canSubmit = form.title.trim().length > 0 && form.body.trim().length > 0 && !saving;
 
@@ -66,7 +72,11 @@ export default function AnnouncementsManager() {
       setItems((prev) => [created, ...prev]);
       setForm(INITIAL_FORM);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossible de publier.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('admin.announcementsManager.errors.publishFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -78,18 +88,26 @@ export default function AnnouncementsManager() {
       const updated = await apiAdminUpdateAnnouncement(row.id, { active: !row.active });
       setItems((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Mise à jour impossible.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('admin.announcementsManager.errors.updateFailed'),
+      );
     }
   }
 
   async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Supprimer cette annonce ?')) return;
+    if (!window.confirm(t('admin.announcementsManager.confirmDelete'))) return;
     setError(null);
     try {
       await apiAdminDeleteAnnouncement(id);
       setItems((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Suppression impossible.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('admin.announcementsManager.errors.deleteFailed'),
+      );
     }
   }
 
@@ -98,7 +116,7 @@ export default function AnnouncementsManager() {
       {/* New announcement form */}
       <form onSubmit={onSubmit} className="py-[24px] first:pt-0 last:pb-0">
         <h3 className="mb-2 text-[16px] font-semibold text-ink">
-          Nouvelle annonce
+          {t('admin.announcementsManager.newHeading')}
         </h3>
 
         <div className="space-y-2.5">
@@ -107,26 +125,28 @@ export default function AnnouncementsManager() {
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
             maxLength={200}
-            placeholder="Titre"
-            aria-label="Titre"
+            placeholder={t('admin.announcementsManager.titlePlaceholder')}
+            aria-label={t('admin.announcementsManager.titleAria')}
             className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
           <textarea
             value={form.body}
             onChange={(e) => setForm((prev) => ({ ...prev, body: e.target.value }))}
             rows={4}
-            placeholder="Message"
-            aria-label="Message"
+            placeholder={t('admin.announcementsManager.messagePlaceholder')}
+            aria-label={t('admin.announcementsManager.messageAria')}
             className="block w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.55] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[11px] text-muted">
-            Publiée immédiatement sur la page d’accueil — visible par tout le monde.
+            {t('admin.announcementsManager.publishHint')}
           </p>
           <Button type="submit" variant="primary" size="sm" disabled={!canSubmit}>
-            {saving ? 'Publication…' : 'Publier'}
+            {saving
+              ? t('admin.announcementsManager.publishing')
+              : t('admin.announcementsManager.publish')}
           </Button>
         </div>
 
@@ -143,12 +163,12 @@ export default function AnnouncementsManager() {
       {/* Existing announcements list */}
       <div className="py-[24px] first:pt-0 last:pb-0">
         <h3 className="mb-2 text-[16px] font-semibold text-ink">
-          Annonces existantes
+          {t('admin.announcementsManager.existingHeading')}
         </h3>
         {loading ? (
-          <EmptyHint>Chargement…</EmptyHint>
+          <EmptyHint>{t('admin.announcementsManager.loading')}</EmptyHint>
         ) : items.length === 0 ? (
-          <EmptyHint>Aucune annonce publiée.</EmptyHint>
+          <EmptyHint>{t('admin.announcementsManager.empty')}</EmptyHint>
         ) : (
           <ul className="flex flex-col">
             {items.map((row) => (
@@ -163,8 +183,10 @@ export default function AnnouncementsManager() {
                   <div className="min-w-0">
                     <h4 className="text-[14.5px] font-medium text-ink">{row.title}</h4>
                     <p className="mt-0.5 text-[11px] uppercase tracking-[0.04em] text-muted">
-                      {new Date(row.createdAt).toLocaleString('fr-FR')} ·{' '}
-                      {row.active ? 'actif' : 'inactif'}
+                      {new Date(row.createdAt).toLocaleString(language)} ·{' '}
+                      {row.active
+                        ? t('admin.announcementsManager.active')
+                        : t('admin.announcementsManager.inactive')}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -173,15 +195,17 @@ export default function AnnouncementsManager() {
                       size="xs"
                       onClick={() => void toggleActive(row)}
                     >
-                      {row.active ? 'Désactiver' : 'Activer'}
+                      {row.active
+                        ? t('admin.announcementsManager.deactivate')
+                        : t('admin.announcementsManager.activate')}
                     </Button>
                     <Button
                       variant="danger-ghost"
                       size="sm"
                       iconOnly
                       onClick={() => void handleDelete(row.id)}
-                      aria-label="Supprimer"
-                      title="Supprimer"
+                      aria-label={t('admin.announcementsManager.deleteAria')}
+                      title={t('admin.announcementsManager.deleteTitle')}
                     >
                       <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>

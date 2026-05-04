@@ -6,6 +6,7 @@ import {
 } from '@nodea/shared';
 
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -69,30 +70,28 @@ export default function FormPanel(props: FormPanelProps) {
     canSubmit,
     onSubmit,
   } = props;
+  const { t } = useI18n();
 
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Récupération"
-        title="Récupérer avec un code"
-        subtitle={
-          <>
-            Tape ton e-mail, tes 12 mots de récupération, et un nouveau mot de passe.
-            Tes données restent intactes.
-          </>
-        }
+        eyebrow={t('auth.recover.form.eyebrow')}
+        title={t('auth.recover.form.title')}
+        subtitle={<>{t('auth.recover.form.subtitle')}</>}
       />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="E-mail"
+          label={t('auth.recover.form.emailLabel')}
           type="email"
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
           error={
-            email && !emailLooksValid ? 'Format e-mail invalide.' : undefined
+            email && !emailLooksValid
+              ? t('auth.recover.form.emailInvalid')
+              : undefined
           }
         />
 
@@ -101,13 +100,13 @@ export default function FormPanel(props: FormPanelProps) {
             htmlFor="recover-mnemonic"
             className="mb-1.25 block text-[12px] font-medium text-muted"
           >
-            12 mots de récupération
+            {t('auth.recover.form.mnemonicLabel')}
           </label>
           <textarea
             id="recover-mnemonic"
             value={mnemonic}
             onChange={(e) => setMnemonic(e.target.value)}
-            placeholder="Sépare les mots par des espaces — la casse n’a pas d’importance."
+            placeholder={t('auth.recover.form.mnemonicPlaceholder')}
             rows={3}
             spellCheck={false}
             autoCapitalize="none"
@@ -119,15 +118,15 @@ export default function FormPanel(props: FormPanelProps) {
             )}
           />
           <p className="mt-1 text-[11px] text-muted">
-            {wordCount} / 12 mots
+            {t('auth.recover.form.wordCount', { values: { count: wordCount } })}
             {wordCount > 0 && wordCount !== 12
-              ? ' — il en faut exactement 12.'
+              ? t('auth.recover.form.wordCountNeed12')
               : null}
           </p>
         </div>
 
         <Field
-          label="Nouveau mot de passe"
+          label={t('auth.recover.form.newPasswordLabel')}
           type="password"
           autoComplete="new-password"
           value={password}
@@ -145,7 +144,7 @@ export default function FormPanel(props: FormPanelProps) {
         ) : null}
 
         <Field
-          label="Confirmer le mot de passe"
+          label={t('auth.recover.form.confirmPasswordLabel')}
           type="password"
           autoComplete="new-password"
           value={confirm}
@@ -153,7 +152,7 @@ export default function FormPanel(props: FormPanelProps) {
           required
           error={
             confirmMismatch
-              ? 'Les deux mots de passe ne correspondent pas.'
+              ? t('auth.recover.form.confirmMismatch')
               : undefined
           }
         />
@@ -167,12 +166,14 @@ export default function FormPanel(props: FormPanelProps) {
           disabled={!canSubmit}
           className="mt-2 w-full"
         >
-          {submitting ? 'Récupération…' : 'Récupérer mon compte'}
+          {submitting
+            ? t('auth.recover.form.submitting')
+            : t('auth.recover.form.submit')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
-            ← Retour à la connexion
+            {t('auth.recover.form.backToLogin')}
           </Link>
         </div>
       </form>

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { SecurityMode } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 /**
@@ -28,6 +29,7 @@ export default function PasswordProofForm({
   onConfirm: (password: string) => Promise<void>;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
@@ -46,15 +48,16 @@ export default function PasswordProofForm({
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-3">
       <p className="mb-2 text-[12.5px] text-ink-soft">
-        Confirme avec ton mot de passe pour passer en mode{' '}
-        <strong className="font-semibold text-ink">{targetLabel}</strong>.
+        {t('auth.securityMode.passwordProof.instructionBefore')}
+        <strong className="font-semibold text-ink">{targetLabel}</strong>
+        {t('auth.securityMode.passwordProof.instructionAfter')}
       </p>
       <input
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         autoComplete="current-password"
-        placeholder="Mot de passe actuel"
+        placeholder={t('auth.securityMode.passwordProof.passwordPlaceholder')}
         autoFocus
         className="mb-2 w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13px] text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]"
       />
@@ -66,7 +69,7 @@ export default function PasswordProofForm({
           disabled={submitting || !password}
           className="flex-1"
         >
-          {submitting ? '…' : 'Confirmer'}
+          {submitting ? '…' : t('common.actions.confirm')}
         </Button>
         <Button
           type="button"
@@ -75,7 +78,7 @@ export default function PasswordProofForm({
           onClick={onCancel}
           disabled={submitting}
         >
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
       </div>
     </form>

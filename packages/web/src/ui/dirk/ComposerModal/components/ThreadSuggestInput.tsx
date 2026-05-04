@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
 interface ThreadSuggestInputProps {
@@ -41,6 +42,7 @@ export default function ThreadSuggestInput({
   disabled,
   onSubmit,
 }: ThreadSuggestInputProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -120,7 +122,7 @@ export default function ThreadSuggestInput({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="Fil — choisis-en un existant ou crée-en un nouveau"
+        placeholder={t('modals.composer.threadSuggest.placeholder')}
         disabled={disabled}
         autoComplete="off"
         autoFocus
