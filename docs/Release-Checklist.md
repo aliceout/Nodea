@@ -9,7 +9,7 @@ script.
 - [ ] La branche `main` contient le commit à publier
 - [ ] CI verte sur ce commit
 - [ ] Migration DB documentée si schéma changé (cf. `Database.md`)
-- [ ] CHANGELOG / release notes rédigées
+- [ ] Release notes rédigées (format à décider quand on tagguera V1)
 
 ## Tag + GitHub Release
 

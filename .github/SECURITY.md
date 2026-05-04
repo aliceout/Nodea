@@ -22,7 +22,7 @@ When reporting, please include:
 
 - **Acknowledge within 7 days.** Single-maintainer project, no on-call rotation — please be patient if it slips a little.
 - **Assess within 30 days.** We'll confirm whether it reproduces, scope it (impact, affected versions), and propose a fix timeline.
-- **Coordinate disclosure.** Default policy is **90 days** from initial report to public disclosure, or earlier if a fix is shipped. We'll keep you in the loop and credit you in the advisory + `CHANGELOG.md` unless you prefer anonymity.
+- **Coordinate disclosure.** Default policy is **90 days** from initial report to public disclosure, or earlier if a fix is shipped. We'll keep you in the loop and credit you in the GitHub Security Advisory unless you prefer anonymity.
 - **No bug bounty.** Nodea is a self-funded open-source project; we can't pay for findings. We can credit you publicly and answer technical questions during the fix.
 
 ## Scope

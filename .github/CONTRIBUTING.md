@@ -124,7 +124,7 @@ During review:
 
 #### 8. Your PR is merged
 
-Congrats 🎉 Thanks for your contribution ✨ — it shows up in the next release's `CHANGELOG.md`.
+Congrats 🎉 Thanks for your contribution ✨
 
 ## Branch organisation
 

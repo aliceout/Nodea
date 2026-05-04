@@ -105,8 +105,8 @@ Toute modification matérielle sera annoncée :
 - Par email aux comptes actifs.
 - Par une bannière in-app pendant au moins 14 jours avant
   l'application.
-- Dans le `CHANGELOG.md` du dépôt avec un lien vers la version
-  précédente.
+- Dans l'historique git du dépôt — chaque commit qui touche
+  ce fichier porte la modification.
 
 Les modifications cosmétiques (typos, reformulations) peuvent passer
 sans préavis.
