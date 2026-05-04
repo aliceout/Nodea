@@ -30,7 +30,7 @@ test('i18n FR ↔ EN — switch via sidebar + persistance + libellés clés', as
   await registerAndActivate(page, 'i18nswitch');
 
   /* -------- 1. Confirmer FR par défaut sur la sidebar -------- */
-  await expect(page.getByRole('button', { name: /^Mon compte$/i })).toBeVisible({
+  await expect(page.getByRole('button', { name: /^Votre profil$/i })).toBeVisible({
     timeout: 10_000,
   });
 
@@ -40,15 +40,15 @@ test('i18n FR ↔ EN — switch via sidebar + persistance + libellés clés', as
     .selectOption('en');
 
   /* -------- 3. La sidebar bascule en EN -------- */
-  await expect(page.getByRole('button', { name: /^My account$/i })).toBeVisible({
+  await expect(page.getByRole('button', { name: /^Your profile$/i })).toBeVisible({
     timeout: 10_000,
   });
   // Le label FR ne doit plus être présent (sinon c'est qu'on n'a
   // changé que la sidebar foot, pas le reste).
-  await expect(page.getByRole('button', { name: /^Mon compte$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Votre profil$/i })).toHaveCount(0);
 
   /* -------- 4. Naviguer sur Account → vérifier les libellés EN -------- */
-  await page.getByRole('button', { name: /^My account$/i }).first().click();
+  await page.getByRole('button', { name: /^Your profile$/i }).first().click();
   await page.waitForLoadState('networkidle');
 
   // Identity tab affiche « Display name » côté EN, « Nom d'affichage »
@@ -70,7 +70,7 @@ test('i18n FR ↔ EN — switch via sidebar + persistance + libellés clés', as
 
   /* -------- 6. Switcher de retour en FR -------- */
   await page.getByLabel(/Language preference/i).selectOption('fr');
-  await expect(page.getByRole('button', { name: /^Mon compte$/i }).first()).toBeVisible({
+  await expect(page.getByRole('button', { name: /^Votre profil$/i }).first()).toBeVisible({
     timeout: 10_000,
   });
 });

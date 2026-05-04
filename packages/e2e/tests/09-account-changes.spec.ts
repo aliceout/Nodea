@@ -50,9 +50,11 @@ test('account changes — username + email update via Settings UI, persist acros
   /* -------- 1. Register + land on /flow -------- */
   const user = await registerAndActivate(page, 'acctchg');
 
-  /* -------- 2. Open « Mon compte » via sidebar -------- */
+  /* -------- 2. Open « Votre profil » via sidebar header -------- */
+  // Sidebar UserMenu icon button (cf. SidebarHeader.tsx) carries an
+  // aria-label from i18n: « Votre profil » (FR) / « Your profile » (EN).
   await page
-    .getByRole('button', { name: /^Mon compte$|^My account$/i })
+    .getByRole('button', { name: /^Votre profil$|^Your profile$/i })
     .first()
     .click();
   // The Account page opens on the « Identité » tab by default.

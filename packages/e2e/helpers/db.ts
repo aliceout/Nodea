@@ -63,17 +63,28 @@ export async function isTotpEnabled(userId: string): Promise<boolean> {
   return rows[0]?.['enabled_at'] !== null;
 }
 
-/** Read user id by email — most tests track users by email. */
+/** Read user id by email — goes through the api test-only endpoint
+ *  rather than a direct DB query so the dev `pnpm dev:api` (which
+ *  Playwright reuses via `reuseExistingServer: true`) and the test
+ *  helper see the same rows even when DATABASE_URL points at a
+ *  different db than E2E_DATABASE_URL. */
 export async function getUserIdByEmail(email: string): Promise<string | null> {
-  const rows = await db()`
-    SELECT id FROM users WHERE email = ${email.toLowerCase()} LIMIT 1
-  `;
-  return (rows[0]?.['id'] as string) ?? null;
+  const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  const res = await fetch(
+    `${apiUrl}/__test__/user-id?email=${encodeURIComponent(email)}`,
+  );
+  if (!res.ok) return null;
+  const json = (await res.json()) as { id: string | null };
+  return json.id;
 }
 
-/** Promote a user to admin role. Used by the admin-flows spec where
- *  the register endpoint always creates a `user`-role user — direct
- *  DB update is the only way to get an admin without a seed step. */
+/** Promote a user to admin role. Goes through the api test-only
+ *  endpoint for the same reason as `getUserIdByEmail`. */
 export async function promoteToAdmin(userId: string): Promise<void> {
-  await db()`UPDATE users SET role = 'admin' WHERE id = ${userId}`;
+  const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  await fetch(`${apiUrl}/__test__/promote-admin`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
 }

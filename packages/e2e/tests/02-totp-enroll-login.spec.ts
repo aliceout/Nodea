@@ -26,6 +26,10 @@ test.beforeEach(async () => {
 });
 
 test('TOTP enroll + login with code', async ({ page }) => {
+  // Bumped from default 30 s to accommodate the 31 s wait between
+  // TOTP enroll-verify and the re-login (anti-replay window).
+  test.setTimeout(90_000);
+
   const email = `totp-${Date.now()}@example.com`;
   const username = `totp${Date.now()}`;
 
@@ -104,6 +108,10 @@ test('TOTP enroll + login with code', async ({ page }) => {
   });
 
   /* -------- 4. Log back in — must demand TOTP -------- */
+  // Wait past the 30 s TOTP window so the re-login uses a fresh code
+  // (the api enforces `last_window` anti-replay : a code accepted at
+  // enroll-verify won't be accepted again until the next window).
+  await page.waitForTimeout(31_000);
   await page.goto('/login');
   await page.getByLabel(/E-?mail/i).fill(email);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);

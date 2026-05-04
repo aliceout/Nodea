@@ -75,32 +75,38 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
 
   /* -------- 2. Activer TOTP via /totp (pattern spec 02) -------- */
   await page.goto('/totp');
-  await page.getByRole('button', { name: /Activer/i }).click();
+  // ListView (disabled state) — single form (cf. Totp/ListView.tsx).
   await page
-    .getByLabel(/^Mot de passe.*actuel|Current password/i)
+    .getByLabel(/^Mot de passe actuel$|^Current password$/i)
     .fill(STRONG_PASSWORD);
-  await page.getByRole('button', { name: /Continuer|Continue/i }).click();
-
-  // Scrape le secret base32 affiché.
-  const secretLocator = page
-    .locator('[data-testid=totp-secret], code, pre')
-    .filter({ hasText: /^[A-Z2-7]{16,}$/ });
-  await expect(secretLocator.first()).toBeVisible({ timeout: 10_000 });
-  const secret =
-    (await secretLocator.first().textContent())?.replace(/\s+/g, '') ?? '';
-  expect(secret.length).toBeGreaterThanOrEqual(16);
-
-  // Génère le code matchant et confirme.
-  const enrollCode = await totpCode(secret);
-  await page.getByLabel(/Code|TOTP/i).fill(enrollCode);
-  const ack = page.getByRole('checkbox', { name: /noté|saved|sauvegardé/i });
-  if (await ack.count() > 0) await ack.check();
   await page
-    .getByRole('button', { name: /Activer|Verify|Confirmer/i })
+    .getByRole('button', { name: /^Activer TOTP$|^Enable TOTP$/i })
     .click();
-  await expect(page.getByText(/désactiver|disable/i)).toBeVisible({
-    timeout: 10_000,
-  });
+
+  // SecretPanel — reveal the masked base32 then scrape via data-testid.
+  await page
+    .getByRole('button', { name: /^Afficher la cl.$|^Reveal the key$/i })
+    .click();
+  const secretLocator = page.locator('[data-testid=totp-secret]');
+  await expect(secretLocator).toBeVisible({ timeout: 10_000 });
+  const secret =
+    (await secretLocator.textContent())?.replace(/\s+/g, '') ?? '';
+  expect(secret).toMatch(/^[A-Z2-7]{16,}$/);
+
+  const enrollCode = await totpCode(secret);
+  await page.getByLabel(/^Code à 6 chiffres/i).fill(enrollCode);
+  await page.getByRole('button', { name: /^Activer$|^Activation…$/i }).click();
+
+  // BackupCodesPanel — ack + « Terminé ».
+  await page
+    .getByRole('checkbox', { name: /not.|saved|sauvegard./i })
+    .check();
+  await page.getByRole('button', { name: /^Terminé$|^Done$/i }).click();
+
+  // Back on the enabled-state ListView.
+  await expect(
+    page.getByRole('button', { name: /^Désactiver TOTP$|^Disable TOTP$/i }),
+  ).toBeVisible({ timeout: 10_000 });
 
   /* -------- 3. Passer security_mode → always_totp -------- */
   await page.goto('/security-mode');

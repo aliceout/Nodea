@@ -136,6 +136,30 @@ export function buildApp() {
       __resetRateLimits();
       return c.json({ ok: true });
     });
+
+    // Lookup a user.id by email — used by the e2e suite to assert
+    // FK cascades after `DELETE /auth/me` (test 06) and to promote
+    // the freshly-registered user to admin (test 12). The helper
+    // queries the api's own DB rather than a separately-configured
+    // postgres URL so a dev session reusing this api process via
+    // `reuseExistingServer` always sees the same rows.
+    app.get('/__test__/user-id', async (c) => {
+      const email = c.req.query('email')?.toLowerCase();
+      if (!email) return c.json({ id: null });
+      const rows = await sql`
+        SELECT id FROM users WHERE email = ${email} LIMIT 1
+      `;
+      const id = rows[0]?.['id'] ?? null;
+      return c.json({ id });
+    });
+
+    app.post('/__test__/promote-admin', async (c) => {
+      const body = await c.req.json<{ userId?: string }>();
+      const userId = body.userId;
+      if (!userId) return c.json({ ok: false, error: 'missing_user_id' }, 400);
+      await sql`UPDATE users SET role = 'admin' WHERE id = ${userId}`;
+      return c.json({ ok: true });
+    });
   }
 
   // Single-step register flow with magic-link activation

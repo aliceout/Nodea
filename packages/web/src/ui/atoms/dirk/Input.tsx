@@ -30,6 +30,11 @@ export default function Input({
   return (
     <input
       ref={ref}
+      // Explicit `type="text"` so DOM selectors / e2e tests can target
+      // text inputs unambiguously. Caller props win via the spread
+      // below — passing `type="password"`, `type="email"` etc. still
+      // overrides this default.
+      type="text"
       className={cn(
         // `min-h-8` does the anti-squeeze job that an earlier
         // version of this atom delegated to `shrink-0` — without

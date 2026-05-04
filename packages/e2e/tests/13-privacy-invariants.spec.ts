@@ -56,7 +56,7 @@ test('privacy invariants — URL stays /flow + title stays Nodea + no token/guar
 
   /* -------- 3. Naviguer sur Mood -------- */
   await page
-    .getByRole('button', { name: /^Humeur$|^Mood$/i })
+    .getByRole('button', { name: /^Mood$/i })
     .first()
     .click();
   await page.waitForLoadState('networkidle');
@@ -88,8 +88,11 @@ test('privacy invariants — URL stays /flow + title stays Nodea + no token/guar
   await expectPathnameAndTitle(page, '/flow');
 
   /* -------- 6. Retour Home pour clore la navigation -------- */
+  // Home label in SidebarNav is hardcoded « Aujourd'hui » (FR-only,
+  // not i18n-switched). Apostrophe in DOM is the typographic « ’ »,
+  // matched here with `.` to tolerate either form.
   await page
-    .getByRole('button', { name: /^Accueil$|^Home$/i })
+    .getByRole('button', { name: /^Aujourd.hui$/i })
     .first()
     .click();
   await page.waitForLoadState('networkidle');
