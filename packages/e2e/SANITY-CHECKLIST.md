@@ -12,6 +12,23 @@ FRONT-13 + sweep i18n).
 Marquer chaque case quand vérifiée. Si une case échoue, noter le bug et le
 contexte (browser, OS, date) pour reproduire.
 
+**Ce qui est partiellement automatisé** (lance `pnpm --filter @nodea/e2e test`
+pour skipper les parties déterministes) :
+
+- Section 1 (auth bootstrap) — couvert en grande partie par spec 01.
+- Section 2 (Mood CRUD) — couvert par spec 07 (sauf parties throttle / heatmap visuelle).
+- Section 3 (Goals CRUD) — couvert par spec 08 (sauf throttle / status cycling visuel).
+- Section 4 (crypto invariants) — couvert par specs 03 / 05.
+- **Section 5 (i18n FR↔EN)** — couvert par spec 11.
+- **Section 6 (Admin)** — couvert par spec 12.
+- Section 7 (browser compat) — pas automatisable, reste manuel.
+- **Section 8 (privacy invariants)** — couvert par spec 13.
+
+Restent **strictement manuels** : ressenti visuel (flicker, animations),
+browser compat (Safari macOS, Firefox), throttle Slow 3G en réel pour
+voir les races condition, et tout ce qui demande un jugement humain
+(« est-ce que ça se sent fluide ? »).
+
 ---
 
 ## 1. Bootstrap & auth
