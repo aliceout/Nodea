@@ -34,7 +34,7 @@ Pour Nodea, plusieurs facteurs changent l'équation :
 **Négatives :**
 - **Pas de dedup native** : si deux pages qui montent en parallèle demandent les mêmes data, on double-fetch. En pratique, les modules sont lazy-chargés un à la fois, et la situation n'arrive pas.
 - **Pas de cache cross-mount** : naviguer hors d'un module puis revenir relance le fetch. Sur les volumes Nodea (~secondes max), c'est acceptable. Si un module devient lourd à hydrater, on revisitera.
-- **Race conditions sur mutations rapides** : flaggé en [FRONT-13](../roadmap/frontend.md). Pas de `requestId` pour annuler un rollback obsolète. Acceptable sur l'app actuelle (les libs auraient le même problème sans config explicite des `mutationKey`).
+- **Race conditions sur mutations rapides** : pas de `requestId` pour annuler un rollback obsolète. Acceptable sur l'app actuelle (les libs auraient le même problème sans config explicite des `mutationKey`).
 
 ## Alternatives considered
 

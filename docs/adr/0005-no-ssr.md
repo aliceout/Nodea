@@ -41,8 +41,8 @@ Le serveur Hono ne fait **que** :
 - **Self-hosting trivial** : un nginx + un container api + un container web statique. Pas de couche de rendu serveur à scale.
 
 **Négatives :**
-- **Premier render plus lent** : un user qui charge `/login` voit du blanc pendant ~300-700 ms (téléchargement du JS, parse, mount). Mitigé par : skip-link a11y dès le HTML statique, manualChunks Vite (react-vendor + crypto + markdown + headlessui en chunks séparés et cacheables — cf. [FRONT-10](../roadmap/frontend.md)), preconnect aux Google Fonts.
-- **SEO faible sur les pages publiques** : `/docs/<tier>` ne sert pas le contenu du tier en HTML. Mitigé en V1 par les meta OG statiques + le `<link rel="canonical">` dynamique côté Docs.tsx (cf. [FRONT-12](../roadmap/frontend.md)). Une vraie SEO demanderait un pre-render selectif sur `/docs/*`. À évaluer si la doc devient un canal d'acquisition.
+- **Premier render plus lent** : un user qui charge `/login` voit du blanc pendant ~300-700 ms (téléchargement du JS, parse, mount). Mitigé par : skip-link a11y dès le HTML statique, manualChunks Vite (react-vendor + crypto + markdown + headlessui en chunks séparés et cacheables), preconnect aux Google Fonts.
+- **SEO faible sur les pages publiques** : `/docs/<tier>` ne sert pas le contenu du tier en HTML. Mitigé en V1 par les meta OG statiques + le `<link rel="canonical">` dynamique côté Docs.tsx. Une vraie SEO demanderait un pre-render selectif sur `/docs/*`. À évaluer si la doc devient un canal d'acquisition.
 - **Liens partagés OG génériques** : un lien partagé vers `/docs/tech` montre la preview de la home. Acceptable — l'audience cible (self-hosters tech-savvy) ne navigue pas via les previews sociales.
 
 ## Alternatives considered

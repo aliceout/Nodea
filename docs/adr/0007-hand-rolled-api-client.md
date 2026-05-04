@@ -30,7 +30,7 @@ L'ergonomie de `hc<AppType>` est meilleure que les fonctions dédiées (zero boi
 
 - **`hc<AppType>` avec refactor du routing serveur.** Le pattern actuel `app.route('/auth', authRoutes)` casse l'inférence de Hono : `hc<AppType>` ne voit pas les routes mountées via `route()`, seulement les routes définies inline sur le `app` racine. Pour faire marcher `hc<AppType>`, il faudrait refondre l'organisation des routes — pas un coût négligeable, et les tradeoffs deviendraient discutables (un fichier `app.ts` géant ou des centralisations forcées). Le bénéfice de `hc<AppType>` ne justifie pas cette refonte.
 - **Un client centralisé custom**, du genre `apiClient.send('auth.login.start', body)` avec un dispatch interne. Écarté : ça reproduit `hc<AppType>` sans le typage automatique, donc le pire des deux mondes.
-- **`@hono/zod-openapi` + génération automatique du client à partir de la définition OpenAPI.** Pertinent à terme pour générer un client mobile (cf. roadmap Tier 4 — chantier OpenAPI generator). Pour le client web on peut continuer avec les fonctions dédiées : ça marche, c'est lisible, c'est testable.
+- **`@hono/zod-openapi` + génération automatique du client à partir de la définition OpenAPI.** Pertinent à terme pour générer un client mobile. Pour le client web on peut continuer avec les fonctions dédiées : ça marche, c'est lisible, c'est testable.
 
 ## Quand reconsidérer
 

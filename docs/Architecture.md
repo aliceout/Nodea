@@ -427,7 +427,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 - **TypeScript strict**, `allowJs: false`,
   `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`. The
   flow modules and the import/export plugins were migrated to
-  TS-strict in `docs/roadmap/health.md` Tier A.2 ; only
+  TS-strict ; only
   [`src/i18n/I18nProvider.jsx`](../packages/web/src/i18n/I18nProvider.jsx)
   remains in JSX — kept legacy on purpose (the pure logic was
   factored out into `translate.ts` / `parity.ts` in TS strict ;
@@ -486,8 +486,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   factory.
 - The legacy-shaped adapters that used to bridge PocketBase-era JSX
   modules to the typed factory were retired during the JSX-to-TS
-  migration (Tier A.2 of `docs/roadmap/health.md`). All consumers
-  now import the typed clients directly.
+  migration. All consumers now import the typed clients directly.
 
 ### Crypto (`src/core/crypto/`)
 

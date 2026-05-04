@@ -32,7 +32,7 @@ L'équipe a hésité entre :
 - **Pas de besoin de Redux Toolkit / RTK Query** : le store est petit, les selectors trivialisent les middlewares.
 
 **Négatives :**
-- **Le store mono-fichier dépasse 400 LOC** — flaggé en [ARCH-03](../roadmap/architecture.md) comme « subjectif, à figer en ADR ». L'argument *« splitter en 7 stores »* a été examiné : couvrirait peu de gains réels (les selectors marchent déjà), introduirait du wiring, casserait la garantie d'atomicité d'une seule opération qui touche plusieurs slices.
+- **Le store mono-fichier dépasse 400 LOC** — subjectif, à figer en ADR. L'argument *« splitter en 7 stores »* a été examiné : couvrirait peu de gains réels (les selectors marchent déjà), introduirait du wiring, casserait la garantie d'atomicité d'une seule opération qui touche plusieurs slices.
 - **Tester un composant qui lit le store** demande de bootstrap le store complet. Mitigé : les tests unitaires utilisent `useNodeaStore.setState()` pour seeder explicitement les slices nécessaires.
 - **Les contextes par module ne sont pas testables en isolation** sans mounter un Provider. Mitigé en REFACTO-08 : les hooks `state/use-X-data.ts`, `state/use-X-filters.ts`, `state/use-X-actions.ts` peuvent être appelés depuis un test unitaire sans le Provider.
 

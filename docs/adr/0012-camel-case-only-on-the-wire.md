@@ -11,7 +11,7 @@ Trois choses ont changé depuis :
 
 1. **Le projet est sur le point d'avoir un consommateur externe** : le chantier mobile démarre. Aujourd'hui le mapper côté web absorbe la frontière, mais demain le client mobile (Swift / Kotlin) devrait soit refaire le même mapping, soit consommer une API qui change de convention selon les endpoints (`/auth/me` est camelCase, `/<module>/records` est snake_case). Les deux options coûtent du temps de dev qui ne sert à rien.
 
-2. **L'audit `docs/roadmap/api.md` finding API-01** classait la frontière comme « finding sévérité élevée — nulle part documentée comme contrat ». La réponse standard à un finding élevé non documenté est soit de figer la convention dans la doc, soit d'éliminer le besoin de doc. Avec un consommateur externe imminent, éliminer est moins cher long-terme que figer.
+2. **Un audit interne** classait la frontière comme « finding sévérité élevée — nulle part documentée comme contrat ». La réponse standard à un finding élevé non documenté est soit de figer la convention dans la doc, soit d'éliminer le besoin de doc. Avec un consommateur externe imminent, éliminer est moins cher long-terme que figer.
 
 3. **Le générateur OpenAPI** (chantier voisin de cet ADR) absorbe les schémas Zod en types TS / Swift / Kotlin. Si les schémas Zod sortent du camelCase systématique, le code généré côté mobile sera idiomatique sans intervention manuelle. Avec deux conventions, le générateur produit des types mixtes que le client doit toujours re-mapper.
 

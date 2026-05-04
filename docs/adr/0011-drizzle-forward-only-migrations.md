@@ -15,7 +15,7 @@ Beaucoup d'autres outils de migration (Rails ActiveRecord, Django migrations, Fl
 
 **Accepter le mode forward-only de Drizzle. Ne pas écrire à la main de SQL inverse pour chaque migration.**
 
-Le filet de sécurité en cas de migration cassée est le **backup Postgres** : restaurer un dump pris juste avant la migration ramène la base à l'état pré-migration, ce qui équivaut à un rollback. Cette dépendance au backup rend la procédure de backup (cf. roadmap OPS-05 qui reste à livrer côté infra) **non-optionnelle** — sans backup à jour, une migration cassée = panne plus ou moins longue selon la complexité du désordre à réparer manuellement.
+Le filet de sécurité en cas de migration cassée est le **backup Postgres** : restaurer un dump pris juste avant la migration ramène la base à l'état pré-migration, ce qui équivaut à un rollback. Cette dépendance au backup rend la procédure de backup **non-optionnelle** — sans backup à jour, une migration cassée = panne plus ou moins longue selon la complexité du désordre à réparer manuellement.
 
 ## Consequences
 

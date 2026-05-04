@@ -123,7 +123,7 @@ sudo systemctl reload nginx
 
 ## 5. Restoration d'un backup
 
-> **Pré-requis** : un backup `.sql.gz` produit par `pg_dump` doit exister quelque part. Si tu n'en as pas, voir [OPS-05 dans la roadmap](./roadmap/ops.md) — c'est la prochaine chose à mettre en place avant que tu en aies besoin.
+> **Pré-requis** : un backup `.sql.gz` produit par `pg_dump` doit exister quelque part. Si tu n'en as pas, mets en place un job de backup automatique avant d'en avoir besoin.
 
 ### Procédure (perte de données complète, recovery from scratch)
 
@@ -160,7 +160,7 @@ docker compose up -d
 docker compose logs api --tail=50         # vérifie que les migrations se sont appliquées
 ```
 
-Si une migration échoue à mi-parcours (rare, mais possible) : voir [ARCH-17 dans la roadmap](./roadmap/architecture.md) — Drizzle ne génère pas de `down` migrations, donc la seule remédiation est **restore depuis backup** (cf. §5).
+Si une migration échoue à mi-parcours (rare, mais possible) : Drizzle ne génère pas de `down` migrations, donc la seule remédiation est **restore depuis backup** (cf. §5).
 
 ---
 

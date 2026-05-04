@@ -9,18 +9,14 @@
 >
 > Les findings « partiellement serveur-side » (ex : strip de
 > `X-Forwarded-For` côté nginx + lecture du dernier hop côté
-> app) ont leur partie **app** trackée dans la roadmap
-> correspondante (`docs/roadmap/security.md` SEC-03), et leur
-> partie **serveur** ici.
+> app) ont leur partie **app** traitée côté code applicatif,
+> et leur partie **serveur** ici.
 >
 > **Public visé** : opérateur·ice de l'instance officielle
 > `nodea.app` ET self-hosters tiers qui mettent en place leur
 > propre instance.
 
-Source : extrait des audits posés en avril 2026
-(commit `a4aa1ea`). Les références *« cf. SEC-XX »* /
-*« cf. OPS-XX »* pointent vers les roadmaps app
-correspondantes pour le contexte complet du finding.
+Source : extrait des audits posés en avril 2026 (commit `a4aa1ea`).
 
 ---
 
@@ -33,7 +29,6 @@ SPA).
 
 ### REC-S1 — Content-Security-Policy
 
-- **Source** : `docs/roadmap/security.md` SEC-02
 - **Sévérité** (sécu) : moyenne
 - **Vérification au commit `1c389ae`** : `curl -I https://nodea.app/` confirme que **HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy sont posés** par l'upstream. **Seule la CSP manque.**
 
@@ -55,7 +50,6 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style
 
 ### REC-S2 — `X-Forwarded-For` strip de l'entrant
 
-- **Source** : `docs/roadmap/security.md` SEC-03 (partie serveur)
 - **Sévérité** (sécu) : moyenne
 
 **Problème** : la conf nginx upstream actuelle utilise
@@ -72,13 +66,11 @@ proxy_set_header X-Forwarded-For $remote_addr;
 ```
 
 **Note** : la partie code app (lire le **dernier** hop dans
-`packages/api/src/middleware/rate-limit.ts`) est trackée
-côté `security.md` SEC-03 — les deux fixes ensemble closent le
-finding.
+`packages/api/src/middleware/rate-limit.ts`) est traitée
+côté code — les deux fixes ensemble closent le finding.
 
 ### REC-S3 — HSTS preload
 
-- **Source** : `docs/roadmap/security.md` SEC-11
 - **Sévérité** : informatif (renforcement, pas vulnérabilité)
 
 L'instance prod sert déjà
@@ -104,12 +96,10 @@ L'instance prod sert déjà
 
 ### REC-S4 — Choix d'un outil de healthcheck externe
 
-- **Source** : `docs/roadmap/ops.md` OPS-02 (partie choix d'outil)
 - **Sévérité** (ops) : élevée
 
-**Pré-requis applicatif** : `docs/roadmap/ops.md` OPS-01
-(le `/healthz` doit interroger la DB) — sinon l'outil
-externe sondera un endpoint qui ment.
+**Pré-requis applicatif** : le `/healthz` doit interroger
+la DB — sinon l'outil externe sondera un endpoint qui ment.
 
 **Options** (par ordre de simplicité) :
 
@@ -123,14 +113,13 @@ externe sondera un endpoint qui ment.
 
 ### REC-S5 — Choix d'un outil de capture d'erreurs
 
-- **Source** : `docs/roadmap/ops.md` OPS-02 (partie capture exceptions)
 - **Sévérité** (ops) : élevée
 
-**Pré-requis applicatif** : `docs/roadmap/security.md` SEC-01
-(scrubbing des query strings sensibles côté logger) **doit être
-livré avant**. Sinon Sentry capturera potentiellement les
-guards HMAC, sids opaques, ou d'autres données sensibles dans
-les events. **Ne pas brancher Sentry avant SEC-01.**
+**Pré-requis applicatif** : le scrubbing des query strings
+sensibles côté logger **doit être livré avant**. Sinon
+Sentry capturera potentiellement les guards HMAC, sids
+opaques, ou d'autres données sensibles dans les events.
+**Ne pas brancher Sentry avant le scrubbing.**
 
 **Options** :
 
@@ -143,7 +132,7 @@ les events. **Ne pas brancher Sentry avant SEC-01.**
 **Recommandation** : **Sentry cloud free tier** pour démarrer
 (quitte à migrer vers self-hosted si le volume explose).
 
-**Côté code app** (à faire dans la roadmap `ops.md` OPS-02) :
+**Côté code app** :
 - Ajouter `@sentry/node` côté API (init dans `app.ts` avec
   `beforeSend` qui filtre les request bodies).
 - Ajouter `@sentry/react` côté web (init dans `main.tsx`).
@@ -151,7 +140,6 @@ les events. **Ne pas brancher Sentry avant SEC-01.**
 
 ### REC-S6 — Webhook Slack / Discord sur 5xx
 
-- **Source** : `docs/roadmap/ops.md` OPS-02 (option 3)
 - **Sévérité** (ops) : élevée
 
 Plus léger que Sentry si tu veux juste *« être notifié quand
@@ -172,12 +160,11 @@ middleware Hono qui poste en POST si `c.res.status >= 500`.
 
 ### REC-S7 — Storage off-site pour les backups Postgres
 
-- **Source** : `docs/roadmap/ops.md` OPS-05 (partie storage off-site)
 - **Sévérité** (ops) : élevée
 
 **Pré-requis applicatif** : le script `infra/scripts/backup.sh`
-(à créer côté roadmap `ops.md` OPS-05) génère les dumps. Il
-faut un endroit **off-site** où les uploader.
+(à créer côté app) génère les dumps. Il faut un endroit
+**off-site** où les uploader.
 
 **Options** :
 
@@ -216,7 +203,6 @@ backup.**
 
 ### REC-S8 — Staging environment (décision business)
 
-- **Source** : `docs/roadmap/ops.md` OPS-13
 - **Sévérité** (ops) : faible
 
 **Décision à prendre selon l'usage** :
@@ -238,7 +224,6 @@ Hetzner CX11 ou OVH VPS Comfort.
 
 ### REC-S9 — Firewall VPS
 
-- **Source** : `docs/roadmap/security.md` SEC-05 (angle mort)
 - **Sévérité** : à vérifier
 
 Le `docker-compose.yml` du repo expose Postgres sur le port
@@ -267,8 +252,7 @@ depuis le host se fait via `docker compose exec postgres psql`
 ou ssh-tunneling.
 
 **Note app-side** : le `docker-compose.yml` peut aussi être
-modifié pour retirer le port 5433 de l'exposition host — voir
-roadmap `security.md` SEC-05.
+modifié pour retirer le port 5433 de l'exposition host.
 
 ---
 
@@ -276,11 +260,10 @@ roadmap `security.md` SEC-05.
 
 ### REC-S10 — Aggregation des logs
 
-- **Source** : `docs/roadmap/ops.md` (top améliorations équipe mature)
 - **Sévérité** (ops) : faible — à long terme
 
 **Pré-requis applicatif** : logs structurés côté api
-(`security.md` SEC-01 — scrubbing + format JSON).
+(scrubbing + format JSON).
 
 **Options** :
 
@@ -299,12 +282,11 @@ vers Loki ou Better Stack quand le volume dépasse ce que
 
 ### REC-S11 — Métriques Prometheus
 
-- **Source** : `docs/roadmap/ops.md` (top améliorations)
 - **Sévérité** : long terme
 
 **Pré-requis applicatif** : endpoint `/metrics` côté API via
-`prom-client` ou `@hono/prometheus` (à faire dans roadmap
-`ops.md` à long terme).
+`prom-client` ou `@hono/prometheus` (à faire côté app à
+long terme).
 
 **Stack** :
 - Prometheus (self-hosted dans un container)
@@ -315,7 +297,6 @@ vers Loki ou Better Stack quand le volume dépasse ce que
 
 ### REC-S12 — SLO / SLI
 
-- **Source** : `docs/roadmap/ops.md` OPS-14
 - **Sévérité** (ops) : faible
 
 **Niveau d'engagement** dépend du contexte :
@@ -326,10 +307,9 @@ vers Loki ou Better Stack quand le volume dépasse ce que
 | Instance officielle ouverte au public | SLO indicatif : 99 % disponibilité mensuelle, P99 latence < 500 ms |
 | Self-hosters tiers | Pas concerné — chacun son SLO |
 
-**Note** : la partie *« runbook »* d'OPS-14 (procédures
-d'incident) reste dans le repo (`docs/Operations.md` à
-créer). C'est uniquement les **engagements de niveau** qui
-sont infra (ce document).
+**Note** : la partie *« runbook »* (procédures d'incident)
+reste dans le repo (`docs/Operations.md`). C'est uniquement
+les **engagements de niveau** qui sont infra (ce document).
 
 ---
 
@@ -339,20 +319,3 @@ sont infra (ce document).
 - Si une recommandation est livrée définitivement et stable, déplacer en bas du document sous *« Livré »*.
 - Si une recommandation est rejetée par décision business (ex : *« on ne fera jamais de staging »*), la déplacer dans *« Décisions arrêtées »* avec la raison.
 - Ce document évolue au gré des audits — nouvelles entrées arrivent quand de nouveaux findings serveur-side sont identifiés.
-
-## Index des findings sources
-
-| Recommandation | Source | Statut côté app |
-|---|---|---|
-| REC-S1 (CSP) | security.md SEC-02 | N/A (intégralement serveur) |
-| REC-S2 (XFF strip) | security.md SEC-03 | partie app trackée |
-| REC-S3 (HSTS preload) | security.md SEC-11 | N/A (intégralement serveur) |
-| REC-S4 (healthcheck externe) | ops.md OPS-02 | dépend de OPS-01 (app) |
-| REC-S5 (Sentry) | ops.md OPS-02 | dépend de SEC-01 (app) |
-| REC-S6 (Webhook 5xx) | ops.md OPS-02 | partie app trackée |
-| REC-S7 (Backup off-site) | ops.md OPS-05 | partie app (script) trackée |
-| REC-S8 (Staging) | ops.md OPS-13 | N/A (intégralement infra) |
-| REC-S9 (Firewall) | security.md SEC-05 (angle mort) | partie app (compose) trackée |
-| REC-S10 (Log aggregation) | ops.md (top équipe mature) | dépend de SEC-01 |
-| REC-S11 (Métriques Prometheus) | ops.md (top équipe mature) | partie app trackée |
-| REC-S12 (SLO / SLI) | ops.md OPS-14 (partie engagements) | runbook reste app |

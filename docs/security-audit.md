@@ -22,8 +22,6 @@ navigateur via OPAQUE, le serveur ne stocke que des ciphertexts +
 des HMAC guards, jamais de plaintext, jamais de clé. Tout finding
 qui peut affaiblir cette ligne est traité comme critique.
 
-Référence : [`docs/roadmap/health.md`](roadmap/health.md) Tier 8.
-
 ---
 
 ## Verdict global

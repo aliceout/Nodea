@@ -35,7 +35,7 @@ La règle d'import est unidirectionnelle : `app/flow/<Module>` → `core/`, `ui/
 - **Nouvel arrivant** : la frontière `core` / `ui` / `module` est une bonne carte mentale en 5 minutes.
 
 **Négatives :**
-- **Frontière `lib/` (web racine) vs `core/utils/`** : créée par accident dans le cutover, jamais arbitrée. Suivi en [REFACTO-11](../roadmap/refacto.md) / [ARCH-11](../roadmap/architecture.md).
+- **Frontière `lib/` (web racine) vs `core/utils/`** : créée par accident dans le cutover, jamais arbitrée.
 - **Tentation de mettre des « presque-atoms »** dans `app/flow/<Module>/components/` au lieu de promouvoir vers `ui/`. Mitigé par la règle CLAUDE.md *« reuse before creating »*.
 - **Coût d'apprentissage** pour quelqu'un habitué au pure feature-first : il faut comprendre que `ui/atoms/` n'est pas du « shared fourre-tout ».
 
