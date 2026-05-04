@@ -14,7 +14,7 @@ Two tables, like Library:
    → Powers the heatmap / consistency metric.
 
 Encryption and security rules are identical to every other module —
-see [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) for the detail (AES-GCM,
+see [Architecture.md §7](../Architecture.md#7-common-modules-schema) for the detail (AES-GCM,
 HMAC guard, two-phase creation, `requireGuard` validation).
 
 ---

@@ -577,91 +577,92 @@ knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
 
 ---
 
-## 7. Schéma commun des modules
+## 7. Common modules schema
 
-Les six modules (Mood, Goals, Journal, Habits, Library, Review) reposent
-sur la même base technique chiffrée : une table `*_entries` par module,
-une création en deux temps avec validation HMAC, des données
-illisibles côté serveur. Voir
-[`docs/Modules/<Module>.md`](./Modules/) pour le payload clair et les
-règles propres à chaque module.
+The six modules (Mood, Goals, Journal, Habits, Library, Review) all
+build on the same encrypted technical base: one `*_entries` table per
+module, two-phase creation with HMAC validation, server-unreadable
+data. See [`docs/Modules/<Module>.md`](./Modules/) for each module's
+cleartext payload and module-specific rules.
 
-### 7.1. Champs lisibles côté serveur
+### 7.1. Fields visible on the server
 
-Chaque ligne d'une table `*_entries` ne porte que le strict minimum
-nécessaire au routing et à la cryptographie — pas de `user_id`, pas
-de timestamps colonnes (cf. [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech),
-section « Modèle de données »).
+Every row in a `*_entries` table carries only the strict minimum
+needed for routing and cryptography — no `user_id`, no column
+timestamps (cf. [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech),
+"Modèle de données" section).
 
-| Champ | Description |
+| Field | Description |
 |---|---|
-| `id` | UUID généré côté serveur (PK). Sert uniquement de handle pour les URLs `/records/:id`. Aucun contenu utilisateur. |
-| `moduleUserId` | Identifiant secondaire opaque, dérivé localement via la clé maître. **Seule clé d'accès** — le serveur ne sait jamais à qui un sid appartient (le mapping est chiffré dans `modules_config`). Côté DB la colonne reste `module_user_id` ; Drizzle map sur `moduleUserId` et c'est la version qui sort sur le wire. |
-| `cipherIv` | IV 96 bits aléatoire (base64) utilisé pour le chiffrement AES-GCM. Côté DB la colonne reste `cipher_iv`. |
-| `payload` | Contenu JSON chiffré AES-GCM (base64). **Tout** le contenu utilisateur, **plus** les timestamps applicatifs que le module veut conserver. **Le serveur ne déchiffre jamais.** |
-| `guard` | HMAC-SHA-256 stocké côté serveur, jamais renvoyé en lecture (cf. tech.md « Hardening serveur > Guards HMAC »). |
+| `id` | UUID generated server-side (PK). Just a handle for `/records/:id` URLs. No user content. |
+| `moduleUserId` | Opaque secondary identifier, derived client-side from the main key. **The only access key** — the server never knows which user a sid belongs to (the mapping lives encrypted in `modules_config`). DB column stays `module_user_id`; Drizzle maps it to `moduleUserId`, which is the wire-side name. |
+| `cipherIv` | 96-bit random IV (base64) used for AES-GCM encryption. DB column stays `cipher_iv`. |
+| `payload` | AES-GCM-encrypted JSON content (base64). **All** user content, **plus** any application-level timestamps the module wants to keep. **The server never decrypts.** |
+| `guard` | Server-stored HMAC-SHA-256, never returned on read (cf. tech.md "Hardening serveur > Guards HMAC"). |
 
-### 7.2. Création en deux temps
+### 7.2. Two-phase creation
 
-Le `guard` dépend de l'`id` de la ligne, généré côté serveur — donc
-impossible à calculer avant l'INSERT. Le client passe par deux
-étapes :
+The `guard` depends on the row's `id`, which is server-generated —
+so it's impossible to compute before the INSERT. The client goes
+through two steps:
 
-1. `POST /<collection>/records` avec `guard: "init"` → le serveur
-   insère avec un guard sentinelle.
-2. `PATCH /<collection>/records/:id` avec headers `X-Sid` + `X-Guard: init`,
-   body `{ guard: "g_<hex>" }` → promote le sentinel en vrai guard.
+1. `POST /<collection>/records` with `guard: "init"` → the server
+   inserts with a sentinel guard.
+2. `PATCH /<collection>/records/:id` with headers `X-Sid` +
+   `X-Guard: init`, body `{ guard: "g_<hex>" }` → promotes the
+   sentinel to the real guard.
 
-UPDATE / DELETE ultérieurs : `PATCH` ou `DELETE /<collection>/records/:id`
-avec headers `X-Sid` + `X-Guard`. Le middleware `requireGuard` valide
-le tuple `(user, sid, guard)` en une passe.
+Subsequent UPDATE / DELETE: `PATCH` or
+`DELETE /<collection>/records/:id` with `X-Sid` + `X-Guard`
+headers. The `requireGuard` middleware validates the
+`(user, sid, guard)` tuple in one pass.
 
-Détail complet du protocole + formule du guard sur
+Full protocol detail + guard formula at
 [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
-(section « Hardening serveur »).
+("Hardening serveur" section).
 
 ### 7.3. Import / Export
 
-Format commun, produit et consommé exclusivement côté navigateur :
+Common format, produced and consumed exclusively in the browser:
 
 ```json
 {
   "meta": { "version": 1, "exported_at": "<ISO8601Z>", "app": "Nodea" },
   "modules": {
-    "<module>": [ ...payloads clairs... ]
+    "<module>": [ ...cleartext payloads... ]
   }
 }
 ```
 
-- **Export** : le client liste page par page (200 entrées), déchiffre
-  chaque payload localement, agrège dans le JSON. Le serveur ne voit
-  jamais le clair.
-- **Import** : le client re-chiffre chaque payload avec la clé maître
-  courante puis rejoue le flux POST + PATCH. Modules à doublons
-  potentiels (Mood, Goals, Habits) ont une clé naturelle documentée
-  dans leur fiche pour la déduplication.
-- Formats acceptés : export Nodea v1, NDJSON (une ligne par payload),
-  tableau brut pour la rétrocompatibilité Mood.
+- **Export**: the client lists page by page (200 entries),
+  decrypts each payload locally, aggregates into the JSON. The
+  server never sees cleartext.
+- **Import**: the client re-encrypts each payload with the current
+  main key and replays the POST + PATCH flow. Modules with
+  potential duplicates (Mood, Goals, Habits) have a natural key
+  documented in their per-module file for deduplication.
+- Accepted formats: Nodea v1 export, NDJSON (one line per
+  payload), raw array for Mood backwards compatibility.
 
-### 7.4. Invariants tous modules confondus
+### 7.4. Cross-module invariants
 
-Toute nouvelle fonctionnalité module doit s'aligner sur ces six
-invariants — le modèle E2E ne tolère pas d'exception silencieuse.
+Any new module feature must comply with these six invariants —
+the E2E model tolerates no silent exception.
 
-1. **Clé maître uniquement côté client.** Aléatoire, stockée chiffrée
-   (KEK + OPAQUE `exportKey`), importée comme `CryptoKey` non-extractible
-   au login.
-2. **Création en deux temps** (cf. §7.2). Le guard ne peut être calculé
-   qu'après l'attribution de l'`id` côté serveur.
-3. **Lecture par `sid`** — le `moduleUserId` découple l'identité
-   utilisateur du contenu module (utile pour de futurs partages
-   intra-utilisateur ; aujourd'hui un seul `sid` par module).
-4. **Mutations gardées** — `requireGuard` valide systématiquement
-   `(user, sid, guard)` côté serveur. Forger un guard nécessite la
-   clé maître ; la clé maître nécessite le mot de passe ou une passkey
-   PRF. Pas de raccourci.
-5. **Import/Export E2E** — chiffrement et déchiffrement exclusivement
-   dans le navigateur (cf. §7.3).
-6. **Logout = perte de clé** — le store Zustand purge le `CryptoKey` ;
-   toute tentative de mutation post-logout déclenche le `KeyMissingModal`
-   et redirige vers la connexion.
+1. **Main key client-only.** Random, stored encrypted (KEK +
+   OPAQUE `exportKey`), imported as a non-extractable `CryptoKey`
+   at login.
+2. **Two-phase creation** (cf. §7.2). The guard can only be
+   computed after the server has assigned an `id`.
+3. **Read by `sid`** — `moduleUserId` decouples user identity
+   from module content (useful for future intra-user sharing;
+   today one `sid` per module).
+4. **Guarded mutations** — `requireGuard` systematically
+   validates `(user, sid, guard)` server-side. Forging a guard
+   requires the main key; the main key requires the password or
+   a PRF passkey. No shortcut.
+5. **E2E Import/Export** — encryption and decryption happen
+   exclusively in the browser (cf. §7.3).
+6. **Logout = key loss** — the Zustand store purges the
+   `CryptoKey`; any post-logout mutation triggers the
+   `KeyMissingModal` and redirects to login.

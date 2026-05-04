@@ -28,7 +28,7 @@ Tracking of annual (or multi-year) goals.
 ## Security
 
 Goals follows the rules shared by every module — see
-[Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules) for the detail
+[Architecture.md §7](../Architecture.md#7-common-modules-schema) for the detail
 (AES-GCM, HMAC guard, two-phase creation, `requireGuard` validation).
 
 ## Export / Import

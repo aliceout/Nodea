@@ -7,7 +7,7 @@ booklet exactly.
 
 ## 1. `review_entries` table
 
-Schema shared by every module (cf. [Architecture.md §7](../Architecture.md#7-schéma-commun-des-modules)).
+Schema shared by every module (cf. [Architecture.md §7](../Architecture.md#7-common-modules-schema)).
 Mutations validated via `requireGuard(reviewEntries)` on the api side
 — the `(user, sid, guard)` tuple is checked in a single centralised
 pass by the `collection-factory`.

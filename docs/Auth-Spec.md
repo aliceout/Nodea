@@ -189,7 +189,7 @@ re-opening the spec:
   Self-delete is client-driven (sids enumerated from
   `modules_config`, then deletion by sid + guard). Details and
   rationale in
-  [`Architecture.md §7`](Architecture.md#7-schéma-commun-des-modules).
+  [`Architecture.md §7`](Architecture.md#7-common-modules-schema).
 
 ---
 
