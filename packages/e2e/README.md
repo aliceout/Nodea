@@ -81,7 +81,7 @@ existing dev server is reused.
 | `07-module-crud-with-guard.spec.ts` | Mood module → composer create → list → edit → delete with X-Sid + X-Guard headers | ✅ |
 | `08-goals-crud.spec.ts` | Goals module → composer create → list → edit → delete (mirror of `07`, second « finished » module covered) | ✅ |
 | `09-account-changes.spec.ts` | Settings → Mon compte → username change + email change with re-auth gate | ✅ |
-| `10-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | 🚧 follow-up |
+| `10-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | ✅ |
 | `11-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
 
 The remaining follow-up suites need :
@@ -121,6 +121,16 @@ Important caveats for the specs (03-08) :
   because V1 doesn't re-bind the OPAQUE envelope to the new
   `userIdentifier` (cf. JSDoc on `auth-account.ts` `PATCH /email`).
   Re-login with the new email is a Phase 2+ deliverable.
+- `10-mfa-bypass-totp` drives the lost-TOTP recovery flow
+  end-to-end. Setup mirrors spec 02 for TOTP enrollment, then
+  passes through `/security-mode` to switch to `always_totp` so
+  TOTP becomes mandatory at login. The bypass UI lives on
+  `/login/mfa` behind two escalations (« J'ai perdu mon TOTP »
+  → « Demander une récupération par email » → « Envoyer
+  l'email »). Mailpit captures the confirmation email,
+  `helpers/db.ts.backdateBypassConfirmation` short-circuits the
+  7-day delay, and the final re-login lands on `/flow` without a
+  TOTP prompt — proving the bypass was consumed at login finish.
 
 ## Helpers
 
