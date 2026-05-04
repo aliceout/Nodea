@@ -16,9 +16,9 @@ import DocsTierAdvanced, {
 import DocsTierTech, {
   tocSections as techToc,
 } from './docs/DocsTierTech';
-import DocsContribute, {
-  tocSections as contributeToc,
-} from './docs/DocsContribute';
+import DocsFork, {
+  tocSections as forkToc,
+} from './docs/DocsFork';
 import DocsSelfHost, {
   tocSections as selfHostToc,
 } from './docs/DocsSelfHost';
@@ -34,10 +34,12 @@ import DocsSelfHost, {
  *     section ouvre un *dropdown* qui pose les 3 tiers — c'est le
  *     pattern le plus compact pour une nav à 2 niveaux sur cette
  *     seule section.
- *   - **Contribuer** (`/docs/contribute`) — setup local, lancer les
- *     tests, recettes pour ajouter une route / un module. Source de
- *     vérité progressive : le contenu transfère depuis le repo
- *     `docs/Development.md` vers cette page.
+ *   - **Reprendre le projet** (`/docs/fork`) — pour quelqu'un qui
+ *     télécharge le code pour s'en faire sa propre version. Setup
+ *     local, comprendre la structure, lancer les tests, invariants
+ *     crypto à respecter quand on modifie. Distinct du
+ *     `CONTRIBUTING.md` du repo qui couvre le workflow upstream
+ *     (PR, conventions de commit) — audience différente.
  *   - **Auto-héberger** (`/docs/self-host`) — install Docker, env
  *     vars, reverse proxy, mises à jour, backups. Source de vérité
  *     progressive : transfère depuis `docs/Operations.md` + le root
@@ -51,12 +53,12 @@ import DocsSelfHost, {
  * sont redirigées vers `/docs/security/<tier>` côté `App.tsx`.
  */
 
-type Section = 'security' | 'contribute' | 'self-host';
+type Section = 'security' | 'fork' | 'self-host';
 type SecurityTier = 'newbie' | 'advanced' | 'tech';
 
 const SECTIONS: ReadonlyArray<{ id: Section; label: string; path: string }> = [
   { id: 'security', label: 'Sécurité', path: '/docs/security/newbie' },
-  { id: 'contribute', label: 'Contribuer', path: '/docs/contribute' },
+  { id: 'fork', label: 'Reprendre le projet', path: '/docs/fork' },
   { id: 'self-host', label: 'Auto-héberger', path: '/docs/self-host' },
 ];
 
@@ -76,14 +78,14 @@ const DOC_TITLES = {
   'security:newbie': "L'essentiel — Documentation",
   'security:advanced': 'La mécanique — Documentation',
   'security:tech': 'Sous le capot — Documentation',
-  contribute: 'Contribuer — Documentation',
+  fork: 'Reprendre le projet — Documentation',
   'self-host': 'Auto-héberger — Documentation',
 } as const;
 
 const CANONICAL_BASE = 'https://nodea.app';
 
 function isSection(value: unknown): value is Section {
-  return value === 'security' || value === 'contribute' || value === 'self-host';
+  return value === 'security' || value === 'fork' || value === 'self-host';
 }
 
 function isSecurityTier(value: unknown): value is SecurityTier {
@@ -172,8 +174,8 @@ export default function DocsPage() {
   const tocSections =
     section === 'security'
       ? SECURITY_TIER_TOCS[tier]
-      : section === 'contribute'
-        ? contributeToc
+      : section === 'fork'
+        ? forkToc
         : selfHostToc;
 
   return (
@@ -196,8 +198,8 @@ export default function DocsPage() {
           <h1 className="text-[36px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
             {section === 'security'
               ? 'Comment Nodea protège tes données'
-              : section === 'contribute'
-                ? 'Contribuer à Nodea'
+              : section === 'fork'
+                ? 'Reprendre Nodea pour soi'
                 : 'Auto-héberger Nodea'}
           </h1>
         </header>
@@ -205,7 +207,7 @@ export default function DocsPage() {
         {section === 'security' && tier === 'newbie' ? <DocsTierNewbie /> : null}
         {section === 'security' && tier === 'advanced' ? <DocsTierAdvanced /> : null}
         {section === 'security' && tier === 'tech' ? <DocsTierTech /> : null}
-        {section === 'contribute' ? <DocsContribute /> : null}
+        {section === 'fork' ? <DocsFork /> : null}
         {section === 'self-host' ? <DocsSelfHost /> : null}
       </article>
     </DocsLayout>

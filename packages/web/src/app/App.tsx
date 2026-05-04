@@ -97,7 +97,7 @@ function AppWithKeyModal() {
       {/* Public docs : 3 sections (security / contribute / self-host).
           - /docs/security/{newbie,advanced,tech} — modèle de sécu en
             3 tiers de lecture.
-          - /docs/contribute — contribuer au code.
+          - /docs/fork — reprendre le projet pour soi.
           - /docs/self-host — auto-héberger une instance.
           /docs (no path) redirige sur la section par défaut. Une
           :section invalide est détectée dans <Docs/> et fallback

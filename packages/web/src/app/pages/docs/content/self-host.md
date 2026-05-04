@@ -6,7 +6,7 @@
 
 Tu veux installer Nodea sur ton serveur ou ton NAS, pour toi seul·e ou pour un cercle restreint, sans dépendre de l'instance officielle.
 
-Si tu cherches plutôt à **comprendre comment Nodea protège tes données**, va sur la section [Sécurité](/docs/security/newbie). Si tu veux **modifier le code**, va sur [Contribuer](/docs/contribute).
+Si tu cherches plutôt à **comprendre comment Nodea protège tes données**, va sur la section [Sécurité](/docs/security/newbie). Si tu veux **modifier le code pour ta propre version**, va sur [Reprendre le projet](/docs/fork).
 
 ## Pourquoi auto-héberger ?
 
