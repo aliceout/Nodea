@@ -1,59 +1,59 @@
-# Change email (design partiel — full flow non livré)
+# Change email (partial design — full flow not shipped)
 
-> Flow extrait de `docs/Auth-Spec.md §7` lors du split. Voir
-> [`Auth-Spec.md`](../Auth-Spec.md) pour le threat model, les
-> primitives, les sessions, les middlewares, et les autres flows.
+> Flow extracted from `docs/Auth-Spec.md §7` during the split. See
+> [`Auth-Spec.md`](../Auth-Spec.md) for the threat model, primitives,
+> sessions, middlewares, and the other flows.
 
 ---
 
-## 7.6 Change email (design partiel — full flow non livré)
+## 7.6 Change email (partial design — full flow not shipped)
 
-> **Statut.** La route `PATCH /auth/email` fait juste l'`UPDATE
-> users.email` après un re-auth password fresh. Le flow ci-dessous
-> décrit la version complète envisagée avec re-vérification email +
-> cooldown 7 jours + re-register OPAQUE (parce que le
-> `userIdentifier` baked dans l'envelope IS l'email). À implémenter
-> dans une issue dédiée si on veut le verrou complet ; pour
-> l'instant la simple route fait le boulot minimal.
+> **Status.** The `PATCH /auth/email` route only does the
+> `UPDATE users.email` after a fresh password re-auth. The flow
+> below describes the complete envisioned version with email
+> re-verification + 7-day cooldown + OPAQUE re-register (because the
+> `userIdentifier` baked into the envelope IS the email). To be
+> implemented in a dedicated issue if we want the full lock; for now
+> the simple route does the minimal job.
 
-Plus lourd qu'on aimerait. Trois étapes.
+Heavier than we'd like. Three steps.
 
-### Étape A — `POST /auth/change-email/start`
+### Step A — `POST /auth/change-email/start`
 
-Re-auth password fresh. Body : `{ new_email }`. Server :
-1. **Cooldown** : si `users.email_changed_at` n'est pas NULL et que
-   `email_changed_at + 7 jours > now()` → 429 `email_change_cooldown`
-   avec date de fin du cooldown. (Anti-takeover : si un attaquant
-   prend l'email, on lui interdit de le tourner immédiatement.)
-2. Vérifie qu'aucun `users` actif n'a `new_email`.
-3. Génère code 6 chiffres, insère
+Fresh password re-auth. Body: `{ new_email }`. Server:
+1. **Cooldown**: if `users.email_changed_at` is non-NULL and
+   `email_changed_at + 7 days > now()` → 429 `email_change_cooldown`
+   with the cooldown end date. (Anti-takeover: if an attacker takes
+   over the email, they're forbidden from rotating it immediately.)
+2. Verify no active `users` row has `new_email`.
+3. Generate 6-digit code, insert
    `email_verifications { kind: 'email_change', email: new_email, user_id }`.
-4. Envoie email à `new_email`.
+4. Send the email to `new_email`.
 
-### Étape B — `POST /auth/change-email/verify`
+### Step B — `POST /auth/change-email/verify`
 
-Body : `{ code }`. Server : marque verification consumed. Pas de
-mutation sur `users.email` encore.
+Body: `{ code }`. Server: marks verification consumed. No mutation
+on `users.email` yet.
 
-### Étape C — `POST /auth/change-email/finalize`
+### Step C — `POST /auth/change-email/finalize`
 
-Le client doit fournir un nouvel envelope OPAQUE keyed sur
-`new_email`. Pour ça, le client doit re-faire OPAQUE registration
-avec le password (qu'il a déjà via la re-auth récente — mais le
-password OPAQUE plain est nécessaire ici, pas l'export_key).
+The client must supply a new OPAQUE envelope keyed on `new_email`.
+For that, the client has to redo OPAQUE registration with the
+password (already obtained via the recent re-auth — but the plain
+OPAQUE password is required here, not the `export_key`).
 
-**Note d'implémentation** : OPAQUE registration nécessite le
-password en plain. La re-auth fresh ne le garde pas. On a deux
-options :
+**Implementation note**: OPAQUE registration needs the password in
+plaintext. Fresh re-auth doesn't keep it around. Two options:
 
-1. **Garder le password en RAM client** entre la re-auth (étape A)
-   et la finalize (étape C). Risqué (XSS).
-2. **Demander à nouveau le password** à l'étape C. Plus propre
-   UX-wise et sécurité.
+1. **Hold the password in client RAM** between re-auth (step A) and
+   finalize (step C). Risky (XSS).
+2. **Ask for the password again** at step C. Cleaner both UX-wise
+   and security-wise.
 
-→ **Choix : option 2.** À l'étape C, l'écran demande de retaper le
-password, le client lance OPAQUE register sur `new_email`, dérive
-nouveau `export_key`, re-wrappe la KEK, et envoie au serveur :
+→ **Choice: option 2.** At step C, the screen prompts to re-type
+the password, the client runs OPAQUE register on `new_email`,
+derives the new `export_key`, re-wraps the KEK, and posts to the
+server:
 
 ```json
 {
@@ -63,12 +63,12 @@ nouveau `export_key`, re-wrappe la KEK, et envoie au serveur :
 }
 ```
 
-Server (transaction) :
+Server (transaction):
 1. UPDATE `users.email = new_email`, `users.email_changed_at = now()`
-   (déclenche le cooldown 7j pour le prochain change).
-2. UPDATE `opaque_records.envelope` (la PK étant user_id, on remplace
-   le blob — aucun changement de PK).
+   (starts the 7-day cooldown for the next change).
+2. UPDATE `opaque_records.envelope` (PK is user_id, so we just
+   replace the blob — no PK change).
 3. UPDATE `users.wrapped_kek_password{,_iv}`.
-4. Revoke toutes les autres sessions.
-5. Réponse `200`.
+4. Revoke every other session.
+5. Response `200`.
 

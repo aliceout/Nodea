@@ -1,8 +1,8 @@
-# Login (password-first, passkey-first) + finalisation stepped MFA
+# Login (password-first, passkey-first) + stepped MFA finalisation
 
-> Flow extrait de `docs/Auth-Spec.md §7` lors du split. Voir
-> [`Auth-Spec.md`](../Auth-Spec.md) pour le threat model, les
-> primitives, les sessions, les middlewares, et les autres flows.
+> Flow extracted from `docs/Auth-Spec.md §7` during the split. See
+> [`Auth-Spec.md`](../Auth-Spec.md) for the threat model, primitives,
+> sessions, middlewares, and the other flows.
 
 ---
 
@@ -44,8 +44,8 @@ Client                                Server
    │  GET /auth/me/crypto                │
    │       → wrappedKekPassword,         │
    │         wrappedMainKey, …           │
-   │  (lean GET /auth/me hit pour le     │
-   │   reste du profil, API-14 split)    │
+   │  (lean GET /auth/me hit for the     │
+   │   rest of the profile, API-14 split)│
    │                                     │
    │  unwrapKekUnderFactor(exportKey)    │
    │   → KEK                             │
@@ -60,88 +60,87 @@ Client                                Server
 ```
 Client                                Server
    │                                     │
-   │  POST /auth/passkeys/login/start     │
-   │  { email? }   (email optionnel —    │
-   │               WebAuthn supporte le  │
-   │               flow "discoverable")  │
+   │  POST /auth/passkeys/login/start    │
+   │  { email? }   (email optional —     │
+   │               WebAuthn supports the │
+   │               "discoverable" flow)  │
    │────────────────────────────────────▶│
-   │                                     │  charge auth_factors
-   │                                     │  génère challenge
+   │                                     │  load auth_factors
+   │                                     │  generate challenge
    │  { challenge, allowCredentials }    │
    │◀────────────────────────────────────│
    │                                     │
    │  navigator.credentials.get(...)     │
-   │  avec PRF eval input fixe           │
+   │  with the fixed PRF eval input      │
    │  → assertion + prf_output           │
    │                                     │
-   │  POST /auth/passkeys/login/finish    │
+   │  POST /auth/passkeys/login/finish   │
    │  { credential_id, signature, ... }  │
    │────────────────────────────────────▶│
-   │                                     │  vérifie signature
+   │                                     │  verify signature
    │                                     │  bump sign_count
-   │                                     │  émet mfa_pending
+   │                                     │  emit mfa_pending
    │                                     │   - mfa_passkey_verified=true
    │  { needs_mfa, user_id }             │
    │◀────────────────────────────────────│
    │                                     │
-   │  client : si prf_supported          │
-   │     dérive wk_passkey               │
-   │     unwrap wrapped_kek de la cred   │
+   │  client: if prf_supported           │
+   │     derive wk_passkey               │
+   │     unwrap wrapped_kek for the cred │
    │     unwrap main_key                 │
    │                                     │
-   │  client : si non-PRF                │
-   │     ÉCHEC unwrap KEK                │
-   │     ─▶ écran "Cette passkey ne     │
-   │         peut pas déchiffrer tes    │
-   │         données. Saisis ton mot de │
-   │         passe pour finaliser."     │
+   │  client: if non-PRF                 │
+   │     KEK unwrap FAILS                │
+   │     ─▶ screen "This passkey can't  │
+   │         decrypt your data. Type    │
+   │         your password to finish."  │
    │     ─▶ fallback /auth/login/start  │
-   │         (la session reste          │
-   │          mfa_pending, le password  │
-   │          re-auth ajoute            │
+   │         (the session stays         │
+   │          mfa_pending, the password │
+   │          re-auth adds              │
    │          mfa_password_verified)    │
    │                                     │
-   │  Si mode = password_or_passkey :    │
+   │  If mode = password_or_passkey:     │
    │     POST /auth/mfa/finalize         │
-   │  Si mode = always_totp/maximum :    │
-   │     ... TOTP, et password si max ...│
+   │  If mode = always_totp/maximum:     │
+   │     ... TOTP, plus password if max ...│
 ```
 
-**PRF input** : on utilise un input fixe `"nodea:prf-v1"` (32 bytes,
-zero-padded) côté client pour que le `prf_output` soit déterministe
-pour une credential donnée, indépendamment du challenge WebAuthn
-(qui change à chaque login).
+**PRF input**: a fixed input `"nodea:prf-v1"` (32 bytes, zero-padded)
+is used client-side so that `prf_output` is deterministic for a given
+credential, independent of the WebAuthn challenge (which changes on
+every login).
 
 ## 7.4 Stepped MFA — finalisation
 
-### Réutilisation des endpoints de login pour ajouter un facteur
+### Reusing the login endpoints to add a factor
 
-Quand le mode courant requiert plusieurs facteurs et que l'entrée
-s'est faite par un seul (par exemple : passkey-first en mode
-`maximum` → la session pending a `mfa_passkey_verified=true` mais
-manque `mfa_password_verified`), le client appelle à nouveau
-**les mêmes endpoints de login** pour compléter :
+When the current mode requires multiple factors and entry happens
+through only one (for example: passkey-first in `maximum` mode →
+the pending session has `mfa_passkey_verified=true` but lacks
+`mfa_password_verified`), the client calls **the same login
+endpoints** again to complete:
 
-- Pour ajouter une vérif password : `POST /auth/login/start` puis
-  `/auth/login/finish` avec le cookie `__Host-nodea_mfa` actif. Le
-  serveur détecte la session pending (au lieu d'en créer une
-  nouvelle) et bump `mfa_password_verified=true`.
-- Pour ajouter une vérif passkey : `POST /auth/passkeys/login/start`
-  puis `/finish`. Bump `mfa_passkey_verified=true`.
-- Pour ajouter une vérif TOTP : `POST /auth/mfa/totp/verify`. Bump
+- To add a password verification: `POST /auth/login/start` then
+  `/auth/login/finish` with the `__Host-nodea_mfa` cookie active.
+  The server detects the pending session (instead of creating a
+  new one) and bumps `mfa_password_verified=true`.
+- To add a passkey verification: `POST /auth/passkeys/login/start`
+  then `/finish`. Bumps `mfa_passkey_verified=true`.
+- To add a TOTP verification: `POST /auth/mfa/totp/verify`. Bumps
   `mfa_totp_verified=true`.
 
-Aucun nouveau cookie n'est émis pendant ces étapes ; on travaille
-sur la même `mfa_pending` jusqu'au `/auth/mfa/finalize`.
+No new cookie is issued during these steps; we operate on the same
+`mfa_pending` until `/auth/mfa/finalize`.
 
 ### Finalisation
 
 `POST /auth/mfa/finalize`
 
-**Serveur** :
-1. Charge la session `mfa_pending` du cookie.
-2. Calcule les facteurs requis depuis `users.security_mode` + chemin
-   d'entrée :
+**Server**:
+1. Load the cookie's `mfa_pending` session.
+2. Compute the required factors from `users.security_mode` + entry
+   path:
 
    | mode | password-first | passkey-first |
    |---|---|---|
@@ -149,12 +148,13 @@ sur la même `mfa_pending` jusqu'au `/auth/mfa/finalize`.
    | `always_totp` | password + totp | passkey + totp |
    | `maximum` | password + passkey + totp | passkey + password + totp |
 
-3. Vérifie tous requis dans la colonne `mfa_*_verified`. Si un
-   manque → 400 `{ missing: [...] }`.
-4. Transaction :
-   - DELETE la session mfa_pending.
-   - INSERT session full, populate `reauth_password_at` /
-     `reauth_passkey_at` selon ce qui a été fait dans le pending.
-   - Émet `__Host-nodea_session`.
-5. Réponse `200 { user, ...some pubic info }`.
+3. Verify every required column in `mfa_*_verified`. If one is
+   missing → 400 `{ missing: [...] }`.
+4. Transaction:
+   - DELETE the `mfa_pending` session.
+   - INSERT a full session, populate `reauth_password_at` /
+     `reauth_passkey_at` according to what was done during the
+     pending phase.
+   - Issue `__Host-nodea_session`.
+5. Response `200 { user, ...some public info }`.
 

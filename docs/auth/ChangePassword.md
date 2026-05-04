@@ -1,22 +1,21 @@
 # Change password
 
-> Flow extrait de `docs/Auth-Spec.md §7` lors du split. Voir
-> [`Auth-Spec.md`](../Auth-Spec.md) pour le threat model, les
-> primitives, les sessions, les middlewares, et les autres flows.
+> Flow extracted from `docs/Auth-Spec.md §7` during the split. See
+> [`Auth-Spec.md`](../Auth-Spec.md) for the threat model, primitives,
+> sessions, middlewares, and the other flows.
 
 ---
 
 ## 7.5 Change password
 
-OPAQUE re-registration ne peut pas tenir dans un seul POST : le
-client a besoin de la `registrationResponse` du serveur (calculée
-à partir du `registrationRequest` du nouveau password) avant de
-pouvoir produire le `registrationRecord` localement. D'où le
-2-step pattern, calqué sur register / login.
+OPAQUE re-registration cannot fit in a single POST: the client needs
+the server's `registrationResponse` (computed from the new password's
+`registrationRequest`) before it can produce the `registrationRecord`
+locally. Hence the 2-step pattern, mirrored from register / login.
 
 ### `POST /auth/change-password/start`
 
-**Body** :
+**Body**:
 ```json
 {
   "proofLoginToken": "...",
@@ -25,25 +24,25 @@ pouvoir produire le `registrationRecord` localement. D'où le
 }
 ```
 
-Le client a déjà tourné un round-trip `/auth/login/start` avec le
-password courant pour produire le proof (cf. §13.X
-`OpaquePasswordProofSchema`). `registrationRequest` est issu de
+The client has already run a `/auth/login/start` round-trip with
+the current password to produce the proof (cf. §13.X
+`OpaquePasswordProofSchema`). `registrationRequest` comes from
 `client.startRegistration(newPassword)`.
 
-**Serveur** :
-1. Pré-condition `requireUser` (session valide).
-2. `verifyPasswordProof(user, body)` : consume le `loginToken`,
-   exige `userIdentifier === user.email`, run `server.finishLogin`.
-   Échec → 401 `invalid_credentials`.
+**Server**:
+1. Precondition `requireUser` (valid session).
+2. `verifyPasswordProof(user, body)`: consume the `loginToken`,
+   require `userIdentifier === user.email`, run `server.finishLogin`.
+   Failure → 401 `invalid_credentials`.
 3. `server.createRegistrationResponse({ userIdentifier: user.email,
    registrationRequest })` → `registrationResponse`.
-4. Stocke un single-use `changePasswordToken` (TTL 5 min, in-memory
-   `auth/opaque-pending-state.ts`) lié à `users.id`.
-5. Réponse `200 { registrationResponse, changePasswordToken }`.
+4. Stores a single-use `changePasswordToken` (TTL 5 min, in-memory
+   `auth/opaque-pending-state.ts`) bound to `users.id`.
+5. Response `200 { registrationResponse, changePasswordToken }`.
 
 ### `POST /auth/change-password/finish`
 
-**Body** :
+**Body**:
 ```json
 {
   "changePasswordToken": "...",
@@ -53,44 +52,41 @@ password courant pour produire le proof (cf. §13.X
 }
 ```
 
-Le client a complété la registration localement
-(`client.finishRegistration` avec le nouveau password) → nouvel
-exportKey. Il a unwrappé l'ancienne KEK avec le proof, puis
-re-wrappé la **même** KEK sous un sub-key HKDF du nouveau
-exportKey. La main key n'est pas re-wrappée — c'est l'invariant
-qui garantit que tous les ciphertexts pré-rotation restent
-lisibles.
+The client has finished registration locally
+(`client.finishRegistration` with the new password) → new exportKey.
+It unwrapped the old KEK with the proof, then re-wrapped the **same**
+KEK under an HKDF sub-key of the new exportKey. The main key is not
+re-wrapped — that's the invariant that guarantees every
+pre-rotation ciphertext stays readable.
 
-**Serveur** (transaction) :
-1. `consumeChangePasswordPending(token)` ; doit binder `users.id`.
-2. UPDATE `opaque_records.envelope` avec le nouveau record.
-3. UPDATE `users.wrapped_kek_password{,_iv}` avec les nouveaux
-   blobs.
-4. **Rotation de l'ID de session** : DELETE toutes les sessions de
-   cet user (incluant la courante). INSERT une nouvelle session
-   `kind = 'full'` avec `reauth_password_at = now()`.
-5. Émet un nouveau cookie `__Host-nodea_session` signé. L'ancien
-   est explicitement effacé via `Set-Cookie` avec date passée.
-6. Réponse `200`.
+**Server** (transaction):
+1. `consumeChangePasswordPending(token)`; must bind `users.id`.
+2. UPDATE `opaque_records.envelope` with the new record.
+3. UPDATE `users.wrapped_kek_password{,_iv}` with the new blobs.
+4. **Session ID rotation**: DELETE every session for this user
+   (including the current one). INSERT a new
+   `kind = 'full'` session with `reauth_password_at = now()`.
+5. Issue a fresh signed `__Host-nodea_session` cookie. The old one
+   is explicitly cleared via `Set-Cookie` with a past date.
+6. Response `200`.
 
-### UX côté frontend
+### Front-end UX
 
-- Form : password actuel + nouveau + **confirmation** (typé deux
-  fois). Strength meter zxcvbn + tick list des règles
-  `checkPasswordRules` (12 chars / min / maj / chiffre / spécial).
-  Submit gaté sur règles passées + score zxcvbn ≥ 3.
-- Sur succès : `useSession.logout()` côté client + redirect vers
-  `/login?password-changed=1` (banner d'info). Le serveur ayant
-  révoqué toutes les sessions dans la transaction, on aligne le
-  client en virant le main-key material en mémoire et en
-  forçant l'utilisateur·ice à retaper son nouveau password.
-  Évite de continuer à opérer sur la KEK / main key dérivés du
-  password ROUTÉ — c'est techniquement encore valide jusqu'à
-  expiration locale, mais c'est bordélique d'avoir un état
-  "session morte côté serveur, mais main key encore là côté
-  client" — le force-logout coupe court.
+- Form: current password + new + **confirmation** (typed twice).
+  zxcvbn strength meter + tick list of `checkPasswordRules`
+  (12 chars / lowercase / uppercase / digit / symbol). Submit
+  gated on passing rules + zxcvbn score ≥ 3.
+- On success: `useSession.logout()` client-side + redirect to
+  `/login?password-changed=1` (info banner). Since the server
+  revoked every session in the transaction, we align the client by
+  dropping the in-memory main-key material and forcing the user to
+  re-type the new password. Avoids running with the KEK / main key
+  derived from the rotated password still in memory — technically
+  valid until local expiration, but messy to keep a "session dead
+  on the server, main key still alive on the client" state — the
+  force-logout cuts that short.
 
-La rotation de l'ID après un changement de privilège (changement
-de password, change-mode, etc.) est un anti-pattern de session
-fixation classique — on l'applique systématiquement.
+ID rotation after a privilege change (password change, mode change,
+etc.) is a classic session fixation anti-pattern — we apply it
+systematically.
 

@@ -1,61 +1,61 @@
-# Reset destructif, logout, suppression de compte
+# Destructive reset, logout, account deletion
 
-> Flow extrait de `docs/Auth-Spec.md §7` lors du split. Voir
-> [`Auth-Spec.md`](../Auth-Spec.md) pour le threat model, les
-> primitives, les sessions, les middlewares, et les autres flows.
+> Flow extracted from `docs/Auth-Spec.md §7` during the split. See
+> [`Auth-Spec.md`](../Auth-Spec.md) for the threat model, primitives,
+> sessions, middlewares, and the other flows.
 
 ---
 
-## 7.9 Reset destructif (existant, conservé)
+## 7.9 Destructive reset (existing, preserved)
 
-Inchangé fonctionnellement par rapport à l'existant, mais étendu
-pour purger toutes les nouvelles tables :
+Functionally unchanged from the existing flow, but extended to purge
+every new table:
 
-`POST /auth/request-reset` → email avec token (si email vérifié).
-`POST /auth/reset` → token + nouveau password. Server : voir
-purge §4.3, puis création des nouveaux wraps comme en register
-(mais on conserve `email_verified_at`).
+`POST /auth/request-reset` → email with token (if email is verified).
+`POST /auth/reset` → token + new password. Server: see purge §4.3,
+then creation of the new wraps like in register (but keep
+`email_verified_at`).
 
-L'écran de reset rappelle explicitement : "Toutes tes données
-chiffrées seront supprimées. Cette action est irréversible." +
-checkbox bloquante.
+The reset screen explicitly states: "All your encrypted data will be
+deleted. This action is irreversible." + a blocking checkbox.
 
 ## 7.10 Logout
 
-`POST /auth/logout` : DELETE session courante. Cookie expiré.
+`POST /auth/logout`: DELETE the current session. Cookie expired.
 
-`POST /auth/logout-all` : `requireFreshPassword`. DELETE toutes les
-sessions de l'user. Cookie expiré.
+`POST /auth/logout-all`: `requireFreshPassword`. DELETE all the
+user's sessions. Cookie expired.
 
-`GET /auth/sessions` : `requireUser`. Liste les sessions full
-actives de l'user (`id`, `created_at`, `last_seen_at`, `ip_hash`
-tronqué pour préview, `user_agent`, flag `is_current: true` sur la
-session du cookie courant).
+`GET /auth/sessions`: `requireUser`. Lists the user's active full
+sessions (`id`, `created_at`, `last_seen_at`, `ip_hash` truncated
+for preview, `user_agent`, `is_current: true` flag on the current
+cookie's session).
 
-`DELETE /auth/sessions/:id` : `requireFreshPassword`. Révoque une
-session spécifique par son ID. Refus 404 si l'ID n'appartient pas
-à cet user (constant-time pour éviter l'enumération). Refus 400 si
-`id == current` (utiliser `/auth/logout` pour ce cas).
+`DELETE /auth/sessions/:id`: `requireFreshPassword`. Revokes a
+specific session by ID. 404 if the ID doesn't belong to this user
+(constant-time to avoid enumeration). 400 if `id == current` (use
+`/auth/logout` for that case).
 
-Côté client : `resetAll()` du store Zustand → main key et sub-keys
-deviennent garbage-collectables (on ne peut pas les wiper, cf.
-CLAUDE.md règle 7).
+Client side: `resetAll()` on the Zustand store → main key and
+sub-keys become garbage-collectable (we can't wipe them, cf. CLAUDE.md
+rule 7).
 
-## 7.11 Suppression de compte
+## 7.11 Account deletion
 
 `POST /auth/account/delete`
 
-Préconditions : re-auth password fresh + (re-auth passkey si
-`auth_factors.passkey` existe) + (TOTP code live si
-`mfa_totp.enabled_at` non null).
+Preconditions: fresh password re-auth + (passkey re-auth if
+`auth_factors.passkey` exists) + (live TOTP code if `mfa_totp.enabled_at`
+is non-null).
 
-Body : `{ confirmation_phrase: "supprimer mon compte" }` (en français,
-exact match).
+Body: `{ confirmation_phrase: "supprimer mon compte" }` (in French,
+exact match — preserved as the literal user-facing confirmation
+phrase).
 
-Server : transaction de purge §4.3 + `DELETE FROM users WHERE id`.
-Cascade DELETE sur toutes les FKs.
+Server: §4.3 purge transaction + `DELETE FROM users WHERE id`.
+Cascade DELETE across every FK.
 
-Réponse `200`. Cookie effacé.
+Response `200`. Cookie cleared.
 
 ---
 

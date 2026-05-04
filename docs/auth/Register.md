@@ -1,48 +1,47 @@
-# Register — single-form + activation magic link
+# Register — single form + activation magic link
 
-> Flow extrait de `docs/Auth-Spec.md §7` lors du split. Voir
-> [`Auth-Spec.md`](../Auth-Spec.md) pour le threat model, les
-> primitives, les sessions, les middlewares, et les autres flows.
+> Flow extracted from `docs/Auth-Spec.md §7` during the split. See
+> [`Auth-Spec.md`](../Auth-Spec.md) for the threat model, primitives,
+> sessions, middlewares, and the other flows.
 
 ---
 
-## 7.1 Register — single-form + activation magic link
+## 7.1 Register — single form + activation magic link
 
-### Vue d'ensemble
+### Overview
 
-Un seul formulaire (email + password) côté UI, deux chemins serveur
-selon le mode :
+A single form (email + password) on the UI side, two server paths
+depending on the mode:
 
 ```
-┌─ Invitation par e-mail (recommandé) ──────────────────────────────┐
+┌─ Email invitation (recommended) ──────────────────────────────────┐
 │                                                                   │
 │ Admin → /admin/invites { email }                                  │
-│      → server email lien `/register?invite=<token>`               │
-│ User clique le lien → form pré-rempli (email read-only) → submit  │
-│      → server crée le compte + active immédiatement (1 mail total)│
+│      → server emails link `/register?invite=<token>`              │
+│ User clicks → form pre-filled (email read-only) → submit          │
+│      → server creates account + activates immediately (1 mail)    │
 │      → redirect /login?activated=1                                │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
 
-┌─ Open registration (toggle admin ON) ─────────────────────────────┐
+┌─ Open registration (admin toggle ON) ─────────────────────────────┐
 │                                                                   │
-│ User → /register sans token → form ouvert → submit                │
-│      → server crée compte inactif + envoie mail d'activation      │
-│ User clique le lien → /activate?token=<...> → flip activated      │
+│ User → /register without a token → open form → submit             │
+│      → server creates inactive account + sends activation email   │
+│ User clicks → /activate?token=<...> → flips activated             │
 │      → redirect /login?activated=1                                │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
 
-┌─ Closed (toggle admin OFF, pas de lien) ──────────────────────────┐
+┌─ Closed (admin toggle OFF, no link) ──────────────────────────────┐
 │                                                                   │
-│ User → /register sans token → page "Sur invitation" + lien login. │
+│ User → /register without a token → "Invite-only" page + login link│
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-Aucun cookie de "register session" en V1 — la state survit
-uniquement via le token dans l'URL d'invitation ou via la
-verification row côté serveur.
+No "register session" cookie in V1 — state survives only via the
+URL invitation token or via the verification row server-side.
 
 ### `POST /auth/register/start` + `POST /auth/register/finish` (OPAQUE 2-step, V1 ✅)
 
@@ -55,7 +54,7 @@ verification row côté serveur.
 }
 ```
 
-**Réponse** `/start`
+**Response** `/start`
 ```json
 {
   "registrationResponse": "<opaque-blob>",
@@ -63,20 +62,21 @@ verification row côté serveur.
 }
 ```
 
-`/start` est **stateless** — pas d'écriture DB, pas de consommation
-d'invite, pas de DB row créé. Il pré-valide la voie (invite présente
-+ match email, ou `open_registration` ON) pour fail fast, puis appelle
-`server.createRegistrationResponse()` de `@serenity-kit/opaque` avec
-`userIdentifier = email.toLowerCase()`. Le `userId` retourné est utilisé
-par le client pour calculer les AAD bindings (`buildKekAAD(userId,
-'password')` et `buildMainKeyAAD(userId)`) AVANT de poster `/finish`.
+`/start` is **stateless** — no DB write, no invite consumption, no
+DB row created. It pre-validates the path (invite present + email
+match, or `open_registration` ON) to fail fast, then calls
+`server.createRegistrationResponse()` from `@serenity-kit/opaque`
+with `userIdentifier = email.toLowerCase()`. The returned `userId`
+is used by the client to compute AAD bindings
+(`buildKekAAD(userId, 'password')` and `buildMainKeyAAD(userId)`)
+BEFORE posting `/finish`.
 
 **Body** `/finish`
 ```json
 {
   "email": "alice@example.com",
   "username": "Alice",
-  "userId": "<uuid retourné par /start>",
+  "userId": "<uuid returned by /start>",
   "registrationRecord": "<opaque envelope>",
   "wrappedMainKey": "<base64 AES-GCM>",
   "wrappedMainKeyIv": "<base64 IV>",
@@ -86,33 +86,33 @@ par le client pour calculer les AAD bindings (`buildKekAAD(userId,
 }
 ```
 
-`username` est **obligatoire** au register — règles `UsernameField`
-(2-32 chars, lettres/chiffres/`_`/`-`/`.`, accents OK). Présenté à
-l'utilisateur comme "un prénom ou un pseudo". **Pas d'unicité** :
-deux comptes peuvent porter le même display name (l'identifiant
-réel reste `users.id` + `users.email` pour le login).
+`username` is **required** at register — `UsernameField` rules
+(2-32 chars, letters/digits/`_`/`-`/`.`, accents OK). Presented to
+the user as "a first name or a handle". **Not unique**: two
+accounts can carry the same display name (the real identifier
+remains `users.id` + `users.email` for login).
 
-`registrationRecord` est l'envelope OPAQUE produit côté client par
-`client.finishRegistration()`. Le serveur le persiste dans
-`opaque_records.envelope` — il ne peut **pas** être utilisé pour
-retrouver le password (c'est le tout l'intérêt d'OPAQUE).
+`registrationRecord` is the OPAQUE envelope produced client-side
+by `client.finishRegistration()`. The server persists it in
+`opaque_records.envelope` — it **cannot** be used to recover the
+password (that's the whole point of OPAQUE).
 
-`wrappedMainKey` / `wrappedKekPassword` sont les deux couches de wrap
-côté client (cf. §3.2) :
-- **Main key** (32 bytes random) wrappée sous KEK via HKDF label
+`wrappedMainKey` / `wrappedKekPassword` are the two client-side
+wrap layers (cf. §3.2):
+- **Main key** (32 random bytes) wrapped under KEK via HKDF label
   `nodea:wrap-main`, AAD = `nodea:v1\x1f<userId>\x1fmain`.
-- **KEK** (32 bytes random) wrappée sous une clé HKDF dérivée de
-  l'OPAQUE `exportKey` via label `nodea:wrap-kek`, AAD =
+- **KEK** (32 random bytes) wrapped under an HKDF-derived key from
+  the OPAQUE `exportKey` via label `nodea:wrap-kek`, AAD =
   `nodea:v1\x1f<userId>\x1fpassword`.
 
-**Branches serveur** sur `/finish` :
+**Server branches** on `/finish`:
 
-1. **Invité** (`inviteToken` présent) :
-   - `consumeInviteAndCreateUser(token, email, …)` :
-     - Lookup `invites` par `code_hash`, sous `SELECT … FOR UPDATE`.
-     - Refus si used / expired / unknown → 401 `invalid_token`.
-     - Refus si `invites.email !== body.email` (strict match) → 400
-       `email_mismatch`.
+1. **Invited** (`inviteToken` present):
+   - `consumeInviteAndCreateUser(token, email, …)`:
+     - Lookup `invites` by `code_hash`, under `SELECT … FOR UPDATE`.
+     - Reject if used / expired / unknown → 401 `invalid_token`.
+     - Reject if `invites.email !== body.email` (strict match) →
+       400 `email_mismatch`.
      - INSERT `users { id: userId, username,
        wrappedMainKey, wrappedMainKeyIv,
        wrappedKekPassword, wrappedKekPasswordIv,
@@ -120,69 +120,69 @@ côté client (cf. §3.2) :
      - INSERT `opaque_records { user_id: userId, envelope:
        registrationRecord }`.
      - UPDATE `invites { usedBy, usedAt }`.
-   - Réponse `200 { ok: true, activated: true, email }`. Aucun
-     cookie émis — l'user retape son password à `/login`.
+   - Response `200 { ok: true, activated: true, email }`. No
+     cookie issued — the user re-types their password at `/login`.
 
-2. **Open registration** (pas de token, toggle ON) :
-   - Vérifier `app_settings.open_registration === true` (défense en
-     profondeur — `/start` l'a déjà checké).
-   - Si `users` (actif OU inactif) existe déjà avec cet email →
-     silent 200 (anti-enum). Le retry sur ligne inactive **n'est
-     plus** une réutilisation parce que les AAD du nouveau
-     `/start` userId divergent du précédent — l'email d'activation
-     d'origine reste valide, l'admin peut renvoyer hors-bande.
-   - Sinon : INSERT `users { id: userId, …,
-     emailVerifiedAt: NULL }` + INSERT `opaque_records`, dans
-     une transaction.
+2. **Open registration** (no token, toggle ON):
+   - Verify `app_settings.open_registration === true` (defense in
+     depth — `/start` already checked).
+   - If `users` (active OR inactive) already exists with this
+     email → silent 200 (anti-enum). Retrying on the inactive row
+     **is no longer** a reuse since the AADs of the new `/start`
+     userId diverge from the previous one — the original
+     activation email stays valid, the admin can resend out of
+     band.
+   - Otherwise: INSERT `users { id: userId, …,
+     emailVerifiedAt: NULL }` + INSERT `opaque_records`, in a
+     transaction.
    - INSERT `email_verifications { kind: 'register', codeHash:
      SHA-256(token), expiresAt: now+7d }`.
-   - Email "Active ton compte Nodea" via `EmailService.send`.
-   - Réponse `200 { ok: true, activated: false }`.
+   - Email "Activate your Nodea account" via `EmailService.send`.
+   - Response `200 { ok: true, activated: false }`.
 
-3. **Closed** (pas de token, toggle OFF) :
-   - 403 `registration_closed`. Le frontend gate ce cas en amont
-     via `GET /register/mode` (voir ci-dessous).
+3. **Closed** (no token, toggle OFF):
+   - 403 `registration_closed`. The frontend gates this case
+     upstream via `GET /register/mode` (see below).
 
-**Argon2id côté Nodea** : aucun chemin de code n'utilise Argon2id
-pour l'auth ; le seul Argon2id restant est celui que
-`@serenity-kit/opaque` fait tourner en interne dans la suite
-OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id.
+**Argon2id on the Nodea side**: no code path uses Argon2id for
+auth; the only remaining Argon2id is the one
+`@serenity-kit/opaque` runs internally as part of the
+OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id suite.
 
 ### `POST /auth/register/activate`
 
-Cible du lien magique de l'open path. **Pas appelé par le path
-invité** — l'invité est déjà activé au submit.
+Target of the open path's magic link. **Not called on the invited
+path** — the invitee is already active at submit time.
 
-**Body** : `{ token: "<base64url>" }`.
+**Body**: `{ token: "<base64url>" }`.
 
-Server :
+Server:
 1. `consumeEmailVerification('register', token)` — lookup +
    timing-safe compare + single-use consume.
 2. UPDATE `users { emailVerifiedAt: now() }` WHERE id = verification.userId
-   AND emailVerifiedAt IS NULL. Si pas matched → 401 `already_consumed`.
-3. Réponse `200 { ok: true, email }`.
+   AND emailVerifiedAt IS NULL. If no match → 401 `already_consumed`.
+3. Response `200 { ok: true, email }`.
 
-Erreurs spécifiques : `invalid_token` (401), `already_consumed`
-(401), `expired` (410).
+Specific errors: `invalid_token` (401), `already_consumed` (401),
+`expired` (410).
 
 ### `GET /auth/register/mode`
 
-Public, sans rate-limit côté V1. Renvoie `{ openRegistration:
-boolean }` lu depuis `app_settings`. Le frontend l'appelle au mount
-de `/register` pour décider entre form ouvert vs page "Sur
-invitation".
+Public, no rate-limit in V1. Returns `{ openRegistration: boolean }`
+read from `app_settings`. The frontend calls it on `/register` mount
+to decide between an open form and an "Invite-only" page.
 
 ### `GET /auth/register/invite-info?token=…`
 
-Public, rate-limit 30/h/IP. Renvoie `{ email, expiresAt }` quand
-le token est valide + non consommé + non expiré ; 404 sinon.
-Permet au frontend de pré-remplir l'email quand l'user arrive via
+Public, rate-limit 30/h/IP. Returns `{ email, expiresAt }` when the
+token is valid + unconsumed + unexpired; 404 otherwise. Lets the
+frontend pre-fill the email when the user arrives via
 `/register?invite=…`.
 
-### Activation gate sur `POST /auth/login`
+### Activation gate on `POST /auth/login`
 
-Une fois le compte créé, le login refuse si
-`users.email_verified_at IS NULL` :
+Once the account is created, login refuses if
+`users.email_verified_at IS NULL`:
 
 ```ts
 if (user.emailVerifiedAt === null) {
@@ -190,29 +190,29 @@ if (user.emailVerifiedAt === null) {
 }
 ```
 
-UI surface une bannière "Ton compte n'est pas encore activé. Clique
-sur le lien envoyé par e-mail pour l'activer." Légalement les
-admins seedés bypassent (on les insère avec `emailVerifiedAt =
-now()` dans `seed.ts`).
+The UI surfaces a banner "Your account isn't activated yet. Click
+the link sent by email to activate it." Seeded admins legally
+bypass (we insert them with `emailVerifiedAt = now()` in `seed.ts`).
 
-### Cleanup des comptes non-activés
+### Cleanup of unactivated accounts
 
-Cron Monday 03:00 (cf. §13.2) :
-- DELETE `email_verifications` `kind = 'register'` `expires_at < now()`.
-- DELETE `users` où `emailVerifiedAt IS NULL` ET aucune
-  `email_verifications` pending → la fenêtre 7 jours s'est écoulée.
+Monday 03:00 cron (cf. §13.2):
+- DELETE `email_verifications` `kind = 'register'`
+  `expires_at < now()`.
+- DELETE `users` where `emailVerifiedAt IS NULL` AND no pending
+  `email_verifications` → the 7-day window has elapsed.
 
-### Trade-offs assumés en V1
+### V1 trade-offs accepted
 
-- **Invitations multi-usage** : aucun lien strict invite → user. Une
-  invite n'est ni linkée à un user au submit ni consommée à
-  l'activation — la même invite peut servir à plusieurs registers.
-  Tightening à invite single-use = ajouter une FK
-  `users.invite_id` ; reporté post-V1.
-- **Cooldown change-email contournable via reset destructif** : le
-  reset destructif ne (ré-)arme pas `email_changed_at`, donc
-  enchaîner reset + change-email immédiat est possible. Risque
-  résiduel accepté V1 (cf. §2.2 #7).
+- **Multi-use invitations**: no strict invite → user link. An
+  invite isn't bound to a user at submit time and isn't consumed
+  at activation — the same invite can serve several registers.
+  Tightening to single-use = adding a `users.invite_id` FK;
+  deferred post-V1.
+- **Change-email cooldown bypassable via destructive reset**: the
+  destructive reset doesn't (re-)arm `email_changed_at`, so
+  chaining reset + immediate change-email is possible. Residual
+  risk accepted in V1 (cf. §2.2 #7).
 
 ---
 

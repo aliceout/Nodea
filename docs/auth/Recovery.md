@@ -1,78 +1,81 @@
 # Recovery via KEK code
 
-> Flow extrait de `docs/Auth-Spec.md §7` lors du split. Voir
-> [`Auth-Spec.md`](../Auth-Spec.md) pour le threat model, les
-> primitives, les sessions, les middlewares, et les autres flows.
+> Flow extracted from `docs/Auth-Spec.md §7` during the split. See
+> [`Auth-Spec.md`](../Auth-Spec.md) for the threat model, primitives,
+> sessions, middlewares, and the other flows.
 
 ---
 
 ## 7.7 Recovery via KEK code
 
-> Setup opt-in depuis Settings → Security (l'utilisateur·ice ne
-> voit pas le flow à l'inscription). Sidebar warning rouge
-> non-dismissable tant que pas configuré. Recovery flow accessible
-> via `/recover` ou via le lien "Tu as un code ?" sur
-> `/request-reset`.
+> Opt-in setup from Settings → Security (the user doesn't see the
+> flow at signup). Non-dismissable red sidebar warning until
+> configured. Recovery flow reachable via `/recover` or via the
+> "Got a code?" link on `/request-reset`.
 >
-> Source de vérité : code dans
-> `packages/api/src/routes/auth-recovery.ts`. Cette section décrit
-> l'intention ; le wire format réel est légèrement plus serré (le
-> OPAQUE register handshake est folded dans le `/start` plutôt que
-> d'avoir une 3e route séparée).
+> Source of truth: code in
+> `packages/api/src/routes/auth-recovery.ts`. This section describes
+> the intent; the actual wire format is slightly tighter (the OPAQUE
+> register handshake is folded into `/start` instead of being a
+> separate third route).
 
-### Modèle d'autorisation
+### Authorisation model
 
-Le serveur stocke `users.recovery_code_hash = SHA-256(recovery_bytes)`,
-calculé et envoyé par le client à l'inscription (cf. §7.1 step 4).
-Avec 128 bits d'entropie BIP39 (les 4 bits restants sont un
-checksum, pas de l'entropie), ce hash est non-crackable offline
-même en cas de compromission DB.
+The server stores `users.recovery_code_hash = SHA-256(recovery_bytes)`,
+computed and sent by the client at signup time (cf. §7.1 step 4).
+With BIP39's 128 bits of entropy (the remaining 4 bits are a
+checksum, not entropy), this hash is non-crackable offline even if
+the DB is compromised.
 
-Au recovery, le client envoie son `recovery_code_hash` calculé
-localement. Le serveur compare en temps constant avec celui stocké.
-**Sans match → 401, aucune mutation appliquée**. C'est ce qui
-empêche un attaquant externe de DoS le compte en soumettant un
-nouvel envelope OPAQUE sans connaître le recovery code.
+At recovery time, the client sends its locally-computed
+`recovery_code_hash`. The server compares it constant-time with the
+stored one. **No match → 401, no mutation applied**. That's what
+prevents an external attacker from DoS-ing the account by submitting
+a new OPAQUE envelope without knowing the recovery code.
 
-Propriété conservée : *le serveur ne connaît pas le recovery code
-en clair*, il ne stocke qu'un hash uncrackable.
+Property preserved: *the server doesn't know the recovery code in
+cleartext*, only an uncrackable hash.
 
 ### `POST /auth/recover-kek/start`
 
-Body : `{ email }`. Server :
-1. Charge `users` par email. Si pas trouvé → réponse opaque
-   `200 { ok: true, recovery_session_id: <random> }` (pas de leak
-   d'existence ; on émet quand même un session_id pour rendre les
-   timings indistinguables).
-2. Stocke `recovery_session_id` (32 bytes random base64url) avec
-   TTL 5 min, lié à l'`users.id` si trouvé, lié à `null` sinon.
-3. Renvoie `{ recovery_session_id, wrapped_kek_recovery,
-   wrapped_kek_recovery_iv }` si user trouvé, ou des blobs random
-   indistinguables sinon (timing safety).
+Body: `{ email }`. Server:
+1. Loads `users` by email. If not found → opaque response
+   `200 { ok: true, recovery_session_id: <random> }` (no leak of
+   account existence; we still issue a session_id to keep timings
+   indistinguishable).
+2. Stores `recovery_session_id` (32 random bytes, base64url) with a
+   5 min TTL, bound to `users.id` if found, bound to `null`
+   otherwise.
+3. Returns `{ recovery_session_id, wrapped_kek_recovery,
+   wrapped_kek_recovery_iv }` if a user was found, or
+   indistinguishable random blobs otherwise (timing safety).
 
-### Côté client (avant `/finish`)
+### Client side (before `/finish`)
 
-1. User tape les 12 mots BIP39.
-2. Client valide checksum BIP39, dérive `recovery_bytes` (16 bytes).
-3. Calcule `recovery_code_hash = SHA-256(recovery_bytes)`.
-4. Dérive `wk_recovery = HKDF(recovery_bytes, "nodea:wrap-kek")`.
-5. Tente unwrap `wrapped_kek_recovery` côté client → si l'auth-tag
-   AES-GCM échoue, le code est mauvais. Message d'erreur immédiat
-   côté UI **sans hit serveur** : ça épargne le rate-limit et évite
-   de polluer les logs serveur de mismatch. (Le serveur fait quand
-   même son propre check de hash au `/finish`, en double-vérification.)
-6. Si unwrap OK : main key dérivée par chemin standard (KEK →
-   `wrapped_main_key` → main_key).
-7. User tape un nouveau password.
-8. Client lance OPAQUE registration (sur l'email courant), dérive
-   nouveau `export_key`, re-wrappe KEK sous nouveau `wk_password`.
-9. Client génère **nouveau recovery code** (l'ancien sera invalidé)
-   → nouveau `wrapped_kek_recovery` + nouveau `recovery_code_hash`.
-   Affiché à l'écran après succès, checkbox d'acknowledgement.
+1. User types the 12 BIP39 words.
+2. Client validates the BIP39 checksum, derives `recovery_bytes`
+   (16 bytes).
+3. Computes `recovery_code_hash = SHA-256(recovery_bytes)`.
+4. Derives `wk_recovery = HKDF(recovery_bytes, "nodea:wrap-kek")`.
+5. Attempts to unwrap `wrapped_kek_recovery` client-side → if the
+   AES-GCM auth-tag fails, the code is wrong. Immediate UI error
+   message **without a server hit**: saves the rate-limit budget
+   and avoids polluting server logs with mismatches. (The server
+   still does its own hash check at `/finish`, as a double check.)
+6. If unwrap succeeds: main key derived through the standard path
+   (KEK → `wrapped_main_key` → main_key).
+7. User types a new password.
+8. Client runs OPAQUE registration (on the current email), derives
+   the new `export_key`, re-wraps the KEK under the new
+   `wk_password`.
+9. Client generates a **new recovery code** (the old one will be
+   invalidated) → new `wrapped_kek_recovery` + new
+   `recovery_code_hash`. Displayed on screen after success, with an
+   acknowledgement checkbox.
 
 ### `POST /auth/recover-kek/finish`
 
-Body :
+Body:
 ```json
 {
   "recovery_session_id": "...",
@@ -86,54 +89,53 @@ Body :
 }
 ```
 
-Server :
-1. Valide `recovery_session_id` (charge, vérifie TTL, consomme).
-   Si lié à `null` → 401 (cas "user inexistant" depuis /start).
-2. Charge `users.recovery_code_hash`. Comparaison **temps constant**
-   avec `recovery_code_hash` fourni. Si KO → 401, **aucune
-   mutation**, log un `auth.recover.hash_mismatch`.
-3. Valide le nouvel envelope OPAQUE (cohérence cryptographique).
-4. Transaction :
-   - UPDATE `opaque_records.envelope` (par `user_id` PK).
+Server:
+1. Validates `recovery_session_id` (load, check TTL, consume).
+   If bound to `null` → 401 ("non-existent user" path from `/start`).
+2. Loads `users.recovery_code_hash`. **Constant-time comparison**
+   against the supplied `recovery_code_hash`. If mismatch → 401,
+   **no mutation**, logs an `auth.recover.hash_mismatch`.
+3. Validates the new OPAQUE envelope (cryptographic consistency).
+4. Transaction:
+   - UPDATE `opaque_records.envelope` (by `user_id` PK).
    - UPDATE `users.wrapped_kek_password{,_iv}`.
-   - UPDATE `users.wrapped_kek_recovery{,_iv}` ← nouveau code.
-   - UPDATE `users.recovery_code_hash` ← nouveau hash.
-   - DELETE toutes les sessions de cet user.
-5. Émet une session full + cookie.
-6. Email de notification "Ton mot de passe a été réinitialisé via
-   recovery code. Si ce n'est pas toi : reset destructif via
-   /password-reset."
+   - UPDATE `users.wrapped_kek_recovery{,_iv}` ← new code.
+   - UPDATE `users.recovery_code_hash` ← new hash.
+   - DELETE every session of this user.
+5. Issues a full session + cookie.
+6. Notification email "Your password was reset via recovery code.
+   If this wasn't you: destructive reset via /password-reset."
 
-### Anti-pattern obligatoire
+### Mandatory anti-pattern
 
-Le body de `POST /auth/recover-kek/finish` contient un hash
-sensible (et le password en clair n'y est pas, mais `recovery_code_hash`
-permet une vérif offline si DB compromise — non-crackable mais
-quand même à protéger). **Le logger doit black-lister le body de
-cette route.** Cf. §14.
+The `POST /auth/recover-kek/finish` body contains a sensitive hash
+(the password isn't in there in cleartext, but `recovery_code_hash`
+allows an offline check if the DB is compromised — non-crackable
+but still worth protecting). **The logger must blacklist this
+route's body.** Cf. §14.
 
-### Régénération depuis Settings
+### Regeneration from Settings
 
-Cas distinct du recovery flow : l'utilisateur·ice est déjà
-authentifié·e (session full, KEK déjà en mémoire) et veut
-simplement rotater son recovery code (perte du papier, doute,
-hygiène).
+Distinct case from the recovery flow: the user is already
+authenticated (full session, KEK already in memory) and just wants
+to rotate the recovery code (lost paper, doubt, hygiene).
 
 `POST /auth/security/recovery-code/regenerate`
 
-Préconditions : `requireFreshPassword` (cf. matrice §6).
+Preconditions: `requireFreshPassword` (cf. matrix §6).
 
-Côté client (avant POST) :
-1. Génère un nouveau recovery code BIP39 12 mots.
-2. Affiche immédiatement (modal avec checkbox "j'ai noté").
-3. Dérive `recovery_bytes_new`, `wk_recovery_new = HKDF(...,
-   "nodea:wrap-kek")`.
-4. Wrap la KEK courante (en mémoire) :
+Client side (before POST):
+1. Generates a new BIP39 12-word recovery code.
+2. Displays it immediately (modal with an "I noted it down"
+   checkbox).
+3. Derives `recovery_bytes_new`,
+   `wk_recovery_new = HKDF(..., "nodea:wrap-kek")`.
+4. Wraps the current KEK (in memory):
    `wrapped_kek_recovery_new = AES-GCM(wk_recovery_new, kek,
    AAD=buildAAD([users.id, "recovery"]))`.
-5. Calcule `recovery_code_hash_new = SHA-256(recovery_bytes_new)`.
+5. Computes `recovery_code_hash_new = SHA-256(recovery_bytes_new)`.
 
-Body :
+Body:
 ```json
 {
   "wrapped_kek_recovery_new": "...",
@@ -142,17 +144,16 @@ Body :
 }
 ```
 
-Server (transaction) :
+Server (transaction):
 1. UPDATE `users.wrapped_kek_recovery{,_iv}`,
    `users.recovery_code_hash`.
 2. Bump `users.updated_at`.
-3. Réponse `200 { regenerated_at }`.
+3. Response `200 { regenerated_at }`.
 
-L'ancien recovery code devient immédiatement invalide (le
-`wrapped_kek_recovery` qu'il déchiffrait n'est plus stocké). Le
-client zero `recovery_bytes_new` après la copie utilisateur·ice.
+The old recovery code becomes invalid immediately (the
+`wrapped_kek_recovery` it could decrypt is no longer stored). The
+client zeroes `recovery_bytes_new` after the user has copied it.
 
-Pas d'email de notification (l'opération est explicite côté
-utilisateur·ice + re-auth password fresh = pas de takeover
-possible silencieusement).
+No notification email (the operation is explicit user-side + fresh
+password re-auth = no silent takeover possible).
 
