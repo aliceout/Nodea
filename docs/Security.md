@@ -37,92 +37,7 @@ paragraph below describes code that exists today in the repository.
 
 ---
 
-## 2. Main key lifecycle
-
-> **⚠️ LEGACY — en cours de remplacement.** Cette section décrit le
-> modèle d'auth actuel (Argon2id direct sur le password, KEK dérivée
-> à chaque login depuis `password + encryption_salt`). Il est en
-> cours de remplacement par un modèle multi-facteurs basé sur
-> OPAQUE + WebAuthn PRF + TOTP, spécifié dans
-> [`Auth-Spec.md`](Auth-Spec.md).
->
-> La migration suit le plan de [`Auth-Roadmap.md`](Auth-Roadmap.md)
-> en 9 phases. Pendant la transition, les deux modèles coexistent
-> (lazy migration au login, cf. Auth-Spec §12). Après livraison
-> Phase 8, cette section sera réécrite pour refléter le nouveau
-> modèle comme seule réalité, et les colonnes legacy
-> (`password_hash`, `encryption_salt`, `encrypted_key`) seront
-> droppées.
->
-> Pour toute évolution crypto/auth pendant la migration : la spec
-> qui fait foi est `Auth-Spec.md`, pas cette section.
-
-### 2.1 Register
-1. Generate 32 random bytes (`randomBytes(32)`).
-2. Derive a KEK via Argon2id from `password + encryption_salt`.
-3. Wrap the main key under the KEK with AES-GCM → `encrypted_key`.
-4. Zero the source bytes; send `{ encryption_salt, encrypted_key }` to
-   the server alongside the invite code and password.
-
-### 2.2 Login
-1. Server verifies the password (Argon2id on the stored hash), issues a
-   signed session cookie, and returns the user row via `/auth/me`.
-2. Client re-derives the KEK and decrypts `encrypted_key` →
-   `rawMainKey` (32 bytes).
-3. `deriveMainKeys(rawMainKey)` runs HKDF twice (labels `"nodea:aes"`
-   and `"nodea:hmac"`) and imports each output as a non-extractable
-   `CryptoKey`. The source bytes are zeroed in the `finally` block.
-4. The Zustand store caches the `MainKeyMaterial`. No main-key bytes
-   are written to disk.
-
-### 2.3 Steady-state
-- Every encrypted module consumes `key.aesKey` for AES-GCM and
-  `key.hmacKey` for guard derivation.
-- On a cold reload the session cookie survives but the main key does
-  not (there is no password in hand to re-derive it). The store flips
-  `crypto.status = 'missing'` and the layout blocks via
-  `KeyMissingModal` until the user logs in again.
-
-### 2.4 Change password
-1. Unwrap the main key under the **old** password (client-side). This
-   throws on wrong password via the AES-GCM auth-tag, before any
-   server call.
-2. Re-wrap the same main key under the new password → fresh
-   `{ encryption_salt, encrypted_key }`.
-3. POST `/auth/change-password` with the new envelope + both passwords.
-4. Server revokes every other session and issues a new one.
-5. Client re-derives the AES + HMAC sub-keys from the same raw bytes
-   (they're unchanged, so every existing ciphertext is still readable).
-
-### 2.5 Password reset (`/auth/request-reset` + `/auth/reset`)
-Because the main key was derived from the lost password, **it is
-unrecoverable**. The reset flow therefore treats the existing encrypted
-data as lost too:
-
-1. Client generates a **fresh** main key + envelope.
-2. Server validates the token, then inside a single transaction:
-   - deletes every row from all 8 `*_entries` tables,
-     `modules_config`, and `user_preferences` for this user;
-   - rotates `password_hash` + `encryption_salt` + `encrypted_key`;
-   - flips `onboarding_status` back to `pending`;
-   - marks the reset token `used_at`;
-   - revokes every session.
-
-The `/reset` page hard-gates submission behind a confirmation
-checkbox so the user acknowledges the data loss explicitly.
-
-### 2.6 Logout
-- `session.logout()` posts to `/auth/logout` (which deletes the
-  session row), then `resetAll()` drops the entire Zustand store. The
-  `CryptoKey` objects become garbage-collectable.
-- `wipeMainKeyMaterial` zeroes any raw-byte helpers still in scope.
-  Note: WebCrypto does not expose a way to wipe `CryptoKey` internals —
-  we rely on the non-extractable flag + process isolation. A full purge
-  requires a hard reload.
-
----
-
-## 3. Encrypted records
+## 2. Encrypted records
 
 Every `<module>_entries` row has the shape:
 
@@ -143,7 +58,7 @@ the header against the stored row and never learns the main key.
 
 ---
 
-## 4. HMAC guards
+## 3. HMAC guards
 
 ```text
 guard = "g_" + hex( HMAC(hmacKey, `${module_user_id}:${record_id}`) )
@@ -169,7 +84,7 @@ there is no record id to authenticate, the user *is* the record, and
 
 ---
 
-## 5. Server-side protections
+## 4. Server-side protections
 
 - **Argon2id** password hashing via `@node-rs/argon2`. Login verifies
   even on unknown email (dummy hash) to keep timing constant.
@@ -201,7 +116,7 @@ there is no record id to authenticate, the user *is* the record, and
   illisibles puisque la clé maîtresse est partie), self-delete
   client-driven. Cf. `Auth-Spec.md §2.3`, `Database.md`.
 
-### 5.1 Rate-limit table
+### 4.1 Rate-limit table
 
 Catalogue exhaustif des compteurs déclarés dans
 `packages/api/src/routes/`. Le format est `max / fenêtre`. Tous
@@ -264,7 +179,7 @@ exceptions doivent être justifiées en commentaire au-dessus du
 
 ---
 
-## 6. Invariants
+## 5. Invariants
 
 1. **Confidentiality** — the main key never leaves the client. The
    server stores ciphertext, the wrapped envelope, and metadata.
@@ -309,7 +224,7 @@ exceptions doivent être justifiées en commentaire au-dessus du
 
 ---
 
-## 7. The web app supply-chain limit (must read)
+## 6. The web app supply-chain limit (must read)
 
 Every E2E-encrypted webapp shares one fundamental weakness: **a
 compromised server can serve modified JavaScript that exfiltrates
@@ -323,7 +238,7 @@ isn't re-fetched on each launch; the browser is the gap.
 
 What we ship in Nodea to *narrow* that gap (mitigate, not eliminate):
 
-### 7.1 Subresource Integrity on the entry chunk
+### 6.1 Subresource Integrity on the entry chunk
 
 `pnpm --filter @nodea/web build` emits `dist/index.html` with
 `integrity="sha384-…" crossorigin="anonymous"` on the entry
@@ -337,12 +252,12 @@ imports — every `/login`, `/totp`, `/passkeys`, every `/flow`
 module loaded on demand when the user switches sections) are NOT
 covered by browser SRI in the current build. Their
 hashes are listed in `dist/INTEGRITY.txt` for manual verification
-(see §7.2) but Vite's `<link rel="modulepreload">` insertion
+(see §6.2) but Vite's `<link rel="modulepreload">` insertion
 doesn't yet wire `integrity=` for us. A determined attacker who
 can serve a modified lazy chunk bypasses SRI today; the entry
 chunk itself stays protected.
 
-### 7.2 Build integrity manifest (`INTEGRITY.txt`)
+### 6.2 Build integrity manifest (`INTEGRITY.txt`)
 
 The same build emits `dist/INTEGRITY.txt` listing every asset's
 SHA-384 (base64). The CI workflow uploads it as the
@@ -367,7 +282,7 @@ The check is manual and out-of-band, which is the point: the
 trust anchor is the published release on GitHub, not the running
 server.
 
-### 7.3 Self-hosting recommendation
+### 6.3 Self-hosting recommendation
 
 For threat models where a server compromise is plausible
 (activists, journalists, anyone who'd be specifically targeted),
@@ -379,7 +294,7 @@ own Infisical / `.env`.
 
 ---
 
-## 8. Developer checklist
+## 7. Developer checklist
 
 - Generate a fresh IV per AES-GCM encryption (`crypto.getRandomValues`).
 - Never log / persist a `CryptoKey`, raw main key, or `guard`.
@@ -396,7 +311,7 @@ own Infisical / `.env`.
 
 ---
 
-## 9. Data retention & RGPD
+## 8. Data retention & RGPD
 
 > See also the user-facing draft in [`Terms.md`](./Terms.md), which
 > consumes this matrix and turns it into plain-language commitments.
@@ -406,7 +321,7 @@ the service requested by the user) for everything operational, and
 under **explicit consent** for the encrypted journal content (the user
 opens an account knowing they're storing E2E-encrypted notes).
 
-### 9.1 Retention matrix
+### 8.1 Retention matrix
 
 Every table that holds personal-or-derived data is listed below, with
 its retention rule and the FK cascade that fires on account deletion.
@@ -428,7 +343,7 @@ personal data.
 | `user_preferences` | Encrypted UI settings blob | Lifetime of the user row | Yes (FK cascade) |
 | `entries_*` (per module) | E2E-encrypted journal content + AAD | Lifetime of the user row, or until user deletes the entry | Yes (FK cascade) |
 
-### 9.2 Right to erasure (RGPD art. 17)
+### 8.2 Right to erasure (RGPD art. 17)
 
 `DELETE /auth/me` (route at
 [`packages/api/src/routes/auth-account.ts`](../packages/api/src/routes/auth-account.ts))
@@ -444,14 +359,14 @@ mathematical noise (the KEK and main key derived from the password
 are never persisted anywhere except as wraps gated by the user's
 password proof).
 
-### 9.3 Right to portability (RGPD art. 20)
+### 8.3 Right to portability (RGPD art. 20)
 
 The `Account` view exposes a per-module export that downloads the
 decrypted JSON of every entry the user owns. Decryption happens
 client-side; the server never sees the cleartext. This satisfies
 portability without weakening the E2E model.
 
-### 9.4 Server-side logs
+### 8.4 Server-side logs
 
 `hono/logger()` writes one line per HTTP request to stdout — method,
 path, status, duration. **No body, no headers, no cookies, no
@@ -463,7 +378,7 @@ responsibility: configure log retention at the runtime level
 (`docker logs --max-size`, journald, etc.). Recommended:
 **rotate at 7 days**, never archive raw logs offsite.
 
-### 9.5 Sentry telemetry
+### 8.5 Sentry telemetry
 
 When `VITE_SENTRY_DSN` / `SENTRY_DSN` are set, the SDK ships error
 events to Sentry. The `beforeSend` hook (`packages/api/src/sentry.ts`,
@@ -472,7 +387,7 @@ bodies, headers, and `event.user` before transmission. What reaches
 Sentry: the stack trace, the route, the status code. No personal
 data, no E2E content.
 
-### 9.6 What's NOT yet purged automatically (known gaps)
+### 8.6 What's NOT yet purged automatically (known gaps)
 
 The following rows accumulate over time and are kept for audit
 purposes:

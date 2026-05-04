@@ -32,7 +32,7 @@ pour toi seul·e ou pour un cercle restreint ?
 | Lis | Pourquoi |
 |---|---|
 | [Architecture.md §5](./Architecture.md#5-docker-deployment) | Le bundle docker-compose (postgres + api + web), variables d'environnement, ports |
-| [Security.md §7](./Security.md#7-the-web-app-supply-chain-limit-must-read) | La limite **fondamentale** du modèle web (un serveur compromis peut servir du JS modifié) et les mitigations en place : SRI, manifest `INTEGRITY.txt`, recommandation auto-hébergement |
+| [Security.md §6](./Security.md#6-the-web-app-supply-chain-limit-must-read) | La limite **fondamentale** du modèle web (un serveur compromis peut servir du JS modifié) et les mitigations en place : SRI, manifest `INTEGRITY.txt`, recommandation auto-hébergement |
 | [Release-Checklist.md](./Release-Checklist.md) | Étapes à valider avant de tagger une release auto-hébergeable |
 | [Internationalisation.md](./Internationalisation.md) | Comment ajouter une langue ou modifier les traductions |
 
@@ -52,7 +52,7 @@ agencé sous le capot ?
 | [Architecture.md](./Architecture.md) | Layout du monorepo (api / web / shared), runtime backend, stack frontend, conventions |
 | [Database.md](./Database.md) | Schéma Postgres complet, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
 | [Auth-Spec.md](./Auth-Spec.md) | **Spécification technique exhaustive** de l'auth (OPAQUE + Passkey + TOTP + recovery + bypass MFA + stepped MFA + session re-auth). Référence complète, pas une lecture rapide |
-| [Security.md](./Security.md) | Invariants crypto, politique de rate-limit (§5.1), gestes interdits |
+| [Security.md](./Security.md) | Invariants crypto, politique de rate-limit (§4.1), gestes interdits |
 
 **Avant de toucher un module** : la fiche `Modules/<Module>.md`
 décrit le payload clair et les règles. Avant de toucher l'auth :

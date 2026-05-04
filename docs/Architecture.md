@@ -83,7 +83,7 @@ the factory loops over. There is nowhere to forget a guard.
 - `rateLimit` — in-memory fixed-window, keyed on IP. Applied to
   every `/auth/*` mutation and a few non-auth routes (library
   lookup). Full catalogue with windows + justification in
-  [`Security.md §5.1`](./Security.md#51-rate-limit-table).
+  [`Security.md §4.1`](./Security.md#41-rate-limit-table).
 
 ### Auth flow
 

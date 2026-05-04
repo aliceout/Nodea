@@ -168,10 +168,10 @@ Si une migration échoue à mi-parcours (rare, mais possible) : Drizzle ne gén�
 
 ### Où les trouver
 
-- **api** : `docker compose logs api`. Format = `hono/logger()` une ligne par requête HTTP (méthode, path, status, durée). **Pas de cookies, pas de body, pas d'identifiants** — voir [`Security.md` §9.4](./Security.md#94-server-side-logs).
+- **api** : `docker compose logs api`. Format = `hono/logger()` une ligne par requête HTTP (méthode, path, status, durée). **Pas de cookies, pas de body, pas d'identifiants** — voir [`Security.md` §8.4](./Security.md#84-server-side-logs).
 - **postgres** : `docker compose logs postgres`. Verbeux ; le cron de cleanup hebdo y log `[cron] cleanup-unactivated done {users: N, sessions: M}`.
 - **web** (le container nginx qui sert les assets statiques) : généralement silencieux. Les access logs sont configurables.
-- **Sentry** : si `SENTRY_DSN` est configuré, les erreurs api + web y atterrissent. Le `beforeSend` strippe cookies/query/body/headers — voir [`Security.md` §9.5](./Security.md#95-sentry-telemetry).
+- **Sentry** : si `SENTRY_DSN` est configuré, les erreurs api + web y atterrissent. Le `beforeSend` strippe cookies/query/body/headers — voir [`Security.md` §8.5](./Security.md#85-sentry-telemetry).
 
 ### Rotation
 

@@ -147,7 +147,7 @@ accidentels.
 
 1. **Clé maître uniquement côté client** — aléatoire, stockée
    chiffrée (KEK + OPAQUE `exportKey`), importée comme `CryptoKey`
-   non-extractible au login. Cf. [Security.md §2](./Security.md).
+   non-extractible au login. Cf. [Security.md §1](./Security.md).
 2. **Création en deux temps** — POST init → PATCH promotion. Le
    guard ne peut être calculé qu'après que le serveur a attribué
    un `id`.

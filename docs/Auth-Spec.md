@@ -69,7 +69,7 @@
 | Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
 | Un opérateur serveur peut lire mes données ? | **Non** — la KEK n'est jamais côté serveur | §2.1 |
 | Un opérateur serveur peut bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
-| Un serveur web compromis pourrait-il exfiltrer ma clé via JS injecté ? | **Limite inhérente du modèle web** — mitigée par SRI sur l'entry chunk + INTEGRITY.txt manifest publié à chaque release, recommandation explicite d'auto-hébergement pour usages sensibles | `Security.md` §7 |
+| Un serveur web compromis pourrait-il exfiltrer ma clé via JS injecté ? | **Limite inhérente du modèle web** — mitigée par SRI sur l'entry chunk + INTEGRITY.txt manifest publié à chaque release, recommandation explicite d'auto-hébergement pour usages sensibles | `Security.md` §6 |
 
 ---
 
@@ -1789,9 +1789,8 @@ factor.
 
 ### 7.9 Reset destructif (existant, conservé)
 
-Inchangé fonctionnellement par rapport à l'actuel
-(`Security.md` §2.5), mais étendu pour purger toutes les nouvelles
-tables :
+Inchangé fonctionnellement par rapport à l'existant, mais étendu
+pour purger toutes les nouvelles tables :
 
 `POST /auth/request-reset` → email avec token (si email vérifié).
 `POST /auth/reset` → token + nouveau password. Server : voir

@@ -5,7 +5,7 @@
 > utilisateur·ice·s sachent à quoi s'attendre en attendant la version
 > finale revue par un·e juriste. Les engagements ci-dessous reflètent
 > les choix techniques déjà en place dans le code (cf.
-> [`Security.md` §9](./Security.md#9-data-retention--rgpd) pour la
+> [`Security.md` §8](./Security.md#8-data-retention--rgpd) pour la
 > matrice technique), pas des promesses futures.
 >
 > **Tu auto-héberges Nodea ?** Ces CGU s'appliquent à l'instance
@@ -44,13 +44,13 @@ Pour les détails techniques, voir
 - **Pas d'entraînement IA sur tes données.** Pas une promesse posée
   dans un coin — par construction : on n'a pas accès à tes contenus.
 - **Conservation minimale.** Voir la matrice de rétention dans
-  [`Security.md` §9.1](./Security.md#91-retention-matrix). En résumé :
+  [`Security.md` §8.1](./Security.md#81-retention-matrix). En résumé :
   tant que ton compte existe, on garde ce qui est nécessaire au
   service ; quand tu supprimes ton compte, **tout** part avec.
 - **Suppression complète à la demande.** L'option « Supprimer mon
   compte » dans les paramètres déclenche une suppression atomique en
   base. Pas de soft-delete, pas de récupération possible. Voir
-  [`Security.md` §9.2](./Security.md#92-right-to-erasure-rgpd-art-17).
+  [`Security.md` §8.2](./Security.md#82-right-to-erasure-rgpd-art-17).
 - **Portabilité.** Tu peux exporter tous tes contenus en clair (JSON
   déchiffré côté navigateur) depuis l'écran Compte → Export.
 - **Préavis raisonnable** en cas d'arrêt du service hébergé. Le code
@@ -77,11 +77,11 @@ Pour les détails techniques, voir
 - **Logs serveur** : une ligne par requête HTTP (méthode, chemin,
   code de retour, durée). Aucun corps, aucun cookie, aucune session
   ID. Rotation à 7 jours. Voir
-  [`Security.md` §9.4](./Security.md#94-server-side-logs).
+  [`Security.md` §8.4](./Security.md#84-server-side-logs).
 - **Sentry** (optionnel, activé par l'opérateur) : reçoit la stack
   trace + la route + le code statut quand une erreur survient.
   `beforeSend` strippe cookies, query strings, body, headers et user
-  avant envoi. Voir [`Security.md` §9.5](./Security.md#95-sentry-telemetry).
+  avant envoi. Voir [`Security.md` §8.5](./Security.md#85-sentry-telemetry).
 - **Aucun analytics tiers**, aucun pixel de tracking, aucun
   fingerprinting.
 
