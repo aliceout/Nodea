@@ -1,40 +1,86 @@
-# 0008 — Dossier `auth/` plat plutôt que séparé en couches
+# 0008 — Flat `auth/` folder rather than layered
 
-- **Status** : Accepted
-- **Date** : 2026-05 (cycle d'audit, Tier 4)
+- **Status**: Accepted
+- **Date**: 2026-05 (audit cycle, Tier 4)
 
 ## Context
 
-Le code d'authentification serveur vit dans `packages/api/src/routes/` avec une dizaine de fichiers à plat : `auth-login.ts`, `auth-recovery.ts`, `auth-passkey-enroll.ts`, `auth-passkey-login.ts`, `auth-passkey-manage.ts`, `auth-totp.ts`, `auth-mfa.ts`, `auth-mfa-bypass.ts`, `auth-reauth.ts`, `auth-register-v2.ts`, `auth-account.ts`, `auth-security-mode.ts`, `auth-change-password.ts`, `auth-reset.ts`. Chaque fichier mélange handlers HTTP, validation Zod, appels DB et logique cryptographique.
+Server-side authentication code lives in `packages/api/src/routes/`
+across roughly a dozen flat files: `auth-login.ts`,
+`auth-recovery.ts`, `auth-passkey-enroll.ts`,
+`auth-passkey-login.ts`, `auth-passkey-manage.ts`, `auth-totp.ts`,
+`auth-mfa.ts`, `auth-mfa-bypass.ts`, `auth-reauth.ts`,
+`auth-register-v2.ts`, `auth-account.ts`, `auth-security-mode.ts`,
+`auth-change-password.ts`, `auth-reset.ts`. Each file mixes HTTP
+handlers, Zod validation, DB calls, and cryptographic logic.
 
-L'alternative classique en architecture serveur est de séparer en couches :
-- `auth/services/` — business logic (orchestrateurs OPAQUE, gestion des sessions).
-- `auth/domain/` — entités métier (User, Session, RecoveryCode).
-- `auth/infra/` — accès DB, mailer, services externes.
-- Les fichiers `routes/` ne feraient plus que le binding HTTP → service.
+The classic server-architecture alternative is to split into
+layers:
+- `auth/services/` — business logic (OPAQUE orchestrators, session
+  management).
+- `auth/domain/` — domain entities (User, Session, RecoveryCode).
+- `auth/infra/` — DB access, mailer, external services.
+- The `routes/` files would only do HTTP → service binding.
 
-C'est le pattern du Domain-Driven Design appliqué à une couche auth. Beaucoup de codebases le font.
+That's the Domain-Driven Design pattern applied to an auth layer.
+Many codebases do it.
 
 ## Decision
 
-**Garder l'organisation plate, ne pas séparer en couches.**
+**Keep the flat organisation, don't split into layers.**
 
 ## Consequences
 
-**Positives :**
-- **Pas de couches vides ou maigrement remplies.** Le domaine d'auth de Nodea, c'est de la cryptographie d'infrastructure (OPAQUE handshake, dérivation de clés, vérification HMAC, gestion de sessions). Il n'y a pas de logique métier riche du genre "calculer le score de risque d'un login" ou "appliquer la règle d'éligibilité X" qui justifierait une couche `domain/` propre. Découper produirait surtout des dossiers mostly-vides ou avec un seul fichier dedans.
-- **Chaque flow lit en un seul fichier.** Comprendre comment fonctionne le passkey enrollment se fait en lisant `auth-passkey-enroll.ts` du début à la fin. En séparation par couches, il faudrait sauter entre `routes/auth-passkey-enroll.ts`, `services/passkey-service.ts`, `domain/passkey.ts`, `infra/passkey-repository.ts` — friction inutile sur un flow déjà complexe par lui-même.
-- **Tests faciles.** `supertest(buildApp())` avec une DB de test, on appelle l'endpoint et on vérifie le résultat. Pas besoin de mocker un service ou d'injecter une dépendance — la logique est appelable directement via HTTP.
+**Positive:**
+- **No empty or thinly-populated layers.** Nodea's auth domain is
+  infrastructure cryptography (OPAQUE handshake, key derivation,
+  HMAC verification, session management). There's no rich business
+  logic like "compute the risk score of a login" or "apply the
+  eligibility rule X" that would justify a proper `domain/` layer.
+  Splitting would mostly produce mostly-empty folders or folders
+  with a single file inside.
+- **Each flow reads in a single file.** Understanding how passkey
+  enrollment works happens by reading `auth-passkey-enroll.ts`
+  end to end. In a layered split, you'd jump between
+  `routes/auth-passkey-enroll.ts`, `services/passkey-service.ts`,
+  `domain/passkey.ts`, `infra/passkey-repository.ts` — needless
+  friction on a flow that's already complex on its own.
+- **Tests are easy.** `supertest(buildApp())` with a test DB, call
+  the endpoint, check the result. No need to mock a service or
+  inject a dependency — the logic is directly callable via HTTP.
 
-**Négatives :**
-- **Les fichiers `auth-*.ts` ont des comportements transverses qui se répètent un peu.** Genre la dérivation OPAQUE est utilisée dans `auth-login.ts`, `auth-change-password.ts` et `auth-recovery.ts`. C'est mitigé par les helpers extraits dans `packages/api/src/auth/` (les modules `opaque.ts`, `cookies.ts`, `mfa-bypass.ts`, etc.) qui jouent le rôle d'une couche de service implicite, sans le formalisme d'un dossier `services/`.
-- **Risque qu'un dev "bien intentionné" tente la séparation en couches** parce que c'est ce qu'il a fait sur un autre projet. Cet ADR sert précisément à éviter ce coût.
+**Negative:**
+- **`auth-*.ts` files share some transverse behaviour that
+  repeats a bit.** OPAQUE derivation is used in `auth-login.ts`,
+  `auth-change-password.ts`, and `auth-recovery.ts`. Mitigated by
+  helpers extracted into `packages/api/src/auth/` (the
+  `opaque.ts`, `cookies.ts`, `mfa-bypass.ts`, etc. modules) that
+  play the role of an implicit service layer without the
+  formalism of a `services/` folder.
+- **Risk that a "well-intentioned" dev attempts layered
+  separation** because that's what they did on another project.
+  This ADR is precisely meant to avoid that cost.
 
 ## Alternatives considered
 
-- **Séparation classique services/domain/infra.** Écarté pour la raison principale ci-dessus : pas de domaine métier riche à isoler. La couche `domain/` serait un ensemble d'interfaces TypeScript et trois fonctions, et `infra/` serait surtout du wrapping de Drizzle. Coût (boilerplate, sauts entre fichiers) plus élevé que le bénéfice (lisibilité conceptuelle).
-- **Séparation à mi-chemin** : un dossier `auth/services/` qui contient les helpers (OPAQUE, cookies, sessions) et les routes au niveau racine de `routes/`. C'est en gros ce qu'on a déjà — `packages/api/src/auth/` joue ce rôle. La distinction est implicite plutôt qu'explicite, ce qui est OK tant qu'elle reste évidente à la lecture.
+- **Classic services/domain/infra split.** Discarded for the main
+  reason above: no rich business domain to isolate. The `domain/`
+  layer would be a set of TypeScript interfaces and three
+  functions, and `infra/` would mostly be Drizzle wrapping. Cost
+  (boilerplate, file jumps) higher than benefit (conceptual
+  readability).
+- **Halfway split**: an `auth/services/` folder for helpers
+  (OPAQUE, cookies, sessions) and routes at the root level of
+  `routes/`. That's roughly what we have —
+  `packages/api/src/auth/` plays this role. The distinction is
+  implicit rather than explicit, which is OK as long as it stays
+  obvious on reading.
 
-## Quand reconsidérer
+## When to revisit
 
-Si la couche auth gagne un vrai domaine métier (genre une politique de risque évaluée au login basée sur l'historique de l'utilisateur, ou une stratégie multi-tenant avec des règles différentes par organisation), à ce moment-là le coût de la séparation en couches devient justifié. Tant qu'on est dans le pattern actuel (handlers HTTP + helpers cryptographiques + accès DB direct), garder plat.
+If the auth layer gains a real business domain (e.g. a risk
+policy evaluated at login based on user history, or a multi-tenant
+strategy with different rules per organisation), at that point the
+cost of layered separation becomes justified. While we're in the
+current pattern (HTTP handlers + crypto helpers + direct DB
+access), keep flat.

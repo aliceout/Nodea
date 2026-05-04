@@ -1,37 +1,88 @@
-# 0007 — Client API web : 14 fonctions dédiées vs `hc<AppType>` de Hono
+# 0007 — Web API client: 14 dedicated functions vs Hono's `hc<AppType>`
 
-- **Status** : Accepted
-- **Date** : 2026-05 (cycle d'audit, Tier 4)
+- **Status**: Accepted
+- **Date**: 2026-05 (audit cycle, Tier 4)
 
 ## Context
 
-Le client web parle au serveur Hono via une dizaine de fichiers dans `packages/web/src/core/api/` (`auth.ts`, `passkeys.ts`, `mfa.ts`, `totp.ts`, `library.ts`, `admin.ts`, etc.). Chaque fichier expose une dizaine de fonctions dédiées du genre `apiLoginStart`, `apiPasskeyEnrollFinish`, `apiAdminListAnnouncements` qui appellent un wrapper `request<T>()` interne (cf. ADR-12 sur la validation runtime). Les types des bodies et responses sont importés depuis `@nodea/shared` (les schémas Zod publiés dans le package partagé).
+The web client talks to the Hono server via roughly a dozen files
+in `packages/web/src/core/api/` (`auth.ts`, `passkeys.ts`,
+`mfa.ts`, `totp.ts`, `library.ts`, `admin.ts`, etc.). Each file
+exposes around ten dedicated functions like `apiLoginStart`,
+`apiPasskeyEnrollFinish`, `apiAdminListAnnouncements` that call an
+internal `request<T>()` wrapper (cf. ADR-12 on runtime validation).
+Body and response types are imported from `@nodea/shared` (the Zod
+schemas published in the shared package).
 
-Hono ships une alternative : `hc<AppType>(baseUrl)`. C'est un client HTTP typé qui infère automatiquement le shape de chaque endpoint à partir de la définition serveur (le type `AppType` exporté par le `buildApp()`). Le client devient utilisable sans aucune écriture manuelle par endpoint — `client.auth.login.start.$post({ json: { email, ... } })` est typé bout en bout, du body au response.
+Hono ships an alternative: `hc<AppType>(baseUrl)`. It's a typed
+HTTP client that automatically infers each endpoint's shape from
+the server definition (the `AppType` type exported by
+`buildApp()`). The client becomes usable without any per-endpoint
+hand-writing — `client.auth.login.start.$post({ json: { email, ... } })`
+is typed end to end, from body to response.
 
-L'ergonomie de `hc<AppType>` est meilleure que les fonctions dédiées (zero boilerplate, zero risque de drift entre serveur et client). La question est : pourquoi on l'a pas adopté ?
+`hc<AppType>` ergonomics are better than dedicated functions (zero
+boilerplate, zero risk of server/client drift). The question is:
+why didn't we adopt it?
 
 ## Decision
 
-**Garder les fonctions dédiées hand-rolled, ne pas adopter `hc<AppType>`.**
+**Keep the hand-rolled dedicated functions, don't adopt
+`hc<AppType>`.**
 
 ## Consequences
 
-**Positives :**
-- **Pas de dépendance forte au shape interne du serveur Hono.** Si on refactore le routing serveur (genre on déplace `library-lookup` de routes/ vers services/, ou on change les noms de fichiers), le client n'est pas affecté — il dépend des schémas Zod publiés dans `@nodea/shared`, pas de la structure des fichiers serveur.
-- **Le client est utilisable depuis n'importe quel autre consommateur** (script de seed, tests d'intégration, futur SDK mobile généré depuis OpenAPI) parce que les schémas Zod sont la source de vérité, pas le typage Hono.
-- **L'erreur de routage est explicite côté client.** Si le serveur change le path d'un endpoint, le client échoue avec un 404 visible — facile à débugger. Avec `hc<AppType>`, un mismatch de path se traduit par une erreur de typage TypeScript opaque qui pointe vers une définition générique au lieu de l'endpoint concerné.
+**Positive:**
+- **No strong coupling to the server's internal shape.** If we
+  refactor the server routing (e.g. move `library-lookup` from
+  routes/ to services/, or change file names), the client isn't
+  affected — it depends on the Zod schemas published in
+  `@nodea/shared`, not the server's file structure.
+- **The client is usable from any other consumer** (seed script,
+  integration tests, future mobile SDK generated from OpenAPI)
+  because Zod schemas are the source of truth, not the Hono
+  typing.
+- **Routing errors are explicit on the client.** If the server
+  changes an endpoint path, the client fails with a visible 404
+  — easy to debug. With `hc<AppType>`, a path mismatch translates
+  to an opaque TypeScript typing error pointing at a generic
+  definition instead of the actual endpoint.
 
-**Négatives :**
-- **14 fichiers à maintenir à la main.** Chaque nouvel endpoint demande ~10 lignes de code wrapper. C'est répétitif et le risque de drift entre signature serveur et signature client existe (atténué par les types `*Body` / `*Response` partagés via `@nodea/shared`, donc le drift est attrapé par tsc).
-- **Pas d'autocomplete des paths côté client.** L'autocomplete sur `client.auth.login.start.$post(...)` aurait été agréable. À la place, le dev tape `apiLoginStart(...)` qui demande de connaître le nom de la fonction.
+**Negative:**
+- **14 files to maintain by hand.** Each new endpoint takes ~10
+  lines of wrapper code. Repetitive, and there's a drift risk
+  between server and client signatures (mitigated by shared
+  `*Body` / `*Response` types via `@nodea/shared`, so drift is
+  caught by tsc).
+- **No path autocomplete on the client.** Autocomplete on
+  `client.auth.login.start.$post(...)` would have been nice.
+  Instead the dev types `apiLoginStart(...)`, which requires
+  knowing the function name.
 
 ## Alternatives considered
 
-- **`hc<AppType>` avec refactor du routing serveur.** Le pattern actuel `app.route('/auth', authRoutes)` casse l'inférence de Hono : `hc<AppType>` ne voit pas les routes mountées via `route()`, seulement les routes définies inline sur le `app` racine. Pour faire marcher `hc<AppType>`, il faudrait refondre l'organisation des routes — pas un coût négligeable, et les tradeoffs deviendraient discutables (un fichier `app.ts` géant ou des centralisations forcées). Le bénéfice de `hc<AppType>` ne justifie pas cette refonte.
-- **Un client centralisé custom**, du genre `apiClient.send('auth.login.start', body)` avec un dispatch interne. Écarté : ça reproduit `hc<AppType>` sans le typage automatique, donc le pire des deux mondes.
-- **`@hono/zod-openapi` + génération automatique du client à partir de la définition OpenAPI.** Pertinent à terme pour générer un client mobile. Pour le client web on peut continuer avec les fonctions dédiées : ça marche, c'est lisible, c'est testable.
+- **`hc<AppType>` with a server-side routing refactor.** The
+  current `app.route('/auth', authRoutes)` pattern breaks Hono's
+  inference: `hc<AppType>` doesn't see routes mounted via
+  `route()`, only routes defined inline on the root `app`. To make
+  `hc<AppType>` work, we'd need to redo the route organisation —
+  not negligible, and the trade-offs become debatable (a giant
+  `app.ts` file, or forced centralisations). The benefit of
+  `hc<AppType>` doesn't justify that overhaul.
+- **A custom centralised client** like
+  `apiClient.send('auth.login.start', body)` with internal
+  dispatch. Discarded: replicates `hc<AppType>` without the
+  automatic typing — worst of both worlds.
+- **`@hono/zod-openapi` + automatic client generation from the
+  OpenAPI definition.** Relevant later to generate a mobile client.
+  For the web client we can keep the dedicated functions: it
+  works, it reads well, it tests well.
 
-## Quand reconsidérer
+## When to revisit
 
-Si le coût de maintenance des 14 fichiers wrapper devient visible (typiquement : régressions répétées dues à des oublis de mise à jour côté client après changement serveur), ou si on génère de toute façon un client mobile via OpenAPI et qu'on veut unifier les deux clients sur la même approche. Tant que le drift est attrapé par tsc et que les wrappers ne demandent pas plus de quelques minutes par nouvel endpoint, garder.
+If the maintenance cost of the 14 wrapper files becomes visible
+(typically: repeated regressions because of missed client
+updates after a server change), or if we generate a mobile client
+via OpenAPI anyway and want to unify both clients on the same
+approach. As long as drift is caught by tsc and wrappers don't
+take more than a few minutes per new endpoint, keep.

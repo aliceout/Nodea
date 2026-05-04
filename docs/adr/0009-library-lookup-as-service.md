@@ -1,51 +1,95 @@
-# 0009 — `library-lookup` déménagé en `services/library-lookup/`
+# 0009 — `library-lookup` moved to `services/library-lookup/`
 
-- **Status** : Accepted
-- **Date** : 2026-05 (cycle d'audit, Tier 4)
+- **Status**: Accepted
+- **Date**: 2026-05 (audit cycle, Tier 4)
 
 ## Context
 
-Le code de recherche de métadonnées de livres (Library module) vit aujourd'hui dans `packages/api/src/routes/library-lookup.ts`. Il cohabite à la racine de `routes/` avec les handlers HTTP fins comme `auth-login.ts`, `admin.ts`, `modules-config.ts`, etc.
+The book metadata lookup code (Library module) currently lives in
+`packages/api/src/routes/library-lookup.ts`. It coexists at the
+root of `routes/` with thin HTTP handlers like `auth-login.ts`,
+`admin.ts`, `modules-config.ts`, etc.
 
-Mais `library-lookup` n'est pas une route comme les autres :
+But `library-lookup` isn't a route like the others:
 
-- Les routes voisines sont des **handlers fins** : valider l'input avec Zod, appeler la base, retourner le résultat. Quelques dizaines de lignes par route.
-- `library-lookup` est un **service à part entière** : il appelle 4-5 fournisseurs externes en parallèle (Google Books, Open Library, BNF, Wikidata, BNE), gère un dispatcher avec ranking par langue, fait du streaming NDJSON pour envoyer les résultats au fil de l'eau. Plusieurs centaines de lignes.
+- Its neighbours are **thin handlers**: validate input with Zod,
+  call the database, return the result. A few dozen lines per
+  route.
+- `library-lookup` is a **full-on service**: it calls 4-5 external
+  providers in parallel (Google Books, Open Library, BNF, Wikidata,
+  BNE), runs a dispatcher with language-based ranking, streams
+  NDJSON to ship results progressively. Several hundred lines.
 
-Le laisser à la racine de `routes/` envoie un signal trompeur — un nouveau dev qui ouvre le fichier s'attend à 50 LOC de handler HTTP fin et tombe sur un service de 500+ LOC. La friction n'est pas sur la qualité du code (qui est bonne), elle est sur l'**ambiguïté de la convention** : la racine de `routes/` est-elle pour les handlers HTTP fins seulement, ou pour tout ce qui répond à une URL ?
+Leaving it at the root of `routes/` sends a misleading signal — a
+new dev opening the file expects 50 LOC of thin HTTP handler and
+lands on a 500+ LOC service. The friction isn't about code quality
+(which is good), it's about the **ambiguous convention**: is the
+root of `routes/` for thin HTTP handlers only, or for anything
+that answers a URL?
 
 ## Decision
 
-**Déménager `library-lookup` dans un sous-dossier `packages/api/src/services/library-lookup/`** qui contient :
+**Move `library-lookup` into a subfolder
+`packages/api/src/services/library-lookup/`** containing:
 
-- Le ou les fichiers de logique métier (dispatcher, fournisseurs, ranking, streaming).
-- Les types et schémas internes au service.
+- The business-logic file(s) (dispatcher, providers, ranking,
+  streaming).
+- The service-internal types and schemas.
 
-**Garder un fichier mince `packages/api/src/routes/library-lookup.ts`** qui ne fait que :
+**Keep a thin file `packages/api/src/routes/library-lookup.ts`**
+that only:
 
-- Définir les routes HTTP (`GET /library/lookup/by-isbn`, `POST /library/lookup/by-query/stream`, `GET /library/lookup/cover-fetch`).
-- Valider les inputs Zod.
-- Appeler le service interne.
-- Retourner / streamer la réponse.
+- Defines the HTTP routes (`GET /library/lookup/by-isbn`,
+  `POST /library/lookup/by-query/stream`,
+  `GET /library/lookup/cover-fetch`).
+- Validates Zod inputs.
+- Calls the internal service.
+- Returns / streams the response.
 
-Le résultat : la racine de `routes/` ne contient plus que des handlers HTTP fins, et la complexité de `library-lookup` est marquée architecturalement comme un service.
+Result: the root of `routes/` only holds thin HTTP handlers, and
+the complexity of `library-lookup` is architecturally marked as a
+service.
 
 ## Consequences
 
-**Positives :**
-- **La convention de la racine `routes/` redevient claire.** Tout fichier dans `routes/` est un handler fin (validation + appel + retour). Tout ce qui est plus gros migre dans `services/`.
-- **Le service est testable indépendamment du HTTP.** On peut écrire un test du dispatcher de fournisseurs sans monter une `app` Hono — instancier le service, appeler `lookupByQuery({ q, lang })`, vérifier le résultat.
-- **Un nouveau dev qui cherche "où est la logique de recherche de livres ?" trouve `services/library-lookup/`** par le nom du dossier au lieu de tomber dessus en explorant `routes/`.
+**Positive:**
+- **The `routes/` root convention is clear again.** Every file in
+  `routes/` is a thin handler (validate + call + return). Anything
+  bigger migrates to `services/`.
+- **The service is testable independently of HTTP.** We can write
+  a dispatcher test without booting a Hono `app` — instantiate the
+  service, call `lookupByQuery({ q, lang })`, check the result.
+- **A new dev looking for "where is the book search logic?" finds
+  `services/library-lookup/`** by folder name instead of stumbling
+  into it while exploring `routes/`.
 
-**Négatives :**
-- **Coût de la migration.** Un `git mv` pour préserver la blame, des imports à mettre à jour, des tests à re-router. Estimé une demi-heure.
-- **Précédent à appliquer cohéremment.** Si `library-lookup` mérite `services/`, est-ce que d'autres routes le mériteraient aussi (genre `auth-mfa-bypass.ts` qui est aussi gros et complexe) ? La règle proposée : `services/` quand le code dépasse ~200 LOC ET fait plus que la chaîne valider→DB→retourner. Pour les autres `auth-*.ts`, la complexité reste dans le handler parce qu'elle est fondamentalement HTTP-bound (la dérivation OPAQUE produit la session cookie qui rentre directement dans la réponse, pas besoin de la sortir en service).
+**Negative:**
+- **Migration cost.** A `git mv` to preserve blame, imports to
+  update, tests to re-route. Estimated half an hour.
+- **Precedent to apply consistently.** If `library-lookup`
+  deserves `services/`, would others (e.g. `auth-mfa-bypass.ts`,
+  also big and complex) deserve it too? Proposed rule: `services/`
+  when the code passes ~200 LOC AND does more than the
+  validate→DB→return chain. For the other `auth-*.ts`, complexity
+  stays in the handler because it's fundamentally HTTP-bound
+  (OPAQUE derivation produces the session cookie that goes
+  straight into the response — no need to extract a service).
 
 ## Alternatives considered
 
-- **Garder à la racine de `routes/`.** Le code marche, et déménager est du rangement pur. Écarté parce que l'ambiguïté de convention coûte une re-démonstration à chaque nouveau dev qui ouvre le fichier.
-- **Déménager TOUTES les grosses routes en `services/`** (auth-login, auth-recovery, auth-mfa-bypass, etc.). Écarté : leur complexité est intrinsèquement HTTP-bound (cookies, sessions, redirections), pas une logique métier qu'on isolerait utilement. La séparation handler/service ne donnerait rien sur ces fichiers.
+- **Keep at the root of `routes/`.** The code works and moving it
+  is pure tidying. Discarded because the convention ambiguity
+  costs a re-demonstration to every new dev opening the file.
+- **Move EVERY big route to `services/`** (auth-login,
+  auth-recovery, auth-mfa-bypass, etc.). Discarded: their
+  complexity is intrinsically HTTP-bound (cookies, sessions,
+  redirects), not business logic we'd usefully isolate. The
+  handler/service split wouldn't pay off on these files.
 
-## Quand reconsidérer
+## When to revisit
 
-Si une autre route serveur dépasse les ~200 LOC et fait du fan-out vers des services externes (genre une intégration à un fournisseur de paiement, un connecteur OAuth tiers), elle mérite probablement le même traitement. Le pattern à appliquer reste le même : handler mince dans `routes/`, logique dans `services/<feature>/`.
+If another server route passes ~200 LOC and fans out to external
+services (e.g. a payment provider integration, a third-party
+OAuth connector), it likely deserves the same treatment. The
+pattern stays the same: thin handler in `routes/`, logic in
+`services/<feature>/`.

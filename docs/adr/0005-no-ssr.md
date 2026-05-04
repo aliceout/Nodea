@@ -1,51 +1,90 @@
-# 0005 — Pas de SSR — CSR pur, single-page application
+# 0005 — No SSR — pure CSR, single-page application
 
-- **Status** : Accepted
-- **Date** : 2026-02
+- **Status**: Accepted
+- **Date**: 2026-02
 
 ## Context
 
-Le rendu côté serveur (Server-Side Rendering, SSR) est un standard pour la plupart des apps React modernes — Next.js, Remix, SvelteKit. Les bénéfices habituels :
+Server-Side Rendering (SSR) is the standard for most modern React
+apps — Next.js, Remix, SvelteKit. Usual benefits:
 
-- **Premier render plus rapide** : l'utilisateur voit du contenu pendant que le JS télécharge.
-- **SEO** : les crawlers indexent le HTML rendu, pas une coquille vide qui s'hydrate.
-- **Partage** : un lien partagé sur les réseaux sociaux se preview proprement (les meta OG sont lues du HTML serveur).
+- **Faster first render**: the user sees content while the JS
+  downloads.
+- **SEO**: crawlers index rendered HTML, not an empty shell that
+  hydrates.
+- **Sharing**: a link shared on social networks previews properly
+  (OG meta tags are read from the server HTML).
 
-Pour Nodea, le compteur du SSR est **l'invariant E2EE** :
+For Nodea, the counter to SSR is **the E2EE invariant**:
 
-> *Tout le contenu utilisateur est chiffré côté navigateur avec une clé dérivée du mot de passe. Le serveur ne voit que des blobs AES-GCM.*
+> *All user content is encrypted client-side with a key derived
+> from the password. The server only sees AES-GCM blobs.*
 
-Si un user logué demandait `/flow`, le serveur n'a **rien à pré-rendre** — il n'a pas la clé pour déchiffrer, donc il ne peut pas produire le HTML de la liste de Mood/Goals/Library/Journal. Le SSR ne marche que pour les surfaces où le serveur peut générer le contenu sans clé : pages publiques (login, register, docs).
+If a logged-in user requested `/flow`, the server has **nothing to
+pre-render** — it doesn't have the key to decrypt, so it can't
+produce the Mood/Goals/Library/Journal list HTML. SSR only works
+for surfaces where the server can produce content without the key:
+public pages (login, register, docs).
 
-L'équipe a considéré :
+The team considered:
 
-- **SSR full-app via Next.js / Remix** : forcerait un layer de fetch serveur-side pour les pages publiques tout en délégant `/flow` au CSR — donc deux modèles de rendu coexistant. Coûteux, pour un gain qui ne touche que les pages publiques (~10 % du trafic d'un user authentifié).
-- **SSR partiel sur les pages publiques uniquement** : Next.js avec un `'use client'` agressif sur tout `/flow`. Marche mais demande une stack Next.js pour faire le travail d'une SPA Vite. Valeur faible.
-- **CSR pur + meta OG statiques dans `index.html`** : le serveur sert la même `index.html` pour toutes les routes ; les meta OG sont figées à la home (les liens partagés vers `/docs` montrent la preview de Nodea, pas du tier exact, c'est acceptable).
+- **Full-app SSR via Next.js / Remix**: would force a server-side
+  fetch layer for public pages while delegating `/flow` to CSR —
+  two rendering models coexisting. Expensive, for a gain that only
+  touches public pages (~10 % of an authenticated user's traffic).
+- **Partial SSR on public pages only**: Next.js with an aggressive
+  `'use client'` across `/flow`. Works but requires a Next.js stack
+  to do the job of a Vite SPA. Low value.
+- **Pure CSR + static OG meta in `index.html`**: the server serves
+  the same `index.html` for every route; the OG meta tags are
+  pinned to the home (shared links to `/docs` show Nodea's preview,
+  not the exact tier — acceptable).
 
 ## Decision
 
-**CSR pur. Vite construit une SPA standalone. Tous les routes (publiques et authentifiées) sont rendues côté navigateur. Les meta OG dans `index.html` sont statiques et pointent sur la home.**
+**Pure CSR. Vite builds a standalone SPA. Every route (public and
+authenticated) is rendered in the browser. The OG meta in
+`index.html` is static and points at the home.**
 
-Le serveur Hono ne fait **que** :
-- Servir l'API `/api/*` (JSON encrypted-blobs aller-retour).
-- Servir les assets statiques (le bundle Vite + les fichiers publics).
-- Rien de pré-render.
+The Hono server only:
+- Serves the `/api/*` API (JSON encrypted-blobs round-trip).
+- Serves static assets (the Vite bundle + public files).
+- Nothing pre-rendered.
 
 ## Consequences
 
-**Positives :**
-- **Cohérence** : un seul modèle de rendu (CSR), pas de surface où le serveur a une logique de rendu spécifique.
-- **Compatibilité E2EE** : aucune surface où le serveur pourrait *« voir »* du contenu déchiffré. Conforme à l'invariant.
-- **Stack mince** : Vite + React + Hono + Drizzle. Pas de framework SSR hybride à apprendre.
-- **Self-hosting trivial** : un nginx + un container api + un container web statique. Pas de couche de rendu serveur à scale.
+**Positive:**
+- **Consistency**: a single rendering model (CSR), no surface where
+  the server has special render logic.
+- **E2EE compatible**: no surface where the server could *"see"*
+  decrypted content. Conforms to the invariant.
+- **Thin stack**: Vite + React + Hono + Drizzle. No hybrid SSR
+  framework to learn.
+- **Trivial self-hosting**: an nginx + an api container + a static
+  web container. No server rendering layer to scale.
 
-**Négatives :**
-- **Premier render plus lent** : un user qui charge `/login` voit du blanc pendant ~300-700 ms (téléchargement du JS, parse, mount). Mitigé par : skip-link a11y dès le HTML statique, manualChunks Vite (react-vendor + crypto + markdown + headlessui en chunks séparés et cacheables), preconnect aux Google Fonts.
-- **SEO faible sur les pages publiques** : `/docs/<tier>` ne sert pas le contenu du tier en HTML. Mitigé en V1 par les meta OG statiques + le `<link rel="canonical">` dynamique côté Docs.tsx. Une vraie SEO demanderait un pre-render selectif sur `/docs/*`. À évaluer si la doc devient un canal d'acquisition.
-- **Liens partagés OG génériques** : un lien partagé vers `/docs/tech` montre la preview de la home. Acceptable — l'audience cible (self-hosters tech-savvy) ne navigue pas via les previews sociales.
+**Negative:**
+- **Slower first render**: a user loading `/login` sees blank for
+  ~300-700 ms (JS download, parse, mount). Mitigated by: a11y
+  skip-link straight from static HTML, Vite manualChunks
+  (react-vendor + crypto + markdown + headlessui as separate
+  cacheable chunks), preconnect to Google Fonts.
+- **Weak SEO on public pages**: `/docs/<tier>` doesn't serve the
+  tier content as HTML. Mitigated in V1 by static OG meta +
+  dynamic `<link rel="canonical">` in `Docs.tsx`. Real SEO would
+  need selective pre-render on `/docs/*`. To revisit if docs
+  becomes an acquisition channel.
+- **Generic shared OG links**: a link shared toward `/docs/tech`
+  shows the home preview. Acceptable — the target audience
+  (tech-savvy self-hosters) doesn't navigate via social previews.
 
 ## Alternatives considered
 
-- **Next.js ou Remix avec hybrid SSR** : techniquement faisable, supersédé par la simplicité du CSR pur sur une app E2EE. Si la SEO devient un enjeu critique sur `/docs`, on pourra ajouter un **pre-render statique** des pages publiques au build (via `vite-plugin-ssr` ou un build script qui mounte React dans JSDOM) sans casser le CSR du reste.
-- **Server Components React 19** : prometteur, mais nécessite Next.js ou un framework custom. Mêmes contraintes que SSR full-app.
+- **Next.js or Remix with hybrid SSR**: technically feasible,
+  superseded by the simplicity of pure CSR on an E2EE app. If SEO
+  on `/docs` becomes critical, we can add a **static pre-render**
+  of public pages at build time (via `vite-plugin-ssr` or a build
+  script that mounts React in JSDOM) without breaking the rest of
+  CSR.
+- **React 19 Server Components**: promising, but requires Next.js
+  or a custom framework. Same constraints as full-app SSR.

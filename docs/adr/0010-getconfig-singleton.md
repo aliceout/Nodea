@@ -1,37 +1,87 @@
-# 0010 — `getConfig()` en singleton global
+# 0010 — `getConfig()` as a global singleton
 
-- **Status** : Accepted
-- **Date** : 2026-05 (cycle d'audit, Tier 4)
+- **Status**: Accepted
+- **Date**: 2026-05 (audit cycle, Tier 4)
 
 ## Context
 
-La configuration de l'API (URL Postgres, secret de signature de cookie, setup OPAQUE, paramètres SMTP, base URL du web, etc.) vit dans `packages/api/src/config.ts`. Elle est lue depuis les variables d'environnement, validée par un schéma Zod au boot, et exposée via une fonction `getConfig()` qui retourne le résultat memoïsé.
+API configuration (Postgres URL, cookie signing secret, OPAQUE
+setup, SMTP parameters, web base URL, etc.) lives in
+`packages/api/src/config.ts`. It's read from environment variables,
+validated against a Zod schema at boot, and exposed via a
+`getConfig()` function that returns the memoised result.
 
-Cette fonction est appelée partout dans le code serveur — middlewares, handlers de route, services — chaque fois qu'un module a besoin d'un paramètre de config. C'est en pratique un singleton global : une seule instance, partagée par tout le code via `getConfig()`.
+This function is called everywhere in server code — middlewares,
+route handlers, services — every time a module needs a config
+parameter. It's effectively a global singleton: one instance,
+shared across all code via `getConfig()`.
 
-L'alternative serait l'**injection** : passer un objet config en argument à chaque fonction qui en a besoin (ou via un contexte React-style côté serveur). C'est le pattern "dependency injection" classique.
+The alternative would be **injection**: pass a config object as an
+argument to every function that needs it (or via a React-style
+server-side context). That's the classic dependency-injection
+pattern.
 
 ## Decision
 
-**Garder le singleton `getConfig()`. Ne pas adopter l'injection.**
+**Keep the `getConfig()` singleton. Don't adopt injection.**
 
 ## Consequences
 
-**Positives :**
-- **Pas de plumbing à travers les couches.** Une fonction profondément imbriquée qui a besoin de `WEB_BASE_URL` appelle `getConfig().WEB_BASE_URL` directement. En injection, il faudrait que la config soit passée en argument depuis la racine, à travers chaque appel intermédiaire — beaucoup de signatures de fonctions à porter une dépendance qui ne les concerne pas.
-- **Le boot fail-fast.** `getConfig()` parse les variables d'environnement avec un schéma Zod strict au premier appel. Si une variable est manquante ou mal formée, l'erreur explose au boot avec un message clair (genre `WEB_BASE_URL: Required, received undefined`). En injection, l'erreur serait poussée au moment où une fonction tente de lire la config — possiblement après un long boot apparemment réussi.
-- **Tests faciles pour les overrides ponctuels.** Vitest expose `vi.stubEnv('VITE_API_URL', 'http://test.local')` qui modifie `process.env` au niveau de la machine virtuelle JS, et `getConfig()` re-lit l'env si appelé après le stub. C'est exactement le pattern qu'on utilise. L'injection n'apporterait pas de gain de testabilité ici — on stub déjà au bon niveau (env-var).
+**Positive:**
+- **No plumbing across layers.** A deeply nested function that
+  needs `WEB_BASE_URL` calls `getConfig().WEB_BASE_URL` directly.
+  With injection, the config would need to be passed from the root
+  through every intermediate call — many function signatures
+  carrying a dependency they don't care about.
+- **Fail-fast boot.** `getConfig()` parses env variables with a
+  strict Zod schema on first call. If a variable is missing or
+  malformed, the error explodes at boot with a clear message
+  (e.g. `WEB_BASE_URL: Required, received undefined`). With
+  injection, the error would surface when a function tries to
+  read the config — possibly after a long apparently successful
+  boot.
+- **Easy ad-hoc test overrides.** Vitest exposes
+  `vi.stubEnv('VITE_API_URL', 'http://test.local')` which mutates
+  `process.env` at the JS-VM level, and `getConfig()` re-reads
+  `env` if called after the stub. That's exactly the pattern we
+  use. Injection wouldn't add testability here — we already stub
+  at the right level (env-var).
 
-**Négatives :**
-- **Tester un comportement avec une config spécifique demande de stub `process.env`.** Pas de stub propre du genre `service.lookup({ apiKey: 'fake' })`. Mitigé par `vi.stubEnv()` qui est l'API standard et fait le job.
-- **Couplage implicite.** Toute fonction qui appelle `getConfig()` dépend de la présence des bonnes variables d'environnement. C'est invisible dans la signature de la fonction. Mitigé par le fait que `getConfig()` est typée — un appel à `getConfig().WEB_BASE_URL` pour une variable inexistante échoue à la compilation.
+**Negative:**
+- **Testing a behaviour with a specific config requires stubbing
+  `process.env`.** No clean stub like
+  `service.lookup({ apiKey: 'fake' })`. Mitigated by
+  `vi.stubEnv()`, the standard API for this.
+- **Implicit coupling.** Any function that calls `getConfig()`
+  depends on the right environment variables being set. That's
+  invisible in the function's signature. Mitigated by the fact
+  that `getConfig()` is typed — a call to
+  `getConfig().WEB_BASE_URL` for a non-existent variable fails at
+  compile time.
 
 ## Alternatives considered
 
-- **Injection complète via une fonction `buildApp(config)` qui distribue la config aux modules.** C'est le pattern proper-DI. Écarté parce que le bénéfice de testabilité est absent (on stub déjà au niveau env-var) et le coût de plumbing est non-négligeable (chaque module exposerait une factory qui prend la config en argument). Pour un projet single-instance E2EE, c'est de la cérémonie pour rien.
-- **Injection partielle via un objet `Container`** passé à travers `c.set('config', ...)` dans Hono. Écarté pour les mêmes raisons — la complexité ajoutée n'a pas de cas d'usage qui la justifie.
-- **Cache TTL sur `getConfig()` pour gérer le hot-reload.** Écarté : le serveur ne hot-reload pas la config en prod (un changement d'env-var demande un redémarrage du container, ce qui est explicite). En dev, le hot-reload tsx redémarre tout de toute façon. Le cache à vie est OK.
+- **Full injection via a `buildApp(config)` function that
+  distributes config to modules.** That's the proper-DI pattern.
+  Discarded because the testability benefit is absent (we already
+  stub at env-var level) and the plumbing cost is non-negligible
+  (every module would expose a factory taking config as an
+  argument). For a single-instance E2EE project, it's ceremony
+  for nothing.
+- **Partial injection via a `Container` object** threaded through
+  `c.set('config', ...)` in Hono. Discarded for the same reasons
+  — added complexity has no use case that justifies it.
+- **TTL cache on `getConfig()` to handle hot-reload.** Discarded:
+  the server doesn't hot-reload config in prod (an env-var change
+  requires a container restart, which is explicit). In dev, the
+  tsx hot-reload restarts everything anyway. Lifetime cache is
+  fine.
 
-## Quand reconsidérer
+## When to revisit
 
-Si on commence à avoir des cas d'usage où la même fonction doit tourner avec deux configs différentes dans le même process (genre multi-tenant côté serveur, ou tests qui doivent simuler plusieurs instances en parallèle), le singleton ne suffit plus et l'injection devient nécessaire. Tant qu'on est mono-instance avec une seule config par boot, garder le singleton.
+If we start having use cases where the same function must run
+with two different configs in the same process (e.g. server-side
+multi-tenant, or tests that must simulate several instances in
+parallel), the singleton stops being enough and injection becomes
+necessary. While we're single-instance with one config per boot,
+keep the singleton.

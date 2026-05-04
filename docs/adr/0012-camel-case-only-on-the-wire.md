@@ -1,43 +1,112 @@
-# 0012 — Tout-camelCase sur le wire (supersède 0003)
+# 0012 — All-camelCase on the wire (supersedes 0003)
 
-- **Status** : Accepted (supersède [ADR-0003](./0003-snake-case-camel-case-frontier.md))
-- **Date** : 2026-05
+- **Status**: Accepted (supersedes [ADR-0003](./0003-snake-case-camel-case-frontier.md))
+- **Date**: 2026-05
 
 ## Context
 
-[ADR-0003](./0003-snake-case-camel-case-frontier.md) actait une **frontière** : `snake_case` côté serveur (DB Postgres + payloads JSON sortis tels quels) et `camelCase` côté client TS, avec un mapper qui traduisait à la frontière. La motivation était que Drizzle exposait les colonnes en camelCase mais le `c.json(row)` ré-émettait en snake_case manuellement, et qu'un mapper côté web suffisait à isoler la convention JS du reste.
+[ADR-0003](./0003-snake-case-camel-case-frontier.md) enacted a
+**frontier**: `snake_case` on the server side (Postgres DB +
+JSON payloads emitted as-is) and `camelCase` on the TS client,
+with a mapper translating at the boundary. The motivation was
+that Drizzle exposed columns as camelCase but the `c.json(row)`
+manually re-emitted snake_case, and a web-side mapper was enough
+to isolate the JS convention from the rest.
 
-Trois choses ont changé depuis :
+Three things have changed since:
 
-1. **Le projet est sur le point d'avoir un consommateur externe** : le chantier mobile démarre. Aujourd'hui le mapper côté web absorbe la frontière, mais demain le client mobile (Swift / Kotlin) devrait soit refaire le même mapping, soit consommer une API qui change de convention selon les endpoints (`/auth/me` est camelCase, `/<module>/records` est snake_case). Les deux options coûtent du temps de dev qui ne sert à rien.
+1. **The project is about to gain an external consumer**: the
+   mobile chantier is starting. Today the web-side mapper absorbs
+   the frontier, but tomorrow the mobile client (Swift / Kotlin)
+   would either redo the same mapping or consume an API that
+   changes convention per endpoint (`/auth/me` is camelCase,
+   `/<module>/records` is snake_case). Both options waste dev
+   time for nothing.
 
-2. **Un audit interne** classait la frontière comme « finding sévérité élevée — nulle part documentée comme contrat ». La réponse standard à un finding élevé non documenté est soit de figer la convention dans la doc, soit d'éliminer le besoin de doc. Avec un consommateur externe imminent, éliminer est moins cher long-terme que figer.
+2. **An internal audit** flagged the frontier as a "high-severity
+   finding — nowhere documented as a contract". The standard
+   answer to an undocumented high-severity finding is to either
+   pin the convention in the docs or eliminate the need for docs.
+   With an imminent external consumer, eliminating is cheaper
+   long-term than pinning.
 
-3. **Le générateur OpenAPI** (chantier voisin de cet ADR) absorbe les schémas Zod en types TS / Swift / Kotlin. Si les schémas Zod sortent du camelCase systématique, le code généré côté mobile sera idiomatique sans intervention manuelle. Avec deux conventions, le générateur produit des types mixtes que le client doit toujours re-mapper.
+3. **The OpenAPI generator** (a sibling chantier of this ADR)
+   feeds Zod schemas into TS / Swift / Kotlin types. If Zod
+   schemas land on systematic camelCase, the generated code on
+   mobile is idiomatic without manual intervention. With two
+   conventions, the generator produces mixed types that the
+   client still has to re-map.
 
 ## Decision
 
-**Tout-camelCase sur le wire**. Les schémas Zod publics, les payloads JSON émis par les routes, les schémas de payloads chiffrés (Mood, Goals, etc.) et les types TS dérivés via `z.infer` utilisent **uniquement camelCase**.
+**All-camelCase on the wire.** Public Zod schemas, JSON payloads
+emitted by routes, encrypted-payload schemas (Mood, Goals, etc.)
+and TS types derived via `z.infer` use **camelCase only**.
 
-- **Côté DB** (`packages/api/src/db/schema/*`, fichiers `drizzle/*.sql`) : les colonnes Postgres restent en `snake_case`. C'est la convention SQL standard et changer les colonnes demanderait un script de migration. Drizzle continue d'exposer les colonnes en `camelCase` via la `name → mappedName` translation native — le code TS ne voit jamais le snake_case.
-- **Côté wire** : les routes émettent `cipherIv`, `moduleUserId`, `updatedAt`, `buildDate` plutôt que `cipher_iv`, `module_user_id`, `updated_at`, `build_date`.
-- **Côté payloads chiffrés** : les schémas dans `packages/shared/src/schemas/modules.ts` (Mood, Goals, Habits, Library, Review) utilisent `moodScore`, `completedAt`, `itemRid`, `coverRid`, `lastYear`, etc. plutôt que `mood_score`, `completed_at`, etc. Les anciennes entrées chiffrées avec les anciens noms ne sont **pas re-déchiffrables après cette migration** — le projet n'a pas d'utilisateurs en prod hors le compte dev qui peut être truncate-et-resseed.
+- **DB side** (`packages/api/src/db/schema/*`, `drizzle/*.sql`):
+  Postgres columns stay `snake_case`. That's the standard SQL
+  convention and changing columns would require a migration
+  script. Drizzle keeps exposing columns as `camelCase` via the
+  native `name → mappedName` translation — the TS code never
+  sees snake_case.
+- **Wire side**: routes emit `cipherIv`, `moduleUserId`,
+  `updatedAt`, `buildDate` rather than `cipher_iv`,
+  `module_user_id`, `updated_at`, `build_date`.
+- **Encrypted payloads side**: schemas in
+  `packages/shared/src/schemas/modules.ts` (Mood, Goals, Habits,
+  Library, Review) use `moodScore`, `completedAt`, `itemRid`,
+  `coverRid`, `lastYear`, etc. rather than `mood_score`,
+  `completed_at`, etc. Old entries encrypted with the old names
+  are **not re-decryptable after this migration** — the project
+  has no prod users beyond the dev account, which can be
+  truncated and re-seeded.
 
-Le mapper côté web (`Library/lib/mappers.ts`, etc.) **disparaît** : avec une convention unique, il n'a plus rien à traduire.
+The web-side mapper (`Library/lib/mappers.ts`, etc.)
+**disappears**: with a single convention, there's nothing left
+for it to translate.
 
 ## Consequences
 
-**Positives :**
-- **Une seule convention, pas de mapper.** Le code TS qui lit un payload déchiffré accède directement à `entry.completedAt` — plus de double type `GoalsPayload` (snake) + `GoalEntry` (camel) à maintenir en parallèle.
-- **Le client mobile est idiomatique tout seul.** Que le générateur OpenAPI produise du Swift ou du Kotlin, les types générés respectent la convention native du langage cible (Swift / Kotlin sont les deux camelCase).
-- **L'audit API-01 est résolu sans création de `documentation/API.md`** — la convention « tout-camelCase » se documente toute seule à la lecture du code.
+**Positive:**
+- **One convention, no mapper.** TS code reading a decrypted
+  payload accesses `entry.completedAt` directly — no more double
+  `GoalsPayload` (snake) + `GoalEntry` (camel) types to maintain
+  in parallel.
+- **The mobile client is idiomatic on its own.** Whether the
+  OpenAPI generator outputs Swift or Kotlin, the generated types
+  match the target language's native convention (Swift / Kotlin
+  are both camelCase).
+- **The API-01 audit is resolved without creating
+  `documentation/API.md`** — the "all-camelCase" convention
+  documents itself as the code is read.
 
-**Négatives :**
-- **Migration breaking** sur les blobs chiffrés existants : un utilisateur qui aurait des entrées Goals avec `completed_at` snake_case ne peut plus les déchiffrer après la migration des schémas (le `passthrough()` Zod laisse passer les fields inconnus, mais le code consommateur lit `entry.completedAt`, pas `entry.completed_at`). Acceptable parce que le projet est encore au stade « solo dev avec son propre compte » — les entrées peuvent être supprimées et recréées.
-- **La frontière DB ↔ TS reste implicite.** La convention Drizzle (`name: 'snake_case'` qui mappe sur `mappedName: camelCase`) tient ce contrat sans intervention humaine, mais un nouveau venu doit savoir que `users.cipherIv` côté code = `users.cipher_iv` côté SQL. Mitigé par le fait que les fichiers `db/schema/*.ts` exposent les deux noms côte-à-côte.
+**Negative:**
+- **Breaking migration** on existing encrypted blobs: a user with
+  Goals entries holding `completed_at` snake_case can no longer
+  decrypt them after the schema migration (Zod's `passthrough()`
+  lets unknown fields through, but consuming code reads
+  `entry.completedAt`, not `entry.completed_at`). Acceptable
+  because the project is still at the "solo dev on their own
+  account" stage — entries can be deleted and recreated.
+- **The DB ↔ TS frontier stays implicit.** The Drizzle convention
+  (`name: 'snake_case'` mapping to `mappedName: camelCase`)
+  upholds this contract without human intervention, but a
+  newcomer needs to know that `users.cipherIv` in code =
+  `users.cipher_iv` in SQL. Mitigated by `db/schema/*.ts` files
+  exposing both names side by side.
 
 ## Alternatives considered
 
-- **Garder la frontière (ADR-0003 inchangé)** + créer `documentation/API.md` qui documente la dualité. Écarté : ajoute un fichier doc à maintenir, ne supprime pas la double convention que le client mobile devra consommer.
-- **Migrer juste le wire wrapper (`cipher_iv` → `cipherIv`) sans toucher aux payloads chiffrés.** Écarté : laisse `completed_at`, `item_rid`, etc. en snake_case dans les payloads chiffrés que le client mobile devra consommer ; le mapper côté web reste nécessaire ; on n'a réglé qu'un demi-problème.
-- **Versioning d'URL (`/v1/...` snake_case + `/v2/...` camelCase coexistent)**. Écarté plus tôt par décision utilisateur (cf. discussion Phase 2 du Tier 4) : solo-mainteneur incompatible avec la maintenance de deux versions parallèles.
+- **Keep the frontier (ADR-0003 unchanged)** + create
+  `documentation/API.md` documenting the duality. Discarded:
+  adds a doc file to maintain, doesn't remove the double
+  convention the mobile client will have to consume.
+- **Migrate only the wire wrapper (`cipher_iv` → `cipherIv`)
+  without touching encrypted payloads.** Discarded: leaves
+  `completed_at`, `item_rid`, etc. as snake_case inside the
+  encrypted payloads the mobile client will have to consume; the
+  web-side mapper stays needed; only half the problem solved.
+- **URL versioning (`/v1/...` snake_case + `/v2/...` camelCase
+  coexisting)**. Discarded earlier by user decision (cf. Tier 4
+  Phase 2 discussion): a solo-maintainer is incompatible with
+  maintaining two parallel versions.

@@ -1,46 +1,94 @@
-# 0006 — `nodea-store` en un seul fichier vs splitté en plusieurs slices
+# 0006 — `nodea-store` as a single file vs split across slices
 
-- **Status** : Accepted
-- **Date** : 2026-05 (cycle d'audit, Tier 4)
-- **Compagnon de** : [ADR-2 — Zustand single store + per-module React contexts](./0002-zustand-single-store.md), qui décide *qu'on utilise un store global Zustand*. Cet ADR-ci décide *comment ce store est physiquement organisé*.
+- **Status**: Accepted
+- **Date**: 2026-05 (audit cycle, Tier 4)
+- **Companion to**: [ADR-2 — Zustand single store + per-module React contexts](./0002-zustand-single-store.md),
+  which decides *that we use a global Zustand store*. This ADR
+  decides *how that store is physically organised*.
 
 ## Context
 
-Le store Zustand racine vit dans `packages/web/src/core/store/nodea-store.ts`, ~400 LOC, et héberge sept slices nommées :
+The root Zustand store lives in
+`packages/web/src/core/store/nodea-store.ts`, ~400 LOC, and hosts
+seven named slices:
 
-- **auth** : statut de session, profil utilisateur (`user`).
-- **mainKey** : matériel cryptographique en mémoire (`mainKeyMaterial`, `keyStatus`).
-- **modules** : table des modules hydratés avec leur sid + guard.
-- **flow** : module actif (`currentModule`), sub-views métier.
-- **composer** : état du modal Composer global (ouvert/fermé, type, mode édition).
-- **mobileMenu** : flag d'ouverture de la sidebar sur mobile.
-- **libraryVersions** : compteurs `goalsVersion`, `libraryItemsVersion`, etc. utilisés pour invalider les caches de fetch après mutation.
+- **auth**: session status, user profile (`user`).
+- **mainKey**: in-memory crypto material (`mainKeyMaterial`,
+  `keyStatus`).
+- **modules**: table of hydrated modules with their sid + guard.
+- **flow**: active module (`currentModule`), business sub-views.
+- **composer**: state of the global Composer modal (open/closed,
+  type, edit mode).
+- **mobileMenu**: open flag for the mobile sidebar.
+- **libraryVersions**: counters `goalsVersion`,
+  `libraryItemsVersion`, etc. used to invalidate fetch caches
+  after a mutation.
 
-Zustand permet plusieurs organisations physiques : un seul store contenant toutes les slices (situation actuelle), ou plusieurs stores indépendants exposés via des hooks séparés (`useAuthStore`, `useModulesStore`, etc.). À mesure que le fichier `nodea-store.ts` a grossi, la question revient : faut-il splitter ?
+Zustand allows several physical organisations: one store with all
+slices (current state), or several independent stores exposed via
+separate hooks (`useAuthStore`, `useModulesStore`, etc.). As the
+`nodea-store.ts` file grew, the question keeps coming back: should
+we split it?
 
 ## Decision
 
-**Garder un seul store mono-fichier.** Les slices coexistent dans le même `create()` Zustand et sont lues via des selectors disciplinés (`selectMainKey`, `selectModules`, `selectAuthStatus`, etc.).
+**Keep one mono-file store.** Slices coexist inside the same
+Zustand `create()` and are read via disciplined selectors
+(`selectMainKey`, `selectModules`, `selectAuthStatus`, etc.).
 
 ## Consequences
 
-**Positives :**
-- **Atomicité gratuite quand une action touche plusieurs slices.** Le `login` met à jour `auth.user`, `mainKey.material` et `modules.byId` en un seul `set(...)` — c'est trivialement ordonné et impossible à observer dans un état intermédiaire. En multi-stores, il faudrait soit un système d'événements pour coordonner les trois, soit imposer aux composants de gérer l'état transitoire.
-- **Une seule frontière à connaître.** Un nouveau dev apprend `useNodeaStore(selectX)` et c'est tout. Pas à se demander quel store contient quelle slice.
-- **Selectors fins.** `useNodeaStore((s) => s.mainKey)` ne re-rend le composant que si `mainKey` change, exactement comme un store dédié l'aurait fait. Le bénéfice perf principal du split est absent.
-- **Tests faciles.** `useNodeaStore.setState({ ... })` dans un test seede les slices nécessaires en une ligne.
+**Positive:**
+- **Free atomicity when an action touches multiple slices.**
+  `login` updates `auth.user`, `mainKey.material`, and
+  `modules.byId` in a single `set(...)` — trivially ordered and
+  impossible to observe in an intermediate state. In a multi-store
+  setup, we'd need either an event bus to coordinate the three, or
+  to push the transitional state burden onto components.
+- **One boundary to know.** A new dev learns
+  `useNodeaStore(selectX)` and that's it. No wondering which store
+  contains which slice.
+- **Fine-grained selectors.**
+  `useNodeaStore((s) => s.mainKey)` only re-renders the component
+  on `mainKey` changes, exactly as a dedicated store would. The
+  main perf benefit of splitting is moot.
+- **Easy tests.** `useNodeaStore.setState({ ... })` in a test
+  seeds the necessary slices in one line.
 
-**Négatives :**
-- **Le fichier dépasse 400 LOC.** Lecture moins agréable qu'un fichier de 80 LOC par slice. Mitigé par les commentaires de section dans le fichier et la convention de nommage des selectors.
-- **Toute action est techniquement capable de toucher n'importe quelle slice.** Discipline à maintenir : une action `setMobileMenuOpen` ne doit pas toucher `auth`. La revue de code attrape ces dérapages, mais un store dédié aurait rendu la dérapage impossible par construction.
-- **Tester un composant qui lit le store demande de bootstrap les slices nécessaires.** Mitigé par `useNodeaStore.setState()` qui permet de seeder explicitement.
+**Negative:**
+- **The file passes 400 LOC.** Less pleasant to read than an
+  80 LOC per-slice file. Mitigated by section comments in the
+  file and the selector naming convention.
+- **Any action is technically able to touch any slice.**
+  Discipline required: a `setMobileMenuOpen` action must not touch
+  `auth`. Code review catches these slips, but a dedicated store
+  would make the slip impossible by construction.
+- **Testing a component that reads the store requires bootstrapping
+  the necessary slices.** Mitigated by `useNodeaStore.setState()`
+  which allows explicit seeding.
 
 ## Alternatives considered
 
-- **Un store par slice, exposés via plusieurs hooks** (`useAuthStore`, `useModulesStore`, etc.). Écarté pour la perte d'atomicité multi-slices et pour la complexité de coordination que ça aurait introduite (système d'événements ou orchestrateur global).
-- **Slices via `create()(combine(...))`** (le helper Zustand qui sépare le state initial des actions dans des objets distincts). Écarté parce que ça déplace le problème : on a toujours un seul store, juste avec une syntaxe d'écriture différente. Ne résout rien.
-- **Migration vers Redux Toolkit avec slices** dans des fichiers séparés. Écarté : RTK ajoute ~30 KB gzip et beaucoup de boilerplate (createSlice, configureStore, types) pour un problème qui n'est pas un problème.
+- **One store per slice, exposed via several hooks**
+  (`useAuthStore`, `useModulesStore`, etc.). Discarded for the
+  loss of multi-slice atomicity and for the coordination
+  complexity it would have introduced (event bus or global
+  orchestrator).
+- **Slices via `create()(combine(...))`** (the Zustand helper
+  that separates initial state from actions in distinct objects).
+  Discarded because it moves the problem: still one store, just
+  with a different writing syntax. Solves nothing.
+- **Migrate to Redux Toolkit with slices** in separate files.
+  Discarded: RTK adds ~30 KB gzip and a lot of boilerplate
+  (createSlice, configureStore, types) for a problem that isn't
+  one.
 
-## Quand reconsidérer
+## When to revisit
 
-Si la frontière entre slices devient floue (deux slices commencent à se référencer mutuellement, ou une action touche systématiquement six slices à la fois), c'est le signal qu'on construit du domaine métier dans le store. À ce moment-là, splitter en stores dédiés ou migrer vers une vraie architecture par domaine métier devient pertinent. Tant qu'on est dans le pattern actuel (slices indépendantes, actions qui touchent 1-3 slices au maximum), garder mono.
+If the boundary between slices gets fuzzy (two slices start
+referencing each other, or an action systematically touches six
+slices at once), that's the signal that domain logic is leaking
+into the store. At that point, splitting into dedicated stores or
+migrating to a real domain-driven architecture becomes relevant.
+While we're in the current pattern (independent slices, actions
+touching 1-3 slices max), keep mono.

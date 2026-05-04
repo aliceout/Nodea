@@ -1,53 +1,76 @@
 # Architecture Decision Records
 
-Ce dossier contient les **ADR** (Architecture Decision Records) du projet Nodea. Un ADR est une note courte qui documente **une décision technique** prise à un moment donné, **le contexte** qui l'a motivée, **les alternatives considérées** et **les conséquences** assumées.
+This folder holds the **ADRs** (Architecture Decision Records) for
+the Nodea project. An ADR is a short note that documents **one
+technical decision** taken at a given point in time, **the context**
+that motivated it, **the alternatives considered**, and **the
+consequences** accepted.
 
-## Pourquoi ?
+## Why?
 
-Sans ADR, les décisions architecturales vivent dans des commentaires éparpillés dans le code, des discussions de PR, ou la mémoire de la personne qui les a prises. Quand quelqu'un (toi dans 6 mois, un mainteneur futur, un contributeur de passage) se demande *« pourquoi ne pas avoir utilisé X ici, ça aurait été plus simple ? »*, la réponse doit être **trouvable en moins de 30 secondes**, sans avoir à grep le code ou demander.
+Without ADRs, architectural decisions live in scattered code comments,
+PR discussions, or in the memory of whoever made them. When someone
+(you in 6 months, a future maintainer, a drive-by contributor) wonders
+*"why didn't we use X here, it would've been simpler?"*, the answer
+must be **findable in under 30 seconds**, without grepping the code
+or asking.
 
-Les ADR vivent à côté du code (`docs/adr/`) plutôt que sur un wiki externe pour deux raisons :
-1. **Ils sont versionnés avec le code.** Le contexte historique reste cohérent avec l'état du repo au moment de la décision.
-2. **Une PR qui change la décision change l'ADR dans le même commit.** L'ADR ne devient jamais silencieusement faux.
+ADRs live next to the code (`docs/adr/`) rather than on an external
+wiki for two reasons:
+1. **They're versioned with the code.** The historical context stays
+   coherent with the repo state at decision time.
+2. **A PR that changes the decision updates the ADR in the same
+   commit.** The ADR never silently turns wrong.
 
 ## Format
 
-On suit le format [MADR](https://adr.github.io/madr/) (Markdown ADR), version simplifiée. Chaque ADR contient :
+We follow the [MADR](https://adr.github.io/madr/) format (Markdown
+ADR), simplified. Each ADR contains:
 
-- **Status** : `Accepted`, `Superseded by ADR-XXXX`, ou `Deprecated`. Une fois `Accepted`, on ne réécrit pas l'ADR : on en crée un nouveau qui supersède.
-- **Context** : ce qu'on essayait de résoudre, les contraintes en jeu.
-- **Decision** : la décision prise, formulée en une ou deux phrases.
-- **Consequences** : ce qu'on accepte comme tradeoffs (positifs et négatifs).
-- **Alternatives considered** *(optionnel)* : les options écartées, avec une ligne disant pourquoi.
+- **Status**: `Accepted`, `Superseded by ADR-XXXX`, or `Deprecated`.
+  Once `Accepted`, we don't rewrite the ADR: we create a new one
+  that supersedes it.
+- **Context**: what we were trying to solve, the constraints in
+  play.
+- **Decision**: the decision taken, framed in one or two sentences.
+- **Consequences**: the trade-offs we accept (positive and negative).
+- **Alternatives considered** *(optional)*: the discarded options,
+  with one line stating why.
 
-## Convention de nommage
+## Naming convention
 
-`NNNN-short-kebab-case-title.md` où `NNNN` est un numéro à 4 chiffres incrémenté monotonement. Pas de réutilisation après `Deprecated` — un numéro = une décision dans le temps.
+`NNNN-short-kebab-case-title.md` where `NNNN` is a 4-digit number
+incremented monotonically. No reuse after `Deprecated` — one number
+= one decision in time.
 
 ## Index
 
-| # | Titre | Statut |
+| # | Title | Status |
 |---|---|---|
-| [0001](./0001-layered-hybrid-architecture.md) | Architecture en couches hybride (layered + feature-first) | Accepted |
+| [0001](./0001-layered-hybrid-architecture.md) | Hybrid layered architecture (layered + feature-first) | Accepted |
 | [0002](./0002-zustand-single-store.md) | Zustand single store + per-module React contexts | Accepted |
-| [0003](./0003-snake-case-camel-case-frontier.md) | Frontière snake_case ↔ camelCase entre serveur et client | Superseded by [0012](./0012-camel-case-only-on-the-wire.md) |
-| [0004](./0004-no-request-cache.md) | Pas de cache de requêtes (TanStack Query, SWR, etc.) | Accepted |
-| [0005](./0005-no-ssr.md) | Pas de SSR — CSR pur, single-page application | Accepted |
-| [0006](./0006-zustand-mono-store-rationale.md) | `nodea-store` en un seul fichier vs splitté en plusieurs slices | Accepted |
-| [0007](./0007-hand-rolled-api-client.md) | Client API web : 14 fonctions dédiées vs `hc<AppType>` de Hono | Accepted |
-| [0008](./0008-auth-routes-flat.md) | Dossier `auth/` plat plutôt que séparé en couches | Accepted |
-| [0009](./0009-library-lookup-as-service.md) | `library-lookup` déménagé en `services/library-lookup/` | Accepted |
-| [0010](./0010-getconfig-singleton.md) | `getConfig()` en singleton global | Accepted |
-| [0011](./0011-drizzle-forward-only-migrations.md) | Migrations Drizzle forward-only, sans rollback | Accepted |
-| [0012](./0012-camel-case-only-on-the-wire.md) | Tout-camelCase sur le wire (supersède 0003) | Accepted |
-| [0013](./0013-zustand-slice-pattern.md) | Slice pattern Zustand pour `nodea-store` (complément de 0006) | Accepted |
+| [0003](./0003-snake-case-camel-case-frontier.md) | snake_case ↔ camelCase frontier between server and client | Superseded by [0012](./0012-camel-case-only-on-the-wire.md) |
+| [0004](./0004-no-request-cache.md) | No request cache (TanStack Query, SWR, etc.) | Accepted |
+| [0005](./0005-no-ssr.md) | No SSR — pure CSR, single-page application | Accepted |
+| [0006](./0006-zustand-mono-store-rationale.md) | `nodea-store` as a single file vs split across slices | Accepted |
+| [0007](./0007-hand-rolled-api-client.md) | Web API client: 14 dedicated functions vs Hono's `hc<AppType>` | Accepted |
+| [0008](./0008-auth-routes-flat.md) | Flat `auth/` folder rather than layered | Accepted |
+| [0009](./0009-library-lookup-as-service.md) | `library-lookup` moved to `services/library-lookup/` | Accepted |
+| [0010](./0010-getconfig-singleton.md) | `getConfig()` as a global singleton | Accepted |
+| [0011](./0011-drizzle-forward-only-migrations.md) | Drizzle forward-only migrations, no rollback | Accepted |
+| [0012](./0012-camel-case-only-on-the-wire.md) | All-camelCase on the wire (supersedes 0003) | Accepted |
+| [0013](./0013-zustand-slice-pattern.md) | Zustand slice pattern for `nodea-store` (complements 0006) | Accepted |
 
-## Quand écrire un nouvel ADR
+## When to write a new ADR
 
-Un changement vaut un ADR si **l'une** des conditions suivantes tient :
+A change is worth an ADR if **one** of the following holds:
 
-- La décision affecte **plus d'un fichier** ou **plus d'une couche** du projet.
-- Une alternative raisonnable existe et a été écartée pour une raison non triviale.
-- Quelqu'un, dans 6 mois, sera tenté de remettre la décision en question sans le contexte.
+- The decision affects **more than one file** or **more than one
+  layer** of the project.
+- A reasonable alternative exists and was discarded for a
+  non-trivial reason.
+- Someone, in 6 months, will be tempted to revisit the decision
+  without the context.
 
-Pas besoin d'ADR pour : choix d'une lib utilitaire isolée, renaming, refactoring local, fix de bug.
+No need for an ADR for: picking an isolated utility lib, renaming,
+local refactoring, bug fixes.

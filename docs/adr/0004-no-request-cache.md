@@ -1,45 +1,88 @@
-# 0004 — Pas de cache de requêtes (TanStack Query, SWR, etc.)
+# 0004 — No request cache (TanStack Query, SWR, etc.)
 
-- **Status** : Accepted
-- **Date** : 2026-02
+- **Status**: Accepted
+- **Date**: 2026-02
 
 ## Context
 
-La quasi-totalité des SPA React modernes adopte une lib de **request-caching** : TanStack Query (ex react-query), SWR, RTK Query, Apollo. Ces libs résolvent quatre problèmes communs :
+Almost every modern React SPA adopts a **request-caching** lib:
+TanStack Query (formerly react-query), SWR, RTK Query, Apollo. These
+libs solve four common problems:
 
-1. **Déduplication** : deux composants qui demandent les mêmes données ne déclenchent qu'un seul fetch.
-2. **Cache cross-mount** : naviguer hors d'une page puis revenir affiche les données précédentes pendant que le refetch tourne en arrière-plan.
-3. **Synchro multi-onglets** : un focus d'onglet déclenche un refetch ; deux onglets restent à peu près cohérents.
-4. **Invalidation par tag** : `mutation.invalidate('mood-entries')` purge le cache des reads concernés.
+1. **Deduplication**: two components asking for the same data only
+   trigger one fetch.
+2. **Cross-mount cache**: navigating off a page and back shows the
+   previous data while the refetch runs in the background.
+3. **Multi-tab sync**: a tab focus triggers a refetch; two tabs stay
+   roughly consistent.
+4. **Tag-based invalidation**: `mutation.invalidate('mood-entries')`
+   purges the cache of related reads.
 
-Pour Nodea, plusieurs facteurs changent l'équation :
+For Nodea, several factors change the equation:
 
-- **Architecture E2EE** : chaque fetch passe par une couche de chiffrement / déchiffrement client. Le résultat « brut » qu'un cache stockerait est déjà du `LibraryItem[]` post-AES-GCM — pas le payload réseau. Les libs de cache cherchent à éviter le coût réseau ; ici le coût dominant est le **dérivement crypto**, pas la latence HTTP.
-- **Single-instance, mono-utilisateur par session** : une instance Nodea sert un user à la fois (même si le serveur en héberge N). Pas de scénario *« deux onglets se disputent l'invalidation »* à l'échelle où les libs de cache excellent.
-- **Volume de données modeste** : le journal d'un utilisateur tient en quelques centaines d'entries, pas en gigaoctets. Le coût d'un refetch full-list reste sous la seconde.
-- **Mutations optimistes maison** : chaque module gère son rollback via `setItems(previous)` dans un `catch`. Le pattern marche, est testable, et n'a pas besoin du moteur d'invalidation d'une lib.
+- **E2EE architecture**: every fetch goes through a client-side
+  encryption / decryption layer. The "raw" result a cache would
+  store is already a post-AES-GCM `LibraryItem[]` — not the
+  network payload. Caching libs aim to avoid network cost; here
+  the dominant cost is the **crypto derivation**, not HTTP
+  latency.
+- **Single-instance, single-user per session**: a Nodea instance
+  serves one user at a time (even if the server hosts N). No
+  *"two tabs fight over invalidation"* scenario at the scale
+  where caching libs shine.
+- **Modest data volume**: a user's journal fits in a few hundred
+  entries, not gigabytes. A full-list refetch stays under a
+  second.
+- **Hand-rolled optimistic mutations**: each module handles its
+  rollback via `setItems(previous)` in a `catch`. The pattern
+  works, is testable, and doesn't need a lib's invalidation
+  engine.
 
 ## Decision
 
-**Ne pas adopter de lib de request-caching. Garder le pattern manuel : `useEffect(() => fetch())` + `setState`, optimistic update + rollback en `catch`, version-bump (`bumpItemsVersion`) pour forcer un refetch après mutation.**
+**Do not adopt a request-caching lib. Keep the manual pattern:
+`useEffect(() => fetch())` + `setState`, optimistic update +
+rollback in `catch`, version-bump (`bumpItemsVersion`) to force a
+refetch after a mutation.**
 
 ## Consequences
 
-**Positives :**
-- **Le code reste lisible** : un `useEffect` qui appelle `clientX.list()` et fait `setItems(...)` est compréhensible sans connaître une lib externe. Un nouveau contributeur n'a pas à apprendre l'API d'une nouvelle abstraction.
-- **Bundle plus mince** : ~30 KB gzip économisés (TanStack Query v5 minifié) qu'on ne paie pas.
-- **Pas de cache à invalider sur logout** : le `mainKey` purgé au logout rend les blobs chiffrés inexploitables ; pas de risque qu'un cache survivant expose du contenu déchiffré au prochain utilisateur.
-- **Pas de surprise de re-fetch en background** : le pattern explicite *« je fetch quand je monte, je refetch quand je bump la version »* est prévisible et débuggable.
+**Positive:**
+- **The code stays readable**: a `useEffect` that calls
+  `clientX.list()` and does `setItems(...)` is understandable
+  without knowing an external lib. A new contributor doesn't need
+  to learn another abstraction's API.
+- **Slimmer bundle**: ~30 KB gzip saved (TanStack Query v5 minified)
+  that we don't pay.
+- **No cache to invalidate on logout**: the purged `mainKey` makes
+  encrypted blobs unusable; no risk that a surviving cache leaks
+  decrypted content to the next user.
+- **No surprise background refetches**: the explicit *"I fetch on
+  mount, I refetch on version bump"* pattern is predictable and
+  debuggable.
 
-**Négatives :**
-- **Pas de dedup native** : si deux pages qui montent en parallèle demandent les mêmes data, on double-fetch. En pratique, les modules sont lazy-chargés un à la fois, et la situation n'arrive pas.
-- **Pas de cache cross-mount** : naviguer hors d'un module puis revenir relance le fetch. Sur les volumes Nodea (~secondes max), c'est acceptable. Si un module devient lourd à hydrater, on revisitera.
-- **Race conditions sur mutations rapides** : pas de `requestId` pour annuler un rollback obsolète. Acceptable sur l'app actuelle (les libs auraient le même problème sans config explicite des `mutationKey`).
+**Negative:**
+- **No native dedup**: if two pages mount in parallel asking for
+  the same data, we double-fetch. In practice modules lazy-load
+  one at a time, and the situation doesn't arise.
+- **No cross-mount cache**: navigating off a module and back
+  re-triggers the fetch. At Nodea volumes (~seconds max), that's
+  acceptable. If a module becomes heavy to hydrate, we'll
+  revisit.
+- **Race conditions on rapid mutations**: no `requestId` to cancel
+  a stale rollback. Acceptable for the current app (libs would
+  have the same issue without explicit `mutationKey` config).
 
 ## Alternatives considered
 
-- **TanStack Query** — la lib de référence. Excellente pour une app SaaS multi-onglets. Sur Nodea : sur-équipe sans gain mesurable. **Décision réversible** si un module type *« live collab »* arrive un jour (peu probable vu l'invariant E2EE).
-- **SWR** — plus léger que TanStack Query mais même problème de surcharge cognitive pour un gain marginal.
-- **Apollo Client** — irrelevant : pas de GraphQL.
+- **TanStack Query** — the reference lib. Excellent for a
+  multi-tab SaaS app. On Nodea: over-equipped without measurable
+  gain. **Reversible decision** if a *"live collab"*-style module
+  ever arrives (unlikely given the E2EE invariant).
+- **SWR** — lighter than TanStack Query but the same cognitive
+  overhead for marginal gain.
+- **Apollo Client** — irrelevant: no GraphQL.
 
-Si la situation change (réseau bcp plus lent, multi-utilisateur sur la même machine, requêtes coûteuses serveur-side), **superséder cet ADR** plutôt que de l'amender.
+If the situation changes (much slower network, multi-user on the
+same machine, expensive server-side queries), **supersede this
+ADR** rather than amend it.
