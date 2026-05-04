@@ -26,7 +26,7 @@
  *     in pathological cases (e.g. file-system normalisation).
  *   - Zero new dependency, ~50 lines, easy to audit.
  *
- * Limitation (documented in Security.md):
+ * Limitation (documented at nodea.app/docs/security/tech, « Intégrité du bundle »):
  *   The browser's Subresource Integrity check only enforces what's
  *   referenced from `index.html` directly — i.e. the entry chunk and
  *   the global stylesheet. Vite's lazy-loaded routes import other

@@ -2,7 +2,7 @@ import { emailT, type SupportedEmailLanguage } from '../i18n.ts';
 import { escapeHtml, renderLayout, type RenderedEmailContent } from './layout.ts';
 
 /**
- * Email template — password reset request (legacy flow, Security.md §2.5).
+ * Email template — password reset request (legacy flow).
  *
  * The reset destroys all encrypted data — the email body warns about
  * this explicitly so the user doesn't click on autopilot. Worded so a

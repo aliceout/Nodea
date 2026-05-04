@@ -243,7 +243,7 @@ Nodea is end-to-end encrypted. A few rules silently break security:
 - **HMAC guards are NEVER persisted to `localStorage`.** In-memory cache only.
 - **Branded types** (`Base64`, `AesMainKey`, `HmacMainKey`, `CipherIV`) — confusing types must fail at compile time.
 
-The full list of invariants and their rationale lives at [`nodea.app/docs/fork`](https://nodea.app/docs/fork) and in the repo: `docs/Security.md` (prescriptive).
+The full list of invariants and their rationale lives at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (prescriptive — source in `packages/web/src/app/pages/docs/content/tech.md`).
 
 ### Tests
 

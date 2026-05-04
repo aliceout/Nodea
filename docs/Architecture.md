@@ -82,8 +82,9 @@ the factory loops over. There is nowhere to forget a guard.
   mutate even with a valid session cookie).
 - `rateLimit` — in-memory fixed-window, keyed on IP. Applied to
   every `/auth/*` mutation and a few non-auth routes (library
-  lookup). Full catalogue with windows + justification in
-  [`Security.md §4.1`](./Security.md#41-rate-limit-table).
+  lookup). Full catalogue with windows + justification at
+  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+  (section « Rate-limit catalog »).
 
 ### Auth flow
 
@@ -446,8 +447,9 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   endpoints (`/mood-entries/records`, `/library-items/records`,
   etc.), so the operator can correlate Nginx + api request logs
   against the `sessions` table to attribute « user U acted on module M at
-  time T ». See [Security.md](./Security.md) invariant 6 for the
-  full picture and the planned `/records` unification fix. Every
+  time T ». See the « Modèle de données » section at
+  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+  for the full picture and the planned `/records` unification fix. Every
   module is `React.lazy()` so opening "Mood" for the first time
   fetches only Mood's code chunk. Per-module `ErrorBoundary`.
 

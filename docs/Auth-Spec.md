@@ -45,7 +45,7 @@
 | Yubikey sans PIN acceptée ? | **Non** — UV `'required'`, passkey sans déverrouillage refusée | §9.3 |
 | Un opérateur serveur peut lire mes données ? | **Non** — la KEK n'est jamais côté serveur | §2.1 |
 | Un opérateur serveur peut bypass TOTP ? | **Oui** (TOTP = serveur de confiance partielle) | §2.2 |
-| Un serveur web compromis pourrait-il exfiltrer ma clé via JS injecté ? | **Limite inhérente du modèle web** — mitigée par SRI sur l'entry chunk + INTEGRITY.txt manifest publié à chaque release, recommandation explicite d'auto-hébergement pour usages sensibles | `Security.md` §6 |
+| Un serveur web compromis pourrait-il exfiltrer ma clé via JS injecté ? | **Limite inhérente du modèle web** — mitigée par SRI sur l'entry chunk + INTEGRITY.txt manifest publié à chaque release, recommandation explicite d'auto-hébergement pour usages sensibles | `nodea.app/docs/security/tech` (« Intégrité du bundle ») |
 
 ---
 

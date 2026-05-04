@@ -119,7 +119,8 @@ réquisition judiciaire), et inventaire des champs en clair dans la
 page **`/docs`** de l'app déployée — 3 niveaux de lecture (les bases /
 la mécanique / sous le capot).
 
-Sources techniques : [`docs/Security.md`](./docs/Security.md),
+Sources techniques : [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+(source : [`packages/web/src/app/pages/docs/content/tech.md`](./packages/web/src/app/pages/docs/content/tech.md)),
 [`docs/Auth-Spec.md`](./docs/Auth-Spec.md).
 
 ---

@@ -19,7 +19,7 @@ tu pourrais lui confier des données personnelles ?
 | Lis | Pourquoi |
 |---|---|
 | [Modules.md](./Modules.md) | Vue d'ensemble des modules : Mood (humeur quotidienne), Goals (objectifs), Habits (habitudes), Library (bibliothèque), Review (bilan annuel YearCompass), Journal (entrées libres) |
-| [Security.md](./Security.md) | Comment fonctionne le chiffrement bout-en-bout, ce que le serveur peut / ne peut pas voir, les limites du modèle web |
+| [`nodea.app/docs/security`](https://nodea.app/docs/security/newbie) | Comment fonctionne le chiffrement bout-en-bout, ce que le serveur peut / ne peut pas voir, les limites du modèle web — 3 tiers (les bases / la mécanique / sous le capot) |
 | [Modules/*.md](./Modules/) | Détail fonctionnel de chaque module (champs, règles, formats d'export) |
 
 ---
@@ -32,13 +32,14 @@ pour toi seul·e ou pour un cercle restreint ?
 | Lis | Pourquoi |
 |---|---|
 | [Architecture.md §5](./Architecture.md#5-docker-deployment) | Le bundle docker-compose (postgres + api + web), variables d'environnement, ports |
-| [Security.md §6](./Security.md#6-the-web-app-supply-chain-limit-must-read) | La limite **fondamentale** du modèle web (un serveur compromis peut servir du JS modifié) et les mitigations en place : SRI, manifest `INTEGRITY.txt`, recommandation auto-hébergement |
+| [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (section « Intégrité du bundle ») | La limite **fondamentale** du modèle web (un serveur compromis peut servir du JS modifié) et les mitigations en place : SRI, manifest `INTEGRITY.txt`, recommandation auto-hébergement |
 | [Release-Checklist.md](./Release-Checklist.md) | Étapes à valider avant de tagger une release auto-hébergeable |
 | [Internationalisation.md](./Internationalisation.md) | Comment ajouter une langue ou modifier les traductions |
 
 **Recommandation forte** pour un usage sensible : auto-héberge.
 Le code est conçu pour qu'une instance personnelle réduise au minimum
-la surface d'attaque ; voir Security §7.3.
+la surface d'attaque ; voir `nodea.app/docs/security/tech` (section
+« Intégrité du bundle »).
 
 ---
 
@@ -53,13 +54,14 @@ agencé sous le capot ?
 | [Architecture.md](./Architecture.md) | Layout du monorepo (api / web / shared), runtime backend, stack frontend, conventions |
 | [Database.md](./Database.md) | Schéma Postgres complet, contraintes d'intégrité, FK cascades, AAD pour chaque blob chiffré |
 | [Auth-Spec.md](./Auth-Spec.md) | **Spécification technique exhaustive** de l'auth (OPAQUE + Passkey + TOTP + recovery + bypass MFA + stepped MFA + session re-auth). Référence complète, pas une lecture rapide |
-| [Security.md](./Security.md) | Invariants crypto, politique de rate-limit (§4.1), gestes interdits |
+| [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (source : [`packages/web/src/app/pages/docs/content/tech.md`](../packages/web/src/app/pages/docs/content/tech.md)) | Invariants crypto, politique de rate-limit, RGPD, gestes interdits — la version « sous le capot » du modèle de sécurité, prescriptive avant tout chantier crypto |
 | [adr/](./adr/) | Décisions architecturales avec leurs alternatives — lis l'ADR concerné avant de remettre en cause un pattern |
 
 **Avant de toucher un module** : la fiche `Modules/<Module>.md`
 décrit le payload clair et les règles. Avant de toucher l'auth :
-`Auth-Spec.md`. Avant de toucher la crypto : `Security.md` est
-prescriptif (HKDF, AAD, branded types, anti-patterns).
+`Auth-Spec.md`. Avant de toucher la crypto : la doc « sous le capot »
+sur `nodea.app/docs/security/tech` est prescriptive (HKDF, AAD,
+branded types, anti-patterns).
 
 ---
 

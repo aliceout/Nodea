@@ -3,7 +3,7 @@
  *
  * Sits inside `useNodeaStore` (Zustand slice pattern, see ADR-0013).
  * The slice never persists key material : `localStorage` is forbidden
- * (Security.md, "no key material at rest"). Logout calls `resetAll`
+ * (cf. nodea.app/docs/security/tech, "no key material at rest"). Logout calls `resetAll`
  * which drops the reference and lets GC collect the bytes.
  */
 import type { StateCreator } from 'zustand';

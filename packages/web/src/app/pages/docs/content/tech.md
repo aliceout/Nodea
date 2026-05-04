@@ -221,29 +221,96 @@ Toutes les requêtes DB passent par Drizzle (`eq(users.email, value)`, etc.). **
 
 Toute table d'entrée chiffrée (`mood_entries`, `goals_entries`, etc.) requiert un guard HMAC pour UPDATE et DELETE. Le middleware `requireGuard(table)` valide le tuple `(user, sid, guard)` dans une seule passe centralisée. La liste des collections est dans `packages/api/src/collections/registry.ts` — le route factory itère cette liste pour monter les routes ; impossible d'enregistrer une collection sans validation.
 
+**Formule du guard.** Déterministe, calculé côté client :
+
+```text
+guard = "g_" + hex( HMAC(hmacKey, `${module_user_id}:${record_id}`) )
+```
+
+**Création en deux temps.** À la création, le client n'a pas encore l'`id` de la ligne (généré côté serveur). Il envoie donc `guard: "init"` au `POST`, reçoit l'`id` retourné, recalcule le vrai `guard`, puis fait immédiatement un `PATCH` avec les en-têtes `X-Sid: <sid>`, `X-Guard: init` et le vrai guard dans le body. Le serveur promeut `"init"` → vrai guard atomiquement.
+
+**Mutations ultérieures** (UPDATE, DELETE) requièrent les en-têtes `X-Sid: <module_user_id>` et `X-Guard: <guard>`. Le serveur compare en temps constant et refuse sur mismatch. **En-têtes, jamais query-params** — les query-strings seraient loguées par `hono/logger()` et les access logs Nginx, et le guard est du matériel crypto dérivé de la clé maîtresse.
+
+Tables 1:1 (`modules_config`, `user_preferences`) — pas de guard : le user *est* la ligne, `requireUser` + scoping `user_id` suffit (pas d'`id` à authentifier indépendamment).
+
 ### Rate-limit catalog
 
-22 limiters actifs (cf. [`Security.md §5.1`](https://github.com/aliceout/Nodea/blob/main/docs/Security.md#51-rate-limit-table) pour le tableau exhaustif). Politique implicite par familles :
+22 limiters actifs au total. Format : `max / fenêtre`. Tous keyed-IP (premier hop `x-forwarded-for`, fallback `x-real-ip` puis `unknown`) et indépendants — un même IP peut consommer chaque bucket séparément. Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`). Single-instance ; scaling out = swap vers Redis.
+
+#### Pré-auth (`/auth/*` accessibles sans cookie de session)
+
+| Route | Limite | `keyPrefix` | Justification |
+|---|---|---|---|
+| `POST /auth/register/start` | 10 / 1h | `register-start` | OPAQUE start, accepte 10 essais/heure pour permettre la correction d'erreurs sans ouvrir un boulevard à l'enrôlement automatisé |
+| `POST /auth/register/finish` | 5 / 1h | `register-finish` | Étape coûteuse (création user + opaque_record + invite consumption en transaction) |
+| `POST /auth/register/activate` | 20 / 1h | `register-activate` | Click sur le magic-link — tolérant à un user qui clique plusieurs fois |
+| `GET  /auth/register/invite-info` | 30 / 1h | `register-invite-info` | Pré-rendu de l'écran de register (peeks au token sans le consommer) |
+| `POST /auth/login` (legacy hashed) | 10 / 1min | `login` | Court-fenêtré pour limiter le brute-force, tolérant à un user qui se trompe |
+| `POST /auth/login/start` + `/finish` | — | — | Pas de limiter dédié : OPAQUE est déjà coûteux côté serveur et `client.finishLogin` retourne `undefined` avant tout aller-retour réseau pour un mot de passe faux |
+| `POST /auth/request-reset` | 5 / 1h | `request-reset` | Anti-spam mailer, 5 demandes par IP par heure suffisent à un user honnête |
+| `POST /auth/reset` | 10 / 1min | `reset` | Mild cap pour ralentir un brute-force sur un token volé |
+| `POST /auth/recover-kek/start` | 5 / 1h | `recover-kek` | Anti-énumération : 5 emails testés par heure max |
+| `POST /auth/recover-kek/finish` | 5 / 1h | `recover-kek` | Partage le bucket avec `/start` |
+| `POST /auth/mfa-bypass/confirm` | 20 / 1h | `mfa-bypass-link` | Click sur le magic-link de confirmation |
+
+#### Authentifié (cookie de session requis)
+
+| Route | Limite | `keyPrefix` | Justification |
+|---|---|---|---|
+| `POST /auth/reauth/password/{start,finish}` | 10 / 15min | `reauth` | Re-prove password gate — assez large pour les ré-auths légitimes, assez serré pour ne pas devenir un canal de devinette du mot de passe |
+| `POST /auth/security-mode/change` | 10 / 15min | `security-mode-change` | Mutation sensible mais déjà gardée par re-auth |
+| `POST /auth/mfa/totp` | 10 / 5min | `mfa-totp-verify` | Stepped-MFA après login : 10 tentatives/5min coupent le brute-force d'un code à 6 chiffres |
+| `POST /auth/mfa/passkey/{options,verify}` | 10 / 5min | `mfa-passkey` | Stepped-MFA passkey : challenge à usage unique côté serveur |
+| `POST /auth/mfa-bypass/request` | 3 / 1h | `mfa-bypass-request` | Anti-spam : trois mails maximum par heure pour le bypass MFA |
+| `POST /auth/totp/enroll/{start,verify}` | 10 / 15min | `totp-enroll` | Setup d'un nouveau secret — utilisé une fois en pratique |
+| `POST /auth/totp/{disable,…}` | 30 / 15min | `totp-manage` | Lecture/écriture régulière depuis Settings, plafond confortable |
+| `POST /auth/security/recovery-code` | 5 / 1h | `recovery-code-setup` | Setup ou regenerate du code de récupération — opération rare |
+| `POST /auth/passkeys/enroll/{options,finish}` | 10 / 15min | `passkey-enroll` | Setup d'un nouveau passkey, idem TOTP |
+| `POST /auth/passkeys/{login-options,login-finish}` | 20 / 15min | `passkey-login` | Login passkey-first : tolérant aux annulations utilisateur sur le prompt OS |
+| `*    /auth/passkeys/:id/...` (rename, remove) | 30 / 15min | `passkey-manage` | Lecture/écriture Settings |
+
+#### Non-auth (lookup externes)
+
+| Route | Limite | `keyPrefix` | Justification |
+|---|---|---|---|
+| `GET /library/lookup/isbn/:isbn` | 30 / 1min | `library-lookup-isbn` | Proxy ISBN — protège l'API tierce |
+| `GET /library/lookup/query` | 30 / 1min | `library-lookup-query` | Recherche fuzzy |
+| `GET /library/lookup/cover/:hash` | 60 / 1min | `library-lookup-cover` | Couvertures d'images, ratio plus haut car appelé en batch sur une page de résultats |
+
+**Politique implicite — trois familles de durée :**
 
 - **5 minutes** pour les codes courts (TOTP, passkey en stepped-MFA) — borne le brute-force d'un secret 6 chiffres.
 - **15 minutes** pour la gestion sensible (re-auth, security-mode, enroll d'un facteur).
 - **1 heure** pour les actions à coût mailer ou serveur élevé (register, reset, recovery, bypass).
 
-Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`), keyed-IP via `x-forwarded-for` ou `x-real-ip`. Single-instance ; scaling out = swap vers Redis.
+Si tu ajoutes une nouvelle route `/auth/*`, choisis la fenêtre selon ces familles plutôt que d'inventer une nouvelle valeur ; les exceptions doivent être justifiées en commentaire au-dessus du `rateLimit({…})`.
 
 ### Pas d'identifiants dans les logs
 
 La politique de logs interdit toute métadonnée identifiante qui ne soit pas tied à la requête servie. Concrètement : pas d'emails, pas de session ids, pas de tokens, pas de matériel crypto — même au niveau `debug`. Les logs côté API portent la méthode + le path + le statut + la durée — le minimum nécessaire pour corréler une erreur à une requête.
 
-### Anti-patterns interdits
+### Checklist crypto pour les devs
 
-Liste partielle (cf. Auth-Spec §14 pour la complète) :
+Liste prescriptive utilisée à la revue de PR. La version exhaustive (avec rationale par règle) vit dans `Auth-Spec.md` §14.
 
-- Pas de `window.mainKey` ou équivalent global qui exposerait la clé.
-- Pas de stockage de `guard` ou de tokens sensibles dans `localStorage`.
-- Pas de réutilisation des mêmes 32 bytes comme clé AES ET HMAC sans HKDF.
-- Pas de commit qui dépend de hooks skippés (`--no-verify`).
-- Pas d'AAD construite à la main — passage obligatoire par `buildAAD()`.
+**À faire :**
+
+- Générer un IV frais par chiffrement AES-GCM (`crypto.getRandomValues`).
+- Construire toute AAD via `buildAAD(parts: Uint8Array[])` (dans `packages/shared/src/crypto-types.ts`) — jamais à la main.
+- Dériver les sous-clés AES et HMAC via HKDF avec labels distincts (`"nodea:aes"`, `"nodea:hmac"`).
+- Utiliser les branded types (`AesMainKey`, `HmacMainKey`, `Base64`, `CipherIV`…) — mélanger les primitives doit échouer à la compilation.
+- Pour un nouveau module : réutiliser `createCollectionClient`, ne pas réimplémenter le POST/PATCH dance.
+- Quand le slice Zustand `crypto.status` flippe à `'missing'` : ne pas tenter de déchiffrer, surfacer le `KeyMissingModal` existant.
+
+**Interdit :**
+
+- `console.log(mainKey)` ou équivalent qui logue / persiste un `CryptoKey` ou du matériel clé brut.
+- `window.mainKey` ou tout autre fallback global qui exposerait la clé.
+- Stockage de `guard` ou de tokens sensibles dans `localStorage`.
+- Réutiliser les mêmes 32 bytes comme clé AES ET HMAC sans HKDF.
+- Ajouter un second encodeur base64 : passer par `core/crypto/base64.ts`.
+- Renvoyer `guard` ou l'`encrypted_key` d'un autre user dans une réponse serveur (un test d'intégration le bloque).
+- Commit qui dépend de hooks skippés (`--no-verify`).
 
 ## Intégrité du bundle
 
@@ -252,7 +319,7 @@ C'est la limite la plus honnête de Nodea : un serveur compromis peut servir du
 ### Mitigations en place
 
 - **Subresource Integrity** sur l'entry chunk — le HTML qui charge le bundle principal contient l'empreinte SHA-384 du fichier ; un navigateur conforme refuse d'exécuter un fichier altéré.
-- **Manifest `INTEGRITY.txt`** publié à chaque release — empreintes SHA-384 de tous les fichiers du bundle. Un auditeur peut comparer ce que son instance sert avec ce qui est annoncé. Cf. [`Security.md §7`](https://github.com/aliceout/Nodea/blob/main/docs/Security.md#7-the-web-app-supply-chain-limit-must-read).
+- **Manifest `INTEGRITY.txt`** publié à chaque release — empreintes SHA-384 de tous les fichiers du bundle. Un auditeur peut comparer ce que son instance sert avec ce qui est annoncé (commande `sha384sum` côté instance déployée, comparaison contre l'`INTEGRITY.txt` attaché à la release GitHub correspondante). La vérification est manuelle et out-of-band, c'est le point : le trust anchor est la release GitHub publiée, pas le serveur en marche.
 
 ### Recommandation
 
@@ -441,6 +508,59 @@ Pour les vecteurs qui restent même si l'équipe Nodea, l'hébergeur et l'autori
 
 Aucun de ces signaux ne donne accès au contenu en clair. L'auto-hébergement neutralise la quasi-totalité d'entre eux.
 
+## Conservation des données et RGPD
+
+Nodea traite des données personnelles sous **intérêt légitime** (faire tourner le service demandé par l'utilisateur·ice) pour tout ce qui est opérationnel, et sous **consentement explicite** pour le contenu chiffré (l'utilisateur·ice ouvre un compte en sachant qu'iel y stocke des notes E2EE).
+
+### Matrice de rétention
+
+Toutes les tables qui contiennent de la donnée personnelle ou dérivée, avec leur règle de rétention et la cascade FK à la suppression de compte. Les tables non listées (`app_settings`, `announcements`) ne contiennent pas de donnée personnelle.
+
+| Table | Contient | Rétention | Effacé par `DELETE /auth/me` |
+|---|---|---|---|
+| `users` | id, email, username, rôle, blobs OPAQUE, mode de sécurité | Tant que le compte existe | Oui |
+| `opaque_records` | Envelope OPAQUE (par user) | Durée de vie de la ligne user | Oui (cascade FK) |
+| `auth_factors` | Credentials passkey (id, label, transports, wrap blobs, prfSupported) | Durée de vie user, ou jusqu'à retrait du credential | Oui (cascade FK) |
+| `mfa_totp` | Secret TOTP (chiffré) + flag enabled | Durée de vie user, ou jusqu'au disable TOTP | Oui (cascade FK) |
+| `mfa_totp_recovery_codes` | Backup codes hashés | Durée de vie user, single-use (lignes consommées gardées pour audit) | Oui (cascade FK) |
+| `mfa_bypass_requests` | Tokens (hashés), timestamps confirm/cancel | Gardées indéfiniment pour audit ; lignes inertes après consume/cancel/expire | Oui (cascade FK) |
+| `email_verifications` | Tokens one-time pour register/reset/change-email | `register` purgées par cron hebdo. Autres types gardées indéfiniment jusqu'à consume | Oui (cascade FK) |
+| `password_reset_tokens` | Tokens one-time pour reset password | Gardés indéfiniment ; inertes après consume/expire | Oui (cascade FK) |
+| `sessions` | Cookies de session + expiry | Purgées par cron hebdo quand `expires_at` est passé | Oui (cascade FK) |
+| `modules_config` | Guard HMAC par module + mapping user-id chiffré | Durée de vie user | Oui (cascade FK) |
+| `user_preferences` | Settings UI chiffrés | Durée de vie user | Oui (cascade FK) |
+| `entries_*` (par module) | Contenu E2EE + AAD | Durée de vie user, ou jusqu'à suppression de l'entrée | Oui (cascade FK) |
+
+### Droit à l'effacement (RGPD art. 17)
+
+`DELETE /auth/me` (route dans `packages/api/src/routes/auth-account.ts`) supprime la ligne `users` avec `requireFreshPassword`. **Toutes les autres tables cascadent en FK sur `user_id`**, donc un seul DELETE wipe l'arbre complet atomiquement. La route n'émet pas d'email et ne pose pas de ligne d'audit côté user — l'utilisateur·ice disparaît complètement, par design.
+
+Côté opérateur, la suppression apparaît dans les logs du prochain cron en delta `{ users: N, sessions: M }`. Pas de soft-delete, pas de récupération — une fois la ligne partie, les blobs chiffrés deviennent du bruit mathématique (la KEK et la clé maîtresse dérivées du password ne sont jamais persistées ailleurs que comme wraps gatés par le password proof).
+
+### Droit à la portabilité (RGPD art. 20)
+
+La vue `Account` expose un export par module qui télécharge le JSON déchiffré de toutes les entrées de l'utilisateur·ice. Le déchiffrement se fait côté client ; le serveur ne voit jamais le clair. Ça satisfait la portabilité sans affaiblir le modèle E2EE.
+
+### Logs serveur
+
+`hono/logger()` écrit une ligne par requête HTTP sur stdout — method, path, status, duration. **Pas de body, pas de headers, pas de cookies, pas de session id.** Les en-têtes `X-Sid` / `X-Guard` restent hors des access logs par construction (en-têtes, pas query-strings).
+
+En production, stdout est capturé par le runtime container. Responsabilité opérateur : configurer la rétention des logs au niveau runtime (`docker logs --max-size`, journald, etc.). Recommandation : **rotation à 7 jours**, jamais d'archivage offsite des logs bruts.
+
+### Télémétrie Sentry
+
+Quand `VITE_SENTRY_DSN` / `SENTRY_DSN` sont définis, le SDK envoie les events d'erreur à Sentry. Le hook `beforeSend` (`packages/api/src/sentry.ts`, `packages/web/src/sentry.ts`) strip cookies, query-strings, request bodies, headers et `event.user` avant transmission. Ce qui atteint Sentry : la stack trace, la route, le code de statut. Aucune donnée personnelle, aucun contenu E2E.
+
+### Ce qui n'est PAS purgé automatiquement (gaps connus)
+
+Les lignes suivantes accumulent dans le temps et sont gardées pour audit :
+
+- `mfa_bypass_requests` après `consumed_at` / `cancelled_at`
+- `password_reset_tokens` après `consumed_at`
+- `email_verifications` autres que `register`
+
+Pour une rétention plus serrée, étendre `packages/api/src/cron/index.ts` avec des delete-where passé une fenêtre d'audit choisie (ex. 90 jours). Choix laissé à l'opérateur — la valeur d'audit de ces lignes n'est pas nulle, et les volumes restent minuscules en V1.
+
 ## Audit & divulgation
 
 ### Auditer
@@ -462,7 +582,6 @@ Les tests crypto vérifient les invariants (round-trip AES-GCM, déterminisme HK
 Tout le détail vit dans le repo, mis à jour avec le code — règle de projet : doc et code sont une seule source de vérité, dans le même PR.
 
 - [Auth-Spec.md](https://github.com/aliceout/Nodea/blob/main/docs/Auth-Spec.md) — spécification auth complète, ~2700 lignes : threat model formel, schéma cryptographique détaillé, flows complets, matrice de re-auth, anti-patterns interdits, test matrix.
-- [Security.md](https://github.com/aliceout/Nodea/blob/main/docs/Security.md) — politique sécu vivante : invariants, rate-limit catalogue (§5.1), protections serveur, supply-chain limit (§7).
 - [Architecture.md](https://github.com/aliceout/Nodea/blob/main/docs/Architecture.md) — vue d'ensemble du code (api / web / shared), routes, runtime, stack frontend.
 - [Database.md](https://github.com/aliceout/Nodea/blob/main/docs/Database.md) — schéma Postgres complet, FK cascades, AAD pour chaque blob chiffré.
 

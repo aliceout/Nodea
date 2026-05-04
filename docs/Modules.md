@@ -92,7 +92,7 @@ guard = "g_" + hex( HMAC-SHA-256( hmacSubKey, moduleUserId + ":" + recordId ) )
 
 - `hmacSubKey` est dérivée de la clé maître via HKDF avec le label
   `"nodea:hmac"` (séparation de domaine — la clé AES utilise
-  `"nodea:aes"`). Cf. [Security.md §1](./Security.md).
+  `"nodea:aes"`). Cf. [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (section « Hiérarchie des clés »).
 - Le calcul est **déterministe** et purement local — jamais de
   round-trip réseau.
 - Sans la clé maître, impossible de forger un guard valide. Donc
@@ -147,7 +147,7 @@ accidentels.
 
 1. **Clé maître uniquement côté client** — aléatoire, stockée
    chiffrée (KEK + OPAQUE `exportKey`), importée comme `CryptoKey`
-   non-extractible au login. Cf. [Security.md §1](./Security.md).
+   non-extractible au login. Cf. [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (section « Hiérarchie des clés »).
 2. **Création en deux temps** — POST init → PATCH promotion. Le
    guard ne peut être calculé qu'après que le serveur a attribué
    un `id`.

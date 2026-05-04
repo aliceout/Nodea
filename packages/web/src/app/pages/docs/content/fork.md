@@ -62,7 +62,7 @@ Nodea est **chiffré de bout en bout**. Quelques règles cassent silencieusement
 - **Les guards HMAC ne sont JAMAIS persistés en `localStorage`.** Cache mémoire uniquement, purgé au logout.
 - **Branded types** (`Base64`, `AesMainKey`, `HmacMainKey`, `CipherIV`) — confondre les types doit échouer à la compilation.
 
-Ces règles sont décrites avec les raisons historiques dans `docs/Security.md` du repo (pages prescriptives, à lire avant de toucher la crypto).
+Ces règles sont décrites avec les raisons historiques sur [`/docs/security/tech`](/docs/security/tech) (page prescriptive, à lire avant de toucher la crypto).
 
 ## Décisions architecturales déjà prises
 
@@ -85,6 +85,6 @@ Le repo GitHub contient encore quelques pages techniques exhaustives :
 - `docs/Architecture.md` — état du code (où vit quoi, runtime, middleware).
 - `docs/Database.md` — schéma Postgres complet avec contraintes et AAD.
 - `docs/Auth-Spec.md` — spec auth exhaustive (référence, pas une lecture rapide).
-- `docs/Security.md` — invariants crypto, rate-limit, modèle de menaces.
+- [`/docs/security/tech`](/docs/security/tech) — invariants crypto, rate-limit, modèle de menaces, RGPD (déjà ici, dans la section Sécurité).
 
 Ces pages migreront dans les sections appropriées de cette doc en ligne au fur et à mesure.

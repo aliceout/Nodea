@@ -4,9 +4,10 @@
 > un document juridique signé. Elles sont publiées ici pour que les
 > utilisateur·ice·s sachent à quoi s'attendre en attendant la version
 > finale revue par un·e juriste. Les engagements ci-dessous reflètent
-> les choix techniques déjà en place dans le code (cf.
-> [`Security.md` §8](./Security.md#8-data-retention--rgpd) pour la
-> matrice technique), pas des promesses futures.
+> les choix techniques déjà en place dans le code (cf. la section
+> « Conservation des données et RGPD » de
+> [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+> pour la matrice technique), pas des promesses futures.
 >
 > **Tu auto-héberges Nodea ?** Ces CGU s'appliquent à l'instance
 > officielle uniquement. Sur ton instance, tu es l'opérateur — c'est
@@ -35,7 +36,7 @@ Quand tu crées un compte, tu nous confies :
   pouvons pas restaurer si tu la perds.
 
 Pour les détails techniques, voir
-[`Security.md`](./Security.md).
+[`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech).
 
 ## 3. Ce qu'on s'engage à faire
 
@@ -44,13 +45,15 @@ Pour les détails techniques, voir
 - **Pas d'entraînement IA sur tes données.** Pas une promesse posée
   dans un coin — par construction : on n'a pas accès à tes contenus.
 - **Conservation minimale.** Voir la matrice de rétention dans
-  [`Security.md` §8.1](./Security.md#81-retention-matrix). En résumé :
+  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+  (section « Matrice de rétention »). En résumé :
   tant que ton compte existe, on garde ce qui est nécessaire au
   service ; quand tu supprimes ton compte, **tout** part avec.
 - **Suppression complète à la demande.** L'option « Supprimer mon
   compte » dans les paramètres déclenche une suppression atomique en
   base. Pas de soft-delete, pas de récupération possible. Voir
-  [`Security.md` §8.2](./Security.md#82-right-to-erasure-rgpd-art-17).
+  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+  (section « Droit à l'effacement »).
 - **Portabilité.** Tu peux exporter tous tes contenus en clair (JSON
   déchiffré côté navigateur) depuis l'écran Compte → Export.
 - **Préavis raisonnable** en cas d'arrêt du service hébergé. Le code
@@ -77,11 +80,14 @@ Pour les détails techniques, voir
 - **Logs serveur** : une ligne par requête HTTP (méthode, chemin,
   code de retour, durée). Aucun corps, aucun cookie, aucune session
   ID. Rotation à 7 jours. Voir
-  [`Security.md` §8.4](./Security.md#84-server-side-logs).
+  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+  (section « Logs serveur »).
 - **Sentry** (optionnel, activé par l'opérateur) : reçoit la stack
   trace + la route + le code statut quand une erreur survient.
   `beforeSend` strippe cookies, query strings, body, headers et user
-  avant envoi. Voir [`Security.md` §8.5](./Security.md#85-sentry-telemetry).
+  avant envoi. Voir
+  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
+  (section « Télémétrie Sentry »).
 - **Aucun analytics tiers**, aucun pixel de tracking, aucun
   fingerprinting.
 

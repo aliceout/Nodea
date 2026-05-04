@@ -22,7 +22,8 @@ gh release create vX.Y.Z --notes-file release-notes.md
 ## Attacher le manifest d'intégrité (SHA-384 du bundle web)
 
 C'est ce qui permet aux self-hosters de vérifier que leur
-déploiement n'a pas été altéré (cf. `Security.md` §6.2). **Sans
+déploiement n'a pas été altéré (cf. `nodea.app/docs/security/tech`,
+section « Intégrité du bundle »). **Sans
 cette étape, la mitigation est cosmétique.**
 
 Récupérer depuis le CI (préféré — c'est le bundle exact que CI a

@@ -33,19 +33,19 @@ When reporting, please include:
 - The web bundle served by the official instance (`packages/web/`, crypto helpers, response handling, key-material lifecycle).
 - The shared schemas (`packages/shared/`) when they affect server-side validation.
 - The deployment manifests in `infra/` (docker-compose, nginx config) when they introduce attack surface.
-- Cryptographic invariants documented in `docs/Security.md` — e.g. main key never leaves WebCrypto, HMAC guards never persisted, HKDF domain separation.
+- Cryptographic invariants documented at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) — e.g. main key never leaves WebCrypto, HMAC guards never persisted, HKDF domain separation.
 
 **Out of scope:**
 
 - **Self-hosted instances** misconfigured by their operator (default-password DB, exposed Mailpit, etc.). Those are operator bugs; report them to whoever runs the instance.
 - **Third-party services** wired in by self-hosters (SMTP relays, reverse proxies). Report to the upstream vendor.
 - **Social engineering** against maintainers or contributors.
-- **Theoretical attacks** with no realistic threat model (e.g. nation-state with full client compromise — see `docs/Security.md` §6 about the web supply-chain limit, which is acknowledged and not a bug).
+- **Theoretical attacks** with no realistic threat model (e.g. nation-state with full client compromise — see [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) « Intégrité du bundle » section about the web supply-chain limit, which is acknowledged and not a bug).
 - **Automated scanner output** without analysis — please confirm the finding reproduces against the official build before reporting.
 
 ## Public security model
 
-The full threat model, crypto invariants, and known limitations live at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) and in [`docs/Security.md`](../docs/Security.md). Read those before reporting — saves time on both sides.
+The full threat model, crypto invariants, and known limitations live at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) (source: [`packages/web/src/app/pages/docs/content/tech.md`](../packages/web/src/app/pages/docs/content/tech.md)). Read it before reporting — saves time on both sides.
 
 ## Hall of fame
 

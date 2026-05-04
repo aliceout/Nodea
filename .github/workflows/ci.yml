@@ -95,8 +95,8 @@ jobs:
       # a self-hoster (or any auditor) can download the SHA-384
       # fingerprints of every emitted asset for the commit under test
       # and compare against what their deployed instance is actually
-      # serving. See `documentation/Security.md` §7.2 for the
-      # verification procedure.
+      # serving. See nodea.app/docs/security/tech, section
+      # « Intégrité du bundle », for the verification procedure.
       - name: Upload web INTEGRITY.txt
         uses: actions/upload-artifact@v4
         with:
