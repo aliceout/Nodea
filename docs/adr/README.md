@@ -40,6 +40,7 @@ On suit le format [MADR](https://adr.github.io/madr/) (Markdown ADR), version si
 | [0010](./0010-getconfig-singleton.md) | `getConfig()` en singleton global | Accepted |
 | [0011](./0011-drizzle-forward-only-migrations.md) | Migrations Drizzle forward-only, sans rollback | Accepted |
 | [0012](./0012-camel-case-only-on-the-wire.md) | Tout-camelCase sur le wire (supersède 0003) | Accepted |
+| [0013](./0013-zustand-slice-pattern.md) | Slice pattern Zustand pour `nodea-store` (complément de 0006) | Accepted |
 
 ## Quand écrire un nouvel ADR
 
