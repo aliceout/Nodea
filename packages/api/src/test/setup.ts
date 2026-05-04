@@ -45,7 +45,7 @@ beforeEach(async () => {
     TRUNCATE TABLE
       mood_entries,
       goals_entries,
-      passage_entries,
+      journal_entries,
       habits_items_entries,
       habits_logs_entries,
       library_items_entries,

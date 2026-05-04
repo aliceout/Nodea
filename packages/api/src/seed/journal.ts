@@ -1,5 +1,5 @@
-import { PassagePayloadSchema, type PassagePayload } from '@nodea/shared';
-import { passageEntries } from '../db/schema.ts';
+import { JournalPayloadSchema, type JournalPayload } from '@nodea/shared';
+import { journalEntries } from '../db/schema.ts';
 import {
   ensureModuleUserId,
   replaceEntries,
@@ -10,17 +10,13 @@ import { buildJournalFixtures } from './journal.fixtures.ts';
 
 /**
  * Journal seed — encrypts each fixture under the user's AES key
- * and inserts a fresh row in `passage_entries` (the journal-shaped
- * table — the K Passages module has its own future schema).
- * Re-running wipes the user's existing journal entries first.
- *
- * Module id is `journal` even though the table is named
- * `passage_entries` — same convention the page uses.
+ * and inserts a fresh row in `journal_entries`. Re-running wipes
+ * the user's existing journal entries first.
  */
 export async function seedJournal(ctx: SeedContext): Promise<SeedResult> {
   const sid = await ensureModuleUserId(ctx.user.id, 'journal', ctx.aesKey);
-  const fixtures: PassagePayload[] = buildJournalFixtures().map((f) =>
-    PassagePayloadSchema.parse(f),
+  const fixtures: JournalPayload[] = buildJournalFixtures().map((f) =>
+    JournalPayloadSchema.parse(f),
   );
-  return replaceEntries(passageEntries, sid, fixtures, ctx.aesKey, ctx.hmacKey);
+  return replaceEntries(journalEntries, sid, fixtures, ctx.aesKey, ctx.hmacKey);
 }

@@ -76,7 +76,7 @@ export type ModulesConfigBody = z.infer<typeof ModulesConfigBodySchema>;
 export const COLLECTION_NAMES = [
   'mood',
   'goals',
-  'passage',
+  'journal',
   'habits-items',
   'habits-logs',
   'library-items',

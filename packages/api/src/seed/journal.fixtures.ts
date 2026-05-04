@@ -1,4 +1,4 @@
-import type { PassagePayload } from '@nodea/shared';
+import type { JournalPayload } from '@nodea/shared';
 import { nowMinusDays } from './shared.ts';
 
 /**
@@ -26,14 +26,14 @@ import { nowMinusDays } from './shared.ts';
  */
 
 interface JournalFixture
-  extends Pick<PassagePayload, 'date' | 'thread' | 'title' | 'content' | 'attachments'> {
-  type: 'passage.entry';
+  extends Pick<JournalPayload, 'date' | 'thread' | 'title' | 'content' | 'attachments'> {
+  type: 'journal.entry';
 }
 
 export function buildJournalFixtures(): JournalFixture[] {
   return [
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(0),
       thread: 'quotidien',
       title: null,
@@ -44,7 +44,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(2),
       thread: 'quotidien',
       title: null,
@@ -55,7 +55,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(4),
       thread: 'voyage',
       title: null,
@@ -69,7 +69,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(7),
       thread: 'lecture',
       title: null,
@@ -82,7 +82,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(10),
       thread: 'pro',
       title: null,
@@ -93,7 +93,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(14),
       thread: 'voyage',
       title: null,
@@ -101,7 +101,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(20),
       thread: 'famille',
       title: null,
@@ -112,7 +112,7 @@ export function buildJournalFixtures(): JournalFixture[] {
       attachments: [],
     },
     {
-      type: 'passage.entry',
+      type: 'journal.entry',
       date: nowMinusDays(28),
       thread: 'lecture, perso',
       title: null,

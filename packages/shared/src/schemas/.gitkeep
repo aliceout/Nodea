@@ -1,1 +1,1 @@
-Per-module Zod schemas will land here during Phase 2+ (auth, mood, goals, passage, habits, library, review).
+Per-module Zod schemas live here (auth, mood, goals, journal, habits, library, review).

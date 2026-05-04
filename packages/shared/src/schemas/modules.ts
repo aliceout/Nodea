@@ -83,7 +83,7 @@ export const GoalsPayloadSchema = z
 export type GoalsPayload = z.infer<typeof GoalsPayloadSchema>;
 
 // ---------------------------------------------------------------------
-// Passage
+// Journal
 // ---------------------------------------------------------------------
 
 /**
@@ -99,24 +99,24 @@ export type GoalsPayload = z.infer<typeof GoalsPayloadSchema>;
  * encrypted blob a hair smaller and avoids leaking the prefix
  * twice on the wire.
  */
-export const PassageAttachmentSchema = z.object({
+export const JournalAttachmentSchema = z.object({
   id: z.string().min(1),
   mime: z.string().regex(/^image\/(?:png|jpeg|jpg|webp|gif)$/),
   data: z.string().min(1),
 });
-export type PassageAttachment = z.infer<typeof PassageAttachmentSchema>;
+export type JournalAttachment = z.infer<typeof JournalAttachmentSchema>;
 
-export const PassagePayloadSchema = z
+export const JournalPayloadSchema = z
   .object({
-    type: z.literal('passage.entry').default('passage.entry'),
+    type: z.literal('journal.entry').default('journal.entry'),
     date: z.string().min(1),
     thread: z.string().default(''),
     title: z.string().nullable().default(null),
     content: z.string().min(1),
-    attachments: z.array(PassageAttachmentSchema).default([]),
+    attachments: z.array(JournalAttachmentSchema).default([]),
   })
   .passthrough();
-export type PassagePayload = z.infer<typeof PassagePayloadSchema>;
+export type JournalPayload = z.infer<typeof JournalPayloadSchema>;
 
 // ---------------------------------------------------------------------
 // Habits — two collections (items + logs)
@@ -262,9 +262,9 @@ export type LibraryItemPayload = z.infer<typeof LibraryItemPayloadSchema>;
 
 /**
  * A note or extract attached to a library item. `kind: "quote"` is
- * the heir of the old Passage module (passages copied from a book) ;
- * `kind: "note"` covers everything else (in-progress reflection,
- * fiche-bilan, impression…).
+ * a short excerpt copied from the book (typically with a page
+ * reference) ; `kind: "note"` covers everything else (in-progress
+ * reflection, fiche-bilan, impression…).
  */
 export const LibraryReviewPayloadSchema = z
   .object({

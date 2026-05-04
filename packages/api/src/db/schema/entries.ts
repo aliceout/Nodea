@@ -25,11 +25,8 @@ import { index, pgTable, text } from 'drizzle-orm/pg-core';
  * longer exists ; the client orders client-side after
  * decryption.
  *
- * `user_id` was a regression introduced during the Hono
- * migration (commit 29b6e25) for the convenience of `ON
- * DELETE CASCADE` ; the trade-off is now reversed — orphan
- * rows on user removal are accepted, server-readable
- * user→data linkage is forbidden.
+ * Server-readable user→data linkage is forbidden by design —
+ * orphan rows on user removal are accepted as the trade-off.
  *
  * Cascade-on-delete consequences :
  *   - User self-delete is **client-driven** : the client
@@ -74,7 +71,7 @@ function createEntryTable(name: string) {
 
 export const moodEntries = createEntryTable('mood_entries');
 export const goalsEntries = createEntryTable('goals_entries');
-export const passageEntries = createEntryTable('passage_entries');
+export const journalEntries = createEntryTable('journal_entries');
 export const habitsItemsEntries = createEntryTable('habits_items_entries');
 export const habitsLogsEntries = createEntryTable('habits_logs_entries');
 export const libraryItemsEntries = createEntryTable('library_items_entries');

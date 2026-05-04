@@ -68,11 +68,11 @@ export {
   goalsEntries,
   habitsItemsEntries,
   habitsLogsEntries,
+  journalEntries,
   libraryCoversEntries,
   libraryItemsEntries,
   libraryReviewsEntries,
   moodEntries,
-  passageEntries,
   reviewEntries,
   type EntryTable,
 } from './schema/entries.ts';

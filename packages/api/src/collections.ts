@@ -2,7 +2,7 @@ import type { CollectionName } from '@nodea/shared/schemas/entries';
 import {
   moodEntries,
   goalsEntries,
-  passageEntries,
+  journalEntries,
   habitsItemsEntries,
   habitsLogsEntries,
   libraryItemsEntries,
@@ -32,7 +32,7 @@ export interface CollectionDef {
 export const COLLECTIONS: readonly CollectionDef[] = [
   { name: 'mood', table: moodEntries },
   { name: 'goals', table: goalsEntries },
-  { name: 'passage', table: passageEntries },
+  { name: 'journal', table: journalEntries },
   { name: 'habits-items', table: habitsItemsEntries },
   { name: 'habits-logs', table: habitsLogsEntries },
   { name: 'library-items', table: libraryItemsEntries },

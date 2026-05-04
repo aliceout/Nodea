@@ -11,7 +11,7 @@ import {
 import type {
   MoodPayload,
   GoalsPayload,
-  PassagePayload,
+  JournalPayload,
   HabitsItemPayload,
   HabitsLogPayload,
   LibraryItemPayload,
@@ -168,14 +168,14 @@ describe('Goals module — full encrypted round-trip', () => {
   });
 });
 
-describe('Passage module — full encrypted round-trip', () => {
-  it('creates a passage entry, lists it decrypted', async () => {
-    const cookie = await authCookie('passage@example.com');
+describe('Journal module — full encrypted round-trip', () => {
+  it('creates a journal entry, lists it decrypted', async () => {
+    const cookie = await authCookie('journal@example.com');
     const keys = await freshMainKeys();
-    const sid = 'sid-passage';
+    const sid = 'sid-journal';
 
-    const payload: PassagePayload = {
-      type: 'passage.entry',
+    const payload: JournalPayload = {
+      type: 'journal.entry',
       date: new Date().toISOString(),
       thread: 'journal',
       title: 'Phase 6 notes',
@@ -183,33 +183,33 @@ describe('Passage module — full encrypted round-trip', () => {
       attachments: [],
     };
 
-    await createPromoted(cookie, 'passage', keys, sid, payload);
+    await createPromoted(cookie, 'journal', keys, sid, payload);
 
-    const listRes = await app.request('/passage/records', { headers: { cookie, 'x-sid': sid } });
+    const listRes = await app.request('/journal/records', { headers: { cookie, 'x-sid': sid } });
     const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
-    const got = await simDecryptPayload<PassagePayload>(
+    const got = await simDecryptPayload<JournalPayload>(
       keys.aesKey,
       list.data[0]!.cipherIv,
       list.data[0]!.payload,
     );
     expect(got.title).toBe('Phase 6 notes');
-    expect(got.type).toBe('passage.entry');
+    expect(got.type).toBe('journal.entry');
   });
 
   it('never exposes the guard field to readers', async () => {
-    const cookie = await authCookie('noleakpassage@example.com');
+    const cookie = await authCookie('noleakjournal@example.com');
     const keys = await freshMainKeys();
     const sid = 'sid-noleak';
 
-    await createPromoted(cookie, 'passage', keys, sid, {
-      type: 'passage.entry',
+    await createPromoted(cookie, 'journal', keys, sid, {
+      type: 'journal.entry',
       date: '2026-04-17T00:00:00Z',
       thread: '',
       title: null,
       content: 'some content',
     });
 
-    const listRes = await app.request('/passage/records', {
+    const listRes = await app.request('/journal/records', {
       headers: { cookie, 'x-sid': sid },
     });
     const list = (await listRes.json()) as { data: unknown[]; meta: Record<string, unknown> };
