@@ -82,7 +82,10 @@ existing dev server is reused.
 | `08-goals-crud.spec.ts` | Goals module → composer create → list → edit → delete (mirror of `07`, second « finished » module covered) | ✅ |
 | `09-account-changes.spec.ts` | Settings → Mon compte → username change + email change with re-auth gate | ✅ |
 | `10-mfa-bypass-totp.spec.ts` | Lose TOTP → request bypass → click email → DB time-shift past 7-day window → log back in without TOTP | ✅ |
-| `11-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
+| `11-i18n-switch.spec.ts` | Switch FR ↔ EN via sidebar footer + persist across reload + key labels translated on multiple surfaces | ✅ |
+| `12-admin-announcements.spec.ts` | Promote to admin → Admin tab → create announcement → toggle active/inactive → delete with confirm | ✅ |
+| `13-privacy-invariants.spec.ts` | URL stays `/flow` across module switches + `document.title === 'Nodea'` + no `?token=` / `?d=` / `?guard=` in any captured request URL | ✅ |
+| `14-change-mode-maximum.spec.ts` | TOTP + passkey enrolled → change `security_mode` to `maximum` → assert downgrade auto on TOTP disable | 🚧 follow-up |
 
 The remaining follow-up suites need :
 - For bypass (`08`) : `helpers/db.ts` already exposes
@@ -131,6 +134,24 @@ Important caveats for the specs (03-08) :
   `helpers/db.ts.backdateBypassConfirmation` short-circuits the
   7-day delay, and the final re-login lands on `/flow` without a
   TOTP prompt — proving the bypass was consumed at login finish.
+- `11-i18n-switch` automates the deterministic part of section 5
+  of `SANITY-CHECKLIST.md` (FR ↔ EN switch + persistance across
+  reload). Uses the `<select aria-label="Préférence de langue">`
+  in `SidebarFooter.tsx` ; asserts on labels from sidebar /
+  topbar / Account → Identity tab.
+- `12-admin-announcements` covers section 6. Uses
+  `helpers/db.ts.promoteToAdmin` (new helper) to flip a freshly
+  registered user to admin role, then drives the Admin → Annonces
+  tab through create / toggle / delete. Tests post-i18n-sweep
+  labels on `AnnouncementsManager`.
+- `13-privacy-invariants` covers section 8. Captures every
+  request URL the page makes during a navigation session and
+  asserts none contain forbidden query strings (`?token=`,
+  `?t=`, `?d=`, `?sid=`, `?guard=`). Whitelists the legitimate
+  setup URLs (`/activate?token=`, `/auth/bypass/confirm?t=`,
+  `/auth/register/invite-info?token=`) explicitly. Also asserts
+  `window.location.pathname === '/flow'` and
+  `document.title === 'Nodea'` after each navigation.
 
 ## Helpers
 

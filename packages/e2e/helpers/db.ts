@@ -70,3 +70,10 @@ export async function getUserIdByEmail(email: string): Promise<string | null> {
   `;
   return (rows[0]?.['id'] as string) ?? null;
 }
+
+/** Promote a user to admin role. Used by the admin-flows spec where
+ *  the register endpoint always creates a `user`-role user — direct
+ *  DB update is the only way to get an admin without a seed step. */
+export async function promoteToAdmin(userId: string): Promise<void> {
+  await db()`UPDATE users SET role = 'admin' WHERE id = ${userId}`;
+}
