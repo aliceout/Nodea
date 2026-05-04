@@ -23,6 +23,7 @@ const Totp = lazy(() => import('./pages/Totp'));
 const SecurityMode = lazy(() => import('./pages/SecurityMode'));
 const BypassConfirm = lazy(() => import('./pages/BypassConfirm'));
 const Docs = lazy(() => import('./pages/Docs'));
+const Terms = lazy(() => import('./pages/Terms'));
 
 function lazyPage(node: ReactElement): ReactElement {
   return (
@@ -114,6 +115,10 @@ function AppWithKeyModal() {
       <Route path="/docs/security" element={<Navigate to="/docs/security/newbie" replace />} />
       <Route path="/docs/:section" element={lazyPage(<Docs />)} />
       <Route path="/docs/:section/:tier" element={lazyPage(<Docs />)} />
+      {/* Public legal page. CGU brouillon — la V1 juridique remplacera
+          le source dans `pages/Terms/content.md`. Lien depuis le footer
+          de Login. */}
+      <Route path="/terms" element={lazyPage(<Terms />)} />
       <Route
         path="/flow"
         element={
