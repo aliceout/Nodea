@@ -6,7 +6,7 @@
 
 Tu télécharges Nodea pour t'en faire **ta propre version** — comprendre comment c'est foutu, changer ce qui te chiffonne, faire tourner ta fork avec tes modifs. C'est ici.
 
-Si tu cherches plutôt à **contribuer au projet officiel** (soumettre une PR, signaler une issue, suivre les conventions du repo), va voir le `CONTRIBUTING.md` à la racine du repo GitHub. C'est une convention différente, audience différente.
+Si tu cherches plutôt à **contribuer au projet officiel** (soumettre une PR, signaler une issue, suivre les conventions du repo), va voir le `CONTRIBUTING.md` du repo GitHub (rangé dans `.github/`). C'est une convention différente, audience différente.
 
 Si tu veux juste **comprendre la sécurité** sans toucher au code, [Sécurité](/docs/security/newbie) est l'endroit. Si tu veux **héberger ta version sans la modifier**, [Auto-héberger](/docs/self-host).
 
@@ -76,7 +76,7 @@ Les autres ADR couvrent l'architecture en couches, le client API web, le routing
 
 ## Si tu veux contribuer upstream
 
-Tu modifies pour toi : tu es libre, c'est ta fork. Tu modifies pour soumettre une PR sur le repo officiel : il y a quelques conventions à respecter (style de commit, `pnpm test` qui passe, etc.) — vois le `CONTRIBUTING.md` à la racine du repo GitHub pour le détail.
+Tu modifies pour toi : tu es libre, c'est ta fork. Tu modifies pour soumettre une PR sur le repo officiel : il y a quelques conventions à respecter (style de commit, `pnpm test` qui passe, etc.) — vois le `CONTRIBUTING.md` du repo GitHub (rangé dans `.github/`) pour le détail.
 
 ## Aller plus loin
 
