@@ -36,7 +36,7 @@ test('register → activate via email → login → /flow', async ({ page }) => 
   });
 
   await page.getByLabel(/E-?mail/i).fill(email);
-  await page.getByLabel(/Identifiant|Username/i).fill(username);
+  await page.getByLabel(/Nom d.utilisateur|Username/i).fill(username);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   // The form has a confirm-password field as the second password
   // input.

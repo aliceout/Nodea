@@ -27,11 +27,14 @@ export async function registerAndActivate(
   const email = `${emailBase}-${Date.now()}@example.com`;
   const password = STRONG_PASSWORD;
 
-  // 1. Register form (open mode).
+  // 1. Register form (open mode). The submit button gates on
+  // password rules + password === confirm + valid email, so every
+  // field must be filled before the click.
   await page.goto('/register');
-  await page.fill('input[type=email]', email);
-  await page.fill('input[name=username], input[id*=username]', emailBase);
-  await page.fill('input[type=password]', password);
+  await page.getByLabel(/E-?mail/i).fill(email);
+  await page.getByLabel(/Nom d.utilisateur|Username/i).fill(emailBase);
+  await page.getByLabel(/^Mot de passe$|^Password$/i).fill(password);
+  await page.getByLabel(/Confirmer|Confirm/i).fill(password);
   await page.getByRole('button', { name: /Cr.er mon compte|Create account/i }).click();
 
   // The register flow shows a "check your email" panel and emits

@@ -56,7 +56,7 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
     page.getByRole('button', { name: /Cr.er mon compte|Create account/i }),
   ).toBeVisible({ timeout: 10_000 });
   await page.getByLabel(/E-?mail/i).fill(email);
-  await page.getByLabel(/Identifiant|Username/i).fill(username);
+  await page.getByLabel(/Nom d.utilisateur|Username/i).fill(username);
   await page.getByLabel(/^Mot de passe$|^Password$/i).fill(STRONG_PASSWORD);
   const confirmField = page.getByLabel(/Confirmer|Confirm/i);
   if (await confirmField.count() > 0) {
