@@ -10,6 +10,7 @@ import {
 import { moodClient } from '@/core/api/modules/mood';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
+import { createMutationTracker } from '@/core/state/mutation-tracker';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -211,18 +212,39 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     [openComposer],
   );
 
+  // FRONT-13 — per-entry mutation tracker so concurrent rollbacks
+  // don't clobber each other. Each delete gets a unique token ; the
+  // catch block only rolls back if its token is still the latest
+  // for that entry id.
+  const trackerRef = useRef(createMutationTracker<string>());
+
   const deleteEntry = useCallback(
     async (entry: MoodEntry) => {
       if (!ctx) return;
       if (!window.confirm(t('mood.context.confirmDelete', { values: { date: entry.date } })))
         return;
-      const previous = entriesRef.current;
+      const token = trackerRef.current.begin(entry.id);
+      // Capture the original index so a rollback re-inserts at the
+      // same position rather than at the end of the list.
+      const indexBefore = entriesRef.current.findIndex((e) => e.id === entry.id);
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
         await moodClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
+        trackerRef.current.forget(entry.id);
         bumpMoodVersion();
       } catch (err) {
-        setEntries(previous);
+        if (!trackerRef.current.isLatest(entry.id, token)) return;
+        // Targeted rollback : re-insert THIS entry at its original
+        // position. Snapshot-based rollback (the legacy pattern)
+        // would have undone any concurrent unrelated mutations
+        // landed in the meantime.
+        setEntries((prev) => {
+          if (prev.some((e) => e.id === entry.id)) return prev;
+          const next = [...prev];
+          const at = indexBefore < 0 || indexBefore > next.length ? next.length : indexBefore;
+          next.splice(at, 0, entry);
+          return next;
+        });
         if (import.meta.env.DEV) console.warn('mood: delete failed', err);
       }
     },

@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import type { ModuleClient } from '@/core/modules/use-module-client';
+import { createMutationTracker } from '@/core/state/mutation-tracker';
 import type { ComposerEditing, ComposerType } from '@/core/store/nodea-store';
 
 import { nextStatus } from '../lib/status';
@@ -63,6 +64,15 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     entriesRef.current = entries;
   }, [entries]);
 
+  // FRONT-13 — per-entry mutation tracker. Two rapid clicks on the
+  // same goal's status pill (or a delete chasing a cycle) used to
+  // race because the rollback in the older catch block ran with a
+  // stale snapshot of the entries list. Now each mutation gets a
+  // token ; rollback only fires if the token is still the latest
+  // for that entry id, AND the rollback only touches that entry
+  // (not the whole list snapshot).
+  const trackerRef = useRef(createMutationTracker<string>());
+
   const cycleStatus = useCallback(
     async (entry: GoalEntry) => {
       if (!ctx) return;
@@ -77,7 +87,9 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         next === 'done'
           ? (entry.completedAt ?? new Date().toISOString())
           : null;
-      const previous = entriesRef.current;
+      const token = trackerRef.current.begin(entry.id);
+      const previousStatus = entry.status;
+      const previousCompletedAt = entry.completedAt;
       setEntries((prev) =>
         prev.map((e) =>
           e.id === entry.id
@@ -97,7 +109,18 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         });
         bumpGoalsVersion();
       } catch (err) {
-        setEntries(previous);
+        if (!trackerRef.current.isLatest(entry.id, token)) return;
+        // Targeted rollback : revert THIS entry's status +
+        // completedAt back to what they were before this attempt.
+        // Other entries (and any newer mutation on the same entry)
+        // are untouched.
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === entry.id
+              ? { ...e, status: previousStatus, completedAt: previousCompletedAt }
+              : e,
+          ),
+        );
         if (import.meta.env.DEV)
           console.warn('goals: toggle status failed', err);
       }
@@ -128,13 +151,26 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     async (entry: GoalEntry) => {
       if (!ctx) return;
       if (!window.confirm(`Supprimer « ${entry.title} » ?`)) return;
-      const previous = entriesRef.current;
+      const token = trackerRef.current.begin(entry.id);
+      const indexBefore = entriesRef.current.findIndex((e) => e.id === entry.id);
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
         await goalsClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
+        trackerRef.current.forget(entry.id);
         bumpGoalsVersion();
       } catch (err) {
-        setEntries(previous);
+        if (!trackerRef.current.isLatest(entry.id, token)) return;
+        // Re-insert this entry at its original position. If a
+        // concurrent mutation already re-added it (rare), no-op.
+        setEntries((prev) => {
+          if (prev.some((e) => e.id === entry.id)) return prev;
+          const nextList = [...prev];
+          const at = indexBefore < 0 || indexBefore > nextList.length
+            ? nextList.length
+            : indexBefore;
+          nextList.splice(at, 0, entry);
+          return nextList;
+        });
         if (import.meta.env.DEV) console.warn('goals: delete failed', err);
       }
     },
@@ -152,13 +188,16 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         return;
       }
       const renumbered = new Map<string, string>();
+      const previousDates = new Map<string, string>();
+      const tokens = new Map<string, string>();
       for (const e of affected) {
         const newDate = e.date
           ? e.date.replace(/^\d{4}/, String(to))
           : String(to);
         renumbered.set(e.id, newDate);
+        previousDates.set(e.id, e.date);
+        tokens.set(e.id, trackerRef.current.begin(e.id));
       }
-      const previous = entriesRef.current;
       setEntries((prev) =>
         prev.map((e) =>
           renumbered.has(e.id) ? { ...e, date: renumbered.get(e.id)! } : e,
@@ -181,7 +220,19 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         }
         bumpGoalsVersion();
       } catch (err) {
-        setEntries(previous);
+        // Targeted rollback per entry : restore each entry's date
+        // only if our carry-over token is still the latest mutation
+        // for that entry. Entries whose date was further mutated by
+        // a concurrent action are left as-is.
+        setEntries((prev) =>
+          prev.map((e) => {
+            const token = tokens.get(e.id);
+            if (token === undefined) return e;
+            if (!trackerRef.current.isLatest(e.id, token)) return e;
+            const original = previousDates.get(e.id);
+            return original !== undefined ? { ...e, date: original } : e;
+          }),
+        );
         if (import.meta.env.DEV) console.warn('goals: carry-over failed', err);
       }
       // `from` is unused at runtime — used by the call site to
