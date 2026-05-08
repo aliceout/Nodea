@@ -160,6 +160,34 @@ export function buildApp() {
       await sql`UPDATE users SET role = 'admin' WHERE id = ${userId}`;
       return c.json({ ok: true });
     });
+
+    // Backdate confirmed_at on every active bypass request for a
+    // user — used by test 10 to simulate the 7-day apply window
+    // having elapsed without actually waiting a week. Same DB-
+    // alignment rationale as the helpers above : going through
+    // the api guarantees we hit whatever DB the api is bound to,
+    // even when `reuseExistingServer` reuses a dev process whose
+    // DATABASE_URL was pinned at startup.
+    app.post('/__test__/backdate-bypass', async (c) => {
+      const body = await c.req.json<{ userId?: string }>();
+      const userId = body.userId;
+      if (!userId) return c.json({ ok: false, error: 'missing_user_id' }, 400);
+      try {
+        const rows = await sql`
+          UPDATE mfa_bypass_requests
+          SET confirmed_at = NOW() - INTERVAL '8 days'
+          WHERE user_id = ${userId}
+            AND confirmed_at IS NOT NULL
+            AND consumed_at IS NULL
+            AND cancelled_at IS NULL
+          RETURNING id
+        `;
+        return c.json({ ok: true, updated: rows.length });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return c.json({ ok: false, error: 'sql_error', detail: message }, 500);
+      }
+    });
   }
 
   // Single-step register flow with magic-link activation

@@ -33,17 +33,26 @@ export async function closeDb(): Promise<void> {
 }
 
 /** Backdate the `confirmed_at` of every active bypass request for
- *  a user, so the next login picks up the bypass at apply time. */
-export async function backdateBypassConfirmation(userId: string): Promise<void> {
-  const past = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
-  await db()`
-    UPDATE mfa_bypass_requests
-    SET confirmed_at = ${past}
-    WHERE user_id = ${userId}
-      AND confirmed_at IS NOT NULL
-      AND consumed_at IS NULL
-      AND cancelled_at IS NULL
-  `;
+ *  a user, so the next login picks up the bypass at apply time.
+ *  Goes through the api test-only endpoint (same rationale as
+ *  `getUserIdByEmail` / `promoteToAdmin` — when Playwright reuses
+ *  a dev api process via `reuseExistingServer`, that process is
+ *  pinned to whatever `DATABASE_URL` was set at boot, often the
+ *  dev DB rather than `nodea_e2e`. A direct SQL connection from
+ *  the helper would update a different database than the one the
+ *  api reads at login). */
+export async function backdateBypassConfirmation(userId: string): Promise<number> {
+  const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  const res = await fetch(`${apiUrl}/__test__/backdate-bypass`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) {
+    throw new Error(`backdate-bypass → ${res.status}`);
+  }
+  const json = (await res.json()) as { ok: boolean; updated: number };
+  return json.updated;
 }
 
 /** Read the security_mode of a user — used to assert downgrades. */

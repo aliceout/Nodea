@@ -46,20 +46,7 @@ test.beforeEach(async () => {
   await clearInbox();
 });
 
-// TODO(e2e/test10) : skip temporaire pendant qu'on creuse un
-// décalage entre l'API et l'UI MFA-bypass. Diag : le test capture
-// bien l'email de récupération en étape 7 (preuve que le route
-// `POST /auth/mfa/bypass/request` a renvoyé 200 et que
-// `getEmailService().send` a tourné), mais une query SQL en étape
-// 9 trouve 0 ligne dans `mfa_bypass_requests` pour cet user — ET
-// 0 ligne dans toute la table. Le re-login en étape 10 ne peut
-// donc pas consommer un bypass qui n'existe pas, et atterrit sur
-// `/login/mfa` au lieu de `/flow`. Pas trouvé qui supprime la
-// ligne entre l'insert (auth-mfa-bypass.ts L167) et la query
-// e2e ; à reprendre avec un log côté API pour tracer le cycle de
-// vie de la ligne. Cf. CLAUDE.md « Documentation … one source of
-// truth » : l'invariant testé reste celui de Auth-Spec §7.8.
-test.skip('MFA bypass TOTP — perte de TOTP → email de récupération → re-login sans TOTP', async ({ page }) => {
+test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login sans TOTP', async ({ page }) => {
   const email = `bypass-${Date.now()}@example.com`;
   const username = `bypass${Date.now()}`;
 
