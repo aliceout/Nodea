@@ -63,8 +63,16 @@ test('i18n FR ↔ EN — switch via sidebar + persistance + libellés clés', as
   await expect(page.getByRole('button', { name: /^Votre profil$/i })).toHaveCount(0);
 
   /* -------- 4. Naviguer sur Account → vérifier les libellés EN -------- */
-  await page.getByRole('button', { name: /^Your profile$/i }).first().click();
-  await page.waitForLoadState('networkidle');
+  // `setModule('account')` (cf. SidebarHeader.tsx) appelle
+  // `history.pushState('/flow')` pour préserver l'invariant URL
+  // figée, ce que Playwright interprète comme une navigation et
+  // attend ensuite un `load` qui ne fire jamais (l'URL n'a pas
+  // changé). `noWaitAfter` débraie cette attente — on attend
+  // explicitement le contenu du panneau Account juste après.
+  await page
+    .getByRole('button', { name: /^Your profile$/i })
+    .first()
+    .click({ noWaitAfter: true });
 
   // Identity tab affiche « Display name » côté EN, « Nom d'affichage »
   // côté FR. Match exact pour éviter un faux-positif sur un autre
