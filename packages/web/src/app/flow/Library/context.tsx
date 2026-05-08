@@ -72,6 +72,7 @@ interface LibraryFiltersValue {
   groupBy: LibraryGroupBy;
   viewMode: LibraryViewMode;
   cellFilter: CellFilter | null;
+  searchQuery: string;
 
   allTags: string[];
   filteredItems: LibraryItem[];
@@ -82,6 +83,7 @@ interface LibraryFiltersValue {
   setGroupBy: (next: LibraryGroupBy) => void;
   setViewMode: (next: LibraryViewMode) => void;
   setCellFilter: (next: CellFilter | null) => void;
+  setSearchQuery: (next: string) => void;
 }
 
 interface LibraryActionsValue {
@@ -154,6 +156,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       groupBy: filters.groupBy,
       viewMode: filters.viewMode,
       cellFilter: filters.cellFilter,
+      searchQuery: filters.searchQuery,
       allTags: filters.allTags,
       filteredItems: filters.filteredItems,
       groups: filters.groups,
@@ -162,6 +165,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setGroupBy: filters.setGroupBy,
       setViewMode: filters.setViewMode,
       setCellFilter: filters.setCellFilter,
+      setSearchQuery: filters.setSearchQuery,
     }),
     [filters],
   );

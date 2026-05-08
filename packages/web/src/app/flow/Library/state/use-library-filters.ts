@@ -14,6 +14,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type LibraryStatus } from '@nodea/shared';
 
+import { matchesAnyField } from '@/lib/text-search';
+
 import { matchesCellFilter, type CellFilter } from '../lib/cell-filter';
 import { buildGroups, type LibraryGroupBy } from '../lib/grouping';
 import type { LibraryGroup, LibraryItem } from '../lib/types';
@@ -48,6 +50,11 @@ export interface LibraryFiltersState {
   groupBy: LibraryGroupBy;
   viewMode: LibraryViewMode;
   cellFilter: CellFilter | null;
+  /** Free-text search query. Filters across `title`,
+   *  `creators[].name`, and `tags[]` (cf. issue #94). Combines with
+   *  the chip filters via AND ; an empty string disables the
+   *  filter. */
+  searchQuery: string;
 
   allTags: string[];
   filteredItems: LibraryItem[];
@@ -58,6 +65,7 @@ export interface LibraryFiltersState {
   setGroupBy: (next: LibraryGroupBy) => void;
   setViewMode: (next: LibraryViewMode) => void;
   setCellFilter: (next: CellFilter | null) => void;
+  setSearchQuery: (next: string) => void;
 }
 
 export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
@@ -67,6 +75,7 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
   const [groupBy, setGroupBy] = useState<LibraryGroupBy>('status');
   const [cellFilter, setCellFilter] = useState<CellFilter | null>(null);
   const [viewMode, setViewMode] = useState<LibraryViewMode>(() => readViewMode());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // viewMode persistence (localStorage).
   useEffect(() => {
@@ -81,6 +90,7 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
   }, [items]);
 
   const filteredItems = useMemo<LibraryItem[]>(() => {
+    const trimmedQuery = searchQuery.trim();
     return items.filter((it) => {
       if (statusFilter === 'favorites') {
         if (!it.isFavorite) return false;
@@ -89,9 +99,17 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
       }
       if (tagFilter && !(it.tags ?? []).includes(tagFilter)) return false;
       if (cellFilter && !matchesCellFilter(it, cellFilter)) return false;
-      return true;
+      // Cheap short-circuit when no search is active.
+      if (trimmedQuery.length === 0) return true;
+      // Search across title + every creator name + every tag. The
+      // creator-list spread keeps multi-author works (« Hugo &
+      // Sand ») searchable on either side.
+      return matchesAnyField(
+        [it.title, ...it.creators.map((c) => c.name), ...(it.tags ?? [])],
+        trimmedQuery,
+      );
     });
-  }, [items, statusFilter, tagFilter, cellFilter]);
+  }, [items, statusFilter, tagFilter, cellFilter, searchQuery]);
 
   const groups = useMemo<LibraryGroup[]>(
     () => buildGroups(filteredItems, groupBy),
@@ -104,6 +122,7 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
     groupBy,
     viewMode,
     cellFilter,
+    searchQuery,
     allTags,
     filteredItems,
     groups,
@@ -112,5 +131,6 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
     setGroupBy,
     setViewMode,
     setCellFilter,
+    setSearchQuery,
   };
 }

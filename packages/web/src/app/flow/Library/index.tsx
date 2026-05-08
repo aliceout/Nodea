@@ -5,6 +5,7 @@ import {
 import DirkButton from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
+import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
 
 import BookPickerModal from './components/BookPickerModal';
 import SideColumn from './components/SideColumn';
@@ -13,6 +14,7 @@ import {
   LibraryProvider,
   useLibraryActions,
   useLibraryData,
+  useLibraryFilters,
 } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
 import ReviewsList from './views/ReviewsList';
@@ -61,6 +63,7 @@ function LibraryView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectLibrarySubview);
   const { items } = useLibraryData();
+  const { searchQuery, setSearchQuery } = useLibraryFilters();
   const { addItem, openReviewPicker } = useLibraryActions();
 
   return (
@@ -73,6 +76,13 @@ function LibraryView() {
           >
             {subview === 'livres' ? (
               <>
+                <TopbarSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Rechercher dans Library…"
+                  clearLabel="Effacer la recherche"
+                  className="w-44 md:w-56"
+                />
                 <ViewModeToggle />
                 <DirkButton variant="primary" size="sm" onClick={addItem}>
                   + Nouveau livre
