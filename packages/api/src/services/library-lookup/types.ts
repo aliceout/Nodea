@@ -29,6 +29,17 @@ export interface ProviderAdapter {
    * structure changed and the regex parser is broken — the kind of
    * thing the operator absolutely needs to know about. */
   readonly strictProbe: boolean;
+  /** ISO 639-1 prefix the provider's catalogue is restricted to.
+   * Set on national-library SPARQL adapters (BNE = `es`) that have
+   * no useful results for other languages. The dispatcher skips
+   * the provider for queries whose language hint is set and
+   * doesn't match. Issue #38.
+   *
+   * Unset (the default) means "always run, regardless of language" —
+   * the right choice for multi-language catalogues (Open Library,
+   * Google Books, Wikidata, Amazon) and for BNF, which holds
+   * cross-language catalogue data. */
+  readonly restrictsToLang?: string;
   byIsbn(isbn: string): Promise<NormalisedBook[]>;
   byQuery(query: string, lang?: string): Promise<NormalisedBook[]>;
 }

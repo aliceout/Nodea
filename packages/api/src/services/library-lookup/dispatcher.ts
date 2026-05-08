@@ -17,6 +17,27 @@ const CACHE_MAX = 1024;
 const cache = new LookupCache<LibraryLookupResponse>(CACHE_MAX, CACHE_TTL_MS);
 
 /**
+ * Drop providers whose `restrictsToLang` doesn't match the query's
+ * language hint (issue #38). BNE only knows Spanish-language
+ * patrimony — running it for an English query wastes a SPARQL
+ * round-trip and pollutes the merge with low-quality rows.
+ *
+ * When `lang` is unset we keep every provider — without a hint we
+ * can't decide what to skip, so we err on the side of more
+ * coverage.
+ */
+export function filterByLangCompat(
+  adapters: readonly ProviderAdapter[],
+  lang?: string,
+): ProviderAdapter[] {
+  if (!lang) return [...adapters];
+  const prefix = lang.slice(0, 2).toLowerCase();
+  return adapters.filter(
+    (a) => !a.restrictsToLang || prefix === a.restrictsToLang,
+  );
+}
+
+/**
  * Reorder providers so that the language-aligned national library
  * comes first when the caller hints at a specific language. BNF
  * leads on `fr`, BNE on `es`; everything else stays in default
@@ -94,7 +115,10 @@ export async function* streamLookupByQuery(
   }
 
   const adapters = reorderForLang(
-    PROVIDERS.filter((a) => a.enabled),
+    filterByLangCompat(
+      PROVIDERS.filter((a) => a.enabled),
+      lang,
+    ),
     lang,
   );
   if (adapters.length === 0) {

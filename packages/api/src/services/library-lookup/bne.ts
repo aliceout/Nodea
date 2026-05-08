@@ -21,6 +21,10 @@ export const bneAdapter: ProviderAdapter = {
   enabled: true,
   needsKey: false,
   strictProbe: false,
+  // Spanish-only catalogue. Skipped by the dispatcher for queries
+  // whose language hint isn't `es` — issue #38. Saves a SPARQL
+  // round-trip that would have returned nothing useful.
+  restrictsToLang: 'es',
 
   async byIsbn(isbn): Promise<NormalisedBook[]> {
     const { stripped, kind } = normaliseIsbn(isbn);

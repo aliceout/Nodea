@@ -44,19 +44,61 @@ export const amazonAdapter: ProviderAdapter = {
 
   async byIsbn(isbn): Promise<NormalisedBook[]> {
     const { stripped } = normaliseIsbn(isbn);
+    // ISBN is universal — the TLD only affects which marketplace's
+    // first listing surfaces, not the book metadata itself. amazon.fr
+    // catalogues most international ISBNs ; keep this fixed so
+    // byIsbn stays predictable. The lang-aware TLD picker only
+    // matters for free-text queries (`byQuery`).
     return search(stripped, 'fr', 1);
   },
 
-  async byQuery(query, _lang): Promise<NormalisedBook[]> {
-    // Always hit `amazon.fr` (see issue #38 — TLD will become
-    // user-locale-driven later). 30 covers a full first results
-    // page on amazon.fr (~16-24 tiles depending on layout) plus
-    // any spillover. Per-tile parse is cheap (regex), the cost is
-    // dominated by the Puppeteer round-trip itself which is fixed
-    // regardless of how many tiles we read.
-    return search(query, 'fr', 30);
+  async byQuery(query, lang): Promise<NormalisedBook[]> {
+    // Pick the marketplace from the language the user picked
+    // **before** searching (issue #38). 30 covers a full first
+    // results page (~16-24 tiles) plus spillover — per-tile parse
+    // is cheap (regex), cost is dominated by the Puppeteer
+    // round-trip which is fixed regardless of tile count.
+    return search(query, pickAmazonTld(lang), 30);
   },
 };
+
+/**
+ * Map a BCP-47 language hint to the Amazon TLD whose marketplace
+ * indexes that language's books most reliably. Issue #38.
+ *
+ * Strategy : prefix-match the hint (so `fr-CA` still hits `fr`),
+ * fall back to `.com` for languages without a clearly-aligned
+ * marketplace. We don't try to disambiguate `en-GB` → `.co.uk` vs
+ * `en-US` → `.com` ; `.com` covers both with English-language
+ * results, and the `.co.uk` distinction wouldn't change which books
+ * appear, only the prices.
+ *
+ * Exported for unit testing.
+ */
+export function pickAmazonTld(lang: string | undefined): string {
+  if (!lang) return 'com';
+  const prefix = lang.slice(0, 2).toLowerCase();
+  switch (prefix) {
+    case 'fr':
+      return 'fr';
+    case 'es':
+      return 'es';
+    case 'de':
+      return 'de';
+    case 'it':
+      return 'it';
+    case 'nl':
+      return 'nl';
+    case 'pl':
+      return 'pl';
+    case 'ja':
+      return 'co.jp';
+    case 'en':
+      return 'com';
+    default:
+      return 'com';
+  }
+}
 
 async function search(query: string, tld: string, limit: number): Promise<NormalisedBook[]> {
   // `i=stripbooks` restricts the search to printed books;
@@ -69,12 +111,7 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
   // network-idle wait cap is the real driver of latency here.
   const { html, finalUrl, status } = await fetchRendered(url, {
     referer: `https://www.amazon.${tld}/`,
-    acceptLanguage:
-      tld === 'fr'
-        ? 'fr-FR,fr;q=0.9,en;q=0.8'
-        : tld === 'es'
-          ? 'es-ES,es;q=0.9,en;q=0.8'
-          : 'en-US,en;q=0.9',
+    acceptLanguage: acceptLanguageFor(tld),
     timeoutMs: 30000,
   });
 
@@ -126,6 +163,33 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
     );
   }
   return results;
+}
+
+/** Send a credible `Accept-Language` for the marketplace, with English
+ *  as a low-priority fallback so the WAF's locale heuristics never
+ *  see an obviously-mismatched header (a French marketplace probed
+ *  with `Accept-Language: en-US` was blocked more frequently in
+ *  early testing). */
+function acceptLanguageFor(tld: string): string {
+  switch (tld) {
+    case 'fr':
+      return 'fr-FR,fr;q=0.9,en;q=0.8';
+    case 'es':
+      return 'es-ES,es;q=0.9,en;q=0.8';
+    case 'de':
+      return 'de-DE,de;q=0.9,en;q=0.8';
+    case 'it':
+      return 'it-IT,it;q=0.9,en;q=0.8';
+    case 'nl':
+      return 'nl-NL,nl;q=0.9,en;q=0.8';
+    case 'pl':
+      return 'pl-PL,pl;q=0.9,en;q=0.8';
+    case 'co.jp':
+      return 'ja-JP,ja;q=0.9,en;q=0.8';
+    case 'com':
+    default:
+      return 'en-US,en;q=0.9';
+  }
 }
 
 /* ---- HTML parsing (unchanged from the direct-fetch version) -- */
