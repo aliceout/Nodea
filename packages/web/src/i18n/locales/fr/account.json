@@ -109,7 +109,7 @@
       "decryptFailed": "Étiquette illisible",
       "revokeAria": "Révoquer cette session",
       "revokeCta": "Révoquer",
-      "revokeConfirm": "Révoquer cette session ? L'appareil sera déconnecté immédiatement.",
+      "revokeConfirm": "Tu vas révoquer la session de {device}. Cet appareil sera déconnecté immédiatement et devra se reconnecter avec son mot de passe.",
       "revokeError": "Échec de la révocation. Réessaie.",
       "revokeStaleAuth": "Re-saisis ton mot de passe pour révoquer une session.",
       "logoutAllCta": "Se déconnecter partout",

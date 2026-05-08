@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ComputerDesktopIcon,
@@ -26,6 +26,7 @@ import { useNodeaStore, selectMainKey, selectUser } from '@/core/store/nodea-sto
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { parseDeviceLabel } from '@/lib/device-label';
 import Button from '@/ui/atoms/dirk/Button';
+import { Modal } from '@/ui/atoms/layout/Modal';
 
 import Field from './Field';
 
@@ -217,17 +218,44 @@ export default function SessionsCard() {
   }
 
   function handleRevoke(id: string): void {
-    if (!window.confirm(t('account.security.sessions.revokeConfirm'))) return;
     setPendingAction({ kind: 'revoke', id });
     setPassword('');
     setActionError(null);
   }
 
   function handleLogoutAll(): void {
-    if (!window.confirm(t('account.security.sessions.logoutAllConfirm'))) return;
     setPendingAction({ kind: 'logoutAll' });
     setPassword('');
     setActionError(null);
+  }
+
+  // Resolve the targeted session row (used by the modal title) so
+  // we can show « Révoquer · iPhone » rather than a generic prompt.
+  const pendingTargetLabel = useMemo<string | null>(() => {
+    if (!pendingAction || pendingAction.kind !== 'revoke') return null;
+    const target = sessions?.find((s) => s.id === pendingAction.id);
+    if (!target) return null;
+    return labels.get(target.id) ?? t('account.security.sessions.unknownDevice');
+  }, [pendingAction, sessions, labels, t]);
+
+  // Auto-focus the password field on modal open. Without a focus
+  // hook the modal's focus trap lands on the first interactive
+  // element which is the close button on the dialog backdrop —
+  // the user has to tab to reach the password.
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (pendingAction) {
+      // Defer one frame so the modal's enter transition has
+      // mounted the input.
+      requestAnimationFrame(() => passwordInputRef.current?.focus());
+    }
+  }, [pendingAction]);
+
+  function handleSubmitOnEnter(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'Enter' && password.length > 0 && !submitting) {
+      e.preventDefault();
+      void executePendingAction();
+    }
   }
 
   // ---- Last-seen formatter (locale-aware) ----
@@ -333,42 +361,59 @@ export default function SessionsCard() {
         </ul>
       )}
 
-      {pendingAction ? (
-        <div className="mt-4 rounded border border-hair bg-bg-2 p-3">
+      <div className="mt-4">
+        <Button variant="danger-ghost" size="sm" onClick={handleLogoutAll}>
+          {t('account.security.sessions.logoutAllCta')}
+        </Button>
+      </div>
+
+      <Modal open={pendingAction !== null} onClose={resetActionState}>
+        <div className="p-6">
+          <h2 className="mb-1 text-[18px] font-semibold text-ink">
+            {pendingAction?.kind === 'logoutAll'
+              ? t('account.security.sessions.logoutAllCta')
+              : t('account.security.sessions.revokeCta')}
+          </h2>
+          <p className="mb-4 text-[13px] leading-[1.55] text-muted">
+            {pendingAction?.kind === 'logoutAll'
+              ? t('account.security.sessions.logoutAllConfirm')
+              : t('account.security.sessions.revokeConfirm', {
+                  values: { device: pendingTargetLabel ?? '' },
+                })}
+          </p>
           <Field
             label={t('account.security.sessions.passwordLabel')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleSubmitOnEnter}
             type="password"
+            ref={passwordInputRef}
+            autoComplete="current-password"
           />
           {actionError ? (
-            <p role="alert" className="mb-2 text-[12px] text-danger">
+            <p role="alert" className="mb-3 text-[12px] text-danger">
               {actionError}
             </p>
           ) : null}
-          <div className="flex gap-2">
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={resetActionState}>
+              {t('common.actions.cancel')}
+            </Button>
             <Button
-              variant="primary"
+              variant="danger"
               size="sm"
               onClick={executePendingAction}
               disabled={submitting || password.length === 0}
             >
-              {pendingAction.kind === 'revoke'
-                ? t('account.security.sessions.revokeCta')
-                : t('account.security.sessions.logoutAllCta')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={resetActionState}>
-              {t('common.actions.cancel')}
+              {submitting
+                ? t('common.states.submitting')
+                : pendingAction?.kind === 'revoke'
+                  ? t('account.security.sessions.revokeCta')
+                  : t('account.security.sessions.logoutAllCta')}
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="mt-4">
-          <Button variant="danger-ghost" size="sm" onClick={handleLogoutAll}>
-            {t('account.security.sessions.logoutAllCta')}
-          </Button>
-        </div>
-      )}
+      </Modal>
     </section>
   );
 }

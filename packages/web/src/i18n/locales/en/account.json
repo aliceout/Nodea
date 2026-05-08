@@ -109,7 +109,7 @@
       "decryptFailed": "Unreadable label",
       "revokeAria": "Revoke this session",
       "revokeCta": "Revoke",
-      "revokeConfirm": "Revoke this session? The device will be signed out immediately.",
+      "revokeConfirm": "You're about to revoke the {device} session. That device will be signed out immediately and will need to log back in with its password.",
       "revokeError": "Revocation failed. Try again.",
       "revokeStaleAuth": "Re-enter your password to revoke a session.",
       "logoutAllCta": "Sign out everywhere",
