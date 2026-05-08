@@ -27,7 +27,7 @@ import EntryRow from './EntryRow';
 export default function PrimaryColumn() {
   const { t, language } = useI18n();
   const { entries, load } = useMoodData();
-  const { year, month, chartCollapsed, filtered, toggleChart } =
+  const { year, month, chartCollapsed, searchQuery, filtered, toggleChart } =
     useMoodFilters();
   const monthNamesLong = useMemo(
     () => getMonthNames(language, 'long'),
@@ -113,7 +113,11 @@ export default function PrimaryColumn() {
         {load.status === 'loading' && entries.length === 0 ? (
           <EmptyHint>{t('mood.primary.loading')}</EmptyHint>
         ) : filtered.length === 0 ? (
-          <EmptyHint>{t('mood.primary.empty')}</EmptyHint>
+          <EmptyHint>
+            {searchQuery.trim().length > 0
+              ? t('mood.primary.emptySearch')
+              : t('mood.primary.empty')}
+          </EmptyHint>
         ) : (
           filtered.map((entry) => <EntryRow key={entry.id} entry={entry} />)
         )}

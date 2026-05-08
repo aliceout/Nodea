@@ -5,7 +5,8 @@
       "one": "Mood · {count} entrée",
       "other": "Mood · {count} entrées"
     },
-    "newCta": "+ Nouvelle entrée"
+    "newCta": "+ Nouvelle entrée",
+    "searchPlaceholder": "Rechercher dans Mood…"
   },
   "primary": {
     "yearRolling": "En cours",
@@ -13,7 +14,8 @@
     "showChart": "Afficher la frise",
     "hideChart": "Masquer la frise",
     "loading": "Chargement des entrées…",
-    "empty": "Aucune entrée pour cette période."
+    "empty": "Aucune entrée pour cette période.",
+    "emptySearch": "Aucune entrée ne correspond à cette recherche."
   },
   "row": {
     "editAria": "Modifier l’entrée",

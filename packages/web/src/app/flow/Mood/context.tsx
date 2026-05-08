@@ -15,6 +15,8 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
+import { matchesAnyField } from '@/lib/text-search';
+
 import { rangeFor } from './lib/date-format';
 import { recordToEntry } from './lib/mappers';
 import type { MoodEntry } from './lib/types';
@@ -52,14 +54,19 @@ interface MoodFiltersValue {
   year: number | null;
   month: number | null;
   chartCollapsed: boolean;
+  /** Free-text search query. Filters across `comment`, `positive1..3`,
+   *  `question`, `answer` (cf. issue #92). Combines with year/month
+   *  via AND ; an empty string disables the filter. */
+  searchQuery: string;
 
-  /** Entries inside the selected year × month window. Mirrors the
-   *  heatmap's `dataEnd` (not `end`), so the list and the frise
-   *  agree. */
+  /** Entries inside the selected year × month window AND matching
+   *  the current `searchQuery`. Mirrors the heatmap's `dataEnd`
+   *  (not `end`), so the list and the frise agree. */
   filtered: ReadonlyArray<MoodEntry>;
 
   setYear: (next: number | null) => void;
   setMonth: (next: number | null) => void;
+  setSearchQuery: (next: string) => void;
   toggleChart: () => void;
 }
 
@@ -102,6 +109,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const [year, setYearState] = useState<number | null>(null);
   const [month, setMonth] = useState<number | null>(null);
   const [chartCollapsed, setChartCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Reference today, captured once at mount. The heatmap and the
   // entries-list filter both read it ; pinning it here avoids
@@ -165,6 +173,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     const { start, dataEnd } = rangeFor(year, today);
     const startTime = start.getTime();
     const dataEndTime = dataEnd.getTime();
+    const trimmedQuery = searchQuery.trim();
     return entries.filter((entry) => {
       // `entry.dateIso` is a bare YYYY-MM-DD string and `new Date(...)`
       // parses it as UTC midnight. The window bounds (`start`, `dataEnd`)
@@ -179,9 +188,24 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       const t = d.getTime();
       if (t < startTime || t > dataEndTime) return false;
       if (month !== null && d.getMonth() !== month) return false;
-      return true;
+      // Cheap short-circuit when no search is active — avoids
+      // running the normalisation pipeline on every entry.
+      if (trimmedQuery.length === 0) return true;
+      // Search across the textual payload fields. `positives` is
+      // already an array — spreading is fine. Optional fields
+      // (`comment`, `question`, `answer`) are filtered out by
+      // `matchesAnyField` itself.
+      return matchesAnyField(
+        [
+          ...entry.positives,
+          entry.comment,
+          entry.question,
+          entry.answer,
+        ],
+        trimmedQuery,
+      );
     });
-  }, [entries, year, month, today]);
+  }, [entries, year, month, today, searchQuery]);
 
   // ---- Filter setters ----
 
@@ -272,12 +296,14 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       year,
       month,
       chartCollapsed,
+      searchQuery,
       filtered,
       setYear,
       setMonth,
+      setSearchQuery,
       toggleChart,
     }),
-    [year, month, chartCollapsed, filtered, setYear, toggleChart],
+    [year, month, chartCollapsed, searchQuery, filtered, setYear, toggleChart],
   );
 
   const actionsValue = useMemo<MoodActionsValue>(

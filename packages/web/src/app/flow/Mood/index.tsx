@@ -3,9 +3,10 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
+import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
 
 import SideColumn from './components/SideColumn';
-import { MoodProvider, useMoodData } from './context';
+import { MoodProvider, useMoodData, useMoodFilters } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
 
 /**
@@ -51,6 +52,7 @@ function MoodView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useMoodData();
+  const { searchQuery, setSearchQuery } = useMoodFilters();
   const total = entries.length;
 
   const topbarLabel = tn('mood.topbar.label', total);
@@ -59,6 +61,13 @@ function MoodView() {
     <ModuleShell
       topbar={
         <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
+          <TopbarSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t('mood.topbar.searchPlaceholder')}
+            clearLabel={t('common.search.clearAria')}
+            className="w-44 md:w-56"
+          />
           <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
             {t('mood.topbar.newCta')}
           </Button>

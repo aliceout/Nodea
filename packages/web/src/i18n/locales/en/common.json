@@ -36,5 +36,8 @@
   },
   "a11y": {
     "skipToMain": "Skip to main content"
+  },
+  "search": {
+    "clearAria": "Clear search"
   }
 }

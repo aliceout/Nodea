@@ -5,7 +5,8 @@
       "one": "Mood · {count} entry",
       "other": "Mood · {count} entries"
     },
-    "newCta": "+ New entry"
+    "newCta": "+ New entry",
+    "searchPlaceholder": "Search in Mood…"
   },
   "primary": {
     "yearRolling": "Rolling",
@@ -13,7 +14,8 @@
     "showChart": "Show heatmap",
     "hideChart": "Hide heatmap",
     "loading": "Loading entries…",
-    "empty": "No entry for this period."
+    "empty": "No entry for this period.",
+    "emptySearch": "No entry matches this search."
   },
   "row": {
     "editAria": "Edit entry",
