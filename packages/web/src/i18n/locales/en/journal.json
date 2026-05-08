@@ -6,7 +6,8 @@
       "other": "Journal · {count} entries"
     },
     "newCta": "+ New entry",
-    "readerLabel": "Journal · {position} / {total}"
+    "readerLabel": "Journal · {position} / {total}",
+    "searchPlaceholder": "Search in Journal…"
   },
   "list": {
     "loading": "Loading journal…",
@@ -27,9 +28,6 @@
     "readMore": "read more →"
   },
   "side": {
-    "search": "Search",
-    "searchPlaceholder": "Title or content…",
-    "searchAria": "Search journal",
     "view": "View",
     "viewByThread": "By thread",
     "viewByMonth": "By month",

@@ -6,7 +6,8 @@
       "other": "Journal · {count} entrées"
     },
     "newCta": "+ Nouvelle entrée",
-    "readerLabel": "Journal · {position} / {total}"
+    "readerLabel": "Journal · {position} / {total}",
+    "searchPlaceholder": "Rechercher dans Journal…"
   },
   "list": {
     "loading": "Chargement du journal…",
@@ -27,9 +28,6 @@
     "readMore": "lire la suite →"
   },
   "side": {
-    "search": "Recherche",
-    "searchPlaceholder": "Titre ou contenu…",
-    "searchAria": "Rechercher dans le journal",
     "view": "Vue",
     "viewByThread": "Par fil",
     "viewByMonth": "Par mois",

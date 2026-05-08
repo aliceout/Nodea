@@ -15,6 +15,7 @@ import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { matchesAnyField } from '@/lib/text-search';
 
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
@@ -167,16 +168,18 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, [entries]);
 
   const filtered = useMemo<ReadonlyArray<JournalEntry>>(() => {
-    const needle = search.trim().toLocaleLowerCase('fr');
+    const trimmedQuery = search.trim();
     return entries.filter((e) => {
       if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
         return false;
       }
-      if (needle.length > 0) {
-        const haystack = `${e.title ?? ''}\n${e.content}`.toLocaleLowerCase('fr');
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
+      // Cheap short-circuit when no search is active — avoids the
+      // normalisation pipeline on every entry.
+      if (trimmedQuery.length === 0) return true;
+      // Search across title + content + thread. The thread inclusion
+      // is intentional : users group entries by thread and often
+      // search for « thérapie » expecting the thread to match.
+      return matchesAnyField([e.title, e.content, e.thread], trimmedQuery);
     });
   }, [entries, threadFilter, search]);
 

@@ -3,12 +3,14 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
+import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
 
 import SideColumn from './components/SideColumn';
 import {
   JournalProvider,
   useJournalActions,
   useJournalData,
+  useJournalFilters,
 } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
 import ReaderShell from './views/ReaderShell';
@@ -52,6 +54,7 @@ function JournalView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useJournalData();
+  const { search, setSearch } = useJournalFilters();
   const { readingId } = useJournalActions();
 
   if (readingId !== null) {
@@ -64,6 +67,13 @@ function JournalView() {
     <ModuleShell
       topbar={
         <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
+          <TopbarSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t('journal.topbar.searchPlaceholder')}
+            clearLabel={t('common.search.clearAria')}
+            className="w-44 md:w-56"
+          />
           <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
             {t('journal.topbar.newCta')}
           </Button>

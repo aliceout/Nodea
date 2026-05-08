@@ -2,15 +2,17 @@ import type { ReactNode } from 'react';
 
 import { formatNumber } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import Input from '@/ui/atoms/dirk/Input';
 import FilterChip from '@/ui/dirk/module/FilterChip';
 
 import { useJournalData, useJournalFilters } from '../context';
 
 /**
- * Filter sidebar for the Journal. Sections : recherche texte, vue
- * (par fil / par mois), fils (chip per thread, only when grouping
- * by thread), stats (entries / mots / série).
+ * Filter sidebar for the Journal. Sections : vue (par fil / par
+ * mois), fils (chip per thread, only when grouping by thread),
+ * stats (entries / mots / série).
+ *
+ * The text search lives in the topbar (cf. issue #93 / umbrella
+ * #33) — sidebar is for chip-style filters and read-only stats.
  *
  * Reads everything from the data + filters contexts. The « Tous »
  * chip count is the full entry total (not the filtered one) so
@@ -21,28 +23,15 @@ export default function SideColumn() {
   const { t, tn, language } = useI18n();
   const { entries, stats } = useJournalData();
   const {
-    search,
     groupBy,
     threads,
     threadFilter,
-    setSearch,
     setGroupBy,
     setThreadFilter,
   } = useJournalFilters();
 
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
-      <section>
-        <SectionLabel>{t('journal.side.search')}</SectionLabel>
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('journal.side.searchPlaceholder')}
-          aria-label={t('journal.side.searchAria')}
-        />
-      </section>
-
       <section>
         <SectionLabel>{t('journal.side.view')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
