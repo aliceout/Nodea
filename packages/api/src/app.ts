@@ -8,6 +8,7 @@ import { authMfaRoutes } from './routes/auth-mfa.ts';
 import { authMfaBypassRoutes } from './routes/auth-mfa-bypass.ts';
 import { authPasskeyRoutes } from './routes/auth-passkey.ts';
 import { authReauthRoutes } from './routes/auth-reauth.ts';
+import { authSessionsRoutes } from './routes/auth-sessions.ts';
 import { authRecoveryRoutes } from './routes/auth-recovery.ts';
 import { authRegisterV2Routes } from './routes/auth-register-v2.ts';
 import { authSecurityModeRoutes } from './routes/auth-security-mode.ts';
@@ -223,6 +224,11 @@ export function buildApp() {
   // mutating actions can pass `requireFreshPassword` /
   // `requireFreshPasswordOrPasskey` for 5 minutes.
   app.route('/auth', authReauthRoutes);
+  // Active-sessions UI (issue #47) — `/auth/sessions/*` +
+  // `/auth/logout-all`. Mounted before `authRoutes` so the
+  // `/sessions/:id` DELETE wins the trie over any future broad
+  // catch-all in the legacy router.
+  app.route('/auth', authSessionsRoutes);
   // Security-mode change (Auth-Roadmap Phase 5D). Same ordering —
   // dedicated handler before the legacy catch-all.
   app.route('/auth', authSecurityModeRoutes);

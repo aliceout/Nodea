@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import DescribedSection from '../components/DescribedSection';
+import SessionsCard from '../components/SessionsCard';
 import { modeLabelKey } from '../lib/security-mode';
 
 /** « Sécurité » tab — five rows that link to the dedicated auth
@@ -108,6 +109,8 @@ export default function SecurityTab() {
           {t('account.security.mode.cta')}
         </Button>
       </DescribedSection>
+
+      <SessionsCard />
     </div>
   );
 }

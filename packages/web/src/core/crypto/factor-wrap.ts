@@ -286,3 +286,17 @@ export function buildMainKeyAAD(userId: string): string {
 export function buildPasskeyAAD(userId: string, credentialIdB64Url: string): string {
   return `nodea:v1\x1f${userId}\x1fpasskey\x1f${credentialIdB64Url}`;
 }
+
+/**
+ * AAD for the encrypted device label that decorates a session row in
+ * the « Sessions actives » UI (issue #47).
+ *
+ * Tag: `session-device-label`. No session-id binding — the label is
+ * non-sensitive (« iPhone », « MacBook »…), and the per-row IV
+ * already prevents trivial cross-row analysis. The `users.id` in the
+ * AAD prevents an opped server from moving a label cipher between
+ * users (auth-tag would fail at decrypt).
+ */
+export function buildSessionDeviceLabelAAD(userId: string): string {
+  return `nodea:v1\x1f${userId}\x1fsession-device-label`;
+}

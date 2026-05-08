@@ -158,13 +158,28 @@ export const sessions = pgTable(
       withTimezone: true,
     }),
 
-    // --- Audit metadata (Auth-Spec §7.10
-    //     GET /auth/sessions list) ---
-    /** Hash of the client IP (per-deployment salt) — never
-     *  the IP itself, to keep IP-based correlation impossible
-     *  from a leaked DB. */
+    // --- Audit metadata (deprecated, never written to since
+    //     auth-v2 ; kept nullable for back-compat until the next
+    //     destructive cleanup migration. The active-sessions UI
+    //     uses `deviceLabelCipher` below instead — privacy-first,
+    //     never the raw user-agent header). ---
     ipHash: text('ip_hash'),
     userAgent: text('user_agent'),
+
+    // --- Device hint for the active-sessions UI ---
+    // Encrypted label the client computes from `navigator.userAgent`
+    // (« MacBook », « iPhone », etc.) — AES-GCM, AAD-bound to
+    // `users.id + "session-device-label"`. The server never sees
+    // the cleartext, never captures the raw user-agent header.
+    // Issue #47.
+    //
+    // Both columns null when the client hasn't yet PATCHed a label
+    // (legacy sessions, or first GET before the post-login PATCH
+    // lands). The UI shows a generic « Appareil inconnu » fallback
+    // in that case.
+    deviceLabelCipher: text('device_label_cipher'),
+    deviceLabelIv: text('device_label_iv'),
+
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
 
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),

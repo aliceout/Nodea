@@ -82,6 +82,41 @@
         "maximum": "Maximum"
       },
       "cta": "Change"
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "description": "Devices currently signed in to your account. You can revoke a specific session (the device will be logged out immediately) or sign out everywhere at once.",
+      "loading": "Loading…",
+      "errorLoad": "Couldn't load active sessions.",
+      "currentBadge": "This session",
+      "createdAt": "Created on {date}",
+      "lastSeenAt": "Active {when}",
+      "lastSeenJustNow": "just now",
+      "lastSeenMinutes": {
+        "one": "{count} minute ago",
+        "other": "{count} minutes ago"
+      },
+      "lastSeenHours": {
+        "one": "{count} hour ago",
+        "other": "{count} hours ago"
+      },
+      "lastSeenDays": {
+        "one": "{count} day ago",
+        "other": "{count} days ago"
+      },
+      "neverSeen": "Never used since creation",
+      "unknownDevice": "Unknown device",
+      "decryptFailed": "Unreadable label",
+      "revokeAria": "Revoke this session",
+      "revokeCta": "Revoke",
+      "revokeConfirm": "Revoke this session? The device will be signed out immediately.",
+      "revokeError": "Revocation failed. Try again.",
+      "revokeStaleAuth": "Re-enter your password to revoke a session.",
+      "logoutAllCta": "Sign out everywhere",
+      "logoutAllConfirm": "You're about to be signed out on every device, including this one. Continue?",
+      "logoutAllError": "Global sign-out failed. Try again.",
+      "passwordLabel": "Password to confirm",
+      "passwordError": "Wrong password."
     }
   },
   "preferences": {

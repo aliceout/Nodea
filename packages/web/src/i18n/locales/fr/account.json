@@ -82,6 +82,41 @@
         "maximum": "Maximum"
       },
       "cta": "Modifier"
+    },
+    "sessions": {
+      "title": "Sessions actives",
+      "description": "La liste des appareils connectés à ton compte. Tu peux révoquer une session spécifique (l'appareil sera déconnecté immédiatement) ou tout déconnecter d'un coup.",
+      "loading": "Chargement…",
+      "errorLoad": "Impossible de charger les sessions actives.",
+      "currentBadge": "Cette session",
+      "createdAt": "Créée le {date}",
+      "lastSeenAt": "Active {when}",
+      "lastSeenJustNow": "à l'instant",
+      "lastSeenMinutes": {
+        "one": "il y a {count} minute",
+        "other": "il y a {count} minutes"
+      },
+      "lastSeenHours": {
+        "one": "il y a {count} heure",
+        "other": "il y a {count} heures"
+      },
+      "lastSeenDays": {
+        "one": "il y a {count} jour",
+        "other": "il y a {count} jours"
+      },
+      "neverSeen": "Jamais utilisée depuis sa création",
+      "unknownDevice": "Appareil inconnu",
+      "decryptFailed": "Étiquette illisible",
+      "revokeAria": "Révoquer cette session",
+      "revokeCta": "Révoquer",
+      "revokeConfirm": "Révoquer cette session ? L'appareil sera déconnecté immédiatement.",
+      "revokeError": "Échec de la révocation. Réessaie.",
+      "revokeStaleAuth": "Re-saisis ton mot de passe pour révoquer une session.",
+      "logoutAllCta": "Se déconnecter partout",
+      "logoutAllConfirm": "Tu vas être déconnecté·e de tous les appareils, y compris celui-ci. Continuer ?",
+      "logoutAllError": "Échec de la déconnexion globale. Réessaie.",
+      "passwordLabel": "Mot de passe pour confirmer",
+      "passwordError": "Mot de passe incorrect."
     }
   },
   "preferences": {
