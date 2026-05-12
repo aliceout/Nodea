@@ -62,11 +62,25 @@ export function buildApp() {
   );
 
   // Hono's logger() prints `<method> <url> <status> <duration>`.
-  // We hand it a sanitising printer so the HMAC `d=` guard
-  // (passed as a query param by the collection factory) and any
-  // `token=…` param never reach stdout. CLAUDE.md §Error handling
-  // forbids logging crypto material — see `docs/security-audit.md`
-  // Finding 1.
+  // We hand it a sanitising printer so :
+  //   - Query strings on `/auth/*` and `/<module>/*` are nuked
+  //     wholesale (no `?…` content reaches the log, regardless of
+  //     param names — defends against a future param drift).
+  //   - Outside those prefixes, a denylist of known-sensitive
+  //     names (`token`, `t`, `code`, `email`, etc.) is scrubbed
+  //     per-param.
+  // See `middleware/sanitize-log-url.ts` for the strategy + issue
+  // #71 for the broader opacity sweep.
+  //
+  // **Residual gap, intentionally not closed here** : the request
+  // path itself reveals which module the user is touching
+  // (`/mood/records` vs `/library/items`). A proxy operator can
+  // therefore still reconstruct "user U did something on module M
+  // at time T" from the access log + the sessions table. Closing
+  // this requires a unified `/records` endpoint that's agnostic
+  // to the module — tracked separately in issue #67.
+  //
+  // CLAUDE.md §Error handling forbids logging crypto material.
   app.use('*', logger(redactingPrintFunc));
 
   // Cache-Control on every API response (Tier 3 follow-up — the

@@ -107,4 +107,27 @@ describe('Runtime opacity — request logs', () => {
     const allLogs = captured.join('\n');
     expect(allLogs).not.toContain('OPAQUE_TEST_BLOB_THAT_SHOULD_NEVER_BE_LOGGED');
   });
+
+  it('does not leak the short `?t=` token on MFA-bypass confirm', async () => {
+    // The bypass confirm magic-link path receives the token as a
+    // query param (`?t=`). Wholesale redaction of `/auth/*` (added
+    // for issue #71) must catch it even though `t` is a short
+    // param name that could collide with generic uses on other
+    // routes.
+    const tokenSentinel = 'BYPASS_TOKEN_THAT_SHOULD_NEVER_BE_LOGGED_42';
+    const res = await app.request(
+      `/auth/mfa/bypass/confirm?t=${tokenSentinel}`,
+      { method: 'GET' },
+    );
+    // The token is invalid → 4xx ; the route still goes through
+    // the logger.
+    expect([200, 400, 401, 404, 410, 429]).toContain(res.status);
+
+    const allLogs = captured.join('\n');
+    expect(allLogs).not.toContain(tokenSentinel);
+    // The whole query string under /auth/ is replaced by
+    // `?__redacted__` regardless of the param name — assert the
+    // wholesale behaviour fires.
+    expect(allLogs).toMatch(/\/auth\/mfa\/bypass\/confirm\?__redacted__/);
+  });
 });

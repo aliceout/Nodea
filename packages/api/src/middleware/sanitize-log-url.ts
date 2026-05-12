@@ -14,26 +14,34 @@
  * arriving on a route that gets logged, an `?email=…` on a
  * lookup helper, etc.
  *
- * Without this scrubber, a regression would silently re-leak the
- * exact same crypto material that SEC-01 removed. With it, even
- * a buggy commit cannot trip the audit.
+ * Two-tier strategy (issue #71 hardening) :
  *
- * Strategy : install ourselves as the **log printer** of
- * `logger()` (it accepts a function in its constructor). The
- * printer redacts every value of every parameter named in
- * {@link REDACT_PARAMS} before delegating to `console.log`. This
- * leaves the actual `c.req.url` alone, so route handlers still
- * receive the real query string — only the console output is
- * redacted.
+ *   1. **Wholesale prefix redaction** — any request path under
+ *      a privacy-sensitive prefix (`/auth/*`, `/<module>/*`)
+ *      gets its **entire query string** nuked from the log line,
+ *      regardless of param names. This is the safest default :
+ *      a future route under these prefixes that adds a new
+ *      sensitive param doesn't need to remember to update the
+ *      denylist.
  *
- * The list is **whitelist-of-known-sensitive-names** rather than
- * a route-path allowlist : we don't trust ourselves to remember
- * every route that takes a sensitive param. Add new names to
- * {@link REDACT_PARAMS} as the API grows ; keep the list small
- * and explicit so the regex stays cheap.
+ *   2. **Per-name denylist** — outside those prefixes, we still
+ *      scrub a whitelist of known-sensitive param names. Catches
+ *      one-off helpers (`/library/lookup/cover-fetch?url=…` would
+ *      be under the wholesale `/library/` prefix anyway, but the
+ *      denylist guards against accidental query-string param
+ *      drift on routes we haven't carved out).
  *
- * Reference: `docs/security-audit.md` Finding 1 (original SEC-01
- * scope) + GitHub issue #71 (broader opacity sweep).
+ * Add new names to {@link REDACT_PARAMS} and new prefixes to
+ * {@link WHOLESALE_REDACT_PREFIXES} as the API grows ; keep both
+ * lists small and explicit so the regex stays cheap.
+ *
+ * Reference: GitHub issue #71 (broader opacity sweep).
+ *
+ * Residual gap explicitly NOT closed here : the request path
+ * itself reveals which module the user is accessing (e.g.
+ * `/mood/records` vs `/library/items`). Closing that requires a
+ * unified `/records` endpoint and is tracked separately in
+ * issue #67.
  *
  * @example
  * ```ts
@@ -43,8 +51,24 @@
  * ```
  */
 
-/** Parameter names whose values must never reach the log stream.
- *  Add to this list (not removing) as new sensitive params surface. */
+/**
+ * Path prefixes whose request lines must have their entire query
+ * string redacted, regardless of param names. The privacy floor :
+ * for these routes, no `?…` content reaches the log at all.
+ */
+const WHOLESALE_REDACT_PREFIXES = [
+  '/auth/',
+  '/mood/',
+  '/goals/',
+  '/journal/',
+  '/habits/',
+  '/library/',
+  '/review/',
+] as const;
+
+/** Parameter names whose values must never reach the log stream
+ *  (used outside the wholesale prefixes above). Add to this list
+ *  (not removing) as new sensitive params surface. */
 const REDACT_PARAMS = [
   // Crypto guards on encrypted-record mutations (legacy query-string
   // form ; post-SEC-01 they travel as `X-Guard`, but we keep the
@@ -52,7 +76,10 @@ const REDACT_PARAMS = [
   'd',
   'guard',
   'sid',
-  // Magic-link / activation / reset / TOTP transit tokens.
+  // Magic-link / activation / reset / TOTP transit tokens. `t` is
+  // the short form used on the MFA-bypass confirm link
+  // (`/auth/mfa/bypass/confirm?t=<token>`).
+  't',
   'token',
   'code',
   'recovery_code',
@@ -72,8 +99,46 @@ const REDACT_PATTERN = new RegExp(
 );
 const REDACTED = '__redacted__';
 
+/** True when the supplied URL path starts with one of the
+ *  wholesale-redact prefixes (cf. {@link WHOLESALE_REDACT_PREFIXES}). */
+function isWholesalePath(path: string): boolean {
+  return WHOLESALE_REDACT_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/**
+ * Redact every sensitive param value in a URL string. If the URL's
+ * path is under a wholesale-redact prefix, the whole query string
+ * is replaced by `?__redacted__` ; otherwise the per-name denylist
+ * applies.
+ *
+ * Works on both bare paths (`/foo?a=b`) and full URLs
+ * (`https://host/foo?a=b`). Each whitespace-delimited substring
+ * in the log message is scrubbed independently, so a line with
+ * multiple URLs gets fully cleaned.
+ */
 export function redactQueryParams(input: string): string {
-  return input.replace(REDACT_PATTERN, `$1$2=${REDACTED}`);
+  return input.replace(/\S+/g, (token) => {
+    const queryStart = token.indexOf('?');
+    if (queryStart === -1) return token;
+    // Resolve the path portion. For absolute URLs it starts after
+    // `://host/` ; for relative paths it's the head of the string.
+    const schemeEnd = token.indexOf('://');
+    let pathStart = 0;
+    if (schemeEnd !== -1) {
+      const hostStart = schemeEnd + 3;
+      const hostEnd = token.indexOf('/', hostStart);
+      pathStart = hostEnd === -1 ? token.length : hostEnd;
+    }
+    const path = token.slice(pathStart, queryStart);
+    if (isWholesalePath(path)) {
+      const head = token.slice(0, queryStart);
+      const hashStart = token.indexOf('#', queryStart);
+      const tail = hashStart === -1 ? '' : token.slice(hashStart);
+      return `${head}?${REDACTED}${tail}`;
+    }
+    // Outside wholesale prefixes : per-name scrub.
+    return token.replace(REDACT_PATTERN, `$1$2=${REDACTED}`);
+  });
 }
 
 /**
