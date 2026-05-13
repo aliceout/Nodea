@@ -71,6 +71,17 @@ async function truncateAll(): Promise<void> {
       library_items_entries, library_reviews_entries,
       review_entries
     RESTART IDENTITY CASCADE`;
+    // Seed `open_registration = true` so /register renders the
+    // public form (else the « Sur invitation » panel takes over,
+    // because the schema defaults to 'false' when the row is
+    // absent). This used to rely on a manually-configured dev api
+    // being reused via `reuseExistingServer: true` ; now that
+    // Playwright spawns its own api each run (#95 fix), the
+    // setting has to be seeded explicitly.
+    await sql`
+      INSERT INTO app_settings (key, value) VALUES ('open_registration', 'true')
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `;
   } finally {
     await sql.end();
   }

@@ -54,12 +54,21 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // API — Hono + Drizzle on port 3000.
+      // API — Hono + Drizzle on port 3000. We refuse to reuse an
+      // already-running api process (e.g. `pnpm dev:api` left open
+      // in another terminal). Playwright's `webServer.env` override
+      // only applies to the process it spawns ; a reused dev api
+      // stays pinned to whatever `DATABASE_URL` it booted with, so
+      // every register/login fixture ends up polluting the dev DB
+      // instead of `nodea_e2e` (cf. issue #95, suite de #41). The
+      // dev who runs the e2e suite must kill their `pnpm dev:api`
+      // first — the cost is one spawn (~5 s) per run, the prize is
+      // zero cross-contamination between dev data and tests.
       command: 'pnpm --filter @nodea/api start',
       cwd: REPO_ROOT,
       url: 'http://localhost:3000/healthz',
       timeout: 60_000,
-      reuseExistingServer: !process.env['CI'],
+      reuseExistingServer: false,
       env: {
         // Override DATABASE_URL to the e2e database so the test run
         // doesn't pollute dev data. The base credentials come from
@@ -71,12 +80,16 @@ export default defineConfig({
       },
     },
     {
-      // Web — Vite dev server on port 8089.
+      // Web — Vite dev server on port 8089. Same anti-reuse rule
+      // for symmetry with the api block above : a reused
+      // `pnpm dev:web` is harmless (no DB side-effects), but
+      // having both servers behave the same way removes one
+      // « did Playwright reuse this one ? » footgun.
       command: 'pnpm --filter @nodea/web dev',
       cwd: REPO_ROOT,
       url: 'http://localhost:8089',
       timeout: 60_000,
-      reuseExistingServer: !process.env['CI'],
+      reuseExistingServer: false,
     },
   ],
 });
