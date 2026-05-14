@@ -5,6 +5,12 @@ import { toIsoDate } from '@/core/i18n/date-format';
 import { rangeFor } from './date-format';
 import type { HeatmapCell, MonthLabel, MoodEntry } from './types';
 
+/** Narrowed input type for `buildHeatmap` — it only needs the
+ *  date + score, not the full `MoodEntry` (no id, no positives).
+ *  Lets the homepage feed its `MoodEntryLite` projection without
+ *  a cast. */
+export type HeatmapEntry = Pick<MoodEntry, 'dateIso' | 'score'>;
+
 /** GitHub-style frise dimensions. 52 weeks × 7 days = 364 cells. */
 export const HEATMAP_WEEKS = 52;
 export const HEATMAP_DAYS_PER_WEEK = 7;
@@ -31,18 +37,19 @@ export const HEATMAP_DAYS_PER_WEEK = 7;
  */
 export function buildHeatmap(
   year: number | null,
-  entries: ReadonlyArray<MoodEntry>,
+  entries: ReadonlyArray<HeatmapEntry>,
   today: Date = new Date(),
+  weeks: number = HEATMAP_WEEKS,
 ): {
   cells: Array<HeatmapCell | null>;
   monthLabels: MonthLabel[];
 } {
-  const total = HEATMAP_WEEKS * HEATMAP_DAYS_PER_WEEK;
+  const total = weeks * HEATMAP_DAYS_PER_WEEK;
   const refToday = new Date(today);
   refToday.setHours(0, 0, 0, 0);
   const currentYear = refToday.getFullYear();
   const todayTime = refToday.getTime();
-  const { start, end, dataEnd } = rangeFor(year, refToday);
+  const { start, end, dataEnd } = rangeFor(year, refToday, weeks);
   const startTime = start.getTime();
   const dataEndTime = dataEnd.getTime();
 
@@ -58,7 +65,7 @@ export function buildHeatmap(
   const lastWeekMonday = new Date(end);
   lastWeekMonday.setDate(end.getDate() - endDow);
   const oldestMonday = new Date(lastWeekMonday);
-  oldestMonday.setDate(lastWeekMonday.getDate() - (HEATMAP_WEEKS - 1) * 7);
+  oldestMonday.setDate(lastWeekMonday.getDate() - (weeks - 1) * 7);
 
   const sameYearFmt = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
@@ -101,8 +108,8 @@ export function buildHeatmap(
   const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
   const monthLabels: MonthLabel[] = [];
   let prevMonth = -1;
-  for (let w = 0; w < HEATMAP_WEEKS; w++) {
-    const weeksAgo = HEATMAP_WEEKS - 1 - w;
+  for (let w = 0; w < weeks; w++) {
+    const weeksAgo = weeks - 1 - w;
     const monday = new Date(lastWeekMonday);
     monday.setDate(lastWeekMonday.getDate() - weeksAgo * 7);
     if (monday.getMonth() !== prevMonth) {

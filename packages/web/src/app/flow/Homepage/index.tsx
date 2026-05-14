@@ -6,7 +6,6 @@ import Topbar from '@/ui/dirk/Topbar';
 
 import { HomepageProvider, useHomepageData } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
-import SideColumn from './views/SideColumn';
 
 /**
  * Homepage — Direction K · Sauge.
@@ -59,8 +58,6 @@ function HomepageView() {
           </Button>
         </Topbar>
       }
-      side={<SideColumn />}
-      layout="split"
     >
       <PrimaryColumn />
     </ModuleShell>

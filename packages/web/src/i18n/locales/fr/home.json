@@ -12,6 +12,11 @@
     "heading": "30 derniers jours",
     "ariaLabel": "Densité d’écriture sur les 30 derniers jours"
   },
+  "hero": {
+    "eyebrow": "Dernière entrée",
+    "cta": "voir le journal",
+    "ariaLabel": "Dernière entrée du journal"
+  },
   "announcement": {
     "label": "Nouvelle",
     "publishedOn": "Publié le {date}",

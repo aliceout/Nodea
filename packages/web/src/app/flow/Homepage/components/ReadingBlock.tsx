@@ -1,54 +1,64 @@
-import { Link } from 'react-router-dom';
+import { useNodeaStore } from '@/core/store/nodea-store';
 
 import { useHomepageData } from '../context';
-import SectionLabel from './SectionLabel';
+import HomeCard from './HomeCard';
 
 /**
- * « En cours de lecture » block on the home primary column.
- * Reads the in-progress library items from the homepage data
- * context. The block hides entirely when there's no
- * `in_progress` book — a user without an active read shouldn't
- * see an empty heading staring back.
+ * Lectures card on the Homepage. Reads the in-progress library
+ * items from the homepage data context (`projectLibraryReadings`
+ * already filters on `status === 'in_progress'`). Each row is a
+ * button that opens the Library module ; opening a specific book
+ * in detail is left for a follow-up.
  *
- * Each row is a `<Link>` to /flow/library ; opening a specific
- * book in detail (#?) is left for a follow-up.
+ * Hides the body — but keeps the card chrome — when there's no
+ * in-progress book, with an « rien en cours » placeholder.
  */
 export default function ReadingBlock() {
   const { readings } = useHomepageData();
-  if (readings.length === 0) return null;
+  const setModule = useNodeaStore((s) => s.setModule);
+  const goToLibrary = () => setModule('library');
+
   return (
-    <section className="mt-7">
-      <div className="mb-2 flex items-baseline justify-between">
-        <SectionLabel>En cours de lecture</SectionLabel>
-        <Link
-          to="/flow/library"
-          className="text-[11px] text-muted underline-offset-2 transition-colors hover:text-accent hover:underline"
+    <HomeCard
+      title={`EN COURS · ${readings.length}`}
+      cta={
+        <button
+          type="button"
+          onClick={goToLibrary}
+          className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
         >
           tout voir →
-        </Link>
-      </div>
-      <ul>
-        {readings.map((b) => (
-          <li
-            key={b.id}
-            className="flex items-baseline justify-between gap-3 border-b border-hair py-[5px] last:border-b-0"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-1.5 truncate text-[13px] font-medium text-ink">
+        </button>
+      }
+    >
+      {readings.length === 0 ? (
+        <p className="text-[12px] italic text-muted">Rien en cours pour l’instant.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {readings.map((b) => (
+            <li key={b.id}>
+              <button
+                type="button"
+                onClick={goToLibrary}
+                className="group flex w-full cursor-pointer items-baseline gap-2 text-left transition-colors"
+                title={b.author ? `${b.title} — ${b.author}` : b.title}
+              >
                 {b.isFavorite ? (
-                  <span aria-hidden="true" className="text-accent">
-                    ★
+                  <span aria-hidden="true" className="shrink-0 text-accent">★</span>
+                ) : null}
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink transition-colors group-hover:text-accent">
+                  {b.title}
+                </span>
+                {b.author ? (
+                  <span className="shrink-0 truncate text-[11px] text-muted">
+                    {b.author}
                   </span>
                 ) : null}
-                <span className="truncate">{b.title}</span>
-              </div>
-              {b.author ? (
-                <div className="truncate text-[11px] text-muted">{b.author}</div>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </HomeCard>
   );
 }

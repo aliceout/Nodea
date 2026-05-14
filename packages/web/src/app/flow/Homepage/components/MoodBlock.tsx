@@ -1,71 +1,100 @@
 import { useMemo } from 'react';
 
-import { cn } from '@/lib/utils';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Heatmap, { type HeatmapCellInput } from '@/ui/dirk/Heatmap';
+
+import { buildHeatmap } from '../../Mood/lib/heatmap';
+
+const HOME_WEEKS = 26;
 
 import { useHomepageData } from '../context';
-import { MOOD_BLOCK_FILL, MOOD_FRISE_DAYS } from '../lib/constants';
+import { MOOD_BLOCK_FILL } from '../lib/constants';
 import { formatMoodAvg } from '../lib/format';
-import { buildMoodFrise, summariseMoodFrise } from '../lib/frise';
-import SectionLabel from './SectionLabel';
+import HomeCard from './HomeCard';
 
 /**
- * 14-day mood strip on the Home aside. Reads from the lifted
- * Homepage context — the same fetch powers `ToSeeList`'s dynamic
- * Mood task. Days without an entry render as a faint outline so
- * gaps stay visible without faking a zero.
+ * Mood section on the Homepage — 52-week GitHub-style frise over
+ * a rolling year, reusing the shared `ui/dirk/Heatmap` component
+ * and Mood's own `buildHeatmap` so the home and the Mood page
+ * stay visually aligned. No legend on the home (the score key
+ * lives on the Mood page itself).
  *
- * Smaller-by-design than the Mood page's 52-week frise — this is
- * a glance, not a chart. Click-through could land on
- * `/flow/mood` later if we want a navigable version.
+ * The trailing summary surfaces the average across all loaded
+ * Mood entries — informative on a year window in a way the
+ * previous 14-day strip wasn't.
  */
 export default function MoodBlock() {
+  const { t } = useI18n();
   const { mood } = useHomepageData();
-  const cells = useMemo(() => buildMoodFrise(mood), [mood]);
-  const stats = useMemo(() => summariseMoodFrise(cells), [cells]);
+  const setModule = useNodeaStore((s) => s.setModule);
+
+  const { cells, monthLabels } = useMemo(
+    () => buildHeatmap(null, mood, new Date(), HOME_WEEKS),
+    [mood],
+  );
+
+  const heatmapCells = useMemo<Array<HeatmapCellInput | null>>(
+    () =>
+      cells.map((cell) => {
+        if (cell === null) return null;
+        const signed = Number(cell.score) > 0 ? `+${cell.score}` : cell.score;
+        return {
+          className: MOOD_BLOCK_FILL[cell.score],
+          isToday: cell.isToday,
+          title: `${cell.dateLabel} · ${signed}`,
+        };
+      }),
+    [cells],
+  );
+
+  const avg = useMemo(() => {
+    let sum = 0;
+    let count = 0;
+    for (const cell of cells) {
+      if (cell === null) continue;
+      sum += Number(cell.score);
+      count++;
+    }
+    return count === 0 ? null : sum / count;
+  }, [cells]);
+
+  const dayLabels = [
+    t('mood.chart.day0'),
+    t('mood.chart.day1'),
+    t('mood.chart.day2'),
+    t('mood.chart.day3'),
+    t('mood.chart.day4'),
+    t('mood.chart.day5'),
+    t('mood.chart.day6'),
+  ];
 
   return (
-    <section>
-      <div className="mb-2 flex items-baseline justify-between">
-        <SectionLabel>Mood</SectionLabel>
-        {stats.avg !== null ? (
-          <span className="text-[12px] font-semibold tabular-nums text-accent">
-            {formatMoodAvg(stats.avg)}
-          </span>
-        ) : null}
-      </div>
-      <div
-        className="grid gap-[3px]"
-        style={{ gridTemplateColumns: `repeat(${MOOD_FRISE_DAYS}, minmax(0, 1fr))` }}
-        aria-hidden="true"
-      >
-        {cells.map((c) =>
-          c.score ? (
-            <span
-              key={c.dateIso}
-              title={`${c.dateIso} · ${c.score}`}
-              className={cn(
-                'aspect-square rounded-[2px]',
-                MOOD_BLOCK_FILL[c.score],
-                c.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
-              )}
-            />
-          ) : (
-            <span
-              key={c.dateIso}
-              className={cn(
-                'aspect-square rounded-[2px] border border-hair/70',
-                c.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
-              )}
-            />
-          ),
-        )}
-      </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted">
-        <span>
-          {stats.count} {stats.count === 1 ? 'entrée' : 'entrées'} · {MOOD_FRISE_DAYS} j
-        </span>
-        {stats.avg !== null ? <span>moyenne {formatMoodAvg(stats.avg)}</span> : null}
-      </div>
-    </section>
+    <HomeCard
+      title="MOOD · 6 MOIS"
+      trailing={
+        avg !== null ? (
+          <span className="tabular-nums">moyenne {formatMoodAvg(avg)}</span>
+        ) : (
+          <span className="italic">aucune entrée</span>
+        )
+      }
+      cta={
+        <button
+          type="button"
+          onClick={() => setModule('mood')}
+          className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
+        >
+          tout voir →
+        </button>
+      }
+    >
+      <Heatmap
+        weeks={HOME_WEEKS}
+        cells={heatmapCells}
+        monthLabels={monthLabels}
+        dayLabels={dayLabels}
+      />
+    </HomeCard>
   );
 }

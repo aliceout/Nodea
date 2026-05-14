@@ -1,7 +1,7 @@
-/** Number of weeks the heatmap spans — kept here so `rangeFor`
- *  can use it without importing from `heatmap.ts` (avoids a
- *  circular dep between date-format ↔ heatmap). */
-const HEATMAP_WEEKS = 52;
+/** Default number of weeks the heatmap spans — kept here so
+ *  `rangeFor` can use it without importing from `heatmap.ts`
+ *  (avoids a circular dep between date-format ↔ heatmap). */
+const DEFAULT_HEATMAP_WEEKS = 52;
 const HEATMAP_DAYS_PER_WEEK = 7;
 
 /**
@@ -28,10 +28,11 @@ const HEATMAP_DAYS_PER_WEEK = 7;
 export function rangeFor(
   year: number | null,
   today: Date,
+  weeks: number = DEFAULT_HEATMAP_WEEKS,
 ): { start: Date; end: Date; dataEnd: Date } {
   if (year === null) {
     const start = new Date(today);
-    start.setDate(today.getDate() - HEATMAP_WEEKS * HEATMAP_DAYS_PER_WEEK + 1);
+    start.setDate(today.getDate() - weeks * HEATMAP_DAYS_PER_WEEK + 1);
     return { start, end: today, dataEnd: today };
   }
   const jan1 = new Date(year, 0, 1);
