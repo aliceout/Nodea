@@ -1,159 +1,196 @@
-import { useMemo, type CSSProperties } from 'react';
+import { Fragment, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
- * Generic GitHub-style activity heatmap — issue #56.
+ * Generic GitHub-contributions heatmap, extracted from Mood's
+ * `Chart` so Journal (issue #56) and any future module can reuse
+ * the same grid + labels + legend slot. Pure layout — the caller
+ * decides the cell colour by passing either a Tailwind className
+ * or an inline `fill` per cell.
  *
- * Renders a grid of one cell per day between `start` and `end`,
- * coloured by an intensity bucket returned by `getIntensity(date)`.
- * Columns = ISO weeks (Mon→Sun, French convention), rows = weekdays.
+ * Layout (CSS Grid) :
+ *   - col 1 : day-of-week labels (28 px). Mon..Sun, fr convention.
+ *   - col 2..weeks+1 : `weeks` columns at `1fr`, square cells.
+ *   - row 1 : month labels (12 px line height). Caller positions
+ *             each label at its first-week-of-month index.
+ *   - rows 2..8 : 7 weekday rows.
+ *   - optional last row : `legend` slot spanning every data column.
  *
- * Stays decoupled from any specific data shape : Journal feeds it
- * one density function, Habits can feed it another the day we
- * wire it there. The caller computes its own aggregation and only
- * exposes `(date) → 0..levels-1` here.
- *
- * Style — K · Sauge sage tones from CSS variables (no hard-coded
- * rgb so dark mode follows automatically). Bucket 0 reads as
- * « no activity » (faint hair tint), each step up walks toward
- * `--color-k-accent-deep`.
- *
- * SVG-based : zero runtime cost beyond React, no recharts /
- * calendar-heatmap KB. Cell size + gap configurable so the same
- * component can stand alone (large) or pack into a sidebar widget
- * (small).
+ * Cell positioning is column-major within the grid : `cells[i]`
+ * lands at column `floor(i / 7) + 2` (1 = labels, 2..weeks+1 = data),
+ * row `i % 7 + 2`. So `cells.length` must be `weeks * 7`. Out-of-
+ * range / no-data cells are `null` and render as faint outlines
+ * (matches Mood's « grid stays legible without faking data »
+ * convention).
  */
+
+/**
+ * One drawn cell. `className` or `fill` (mutually exclusive) sets
+ * the colour ; everything else is presentational sugar.
+ */
+export interface HeatmapCellInput {
+  /** Tooltip surfaced through the browser-native `title` attr. */
+  title?: string;
+  /** True for today's cell — renders an accent ring. */
+  isToday?: boolean;
+  /** Tailwind class for the fill (Mood passes `SCORE_FILL[score]`). */
+  className?: string;
+  /** Inline background-color CSS value (Journal passes
+   *  `var(--heatmap-bucket-N)`). Used only when `className` is
+   *  absent. */
+  fill?: string;
+}
+
+export interface HeatmapMonthLabel {
+  /** 0-based week column index where this month's first week sits. */
+  weekIndex: number;
+  /** Short label rendered above the column (« mar. », « avr. »…). */
+  label: string;
+}
+
 export interface HeatmapProps {
-  /** First day to render. Anchored to the Monday of that week so
-   *  columns line up — earlier days from that week render as
-   *  blank cells outside the picked range when `padOutsideRange`
-   *  is left at its default. */
-  start: Date;
-  /** Last day to render (inclusive). */
-  end: Date;
-  /** Returns `0..levels-1` for a given date. 0 = no activity.
-   *  Out-of-bounds is treated as 0. */
-  getIntensity: (date: Date) => number;
-  /** Number of colour buckets including the « no activity » bucket.
-   *  Default 5 (the GitHub feel). The component caps any
-   *  `getIntensity` return above `levels - 1`. */
-  levels?: number;
-  /** Browser-native tooltip on hover (renders inside a `<title>` SVG
-   *  node, no portal). Receives the cell date and its computed
-   *  intensity bucket. */
-  getTooltip?: (date: Date, intensity: number) => string;
-  /** Optional cell click handler — the JournalView wires it to
-   *  « filter the list on this day ». */
-  onCellClick?: (date: Date) => void;
-  /** Cell side in pixels. Default 11 matches Habits' frise. */
-  cellSize?: number;
-  /** Gap between cells in pixels. Default 2. */
-  gap?: number;
-  /** ARIA label for the SVG container. */
+  /** Total number of week columns (Mood + Journal both use 52). */
+  weeks: number;
+  /** Length must be `weeks * 7`. `null` entries render as faint
+   *  outlines so the user sees the grid even where there's no
+   *  data — same convention as Mood. */
+  cells: ReadonlyArray<HeatmapCellInput | null>;
+  /** Month labels positioned at specific column indices. */
+  monthLabels: ReadonlyArray<HeatmapMonthLabel>;
+  /** 7 strings, Mon..Sun, French convention. */
+  dayLabels: ReadonlyArray<string>;
+  /** Optional legend rendered as the final grid row, spanning the
+   *  full data area. Mood drops its score-key here. */
+  legend?: ReactNode;
+  /** Click handler on a non-null cell. Receives the cell's index
+   *  in the flat `cells` array so the caller can resolve back to
+   *  its own data. */
+  onCellClick?: (index: number) => void;
+  /** ARIA label for the outer grid. */
   ariaLabel?: string;
+  /** Grid container className override (e.g. column widths for a
+   *  narrower sidebar). Defaults to a full-width fluid grid. */
+  className?: string;
+  /** Cell shape. `'square'` (default) keeps the GitHub-style
+   *  rounded-corner block ; `'circle'` swaps the radius for
+   *  `rounded-full` so the grid reads as a constellation of dots
+   *  rather than a tile mosaic — same vibe as the goal-status
+   *  dots in `IntentionsBlock` (Homepage aside), more papier than
+   *  contribution-graph. Journal uses `'circle'` ; Mood keeps
+   *  `'square'` for the score-tile look. */
+  shape?: 'square' | 'circle';
 }
 
-interface Cell {
-  /** Column index (0-based, weeks). */
-  x: number;
-  /** Row index (0-based, Mon = 0 … Sun = 6). */
-  y: number;
-  /** ISO date `YYYY-MM-DD` for keys + the tooltip default. */
-  iso: string;
-  /** The actual Date — passed through to `getTooltip` / `onCellClick`. */
-  date: Date;
-  /** Raw bucket from `getIntensity`, clamped to `0..levels-1`. */
-  intensity: number;
-}
-
-function isoDay(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/** Days are anchored to the Monday of the first ISO week so the
- *  column grid is regular ; this returns Monday's `Date` for the
- *  week containing `d` (local time). */
-function mondayOf(d: Date): Date {
-  const out = new Date(d);
-  out.setHours(0, 0, 0, 0);
-  const offset = (out.getDay() + 6) % 7; // Sunday=0 → 6, Monday=1 → 0
-  out.setDate(out.getDate() - offset);
-  return out;
-}
+const DAYS_PER_WEEK = 7;
 
 export default function Heatmap({
-  start,
-  end,
-  getIntensity,
-  levels = 5,
-  getTooltip,
+  weeks,
+  cells,
+  monthLabels,
+  dayLabels,
+  legend,
   onCellClick,
-  cellSize = 11,
-  gap = 2,
   ariaLabel,
+  className,
+  shape = 'square',
 }: HeatmapProps) {
-  const { cells, weeks } = useMemo(() => {
-    const collected: Cell[] = [];
-    const cursor = mondayOf(start);
-    const endDay = new Date(end);
-    endDay.setHours(23, 59, 59, 999);
-    let col = 0;
-    while (cursor <= endDay) {
-      const inRange = cursor >= start && cursor <= endDay;
-      const row = (cursor.getDay() + 6) % 7;
-      const raw = inRange ? getIntensity(cursor) : 0;
-      const intensity = Math.max(0, Math.min(levels - 1, Math.floor(raw)));
-      collected.push({
-        x: col,
-        y: row,
-        iso: isoDay(cursor),
-        date: new Date(cursor),
-        intensity,
-      });
-      cursor.setDate(cursor.getDate() + 1);
-      if (row === 6) col += 1;
-    }
-    return { cells: collected, weeks: col + 1 };
-  }, [start, end, getIntensity, levels]);
-
-  const width = weeks * (cellSize + gap);
-  const height = 7 * (cellSize + gap);
-
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+    <div
       role="img"
       aria-label={ariaLabel}
-      className="max-w-full"
+      className={cn('grid gap-x-1 gap-y-[3px]', className)}
+      style={{
+        gridTemplateColumns: `28px repeat(${weeks}, minmax(0, 1fr))`,
+        gridTemplateRows: `14px repeat(${DAYS_PER_WEEK}, auto)`,
+      }}
     >
-      {cells.map((cell) => {
-        const fill = `var(--heatmap-bucket-${cell.intensity})`;
-        const baseStyle: CSSProperties = { fill };
+      {/* Top-left empty corner — keeps the grid alignment crisp. */}
+      <span aria-hidden="true" style={{ gridRow: 1, gridColumn: 1 }} />
+
+      {/* Month labels along the top. */}
+      {monthLabels.map(({ weekIndex, label }) => (
+        <span
+          key={`m-${weekIndex}-${label}`}
+          className="text-[10px] leading-none text-muted"
+          style={{ gridRow: 1, gridColumn: weekIndex + 2 }}
+        >
+          {label}
+        </span>
+      ))}
+
+      {/* Day-of-week labels down the left. */}
+      {dayLabels.map((label, i) => (
+        <span
+          key={`d-${i}`}
+          className="text-right text-[10px] leading-none text-muted"
+          style={{ gridRow: i + 2, gridColumn: 1 }}
+        >
+          {label}
+        </span>
+      ))}
+
+      {/* Heatmap cells, column-major within the data sub-grid. */}
+      {cells.map((cell, i) => {
+        const weekIndex = Math.floor(i / DAYS_PER_WEEK);
+        const dayOfWeek = i % DAYS_PER_WEEK;
+        const cellStyle = { gridRow: dayOfWeek + 2, gridColumn: weekIndex + 2 };
+        if (cell === null) {
+          return (
+            <span
+              key={i}
+              aria-hidden="true"
+              className={cn(
+                'aspect-square border border-hair/70',
+                shape === 'circle' ? 'rounded-full' : 'rounded-[2px]',
+              )}
+              style={cellStyle}
+            />
+          );
+        }
+        const fillStyle: React.CSSProperties =
+          cell.className === undefined && cell.fill !== undefined
+            ? { ...cellStyle, backgroundColor: cell.fill }
+            : cellStyle;
+        const cellClass = cn(
+          'aspect-square',
+          shape === 'circle' ? 'rounded-full' : 'rounded-[2px]',
+          cell.className,
+          cell.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
+          onCellClick &&
+            'cursor-pointer transition-opacity hover:opacity-80',
+        );
         return (
-          <rect
-            key={cell.iso}
-            x={cell.x * (cellSize + gap)}
-            y={cell.y * (cellSize + gap)}
-            width={cellSize}
-            height={cellSize}
-            rx={2}
-            ry={2}
-            style={baseStyle}
-            className={
-              onCellClick ? 'cursor-pointer transition-opacity hover:opacity-80' : ''
-            }
-            onClick={onCellClick ? () => onCellClick(cell.date) : undefined}
-          >
-            {getTooltip ? (
-              <title>{getTooltip(cell.date, cell.intensity)}</title>
-            ) : null}
-          </rect>
+          <Fragment key={i}>
+            {onCellClick ? (
+              <button
+                type="button"
+                title={cell.title}
+                onClick={() => onCellClick(i)}
+                className={cn(cellClass, 'border-0 p-0')}
+                style={fillStyle}
+              />
+            ) : (
+              <span
+                title={cell.title}
+                className={cellClass}
+                style={fillStyle}
+              />
+            )}
+          </Fragment>
         );
       })}
-    </svg>
+
+      {legend ? (
+        <div
+          className="pt-3"
+          style={{
+            gridRow: DAYS_PER_WEEK + 2,
+            gridColumn: `2 / span ${weeks}`,
+          }}
+        >
+          {legend}
+        </div>
+      ) : null}
+    </div>
   );
 }
