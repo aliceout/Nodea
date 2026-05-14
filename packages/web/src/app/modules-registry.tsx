@@ -101,10 +101,22 @@ export const MODULES: readonly ModuleDef[] = [
     label: 'modules.habits.label',
     collection: 'habits_items_entries',
     element: lazyModule('habits', Habits),
-    to_toggle: true,
+    // Module dormant — le code (vue + entries collection) est en
+    // place mais l'expérience produit n'est pas finie : il faut
+    // encore décider de l'angle et finir l'UI K · Sauge. Tant que
+    // ce n'est pas tranché, on le masque dans l'UI :
+    //   - `to_toggle: false` → retire l'entrée de `ModulesManager`
+    //     (Settings → Modules) et de `useFirstRunSeed` (les
+    //     nouveaux comptes ne l'activent plus par défaut)
+    //   - `display: false` → propagé par `nav` aux consumers qui le
+    //     liraient
+    //   - `SidebarNav` le retire aussi de sa liste hardcodée pour
+    //     les comptes existants qui l'auraient déjà activé
+    // Reprise du chantier suivie sur issue #98.
+    to_toggle: false,
     description: 'modules.habits.description',
     icon: FireIcon,
-    display: true,
+    display: false,
   },
   {
     id: 'library',

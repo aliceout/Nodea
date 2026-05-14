@@ -4,7 +4,6 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   DocumentTextIcon,
-  FireIcon,
   HeartIcon,
   HomeIcon,
 } from '@heroicons/react/24/outline';
@@ -33,7 +32,10 @@ const MAIN_ITEMS: NavItem[] = [
   { id: 'mood', label: 'Mood', icon: HeartIcon },
   { id: 'journal', label: 'Journal', icon: DocumentTextIcon },
   { id: 'goals', label: 'Goals', icon: CheckCircleIcon },
-  { id: 'habits', label: 'Habits', icon: FireIcon },
+  // Habits temporairement retiré — module dormant (cf. commentaire
+  // dans `modules-registry.tsx` et issue #98). Le code reste en
+  // place, juste pas exposé dans la nav le temps que l'expérience
+  // produit soit tranchée.
   { id: 'library', label: 'Library', icon: BookOpenIcon },
   { id: 'review', label: 'Review', icon: CalendarIcon },
 ];
