@@ -303,6 +303,49 @@ describe('POST /auth/change-password (OPAQUE 2-step)', () => {
       reauth_required: 'password_or_passkey',
     });
   });
+
+  it('accepts a stale password + fresh passkey session (passkey substitutes per Auth-Spec §6)', async () => {
+    // Closes issue #49 — `requireFreshPasswordOrPasskey` is unit-
+    // tested in isolation in `auth-reauth.test.ts`, but the
+    // wiring on `/auth/change-password/start` specifically (the
+    // only mutating route where a fresh passkey is allowed to
+    // substitute for a fresh password) had no integration cover.
+    await seedUser('rotate-pk@example.com');
+    const cookie = await loginAs(app, 'rotate-pk@example.com', TEST_PASSWORD);
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    // Stale password timestamp, fresh passkey timestamp — mirrors
+    // the state a passkey-only re-auth would leave on the session.
+    // The real `/auth/reauth/passkey/{start,finish}` round-trip
+    // needs a WebAuthn authenticator, so we set the column
+    // directly (same trick as `auth-reauth.test.ts`).
+    await db
+      .update(sessions)
+      .set({
+        reauthPasswordAt: new Date(Date.now() - 10 * 60_000),
+        reauthPasskeyAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId));
+
+    // Real OPAQUE `registrationRequest` — the route runs
+    // `createRegistrationResponse` on it and 400s on garbage, so
+    // « whatever » wouldn't reach the success branch even if the
+    // middleware let us through.
+    await ready;
+    const { registrationRequest } = client.startRegistration({
+      password: 'New-Horse-Battery-Staple-99',
+    });
+    const startRes = await app.request('/auth/change-password/start', {
+      ...json({ registrationRequest }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(startRes.status).toBe(200);
+    const body = (await startRes.json()) as {
+      registrationResponse: string;
+      changePasswordToken: string;
+    };
+    expect(body.registrationResponse).toBeTruthy();
+    expect(body.changePasswordToken).toBeTruthy();
+  });
 });
 
 describe('POST /admin/invites', () => {
