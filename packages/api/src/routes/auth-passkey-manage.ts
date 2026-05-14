@@ -8,7 +8,7 @@ import {
 } from '@nodea/shared';
 
 import { db } from '../db/client.ts';
-import { authFactors, users } from '../db/schema.ts';
+import { authFactors, mfaTotp, users } from '../db/schema.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import { getEmailService } from '../services/email/index.ts';
@@ -171,13 +171,20 @@ authPasskeyManageRoutes.openapi(removeRoute, async (c) => {
 
   if (result.length === 0) return c.json({ error: 'not_found' }, 404);
 
-  // §6.1 downgrade auto : if the deletion took the last
-  // PRF-capable passkey AND the user is in `maximum`, fall
-  // back to `password_or_passkey`. Only applies when the
-  // deleted credential was PRF-capable — non-PRF removals
-  // never trigger downgrade.
+  // §6.1 downgrade auto. Two branches:
+  //  - `maximum` strictly requires a PRF-capable passkey. Removing
+  //    the last PRF credential downgrades to `password_or_passkey`.
+  //    Non-PRF removals never affect `maximum`.
+  //  - `always_2fa` (since #72) accepts a passkey as the sole 2nd
+  //    factor. Removing the last passkey of *any* kind, while the
+  //    user has no TOTP enabled, downgrades to `password_or_passkey`.
+  let downgradeTrigger:
+    | 'last_prf_passkey_removed'
+    | 'last_passkey_removed'
+    | null = null;
+  let downgradedFrom: 'always_2fa' | 'maximum' | null = null;
   if (result[0]?.prfSupported && user.securityMode === 'maximum') {
-    const remaining = await db
+    const [remainingPrf] = await db
       .select({ id: authFactors.id })
       .from(authFactors)
       .where(
@@ -187,32 +194,59 @@ authPasskeyManageRoutes.openapi(removeRoute, async (c) => {
         ),
       )
       .limit(1);
-    if (remaining.length === 0) {
-      await db
-        .update(users)
-        .set({ securityMode: 'password_or_passkey', updatedAt: new Date() })
-        .where(eq(users.id, user.id));
-      try {
-        const rendered = renderSecurityModeDowngradedEmail({
-          language: extractEmailLanguage(c),
-          trigger: 'last_prf_passkey_removed',
-          previousMode: 'maximum',
-        });
-        await getEmailService().send({
-          to: user.email,
-          subject: rendered.subject,
-          text: rendered.text,
-          html: rendered.html,
-          tag: 'security-mode-downgraded',
-        });
-      } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
+    if (!remainingPrf) {
+      downgradeTrigger = 'last_prf_passkey_removed';
+      downgradedFrom = 'maximum';
+    }
+  } else if (user.securityMode === 'always_2fa') {
+    const [remainingAny] = await db
+      .select({ id: authFactors.id })
+      .from(authFactors)
+      .where(
+        and(
+          eq(authFactors.userId, user.id),
+          eq(authFactors.kind, 'passkey'),
+        ),
+      )
+      .limit(1);
+    if (!remainingAny) {
+      const [totp] = await db
+        .select({ enabledAt: mfaTotp.enabledAt })
+        .from(mfaTotp)
+        .where(eq(mfaTotp.userId, user.id))
+        .limit(1);
+      const hasTotp = !!totp && totp.enabledAt !== null;
+      if (!hasTotp) {
+        downgradeTrigger = 'last_passkey_removed';
+        downgradedFrom = 'always_2fa';
+      }
+    }
+  }
 
-          console.warn(
-            '[auth/passkey] downgrade notification mail failed',
-            err,
-          );
-        }
+  if (downgradeTrigger && downgradedFrom) {
+    await db
+      .update(users)
+      .set({ securityMode: 'password_or_passkey', updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+    try {
+      const rendered = renderSecurityModeDowngradedEmail({
+        language: extractEmailLanguage(c),
+        trigger: downgradeTrigger,
+        previousMode: downgradedFrom,
+      });
+      await getEmailService().send({
+        to: user.email,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+        tag: 'security-mode-downgraded',
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          '[auth/passkey] downgrade notification mail failed',
+          err,
+        );
       }
     }
   }

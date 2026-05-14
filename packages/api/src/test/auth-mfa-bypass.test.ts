@@ -408,6 +408,112 @@ describe('lazy bypass application at login', () => {
     expect(bypass?.consumedAt).not.toBeNull();
   });
 
+  it('issue #72: totp bypass in always_2fa with a passkey enrolled keeps the mode', async () => {
+    // Same shape as the previous test, but the user also has a
+    // passkey. After the bypass consumes TOTP, the passkey carries
+    // 2FA so `always_2fa` must stay in place (no downgrade).
+    const u = await seedUser('bypass-keep-2fa-totp@example.com');
+    await enrollTotpDirect(u.id);
+    await enrollPrfPasskeyDirect(u.id);
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+    const past = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await db.insert(mfaBypassRequests).values({
+      id: randomUUID(),
+      userId: u.id,
+      factor: 'totp',
+      confirmTokenHash: hashBypassToken('confirm-' + randomUUID()),
+      cancelTokenHash: hashBypassToken('cancel-' + randomUUID()),
+      confirmedAt: past,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      cancelledAt: null,
+      consumedAt: null,
+    });
+
+    const r = await rawLogin('bypass-keep-2fa-totp@example.com', TEST_PASSWORD);
+    expect(r.status).toBe(200);
+
+    const [user] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(user?.mode).toBe('always_2fa');
+  });
+
+  it('issue #72: passkey bypass in always_2fa (passkey-only) downgrades to standard', async () => {
+    // User keeps a passkey as the sole 2nd factor in always_2fa
+    // (since #72). Consuming a passkey bypass deletes all passkeys ;
+    // with no TOTP enrolled, mode must downgrade.
+    const u = await seedUser('bypass-downgrade-passkey@example.com');
+    await enrollPrfPasskeyDirect(u.id);
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+    const past = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await db.insert(mfaBypassRequests).values({
+      id: randomUUID(),
+      userId: u.id,
+      factor: 'passkey',
+      confirmTokenHash: hashBypassToken('confirm-' + randomUUID()),
+      cancelTokenHash: hashBypassToken('cancel-' + randomUUID()),
+      confirmedAt: past,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      cancelledAt: null,
+      consumedAt: null,
+    });
+
+    const r = await rawLogin(
+      'bypass-downgrade-passkey@example.com',
+      TEST_PASSWORD,
+    );
+    expect(r.status).toBe(200);
+
+    const [user] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(user?.mode).toBe('password_or_passkey');
+  });
+
+  it('issue #72: passkey bypass in always_2fa with TOTP enabled keeps the mode', async () => {
+    // User has both factors. Consuming a passkey bypass deletes
+    // every passkey row, but TOTP still covers 2FA — mode stays.
+    const u = await seedUser('bypass-keep-2fa-passkey@example.com');
+    await enrollTotpDirect(u.id);
+    await enrollPrfPasskeyDirect(u.id);
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+    const past = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await db.insert(mfaBypassRequests).values({
+      id: randomUUID(),
+      userId: u.id,
+      factor: 'passkey',
+      confirmTokenHash: hashBypassToken('confirm-' + randomUUID()),
+      cancelTokenHash: hashBypassToken('cancel-' + randomUUID()),
+      confirmedAt: past,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      cancelledAt: null,
+      consumedAt: null,
+    });
+
+    const r = await rawLogin(
+      'bypass-keep-2fa-passkey@example.com',
+      TEST_PASSWORD,
+    );
+    expect(r.status).toBe(200);
+
+    const [user] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(user?.mode).toBe('always_2fa');
+  });
+
   it('a not-yet-confirmed bypass is NOT consumed at login (still gates MFA)', async () => {
     const u = await seedUser('bypass-pending@example.com');
     await enrollTotpDirect(u.id);

@@ -137,6 +137,7 @@ export interface EmailLocaleShape {
     heading: string;
     triggerTotpDisabled: string;
     triggerLastPrfPasskey: string;
+    triggerLastPasskey: string;
     previousLabelAlways2fa: string;
     previousLabelMaximum: string;
     standardLabel: string;
@@ -324,6 +325,7 @@ export const fr: EmailLocaleShape = {
     heading: 'Mode de sécurité abaissé à Standard',
     triggerTotpDisabled: 'la désactivation de ton TOTP',
     triggerLastPrfPasskey: 'la suppression de ta dernière passkey compatible PRF',
+    triggerLastPasskey: 'la suppression de ta dernière passkey',
     previousLabelAlways2fa: 'TOTP obligatoire',
     previousLabelMaximum: 'Maximum',
     standardLabel: 'Standard',

@@ -25,7 +25,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { authFactors, sessions, users } from '../db/schema.ts';
+import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
 import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
@@ -300,6 +300,82 @@ describe('POST /auth/passkeys/:id/remove', () => {
     );
     expect(notif).toBeDefined();
     expect(notif!.subject).toMatch(/Standard/i);
+  });
+
+  it('§6.1 issue #72: removing the last passkey under always_2fa drops mode when no TOTP is enrolled', async () => {
+    // Login first under the default `password_or_passkey` mode so we
+    // get a full session, then promote setup to `always_2fa` with
+    // passkey-only (mimicking the existing TOTP downgrade test).
+    const u = await seedUser('passkey-only-2fa@example.com');
+    const cookie = await loginAs(
+      app,
+      'passkey-only-2fa@example.com',
+      TEST_PASSWORD,
+    );
+    const pk = await seedPasskey(u.id, { prfSupported: false });
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+
+    const sentBefore = __getRecordingEmailService().sent.length;
+    const res = await app.request(`/auth/passkeys/${pk.id}/remove`, {
+      ...jsonPost({}),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(200);
+
+    const [row] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(row?.mode).toBe('password_or_passkey');
+
+    // Best-effort downgrade notification fired with the new
+    // `last_passkey_removed` trigger.
+    const notif = __getRecordingEmailService()
+      .sent.slice(sentBefore)
+      .find(
+        (m) =>
+          m.tag === 'security-mode-downgraded' &&
+          m.to === 'passkey-only-2fa@example.com',
+      );
+    expect(notif).toBeDefined();
+  });
+
+  it('§6.1 issue #72: removing the last passkey under always_2fa keeps the mode when TOTP is enabled', async () => {
+    const u = await seedUser('passkey-and-totp-2fa@example.com');
+    const cookie = await loginAs(
+      app,
+      'passkey-and-totp-2fa@example.com',
+      TEST_PASSWORD,
+    );
+    const pk = await seedPasskey(u.id, { prfSupported: false });
+    await db.insert(mfaTotp).values({
+      userId: u.id,
+      secret: 'JBSWY3DPEHPK3PXP',
+      algo: 'SHA1',
+      digits: 6,
+      period: 30,
+      enabledAt: new Date(),
+      lastWindow: null,
+    });
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+
+    const res = await app.request(`/auth/passkeys/${pk.id}/remove`, {
+      ...jsonPost({}),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(200);
+
+    const [row] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(row?.mode).toBe('always_2fa');
   });
 
   it('removing a non-PRF passkey under maximum does NOT trigger downgrade', async () => {

@@ -27,8 +27,12 @@ import {
  *
  *   - `POST /auth/security-mode/change` — moves the user between
  *     `password_or_passkey`, `always_2fa`, and `maximum`. Validates
- *     the prerequisites (TOTP enabled / PRF-passkey enrolled) and
- *     refuses with a clear 400 error code when they're not met.
+ *     the prerequisites (always_2fa: TOTP enabled OR a passkey
+ *     enrolled — issue #72 made both acceptable as the 2nd factor
+ *     at login, so both unlock activation; maximum: TOTP enabled
+ *     AND a PRF-capable passkey) and refuses with a clear 400 error
+ *     code when they're not met (`second_factor_required` /
+ *     `totp_required` / `passkey_required`).
  *
  * Re-auth gate: `requireFreshPassword` (Phase 7B). The Phase 5D
  * MVP embedded an OPAQUE proof in the body; that's now done out-
@@ -81,9 +85,35 @@ authSecurityModeRoutes.openapi(changeRoute, async (c) => {
   const user = c.get('user');
 
   // Activation gate (Auth-Spec §6.1). `password_or_passkey` is
-  // always reachable; `always_2fa` needs TOTP enabled; `maximum`
-  // additionally needs a PRF-capable passkey enrolled.
-  if (mode === 'always_2fa' || mode === 'maximum') {
+  // always reachable; `always_2fa` needs a 2nd factor available
+  // (TOTP enabled OR at least one passkey enrolled — issue #72
+  // accepted both at login, so accept both at activation too);
+  // `maximum` keeps the strict requirement of TOTP enabled AND
+  // at least one PRF-capable passkey.
+  if (mode === 'always_2fa') {
+    const [totp] = await db
+      .select({ enabledAt: mfaTotp.enabledAt })
+      .from(mfaTotp)
+      .where(eq(mfaTotp.userId, user.id))
+      .limit(1);
+    const hasTotp = !!totp && totp.enabledAt !== null;
+    if (!hasTotp) {
+      const [anyPasskey] = await db
+        .select({ id: authFactors.id })
+        .from(authFactors)
+        .where(
+          and(
+            eq(authFactors.userId, user.id),
+            eq(authFactors.kind, 'passkey'),
+          ),
+        )
+        .limit(1);
+      if (!anyPasskey) {
+        return c.json({ error: 'second_factor_required' }, 400);
+      }
+    }
+  }
+  if (mode === 'maximum') {
     const [totp] = await db
       .select({ enabledAt: mfaTotp.enabledAt })
       .from(mfaTotp)
@@ -92,8 +122,6 @@ authSecurityModeRoutes.openapi(changeRoute, async (c) => {
     if (!totp || totp.enabledAt === null) {
       return c.json({ error: 'totp_required' }, 400);
     }
-  }
-  if (mode === 'maximum') {
     const [prf] = await db
       .select({ id: authFactors.id })
       .from(authFactors)

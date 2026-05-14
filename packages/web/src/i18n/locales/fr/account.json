@@ -78,7 +78,7 @@
       "description": "Combien de facteurs sont demandés à chaque connexion (mot de passe, TOTP, passkey). Mode actuel : {mode}.",
       "labels": {
         "standard": "Standard",
-        "totpRequired": "TOTP requis",
+        "twoFactor": "2FA requis",
         "maximum": "Maximum"
       },
       "cta": "Modifier"

@@ -26,6 +26,7 @@ export const KNOWN_API_ERROR_CODES = [
   'invalid_token',
   'multi_factor_loss',
   'passkey_required',
+  'second_factor_required',
   'totp_required',
   'unauthenticated',
 

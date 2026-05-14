@@ -44,7 +44,9 @@ export default function SecurityModePage() {
   const user = useNodeaStore(selectUser);
   const currentMode = user?.securityMode ?? 'password_or_passkey';
   const totpEnabled = user?.totpEnabled === true;
+  const passkeysCount = user?.passkeysCount ?? 0;
   const passkeysPrfCount = user?.passkeysPrfCount ?? 0;
+  const hasAny2ndFactor = totpEnabled || passkeysCount > 0;
 
   const [selected, setSelected] = useState<SecurityMode | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -63,8 +65,10 @@ export default function SecurityModePage() {
       id: 'always_2fa',
       label: '2FA requis',
       description:
-        '2ᵉ facteur en plus à chaque connexion : code TOTP ou passkey, au choix. Active TOTP avant pour pouvoir le sélectionner.',
-      unmetRequirement: totpEnabled ? null : 'Active TOTP avant.',
+        '2ᵉ facteur en plus à chaque connexion : code TOTP ou passkey, au choix. Configure au moins un des deux pour pouvoir le sélectionner.',
+      unmetRequirement: hasAny2ndFactor
+        ? null
+        : 'Active TOTP ou enrôle une passkey avant.',
     },
     {
       id: 'maximum',
@@ -104,10 +108,10 @@ export default function SecurityModePage() {
       setSuccess(`Mode mis à jour : ${labelFor(selected)}.`);
       setSelected(null);
     } catch (err) {
-      // Page-specific overrides : « totp_required » / « passkey_required »
-      // are not abstract errors here, they're actionable hints. The
-      // generic helper would translate them to neutral phrases ; we
-      // want « Active TOTP avant de choisir ce mode. »
+      // Page-specific overrides : back-end error codes map to
+      // actionable hints. The generic helper would translate them to
+      // neutral phrases ; we want the user pointed to the right
+      // setting.
       if (isApiError(err) && err.error === 'totp_required') {
         setError(
           t('errors.securityMode.totpRequired', {
@@ -118,6 +122,13 @@ export default function SecurityModePage() {
         setError(
           t('errors.securityMode.passkeyRequired', {
             defaultValue: 'Enrôle une passkey PRF avant de choisir ce mode.',
+          }),
+        );
+      } else if (isApiError(err) && err.error === 'second_factor_required') {
+        setError(
+          t('errors.securityMode.secondFactorRequired', {
+            defaultValue:
+              'Active TOTP ou enrôle une passkey avant de choisir ce mode.',
           }),
         );
       } else {

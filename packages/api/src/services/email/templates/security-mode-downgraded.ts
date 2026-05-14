@@ -19,8 +19,14 @@ import { renderLayout, type RenderedEmailContent } from './layout.ts';
  */
 export function renderSecurityModeDowngradedEmail(params: {
   language: SupportedEmailLanguage;
-  /** Which factor's removal triggered the downgrade. */
-  trigger: 'totp_disabled' | 'last_prf_passkey_removed';
+  /** Which factor's removal triggered the downgrade. `last_passkey_removed`
+   *  applies in `always_2fa` when the user kept a passkey as their sole
+   *  2nd factor (issue #72) and just removed it; `last_prf_passkey_removed`
+   *  stays specific to `maximum`, which needs PRF support. */
+  trigger:
+    | 'totp_disabled'
+    | 'last_prf_passkey_removed'
+    | 'last_passkey_removed';
   /** What the user was on before the auto-downgrade. */
   previousMode: 'always_2fa' | 'maximum';
 }): RenderedEmailContent {
@@ -28,7 +34,9 @@ export function renderSecurityModeDowngradedEmail(params: {
   const trigger =
     params.trigger === 'totp_disabled'
       ? emailT(language, 'securityModeDowngraded.triggerTotpDisabled')
-      : emailT(language, 'securityModeDowngraded.triggerLastPrfPasskey');
+      : params.trigger === 'last_prf_passkey_removed'
+        ? emailT(language, 'securityModeDowngraded.triggerLastPrfPasskey')
+        : emailT(language, 'securityModeDowngraded.triggerLastPasskey');
   const previous =
     params.previousMode === 'always_2fa'
       ? emailT(language, 'securityModeDowngraded.previousLabelAlways2fa')

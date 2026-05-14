@@ -135,7 +135,7 @@ describe('POST /auth/security-mode/change — auth + proof', () => {
  * ========================================================================== */
 
 describe('POST /auth/security-mode/change — activation gates §6.1', () => {
-  it('400 totp_required for always_2fa without TOTP enrolled', async () => {
+  it('400 second_factor_required for always_2fa with neither TOTP nor passkey (issue #72)', async () => {
     await seedUser('mode-totp-missing@example.com');
     const cookie = await loginAs(
       app,
@@ -154,7 +154,28 @@ describe('POST /auth/security-mode/change — activation gates §6.1', () => {
     });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('totp_required');
+    expect(body.error).toBe('second_factor_required');
+  });
+
+  it('always_2fa accepts activation with a passkey alone (no TOTP) — issue #72', async () => {
+    const u = await seedUser('mode-passkey-only@example.com');
+    await enrollPrfPasskeyDirect(u.id);
+    const cookie = await loginAs(
+      app,
+      'mode-passkey-only@example.com',
+      TEST_PASSWORD,
+    );
+    const proof = await passwordProofFor(
+      app,
+      'mode-passkey-only@example.com',
+      TEST_PASSWORD,
+    );
+
+    const res = await app.request('/auth/security-mode/change', {
+      ...jsonPost({ mode: 'always_2fa', ...proof }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(200);
   });
 
   it('400 totp_required for maximum without TOTP enrolled', async () => {

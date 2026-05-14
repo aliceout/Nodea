@@ -91,20 +91,28 @@ export function constantTimeEqualHex(a: string, b: string): boolean {
 
 /**
  * Decide whether the caller can request a bypass for `factor` given
- * the current `mfa_pending` session and the user's mode.
+ * the current `mfa_pending` session, the user's mode, and which
+ * factors they actually have enrolled.
  *
- * Auth-Spec §7.8 table:
+ * Auth-Spec §7.8 table (after issue #72 — always_2fa accepts either
+ * TOTP or passkey as the 2nd factor, so both can be the sole MFA
+ * carrier in that mode):
  *
- *   | Mode               | totp bypass OK if                | passkey bypass OK if            |
- *   |--------------------|----------------------------------|---------------------------------|
- *   | password_or_passkey| N/A (TOTP not required)          | N/A (passkey alt to password)   |
- *   | always_2fa        | password OR passkey verified     | N/A                             |
- *   | maximum            | password AND passkey verified    | password AND TOTP verified      |
+ *   | Mode                | factor=totp                                    | factor=passkey                                  |
+ *   |---------------------|------------------------------------------------|-------------------------------------------------|
+ *   | password_or_passkey | N/A                                            | N/A (passkey alt to password)                   |
+ *   | always_2fa          | hasTotp ? (password OR passkey verified)       | hasPasskey ? (password OR TOTP verified)        |
+ *   |                     |          : not_required                        |             : not_required                      |
+ *   | maximum             | password AND passkey verified                  | password AND TOTP verified                      |
+ *
+ * `factors.hasTotp` / `factors.hasPasskey` reflect the user's actual
+ * enrollment — bypass for a factor the user doesn't have is moot.
  *
  * Returns:
  *   - 'eligible' — caller can proceed.
  *   - 'not_required' — the factor isn't required by the current
- *     mode; bypass is moot. UI shouldn't surface the option.
+ *     mode (or not enrolled); bypass is moot. UI shouldn't surface
+ *     the option.
  *   - 'multi_factor_loss' — the §6.2 wall: more than one required
  *     factor would need bypassing; caller must reset destructive.
  */
@@ -115,29 +123,35 @@ export function bypassEligibility(
     'mfaPasswordVerified' | 'mfaPasskeyVerified' | 'mfaTotpVerified'
   >,
   factor: 'totp' | 'passkey',
+  factors: { hasTotp: boolean; hasPasskey: boolean },
 ): 'eligible' | 'not_required' | 'multi_factor_loss' {
   if (user.securityMode === 'password_or_passkey') {
     return 'not_required';
   }
   if (factor === 'totp') {
+    if (!factors.hasTotp) return 'not_required';
     if (user.securityMode === 'always_2fa') {
-      // Either chemin (password OR passkey) suffices since TOTP is
-      // the only MFA factor in this mode.
+      // TOTP is one of two acceptable 2nd factors. Bypassing it
+      // requires the alternate path (password or passkey).
       return session.mfaPasswordVerified || session.mfaPasskeyVerified
         ? 'eligible'
         : 'multi_factor_loss';
     }
-    // mode === 'maximum'
+    // mode === 'maximum' (TOTP is mandatory)
     return session.mfaPasswordVerified && session.mfaPasskeyVerified
       ? 'eligible'
       : 'multi_factor_loss';
   }
   // factor === 'passkey'
+  if (!factors.hasPasskey) return 'not_required';
   if (user.securityMode === 'always_2fa') {
-    // Mode `always_2fa` doesn't require passkey at all.
-    return 'not_required';
+    // Passkey is one of two acceptable 2nd factors (issue #72).
+    // Bypassing it requires the alternate path (password or TOTP).
+    return session.mfaPasswordVerified || session.mfaTotpVerified
+      ? 'eligible'
+      : 'multi_factor_loss';
   }
-  // mode === 'maximum'
+  // mode === 'maximum' (passkey is mandatory)
   return session.mfaPasswordVerified && session.mfaTotpVerified
     ? 'eligible'
     : 'multi_factor_loss';
@@ -160,12 +174,19 @@ export interface BypassApplyResult {
  * atomically. Returns the applied factor + downgrade flag, or
  * `null` if no bypass is consumable right now.
  *
- * Side effects per factor:
+ * Side effects per factor (mode-downgrade rules match the manual
+ * de-enrollment routes — `auth-totp.disable` / `auth-passkey-manage.remove`;
+ * the row-level write differs: TOTP is *disabled* here (`enabled_at = NULL`)
+ * to keep the secret around for potential re-enrolment via the email
+ * link, while the manual disable route DELETEs the row outright):
  *   - `totp` → `mfa_totp.enabled_at = NULL`, DELETE backup codes.
- *     Mode `always_2fa` / `maximum` → downgrade to
- *     `password_or_passkey`.
- *   - `passkey` → DELETE all `auth_factors` of kind `passkey`. Mode
- *     `maximum` → downgrade to `password_or_passkey`.
+ *     Mode `maximum` → always downgrade to `password_or_passkey`
+ *     (maximum strictly requires TOTP). Mode `always_2fa` →
+ *     downgrade only if no passkey remains as 2nd factor (since
+ *     #72, a passkey alone keeps `always_2fa` alive).
+ *   - `passkey` → DELETE all `auth_factors` of kind `passkey`.
+ *     Mode `maximum` → always downgrade. Mode `always_2fa` →
+ *     downgrade only if no TOTP is enabled.
  *
  * Marks the request `consumed_at` and revokes every other session
  * of the user (per §7.8 "revoke toutes les autres sessions"). The
@@ -208,10 +229,26 @@ export async function applyConsumableBypass(
       await tx
         .delete(mfaTotpRecoveryCodes)
         .where(eq(mfaTotpRecoveryCodes.userId, user.id));
-      if (
-        user.securityMode === 'always_2fa' ||
-        user.securityMode === 'maximum'
-      ) {
+      // §6.1 downgrade auto — see route counterpart in
+      // `auth-totp.ts /disable`. `maximum` always falls; `always_2fa`
+      // only falls when no passkey is left to carry the 2nd factor.
+      let shouldDowngrade = false;
+      if (user.securityMode === 'maximum') {
+        shouldDowngrade = true;
+      } else if (user.securityMode === 'always_2fa') {
+        const [anyPasskey] = await tx
+          .select({ id: authFactors.id })
+          .from(authFactors)
+          .where(
+            and(
+              eq(authFactors.userId, user.id),
+              eq(authFactors.kind, 'passkey'),
+            ),
+          )
+          .limit(1);
+        shouldDowngrade = !anyPasskey;
+      }
+      if (shouldDowngrade) {
         await tx
           .update(users)
           .set({ securityMode: 'password_or_passkey', updatedAt: now })
@@ -227,7 +264,22 @@ export async function applyConsumableBypass(
             eq(authFactors.kind, 'passkey'),
           ),
         );
+      // §6.1 downgrade auto — see route counterpart in
+      // `auth-passkey-manage.ts /:id/remove`. `maximum` always
+      // falls; `always_2fa` only falls when no TOTP is left.
+      let shouldDowngrade = false;
       if (user.securityMode === 'maximum') {
+        shouldDowngrade = true;
+      } else if (user.securityMode === 'always_2fa') {
+        const [totpRow] = await tx
+          .select({ enabledAt: mfaTotp.enabledAt })
+          .from(mfaTotp)
+          .where(eq(mfaTotp.userId, user.id))
+          .limit(1);
+        const hasTotp = !!totpRow && totpRow.enabledAt !== null;
+        shouldDowngrade = !hasTotp;
+      }
+      if (shouldDowngrade) {
         await tx
           .update(users)
           .set({ securityMode: 'password_or_passkey', updatedAt: now })

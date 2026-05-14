@@ -15,12 +15,36 @@
  */
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import { generate as otplibGenerate } from 'otplib';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { mfaTotp, mfaTotpRecoveryCodes, sessions, users } from '../db/schema.ts';
+import {
+  authFactors,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
+  sessions,
+  users,
+} from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
 import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './helpers.ts';
+
+async function enrollPasskeyDirect(userId: string): Promise<void> {
+  await db.insert(authFactors).values({
+    id: randomUUID(),
+    userId,
+    kind: 'passkey',
+    credentialId: randomUUID().replace(/-/g, ''),
+    publicKey: 'fake-pk-' + randomUUID(),
+    signCount: 0,
+    signCountStrict: true,
+    transports: 'internal',
+    prfSupported: false,
+    wrappedKek: null,
+    wrappedKekIv: null,
+    label: 'Test passkey',
+  });
+}
 
 const app = buildApp();
 
@@ -456,6 +480,65 @@ describe('POST /auth/totp/disable', () => {
     );
     expect(notif).toBeDefined();
     expect(notif!.subject).toMatch(/Standard/i);
+  });
+
+  it('§6.1 issue #72: disabling TOTP under always_2fa keeps the mode when a passkey remains as 2nd factor', async () => {
+    const u = await seedUser('totp-keep-2fa@example.com');
+    const cookie = await loginAs(app, 'totp-keep-2fa@example.com', TEST_PASSWORD);
+
+    // Enroll TOTP + a passkey (any kind — passkey alone is enough
+    // as 2nd factor since #72).
+    const proof1 = await passwordProofFor(
+      app,
+      'totp-keep-2fa@example.com',
+      TEST_PASSWORD,
+    );
+    const startRes = await app.request('/auth/totp/enroll/start', {
+      ...jsonPost(proof1),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    const { secretBase32 } = (await startRes.json()) as { secretBase32: string };
+    const code = await totpFromSecret(secretBase32);
+    await app.request('/auth/totp/enroll/verify', {
+      ...jsonPost({ code, backupCodesAcknowledged: true }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    await enrollPasskeyDirect(u.id);
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+
+    const sentBefore = __getRecordingEmailService().sent.length;
+
+    // Disable TOTP — should keep `always_2fa` (passkey covers it).
+    const proof2 = await passwordProofFor(
+      app,
+      'totp-keep-2fa@example.com',
+      TEST_PASSWORD,
+    );
+    const res = await app.request('/auth/totp/disable', {
+      ...jsonPost(proof2),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(200);
+
+    const [row] = await db
+      .select({ mode: users.securityMode })
+      .from(users)
+      .where(eq(users.id, u.id));
+    expect(row?.mode).toBe('always_2fa');
+
+    // No downgrade notification fired for this user.
+    const sentAfter = __getRecordingEmailService().sent;
+    const notif = sentAfter
+      .slice(sentBefore)
+      .find(
+        (m) =>
+          m.tag === 'security-mode-downgraded' &&
+          m.to === 'totp-keep-2fa@example.com',
+      );
+    expect(notif).toBeUndefined();
   });
 
   it('§6.1 downgrade auto: no notification when user was already on password_or_passkey', async () => {

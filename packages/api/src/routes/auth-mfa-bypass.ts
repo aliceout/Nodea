@@ -9,7 +9,11 @@ import {
 } from '@nodea/shared';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { db } from '../db/client.ts';
-import { mfaBypassRequests } from '../db/schema.ts';
+import {
+  authFactors,
+  mfaBypassRequests,
+  mfaTotp,
+} from '../db/schema.ts';
 import {
   BYPASS_APPLY_DELAY_MS,
   BYPASS_REQUEST_TTL_MS,
@@ -124,8 +128,35 @@ authMfaBypassRoutes.openapi(requestRoute, async (c) => {
   const user = c.get('user');
   const pendingSession = c.get('pendingSession');
 
-  // §6.2 eligibility check.
-  const eligibility = bypassEligibility(user, pendingSession, factor);
+  // §6.2 eligibility check. We pass the user's actual enrollment
+  // because in `always_2fa` an unrenrolled factor is irrelevant
+  // (`not_required`) and an enrolled one — even as the sole 2nd
+  // factor since #72 — gates on the alternate path.
+  const [totpRow] = await db
+    .select({ enabledAt: mfaTotp.enabledAt })
+    .from(mfaTotp)
+    .where(eq(mfaTotp.userId, user.id))
+    .limit(1);
+  const [anyPasskey] = await db
+    .select({ id: authFactors.id })
+    .from(authFactors)
+    .where(
+      and(
+        eq(authFactors.userId, user.id),
+        eq(authFactors.kind, 'passkey'),
+      ),
+    )
+    .limit(1);
+  const enrollment = {
+    hasTotp: !!totpRow && totpRow.enabledAt !== null,
+    hasPasskey: !!anyPasskey,
+  };
+  const eligibility = bypassEligibility(
+    user,
+    pendingSession,
+    factor,
+    enrollment,
+  );
   if (eligibility === 'not_required') {
     // The mode doesn't require this factor — bypass is moot. UI
     // shouldn't surface the option, so this is defence in depth.

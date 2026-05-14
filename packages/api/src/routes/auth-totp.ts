@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
   TotpEnrollStartBodySchema,
@@ -10,7 +10,12 @@ import {
   type TotpRegenerateBackupCodesResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { mfaTotp, mfaTotpRecoveryCodes, users } from '../db/schema.ts';
+import {
+  authFactors,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
+  users,
+} from '../db/schema.ts';
 import {
   buildTotpUri,
   currentWindow,
@@ -293,10 +298,26 @@ authTotpRoutes.openapi(disableRoute, async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
 
-  const downgradedFrom: 'always_2fa' | 'maximum' | null =
-    user.securityMode === 'always_2fa' || user.securityMode === 'maximum'
-      ? user.securityMode
-      : null;
+  // §6.1 downgrade auto. `maximum` always falls back when TOTP
+  // disappears (`maximum` strictly requires TOTP). `always_2fa` only
+  // falls back if the user has no passkey to carry the 2nd factor —
+  // since #72, a passkey alone is enough to stay in `always_2fa`.
+  let downgradedFrom: 'always_2fa' | 'maximum' | null = null;
+  if (user.securityMode === 'maximum') {
+    downgradedFrom = 'maximum';
+  } else if (user.securityMode === 'always_2fa') {
+    const [anyPasskey] = await db
+      .select({ id: authFactors.id })
+      .from(authFactors)
+      .where(
+        and(
+          eq(authFactors.userId, user.id),
+          eq(authFactors.kind, 'passkey'),
+        ),
+      )
+      .limit(1);
+    if (!anyPasskey) downgradedFrom = 'always_2fa';
+  }
 
   await db.transaction(async (tx) => {
     // Delete the row entirely (cleaner than nulling enabled_at —
@@ -307,9 +328,6 @@ authTotpRoutes.openapi(disableRoute, async (c) => {
       .delete(mfaTotpRecoveryCodes)
       .where(eq(mfaTotpRecoveryCodes.userId, user.id));
 
-    // §6.1 downgrade auto: a user disabling TOTP while in a mode
-    // that requires it falls back to `password_or_passkey` in the
-    // same transaction.
     if (downgradedFrom) {
       await tx
         .update(users)

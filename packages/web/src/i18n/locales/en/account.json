@@ -78,7 +78,7 @@
       "description": "How many factors are required at each login (password, TOTP, passkey). Current mode: {mode}.",
       "labels": {
         "standard": "Standard",
-        "totpRequired": "TOTP required",
+        "twoFactor": "2FA required",
         "maximum": "Maximum"
       },
       "cta": "Change"

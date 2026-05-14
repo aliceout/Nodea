@@ -618,14 +618,16 @@ The matrix (§6) requires "fresh re-auth < 5 min". Implementation:
 | Mode | Activation requires | Auto downgrades to |
 |---|---|---|
 | `password_or_passkey` | Always available (default) | — |
-| `always_2fa` | TOTP enabled (`mfa_totp.enabled_at IS NOT NULL`) | `password_or_passkey` if TOTP disabled or bypassed |
-| `maximum` | TOTP enabled **AND** at least one PRF-capable passkey enrolled | `password_or_passkey` if TOTP disabled/bypassed OR last passkey removed/bypassed |
+| `always_2fa` | At least one 2nd factor available: TOTP enabled (`mfa_totp.enabled_at IS NOT NULL`) **OR** ≥ 1 passkey enrolled (any kind, issue #72 made both acceptable at login) | `password_or_passkey` when **both** factors disappear (TOTP disabled/bypassed **AND** last passkey removed/bypassed) |
+| `maximum` | TOTP enabled **AND** at least one PRF-capable passkey enrolled | `password_or_passkey` if TOTP disabled/bypassed OR last PRF passkey removed/bypassed |
 
 **Server-side**, `POST /auth/security-mode/change` validates
 eligibility before accepting the switch. Requested mode without
 the required factors → 400 with a clear message:
+- `400 second_factor_required`: "Enable TOTP or enrol a passkey
+  before choosing always_2fa mode."
 - `400 totp_required`: "Enable TOTP before choosing maximum mode."
-- `400 passkey_required`: "Enroll at least one passkey before
+- `400 passkey_required`: "Enrol a PRF-capable passkey before
   choosing maximum mode."
 
 **Downgrade is applied in the same transaction** as the factor
@@ -641,8 +643,8 @@ simultaneously = destructive reset (data loss)**.
 | Lost factor | Recovery path | Conditions |
 |---|---|---|
 | Password | KEK recovery code (cf. §7.7) | Need to know the recovery code |
-| TOTP | 7-day email bypass (cf. §7.8) | Password OK + (passkey OK if max mode) |
-| Passkey (the last one) | 7-day email bypass (cf. §7.8) | Password OK + (TOTP OK if `always_2fa`/`maximum` mode) |
+| TOTP | 7-day email bypass (cf. §7.8) | Password OK + (passkey OK if `maximum` mode, or if `always_2fa` mode AND a passkey is enrolled) |
+| Passkey (the last one) | 7-day email bypass (cf. §7.8) | Password OK + (TOTP OK if `maximum` mode, or if `always_2fa` mode AND TOTP is enabled) |
 | Recovery code | Regenerate from Settings (password re-auth) | Account still accessible |
 | 2 simultaneous factors (passkey + TOTP, password + passkey, etc.) | **Destructive reset only** (cf. §7.9) | Data lost, the user is warned |
 

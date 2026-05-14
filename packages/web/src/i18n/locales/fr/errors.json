@@ -7,6 +7,7 @@
     "invalid_credentials": "E-mail ou mot de passe incorrect.",
     "invalid_token": "Lien invalide ou expiré. Demande un nouveau lien.",
     "passkey_required": "Une passkey est requise pour ce compte.",
+    "second_factor_required": "Un second facteur (TOTP ou passkey) est requis.",
     "totp_required": "Un code de double authentification est requis.",
     "unauthenticated": "Tu dois être connecté·e pour effectuer cette action.",
     "multi_factor_loss": "Plusieurs facteurs ont été perdus simultanément — contacte l’administrateur·rice.",
@@ -70,6 +71,7 @@
   },
   "securityMode": {
     "totpRequired": "Active TOTP avant de choisir ce mode.",
-    "passkeyRequired": "Enrôle une passkey PRF avant de choisir ce mode."
+    "passkeyRequired": "Enrôle une passkey PRF avant de choisir ce mode.",
+    "secondFactorRequired": "Active TOTP ou enrôle une passkey avant de choisir ce mode."
   }
 }

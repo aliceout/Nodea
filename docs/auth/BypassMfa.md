@@ -33,7 +33,8 @@ already have:
 | Mode | `totp` bypass allowed if | `passkey` bypass allowed if |
 |---|---|---|
 | `password_or_passkey` | N/A (TOTP not required) | N/A (passkey is alternative to password) |
-| `always_2fa` | `mfa_password_verified` OR `mfa_passkey_verified` | N/A (passkey not required) |
+| `always_2fa` (TOTP enrolled) | `mfa_password_verified` OR `mfa_passkey_verified` | N/A if no passkey enrolled (issue #72) ; otherwise `mfa_password_verified` OR `mfa_totp_verified` |
+| `always_2fa` (passkey only, no TOTP) | N/A (no TOTP to bypass) | `mfa_password_verified` OR `mfa_totp_verified` (since #72, passkey can be the sole 2nd factor) |
 | `maximum` | `mfa_password_verified` AND `mfa_passkey_verified` | `mfa_password_verified` AND `mfa_totp_verified` |
 
 If the condition isn't met → 409 `multi_factor_loss` → the UI
@@ -141,8 +142,10 @@ factor.
 4. `mfaTotpVerified = true` on the pending session.
 5. If `users.security_mode = 'maximum'` → auto downgrade to
    `password_or_passkey` (cf. §6.1).
-6. If `users.security_mode = 'always_2fa'` → auto downgrade to
-   `password_or_passkey`.
+6. If `users.security_mode = 'always_2fa'` AND the user has no
+   passkey enrolled → auto downgrade to `password_or_passkey`.
+   Otherwise (passkey remains as 2nd factor since #72) the mode
+   stays in place.
 7. Notification email "Your TOTP has been disabled."
 
 **If `factor = 'passkey'`**:
@@ -154,7 +157,10 @@ factor.
 4. If `users.security_mode = 'maximum'` → auto downgrade to
    `password_or_passkey` (the user can raise the mode after
    re-enrollment).
-5. Notification email "All your passkeys have been disabled."
+5. If `users.security_mode = 'always_2fa'` AND the user has no
+   TOTP enabled → auto downgrade to `password_or_passkey`. With
+   TOTP still in place, the mode stays in `always_2fa`.
+6. Notification email "All your passkeys have been disabled."
 
 **In every case**:
 - Revoke every **other** session (DELETE WHERE user_id AND
