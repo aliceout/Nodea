@@ -30,6 +30,11 @@ import type { GoalEntry } from '../lib/types';
 
 export interface GoalsActionsState {
   carryOverOpen: boolean;
+  /** Reader-mode focus (issue #64). `null` when the regular list is
+   *  shown ; otherwise the id of the goal being read full-screen.
+   *  Auto-clears if the underlying entry disappears (delete / filter
+   *  change leaves it out of `filtered`). */
+  readingId: string | null;
   cycleStatus: (entry: GoalEntry) => Promise<void>;
   editEntry: (entry: GoalEntry) => void;
   /** Inline title quick-rename (issue #65). Same optimistic-update +
@@ -39,6 +44,10 @@ export interface GoalsActionsState {
    *  site so this stays a single round-trip. */
   updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
   deleteEntry: (entry: GoalEntry) => Promise<void>;
+  /** Open the focus reader on a specific goal (issue #64). */
+  openReader: (id: string) => void;
+  /** Close the focus reader and return to the regular list. */
+  closeReader: () => void;
   openCarryOver: () => void;
   closeCarryOver: () => void;
   /** Bulk-bump every unfinished goal whose date year matches `from`
@@ -66,11 +75,23 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const { t } = useI18n();
 
   const [carryOverOpen, setCarryOverOpen] = useState(false);
+  const [readingId, setReadingId] = useState<string | null>(null);
 
   const entriesRef = useRef(entries);
   useEffect(() => {
     entriesRef.current = entries;
   }, [entries]);
+
+  // Auto-close the reader when the goal it points to is no longer in
+  // `entries` (deleted from this page, or removed by an external
+  // refresh). Keeping the stale id around would leave the reader
+  // mounted on `null` and force the consumer to render an empty
+  // shell ; clearing here keeps the UX consistent across mutations.
+  useEffect(() => {
+    if (readingId !== null && !entries.some((e) => e.id === readingId)) {
+      setReadingId(null);
+    }
+  }, [readingId, entries]);
 
   // FRONT-13 — per-entry mutation tracker. Two rapid clicks on the
   // same goal's status pill (or a delete chasing a cycle) used to
@@ -234,6 +255,9 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const openCarryOver = useCallback(() => setCarryOverOpen(true), []);
   const closeCarryOver = useCallback(() => setCarryOverOpen(false), []);
 
+  const openReader = useCallback((id: string) => setReadingId(id), []);
+  const closeReader = useCallback(() => setReadingId(null), []);
+
   const carryOver = useCallback(
     async (from: number, to: number, affected: GoalEntry[]) => {
       if (!ctx) return;
@@ -299,10 +323,13 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
 
   return {
     carryOverOpen,
+    readingId,
     cycleStatus,
     editEntry,
     updateTitle,
     deleteEntry,
+    openReader,
+    closeReader,
     openCarryOver,
     closeCarryOver,
     carryOver,

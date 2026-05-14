@@ -5,7 +5,8 @@
       "one": "Goals · {count} goal",
       "other": "Goals · {count} goals"
     },
-    "newCta": "+ New goal"
+    "newCta": "+ New goal",
+    "readerLabel": "Goals · {position} / {total}"
   },
   "list": {
     "loading": "Loading goals…",
@@ -17,7 +18,16 @@
     "deleteAria": "Delete goal",
     "titleEditAria": "Rename goal",
     "titleEditHint": "Double-click to rename",
+    "titleClickHint": "Click to open, double-click to rename",
     "confirmDelete": "Delete « {title} » ?"
+  },
+  "reader": {
+    "noThreadEyebrow": "— no thread —",
+    "edit": "Edit",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next",
+    "emptyNote": "No note for this goal."
   },
   "statusPill": {
     "ariaLabel": "Status: {label}, click to cycle",

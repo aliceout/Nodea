@@ -6,8 +6,9 @@ import Topbar from '@/ui/dirk/Topbar';
 
 import CarryOverDialog from './components/CarryOverDialog';
 import SideColumn from './components/SideColumn';
-import { GoalsProvider, useGoalsData } from './context';
+import { GoalsProvider, useGoalsActions, useGoalsData } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
+import GoalsReaderShell from './views/ReaderShell';
 
 /**
  * Goals — Direction K · Sauge.
@@ -44,12 +45,28 @@ export default function GoalsPage() {
 
 /** Top-level rendering surface. Mounts the shared chrome (topbar /
  *  sidebar) and the always-rendered (self-conditional) carry-over
- *  dialog. State + actions live in the contexts. */
+ *  dialog. State + actions live in the contexts.
+ *
+ *  Issue #64 — when a goal is being read full-screen
+ *  (`readingId !== null`) the reader shell takes over the whole
+ *  surface ; the regular two-column list yields. The carry-over
+ *  dialog stays mounted unconditionally so closing the reader
+ *  doesn't reset its draft state. */
 function GoalsView() {
   const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { stats } = useGoalsData();
+  const { readingId } = useGoalsActions();
+
+  if (readingId !== null) {
+    return (
+      <>
+        <GoalsReaderShell />
+        <CarryOverDialog />
+      </>
+    );
+  }
 
   const topbarLabel = tn('goals.topbar.label', stats.total);
 

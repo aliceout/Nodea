@@ -30,7 +30,7 @@ interface GoalRowProps {
  */
 export default function GoalRow({ entry }: GoalRowProps) {
   const { t, language } = useI18n();
-  const { editEntry, updateTitle, deleteEntry } = useGoalsActions();
+  const { editEntry, updateTitle, deleteEntry, openReader } = useGoalsActions();
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(entry.title);
@@ -91,16 +91,20 @@ export default function GoalRow({ entry }: GoalRowProps) {
               className="min-w-0 flex-1 border-b border-accent bg-transparent text-[14px] font-medium text-ink outline-none focus:border-accent"
             />
           ) : (
-            <p
+            <button
+              type="button"
+              onClick={() => openReader(entry.id)}
               onDoubleClick={startInlineEdit}
-              title={t('goals.row.titleEditHint')}
+              title={t('goals.row.titleClickHint')}
               className={cn(
-                'cursor-text text-[14px] font-medium transition-colors',
-                entry.status === 'done' ? 'text-muted line-through' : 'text-ink',
+                'cursor-pointer rounded-sm bg-transparent p-0 text-left text-[14px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+                entry.status === 'done'
+                  ? 'text-muted line-through hover:text-ink-soft'
+                  : 'text-ink hover:text-accent',
               )}
             >
               {entry.title}
-            </p>
+            </button>
           )}
           {entry.date ? (
             <span className="text-[11px] tabular-nums text-muted">

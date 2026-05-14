@@ -67,10 +67,13 @@ interface GoalsFiltersValue {
 
 interface GoalsActionsValue {
   carryOverOpen: boolean;
+  readingId: string | null;
   cycleStatus: (entry: GoalEntry) => Promise<void>;
   editEntry: (entry: GoalEntry) => void;
   updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
   deleteEntry: (entry: GoalEntry) => Promise<void>;
+  openReader: (id: string) => void;
+  closeReader: () => void;
   openCarryOver: () => void;
   closeCarryOver: () => void;
   carryOver: (
@@ -138,10 +141,13 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
   const actionsValue = useMemo<GoalsActionsValue>(
     () => ({
       carryOverOpen: actions.carryOverOpen,
+      readingId: actions.readingId,
       cycleStatus: actions.cycleStatus,
       editEntry: actions.editEntry,
       updateTitle: actions.updateTitle,
       deleteEntry: actions.deleteEntry,
+      openReader: actions.openReader,
+      closeReader: actions.closeReader,
       openCarryOver: actions.openCarryOver,
       closeCarryOver: actions.closeCarryOver,
       carryOver: actions.carryOver,

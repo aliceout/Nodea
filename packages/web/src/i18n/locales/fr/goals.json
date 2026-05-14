@@ -5,7 +5,8 @@
       "one": "Goals · {count} objectif",
       "other": "Goals · {count} objectifs"
     },
-    "newCta": "+ Nouvel objectif"
+    "newCta": "+ Nouvel objectif",
+    "readerLabel": "Goals · {position} / {total}"
   },
   "list": {
     "loading": "Chargement des objectifs…",
@@ -17,7 +18,16 @@
     "deleteAria": "Supprimer l’objectif",
     "titleEditAria": "Renommer l’objectif",
     "titleEditHint": "Double-clic pour renommer",
+    "titleClickHint": "Clic pour ouvrir, double-clic pour renommer",
     "confirmDelete": "Supprimer « {title} » ?"
+  },
+  "reader": {
+    "noThreadEyebrow": "— sans fil —",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "emptyNote": "Aucune note pour cet objectif."
   },
   "statusPill": {
     "ariaLabel": "Statut : {label}, cliquer pour cycler",
