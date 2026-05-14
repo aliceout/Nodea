@@ -38,27 +38,20 @@
     "untitled": "Untitled entry"
   },
   "side": {
-    "layout": "Layout",
-    "layoutList": "List",
-    "layoutCalendar": "Calendar",
-    "dayFilterClear": "Filtered on {day} — show all",
     "view": "View",
     "viewByThread": "By thread",
     "viewByMonth": "By month",
     "threads": "Threads",
     "threadsEmpty": "You haven't created any thread yet.",
     "threadsAll": "All",
-    "threadsManageCta": "Manage threads",
-    "stats": "Stats",
-    "statsEntries": "Entries",
-    "statsWords": "Words written",
-    "statsStreak": "Streak",
-    "streakDay": {
-      "one": "{count} day",
-      "other": "{count} days"
-    },
-    "streakUntilToday": "up to today",
-    "streakUntilYesterday": "up to yesterday"
+    "threadsManageCta": "Manage threads"
+  },
+  "primary": {
+    "entriesHeading": "Entries",
+    "yearRolling": "Current",
+    "yearAria": "Writing year",
+    "showChart": "Show writing map",
+    "hideChart": "Hide writing map"
   },
   "reader": {
     "noThreadEyebrow": "— no thread —",
@@ -71,15 +64,13 @@
     "loadFailed": "Failed to load journal.",
     "confirmDelete": "Delete \"{label}\"?"
   },
-  "calendar": {
-    "heading": "Writing year",
-    "yearLabel": "Year",
-    "empty": "No entry for {year}.",
-    "summary": "{count} entries · {words} words this year",
+  "heatmap": {
+    "homepageLabel": "A year of writing",
+    "ariaLabel": "Writing density heatmap for the last 12 months",
     "tooltip": "{date} — {count} entries, {words} words",
     "tooltipEmpty": "{date} — nothing written that day",
-    "ariaLabel": "Writing calendar for {year}",
-    "hint": "Click a day to focus the list on its entries."
+    "dayFilterActive": "Filtered on {day}.",
+    "dayFilterClearCta": "Show all"
   },
   "threadsManager": {
     "title": "Manage threads",

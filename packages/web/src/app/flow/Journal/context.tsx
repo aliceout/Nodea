@@ -48,25 +48,32 @@ import type { JournalEntry, JournalStats } from './lib/types';
  */
 
 type GroupBy = 'thread' | 'month';
-/** Issue #56 — top-level layout : either the regular grouped list,
- *  or the calendar heatmap that the user can click into. */
-type View = 'list' | 'calendar';
 
 interface JournalDataValue {
   entries: ReadonlyArray<JournalEntry>;
   load: LoadState;
   stats: JournalStats;
+  /** Years present in the dataset, descending. Drives the
+   *  `YearSelector` tab strip in the primary column (issue #56,
+   *  mirrors Mood's `availableYears`). */
+  availableYears: ReadonlyArray<number>;
 }
 
 interface JournalFiltersValue {
   threadFilter: string | null;
   groupBy: GroupBy;
   search: string;
-  view: View;
+  /** Year filter (issue #56). `null` = « En cours » (rolling 52
+   *  weeks ending today, no list-side filtering). A number = list
+   *  + heatmap focused on that calendar year. */
+  year: number | null;
   /** Single-day focus filter (issue #56) — set when the user clicks
    *  a heatmap cell. ISO `YYYY-MM-DD` ; null = no day focus. The
    *  filter applies on top of the other filters in `filtered`. */
   dayFilter: string | null;
+  /** Chart collapse state (issue #56). When true, the heatmap is
+   *  hidden ; the chevron toggle re-opens it. */
+  chartCollapsed: boolean;
 
   threads: ReadonlyArray<string>;
   filtered: ReadonlyArray<JournalEntry>;
@@ -75,8 +82,9 @@ interface JournalFiltersValue {
   setThreadFilter: (next: string | null) => void;
   setGroupBy: (next: GroupBy) => void;
   setSearch: (next: string) => void;
-  setView: (next: View) => void;
+  setYear: (next: number | null) => void;
   setDayFilter: (next: string | null) => void;
+  toggleChart: () => void;
 }
 
 /**
@@ -154,8 +162,17 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('thread');
-  const [view, setView] = useState<View>('list');
+  const [year, setYear] = useState<number | null>(null);
   const [dayFilter, setDayFilter] = useState<string | null>(null);
+  // Heatmap starts collapsed (issue #56 follow-up) — Journal is
+  // primarily a writing surface ; the year-density overview is a
+  // « step back » affordance the user opts into when they want
+  // it, not the default landing.
+  const [chartCollapsed, setChartCollapsed] = useState(true);
+  const toggleChart = useCallback(
+    () => setChartCollapsed((prev) => !prev),
+    [],
+  );
 
   // ---- Reader UI state ----
   const [readingId, setReadingId] = useState<string | null>(null);
@@ -211,10 +228,26 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [entries]);
 
+  const availableYears = useMemo<ReadonlyArray<number>>(() => {
+    const set = new Set<number>();
+    for (const e of entries) {
+      const y = parseInt(e.dateIso.slice(0, 4), 10);
+      if (Number.isFinite(y)) set.add(y);
+    }
+    return Array.from(set).sort((a, b) => b - a);
+  }, [entries]);
+
   const filtered = useMemo<ReadonlyArray<JournalEntry>>(() => {
     const trimmedQuery = search.trim();
     return entries.filter((e) => {
       if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
+        return false;
+      }
+      // Year filter (issue #56). null = « En cours » = no year
+      // narrowing on the list (the heatmap still shows the rolling
+      // 52 weeks). When a year is picked, the list collapses to
+      // that calendar year.
+      if (year !== null && e.dateIso.slice(0, 4) !== String(year)) {
         return false;
       }
       // Single-day focus filter (issue #56) — clicking a heatmap
@@ -230,7 +263,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       // search for « thérapie » expecting the thread to match.
       return matchesAnyField([e.title, e.content, e.thread], trimmedQuery);
     });
-  }, [entries, threadFilter, dayFilter, search]);
+  }, [entries, threadFilter, year, dayFilter, search]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, JournalEntry[]]>>(
     () => {
@@ -407,8 +440,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   // ---- Memoised context values ----
 
   const dataValue = useMemo<JournalDataValue>(
-    () => ({ entries, load, stats }),
-    [entries, load, stats],
+    () => ({ entries, load, stats, availableYears }),
+    [entries, load, stats, availableYears],
   );
 
   const filtersValue = useMemo<JournalFiltersValue>(
@@ -416,18 +449,31 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       threadFilter,
       groupBy,
       search,
-      view,
+      year,
       dayFilter,
+      chartCollapsed,
       threads,
       filtered,
       groups,
       setThreadFilter,
       setGroupBy,
       setSearch,
-      setView,
+      setYear,
       setDayFilter,
+      toggleChart,
     }),
-    [threadFilter, groupBy, search, view, dayFilter, threads, filtered, groups],
+    [
+      threadFilter,
+      groupBy,
+      search,
+      year,
+      dayFilter,
+      chartCollapsed,
+      threads,
+      filtered,
+      groups,
+      toggleChart,
+    ],
   );
 
   const actionsValue = useMemo<JournalActionsValue>(

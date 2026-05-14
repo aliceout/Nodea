@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { goalsClient } from '@/core/api/modules/goals';
+import { journalClient } from '@/core/api/modules/journal';
 import { libraryItemsClient } from '@/core/api/modules/library';
 import { moodClient } from '@/core/api/modules/mood';
 import {
@@ -22,11 +23,13 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { preferredName } from './lib/format';
 import {
   projectGoalEntries,
+  projectJournalEntries,
   projectLibraryReadings,
   projectMoodEntries,
 } from './lib/projections';
 import type {
   GoalEntryLite,
+  JournalEntryLite,
   LibraryReadingLite,
   MoodEntryLite,
 } from './lib/types';
@@ -51,6 +54,10 @@ interface HomepageDataValue {
   mood: ReadonlyArray<MoodEntryLite>;
   goals: ReadonlyArray<GoalEntryLite>;
   readings: ReadonlyArray<LibraryReadingLite>;
+  /** Journal entries, newest-first. Drives `ToSeeList`'s « Entrée
+   *  Journal aujourd'hui » row, `RecentJournal`'s snippet preview,
+   *  and `JournalHeatmap`'s density grid. */
+  journal: ReadonlyArray<JournalEntryLite>;
 }
 
 const HomepageDataContext = createContext<HomepageDataValue | null>(null);
@@ -74,15 +81,18 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   const moodVersion = useNodeaStore((s) => s.moodVersion);
   const goalsVersion = useNodeaStore((s) => s.goalsVersion);
   const libraryItemsVersion = useNodeaStore((s) => s.libraryItemsVersion);
+  const journalVersion = useNodeaStore((s) => s.journalVersion);
   const { language } = useI18n();
 
   const moodModuleId = modules['mood']?.moduleUserId ?? null;
   const goalsModuleId = modules['goals']?.moduleUserId ?? null;
   const libraryModuleId = modules['library']?.moduleUserId ?? null;
+  const journalModuleId = modules['journal']?.moduleUserId ?? null;
 
   const [mood, setMood] = useState<MoodEntryLite[]>([]);
   const [goals, setGoals] = useState<GoalEntryLite[]>([]);
   const [readings, setReadings] = useState<LibraryReadingLite[]>([]);
+  const [journal, setJournal] = useState<JournalEntryLite[]>([]);
 
   // ---- Fetch effects (one per module). Failures are silenced —
   // the matching module's own page surfaces real errors. ----
@@ -138,6 +148,23 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
     };
   }, [mainKey, libraryModuleId, libraryItemsVersion]);
 
+  useEffect(() => {
+    if (!mainKey || !journalModuleId) return undefined;
+    let cancelled = false;
+    journalClient
+      .list(journalModuleId, mainKey)
+      .then((records) => {
+        if (cancelled) return;
+        setJournal(projectJournalEntries(records));
+      })
+      .catch(() => {
+        // Silent — Journal page surfaces the real error.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mainKey, journalModuleId, journalVersion]);
+
   // ---- Derived ----
 
   const displayName = useMemo(() => preferredName(user), [user]);
@@ -161,8 +188,8 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   }, [language]);
 
   const value = useMemo<HomepageDataValue>(
-    () => ({ displayName, formattedDate, mood, goals, readings }),
-    [displayName, formattedDate, mood, goals, readings],
+    () => ({ displayName, formattedDate, mood, goals, readings, journal }),
+    [displayName, formattedDate, mood, goals, readings, journal],
   );
 
   return (

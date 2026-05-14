@@ -8,7 +8,7 @@ function goal(
   status: GoalStatusLite,
   updatedAt: string,
 ): GoalEntryLite {
-  return { id, status, updatedAt, title: id, thread: '' };
+  return { id, status, updatedAt, title: id, thread: '', completedAt: null };
 }
 
 describe('pickHomeGoals', () => {

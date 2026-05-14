@@ -1,5 +1,6 @@
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
+import JournalHeatmap from '../components/JournalHeatmap';
 import RecentJournal from '../components/RecentJournal';
 import ReadingBlock from '../components/ReadingBlock';
 import ToSeeList from '../components/ToSeeList';
@@ -23,6 +24,7 @@ export default function PrimaryColumn() {
       <ToSeeList />
       <ReadingBlock />
       <RecentJournal />
+      <JournalHeatmap />
     </section>
   );
 }

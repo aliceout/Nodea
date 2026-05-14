@@ -4,6 +4,14 @@
     "afternoon": "Bon après-midi",
     "evening": "Bonsoir"
   },
+  "journalRecent": {
+    "heading": "Journal récent",
+    "cta": "voir le journal"
+  },
+  "journalStrip": {
+    "heading": "30 derniers jours",
+    "ariaLabel": "Densité d’écriture sur les 30 derniers jours"
+  },
   "announcement": {
     "label": "Nouvelle",
     "publishedOn": "Publié le {date}",

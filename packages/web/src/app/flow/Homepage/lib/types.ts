@@ -33,7 +33,8 @@ export type MoodEntryLite = Pick<MoodEntry, 'dateIso' | 'score'> & {
 export type GoalStatusLite = 'open' | 'wip' | 'done';
 
 /**
- * Lite shape of a Goals entry consumed by `IntentionsBlock`.
+ * Lite shape of a Goals entry consumed by `IntentionsBlock` and
+ * the home page's « réalisés ces 12 mois » roll-up.
  * Locally defined rather than `Pick<GoalEntry, …>` because the
  * `status` field is a narrower union than `GoalEntry.status`
  * (see `GoalStatusLite` above).
@@ -46,6 +47,10 @@ export interface GoalEntryLite {
   /** ISO `updatedAt` from the payload — used to keep recent
    *  goals on top when there's no other ordering signal. */
   updatedAt: string;
+  /** ISO timestamp captured when the goal flipped to `done` ;
+   *  `null` for never-done goals. Drives the homepage's
+   *  « réalisés ces 12 mois » filter. */
+  completedAt: string | null;
 }
 
 /**
@@ -84,10 +89,21 @@ export interface MoodFriseStats {
   avg: number | null;
 }
 
-/** Static « À voir » row mocked while Library + Habits aren't
- *  wired through. Removed once the matching modules go live. */
-export interface MockTask {
-  label: string;
-  meta: string;
-  doneAt: string;
+/**
+ * Lite shape of a Journal entry consumed by `ToSeeList` (« Entrée
+ * Journal aujourd'hui » row), `RecentJournal` (snippet preview),
+ * and `JournalHeatmap` (year density). Just enough to know the
+ * day, the thread, a content snippet, and the entry's id for a
+ * « voir le journal » link.
+ */
+export interface JournalEntryLite {
+  id: string;
+  /** `YYYY-MM-DD` slice of the entry's payload date. */
+  dateIso: string;
+  thread: string;
+  title: string | null;
+  /** Raw content (post-decryption). Consumers truncate as needed —
+   *  the projection doesn't pre-snippet so future use-cases (full
+   *  text search, word-count) keep the data they need. */
+  content: string;
 }

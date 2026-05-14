@@ -1,5 +1,6 @@
 import type {
   GoalsPayload,
+  JournalPayload,
   LibraryItemPayload,
   MoodPayload,
   MoodScore,
@@ -13,6 +14,7 @@ import { VALID_SCORES as MOOD_VALID_SCORES } from '@/app/flow/Mood/lib/mappers';
 import type {
   GoalEntryLite,
   GoalStatusLite,
+  JournalEntryLite,
   LibraryReadingLite,
   MoodEntryLite,
 } from './types';
@@ -83,6 +85,10 @@ export function projectGoalEntries(
       // Goals writer bumps on every save (server-side
       // timestamps were dropped).
       updatedAt: p.updatedAt,
+      // `completedAt` is captured by the Goals page when a goal
+      // flips into `done` ; null otherwise. The homepage uses
+      // it to filter « réalisés ces 12 mois ».
+      completedAt: p.completedAt ?? null,
     });
   }
   return out;
@@ -120,5 +126,32 @@ export function projectLibraryReadings(
       isFavorite: p.isFavorite ?? false,
     });
   }
+  return out;
+}
+
+/**
+ * Project decrypted Journal records onto the home Lite shape.
+ * Drops records with a missing / malformed `date`. The output is
+ * sorted newest-first so the homepage's « last entry » lookups
+ * are an O(1) `[0]` read.
+ *
+ * Pure : no I/O, no global clock, no React.
+ */
+export function projectJournalEntries(
+  records: ReadonlyArray<DecryptedRecord<JournalPayload>>,
+): JournalEntryLite[] {
+  const out: JournalEntryLite[] = [];
+  for (const r of records) {
+    const p = r.payload;
+    if (!p.date || !/^\d{4}-\d{2}-\d{2}/.test(p.date)) continue;
+    out.push({
+      id: r.id,
+      dateIso: p.date.slice(0, 10),
+      thread: p.thread ?? '',
+      title: p.title ?? null,
+      content: p.content ?? '',
+    });
+  }
+  out.sort((a, b) => b.dateIso.localeCompare(a.dateIso));
   return out;
 }

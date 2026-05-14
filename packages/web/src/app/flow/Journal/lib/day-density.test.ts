@@ -71,30 +71,31 @@ describe('densityToIntensity', () => {
   });
 
   it('buckets by word count, not entry count', () => {
-    // 5 short one-liners < 1 long entry intensity-wise
-    expect(densityToIntensity({ count: 5, words: 50 })).toBe(1);
+    // 5 short one-liners (5 × 10 words) lands in the same bucket
+    // as 1 short entry of 50 words.
+    expect(densityToIntensity({ count: 5, words: 50 })).toBe(2);
     expect(densityToIntensity({ count: 1, words: 1200 })).toBe(4);
   });
 
-  it('walks the 4 thresholds at 1 / 100 / 300 / 800 words', () => {
+  it('walks the 4 thresholds at 1 / 30 / 80 / 200 words', () => {
     expect(densityToIntensity({ count: 1, words: 1 })).toBe(1);
-    expect(densityToIntensity({ count: 1, words: 99 })).toBe(1);
-    expect(densityToIntensity({ count: 1, words: 100 })).toBe(2);
-    expect(densityToIntensity({ count: 1, words: 299 })).toBe(2);
-    expect(densityToIntensity({ count: 1, words: 300 })).toBe(3);
-    expect(densityToIntensity({ count: 1, words: 799 })).toBe(3);
-    expect(densityToIntensity({ count: 1, words: 800 })).toBe(4);
+    expect(densityToIntensity({ count: 1, words: 29 })).toBe(1);
+    expect(densityToIntensity({ count: 1, words: 30 })).toBe(2);
+    expect(densityToIntensity({ count: 1, words: 79 })).toBe(2);
+    expect(densityToIntensity({ count: 1, words: 80 })).toBe(3);
+    expect(densityToIntensity({ count: 1, words: 199 })).toBe(3);
+    expect(densityToIntensity({ count: 1, words: 200 })).toBe(4);
   });
 });
 
 describe('buildIntensityLookup', () => {
   it('returns a function that maps Date → 0..4 via the same buckets', () => {
     const entries = [
-      entry('2026-05-14', new Array(150).fill('a').join(' ')), // 150 words → 2
+      entry('2026-05-14', new Array(150).fill('a').join(' ')), // 150 words → 3
       entry('2026-05-13', 'short note'), // 2 words → 1
     ];
     const lookup = buildIntensityLookup(entries);
-    expect(lookup(new Date(2026, 4, 14))).toBe(2);
+    expect(lookup(new Date(2026, 4, 14))).toBe(3);
     expect(lookup(new Date(2026, 4, 13))).toBe(1);
     expect(lookup(new Date(2026, 4, 12))).toBe(0);
   });

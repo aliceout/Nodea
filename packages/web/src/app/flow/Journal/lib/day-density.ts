@@ -1,5 +1,4 @@
 import { countWords, isoDay } from './stats';
-import type { JournalEntry } from './types';
 
 /**
  * Per-day writing density for the Journal heatmap (issue #56).
@@ -18,13 +17,26 @@ export interface DayDensity {
   words: number;
 }
 
+/**
+ * Minimal shape `aggregateByDay` reads. Both the canonical
+ * `JournalEntry` and the homepage's `JournalEntryLite` satisfy
+ * it, which lets the homepage feed the aggregator without
+ * dragging the full Journal entry shape (and its mapper) into
+ * its dependency graph.
+ */
+export interface DayDensityInput {
+  dateIso: string;
+  title: string | null;
+  content: string;
+}
+
 /** `YYYY-MM-DD` shape check : a length-10 slice alone isn't enough
  *  (a stray `not-a-date` is exactly 10 chars). Anchored regex
  *  filters out truncated / malformed `dateIso` values defensively. */
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function aggregateByDay(
-  entries: ReadonlyArray<JournalEntry>,
+  entries: ReadonlyArray<DayDensityInput>,
 ): Map<string, DayDensity> {
   const out = new Map<string, DayDensity>();
   for (const entry of entries) {
@@ -46,30 +58,34 @@ export function aggregateByDay(
  * Map a `DayDensity` to a 0..4 intensity bucket for the heatmap.
  *
  * Thresholds are word-count-based (not entry-count) because a
- * single 1 500-word entry is more « active » than three 30-word
- * one-liners. Bucket boundaries hand-tuned for journal-realistic
- * densities :
+ * single 200-word entry is more « active » than two 20-word
+ * one-liners. Bucket boundaries tuned for typical journal
+ * writing — a casual line is usually 10-30 words, a paragraph
+ * 50-100, a real session a couple hundred. Earlier thresholds
+ * (1/100/300/800) were calibrated for longform journaling and
+ * collapsed every short-note user to bucket 1.
+ *
  *   - 0 words : empty day
- *   - 1-99 words : a casual line
- *   - 100-299 words : a paragraph
- *   - 300-799 words : a real session
- *   - 800+ words : a deep dive
+ *   - 1-29 words : a quick line
+ *   - 30-79 words : a couple of sentences
+ *   - 80-199 words : a paragraph or two
+ *   - 200+ words : a real session
  *
  * Exported separately from `aggregateByDay` so callers that only
  * need the count (e.g. a sparkline) don't pay the bucketing cost.
  */
 export function densityToIntensity(density: DayDensity | undefined): number {
   if (!density || density.words === 0) return 0;
-  if (density.words < 100) return 1;
-  if (density.words < 300) return 2;
-  if (density.words < 800) return 3;
+  if (density.words < 30) return 1;
+  if (density.words < 80) return 2;
+  if (density.words < 200) return 3;
   return 4;
 }
 
 /** Convenience : build the heatmap lookup function the Heatmap
  *  component expects. Returns 0 for any day without entries. */
 export function buildIntensityLookup(
-  entries: ReadonlyArray<JournalEntry>,
+  entries: ReadonlyArray<DayDensityInput>,
 ): (date: Date) => number {
   const byDay = aggregateByDay(entries);
   return (date) => densityToIntensity(byDay.get(isoDay(date)));

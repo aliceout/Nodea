@@ -38,27 +38,20 @@
     "untitled": "Entrée sans titre"
   },
   "side": {
-    "layout": "Affichage",
-    "layoutList": "Liste",
-    "layoutCalendar": "Calendrier",
-    "dayFilterClear": "Filtré sur {day} — afficher tout",
     "view": "Vue",
     "viewByThread": "Par fil",
     "viewByMonth": "Par mois",
     "threads": "Fils",
     "threadsEmpty": "Tu n’as pas encore créé de fil.",
     "threadsAll": "Tous",
-    "threadsManageCta": "Gérer les fils",
-    "stats": "Stats",
-    "statsEntries": "Entrées",
-    "statsWords": "Mots écrits",
-    "statsStreak": "Série",
-    "streakDay": {
-      "one": "{count} jour",
-      "other": "{count} jours"
-    },
-    "streakUntilToday": "jusqu’à aujourd’hui",
-    "streakUntilYesterday": "jusqu’à hier"
+    "threadsManageCta": "Gérer les fils"
+  },
+  "primary": {
+    "entriesHeading": "Entrées",
+    "yearRolling": "En cours",
+    "yearAria": "Année d’écriture",
+    "showChart": "Voir la carte d’écriture",
+    "hideChart": "Masquer la carte d’écriture"
   },
   "reader": {
     "noThreadEyebrow": "— sans fil —",
@@ -71,15 +64,13 @@
     "loadFailed": "Erreur lors du chargement du journal.",
     "confirmDelete": "Supprimer « {label} » ?"
   },
-  "calendar": {
-    "heading": "Année d’écriture",
-    "yearLabel": "Année",
-    "empty": "Aucune entrée pour {year}.",
-    "summary": "{count} entrées · {words} mots cette année",
+  "heatmap": {
+    "homepageLabel": "Une année d’écriture",
+    "ariaLabel": "Carte de densité d’écriture sur les 12 derniers mois",
     "tooltip": "{date} — {count} entrées, {words} mots",
     "tooltipEmpty": "{date} — rien écrit ce jour",
-    "ariaLabel": "Calendrier d’écriture pour {year}",
-    "hint": "Clique sur un jour pour ne voir que ses entrées dans la liste."
+    "dayFilterActive": "Filtré sur {day}.",
+    "dayFilterClearCta": "Afficher tout"
   },
   "threadsManager": {
     "title": "Gérer les fils",
