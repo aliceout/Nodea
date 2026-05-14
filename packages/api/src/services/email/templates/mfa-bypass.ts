@@ -97,7 +97,7 @@ export function renderMfaBypassEmail(params: {
 export function renderMfaBypassAppliedEmail(params: {
   language: SupportedEmailLanguage;
   factor: 'totp' | 'passkey';
-  /** True when `security_mode` was downgraded from `always_totp` /
+  /** True when `security_mode` was downgraded from `always_2fa` /
    *  `maximum` to `password_or_passkey` as a side-effect. */
   downgraded: boolean;
 }): RenderedEmailContent {

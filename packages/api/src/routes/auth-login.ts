@@ -302,7 +302,7 @@ authLoginRoutes.openapi(loginFinishRoute, async (c) => {
   // the remaining factors check out.
   //
   // We also gate on `mfa_totp.enabled_at` for the
-  // `always_totp` / `maximum` modes — a corrupted state where
+  // `always_2fa` / `maximum` modes — a corrupted state where
   // mode requires TOTP but the user has none enrolled would
   // otherwise lock them out. If TOTP isn't actually enrolled,
   // fall through to the full-session path (the user mode

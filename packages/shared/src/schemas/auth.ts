@@ -253,7 +253,7 @@ export const AuthMeResponseSchema = z.object({
    *  `maximum` requires `passkeysPrfCount >= 1`. */
   passkeysPrfCount: z.number().int().nonnegative(),
   /** True when TOTP is fully enabled (`mfa_totp.enabled_at IS NOT
-   *  NULL`). Required to activate modes `always_totp` / `maximum`
+   *  NULL`). Required to activate modes `always_2fa` / `maximum`
    *  (Auth-Spec §6.1). Pending enrollments (`enabled_at IS NULL`)
    *  read as `false` so the UI can offer to resume the flow. */
   totpEnabled: z.boolean(),
@@ -261,7 +261,7 @@ export const AuthMeResponseSchema = z.object({
    *  warning when this drops to 0 (Auth-Spec §8.3 — regen prompt). */
   totpBackupCodesRemaining: z.number().int().nonnegative(),
   /** Per-user security policy (Auth-Spec §6.1). */
-  securityMode: z.enum(['password_or_passkey', 'always_totp', 'maximum']),
+  securityMode: z.enum(['password_or_passkey', 'always_2fa', 'maximum']),
 });
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
 

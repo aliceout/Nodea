@@ -294,7 +294,7 @@ the factory loops over. There is nowhere to forget a guard.
     surface: `enroll/start`, `enroll/verify`, `disable`,
     `backup-codes/regenerate`. All gate on a fresh OPAQUE password
     proof. `disable` runs the §6.1 downgrade auto if
-    `security_mode in ('always_totp', 'maximum')`.
+    `security_mode in ('always_2fa', 'maximum')`.
   - `auth-mfa.ts` — stepped MFA verify routes operating on the
     `mfa_pending` session kind via `requireMfaPending` middleware.
     `POST /auth/mfa/totp/verify` accepts a TOTP code OR a 24-char

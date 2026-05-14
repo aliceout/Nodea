@@ -7,12 +7,12 @@ import { z } from 'zod';
  *
  *   - `password_or_passkey` — default. Either factor unlocks the
  *     session in one step.
- *   - `always_totp` — TOTP required after password OR passkey.
+ *   - `always_2fa` — TOTP required after password OR passkey.
  *   - `maximum` — password + passkey + TOTP, all three.
  *
  * Activation gate (§6.1):
  *
- *   - `always_totp` requires `mfa_totp.enabled_at IS NOT NULL`.
+ *   - `always_2fa` requires `mfa_totp.enabled_at IS NOT NULL`.
  *   - `maximum` requires the above AND at least one PRF-capable
  *     passkey (`auth_factors.prf_supported = true`).
  *
@@ -24,7 +24,7 @@ import { z } from 'zod';
  */
 export const SecurityModeSchema = z.enum([
   'password_or_passkey',
-  'always_totp',
+  'always_2fa',
   'maximum',
 ]);
 export type SecurityMode = z.infer<typeof SecurityModeSchema>;

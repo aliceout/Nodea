@@ -52,7 +52,7 @@ import {
  *     `enabled_at = now()`.
  *   - `POST /auth/totp/disable` (password proof) — wipes `enabled_at`
  *     + DELETEs all backup codes; downgrades `security_mode` to
- *     `password_or_passkey` if it was set to `always_totp`/`maximum`
+ *     `password_or_passkey` if it was set to `always_2fa`/`maximum`
  *     (§6.1 downgrade auto).
  *   - `POST /auth/totp/backup-codes/regenerate` (password proof) —
  *     DELETE old backup codes + INSERT 10 fresh ones in a transaction.
@@ -259,10 +259,10 @@ authTotpRoutes.openapi(enrollVerifyRoute, async (c) => {
   // window can't be replayed. Auth-Spec §8.3.
   //
   // Auto-promote `security_mode` from `password_or_passkey` to
-  // `always_totp` in the same transaction: a user who just went
+  // `always_2fa` in the same transaction: a user who just went
   // through TOTP enrollment expects it to be enforced on the next
   // login (otherwise the activation is a no-op). Modes already at
-  // `always_totp` / `maximum` stay where they are.
+  // `always_2fa` / `maximum` stay where they are.
   const enabledAt = new Date();
   await db.transaction(async (tx) => {
     await tx
@@ -275,7 +275,7 @@ authTotpRoutes.openapi(enrollVerifyRoute, async (c) => {
     if (user.securityMode === 'password_or_passkey') {
       await tx
         .update(users)
-        .set({ securityMode: 'always_totp', updatedAt: enabledAt })
+        .set({ securityMode: 'always_2fa', updatedAt: enabledAt })
         .where(eq(users.id, user.id));
     }
   });
@@ -293,8 +293,8 @@ authTotpRoutes.openapi(disableRoute, async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
 
-  const downgradedFrom: 'always_totp' | 'maximum' | null =
-    user.securityMode === 'always_totp' || user.securityMode === 'maximum'
+  const downgradedFrom: 'always_2fa' | 'maximum' | null =
+    user.securityMode === 'always_2fa' || user.securityMode === 'maximum'
       ? user.securityMode
       : null;
 

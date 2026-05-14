@@ -26,7 +26,7 @@ type Factor = 'totp' | 'passkey' | 'password';
  * session. The page steps the user through whatever's still
  * missing :
  *
- *   - TOTP form by default (mode `always_totp`, mode `maximum`
+ *   - TOTP form by default (mode `always_2fa`, mode `maximum`
  *     after password-first).
  *   - Passkey button when the server reports `passkey` is still
  *     missing — typically mode `maximum` after the TOTP step

@@ -304,7 +304,7 @@ authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
   // same logic as the password-first path but with
   // `entryFactor=passkey`. Mode `maximum` is the case where
   // the passkey-first user still needs password + TOTP ; mode
-  // `always_totp` just needs TOTP.
+  // `always_2fa` just needs TOTP.
   const baseRequired = requiredFactorsForMode(
     { securityMode: activeMode },
     'passkey',

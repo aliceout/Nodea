@@ -15,22 +15,26 @@ import { pgEnum } from 'drizzle-orm/pg-core';
  * - `password_or_passkey` — default. Either factor unlocks.
  *   The KEK is wrappable by both, so loss of one factor
  *   doesn't lock the user out as long as the other remains.
- * - `always_totp` — TOTP is required after password OR
- *   passkey verification.
+ * - `always_2fa` — a second factor is required after password
+ *   OR passkey verification. Today the only accepted 2nd
+ *   factor is TOTP ; issue #72 will widen this to also accept
+ *   a non-PRF passkey (next commit). The rename from the old
+ *   `always_totp` happens in this commit ; behaviour is
+ *   unchanged.
  * - `maximum` — password + passkey + TOTP, all three.
  *   Activation invariant (Auth-Spec §6.1) : TOTP must be
  *   enabled AND at least one PRF-capable passkey must be
  *   enrolled before this mode can be selected.
  *
  * Auto-downgrade rules (Auth-Spec §6.1) :
- *   - TOTP disabled or bypassed → modes `always_totp` and
+ *   - TOTP disabled or bypassed → modes `always_2fa` and
  *     `maximum` fall back to `password_or_passkey`.
  *   - Last PRF-capable passkey removed or bypassed →
  *     `maximum` falls back to `password_or_passkey`.
  */
 export const securityMode = pgEnum('security_mode', [
   'password_or_passkey',
-  'always_totp',
+  'always_2fa',
   'maximum',
 ]);
 

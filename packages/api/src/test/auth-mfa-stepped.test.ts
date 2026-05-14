@@ -8,7 +8,7 @@
  *
  * Scenarios:
  *   - mode `password_or_passkey` → no MFA, /finish emits full session.
- *   - mode `always_totp`         → /finish emits mfa_pending,
+ *   - mode `always_2fa`         → /finish emits mfa_pending,
  *                                   `verifyMfaTotp(code)` finalizes.
  *   - Wrong TOTP code            → 401, session stays pending.
  *   - Backup code path           → finalizes + flips `usedAt`.
@@ -162,10 +162,10 @@ describe('POST /auth/login/finish — mode password_or_passkey', () => {
 });
 
 /* ============================================================================
- * Mode `always_totp` — stepped MFA via TOTP
+ * Mode `always_2fa` — stepped MFA via TOTP
  * ========================================================================== */
 
-describe('POST /auth/login/finish — mode always_totp', () => {
+describe('POST /auth/login/finish — mode always_2fa', () => {
   it('emits mfa_pending + wraps when TOTP is enrolled', async () => {
     const u = await seedUser('mfa-mode-totp-ok@example.com');
 
@@ -177,7 +177,7 @@ describe('POST /auth/login/finish — mode always_totp', () => {
     await enrollTotpFor('mfa-mode-totp-ok@example.com', TEST_PASSWORD, fullCookie);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
 
     const { status, body, cookie } = await rawLogin(
@@ -210,7 +210,7 @@ describe('POST /auth/login/finish — mode always_totp', () => {
     // should NOT lock the user out.
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
 
     const { status, body, cookie } = await rawLogin(
@@ -237,7 +237,7 @@ describe('POST /auth/mfa/totp/verify', () => {
     const { secret } = await enrollTotpFor(email, TEST_PASSWORD, fullCookie);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
     const pending = await rawLogin(email, TEST_PASSWORD);
     expect(pending.body.needsMfa).toBe(true);
@@ -327,7 +327,7 @@ describe('POST /auth/mfa/totp/verify', () => {
     });
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
 
     const pending = await rawLogin(
@@ -405,7 +405,7 @@ describe('GET /auth/me — refuses mfa_pending cookie', () => {
     await enrollTotpFor('me-pending@example.com', TEST_PASSWORD, fullCookie);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
     const pending = await rawLogin('me-pending@example.com', TEST_PASSWORD);
     expect(pending.body.needsMfa).toBe(true);

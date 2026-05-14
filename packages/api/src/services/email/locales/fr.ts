@@ -125,7 +125,7 @@ export interface EmailLocaleShape {
     heading: string;
     triggerTotpDisabled: string;
     triggerLastPrfPasskey: string;
-    previousLabelAlwaysTotp: string;
+    previousLabelAlways2fa: string;
     previousLabelMaximum: string;
     standardLabel: string;
     summaryTextLine1: string;
@@ -292,7 +292,7 @@ export const fr: EmailLocaleShape = {
     heading: 'Mode de sécurité abaissé à Standard',
     triggerTotpDisabled: 'la désactivation de ton TOTP',
     triggerLastPrfPasskey: 'la suppression de ta dernière passkey compatible PRF',
-    previousLabelAlwaysTotp: 'TOTP obligatoire',
+    previousLabelAlways2fa: 'TOTP obligatoire',
     previousLabelMaximum: 'Maximum',
     standardLabel: 'Standard',
     summaryTextLine1: 'Suite à {trigger}, ton mode de sécurité Nodea est repassé',

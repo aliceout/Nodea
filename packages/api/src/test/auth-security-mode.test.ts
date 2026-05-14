@@ -9,7 +9,7 @@
  * Scenarios:
  *   - 401 without auth.
  *   - 401 with a forged password proof.
- *   - 400 totp_required when activating always_totp / maximum
+ *   - 400 totp_required when activating always_2fa / maximum
  *     without TOTP enrolled.
  *   - 400 passkey_required when activating maximum without a
  *     PRF-capable passkey enrolled.
@@ -84,7 +84,7 @@ describe('POST /auth/security-mode/change — auth + proof', () => {
     const res = await app.request(
       '/auth/security-mode/change',
       jsonPost({
-        mode: 'always_totp',
+        mode: 'always_2fa',
         proofLoginToken: 'x',
         proofFinishLoginRequest: 'y',
       }),
@@ -103,7 +103,7 @@ describe('POST /auth/security-mode/change — auth + proof', () => {
       .where(eq(sessions.id, sessionId));
 
     const res = await app.request('/auth/security-mode/change', {
-      ...jsonPost({ mode: 'always_totp' }),
+      ...jsonPost({ mode: 'always_2fa' }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(401);
@@ -135,7 +135,7 @@ describe('POST /auth/security-mode/change — auth + proof', () => {
  * ========================================================================== */
 
 describe('POST /auth/security-mode/change — activation gates §6.1', () => {
-  it('400 totp_required for always_totp without TOTP enrolled', async () => {
+  it('400 totp_required for always_2fa without TOTP enrolled', async () => {
     await seedUser('mode-totp-missing@example.com');
     const cookie = await loginAs(
       app,
@@ -149,7 +149,7 @@ describe('POST /auth/security-mode/change — activation gates §6.1', () => {
     );
 
     const res = await app.request('/auth/security-mode/change', {
-      ...jsonPost({ mode: 'always_totp', ...proof }),
+      ...jsonPost({ mode: 'always_2fa', ...proof }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(400);
@@ -209,7 +209,7 @@ describe('POST /auth/security-mode/change — activation gates §6.1', () => {
  * ========================================================================== */
 
 describe('POST /auth/security-mode/change — happy paths', () => {
-  it('moves password_or_passkey → always_totp when TOTP is enrolled', async () => {
+  it('moves password_or_passkey → always_2fa when TOTP is enrolled', async () => {
     const u = await seedUser('mode-up-always-totp@example.com');
     await enableTotpDirect(u.id);
     const cookie = await loginAs(
@@ -224,7 +224,7 @@ describe('POST /auth/security-mode/change — happy paths', () => {
     );
 
     const res = await app.request('/auth/security-mode/change', {
-      ...jsonPost({ mode: 'always_totp', ...proof }),
+      ...jsonPost({ mode: 'always_2fa', ...proof }),
       headers: { 'content-type': 'application/json', cookie },
     });
     expect(res.status).toBe(200);
@@ -233,7 +233,7 @@ describe('POST /auth/security-mode/change — happy paths', () => {
       .select({ mode: users.securityMode })
       .from(users)
       .where(eq(users.id, u.id));
-    expect(row?.mode).toBe('always_totp');
+    expect(row?.mode).toBe('always_2fa');
   });
 
   it('moves any mode → maximum when both TOTP + PRF passkey are enrolled', async () => {
@@ -290,7 +290,7 @@ describe('POST /auth/security-mode/change — happy paths', () => {
     );
 
     const res = await app.request('/auth/security-mode/change', {
-      ...jsonPost({ mode: 'always_totp', ...proof }),
+      ...jsonPost({ mode: 'always_2fa', ...proof }),
       headers: { 'content-type': 'application/json', cookie: cookieA },
     });
     expect(res.status).toBe(200);

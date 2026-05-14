@@ -210,7 +210,7 @@ describe('POST /auth/totp/enroll/verify', () => {
     expect(row?.lastWindow).not.toBeNull();
   });
 
-  it('auto-promotes security_mode to always_totp when verifying from password_or_passkey (Phase 5D)', async () => {
+  it('auto-promotes security_mode to always_2fa when verifying from password_or_passkey (Phase 5D)', async () => {
     const u = await seedUser('totp-auto-promote@example.com');
     const cookie = await loginAs(app, 'totp-auto-promote@example.com', TEST_PASSWORD);
     const proof = await passwordProofFor(
@@ -235,7 +235,7 @@ describe('POST /auth/totp/enroll/verify', () => {
       .select({ mode: users.securityMode })
       .from(users)
       .where(eq(users.id, u.id));
-    expect(row?.mode).toBe('always_totp');
+    expect(row?.mode).toBe('always_2fa');
   });
 
   it('does NOT downgrade an already-strict mode (maximum stays maximum)', async () => {
@@ -402,7 +402,7 @@ describe('POST /auth/totp/disable', () => {
     expect(codeRows).toHaveLength(0);
   });
 
-  it('§6.1 downgrade auto: disabling TOTP under always_totp drops to password_or_passkey', async () => {
+  it('§6.1 downgrade auto: disabling TOTP under always_2fa drops to password_or_passkey', async () => {
     const u = await seedUser('totp-downgrade@example.com');
     const cookie = await loginAs(app, 'totp-downgrade@example.com', TEST_PASSWORD);
 
@@ -423,10 +423,10 @@ describe('POST /auth/totp/disable', () => {
       headers: { 'content-type': 'application/json', cookie },
     });
 
-    // Force the user to mode `always_totp`.
+    // Force the user to mode `always_2fa`.
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
 
     // Disable TOTP — should downgrade.
@@ -466,7 +466,7 @@ describe('POST /auth/totp/disable', () => {
       TEST_PASSWORD,
     );
 
-    // Enroll TOTP — auto-promotes mode to always_totp.
+    // Enroll TOTP — auto-promotes mode to always_2fa.
     const proof1 = await passwordProofFor(
       app,
       'totp-no-downgrade@example.com',

@@ -44,7 +44,7 @@ export interface SessionUser {
   /** Unused backup codes left. UI warns at 0. */
   totpBackupCodesRemaining: number;
   /** Per-user security policy (Auth-Spec §6.1). */
-  securityMode: 'password_or_passkey' | 'always_totp' | 'maximum';
+  securityMode: 'password_or_passkey' | 'always_2fa' | 'maximum';
 }
 
 export interface AuthSlice {

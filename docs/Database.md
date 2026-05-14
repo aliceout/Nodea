@@ -28,7 +28,7 @@ Central identity row.
 | `email_verified_at`   | `ts+tz?`  | NULL until activation. **Login refuses 403** when NULL (`account_not_activated`). |
 | `email_changed_at`    | `ts+tz?`  | Anchor for the 7-day cooldown between two `change-email` actions.            |
 | `role`                | `enum`    | `'user' \| 'admin'`. Defaults to `'user'`.                                   |
-| `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_totp' \| 'maximum'`. Per-user MFA policy (Auth-Spec §6.1) — drives required factors at login finish. |
+| `security_mode`       | `enum`    | `'password_or_passkey' \| 'always_2fa' \| 'maximum'`. Per-user MFA policy (Auth-Spec §6.1) — drives required factors at login finish. |
 | `register_state`      | `enum`    | `'pre_register' \| 'email_verified' \| 'password_set' \| 'recovery_set' \| 'complete'`. Multi-step register state machine (Auth-Spec §4.1). |
 | `wrapped_main_key{,_iv}` | `text?` | AES-GCM(main key) under random KEK. Set ONCE at register, never re-wrapped. AAD = `nodea:v1\x1f<id>\x1fmain`. |
 | `wrapped_kek_password{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of OPAQUE `exportKey`. Re-wrapped at change-password / reset / recovery. AAD = `nodea:v1\x1f<id>\x1fpassword`. |

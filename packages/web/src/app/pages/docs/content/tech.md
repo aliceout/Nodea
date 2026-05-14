@@ -145,7 +145,7 @@ Non-destructif. L'utilisateur·ice tape ses 12 mots → le client dérive la wra
 Trois niveaux par utilisateur·ice (`users.security_mode`) :
 
 - `password_or_passkey` (défaut) — un facteur unique unlock la session.
-- `always_totp` — TOTP requis après password ou passkey. Activable seulement si TOTP enrôlé.
+- `always_2fa` — TOTP requis après password ou passkey. Activable seulement si TOTP enrôlé.
 - `maximum` — password + passkey PRF + TOTP, les trois requis. Activable seulement si une passkey PRF est enrôlée.
 
 Downgrade auto §6.1 : si l'utilisateur·ice désactive le facteur qui maintient le mode, le mode retombe à `password_or_passkey` dans la même transaction (avec email de notification).
@@ -361,7 +361,7 @@ Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour
 | `users` | `email` | Adresse email du compte | Identifiant OPAQUE pour le login + envoi des mails de service (reset, invitations, notifs) |
 | `users` | `username` | Nom d'affichage public | UI uniquement, duplications autorisées (l'identité c'est l'`id`) |
 | `users` | `role` | `'user'` / `'admin'` | Gate les routes admin (créer des invites, supprimer des comptes…) |
-| `users` | `security_mode` | `password_or_passkey` / `always_totp` / `maximum` | Détermine quels facteurs sont requis au login (Auth-Spec §6.1) |
+| `users` | `security_mode` | `password_or_passkey` / `always_2fa` / `maximum` | Détermine quels facteurs sont requis au login (Auth-Spec §6.1) |
 | `users` | `register_state` | État dans la machine d'inscription multi-étapes | Permet de reprendre l'inscription si l'user ferme l'onglet (pre_register → email_verified → password_set → recovery_set → complete) |
 | `users` | `email_verified_at` | Timestamp d'activation | Le login refuse `403 account_not_activated` si NULL |
 | `users` | `email_changed_at` | Timestamp du dernier change-email | Anchor du cooldown 7 jours entre deux change-email |

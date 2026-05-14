@@ -102,7 +102,7 @@ Client                                Server
    │                                     │
    │  If mode = password_or_passkey:     │
    │     POST /auth/mfa/finalize         │
-   │  If mode = always_totp/maximum:     │
+   │  If mode = always_2fa/maximum:     │
    │     ... TOTP, plus password if max ...│
 ```
 
@@ -145,7 +145,7 @@ No new cookie is issued during these steps; we operate on the same
    | mode | password-first | passkey-first |
    |---|---|---|
    | `password_or_passkey` | password | passkey |
-   | `always_totp` | password + totp | passkey + totp |
+   | `always_2fa` | password + totp | passkey + totp |
    | `maximum` | password + passkey + totp | passkey + password + totp |
 
 3. Verify every required column in `mfa_*_verified`. If one is

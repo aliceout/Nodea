@@ -18,7 +18,7 @@ import { totpCode } from '../helpers/totp.ts';
  *
  *   1. Register + activate.
  *   2. Activer TOTP via `/totp` (réutilise le pattern de la spec 02).
- *   3. Passer security_mode en `always_totp` via `/security-mode`
+ *   3. Passer security_mode en `always_2fa` via `/security-mode`
  *      pour que le TOTP soit obligatoire à chaque login. Sans ça
  *      le bypass n'a rien à bypasser.
  *   4. Logout.
@@ -108,10 +108,10 @@ test('MFA bypass TOTP — perte de TOTP → email de récupération → re-login
     page.getByRole('button', { name: /^Désactiver TOTP$|^Disable TOTP$/i }),
   ).toBeVisible({ timeout: 10_000 });
 
-  /* -------- 3. Vérifier que security_mode est déjà always_totp -------- */
+  /* -------- 3. Vérifier que security_mode est déjà always_2fa -------- */
   // Pas besoin de switcher manuellement : l'API `auth-totp.ts`
   // auto-promote `security_mode` de `password_or_passkey` à
-  // `always_totp` au moment où on verify l'enroll (cf.
+  // `always_2fa` au moment où on verify l'enroll (cf.
   // `routes/auth-totp.ts:278`). On confirme juste que la carte
   // « TOTP requis » est marquée comme courante (`aria-pressed=true`)
   // pour qu'on n'envoie pas le test sur la suite si l'auto-promotion

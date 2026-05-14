@@ -26,7 +26,7 @@ import {
  * Auth-Spec §6.1).
  *
  *   - `POST /auth/security-mode/change` — moves the user between
- *     `password_or_passkey`, `always_totp`, and `maximum`. Validates
+ *     `password_or_passkey`, `always_2fa`, and `maximum`. Validates
  *     the prerequisites (TOTP enabled / PRF-passkey enrolled) and
  *     refuses with a clear 400 error code when they're not met.
  *
@@ -81,9 +81,9 @@ authSecurityModeRoutes.openapi(changeRoute, async (c) => {
   const user = c.get('user');
 
   // Activation gate (Auth-Spec §6.1). `password_or_passkey` is
-  // always reachable; `always_totp` needs TOTP enabled; `maximum`
+  // always reachable; `always_2fa` needs TOTP enabled; `maximum`
   // additionally needs a PRF-capable passkey enrolled.
-  if (mode === 'always_totp' || mode === 'maximum') {
+  if (mode === 'always_2fa' || mode === 'maximum') {
     const [totp] = await db
       .select({ enabledAt: mfaTotp.enabledAt })
       .from(mfaTotp)

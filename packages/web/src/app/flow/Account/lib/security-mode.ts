@@ -9,10 +9,10 @@ export type ModeLabelKey = 'standard' | 'totpRequired' | 'maximum';
  *  testable in isolation.
  *
  *  - `password_or_passkey` → `'standard'`
- *  - `always_totp` → `'totpRequired'`
+ *  - `always_2fa` → `'totpRequired'`
  *  - anything else (currently `password_and_passkey`) → `'maximum'` */
 export function modeLabelKey(mode: SecurityMode): ModeLabelKey {
   if (mode === 'password_or_passkey') return 'standard';
-  if (mode === 'always_totp') return 'totpRequired';
+  if (mode === 'always_2fa') return 'totpRequired';
   return 'maximum';
 }

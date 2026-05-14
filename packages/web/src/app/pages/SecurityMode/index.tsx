@@ -23,7 +23,7 @@ import PasswordProofForm from './PasswordProofForm';
  *
  * Requirements :
  *   - `password_or_passkey` — always reachable (downgrade path).
- *   - `always_totp`         — TOTP must be enabled.
+ *   - `always_2fa`         — TOTP must be enabled.
  *   - `maximum`             — TOTP enabled AND ≥ 1 PRF passkey.
  *
  * Cards whose prerequisites are unmet are disabled with a helper
@@ -60,7 +60,7 @@ export default function SecurityModePage() {
       unmetRequirement: null,
     },
     {
-      id: 'always_totp',
+      id: 'always_2fa',
       label: 'TOTP requis',
       description:
         'Code à 6 chiffres en plus à chaque connexion. Active la 2FA TOTP avant.',
@@ -215,6 +215,6 @@ export default function SecurityModePage() {
 
 function labelFor(mode: SecurityMode): string {
   if (mode === 'password_or_passkey') return 'Standard';
-  if (mode === 'always_totp') return 'TOTP requis';
+  if (mode === 'always_2fa') return 'TOTP requis';
   return 'Maximum';
 }

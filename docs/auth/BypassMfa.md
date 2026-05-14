@@ -33,7 +33,7 @@ already have:
 | Mode | `totp` bypass allowed if | `passkey` bypass allowed if |
 |---|---|---|
 | `password_or_passkey` | N/A (TOTP not required) | N/A (passkey is alternative to password) |
-| `always_totp` | `mfa_password_verified` OR `mfa_passkey_verified` | N/A (passkey not required) |
+| `always_2fa` | `mfa_password_verified` OR `mfa_passkey_verified` | N/A (passkey not required) |
 | `maximum` | `mfa_password_verified` AND `mfa_passkey_verified` | `mfa_password_verified` AND `mfa_totp_verified` |
 
 If the condition isn't met → 409 `multi_factor_loss` → the UI
@@ -141,7 +141,7 @@ factor.
 4. `mfaTotpVerified = true` on the pending session.
 5. If `users.security_mode = 'maximum'` → auto downgrade to
    `password_or_passkey` (cf. §6.1).
-6. If `users.security_mode = 'always_totp'` → auto downgrade to
+6. If `users.security_mode = 'always_2fa'` → auto downgrade to
    `password_or_passkey`.
 7. Notification email "Your TOTP has been disabled."
 

@@ -116,7 +116,7 @@ async function enrollPrfPasskeyDirect(userId: string): Promise<void> {
 
 async function getPendingCookie(
   email: string,
-  mode: 'always_totp' | 'maximum',
+  mode: 'always_2fa' | 'maximum',
   withPrfPasskey = false,
 ): Promise<{ userId: string; cookie: string }> {
   const u = await seedUser(email);
@@ -153,10 +153,10 @@ describe('POST /auth/mfa/bypass/request', () => {
     expect(res.status).toBe(401);
   });
 
-  it('200 + creates a request + sends email (factor=totp, mode=always_totp)', async () => {
+  it('200 + creates a request + sends email (factor=totp, mode=always_2fa)', async () => {
     const { userId, cookie } = await getPendingCookie(
       'bypass-totp-ok@example.com',
-      'always_totp',
+      'always_2fa',
     );
 
     const res = await app.request('/auth/mfa/bypass/request', {
@@ -203,7 +203,7 @@ describe('POST /auth/mfa/bypass/request', () => {
   it('409 bypass_already_active: a second request while one is pending', async () => {
     const { cookie } = await getPendingCookie(
       'bypass-double@example.com',
-      'always_totp',
+      'always_2fa',
     );
 
     const r1 = await app.request('/auth/mfa/bypass/request', {
@@ -229,7 +229,7 @@ describe('POST /auth/mfa/bypass/request', () => {
     await enrollTotpDirect(u.id);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
     const r = await rawLogin('bypass-not-required@example.com', TEST_PASSWORD);
     expect(r.body.needsMfa).toBe(true);
@@ -257,7 +257,7 @@ describe('GET /auth/mfa/bypass/confirm', () => {
   async function createPendingRequest(
     email: string,
   ): Promise<{ userId: string; confirmToken: string }> {
-    const { userId, cookie } = await getPendingCookie(email, 'always_totp');
+    const { userId, cookie } = await getPendingCookie(email, 'always_2fa');
     await app.request('/auth/mfa/bypass/request', {
       ...jsonPost({ factor: 'totp' }),
       headers: { 'content-type': 'application/json', cookie },
@@ -332,7 +332,7 @@ describe('GET /auth/mfa/bypass/confirm', () => {
     const { userId, confirmToken } = await createPendingRequest(
       'bypass-cancel-then-confirm@example.com',
     );
-    // Login to trigger the auto-cancel (mode is `always_totp`, so
+    // Login to trigger the auto-cancel (mode is `always_2fa`, so
     // we need to enter MFA — but rawLogin only does password. We
     // skip the MFA step and flip `cancelled_at` manually to mirror
     // what `cancelPendingBypassesForUser` would do.)
@@ -359,7 +359,7 @@ describe('lazy bypass application at login', () => {
     await enrollTotpDirect(u.id);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
     // Insert a confirmed-past-delay bypass directly (skip the email
     // round-trip; we exercise that elsewhere). 8 days = comfortably
@@ -413,7 +413,7 @@ describe('lazy bypass application at login', () => {
     await enrollTotpDirect(u.id);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
     await db.insert(mfaBypassRequests).values({
       id: randomUUID(),
@@ -444,7 +444,7 @@ describe('lazy bypass application at login', () => {
     await enrollTotpDirect(u.id);
     await db
       .update(users)
-      .set({ securityMode: 'always_totp' })
+      .set({ securityMode: 'always_2fa' })
       .where(eq(users.id, u.id));
     const recent = new Date(Date.now() - 30 * 60 * 1000); // 30 min ago
     await db.insert(mfaBypassRequests).values({

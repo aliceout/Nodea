@@ -7,8 +7,8 @@ describe('modeLabelKey', () => {
     expect(modeLabelKey('password_or_passkey')).toBe('standard');
   });
 
-  it('maps always_totp to "totpRequired"', () => {
-    expect(modeLabelKey('always_totp')).toBe('totpRequired');
+  it('maps always_2fa to "totpRequired"', () => {
+    expect(modeLabelKey('always_2fa')).toBe('totpRequired');
   });
 
   it('falls back to "maximum" for any other mode', () => {

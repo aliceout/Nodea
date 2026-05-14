@@ -98,7 +98,7 @@ export function constantTimeEqualHex(a: string, b: string): boolean {
  *   | Mode               | totp bypass OK if                | passkey bypass OK if            |
  *   |--------------------|----------------------------------|---------------------------------|
  *   | password_or_passkey| N/A (TOTP not required)          | N/A (passkey alt to password)   |
- *   | always_totp        | password OR passkey verified     | N/A                             |
+ *   | always_2fa        | password OR passkey verified     | N/A                             |
  *   | maximum            | password AND passkey verified    | password AND TOTP verified      |
  *
  * Returns:
@@ -120,7 +120,7 @@ export function bypassEligibility(
     return 'not_required';
   }
   if (factor === 'totp') {
-    if (user.securityMode === 'always_totp') {
+    if (user.securityMode === 'always_2fa') {
       // Either chemin (password OR passkey) suffices since TOTP is
       // the only MFA factor in this mode.
       return session.mfaPasswordVerified || session.mfaPasskeyVerified
@@ -133,8 +133,8 @@ export function bypassEligibility(
       : 'multi_factor_loss';
   }
   // factor === 'passkey'
-  if (user.securityMode === 'always_totp') {
-    // Mode `always_totp` doesn't require passkey at all.
+  if (user.securityMode === 'always_2fa') {
+    // Mode `always_2fa` doesn't require passkey at all.
     return 'not_required';
   }
   // mode === 'maximum'
@@ -162,7 +162,7 @@ export interface BypassApplyResult {
  *
  * Side effects per factor:
  *   - `totp` → `mfa_totp.enabled_at = NULL`, DELETE backup codes.
- *     Mode `always_totp` / `maximum` → downgrade to
+ *     Mode `always_2fa` / `maximum` → downgrade to
  *     `password_or_passkey`.
  *   - `passkey` → DELETE all `auth_factors` of kind `passkey`. Mode
  *     `maximum` → downgrade to `password_or_passkey`.
@@ -209,7 +209,7 @@ export async function applyConsumableBypass(
         .delete(mfaTotpRecoveryCodes)
         .where(eq(mfaTotpRecoveryCodes.userId, user.id));
       if (
-        user.securityMode === 'always_totp' ||
+        user.securityMode === 'always_2fa' ||
         user.securityMode === 'maximum'
       ) {
         await tx

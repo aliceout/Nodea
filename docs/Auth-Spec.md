@@ -240,7 +240,7 @@ All other tables (auth + MFA + sessions) are defined in §4.1.
 
 export const securityMode = pgEnum('security_mode', [
   'password_or_passkey', // default: one factor unlocks
-  'always_totp',         // TOTP required after password OR passkey
+  'always_2fa',         // TOTP required after password OR passkey
   'maximum',             // password + passkey + TOTP, all three
 ]);
 
@@ -618,7 +618,7 @@ The matrix (§6) requires "fresh re-auth < 5 min". Implementation:
 | Mode | Activation requires | Auto downgrades to |
 |---|---|---|
 | `password_or_passkey` | Always available (default) | — |
-| `always_totp` | TOTP enabled (`mfa_totp.enabled_at IS NOT NULL`) | `password_or_passkey` if TOTP disabled or bypassed |
+| `always_2fa` | TOTP enabled (`mfa_totp.enabled_at IS NOT NULL`) | `password_or_passkey` if TOTP disabled or bypassed |
 | `maximum` | TOTP enabled **AND** at least one PRF-capable passkey enrolled | `password_or_passkey` if TOTP disabled/bypassed OR last passkey removed/bypassed |
 
 **Server-side**, `POST /auth/security-mode/change` validates
@@ -642,7 +642,7 @@ simultaneously = destructive reset (data loss)**.
 |---|---|---|
 | Password | KEK recovery code (cf. §7.7) | Need to know the recovery code |
 | TOTP | 7-day email bypass (cf. §7.8) | Password OK + (passkey OK if max mode) |
-| Passkey (the last one) | 7-day email bypass (cf. §7.8) | Password OK + (TOTP OK if `always_totp`/`maximum` mode) |
+| Passkey (the last one) | 7-day email bypass (cf. §7.8) | Password OK + (TOTP OK if `always_2fa`/`maximum` mode) |
 | Recovery code | Regenerate from Settings (password re-auth) | Account still accessible |
 | 2 simultaneous factors (passkey + TOTP, password + passkey, etc.) | **Destructive reset only** (cf. §7.9) | Data lost, the user is warned |
 
@@ -776,7 +776,7 @@ Server:
 `POST /auth/totp/disable`: `requireFreshPassword`.
 
 Server: `enabled_at = NULL`, DELETE backup codes. If
-`security_mode in ('always_totp', 'maximum')` → switches mode to
+`security_mode in ('always_2fa', 'maximum')` → switches mode to
 `password_or_passkey` automatically (and notification email).
 
 ### 8.5 Backup-code regeneration

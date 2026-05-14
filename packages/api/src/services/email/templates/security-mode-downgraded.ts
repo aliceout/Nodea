@@ -22,7 +22,7 @@ export function renderSecurityModeDowngradedEmail(params: {
   /** Which factor's removal triggered the downgrade. */
   trigger: 'totp_disabled' | 'last_prf_passkey_removed';
   /** What the user was on before the auto-downgrade. */
-  previousMode: 'always_totp' | 'maximum';
+  previousMode: 'always_2fa' | 'maximum';
 }): RenderedEmailContent {
   const { language } = params;
   const trigger =
@@ -30,8 +30,8 @@ export function renderSecurityModeDowngradedEmail(params: {
       ? emailT(language, 'securityModeDowngraded.triggerTotpDisabled')
       : emailT(language, 'securityModeDowngraded.triggerLastPrfPasskey');
   const previous =
-    params.previousMode === 'always_totp'
-      ? emailT(language, 'securityModeDowngraded.previousLabelAlwaysTotp')
+    params.previousMode === 'always_2fa'
+      ? emailT(language, 'securityModeDowngraded.previousLabelAlways2fa')
       : emailT(language, 'securityModeDowngraded.previousLabelMaximum');
 
   const subject = emailT(language, 'securityModeDowngraded.subject');

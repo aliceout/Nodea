@@ -78,7 +78,7 @@ source de vérité.
   Re-login with the new email is a Phase 2+ deliverable.
 - **`10-mfa-bypass-totp`** drives the lost-TOTP recovery flow
   end-to-end. Setup mirrors spec 02 for TOTP enrollment, then
-  passes through `/security-mode` to switch to `always_totp`. The
+  passes through `/security-mode` to switch to `always_2fa`. The
   bypass UI lives on `/login/mfa` behind two escalations
   (« J'ai perdu mon TOTP » → « Demander une récupération par
   email » → « Envoyer l'email »). Mailpit captures the

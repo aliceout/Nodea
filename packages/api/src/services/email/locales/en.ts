@@ -154,7 +154,7 @@ export const en: EmailLocale = {
     heading: 'Security mode lowered to Standard',
     triggerTotpDisabled: 'disabling your TOTP',
     triggerLastPrfPasskey: 'removing your last PRF-capable passkey',
-    previousLabelAlwaysTotp: 'TOTP required',
+    previousLabelAlways2fa: 'TOTP required',
     previousLabelMaximum: 'Maximum',
     standardLabel: 'Standard',
     summaryTextLine1: 'Following {trigger}, your Nodea security mode is back',

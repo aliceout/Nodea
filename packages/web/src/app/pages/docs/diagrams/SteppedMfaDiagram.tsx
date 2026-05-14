@@ -4,7 +4,7 @@
  * Vertical state diagram of the session lifecycle through MFA :
  * `POST /auth/login/finish` either emits a `full` session
  * directly (mode `password_or_passkey`) or an `mfa_pending`
- * session (modes `always_totp` / `maximum`) that the client
+ * session (modes `always_2fa` / `maximum`) that the client
  * must finalize via factor-verify routes before getting a
  * `full` session.
  *
@@ -99,7 +99,7 @@ export default function SteppedMfaDiagram() {
       <svg
         viewBox="0 0 720 580"
         role="img"
-        aria-label="Machine d'états du login Nodea : selon le mode de sécurité, le serveur émet directement une session 'full' (mode password_or_passkey) ou une session 'mfa_pending' (modes always_totp / maximum). Dans le second cas, le client doit valider les facteurs additionnels (TOTP, passkey) via /auth/mfa/* avant que le serveur ne promote la session pending en full atomiquement."
+        aria-label="Machine d'états du login Nodea : selon le mode de sécurité, le serveur émet directement une session 'full' (mode password_or_passkey) ou une session 'mfa_pending' (modes always_2fa / maximum). Dans le second cas, le client doit valider les facteurs additionnels (TOTP, passkey) via /auth/mfa/* avant que le serveur ne promote la session pending en full atomiquement."
         className="mx-auto block w-full max-w-[720px] text-ink"
       >
         <defs>
@@ -183,7 +183,7 @@ export default function SteppedMfaDiagram() {
         />
 
         {/* Right branch label */}
-        <Label x={570} y={205} text="always_totp / maximum" />
+        <Label x={570} y={205} text="always_2fa / maximum" />
         <line
           x1={570}
           y1={185}

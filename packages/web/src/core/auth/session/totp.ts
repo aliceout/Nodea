@@ -55,7 +55,7 @@ export async function verifyTotpEnrollment(
 /**
  * Disable TOTP. Requires fresh password proof (matrice §6). Server
  * applies §6.1 downgrade auto if `security_mode` was
- * `always_totp` / `maximum`. Refreshes `/me` so the UI reflects
+ * `always_2fa` / `maximum`. Refreshes `/me` so the UI reflects
  * the new mode + flag.
  */
 export async function disableTotp(

@@ -20,7 +20,7 @@ export type MfaFactor = 'totp' | 'passkey' | 'password';
  *    | mode               | password-first      | passkey-first       |
  *    |--------------------|---------------------|---------------------|
  *    | password_or_passkey| —                   | —                   |
- *    | always_totp        | totp                | totp                |
+ *    | always_2fa        | totp                | totp                |
  *    | maximum            | passkey + totp      | password + totp     |
  *
  *  This helper takes the user's mode + the entry path and lists the
@@ -33,7 +33,7 @@ export function requiredFactorsForMode(
   switch (user.securityMode) {
     case 'password_or_passkey':
       return [];
-    case 'always_totp':
+    case 'always_2fa':
       return ['totp'];
     case 'maximum':
       return entryFactor === 'password' ? ['passkey', 'totp'] : ['password', 'totp'];
@@ -76,7 +76,7 @@ export function missingFactors(
     // forced to restart the flow if it ever does.
     return user.securityMode === 'maximum'
       ? (['password', 'passkey', 'totp'] as const)
-      : user.securityMode === 'always_totp'
+      : user.securityMode === 'always_2fa'
         ? (['password', 'totp'] as const)
         : (['password'] as const);
   }
