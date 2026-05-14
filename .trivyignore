@@ -58,3 +58,24 @@ CVE-2026-39836
 
 # CVE-2026-42499 — Go stdlib. HIGH.
 CVE-2026-42499
+
+# ---------------------------------------------------------------------
+# picomatch CVE-2026-33671 inside pnpm's bundled distribution
+# ---------------------------------------------------------------------
+# Our own dependency tree pins `picomatch ≥ 4.0.4` via
+# `pnpm.overrides`. But the pnpm binary itself (resolved by
+# `corepack enable`) ships a vendored picomatch 4.0.3 inside
+# `/root/.cache/node/corepack/.../pnpm/<v>/dist/node_modules/picomatch`.
+# Trivy decompiles the tarball and flags that copy. We can't
+# replace it without unrolling corepack — pnpm needs the tarball
+# to function.
+#
+# Blast radius : pnpm runs at container start (`db:migrate &&
+# start`) over our own lockfile, never against attacker-controlled
+# globs. The CVE (RegexDoS via crafted extglob patterns) is
+# unreachable through our HTTP surface.
+#
+# Drop criterion : when pnpm vendors picomatch ≥ 4.0.4 in a
+# corepack-distributed release. Track on each pnpm bump in
+# `package.json` → `packageManager`.
+CVE-2026-33671
