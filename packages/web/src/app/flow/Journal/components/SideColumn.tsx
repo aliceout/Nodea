@@ -27,13 +27,50 @@ export default function SideColumn() {
     groupBy,
     threads,
     threadFilter,
+    view,
+    dayFilter,
     setGroupBy,
     setThreadFilter,
+    setView,
+    setDayFilter,
   } = useJournalFilters();
   const [threadsManagerOpen, setThreadsManagerOpen] = useState(false);
 
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
+      <section>
+        <SectionLabel>{t('journal.side.layout')}</SectionLabel>
+        <div className="flex flex-wrap gap-1">
+          <FilterChip
+            active={view === 'list'}
+            onClick={() => setView('list')}
+            label={t('journal.side.layoutList')}
+          />
+          <FilterChip
+            active={view === 'calendar'}
+            onClick={() => {
+              // Switching back to calendar drops any active day
+              // focus — the user is moving away from « see day X »
+              // and back to the overview.
+              if (dayFilter !== null) setDayFilter(null);
+              setView('calendar');
+            }}
+            label={t('journal.side.layoutCalendar')}
+          />
+        </div>
+        {dayFilter !== null ? (
+          <button
+            type="button"
+            onClick={() => setDayFilter(null)}
+            className="mt-2 cursor-pointer text-[11.5px] text-accent underline-offset-2 transition-colors hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {t('journal.side.dayFilterClear', { values: { day: dayFilter } })}
+          </button>
+        ) : null}
+      </section>
+
+      {view === 'list' ? (
+        <>
       <section>
         <SectionLabel>{t('journal.side.view')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
@@ -85,6 +122,8 @@ export default function SideColumn() {
             </button>
           ) : null}
         </section>
+      ) : null}
+        </>
       ) : null}
 
       <ThreadsManagerModal

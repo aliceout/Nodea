@@ -38,6 +38,10 @@
     "untitled": "Entrée sans titre"
   },
   "side": {
+    "layout": "Affichage",
+    "layoutList": "Liste",
+    "layoutCalendar": "Calendrier",
+    "dayFilterClear": "Filtré sur {day} — afficher tout",
     "view": "Vue",
     "viewByThread": "Par fil",
     "viewByMonth": "Par mois",
@@ -66,6 +70,16 @@
   "context": {
     "loadFailed": "Erreur lors du chargement du journal.",
     "confirmDelete": "Supprimer « {label} » ?"
+  },
+  "calendar": {
+    "heading": "Année d’écriture",
+    "yearLabel": "Année",
+    "empty": "Aucune entrée pour {year}.",
+    "summary": "{count} entrées · {words} mots cette année",
+    "tooltip": "{date} — {count} entrées, {words} mots",
+    "tooltipEmpty": "{date} — rien écrit ce jour",
+    "ariaLabel": "Calendrier d’écriture pour {year}",
+    "hint": "Clique sur un jour pour ne voir que ses entrées dans la liste."
   },
   "threadsManager": {
     "title": "Gérer les fils",

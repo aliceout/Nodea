@@ -38,6 +38,10 @@
     "untitled": "Untitled entry"
   },
   "side": {
+    "layout": "Layout",
+    "layoutList": "List",
+    "layoutCalendar": "Calendar",
+    "dayFilterClear": "Filtered on {day} — show all",
     "view": "View",
     "viewByThread": "By thread",
     "viewByMonth": "By month",
@@ -66,6 +70,16 @@
   "context": {
     "loadFailed": "Failed to load journal.",
     "confirmDelete": "Delete \"{label}\"?"
+  },
+  "calendar": {
+    "heading": "Writing year",
+    "yearLabel": "Year",
+    "empty": "No entry for {year}.",
+    "summary": "{count} entries · {words} words this year",
+    "tooltip": "{date} — {count} entries, {words} words",
+    "tooltipEmpty": "{date} — nothing written that day",
+    "ariaLabel": "Writing calendar for {year}",
+    "hint": "Click a day to focus the list on its entries."
   },
   "threadsManager": {
     "title": "Manage threads",

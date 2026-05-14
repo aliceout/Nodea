@@ -48,6 +48,9 @@ import type { JournalEntry, JournalStats } from './lib/types';
  */
 
 type GroupBy = 'thread' | 'month';
+/** Issue #56 — top-level layout : either the regular grouped list,
+ *  or the calendar heatmap that the user can click into. */
+type View = 'list' | 'calendar';
 
 interface JournalDataValue {
   entries: ReadonlyArray<JournalEntry>;
@@ -59,6 +62,11 @@ interface JournalFiltersValue {
   threadFilter: string | null;
   groupBy: GroupBy;
   search: string;
+  view: View;
+  /** Single-day focus filter (issue #56) — set when the user clicks
+   *  a heatmap cell. ISO `YYYY-MM-DD` ; null = no day focus. The
+   *  filter applies on top of the other filters in `filtered`. */
+  dayFilter: string | null;
 
   threads: ReadonlyArray<string>;
   filtered: ReadonlyArray<JournalEntry>;
@@ -67,6 +75,8 @@ interface JournalFiltersValue {
   setThreadFilter: (next: string | null) => void;
   setGroupBy: (next: GroupBy) => void;
   setSearch: (next: string) => void;
+  setView: (next: View) => void;
+  setDayFilter: (next: string | null) => void;
 }
 
 /**
@@ -144,6 +154,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('thread');
+  const [view, setView] = useState<View>('list');
+  const [dayFilter, setDayFilter] = useState<string | null>(null);
 
   // ---- Reader UI state ----
   const [readingId, setReadingId] = useState<string | null>(null);
@@ -205,6 +217,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
         return false;
       }
+      // Single-day focus filter (issue #56) — clicking a heatmap
+      // cell drops everything except that day's entries.
+      if (dayFilter && e.dateIso.slice(0, 10) !== dayFilter) {
+        return false;
+      }
       // Cheap short-circuit when no search is active — avoids the
       // normalisation pipeline on every entry.
       if (trimmedQuery.length === 0) return true;
@@ -213,7 +230,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       // search for « thérapie » expecting the thread to match.
       return matchesAnyField([e.title, e.content, e.thread], trimmedQuery);
     });
-  }, [entries, threadFilter, search]);
+  }, [entries, threadFilter, dayFilter, search]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, JournalEntry[]]>>(
     () => {
@@ -399,14 +416,18 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       threadFilter,
       groupBy,
       search,
+      view,
+      dayFilter,
       threads,
       filtered,
       groups,
       setThreadFilter,
       setGroupBy,
       setSearch,
+      setView,
+      setDayFilter,
     }),
-    [threadFilter, groupBy, search, threads, filtered, groups],
+    [threadFilter, groupBy, search, view, dayFilter, threads, filtered, groups],
   );
 
   const actionsValue = useMemo<JournalActionsValue>(

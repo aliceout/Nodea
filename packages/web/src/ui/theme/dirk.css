@@ -22,6 +22,19 @@
      profondeur entre eux. */
   --color-k-bg: #f9f8f3;
   --color-k-bg2: #f5f4f0;
+
+  /* Heatmap intensity ramp — 5 buckets (issue #56). Used by
+     `ui/dirk/Heatmap.tsx` ; consumers reference `var(--heatmap-
+     bucket-N)`. Bucket 0 reads as « no activity » (matches the
+     `hair` separator tone), then walks the sage ramp from
+     `accent-soft` to `accent-deep`. The mid buckets sit between
+     them — hand-tuned so the visual progression feels even
+     rather than a sharp jump at bucket 3. */
+  --heatmap-bucket-0: #e7e5dd;
+  --heatmap-bucket-1: #c5d8c9;
+  --heatmap-bucket-2: #95b59b;
+  --heatmap-bucket-3: #6e8f72;
+  --heatmap-bucket-4: #3d5641;
   --color-k-ink: #161614;
   --color-k-ink-soft: #3a3a36;
   --color-k-muted: #88857c;
@@ -97,6 +110,17 @@
 
   /* Le rouge système ne change pas — la zone rouge reste rouge */
   --color-k-danger: #dc2626;
+
+  /* Heatmap ramp en mode sombre — bucket 0 suit la teinte `hair`
+     du dark theme (gris-beige profond) puis on grimpe vers les
+     sage clairs (l'accent foncé sur fond sombre lit comme texte
+     « clair sur sombre »). Inversion logique du light mode :
+     les hauts buckets sont plus clairs, pas plus foncés. */
+  --heatmap-bucket-0: #3f3d36;
+  --heatmap-bucket-1: #4d6650;
+  --heatmap-bucket-2: #6e8f72;
+  --heatmap-bucket-3: #95b59b;
+  --heatmap-bucket-4: #c5d8c9;
 }
 
 /* Keyframes — durées 180–450ms, easing cubic-bezier(.2,.7,.3,1).

@@ -12,6 +12,7 @@ import {
   useJournalData,
   useJournalFilters,
 } from './context';
+import CalendarView from './views/CalendarView';
 import PrimaryColumn from './views/PrimaryColumn';
 import ReaderShell from './views/ReaderShell';
 
@@ -54,7 +55,7 @@ function JournalView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useJournalData();
-  const { search, setSearch } = useJournalFilters();
+  const { search, setSearch, view } = useJournalFilters();
   const { readingId } = useJournalActions();
 
   if (readingId !== null) {
@@ -81,7 +82,7 @@ function JournalView() {
       }
       side={<SideColumn />}
     >
-      <PrimaryColumn />
+      {view === 'calendar' ? <CalendarView /> : <PrimaryColumn />}
     </ModuleShell>
   );
 }
