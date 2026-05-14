@@ -4,11 +4,19 @@ name: Docker build
 # whose typecheck + tests are green. A successful run of this
 # workflow is what the VPS listens to (via its own `workflow_run`
 # webhook filter) to trigger the production deploy.
+#
+# Also fires on `v*.*.*` tag pushes : tags are placed on commits
+# that already went through main's CI, so we trust the validation
+# and skip a redundant pipeline. The image is then pushed with
+# semver tags (`:2.0.0`, `:v2.0.0`, `:2.0`) so prod can pin to a
+# specific release rather than the floating `:main` / `:latest`.
 on:
   workflow_run:
     workflows: [CI]
     branches: [main]
     types: [completed]
+  push:
+    tags: ['v*.*.*']
   workflow_dispatch:
 
 concurrency:
@@ -21,10 +29,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # Only build when the upstream CI run was a success (or when the
-    # job is triggered manually via workflow_dispatch).
+    # Only build when the upstream CI run was a success, when a
+    # release tag was pushed, or when the job is triggered manually.
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       github.event.workflow_run.conclusion == 'success'
 
     permissions:
@@ -72,6 +81,9 @@ jobs:
             type=raw,value=main,enable=${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
             type=raw,value=latest,enable=${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
             type=sha,format=short,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build + push
         id: build
