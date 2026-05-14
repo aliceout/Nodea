@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { JournalContent } from '@/lib/journal-markdown';
+import { LiteMarkdown } from '@/lib/lite-markdown';
 
 const CLAMP_LINES = 4;
 
@@ -14,12 +14,12 @@ interface ClampedJournalContentProps {
 }
 
 /**
- * Inline-list wrapper around `JournalContent` that caps the
- * preview at ~4 lines so the list stays scannable when entries
- * grow long. Detects whether the content overflows post-render
- * via a `scrollHeight` check ; conditionally paints a fade
- * gradient at the bottom + a discreet « lire la suite » trigger
- * that opens the focus reader.
+ * Inline-list wrapper around `LiteMarkdown` that caps the preview
+ * at ~4 lines so the list stays scannable when entries grow long.
+ * Detects whether the content overflows post-render via a
+ * `scrollHeight` check ; conditionally paints a fade gradient at
+ * the bottom + a discreet « lire la suite » trigger that opens
+ * the focus reader.
  *
  * No clamp = no extra DOM (the fade and the link are rendered
  * only when `overflowing`), so short entries stay visually pure.
@@ -48,7 +48,7 @@ export default function ClampedJournalContent({
           className="overflow-hidden"
           style={{ maxHeight: `${CLAMP_LINES}lh` }}
         >
-          <JournalContent text={text} />
+          <LiteMarkdown text={text} />
         </div>
         {overflowing ? (
           <div

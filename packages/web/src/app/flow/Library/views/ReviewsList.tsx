@@ -5,7 +5,7 @@ import type { LibraryReviewPayload } from '@nodea/shared';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import { formatLongDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { JournalContent } from '@/lib/journal-markdown';
+import { LiteMarkdown } from '@/lib/lite-markdown';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
@@ -149,7 +149,7 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
         </span>
       </div>
       <div className={cn(accent ? 'border-l-2 border-accent-soft pl-3 italic' : '')}>
-        <JournalContent text={review.content} />
+        <LiteMarkdown text={review.content} />
       </div>
     </li>
   );

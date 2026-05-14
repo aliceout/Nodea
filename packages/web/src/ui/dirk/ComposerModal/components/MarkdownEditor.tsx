@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { htmlToMarkdown, markdownToHtml } from '@/lib/journal-markdown';
+import { htmlToMarkdown, markdownToHtml } from '@/lib/lite-markdown';
 import { cn } from '@/lib/utils';
 import DirkButton from '@/ui/atoms/dirk/Button';
 

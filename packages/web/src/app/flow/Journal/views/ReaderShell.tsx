@@ -3,7 +3,7 @@ import { splitThreads } from '@nodea/shared';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { JournalContent } from '@/lib/journal-markdown';
+import { LiteMarkdown } from '@/lib/lite-markdown';
 import EntryReader from '@/ui/dirk/module/EntryReader';
 
 import { useJournalActions, useJournalData } from '../context';
@@ -12,7 +12,7 @@ import { attachmentSrc } from '../hooks/imageResize';
 /**
  * Focus reading mode for Journal entries. Composes the shared
  * `EntryReader` shell (issue #64 extraction) with Journal-specific
- * payload : Markdown content via `JournalContent`, attached images
+ * payload : Markdown content via `LiteMarkdown`, attached images
  * after the body, and a "no thread" eyebrow fallback.
  *
  * The shell handles the keyboard (Esc / ←/→), the topbar, the
@@ -108,7 +108,7 @@ export default function ReaderShell() {
       nextLabel={t('journal.reader.next')}
     >
       <div className="text-[15px] leading-[1.7] text-ink">
-        <JournalContent text={entry.content} />
+        <LiteMarkdown text={entry.content} />
       </div>
 
       {entry.attachments.length > 0 ? (

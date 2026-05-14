@@ -1,23 +1,27 @@
 import type { ReactNode } from 'react';
 
 /**
- * Render a journal entry's plain-text content with the lightweight
- * Markdown subset that the Composer's `MarkdownEditor` produces:
- * `**bold**`, `*italic*`, `- bullet` lines. Newlines that aren't
- * part of a list keep their breaks via `whitespace-pre-wrap`.
+ * Render plain-text content with the lightweight Markdown subset
+ * the Composer's `MarkdownEditor` produces : `**bold**`, `*italic*`,
+ * `- bullet` lines. Newlines that aren't part of a list keep their
+ * breaks via `whitespace-pre-wrap`.
  *
  * Type sized to match Mood's entry rows (`text-[13px] leading-[1.5]`,
  * sans-serif) so the modules feel like one app rather than two.
  *
  * Kept tiny on purpose — no headings, no links, no nesting beyond
  * inline-on-line. A real Markdown renderer would pull in `react-
- * markdown` + `remark-gfm` for ~30 KB; the journal only needs three
- * shapes, so a 40-line walker stays in source. Used both by the
- * Journal page (for saved entries) and by the Composer's preview
- * toggle (so what you see while writing is exactly what gets
- * rendered after save).
+ * markdown` + `remark-gfm` for ~30 KB ; the app only needs three
+ * shapes, so a 40-line walker stays in source. Shared across
+ * Journal (saved entries + reader), Library (reviews), and the
+ * `MarkdownEditor` preview pane (so what you see while writing is
+ * exactly what gets rendered after save).
+ *
+ * Issue #5 — used to live in `lib/journal-markdown.tsx` named
+ * `JournalContent`. Renamed once it became clear it serves more
+ * than Journal ; the old name was a documentation bug.
  */
-export function JournalContent({ text }: { text: string }) {
+export function LiteMarkdown({ text }: { text: string }) {
   const blocks: ReactNode[] = [];
   const lines = text.split('\n');
   let listBuffer: string[] = [];
@@ -67,7 +71,7 @@ export function JournalContent({ text }: { text: string }) {
 /**
  * Tokenise a single line into bold / italic / plain runs. Greedy
  * matches `**…**` first, then `*…*`. Doesn't try to handle nesting
- * (intentional — see `JournalContent`).
+ * (intentional — see `LiteMarkdown`).
  */
 function renderInline(line: string): ReactNode[] {
   const out: ReactNode[] = [];
