@@ -78,6 +78,18 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # OPAQUE registration / login both need a server-side setup blob.
+      # Locally it's persisted in `.env` (or Infisical) ; in CI we
+      # generate a fresh one per run and export it via `$GITHUB_ENV` so
+      # every subsequent step sees it as a regular env var. The blob is
+      # ephemeral by design — the test DB is truncated between runs, so
+      # no envelopes survive that would depend on it.
+      - name: Generate OPAQUE_SERVER_SETUP
+        run: |
+          SETUP=$(pnpm --filter @nodea/api --silent exec node --input-type=module -e \
+            "import { ready, server } from '@serenity-kit/opaque'; await ready; process.stdout.write(server.createSetup());")
+          echo "OPAQUE_SERVER_SETUP=$SETUP" >> "$GITHUB_ENV"
+
       # CVE scan on the dep tree (OPS-08). Fails the build on `high`
       # or `critical` advisories — the seuil that the team has agreed
       # to surface as blocking. `moderate` and below are surfaced via
