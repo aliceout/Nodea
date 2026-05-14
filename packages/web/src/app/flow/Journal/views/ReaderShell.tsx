@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
+import { splitThreads } from '@nodea/shared';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { JournalContent } from '@/lib/journal-markdown';
 import EntryReader from '@/ui/dirk/module/EntryReader';
 
-import { useJournalActions, useJournalFilters } from '../context';
+import { useJournalActions, useJournalData } from '../context';
 import { attachmentSrc } from '../hooks/imageResize';
 
 /**
@@ -16,7 +17,17 @@ import { attachmentSrc } from '../hooks/imageResize';
  *
  * The shell handles the keyboard (Esc / ←/→), the topbar, the
  * header and the prev/next footer ; this file only resolves the
- * filtered-list neighbours and renders the body.
+ * neighbours and renders the body.
+ *
+ * **Navigation scope** : prev/next walk the entries that share at
+ * least one thread with the currently-open entry — NOT the sidebar
+ * `filtered` list. Rationale : opening a piece about « famille »
+ * and then arrowing into an unrelated « voyages » or « therapy »
+ * note breaks the continuity the user is reading for. Threadless
+ * entries (`thread === ''`) form their own neighbourhood with
+ * other threadless entries. Multi-thread entries (e.g.
+ * « famille, voyages ») walk the union — any entry sharing one of
+ * those threads counts as a neighbour.
  *
  * Self-conditional : returns `null` when there is no current
  * reading entry, so `JournalView` can mount this unconditionally.
@@ -24,32 +35,59 @@ import { attachmentSrc } from '../hooks/imageResize';
 export default function ReaderShell() {
   const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const { filtered } = useJournalFilters();
+  const { entries } = useJournalData();
   const { readingId, editEntry, openReader, closeReader } = useJournalActions();
 
+  // Resolve the current entry from the full `entries` set (not the
+  // sidebar-filtered list) — the reader's neighbourhood is keyed on
+  // the entry's threads, not on the user's current filter chip.
+  const currentEntry = useMemo(
+    () => (readingId === null ? null : entries.find((e) => e.id === readingId) ?? null),
+    [entries, readingId],
+  );
+
+  // Same-thread neighbourhood. `entries` is already newest-first
+  // (cf. context's `recordsToEntries` sort), so we keep that order
+  // here for prev = older-on-the-right intuition the rest of the
+  // app already follows.
+  const neighbours = useMemo(() => {
+    if (!currentEntry) return [];
+    const currentTags = splitThreads(currentEntry.thread);
+    const tagSet = new Set(currentTags);
+    return entries.filter((e) => {
+      const tags = splitThreads(e.thread);
+      // Threadless entry → group with other threadless entries.
+      if (currentTags.length === 0) return tags.length === 0;
+      // Tagged entry → walk the union of its threads.
+      return tags.some((t) => tagSet.has(t));
+    });
+  }, [entries, currentEntry]);
+
   const readingIndex =
-    readingId === null ? -1 : filtered.findIndex((e) => e.id === readingId);
-  const entry = readingIndex >= 0 ? filtered[readingIndex]! : null;
+    currentEntry === null
+      ? -1
+      : neighbours.findIndex((e) => e.id === currentEntry.id);
+  const entry = readingIndex >= 0 ? neighbours[readingIndex]! : null;
 
   const onPrev = useMemo(
     () =>
       entry && readingIndex > 0
-        ? () => openReader(filtered[readingIndex - 1]!.id)
+        ? () => openReader(neighbours[readingIndex - 1]!.id)
         : null,
-    [entry, readingIndex, filtered, openReader],
+    [entry, readingIndex, neighbours, openReader],
   );
   const onNext = useMemo(
     () =>
-      entry && readingIndex < filtered.length - 1
-        ? () => openReader(filtered[readingIndex + 1]!.id)
+      entry && readingIndex < neighbours.length - 1
+        ? () => openReader(neighbours[readingIndex + 1]!.id)
         : null,
-    [entry, readingIndex, filtered, openReader],
+    [entry, readingIndex, neighbours, openReader],
   );
 
   if (!entry) return null;
 
   const position = readingIndex + 1;
-  const total = filtered.length;
+  const total = neighbours.length;
 
   return (
     <EntryReader

@@ -13,8 +13,14 @@
  */
 
 :root {
-  /* Neutres — papier crème */
-  --color-k-bg: #fcfcfa;
+  /* Neutres — papier crème. `bg` est la surface principale (zone
+     contenu), `bg2` la surface secondaire (sidebar, cards). L'écart
+     entre les deux a été resserré (#fcfcfa → #f9f8f3) parce que
+     l'ancien `bg` lisait quasi-blanc à côté du `bg2` crème de la
+     sidebar — saut visuel non voulu. Désormais les deux sont
+     clairement « papier crème », avec juste une nuance de
+     profondeur entre eux. */
+  --color-k-bg: #f9f8f3;
   --color-k-bg2: #f5f4f0;
   --color-k-ink: #161614;
   --color-k-ink-soft: #3a3a36;
