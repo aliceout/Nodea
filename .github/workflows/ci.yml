@@ -123,5 +123,17 @@ jobs:
       - name: Apply DB migrations
         run: pnpm --filter @nodea/api db:migrate
 
+      # Issue #41 — vitest auto-swaps DATABASE_URL's dbname to `_test`
+      # so the suite's TRUNCATE never wipes the dev rows. CI must create
+      # that sibling DB explicitly (the postgres service only seeds the
+      # main `nodea` DB via POSTGRES_DB) and migrate it.
+      - name: Create + migrate test DB
+        env:
+          PGPASSWORD: nodea_dev
+        run: |
+          psql -h 127.0.0.1 -p 5433 -U nodea -d postgres \
+            -c "CREATE DATABASE nodea_test;"
+          pnpm --filter @nodea/api db:migrate:test
+
       - name: Test
         run: pnpm -r test
