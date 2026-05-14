@@ -335,6 +335,12 @@ authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
       mfaFlags: { mfaPasskeyVerified: true },
     });
     await setSessionCookie(c, pendingSession.id, pendingSession.expiresAt);
+    // Passkey-first paths produce only mandatory single factors
+    // today, so the discriminator is always false. Set explicitly
+    // for shape parity with the password-first response.
+    const secondFactorChoice = baseRequired.some(
+      (req) => typeof req !== 'string',
+    );
     const response: PasskeyLoginFinishResponse = {
       userId: account.id,
       credentialId: factor.credentialId,
@@ -345,6 +351,7 @@ authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
       wrappedMainKeyIv: account.wrappedMainKeyIv,
       needsMfa: true,
       factorsNeeded: [...flattenRequirements(baseRequired)],
+      secondFactorChoice,
     };
     return c.json(response, 200);
   }

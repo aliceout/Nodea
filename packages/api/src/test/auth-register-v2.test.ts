@@ -610,6 +610,17 @@ describe('POST /auth/register/finish — open path', () => {
       .where(eq(opaqueRecords.userId, originalUser!.id));
     expect(envelopes).toHaveLength(1);
     expect(envelopes[0]!.envelope).toBe(originalEnvelope!.envelope);
+
+    // Dual-mail anti-enum (#45) on the inactive branch too : the
+    // first register sent the activation mail ; the second hits
+    // `if (existing)` and emits a single `register-already-exists`
+    // notice (same logic as the active-email case, validated
+    // separately in « already belongs to an active user »).
+    const noticeMails = recording.sent.filter(
+      (m) => m.tag === 'register-already-exists',
+    );
+    expect(noticeMails).toHaveLength(1);
+    expect(noticeMails[0]!.to).toBe('redo@example.com');
   });
 });
 

@@ -136,6 +136,9 @@ export async function passkeyLogin(
    *  Caller navigates to `/login/mfa` to drive the next step. */
   needsMfa: boolean;
   factorsNeeded: ReadonlyArray<'totp' | 'passkey' | 'password'>;
+  /** Issue #72 — alternatives flag forwarded for shape parity with
+   *  the password-first path. Passkey-first never has OR today. */
+  secondFactorChoice: boolean;
 }> {
   const result = await loginWithPasskey(
     input.email !== undefined ? { email: input.email } : {},
@@ -162,6 +165,7 @@ export async function passkeyLogin(
         fullyUnlocked: false,
         needsMfa: true,
         factorsNeeded: result.factorsNeeded,
+        secondFactorChoice: result.secondFactorChoice,
       };
     }
     const prfOutput = result.prfOutput;
@@ -201,6 +205,7 @@ export async function passkeyLogin(
       fullyUnlocked: true,
       needsMfa: true,
       factorsNeeded: result.factorsNeeded,
+      secondFactorChoice: result.secondFactorChoice,
     };
   }
 
@@ -235,7 +240,12 @@ export async function passkeyLogin(
     // ProtectedRoute layer will catch the missing main key and
     // surface the prompt. Same UX as a cold reload.
     deps.markKeyMissing();
-    return { fullyUnlocked: false, needsMfa: false, factorsNeeded: [] };
+    return {
+      fullyUnlocked: false,
+      needsMfa: false,
+      factorsNeeded: [],
+      secondFactorChoice: false,
+    };
   }
 
   const prfOutput = result.prfOutput;
@@ -272,5 +282,10 @@ export async function passkeyLogin(
     prfOutput.fill(0);
   }
 
-  return { fullyUnlocked: true, needsMfa: false, factorsNeeded: [] };
+  return {
+    fullyUnlocked: true,
+    needsMfa: false,
+    factorsNeeded: [],
+    secondFactorChoice: false,
+  };
 }

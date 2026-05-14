@@ -56,7 +56,10 @@ export default function LoginForm({ disabled = false }: { disabled?: boolean }) 
         // page already handles that fallback.
         navigate('/login/mfa', {
           replace: true,
-          state: { factorsNeeded: result.factorsNeeded },
+          state: {
+            factorsNeeded: result.factorsNeeded,
+            secondFactorChoice: result.secondFactorChoice,
+          },
         });
       } else {
         navigate('/flow', { replace: true });

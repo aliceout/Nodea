@@ -57,6 +57,14 @@ type Factor = 'totp' | 'passkey' | 'password';
  */
 interface LoginMfaLocationState {
   factorsNeeded?: ReadonlyArray<'totp' | 'passkey'>;
+  /**
+   * Issue #72 discriminator forwarded from `/login` and
+   * `/passkeys/login`. True when the listed factors are
+   * alternatives (verifying any ONE finalizes — `always_2fa`
+   * password-first with both enrolled). False / absent when
+   * the listed factors are mandatory in turn (`maximum`).
+   */
+  secondFactorChoice?: boolean;
 }
 
 export default function LoginMfaPage() {
@@ -66,11 +74,13 @@ export default function LoginMfaPage() {
   const location = useLocation();
   const navState = (location.state as LoginMfaLocationState | null) ?? null;
   const factorsNeeded = navState?.factorsNeeded;
-  // Picker only shows when the server explicitly offered both
-  // alternatives (always_2fa password-first with both enrolled).
-  // Reload → factorsNeeded is undefined → fall back to TOTP.
+  // Picker only shows when the server explicitly flagged
+  // `secondFactorChoice` AND the wire still lists both
+  // alternatives. Reload → navState is null → fall back to
+  // TOTP (still a valid path : the server accepts either).
   const initialStep: 'picker' | 'totp' | 'passkey' =
-    factorsNeeded &&
+    navState?.secondFactorChoice === true &&
+    factorsNeeded !== undefined &&
     factorsNeeded.includes('totp') &&
     factorsNeeded.includes('passkey')
       ? 'picker'
@@ -127,17 +137,27 @@ export default function LoginMfaPage() {
   }
 
   function applyMissing(missing: ReadonlyArray<Factor>): void {
-    if (missing.includes('passkey')) {
+    // Route to whichever step has UI for the remaining factor.
+    // Order matters when several are missing (e.g. `maximum`
+    // after the picker fired and the user picked TOTP first :
+    // post-verify the server reports `['passkey']`, post-passkey
+    // it reports `['totp']`). We prefer the step the user isn't
+    // already on, to avoid a no-op transition.
+    if (missing.includes('passkey') && step !== 'passkey') {
       setStep('passkey');
-    } else {
-      // Edge case : server reports something we don't have a UI
-      // for (e.g. password-as-second-factor in passkey-first
-      // maximum). Surface a generic message — the auth routes
-      // never return only `password` in practice today.
-      setError(
-        `Vérification incomplète. Facteur(s) encore requis : ${missing.join(', ')}.`,
-      );
+      return;
     }
+    if (missing.includes('totp') && step !== 'totp') {
+      setStep('totp');
+      return;
+    }
+    // Edge case : server reports something we don't have a UI
+    // for (e.g. password-as-second-factor in passkey-first
+    // maximum). Surface a generic message — the auth routes
+    // never return only `password` in practice today.
+    setError(
+      `Vérification incomplète. Facteur(s) encore requis : ${missing.join(', ')}.`,
+    );
   }
 
   function handleApiError(err: unknown, fallback: string): void {

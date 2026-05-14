@@ -55,6 +55,10 @@ export interface PasskeyLoginRawResult {
    *  before the session is promoted. `false` = already full. */
   needsMfa: boolean;
   factorsNeeded: ReadonlyArray<'totp' | 'passkey' | 'password'>;
+  /** Issue #72 — alternatives flag. Always false for passkey-first
+   *  today (the matrix has no OR set in that direction). Kept for
+   *  shape parity. */
+  secondFactorChoice: boolean;
 }
 
 export async function loginWithPasskey(
@@ -91,5 +95,6 @@ export async function loginWithPasskey(
     wrappedMainKeyIv: finishRes.wrappedMainKeyIv,
     needsMfa: finishRes.needsMfa,
     factorsNeeded: finishRes.factorsNeeded,
+    secondFactorChoice: finishRes.secondFactorChoice === true,
   };
 }

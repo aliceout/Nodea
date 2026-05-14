@@ -382,6 +382,13 @@ authLoginRoutes.openapi(loginFinishRoute, async (c) => {
   // already computed above by the safety net.
   const narrowed = filterRequirementsByEnrollment(baseRequired, enrolled);
 
+  // Issue #72 — flag the wire when narrowed still holds an OR
+  // group : the client should surface a picker rather than walk a
+  // fixed AND sequence. `maximum` mode never reaches this branch
+  // (its requirements are pure mandatory factors) so the flag
+  // stays false there.
+  const secondFactorChoice = narrowed.some((req) => typeof req !== 'string');
+
   const pendingSession = await createSession(user.id, {
     kind: 'mfa_pending',
     mfaFlags: { mfaPasswordVerified: true },
@@ -393,6 +400,7 @@ authLoginRoutes.openapi(loginFinishRoute, async (c) => {
     factorsNeeded: flattenRequirements(narrowed).filter(
       (f): f is 'totp' | 'passkey' => f !== 'password',
     ),
+    secondFactorChoice,
     wrappedMainKey: user.wrappedMainKey,
     wrappedMainKeyIv: user.wrappedMainKeyIv,
     wrappedKekPassword: user.wrappedKekPassword,

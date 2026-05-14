@@ -238,6 +238,13 @@ export const PasskeyLoginFinishResponseSchema = z.object({
   /** Factors still missing before the server will promote to full.
    *  Empty when `needsMfa = false`. */
   factorsNeeded: z.array(z.enum(['totp', 'passkey', 'password'])),
+  /**
+   * Issue #72 — when true, the listed factors are alternatives.
+   * Passkey-first paths never produce an OR set today, so this
+   * stays optional/false here ; kept for shape parity with the
+   * password-first response.
+   */
+  secondFactorChoice: z.boolean().optional(),
 });
 export type PasskeyLoginFinishResponse = z.infer<
   typeof PasskeyLoginFinishResponseSchema

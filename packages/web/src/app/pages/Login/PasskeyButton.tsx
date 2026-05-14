@@ -64,7 +64,10 @@ export default function PasskeyButton({
         // Forward the OR-set hint (issue #72) via navigation state.
         navigate('/login/mfa', {
           replace: true,
-          state: { factorsNeeded: result.factorsNeeded },
+          state: {
+            factorsNeeded: result.factorsNeeded,
+            secondFactorChoice: result.secondFactorChoice,
+          },
         });
       } else if (result.fullyUnlocked) {
         navigate('/flow', { replace: true });

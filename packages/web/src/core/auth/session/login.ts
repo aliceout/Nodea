@@ -46,7 +46,13 @@ export async function login(
   body: LoginBody,
 ): Promise<
   | { needsMfa: false }
-  | { needsMfa: true; factorsNeeded: ReadonlyArray<'totp' | 'passkey'> }
+  | {
+      needsMfa: true;
+      factorsNeeded: ReadonlyArray<'totp' | 'passkey'>;
+      /** Issue #72 — true when factors are alternatives ; false /
+       *  absent when each listed factor is required in sequence. */
+      secondFactorChoice: boolean;
+    }
 > {
   await opaqueReady;
 
@@ -118,7 +124,11 @@ export async function login(
     // and `/auth/me` succeeds — we don't have a public user
     // shape we can trust on a pending session. The route guard
     // handles `null` user + ready key as "still authenticating".
-    return { needsMfa: true, factorsNeeded: finishRes.factorsNeeded };
+    return {
+      needsMfa: true,
+      factorsNeeded: finishRes.factorsNeeded,
+      secondFactorChoice: finishRes.secondFactorChoice === true,
+    };
   }
 
   // Full-session branch — original Phase 2C path.

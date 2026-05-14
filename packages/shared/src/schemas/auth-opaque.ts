@@ -173,6 +173,16 @@ export const OpaqueLoginFinishResponseSchema = z.discriminatedUnion(
       needsMfa: z.literal(true),
       id: z.string(),
       factorsNeeded: z.array(z.enum(['totp', 'passkey'])).min(1),
+      /**
+       * Issue #72 — when true, the listed factors are alternatives
+       * (verifying any ONE finalizes the session). When false / absent,
+       * every listed factor is required in turn (current `maximum`
+       * behaviour). The flat `factorsNeeded` list alone can't
+       * disambiguate `['totp', 'passkey']` between « pick one » and
+       * « do both » ; the client uses this flag to decide whether to
+       * surface a picker on `/login/mfa`.
+       */
+      secondFactorChoice: z.boolean().optional(),
       wrappedMainKey: Base64ishLogin,
       wrappedMainKeyIv: Base64ishLogin,
       wrappedKekPassword: Base64ishLogin,
