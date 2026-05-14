@@ -27,6 +27,16 @@
   "clamped": {
     "readMore": "lire la suite →"
   },
+  "onThisDay": {
+    "title": "Il y a quelques années",
+    "subtitle": "Ce que tu as écrit le même jour, les années passées",
+    "aria": "Entrées d’années passées le même jour",
+    "oneYearAgo": "Il y a un an",
+    "yearsAgo": {
+      "other": "Il y a {count} ans"
+    },
+    "untitled": "Entrée sans titre"
+  },
   "side": {
     "view": "Vue",
     "viewByThread": "Par fil",

@@ -5,6 +5,7 @@ import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import { useJournalData, useJournalFilters } from '../context';
 import EntryRow from './EntryRow';
+import OnThisDayPanel from './OnThisDayPanel';
 
 /**
  * Main rendering surface — page heading, error / loading / empty
@@ -21,6 +22,12 @@ export default function PrimaryColumn() {
   return (
     <section className="flex min-w-0 flex-col">
       <PageHeading>{t('journal.title')}</PageHeading>
+
+      {/* « Il y a un an » — issue #58. Renders only on days when
+          past-them left a trail ; returns null otherwise. Sits
+          above the grouped list so the user notices it without
+          scrolling. */}
+      <OnThisDayPanel />
 
       {load.status === 'error' ? (
         <p

@@ -27,6 +27,16 @@
   "clamped": {
     "readMore": "read more →"
   },
+  "onThisDay": {
+    "title": "On this day",
+    "subtitle": "What you wrote on the same day, in past years",
+    "aria": "Entries from past years on the same day",
+    "oneYearAgo": "One year ago",
+    "yearsAgo": {
+      "other": "{count} years ago"
+    },
+    "untitled": "Untitled entry"
+  },
   "side": {
     "view": "View",
     "viewByThread": "By thread",
