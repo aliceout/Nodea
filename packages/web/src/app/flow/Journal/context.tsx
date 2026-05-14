@@ -20,7 +20,6 @@ import { matchesAnyField } from '@/lib/text-search';
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
 import {
-  mergeThreadsInString,
   removeThreadFromString,
   renameThreadInString,
 } from './lib/threads-mutate';
@@ -96,18 +95,12 @@ interface JournalActionsValue {
    * Optimistic local update + parallel PATCH ; the local state
    * for any failed entry reverts to its pre-update thread, so the
    * UI mirrors actual server state per-entry. The caller decides
-   * how to surface partial failures.
+   * how to surface partial failures. Renaming into a name that
+   * already exists is a de facto merge — the helper dedups on
+   * collision, which is intentional (drop the multi-select merge
+   * bar after the audit pass).
    */
   renameThread: (from: string, to: string) => Promise<ThreadMutationResult>;
-  /**
-   * Merge several source threads into a single target name. The
-   * target itself is allowed to be one of the sources (collapses
-   * duplicate occurrences in the same entry).
-   */
-  mergeThreads: (
-    sources: ReadonlyArray<string>,
-    target: string,
-  ) => Promise<ThreadMutationResult>;
   /**
    * Drop a thread from every entry that carries it. Entries that
    * end up with an empty thread are left as such (sans-thread
@@ -388,14 +381,6 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     [applyThreadTransform],
   );
 
-  const mergeThreads = useCallback(
-    (sources: ReadonlyArray<string>, target: string) =>
-      applyThreadTransform((raw) =>
-        mergeThreadsInString(raw, sources, target),
-      ),
-    [applyThreadTransform],
-  );
-
   const deleteThread = useCallback(
     (target: string) =>
       applyThreadTransform((raw) => removeThreadFromString(raw, target)),
@@ -432,7 +417,6 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       openReader,
       closeReader,
       renameThread,
-      mergeThreads,
       deleteThread,
     }),
     [
@@ -442,7 +426,6 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       openReader,
       closeReader,
       renameThread,
-      mergeThreads,
       deleteThread,
     ],
   );
