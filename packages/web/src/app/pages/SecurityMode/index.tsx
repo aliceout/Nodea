@@ -61,9 +61,9 @@ export default function SecurityModePage() {
     },
     {
       id: 'always_2fa',
-      label: 'TOTP requis',
+      label: '2FA requis',
       description:
-        'Code à 6 chiffres en plus à chaque connexion. Active la 2FA TOTP avant.',
+        '2ᵉ facteur en plus à chaque connexion : code TOTP ou passkey, au choix. Active TOTP avant pour pouvoir le sélectionner.',
       unmetRequirement: totpEnabled ? null : 'Active TOTP avant.',
     },
     {
@@ -215,6 +215,6 @@ export default function SecurityModePage() {
 
 function labelFor(mode: SecurityMode): string {
   if (mode === 'password_or_passkey') return 'Standard';
-  if (mode === 'always_2fa') return 'TOTP requis';
+  if (mode === 'always_2fa') return '2FA requis';
   return 'Maximum';
 }

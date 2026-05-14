@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
+import FactorPicker from './FactorPicker';
 import {
   isValidBackupCode,
   isValidTotpCode,
@@ -26,8 +27,14 @@ type Factor = 'totp' | 'passkey' | 'password';
  * session. The page steps the user through whatever's still
  * missing :
  *
- *   - TOTP form by default (mode `always_2fa`, mode `maximum`
- *     after password-first).
+ *   - Picker first when issue #72 applies (mode `always_2fa`
+ *     password-first with BOTH TOTP and a passkey enrolled). The
+ *     server signals this by listing both `'totp'` and `'passkey'`
+ *     in `factorsNeeded` ; the page forwards that hint via the
+ *     navigation state from `/login`. After the user picks, we
+ *     flip to the chosen sub-step.
+ *   - TOTP form by default (mode `always_2fa` TOTP-only, mode
+ *     `maximum` after password-first).
  *   - Passkey button when the server reports `passkey` is still
  *     missing — typically mode `maximum` after the TOTP step
  *     succeeded.
@@ -38,18 +45,37 @@ type Factor = 'totp' | 'passkey' | 'password';
  * Reload safety : the `mfa_pending` cookie has a 5-min TTL. A
  * user who reloads / tabs back later will hit a 401 on submit ;
  * we surface a « session expired, please re-login » message
- * rather than crash.
+ * rather than crash. The picker hint is lost on reload too —
+ * the page falls back to the TOTP form, which is still a valid
+ * path (server-side both factors satisfy the policy).
  *
  * Architecture : this orchestrator owns the state and handles
  * the API errors centrally ; the visual surfaces live in
- * `TotpStep` / `PasskeyStep`, the recovery panel in `LostFlow`,
- * and the input validation in `lib/validation.ts` (with tests).
+ * `FactorPicker` / `TotpStep` / `PasskeyStep`, the recovery panel
+ * in `LostFlow`, and the input validation in `lib/validation.ts`
+ * (with tests).
  */
+interface LoginMfaLocationState {
+  factorsNeeded?: ReadonlyArray<'totp' | 'passkey'>;
+}
+
 export default function LoginMfaPage() {
   useDocumentTitle('Vérification 2FA');
   const session = useSession();
   const navigate = useNavigate();
-  const [step, setStep] = useState<'totp' | 'passkey'>('totp');
+  const location = useLocation();
+  const navState = (location.state as LoginMfaLocationState | null) ?? null;
+  const factorsNeeded = navState?.factorsNeeded;
+  // Picker only shows when the server explicitly offered both
+  // alternatives (always_2fa password-first with both enrolled).
+  // Reload → factorsNeeded is undefined → fall back to TOTP.
+  const initialStep: 'picker' | 'totp' | 'passkey' =
+    factorsNeeded &&
+    factorsNeeded.includes('totp') &&
+    factorsNeeded.includes('passkey')
+      ? 'picker'
+      : 'totp';
+  const [step, setStep] = useState<'picker' | 'totp' | 'passkey'>(initialStep);
   // Sub-mode of the TOTP step : enter the live 6-digit code, or
   // a 24-char single-use backup code (when the user lost the
   // authenticator app). Switching modes resets the input so a
@@ -199,6 +225,14 @@ export default function LoginMfaPage() {
         </>
       }
     >
+      {step === 'picker' ? (
+        <FactorPicker
+          onPickTotp={() => setStep('totp')}
+          onPickPasskey={() => setStep('passkey')}
+          onRestartLogin={() => navigate('/login', { replace: true })}
+        />
+      ) : null}
+
       {step === 'totp' ? (
         <TotpStep
           totpMode={totpMode}

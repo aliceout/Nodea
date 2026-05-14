@@ -61,7 +61,11 @@ export default function PasskeyButton({
     try {
       const result = await session.loginWithPasskey({});
       if (result.needsMfa) {
-        navigate('/login/mfa', { replace: true });
+        // Forward the OR-set hint (issue #72) via navigation state.
+        navigate('/login/mfa', {
+          replace: true,
+          state: { factorsNeeded: result.factorsNeeded },
+        });
       } else if (result.fullyUnlocked) {
         navigate('/flow', { replace: true });
       } else {

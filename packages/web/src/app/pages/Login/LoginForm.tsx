@@ -49,7 +49,15 @@ export default function LoginForm({ disabled = false }: { disabled?: boolean }) 
     try {
       const result = await session.login(values);
       if (result.needsMfa) {
-        navigate('/login/mfa', { replace: true });
+        // Forward the OR-set hint (issue #72) via navigation state
+        // so `/login/mfa` knows whether to surface a picker (both
+        // TOTP and passkey accepted) or default straight to the
+        // TOTP form. Lost on page reload, which is fine : the
+        // page already handles that fallback.
+        navigate('/login/mfa', {
+          replace: true,
+          state: { factorsNeeded: result.factorsNeeded },
+        });
       } else {
         navigate('/flow', { replace: true });
       }
