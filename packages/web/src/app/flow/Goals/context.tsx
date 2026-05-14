@@ -69,6 +69,7 @@ interface GoalsActionsValue {
   carryOverOpen: boolean;
   cycleStatus: (entry: GoalEntry) => Promise<void>;
   editEntry: (entry: GoalEntry) => void;
+  updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
   deleteEntry: (entry: GoalEntry) => Promise<void>;
   openCarryOver: () => void;
   closeCarryOver: () => void;
@@ -139,6 +140,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       carryOverOpen: actions.carryOverOpen,
       cycleStatus: actions.cycleStatus,
       editEntry: actions.editEntry,
+      updateTitle: actions.updateTitle,
       deleteEntry: actions.deleteEntry,
       openCarryOver: actions.openCarryOver,
       closeCarryOver: actions.closeCarryOver,

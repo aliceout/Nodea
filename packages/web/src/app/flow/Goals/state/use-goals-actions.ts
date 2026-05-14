@@ -32,6 +32,12 @@ export interface GoalsActionsState {
   carryOverOpen: boolean;
   cycleStatus: (entry: GoalEntry) => Promise<void>;
   editEntry: (entry: GoalEntry) => void;
+  /** Inline title quick-rename (issue #65). Same optimistic-update +
+   *  per-entry mutation tracker pattern as `cycleStatus`, except
+   *  only the title travels through. Caller hands in the trimmed
+   *  new title ; equal-to-current is a no-op handled at the call
+   *  site so this stays a single round-trip. */
+  updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
   deleteEntry: (entry: GoalEntry) => Promise<void>;
   openCarryOver: () => void;
   closeCarryOver: () => void;
@@ -149,6 +155,47 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     [openComposer],
   );
 
+  const updateTitle = useCallback(
+    async (entry: GoalEntry, nextTitle: string) => {
+      if (!ctx) return;
+      // The caller already trimmed + bailed on no-op renames ; we
+      // still guard against an empty string here because the API
+      // would reject it and we'd roll back uselessly.
+      const trimmed = nextTitle.trim();
+      if (trimmed.length === 0 || trimmed === entry.title) return;
+      const token = trackerRef.current.begin(entry.id);
+      const previousTitle = entry.title;
+      const now = new Date().toISOString();
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entry.id ? { ...e, title: trimmed, updatedAt: now } : e,
+        ),
+      );
+      try {
+        await goalsClient.update(ctx.moduleUserId, ctx.mainKey, entry.id, {
+          date: entry.date,
+          title: trimmed,
+          note: entry.note,
+          status: entry.status,
+          thread: entry.thread,
+          completedAt: entry.completedAt,
+          updatedAt: now,
+        });
+        bumpGoalsVersion();
+      } catch (err) {
+        if (!trackerRef.current.isLatest(entry.id, token)) return;
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === entry.id ? { ...e, title: previousTitle } : e,
+          ),
+        );
+        if (import.meta.env.DEV)
+          console.warn('goals: inline rename failed', err);
+      }
+    },
+    [ctx, bumpGoalsVersion, setEntries],
+  );
+
   const deleteEntry = useCallback(
     async (entry: GoalEntry) => {
       if (!ctx) return;
@@ -254,6 +301,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     carryOverOpen,
     cycleStatus,
     editEntry,
+    updateTitle,
     deleteEntry,
     openCarryOver,
     closeCarryOver,
