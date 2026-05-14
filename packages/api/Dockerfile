@@ -8,7 +8,13 @@
 FROM node:22-alpine
 
 WORKDIR /app
-RUN corepack enable
+
+# We run on pnpm via corepack — npm is never invoked at runtime.
+# Stripping the bundled npm out of the image removes its own
+# vendored dep tree (where Trivy keeps flagging things like
+# picomatch CVE-2026-33671 we can't override) and reduces the
+# image's attack surface by a small but free margin.
+RUN corepack enable && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Ensure pnpm installs devDeps (`tsx`, `drizzle-kit`) regardless of any
 # stray NODE_ENV=production in the build env.
