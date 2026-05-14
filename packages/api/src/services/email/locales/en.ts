@@ -65,6 +65,26 @@ export const en: EmailLocale = {
       "If you didn't sign up, just ignore the message — no account will be activated without this click.",
   },
 
+  registerAlreadyExists: {
+    subject: 'Account creation attempt on Nodea',
+    preheader:
+      'Someone tried to create an account with this address — you already have one with us.',
+    heading: 'You already have an account with us.',
+    introText:
+      "Someone (you?) just tried to create a new Nodea account with this email address. No new account was created: you already have one.",
+    introHtml:
+      "Someone (you?) just tried to create a new Nodea account with this email address. No new account was created: you already have one.",
+    ctaLogin: 'Sign in',
+    resetText:
+      'Forgot your password? You can reset it here:',
+    resetHtml:
+      'Forgot your password? You can reset it here:',
+    ifNotYouText:
+      "If it wasn't you who attempted this signup, just ignore this message — no action has been taken on your account.",
+    ifNotYouHtml:
+      "If it wasn't you who attempted this signup, just ignore this message — no action has been taken on your account.",
+  },
+
   mfaBypass: {
     subject: '{factor} recovery — confirm by email',
     preheader: '{factor} recovery request on Nodea — 7-day delay after confirmation.',

@@ -131,7 +131,25 @@ wrap layers (cf. §3.2):
      **is no longer** a reuse since the AADs of the new `/start`
      userId diverge from the previous one — the original
      activation email stays valid, the admin can resend out of
-     band.
+     band. **Dual-mail pattern (issue #45)** : alongside the silent
+     200, the API emails the rightful owner of the address an
+     informational notice (`register-already-exists` tag) so a
+     legitimate user who forgot they already have an account isn't
+     stranded waiting for an activation link that never comes. The
+     submitter sees no difference — same status code, same body,
+     same response shape as a free email — so anti-enum holds on
+     their side. Only the actual owner of the email (who can read
+     their own mailbox) learns that an attempt was made.
+     - Throttle : 1 notice per email per 1 h, in-memory map (cf.
+       `services/email/already-exists-throttle.ts`). Prevents the
+       route from being a notification spam vector ; the legitimate
+       user re-trying within the hour still gets the silent 200.
+     - Trade-off : the 2nd+ register within the hour short-circuits
+       the mailer call (~50 ms saved), creating a small timing
+       oracle distinguishable from a free email. Accepted — the
+       gap sits below the OPAQUE handshake's own variance, and the
+       primary defence (the submitter cannot tell from the response
+       alone) still holds.
    - Otherwise: INSERT `users { id: userId, …,
      emailVerifiedAt: NULL }` + INSERT `opaque_records`, in a
      transaction.

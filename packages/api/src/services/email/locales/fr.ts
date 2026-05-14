@@ -58,6 +58,18 @@ export interface EmailLocaleShape {
     validity: string;
     ignoreNote: string;
   };
+  registerAlreadyExists: {
+    subject: string;
+    preheader: string;
+    heading: string;
+    introText: string;
+    introHtml: string;
+    ctaLogin: string;
+    resetText: string;
+    resetHtml: string;
+    ifNotYouText: string;
+    ifNotYouHtml: string;
+  };
   mfaBypass: {
     subject: string;
     preheader: string;
@@ -197,6 +209,26 @@ export const fr: EmailLocaleShape = {
     validity: 'Le lien expire dans {ttl} jours.',
     ignoreNote:
       "Si tu n'es pas à l'origine de cette inscription, ignore ce message — aucun compte ne sera activé sans ce clic.",
+  },
+
+  registerAlreadyExists: {
+    subject: 'Tentative de création de compte sur Nodea',
+    preheader:
+      "Quelqu'un a tenté de créer un compte avec cette adresse — tu as déjà un compte chez nous.",
+    heading: "Tu as déjà un compte chez nous.",
+    introText:
+      "Quelqu'un (toi ?) vient de tenter de créer un nouveau compte Nodea avec cette adresse e-mail. Aucun nouveau compte n'a été créé : tu en as déjà un.",
+    introHtml:
+      "Quelqu'un (toi ?) vient de tenter de créer un nouveau compte Nodea avec cette adresse e-mail. Aucun nouveau compte n'a été créé : tu en as déjà un.",
+    ctaLogin: 'Me connecter',
+    resetText:
+      'Mot de passe oublié ? Tu peux le réinitialiser ici :',
+    resetHtml:
+      'Mot de passe oublié ? Tu peux le réinitialiser ici :',
+    ifNotYouText:
+      "Si ce n'est pas toi qui a tenté cette inscription, ignore simplement ce message — aucune action n'a été prise sur ton compte.",
+    ifNotYouHtml:
+      "Si ce n'est pas toi qui a tenté cette inscription, ignore simplement ce message — aucune action n'a été prise sur ton compte.",
   },
 
   mfaBypass: {

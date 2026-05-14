@@ -28,6 +28,7 @@ import {
   invalidatePendingVerifications,
 } from '../auth/email-verifications.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
+import { maybeSendAlreadyExistsNotice } from '../services/email/already-exists-throttle.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderRegisterActivateEmail } from '../services/email/templates/register-activate.ts';
 import { extractEmailLanguage } from '../services/email/i18n.ts';
@@ -400,6 +401,16 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
     // submitted blobs don't match the existing row. The original
     // activation email (if any) is still valid; admin can resend
     // out-of-band if the user lost it.
+    //
+    // Anti-enum preserved : the submitter still sees an identical
+    // 200 body. We DO email the rightful owner of the address with
+    // an informational notice (« someone tried to register with
+    // your email ») so a legitimate user who forgot they already
+    // have an account isn't stranded waiting for an activation
+    // link that never comes. Throttled 1/h per email to keep the
+    // route from becoming a notification spam vector (issue #45,
+    // Auth-Spec §7.1 dual-mail pattern).
+    await maybeSendAlreadyExistsNotice(c, email);
     return c.json({ ok: true as const, activated: false }, 200);
   }
 

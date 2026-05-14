@@ -530,6 +530,44 @@ describe('POST /auth/register/finish — open path', () => {
       (m) => m.tag === 'register-activate',
     );
     expect(activationMails).toHaveLength(0);
+
+    // Dual-mail anti-enum (#45, Auth-Spec §7.1) : the submitter
+    // sees the same silent 200 above, but the rightful owner of
+    // the address gets an informational notice tagged
+    // `register-already-exists`.
+    const noticeMails = recording.sent.filter(
+      (m) => m.tag === 'register-already-exists',
+    );
+    expect(noticeMails).toHaveLength(1);
+    expect(noticeMails[0]!.to).toBe('taken@example.com');
+  });
+
+  it('throttles the already-exists notice to one mail per email per hour (#45)', async () => {
+    const admin = await seedAdmin('throttle-admin@example.com');
+    await setOpenRegistration(true, admin.id);
+    const existing = await seedUser('throttled@example.com');
+    await db
+      .update(users)
+      .set({ emailVerifiedAt: new Date() })
+      .where(eq(users.id, existing.id));
+
+    // First attempt — the notice goes out.
+    const first = await fullRegister({ email: 'throttled@example.com' });
+    expect(first.status).toBe(200);
+    const afterFirst = recording.sent.filter(
+      (m) => m.tag === 'register-already-exists',
+    ).length;
+    expect(afterFirst).toBe(1);
+
+    // Second attempt within the throttle window — same anti-enum
+    // 200 from the submitter's point of view, but no extra notice
+    // is sent (prevents the route from being a spam vector).
+    const second = await fullRegister({ email: 'throttled@example.com' });
+    expect(second.status).toBe(200);
+    const afterSecond = recording.sent.filter(
+      (m) => m.tag === 'register-already-exists',
+    ).length;
+    expect(afterSecond).toBe(1);
   });
 
   it('returns 200 silently on a second register attempt for an inactive email (no DB changes)', async () => {

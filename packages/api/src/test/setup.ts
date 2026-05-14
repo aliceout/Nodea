@@ -2,12 +2,13 @@
  * Vitest global setup — ensures tests always have a valid env and a clean DB
  * before each test file runs.
  */
-import { beforeEach } from 'vitest';
+import { afterAll, beforeEach } from 'vitest';
 import { sql } from '../db/client.ts';
 import { __resetRateLimits } from '../middleware/rate-limit.ts';
 import { __resetLoginStates } from '../auth/opaque-login-state.ts';
 import { __resetOpaquePendingStates } from '../auth/opaque-pending-state.ts';
 import { __resetRecoverStates } from '../auth/opaque-recover-state.ts';
+import { __resetAlreadyExistsThrottle } from '../services/email/already-exists-throttle.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
 
 if (!process.env.DATABASE_URL) {
@@ -66,5 +67,35 @@ beforeEach(async () => {
   __resetLoginStates();
   __resetOpaquePendingStates();
   __resetRecoverStates();
+  __resetAlreadyExistsThrottle();
   __getRecordingEmailService().reset();
+});
+
+// Issue #41 bonus — leave the test DB clean at the end of a run, so
+// `nodea_test` doesn't accumulate the last test file's fixtures
+// between invocations. The `beforeEach` already isolates tests from
+// each other; this `afterAll` is purely for hygiene when someone
+// inspects `nodea_test` between runs.
+afterAll(async () => {
+  await sql`
+    TRUNCATE TABLE
+      mood_entries,
+      goals_entries,
+      journal_entries,
+      habits_items_entries,
+      habits_logs_entries,
+      library_items_entries,
+      library_reviews_entries,
+      review_entries,
+      modules_config,
+      user_preferences,
+      announcements,
+      password_reset_tokens,
+      sessions,
+      invites,
+      app_settings,
+      email_verifications,
+      users
+    RESTART IDENTITY CASCADE
+  `;
 });
