@@ -240,7 +240,7 @@ All other tables (auth + MFA + sessions) are defined in §4.1.
 
 export const securityMode = pgEnum('security_mode', [
   'password_or_passkey', // default: one factor unlocks
-  'always_2fa',         // TOTP required after password OR passkey
+  'always_2fa',         // 2nd factor (TOTP or passkey) required after password ; TOTP after passkey-first
   'maximum',             // password + passkey + TOTP, all three
 ]);
 

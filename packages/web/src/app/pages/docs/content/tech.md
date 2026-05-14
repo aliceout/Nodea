@@ -145,7 +145,7 @@ Non-destructif. L'utilisateur·ice tape ses 12 mots → le client dérive la wra
 Trois niveaux par utilisateur·ice (`users.security_mode`) :
 
 - `password_or_passkey` (défaut) — un facteur unique unlock la session.
-- `always_2fa` — TOTP requis après password ou passkey. Activable seulement si TOTP enrôlé.
+- `always_2fa` — 2ᵉ facteur requis après le password (TOTP **ou** passkey, au choix de l'utilisateur·ice) ; TOTP requis après passkey-first. Activable seulement si TOTP enrôlé.
 - `maximum` — password + passkey PRF + TOTP, les trois requis. Activable seulement si une passkey PRF est enrôlée.
 
 Downgrade auto §6.1 : si l'utilisateur·ice désactive le facteur qui maintient le mode, le mode retombe à `password_or_passkey` dans la même transaction (avec email de notification).

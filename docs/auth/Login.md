@@ -145,8 +145,15 @@ No new cookie is issued during these steps; we operate on the same
    | mode | password-first | passkey-first |
    |---|---|---|
    | `password_or_passkey` | password | passkey |
-   | `always_2fa` | password + totp | passkey + totp |
+   | `always_2fa` | password + (totp **OR** passkey) | passkey + totp |
    | `maximum` | password + passkey + totp | passkey + password + totp |
+
+   Issue #72 — in `always_2fa` password-first, the 2nd factor is
+   an OR set : the client can verify TOTP **or** assert any
+   enrolled passkey (PRF or non-PRF). Either satisfies the
+   policy ; `/auth/mfa/finalize` does not gate on which path was
+   taken. Passkey-first stays TOTP-only (a second passkey
+   assertion on the same login would be redundant).
 
 3. Verify every required column in `mfa_*_verified`. If one is
    missing → 400 `{ missing: [...] }`.

@@ -21,7 +21,11 @@ import {
   applyConsumableBypass,
   cancelPendingBypassesForUser,
 } from '../auth/mfa-bypass.ts';
-import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
+import {
+  flattenRequirements,
+  isFactorMandatory,
+  requiredFactorsForMode,
+} from '../auth/mfa-policy.ts';
 import {
   consumePasskeyLoginPending,
   storePasskeyLoginPending,
@@ -304,13 +308,14 @@ authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
   // same logic as the password-first path but with
   // `entryFactor=passkey`. Mode `maximum` is the case where
   // the passkey-first user still needs password + TOTP ; mode
-  // `always_2fa` just needs TOTP.
+  // `always_2fa` passkey-first stays TOTP-only (no second
+  // passkey on the same login).
   const baseRequired = requiredFactorsForMode(
     { securityMode: activeMode },
     'passkey',
   );
   let needsMfa = baseRequired.length > 0;
-  if (needsMfa && baseRequired.includes('totp')) {
+  if (needsMfa && isFactorMandatory(baseRequired, 'totp')) {
     const [totpRow] = await db
       .select({ enabledAt: mfaTotp.enabledAt })
       .from(mfaTotp)
@@ -318,8 +323,8 @@ authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
       .limit(1);
     if (!totpRow || totpRow.enabledAt === null) {
       // Same safety net as the password path : don't lock
-      // the user out if mode requires TOTP but it's not
-      // enrolled.
+      // the user out if mode requires TOTP unconditionally
+      // but it's not enrolled.
       needsMfa = false;
     }
   }
@@ -339,7 +344,7 @@ authPasskeyLoginRoutes.openapi(loginFinishRoute, async (c) => {
       wrappedMainKey: account.wrappedMainKey,
       wrappedMainKeyIv: account.wrappedMainKeyIv,
       needsMfa: true,
-      factorsNeeded: [...baseRequired],
+      factorsNeeded: [...flattenRequirements(baseRequired)],
     };
     return c.json(response, 200);
   }

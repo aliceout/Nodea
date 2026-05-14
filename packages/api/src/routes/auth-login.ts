@@ -12,7 +12,12 @@ import {
   applyConsumableBypass,
   cancelPendingBypassesForUser,
 } from '../auth/mfa-bypass.ts';
-import { requiredFactorsForMode } from '../auth/mfa-policy.ts';
+import {
+  canSatisfyAll,
+  filterRequirementsByEnrollment,
+  flattenRequirements,
+  requiredFactorsForMode,
+} from '../auth/mfa-policy.ts';
 import {
   finishLogin as opaqueFinishLogin,
   opaqueReady,
@@ -31,7 +36,7 @@ import {
   setSessionCookie,
 } from '../auth/cookies.ts';
 import { db } from '../db/client.ts';
-import { mfaTotp, opaqueRecords, users } from '../db/schema.ts';
+import { authFactors, mfaTotp, opaqueRecords, users } from '../db/schema.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import { renderMfaBypassAppliedEmail } from '../services/email/templates/mfa-bypass.ts';
 import { getEmailService } from '../services/email/index.ts';
@@ -301,25 +306,40 @@ authLoginRoutes.openapi(loginFinishRoute, async (c) => {
   // row is promoted to `full` by `/auth/mfa/totp/verify` once
   // the remaining factors check out.
   //
-  // We also gate on `mfa_totp.enabled_at` for the
-  // `always_2fa` / `maximum` modes — a corrupted state where
-  // mode requires TOTP but the user has none enrolled would
-  // otherwise lock them out. If TOTP isn't actually enrolled,
-  // fall through to the full-session path (the user mode
-  // will be downgraded by the next disable-TOTP / Settings
-  // interaction).
+  // Safety net (Auth-Spec §6.1) : if the mode demands a factor
+  // (or one of an OR set) but the user has nothing enrolled that
+  // satisfies it, mint a `full` session instead of a `mfa_pending`
+  // row the user couldn't finalize. The mode gets auto-downgraded
+  // the next time they touch Settings / disable a factor.
+  //
+  // For issue #72 (always_2fa password-first now accepts TOTP OR
+  // passkey), the net fires when both alternatives are absent.
+  // For `maximum` (TOTP is mandatory unconditionally), it still
+  // fires when TOTP isn't enrolled.
   const baseRequired = requiredFactorsForMode(activeUser, 'password');
   let needsMfa = baseRequired.length > 0;
-  if (needsMfa && baseRequired.includes('totp')) {
+  let enrolled: Readonly<Record<'totp' | 'passkey' | 'password', boolean>> = {
+    totp: false,
+    passkey: false,
+    password: true,
+  };
+  if (needsMfa) {
     const [totpRow] = await db
       .select({ enabledAt: mfaTotp.enabledAt })
       .from(mfaTotp)
       .where(eq(mfaTotp.userId, user.id))
       .limit(1);
-    if (!totpRow || totpRow.enabledAt === null) {
-      // Mode demands TOTP but it's not actually enrolled —
-      // emit full session as a safety net rather than lock
-      // the user out permanently.
+    const passkeyRows = await db
+      .select({ id: authFactors.id })
+      .from(authFactors)
+      .where(eq(authFactors.userId, user.id))
+      .limit(1);
+    enrolled = {
+      totp: !!totpRow && totpRow.enabledAt !== null,
+      passkey: passkeyRows.length > 0,
+      password: true,
+    };
+    if (!canSatisfyAll(baseRequired, enrolled)) {
       needsMfa = false;
     }
   }
@@ -349,6 +369,19 @@ authLoginRoutes.openapi(loginFinishRoute, async (c) => {
 
   // Stepped path : mfa_pending session with the primary
   // factor already marked verified.
+  //
+  // For OR sets (issue #72 — always_2fa password-first
+  // accepts TOTP OR passkey), narrow the wire `factorsNeeded`
+  // to the alternatives the user has actually enrolled :
+  //   - no passkey enrolled → drop passkey, OR collapses to
+  //     ['totp'] (matches the legacy single-factor wire).
+  //   - both enrolled → ['totp', 'passkey'], the client UI
+  //     drives a picker.
+  // This keeps the wire honest : we never surface an option
+  // the user couldn't actually use. Reuses the `enrolled` map
+  // already computed above by the safety net.
+  const narrowed = filterRequirementsByEnrollment(baseRequired, enrolled);
+
   const pendingSession = await createSession(user.id, {
     kind: 'mfa_pending',
     mfaFlags: { mfaPasswordVerified: true },
@@ -357,7 +390,7 @@ authLoginRoutes.openapi(loginFinishRoute, async (c) => {
   const response: OpaqueLoginFinishResponse = {
     needsMfa: true,
     id: user.id,
-    factorsNeeded: baseRequired.filter(
+    factorsNeeded: flattenRequirements(narrowed).filter(
       (f): f is 'totp' | 'passkey' => f !== 'password',
     ),
     wrappedMainKey: user.wrappedMainKey,
