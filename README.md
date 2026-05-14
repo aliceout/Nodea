@@ -81,6 +81,22 @@ Tests :
 pnpm -r test    # 222 tests d'intégration api + 83 tests unitaires web
 ```
 
+Trois bases Postgres coexistent sur la même instance, jamais
+mélangées : `nodea` (dev / `pnpm dev:api`), `nodea_test` (vitest
+api), `nodea_e2e` (Playwright). Le `DATABASE_URL` du `.env` pointe
+sur `nodea` ; vitest et Playwright dérivent automatiquement le bon
+nom à partir de cette URL — pas de `.env.test` à éditer. Première
+fois ? Crée et migre la base de test :
+
+```sh
+docker exec nodea-postgres psql -U nodea -d postgres -c "CREATE DATABASE nodea_test;"
+pnpm --filter @nodea/api db:migrate:test
+```
+
+Garde-fou — `setup.ts` refuse de tourner si `DATABASE_URL` ne se
+termine pas par `_test`, pour éviter la régression de #41 (suite
+qui truncate la base dev).
+
 La CI GitHub Actions exécute la même suite à chaque push.
 
 Pour comprendre l'architecture avant de toucher le code :
