@@ -29,7 +29,7 @@ export default function Textarea({
       ref={ref}
       style={{ minHeight: `${minHeightPx}px`, ...style }}
       className={cn(
-        'block w-full resize-none rounded-sm border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft',
+        'block w-full resize-none rounded-[var(--radius-input)] border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.5] text-ink placeholder:text-muted-soft',
         'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60',
         className,
       )}

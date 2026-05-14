@@ -137,7 +137,7 @@ export default function RecoveryCodeDisplay({
           type="checkbox"
           checked={acknowledged}
           onChange={(e) => setAcknowledged(e.target.checked)}
-          className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
+          className="mt-0.5 h-4 w-4 cursor-pointer rounded-[var(--radius-input)] border border-hair accent-accent"
         />
         <span>J’ai noté ces 12 mots et je les ai mis dans un endroit sûr.</span>
       </label>

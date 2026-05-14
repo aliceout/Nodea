@@ -47,7 +47,7 @@ export default function Input({
         // footer), since it couldn't relinquish width to siblings.
         // `min-h-8` constrains only the vertical axis, which is
         // the only axis where the squeeze actually mattered.
-        'block h-8 min-h-8 w-full rounded-sm border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft',
+        'block h-8 min-h-8 w-full rounded-[var(--radius-input)] border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft',
         'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60',
         align === 'center' ? 'text-center tabular-nums' : '',
         className,

@@ -55,7 +55,7 @@ const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
           error ? `${inputId}-error` : legendId
         }
         className={cn(
-          'w-full rounded-md border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
+          'w-full rounded-[var(--radius-control)] border border-hair bg-bg px-3 py-2.5 text-[14px] text-ink',
           'outline-none transition-[border-color,box-shadow]',
           'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
           'disabled:cursor-not-allowed disabled:opacity-50',

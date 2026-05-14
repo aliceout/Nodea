@@ -89,7 +89,7 @@ export default function Button({
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md font-semibold',
+        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-[var(--radius-control)] font-semibold',
         'transition-[background-color,transform,color] duration-150',
         'disabled:cursor-not-allowed disabled:opacity-60',
         iconOnly ? ICON_SIZE_CLASS[size] : SIZE_CLASS[size],

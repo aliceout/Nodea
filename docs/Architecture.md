@@ -512,6 +512,24 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   lazy-loaded behind an `ErrorBoundary` so a crash stays confined to
   the module that raised it.
 
+#### Design tokens
+
+All radii flow through CSS variables in
+`packages/web/src/ui/theme/foundation.css`. Two scales coexist on
+purpose:
+
+| Scale | Token | Value | Use |
+|---|---|---|---|
+| Surfaces | `--radius-sm` / `--radius-md` / `--radius-lg` | 0.5 / 0.75 / 1 rem | Cards, modals, sections — soft corners at large sizes |
+| Controls | `--radius-control` | 0.375 rem | Buttons, large form fields |
+| Controls | `--radius-input` | 0.125 rem | Inputs, textareas, selects, checkboxes — tight corners at small heights |
+
+Atoms read tokens via `rounded-[var(--radius-*)]`. **Do not** hardcode
+Tailwind `rounded-sm` / `rounded-md` / `rounded-lg` on a new atom —
+the two Tailwind scales (stock `rounded-*` vs project `--radius-*`)
+don't align and mixing them is how the design drifts. `rounded-full`
+stays a Tailwind class (universal CSS, no token needed).
+
 ### Tests
 
 Vitest + jsdom. Crypto round-trips (AES, HKDF, factor-wrap, guard
