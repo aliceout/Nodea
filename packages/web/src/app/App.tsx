@@ -24,6 +24,7 @@ const SecurityMode = lazy(() => import('./pages/SecurityMode'));
 const BypassConfirm = lazy(() => import('./pages/BypassConfirm'));
 const Docs = lazy(() => import('./pages/Docs'));
 const Terms = lazy(() => import('./pages/Terms'));
+const Changelog = lazy(() => import('./pages/Changelog'));
 
 function lazyPage(node: ReactElement): ReactElement {
   return (
@@ -119,6 +120,11 @@ function AppWithKeyModal() {
           le source dans `pages/Terms/content.md`. Lien depuis le footer
           de Login. */}
       <Route path="/terms" element={lazyPage(<Terms />)} />
+      {/* Auto-generated release notes (issue #91). Public route ;
+          content lives in `pages/Changelog/content.md`, regenerated
+          from `git log` between `v*` tags by
+          `scripts/generate-changelog.ts`. */}
+      <Route path="/changelog" element={lazyPage(<Changelog />)} />
       <Route
         path="/flow"
         element={

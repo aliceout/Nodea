@@ -99,15 +99,23 @@ export default function LoginPage() {
         </Link>
       </div>
 
-      {/* Footer-style CGU link — typographie plus discrète que les
-          deux liens d'action ci-dessus, parce que c'est de la
-          mention légale, pas un call-to-action. */}
-      <div className="mt-4 text-center text-[11.5px] text-muted">
+      {/* Footer-style legal / context links — typographie plus
+          discrète que les deux liens d'action ci-dessus parce que
+          c'est de la mention légale + un coup d'œil aux nouveautés,
+          pas un call-to-action. */}
+      <div className="mt-4 flex items-center justify-center gap-3 text-[11.5px] text-muted">
         <Link
           to="/terms"
           className="cursor-pointer transition-colors hover:text-ink hover:underline"
         >
           Conditions générales d'utilisation
+        </Link>
+        <span aria-hidden="true">·</span>
+        <Link
+          to="/changelog"
+          className="cursor-pointer transition-colors hover:text-ink hover:underline"
+        >
+          Changelog
         </Link>
       </div>
     </AuthLayout>
