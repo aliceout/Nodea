@@ -1,32 +1,18 @@
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  PASSWORD_MIN_LENGTH,
-  type PasswordRulesCheck,
-} from '@nodea/shared';
 
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-import PasswordRulesList from '@/ui/atoms/auth/PasswordRulesList';
-import StrengthBar from '@/ui/atoms/auth/StrengthBar';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
-interface FormPanelProps {
+interface VerifyPanelProps {
   email: string;
   setEmail: (next: string) => void;
   mnemonic: string;
   setMnemonic: (next: string) => void;
-  password: string;
-  setPassword: (next: string) => void;
-  confirm: string;
-  setConfirm: (next: string) => void;
-  rules: PasswordRulesCheck;
-  rulesOk: boolean;
-  strength: { score: number; warning: string | null } | null;
-  confirmMismatch: boolean;
   wordCount: number;
   emailLooksValid: boolean;
   error: string | null;
@@ -36,33 +22,22 @@ interface FormPanelProps {
 }
 
 /**
- * « Récupérer avec un code » form — collects email, the 12-word
- * BIP39 mnemonic, and a new password (typed twice). Live
- * validation drives the submit gate via `canSubmit` from the
- * orchestrator ; the `<PasswordRulesList>` + `<StrengthBar>` row
- * mirrors what `Register.tsx` and `ChangePassword.tsx` show, so
- * the password feedback experience stays consistent across
- * every surface that asks for a password.
+ * Step 1 of the split recovery flow (issue #48) : confirm the
+ * `(email, mnemonic)` pair before the user commits a new password.
+ * The user gets immediate feedback if the code is wrong, instead of
+ * wasting a second pass on a password field that ends up flushed.
  *
- * The mnemonic textarea is intentionally bare (not a 12-cell
- * grid) — pasting from a password manager into 12 separate
- * inputs is friction the user doesn't need, and we already
- * count words on the live `wordCount` line below the field.
+ * Mirrors the structure of the previous monolithic FormPanel for
+ * email + mnemonic — same word-count hint, same anti-enum surface
+ * (« code invalide » is the only failure message regardless of
+ * which leg actually missed).
  */
-export default function FormPanel(props: FormPanelProps) {
+export default function VerifyPanel(props: VerifyPanelProps) {
   const {
     email,
     setEmail,
     mnemonic,
     setMnemonic,
-    password,
-    setPassword,
-    confirm,
-    setConfirm,
-    rules,
-    rulesOk,
-    strength,
-    confirmMismatch,
     wordCount,
     emailLooksValid,
     error,
@@ -75,9 +50,16 @@ export default function FormPanel(props: FormPanelProps) {
   return (
     <>
       <AuthPanelHeader
-        eyebrow={t('auth.recover.form.eyebrow')}
-        title={t('auth.recover.form.title')}
-        subtitle={<>{t('auth.recover.form.subtitle')}</>}
+        eyebrow={t('auth.recover.verify.eyebrow', { defaultValue: 'Récupération' })}
+        title={t('auth.recover.verify.title', { defaultValue: 'Vérifie ton code' })}
+        subtitle={
+          <>
+            {t('auth.recover.verify.subtitle', {
+              defaultValue:
+                'On confirme d’abord que ton code est valide. Tu choisiras ton nouveau mot de passe à l’étape suivante.',
+            })}
+          </>
+        }
       />
 
       <form onSubmit={onSubmit} noValidate>
@@ -125,38 +107,6 @@ export default function FormPanel(props: FormPanelProps) {
           </p>
         </div>
 
-        <Field
-          label={t('auth.recover.form.newPasswordLabel')}
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={PASSWORD_MIN_LENGTH}
-          required
-        />
-        <PasswordRulesList rules={rules} />
-        {strength ? (
-          <StrengthBar
-            score={strength.score as 0 | 1 | 2 | 3 | 4}
-            warning={strength.warning}
-            rulesOk={rulesOk}
-          />
-        ) : null}
-
-        <Field
-          label={t('auth.recover.form.confirmPasswordLabel')}
-          type="password"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          required
-          error={
-            confirmMismatch
-              ? t('auth.recover.form.confirmMismatch')
-              : undefined
-          }
-        />
-
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
         <Button
@@ -167,8 +117,8 @@ export default function FormPanel(props: FormPanelProps) {
           className="mt-2 w-full"
         >
           {submitting
-            ? t('auth.recover.form.submitting')
-            : t('auth.recover.form.submit')}
+            ? t('auth.recover.verify.submitting', { defaultValue: 'Vérification…' })
+            : t('auth.recover.verify.submit', { defaultValue: 'Vérifier le code' })}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">

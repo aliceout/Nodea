@@ -230,6 +230,76 @@ async function callRecoverStart(
   };
 }
 
+describe('POST /auth/recover-kek/verify (issue #48 pre-step)', () => {
+  it('returns 200 ok:true for a known user with a matching recovery code hash', async () => {
+    await seedUser('rec-verify-ok@example.com');
+    const cookie = await loginAs(app, 'rec-verify-ok@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'rec-verify-ok@example.com', TEST_PASSWORD);
+    const { entropy, body } = fakeRecoverySetupPayload(proof);
+    await app.request('/auth/security/recovery-code', {
+      ...jsonPost(body),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+
+    const recoveryCodeHash = sha256Hex(entropy);
+    const res = await app.request(
+      '/auth/recover-kek/verify',
+      jsonPost({ email: 'rec-verify-ok@example.com', recoveryCodeHash }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it('rejects 401 when the recoveryCodeHash mismatches a known user', async () => {
+    await seedUser('rec-verify-miss@example.com');
+    const cookie = await loginAs(app, 'rec-verify-miss@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'rec-verify-miss@example.com', TEST_PASSWORD);
+    const { body } = fakeRecoverySetupPayload(proof);
+    await app.request('/auth/security/recovery-code', {
+      ...jsonPost(body),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+
+    const wrongHash = sha256Hex(randomBytes(16));
+    const res = await app.request(
+      '/auth/recover-kek/verify',
+      jsonPost({ email: 'rec-verify-miss@example.com', recoveryCodeHash: wrongHash }),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: 'invalid_credentials' });
+  });
+
+  it('rejects 401 for an unknown email (anti-enum)', async () => {
+    const hash = sha256Hex(randomBytes(16));
+    const res = await app.request(
+      '/auth/recover-kek/verify',
+      jsonPost({ email: 'ghost-verify@example.com', recoveryCodeHash: hash }),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: 'invalid_credentials' });
+  });
+
+  it('rejects 401 for a known user without a recovery code set (anti-enum)', async () => {
+    await seedUser('rec-verify-nocode@example.com');
+    // No /auth/security/recovery-code POST → recoveryCodeHash stays NULL.
+    const hash = sha256Hex(randomBytes(16));
+    const res = await app.request(
+      '/auth/recover-kek/verify',
+      jsonPost({ email: 'rec-verify-nocode@example.com', recoveryCodeHash: hash }),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: 'invalid_credentials' });
+  });
+
+  it('rejects 400 invalid_body on a malformed hash', async () => {
+    const res = await app.request(
+      '/auth/recover-kek/verify',
+      jsonPost({ email: 'rec-verify-bad@example.com', recoveryCodeHash: 'not-hex' }),
+    );
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('POST /auth/recover-kek/start (anti-enum)', () => {
   it('returns wrap blobs + a registrationResponse for a known user with a recovery code', async () => {
     const u = await seedUser('rec-known@example.com');

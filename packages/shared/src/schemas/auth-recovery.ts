@@ -63,6 +63,36 @@ export type RecoveryCodeUpsertBody = z.infer<typeof RecoveryCodeUpsertBodySchema
  * ========================================================================== */
 
 /**
+ * `POST /auth/recover-kek/verify` — issue #48 pre-step. Lets the
+ * client check that an `(email, recoveryCodeHash)` pair is valid
+ * BEFORE the user commits a new password. The full
+ * `/start`+`/finish` flow still does the rotation downstream ; this
+ * route only proves up-front « the code matches » so the SPA can
+ * stop blocking the user behind a 12-word grid + a password form
+ * on the same screen.
+ *
+ * Anti-enum : 401 `invalid_credentials` is returned uniformly for
+ * unknown emails, known emails without a recovery code, and known
+ * emails with a hash mismatch. Same timing budget as the
+ * stored-value comparison in `/finish` to avoid a tell.
+ *
+ * Aggressively rate-limited (3/h per IP) so the route can't be
+ * brute-forced into a hash oracle.
+ */
+export const RecoverKekVerifyBodySchema = z.object({
+  email: z.string().email().max(254),
+  recoveryCodeHash: Sha256Hex,
+});
+export type RecoverKekVerifyBody = z.infer<typeof RecoverKekVerifyBodySchema>;
+
+export const RecoverKekVerifyResponseSchema = z.object({
+  ok: z.literal(true),
+});
+export type RecoverKekVerifyResponse = z.infer<
+  typeof RecoverKekVerifyResponseSchema
+>;
+
+/**
  * `POST /auth/recover-kek/start` — kicks off the 2-step recover
  * flow. Anonymous: the user typed an email but we can't trust
  * them with "this email exists" / "doesn't exist".

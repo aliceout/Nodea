@@ -4,6 +4,8 @@ import {
   RecoverKekFinishBodySchema,
   RecoverKekStartBodySchema,
   RecoverKekStartResponseSchema,
+  RecoverKekVerifyBodySchema,
+  RecoverKekVerifyResponseSchema,
   RecoveryCodeUpsertBodySchema,
   type RecoverKekStartResponse,
 } from '@nodea/shared';
@@ -72,6 +74,17 @@ const recoverLimiter = rateLimit({
   keyPrefix: 'recover-kek',
 });
 
+// /verify is a pure hash-comparison oracle ; cap aggressively so a
+// known email can't be brute-forced into revealing its mnemonic
+// hash. 3 attempts/hour mirrors the slowest rate at which a real
+// user might be typing 12 words wrong + retrying (typically once or
+// twice before checking their backup).
+const verifyLimiter = rateLimit({
+  max: 3,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'recover-kek-verify',
+});
+
 const recoverySetupLimiter = rateLimit({
   max: 5,
   windowMs: 60 * 60_000,
@@ -133,6 +146,23 @@ const recoverFinishRoute = createRoute({
   },
 });
 
+const recoverVerifyRoute = createRoute({
+  method: 'post',
+  path: '/recover-kek/verify',
+  tags: ['auth-recovery'],
+  summary: 'Recover KEK — pre-step (verify email + code hash, issue #48)',
+  middleware: [verifyLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: RecoverKekVerifyBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(RecoverKekVerifyResponseSchema, 'Code matches'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
 /* ============================================================================
  * Shared helpers
  * ========================================================================== */
@@ -177,6 +207,47 @@ authRecoveryRoutes.openapi(setupRoute, async (c) => {
     .where(eq(users.id, user.id));
 
   return c.json({ ok: true as const, regenerated: isRegenerate }, 200);
+});
+
+/* ============================================================================
+ * POST /auth/recover-kek/verify
+ * Pre-step (issue #48). Confirms an `(email, recoveryCodeHash)`
+ * pair is valid BEFORE the user picks a new password. Anonymous,
+ * anti-enum, aggressively rate-limited.
+ *
+ * Stateless : returns 200 `{ ok: true }` on a hit and 401
+ * `invalid_credentials` on any miss. Does NOT issue a token —
+ * `/start` + `/finish` still gate their own rotation, this route
+ * only lets the SPA stop blocking the user behind a 12-word form
+ * coupled to a new-password form.
+ * ========================================================================== */
+
+authRecoveryRoutes.openapi(recoverVerifyRoute, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = RecoverKekVerifyBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+  const email = body.email.toLowerCase();
+
+  const [user] = await db
+    .select({ recoveryCodeHash: users.recoveryCodeHash })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  // Anti-enum: same failure shape and same time budget for unknown
+  // email, known-without-recovery, and hash mismatch. We always
+  // run the timing-safe compare so the cost of the comparison is
+  // paid even when the user wasn't found ; pass a deterministic
+  // dummy hash on the miss path to keep the branches symmetrical.
+  const storedHash =
+    user?.recoveryCodeHash ?? '0'.repeat(64);
+  const match = constantTimeEqualHex(storedHash, body.recoveryCodeHash);
+  if (!user || user.recoveryCodeHash === null || !match) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  return c.json({ ok: true as const }, 200);
 });
 
 /* ============================================================================

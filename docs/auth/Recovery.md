@@ -36,6 +36,39 @@ a new OPAQUE envelope without knowing the recovery code.
 Property preserved: *the server doesn't know the recovery code in
 cleartext*, only an uncrackable hash.
 
+### `POST /auth/recover-kek/verify` (issue #48 pre-step)
+
+Body: `{ email, recoveryCodeHash }`. Server:
+1. Looks up `users` by email.
+2. Constant-time-compares the submitted `recoveryCodeHash` to the
+   stored `recovery_code_hash`. **Always runs the comparison**,
+   even when the user wasn't found, against a deterministic dummy
+   so the timing budget is identical between known and unknown
+   email branches.
+3. Returns `200 { ok: true }` only when the user exists, has a
+   recovery code configured, and the hash matches. Every miss
+   (unknown email, no code set, hash mismatch) returns
+   `401 { error: 'invalid_credentials' }`. Same shape, same time
+   budget — anti-enum preserved.
+
+Why a separate route :
+- Lets the SPA confirm an `(email, mnemonic)` pair **before**
+  asking the user to commit a new password. Without it, the
+  monolithic flow forced the user to retype a strong password
+  twice only to discover the mnemonic was wrong — wasted effort
+  plus a candidate password lingering in two input fields the
+  whole time the mnemonic was being copied.
+- Mirrors the 2-stage rhythm we already use on `/request-reset`
+  (fork → destroy) and the TOTP bypass (request → confirm).
+
+Hardening :
+- **Aggressive rate-limit** (3 attempts/hour, vs `/start`'s 5/h
+  because `/start` requires more work to abuse). Keeps the route
+  from being brute-forced into a hash oracle.
+- **Stateless** : no token is issued. The downstream `/start` +
+  `/finish` rotation is still gated by its own hash check in
+  `/finish` — this route is just an up-front UX filter.
+
 ### `POST /auth/recover-kek/start`
 
 Body: `{ email }`. Server:

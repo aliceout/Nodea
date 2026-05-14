@@ -74,11 +74,24 @@ test('recovery code — generate, then use to reset password', async ({ page }) 
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   });
 
-  /* -------- 4. Use the recovery code on /recover -------- */
+  /* -------- 4a. Verify step (issue #48 split) -------- */
+  // The page now opens on a `VerifyPanel` that collects only email +
+  // mnemonic. Submitting it hits `/auth/recover-kek/verify` and, on
+  // a match, advances the UI to the password panel — the new
+  // password field is not in the DOM until then.
   await page.goto('/recover');
   await page.getByLabel(/E-?mail/i).fill(user.email);
-  // The mnemonic field is a textarea ; we located it by id earlier.
   await page.locator('#recover-mnemonic').fill(mnemonic);
+  await page
+    .getByRole('button', { name: /V.rifier le code|Verify/i })
+    .click();
+
+  /* -------- 4b. Password step -------- */
+  // Wait for the second panel to mount — its « Nouveau mot de
+  // passe » field is the cleanest signal that step 1 succeeded.
+  await expect(
+    page.getByLabel(/^Nouveau mot de passe$|^New password$/i),
+  ).toBeVisible({ timeout: 10_000 });
   await page
     .getByLabel(/^Nouveau mot de passe$|^New password$/i)
     .fill(NEW_PASSWORD);
@@ -86,7 +99,7 @@ test('recovery code — generate, then use to reset password', async ({ page }) 
     .getByLabel(/Confirmer le mot de passe|Confirm.*password/i)
     .fill(NEW_PASSWORD);
   await page
-    .getByRole('button', { name: /Réinitialiser|Reset|Récupérer|Recover/i })
+    .getByRole('button', { name: /R.cup.rer mon compte|Recover my account/i })
     .click();
 
   /* -------- 5. Lands directly on /flow -------- */

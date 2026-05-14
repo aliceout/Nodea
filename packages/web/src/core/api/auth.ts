@@ -9,6 +9,7 @@ import {
   ReauthPasskeyStartResponseSchema,
   ReauthPasswordStartResponseSchema,
   RecoverKekStartResponseSchema,
+  RecoverKekVerifyResponseSchema,
   ResetPasswordStartResponseSchema,
   type AuthMeCryptoResponse,
   type AuthMeResponse,
@@ -35,6 +36,8 @@ import {
   type RecoverKekFinishBody,
   type RecoverKekStartBody,
   type RecoverKekStartResponse,
+  type RecoverKekVerifyBody,
+  type RecoverKekVerifyResponse,
   type RecoveryCodeUpsertBody,
   type RegisterBody,
   type RequestResetBody,
@@ -344,6 +347,22 @@ export async function apiRecoverKekStart(
     '/auth/recover-kek/start',
     body,
     RecoverKekStartResponseSchema,
+  );
+}
+
+/** Issue #48 pre-step : confirm an (email, recoveryCodeHash) pair
+ *  is valid before the user commits a new password. Throws on 401
+ *  with the same `invalid_credentials` shape the full /start +
+ *  /finish flow uses, so the SPA can surface a unified
+ *  « code invalide » message. */
+export async function apiRecoverKekVerify(
+  body: RecoverKekVerifyBody,
+): Promise<RecoverKekVerifyResponse> {
+  return request(
+    'POST',
+    '/auth/recover-kek/verify',
+    body,
+    RecoverKekVerifyResponseSchema,
   );
 }
 

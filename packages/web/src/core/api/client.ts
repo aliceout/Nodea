@@ -48,6 +48,7 @@ export {
   apiReauthPasswordStart,
   apiRecoverKekFinish,
   apiRecoverKekStart,
+  apiRecoverKekVerify,
   apiRecoveryCodeUpsert,
   apiRegister,
   apiRegisterActivate,
