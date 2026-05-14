@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { formatNumber } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
 
 import { useJournalData, useJournalFilters } from '../context';
+import ThreadsManagerModal from './ThreadsManagerModal';
 
 /**
  * Filter sidebar for the Journal. Sections : vue (par fil / par
@@ -29,6 +30,7 @@ export default function SideColumn() {
     setGroupBy,
     setThreadFilter,
   } = useJournalFilters();
+  const [threadsManagerOpen, setThreadsManagerOpen] = useState(false);
 
   return (
     <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
@@ -73,8 +75,23 @@ export default function SideColumn() {
               ))}
             </div>
           )}
+          {threads.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setThreadsManagerOpen(true)}
+              className="mt-2 cursor-pointer text-[11.5px] text-muted underline-offset-2 transition-colors hover:text-ink hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              {t('journal.side.threadsManageCta')}
+            </button>
+          ) : null}
         </section>
       ) : null}
+
+      <ThreadsManagerModal
+        open={threadsManagerOpen}
+        onClose={() => setThreadsManagerOpen(false)}
+      />
+
 
       <section>
         <SectionLabel>{t('journal.side.stats')}</SectionLabel>

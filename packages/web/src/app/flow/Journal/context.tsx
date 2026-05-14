@@ -19,6 +19,11 @@ import { matchesAnyField } from '@/lib/text-search';
 
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
+import {
+  mergeThreadsInString,
+  removeThreadFromString,
+  renameThreadInString,
+} from './lib/threads-mutate';
 import type { JournalEntry, JournalStats } from './lib/types';
 
 /**
@@ -65,6 +70,17 @@ interface JournalFiltersValue {
   setSearch: (next: string) => void;
 }
 
+/**
+ * Result of a bulk thread mutation (rename / merge / delete).
+ * The action runs PATCHes in parallel ; this shape lets the
+ * caller surface a precise « N réussis, M échoués » report
+ * without re-reading the entries list.
+ */
+export interface ThreadMutationResult {
+  updatedIds: ReadonlyArray<string>;
+  failedIds: ReadonlyArray<string>;
+}
+
 interface JournalActionsValue {
   /** Id of the entry currently shown in the focus reader, or null
    *  when the regular list view is active. Stored as id rather
@@ -75,6 +91,29 @@ interface JournalActionsValue {
   deleteEntry: (entry: JournalEntry) => Promise<void>;
   openReader: (id: string) => void;
   closeReader: () => void;
+  /**
+   * Rename a thread across every entry that carries it (issue #57).
+   * Optimistic local update + parallel PATCH ; the local state
+   * for any failed entry reverts to its pre-update thread, so the
+   * UI mirrors actual server state per-entry. The caller decides
+   * how to surface partial failures.
+   */
+  renameThread: (from: string, to: string) => Promise<ThreadMutationResult>;
+  /**
+   * Merge several source threads into a single target name. The
+   * target itself is allowed to be one of the sources (collapses
+   * duplicate occurrences in the same entry).
+   */
+  mergeThreads: (
+    sources: ReadonlyArray<string>,
+    target: string,
+  ) => Promise<ThreadMutationResult>;
+  /**
+   * Drop a thread from every entry that carries it. Entries that
+   * end up with an empty thread are left as such (sans-thread
+   * bucket on the list page).
+   */
+  deleteThread: (target: string) => Promise<ThreadMutationResult>;
 }
 
 const {
@@ -261,6 +300,108 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const openReader = useCallback((id: string) => setReadingId(id), []);
   const closeReader = useCallback(() => setReadingId(null), []);
 
+  /**
+   * Apply a thread-string transform to every entry currently in
+   * memory and PATCH each one whose thread actually changed. The
+   * transform must be pure ; identity outputs are skipped (no
+   * PATCH, no rerender).
+   *
+   * Strategy : optimistic local update + parallel PATCHes. Each
+   * PATCH that fails reverts ITS entry's local thread back to the
+   * pre-update value, so the local state never permanently
+   * diverges from the server for a failed entry. Full transactional
+   * rollback (revert the successful ones too) is out of scope here
+   * — issue #57 noted the trade-off but the partial-failure path
+   * is rare enough in practice that one retry from the manager is
+   * a fine UX.
+   */
+  const applyThreadTransform = useCallback(
+    async (
+      transform: (raw: string) => string,
+    ): Promise<ThreadMutationResult> => {
+      if (!ctx) return { updatedIds: [], failedIds: [] };
+      const affected: Array<{ entry: JournalEntry; nextThread: string }> = [];
+      for (const entry of entriesRef.current) {
+        const next = transform(entry.thread);
+        if (next !== entry.thread) affected.push({ entry, nextThread: next });
+      }
+      if (affected.length === 0) return { updatedIds: [], failedIds: [] };
+
+      // Snapshot the pre-update threads so each failed PATCH can
+      // revert its own entry without cross-talk between concurrent
+      // mutations on other entries.
+      const snapshot = new Map(
+        affected.map(({ entry }) => [entry.id, entry.thread]),
+      );
+
+      // Optimistic local update — flip every affected entry at once.
+      setEntries((prev) =>
+        prev.map((e) => {
+          const change = affected.find((a) => a.entry.id === e.id);
+          return change ? { ...e, thread: change.nextThread } : e;
+        }),
+      );
+
+      const updatedIds: string[] = [];
+      const failedIds: string[] = [];
+      await Promise.all(
+        affected.map(async ({ entry, nextThread }) => {
+          try {
+            await journalClient.update(ctx.moduleUserId, ctx.mainKey, entry.id, {
+              type: 'journal.entry',
+              date: entry.dateIso,
+              thread: nextThread,
+              title: entry.title,
+              content: entry.content,
+              attachments: entry.attachments,
+            });
+            updatedIds.push(entry.id);
+          } catch (err) {
+            failedIds.push(entry.id);
+            // Revert this entry's optimistic thread back to its
+            // pre-update value. Other entries keep their state ;
+            // a concurrent successful PATCH on a different entry
+            // isn't undone.
+            const previous = snapshot.get(entry.id);
+            if (previous !== undefined) {
+              setEntries((prev) =>
+                prev.map((e) =>
+                  e.id === entry.id ? { ...e, thread: previous } : e,
+                ),
+              );
+            }
+            if (import.meta.env.DEV)
+              console.warn('journal: thread mutation failed', err);
+          }
+        }),
+      );
+
+      if (updatedIds.length > 0) bumpJournalVersion();
+      return { updatedIds, failedIds };
+    },
+    [ctx, bumpJournalVersion],
+  );
+
+  const renameThread = useCallback(
+    (from: string, to: string) =>
+      applyThreadTransform((raw) => renameThreadInString(raw, from, to)),
+    [applyThreadTransform],
+  );
+
+  const mergeThreads = useCallback(
+    (sources: ReadonlyArray<string>, target: string) =>
+      applyThreadTransform((raw) =>
+        mergeThreadsInString(raw, sources, target),
+      ),
+    [applyThreadTransform],
+  );
+
+  const deleteThread = useCallback(
+    (target: string) =>
+      applyThreadTransform((raw) => removeThreadFromString(raw, target)),
+    [applyThreadTransform],
+  );
+
   // ---- Memoised context values ----
 
   const dataValue = useMemo<JournalDataValue>(
@@ -290,8 +431,20 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       deleteEntry,
       openReader,
       closeReader,
+      renameThread,
+      mergeThreads,
+      deleteThread,
     }),
-    [readingId, editEntry, deleteEntry, openReader, closeReader],
+    [
+      readingId,
+      editEntry,
+      deleteEntry,
+      openReader,
+      closeReader,
+      renameThread,
+      mergeThreads,
+      deleteThread,
+    ],
   );
 
   return (

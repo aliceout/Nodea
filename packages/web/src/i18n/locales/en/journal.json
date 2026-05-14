@@ -44,6 +44,7 @@
     "threads": "Threads",
     "threadsEmpty": "You haven't created any thread yet.",
     "threadsAll": "All",
+    "threadsManageCta": "Manage threads",
     "stats": "Stats",
     "statsEntries": "Entries",
     "statsWords": "Words written",
@@ -65,6 +66,25 @@
   "context": {
     "loadFailed": "Failed to load journal.",
     "confirmDelete": "Delete \"{label}\"?"
+  },
+  "threadsManager": {
+    "title": "Manage threads",
+    "subtitle": "{count} threads",
+    "empty": "No threads yet. Create a thread by tagging it in an entry.",
+    "rowStats": "{count} entries · {words} words",
+    "renameAria": "Rename thread {name}",
+    "deleteAria": "Delete thread {name}",
+    "selectAria": "Select thread {name} for merge",
+    "mergeIntro": "{count} threads selected for merge",
+    "mergeTargetLabel": "Merge into:",
+    "mergeTargetPlaceholder": "— pick a target —",
+    "mergeCta": "Merge",
+    "confirmDelete": "Drop the thread \"{name}\" from every entry that carries it?",
+    "confirmMerge": "Merge the {count} selected threads into \"{target}\"?",
+    "opRename": "Rename",
+    "opMerge": "Merge",
+    "opDelete": "Delete",
+    "opResult": "{ok} updated, {failed} failed"
   },
   "composer": {
     "submittingUpdate": "Updating…"

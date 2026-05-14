@@ -44,6 +44,7 @@
     "threads": "Fils",
     "threadsEmpty": "Tu n’as pas encore créé de fil.",
     "threadsAll": "Tous",
+    "threadsManageCta": "Gérer les fils",
     "stats": "Stats",
     "statsEntries": "Entrées",
     "statsWords": "Mots écrits",
@@ -65,6 +66,25 @@
   "context": {
     "loadFailed": "Erreur lors du chargement du journal.",
     "confirmDelete": "Supprimer « {label} » ?"
+  },
+  "threadsManager": {
+    "title": "Gérer les fils",
+    "subtitle": "{count} fils",
+    "empty": "Aucun fil pour l’instant. Crée un fil en ajoutant un mot-clé dans une entrée.",
+    "rowStats": "{count} entrées · {words} mots",
+    "renameAria": "Renommer le fil {name}",
+    "deleteAria": "Supprimer le fil {name}",
+    "selectAria": "Sélectionner le fil {name} pour la fusion",
+    "mergeIntro": "{count} fils sélectionnés pour fusion",
+    "mergeTargetLabel": "Fusionner dans :",
+    "mergeTargetPlaceholder": "— choisir une cible —",
+    "mergeCta": "Fusionner",
+    "confirmDelete": "Supprimer le fil « {name} » de toutes les entrées concernées ?",
+    "confirmMerge": "Fusionner les {count} fils sélectionnés dans « {target} » ?",
+    "opRename": "Renommage",
+    "opMerge": "Fusion",
+    "opDelete": "Suppression",
+    "opResult": "{ok} mis à jour, {failed} échecs"
   },
   "composer": {
     "submittingUpdate": "Mise à jour…"
