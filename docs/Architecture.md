@@ -443,15 +443,13 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   reads `event.state.nodeaModule` and calls `syncCurrentModule(id)`
   to restore the previous module. Old per-module URLs (`/flow/mood`,
   `?subview=`) are gone ; `/flow/*` is a catch-all redirect to
-  `/flow`. **Known gap** : the API itself still mounts per-module
-  endpoints (`/mood-entries/records`, `/library-items/records`,
-  etc.), so the operator can correlate Nginx + api request logs
-  against the `sessions` table to attribute « user U acted on module M at
-  time T ». See the « Modèle de données » section at
-  [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
-  for the full picture and the planned `/records` unification fix. Every
-  module is `React.lazy()` so opening "Mood" for the first time
-  fetches only Mood's code chunk. Per-module `ErrorBoundary`.
+  `/flow`. The API mounts every encrypted collection behind a single
+  unified `/records` endpoint (issue #67) — the module is identified
+  via the `X-Collection` request header, which Nginx and Hono's
+  default loggers don't record, so the request log no longer reveals
+  which module a user is touching. Every module is `React.lazy()` so
+  opening "Mood" for the first time fetches only Mood's code chunk.
+  Per-module `ErrorBoundary`.
 
 ### State slices
 

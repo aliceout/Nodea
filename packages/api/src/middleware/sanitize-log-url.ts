@@ -37,11 +37,11 @@
  *
  * Reference: GitHub issue #71 (broader opacity sweep).
  *
- * Residual gap explicitly NOT closed here : the request path
- * itself reveals which module the user is accessing (e.g.
- * `/mood/records` vs `/library/items`). Closing that requires a
- * unified `/records` endpoint and is tracked separately in
- * issue #67.
+ * Module identifier privacy (issue #67) is no longer a residual gap
+ * here : every encrypted collection is now reached through the
+ * single `/records` endpoint, with the collection name carried in
+ * the `X-Collection` header — neither Nginx's default access log
+ * nor Hono's `logger()` records custom headers.
  *
  * @example
  * ```ts
@@ -58,12 +58,7 @@
  */
 const WHOLESALE_REDACT_PREFIXES = [
   '/auth/',
-  '/mood/',
-  '/goals/',
-  '/journal/',
-  '/habits/',
-  '/library/',
-  '/review/',
+  '/records',
 ] as const;
 
 /** Parameter names whose values must never reach the log stream

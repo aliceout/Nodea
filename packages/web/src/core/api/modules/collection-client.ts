@@ -58,6 +58,12 @@ interface RequestOptions {
    *  the same reason as `sid`. The guard IS crypto material derived
    *  from the user's main key ; it MUST NOT travel through URLs. */
   guard?: string;
+  /** Collection name — sent as the `X-Collection` header (issue #67).
+   *  The server uses it to look up the target table ; moving it out
+   *  of the URL keeps the module identifier out of Nginx access logs
+   *  and Hono's default request logger, both of which only record
+   *  the request line. */
+  collection?: string;
 }
 
 async function request<T = unknown>(
@@ -69,6 +75,7 @@ async function request<T = unknown>(
   if (options.body !== undefined) headers['content-type'] = 'application/json';
   if (options.sid !== undefined) headers['x-sid'] = options.sid;
   if (options.guard !== undefined) headers['x-guard'] = options.guard;
+  if (options.collection !== undefined) headers['x-collection'] = options.collection;
 
   const init: RequestInit = {
     method,
@@ -145,8 +152,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     // metadata that doesn't belong inside the encrypted payload.
     const { data } = await request<{ data: EncryptedRecord[]; meta: Record<string, unknown> }>(
       'GET',
-      `/${collectionName}/records`,
-      { sid: moduleUserId },
+      `/records`,
+      { sid: moduleUserId, collection: collectionName },
     );
     return Promise.all(
       data.map(async (r) => ({
@@ -165,8 +172,9 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     const blob = await encodePayload(key, payload);
     const created = await request<EncryptedRecord>(
       'POST',
-      `/${collectionName}/records`,
+      `/records`,
       {
+        collection: collectionName,
         body: {
           sid: moduleUserId,
           ...packBlob(blob),
@@ -179,8 +187,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     const guard = await deriveGuard(key.hmacKey, moduleUserId, created.id);
     const promoted = await request<EncryptedRecord>(
       'PATCH',
-      `/${collectionName}/records/${encodeURIComponent(created.id)}`,
-      { sid: moduleUserId, guard: 'init', body: { guard } },
+      `/records/${encodeURIComponent(created.id)}`,
+      { sid: moduleUserId, guard: 'init', collection: collectionName, body: { guard } },
     );
     return {
       id: promoted.id,
@@ -199,8 +207,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     const blob = await encodePayload(key, payload);
     const updated = await request<EncryptedRecord>(
       'PATCH',
-      `/${collectionName}/records/${encodeURIComponent(id)}`,
-      { sid: moduleUserId, guard, body: packBlob(blob) },
+      `/records/${encodeURIComponent(id)}`,
+      { sid: moduleUserId, guard, collection: collectionName, body: packBlob(blob) },
     );
     return {
       id: updated.id,
@@ -217,8 +225,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     const guard = await deriveGuard(key.hmacKey, moduleUserId, id);
     await request<void>(
       'DELETE',
-      `/${collectionName}/records/${encodeURIComponent(id)}`,
-      { sid: moduleUserId, guard },
+      `/records/${encodeURIComponent(id)}`,
+      { sid: moduleUserId, guard, collection: collectionName },
     );
   }
 

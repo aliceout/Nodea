@@ -9,8 +9,13 @@ import {
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { db } from '../db/client.ts';
 import type { EntryRow, EntryTable } from '../db/schema.ts';
+import type { CollectionDef } from '../collections.ts';
 import { requireUser } from '../middleware/require-user.ts';
-import { requireGuard, type GuardVariables } from '../middleware/require-guard.ts';
+import {
+  requireCollection,
+  requireGuard,
+  type GuardVariables,
+} from '../middleware/require-guard.ts';
 import {
   createRoute,
   errorContent,
@@ -20,18 +25,39 @@ import {
 } from '../openapi/index.ts';
 
 /**
- * Public view of an entry. The minimum-readable-surface design only
- * exposes :
- *   - `id`             server-generated UUID handle (used in /records/:id)
+ * Unified records endpoint (issue #67).
+ *
+ * One router at `/records` for every encrypted collection on the
+ * Hono API. The collection name moves from the URL into the
+ * `X-Collection` request header — Nginx and Hono's default loggers
+ * don't record custom headers, so the server-side activity log no
+ * longer reveals which module a given request targeted.
+ *
+ * The DB schema is unchanged : the 9 collection tables stay
+ * separate. The `requireCollection` middleware resolves the header
+ * value into the corresponding `EntryTable` and stores it on the
+ * request context ; downstream handlers and `requireGuard` use that
+ * resolved table.
+ *
+ * Public view of an entry — minimum-readable-surface :
+ *   - `id`             server-generated UUID handle
  *   - `moduleUserId`   the access scope sid
  *   - `cipherIv`       AES-GCM IV (required to decrypt the payload)
  *   - `payload`        encrypted JSON
  *
  * `guard` is never returned (it's the shared secret authenticating
  * mutations). Timestamps are not stored at all server-side ; any
- * createdAt / updatedAt the client wants must live inside the
+ * `createdAt` / `updatedAt` the client wants must live inside the
  * encrypted payload (so the operator can't correlate write activity
  * across modules to deanonymise users).
+ *
+ * Authorisation model — **sid + guard only**, restored from the
+ * original PocketBase scheme. Entry rows carry no `user_id`, so the
+ * server cannot link a row to a specific user even with full DB
+ * access. `requireUser` runs first to gate against unauthenticated
+ * callers (rate-limit + logging anchor) but the access decision
+ * itself depends only on knowing the right `module_user_id` and the
+ * right HMAC guard.
  */
 function toView(row: EntryRow) {
   return {
@@ -47,23 +73,11 @@ const EntryListResponseSchema = z.object({
   meta: z.object({}).passthrough(),
 });
 
-/**
- * Build the 4 REST routes for a given encrypted collection.
- *
- * Authorisation model — **sid + guard only**, restored from the
- * original PocketBase scheme. Entry rows carry no `user_id`, so the
- * server cannot link a row to a specific user even with full DB
- * access. `requireUser` runs first to gate against unauthenticated
- * callers (rate-limit + logging anchor) but the access decision
- * itself depends only on knowing the right `module_user_id` and the
- * right HMAC guard, both of which require the user's main key to
- * compute.
- *
- * Adding a new collection = one line in `collections/registry.ts` ;
- * the factory mounts the same gauntlet for every collection so it
- * is impossible to forget the guard validation.
- */
-export function createCollectionRoutes(table: EntryTable) {
+export function createRecordsRoutes(collections: readonly CollectionDef[]) {
+  const byName = new Map<string, EntryTable>(
+    collections.map((c) => [c.name, c.table]),
+  );
+
   const router = new OpenAPIHono<{ Variables: GuardVariables }>({
     defaultHook: (result, c) => {
       if (!result.success) return c.json({ error: 'invalid_body' }, 400);
@@ -71,20 +85,26 @@ export function createCollectionRoutes(table: EntryTable) {
     },
   });
 
+  const collectionResolver = requireCollection(byName);
+
   const listRoute = createRoute({
     method: 'get',
     path: '/records',
     tags: ['records'],
     summary: 'List records for the given access scope (sid)',
-    middleware: [requireUser] as const,
+    middleware: [requireUser, collectionResolver] as const,
     request: {
       headers: z.object({
+        'x-collection': z.string().min(1).openapi({
+          description:
+            'Collection name (issue #67) — moves the module identifier out of the URL.',
+        }),
         'x-sid': z.string().min(1).openapi({ description: 'Module access scope sid' }),
       }),
     },
     responses: {
       200: jsonContent(EntryListResponseSchema, 'Records for the given sid'),
-      400: errorContent('Missing X-Sid header'),
+      400: errorContent('Missing or unknown collection / sid'),
       401: errorContent('Unauthenticated'),
     },
   });
@@ -94,8 +114,11 @@ export function createCollectionRoutes(table: EntryTable) {
     path: '/records',
     tags: ['records'],
     summary: 'Create a new encrypted record',
-    middleware: [requireUser] as const,
+    middleware: [requireUser, collectionResolver] as const,
     request: {
+      headers: z.object({
+        'x-collection': z.string().min(1),
+      }),
       body: {
         content: {
           'application/json': { schema: CreateEntryBodySchema },
@@ -104,7 +127,7 @@ export function createCollectionRoutes(table: EntryTable) {
     },
     responses: {
       201: jsonContent(EntryViewSchema, 'Record created'),
-      400: errorContent('Invalid body'),
+      400: errorContent('Invalid body or unknown collection'),
       401: errorContent('Unauthenticated'),
       500: errorContent('Insert failed'),
     },
@@ -115,8 +138,11 @@ export function createCollectionRoutes(table: EntryTable) {
     path: '/records/{id}',
     tags: ['records'],
     summary: 'Update an encrypted record (guard-protected)',
-    middleware: [requireUser, requireGuard(table)] as const,
+    middleware: [requireUser, collectionResolver, requireGuard] as const,
     request: {
+      headers: z.object({
+        'x-collection': z.string().min(1),
+      }),
       params: z.object({ id: z.string() }),
       body: {
         content: {
@@ -126,7 +152,7 @@ export function createCollectionRoutes(table: EntryTable) {
     },
     responses: {
       200: jsonContent(EntryViewSchema, 'Updated record'),
-      400: errorContent('Invalid body or guard already promoted'),
+      400: errorContent('Invalid body, unknown collection, or guard already promoted'),
       401: errorContent('Unauthenticated'),
       403: errorContent('Guard mismatch'),
       404: errorContent('Record not found'),
@@ -139,12 +165,16 @@ export function createCollectionRoutes(table: EntryTable) {
     path: '/records/{id}',
     tags: ['records'],
     summary: 'Delete an encrypted record (guard-protected)',
-    middleware: [requireUser, requireGuard(table)] as const,
+    middleware: [requireUser, collectionResolver, requireGuard] as const,
     request: {
+      headers: z.object({
+        'x-collection': z.string().min(1),
+      }),
       params: z.object({ id: z.string() }),
     },
     responses: {
       200: okContent('Deleted'),
+      400: errorContent('Unknown collection'),
       401: errorContent('Unauthenticated'),
       403: errorContent('Guard mismatch'),
       404: errorContent('Record not found'),
@@ -160,19 +190,9 @@ export function createCollectionRoutes(table: EntryTable) {
   // **Contract on order (API-13)** — the response order is
   // **unspecified**. Clients MUST sort after decryption ; the
   // physical insertion order Postgres surfaces today is an
-  // implementation detail, not a guarantee. A `VACUUM FULL`,
-  // `pg_repack`, replica failover, or a future replacement of the
-  // storage layer can all change the order without notice. We surface
-  // a `X-Order: unspecified` header on the response so any future
-  // consumer (mobile client, partner SDK) sees the contract without
-  // having to read this comment.
-  //
-  // The scope sid is read from the `X-Sid` header — see
-  // `requireGuard` for the rationale (SEC-01 : keep the access
-  // identifier and the HMAC guard out of URLs and therefore out of
-  // request logs). LIST does not require the guard ; reading rows
-  // requires only the sid + an authenticated session.
+  // implementation detail, not a guarantee.
   router.openapi(listRoute, async (c) => {
+    const table = c.get('table');
     const sid = c.req.header('x-sid');
     if (!sid) return c.json({ error: 'missing_sid' }, 400);
 
@@ -182,15 +202,12 @@ export function createCollectionRoutes(table: EntryTable) {
       .where(eq(table.moduleUserId, sid));
 
     c.header('x-order', 'unspecified');
-    // Uniform `{ data, meta }` envelope (audit API-06). `meta` is
-    // empty for now — order/pagination metadata would land here if
-    // it ever ships. Keeping the same envelope across every list
-    // endpoint lets the upcoming mobile client share one parser.
     return c.json({ data: rows.map(toView), meta: {} }, 200);
   });
 
   // --- CREATE (only accepts guard: "init") ---
   router.openapi(createRoute_, async (c) => {
+    const table = c.get('table');
     const raw = await c.req.json().catch(() => null);
     const parsed = CreateEntryBodySchema.safeParse(raw);
     if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
@@ -209,17 +226,13 @@ export function createCollectionRoutes(table: EntryTable) {
       .returning();
 
     if (!row) return c.json({ error: 'insert_failed' }, 500);
-    // `c.req.path` is `/<module>/records` here (the path the router
-    // saw); `Location` points to the canonical sub-URL of the new
-    // row (API-05). Even when no `GET /<module>/records/:id` exists
-    // today, the convention lets future tooling resolve the resource
-    // without inferring the URL.
     c.header('location', `${c.req.path}/${row.id}`);
     return c.json(toView(row), 201);
   });
 
   // --- UPDATE (guard-protected; supports one-time promotion init → g_...) ---
   router.openapi(updateRoute, async (c) => {
+    const table = c.get('table');
     const entry = c.get('entry');
     const raw = await c.req.json().catch(() => null);
     const parsed = UpdateEntryBodySchema.safeParse(raw);
@@ -255,6 +268,7 @@ export function createCollectionRoutes(table: EntryTable) {
 
   // --- DELETE (guard-protected) ---
   router.openapi(deleteRoute, async (c) => {
+    const table = c.get('table');
     const entry = c.get('entry');
     await db.delete(table).where(eq(table.id, entry.id));
     return c.json({ ok: true as const }, 200);

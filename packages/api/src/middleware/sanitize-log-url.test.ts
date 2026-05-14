@@ -9,10 +9,9 @@ import {
  * grade coverage (does the scrubber survive a real Hono request
  * round-trip?) lives in `test/log-opacity.test.ts`.
  *
- * Two distinct behaviours to assert (issue #71) :
- *   1. **Wholesale prefix redaction** on `/auth/*` and module
- *      routes (`/mood/*`, `/goals/*`, `/journal/*`, `/habits/*`,
- *      `/library/*`, `/review/*`) — the whole query string gets
+ * Two distinct behaviours to assert (issue #71, refined after #67) :
+ *   1. **Wholesale prefix redaction** on `/auth/*` and the unified
+ *      `/records` collection endpoint — the whole query string gets
  *      replaced regardless of param names.
  *   2. **Per-name denylist** outside those prefixes — only the
  *      named sensitive params get scrubbed, others pass through.
@@ -25,16 +24,16 @@ describe('redactQueryParams — wholesale prefix redaction', () => {
     ).toBe('POST /auth/mfa/bypass/confirm?__redacted__ 200');
   });
 
-  it('nukes the `d=` (guard) on a /mood/ route', () => {
+  it('nukes any query string on the unified /records endpoint', () => {
+    // Sid + guard now travel as headers ; this catches a future
+    // route that accidentally adds a debug query param under
+    // /records (issue #67 keeps the wholesale net as a safety floor).
     expect(
-      redactQueryParams('PATCH /mood/records/abc?d=g_a3b4c5d6e7'),
-    ).toBe('PATCH /mood/records/abc?__redacted__');
-  });
-
-  it('nukes multi-param query strings on module routes', () => {
+      redactQueryParams('PATCH /records/abc?d=g_a3b4c5d6e7'),
+    ).toBe('PATCH /records/abc?__redacted__');
     expect(
-      redactQueryParams('GET /mood/records?sid=m_xxxx&page=1'),
-    ).toBe('GET /mood/records?__redacted__');
+      redactQueryParams('GET /records?sid=m_xxxx&page=1'),
+    ).toBe('GET /records?__redacted__');
   });
 
   it('nukes magic-link tokens on /auth/activate', () => {
@@ -57,19 +56,15 @@ describe('redactQueryParams — wholesale prefix redaction', () => {
 
   it('preserves hash fragments after wholesale redaction', () => {
     expect(
-      redactQueryParams('GET /journal/records?foo=bar#anchor 200'),
-    ).toBe('GET /journal/records?__redacted__#anchor 200');
+      redactQueryParams('GET /records?foo=bar#anchor 200'),
+    ).toBe('GET /records?__redacted__#anchor 200');
   });
 
   it('covers every declared wholesale prefix', () => {
     const prefixes = [
       '/auth/foo',
-      '/mood/x',
-      '/goals/y',
-      '/journal/z',
-      '/habits/a',
-      '/library/b',
-      '/review/c',
+      '/records',
+      '/records/abc',
     ];
     for (const prefix of prefixes) {
       expect(redactQueryParams(`GET ${prefix}?secret=x 200`)).toBe(
@@ -79,9 +74,9 @@ describe('redactQueryParams — wholesale prefix redaction', () => {
   });
 
   it('does not match paths whose first segment merely starts like a prefix', () => {
-    // `/library-lookup` shares a prefix substring with `/library/`
-    // but lives at a different path. Our prefix list ends each
-    // entry with a slash precisely to avoid this false match.
+    // `/library-lookup` is a public lookup helper unrelated to the
+    // encrypted-records endpoint — it must NOT match the `/records`
+    // wholesale prefix.
     expect(redactQueryParams('GET /library-lookup?q=hugo 200')).toBe(
       'GET /library-lookup?q=hugo 200',
     );
@@ -164,9 +159,9 @@ describe('redactingPrintFunc', () => {
   it('forwards a sanitised wholesale-redacted message to console.log', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
-      redactingPrintFunc('PATCH /mood/records?d=g_secret 200 5ms');
+      redactingPrintFunc('PATCH /records/abc?d=g_secret 200 5ms');
       expect(spy).toHaveBeenCalledWith(
-        'PATCH /mood/records?__redacted__ 200 5ms',
+        'PATCH /records/abc?__redacted__ 200 5ms',
       );
     } finally {
       spy.mockRestore();

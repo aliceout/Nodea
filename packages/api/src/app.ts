@@ -18,7 +18,7 @@ import { announcementsRoutes } from './routes/announcements.ts';
 import { modulesConfigRoutes } from './routes/modules-config.ts';
 import { userPreferencesRoutes } from './routes/user-preferences.ts';
 import { libraryLookupRoutes } from './routes/library-lookup.ts';
-import { createCollectionRoutes } from './routes/collection-factory.ts';
+import { createRecordsRoutes } from './routes/records.ts';
 import { COLLECTIONS } from './collections.ts';
 import { getConfig } from './config.ts';
 import { sql } from './db/client.ts';
@@ -72,13 +72,13 @@ export function buildApp() {
   // See `middleware/sanitize-log-url.ts` for the strategy + issue
   // #71 for the broader opacity sweep.
   //
-  // **Residual gap, intentionally not closed here** : the request
-  // path itself reveals which module the user is touching
-  // (`/mood/records` vs `/library/items`). A proxy operator can
-  // therefore still reconstruct "user U did something on module M
-  // at time T" from the access log + the sessions table. Closing
-  // this requires a unified `/records` endpoint that's agnostic
-  // to the module — tracked separately in issue #67.
+  // The module identifier itself was previously in the URL
+  // (`/mood/records` vs `/library-items/records`) and would have
+  // leaked to a proxy operator via the access log + sessions
+  // table. Issue #67 collapsed every collection behind a single
+  // `/records` endpoint with the module name carried in the
+  // `X-Collection` header instead — neither Nginx's default
+  // `access_log` nor Hono's `logger()` records custom headers.
   //
   // CLAUDE.md §Error handling forbids logging crypto material.
   app.use('*', logger(redactingPrintFunc));
@@ -86,9 +86,9 @@ export function buildApp() {
   // Cache-Control on every API response (Tier 3 follow-up — the
   // « no proxy ever caches authenticated data » rule). Without it,
   // a corporate proxy or browser bfcache can serve one user's
-  // /auth/me / /<module>/records to another user. `/healthz` and
-  // `/version` are public and idempotent — they may be cached, so
-  // we leave them alone.
+  // /auth/me / /records to another user. `/healthz` and `/version`
+  // are public and idempotent — they may be cached, so we leave
+  // them alone.
   app.use('*', async (c, next) => {
     await next();
     const path = c.req.path;
@@ -253,13 +253,15 @@ export function buildApp() {
   app.route('/user-preferences', userPreferencesRoutes);
   app.route('/library/lookup', libraryLookupRoutes);
 
-  // Every collection gets its 4 REST routes with requireUser + requireGuard
-  // wired in by the factory. Adding a module = adding an entry in
-  // `COLLECTIONS` in src/collections/registry.ts; the loop here is
-  // intentionally boring — there is nowhere to forget a guard.
-  for (const collection of COLLECTIONS) {
-    app.route(`/${collection.name}`, createCollectionRoutes(collection.table));
-  }
+  // Single unified `/records` endpoint for every encrypted
+  // collection (issue #67). The module identifier moves from the
+  // URL into the `X-Collection` request header — Nginx and Hono's
+  // default loggers don't record custom headers, so the activity
+  // log no longer reveals which module a request touched.
+  // Adding a module = adding an entry in `COLLECTIONS` ; the
+  // factory mounts the same guard gauntlet for every collection so
+  // it is impossible to forget the guard validation.
+  app.route('/', createRecordsRoutes(COLLECTIONS));
 
   // OpenAPI spec + Swagger UI — both gated behind `requireAdmin` so
   // the surface stays an admin-only ops affordance. Note the URL is

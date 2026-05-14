@@ -41,12 +41,18 @@ describe('Runtime opacity — request logs', () => {
     await seedUser(email);
     const cookie = await loginAs(app, email, TEST_PASSWORD);
 
-    // Create + promote a Mood entry — the canonical case where
-    // the guard travels with the request.
+    // Create + promote a Mood entry via the unified /records endpoint
+    // (issue #67) — the canonical case where the guard travels with
+    // the request. The collection name moves to the X-Collection
+    // header so it doesn't appear in the request line at all.
     const sid = 'sid-opacity-' + Date.now();
-    const created = await app.request('/mood/records', {
+    const created = await app.request('/records', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: {
+        'content-type': 'application/json',
+        cookie,
+        'x-collection': 'mood',
+      },
       body: JSON.stringify({
         sid,
         cipherIv: 'iv-opacity',
@@ -58,13 +64,14 @@ describe('Runtime opacity — request logs', () => {
     const { id } = (await created.json()) as { id: string };
 
     const fakeGuard = 'g_' + 'f'.repeat(64);
-    const promoted = await app.request(`/mood/records/${id}`, {
+    const promoted = await app.request(`/records/${id}`, {
       method: 'PATCH',
       headers: {
         'content-type': 'application/json',
         cookie,
         'x-sid': sid,
         'x-guard': 'init',
+        'x-collection': 'mood',
       },
       body: JSON.stringify({ guard: fakeGuard }),
     });
