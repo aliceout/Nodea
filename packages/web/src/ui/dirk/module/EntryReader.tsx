@@ -13,9 +13,12 @@ import Topbar from '../Topbar';
 interface EntryReaderProps {
   /** Topbar centre label — typically `« <Module> · N / total »`. */
   topbarLabel: string;
-  /** Optional extra controls between `Modifier` and `Fermer` in the
-   *  topbar. Modules can drop a status pill / quick-action here when
-   *  the reader header isn't the right spot. */
+  /** Optional extra controls placed between `Modifier` and `Fermer`
+   *  in the action bar above the article. Modules can drop a status
+   *  pill / quick-action here when the reader header isn't the
+   *  right spot. (Used to be in the topbar pre-#58 follow-up ; the
+   *  action bar is closer to the content the user is reading,
+   *  matches the K · Sauge contextual-affordance rhythm.) */
   topbarExtras?: ReactNode;
   onOpenMenu: () => void;
   onEdit: () => void;
@@ -120,8 +123,15 @@ export default function EntryReader({
 
   return (
     <ModuleShell
-      topbar={
-        <Topbar label={topbarLabel} onOpenMenu={onOpenMenu}>
+      topbar={<Topbar label={topbarLabel} onOpenMenu={onOpenMenu} />}
+    >
+      <article className="mx-auto max-w-2xl">
+        {/* Action bar — right-aligned `Modifier` + extras + `Fermer`,
+            placed directly above the entry rather than in the
+            global topbar. Closer to the content the user is reading,
+            matches the K · Sauge contextual-affordance rhythm
+            (cf. Composer modals, EntryRow hover actions). */}
+        <div className="mb-5 flex items-center justify-end gap-1.5 border-b border-hair pb-3">
           <Button variant="ghost" size="sm" onClick={onEdit}>
             <PencilSquareIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
             {editLabel}
@@ -136,10 +146,8 @@ export default function EntryReader({
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
-        </Topbar>
-      }
-    >
-      <article className="mx-auto max-w-2xl">
+        </div>
+
         <header className="mb-7">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
@@ -150,7 +158,13 @@ export default function EntryReader({
             ) : null}
           </div>
           {title ? (
-            <h1 className="mt-2 font-serif text-[32px] leading-[1.15] tracking-[-0.01em] text-ink">
+            // K · Sauge canonical page heading — sans-serif 30 px
+            // semibold, tight tracking. Same family as `PageHeading`
+            // used by the list views, so the visual rhythm carries
+            // through the open-reader transition. The previous
+            // `font-serif text-[32px]` read as a magazine-style cue
+            // foreign to the rest of the surface (issue #58 follow-up).
+            <h1 className="mt-2 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">
               {title}
             </h1>
           ) : null}
