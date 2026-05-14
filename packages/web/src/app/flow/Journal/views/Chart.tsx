@@ -158,11 +158,6 @@ export default function Chart() {
       dayLabels={dayLabels}
       onCellClick={onCellClick}
       ariaLabel={t('journal.heatmap.ariaLabel')}
-      // Journal pioche le style « constellation de points » plutôt
-      // que les tuiles GitHub — même grammaire visuelle que les
-      // pastilles de statut dans `IntentionsBlock` (Homepage aside).
-      // Plus papier, moins contribution-graph.
-      shape="circle"
     />
   );
 }

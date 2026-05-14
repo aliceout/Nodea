@@ -54,22 +54,13 @@ function HomepageView() {
           label={formattedDate}
           onOpenMenu={() => setMobileMenuOpen(true)}
         >
-          <button
-            type="button"
-            onClick={() => openComposer()}
-            className="hidden items-center gap-2 rounded-md border border-hair bg-bg px-3 py-1.5 text-[12px] text-ink-soft transition-colors hover:border-accent hover:text-ink sm:inline-flex"
-          >
-            <kbd className="rounded border border-hair bg-bg-2 px-1 py-px font-mono text-[10px] text-muted">
-              ⌘K
-            </kbd>
-            {t('home.topbar.search', { defaultValue: 'Recherche' })}
-          </button>
           <Button variant="primary" size="sm" onClick={() => openComposer()}>
             {t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
           </Button>
         </Topbar>
       }
       side={<SideColumn />}
+      layout="split"
     >
       <PrimaryColumn />
     </ModuleShell>

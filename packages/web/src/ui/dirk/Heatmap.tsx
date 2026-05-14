@@ -71,14 +71,6 @@ export interface HeatmapProps {
   /** Grid container className override (e.g. column widths for a
    *  narrower sidebar). Defaults to a full-width fluid grid. */
   className?: string;
-  /** Cell shape. `'square'` (default) keeps the GitHub-style
-   *  rounded-corner block ; `'circle'` swaps the radius for
-   *  `rounded-full` so the grid reads as a constellation of dots
-   *  rather than a tile mosaic — same vibe as the goal-status
-   *  dots in `IntentionsBlock` (Homepage aside), more papier than
-   *  contribution-graph. Journal uses `'circle'` ; Mood keeps
-   *  `'square'` for the score-tile look. */
-  shape?: 'square' | 'circle';
 }
 
 const DAYS_PER_WEEK = 7;
@@ -92,7 +84,6 @@ export default function Heatmap({
   onCellClick,
   ariaLabel,
   className,
-  shape = 'square',
 }: HeatmapProps) {
   return (
     <div
@@ -139,10 +130,7 @@ export default function Heatmap({
             <span
               key={i}
               aria-hidden="true"
-              className={cn(
-                'aspect-square border border-hair/70',
-                shape === 'circle' ? 'rounded-full' : 'rounded-[2px]',
-              )}
+              className="aspect-square rounded-[2px] border border-hair/70"
               style={cellStyle}
             />
           );
@@ -152,8 +140,7 @@ export default function Heatmap({
             ? { ...cellStyle, backgroundColor: cell.fill }
             : cellStyle;
         const cellClass = cn(
-          'aspect-square',
-          shape === 'circle' ? 'rounded-full' : 'rounded-[2px]',
+          'aspect-square rounded-[2px]',
           cell.className,
           cell.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
           onCellClick &&
