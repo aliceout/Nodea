@@ -3,6 +3,7 @@ import type { SecurityMode } from '@nodea/shared';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
 
 /**
  * Inline « confirm with your password » form (REFACTO-12 split)
@@ -52,14 +53,14 @@ export default function PasswordProofForm({
         <strong className="font-semibold text-ink">{targetLabel}</strong>
         {t('auth.securityMode.passwordProof.instructionAfter')}
       </p>
-      <input
+      <DirkInput
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         autoComplete="current-password"
         placeholder={t('auth.securityMode.passwordProof.passwordPlaceholder')}
         autoFocus
-        className="mb-2 w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13px] text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]"
+        className="mb-2"
       />
       <div className="flex gap-2">
         <Button

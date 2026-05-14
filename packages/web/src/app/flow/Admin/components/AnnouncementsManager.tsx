@@ -12,6 +12,7 @@ import type { AnnouncementResponse } from '@nodea/shared';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 const INITIAL_FORM = { title: '', body: '' };
@@ -120,14 +121,12 @@ export default function AnnouncementsManager() {
         </h3>
 
         <div className="space-y-2.5">
-          <input
-            type="text"
+          <DirkInput
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
             maxLength={200}
             placeholder={t('admin.announcementsManager.titlePlaceholder')}
             aria-label={t('admin.announcementsManager.titleAria')}
-            className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
           <textarea
             value={form.body}

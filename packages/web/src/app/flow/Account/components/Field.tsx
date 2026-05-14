@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, Ref } from 'react';
 
-import { cn } from '@/lib/utils';
+import DirkInput from '@/ui/atoms/dirk/Input';
 
 interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'children'> {
   label: string;
@@ -9,13 +9,17 @@ interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'childr
   ref?: Ref<HTMLInputElement>;
 }
 
-/** Labelled `<input>` used by the Danger tab's confirmation form.
- *  Auto-derives the `id` from the field name / label so the
+/** Labelled `<DirkInput>` used by the Danger tab's confirmation
+ *  form. Auto-derives the `id` from the field name / label so the
  *  `<label htmlFor>` link stays correct without the caller having
- *  to think about it. */
+ *  to think about it.
+ *
+ *  Pre-#35 this component rolled its own `<input>` with copy-pasted
+ *  K · Sauge classes ; it had silently drifted (e.g. `rounded-md`
+ *  vs. the canonical `rounded-sm`). Now delegates to `DirkInput`
+ *  so any future style bump on the atom propagates here for free. */
 export default function Field({
   label,
-  className,
   id,
   name,
   ref,
@@ -30,19 +34,7 @@ export default function Field({
       >
         {label}
       </label>
-      <input
-        id={inputId}
-        name={name}
-        ref={ref}
-        className={cn(
-          'block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink',
-          'outline-none transition-[border-color,box-shadow]',
-          'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          className,
-        )}
-        {...rest}
-      />
+      <DirkInput id={inputId} name={name} {...(ref ? { ref } : {})} {...rest} />
     </div>
   );
 }

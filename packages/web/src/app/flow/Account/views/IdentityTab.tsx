@@ -9,6 +9,7 @@ import {
 import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import DirkInput from '@/ui/atoms/dirk/Input';
 
 import IdentityRow from '../components/IdentityRow';
 import Stats from '../components/Stats';
@@ -146,12 +147,10 @@ export default function IdentityTab() {
           onCancel={cancelEditUsername}
           onSave={saveUsername}
         >
-          <input
-            type="text"
+          <DirkInput
             value={usernameDraft}
             onChange={(e) => setUsernameDraft(e.target.value)}
             autoFocus
-            className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
         </IdentityRow>
 
@@ -168,21 +167,19 @@ export default function IdentityTab() {
           onSave={saveEmail}
         >
           <div className="space-y-2.5">
-            <input
+            <DirkInput
               type="email"
               value={emailDraft}
               onChange={(e) => setEmailDraft(e.target.value)}
               autoComplete="email"
               autoFocus
-              className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
             />
-            <input
+            <DirkInput
               type="password"
               value={emailPassword}
               onChange={(e) => setEmailPassword(e.target.value)}
               placeholder={t('account.identity.email.passwordPlaceholder')}
               autoComplete="current-password"
-              className="block h-8 w-full rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
             />
           </div>
         </IdentityRow>

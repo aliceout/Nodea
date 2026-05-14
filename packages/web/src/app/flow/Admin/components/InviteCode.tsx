@@ -4,6 +4,7 @@ import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { AdminInviteRow } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
 
 /**
  * Email-bound invite manager (Auth-Roadmap Phase 1, post-rework v2).
@@ -86,7 +87,7 @@ export default function InviteManager({
           <Button type="submit" size="sm" disabled={!looksValidEmail}>
             Envoyer l'invitation
           </Button>
-          <input
+          <DirkInput
             id="invite-email"
             type="email"
             inputMode="email"
@@ -95,7 +96,7 @@ export default function InviteManager({
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ami@example.com"
             aria-label="E-mail à inviter"
-            className="w-full max-w-[320px] rounded-md border border-hair bg-bg px-3 py-2 text-[13.5px] text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]"
+            className="max-w-[320px]"
           />
         </form>
 
