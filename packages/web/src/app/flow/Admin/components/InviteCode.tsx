@@ -1,108 +1,253 @@
-import Button from '@/ui/atoms/base/Button';
-import SurfaceCard from '@/ui/atoms/specifics/SurfaceCard';
+import { useState } from 'react';
+import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
+
 import type { AdminInviteRow } from '@/core/api/client';
+import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
 
-/** A minted invite kept in component state after creation; the `code`
- *  field is only known client-side at mint time (the server only stores
- *  the hash). */
-export interface MintedInvite extends AdminInviteRow {
-  code: string;
+/**
+ * Email-bound invite manager (Auth-Roadmap Phase 1, post-rework v2).
+ *
+ * Replaces the old "mint a clear code, copy/paste it" UI. Admin enters
+ * an email; the server generates a token, hashes it, emails the link
+ * directly to the recipient. The clear token never appears in the admin
+ * UI — there is nothing to copy. Each pending invite carries Resend
+ * (re-issue + re-email) and Revoke (delete) actions.
+ */
+
+export interface InviteManagerProps {
+  pendingInvites: AdminInviteRow[];
+  /** Pending state of the per-row Resend / Revoke buttons. Keyed by
+   *  invite id so multiple rows can mutate independently without a
+   *  global "busy" flag. */
+  busyInviteId: string | null;
+  feedback: { kind: 'ok' | 'error'; message: string } | null;
+  /** Open / Closed registration setting + setter. The toggle lives in
+   *  this panel for now — admins coming to manage invites also tend
+   *  to think about access policy at the same time. */
+  openRegistration: boolean;
+  toggleBusy: boolean;
+  onToggleOpenRegistration(next: boolean): void;
+  onSendInvite(email: string): void;
+  onResendInvite(id: string): void;
+  onRevokeInvite(id: string): void;
 }
 
-export interface InviteCodeManagerProps {
-  /** Fresh codes minted during this session (clear code still visible). */
-  mintedCodes: MintedInvite[];
-  /** Server-known invites (no clear code, only metadata). */
-  unusedInvites: AdminInviteRow[];
-  generating: boolean;
-  copySuccess: string | null;
-  onGenerate(): void;
-  onCopy(code: string): void;
-  onDelete(id: string): void;
-}
+export default function InviteManager({
+  pendingInvites,
+  busyInviteId,
+  feedback,
+  openRegistration,
+  toggleBusy,
+  onToggleOpenRegistration,
+  onSendInvite,
+  onResendInvite,
+  onRevokeInvite,
+}: InviteManagerProps) {
+  const [email, setEmail] = useState('');
+  const trimmed = email.trim();
+  const looksValidEmail = /\S+@\S+\.\S+/.test(trimmed);
 
-export default function InviteCodeManager({
-  mintedCodes,
-  unusedInvites,
-  generating,
-  copySuccess,
-  onGenerate,
-  onCopy,
-  onDelete,
-}: InviteCodeManagerProps) {
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!looksValidEmail) return;
+    onSendInvite(trimmed);
+    setEmail('');
+  }
+
   return (
-    <SurfaceCard className="border-gray-200 bg-white hover:border-gray-300 dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-start gap-3">
-          <Button onClick={onGenerate} variant="info" disabled={generating}>
-            {generating ? 'Génération…' : 'Générer un code'}
+    <div className="divide-y divide-hair">
+      <section className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
+          Inscription ouverte (sans invitation)
+        </h3>
+        <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6">
+          <OpenRegistrationToggle
+            checked={openRegistration}
+            busy={toggleBusy}
+            onChange={onToggleOpenRegistration}
+          />
+          <p className="text-[12px] leading-[1.55] text-muted">
+            Quand actif, n'importe qui peut créer un compte sans invitation
+            (parcours d'activation par e-mail). Sinon (par défaut),
+            l'inscription exige un lien envoyé par un·e admin.
+          </p>
+        </div>
+      </section>
+
+      <section className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
+          E-mail à inviter
+        </h3>
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6"
+        >
+          <Button type="submit" size="sm" disabled={!looksValidEmail}>
+            Envoyer l'invitation
           </Button>
-        </div>
-        {copySuccess ? (
-          <span className="text-xs text-emerald-600 dark:text-emerald-300">{copySuccess}</span>
+          <DirkInput
+            id="invite-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="ami@example.com"
+            aria-label="E-mail à inviter"
+            className="max-w-[320px]"
+          />
+        </form>
+
+        {feedback ? (
+          <p
+            role={feedback.kind === 'ok' ? 'status' : 'alert'}
+            className={cn(
+              'mt-3 text-[12px]',
+              feedback.kind === 'ok' ? 'text-accent-deep' : 'text-danger',
+            )}
+          >
+            {feedback.message}
+          </p>
         ) : null}
-      </div>
+      </section>
 
-      {mintedCodes.length > 0 ? (
-        <div className="mt-4">
-          <div className="mb-2 font-semibold text-slate-700 dark:text-slate-200">
-            Codes générés pendant cette session (à copier maintenant, perdus au rafraîchissement) :
-          </div>
-          <ul className="flex flex-wrap gap-3">
-            {mintedCodes.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center gap-1.5 rounded border border-gray-200 bg-gray-100 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/60"
-              >
-                <button
-                  type="button"
-                  onClick={() => onCopy(c.code)}
-                  title="Copier le code"
-                  className="rounded px-1 py-1 hover:bg-sky-100 focus:outline-none dark:hover:bg-slate-700/80"
-                >
-                  📋
-                </button>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-200">{c.code}</span>
-                <button
-                  type="button"
-                  onClick={() => onDelete(c.id)}
-                  title="Supprimer ce code"
-                  className="rounded px-1 py-1 text-red-600 hover:bg-red-100 focus:outline-none dark:hover:bg-red-500/20"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <section className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
+          Invitations en attente
+        </h3>
+        {pendingInvites.length === 0 ? (
+          <p className="text-[12px] italic text-muted">
+            Aucune invitation en attente.
+          </p>
+        ) : (
+          /* Real <table> rather than a CSS-grid fake — `table-auto`
+             sizes each col to its widest cell while keeping every row
+             aligned exactly the same, which the grid version couldn't
+             guarantee once the headers had `tracking` + `uppercase`. */
+          <table className="w-auto border-collapse">
+            <thead>
+              <tr className="text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-muted">
+                <th className="min-w-[220px] border-b border-hair px-4 pb-1.5 font-semibold" />
+                <th className="min-w-[200px] border-b border-hair px-4 pb-1.5 font-semibold">
+                  Envoyée
+                </th>
+                <th className="min-w-[200px] border-b border-hair px-4 pb-1.5 font-semibold">
+                  Expire
+                </th>
+                <th className="border-b border-hair px-4 pb-1.5 font-semibold" />
+              </tr>
+            </thead>
+            <tbody>
+              {pendingInvites.map((i, idx) => {
+                const busy = busyInviteId === i.id;
+                const isLast = idx === pendingInvites.length - 1;
+                const tdCls = cn(
+                  'py-2 px-4 text-[12px] text-muted align-middle',
+                  !isLast && 'border-b border-hair',
+                );
+                return (
+                  <tr key={i.id}>
+                    <td className={cn(tdCls, 'font-medium text-ink')}>
+                      {i.email}
+                    </td>
+                    <td className={cn(tdCls, 'whitespace-nowrap')}>
+                      {new Date(i.createdAt).toLocaleString('fr-FR')}
+                    </td>
+                    <td className={cn(tdCls, 'whitespace-nowrap')}>
+                      {i.expiresAt
+                        ? new Date(i.expiresAt).toLocaleString('fr-FR')
+                        : ''}
+                    </td>
+                    <td className={tdCls}>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          iconOnly
+                          onClick={() => onResendInvite(i.id)}
+                          disabled={busy}
+                          aria-label="Renvoyer l'invitation"
+                          title="Renvoyer l'invitation"
+                        >
+                          <ArrowPathIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="danger-ghost"
+                          size="xs"
+                          iconOnly
+                          onClick={() => onRevokeInvite(i.id)}
+                          disabled={busy}
+                          aria-label="Révoquer cette invitation"
+                          title="Révoquer cette invitation"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+  );
+}
 
-      {unusedInvites.length > 0 ? (
-        <div className="mt-4">
-          <div className="mb-2 font-semibold text-slate-700 dark:text-slate-200">
-            Invitations en attente côté serveur :
-          </div>
-          <ul className="text-xs text-slate-600 dark:text-slate-300">
-            {unusedInvites.map((i) => (
-              <li key={i.id} className="flex items-center gap-2 py-1">
-                <span className="font-mono">{i.id.slice(0, 8)}…</span>
-                <span>créée {new Date(i.createdAt).toLocaleString()}</span>
-                {i.expiresAt ? (
-                  <span>· expire {new Date(i.expiresAt).toLocaleString()}</span>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => onDelete(i.id)}
-                  title="Supprimer cette invitation"
-                  className="ml-2 rounded px-1 py-0.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-500/20"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </SurfaceCard>
+interface OpenRegistrationToggleProps {
+  checked: boolean;
+  busy: boolean;
+  onChange: (next: boolean) => void;
+}
+
+/**
+ * Toggle that flips `app_settings.open_registration` server-side.
+ * When ON, anyone can register without an invite (free signup with
+ * activation email). When OFF (default), registration requires an
+ * invite link issued by an admin.
+ *
+ * The title and descriptor live in the parent section now (Account-
+ * style sections, see {@link InviteManager}); this component is just
+ * the toggle pill itself.
+ */
+function OpenRegistrationToggle({
+  checked,
+  busy,
+  onChange,
+}: OpenRegistrationToggleProps) {
+  const id = 'admin-open-registration-toggle';
+  return (
+    <label
+      htmlFor={id}
+      className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center"
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
+          checked ? 'bg-accent' : 'bg-hair',
+          busy && 'opacity-60',
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute left-0.5 top-0.5 h-5 w-5 rounded-full border border-hair bg-bg transition-transform duration-150 ease-out',
+          checked && 'translate-x-5',
+        )}
+      />
+      <input
+        id={id}
+        type="checkbox"
+        aria-label="Autoriser les inscriptions ouvertes (sans invitation)"
+        className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden disabled:cursor-not-allowed"
+        checked={checked}
+        disabled={busy}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
   );
 }

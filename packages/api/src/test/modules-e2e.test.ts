@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { buildApp } from '../app.ts';
-import { TEST_PASSWORD, seedUser, extractCookie } from './helpers.ts';
+import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 import {
   simDeriveMainKeys,
   simEncryptPayload,
@@ -11,7 +11,7 @@ import {
 import type {
   MoodPayload,
   GoalsPayload,
-  PassagePayload,
+  JournalPayload,
   HabitsItemPayload,
   HabitsLogPayload,
   LibraryItemPayload,
@@ -23,12 +23,7 @@ const app = buildApp();
 
 async function authCookie(email: string): Promise<string> {
   await seedUser(email);
-  const res = await app.request('/auth/login', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password: TEST_PASSWORD }),
-  });
-  return extractCookie(res)!;
+  return loginAs(app, email, TEST_PASSWORD);
 }
 
 async function freshMainKeys() {
@@ -39,11 +34,9 @@ async function freshMainKeys() {
 
 interface RawRecord {
   id: string;
-  module_user_id: string;
-  cipher_iv: string;
+  moduleUserId: string;
+  cipherIv: string;
   payload: string;
-  created_at: string;
-  updated_at: string;
 }
 
 async function createPromoted(
@@ -53,21 +46,33 @@ async function createPromoted(
   sid: string,
   payload: unknown,
 ): Promise<RawRecord> {
+  // Issue #67 — all collections share the `/records` endpoint, the
+  // module is identified via the `X-Collection` header.
   const blob = await simEncryptPayload(keys.aesKey, payload);
-  const createRes = await app.request(`/${collection}/records`, {
+  const createRes = await app.request(`/records`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', cookie },
-    body: JSON.stringify({ sid, cipher_iv: blob.iv, payload: blob.data, guard: 'init' }),
+    headers: {
+      'content-type': 'application/json',
+      cookie,
+      'x-collection': collection,
+    },
+    body: JSON.stringify({ sid, cipherIv: blob.iv, payload: blob.data, guard: 'init' }),
   });
   expect(createRes.status).toBe(201);
   const created = (await createRes.json()) as RawRecord;
 
   const guard = await simDeriveGuard(keys.hmacKey, sid, created.id);
   const promoteRes = await app.request(
-    `/${collection}/records/${created.id}?sid=${sid}&d=init`,
+    `/records/${created.id}`,
     {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie },
+      headers: {
+        'content-type': 'application/json',
+        cookie,
+        'x-sid': sid,
+        'x-guard': 'init',
+        'x-collection': collection,
+      },
       body: JSON.stringify({ guard }),
     },
   );
@@ -83,8 +88,8 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
 
     const payload: MoodPayload = {
       date: '2026-04-17',
-      mood_score: '7',
-      mood_emoji: '🙂',
+      moodScore: '7',
+      moodEmoji: '🙂',
       positive1: 'slept well',
       positive2: 'finished Phase 6',
       positive3: 'coffee',
@@ -94,13 +99,15 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
     const created = await createPromoted(cookie, 'mood', keys, sid, payload);
 
     // LIST + decrypt
-    const listRes = await app.request(`/mood/records?sid=${sid}`, { headers: { cookie } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(1);
+    const listRes = await app.request('/records', {
+      headers: { cookie, 'x-sid': sid, 'x-collection': 'mood' },
+    });
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(1);
     const decoded = await simDecryptPayload<MoodPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(decoded.comment).toBe('ok day');
     expect(decoded.positive1).toBe('slept well');
@@ -109,28 +116,31 @@ describe('Mood module — full encrypted round-trip through the new API', () => 
     const guard = await simDeriveGuard(keys.hmacKey, sid, created.id);
     const newPayload = { ...payload, comment: 'great day after all' };
     const newBlob = await simEncryptPayload(keys.aesKey, newPayload);
-    const upd = await app.request(
-      `/mood/records/${created.id}?sid=${sid}&d=${guard}`,
-      {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json', cookie },
-        body: JSON.stringify({ cipher_iv: newBlob.iv, payload: newBlob.data }),
+    const upd = await app.request(`/records/${created.id}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        cookie,
+        'x-sid': sid,
+        'x-guard': guard,
+        'x-collection': 'mood',
       },
-    );
+      body: JSON.stringify({ cipherIv: newBlob.iv, payload: newBlob.data }),
+    });
     expect(upd.status).toBe(200);
     const updated = (await upd.json()) as RawRecord;
     const reDecoded = await simDecryptPayload<MoodPayload>(
       keys.aesKey,
-      updated.cipher_iv,
+      updated.cipherIv,
       updated.payload,
     );
     expect(reDecoded.comment).toBe('great day after all');
 
     // DELETE
-    const del = await app.request(
-      `/mood/records/${created.id}?sid=${sid}&d=${guard}`,
-      { method: 'DELETE', headers: { cookie } },
-    );
+    const del = await app.request(`/records/${created.id}`, {
+      method: 'DELETE',
+      headers: { cookie, 'x-sid': sid, 'x-guard': guard, 'x-collection': 'mood' },
+    });
     expect(del.status).toBe(200);
   });
 });
@@ -147,66 +157,71 @@ describe('Goals module — full encrypted round-trip', () => {
       note: 'end-to-end encrypted',
       status: 'open',
       thread: 'nodea',
+      completedAt: null,
+      updatedAt: '2026-04-17T10:00:00.000Z',
     };
 
     await createPromoted(cookie, 'goals', keys, sid, payload);
 
-    const listRes = await app.request(`/goals/records?sid=${sid}`, { headers: { cookie } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(1);
+    const listRes = await app.request('/records', { headers: { cookie, 'x-sid': sid, 'x-collection': 'goals' } });
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(1);
     const got = await simDecryptPayload<GoalsPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(got.title).toBe('Ship Phase 6');
     expect(got.status).toBe('open');
   });
 });
 
-describe('Passage module — full encrypted round-trip', () => {
-  it('creates a passage entry, lists it decrypted', async () => {
-    const cookie = await authCookie('passage@example.com');
+describe('Journal module — full encrypted round-trip', () => {
+  it('creates a journal entry, lists it decrypted', async () => {
+    const cookie = await authCookie('journal@example.com');
     const keys = await freshMainKeys();
-    const sid = 'sid-passage';
+    const sid = 'sid-journal';
 
-    const payload: PassagePayload = {
-      type: 'passage.entry',
+    const payload: JournalPayload = {
+      type: 'journal.entry',
       date: new Date().toISOString(),
       thread: 'journal',
       title: 'Phase 6 notes',
       content: 'today i wired up the three modules',
+      attachments: [],
     };
 
-    await createPromoted(cookie, 'passage', keys, sid, payload);
+    await createPromoted(cookie, 'journal', keys, sid, payload);
 
-    const listRes = await app.request(`/passage/records?sid=${sid}`, { headers: { cookie } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    const got = await simDecryptPayload<PassagePayload>(
+    const listRes = await app.request('/records', { headers: { cookie, 'x-sid': sid, 'x-collection': 'journal' } });
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    const got = await simDecryptPayload<JournalPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(got.title).toBe('Phase 6 notes');
-    expect(got.type).toBe('passage.entry');
+    expect(got.type).toBe('journal.entry');
   });
 
   it('never exposes the guard field to readers', async () => {
-    const cookie = await authCookie('noleakpassage@example.com');
+    const cookie = await authCookie('noleakjournal@example.com');
     const keys = await freshMainKeys();
     const sid = 'sid-noleak';
 
-    await createPromoted(cookie, 'passage', keys, sid, {
-      type: 'passage.entry',
+    await createPromoted(cookie, 'journal', keys, sid, {
+      type: 'journal.entry',
       date: '2026-04-17T00:00:00Z',
       thread: '',
       title: null,
       content: 'some content',
     });
 
-    const listRes = await app.request(`/passage/records?sid=${sid}`, { headers: { cookie } });
-    const list = (await listRes.json()) as { records: unknown[] };
-    expect(list.records[0]).not.toHaveProperty('guard');
+    const listRes = await app.request('/records', {
+      headers: { cookie, 'x-sid': sid, 'x-collection': 'journal' },
+    });
+    const list = (await listRes.json()) as { data: unknown[]; meta: Record<string, unknown> };
+    expect(list.data[0]).not.toHaveProperty('guard');
   });
 });
 
@@ -226,28 +241,28 @@ describe('Habits — items and logs encrypted round-trip', () => {
       category: 'sport',
       frequency: 'weekly',
       target: 1,
-      started_at: '2025-08-01',
+      startedAt: '2025-08-01',
       archived: false,
     };
     const item = await createPromoted(cookie, 'habits-items', keys, itemSid, itemPayload);
 
-    const log1: HabitsLogPayload = { date: '2025-08-05', item_rid: item.id, done: true };
-    const log2: HabitsLogPayload = { date: '2025-08-12', item_rid: item.id, done: true };
+    const log1: HabitsLogPayload = { date: '2025-08-05', itemRid: item.id, done: true };
+    const log2: HabitsLogPayload = { date: '2025-08-12', itemRid: item.id, done: true };
     await createPromoted(cookie, 'habits-logs', keys, logSid, log1);
     await createPromoted(cookie, 'habits-logs', keys, logSid, log2);
 
-    const listRes = await app.request(`/habits-logs/records?sid=${logSid}`, { headers: { cookie } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(2);
+    const listRes = await app.request('/records', { headers: { cookie, 'x-sid': logSid, 'x-collection': 'habits-logs' } });
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(2);
 
     const decrypted = await Promise.all(
-      list.records.map((r) =>
-        simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipher_iv, r.payload),
+      list.data.map((r) =>
+        simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipherIv, r.payload),
       ),
     );
     const dates = decrypted.map((d) => d.date).sort();
     expect(dates).toEqual(['2025-08-05', '2025-08-12']);
-    expect(decrypted.every((d) => d.item_rid === item.id)).toBe(true);
+    expect(decrypted.every((d) => d.itemRid === item.id)).toBe(true);
   });
 });
 
@@ -260,45 +275,58 @@ describe('Library — items and reviews encrypted round-trip', () => {
 
     const book: LibraryItemPayload = {
       type: 'book',
-      provider: 'openlibrary',
-      external_id: 'OL123M',
       title: 'Exemple de livre',
-      creators: ['Autrice Inconnue'],
+      providers: { openlibrary: 'OL123M' },
+      creators: [{ name: 'Inconnue AUTRICE', role: 'author' }],
       year: 2022,
       language: 'fr',
       status: 'in_progress',
-      creators_count: 1, // passthrough tolerated
+      format: 'paper',
+      coverRid: null,
+      startedAt: null,
+      finishedAt: null,
+      rating: null,
       tags: ['roman'],
-    } as LibraryItemPayload;
+      isFavorite: false,
+    };
     const item = await createPromoted(cookie, 'library-items', keys, itemSid, book);
 
     const r1: LibraryReviewPayload = {
+      itemRid: item.id,
       date: '2025-08-20',
-      item_rid: item.id,
-      note: 'Passage marquant',
+      kind: 'quote',
+      title: null,
+      content: 'Passage marquant',
       page: 54,
+      spoiler: false,
     };
     const r2: LibraryReviewPayload = {
+      itemRid: item.id,
       date: '2025-08-22',
-      item_rid: item.id,
-      note: 'Fin du livre, super conclusion.',
+      kind: 'note',
+      title: null,
+      content: 'Fin du livre, super conclusion.',
+      page: null,
+      spoiler: false,
     };
     await createPromoted(cookie, 'library-reviews', keys, reviewSid, r1);
     await createPromoted(cookie, 'library-reviews', keys, reviewSid, r2);
 
-    const listRes = await app.request(`/library-reviews/records?sid=${reviewSid}`, {
-      headers: { cookie },
+    const listRes = await app.request('/records', {
+      headers: { cookie, 'x-sid': reviewSid, 'x-collection': 'library-reviews' },
     });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(2);
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(2);
     const notes = await Promise.all(
-      list.records.map((r) =>
-        simDecryptPayload<LibraryReviewPayload>(keys.aesKey, r.cipher_iv, r.payload),
+      list.data.map((r) =>
+        simDecryptPayload<LibraryReviewPayload>(keys.aesKey, r.cipherIv, r.payload),
       ),
     );
     const byDate = notes.sort((a, b) => a.date.localeCompare(b.date));
     expect(byDate[0]!.page).toBe(54);
-    expect(byDate[1]!.note).toMatch(/conclusion/);
+    expect(byDate[0]!.kind).toBe('quote');
+    expect(byDate[1]!.content).toMatch(/conclusion/);
+    expect(byDate[1]!.kind).toBe('note');
   });
 });
 
@@ -310,7 +338,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
 
     const payload: ReviewPayload = {
       year: 2025,
-      last_year: {
+      lastYear: {
         agenda_review: ['séjour à Tana', 'départ mission'],
         life_areas: {
           family: ['plus proche de ma sœur'],
@@ -319,7 +347,7 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
         best_moments: ['soirée plage'],
         three_challenges: ['burnout'],
       },
-      next_year: {
+      nextYear: {
         dream_big: 'poste qui me correspond',
         word_of_year: 'ancrage',
       },
@@ -328,21 +356,22 @@ describe('Review — yearly deep payload encrypted round-trip', () => {
         signature: 'Alice',
         date: '2025-08-25',
       },
+      updatedAt: '2025-08-25T10:00:00.000Z',
     };
 
     await createPromoted(cookie, 'review', keys, sid, payload);
 
-    const listRes = await app.request(`/review/records?sid=${sid}`, { headers: { cookie } });
-    const list = (await listRes.json()) as { records: RawRecord[] };
-    expect(list.records).toHaveLength(1);
+    const listRes = await app.request('/records', { headers: { cookie, 'x-sid': sid, 'x-collection': 'review' } });
+    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
+    expect(list.data).toHaveLength(1);
     const got = await simDecryptPayload<ReviewPayload>(
       keys.aesKey,
-      list.records[0]!.cipher_iv,
-      list.records[0]!.payload,
+      list.data[0]!.cipherIv,
+      list.data[0]!.payload,
     );
     expect(got.year).toBe(2025);
-    expect(got.next_year).toBeDefined();
-    const nextYear = got.next_year as Record<string, unknown>;
+    expect(got.nextYear).toBeDefined();
+    const nextYear = got.nextYear as Record<string, unknown>;
     expect(nextYear.word_of_year).toBe('ancrage');
   });
 });

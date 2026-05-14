@@ -31,6 +31,18 @@ export interface HabitsContext {
  * Single hook for the Habits module — owns the items + logs lists and
  * surfaces the mutation helpers the views need. Kept here (not in a
  * Zustand slice) because the data is purely local to this page.
+ *
+ * **Why bare `selectMainKey + selectModules` instead of
+ * `useModuleClient(...)`** : two distinct reasons stack here.
+ *   1. Habits is a multi-collection module : it needs both
+ *      `habits-items` and `habits-logs` sids in lockstep. The
+ *      `useModuleClient(moduleId)` hook is single-id by design and
+ *      doesn't fit this case (a `useModuleClients(ids[])` variant
+ *      would be the only tidy migration — YAGNI for one consumer).
+ *   2. Like `useReview`, the views consume `keyMissing` vs
+ *      `moduleMissing` separately to render different empty states.
+ *      `useModuleClient` collapses both into a single `null`,
+ *      losing the discriminator.
  */
 export function useHabits(): HabitsContext {
   const mainKey = useNodeaStore(selectMainKey);
@@ -101,7 +113,7 @@ export function useHabits(): HabitsContext {
       if (!mainKey || !logsSid) return;
       await habitsLogsClient.create(logsSid, mainKey, {
         date,
-        item_rid: itemId,
+        itemRid: itemId,
         done: true,
       });
       await refresh();

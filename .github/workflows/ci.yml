@@ -17,6 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Defaults are usually read-only on `pull_request`, but pinning
+    # explicitly here closes the door on any future trigger change
+    # accidentally widening the token scope. The CI job needs read
+    # access to source only — it doesn't push artefacts, doesn't
+    # comment on PRs, doesn't write packages. Anything beyond that
+    # would be a smell.
+    permissions:
+      contents: read
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -41,9 +50,19 @@ jobs:
       DATABASE_URL: postgres://nodea:nodea_dev@127.0.0.1:5433/nodea
       COOKIE_SECRET: ci_cookie_secret_change_me_in_production_please_32chars
       COOKIE_SECURE: 'false'
+      WEB_BASE_URL: http://localhost:8089
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_NAME: Nodea CI
+      WEBAUTHN_ORIGIN: http://localhost:8089
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Don't leave the GITHUB_TOKEN in `.git/config` after
+          # checkout — subsequent steps don't push, so persisting the
+          # creds is just extra surface for credential leaks via
+          # log lines, third-party actions, or environment dumps.
+          persist-credentials: false
 
       - name: Setup pnpm
         # Version is read from the repo's packageManager field (package.json);
@@ -59,11 +78,48 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # OPAQUE registration / login both need a server-side setup blob.
+      # Locally it's persisted in `.env` (or Infisical) ; in CI we
+      # generate a fresh one per run and export it via `$GITHUB_ENV` so
+      # every subsequent step sees it as a regular env var. The blob is
+      # ephemeral by design — the test DB is truncated between runs, so
+      # no envelopes survive that would depend on it.
+      - name: Generate OPAQUE_SERVER_SETUP
+        run: |
+          SETUP=$(pnpm --filter @nodea/api --silent exec node --input-type=module -e \
+            "import { ready, server } from '@serenity-kit/opaque'; await ready; process.stdout.write(server.createSetup());")
+          echo "OPAQUE_SERVER_SETUP=$SETUP" >> "$GITHUB_ENV"
+
+      # CVE scan on the dep tree (OPS-08). Fails the build on `high`
+      # or `critical` advisories — the seuil that the team has agreed
+      # to surface as blocking. `moderate` and below are surfaced via
+      # `pnpm audit` locally on demand. Dependabot (OPS-07) is what
+      # keeps the tree close enough to upstream for this to stay green.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+
+      - name: Lint
+        run: pnpm lint
+
       - name: Typecheck
         run: pnpm -r typecheck
 
       - name: Build
         run: pnpm -r build
+
+      # Upload the web bundle's integrity manifest as a CI artifact so
+      # a self-hoster (or any auditor) can download the SHA-384
+      # fingerprints of every emitted asset for the commit under test
+      # and compare against what their deployed instance is actually
+      # serving. See nodea.app/docs/security/tech, section
+      # « Intégrité du bundle », for the verification procedure.
+      - name: Upload web INTEGRITY.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-integrity-${{ github.sha }}
+          path: packages/web/dist/INTEGRITY.txt
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Write API .env for tests
         run: |
@@ -73,10 +129,23 @@ jobs:
           DATABASE_URL=${DATABASE_URL}
           COOKIE_SECRET=${COOKIE_SECRET}
           COOKIE_SECURE=false
+          WEB_BASE_URL=http://localhost:8089
           EOF
 
       - name: Apply DB migrations
         run: pnpm --filter @nodea/api db:migrate
+
+      # Issue #41 — vitest auto-swaps DATABASE_URL's dbname to `_test`
+      # so the suite's TRUNCATE never wipes the dev rows. CI must create
+      # that sibling DB explicitly (the postgres service only seeds the
+      # main `nodea` DB via POSTGRES_DB) and migrate it.
+      - name: Create + migrate test DB
+        env:
+          PGPASSWORD: nodea_dev
+        run: |
+          psql -h 127.0.0.1 -p 5433 -U nodea -d postgres \
+            -c "CREATE DATABASE nodea_test;"
+          pnpm --filter @nodea/api db:migrate:test
 
       - name: Test
         run: pnpm -r test

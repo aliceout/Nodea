@@ -3,7 +3,7 @@ import { buildApp } from '../app.ts';
 import {
   ADMIN_PASSWORD,
   TEST_PASSWORD,
-  extractCookie,
+  loginAs,
   seedAdmin,
   seedUser,
 } from './helpers.ts';
@@ -11,27 +11,14 @@ import type { AnnouncementResponse } from '@nodea/shared';
 
 const app = buildApp();
 
-function json(body: unknown): RequestInit {
-  return {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-}
-
-async function loginAs(email: string, password: string): Promise<string> {
-  const res = await app.request('/auth/login', json({ email, password }));
-  return extractCookie(res)!;
-}
-
 async function adminCookie(): Promise<string> {
   const admin = await seedAdmin();
-  return loginAs(admin.email, ADMIN_PASSWORD);
+  return loginAs(app, admin.email, ADMIN_PASSWORD);
 }
 
 async function userCookie(email = 'user@example.com'): Promise<string> {
   await seedUser(email);
-  return loginAs(email, TEST_PASSWORD);
+  return loginAs(app, email, TEST_PASSWORD);
 }
 
 async function createAnnouncement(
@@ -90,8 +77,9 @@ describe('GET /admin/announcements', () => {
     const b = await createAnnouncement(cookie, { title: 'B', body: 'b', active: false });
 
     const res = await app.request('/admin/announcements', { headers: { cookie } });
-    const { announcements: rows } = (await res.json()) as {
-      announcements: AnnouncementResponse[];
+    const { data: rows } = (await res.json()) as {
+      data: AnnouncementResponse[];
+      meta: Record<string, unknown>;
     };
     expect(rows).toHaveLength(2);
     const ids = rows.map((r) => r.id);
@@ -140,8 +128,9 @@ describe('DELETE /admin/announcements/:id', () => {
     expect(res.status).toBe(200);
 
     const list = await app.request('/admin/announcements', { headers: { cookie } });
-    const { announcements: rows } = (await list.json()) as {
-      announcements: AnnouncementResponse[];
+    const { data: rows } = (await list.json()) as {
+      data: AnnouncementResponse[];
+      meta: Record<string, unknown>;
     };
     expect(rows.find((r) => r.id === created.id)).toBeUndefined();
   });
@@ -165,8 +154,9 @@ describe('GET /announcements (public feed)', () => {
     const userC = await userCookie();
     const res = await app.request('/announcements', { headers: { cookie: userC } });
     expect(res.status).toBe(200);
-    const { announcements: rows } = (await res.json()) as {
-      announcements: AnnouncementResponse[];
+    const { data: rows } = (await res.json()) as {
+      data: AnnouncementResponse[];
+      meta: Record<string, unknown>;
     };
     const ids = rows.map((r) => r.id);
     expect(ids).toContain(live.id);

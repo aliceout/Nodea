@@ -1,1 +1,170 @@
-{}
+{
+  "topbar": "Paramètres · Mon compte",
+  "title": "Mon compte",
+  "tabs": {
+    "identity": "Identité",
+    "security": "Sécurité",
+    "preferences": "Préférences",
+    "modules": "Modules",
+    "data": "Données",
+    "danger": "Suppression du compte"
+  },
+  "stats": {
+    "title": "En chiffres",
+    "encryptedEntries": "Entrées chiffrées",
+    "habitsStreak": "Série habits",
+    "memberSince": "Membre depuis"
+  },
+  "identity": {
+    "username": {
+      "label": "Nom d’affichage",
+      "placeholder": "non défini",
+      "editLabel": "Modifier le nom d’utilisateur·ice",
+      "feedback": {
+        "success": "Identifiant mis à jour.",
+        "taken": "Cet identifiant est déjà pris.",
+        "invalid": "Format invalide.",
+        "error": "Erreur lors de la modification."
+      }
+    },
+    "email": {
+      "label": "Adresse e-mail",
+      "editLabel": "Modifier l’adresse e-mail",
+      "passwordPlaceholder": "Mot de passe actuel",
+      "passwordRequired": "Mot de passe actuel requis pour changer l’e-mail.",
+      "feedback": {
+        "success": "Adresse e-mail mise à jour.",
+        "wrongPassword": "Mot de passe actuel incorrect.",
+        "taken": "Cette adresse est déjà utilisée.",
+        "invalid": "Format invalide.",
+        "error": "Erreur lors de la modification."
+      }
+    }
+  },
+  "security": {
+    "recoveryCode": {
+      "title": "Code de récupération",
+      "descriptionSet": "Un code de 12 mots BIP39 te permet de récupérer ton compte si tu oublies ton mot de passe — sans perdre tes données. Régénérer invalide immédiatement l’ancien code.",
+      "descriptionUnset": "Sans ce code, oublier ton mot de passe = perte de toutes tes données. 12 mots BIP39 à noter une seule fois ; tu pourras récupérer ton compte avec, sans détruire tes entrées.",
+      "ctaSet": "Régénérer",
+      "ctaUnset": "Configurer"
+    },
+    "password": {
+      "title": "Mot de passe",
+      "description": "Re-dérive ta clé sur une page dédiée — la clé maîtresse est ré-enveloppée localement avant d’atteindre le serveur, sans perte de tes entrées chiffrées. L’admin ne la voit jamais.",
+      "cta": "Renouveler"
+    },
+    "totp": {
+      "title": "2FA (TOTP)",
+      "statusEnabled": "TOTP activé.",
+      "descriptionEnabledTail": "Tu peux gérer tes codes de secours ou désactiver la 2FA depuis cet écran.",
+      "descriptionDisabled": "Un code à six chiffres à chaque connexion, généré par une appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth) en plus du mot de passe — une fuite ne suffit alors plus à entrer.",
+      "ctaEnabled": "Gérer",
+      "ctaDisabled": "Activer"
+    },
+    "passkey": {
+      "title": "Passkey",
+      "descriptionEmpty": "Une passkey (Touch ID, Face ID, Windows Hello, Yubikey, gestionnaire de mots de passe…) remplace la saisie du mot de passe à la connexion. Si elle est compatible PRF, elle déchiffre aussi tes données — sinon elle te connecte mais te demande quand même ton mot de passe.",
+      "count": {
+        "one": "{count} passkey enregistrée.",
+        "other": "{count} passkeys enregistrées."
+      },
+      "descriptionExtras": "Tu peux en ajouter d’autres ou retirer celles que tu n’utilises plus.",
+      "ctaEmpty": "Ajouter",
+      "ctaManage": "Gérer"
+    },
+    "mode": {
+      "title": "Mode de sécurité",
+      "description": "Combien de facteurs sont demandés à chaque connexion (mot de passe, TOTP, passkey). Mode actuel : {mode}.",
+      "labels": {
+        "standard": "Standard",
+        "twoFactor": "2FA requis",
+        "maximum": "Maximum"
+      },
+      "cta": "Modifier"
+    },
+    "sessions": {
+      "title": "Sessions actives",
+      "description": "La liste des appareils connectés à ton compte. Tu peux révoquer une session spécifique (l'appareil sera déconnecté immédiatement) ou tout déconnecter d'un coup.",
+      "loading": "Chargement…",
+      "errorLoad": "Impossible de charger les sessions actives.",
+      "currentBadge": "Cette session",
+      "createdAt": "Créée le {date}",
+      "lastSeenAt": "Active {when}",
+      "lastSeenJustNow": "à l'instant",
+      "lastSeenMinutes": {
+        "one": "il y a {count} minute",
+        "other": "il y a {count} minutes"
+      },
+      "lastSeenHours": {
+        "one": "il y a {count} heure",
+        "other": "il y a {count} heures"
+      },
+      "lastSeenDays": {
+        "one": "il y a {count} jour",
+        "other": "il y a {count} jours"
+      },
+      "neverSeen": "Jamais utilisée depuis sa création",
+      "unknownDevice": "Appareil inconnu",
+      "decryptFailed": "Étiquette illisible",
+      "revokeAria": "Révoquer cette session",
+      "revokeCta": "Révoquer",
+      "revokeConfirm": "Tu vas révoquer la session de {device}. Cet appareil sera déconnecté immédiatement et devra se reconnecter avec son mot de passe.",
+      "revokeError": "Échec de la révocation. Réessaie.",
+      "revokeStaleAuth": "Re-saisis ton mot de passe pour révoquer une session.",
+      "logoutAllCta": "Se déconnecter partout",
+      "logoutAllConfirm": "Tu vas être déconnecté·e de tous les appareils, y compris celui-ci. Continuer ?",
+      "logoutAllError": "Échec de la déconnexion globale. Réessaie.",
+      "passwordLabel": "Mot de passe pour confirmer",
+      "passwordError": "Mot de passe incorrect."
+    }
+  },
+  "preferences": {
+    "themeDescription": "Clair, sombre, ou suit ton système.",
+    "languageDescription": "Interface en français ou en anglais.",
+    "languageAriaLabel": "Langue"
+  },
+  "modules": {
+    "intro1": "Tous les modules sont activés par défaut.",
+    "intro2": "Désactive ceux que tu n’utilises pas — ils disparaîtront de la barre latérale et leurs données seront laissées intactes (rien n’est supprimé)."
+  },
+  "data": {
+    "export": {
+      "title": "Exporter",
+      "cta": "Exporter mes données",
+      "ctaLoading": "Préparation…",
+      "description": "JSON déchiffré, généré chez toi. Ne quitte jamais ton navigateur.",
+      "noKey": "Clé de chiffrement absente",
+      "empty": "Aucune donnée à exporter",
+      "success": "Export terminé"
+    },
+    "import": {
+      "title": "Importer",
+      "cta": "Importer un fichier",
+      "ctaLoading": "Import en cours…",
+      "description": "JSON ou NDJSON exporté précédemment. Doublons ignorés.",
+      "noKey": "Clé de chiffrement absente.",
+      "errorPrefix": "Erreur d’import : ",
+      "invalidJson": "Format JSON invalide.",
+      "unknownFormat": "Format inconnu.",
+      "moodNotEnabled": "Module Mood non activé.",
+      "moduleSkippedUnknown": "{key}: ignoré (inconnu)",
+      "moduleSkippedDisabled": "{key}: ignoré (non activé)",
+      "moduleResult": "{key}: {created} ajouté(s), {skipped} doublon(s)",
+      "moodResult": "mood: {count} ajouté(s)",
+      "successPrefix": "Import terminé · {count} entrée(s) — {parts}"
+    }
+  },
+  "danger": {
+    "heading": "Suppression du compte",
+    "emailLabel": "Tape ton e-mail pour confirmer",
+    "passwordLabel": "Mot de passe actuel",
+    "cta": "Supprimer définitivement",
+    "ctaSubmitting": "Suppression…",
+    "confirmGate": "Confirme ton e-mail et ton mot de passe pour continuer.",
+    "windowConfirm": "Cette action est irréversible. Toutes tes entrées chiffrées seront supprimées. Continuer ?",
+    "wrongPassword": "Mot de passe actuel incorrect.",
+    "error": "Erreur lors de la suppression.",
+    "explanation": "La suppression efface toutes tes entrées chiffrées, sessions et invitations. Aucune récupération possible — pense à exporter avant."
+  }
+}

@@ -1,138 +1,65 @@
-import { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-import Subheader from '@/ui/layout/headers/Subheader';
-import SectionHeader from '@/ui/atoms/typography/SectionHeader';
-import { MODULES, type ModuleDef } from '@/app/config/modules_list';
-import {
-  useNodeaStore,
-  selectUser,
-  selectModules,
-} from '@/core/store/nodea-store';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import Topbar from '@/ui/dirk/Topbar';
 
-import HeroSection from './components/HeroSection';
-import ModuleCard from './components/ModuleCard';
-import AvailableModules from './components/AvailableModules';
-import AnnouncementSpotlight from './components/AnnouncementSpotlight';
-import MoodOverview from './components/MoodOverview';
-
-/**
- * Preferred display name: `username` when the user has set one, else
- * the local-part of their email. Empty string if neither is available.
- */
-function preferredName(user: { username?: string | null; email?: string } | null | undefined): string {
-  if (!user) return '';
-  const trimmed = user.username?.trim();
-  if (trimmed) return trimmed;
-  const email = user.email;
-  if (!email) return '';
-  const [local] = email.split('@');
-  return local ?? '';
-}
+import { HomepageProvider, useHomepageData } from './context';
+import PrimaryColumn from './views/PrimaryColumn';
 
 /**
- * Homepage (TSX).
+ * Homepage — Direction K · Sauge.
  *
- * Restored composition:
- *   - HeroSection (greeting)
- *   - AnnouncementSpotlight — picks up `GET /announcements` when R10
- *     lands; silent 404 until then (no UI tombstone).
- *   - MoodOverview — 20-entry sparkline + rolling average via
- *     `useMoodTrend` (Mood module, R3).
- *   - Quick-action cards for enabled modules.
- *   - AvailableModules — suggestion strip for the not-yet-active ones.
+ * Pixel-precise port of `Design/design_handoff_nodea/source/dir-k.jsx
+ * → K_Home`. Layout = topbar + 2-column body (1fr content + 280px
+ * aside). All colours / sizes / animations come from the tokens
+ * registered in `ui/theme/dirk.css`.
+ *
+ * Architecture (matches Library / Goals / Journal / Mood) :
+ *   - `<HomepageProvider>` (`./context.tsx`) owns the page-local
+ *     state — the three lite-shape fetches (Mood / Goals /
+ *     Library), the locale-aware date label, the user's display
+ *     name. Single context (Home is read-only by design — no
+ *     filters, no mutations — so the « 3 contexts » pattern
+ *     would just be boilerplate here).
+ *   - `<HomepageView />` reads only the topbar's date label ;
+ *     the columns and their blocks subscribe to the context
+ *     themselves.
+ *   - Pure helpers in `lib/` (format, frise, intentions,
+ *     projections, types, constants) carry the Vitest coverage.
+ *
+ * The mobile sidebar drawer is opened from the topbar's
+ * hamburger (preserves the existing `mobileMenuOpen` slice so
+ * nothing else has to change).
  */
 export default function HomePage() {
-  const navigate = useNavigate();
-  const user = useNodeaStore(selectUser);
-  const modulesRuntime = useNodeaStore(selectModules);
-  const { t, language } = useI18n();
-
-  const name = useMemo(() => preferredName(user), [user]);
-
-  const { greeting, formattedDate } = useMemo(() => {
-    const now = new Date();
-    const hour = now.getHours();
-    let greetingKey = 'home.greeting.morning';
-    if (hour >= 18) greetingKey = 'home.greeting.evening';
-    else if (hour >= 12) greetingKey = 'home.greeting.afternoon';
-
-    const localeTag = language === 'en' ? 'en-US' : 'fr-FR';
-    const formatter = new Intl.DateTimeFormat(localeTag, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    });
-
-    return {
-      greeting: t(greetingKey),
-      formattedDate: formatter.format(now),
-    };
-  }, [t, language]);
-
-  const modules: Array<ModuleDef & { enabled: boolean }> = useMemo(() => {
-    return MODULES.filter((m) => m.id !== 'home' && m.display !== false).map((m) => ({
-      ...m,
-      enabled: !m.to_toggle || Boolean(modulesRuntime[m.id]?.enabled),
-    }));
-  }, [modulesRuntime]);
-
-  const enabledModules = useMemo(() => modules.filter((m) => m.enabled), [modules]);
-  const disabledModules = useMemo(() => modules.filter((m) => !m.enabled), [modules]);
-  const moodModule = useMemo(
-    () => enabledModules.find((m) => m.id === 'mood'),
-    [enabledModules],
+  return (
+    <HomepageProvider>
+      <HomepageView />
+    </HomepageProvider>
   );
+}
 
-  const handleNavigate = useCallback(
-    (moduleId: string) => {
-      navigate(`/flow/${moduleId}`);
-    },
-    [navigate],
-  );
-
-  const quickActionsLabel = t('home.sections.actions.title', {
-    defaultValue: 'Actions rapides',
-  });
-  const activeBadgeLabel = t('settings.modules.badges.active', {
-    defaultValue: 'Module actif',
-  });
+function HomepageView() {
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
+  const openComposer = useNodeaStore((s) => s.openComposer);
+  const { t } = useI18n();
+  const { formattedDate } = useHomepageData();
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Subheader />
-
-      <div className="flex-1 pt-4">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-10 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
-            <div className="flex-1">
-              <HeroSection greeting={greeting} name={name} formattedDate={formattedDate} />
-            </div>
-            <AnnouncementSpotlight />
-          </div>
-
-          {moodModule ? <MoodOverview module={moodModule} /> : null}
-
-          {enabledModules.length > 0 ? (
-            <section className="space-y-4">
-              <SectionHeader title={quickActionsLabel} />
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {enabledModules.map((module) => (
-                  <ModuleCard
-                    key={module.id}
-                    module={module}
-                    onNavigate={handleNavigate}
-                    badgeLabel={activeBadgeLabel}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <AvailableModules modules={disabledModules} onNavigate={handleNavigate} />
-        </div>
-      </div>
-    </div>
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={formattedDate}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        >
+          <Button variant="primary" size="sm" onClick={() => openComposer()}>
+            {t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
+          </Button>
+        </Topbar>
+      }
+    >
+      <PrimaryColumn />
+    </ModuleShell>
   );
 }

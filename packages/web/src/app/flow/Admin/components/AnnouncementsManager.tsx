@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { TrashIcon } from '@heroicons/react/24/outline';
+
 import {
   apiAdminListAnnouncements,
   apiAdminCreateAnnouncement,
@@ -7,18 +9,24 @@ import {
   isApiError,
 } from '@/core/api/client';
 import type { AnnouncementResponse } from '@nodea/shared';
+import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 const INITIAL_FORM = { title: '', body: '' };
 
 /**
- * Admin panel for the homepage announcement feed.
+ * Announcements panel — Direction K · Sauge.
  *
- * Wires to `/admin/announcements` (CRUD) with plaintext content — this
- * is the one admin-curated surface that is intentionally not E2E
+ * Wires to `/admin/announcements` (CRUD) with plaintext content —
+ * the one admin-curated surface that is intentionally NOT E2E
  * encrypted (see schema.ts). Inactive rows can be toggled back on
  * without deleting them, which preserves the audit trail.
  */
 export default function AnnouncementsManager() {
+  const { t, language } = useI18n();
   const [form, setForm] = useState(INITIAL_FORM);
   const [items, setItems] = useState<AnnouncementResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,7 +42,11 @@ export default function AnnouncementsManager() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Impossible de charger.');
+        setError(
+          err instanceof Error
+            ? err.message
+            : t('admin.announcementsManager.errors.loadFailed'),
+        );
         if (isApiError(err) && import.meta.env.DEV) console.warn('list announcements failed', err);
       })
       .finally(() => {
@@ -43,7 +55,7 @@ export default function AnnouncementsManager() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const canSubmit = form.title.trim().length > 0 && form.body.trim().length > 0 && !saving;
 
@@ -61,7 +73,11 @@ export default function AnnouncementsManager() {
       setItems((prev) => [created, ...prev]);
       setForm(INITIAL_FORM);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossible de publier.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('admin.announcementsManager.errors.publishFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -73,113 +89,135 @@ export default function AnnouncementsManager() {
       const updated = await apiAdminUpdateAnnouncement(row.id, { active: !row.active });
       setItems((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Mise à jour impossible.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('admin.announcementsManager.errors.updateFailed'),
+      );
     }
   }
 
   async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Supprimer cette annonce ?')) return;
+    if (!window.confirm(t('admin.announcementsManager.confirmDelete'))) return;
     setError(null);
     try {
       await apiAdminDeleteAnnouncement(id);
       setItems((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Suppression impossible.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('admin.announcementsManager.errors.deleteFailed'),
+      );
     }
   }
 
   return (
-    <section className="space-y-6">
-      <form
-        onSubmit={onSubmit}
-        className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
-      >
-        <h3 className="text-base font-semibold">Nouvelle annonce</h3>
-        <label className="block">
-          <span className="text-sm">Titre</span>
-          <input
-            type="text"
+    <div className="divide-y divide-hair">
+      {/* New announcement form */}
+      <form onSubmit={onSubmit} className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
+          {t('admin.announcementsManager.newHeading')}
+        </h3>
+
+        <div className="space-y-2.5">
+          <DirkInput
             value={form.title}
             onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
             maxLength={200}
-            placeholder="Nouveau module disponible"
-            className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+            placeholder={t('admin.announcementsManager.titlePlaceholder')}
+            aria-label={t('admin.announcementsManager.titleAria')}
           />
-        </label>
-        <label className="block">
-          <span className="text-sm">Message</span>
           <textarea
             value={form.body}
             onChange={(e) => setForm((prev) => ({ ...prev, body: e.target.value }))}
             rows={4}
-            placeholder="Nous avons ajouté…"
-            className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm"
+            placeholder={t('admin.announcementsManager.messagePlaceholder')}
+            aria-label={t('admin.announcementsManager.messageAria')}
+            className="block w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.55] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
-        </label>
-        <div className="flex items-center justify-between">
-          <p className="text-xs opacity-60">
-            Publiée immédiatement sur la page d'accueil des utilisateur·ice·s.
-          </p>
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
-          >
-            {saving ? 'Publication…' : 'Publier'}
-          </button>
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11px] text-muted">
+            {t('admin.announcementsManager.publishHint')}
+          </p>
+          <Button type="submit" variant="primary" size="sm" disabled={!canSubmit}>
+            {saving
+              ? t('admin.announcementsManager.publishing')
+              : t('admin.announcementsManager.publish')}
+          </Button>
+        </div>
+
+        {error ? (
+          <p
+            role="alert"
+            className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
+          >
+            {error}
+          </p>
+        ) : null}
       </form>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide opacity-60">
-          Annonces existantes
+      {/* Existing announcements list */}
+      <div className="py-[24px] first:pt-0 last:pb-0">
+        <h3 className="mb-2 text-[16px] font-semibold text-ink">
+          {t('admin.announcementsManager.existingHeading')}
         </h3>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {loading ? <p className="text-sm opacity-60">Chargement…</p> : null}
-        {!loading && items.length === 0 ? (
-          <p className="text-sm opacity-60">Aucune annonce publiée.</p>
-        ) : null}
-        <ul className="space-y-2">
-          {items.map((row) => (
-            <li
-              key={row.id}
-              className={
-                'space-y-2 rounded border p-3 ' +
-                (row.active
-                  ? 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
-                  : 'border-slate-200 bg-slate-50 opacity-75 dark:border-slate-700 dark:bg-slate-800')
-              }
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h4 className="text-base font-semibold">{row.title}</h4>
-                  <p className="text-xs uppercase tracking-wide opacity-60">
-                    {new Date(row.createdAt).toLocaleString('fr-FR')} · {row.active ? 'actif' : 'inactif'}
-                  </p>
+        {loading ? (
+          <EmptyHint>{t('admin.announcementsManager.loading')}</EmptyHint>
+        ) : items.length === 0 ? (
+          <EmptyHint>{t('admin.announcementsManager.empty')}</EmptyHint>
+        ) : (
+          <ul className="flex flex-col">
+            {items.map((row) => (
+              <li
+                key={row.id}
+                className={cn(
+                  'border-b border-hair py-3.5 last:border-b-0',
+                  !row.active && 'opacity-60',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="text-[14.5px] font-medium text-ink">{row.title}</h4>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-[0.04em] text-muted">
+                      {new Date(row.createdAt).toLocaleString(language)} ·{' '}
+                      {row.active
+                        ? t('admin.announcementsManager.active')
+                        : t('admin.announcementsManager.inactive')}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="neutral"
+                      size="xs"
+                      onClick={() => void toggleActive(row)}
+                    >
+                      {row.active
+                        ? t('admin.announcementsManager.deactivate')
+                        : t('admin.announcementsManager.activate')}
+                    </Button>
+                    <Button
+                      variant="danger-ghost"
+                      size="sm"
+                      iconOnly
+                      onClick={() => void handleDelete(row.id)}
+                      aria-label={t('admin.announcementsManager.deleteAria')}
+                      title={t('admin.announcementsManager.deleteTitle')}
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void toggleActive(row)}
-                    className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                  >
-                    {row.active ? 'Désactiver' : 'Activer'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete(row.id)}
-                    className="rounded p-1 text-xs text-red-600 hover:bg-red-50"
-                    aria-label="Supprimer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <p className="whitespace-pre-wrap text-sm">{row.body}</p>
-            </li>
-          ))}
-        </ul>
+                <p className="mt-2 whitespace-pre-wrap text-[13px] leading-[1.55] text-ink-soft">
+                  {row.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

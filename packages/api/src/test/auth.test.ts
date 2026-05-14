@@ -1,15 +1,28 @@
+/**
+ * Auth integration tests — covers everything around session lifecycle
+ * (logout, /me, change-password, change-email, change-username,
+ * onboarding, delete-self) plus the admin/invites endpoint that
+ * historically lived here.
+ *
+ * The login flow itself (OPAQUE 2-step + activation gate + anti-enum)
+ * has its own file `auth-login-v2.test.ts`.
+ */
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { invites, users } from '../db/schema.ts';
+import { invites, sessions } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
+  extractCookie,
+  fullRegister,
+  loginAs,
+  passwordProofFor,
   seedAdmin,
   seedInvite,
   seedUser,
-  extractCookie,
 } from './helpers.ts';
 
 const app = buildApp();
@@ -18,119 +31,59 @@ function json(body: unknown): RequestInit {
   return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
 }
 
-async function registerBody(inviteCode: string, email: string, password = TEST_PASSWORD) {
-  return {
-    email,
-    password,
-    inviteCode,
-    encryptionSalt: 'salt-base64',
-    encryptedKey: 'wrapped-key-base64',
+/**
+ * Drive the /auth/change-password 2-step flow against the test app
+ * with deterministic wrap blobs. Returns the /finish response so
+ * the caller can assert on status + cookie. Used by the change-
+ * password test below.
+ */
+async function performChangePassword(
+  cookie: string,
+  email: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<Response> {
+  await ready;
+  const proof = await passwordProofFor(app, email, currentPassword);
+
+  const { clientRegistrationState, registrationRequest } = client.startRegistration({
+    password: newPassword,
+  });
+  const startRes = await app.request('/auth/change-password/start', {
+    ...json({
+      proofLoginToken: proof.proofLoginToken,
+      proofFinishLoginRequest: proof.proofFinishLoginRequest,
+      registrationRequest,
+    }),
+    headers: { 'content-type': 'application/json', cookie },
+  });
+  if (startRes.status !== 200) return startRes;
+  const { registrationResponse, changePasswordToken } = (await startRes.json()) as {
+    registrationResponse: string;
+    changePasswordToken: string;
   };
+
+  const { registrationRecord } = client.finishRegistration({
+    password: newPassword,
+    clientRegistrationState,
+    registrationResponse,
+  });
+
+  return app.request('/auth/change-password/finish', {
+    ...json({
+      changePasswordToken,
+      registrationRecord,
+      wrappedKekPassword: 'rotated-wrapped-kek',
+      wrappedKekPasswordIv: 'rotated-iv',
+    }),
+    headers: { 'content-type': 'application/json', cookie },
+  });
 }
-
-describe('POST /auth/register', () => {
-  it('creates a user and sets a session cookie when the invite is valid', async () => {
-    const invite = await seedInvite();
-    const res = await app.request(
-      '/auth/register',
-      json(await registerBody(invite.code, 'new@example.com')),
-    );
-    expect(res.status).toBe(201);
-    const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toMatch(/nodea_session=/);
-    expect(setCookie).toMatch(/HttpOnly/i);
-    expect(setCookie).toMatch(/SameSite=Lax/i);
-
-    const [row] = await db.select().from(users).where(eq(users.email, 'new@example.com'));
-    expect(row).toBeDefined();
-  });
-
-  it('rejects a weak password (length OK, entropy not)', async () => {
-    const invite = await seedInvite();
-    // 12+ chars so Zod accepts it, but clearly a very common pattern so
-    // zxcvbn returns score 0 or 1.
-    const res = await app.request(
-      '/auth/register',
-      json(await registerBody(invite.code, 'weak@example.com', 'password1234')),
-    );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('weak_password');
-  });
-
-  it('rejects an unknown invite code', async () => {
-    const res = await app.request(
-      '/auth/register',
-      json(await registerBody('nd-totallybogus000000000', 'x@example.com')),
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it('prevents invite reuse (atomic consumption)', async () => {
-    const invite = await seedInvite();
-
-    // First race: two parallel registrations with the same code.
-    const [a, b] = await Promise.all([
-      app.request('/auth/register', json(await registerBody(invite.code, 'first@example.com'))),
-      app.request('/auth/register', json(await registerBody(invite.code, 'second@example.com'))),
-    ]);
-    const statuses = [a.status, b.status].sort();
-    expect(statuses[0]).toBe(201);
-    expect(statuses[1]).toBe(400);
-
-    // Third attempt sequentially — still refused.
-    const c = await app.request(
-      '/auth/register',
-      json(await registerBody(invite.code, 'third@example.com')),
-    );
-    expect(c.status).toBe(400);
-
-    // The invite row must be marked consumed.
-    const [row] = await db.select().from(invites).where(eq(invites.id, invite.id));
-    expect(row?.usedBy).toBeDefined();
-    expect(row?.usedAt).toBeInstanceOf(Date);
-  });
-});
-
-describe('POST /auth/login', () => {
-  it('accepts correct credentials and returns a session cookie', async () => {
-    await seedUser('loginme@example.com');
-    const res = await app.request(
-      '/auth/login',
-      json({ email: 'loginme@example.com', password: TEST_PASSWORD }),
-    );
-    expect(res.status).toBe(200);
-    expect(extractCookie(res)).toBeTruthy();
-  });
-
-  it('rejects a wrong password', async () => {
-    await seedUser('loginme@example.com');
-    const res = await app.request(
-      '/auth/login',
-      json({ email: 'loginme@example.com', password: 'not-the-password' }),
-    );
-    expect(res.status).toBe(401);
-  });
-
-  it('rejects an unknown email with the same shape of error (no enumeration leak)', async () => {
-    const res = await app.request(
-      '/auth/login',
-      json({ email: 'nobody@example.com', password: 'anything-will-do' }),
-    );
-    expect(res.status).toBe(401);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe('invalid_credentials');
-  });
-});
 
 describe('POST /auth/logout', () => {
   it('revokes the session and clears the cookie', async () => {
     await seedUser('logoutme@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'logoutme@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'logoutme@example.com', TEST_PASSWORD);
 
     const logout = await app.request('/auth/logout', {
       method: 'POST',
@@ -144,22 +97,115 @@ describe('POST /auth/logout', () => {
   });
 });
 
-describe('GET /auth/me', () => {
-  it('returns the current user (without password hash)', async () => {
-    await seedUser('me@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'me@example.com', password: TEST_PASSWORD }),
+/**
+ * End-to-end auth lifecycle (Tier 9 health.md) — chains every step
+ * CLAUDE.md asks for in a single test :
+ *   register (with invite) → login → change-password → logout →
+ *   stale-cookie rejection.
+ *
+ * The narrower « change-password kills the old session » test below
+ * exercises a slice of this with `seedUser` ; this one starts from
+ * the actual register flow so a regression that breaks the
+ * register → first-login transition gets caught here.
+ */
+describe('end-to-end auth lifecycle (register → login → change-password → logout)', () => {
+  it('honours every transition + rejects stale cookies at each step', async () => {
+    const FIRST_PWD = 'Initial-Lifecycle-Pass-77';
+    const SECOND_PWD = 'Rotated-Lifecycle-Pass-99';
+    const email = 'lifecycle@example.com';
+
+    // 1. Register via invite (the invited path activates the
+    //    account immediately, no magic-link round trip needed).
+    const invite = await seedInvite(email);
+    const registered = await fullRegister(app, {
+      email,
+      password: FIRST_PWD,
+      inviteToken: invite.token,
+    });
+    expect(registered.status).toBe(200);
+
+    // 2. Login with the password chosen at register time.
+    const firstCookie = await loginAs(app, email, FIRST_PWD);
+    expect(firstCookie).toBeTruthy();
+
+    const meFirst = await app.request('/auth/me', {
+      headers: { cookie: firstCookie },
+    });
+    expect(meFirst.status).toBe(200);
+
+    // 3. Rotate the password. The first session must die ; the
+    //    response carries a fresh cookie bound to the new envelope.
+    const change = await performChangePassword(
+      firstCookie,
+      email,
+      FIRST_PWD,
+      SECOND_PWD,
     );
-    const cookie = extractCookie(login)!;
+    expect(change.status).toBe(200);
+
+    const secondCookie = extractCookie(change)!;
+    expect(secondCookie).toBeTruthy();
+    expect(secondCookie).not.toBe(firstCookie);
+
+    // 3a. Old cookie is dead — stale-cookie rejection.
+    const meStale = await app.request('/auth/me', {
+      headers: { cookie: firstCookie },
+    });
+    expect(meStale.status).toBe(401);
+
+    // 3b. New cookie carries the active session.
+    const meSecond = await app.request('/auth/me', {
+      headers: { cookie: secondCookie },
+    });
+    expect(meSecond.status).toBe(200);
+
+    // 3c. Old password no longer works — envelope replaced.
+    await expect(loginAs(app, email, FIRST_PWD)).rejects.toThrow();
+
+    // 4. Logout the second session.
+    const logout = await app.request('/auth/logout', {
+      method: 'POST',
+      headers: { cookie: secondCookie },
+    });
+    expect(logout.status).toBe(200);
+
+    // 4a. Second cookie is now also dead.
+    const meAfterLogout = await app.request('/auth/me', {
+      headers: { cookie: secondCookie },
+    });
+    expect(meAfterLogout.status).toBe(401);
+
+    // 5. Re-login with the new password — fresh cookie, full
+    //    lifecycle has come back to a clean state.
+    const thirdCookie = await loginAs(app, email, SECOND_PWD);
+    expect(thirdCookie).toBeTruthy();
+    expect(thirdCookie).not.toBe(secondCookie);
+
+    const meThird = await app.request('/auth/me', {
+      headers: { cookie: thirdCookie },
+    });
+    expect(meThird.status).toBe(200);
+  });
+});
+
+describe('GET /auth/me', () => {
+  it('returns the lean profile shape — no crypto blobs (API-14 split)', async () => {
+    await seedUser('me@example.com');
+    const cookie = await loginAs(app, 'me@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/me', { headers: { cookie } });
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.email).toBe('me@example.com');
+    // Phase 2D dropped the legacy password / envelope columns.
     expect(body).not.toHaveProperty('passwordHash');
-    expect(body).toHaveProperty('encryptionSalt');
-    expect(body).toHaveProperty('encryptedKey');
+    expect(body).not.toHaveProperty('encryptionSalt');
+    expect(body).not.toHaveProperty('encryptedKey');
+    // API-14 split — wrap blobs moved to /auth/me/crypto.
+    expect(body).not.toHaveProperty('wrappedMainKey');
+    expect(body).not.toHaveProperty('wrappedMainKeyIv');
+    expect(body).not.toHaveProperty('wrappedKekPassword');
+    expect(body).not.toHaveProperty('wrappedKekPasswordIv');
   });
 
   it('returns 401 without a cookie', async () => {
@@ -168,32 +214,47 @@ describe('GET /auth/me', () => {
   });
 });
 
-describe('POST /auth/change-password', () => {
+describe('GET /auth/me/crypto', () => {
+  it('returns the OPAQUE wrap blobs — split out of /auth/me (API-14)', async () => {
+    await seedUser('crypto@example.com');
+    const cookie = await loginAs(app, 'crypto@example.com', TEST_PASSWORD);
+
+    const res = await app.request('/auth/me/crypto', { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('wrappedMainKey');
+    expect(body).toHaveProperty('wrappedMainKeyIv');
+    expect(body).toHaveProperty('wrappedKekPassword');
+    expect(body).toHaveProperty('wrappedKekPasswordIv');
+    // No identity leaks on the crypto endpoint — it's strictly the
+    // wrap blobs.
+    expect(body).not.toHaveProperty('email');
+    expect(body).not.toHaveProperty('id');
+    expect(body).not.toHaveProperty('role');
+  });
+
+  it('returns 401 without a cookie', async () => {
+    const res = await app.request('/auth/me/crypto');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /auth/change-password (OPAQUE 2-step)', () => {
   const newPassword = 'Brand-New-Horse-Battery-Staple-99';
 
-  it('rotates the password, revokes the old session, and issues a fresh one', async () => {
+  it('rotates the envelope, revokes the old session, mints a fresh one, and binds login to the new password', async () => {
     await seedUser('rotate@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'rotate@example.com', password: TEST_PASSWORD }),
-    );
-    const oldCookie = extractCookie(login)!;
+    const oldCookie = await loginAs(app, 'rotate@example.com', TEST_PASSWORD);
 
-    const change = await app.request('/auth/change-password', {
-      ...json({
-        currentPassword: TEST_PASSWORD,
-        newPassword,
-        encryptionSalt: 'new-salt',
-        encryptedKey: 'new-wrapped',
-      }),
-      headers: {
-        'content-type': 'application/json',
-        cookie: oldCookie,
-      },
-    });
+    const change = await performChangePassword(
+      oldCookie,
+      'rotate@example.com',
+      TEST_PASSWORD,
+      newPassword,
+    );
     expect(change.status).toBe(200);
 
-    // The response must include a NEW session cookie.
+    // Response must include a NEW session cookie.
     const newCookie = extractCookie(change)!;
     expect(newCookie).not.toBe(oldCookie);
 
@@ -201,75 +262,131 @@ describe('POST /auth/change-password', () => {
     const meOld = await app.request('/auth/me', { headers: { cookie: oldCookie } });
     expect(meOld.status).toBe(401);
 
-    // New cookie works and old password no longer does.
+    // New cookie works.
     const meNew = await app.request('/auth/me', { headers: { cookie: newCookie } });
     expect(meNew.status).toBe(200);
 
-    const relogOld = await app.request(
-      '/auth/login',
-      json({ email: 'rotate@example.com', password: TEST_PASSWORD }),
-    );
-    expect(relogOld.status).toBe(401);
+    // OLD password no longer works (envelope replaced).
+    await expect(
+      loginAs(app, 'rotate@example.com', TEST_PASSWORD),
+    ).rejects.toThrow();
 
-    const relogNew = await app.request(
-      '/auth/login',
-      json({ email: 'rotate@example.com', password: newPassword }),
-    );
-    expect(relogNew.status).toBe(200);
+    // NEW password binds.
+    const cookieNewLogin = await loginAs(app, 'rotate@example.com', newPassword);
+    expect(cookieNewLogin).toBeTruthy();
   });
 
-  it('rejects when the current password is wrong', async () => {
-    await seedUser('rotate2@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'rotate2@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+  it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
+    const u = await seedUser('rotate2@example.com');
+    const cookie = await loginAs(app, 'rotate2@example.com', TEST_PASSWORD);
 
-    const change = await app.request('/auth/change-password', {
-      ...json({
-        currentPassword: 'wrong',
-        newPassword,
-        encryptionSalt: 's',
-        encryptedKey: 'k',
-      }),
+    // Backdate both reauth timestamps past the 5-min window so
+    // requireFreshPasswordOrPasskey refuses. Pre-7B this slot used
+    // an embedded OPAQUE proof; the equivalent now is a stale
+    // session timestamp — coverage of the OPAQUE proof path itself
+    // lives in `auth-reauth.test.ts`.
+    void u;
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    const stale = new Date(Date.now() - 6 * 60_000);
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: stale, reauthPasskeyAt: stale })
+      .where(eq(sessions.id, sessionId));
+
+    const startRes = await app.request('/auth/change-password/start', {
+      ...json({ registrationRequest: 'whatever' }),
       headers: { 'content-type': 'application/json', cookie },
     });
-    expect(change.status).toBe(401);
+    expect(startRes.status).toBe(401);
+    expect(await startRes.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password_or_passkey',
+    });
+  });
+
+  it('accepts a stale password + fresh passkey session (passkey substitutes per Auth-Spec §6)', async () => {
+    // Closes issue #49 — `requireFreshPasswordOrPasskey` is unit-
+    // tested in isolation in `auth-reauth.test.ts`, but the
+    // wiring on `/auth/change-password/start` specifically (the
+    // only mutating route where a fresh passkey is allowed to
+    // substitute for a fresh password) had no integration cover.
+    await seedUser('rotate-pk@example.com');
+    const cookie = await loginAs(app, 'rotate-pk@example.com', TEST_PASSWORD);
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    // Stale password timestamp, fresh passkey timestamp — mirrors
+    // the state a passkey-only re-auth would leave on the session.
+    // The real `/auth/reauth/passkey/{start,finish}` round-trip
+    // needs a WebAuthn authenticator, so we set the column
+    // directly (same trick as `auth-reauth.test.ts`).
+    await db
+      .update(sessions)
+      .set({
+        reauthPasswordAt: new Date(Date.now() - 10 * 60_000),
+        reauthPasskeyAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId));
+
+    // Real OPAQUE `registrationRequest` — the route runs
+    // `createRegistrationResponse` on it and 400s on garbage, so
+    // « whatever » wouldn't reach the success branch even if the
+    // middleware let us through.
+    await ready;
+    const { registrationRequest } = client.startRegistration({
+      password: 'New-Horse-Battery-Staple-99',
+    });
+    const startRes = await app.request('/auth/change-password/start', {
+      ...json({ registrationRequest }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(startRes.status).toBe(200);
+    const body = (await startRes.json()) as {
+      registrationResponse: string;
+      changePasswordToken: string;
+    };
+    expect(body.registrationResponse).toBeTruthy();
+    expect(body.changePasswordToken).toBeTruthy();
   });
 });
 
 describe('POST /admin/invites', () => {
-  it('lets an admin mint an invite and returns the clear code once', async () => {
+  it('lets an admin send an invite by email and stores it pending', async () => {
     const admin = await seedAdmin();
-    const login = await app.request(
-      '/auth/login',
-      json({ email: admin.email, password: ADMIN_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, admin.email, ADMIN_PASSWORD);
 
     const res = await app.request('/admin/invites', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ email: 'newcomer@example.com' }),
     });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { id: string; code: string };
-    expect(body.code).toMatch(/^nd-[a-z2-9]+$/);
+    const body = (await res.json()) as { id: string; email: string };
+    expect(body.email).toBe('newcomer@example.com');
+    // Clear token never surfaces in the response — only via the email.
+    expect(body).not.toHaveProperty('code');
+    expect(body).not.toHaveProperty('token');
+  });
+
+  it('refuses inviting an already-existing user with 409', async () => {
+    const admin = await seedAdmin();
+    await seedUser('exists@example.com');
+    const cookie = await loginAs(app, admin.email, ADMIN_PASSWORD);
+
+    const res = await app.request('/admin/invites', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ email: 'exists@example.com' }),
+    });
+    expect(res.status).toBe(409);
   });
 
   it('refuses a non-admin user', async () => {
     await seedUser('peasant@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'peasant@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'peasant@example.com', TEST_PASSWORD);
 
     const res = await app.request('/admin/invites', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ email: 'whatever@example.com' }),
     });
     expect(res.status).toBe(403);
   });
@@ -278,7 +395,7 @@ describe('POST /admin/invites', () => {
     const res = await app.request('/admin/invites', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ email: 'whatever@example.com' }),
     });
     expect(res.status).toBe(401);
   });
@@ -287,18 +404,15 @@ describe('POST /admin/invites', () => {
 describe('PATCH /auth/email', () => {
   const newEmail = 'renamed@example.com';
 
-  it('updates the email when the current password is correct', async () => {
+  it('updates the email when the OPAQUE proof checks out', async () => {
     await seedUser('rename@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'rename@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'rename@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'rename@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: TEST_PASSWORD, newEmail }),
+      body: JSON.stringify({ ...proof, newEmail }),
     });
     expect(res.status).toBe(200);
 
@@ -307,36 +421,41 @@ describe('PATCH /auth/email', () => {
     expect(meBody.email).toBe(newEmail);
   });
 
-  it('rejects a wrong current password (401)', async () => {
+  it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
     await seedUser('rename2@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'rename2@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'rename2@example.com', TEST_PASSWORD);
+
+    // Backdate the password reauth stamp past the 5-min window —
+    // requireFreshPassword refuses with reauth_required.
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: 'wrong', newEmail }),
+      body: JSON.stringify({ newEmail }),
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 
   it('409 when the new email is already taken', async () => {
     await seedUser('occupant@example.com');
     await seedUser('mover@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'mover@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'mover@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'mover@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/email', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({
-        currentPassword: TEST_PASSWORD,
+        ...proof,
         newEmail: 'occupant@example.com',
       }),
     });
@@ -345,15 +464,11 @@ describe('PATCH /auth/email', () => {
 });
 
 describe('PATCH /auth/username', () => {
-  it('sets, rejects duplicates (409), and clears with null', async () => {
+  it('sets, allows duplicates (display name only), and clears with null', async () => {
     await seedUser('u1@example.com');
     await seedUser('u2@example.com');
 
-    const loginU1 = await app.request(
-      '/auth/login',
-      json({ email: 'u1@example.com', password: TEST_PASSWORD }),
-    );
-    const cookieU1 = extractCookie(loginU1)!;
+    const cookieU1 = await loginAs(app, 'u1@example.com', TEST_PASSWORD);
 
     const set1 = await app.request('/auth/username', {
       method: 'PATCH',
@@ -366,43 +481,34 @@ describe('PATCH /auth/username', () => {
     const me1Body = (await me1.json()) as { username: string | null };
     expect(me1Body.username).toBe('alice');
 
-    // u2 cannot claim the same name → 409.
-    const loginU2 = await app.request(
-      '/auth/login',
-      json({ email: 'u2@example.com', password: TEST_PASSWORD }),
-    );
-    const cookieU2 = extractCookie(loginU2)!;
+    // u2 can claim the same display name — usernames are not
+    // identifiers (the actual identity lives in `users.id` and
+    // `users.email`).
+    const cookieU2 = await loginAs(app, 'u2@example.com', TEST_PASSWORD);
 
-    const collide = await app.request('/auth/username', {
+    const dup = await app.request('/auth/username', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie: cookieU2 },
       body: JSON.stringify({ username: 'alice' }),
     });
-    expect(collide.status).toBe(409);
+    expect(dup.status).toBe(200);
 
-    // null clears, then u2 can take the freed slot.
+    const me2 = await app.request('/auth/me', { headers: { cookie: cookieU2 } });
+    const me2Body = (await me2.json()) as { username: string | null };
+    expect(me2Body.username).toBe('alice');
+
+    // null clears the display name; u1 can now go back to NULL.
     const clear = await app.request('/auth/username', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie: cookieU1 },
       body: JSON.stringify({ username: null }),
     });
     expect(clear.status).toBe(200);
-
-    const claim = await app.request('/auth/username', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', cookie: cookieU2 },
-      body: JSON.stringify({ username: 'alice' }),
-    });
-    expect(claim.status).toBe(200);
   });
 
   it('rejects an invalid shape (400)', async () => {
     await seedUser('u3@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'u3@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'u3@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/username', {
       method: 'PATCH',
@@ -416,11 +522,7 @@ describe('PATCH /auth/username', () => {
 describe('POST /auth/onboarding/complete', () => {
   it('flips onboardingStatus from pending to complete and is idempotent', async () => {
     await seedUser('ob@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'ob@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'ob@example.com', TEST_PASSWORD);
 
     const before = await app.request('/auth/me', { headers: { cookie } });
     const beforeBody = (await before.json()) as { onboardingStatus: string };
@@ -453,16 +555,13 @@ describe('POST /auth/onboarding/complete', () => {
 describe('DELETE /auth/me', () => {
   it('removes the user and cascades sessions + entries', async () => {
     await seedUser('suicide@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'suicide@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'suicide@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'suicide@example.com', TEST_PASSWORD);
 
     const res = await app.request('/auth/me', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: TEST_PASSWORD }),
+      body: JSON.stringify(proof),
     });
     expect(res.status).toBe(200);
 
@@ -472,19 +571,31 @@ describe('DELETE /auth/me', () => {
     expect(me.status).toBe(401);
   });
 
-  it('rejects a wrong current password (401)', async () => {
+  it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
     await seedUser('survivor@example.com');
-    const login = await app.request(
-      '/auth/login',
-      json({ email: 'survivor@example.com', password: TEST_PASSWORD }),
-    );
-    const cookie = extractCookie(login)!;
+    const cookie = await loginAs(app, 'survivor@example.com', TEST_PASSWORD);
+
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
 
     const res = await app.request('/auth/me', {
       method: 'DELETE',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ currentPassword: 'not-the-one' }),
+      body: JSON.stringify({}),
     });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({
+      error: 'reauth_required',
+      reauth_required: 'password',
+    });
   });
 });
+
+// Suppress unused-import lints for symbols that historically were used
+// here (kept around for the moment they come back into play).
+void invites;
+void eq;
+void db;

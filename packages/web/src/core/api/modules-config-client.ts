@@ -2,11 +2,8 @@
  * Client for the encrypted `modules_config` (per-user "which modules
  * are enabled + their decrypted sub-config") blob.
  *
- * The server stores `{ cipher_iv, payload }`. This module:
- *   - GET  /modules-config → decrypt → returns the typed runtime map
- *   - PUT  /modules-config ← encrypt(map) → serialised
- *
- * Shape of the decrypted map (one entry per toggleable module):
+ * The server stores `{ cipherIv, payload }`. Shape of the decrypted
+ * map (one entry per toggleable module):
  *
  *     {
  *       mood:  { enabled: true,  moduleUserId: "g_xxx" },
@@ -27,10 +24,10 @@ export async function loadDecryptedModulesConfig(
   aesKey: AesMainKey,
 ): Promise<ModulesRuntime> {
   const res = await apiGetModulesConfig();
-  if (!res.cipher_iv || !res.payload) return {};
+  if (!res.cipherIv || !res.payload) return {};
   const clear = await decryptAESGCM(
     {
-      iv: res.cipher_iv as Base64 as CipherIV,
+      iv: res.cipherIv as Base64 as CipherIV,
       data: res.payload as Base64 as EncryptedBlob,
     },
     aesKey,
@@ -46,5 +43,5 @@ export async function saveEncryptedModulesConfig(
   runtime: ModulesRuntime,
 ): Promise<void> {
   const blob = await encryptAESGCM(JSON.stringify(runtime), aesKey);
-  await apiPutModulesConfig({ cipher_iv: blob.iv, payload: blob.data });
+  await apiPutModulesConfig({ cipherIv: blob.iv, payload: blob.data });
 }

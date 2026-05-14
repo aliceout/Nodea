@@ -1,64 +1,91 @@
-import { useMemo, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
 import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal';
-import OnboardingModal from '@/ui/atoms/specifics/OnboardingModal';
 import { nav } from './navigation/Navigation';
 import {
   useNodeaStore,
   selectKeyStatus,
-  selectUser,
+  selectCurrentModule,
 } from '@/core/store/nodea-store';
 import { useSession } from '@/core/auth/use-session';
-import { apiCompleteOnboarding, apiMe } from '@/core/api/client';
-import { usePreferences } from '@/core/preferences/usePreferences';
+import { usePreferences } from '@/core/auth/use-preferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
-import Header from './headers/Header';
-import Sidebar from './navigation/Sidebar.jsx';
+import { useFirstRunSeed } from '@/core/modules/useFirstRunSeed';
+import Sidebar from '@/ui/dirk/Sidebar';
+import ComposerModal from '@/ui/dirk/ComposerModal';
 
 /**
- * Main authenticated layout.
+ * Direction K shell — fixed sidebar (240px) on `lg+`, slide-in
+ * drawer below. The previous Header / Subheader pair is gone:
+ * each page renders its own per-page topbar inside the main
+ * column to keep the visual rhythm of the handoff (per-page
+ * dates, page-level CTAs, custom hierarchies).
  *
- * Crypto slice `status === 'missing'` blocks with `KeyMissingModal`
- * (only escape is logout + fresh login, which re-derives the main key).
- *
- * `auth.user.onboardingStatus === 'pending'` overlays `OnboardingModal`
- * on top of the current route — it doesn't block navigation, just asks
- * to pick language / theme / at least one module before letting the
- * user snooze or finalise.
+ * Crypto status `missing` keeps blocking with `KeyMissingModal`.
+ * First-run onboarding now lives inline on the home page (see
+ * `app/flow/Homepage/Onboarding.tsx`) — no shell-level modal.
  */
 export default function Layout() {
-  const { moduleId } = useParams();
-  const current = moduleId ?? 'home';
+  // The active module lives in the store, not in the URL — see
+  // `flow` slice in `nodea-store.ts` and the popstate listener in
+  // `App.jsx`. URL stays at `/flow` regardless of which module is
+  // active so module-visited metadata never leaks into Nginx /
+  // Pino logs.
+  const current = useNodeaStore(selectCurrentModule);
+  const syncCurrentModule = useNodeaStore((s) => s.syncCurrentModule);
   const keyStatus = useNodeaStore(selectKeyStatus);
-  const user = useNodeaStore(selectUser);
-  const setAuth = useNodeaStore((s) => s.setAuth);
+  const openComposer = useNodeaStore((s) => s.openComposer);
+  const closeComposer = useNodeaStore((s) => s.closeComposer);
+  const composerOpen = useNodeaStore((s) => s.composer.open);
   const session = useSession();
   // Hydrate the encrypted user preferences + modules-config slices as
   // soon as the layout mounts — each runs at most once per
-  // (session, mainKey) pair.
+  // (session, mainKey) pair. The first-run seed then enables every
+  // module by default and flips `onboardingStatus = complete` for
+  // brand-new accounts (no picker to confront an uncontextualised
+  // user — see `useFirstRunSeed.ts`).
   usePreferences();
   useModulesHydration();
-  const [snoozed, setSnoozed] = useState(false);
-  const needsOnboarding =
-    !snoozed && user?.onboardingStatus === 'pending' && keyStatus !== 'missing';
+  useFirstRunSeed();
 
-  async function finishOnboarding(): Promise<void> {
-    await apiCompleteOnboarding();
-    const me = await apiMe();
-    if (me) setAuth(me);
-  }
+  // ⌘K (or Ctrl+K) toggles the global composer from anywhere in the
+  // shell. Disabled when the key is missing — the blocking
+  // KeyMissingModal owns input focus until the user re-auths.
+  useEffect(() => {
+    if (keyStatus === 'missing') return undefined;
+    function handleKey(event: KeyboardEvent): void {
+      const isComposerHotkey =
+        (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+      if (!isComposerHotkey) return;
+      event.preventDefault();
+      if (composerOpen) closeComposer();
+      else openComposer();
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [keyStatus, composerOpen, openComposer, closeComposer]);
 
   const moduleKnown = useMemo(() => nav.some((t) => t.id === current), [current]);
   const ActiveView = useMemo(() => {
-    return nav.find((t) => t.id === current)?.element ?? null;
+    // Fall back to home's element when the store points at a module
+    // that isn't in the user's enabled set — happens if a module was
+    // disabled while the user was on it. The store correction below
+    // happens in an effect (no setState during render).
+    return (
+      nav.find((t) => t.id === current)?.element ??
+      nav.find((t) => t.id === 'home')?.element ??
+      null
+    );
   }, [current]);
 
-  if (!moduleKnown) {
-    return <Navigate to="/flow/home" replace />;
-  }
+  // Self-heal the store when it points at an unknown / disabled module.
+  // Uses `syncCurrentModule` (no `pushState`) so we don't add a phantom
+  // entry to the back-stack for a fallback the user never asked for.
+  useEffect(() => {
+    if (!moduleKnown) syncCurrentModule('home');
+  }, [moduleKnown, syncCurrentModule]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors">
+    <div className="flex min-h-screen bg-bg text-ink">
       {keyStatus === 'missing' ? (
         <KeyMissingModal
           onLogout={() => {
@@ -68,18 +95,10 @@ export default function Layout() {
         />
       ) : null}
 
-      <OnboardingModal
-        open={needsOnboarding}
-        onFinish={finishOnboarding}
-        onSnooze={() => setSnoozed(true)}
-      />
-
-
       <Sidebar />
-      <div className="flex flex-col flex-1 bg-slate-50 dark:bg-slate-950 transition-colors">
-        <Header />
-        <main className="flex-1 bg-white dark:bg-slate-900 transition-colors">{ActiveView}</main>
-      </div>
+      <main id="main" className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
+
+      <ComposerModal />
     </div>
   );
 }

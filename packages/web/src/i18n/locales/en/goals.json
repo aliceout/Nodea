@@ -1,1 +1,102 @@
-{}
+{
+  "title": "Goals",
+  "topbar": {
+    "label": {
+      "one": "Goals · {count} goal",
+      "other": "Goals · {count} goals"
+    },
+    "newCta": "+ New goal",
+    "readerLabel": "Goals · {position} / {total}"
+  },
+  "list": {
+    "loading": "Loading goals…",
+    "empty": "No goal matches the current filters.",
+    "groupCountNoun": "goal"
+  },
+  "row": {
+    "editAria": "Edit goal",
+    "deleteAria": "Delete goal",
+    "titleEditAria": "Rename goal",
+    "titleEditHint": "Double-click to rename",
+    "titleClickHint": "Click to open, double-click to rename",
+    "confirmDelete": "Delete « {title} » ?"
+  },
+  "reader": {
+    "noThreadEyebrow": "— no thread —",
+    "edit": "Edit",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next",
+    "emptyNote": "No note for this goal."
+  },
+  "statusPill": {
+    "ariaLabel": "Status: {label}, click to cycle",
+    "title": "Status: {label}"
+  },
+  "status": {
+    "lower": {
+      "open": "open",
+      "wip": "in progress",
+      "done": "done"
+    },
+    "title": {
+      "open": "Open",
+      "wip": "In progress",
+      "done": "Done"
+    }
+  },
+  "sort": {
+    "date": "Date",
+    "updated": "Recent",
+    "alpha": "A→Z"
+  },
+  "side": {
+    "search": "Search",
+    "searchPlaceholder": "Title, note or thread…",
+    "searchAria": "Search goals",
+    "statusHeading": "Status",
+    "all": "All",
+    "groupBy": "Group by",
+    "groupByThread": "Thread",
+    "groupByYear": "Year",
+    "sortBy": "Sort by",
+    "display": "Display",
+    "hideDone": "Hide done ({count})",
+    "actions": "Actions",
+    "carryOverCta": "Carry over to next year"
+  },
+  "carryOver": {
+    "title": "Carry over unfinished",
+    "intro": "Move open and in-progress goals from one year to another. Done goals stay where they are.",
+    "fromLabel": "From year",
+    "toLabel": "To year",
+    "invalidRange": "Enter two valid, different years.",
+    "noneEmpty": "No unfinished goal for {year} — nothing to carry over.",
+    "summary": {
+      "one": "{count} goal from {fromYear} will be carried over to {toYear}.",
+      "other": "{count} goals from {fromYear} will be carried over to {toYear}."
+    },
+    "moreCount": "… and {count} more",
+    "submitting": "Carrying over…",
+    "submitCta": "Carry over"
+  },
+  "composer": {
+    "draftRestored": "Restored an in-progress draft.",
+    "resetDraft": "Start over",
+    "titlePlaceholder": "Title — e.g. Launch a blog",
+    "monthAria": "Month",
+    "monthPlaceholder": "— month —",
+    "yearPlaceholder": "Year",
+    "yearAria": "Year (4 digits)",
+    "threadPlaceholder": "Threads (optional) — comma-separated, e.g. #MovingLyon, #Solo",
+    "existingThreads": "Existing:",
+    "notePlaceholder": "Note (optional) — details, context, exact deadline…",
+    "errors": {
+      "titleRequired": "Title is required.",
+      "missingConfig": "Goals module not configured or key missing — sign in again.",
+      "invalidYear": "Year must be a 4-digit number.",
+      "saveFailed": "Failed to save."
+    },
+    "submittingUpdate": "Updating…"
+  }
+}

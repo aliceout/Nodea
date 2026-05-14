@@ -1,100 +1,303 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowUturnLeftIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { formatLongDate } from '@/core/i18n/date-format';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import Input from '@/ui/atoms/dirk/Input';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import GroupBlock from '@/ui/dirk/module/GroupBlock';
+import HoverActions from '@/ui/dirk/module/HoverActions';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import PageHeading from '@/ui/dirk/module/PageHeading';
+import Topbar from '@/ui/dirk/Topbar';
+import { QUESTION_STEPS } from '../config/steps';
+import {
+  clearReviewDraft,
+  listReviewDrafts,
+  type DraftSummary,
+} from '../hooks/useDraft';
 import { useReview, type ReviewRecord } from '../hooks/useReview';
 
 interface ListProps {
   onStartNew(year: number): void;
+  onResume(year: number): void;
   onOpen(record: ReviewRecord): void;
   onEdit(record: ReviewRecord): void;
 }
 
-export default function ReviewListView({ onStartNew, onOpen, onEdit }: ListProps) {
+/** « 12 mars 14:30 » — used for the « Brouillons » timestamp.
+ *  Specific to this surface (no other module surfaces a date with
+ *  hour / minute on the same line), so it stays local instead of
+ *  going to `core/i18n/date-fr.ts`. */
+const DRAFT_DATETIME_FMT = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+export default function ReviewListView({
+  onStartNew,
+  onResume,
+  onOpen,
+  onEdit,
+}: ListProps) {
+  const { t, tn } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { loading, error, entries, deleteReview } = useReview();
   const currentYear = new Date().getFullYear();
   const [draftYear, setDraftYear] = useState<number>(currentYear);
+  const [drafts, setDrafts] = useState<DraftSummary[]>([]);
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Supprimer ce bilan annuel ?')) return;
-    await deleteReview(id);
+  // Load draft summaries from localStorage on mount and whenever
+  // the entries list changes (a finalized save clears its draft,
+  // so the in-progress section should refresh).
+  useEffect(() => {
+    setDrafts(listReviewDrafts());
+  }, [entries]);
+
+  const sorted = useMemo(
+    () => [...entries].sort((a, b) => b.payload.year - a.payload.year),
+    [entries],
+  );
+
+  // A year that has a finalized entry shouldn't appear in the
+  // « Brouillons » list — the draft was either already submitted
+  // (and cleared) or is stale leftover from a different device.
+  const finalizedYears = useMemo(
+    () => new Set(entries.map((e) => e.payload.year)),
+    [entries],
+  );
+  const activeDrafts = useMemo(
+    () => drafts.filter((d) => !finalizedYears.has(d.year)),
+    [drafts, finalizedYears],
+  );
+
+  async function handleDelete(record: ReviewRecord): Promise<void> {
+    if (
+      !window.confirm(
+        t('review.list.confirmDelete', { values: { year: record.payload.year } }),
+      )
+    )
+      return;
+    await deleteReview(record.id);
+  }
+
+  function handleDeleteDraft(year: number): void {
+    if (!window.confirm(t('review.list.confirmDeleteDraft', { values: { year } })))
+      return;
+    clearReviewDraft(year);
+    setDrafts(listReviewDrafts());
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 py-6">
-      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h1 className="text-xl font-bold">Commencer un nouveau bilan</h1>
-        <p className="text-sm opacity-80">
-          Un parcours guidé en {15} étapes, inspiré du YearCompass. Tu peux
-          passer, revenir, et le reprendre quand tu veux — ton brouillon est
-          chiffré localement.
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={tn('review.topbar.label', entries.length)}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        />
+      }
+    >
+      <PageHeading>{t('review.list.heading')}</PageHeading>
+
+      <div className="mb-9 max-w-2xl space-y-3 text-[14px] leading-[1.55] text-ink-soft">
+        <p>{t('review.list.intro1')}</p>
+        <p>{t('review.list.intro2')}</p>
+      </div>
+
+      {error ? (
+        <p
+          role="alert"
+          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
+        >
+          {error}
         </p>
-        <div className="flex items-end gap-3">
+      ) : null}
+
+      <section className="mb-9">
+        <h2 className="mb-2 border-b border-hair pb-1.5 text-[15px] font-semibold tracking-[-0.005em] text-ink">
+          {t('review.list.newHeading')}
+        </h2>
+        <p className="mb-4 text-[13px] leading-[1.55] text-ink-soft">
+          {t('review.list.newSubtitle', { values: { count: QUESTION_STEPS.length } })}
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
           <label className="block">
-            <span className="text-xs">Année concernée</span>
-            <input
+            <span className="mb-1 block text-[12px] font-medium text-muted">
+              {t('review.list.yearLabel')}
+            </span>
+            <Input
               type="number"
               min={1900}
               max={2200}
               value={draftYear}
-              onChange={(e) => setDraftYear(Number(e.target.value) || currentYear)}
-              className="mt-1 block w-28 rounded border border-slate-300 p-2 text-sm"
+              align="center"
+              onChange={(e) =>
+                setDraftYear(Number(e.target.value) || currentYear)
+              }
+              className="w-28"
             />
           </label>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => onStartNew(draftYear)}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
           >
-            Démarrer
-          </button>
+            {t('review.list.startCta')}
+          </Button>
         </div>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">Bilans passés</h2>
-        {loading ? <p className="opacity-60">Chargement…</p> : null}
-        {error ? <p className="text-red-600">{error}</p> : null}
-        {!loading && entries.length === 0 ? (
-          <p className="opacity-60">Aucun bilan enregistré pour le moment.</p>
-        ) : null}
-        <ul className="space-y-2">
-          {entries.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-center justify-between gap-3 rounded border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div>
-                <p className="font-semibold">Bilan {e.payload.year}</p>
-                <p className="text-xs opacity-60">
-                  Mis à jour le {new Date(e.updatedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onOpen(e)}
-                  className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                >
-                  Relire
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onEdit(e)}
-                  className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                >
-                  Modifier
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDelete(e.id)}
-                  className="rounded p-1 text-xs text-red-600 hover:bg-red-50"
-                  aria-label="Supprimer"
-                >
-                  ✕
-                </button>
-              </div>
-            </li>
+      {activeDrafts.length > 0 ? (
+        <GroupBlock
+          label={t('review.list.draftsHeading')}
+          count={activeDrafts.length}
+          countNoun={t('review.list.draftsCountNoun')}
+          variant="eyebrow"
+        >
+          {activeDrafts.map((d) => (
+            <DraftRow
+              key={d.year}
+              draft={d}
+              onResume={() => onResume(d.year)}
+              onDelete={() => handleDeleteDraft(d.year)}
+            />
           ))}
-        </ul>
-      </section>
-    </div>
+        </GroupBlock>
+      ) : null}
+
+      {loading && sorted.length === 0 ? (
+        <EmptyHint>{t('review.list.loading')}</EmptyHint>
+      ) : sorted.length === 0 && activeDrafts.length === 0 ? (
+        <EmptyHint>{t('review.list.empty')}</EmptyHint>
+      ) : sorted.length === 0 ? null : (
+        <GroupBlock
+          label={t('review.list.pastHeading')}
+          count={sorted.length}
+          countNoun={t('review.list.pastCountNoun')}
+        >
+          {sorted.map((entry) => (
+            <ReviewRow
+              key={entry.id}
+              record={entry}
+              onOpen={() => onOpen(entry)}
+              onEdit={() => onEdit(entry)}
+              onDelete={() => void handleDelete(entry)}
+            />
+          ))}
+        </GroupBlock>
+      )}
+    </ModuleShell>
+  );
+}
+
+interface ReviewRowProps {
+  record: ReviewRecord;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function ReviewRow({ record, onOpen, onEdit, onDelete }: ReviewRowProps) {
+  const { t, language } = useI18n();
+  // `payload.updatedAt` is the in-payload write timestamp — the
+  // entry-table wrapper no longer carries `updatedAt` (minimum-
+  // readable-surface design). Always set by the create/update hooks.
+  const updated = formatLongDate(record.payload.updatedAt, language);
+  return (
+    <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="min-w-0 flex-1 cursor-pointer text-left transition-colors hover:text-accent"
+      >
+        <p className="text-[14px] font-medium text-ink group-hover:text-accent">
+          {t('review.list.rowYear', { values: { year: record.payload.year } })}
+        </p>
+        <p className="mt-0.5 text-[12px] text-muted">
+          {t('review.list.rowUpdated', { values: { date: updated } })}
+        </p>
+      </button>
+
+      <HoverActions>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          onClick={onEdit}
+          aria-label={t('review.list.rowEditAria')}
+          title={t('common.actions.edit')}
+        >
+          <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="danger-ghost"
+          size="sm"
+          iconOnly
+          onClick={onDelete}
+          aria-label={t('review.list.rowDeleteAria')}
+          title={t('common.actions.delete')}
+        >
+          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+      </HoverActions>
+    </li>
+  );
+}
+
+interface DraftRowProps {
+  draft: DraftSummary;
+  onResume: () => void;
+  onDelete: () => void;
+}
+
+function DraftRow({ draft, onResume, onDelete }: DraftRowProps) {
+  const { t } = useI18n();
+  const savedLabel =
+    draft.savedAt != null
+      ? t('review.list.draftSavedAt', {
+          values: { date: DRAFT_DATETIME_FMT.format(new Date(draft.savedAt)) },
+        })
+      : t('review.list.draftSavingNow');
+  return (
+    <li className="group flex items-center gap-3 border-b border-hair py-3 last:border-b-0">
+      <button
+        type="button"
+        onClick={onResume}
+        className="min-w-0 flex-1 cursor-pointer text-left transition-colors hover:text-accent"
+      >
+        <p className="flex items-baseline gap-2 text-[14px] font-medium text-ink group-hover:text-accent">
+          {t('review.list.rowYear', { values: { year: draft.year } })}
+          <span className="rounded-sm bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-accent-deep">
+            {t('review.list.draftBadge')}
+          </span>
+        </p>
+        <p className="mt-0.5 text-[12px] text-muted">{savedLabel}</p>
+      </button>
+
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={onResume}
+        className="shrink-0"
+      >
+        <ArrowUturnLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+        {t('review.list.draftResume')}
+      </Button>
+      <HoverActions>
+        <Button
+          variant="danger-ghost"
+          size="sm"
+          iconOnly
+          onClick={onDelete}
+          aria-label={t('review.list.draftDeleteAria')}
+          title={t('review.list.draftDeleteTitle')}
+        >
+          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+      </HoverActions>
+    </li>
   );
 }

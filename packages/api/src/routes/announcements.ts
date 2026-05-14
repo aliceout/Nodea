@@ -1,8 +1,15 @@
-import { Hono } from 'hono';
 import { and, desc, eq, isNull, or, lte, gte } from 'drizzle-orm';
+import { AnnouncementListResponseSchema } from '@nodea/shared';
 import { db } from '../db/client.ts';
 import { announcements } from '../db/schema.ts';
-import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
+import { requireUser } from '../middleware/require-user.ts';
+import {
+  createRoute,
+  errorContent,
+  jsonContent,
+  makeAuthedRouter,
+  z,
+} from '../openapi/index.ts';
 import { serialize } from './announcements-serialize.ts';
 
 /**
@@ -13,9 +20,26 @@ import { serialize } from './announcements-serialize.ts';
  * `start_at` and `end_at` if set). Admin CRUD lives in
  * `routes/admin.ts` under `/admin/announcements`.
  */
-export const announcementsRoutes = new Hono<{ Variables: AuthVariables }>();
+export const announcementsRoutes = makeAuthedRouter();
 
-announcementsRoutes.get('/', requireUser, async (c) => {
+const listAnnouncementsRoute = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['announcements'],
+  summary: 'List live announcements',
+  middleware: [requireUser] as const,
+  request: {
+    query: z.object({
+      limit: z.string().optional().openapi({ example: '10' }),
+    }),
+  },
+  responses: {
+    200: jsonContent(AnnouncementListResponseSchema, 'Live announcements'),
+    401: errorContent('Unauthenticated'),
+  },
+});
+
+announcementsRoutes.openapi(listAnnouncementsRoute, async (c) => {
   const now = new Date();
   const limitParam = c.req.query('limit');
   const limit = Math.min(Math.max(Number(limitParam) || 10, 1), 50);
@@ -33,5 +57,6 @@ announcementsRoutes.get('/', requireUser, async (c) => {
     .orderBy(desc(announcements.createdAt))
     .limit(limit);
 
-  return c.json({ announcements: rows.map(serialize) });
+  // Uniform `{ data, meta }` envelope (audit API-06).
+  return c.json({ data: rows.map(serialize), meta: {} }, 200);
 });

@@ -1,225 +1,93 @@
-import { pgTable, text, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-
 /**
- * Users — owners of encrypted data.
+ * Drizzle schema — barrel re-export.
  *
- * `encryption_salt` and `encrypted_key` form the E2E wrapper: the client
- * derives a KEK from the user password + salt (argon2id), which is used to
- * decrypt `encrypted_key` and obtain the main key. The server never sees
- * the main key.
- */
-export const users = pgTable(
-  'users',
-  {
-    id: text('id').primaryKey(),
-    email: text('email').notNull(),
-    /**
-     * Public display name. Optional — users can register without setting
-     * one. Uniqueness is enforced via a partial unique index so multiple
-     * rows with NULL stay allowed.
-     */
-    username: text('username'),
-    passwordHash: text('password_hash').notNull(),
-    encryptionSalt: text('encryption_salt').notNull(),
-    encryptedKey: text('encrypted_key').notNull(),
-    role: text('role', { enum: ['user', 'admin'] })
-      .notNull()
-      .default('user'),
-    onboardingStatus: text('onboarding_status', { enum: ['pending', 'complete'] })
-      .notNull()
-      .default('pending'),
-    onboardingVersion: text('onboarding_version').notNull().default('1'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    uniqueIndex('users_email_unique').on(t.email),
-    uniqueIndex('users_username_unique')
-      .on(t.username)
-      .where(sql`${t.username} IS NOT NULL`),
-  ],
-);
-
-/**
- * Sessions — server-side session records. The cookie carries only the
- * signed session id; rights and TTL live here so that logout / revocation
- * is immediate.
- */
-export const sessions = pgTable(
-  'sessions',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index('sessions_expires_at_idx').on(t.expiresAt)],
-);
-
-/**
- * Invites — single-use registration codes. Stored hashed (never in clear).
- * Consumption is atomic via transaction + `SELECT ... FOR UPDATE`.
- */
-export const invites = pgTable(
-  'invites',
-  {
-    id: text('id').primaryKey(),
-    codeHash: text('code_hash').notNull(),
-    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
-    usedBy: text('used_by').references(() => users.id, { onDelete: 'set null' }),
-    usedAt: timestamp('used_at', { withTimezone: true }),
-    expiresAt: timestamp('expires_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex('invites_code_hash_unique').on(t.codeHash)],
-);
-
-/**
- * Password-reset tokens. Stored hashed (same pattern as invites) with
- * a short expiry. Consuming a token is atomic:
- *   - the row is looked up by `token_hash`
- *   - the transaction purges every user-owned encrypted row (see
- *     `/auth/reset` handler) because resetting the password means the
- *     user lost their main key — old ciphertexts become unreadable
- *   - the password hash + envelope are replaced with fresh values
- *   - `used_at` is set so the token can't be replayed.
+ * The 678-LOC monolith was split by domain into
+ * `schema/<domain>.ts` ; this file keeps a stable
+ * `import { ... } from '../db/schema.ts'` surface so the
+ * 200+ call sites across the api don't need touching.
  *
- * Rate limiting on the public request route protects against email
- * enumeration; the route itself always returns 200 whether or not the
- * email belongs to a user.
- */
-export const passwordResetTokens = pgTable(
-  'password_reset_tokens',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    tokenHash: text('token_hash').notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    usedAt: timestamp('used_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    uniqueIndex('password_reset_tokens_token_hash_unique').on(t.tokenHash),
-    index('password_reset_tokens_user_id_idx').on(t.userId),
-  ],
-);
-
-/**
- * Announcements — server-side public feed curated by admins. Content
- * is not E2E encrypted: the whole point is to be readable by every
- * logged-in user without needing their main key. `created_by` is kept
- * as an audit trail; `active` toggles visibility without deleting the
- * row; `startAt` / `endAt` carry optional scheduling windows.
- */
-export const announcements = pgTable(
-  'announcements',
-  {
-    id: text('id').primaryKey(),
-    title: text('title').notNull(),
-    body: text('body').notNull(),
-    active: boolean('active').notNull().default(true),
-    startAt: timestamp('start_at', { withTimezone: true }),
-    endAt: timestamp('end_at', { withTimezone: true }),
-    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index('announcements_active_idx').on(t.active, t.createdAt)],
-);
-
-/**
- * Factory for per-module entry tables. Every module stores its records
- * with the same shape: an opaque encrypted payload + a HMAC guard
- * computed by the client from its main key + the record id.
+ * Domains :
+ *   - `schema/enums.ts` — `securityMode`, `registerState`,
+ *     `sessionKind`, `authFactorKind`, `mfaFactor`,
+ *     `emailVerificationKind`.
+ *   - `schema/users.ts` — `users`, `sessions`.
+ *   - `schema/auth.ts` — OPAQUE records, auth factors
+ *     (passkeys), TOTP enrollment + backup codes, MFA
+ *     bypass requests, email verifications, password reset
+ *     tokens.
+ *   - `schema/admin.ts` — invites, app settings,
+ *     announcements.
+ *   - `schema/entries.ts` — the `createEntryTable` factory
+ *     + the nine per-module entry tables.
+ *   - `schema/modules.ts` — `modulesConfig`,
+ *     `userPreferences`.
  *
- * Using a single factory guarantees structural uniformity across
- * collections — middleware can treat any entry table interchangeably.
+ * Inferred row types live at the bottom of this file so
+ * consumers continue importing them from the canonical
+ * `db/schema.ts` path.
  */
-function createEntryTable(name: string) {
-  return pgTable(
-    name,
-    {
-      id: text('id').primaryKey(),
-      userId: text('user_id')
-        .notNull()
-        .references(() => users.id, { onDelete: 'cascade' }),
-      /**
-       * `module_user_id` is an anonymous per-module sub-identifier chosen
-       * by the client. Two modules can never collide because the
-       * (user_id, module_user_id) tuple scopes queries, and the sid is
-       * derived from module-specific entropy client-side.
-       */
-      moduleUserId: text('module_user_id').notNull(),
-      cipherIv: text('cipher_iv').notNull(),
-      payload: text('payload').notNull(),
-      /**
-       * HMAC guard. `"init"` on creation (client doesn't yet know the
-       * record id), then promoted once to `g_<64 hex>` and frozen.
-       * Never exposed in read responses.
-       */
-      guard: text('guard').notNull(),
-      createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-      updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    },
-    (t) => [index(`${name}_user_sid_idx`).on(t.userId, t.moduleUserId)],
-  );
-}
 
-export const moodEntries = createEntryTable('mood_entries');
-export const goalsEntries = createEntryTable('goals_entries');
-export const passageEntries = createEntryTable('passage_entries');
-export const habitsItemsEntries = createEntryTable('habits_items_entries');
-export const habitsLogsEntries = createEntryTable('habits_logs_entries');
-export const libraryItemsEntries = createEntryTable('library_items_entries');
-export const libraryReviewsEntries = createEntryTable('library_reviews_entries');
-export const reviewEntries = createEntryTable('review_entries');
+import { announcements, appSettings, invites } from './schema/admin.ts';
+import {
+  authFactors,
+  emailVerifications,
+  mfaBypassRequests,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
+  opaqueRecords,
+  passwordResetTokens,
+} from './schema/auth.ts';
+import { moodEntries } from './schema/entries.ts';
+import { modulesConfig, userPreferences } from './schema/modules.ts';
+import { sessions, users } from './schema/users.ts';
 
-/**
- * Shared type alias. All entry tables are structurally identical and can
- * be used interchangeably in generic helpers (middleware, factories).
- */
-export type EntryTable = typeof moodEntries;
+export {
+  authFactorKind,
+  emailVerificationKind,
+  mfaFactor,
+  registerState,
+  securityMode,
+  sessionKind,
+} from './schema/enums.ts';
 
-/**
- * Per-user module configuration (which modules are active, per-module
- * settings). Keyed on user_id (1:1) so `requireUser` is sufficient — no
- * guard validation. This is documented here and in the route handler.
- */
-export const modulesConfig = pgTable('modules_config', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  cipherIv: text('cipher_iv').notNull(),
-  payload: text('payload').notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export { sessions, users } from './schema/users.ts';
 
-/**
- * User preferences — theme, language, and any other cross-device
- * personalisation. 1:1 on `user_id`, same E2E-encrypted envelope as
- * `modules_config` (no `guard` needed; the user IS the record). Kept
- * as a separate table so server-side admins can never accidentally
- * read preferences while auditing modules, and vice versa.
- */
-export const userPreferences = pgTable('user_preferences', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  cipherIv: text('cipher_iv').notNull(),
-  payload: text('payload').notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export {
+  authFactors,
+  emailVerifications,
+  mfaBypassRequests,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
+  opaqueRecords,
+  passwordResetTokens,
+} from './schema/auth.ts';
+
+export { announcements, appSettings, invites } from './schema/admin.ts';
+
+export {
+  goalsEntries,
+  habitsItemsEntries,
+  habitsLogsEntries,
+  journalEntries,
+  libraryCoversEntries,
+  libraryItemsEntries,
+  libraryReviewsEntries,
+  moodEntries,
+  reviewEntries,
+  type EntryTable,
+} from './schema/entries.ts';
+
+export { modulesConfig, userPreferences } from './schema/modules.ts';
+
+// --- Inferred row types ----------------------------------------------------
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type Invite = typeof invites.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;
+export type NewAppSetting = typeof appSettings.$inferInsert;
 export type NewInvite = typeof invites.$inferInsert;
 export type EntryRow = typeof moodEntries.$inferSelect;
 export type NewEntryRow = typeof moodEntries.$inferInsert;
@@ -229,3 +97,17 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type Announcement = typeof announcements.$inferSelect;
 export type NewAnnouncement = typeof announcements.$inferInsert;
+
+// --- Auth v2 types ---------------------------------------------------------
+export type OpaqueRecord = typeof opaqueRecords.$inferSelect;
+export type NewOpaqueRecord = typeof opaqueRecords.$inferInsert;
+export type AuthFactor = typeof authFactors.$inferSelect;
+export type NewAuthFactor = typeof authFactors.$inferInsert;
+export type MfaTotp = typeof mfaTotp.$inferSelect;
+export type NewMfaTotp = typeof mfaTotp.$inferInsert;
+export type MfaTotpRecoveryCode = typeof mfaTotpRecoveryCodes.$inferSelect;
+export type NewMfaTotpRecoveryCode = typeof mfaTotpRecoveryCodes.$inferInsert;
+export type MfaBypassRequest = typeof mfaBypassRequests.$inferSelect;
+export type NewMfaBypassRequest = typeof mfaBypassRequests.$inferInsert;
+export type EmailVerification = typeof emailVerifications.$inferSelect;
+export type NewEmailVerification = typeof emailVerifications.$inferInsert;

@@ -9,7 +9,7 @@ const Base64ish = z.string().min(1);
  * after AES-GCM decryption.
  */
 export const UserPreferencesBodySchema = z.object({
-  cipher_iv: Base64ish,
+  cipherIv: Base64ish,
   payload: Base64ish,
 });
 export type UserPreferencesBody = z.infer<typeof UserPreferencesBodySchema>;

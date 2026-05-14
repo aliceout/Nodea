@@ -4,6 +4,19 @@
     "afternoon": "Good afternoon",
     "evening": "Good evening"
   },
+  "journalRecent": {
+    "heading": "Recent journal",
+    "cta": "open the journal"
+  },
+  "journalStrip": {
+    "heading": "Last 30 days",
+    "ariaLabel": "Writing density over the last 30 days"
+  },
+  "hero": {
+    "eyebrow": "Latest entry",
+    "cta": "open the journal",
+    "ariaLabel": "Latest journal entry"
+  },
   "announcement": {
     "label": "Update",
     "publishedOn": "Published on {date}",

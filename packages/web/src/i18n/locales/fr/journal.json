@@ -1,0 +1,89 @@
+{
+  "title": "Journal",
+  "topbar": {
+    "label": {
+      "one": "Journal · {count} entrée",
+      "other": "Journal · {count} entrées"
+    },
+    "newCta": "+ Nouvelle entrée",
+    "readerLabel": "Journal · {position} / {total}",
+    "searchPlaceholder": "Rechercher dans Journal…"
+  },
+  "list": {
+    "loading": "Chargement du journal…",
+    "empty": "Aucune entrée pour cette sélection.",
+    "groupCountNoun": "entrée",
+    "noThread": "— sans thread —"
+  },
+  "row": {
+    "openAria": "Ouvrir {label} en lecture",
+    "imageAria": "Ouvrir l’image dans le lecteur",
+    "imageTitle": "Voir en grand",
+    "readAria": "Ouvrir en lecture",
+    "readTitle": "Lire",
+    "editAria": "Modifier l’entrée",
+    "deleteAria": "Supprimer l’entrée"
+  },
+  "clamped": {
+    "readMore": "lire la suite →"
+  },
+  "onThisDay": {
+    "title": "Il y a quelques années",
+    "subtitle": "Ce que tu as écrit le même jour, les années passées",
+    "aria": "Entrées d’années passées le même jour",
+    "oneYearAgo": "Il y a un an",
+    "yearsAgo": {
+      "other": "Il y a {count} ans"
+    },
+    "untitled": "Entrée sans titre"
+  },
+  "side": {
+    "view": "Vue",
+    "viewByThread": "Par fil",
+    "viewByMonth": "Par mois",
+    "threads": "Fils",
+    "threadsEmpty": "Tu n’as pas encore créé de fil.",
+    "threadsAll": "Tous",
+    "threadsManageCta": "Gérer les fils"
+  },
+  "primary": {
+    "entriesHeading": "Entrées",
+    "yearRolling": "En cours",
+    "yearAria": "Année d’écriture",
+    "showChart": "Voir la carte d’écriture",
+    "hideChart": "Masquer la carte d’écriture"
+  },
+  "reader": {
+    "noThreadEyebrow": "— sans fil —",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "prev": "Précédent",
+    "next": "Suivant"
+  },
+  "context": {
+    "loadFailed": "Erreur lors du chargement du journal.",
+    "confirmDelete": "Supprimer « {label} » ?"
+  },
+  "heatmap": {
+    "homepageLabel": "Une année d’écriture",
+    "ariaLabel": "Carte de densité d’écriture sur les 12 derniers mois",
+    "tooltip": "{date} — {count} entrées, {words} mots",
+    "tooltipEmpty": "{date} — rien écrit ce jour",
+    "dayFilterActive": "Filtré sur {day}.",
+    "dayFilterClearCta": "Afficher tout"
+  },
+  "threadsManager": {
+    "title": "Gérer les fils",
+    "subtitle": "{count} fils",
+    "empty": "Aucun fil pour l’instant. Crée un fil en ajoutant un mot-clé dans une entrée.",
+    "renameAria": "Renommer le fil {name}",
+    "deleteAria": "Supprimer le fil {name}",
+    "confirmDelete": "Supprimer le fil « {name} » de toutes les entrées concernées ?",
+    "opRename": "Renommage",
+    "opDelete": "Suppression",
+    "opResult": "{ok} mis à jour, {failed} échecs"
+  },
+  "composer": {
+    "submittingUpdate": "Mise à jour…"
+  }
+}

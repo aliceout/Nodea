@@ -1,4 +1,4 @@
-import { MODULES, type ModuleDef } from '@/app/config/modules_list';
+import { MODULES, type ModuleDef } from '@/app/modules-registry';
 
 export interface NavItem {
   id: string;

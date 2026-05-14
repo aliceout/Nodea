@@ -5,6 +5,7 @@ import {
   type HabitsItemPayload,
 } from '@nodea/shared';
 import { useHabits } from '../hooks/useHabits';
+import Button from '@/ui/atoms/dirk/Button';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -42,7 +43,7 @@ export default function HabitsFormView() {
       title: title.trim(),
       category,
       frequency,
-      started_at: startedAt || today(),
+      startedAt: startedAt || today(),
       archived: false,
       ...(targetNum != null ? { target: targetNum } : {}),
       ...(duration.trim() ? { duration: duration.trim() } : {}),
@@ -146,13 +147,14 @@ export default function HabitsFormView() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
 
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="md"
         disabled={!ready || saving || !title.trim()}
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
       >
         {saving ? 'Ajout…' : 'Ajouter'}
-      </button>
+      </Button>
     </form>
   );
 }

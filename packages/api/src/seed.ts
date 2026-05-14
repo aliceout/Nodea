@@ -1,10 +1,9 @@
-import { randomBytes, randomUUID, webcrypto } from 'node:crypto';
-import { hashRaw } from '@node-rs/argon2';
+import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { UsernameField } from '@nodea/shared';
 import { db, sql } from './db/client.ts';
-import { users } from './db/schema.ts';
-import { hashPassword } from './auth/password.ts';
+import { opaqueRecords, users } from './db/schema.ts';
+import { opaqueRegister } from './auth/seed-crypto.ts';
 
 /**
  * Seed an initial admin user, idempotent on email.
@@ -16,70 +15,15 @@ import { hashPassword } from './auth/password.ts';
  * Or fall back to a local `.env` (git-ignored) for offline setups —
  * `tsx --env-file-if-exists=.env` loads it automatically.
  *
- * Unlike a normal register flow, the seed has no browser to generate
- * the encryption envelope — so we reproduce the exact same wrap the
- * web does (argon2id-derived KEK → AES-GCM-wrapped random main key),
- * using `@node-rs/argon2` and Node's WebCrypto. The resulting
- * `encryption_salt` / `encrypted_key` are interoperable with the web
- * crypto (same parameters) so the admin can log in immediately
- * through the UI.
+ * Phase 2C onwards the seed runs the full OPAQUE registration in
+ * process via `opaqueRegister` (`auth/seed-crypto.ts`): client +
+ * server OPAQUE handshake → `registrationRecord` for
+ * `opaque_records.envelope` plus the standard 2-layer wrap (random
+ * KEK over random main key, KEK under HKDF sub-key of `exportKey`).
+ * The resulting blobs are byte-compatible with what the web register
+ * flow ships, so the seeded admin can sign in immediately via the
+ * UI's OPAQUE 2-step from `/auth/login/start` onwards.
  */
-
-// Must match packages/web/src/core/crypto/argon2.ts
-const ARGON2_ITERATIONS = 3;
-const ARGON2_MEMORY_KB = 64 * 1024;
-const ARGON2_PARALLELISM = 1;
-const ARGON2_HASH_LEN = 32;
-
-function toBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64');
-}
-
-async function wrapMainKey(
-  password: string,
-  mainKeyBytes: Uint8Array,
-): Promise<{ encryptionSalt: string; encryptedKey: string }> {
-  const saltBytes = new Uint8Array(randomBytes(16));
-
-  // `algorithm` defaults to Argon2id in @node-rs/argon2 — no need to
-  // pass the const-enum value (which TS refuses under
-  // verbatimModuleSyntax).
-  const kek = await hashRaw(password, {
-    salt: saltBytes,
-    timeCost: ARGON2_ITERATIONS,
-    memoryCost: ARGON2_MEMORY_KB,
-    parallelism: ARGON2_PARALLELISM,
-    outputLen: ARGON2_HASH_LEN,
-  });
-
-  const aesKey = await webcrypto.subtle.importKey(
-    'raw',
-    kek,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt'],
-  );
-
-  // The web encrypts the base64 text of the main-key bytes (not the
-  // raw bytes), so the on-the-wire envelope matches what `wrapMainKey`
-  // in `packages/web/src/core/crypto/envelope.ts` produces.
-  const payloadText = toBase64(mainKeyBytes);
-  const iv = new Uint8Array(randomBytes(12));
-  const ciphertext = new Uint8Array(
-    await webcrypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      aesKey,
-      new TextEncoder().encode(payloadText),
-    ),
-  );
-
-  kek.fill(0);
-
-  return {
-    encryptionSalt: toBase64(saltBytes),
-    encryptedKey: `${toBase64(iv)}.${toBase64(ciphertext)}`,
-  };
-}
 
 async function main() {
   const email = process.env.ADMIN_EMAIL?.toLowerCase();
@@ -91,6 +35,12 @@ async function main() {
   }
   if (password.length < 12) {
     console.error('ADMIN_PASSWORD must be at least 12 characters');
+    process.exit(1);
+  }
+  if (!process.env.OPAQUE_SERVER_SETUP) {
+    console.error(
+      'OPAQUE_SERVER_SETUP must be set — generate one and put it in `.env` (or Infisical → api/).',
+    );
     process.exit(1);
   }
 
@@ -109,33 +59,44 @@ async function main() {
     username = parsed.data;
   }
 
-  const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  if (existing) {
-    console.log(`[seed] admin ${email} already exists (id=${existing.id}); no-op`);
+  const [existingByEmail] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existingByEmail) {
+    console.log(`[seed] admin ${email} already exists (id=${existingByEmail.id}); no-op`);
     await sql.end();
     return;
   }
 
-  // Generate a fresh random main key and wrap it under the password.
-  // The raw bytes are zeroed immediately after the wrap.
-  const rawMainKey = new Uint8Array(randomBytes(32));
-  const { encryptionSalt, encryptedKey } = await wrapMainKey(password, rawMainKey);
-  rawMainKey.fill(0);
-
-  const passwordHash = await hashPassword(password);
   const id = randomUUID();
-  await db.insert(users).values({
-    id,
-    email,
-    username,
-    passwordHash,
-    encryptionSalt,
-    encryptedKey,
-    role: 'admin',
-    onboardingStatus: 'pending',
+  const opaque = await opaqueRegister({ userId: id, email, password });
+
+  await db.transaction(async (tx) => {
+    await tx.insert(users).values({
+      id,
+      email,
+      username,
+      wrappedMainKey: opaque.wrappedMainKey,
+      wrappedMainKeyIv: opaque.wrappedMainKeyIv,
+      wrappedKekPassword: opaque.wrappedKekPassword,
+      wrappedKekPasswordIv: opaque.wrappedKekPasswordIv,
+      role: 'admin',
+      onboardingStatus: 'pending',
+      registerState: 'complete',
+      // Seeded admins bypass the activation gate — they own the
+      // email by construction.
+      emailVerifiedAt: new Date(),
+    });
+    await tx.insert(opaqueRecords).values({
+      userId: id,
+      envelope: opaque.registrationRecord,
+    });
   });
+
   console.log(
-    `[seed] admin ${email} created (id=${id}${username ? `, username=${username}` : ''})`,
+    `[seed] admin ${email} created (id=${id}${username ? `, username=${username}` : ''}, OPAQUE)`,
   );
   await sql.end();
 }

@@ -14,5 +14,27 @@
       "snooze": "Later",
       "close": "Close"
     }
+  },
+  "composer": {
+    "kbdSend": "send",
+    "kbdCancel": "cancel",
+    "encryptedLocally": "encrypted locally",
+    "markdownContentAria": "Entry content",
+    "markdownDefaultPlaceholder": "What's going through your mind today — at length, no constraint.",
+    "lookup": {
+      "searchPlaceholder": "Search by title, author or ISBN…",
+      "languageAria": "Search language",
+      "languagePlaceholder": "Language…",
+      "closeAria": "Close results",
+      "closeTitle": "Close (Esc)",
+      "searchNeedsLanguage": "Pick a language before searching",
+      "filterBy": "Filter by",
+      "filterAuthor": "Author",
+      "filterTitle": "Title",
+      "filterFormat": "Format"
+    },
+    "threadSuggest": {
+      "placeholder": "Thread — pick an existing one or create a new one"
+    }
   }
 }

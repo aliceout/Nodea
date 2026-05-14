@@ -7,9 +7,9 @@
     "label": "Mood",
     "description": "Notez trois données positives ou fiertés chaque jour et donnez une note à votre journée."
   },
-  "passage": {
-    "label": "Passage",
-    "description": "Gardez une trace de vos moments de transition de vie."
+  "journal": {
+    "label": "Journal",
+    "description": "Tenez un carnet libre regroupé par fil — moments de transition, journées qui comptent, écrits du soir."
   },
   "goals": {
     "label": "Goals",
@@ -21,7 +21,7 @@
   },
   "library": {
     "label": "Library",
-    "description": "Votre bibliothèque personnelle : livres, films, documentaires, avec fiches de lecture."
+    "description": "Votre bibliothèque personnelle de livres — statuts, notes, extraits, imports Babelio / Goodreads."
   },
   "review": {
     "label": "Review",

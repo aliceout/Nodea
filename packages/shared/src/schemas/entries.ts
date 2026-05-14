@@ -15,14 +15,15 @@ export type GuardValue = z.infer<typeof GuardSchema>;
 /**
  * Create-entry payload.
  *
- * - `sid` is the anonymous per-module user id (module_user_id).
- * - `cipher_iv` and `payload` are the AES-GCM wrapping; opaque to the server.
+ * - `sid` is the anonymous per-module user id (`moduleUserId` on the
+ *   EntryView response).
+ * - `cipherIv` and `payload` are the AES-GCM wrapping; opaque to the server.
  * - `guard` MUST be `"init"` on creation — the client cannot compute the
  *   stable HMAC guard without the record id, which the server assigns.
  */
 export const CreateEntryBodySchema = z.object({
   sid: z.string().min(1).max(128),
-  cipher_iv: Base64ish,
+  cipherIv: Base64ish,
   payload: Base64ish,
   guard: z.literal(INIT_GUARD),
 });
@@ -36,26 +37,34 @@ export type CreateEntryBody = z.infer<typeof CreateEntryBodySchema>;
  * change afterwards.
  */
 export const UpdateEntryBodySchema = z.object({
-  cipher_iv: Base64ish.optional(),
+  cipherIv: Base64ish.optional(),
   payload: Base64ish.optional(),
   guard: PromotedGuardSchema.optional(),
 });
 export type UpdateEntryBody = z.infer<typeof UpdateEntryBodySchema>;
 
-/** Public view of an entry — `guard` is deliberately absent. */
+/**
+ * Public view of an entry — minimum-readable-surface design.
+ *
+ * `guard` is deliberately absent (it's the shared secret authenticating
+ * mutations). Timestamps (`createdAt`, `updatedAt`) are deliberately
+ * absent too — they would leak per-row write activity that the
+ * operator could correlate across modules to deanonymise users.
+ * Whatever timestamps a module needs live inside the encrypted
+ * `payload` ; the client orders entries client-side after
+ * decryption.
+ */
 export const EntryViewSchema = z.object({
   id: z.string(),
-  module_user_id: z.string(),
-  cipher_iv: Base64ish,
+  moduleUserId: z.string(),
+  cipherIv: Base64ish,
   payload: Base64ish,
-  created_at: z.string(),
-  updated_at: z.string(),
 });
 export type EntryView = z.infer<typeof EntryViewSchema>;
 
 /** Modules-config payload — 1:1 on user_id, no guard/sid. */
 export const ModulesConfigBodySchema = z.object({
-  cipher_iv: Base64ish,
+  cipherIv: Base64ish,
   payload: Base64ish,
 });
 export type ModulesConfigBody = z.infer<typeof ModulesConfigBodySchema>;
@@ -67,11 +76,12 @@ export type ModulesConfigBody = z.infer<typeof ModulesConfigBodySchema>;
 export const COLLECTION_NAMES = [
   'mood',
   'goals',
-  'passage',
+  'journal',
   'habits-items',
   'habits-logs',
   'library-items',
   'library-reviews',
+  'library-covers',
   'review',
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];

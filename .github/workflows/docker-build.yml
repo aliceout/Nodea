@@ -4,11 +4,19 @@ name: Docker build
 # whose typecheck + tests are green. A successful run of this
 # workflow is what the VPS listens to (via its own `workflow_run`
 # webhook filter) to trigger the production deploy.
+#
+# Also fires on `v*.*.*` tag pushes : tags are placed on commits
+# that already went through main's CI, so we trust the validation
+# and skip a redundant pipeline. The image is then pushed with
+# semver tags (`:2.0.0`, `:v2.0.0`, `:2.0`) so prod can pin to a
+# specific release rather than the floating `:main` / `:latest`.
 on:
   workflow_run:
     workflows: [CI]
     branches: [main]
     types: [completed]
+  push:
+    tags: ['v*.*.*']
   workflow_dispatch:
 
 concurrency:
@@ -21,10 +29,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # Only build when the upstream CI run was a success (or when the
-    # job is triggered manually via workflow_dispatch).
+    # Only build when the upstream CI run was a success, when a
+    # release tag was pushed, or when the job is triggered manually.
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
       github.event.workflow_run.conclusion == 'success'
 
     permissions:
@@ -48,6 +57,11 @@ jobs:
           # event — check out exactly that commit so the image we push
           # matches the one CI validated.
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # No subsequent step needs to push back to the repo, so
+          # don't persist the GITHUB_TOKEN in `.git/config`. Closes
+          # one credential-leak vector via downstream actions or
+          # logs that would otherwise echo the config.
+          persist-credentials: false
 
       - uses: docker/setup-buildx-action@v3
 
@@ -67,8 +81,12 @@ jobs:
             type=raw,value=main,enable=${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
             type=raw,value=latest,enable=${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
             type=sha,format=short,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build + push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -78,3 +96,23 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      # CVE scan on the freshly-pushed image (OPS-08). Fails the
+      # workflow on `HIGH` or `CRITICAL` findings — same seuil as the
+      # pnpm audit step in `ci.yml` so the two stages stay coherent.
+      # We scan *after* push (rather than before) because the matrix
+      # already validated the build ; if Trivy fails the image is
+      # still in the registry but the deploy webhook listening on
+      # `workflow_run.conclusion == 'success'` won't fire — which is
+      # the actual gate we care about. Run on `image:sha-*` rather
+      # than `:latest` so a parallel push to main can't shift the tag
+      # under our feet between push and scan.
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          vuln-type: os,library

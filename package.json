@@ -8,19 +8,43 @@
     "dev:web": "pnpm --filter @nodea/web dev",
     "dev:api": "pnpm --filter @nodea/api dev",
     "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "test:coverage": "pnpm -r --parallel exec vitest run --coverage",
+    "typecheck": "pnpm -r typecheck",
+    "changelog": "tsx scripts/generate-changelog.ts",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix --max-warnings=0"
+    ]
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "@eslint/js": "9.39.4",
+    "@vitest/coverage-v8": "3.2.4",
+    "eslint": "9.39.4",
+    "eslint-plugin-import-x": "4.16.2",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-refresh": "0.4.26",
+    "globals": "16.5.0",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "8.59.1"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "puppeteer"
     ],
     "overrides": {
-      "esbuild@<0.25": "^0.25.12"
+      "esbuild@<0.25": "^0.25.12",
+      "basic-ftp@<5.3.1": "^5.3.1",
+      "ip-address@<10.1.1": "^10.1.1"
     }
   }
 }

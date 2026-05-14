@@ -1,56 +1,62 @@
-import { STEPS, GROUP_LABELS } from '../config/steps';
+import { cn } from '@/lib/utils';
+import { GROUP_LABELS, QUESTION_STEPS, STEPS } from '../config/steps';
 
 interface StepNavProps {
+  /** Current position inside the full STEPS array (intro included). */
   index: number;
+  /** Jump handler — receives the full-STEPS index. */
   onJump: (idx: number) => void;
+  /** Set of full-STEPS indices currently considered « done ». */
   completed: Set<number>;
 }
 
 /**
- * Progress rail + clickable step list. Completed steps get filled; the
- * current step is highlighted; future steps are dimmed.
+ * Progress rail + clickable step list — Direction K · Sauge.
+ *
+ * The rail is built from `QUESTION_STEPS`, so the welcome intro
+ * doesn't get a tick. The counter shows « N / 15 » where N is the
+ * 1-based position of the current step inside that filtered list
+ * (« — / 15 » while the user is still on the welcome screen).
  */
 export default function StepNav({ index, onJump, completed }: StepNavProps) {
-  const total = STEPS.length;
-  const progress = Math.round(((index + 1) / total) * 100);
+  const total = QUESTION_STEPS.length;
+  const currentStep = STEPS[index];
+  const isOnIntro = currentStep?.kind === 'intro';
+  const currentQuestion = isOnIntro
+    ? -1
+    : QUESTION_STEPS.findIndex((s) => s.id === currentStep!.id);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded bg-slate-200 dark:bg-slate-700">
-          <div
-            className="h-full bg-slate-900 transition-all dark:bg-slate-100"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="text-xs tabular-nums opacity-70">
-          {index + 1} / {total}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap gap-1 text-xs">
-        {STEPS.map((s, i) => {
-          const done = completed.has(i);
-          const active = i === index;
+    <div className="flex items-center gap-3">
+      <div className="flex flex-1 flex-wrap gap-1">
+        {QUESTION_STEPS.map((s, i) => {
+          const fullIdx = STEPS.indexOf(s);
+          const done = completed.has(fullIdx);
+          const active = i === currentQuestion;
           const group = GROUP_LABELS[s.group];
           return (
             <button
               key={s.id}
               type="button"
-              onClick={() => onJump(i)}
+              onClick={() => onJump(fullIdx)}
               title={`${group} — ${s.title}`}
-              className={
-                'h-2 min-w-3 flex-grow rounded transition-colors ' +
-                (active
-                  ? 'bg-emerald-600'
+              aria-label={`${group} — ${s.title}`}
+              aria-current={active ? 'step' : undefined}
+              className={cn(
+                'h-1.5 min-w-3 flex-grow rounded-full transition-colors',
+                active
+                  ? 'bg-accent'
                   : done
-                    ? 'bg-slate-500 dark:bg-slate-400'
-                    : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600')
-              }
+                    ? 'bg-ink-soft hover:bg-ink'
+                    : 'bg-bg-2 hover:bg-hair',
+              )}
             />
           );
         })}
       </div>
+      <span className="shrink-0 text-[11px] tabular-nums text-muted">
+        {isOnIntro ? `— / ${total}` : `${currentQuestion + 1} / ${total}`}
+      </span>
     </div>
   );
 }

@@ -1,0 +1,65 @@
+{
+  "title": "Review",
+  "topbar": {
+    "label": {
+      "one": "Review · {count} review",
+      "other": "Review · {count} reviews"
+    },
+    "wizardLabelIntro": "Review · {year}",
+    "wizardLabelStep": "Review · {year} · step {position}/{total}",
+    "readerLabel": "Review · {year}"
+  },
+  "errors": {
+    "keyMissing": "Master key unavailable — sign in again to see your reviews.",
+    "moduleMissing": "Enable the Review module in settings to start.",
+    "saveFailed": "Failed to save."
+  },
+  "list": {
+    "heading": "Reviews",
+    "intro1": "YearCompass is a yearly notebook to look back on the year that's ending and prepare the one ahead.",
+    "intro2": "Two halves: celebrate and learn from the past, then dream and plan for the future.",
+    "newHeading": "Start a new review",
+    "newSubtitle": "A guided journey in {count} steps.",
+    "yearLabel": "Year covered",
+    "startCta": "Start",
+    "draftsHeading": "In-progress drafts",
+    "draftsCountNoun": "draft",
+    "loading": "Loading reviews…",
+    "empty": "No review saved yet.",
+    "pastHeading": "Past reviews",
+    "pastCountNoun": "review",
+    "rowYear": "Review {year}",
+    "rowUpdated": "Updated on {date}",
+    "rowEditAria": "Edit review",
+    "rowDeleteAria": "Delete review",
+    "draftBadge": "Draft",
+    "draftSavedAt": "Edited on {date}",
+    "draftSavingNow": "In progress",
+    "draftResume": "Resume",
+    "draftDeleteAria": "Delete draft",
+    "draftDeleteTitle": "Delete draft",
+    "confirmDelete": "Delete review {year}?",
+    "confirmDeleteDraft": "Delete draft for review {year}?"
+  },
+  "wizard": {
+    "resumePrompt": "An encrypted draft exists for {year}. Resume it?",
+    "back": "← Back",
+    "next": "Next →",
+    "start": "Start →",
+    "skip": "Skip",
+    "quit": "Quit",
+    "submitting": "Saving…",
+    "finalize": "Finalize review",
+    "update": "Update review",
+    "eyebrow": "Review {year} · {group}"
+  },
+  "reader": {
+    "back": "← Back",
+    "yearTitle": "Review {year}"
+  },
+  "stringList": {
+    "removeAria": "Remove",
+    "addPlaceholder": "Add…",
+    "addCta": "+ Add"
+  }
+}

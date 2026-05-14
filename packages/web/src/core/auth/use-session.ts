@@ -6,39 +6,71 @@
  * login/register/logout/change-password call — and manages the
  * lifetime of the in-memory `MainKeyMaterial`:
  *
- *   - login : derive it from the user's password + stored envelope
- *   - register : derive it from the freshly generated main-key bytes
- *   - changePassword : rewrap under the new password then re-derive
- *   - logout : wiped by `resetAll()`
+ *   - login            : OPAQUE login → exportKey → unwrap KEK
+ *                        (`wrapped_kek_password`) → unwrap main key
+ *                        (`wrapped_main_key`) → derive sub-keys.
+ *   - submitRegistration: fresh OPAQUE register → fresh KEK + main
+ *                        key, both wrapped. Server stores the
+ *                        envelope, client throws away the bytes
+ *                        (re-login derives them again).
+ *   - changePassword   : OPAQUE proof of current password → unwrap
+ *                        KEK → fresh OPAQUE register on new password
+ *                        → re-wrap SAME KEK under new exportKey →
+ *                        force-logout. Main key wrap untouched.
+ *   - logout           : wiped by `resetAll()`.
  *
  * On a cold page load, the session cookie survives but the main key
  * does not (it cannot — the client doesn't have the password). The UI
  * surfaces a "key missing" prompt until the user re-authenticates.
+ *
+ * Architecture: this file is the React surface only — the actual
+ * action implementations live in `session/*.ts`, one module per
+ * domain (login / register / change-password / recovery-code /
+ * passkeys / totp / security-mode). Each helper receives a narrow
+ * `deps` object with the store mutations + `user` it actually uses,
+ * which is closed over here from the Zustand selectors. Consumers
+ * still see the same `useSession()` object shape they always have.
  */
 import { useEffect } from 'react';
-import { useNodeaStore, selectAuthStatus, selectUser } from '../store/nodea-store.ts';
+
+import { apiLogout, apiMe } from '../api/client.ts';
+import { selectAuthStatus, selectUser, useNodeaStore } from '../store/nodea-store.ts';
+
+import { changePassword as changePasswordAction } from './session/change-password.ts';
 import {
-  apiLogin,
-  apiLogout,
-  apiMe,
-  apiRegister,
-  apiChangePassword,
-} from '../api/client.ts';
-import { randomBytes } from '../crypto/base64.ts';
-import { deriveMainKeys } from '../crypto/key-material.ts';
-import { unwrapMainKeyBytes, wrapMainKey } from '../crypto/envelope.ts';
-import type { LoginBody, RegisterBody } from '@nodea/shared';
+  login as loginAction,
+  verifyMfaPasskey as verifyMfaPasskeyAction,
+  verifyMfaTotp as verifyMfaTotpAction,
+} from './session/login.ts';
+import {
+  enrollPasskeyFlow as enrollPasskeyAction,
+  passkeyLogin as passkeyLoginAction,
+  removePasskey as removePasskeyAction,
+  renamePasskey as renamePasskeyAction,
+} from './session/passkeys.ts';
+import {
+  recoverWithCode as recoverWithCodeAction,
+  setupRecoveryCode as setupRecoveryCodeAction,
+} from './session/recovery-code.ts';
+import { submitRegistration as submitRegistrationAction } from './session/register.ts';
+import {
+  changeSecurityMode as changeSecurityModeAction,
+  requestMfaBypass as requestMfaBypassAction,
+} from './session/security-mode.ts';
+import {
+  disableTotp as disableTotpAction,
+  regenerateTotpBackupCodes as regenerateTotpBackupCodesAction,
+  startTotpEnrollment as startTotpEnrollmentAction,
+  verifyTotpEnrollment as verifyTotpEnrollmentAction,
+} from './session/totp.ts';
 
-export interface SessionRegisterInput {
-  email: string;
-  password: string;
-  inviteCode: string;
-}
-
-export interface SessionChangePasswordInput {
-  currentPassword: string;
-  newPassword: string;
-}
+export type {
+  SessionChangePasswordInput,
+  SessionRecoverInput,
+  SessionRecoveryCodeResult,
+  SessionRegisterInput,
+  SessionRegisterResult,
+} from './session/types.ts';
 
 /**
  * Module-level latch. Multiple components call `useSession()` across
@@ -47,7 +79,7 @@ export interface SessionChangePasswordInput {
  * Without this guard, a second mount's `setAuthLoading()` would
  * race-reset the auth slice back to `loading` after an earlier one
  * settled it — ProtectedRoute would then stay stuck on its
- * null-render branch forever on a cold reload of `/flow/*`.
+ * null-render branch forever on a cold reload of `/flow`.
  */
 let hydrationStarted = false;
 
@@ -78,93 +110,61 @@ export function useSession() {
       });
   }, [setAuth, setAuthLoading, markKeyMissing]);
 
-  async function login(body: LoginBody): Promise<void> {
-    await apiLogin(body);
-    const me = await apiMe();
-    if (!me) throw new Error('login succeeded but /auth/me returned null');
-    setAuth(me);
-
-    // Derive the main key from the password + the server's envelope.
-    const rawBytes = await unwrapMainKeyBytes(
-      body.password,
-      me.encryptionSalt,
-      me.encryptedKey,
-    );
-    try {
-      const material = await deriveMainKeys(rawBytes);
-      setMainKey(material);
-    } finally {
-      rawBytes.fill(0);
-    }
-  }
-
-  async function register(input: SessionRegisterInput): Promise<void> {
-    // Generate a fresh 32-byte main key client-side and wrap it under
-    // the password-derived KEK before shipping the envelope.
-    const rawMainKey = randomBytes(32);
-    try {
-      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.password, rawMainKey);
-
-      const body: RegisterBody = {
-        email: input.email,
-        password: input.password,
-        inviteCode: input.inviteCode,
-        encryptionSalt,
-        encryptedKey,
-      };
-      await apiRegister(body);
-
-      const me = await apiMe();
-      if (!me) throw new Error('register succeeded but /auth/me returned null');
-      setAuth(me);
-
-      const material = await deriveMainKeys(rawMainKey);
-      setMainKey(material);
-    } finally {
-      rawMainKey.fill(0);
-    }
-  }
-
-  async function logout(): Promise<void> {
-    try {
-      await apiLogout();
-    } finally {
-      // Reset the hydration latch so a subsequent login on the same
-      // React session re-runs the /auth/me round-trip.
-      hydrationStarted = false;
-      resetAll();
-    }
-  }
-
-  async function changePassword(input: SessionChangePasswordInput): Promise<void> {
-    if (!user) throw new Error('changePassword: no authenticated user');
-
-    // Unwrap under the CURRENT password first — throws on wrong password
-    // (AES-GCM auth-tag check) before we touch the server.
-    const rawMainKey = await unwrapMainKeyBytes(
-      input.currentPassword,
-      user.encryptionSalt,
-      user.encryptedKey,
-    );
-    try {
-      const { encryptionSalt, encryptedKey } = await wrapMainKey(input.newPassword, rawMainKey);
-      await apiChangePassword({
-        currentPassword: input.currentPassword,
-        newPassword: input.newPassword,
-        encryptionSalt,
-        encryptedKey,
-      });
-
-      const me = await apiMe();
-      if (!me) throw new Error('change-password succeeded but /auth/me returned null');
-      setAuth(me);
-
-      const material = await deriveMainKeys(rawMainKey);
-      setMainKey(material);
-    } finally {
-      rawMainKey.fill(0);
-    }
-  }
-
-  return { status, user, login, register, logout, changePassword };
+  return {
+    status,
+    user,
+    login: (body: Parameters<typeof loginAction>[1]) =>
+      loginAction({ setAuth, setMainKey }, body),
+    submitRegistration: submitRegistrationAction,
+    logout: async (redirectTo: string = '/login'): Promise<void> => {
+      try {
+        await apiLogout();
+      } finally {
+        // Reset the hydration latch so a subsequent login on the
+        // same React session re-runs the /auth/me round-trip.
+        hydrationStarted = false;
+        resetAll();
+        // Force a full reload (CLAUDE.md crypto rule 7 : « Full purge
+        // = location.reload() »). `wipeMainKeyMaterial` cannot erase
+        // the `CryptoKey` references kept on the JS heap, and the
+        // browser's bfcache can otherwise restore an authenticated
+        // page on Back. `replace` (not `assign`) drops the current
+        // entry so Back doesn't even land on it. The `redirectTo`
+        // override lets callers like ChangePassword land on
+        // `/login?password-changed=1` to surface the success banner.
+        if (typeof window !== 'undefined') {
+          window.location.replace(redirectTo);
+        }
+      }
+    },
+    changePassword: (input: Parameters<typeof changePasswordAction>[1]) =>
+      changePasswordAction({ user, setAuth, setMainKey }, input),
+    setupRecoveryCode: (currentPassword: string) =>
+      setupRecoveryCodeAction({ user, setAuth, setMainKey }, currentPassword),
+    recoverWithCode: (input: Parameters<typeof recoverWithCodeAction>[1]) =>
+      recoverWithCodeAction({ setAuth, setMainKey }, input),
+    enrollPasskey: (currentPassword: string, label: string) =>
+      enrollPasskeyAction({ user, setAuth }, currentPassword, label),
+    renamePasskey: (id: string, currentPassword: string, label: string) =>
+      renamePasskeyAction({ user }, id, currentPassword, label),
+    removePasskey: (id: string, currentPassword: string) =>
+      removePasskeyAction({ user, setAuth }, id, currentPassword),
+    loginWithPasskey: (input: { email?: string }) =>
+      passkeyLoginAction({ user, setAuth, setMainKey, markKeyMissing }, input),
+    startTotpEnrollment: (currentPassword: string) =>
+      startTotpEnrollmentAction({ user }, currentPassword),
+    verifyTotpEnrollment: (code: string) =>
+      verifyTotpEnrollmentAction({ user, setAuth }, code),
+    disableTotp: (currentPassword: string) =>
+      disableTotpAction({ user, setAuth }, currentPassword),
+    regenerateTotpBackupCodes: (currentPassword: string) =>
+      regenerateTotpBackupCodesAction({ user, setAuth }, currentPassword),
+    verifyMfaTotp: (code: string) => verifyMfaTotpAction({ setAuth }, code),
+    verifyMfaPasskey: () => verifyMfaPasskeyAction({ setAuth }),
+    changeSecurityMode: (
+      mode: Parameters<typeof changeSecurityModeAction>[1],
+      currentPassword: string,
+    ) => changeSecurityModeAction({ user, setAuth }, mode, currentPassword),
+    requestMfaBypass: requestMfaBypassAction,
+  };
 }

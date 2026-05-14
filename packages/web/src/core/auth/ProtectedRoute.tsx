@@ -16,7 +16,7 @@ export interface ProtectedRouteProps {
  * redirect-to-login.
  *
  *   - unauthenticated → `<Navigate to="/login" />`
- *   - authenticated + adminOnly + role≠admin → `<Navigate to="/flow/home" />`
+ *   - authenticated + adminOnly + role≠admin → `<Navigate to="/flow" />`
  *   - authenticated → children / Outlet
  */
 export default function ProtectedRoute({
@@ -33,7 +33,7 @@ export default function ProtectedRoute({
   }
 
   if (adminOnly && user.role !== 'admin') {
-    return <Navigate to="/flow/home" replace />;
+    return <Navigate to="/flow" replace />;
   }
 
   if (children) return <>{children}</>;

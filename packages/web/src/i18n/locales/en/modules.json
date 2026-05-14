@@ -7,9 +7,9 @@
     "label": "Mood",
     "description": "Capture three positive facts each day and rate your overall mood."
   },
-  "passage": {
-    "label": "Passage",
-    "description": "Keep track of your life transition moments."
+  "journal": {
+    "label": "Journal",
+    "description": "A free-form notebook grouped by thread — life transitions, days that mattered, evening writes."
   },
   "goals": {
     "label": "Goals",
@@ -21,7 +21,7 @@
   },
   "library": {
     "label": "Library",
-    "description": "Your personal library — books, movies, documentaries — with reading notes."
+    "description": "Your personal book library — statuses, notes, extracts, imports from Babelio / Goodreads."
   },
   "review": {
     "label": "Review",

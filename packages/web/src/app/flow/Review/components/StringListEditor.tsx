@@ -1,4 +1,8 @@
 import { useState, type KeyboardEvent } from 'react';
+import { TrashIcon } from '@heroicons/react/24/outline';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import Input from '@/ui/atoms/dirk/Input';
 
 interface Props {
   value: string[];
@@ -7,10 +11,14 @@ interface Props {
 }
 
 /**
- * Add / remove text entries one by one. Used for agenda_review,
- * best_moments, three_challenges, etc.
+ * Add / remove text entries one by one — Direction K · Sauge.
+ *
+ * Used for `agenda_review`, `best_moments`, `three_challenges`,
+ * etc. Each existing item gets an inline delete affordance; a
+ * footer row holds the « add » input + button.
  */
 export default function StringListEditor({ value, onChange, placeholder }: Props) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState('');
 
   function commit(): void {
@@ -39,43 +47,43 @@ export default function StringListEditor({ value, onChange, placeholder }: Props
 
   return (
     <div className="space-y-2">
-      <ul className="space-y-1">
+      <ul className="space-y-1.5">
         {value.map((item, i) => (
           <li key={i} className="flex items-start gap-2">
-            <input
+            <Input
               type="text"
               value={item}
               onChange={(e) => update(i, e.target.value)}
-              className="flex-1 rounded border border-slate-300 p-2 text-sm"
             />
-            <button
-              type="button"
+            <Button
+              variant="danger-ghost"
+              size="sm"
+              iconOnly
               onClick={() => remove(i)}
-              aria-label="Retirer"
-              className="rounded px-2 text-slate-400 hover:text-red-600"
+              aria-label={t('review.stringList.removeAria')}
             >
-              ✕
-            </button>
+              <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
           </li>
         ))}
       </ul>
       <div className="flex items-center gap-2">
-        <input
+        <Input
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder={placeholder ?? 'Ajouter…'}
-          className="flex-1 rounded border border-dashed border-slate-300 p-2 text-sm"
+          placeholder={placeholder ?? t('review.stringList.addPlaceholder')}
+          className="border-dashed"
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={commit}
           disabled={!draft.trim()}
-          className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
-          + Ajouter
-        </button>
+          {t('review.stringList.addCta')}
+        </Button>
       </div>
     </div>
   );

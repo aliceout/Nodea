@@ -1,0 +1,65 @@
+{
+  "title": "Review",
+  "topbar": {
+    "label": {
+      "one": "Review · {count} bilan",
+      "other": "Review · {count} bilans"
+    },
+    "wizardLabelIntro": "Review · Bilan {year}",
+    "wizardLabelStep": "Review · Bilan {year} · étape {position}/{total}",
+    "readerLabel": "Review · Bilan {year}"
+  },
+  "errors": {
+    "keyMissing": "Clé principale absente — reconnecte-toi pour voir tes bilans.",
+    "moduleMissing": "Active le module Review dans les paramètres pour commencer.",
+    "saveFailed": "Échec de l’enregistrement."
+  },
+  "list": {
+    "heading": "Bilans",
+    "intro1": "Le YearCompass est un carnet annuel pour relire l’année qui se termine et préparer celle qui arrive.",
+    "intro2": "Deux moitiés : on célèbre et on apprend du passé, puis on rêve et on planifie le futur.",
+    "newHeading": "Commencer un nouveau bilan",
+    "newSubtitle": "Un parcours guidé en {count} étapes.",
+    "yearLabel": "Année concernée",
+    "startCta": "Démarrer",
+    "draftsHeading": "Brouillons en cours",
+    "draftsCountNoun": "brouillon",
+    "loading": "Chargement des bilans…",
+    "empty": "Aucun bilan enregistré pour le moment.",
+    "pastHeading": "Bilans passés",
+    "pastCountNoun": "bilan",
+    "rowYear": "Bilan {year}",
+    "rowUpdated": "Mis à jour le {date}",
+    "rowEditAria": "Modifier le bilan",
+    "rowDeleteAria": "Supprimer le bilan",
+    "draftBadge": "Brouillon",
+    "draftSavedAt": "Modifié le {date}",
+    "draftSavingNow": "En cours",
+    "draftResume": "Reprendre",
+    "draftDeleteAria": "Supprimer le brouillon",
+    "draftDeleteTitle": "Supprimer le brouillon",
+    "confirmDelete": "Supprimer le bilan {year} ?",
+    "confirmDeleteDraft": "Supprimer le brouillon du bilan {year} ?"
+  },
+  "wizard": {
+    "resumePrompt": "Un brouillon chiffré existe pour {year}. Le reprendre ?",
+    "back": "← Précédent",
+    "next": "Suivant →",
+    "start": "Commencer →",
+    "skip": "Sauter",
+    "quit": "Quitter",
+    "submitting": "Enregistrement…",
+    "finalize": "Finaliser le bilan",
+    "update": "Mettre à jour le bilan",
+    "eyebrow": "Bilan {year} · {group}"
+  },
+  "reader": {
+    "back": "← Retour",
+    "yearTitle": "Bilan {year}"
+  },
+  "stringList": {
+    "removeAria": "Retirer",
+    "addPlaceholder": "Ajouter…",
+    "addCta": "+ Ajouter"
+  }
+}

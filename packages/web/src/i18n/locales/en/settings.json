@@ -4,7 +4,8 @@
   "language": {
     "title": "Application language",
     "description": "Choose the language used in the interface.",
-    "selectLabel": "Language"
+    "selectLabel": "Language",
+    "ariaLabel": "Language preference"
   },
   "theme": {
     "title": "Appearance",

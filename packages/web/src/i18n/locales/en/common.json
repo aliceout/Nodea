@@ -1,1 +1,43 @@
-{}
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "discard": "Discard",
+    "add": "Add",
+    "update": "Update",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "verify": "Verify",
+    "copy": "Copy",
+    "send": "Send",
+    "open": "Open",
+    "configure": "Set up",
+    "enable": "Enable",
+    "disable": "Disable",
+    "menu": "Actions"
+  },
+  "time": {
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "states": {
+    "saving": "Saving…",
+    "deleting": "Deleting…",
+    "adding": "Adding…",
+    "updating": "Updating…",
+    "loading": "Loading…",
+    "verifying": "Verifying…",
+    "submitting": "Sending…",
+    "enabling": "Enabling…",
+    "copied": "Copied"
+  },
+  "a11y": {
+    "skipToMain": "Skip to main content"
+  },
+  "search": {
+    "clearAria": "Clear search"
+  }
+}

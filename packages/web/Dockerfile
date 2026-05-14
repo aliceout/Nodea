@@ -39,4 +39,21 @@ FROM nginx:alpine AS runtime
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 COPY packages/web/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# OPS-03 — drop privileges and listen on an unprivileged port.
+# The `nginx` user already exists in `nginx:alpine` (UID 101).
+# nginx normally needs root to bind 80 ; we listen on 8080
+# instead and let the compose port-mapping translate 80→8080
+# externally. The `nginx` user must be able to write its
+# pid + temp + cache directories, so we chown them first.
+# `cache.d` and the pid file path are nginx defaults.
+RUN chown -R nginx:nginx \
+      /var/cache/nginx \
+      /var/log/nginx \
+      /etc/nginx/conf.d \
+      /usr/share/nginx/html \
+    && touch /var/run/nginx.pid \
+    && chown nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
+EXPOSE 8080

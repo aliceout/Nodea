@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { applyTheme, watchSystemThemeChanges } from './themeManager.ts';
-import { usePreferences } from '@/core/preferences/usePreferences';
+import { usePreferences } from '@/core/auth/use-preferences';
 import type { ThemePreference } from '@nodea/shared';
 
 export type { ThemePreference };

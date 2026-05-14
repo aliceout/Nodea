@@ -10,7 +10,15 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
 *.local
+
+# Postgres bind mount in dev — `docker-compose.yml` mounts
+# `${DATA_DIR:-./data}/postgres` into the postgres container.
+# Without DATA_DIR exported (the prod `deploy.sh` sets it to
+# `$HOME/data/nodea`), local dev falls back to `./data/postgres`
+# at the repo root. Never commit dev DB state.
+data/
 
 # Editor directories and files
 .vscode/*
@@ -23,9 +31,18 @@ dist-ssr
 *.sln
 *.sw?
 
+# Claude Code — local harness state (scheduled-task locks, agent
+# transcripts, etc.). Per-machine, never committed.
+.claude/
+
 # Secrets — single canonical location at the repo root, written by
 # the Dev Setup VS Code extension from Infisical (see `dev-setup.yaml`).
 .env
+
+# Test environment overrides — points DATABASE_URL at the dedicated
+# `nodea_test` database so `pnpm test` doesn't TRUNCATE the dev rows.
+# See packages/api/vitest.config.ts. Created by `pnpm db:setup-test`.
+.env.test
 
 # Misc
 export.md

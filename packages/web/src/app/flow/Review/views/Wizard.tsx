@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReviewPayload } from '@nodea/shared';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import Topbar from '@/ui/dirk/Topbar';
 import {
+  QUESTION_STEPS,
   STEPS,
   GROUP_LABELS,
   getByPath,
+  questionPosition,
   setByPath,
   type Step,
 } from '../config/steps';
@@ -15,6 +23,11 @@ import StepNav from '../components/StepNav';
 interface WizardProps {
   year: number;
   existing?: ReviewRecord;
+  /** When true, auto-load the encrypted localStorage draft for
+   *  this year without prompting. Set this when the user clicked
+   *  « Reprendre » on the list view — they've already validated
+   *  the intent, so a confirm() dialog would be redundant. */
+  resume?: boolean;
   onDone(): void;
   onCancel(): void;
 }
@@ -22,9 +35,13 @@ interface WizardProps {
 function emptyPayload(year: number): ReviewPayload {
   return {
     year,
-    last_year: {},
-    next_year: {},
+    lastYear: {},
+    nextYear: {},
     closing: {},
+    // `updatedAt` is bumped to now() by useReview's create/update
+    // wrappers on every save ; this empty placeholder is just to
+    // satisfy the Zod-inferred shape at construction time.
+    updatedAt: '',
   };
 }
 
@@ -33,17 +50,32 @@ function isFilled(step: Step, value: unknown): boolean {
   if (typeof value === 'string') return value.trim().length > 0;
   if (Array.isArray(value)) return value.some((v) => String(v).trim().length > 0);
   if (typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).some((v) => isFilled(step, v));
+    return Object.values(value as Record<string, unknown>).some((v) =>
+      isFilled(step, v),
+    );
   }
   return false;
 }
 
-export default function ReviewWizard({ year, existing, onDone, onCancel }: WizardProps) {
+export default function ReviewWizard({
+  year,
+  existing,
+  resume,
+  onDone,
+  onCancel,
+}: WizardProps) {
+  const { t } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { createReview, updateReview } = useReview();
-  const { hydrated, hydrating, save: saveDraft, clear: clearDraft, saving, lastSavedAt } = useDraft(year);
+  const {
+    hydrated,
+    hydrating,
+    save: saveDraft,
+    clear: clearDraft,
+  } = useDraft(year);
 
-  const [payload, setPayload] = useState<ReviewPayload>(() =>
-    existing?.payload ?? emptyPayload(year),
+  const [payload, setPayload] = useState<ReviewPayload>(
+    () => existing?.payload ?? emptyPayload(year),
   );
   const [hydrationOffered, setHydrationOffered] = useState(false);
   const [index, setIndex] = useState(0);
@@ -53,28 +85,44 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
   const step = STEPS[index]!;
 
   // Offer to resume an encrypted draft, only once on load.
+  // The `resume` flag (set when arriving from « Reprendre » on the
+  // list view) skips the confirm prompt — the user has already
+  // told us they want their draft back.
   useEffect(() => {
     if (hydrating || hydrationOffered || existing) return;
     setHydrationOffered(true);
-    if (hydrated) {
-      if (window.confirm(`Un brouillon chiffré existe pour ${year}. Le reprendre ?`)) {
-        setPayload(hydrated);
-      } else {
-        clearDraft();
-      }
+    if (!hydrated) return;
+    if (
+      resume ||
+      window.confirm(t('review.wizard.resumePrompt', { values: { year } }))
+    ) {
+      setPayload(hydrated);
+    } else {
+      clearDraft();
     }
-  }, [hydrating, hydrationOffered, hydrated, existing, year, clearDraft]);
+  }, [hydrating, hydrationOffered, hydrated, existing, resume, year, clearDraft, t]);
 
   // Auto-save on every payload change (skip the initial empty state).
   useEffect(() => {
-    if (existing) return; // editing an existing entry bypasses the draft cache
+    if (existing) return;
     saveDraft(payload);
   }, [payload, saveDraft, existing]);
 
   const completed = useMemo(() => {
     const set = new Set<number>();
     STEPS.forEach((s, i) => {
-      if (isFilled(s, getByPath(payload as unknown as Record<string, unknown>, s.path))) {
+      // Intro steps don't persist anything — treat them as always
+      // complete so the StepNav rail doesn't paint them as missing.
+      if (s.kind === 'intro') {
+        set.add(i);
+        return;
+      }
+      if (
+        isFilled(
+          s,
+          getByPath(payload as unknown as Record<string, unknown>, s.path),
+        )
+      ) {
         set.add(i);
       }
     });
@@ -82,7 +130,14 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
   }, [payload]);
 
   function onChangeValue(next: unknown): void {
-    setPayload((prev) => setByPath(prev as unknown as Record<string, unknown>, step.path, next) as unknown as ReviewPayload);
+    setPayload(
+      (prev) =>
+        setByPath(
+          prev as unknown as Record<string, unknown>,
+          step.path,
+          next,
+        ) as unknown as ReviewPayload,
+    );
   }
 
   function goto(nextIdx: number): void {
@@ -102,91 +157,134 @@ export default function ReviewWizard({ year, existing, onDone, onCancel }: Wizar
       }
       onDone();
     } catch (err) {
-      setFinalError(err instanceof Error ? err.message : "Échec de l'enregistrement.");
+      setFinalError(
+        err instanceof Error ? err.message : t('review.errors.saveFailed'),
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
-  const value = getByPath(payload as unknown as Record<string, unknown>, step.path);
+  const value = getByPath(
+    payload as unknown as Record<string, unknown>,
+    step.path,
+  );
   const isLast = index === STEPS.length - 1;
+  const qIndex = questionPosition(step);
+  const topbarLabel =
+    qIndex < 0
+      ? t('review.topbar.wizardLabelIntro', { values: { year: payload.year } })
+      : t('review.topbar.wizardLabelStep', {
+          values: {
+            year: payload.year,
+            position: qIndex + 1,
+            total: QUESTION_STEPS.length,
+          },
+        });
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 py-6">
-      <header className="space-y-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide opacity-60">
-              Bilan {payload.year} · {GROUP_LABELS[step.group]}
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={topbarLabel}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        >
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            {t('review.wizard.quit')}
+          </Button>
+        </Topbar>
+      }
+    >
+      {/* Header (eyebrow + title + StepNav + subtitle) is sticky
+          right under the 52 px Topbar so the question + progress
+          stay anchored while the form scrolls. Negative margins
+          extend the bg-bg pane to the parent's padding edges so
+          form content doesn't bleed through on either side when
+          the user scrolls. */}
+      <div className="sticky top-[52px] z-10 -mx-6 -mt-7 bg-bg px-6 pt-7 pb-5 sm:-mx-9 sm:px-9">
+        <div className="mx-auto max-w-3xl">
+          <header className="mb-5">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+              {t('review.wizard.eyebrow', {
+                values: { year: payload.year, group: GROUP_LABELS[step.group] },
+              })}
             </p>
-            <h1 className="text-2xl font-bold">{step.title}</h1>
-            {step.subtitle ? (
-              <p className="mt-1 text-sm opacity-80">{step.subtitle}</p>
-            ) : null}
-          </div>
-          <div className="text-right text-xs opacity-60">
-            {saving ? 'Sauvegarde…' : lastSavedAt ? 'Brouillon chiffré ✓' : null}
-          </div>
+            <h1 className="mt-2 text-[24px] font-semibold leading-[1.15] tracking-[-0.02em] text-ink">
+              {step.title}
+            </h1>
+          </header>
+
+          <StepNav index={index} onJump={goto} completed={completed} />
+
+          {step.subtitle ? (
+            <p className="mt-4 text-[13.5px] leading-[1.5] text-ink-soft">
+              {step.subtitle}
+            </p>
+          ) : null}
         </div>
+      </div>
 
-        <StepNav index={index} onJump={goto} completed={completed} />
-      </header>
+      <div className="mx-auto max-w-3xl pt-7">
+        <section>
+          <SectionForm step={step} value={value} onChange={onChangeValue} />
+        </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <SectionForm step={step} value={value} onChange={onChangeValue} />
-      </section>
+        {finalError ? (
+          <InlineAlert className="mt-5">{finalError}</InlineAlert>
+        ) : null}
 
-      {finalError ? <p className="text-sm text-red-600">{finalError}</p> : null}
-
-      <footer className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-        >
-          Quitter
-        </button>
-        <span className="flex-1" />
-        <button
-          type="button"
-          onClick={() => goto(index - 1)}
-          disabled={index === 0}
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:hover:bg-slate-800"
-        >
-          ← Précédent
-        </button>
-        {!isLast ? (
-          <>
-            <button
-              type="button"
-              onClick={() => goto(index + 1)}
-              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
+        <footer className="mt-8 flex flex-wrap items-center gap-2 border-t border-hair pt-5">
+          {index === 0 ? (
+            <Button variant="neutral" size="sm" onClick={onCancel}>
+              {t('review.wizard.quit')}
+            </Button>
+          ) : (
+            <Button
+              variant="neutral"
+              size="sm"
+              onClick={() => goto(index - 1)}
             >
-              Sauter
-            </button>
-            <button
-              type="button"
-              onClick={() => goto(index + 1)}
-              className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
+              {t('review.wizard.back')}
+            </Button>
+          )}
+          <span className="flex-1" />
+          {!isLast ? (
+            <>
+              {step.kind !== 'intro' ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => goto(index + 1)}
+                >
+                  {t('review.wizard.skip')}
+                </Button>
+              ) : null}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => goto(index + 1)}
+              >
+                {step.kind === 'intro'
+                  ? t('review.wizard.start')
+                  : t('review.wizard.next')}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void submit()}
+              disabled={submitting}
             >
-              Suivant →
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void submit()}
-            disabled={submitting}
-            className="rounded bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-          >
-            {submitting
-              ? 'Enregistrement…'
-              : existing
-                ? 'Mettre à jour le bilan'
-                : 'Finaliser le bilan'}
-          </button>
-        )}
-      </footer>
-    </div>
+              {submitting
+                ? t('review.wizard.submitting')
+                : existing
+                  ? t('review.wizard.update')
+                  : t('review.wizard.finalize')}
+            </Button>
+          )}
+        </footer>
+      </div>
+    </ModuleShell>
   );
 }

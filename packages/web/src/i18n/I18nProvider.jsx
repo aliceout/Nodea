@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 
+import { translate as translateRaw, translatePlural as translatePluralRaw } from "./translate.ts";
+
 import frCommon from "@/i18n/locales/fr/common.json";
 import frLayout from "@/i18n/locales/fr/layout.json";
 import frAuth from "@/i18n/locales/fr/auth.json";
@@ -15,11 +17,12 @@ import frAccount from "@/i18n/locales/fr/account.json";
 import frSettings from "@/i18n/locales/fr/settings.json";
 import frGoals from "@/i18n/locales/fr/goals.json";
 import frMood from "@/i18n/locales/fr/mood.json";
-import frPassage from "@/i18n/locales/fr/passage.json";
+import frJournal from "@/i18n/locales/fr/journal.json";
 import frAdmin from "@/i18n/locales/fr/admin.json";
 import frModals from "@/i18n/locales/fr/modals.json";
 import frModules from "@/i18n/locales/fr/modules.json";
 import frErrors from "@/i18n/locales/fr/errors.json";
+import frReview from "@/i18n/locales/fr/review.json";
 
 import enCommon from "@/i18n/locales/en/common.json";
 import enLayout from "@/i18n/locales/en/layout.json";
@@ -29,11 +32,12 @@ import enAccount from "@/i18n/locales/en/account.json";
 import enSettings from "@/i18n/locales/en/settings.json";
 import enGoals from "@/i18n/locales/en/goals.json";
 import enMood from "@/i18n/locales/en/mood.json";
-import enPassage from "@/i18n/locales/en/passage.json";
+import enJournal from "@/i18n/locales/en/journal.json";
 import enAdmin from "@/i18n/locales/en/admin.json";
 import enModals from "@/i18n/locales/en/modals.json";
 import enModules from "@/i18n/locales/en/modules.json";
 import enErrors from "@/i18n/locales/en/errors.json";
+import enReview from "@/i18n/locales/en/review.json";
 
 const STORAGE_KEY = "nodea:language";
 const DEFAULT_LANGUAGE = "fr";
@@ -53,11 +57,12 @@ const RESOURCES = {
     settings: frSettings,
     goals: frGoals,
     mood: frMood,
-    passage: frPassage,
+    journal: frJournal,
     admin: frAdmin,
     modals: frModals,
     modules: frModules,
     errors: frErrors,
+    review: frReview,
   },
   en: {
     common: enCommon,
@@ -68,54 +73,43 @@ const RESOURCES = {
     settings: enSettings,
     goals: enGoals,
     mood: enMood,
-    passage: enPassage,
+    journal: enJournal,
     admin: enAdmin,
     modals: enModals,
     modules: enModules,
     errors: enErrors,
+    review: enReview,
   },
 };
 
 const I18nContext = createContext(null);
 
-function resolvePath(resource, segments) {
-  return segments.reduce(
-    (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined),
-    resource
-  );
-}
-
-function applyInterpolation(message, values) {
-  if (typeof message !== "string" || !values) return message;
-  return message.replace(/\{([^}]+)\}/g, (_, token) => {
-    const value = values[token.trim()];
-    return value !== undefined && value !== null ? String(value) : "";
+// Bind the pure resolvers to the bundled RESOURCES + DEFAULT_LANGUAGE.
+function translate(language, key, options) {
+  return translateRaw(RESOURCES, language, key, {
+    fallback: DEFAULT_LANGUAGE,
+    ...(options ?? {}),
   });
 }
 
-function translate(language, key, options = {}) {
-  const { fallback = DEFAULT_LANGUAGE, values, defaultValue } = options;
-  const segments = key.split(".").filter(Boolean);
-  if (!segments.length) {
-    return typeof defaultValue === "string" ? defaultValue : key;
-  }
-
-  const [namespace, ...path] = segments;
-  const resource = RESOURCES[language]?.[namespace];
-  let message =
-    (resource && resolvePath(resource, path)) ?? undefined;
-
-  if (message === undefined && fallback && fallback !== language) {
-    const fallbackResource = RESOURCES[fallback]?.[namespace];
-    message =
-      (fallbackResource && resolvePath(fallbackResource, path)) ?? undefined;
-  }
-
-  if (message === undefined) {
-    return typeof defaultValue === "string" ? defaultValue : key;
-  }
-
-  return applyInterpolation(message, values);
+/**
+ * Plural-aware translate. Picks `<key>.<rule>` where `<rule>` is
+ * the result of `Intl.PluralRules(language).select(count)` —
+ * one of `zero | one | two | few | many | other`. Falls back to
+ * `<key>.other`, then the bare `<key>` string. See
+ * `translate.ts` for the pure logic + tests.
+ *
+ * Why a custom `tn` rather than ICU MessageFormat : the
+ * `intl-messageformat` lib adds ~10 kB gzip and brings parsing
+ * overhead the FR + EN duo doesn't pay back today. Re-evaluate
+ * when a 3rd language with richer plural rules (russian, polish,
+ * arabic) lands.
+ */
+function translatePlural(language, key, count, options) {
+  return translatePluralRaw(RESOURCES, language, key, count, {
+    fallback: DEFAULT_LANGUAGE,
+    ...(options ?? {}),
+  });
 }
 
 function detectInitialLanguage() {
@@ -162,6 +156,15 @@ export function I18nProvider({ children }) {
     window.localStorage.setItem(STORAGE_KEY, language);
   }, [language]);
 
+  // Keep <html lang> in sync so screen readers and `:lang(fr|en)`
+  // CSS selectors pick up the active locale. index.html ships
+  // `<html lang="en">` as a static placeholder — without this
+  // effect a FR user kept the EN attribute permanently.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.lang = language;
+  }, [language]);
+
   const setLanguage = useCallback(async (nextLanguage) => {
     const normalized = String(nextLanguage || "").toLowerCase();
     if (!SUPPORTED_LANGUAGES[normalized]) return;
@@ -189,19 +192,30 @@ export function I18nProvider({ children }) {
     [language]
   );
 
+  const tn = useCallback(
+    (key, count, options) => translatePlural(language, key, count, options),
+    [language]
+  );
+
   const value = useMemo(
     () => ({
       language,
       setLanguage,
       availableLanguages: Object.values(SUPPORTED_LANGUAGES),
       t,
+      tn,
     }),
-    [language, setLanguage, t]
+    [language, setLanguage, t, tn]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// `useI18n` and `translateKey` are the official non-component
+// exports of this provider — splitting would create three files
+// for what is conceptually one boundary. The exhaustive-deps
+// false positive is silenced.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useI18n() {
   const context = useContext(I18nContext);
   if (!context) {
@@ -210,6 +224,7 @@ export function useI18n() {
   return context;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function translateKey(key, options) {
   return translate(DEFAULT_LANGUAGE, key, options);
 }

@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import Subheader from '@/ui/layout/headers/Subheader';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import Topbar from '@/ui/dirk/Topbar';
 import { useReview, type ReviewRecord } from './hooks/useReview';
 import ReviewListView from './views/List';
 import ReviewWizard from './views/Wizard';
@@ -7,67 +11,76 @@ import ReviewReader from './views/Reader';
 
 type Mode =
   | { kind: 'list' }
-  | { kind: 'wizard'; year: number; existing?: ReviewRecord }
+  | { kind: 'wizard'; year: number; existing?: ReviewRecord; resume?: boolean }
   | { kind: 'reader'; record: ReviewRecord };
 
 /**
- * Review module (YearCompass-inspired yearly retrospective).
+ * Review module — Direction K · Sauge.
  *
- * Three modes share a single page: list of past reviews, guided wizard
- * (new or edit), and polished reader. The draft auto-save (encrypted
- * localStorage) lives in the wizard — see hooks/useDraft.ts.
+ * YearCompass-inspired yearly retrospective. Three modes share a
+ * single page: list of past reviews, guided wizard (new or edit),
+ * and polished reader. The draft auto-save (encrypted localStorage)
+ * lives in the wizard — see hooks/useDraft.ts.
+ *
+ * Each mode renders its own `<ModuleShell>` so the topbar label and
+ * right-side action can adapt to context (« + Nouveau bilan » in
+ * list mode, « Quitter » during the wizard, « ← Retour » when
+ * reading). The index just dispatches.
  */
 export default function ReviewIndex() {
+  const { t } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { keyMissing, moduleMissing } = useReview();
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
 
   if (keyMissing) {
     return (
-      <>
-        <Subheader />
-        <p className="py-8 text-center text-sm text-red-600">
-          Clé principale absente — reconnecte-toi.
-        </p>
-      </>
+      <ModuleShell
+        topbar={<Topbar label={t('review.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
+      >
+        <EmptyHint>{t('review.errors.keyMissing')}</EmptyHint>
+      </ModuleShell>
     );
   }
   if (moduleMissing) {
     return (
-      <>
-        <Subheader />
-        <p className="py-8 text-center text-sm opacity-70">
-          Active le module Review dans les paramètres pour commencer.
-        </p>
-      </>
+      <ModuleShell
+        topbar={<Topbar label={t('review.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
+      >
+        <EmptyHint>{t('review.errors.moduleMissing')}</EmptyHint>
+      </ModuleShell>
+    );
+  }
+
+  if (mode.kind === 'wizard') {
+    return (
+      <ReviewWizard
+        year={mode.year}
+        {...(mode.existing ? { existing: mode.existing } : {})}
+        {...(mode.resume ? { resume: true } : {})}
+        onDone={() => setMode({ kind: 'list' })}
+        onCancel={() => setMode({ kind: 'list' })}
+      />
+    );
+  }
+
+  if (mode.kind === 'reader') {
+    return (
+      <ReviewReader
+        record={mode.record}
+        onBack={() => setMode({ kind: 'list' })}
+      />
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-slate-50 transition-colors dark:bg-slate-950">
-      <Subheader />
-      <div className="flex-1 bg-white px-4 pt-4 transition-colors dark:bg-slate-900 sm:px-6 lg:px-8">
-        {mode.kind === 'list' ? (
-          <ReviewListView
-            onStartNew={(year) => setMode({ kind: 'wizard', year })}
-            onOpen={(record) => setMode({ kind: 'reader', record })}
-            onEdit={(record) =>
-              setMode({ kind: 'wizard', year: record.payload.year, existing: record })
-            }
-          />
-        ) : mode.kind === 'wizard' ? (
-          <ReviewWizard
-            year={mode.year}
-            {...(mode.existing ? { existing: mode.existing } : {})}
-            onDone={() => setMode({ kind: 'list' })}
-            onCancel={() => setMode({ kind: 'list' })}
-          />
-        ) : (
-          <ReviewReader
-            record={mode.record}
-            onBack={() => setMode({ kind: 'list' })}
-          />
-        )}
-      </div>
-    </div>
+    <ReviewListView
+      onStartNew={(year) => setMode({ kind: 'wizard', year })}
+      onResume={(year) => setMode({ kind: 'wizard', year, resume: true })}
+      onOpen={(record) => setMode({ kind: 'reader', record })}
+      onEdit={(record) =>
+        setMode({ kind: 'wizard', year: record.payload.year, existing: record })
+      }
+    />
   );
 }

@@ -1,40 +1,68 @@
 import { useEffect, useState } from 'react';
-import Subheader from '@/ui/layout/headers/Subheader';
-import SectionHeader from '@/ui/atoms/typography/SectionHeader';
+
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import {
   apiAdminListUsers,
   apiAdminDeleteUser,
   apiAdminListInvites,
-  apiAdminCreateInvite,
+  apiAdminSendInvite,
+  apiAdminResendInvite,
   apiAdminDeleteInvite,
+  apiAdminGetSettings,
+  apiAdminPatchSettings,
+  isApiError,
   type AdminUserRow,
   type AdminInviteRow,
 } from '@/core/api/client';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import Tabs from '@/ui/dirk/Tabs';
+import Topbar from '@/ui/dirk/Topbar';
 import UserTable from './components/UserTable';
-import InviteCodeManager, { type MintedInvite } from './components/InviteCode';
+import InviteManager from './components/InviteCode';
 import AnnouncementsManager from './components/AnnouncementsManager';
+import SourcesPanel from './components/SourcesPanel';
 
 /**
- * Admin page.
+ * Admin — Direction K · Sauge.
  *
- * Uses the new `/admin/*` endpoints exclusively. Announcements now have
- * a dedicated table and CRUD surface (#19 / R10) — see
- * `AnnouncementsManager`. Email-based password reset is still tracked
- * in #22 / R13 (SMTP greenfield).
+ * Sticky topbar like Mood / Account / Journal, single column at
+ * 880px, four tabs: Utilisateur·ice·s · Invitations · Annonces ·
+ * Sources. Same tab interaction model as Account: keyed
+ * `animate-fade-up` so each switch replays the entrance.
+ *
+ * The Invitations tab combines the email-based invite manager
+ * (Bitwarden-style send + resend + revoke) with the
+ * `open_registration` toggle that flips between the closed
+ * (invite-only) and open (free signup with activation email) modes.
  */
+
+type Tab = 'users' | 'invites' | 'announcements' | 'sources';
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'users', label: 'Utilisateur·ice·s' },
+  { id: 'invites', label: 'Invitations' },
+  { id: 'announcements', label: 'Annonces' },
+  { id: 'sources', label: 'Sources' },
+];
+
+type Feedback = { kind: 'ok' | 'error'; message: string };
+
 export default function AdminPage() {
   const { t } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const currentUser = useNodeaStore(selectUser);
 
+  const [tab, setTab] = useState<Tab>('users');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [invites, setInvites] = useState<AdminInviteRow[]>([]);
-  const [mintedCodes, setMintedCodes] = useState<MintedInvite[]>([]);
+  const [openRegistration, setOpenRegistration] = useState(false);
+  const [toggleBusy, setToggleBusy] = useState(false);
+  const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
+  const [inviteFeedback, setInviteFeedback] = useState<Feedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -45,10 +73,15 @@ export default function AdminPage() {
       try {
         setLoading(true);
         setError(null);
-        const [u, i] = await Promise.all([apiAdminListUsers(), apiAdminListInvites()]);
+        const [u, i, s] = await Promise.all([
+          apiAdminListUsers(),
+          apiAdminListInvites(),
+          apiAdminGetSettings(),
+        ]);
         if (!cancelled) {
           setUsers(u);
           setInvites(i);
+          setOpenRegistration(s.open_registration);
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur chargement');
@@ -70,123 +103,190 @@ export default function AdminPage() {
     }
   }
 
-  async function handleGenerateInvite(): Promise<void> {
-    setGenerating(true);
-    setCopySuccess(null);
+  function showInviteFeedback(feedback: Feedback): void {
+    setInviteFeedback(feedback);
+    window.setTimeout(() => setInviteFeedback(null), 4000);
+  }
+
+  async function handleSendInvite(email: string): Promise<void> {
     try {
-      const res = await apiAdminCreateInvite();
-      // Keep the clear code in local state so the admin can copy it
-      // before it's gone forever.
-      setMintedCodes((prev) => [
+      const created = await apiAdminSendInvite(email);
+      setInvites((prev) => [
         {
-          id: res.id,
-          code: res.code,
+          id: created.id,
+          email: created.email,
           createdBy: currentUser?.id ?? null,
           createdAt: new Date().toISOString(),
-          expiresAt: null,
+          expiresAt: created.expiresAt,
         },
         ...prev,
       ]);
-      setCopySuccess(`Code généré : ${res.code}`);
-      // Also refresh the server-known list.
-      const i = await apiAdminListInvites();
-      setInvites(i);
-    } catch {
-      setCopySuccess('Erreur lors de la création du code');
-    } finally {
-      setGenerating(false);
+      showInviteFeedback({ kind: 'ok', message: `Invitation envoyée à ${created.email}.` });
+    } catch (err) {
+      if (isApiError(err) && err.status === 409) {
+        showInviteFeedback({
+          kind: 'error',
+          message: `${email} a déjà un compte.`,
+        });
+      } else if (isApiError(err) && err.error === 'email_send_failed') {
+        showInviteFeedback({
+          kind: 'error',
+          message: "L'envoi de l'e-mail a échoué — vérifie la config SMTP.",
+        });
+      } else {
+        showInviteFeedback({ kind: 'error', message: "Échec de l'invitation." });
+      }
     }
   }
 
-  async function handleDeleteInvite(id: string): Promise<void> {
+  async function handleResendInvite(id: string): Promise<void> {
+    setBusyInviteId(id);
+    try {
+      const refreshed = await apiAdminResendInvite(id);
+      // The server re-mints with a fresh id (old row deleted, new
+      // one inserted) — replace the row in place.
+      setInvites((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                id: refreshed.id,
+                email: refreshed.email,
+                createdBy: currentUser?.id ?? null,
+                createdAt: new Date().toISOString(),
+                expiresAt: refreshed.expiresAt,
+              }
+            : i,
+        ),
+      );
+      showInviteFeedback({
+        kind: 'ok',
+        message: `Lien renvoyé à ${refreshed.email}.`,
+      });
+    } catch {
+      showInviteFeedback({ kind: 'error', message: "Échec du renvoi." });
+    } finally {
+      setBusyInviteId(null);
+    }
+  }
+
+  async function handleRevokeInvite(id: string): Promise<void> {
+    setBusyInviteId(id);
     try {
       await apiAdminDeleteInvite(id);
       setInvites((prev) => prev.filter((i) => i.id !== id));
-      setMintedCodes((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      alert('Erreur suppression code : ' + (err instanceof Error ? err.message : ''));
-    }
-  }
-
-  async function handleCopy(code: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopySuccess(`Code copié : ${code}`);
-      window.setTimeout(() => setCopySuccess(null), 2000);
+      showInviteFeedback({ kind: 'ok', message: 'Invitation révoquée.' });
     } catch {
-      setCopySuccess('Erreur lors de la copie');
+      showInviteFeedback({ kind: 'error', message: "Échec de la révocation." });
+    } finally {
+      setBusyInviteId(null);
     }
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="bg-slate-50 p-8 text-red-500 dark:bg-slate-900 dark:text-red-300">
-        {t('admin.sections.restricted', { defaultValue: 'Accès réservé aux admins.' })}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-slate-50 py-12 text-center text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-        {t('admin.states.loading', { defaultValue: 'Chargement…' })}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-slate-50 py-12 text-center text-red-500 dark:bg-slate-900 dark:text-red-300">
-        {error}
-      </div>
-    );
+  async function handleToggleOpenRegistration(next: boolean): Promise<void> {
+    setToggleBusy(true);
+    try {
+      const updated = await apiAdminPatchSettings({ open_registration: next });
+      setOpenRegistration(updated.open_registration);
+    } catch {
+      // Revert UI on failure so the toggle reflects server state.
+      showInviteFeedback({ kind: 'error', message: 'Échec de la mise à jour.' });
+    } finally {
+      setToggleBusy(false);
+    }
   }
 
   return (
-    <div className="h-full bg-slate-50 transition-colors dark:bg-slate-900">
-      <Subheader />
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
-        <section>
-          <SectionHeader
-            title={t('admin.sections.users.title', { defaultValue: 'Utilisateur·ice·s' })}
-            description={t('admin.sections.users.description', {
-              defaultValue: 'Liste et gestion des comptes.',
-            })}
-          />
-          {currentUser ? (
-            <UserTable users={users} currentUserId={currentUser.id} onDelete={handleDeleteUser} />
-          ) : null}
-        </section>
+    <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
+      <Topbar label="Paramètres · Administration" onOpenMenu={() => setMobileMenuOpen(true)} />
 
-        <section>
-          <SectionHeader
-            title={t('admin.sections.invites.title', { defaultValue: "Codes d'invitation" })}
-            description={t('admin.sections.invites.description', {
-              defaultValue: 'Générer un code à transmettre à un·e nouveau·elle utilisateur·ice.',
-            })}
-          />
-          <InviteCodeManager
-            mintedCodes={mintedCodes}
-            unusedInvites={invites}
-            generating={generating}
-            copySuccess={copySuccess}
-            onGenerate={handleGenerateInvite}
-            onCopy={handleCopy}
-            onDelete={handleDeleteInvite}
-          />
-        </section>
+      <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
+        <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
+          Administration
+        </h1>
+        <Tabs tabs={TABS} value={tab} onChange={setTab} />
+      </div>
 
-        <section>
-          <SectionHeader
-            title={t('admin.sections.announcements.title', { defaultValue: 'Annonces' })}
-            description={t('admin.sections.announcements.description', {
-              defaultValue:
-                'Messages publiés sur la page d’accueil. Non chiffrés — visibles par tout le monde.',
-            })}
-          />
-          <AnnouncementsManager />
-        </section>
+      <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">
+        <div className="max-w-[880px]">
+          {!isAdmin ? (
+            <InlineAlert>
+              {t('admin.sections.restricted', { defaultValue: 'Accès réservé aux admins.' })}
+            </InlineAlert>
+          ) : loading ? (
+            <EmptyHint>
+              {t('admin.states.loading', { defaultValue: 'Chargement…' })}
+            </EmptyHint>
+          ) : error ? (
+            <InlineAlert>{error}</InlineAlert>
+          ) : tab === 'users' ? (
+            <TabIntro
+              description={t('admin.sections.users.description', {
+                defaultValue: 'Liste et gestion des comptes.',
+              })}
+            >
+              {currentUser ? (
+                <UserTable
+                  users={users}
+                  currentUserId={currentUser.id}
+                  onDelete={handleDeleteUser}
+                />
+              ) : null}
+            </TabIntro>
+          ) : tab === 'invites' ? (
+            <TabIntro
+              description={t('admin.sections.invites.description', {
+                defaultValue:
+                  "Envoyer un lien d'invitation à un·e nouveau·elle utilisateur·ice par e-mail. Le lien arrive directement dans sa boîte ; rien à copier-coller.",
+              })}
+            >
+              <InviteManager
+                pendingInvites={invites}
+                busyInviteId={busyInviteId}
+                feedback={inviteFeedback}
+                openRegistration={openRegistration}
+                toggleBusy={toggleBusy}
+                onToggleOpenRegistration={handleToggleOpenRegistration}
+                onSendInvite={handleSendInvite}
+                onResendInvite={handleResendInvite}
+                onRevokeInvite={handleRevokeInvite}
+              />
+            </TabIntro>
+          ) : tab === 'announcements' ? (
+            <TabIntro
+              description={t('admin.sections.announcements.description', {
+                defaultValue:
+                  'Messages publiés sur la page d’accueil. Non chiffrés — visibles par tout le monde.',
+              })}
+            >
+              <AnnouncementsManager />
+            </TabIntro>
+          ) : (
+            <TabIntro
+              description={t('admin.sections.sources.description', {
+                defaultValue:
+                  'Sources de métadonnées externes utilisées par les modules. Vérifie que chaque source répond et que les clés API sont actives.',
+              })}
+            >
+              <SourcesPanel />
+            </TabIntro>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function TabIntro({
+  description,
+  children,
+}: {
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <p className="mb-6 text-[13px] leading-[1.55] text-ink-soft">{description}</p>
+      {children}
+    </>
   );
 }

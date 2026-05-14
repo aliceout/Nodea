@@ -1,18 +1,42 @@
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import Topbar from '@/ui/dirk/Topbar';
+import {
+  STEPS,
+  GROUP_LABELS,
+  getByPath,
+  type MixedFieldType,
+  type Step,
+} from '../config/steps';
 import type { ReviewRecord } from '../hooks/useReview';
-import { STEPS, GROUP_LABELS, getByPath, type Step } from '../config/steps';
 
 interface ReaderProps {
   record: ReviewRecord;
   onBack(): void;
 }
 
+const FIELD_LABEL_CLASS =
+  'text-[11px] font-semibold uppercase tracking-[0.04em] text-muted';
+const PARA_CLASS =
+  'whitespace-pre-wrap text-[15px] leading-[1.65] text-ink';
+const LIST_CLASS =
+  'list-disc space-y-1 pl-5 text-[15px] leading-[1.65] text-ink';
+
 function renderValue(step: Step, value: unknown): React.ReactNode {
+  if (step.kind === 'intro') {
+    // The welcome screen never persists anything — skip it in the
+    // reader so the article reads as the booklet's payload only.
+    return null;
+  }
+
   if (value == null) return null;
 
   if (step.kind === 'textarea') {
     const s = String(value).trim();
     if (!s) return null;
-    return <p className="whitespace-pre-wrap text-base leading-relaxed">{s}</p>;
+    return <p className={PARA_CLASS}>{s}</p>;
   }
 
   if (step.kind === 'string_list') {
@@ -20,7 +44,7 @@ function renderValue(step: Step, value: unknown): React.ReactNode {
     const clean = arr.map((v) => v.trim()).filter(Boolean);
     if (clean.length === 0) return null;
     return (
-      <ul className="list-disc space-y-1 pl-5 text-base leading-relaxed">
+      <ul className={LIST_CLASS}>
         {clean.map((v, i) => (
           <li key={i}>{v}</li>
         ))}
@@ -38,8 +62,8 @@ function renderValue(step: Step, value: unknown): React.ReactNode {
       <dl className="space-y-3">
         {items.map(({ f, v }) => (
           <div key={f.key}>
-            <dt className="text-xs uppercase tracking-wide opacity-60">{f.label}</dt>
-            <dd className="mt-1 whitespace-pre-wrap text-base leading-relaxed">{v}</dd>
+            <dt className={FIELD_LABEL_CLASS}>{f.label}</dt>
+            <dd className={`mt-1 ${PARA_CLASS}`}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -61,8 +85,8 @@ function renderValue(step: Step, value: unknown): React.ReactNode {
       <div className="space-y-4">
         {items.map(({ f, list }) => (
           <div key={f.key}>
-            <p className="text-xs uppercase tracking-wide opacity-60">{f.label}</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-base leading-relaxed">
+            <p className={FIELD_LABEL_CLASS}>{f.label}</p>
+            <ul className={`mt-1 ${LIST_CLASS}`}>
               {list.map((v, i) => (
                 <li key={i}>{v}</li>
               ))}
@@ -73,122 +97,106 @@ function renderValue(step: Step, value: unknown): React.ReactNode {
     );
   }
 
-  if (step.kind === 'closing_last') {
-    const obj = (value ?? {}) as { book_title?: string; three_words?: string[] };
-    const title = (obj.book_title ?? '').trim();
-    const words = (obj.three_words ?? []).map((w) => String(w).trim()).filter(Boolean);
-    if (!title && words.length === 0) return null;
+  if (step.kind === 'keyed_mixed') {
+    const obj = (value ?? {}) as Record<string, unknown>;
+    const items = step.fields
+      .map((f) => ({ f, rendered: renderMixed(f.type, obj[f.key]) }))
+      .filter((x) => x.rendered !== null);
+    if (items.length === 0) return null;
     return (
-      <div className="space-y-2">
-        {title ? (
-          <p className="font-serif text-xl italic">« {title} »</p>
-        ) : null}
-        {words.length > 0 ? (
-          <p className="text-base opacity-80">{words.join(' · ')}</p>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (step.kind === 'closing_final') {
-    const obj = (value ?? {}) as {
-      letter_to_self?: string;
-      commitment?: string;
-      signature?: string;
-      date?: string;
-    };
-    const letter = (obj.letter_to_self ?? '').trim();
-    const commitment = (obj.commitment ?? '').trim();
-    const signature = (obj.signature ?? '').trim();
-    const date = (obj.date ?? '').trim();
-    if (!letter && !commitment && !signature && !date) return null;
-    return (
-      <div className="space-y-5">
-        {letter ? (
-          <div>
-            <p className="text-xs uppercase tracking-wide opacity-60">Lettre à moi-même</p>
-            <p className="mt-1 whitespace-pre-wrap font-serif text-base leading-relaxed">
-              {letter}
-            </p>
+      <div className="space-y-4">
+        {items.map(({ f, rendered }) => (
+          <div key={f.key}>
+            <p className={FIELD_LABEL_CLASS}>{f.label}</p>
+            <div className="mt-1">{rendered}</div>
           </div>
-        ) : null}
-        {commitment ? (
-          <div>
-            <p className="text-xs uppercase tracking-wide opacity-60">Engagement</p>
-            <p className="mt-1 whitespace-pre-wrap text-base leading-relaxed">{commitment}</p>
-          </div>
-        ) : null}
-        {signature || date ? (
-          <p className="pt-3 text-right font-serif italic">
-            {signature ? `— ${signature}` : null}
-            {signature && date ? ', ' : null}
-            {date}
-          </p>
-        ) : null}
+        ))}
       </div>
-    );
-  }
-
-  if (step.kind === 'year_image') {
-    const src = typeof value === 'string' ? value : '';
-    if (!src) return null;
-    return (
-      <img
-        src={src}
-        alt="Image symbolique de l'année"
-        className="mx-auto max-h-[28rem] rounded border border-slate-200 object-contain dark:border-slate-700"
-      />
     );
   }
 
   return null;
 }
 
+function renderMixed(type: MixedFieldType, value: unknown): React.ReactNode {
+  if (type === 'list') {
+    const arr = Array.isArray(value) ? (value as string[]) : [];
+    const clean = arr.map((v) => String(v).trim()).filter(Boolean);
+    if (clean.length === 0) return null;
+    return (
+      <ul className={LIST_CLASS}>
+        {clean.map((v, i) => (
+          <li key={i}>{v}</li>
+        ))}
+      </ul>
+    );
+  }
+  // text / textarea / date — all render as a single paragraph
+  const s = typeof value === 'string' ? value.trim() : '';
+  if (!s) return null;
+  return <p className={PARA_CLASS}>{s}</p>;
+}
+
 export default function ReviewReader({ record, onBack }: ReaderProps) {
+  const { t } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const payload = record.payload as Record<string, unknown> & { year: number };
   const byGroup = new Map<Step['group'], Step[]>();
   for (const step of STEPS) {
+    if (step.kind === 'intro') continue;
     if (!byGroup.has(step.group)) byGroup.set(step.group, []);
     byGroup.get(step.group)!.push(step);
   }
 
   return (
-    <article className="mx-auto w-full max-w-2xl space-y-10 py-8">
-      <header className="space-y-2 text-center">
-        <p className="text-xs uppercase tracking-[0.25em] opacity-60">YearCompass</p>
-        <h1 className="font-serif text-4xl">Bilan {payload.year}</h1>
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-2 rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
+    <ModuleShell
+      topbar={
+        <Topbar
+          label={t('review.topbar.readerLabel', { values: { year: payload.year } })}
+          onOpenMenu={() => setMobileMenuOpen(true)}
         >
-          ← Retour aux bilans
-        </button>
-      </header>
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            {t('review.reader.back')}
+          </Button>
+        </Topbar>
+      }
+    >
+      <article className="mx-auto max-w-2xl">
+        <header className="mb-10 space-y-2 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-muted">
+            YearCompass
+          </p>
+          <h1 className="font-serif text-[44px] leading-[1.05] tracking-[-0.01em] text-ink">
+            {t('review.reader.yearTitle', { values: { year: payload.year } })}
+          </h1>
+        </header>
 
-      {Array.from(byGroup.entries()).map(([group, steps]) => {
-        const sections = steps
-          .map((s) => ({ s, value: getByPath(payload, s.path) }))
-          .filter((x) => renderValue(x.s, x.value) !== null);
-        if (sections.length === 0) return null;
+        {Array.from(byGroup.entries()).map(([group, steps]) => {
+          const sections = steps
+            .map((s) => ({ s, value: getByPath(payload, s.path) }))
+            .filter((x) => renderValue(x.s, x.value) !== null);
+          if (sections.length === 0) return null;
 
-        return (
-          <section key={group} className="space-y-8">
-            <h2 className="border-b border-slate-200 pb-2 font-serif text-2xl dark:border-slate-700">
-              {GROUP_LABELS[group]}
-            </h2>
-            {sections.map(({ s, value }) => (
-              <div key={s.id} className="space-y-3">
-                <h3 className="font-serif text-xl">{s.title}</h3>
-                {s.subtitle ? (
-                  <p className="text-sm italic opacity-70">{s.subtitle}</p>
-                ) : null}
-                <div>{renderValue(s, value)}</div>
-              </div>
-            ))}
-          </section>
-        );
-      })}
-    </article>
+          return (
+            <section key={group} className="mb-10 space-y-7 last:mb-0">
+              <h2 className="border-b border-hair pb-2 font-serif text-[26px] tracking-[-0.005em] text-ink">
+                {GROUP_LABELS[group]}
+              </h2>
+              {sections.map(({ s, value }) => (
+                <div key={s.id} className="space-y-3">
+                  <h3 className="font-serif text-[20px] tracking-[-0.005em] text-ink">
+                    {s.title}
+                  </h3>
+                  {s.subtitle ? (
+                    <p className="text-[13px] italic text-muted">{s.subtitle}</p>
+                  ) : null}
+                  <div>{renderValue(s, value)}</div>
+                </div>
+              ))}
+            </section>
+          );
+        })}
+      </article>
+    </ModuleShell>
   );
 }

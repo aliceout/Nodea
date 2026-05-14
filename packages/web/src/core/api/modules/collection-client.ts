@@ -19,18 +19,22 @@ import type { Base64, CipherIV, EncryptedBlob } from '@nodea/shared';
 
 export interface EncryptedRecord {
   id: string;
-  module_user_id: string;
-  cipher_iv: string;
+  moduleUserId: string;
+  cipherIv: string;
   payload: string;
-  created_at: string;
-  updated_at: string;
 }
 
+/**
+ * Decrypted record handed back to module code. The server-side
+ * minimum-readable-surface design dropped per-row timestamps —
+ * any `createdAt` / `updatedAt` a module needs lives inside
+ * the encrypted payload (`T`). Module clients that want
+ * chronological ordering pull dates from `payload.*` after
+ * decryption rather than from the wrapper.
+ */
 export interface DecryptedRecord<T> {
   id: string;
   moduleUserId: string;
-  createdAt: string;
-  updatedAt: string;
   payload: T;
 }
 
@@ -44,19 +48,41 @@ function apiBase(): string {
   );
 }
 
+interface RequestOptions {
+  body?: unknown;
+  /** Module-user scope id — sent as the `X-Sid` header so the
+   *  identifier never lands in `hono/logger()` output, nginx access
+   *  logs, or browser referrers (SEC-01). */
+  sid?: string;
+  /** HMAC guard for mutations — sent as the `X-Guard` header for
+   *  the same reason as `sid`. The guard IS crypto material derived
+   *  from the user's main key ; it MUST NOT travel through URLs. */
+  guard?: string;
+  /** Collection name — sent as the `X-Collection` header (issue #67).
+   *  The server uses it to look up the target table ; moving it out
+   *  of the URL keeps the module identifier out of Nginx access logs
+   *  and Hono's default request logger, both of which only record
+   *  the request line. */
+  collection?: string;
+}
+
 async function request<T = unknown>(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
-  body?: unknown,
+  options: RequestOptions = {},
 ): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (options.body !== undefined) headers['content-type'] = 'application/json';
+  if (options.sid !== undefined) headers['x-sid'] = options.sid;
+  if (options.guard !== undefined) headers['x-guard'] = options.guard;
+  if (options.collection !== undefined) headers['x-collection'] = options.collection;
+
   const init: RequestInit = {
     method,
     credentials: 'include',
-    ...(body !== undefined
-      ? {
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body),
-        }
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    ...(options.body !== undefined
+      ? { body: JSON.stringify(options.body) }
       : {}),
   };
   const res = await fetch(`${apiBase()}${path}`, init);
@@ -87,9 +113,15 @@ export interface CollectionClient<TSchema extends ZodTypeAny> {
   remove(moduleUserId: string, key: MainKeyMaterial, id: string): Promise<void>;
 }
 
-/** Split the "<iv>.<data>" envelope used by modules-config and wrapped keys. */
-function packBlob(blob: AesBlob): { iv: CipherIV; data: EncryptedBlob } {
-  return { iv: blob.iv, data: blob.data };
+/**
+ * Pack an `AesBlob` into the request shape `CreateEntryBodySchema` /
+ * `UpdateEntryBodySchema` enforce server-side: `cipherIv` + `payload`.
+ * The earlier `{ iv, data }` keys never matched either schema — every
+ * create / update silently 400'd. Renamed once so both `create` and
+ * `update` share the right wire format.
+ */
+function packBlob(blob: AesBlob): { cipherIv: CipherIV; payload: EncryptedBlob } {
+  return { cipherIv: blob.iv, payload: blob.data };
 }
 
 export function createCollectionClient<TSchema extends ZodTypeAny>(
@@ -115,17 +147,19 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     moduleUserId: string,
     key: MainKeyMaterial,
   ): Promise<DecryptedRecord<Payload>[]> {
-    const { records } = await request<{ records: EncryptedRecord[] }>(
+    // Uniform `{ data, meta }` envelope (audit API-06). The factory
+    // ignores `meta` for now — it's reserved for future per-list
+    // metadata that doesn't belong inside the encrypted payload.
+    const { data } = await request<{ data: EncryptedRecord[]; meta: Record<string, unknown> }>(
       'GET',
-      `/${collectionName}/records?sid=${encodeURIComponent(moduleUserId)}`,
+      `/records`,
+      { sid: moduleUserId, collection: collectionName },
     );
     return Promise.all(
-      records.map(async (r) => ({
+      data.map(async (r) => ({
         id: r.id,
-        moduleUserId: r.module_user_id,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at,
-        payload: await decodePayload(key, r.cipher_iv, r.payload),
+        moduleUserId: r.moduleUserId,
+        payload: await decodePayload(key, r.cipherIv, r.payload),
       })),
     );
   }
@@ -136,26 +170,30 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     payload: Payload,
   ): Promise<DecryptedRecord<Payload>> {
     const blob = await encodePayload(key, payload);
-    const created = await request<EncryptedRecord>('POST', `/${collectionName}/records`, {
-      sid: moduleUserId,
-      ...packBlob(blob),
-      guard: 'init',
-    });
+    const created = await request<EncryptedRecord>(
+      'POST',
+      `/records`,
+      {
+        collection: collectionName,
+        body: {
+          sid: moduleUserId,
+          ...packBlob(blob),
+          guard: 'init',
+        },
+      },
+    );
 
     // Immediate promotion init → g_<hex>.
     const guard = await deriveGuard(key.hmacKey, moduleUserId, created.id);
     const promoted = await request<EncryptedRecord>(
       'PATCH',
-      `/${collectionName}/records/${encodeURIComponent(created.id)}` +
-        `?sid=${encodeURIComponent(moduleUserId)}&d=init`,
-      { guard },
+      `/records/${encodeURIComponent(created.id)}`,
+      { sid: moduleUserId, guard: 'init', collection: collectionName, body: { guard } },
     );
     return {
       id: promoted.id,
-      moduleUserId: promoted.module_user_id,
-      createdAt: promoted.created_at,
-      updatedAt: promoted.updated_at,
-      payload: await decodePayload(key, promoted.cipher_iv, promoted.payload),
+      moduleUserId: promoted.moduleUserId,
+      payload: await decodePayload(key, promoted.cipherIv, promoted.payload),
     };
   }
 
@@ -169,16 +207,13 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     const blob = await encodePayload(key, payload);
     const updated = await request<EncryptedRecord>(
       'PATCH',
-      `/${collectionName}/records/${encodeURIComponent(id)}` +
-        `?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(guard)}`,
-      packBlob(blob),
+      `/records/${encodeURIComponent(id)}`,
+      { sid: moduleUserId, guard, collection: collectionName, body: packBlob(blob) },
     );
     return {
       id: updated.id,
-      moduleUserId: updated.module_user_id,
-      createdAt: updated.created_at,
-      updatedAt: updated.updated_at,
-      payload: await decodePayload(key, updated.cipher_iv, updated.payload),
+      moduleUserId: updated.moduleUserId,
+      payload: await decodePayload(key, updated.cipherIv, updated.payload),
     };
   }
 
@@ -190,8 +225,8 @@ export function createCollectionClient<TSchema extends ZodTypeAny>(
     const guard = await deriveGuard(key.hmacKey, moduleUserId, id);
     await request<void>(
       'DELETE',
-      `/${collectionName}/records/${encodeURIComponent(id)}` +
-        `?sid=${encodeURIComponent(moduleUserId)}&d=${encodeURIComponent(guard)}`,
+      `/records/${encodeURIComponent(id)}`,
+      { sid: moduleUserId, guard, collection: collectionName },
     );
   }
 

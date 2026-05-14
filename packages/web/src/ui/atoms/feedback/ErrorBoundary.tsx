@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import Button from '@/ui/atoms/dirk/Button';
 
 export interface ErrorBoundaryProps {
   children: ReactNode;
@@ -36,7 +37,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', this.props.scope ?? 'global', error, info);
   }
 
@@ -54,13 +54,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
           Une erreur est survenue{this.props.scope ? ` dans ${this.props.scope}` : ''}.
         </p>
         <p className="mb-4 text-sm opacity-80">{error.message}</p>
-        <button
-          type="button"
-          onClick={this.reset}
-          className="rounded border px-3 py-1 text-sm"
-        >
+        <Button variant="primary" size="md" onClick={this.reset}>
           Réessayer
-        </button>
+        </Button>
       </div>
     );
   }

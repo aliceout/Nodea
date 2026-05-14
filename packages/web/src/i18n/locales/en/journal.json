@@ -1,0 +1,89 @@
+{
+  "title": "Journal",
+  "topbar": {
+    "label": {
+      "one": "Journal · {count} entry",
+      "other": "Journal · {count} entries"
+    },
+    "newCta": "+ New entry",
+    "readerLabel": "Journal · {position} / {total}",
+    "searchPlaceholder": "Search in Journal…"
+  },
+  "list": {
+    "loading": "Loading journal…",
+    "empty": "No entry matches the current filters.",
+    "groupCountNoun": "entry",
+    "noThread": "— no thread —"
+  },
+  "row": {
+    "openAria": "Open {label} in reader",
+    "imageAria": "Open image in reader",
+    "imageTitle": "View larger",
+    "readAria": "Open in reader",
+    "readTitle": "Read",
+    "editAria": "Edit entry",
+    "deleteAria": "Delete entry"
+  },
+  "clamped": {
+    "readMore": "read more →"
+  },
+  "onThisDay": {
+    "title": "On this day",
+    "subtitle": "What you wrote on the same day, in past years",
+    "aria": "Entries from past years on the same day",
+    "oneYearAgo": "One year ago",
+    "yearsAgo": {
+      "other": "{count} years ago"
+    },
+    "untitled": "Untitled entry"
+  },
+  "side": {
+    "view": "View",
+    "viewByThread": "By thread",
+    "viewByMonth": "By month",
+    "threads": "Threads",
+    "threadsEmpty": "You haven't created any thread yet.",
+    "threadsAll": "All",
+    "threadsManageCta": "Manage threads"
+  },
+  "primary": {
+    "entriesHeading": "Entries",
+    "yearRolling": "Current",
+    "yearAria": "Writing year",
+    "showChart": "Show writing map",
+    "hideChart": "Hide writing map"
+  },
+  "reader": {
+    "noThreadEyebrow": "— no thread —",
+    "edit": "Edit",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next"
+  },
+  "context": {
+    "loadFailed": "Failed to load journal.",
+    "confirmDelete": "Delete \"{label}\"?"
+  },
+  "heatmap": {
+    "homepageLabel": "A year of writing",
+    "ariaLabel": "Writing density heatmap for the last 12 months",
+    "tooltip": "{date} — {count} entries, {words} words",
+    "tooltipEmpty": "{date} — nothing written that day",
+    "dayFilterActive": "Filtered on {day}.",
+    "dayFilterClearCta": "Show all"
+  },
+  "threadsManager": {
+    "title": "Manage threads",
+    "subtitle": "{count} threads",
+    "empty": "No threads yet. Create a thread by tagging it in an entry.",
+    "renameAria": "Rename thread {name}",
+    "deleteAria": "Delete thread {name}",
+    "confirmDelete": "Drop the thread \"{name}\" from every entry that carries it?",
+    "opRename": "Rename",
+    "opDelete": "Delete",
+    "opResult": "{ok} updated, {failed} failed"
+  },
+  "composer": {
+    "submittingUpdate": "Updating…"
+  }
+}

@@ -1,1 +1,43 @@
-{}
+{
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "discard": "Abandonner",
+    "add": "Ajouter",
+    "update": "Mettre à jour",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "verify": "Vérifier",
+    "copy": "Copier",
+    "send": "Envoyer",
+    "open": "Ouvrir",
+    "configure": "Configurer",
+    "enable": "Activer",
+    "disable": "Désactiver",
+    "menu": "Actions"
+  },
+  "time": {
+    "today": "Aujourd’hui",
+    "yesterday": "Hier"
+  },
+  "states": {
+    "saving": "Enregistrement…",
+    "deleting": "Suppression…",
+    "adding": "Ajout…",
+    "updating": "Mise à jour…",
+    "loading": "Chargement…",
+    "verifying": "Vérification…",
+    "submitting": "Envoi…",
+    "enabling": "Activation…",
+    "copied": "Copié"
+  },
+  "a11y": {
+    "skipToMain": "Passer au contenu principal"
+  },
+  "search": {
+    "clearAria": "Effacer la recherche"
+  }
+}
