@@ -20,13 +20,14 @@ secrets:
   provider: infisical
   loader: dotenv
   # TODO: replace with your Infisical project slug.
-  project: nodea-7k-u4
+  project: infra-perso-x-lwh
   batches:
-    # Secrets live in three folders inside the `dev` env — pull each.
-    # Merge order: first wins on duplicate keys, so `api` takes
-    # precedence over `postgress` and `web` if the same key appears.
-    - dev/api
-    - dev/postgres
-    - dev/web
-    - dev/hsts
-    - dev/smtp
+    # Secrets live under `/services/nodea/<sub-folder>` on Infisical
+    # Cloud — pull each sub-folder. Merge order: first wins on
+    # duplicate keys, so `api` takes precedence over `postgres` /
+    # `web` / `hsts` / `smtp` if the same key appears.
+    - dev/services/nodea/api
+    - dev/services/nodea/postgres
+    - dev/services/nodea/web
+    - dev/services/nodea/hsts
+    - dev/services/nodea/smtp
