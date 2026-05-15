@@ -5,7 +5,7 @@
 # → `start`), so there is no dedicated compile step. Migrations run once on
 # container start before the HTTP server boots.
 # -----------------------------------------------------------------------------
-FROM node:22-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
