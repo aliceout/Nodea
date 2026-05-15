@@ -15,11 +15,17 @@
  * before `buildApp()`. This file exposes `initSentryApi()` so
  * `index.ts` stays readable.
  *
- * **No-op when DSN is unset.** Call `initSentryApi()`
- * unconditionally ; if `SENTRY_DSN` is empty (the dev default),
- * the function returns immediately without ever touching the
- * Sentry SDK. Operators who don't want Nodea to phone home keep
- * `SENTRY_DSN` empty in `.env`.
+ * **Lazy-loaded by design.** The whole `@sentry/node` module
+ * (and its transitive `@fastify/otel` instrumentation chain) is
+ * pulled in via a dynamic `import()` inside `initSentryApi()`,
+ * gated on a non-empty `SENTRY_DSN`. When the operator hasn't
+ * opted into Sentry (the dev default, and the « privacy-first »
+ * self-host stance), the SDK never touches `process` at all —
+ * no global instrumentation, no transitive deps loaded, no boot
+ * crash if something in that subtree is broken. Operators who
+ * do want Sentry pay the import cost the moment the api starts ;
+ * the rest of the app waits for `initSentryApi()` to resolve
+ * before continuing (see `index.ts`).
  *
  * **`beforeSend` privacy contract.** Every event passes through
  * the hook below before being shipped. The hook strips :
@@ -35,8 +41,6 @@
  * the request body. Acceptable — crash signal + stack trace + URL
  * is enough for most cases ; for the rest, reproduce in dev.
  */
-import * as Sentry from '@sentry/node';
-
 import { getConfig } from './config.ts';
 
 /** Headers that must never reach Sentry. Match case-insensitively
@@ -49,9 +53,18 @@ const HEADER_BLACKLIST = new Set([
   'x-guard',
 ]);
 
-export function initSentryApi(): void {
+export async function initSentryApi(): Promise<void> {
   const { SENTRY_DSN, NODE_ENV, BUILD_COMMIT } = getConfig();
   if (!SENTRY_DSN) return;
+
+  // Dynamic import : avoids pulling `@sentry/node` (and its heavy
+  // transitive instrumentation graph) into the process when the
+  // operator hasn't opted into Sentry. Also dodges any breakage
+  // in that subtree on operators who don't care — see
+  // commit history for the `@fastify/otel@0.18.0` package.json
+  // corruption that briefly broke api boot for everyone before
+  // this lazy path landed.
+  const Sentry = await import('@sentry/node');
 
   Sentry.init({
     dsn: SENTRY_DSN,

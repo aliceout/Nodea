@@ -1,9 +1,12 @@
 // Sentry must initialise BEFORE the rest of the app imports —
 // the SDK instruments `http`, `fs`, etc. at require time. Putting
-// `initSentryApi()` first keeps that contract honoured. No-op when
-// SENTRY_DSN is unset.
+// `await initSentryApi()` first keeps that contract honoured.
+// Now async because the SDK is dynamically `import()`'d only when
+// `SENTRY_DSN` is set (see `sentry.ts` for the rationale). When
+// the DSN is unset, this resolves immediately without ever
+// touching `@sentry/node`.
 import { initSentryApi } from './sentry.ts';
-initSentryApi();
+await initSentryApi();
 
 import { serve } from '@hono/node-server';
 import { buildApp } from './app.ts';
