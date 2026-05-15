@@ -6,14 +6,21 @@
 # updates so we can audit + merge in batches without losing track of
 # what changed.
 #
+# **Majors are silently ignored** in the regular schedule — they're
+# almost always lockstep migrations (Zod 3→4, Vitest 3→4, eslint 9→10)
+# that warrant a dedicated PR, not a drive-by Dependabot bump. Security
+# advisories still surface PRs regardless of `ignore` rules (the
+# advisory path is its own override on GitHub's side), so CVE patches
+# on a major boundary still land — they just arrive labeled as
+# `security` rather than `version-update`.
+#
 # Per CLAUDE.md, Dependabot PRs stay open until the user decides — do
 # not delete their branches, do not auto-merge.
 version: 2
 updates:
   # npm (pnpm reads the same lockfile through this ecosystem).
-  # Group minor + patch into one PR per week so the queue doesn't
-  # explode on busy weeks; majors stay individual so each one gets
-  # its own review.
+  # Group minor + patch into one PR per week ; ignore majors so
+  # they don't drown the queue.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -22,21 +29,37 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions in `.github/workflows/`.
+  # Same logic — patches/minors auto-PR'd, majors deferred to a
+  # human-driven sweep when we want them.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Docker base images. We track api + web Dockerfiles separately so
-  # the PR title carries the package name.
+  # the PR title carries the package name. Majors of Node-alpine /
+  # nginx-alpine are deferred (Node LTS cycles are slow enough that a
+  # dedicated PR is fine).
   - package-ecosystem: "docker"
     directory: "/packages/api"
     schedule:
       interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/packages/web"
     schedule:
       interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
