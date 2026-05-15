@@ -6,14 +6,14 @@
 # Docker build via GitHub webhook. The VPS handles everything above this
 # script: user creation, nginx + TLS, DNS, repo pull onto /var/www/nodea/ at
 # the right commit. This script is responsible for everything below: pulling
-# app secrets from the self-hosted Infisical, rendering them as a root `.env`,
+# app secrets from Infisical Cloud, rendering them as a root `.env`,
 # building / starting the compose stack, and seeding the initial admin.
 #
 # Preconditions (guaranteed by the VPS):
 #   - cwd = repo root, checked out at the target commit on `main`.
 #   - $HOME/.config/infisical/nodea.env exists, chmod 600, containing:
-#       INFISICAL_API_URL       e.g. https://env.backlice.dev
-#       INFISICAL_PROJECT_ID    uuid of the Nodea project on the self-hosted
+#       INFISICAL_API_URL       e.g. https://infisical.com
+#       INFISICAL_PROJECT_ID    uuid of the Nodea project on Infisical Cloud
 #       INFISICAL_CLIENT_ID     universal-auth machine identity id
 #       INFISICAL_CLIENT_SECRET universal-auth machine identity secret
 #       INFISICAL_ENV           e.g. prod
@@ -39,7 +39,7 @@ die() { printf '[nodea-deploy] ERR %s\n' "$*" >&2; exit 1; }
 
 [[ -s "$CREDS_FILE" ]] || die "infisical creds missing: $CREDS_FILE"
 
-# 1. Load Infisical self-hosted credentials into the shell environment.
+# 1. Load Infisical Cloud credentials into the shell environment.
 set -a
 # shellcheck disable=SC1090
 source "$CREDS_FILE"
@@ -64,19 +64,21 @@ TOKEN="$(
 [[ -n "$TOKEN" ]] || die "infisical login returned an empty token"
 
 # 3. Pull the Nodea secrets into a dotenv bundle at the repo root.
-#    The self-hosted Infisical project is split per sub-service
-#    (prod/api, prod/postgres, prod/web) rather than flat — so we
-#    fetch each sub-path and concatenate. docker-compose reads the
-#    resulting `.env` automatically via its ${VAR} substitutions.
+#    On Infisical Cloud, every app under this account lives under
+#    `/services/<service-name>/…`, split per sub-service
+#    (`/services/nodea/api`, `/services/nodea/postgres`,
+#    `/services/nodea/web`) rather than flat — so we fetch each
+#    sub-path and concatenate. docker-compose reads the resulting
+#    `.env` automatically via its ${VAR} substitutions.
 : > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 for subpath in api postgres web; do
-  log "fetching /$subpath secrets (env=$INFISICAL_ENV)"
+  log "fetching /services/nodea/$subpath secrets (env=$INFISICAL_ENV)"
   infisical export \
     --domain="$INFISICAL_API_URL" \
     --projectId="$INFISICAL_PROJECT_ID" \
     --env="$INFISICAL_ENV" \
-    --path="/$subpath" \
+    --path="/services/nodea/$subpath" \
     --format=dotenv \
     --token="$TOKEN" \
     >> "$ENV_FILE"
