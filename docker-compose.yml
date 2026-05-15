@@ -97,6 +97,28 @@ services:
       # need to traverse the compose boundary.
       DOMAIN: ${DOMAIN:?DOMAIN is required (apex host, no scheme — e.g. nodea.app)}
       WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:?WEBAUTHN_RP_NAME is required (free-text display name shown in the OS / browser passkey UI)}
+      # OPAQUE server setup blob (output of `server.createSetup()` from
+      # @serenity-kit/opaque, base64url-encoded). The Zod schema marks
+      # it `.optional()` so unrelated tests pass without it, but every
+      # auth route (register / login / reset / recover / seed:admin)
+      # refuses to run without it. Treat as hard-required at the
+      # compose boundary — `:?` so a missing value fails at
+      # `docker compose up` with a clear message rather than crashing
+      # the first /auth/* call.
+      OPAQUE_SERVER_SETUP: ${OPAQUE_SERVER_SETUP:?OPAQUE_SERVER_SETUP is required (generate via `pnpm --filter @nodea/api exec node --input-type=module -e "import { ready, server } from '@serenity-kit/opaque'; await ready; console.log(server.createSetup())"` and put in Infisical → api/)}
+      # Picks which EmailService impl runs at runtime. Default `smtp`
+      # points at the SMTP_* settings above (Mailpit in dev,
+      # Infomaniak / etc. in prod). Override to `console` to log
+      # outgoing mail to stderr instead — useful on minimal
+      # self-hosts where no SMTP relay is available.
+      EMAIL_SERVICE_IMPL: ${EMAIL_SERVICE_IMPL:-smtp}
+      # Library module — book lookups. Toggle the Amazon adapter
+      # (headless Chromium) off if you don't want the ~120 MB RAM
+      # overhead and the +2-5 s/lookup cost. The Google Books key
+      # is optional ; without it the proxy falls back to Open
+      # Library / BNF / Wikidata / BNE (none of which need a key).
+      LIBRARY_AMAZON_ENABLED: ${LIBRARY_AMAZON_ENABLED:-true}
+      LIBRARY_GOOGLE_BOOKS_API_KEY: ${LIBRARY_GOOGLE_BOOKS_API_KEY:-}
       # SMTP — leave empty to log mails to stderr. For dev, run the
       # optional `mailpit` service (`docker compose --profile dev up`)
       # and set SMTP_HOST=mailpit SMTP_PORT=1025 in the root .env.
