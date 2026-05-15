@@ -27,7 +27,10 @@ set -euo pipefail
 
 # Resolve the repo root from the script's own location, never from $PWD or a
 # hardcoded /home/* / /var/www/* — the VPS picks the app user dynamically.
-DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# The script lives at `<repo>/scripts/deploy.sh`, so one `..` is enough ;
+# two would land on the parent of the repo and silently break the
+# `git rev-parse` below (no git → empty SHA → bad image tag).
+DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CREDS_FILE="${CREDS_FILE:-$HOME/.config/infisical/nodea.env}"
 ENV_FILE="$DEPLOY_DIR/.env"
 
@@ -116,7 +119,18 @@ export DATA_DIR="$HOME/data/nodea"
 mkdir -p "$DATA_DIR/postgres"
 log "data dir = $DATA_DIR (postgres bind mount)"
 
-export NODEA_IMAGE_TAG="${NODEA_IMAGE_TAG:-sha-$(git rev-parse --short=7 HEAD)}"
+# Pin to the immutable `sha-<short>` of the current checkout unless the
+# caller (webhook payload, manual run) overrode `NODEA_IMAGE_TAG`.
+# `git rev-parse` failing here means the path resolution above is broken
+# (was the case briefly post-rename to `scripts/`) ; surface the cause
+# loudly instead of letting `docker compose pull` chase an empty `sha-`
+# tag that GHCR will return as 404.
+if [[ -z "${NODEA_IMAGE_TAG:-}" ]]; then
+  short_sha="$(git rev-parse --short=7 HEAD 2>/dev/null || true)"
+  [[ -n "$short_sha" ]] \
+    || die "could not resolve HEAD short sha — is $DEPLOY_DIR a git checkout ?"
+  export NODEA_IMAGE_TAG="sha-$short_sha"
+fi
 log "pulling images (tag=$NODEA_IMAGE_TAG)"
 docker compose pull
 # Plain `up -d` — never `down -v`. The Postgres data directory is a
