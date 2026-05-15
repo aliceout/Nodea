@@ -5,6 +5,34 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.0.1 — 2026-05-15
+
+### Corrections
+
+- **deploy** : correct repo-root resolution after `infra/scripts` → `scripts` move _(e3f187d)_
+
+### Refactor
+
+- **api** : derive WebAuthn rpId/origin from DOMAIN/WEB_BASE_URL _(469b044)_
+
+<details>
+<summary>Maintenance — 12 commits</summary>
+
+- **release** : bump version to 2.0.1 _(3bb8821)_
+- untrack dev-setup.yaml, drop .trivyignore (CVEs cleared by base-image bump) _(beb5e1d)_
+- **deps-dev** : Bump vite in the minor-and-patch group _(a614d32)_
+- **dependabot** : ignore semver-major bumps in the regular schedule _(ee03804)_
+- **docker** : bump base image node 22-alpine → 24-alpine (LTS-track) _(e75902f)_
+- **deps** : Bump actions/upload-artifact from 4 to 7 _(2203642)_
+- **deps** : Bump actions/setup-node from 4 to 6 _(d05c3b6)_
+- **deps** : Bump actions/checkout from 4 to 6 _(e02299e)_
+- **dev-setup** : migrate Infisical batches to /services/nodea/* on Cloud _(fe27769)_
+- **deploy** : migrate Infisical paths to /services/nodea/* on Cloud _(42f7435)_
+- **deps** : Bump the minor-and-patch group with 5 updates _(857ed42)_
+- **deps** : Bump docker/login-action from 3 to 4 _(7212def)_
+
+</details>
+
 ## v2.0.0 — 2026-05-15
 
 ### Nouveautés
@@ -379,6 +407,7 @@ pliés pour ne pas noyer l'essentiel.
 
 ### Documentation
 
+- **changelog** : regenerate for v2.0.0 _(03d9470)_
 - **readme** : document the three Postgres databases + test guard rationale _(16fa040)_
 - **i18n** : translate batch 7 — Architecture.md §7 + cross-ref anchors _(9d58dc8)_
 - **i18n** : translate batch 6 — docs/adr/* (14 files) _(d1cbe92)_
@@ -728,8 +757,12 @@ pliés pour ne pas noyer l'essentiel.
 - MVP 1 _(3629faf)_
 
 <details>
-<summary>Maintenance — 83 commits</summary>
+<summary>Maintenance — 87 commits</summary>
 
+- **trivy** : allowlist picomatch CVE inside pnpm's corepack tarball _(b94e3db)_
+- **api/docker** : strip bundled npm from the image (we run on pnpm) _(6e91857)_
+- **docker** : pin picomatch ≥ 4.0.4 + .trivyignore for vendored Go CVEs _(1aaaa64)_
+- **docker** : bump trivy-action 0.28.0 → v0.36.0 (the 0.28.0 ref doesn't resolve) _(9cd09a3)_
 - **release** : bump version to 2.0.0 _(423e094)_
 - **e2e** : rename `test` script to `e2e` so `pnpm -r test` skips Playwright _(e5cecb7)_
 - generate OPAQUE_SERVER_SETUP per run so /auth tests can talk OPAQUE _(1efc256)_
