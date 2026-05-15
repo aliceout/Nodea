@@ -84,7 +84,19 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required (≥ 32 chars)}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-2592000}
-      WEB_BASE_URL: ${WEB_BASE_URL:-}
+      # WEB_BASE_URL is required — emails (activation, reset, MFA…)
+      # need an absolute URL to point recipients at. Promoted from
+      # `:-` (empty default) to `:?` so a missing value fails at
+      # `docker compose up` instead of crashing the api boot with
+      # « WEB_BASE_URL: Invalid url ».
+      WEB_BASE_URL: ${WEB_BASE_URL:?WEB_BASE_URL is required (e.g. https://nodea.example.org)}
+      # WebAuthn requires a registrable host (rpId) and a display
+      # name (rpName). The api derives the rpId from DOMAIN and the
+      # origin from WEB_BASE_URL — see the `.transform()` block in
+      # `packages/api/src/config.ts` — so only the two source vars
+      # need to traverse the compose boundary.
+      DOMAIN: ${DOMAIN:?DOMAIN is required (apex host, no scheme — e.g. nodea.app)}
+      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:?WEBAUTHN_RP_NAME is required (free-text display name shown in the OS / browser passkey UI)}
       # SMTP — leave empty to log mails to stderr. For dev, run the
       # optional `mailpit` service (`docker compose --profile dev up`)
       # and set SMTP_HOST=mailpit SMTP_PORT=1025 in the root .env.
