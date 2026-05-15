@@ -18,7 +18,7 @@
     "postgres": "3.4.9"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.1",
+    "@playwright/test": "1.60.0",
     "@types/node": "^22.19.19",
     "typescript": "^5.9.3"
   }
