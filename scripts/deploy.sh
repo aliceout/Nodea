@@ -66,19 +66,32 @@ TOKEN="$(
 # 3. Pull the Nodea secrets into a dotenv bundle at the repo root.
 #    On Infisical Cloud, every app under this account lives under
 #    `/services/<service-name>/…`. Nodea splits its secrets into a
-#    parent folder for cross-service framework keys (`DOMAIN`,
-#    `ADDRESS`…) and per-service sub-folders (`api/`, `postgres/`,
-#    `web/`) for keys scoped to a single container.
+#    parent folder for cross-cutting framework keys (`DOMAIN`,
+#    `ADDRESS`…) and per-concern sub-folders for keys scoped to
+#    one container or one feature :
+#       - `api/`      → backend-only (COOKIE_SECRET, OPAQUE setup…)
+#       - `postgres/` → DB credentials
+#       - `smtp/`     → outgoing mail (SMTP_HOST/USER/PASS/FROM…)
+#       - `web/`      → web container (VITE_API_URL, WEB_PORT…)
+#       - `hsts/`     → HSTS headers (currently dormant, wired in
+#                       Phase 4 of Auth-Roadmap)
+#
+#    The list below is the canonical allowlist — explicit on purpose
+#    rather than a `--recursive` pull. We'd rather a new sub-folder
+#    on Infisical fail to land here (and prompt a one-line PR) than
+#    silently inject whatever someone parks under `/services/nodea/`.
 #
 #    Fetch order matters. The bash `source` / docker-compose `.env`
 #    parser is last-write-wins on duplicate keys, so we pull the
 #    parent FIRST (cross-cutting defaults) and overlay each
-#    sub-folder ON TOP (service-specific overrides win). Anything a
-#    sub-folder leaves untouched stays at the parent value. Anything
-#    a sub-folder redefines silently shadows the parent.
+#    sub-folder ON TOP (sub-folder values win). Anything a sub-folder
+#    leaves untouched stays at the parent value ; anything it
+#    redefines silently shadows the parent. Order between sub-folders
+#    is irrelevant — the layout keeps key namespaces disjoint (no
+#    `SMTP_*` outside `smtp/`, no `HSTS_*` outside `hsts/`, etc.).
 : > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
-for subpath in "" api postgres web; do
+for subpath in "" api postgres smtp web hsts; do
   full="/services/nodea${subpath:+/$subpath}"
   log "fetching $full secrets (env=$INFISICAL_ENV)"
   infisical export \
