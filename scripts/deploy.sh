@@ -65,20 +65,27 @@ TOKEN="$(
 
 # 3. Pull the Nodea secrets into a dotenv bundle at the repo root.
 #    On Infisical Cloud, every app under this account lives under
-#    `/services/<service-name>/…`, split per sub-service
-#    (`/services/nodea/api`, `/services/nodea/postgres`,
-#    `/services/nodea/web`) rather than flat — so we fetch each
-#    sub-path and concatenate. docker-compose reads the resulting
-#    `.env` automatically via its ${VAR} substitutions.
+#    `/services/<service-name>/…`. Nodea splits its secrets into a
+#    parent folder for cross-service framework keys (`DOMAIN`,
+#    `ADDRESS`…) and per-service sub-folders (`api/`, `postgres/`,
+#    `web/`) for keys scoped to a single container.
+#
+#    Fetch order matters. The bash `source` / docker-compose `.env`
+#    parser is last-write-wins on duplicate keys, so we pull the
+#    parent FIRST (cross-cutting defaults) and overlay each
+#    sub-folder ON TOP (service-specific overrides win). Anything a
+#    sub-folder leaves untouched stays at the parent value. Anything
+#    a sub-folder redefines silently shadows the parent.
 : > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
-for subpath in api postgres web; do
-  log "fetching /services/nodea/$subpath secrets (env=$INFISICAL_ENV)"
+for subpath in "" api postgres web; do
+  full="/services/nodea${subpath:+/$subpath}"
+  log "fetching $full secrets (env=$INFISICAL_ENV)"
   infisical export \
     --domain="$INFISICAL_API_URL" \
     --projectId="$INFISICAL_PROJECT_ID" \
     --env="$INFISICAL_ENV" \
-    --path="/services/nodea/$subpath" \
+    --path="$full" \
     --format=dotenv \
     --token="$TOKEN" \
     >> "$ENV_FILE"

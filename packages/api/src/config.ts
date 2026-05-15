@@ -1,5 +1,23 @@
 import { z } from 'zod';
 
+/**
+ * `z.string().url().optional()` is too strict for env vars sourced
+ * from secret managers : Infisical (and `.env` files in general)
+ * surface an "unset" key as an empty string, not as `undefined`.
+ * The plain optional URL schema then fails validation with
+ * « Invalid url » on an empty string, breaking boot whenever an
+ * operator left a slot blank in their secret manager.
+ *
+ * This helper preprocesses empty / whitespace strings down to
+ * `undefined` so the optional URL check only fires when the value
+ * actually claims to be a URL.
+ */
+const optionalUrl = () =>
+  z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.string().url().optional(),
+  );
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -181,7 +199,7 @@ const EnvSchema = z.object({
    *
    * When unset (the default in dev), the middleware is a no-op.
    */
-  ERROR_WEBHOOK_URL: z.string().url().optional(),
+  ERROR_WEBHOOK_URL: optionalUrl(),
 
   /**
    * Optional Sentry DSN. When set, the api initialises `@sentry/node`
@@ -200,7 +218,7 @@ const EnvSchema = z.object({
    * When unset (the default in dev), Sentry stays uninitialised and
    * no events are captured.
    */
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: optionalUrl(),
 }).transform((env) => ({
   ...env,
   /**
