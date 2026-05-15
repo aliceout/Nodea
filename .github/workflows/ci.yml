@@ -113,7 +113,7 @@ jobs:
       # serving. See nodea.app/docs/security/tech, section
       # « Intégrité du bundle », for the verification procedure.
       - name: Upload web INTEGRITY.txt
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-integrity-${{ github.sha }}
           path: packages/web/dist/INTEGRITY.txt
