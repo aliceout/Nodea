@@ -47,17 +47,26 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true'),
 
   /**
-   * Base URL the web app is served from. Used to build absolute links
-   * in emails (activation, reset, invite, MFA bypass confirm). No
-   * trailing slash. Example: `https://nodea.example.org`.
+   * Full public URL the app is served from, scheme included, no
+   * trailing slash. Example: `https://nodea.example.org`. Used to
+   * build absolute links in emails (activation, reset, invite,
+   * MFA bypass confirm) and as the canonical WebAuthn `origin`.
    *
    * **Required** (SEC-10). Without it, every email link would render
    * as a relative URL — useless to the recipient because mail clients
    * can't resolve a relative path. The fail-fast at boot is preferable
    * to silently shipping broken links and forcing users to copy-paste
    * tokens from the email body.
+   *
+   * On the VPS, this is published by the install repo
+   * (aliceout/vps-install) alongside `DOMAIN` ; Nodea piggybacks on
+   * it instead of holding its own duplicate `WEB_BASE_URL` entry in
+   * Infisical. The transform below keeps a `WEB_BASE_URL` alias
+   * pointing at the same value so legacy consumers in api/routes
+   * keep reading `config.WEB_BASE_URL` without churning every
+   * call-site at once.
    */
-  WEB_BASE_URL: z.string().url(),
+  ADDRESS: z.string().url(),
 
   /**
    * SMTP transport. All optional — when unset, the mailer falls back
@@ -229,13 +238,20 @@ const EnvSchema = z.object({
    */
   WEBAUTHN_RP_ID: env.DOMAIN,
   /**
-   * Derived from `WEB_BASE_URL` — the WebAuthn origin must match
-   * what the browser sees, scheme included. Identical value to
-   * `WEB_BASE_URL` (the SPA is served from the same origin it
-   * authenticates against), so we just reuse it instead of holding
-   * a duplicate env var.
+   * Derived from `ADDRESS` — the WebAuthn origin must match what
+   * the browser sees, scheme included. Identical value to `ADDRESS`
+   * (the SPA is served from the same origin it authenticates
+   * against), so we just reuse it instead of holding a duplicate
+   * env var.
    */
-  WEBAUTHN_ORIGIN: env.WEB_BASE_URL,
+  WEBAUTHN_ORIGIN: env.ADDRESS,
+  /**
+   * Back-compat alias for `ADDRESS` — every consumer in
+   * `routes/*.ts` and `services/email/*` reads `config.WEB_BASE_URL`.
+   * Keeping the alias here avoids a sweep across ~10 files just
+   * for a rename. New code should read `config.ADDRESS` directly.
+   */
+  WEB_BASE_URL: env.ADDRESS,
 }));
 
 export type AppConfig = z.infer<typeof EnvSchema>;

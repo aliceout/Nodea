@@ -84,17 +84,20 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required (≥ 32 chars)}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-2592000}
-      # WEB_BASE_URL is required — emails (activation, reset, MFA…)
-      # need an absolute URL to point recipients at. Promoted from
-      # `:-` (empty default) to `:?` so a missing value fails at
-      # `docker compose up` instead of crashing the api boot with
-      # « WEB_BASE_URL: Invalid url ».
-      WEB_BASE_URL: ${WEB_BASE_URL:?WEB_BASE_URL is required (e.g. https://nodea.example.org)}
-      # WebAuthn requires a registrable host (rpId) and a display
-      # name (rpName). The api derives the rpId from DOMAIN and the
-      # origin from WEB_BASE_URL — see the `.transform()` block in
-      # `packages/api/src/config.ts` — so only the two source vars
-      # need to traverse the compose boundary.
+      # ADDRESS is the full public URL the app is served from
+      # (scheme included, no trailing slash, e.g. https://nodea.app).
+      # Used by emails (activation, reset, MFA bypass) and as the
+      # canonical WebAuthn origin. Single source — Nodea no longer
+      # tracks a separate WEB_BASE_URL ; the api's config aliases
+      # WEB_BASE_URL = ADDRESS internally for back-compat with
+      # existing routes. Published by the VPS install repo alongside
+      # DOMAIN, so both come from the same /services/nodea/ root on
+      # Infisical.
+      ADDRESS: ${ADDRESS:?ADDRESS is required (full public URL — e.g. https://nodea.app)}
+      # DOMAIN is the registrable host (no scheme, no port). Used
+      # as the WebAuthn `rpId` — see the `.transform()` block in
+      # `packages/api/src/config.ts` — and shared with the nginx
+      # vhost on the VPS.
       DOMAIN: ${DOMAIN:?DOMAIN is required (apex host, no scheme — e.g. nodea.app)}
       WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:?WEBAUTHN_RP_NAME is required (free-text display name shown in the OS / browser passkey UI)}
       # OPAQUE server setup blob (output of `server.createSetup()` from
