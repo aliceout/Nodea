@@ -36,9 +36,9 @@ cp .env.example .env
 ```sh
 COOKIE_SECRET=<32 chars random>
 OPAQUE_SERVER_SETUP=<base64url, voir ci-dessous>
-WEBAUTHN_RP_ID=nodea.exemple.fr
+DOMAIN=nodea.exemple.fr
+WEB_BASE_URL=https://nodea.exemple.fr
 WEBAUTHN_RP_NAME=Nodea
-WEBAUTHN_ORIGIN=https://nodea.exemple.fr
 SMTP_HOST=...
 SMTP_PORT=...
 SMTP_USER=...
@@ -77,8 +77,8 @@ docker compose exec api sh -c \
 |---|---|---|
 | `COOKIE_SECRET` | 32 chars random | Oui — change-le et toutes les sessions actives sont invalidées |
 | `OPAQUE_SERVER_SETUP` | Généré une fois, à conserver | Oui — le perdre = comptes existants inutilisables |
-| `WEBAUTHN_RP_ID` | Ton domaine sans `https://` ni port | Oui — change-le et toutes les passkeys enrôlées sont perdues |
-| `WEBAUTHN_ORIGIN` | URL complète avec `https://` | Oui — doit matcher exactement |
+| `DOMAIN` | Ton domaine sans `https://` ni port (sert aussi de WebAuthn rpId) | Oui — change-le et toutes les passkeys enrôlées sont perdues |
+| `WEB_BASE_URL` | URL complète avec `https://` (sert aussi d'origin WebAuthn) | Oui — doit matcher exactement ce que voit le navigateur |
 | `SMTP_*` | Provider SMTP | Oui — sans ça pas d'activation, pas de récupération |
 | `OPEN_REGISTRATION` | `true` ou `false` | Optionnel — défaut `false` (admin doit envoyer une invitation) |
 

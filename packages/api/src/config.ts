@@ -128,18 +128,23 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true'),
 
   /**
-   * WebAuthn relying-party identifier (Auth-Spec §13.1, Phase 4).
-   * **Required** — no default, per the "aucun secret hardcodé" rule
-   * (Auth-Spec §13.1 / global-audit). Must match the registrable
-   * domain the web app is served from (no scheme, no port). For
-   * local dev set `WEBAUTHN_RP_ID=localhost`; for prod use the apex
-   * domain, e.g. `nodea.example.org`.
+   * Registrable host the web app is served from — no scheme, no
+   * port. Local dev: `localhost`. Prod: the apex domain, e.g.
+   * `nodea.app`. **Required** — no default, per the "aucun secret
+   * hardcodé" rule (Auth-Spec §13.1 / global-audit).
    *
-   * Mismatching `rpId` between enrollment and assertion makes every
-   * passkey unverifiable — the browser refuses to surface
-   * credentials for the wrong rpId.
+   * Also used as the WebAuthn `rpId` (Auth-Spec §13.1, Phase 4) —
+   * see the derived `WEBAUTHN_RP_ID` further down. Mismatching the
+   * rpId between enrollment and assertion makes every passkey
+   * unverifiable — the browser refuses to surface credentials for
+   * the wrong rpId. Pick once at launch and never touch.
+   *
+   * On the VPS, this is published by the install repo
+   * (aliceout/vps-install) alongside `ADDRESS` ; the Nodea app
+   * piggybacks on it instead of holding its own duplicate entry
+   * in Infisical.
    */
-  WEBAUTHN_RP_ID: z.string().min(1),
+  DOMAIN: z.string().min(1),
 
   /**
    * Human-friendly relying-party name shown in the OS / browser
@@ -147,20 +152,6 @@ const EnvSchema = z.object({
    * keep it short. **Required** — no default.
    */
   WEBAUTHN_RP_NAME: z.string().min(1),
-
-  /**
-   * Origin allowed to use the rpId — full URL with scheme + port.
-   * Must match the origin the browser sees when calling
-   * `navigator.credentials.{create,get}`. **Required** — no default.
-   *
-   * For dev with the Nodea Vite shell, this is
-   * `http://localhost:8089` (port pinned by `strictPort: true` in
-   * `packages/web/vite.config.js`); for prod, the public origin.
-   *
-   * Multiple origins are not currently supported; if we ever need
-   * them, pivot to a comma-separated list.
-   */
-  WEBAUTHN_ORIGIN: z.string().url(),
 
   /**
    * Build-time metadata exposed on the public `GET /version` endpoint.
@@ -210,7 +201,24 @@ const EnvSchema = z.object({
    * no events are captured.
    */
   SENTRY_DSN: z.string().url().optional(),
-});
+}).transform((env) => ({
+  ...env,
+  /**
+   * Derived from `DOMAIN` — the WebAuthn rpId is the registrable
+   * host (no scheme, no port). Kept as a separate config field so
+   * the WebAuthn routes can keep reading `config.WEBAUTHN_RP_ID`
+   * without caring how it's sourced.
+   */
+  WEBAUTHN_RP_ID: env.DOMAIN,
+  /**
+   * Derived from `WEB_BASE_URL` — the WebAuthn origin must match
+   * what the browser sees, scheme included. Identical value to
+   * `WEB_BASE_URL` (the SPA is served from the same origin it
+   * authenticates against), so we just reuse it instead of holding
+   * a duplicate env var.
+   */
+  WEBAUTHN_ORIGIN: env.WEB_BASE_URL,
+}));
 
 export type AppConfig = z.infer<typeof EnvSchema>;
 

@@ -20,7 +20,8 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
  *     otherwise install `apt install -y mailpit` or run via
  *     `mailpit` binary).
  *   - `.env` at the repo root with DATABASE_URL pointing at
- *     postgres + the WEBAUTHN_* + OPAQUE_SERVER_SETUP env vars.
+ *     postgres + `DOMAIN` / `WEB_BASE_URL` / `WEBAUTHN_RP_NAME` /
+ *     `OPAQUE_SERVER_SETUP` env vars.
  *
  * The webServer block redirects DATABASE_URL to `nodea_e2e` so
  * dev data isn't polluted; same trick the api test suite uses.

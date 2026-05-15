@@ -11,7 +11,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 | Voleur de session (cookie volé) | Cookie en clair | Lifetime borné, révocation immédiate par DELETE. SameSite=Lax. | Cookies HttpOnly + Signed + Secure prod, table `sessions` server-side. |
 | Cross-user blob swap | Bidouille DB pour servir le wrap d'un autre utilisateur | AES-GCM auth-tag fail au déchiffrement. | AAD lie chaque blob à `users.id` + facteur (cf. §Hiérarchie des clés). |
 | Brute-force online password | Tentatives répétées sur `/auth/login` | Borné par rate-limit IP + email. | 10/min IP + 20/h email sur les routes login (cf. §Hardening serveur). |
-| Phishing passkey | Faux site Nodea avec WebAuthn | Refusé par origin-binding FIDO. | `WEBAUTHN_RP_ID` lié à l'origin déclaré, navigator.credentials refuse les origines tierces. |
+| Phishing passkey | Faux site Nodea avec WebAuthn | Refusé par origin-binding FIDO. | WebAuthn rpId dérivé de `DOMAIN` et lié à l'origin déclaré ; navigator.credentials refuse les origines tierces. |
 | Énumération de comptes | Tester si une adresse existe | Réponses indistinguables sur `/register`, `/login`, `/recover-kek`, `/mfa-bypass`, `/reset`. | Anti-enum systématique : blobs aléatoires pour les emails inconnus, timing constant. |
 
 ### Adversaires non couverts

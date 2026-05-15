@@ -51,9 +51,8 @@ jobs:
       COOKIE_SECRET: ci_cookie_secret_change_me_in_production_please_32chars
       COOKIE_SECURE: 'false'
       WEB_BASE_URL: http://localhost:8089
-      WEBAUTHN_RP_ID: localhost
+      DOMAIN: localhost
       WEBAUTHN_RP_NAME: Nodea CI
-      WEBAUTHN_ORIGIN: http://localhost:8089
 
     steps:
       - uses: actions/checkout@v4

@@ -1101,7 +1101,7 @@ PR + this section's revision + a rotation plan.)
 | TOTP backup codes | entropy | 130 bits each |
 | TOTP backup codes | hash storage | SHA-256 |
 | WebAuthn | UV | `'required'` (enrollment + assertion) |
-| WebAuthn | rpId | from env `WEBAUTHN_RP_ID`, prod default `nodea.app` |
+| WebAuthn | rpId | derived from `DOMAIN`, prod default `nodea.app` |
 | WebAuthn | attestation | `'none'` |
 | WebAuthn | algos | ES256 (-7), RS256 (-257) |
 | WebAuthn | PRF input v1 | `"nodea:prf-v1"` + zero-padding 32 bytes |
@@ -1132,9 +1132,9 @@ application code.
 
 | Variable | Use | Example / default |
 |---|---|---|
-| `WEBAUTHN_RP_ID` | WebAuthn rpId (origin tied to passkeys) | `nodea.app` |
+| `DOMAIN` | Registrable host (no scheme / port). Also used as the WebAuthn rpId. | `nodea.app` |
 | `WEBAUTHN_RP_NAME` | User-facing RP name | `Nodea` |
-| `WEBAUTHN_ORIGIN` | Origin expected in assertions | `https://nodea.app` |
+| `WEB_BASE_URL` | Absolute web base URL. Also reused as the WebAuthn origin expected in assertions. | `https://nodea.app` |
 | `OPAQUE_SERVER_SETUP` | Server static setup (output of the lib's `server.setupServer()`) | base64 |
 | `COOKIE_SECRET` | Cookie signing, ≥ 32 chars | random base64 |
 | `SMTP_HOST` | SMTP server (Infomaniak) | `mail.infomaniak.com` |
