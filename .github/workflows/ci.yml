@@ -55,7 +55,7 @@ jobs:
       WEBAUTHN_RP_NAME: Nodea CI
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Don't leave the GITHUB_TOKEN in `.git/config` after
           # checkout — subsequent steps don't push, so persisting the

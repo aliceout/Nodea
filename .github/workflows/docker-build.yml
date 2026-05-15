@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout (sha that passed CI)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # For workflow_run, GITHUB_SHA is the sha of the triggering
           # event — check out exactly that commit so the image we push
