@@ -50,7 +50,7 @@ jobs:
       DATABASE_URL: postgres://nodea:nodea_dev@127.0.0.1:5433/nodea
       COOKIE_SECRET: ci_cookie_secret_change_me_in_production_please_32chars
       COOKIE_SECURE: 'false'
-      WEB_BASE_URL: http://localhost:8089
+      ADDRESS: http://localhost:8089
       DOMAIN: localhost
       WEBAUTHN_RP_NAME: Nodea CI
 
@@ -128,7 +128,7 @@ jobs:
           DATABASE_URL=${DATABASE_URL}
           COOKIE_SECRET=${COOKIE_SECRET}
           COOKIE_SECURE=false
-          WEB_BASE_URL=http://localhost:8089
+          ADDRESS=http://localhost:8089
           EOF
 
       - name: Apply DB migrations
