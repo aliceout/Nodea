@@ -58,4 +58,12 @@ EXPOSE 3000
 # Apply any pending migration, then start the HTTP server. The image is
 # deterministic across restarts: if every migration is already applied the
 # migrate step is a no-op.
-CMD ["sh", "-c", "pnpm db:migrate && pnpm start"]
+#
+# `:docker` variants (not the plain `db:migrate` / `start`) — the regular
+# scripts pass `--env-file-if-exists=../../.env` for local dev convenience,
+# which in the container always misses and produces a noisy pair of
+# « ../../.env not found. Continuing without it. » lines (one from tsx,
+# one from the underlying Node) at every boot. The container gets its
+# env from compose, not a `.env` file, so we call the variants that
+# skip the flag entirely.
+CMD ["sh", "-c", "pnpm db:migrate:docker && pnpm start:docker"]

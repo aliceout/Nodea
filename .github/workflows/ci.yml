@@ -132,7 +132,12 @@ jobs:
           EOF
 
       - name: Apply DB migrations
-        run: pnpm --filter @nodea/api db:migrate
+        # `db:migrate:docker` — same as `db:migrate` minus the
+        # `--env-file-if-exists=../../.env` flag. CI vars come from
+        # the workflow's `env:` block, never from a `.env` file, so
+        # the flag would just emit the « not found. Continuing without
+        # it. » noise on every run without buying anything.
+        run: pnpm --filter @nodea/api db:migrate:docker
 
       # Issue #41 — vitest auto-swaps DATABASE_URL's dbname to `_test`
       # so the suite's TRUNCATE never wipes the dev rows. CI must create

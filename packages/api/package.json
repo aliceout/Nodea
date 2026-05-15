@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
     "start": "node --env-file-if-exists=../../.env --import tsx/esm src/index.ts",
+    "start:docker": "node --import tsx/esm src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
@@ -15,6 +16,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
+    "db:migrate:docker": "tsx src/db/migrate.ts",
     "db:migrate:test": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.test src/db/migrate-test.ts",
     "db:studio": "drizzle-kit studio",
     "seed:admin": "tsx --env-file-if-exists=../../.env src/seed.ts",
