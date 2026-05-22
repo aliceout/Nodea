@@ -44,7 +44,8 @@
     "threads": "Threads",
     "threadsEmpty": "You haven't created any thread yet.",
     "threadsAll": "All",
-    "threadsManageCta": "Manage threads"
+    "threadsManageCta": "Manage threads",
+    "filtersToggle": "Filters"
   },
   "primary": {
     "entriesHeading": "Entries",

@@ -17,8 +17,33 @@ import ThreadsManagerModal from './ThreadsManagerModal';
  * entries list ; the per-user totals (« Entrées / Mots / Série »)
  * were removed from the sidebar per the audit pass — the heatmap
  * already conveys « how active have I been » at a glance.
+ *
+ * Below `lg` the desktop aside is hidden ; the same `<FiltersContent>`
+ * is mounted by `<MobileFilters>` inside `PrimaryColumn`, folded by
+ * default. Filters are functional (chip selection + thread manager
+ * modal trigger) so we can't just drop them on mobile the way Mood's
+ * stats sidebar does.
  */
 export default function SideColumn() {
+  return (
+    <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
+      <FiltersContent />
+    </aside>
+  );
+}
+
+/**
+ * Filter sections without the `<aside>` wrapper. Re-used by the
+ * mobile collapse (`MobileFilters`) and the desktop sidebar
+ * (`SideColumn`) so adding a new section lights up on both surfaces.
+ *
+ * Each mounted instance carries its own `threadsManagerOpen`
+ * state + ThreadsManagerModal. In practice only one instance is
+ * visible at a time (the wrappers are mutually exclusive via
+ * `hidden lg:flex` / `lg:hidden`) so users can never open both
+ * modals concurrently.
+ */
+export function FiltersContent() {
   const { t } = useI18n();
   const { entries } = useJournalData();
   const {
@@ -31,7 +56,7 @@ export default function SideColumn() {
   const [threadsManagerOpen, setThreadsManagerOpen] = useState(false);
 
   return (
-    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
+    <div className="flex min-w-0 flex-col gap-6">
       <section>
         <SectionLabel>{t('journal.side.view')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
@@ -89,7 +114,7 @@ export default function SideColumn() {
         open={threadsManagerOpen}
         onClose={() => setThreadsManagerOpen(false)}
       />
-    </aside>
+    </div>
   );
 }
 

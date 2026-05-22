@@ -23,6 +23,14 @@ interface EntryRowProps {
  * in the middle, hover-revealed read / edit / delete affordances
  * on the right. Reads `openReader` / `editEntry` / `deleteEntry`
  * from the actions context ; only the entry comes in as a prop.
+ *
+ * Layout : flex column below `md` (date sits on its own line, body
+ * + thumbs span the full width underneath) so the snippet doesn't
+ * end up squeezed into ~150 px on a phone ; the historical
+ * `flex-row gap-4` layout returns at `md+`. Hover actions are
+ * dropped on mobile via `hidden md:contents` since the underlying
+ * `HoverActions` cluster relies on `group-hover` which never fires
+ * on touch — a real touch path is a separate concern.
  */
 export default function EntryRow({ entry }: EntryRowProps) {
   const { t } = useI18n();
@@ -30,11 +38,11 @@ export default function EntryRow({ entry }: EntryRowProps) {
   const onRead = () => openReader(entry.id);
 
   return (
-    <li className="group flex items-start gap-4 border-b border-hair py-4 last:border-b-0">
+    <li className="group flex flex-col gap-1.5 border-b border-hair py-4 last:border-b-0 md:flex-row md:items-start md:gap-4">
       <button
         type="button"
         onClick={onRead}
-        className="w-[110px] shrink-0 cursor-pointer text-left text-[12px] tabular-nums text-muted transition-colors hover:text-accent"
+        className="cursor-pointer text-left text-[12px] tabular-nums text-muted transition-colors hover:text-accent md:w-[110px] md:shrink-0"
         aria-label={t('journal.row.openAria', {
           values: { label: entry.title ?? entry.dateLabel },
         })}
@@ -42,7 +50,7 @@ export default function EntryRow({ entry }: EntryRowProps) {
         {entry.dateLabel}
       </button>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 md:flex-1">
         {entry.title ? (
           <p className="mb-1 text-[14px] font-medium text-ink">{entry.title}</p>
         ) : null}
@@ -69,38 +77,40 @@ export default function EntryRow({ entry }: EntryRowProps) {
         ) : null}
       </div>
 
-      <HoverActions>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          onClick={onRead}
-          aria-label={t('journal.row.readAria')}
-          title={t('journal.row.readTitle')}
-        >
-          <BookOpenIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          iconOnly
-          onClick={() => editEntry(entry)}
-          aria-label={t('journal.row.editAria')}
-          title={t('common.actions.edit')}
-        >
-          <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-        <Button
-          variant="danger-ghost"
-          size="sm"
-          iconOnly
-          onClick={() => void deleteEntry(entry)}
-          aria-label={t('journal.row.deleteAria')}
-          title={t('common.actions.delete')}
-        >
-          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-      </HoverActions>
+      <div className="hidden md:contents">
+        <HoverActions>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={onRead}
+            aria-label={t('journal.row.readAria')}
+            title={t('journal.row.readTitle')}
+          >
+            <BookOpenIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            onClick={() => editEntry(entry)}
+            aria-label={t('journal.row.editAria')}
+            title={t('common.actions.edit')}
+          >
+            <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="danger-ghost"
+            size="sm"
+            iconOnly
+            onClick={() => void deleteEntry(entry)}
+            aria-label={t('journal.row.deleteAria')}
+            title={t('common.actions.delete')}
+          >
+            <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </HoverActions>
+      </div>
     </li>
   );
 }

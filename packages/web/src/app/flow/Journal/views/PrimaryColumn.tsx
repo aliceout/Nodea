@@ -6,6 +6,7 @@ import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
+import MobileFilters from '../components/MobileFilters';
 import YearSelector from '../components/YearSelector';
 import { useJournalData, useJournalFilters } from '../context';
 import Chart from './Chart';
@@ -48,6 +49,15 @@ export default function PrimaryColumn() {
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
           <PageHeading className="mb-0">{t('journal.title')}</PageHeading>
           <YearSelector />
+        </div>
+
+        {/* Mobile-only filters collapse — sits above the heatmap
+            so the toggle stays inside the sticky header and
+            remains accessible from any scroll position. Folded by
+            default ; renders nothing at `lg+` because the right
+            sidebar (`SideColumn`) takes over. */}
+        <div className="mt-3">
+          <MobileFilters />
         </div>
 
         {!chartCollapsed ? (
