@@ -9,9 +9,13 @@ import Button from '@/ui/atoms/dirk/Button';
  * scroll container so the page header stays pinned while the
  * content scrolls.
  *
- * The hamburger is `lg:hidden` because the persistent sidebar
- * takes over above `lg` — pages don't have to gate that
- * themselves.
+ * The hamburger sits at the far-right end of the row (after the
+ * per-page actions) and is `lg:hidden` because the persistent
+ * sidebar takes over above `lg` — pages don't have to gate that
+ * themselves. Right-anchored on purpose : matches the dominant
+ * mobile pattern of every recent personal-app design we've
+ * cross-checked, and keeps the thumb-reachable corner consistent
+ * across modules.
  *
  * `children` renders on the right side and is the open slot for
  * per-page actions (CTA buttons, search triggers, etc.). Pages
@@ -35,25 +39,23 @@ interface TopbarProps {
 
 export default function Topbar({ label, onOpenMenu, children }: TopbarProps) {
   return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-hair bg-bg px-6 sm:px-9">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="sticky top-0 z-20 flex h-[52px] items-center gap-3 border-b border-hair bg-bg px-6 sm:px-9">
+      <span className="hidden min-w-0 truncate text-[12px] tracking-[0.02em] text-muted md:inline">
+        {label}
+      </span>
+      <div className="ml-auto flex items-center gap-1.5">
+        {children}
         <Button
-          variant="ghost"
+          variant="neutral"
           size="md"
           iconOnly
           onClick={onOpenMenu}
           aria-label="Ouvrir le menu"
-          className="-ml-2 text-ink-soft lg:hidden"
+          className="text-ink-soft lg:hidden"
         >
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
         </Button>
-        <span className="truncate text-[12px] tracking-[0.02em] text-muted">
-          {label}
-        </span>
       </div>
-      {children ? (
-        <div className="flex items-center gap-1.5">{children}</div>
-      ) : null}
     </div>
   );
 }
