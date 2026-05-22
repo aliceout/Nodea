@@ -22,8 +22,32 @@ import { LIBRARY_GROUP_BY_OPTIONS } from '../lib/grouping';
  * Reads everything from contexts ; no props. The sub-view comes from
  * the global Zustand store (the privacy invariant — `/flow` URL
  * doesn't reveal the active lens).
+ *
+ * Below `lg` the desktop aside is hidden ; the same
+ * `<FiltersContent>` is mounted by `<MobileFilters>` near the top
+ * of the page, folded by default. Filters are functional (status
+ * chips, grouping, tag picker) so we can't just drop them on mobile
+ * the way Mood's stats sidebar does.
  */
 export default function SideColumn() {
+  return (
+    <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
+      <FiltersContent />
+    </aside>
+  );
+}
+
+/**
+ * Filter sections without the `<aside>` wrapper. Re-used by the
+ * mobile collapse (`MobileFilters`) and the desktop sidebar
+ * (`SideColumn`) so adding a new section lights up on both surfaces.
+ *
+ * The two mounted instances are mutually exclusive at runtime (one
+ * is hidden lg:flex, the other lg:hidden) so duplicated `useMemo`
+ * passes only happen on the visible one in practice — React skips
+ * effects + memo recomputes for hidden subtrees that don't render.
+ */
+export function FiltersContent() {
   const subview = useNodeaStore(selectLibrarySubview);
   const { items } = useLibraryData();
   const {
@@ -55,7 +79,7 @@ export default function SideColumn() {
   const showGroupBy = subview === 'livres';
 
   return (
-    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
+    <div className="flex min-w-0 flex-col gap-6">
       {showGroupBy ? (
         <section>
           <SectionLabel>Grouper par</SectionLabel>
@@ -119,7 +143,7 @@ export default function SideColumn() {
           </div>
         </section>
       ) : null}
-    </aside>
+    </div>
   );
 }
 
