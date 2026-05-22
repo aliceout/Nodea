@@ -65,6 +65,7 @@
     "confirmDelete": "Delete the entry from {date}?"
   },
   "composer": {
+    "dateHeading": "Date",
     "positivesHeading": "Three positive things today",
     "scoreHeading": "Today's score",
     "optionalsExpand": "+ Question of the day & comment",

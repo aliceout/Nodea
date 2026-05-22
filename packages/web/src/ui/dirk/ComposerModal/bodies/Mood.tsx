@@ -1,38 +1,40 @@
 import { useMemo, useState } from 'react';
-import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
+import type { MoodScore } from '@nodea/shared';
 
 import { pickQuestion } from '@/app/flow/Mood/data/questions';
 import { moodClient } from '@/core/api/modules/mood';
+import { toIsoDate } from '@/core/i18n/date-format';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
-import DirkInput from '@/ui/atoms/dirk/Input';
-import DirkTextarea from '@/ui/atoms/dirk/Textarea';
-import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import Footer from '../components/Footer';
-import { POSITIVE_PLACEHOLDERS } from '../lib/constants';
-import { submitOnCmdEnter } from '../lib/format';
 import { isMoodScoreString } from '../lib/guards';
+import OptionalsSection from './mood/OptionalsSection';
+import PositivesSection from './mood/PositivesSection';
+import ScoreSection from './mood/ScoreSection';
 
 interface MoodBodyProps {
   onClose: () => void;
 }
 
 /**
- * Mood entry body — three positives + a -2..+2 note score +
- * optional « question du jour » answer + optional free-form
- * comment. Mirrors the canonical `MoodPayloadSchema` ; emoji
- * is dropped on write but tolerated on read for legacy
- * payloads (preserved verbatim during edits).
+ * Mood entry orchestrator — assembles the structured form (date
+ * + 3 positives + −2..+2 score + optional « question du jour »
+ * answer + optional free comment) and wires the save call.
+ * Sub-sections live under `bodies/mood/` so each block stays
+ * small enough to read end-to-end. Mirrors the canonical
+ * `MoodPayloadSchema` ; legacy `moodEmoji` is preserved on
+ * read for back-compat but dropped on write.
  *
  * Edit vs create :
- *   - On edit, the original `date` is preserved (the user is
- *     amending content, not redating) and the « question du
- *     jour » stays the one already saved on the entry — the
- *     answer is paired with that specific prompt.
- *   - On create, today's local date is used and a random
+ *   - On edit, the original date pre-fills the date picker (but
+ *     the user can change it — there's no DB or guard
+ *     uniqueness on `(user, date)`, so two entries the same day
+ *     are tolerated). The « question du jour » stays the one
+ *     already saved on the entry — the answer is paired with
+ *     that specific prompt.
+ *   - On create, today's local date is the default and a random
  *     question is picked once at mount (`useMemo` keyed off
  *     `editing` so it stays stable while the user types).
  *
@@ -51,9 +53,10 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
       : null,
   );
 
-  const initialScore = editing && isMoodScoreString(editing.payload.moodScore)
-    ? (editing.payload.moodScore as MoodScore)
-    : null;
+  const initialScore =
+    editing && isMoodScoreString(editing.payload.moodScore)
+      ? (editing.payload.moodScore as MoodScore)
+      : null;
   const initialPositives: [string, string, string] = editing
     ? [
         editing.payload.positive1 ?? '',
@@ -61,9 +64,10 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
         editing.payload.positive3 ?? '',
       ]
     : ['', '', ''];
+  const initialDate = editing?.payload.date ?? toIsoDate(new Date());
 
-  const [positives, setPositives] =
-    useState<[string, string, string]>(initialPositives);
+  const [date, setDate] = useState(initialDate);
+  const [positives, setPositives] = useState(initialPositives);
   const [score, setScore] = useState<MoodScore | null>(initialScore);
   const [answer, setAnswer] = useState(editing?.payload.answer ?? '');
   const [comment, setComment] = useState(editing?.payload.comment ?? '');
@@ -101,19 +105,9 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
     }
     setSubmitting(true);
     try {
-      let dateIso: string;
-      if (editing) {
-        dateIso = editing.payload.date;
-      } else {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        dateIso = `${yyyy}-${mm}-${dd}`;
-      }
       const trimmedAnswer = answer.trim();
       const payload = {
-        date: dateIso,
+        date,
         moodScore: score,
         moodEmoji: editing?.payload.moodEmoji ?? '',
         positive1: positives[0],
@@ -140,58 +134,30 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
   return (
     <>
       <div className="space-y-3.5 px-[22px] pt-3.5 pb-3">
-        <div className="space-y-2">
-          <SectionLabel>{t('mood.composer.positivesHeading')}</SectionLabel>
-          {[0, 1, 2].map((i) => (
-            <DirkInput
-              key={i}
-              value={positives[i as 0 | 1 | 2]}
-              onChange={(e) => setPositive(i as 0 | 1 | 2, e.target.value)}
-              onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-              placeholder={POSITIVE_PLACEHOLDERS[i] ?? ''}
-              autoFocus={i === 0}
-            />
-          ))}
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="mood-date"
+            className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted"
+          >
+            {t('mood.composer.dateHeading')}
+          </label>
+          <input
+            id="mood-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            max={toIsoDate(new Date())}
+            className="rounded-[var(--radius-input)] border border-hair bg-bg px-2 py-0.5 text-[12px] leading-[1.4] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+          />
         </div>
 
-        <div>
-          <SectionLabel>{t('mood.composer.scoreHeading')}</SectionLabel>
-          <div className="grid grid-cols-5 gap-1.5">
-            {MOOD_SCORE_VALUES.map((value) => {
-              const selected = score === value;
-              const numeric = Number(value);
-              const tone =
-                numeric > 0
-                  ? selected
-                    ? 'bg-accent text-white border-accent'
-                    : 'bg-bg text-ink-soft border-hair hover:border-accent'
-                  : numeric < 0
-                    ? selected
-                      ? 'bg-low text-white border-low'
-                      : 'bg-bg text-ink-soft border-hair hover:border-low'
-                    : selected
-                      ? 'bg-bg-2 text-ink border-ink-soft'
-                      : 'bg-bg text-ink-soft border-hair hover:border-ink-soft';
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setScore(value)}
-                  aria-pressed={selected}
-                  className={cn(
-                    'flex flex-col items-center gap-0.5 rounded-sm border px-2 py-1.5 text-[11px] transition-colors',
-                    tone,
-                  )}
-                >
-                  <span className="text-[14px] font-semibold tabular-nums">
-                    {numeric > 0 ? `+${value}` : value}
-                  </span>
-                  <span className="text-[10px] tracking-[0.02em]">{t(`mood.scoreLabels.${value}`)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <PositivesSection
+          values={positives}
+          onChange={setPositive}
+          onSubmit={handleSave}
+        />
+
+        <ScoreSection value={score} onChange={setScore} />
 
         <button
           type="button"
@@ -199,40 +165,20 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
           className="text-[12px] text-muted transition-colors hover:text-ink"
           aria-expanded={optionalsOpen}
         >
-          {optionalsOpen ? t('mood.composer.optionalsCollapse') : t('mood.composer.optionalsExpand')}
+          {optionalsOpen
+            ? t('mood.composer.optionalsCollapse')
+            : t('mood.composer.optionalsExpand')}
         </button>
 
         {optionalsOpen ? (
-          <div className="space-y-3 pt-1">
-            <div>
-              <p className="mb-1 text-[12px] text-muted">
-                <span className="font-semibold tracking-[0.02em]">{t('mood.composer.questionLabel')}</span>
-                <span className="font-serif italic text-ink-soft">
-                  {question || '—'}
-                </span>
-              </p>
-              <DirkTextarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-                placeholder={t('mood.composer.answerPlaceholder')}
-                rows={2}
-                minHeightPx={56}
-              />
-            </div>
-
-            <div>
-              <SectionLabel>{t('mood.composer.commentHeading')}</SectionLabel>
-              <DirkTextarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-                placeholder={t('mood.composer.commentPlaceholder')}
-                rows={3}
-                minHeightPx={84}
-              />
-            </div>
-          </div>
+          <OptionalsSection
+            question={question}
+            answer={answer}
+            comment={comment}
+            onAnswerChange={setAnswer}
+            onCommentChange={setComment}
+            onSubmit={handleSave}
+          />
         ) : null}
       </div>
       <Footer
@@ -240,7 +186,9 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
         submitting={submitting}
         error={error}
         submitLabel={isEdit ? t('common.actions.update') : t('common.actions.save')}
-        submittingLabel={isEdit ? t('mood.composer.submittingUpdate') : t('common.states.saving')}
+        submittingLabel={
+          isEdit ? t('mood.composer.submittingUpdate') : t('common.states.saving')
+        }
       />
     </>
   );

@@ -65,6 +65,7 @@
     "confirmDelete": "Supprimer l’entrée du {date} ?"
   },
   "composer": {
+    "dateHeading": "Date",
     "positivesHeading": "Trois choses positives aujourd’hui",
     "scoreHeading": "Note du jour",
     "optionalsExpand": "+ Question du jour & commentaire",

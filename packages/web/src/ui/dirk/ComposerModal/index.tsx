@@ -17,8 +17,9 @@ import { TYPE_OPTIONS } from './lib/constants';
  * ComposerModal — Direction K · Sauge.
  *
  * Top-positioned overlay (≈ 130 px from the top of the
- * viewport), 620 px wide on desktop, with a five-tab type
- * picker. The body adapts to the selected type :
+ * viewport), 620 px on phone/tablet and scaling up to ~1080 px
+ * on wide desktops via `size="lg"` on the shared Modal shell.
+ * Five-tab type picker. The body adapts to the selected type :
  *
  * - `mood` — structured form (3 positives + −2..+2 score +
  *   optional « question du jour » + optional free comment).
@@ -51,7 +52,7 @@ export default function ComposerModal() {
   const closeComposer = useNodeaStore((s) => s.closeComposer);
 
   return (
-    <Modal open={open} onClose={closeComposer}>
+    <Modal open={open} onClose={closeComposer} size="lg">
       <TypePicker active={type} onSelect={setComposerType} />
       {type === 'mood' ? (
         <MoodBody onClose={closeComposer} />
