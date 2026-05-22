@@ -11,23 +11,36 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
+interface SidebarHeaderProps {
+  /** Closes the mobile drawer after a navigation click. Wired
+   *  through from `Sidebar` (no-op on desktop, `setOpen(false)`
+   *  on the mobile drawer) — without this hop the gear / shield
+   *  icons changed the module but left the drawer pinned open.
+   *  Required so callers can't accidentally drop the wiring. */
+  onNavigate: () => void;
+}
+
 /**
  * Top of the sidebar: brand mark + small user-menu icon strip
  * (settings, admin shortcut, sign out). Direct icon strip rather
  * than a popover — the Settings page owns the bulk of « Mon
  * compte », so the strip just gives one-click shortcuts to it.
  */
-export default function SidebarHeader() {
+export default function SidebarHeader({ onNavigate }: SidebarHeaderProps) {
   return (
     <div className="flex items-center gap-2 px-2.5 pb-4 pt-1">
       <NodeaSymbol className="h-4 w-4 text-accent" />
       <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
-      <UserMenu />
+      <UserMenu onNavigate={onNavigate} />
     </div>
   );
 }
 
-function UserMenu() {
+interface UserMenuProps {
+  onNavigate: () => void;
+}
+
+function UserMenu({ onNavigate }: UserMenuProps) {
   const user = useNodeaStore(selectUser);
   const setModule = useNodeaStore((s) => s.setModule);
   const session = useSession();
@@ -36,6 +49,7 @@ function UserMenu() {
   const isAdmin = user?.role === 'admin';
 
   async function handleSignOut(): Promise<void> {
+    onNavigate();
     await session.logout();
     navigate('/login', { replace: true });
   }
@@ -45,13 +59,19 @@ function UserMenu() {
       <UserMenuIcon
         icon={Cog6ToothIcon}
         label={t('layout.userMenu.profile', { defaultValue: 'Mon compte' })}
-        onClick={() => setModule('account')}
+        onClick={() => {
+          setModule('account');
+          onNavigate();
+        }}
       />
       {isAdmin ? (
         <UserMenuIcon
           icon={ShieldCheckIcon}
           label={t('layout.userMenu.admin', { defaultValue: 'Administration' })}
-          onClick={() => setModule('admin')}
+          onClick={() => {
+            setModule('admin');
+            onNavigate();
+          }}
         />
       ) : null}
       <UserMenuIcon

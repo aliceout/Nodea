@@ -17,13 +17,20 @@ import {
 import SidebarFooter from './sidebar/SidebarFooter';
 
 /**
- * Direction K · Sauge sidebar — 240 px column on `lg+`, slide-in
- * drawer below. Pure orchestrator: it stitches together the four
- * pieces (`<SidebarHeader>`, `<SidebarNav>`, tip slot,
- * `<SidebarFooter>`) and handles the mobile-drawer plumbing. Each
- * piece lives in its own file under `./sidebar/` and is independent
- * — adding a new tip or a new footer widget doesn't require
- * touching this file.
+ * Direction K · Sauge sidebar — 240 px column on `lg+` (always
+ * visible), slide-in drawer below the `lg` breakpoint. The mobile
+ * drawer sizes at 75 % of the viewport (capped at 300 px) so a
+ * slice of the page stays visible to the right and the drawer
+ * doesn't feel modal-fullscreen on phones — the desktop column's
+ * 240 px is too narrow for a finger-driven nav and would feel
+ * miscalibrated as a drawer.
+ *
+ * Pure orchestrator: it stitches together the four pieces
+ * (`<SidebarHeader>`, `<SidebarNav>`, tip slot, `<SidebarFooter>`)
+ * and handles the mobile-drawer plumbing. Each piece lives in
+ * its own file under `./sidebar/` and is independent — adding a
+ * new tip or a new footer widget doesn't require touching this
+ * file.
  *
  * Tip slot lives between the nav (which can be short) and the
  * footer (always at the bottom). The `flex-1` spacer pushes the
@@ -62,7 +69,7 @@ export default function Sidebar() {
               leaveFrom="translate-x-0"
               leaveTo="-translate-x-full"
             >
-              <DialogPanel className="relative flex w-[240px] flex-1 bg-bg-2 border-r border-hair">
+              <DialogPanel className="relative flex w-3/4 max-w-[300px] bg-bg-2 border-r border-hair">
                 <SidebarBody onNavigate={() => setOpen(false)} />
               </DialogPanel>
             </Transition.Child>
@@ -101,7 +108,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
 
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
-      <SidebarHeader />
+      <SidebarHeader onNavigate={onNavigate} />
       <SidebarNav onNavigate={onNavigate} />
       <div className="flex-1" />
       {/* Tip slot — drop more `<SidebarTip*>` instances here as
