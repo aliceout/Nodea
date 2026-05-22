@@ -80,14 +80,16 @@ export default function PrimaryColumn() {
             {year !== null ? <MonthSelector /> : null}
             {/* Frise toggle — folds / unfolds the heatmap above. The
                 chevron travels with the sticky pane so it stays
-                accessible while the user scrolls the entries list. */}
+                accessible while the user scrolls the entries list.
+                Label + chevron pattern matches Journal's equivalent
+                button so the affordance reads the same across
+                modules. */}
             <button
               type="button"
               onClick={toggleChart}
-              aria-label={chartToggleLabel}
-              title={chartToggleLabel}
-              className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-bg-2 hover:text-ink"
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 text-[11.5px] text-muted transition-colors hover:bg-bg-2 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
+              <span>{chartToggleLabel}</span>
               <ChevronUpIcon
                 className={cn(
                   'h-3 w-3 transition-transform duration-200',

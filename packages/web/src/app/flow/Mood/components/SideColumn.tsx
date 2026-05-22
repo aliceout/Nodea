@@ -32,6 +32,12 @@ import ScoreDonut from './ScoreDonut';
  * The donut + Patterns block both read the *full* entry list, so
  * the year / month filters do not change what's shown here — the
  * sidebar is a lifetime view by design.
+ *
+ * Below `lg` the whole column is hidden : the stats are
+ * nice-to-have, not load-bearing, and stacking ~200 px of
+ * lifetime aggregates under the entries list on a phone is more
+ * noise than insight. Users who want them switch to tablet /
+ * desktop.
  */
 export default function SideColumn() {
   const { t, language } = useI18n();
@@ -49,7 +55,7 @@ export default function SideColumn() {
   );
 
   return (
-    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
+    <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
       <section>
         <SectionLabel>{t('mood.side.distribution')}</SectionLabel>
         <ScoreDonut />

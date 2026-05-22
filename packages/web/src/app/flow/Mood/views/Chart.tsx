@@ -11,18 +11,47 @@ import { useMoodData, useMoodFilters } from '../context';
 import { SCORE_FILL } from '../lib/constants';
 import {
   buildHeatmap,
+  COMPACT_HEATMAP_WEEKS,
   HEATMAP_WEEKS,
 } from '../lib/heatmap';
+import type { HeatmapCell } from '../lib/types';
+
+// Pure mapper from a Mood heatmap output row to the shared
+// `<Heatmap>` cell input shape. Lives at module scope so the two
+// useMemos in `Chart` don't have to chase a render-scoped
+// reference through their dependency arrays.
+function toHeatmapCells(
+  raw: ReadonlyArray<HeatmapCell | null>,
+): Array<HeatmapCellInput | null> {
+  return raw.map((cell) => {
+    if (cell === null) return null;
+    const signed = Number(cell.score) > 0 ? `+${cell.score}` : cell.score;
+    return {
+      className: SCORE_FILL[cell.score],
+      isToday: cell.isToday,
+      title: `${cell.dateLabel} · ${signed}`,
+    };
+  });
+}
 
 /**
- * GitHub-style mood frise. 52 columns of weeks (rolling year —
- * when the current year isn't complete, the trailing weeks come
- * from last year, exactly like GitHub's contribution graph), 7
- * rows of days (Mon..Sun, French convention). Each cell is
- * colour-coded by score ; days without an entry render as a faint
- * outline so the grid stays legible without faking data. Today
- * carries an accent ring ; cells after today (rest of this week)
- * drop out.
+ * GitHub-style mood frise. 52 columns of weeks on desktop (`md+`,
+ * rolling year — when the current year isn't complete, the
+ * trailing weeks come from last year, exactly like GitHub's
+ * contribution graph) ; 26 columns below `md`. Same component on
+ * both sides — only the `weeks` prop changes — so the colour
+ * scheme, today-ring, and tooltip behaviour stay identical. The
+ * 26-column compact view matches the Homepage's `MoodBlock`,
+ * which is already vetted on phones. 7 rows of days
+ * (Mon..Sun, French convention) in both modes. Days without an
+ * entry render as a faint outline so the grid stays legible
+ * without faking data.
+ *
+ * Two `<Heatmap>` instances are rendered with `hidden md:block`
+ * / `md:hidden` rather than a runtime media-query hook. The
+ * data builds are cheap (≤ 364 cells of arithmetic) and the
+ * CSS-toggle pattern keeps Tailwind as the single source of
+ * truth for the breakpoint.
  *
  * Issue #56 — extracted the grid + labels into the shared
  * `ui/dirk/Heatmap` component so Journal can mount the same
@@ -34,8 +63,12 @@ export default function Chart() {
   const { t } = useI18n();
   const { entries, today } = useMoodData();
   const { year } = useMoodFilters();
-  const { cells, monthLabels } = useMemo(
+  const fullYear = useMemo(
     () => buildHeatmap(year, entries, today),
+    [year, entries, today],
+  );
+  const compact = useMemo(
+    () => buildHeatmap(year, entries, today, COMPACT_HEATMAP_WEEKS),
     [year, entries, today],
   );
 
@@ -49,21 +82,15 @@ export default function Chart() {
     t('mood.chart.day6'),
   ];
 
-  // Map the Mood heatmap output to the shared component's input.
-  // Empty cells stay `null` ; scored cells carry their fill class
-  // and a `dateLabel · ±N` tooltip.
-  const heatmapCells: Array<HeatmapCellInput | null> = useMemo(
-    () =>
-      cells.map((cell) => {
-        if (cell === null) return null;
-        const signed = Number(cell.score) > 0 ? `+${cell.score}` : cell.score;
-        return {
-          className: SCORE_FILL[cell.score],
-          isToday: cell.isToday,
-          title: `${cell.dateLabel} · ${signed}`,
-        };
-      }),
-    [cells],
+  // Mapping is a pure module-level function — keeps the useMemo
+  // deps to the upstream cell arrays only.
+  const fullYearCells = useMemo(
+    () => toHeatmapCells(fullYear.cells),
+    [fullYear.cells],
+  );
+  const compactCells = useMemo(
+    () => toHeatmapCells(compact.cells),
+    [compact.cells],
   );
 
   const legend = (
@@ -84,12 +111,25 @@ export default function Chart() {
   );
 
   return (
-    <Heatmap
-      weeks={HEATMAP_WEEKS}
-      cells={heatmapCells}
-      monthLabels={monthLabels}
-      dayLabels={dayLabels}
-      legend={legend}
-    />
+    <>
+      <div className="hidden md:block">
+        <Heatmap
+          weeks={HEATMAP_WEEKS}
+          cells={fullYearCells}
+          monthLabels={fullYear.monthLabels}
+          dayLabels={dayLabels}
+          legend={legend}
+        />
+      </div>
+      <div className="md:hidden">
+        <Heatmap
+          weeks={COMPACT_HEATMAP_WEEKS}
+          cells={compactCells}
+          monthLabels={compact.monthLabels}
+          dayLabels={dayLabels}
+          legend={legend}
+        />
+      </div>
+    </>
   );
 }

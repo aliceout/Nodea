@@ -15,6 +15,14 @@ export type HeatmapEntry = Pick<MoodEntry, 'dateIso' | 'score'>;
 export const HEATMAP_WEEKS = 52;
 export const HEATMAP_DAYS_PER_WEEK = 7;
 
+/** Mobile fallback width for the Mood page frise. Below `md:`,
+ *  the year-wide 52-column grid renders cells at ≈ 5 px each
+ *  and the month labels overlap (« majuin », « aoûtsept. »). 26
+ *  weeks ≈ 6 months — same dimension as the Homepage chart,
+ *  where the rendering is already validated on phones. The
+ *  desktop view keeps the full 52-week year. */
+export const COMPACT_HEATMAP_WEEKS = 26;
+
 /**
  * Project a flat list of `MoodEntry`s onto the 52 × 7 heatmap
  * grid.
