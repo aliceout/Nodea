@@ -63,7 +63,8 @@
     "display": "Affichage",
     "hideDone": "Masquer les terminés ({count})",
     "actions": "Actions",
-    "carryOverCta": "Reporter sur l’année prochaine"
+    "carryOverCta": "Reporter sur l’année prochaine",
+    "filtersToggle": "Filtres"
   },
   "carryOver": {
     "title": "Reporter les inachevés",

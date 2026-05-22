@@ -20,8 +20,29 @@ const SORT_VALUES: ReadonlyArray<SortBy> = ['date', 'updated', 'alpha'];
  *
  * Reads all state and setters from the three Goals contexts ; no
  * props.
+ *
+ * Below `lg` the desktop aside is hidden ; the same
+ * `<FiltersContent>` is mounted by `<MobileFilters>` near the top
+ * of the page, folded by default. Filters are functional
+ * (search + status + grouping + sort + hide-done + carry-over) so
+ * we can't drop them on mobile the way Mood's stats sidebar does.
  */
 export default function SideColumn() {
+  return (
+    <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
+      <FiltersContent />
+    </aside>
+  );
+}
+
+/**
+ * Filter sections without the `<aside>` wrapper. Re-used by the
+ * mobile collapse (`MobileFilters`) and the desktop sidebar
+ * (`SideColumn`). One instance is always hidden via the wrapping
+ * `hidden lg:flex` / `lg:hidden` so the duplicated state +
+ * memoised counts don't fire on both surfaces in practice.
+ */
+export function FiltersContent() {
   const { t } = useI18n();
   const { stats } = useGoalsData();
   const {
@@ -39,7 +60,7 @@ export default function SideColumn() {
   const { openCarryOver } = useGoalsActions();
 
   return (
-    <aside className="sticky top-20 flex min-w-0 flex-col gap-6 self-start">
+    <div className="flex min-w-0 flex-col gap-6">
       <section>
         <SectionLabel>{t('goals.side.search')}</SectionLabel>
         <Input
@@ -127,7 +148,7 @@ export default function SideColumn() {
           {t('goals.side.carryOverCta')}
         </Button>
       </section>
-    </aside>
+    </div>
   );
 }
 

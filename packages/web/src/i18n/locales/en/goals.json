@@ -63,7 +63,8 @@
     "display": "Display",
     "hideDone": "Hide done ({count})",
     "actions": "Actions",
-    "carryOverCta": "Carry over to next year"
+    "carryOverCta": "Carry over to next year",
+    "filtersToggle": "Filters"
   },
   "carryOver": {
     "title": "Carry over unfinished",

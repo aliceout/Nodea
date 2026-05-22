@@ -5,6 +5,7 @@ import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
 import CarryOverDialog from './components/CarryOverDialog';
+import MobileFilters from './components/MobileFilters';
 import SideColumn from './components/SideColumn';
 import { GoalsProvider, useGoalsActions, useGoalsData } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
@@ -81,6 +82,12 @@ function GoalsView() {
       }
       side={<SideColumn />}
     >
+      {/* Mobile-only filters collapse — sits at the top of the
+          children flow (above PrimaryColumn) so it's the first
+          thing the user sees below the topbar. Folded by default ;
+          renders nothing at `lg+` because the right sidebar
+          (`SideColumn`) takes over. */}
+      <MobileFilters />
       <PrimaryColumn />
       <CarryOverDialog />
     </ModuleShell>
