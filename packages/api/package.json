@@ -32,9 +32,9 @@
     "@serenity-kit/opaque": "1.1.0",
     "@simplewebauthn/server": "13.3.0",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.18",
+    "hono": "^4.12.23",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^8.0.8",
     "otplib": "13.4.0",
     "postgres": "^3.4.9",
     "puppeteer": "^24.43.1",
@@ -46,7 +46,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.0",
     "drizzle-kit": "^0.31.10",
-    "tsx": "4.19.2",
+    "tsx": "4.22.3",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
