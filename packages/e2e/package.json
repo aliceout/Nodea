@@ -14,7 +14,7 @@
   "dependencies": {
     "@nodea/shared": "workspace:*",
     "@serenity-kit/opaque": "1.1.0",
-    "otplib": "13.4.0",
+    "otplib": "13.4.1",
     "postgres": "3.4.9"
   },
   "devDependencies": {
