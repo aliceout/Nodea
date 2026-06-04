@@ -56,23 +56,11 @@ export default defineConfig({
   // Tests hit a real Postgres instance; keep them sequential to avoid
   // row-level interference across truncate cycles. Vitest 4 removed
   // the old `test.poolOptions.forks.singleFork = true` knob ; the
-  // replacements are :
-  //   - `fileParallelism: false` — forces `maxWorkers = 1` and disables
-  //     parallel file execution.
-  //   - `isolate: false` — shares the same module graph across files
-  //     (the Vitest 3 `singleFork` behaviour). The api's auth flows
-  //     stash OPAQUE / rate-limit / recovery state in module-level
-  //     Maps that the `setup.ts` `beforeEach` resets — with
-  //     `isolate: true` (the default) each file would get fresh Maps
-  //     and the resets would still work within a file, but Vitest 4
-  //     started racing the cleanup against in-flight request handlers
-  //     spawned by the previous file (« unhandled error » FK
-  //     violations + OPAQUE state lookups returning empty), which
-  //     dropped the api suite from 100 % green to ~62 %.
-  // cf. https://vitest.dev/guide/migration#pool-rework
+  // replacement is `fileParallelism: false` which forces
+  // `maxWorkers = 1` and disables parallel file execution
+  // (cf. https://vitest.dev/guide/migration#pool-rework).
   pool: 'forks',
   fileParallelism: false,
-  isolate: false,
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
