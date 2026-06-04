@@ -36,6 +36,7 @@ import { getConfig } from '../config.ts';
 import { isOpenRegistration } from '../services/settings.ts';
 import {
   createRoute,
+  defaultInvalidBodyHook,
   errorContent,
   jsonContent,
   z,
@@ -70,10 +71,7 @@ import {
  * Phase 1 — they're orthogonal to the credential exchange.
  */
 export const authRegisterV2Routes = new OpenAPIHono({
-  defaultHook: (result, c) => {
-    if (!result.success) return c.json({ error: 'invalid_body' }, 400);
-    return undefined;
-  },
+  defaultHook: defaultInvalidBodyHook,
 });
 
 const startLimiter = rateLimit({

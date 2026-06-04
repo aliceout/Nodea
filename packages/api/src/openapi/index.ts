@@ -72,25 +72,25 @@ export function okContent(description: string = 'Success') {
  * We swallow the actual Zod issues — the API's privacy posture is
  * « never echo client input back ». A future opt-in surface for
  * validation details would land here, scoped to dev mode only.
+ *
+ * Typed as a plain pass-through over the `result` object's
+ * `success` discriminant so it satisfies @hono/zod-openapi's `Hook<
+ * any, E, any, any>` slot without dragging the full union signature
+ * through every router file.
  */
-export const defaultInvalidBodyHook = <E extends { Variables: Record<string, unknown> }>(
+export function defaultInvalidBodyHook(
   result: { success: boolean },
-  c: import('hono').Context<E>,
-) => {
+  c: import('hono').Context,
+) {
   if (!result.success) {
     return c.json({ error: 'invalid_body' }, 400);
   }
   return undefined;
-};
+}
 
 /** Pre-typed OpenAPIHono with our `AuthVariables`. */
 export function makeAuthedRouter() {
   return new OpenAPIHono<{ Variables: AuthVariables }>({
-    defaultHook: (result, c) => {
-      if (!result.success) {
-        return c.json({ error: 'invalid_body' }, 400);
-      }
-      return undefined;
-    },
+    defaultHook: defaultInvalidBodyHook,
   });
 }

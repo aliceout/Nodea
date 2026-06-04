@@ -18,6 +18,7 @@ import {
 } from '../middleware/require-guard.ts';
 import {
   createRoute,
+  defaultInvalidBodyHook,
   errorContent,
   jsonContent,
   okContent,
@@ -79,10 +80,7 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
   );
 
   const router = new OpenAPIHono<{ Variables: GuardVariables }>({
-    defaultHook: (result, c) => {
-      if (!result.success) return c.json({ error: 'invalid_body' }, 400);
-      return undefined;
-    },
+    defaultHook: defaultInvalidBodyHook,
   });
 
   const collectionResolver = requireCollection(byName);

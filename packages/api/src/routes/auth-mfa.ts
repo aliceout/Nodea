@@ -19,6 +19,7 @@ import type {
   AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
 import { OpenAPIHono } from '@hono/zod-openapi';
+import { defaultInvalidBodyHook, createRoute, errorContent, jsonContent  } from '../openapi/index.ts';
 import { db } from '../db/client.ts';
 import {
   authFactors,
@@ -41,7 +42,7 @@ import {
   requireMfaPending,
   type MfaPendingVariables,
 } from '../middleware/require-mfa-pending.ts';
-import { createRoute, errorContent, jsonContent } from '../openapi/index.ts';
+
 
 /**
  * Stepped MFA routes (Auth-Roadmap Phase 5C, Auth-Spec §7.4).
@@ -62,10 +63,7 @@ import { createRoute, errorContent, jsonContent } from '../openapi/index.ts';
  * flips `used_at` and the row stays for audit.
  */
 export const authMfaRoutes = new OpenAPIHono<{ Variables: MfaPendingVariables }>({
-  defaultHook: (result, c) => {
-    if (!result.success) return c.json({ error: 'invalid_body' }, 400);
-    return undefined;
-  },
+  defaultHook: defaultInvalidBodyHook,
 });
 
 const verifyLimiter = rateLimit({

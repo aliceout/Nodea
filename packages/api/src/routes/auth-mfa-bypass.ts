@@ -31,7 +31,13 @@ import {
   requireMfaPending,
   type MfaPendingVariables,
 } from '../middleware/require-mfa-pending.ts';
-import { createRoute, errorContent, jsonContent, z } from '../openapi/index.ts';
+import {
+  createRoute,
+  defaultInvalidBodyHook,
+  errorContent,
+  jsonContent,
+  z,
+} from '../openapi/index.ts';
 
 /**
  * MFA bypass routes (Auth-Roadmap Phase 6, Auth-Spec §7.8).
@@ -59,10 +65,7 @@ import { createRoute, errorContent, jsonContent, z } from '../openapi/index.ts';
 export const authMfaBypassRoutes = new OpenAPIHono<{
   Variables: AuthVariables & MfaPendingVariables;
 }>({
-  defaultHook: (result, c) => {
-    if (!result.success) return c.json({ error: 'invalid_body' }, 400);
-    return undefined;
-  },
+  defaultHook: defaultInvalidBodyHook,
 });
 
 const requestLimiter = rateLimit({

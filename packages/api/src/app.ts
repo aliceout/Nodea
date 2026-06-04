@@ -1,7 +1,7 @@
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { swaggerUI } from '@hono/swagger-ui';
-import { OpenAPIHono } from './openapi/index.ts';
+import { OpenAPIHono, defaultInvalidBodyHook } from './openapi/index.ts';
 import { requireAdmin, requireUser } from './middleware/require-user.ts';
 import { authRoutes } from './routes/auth.ts';
 import { authMfaRoutes } from './routes/auth-mfa.ts';
@@ -30,10 +30,7 @@ import { redactingPrintFunc } from './middleware/sanitize-log-url.ts';
 /** Build a fresh Hono app. Exported so tests can assemble an app without side-effects. */
 export function buildApp() {
   const app = new OpenAPIHono<{ Variables: AuthVariables }>({
-    defaultHook: (result, c) => {
-      if (!result.success) return c.json({ error: 'invalid_body' }, 400);
-      return undefined;
-    },
+    defaultHook: defaultInvalidBodyHook,
   });
 
   // CORS for the dev web origin. In prod the web is served behind the
