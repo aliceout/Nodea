@@ -1,4 +1,3 @@
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
@@ -10,7 +9,7 @@ import {
   loginAs,
   seedAdmin,
   seedUser,
-} from './helpers.ts';
+} from './setup.ts';
 
 const app = buildApp();
 

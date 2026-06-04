@@ -13,7 +13,6 @@
  * `vitest.config.ts`). OPAQUE handshake runs in-process via
  * `@serenity-kit/opaque` — there's no real client browser involved.
  */
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
@@ -28,7 +27,7 @@ import {
 import { __getRecordingEmailService } from '../services/email/index.ts';
 import { setOpenRegistration } from '../services/settings.ts';
 import { hashToken } from '../auth/email-verifications.ts';
-import { seedAdmin, seedInvite, seedUser } from './helpers.ts';
+import { seedAdmin, seedInvite, seedUser } from './setup.ts';
 
 const app = buildApp();
 const recording = __getRecordingEmailService();

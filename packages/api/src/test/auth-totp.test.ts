@@ -13,7 +13,6 @@
  * exact secret returned by /enroll/start, so the test matches a
  * real authenticator's output without time travel.
  */
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -28,7 +27,7 @@ import {
   users,
 } from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
-import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './helpers.ts';
+import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './setup.ts';
 
 async function enrollPasskeyDirect(userId: string): Promise<void> {
   await db.insert(authFactors).values({

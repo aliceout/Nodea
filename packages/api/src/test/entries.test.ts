@@ -1,11 +1,10 @@
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { moodEntries } from '../db/schema.ts';
 import { COLLECTIONS } from '../collections.ts';
-import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './setup.ts';
 
 const app = buildApp();
 

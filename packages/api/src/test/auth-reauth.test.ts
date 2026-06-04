@@ -22,7 +22,6 @@
  *      `verifyAuthenticationResponse` plus the
  *      Phase 4 / Phase 5C passkey suites for that path.)
  */
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -30,7 +29,7 @@ import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { sessions } from '../db/schema.ts';
-import { TEST_PASSWORD, extractCookie, seedUser } from './helpers.ts';
+import { TEST_PASSWORD, extractCookie, seedUser } from './setup.ts';
 import { requireUser, type AuthVariables } from '../middleware/require-user.ts';
 import {
   requireFreshPassword,

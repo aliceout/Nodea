@@ -1,4 +1,3 @@
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { buildApp } from '../app.ts';
 import {
@@ -7,7 +6,7 @@ import {
   loginAs,
   seedAdmin,
   seedUser,
-} from './helpers.ts';
+} from './setup.ts';
 import type { AnnouncementResponse } from '@nodea/shared';
 
 const app = buildApp();

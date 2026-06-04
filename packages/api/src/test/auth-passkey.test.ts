@@ -20,7 +20,6 @@
  *     covered by their negative paths (proof gating, malformed body)
  *     here.
  */
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
@@ -28,7 +27,7 @@ import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
-import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './setup.ts';
 
 const app = buildApp();
 

@@ -1,8 +1,7 @@
-import "./setup.ts";
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { buildApp } from '../app.ts';
-import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './setup.ts';
 
 const app = buildApp();
 

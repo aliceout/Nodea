@@ -9,14 +9,13 @@
  * Real Postgres + the in-memory `RecordingEmailService`. The OPAQUE
  * client side runs in-process via `@serenity-kit/opaque`.
  */
-import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { opaqueRecords, users } from '../db/schema.ts';
-import { TEST_PASSWORD, extractCookie, seedUser } from './helpers.ts';
+import { TEST_PASSWORD, extractCookie, seedUser } from './setup.ts';
 
 const app = buildApp();
 
