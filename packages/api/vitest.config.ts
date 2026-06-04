@@ -69,6 +69,7 @@ export default defineConfig({
   // protocol failures (`client.finishLogin` returns undefined) when
   // the seed phase and the login phase end up running against
   // different module instances.
+  pool: 'threads',
   maxWorkers: 1,
   isolate: false,
   test: {
