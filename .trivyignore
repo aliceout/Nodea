@@ -59,6 +59,9 @@ CVE-2026-39836
 # CVE-2026-42499 — Go stdlib. HIGH.
 CVE-2026-42499
 
+# CVE-2026-39823 — Go stdlib URL parsing follow-up of CVE-2026-27142. HIGH.
+CVE-2026-39823
+
 # ---------------------------------------------------------------------
 # picomatch CVE-2026-33671 inside pnpm's bundled distribution
 # ---------------------------------------------------------------------
@@ -105,4 +108,29 @@ CVE-2026-33671
 # Drop criterion : when we successfully complete the Vitest 4 migration
 # (see PR / issue for the failed attempt's history — Vitest 4's module
 # graph behaviour broke the api suite's OPAQUE round-trip).
-GHSA-5xrq-8626-4rwp
+#
+# Trivy keys ignores off CVE ids, not GHSA ids — the canonical CVE
+# for this advisory is below. (Earlier commit bba179c used the GHSA
+# format which Trivy v0.70 silently ignored.)
+CVE-2026-47429
+
+# ---------------------------------------------------------------------
+# libxml2 CVE-2026-6732 inside the nginx:alpine base image
+# ---------------------------------------------------------------------
+# `packages/web/Dockerfile` uses `nginx:alpine` as the runtime base.
+# Alpine's libxml2 package shipped 2.13.9-r1 with the fix ; the
+# nginx:alpine snapshot we pull still carries r0. Next nginx:alpine
+# rebuild picks it up — until then Trivy flags it.
+#
+# Blast radius : libxml2 lives in the nginx image because nginx links
+# against it for XSLT / SSI / xpath modules. Nodea's vhost
+# (`packages/web/nginx.conf`) only serves static assets + proxies
+# `/api` to the api container — no `xslt_stylesheet`, no `ssi on`,
+# no XML body parsing. The vuln (DoS via crafted XML input) needs
+# attacker-controlled XML reaching the parser, which nothing in our
+# config routes there.
+#
+# Drop criterion : when `nginx:alpine` ships with libxml2 ≥ 2.13.9-r1
+# (verify with `docker pull nginx:alpine && docker run --rm
+# nginx:alpine apk info libxml2`).
+CVE-2026-6732
