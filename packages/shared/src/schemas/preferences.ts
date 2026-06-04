@@ -24,10 +24,8 @@ export type ThemePreference = z.infer<typeof ThemePreferenceSchema>;
 export const LanguagePreferenceSchema = z.enum(['fr', 'en']);
 export type LanguagePreference = z.infer<typeof LanguagePreferenceSchema>;
 
-export const UserPreferencesPayloadSchema = z
-  .object({
-    theme: ThemePreferenceSchema.optional(),
-    language: LanguagePreferenceSchema.optional(),
-  })
-  .passthrough();
+export const UserPreferencesPayloadSchema = z.looseObject({
+  theme: ThemePreferenceSchema.optional(),
+  language: LanguagePreferenceSchema.optional(),
+});
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;

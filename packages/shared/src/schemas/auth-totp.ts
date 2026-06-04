@@ -41,7 +41,7 @@ const BackupCodeInput = z.string().min(24).max(64);
  * rather than an embedded OPAQUE proof. The route exists at all
  * because /verify needs the secret persisted server-side first.
  */
-export const TotpEnrollStartBodySchema = z.object({}).passthrough();
+export const TotpEnrollStartBodySchema = z.looseObject({});
 export type TotpEnrollStartBody = z.infer<typeof TotpEnrollStartBodySchema>;
 
 /**
@@ -83,7 +83,7 @@ export type TotpEnrollVerifyBody = z.infer<typeof TotpEnrollVerifyBodySchema>;
  * than inlined `z.object({})`) for symmetry with the other Settings
  * routes and because callers still type-check against this name.
  */
-export const TotpManagementBodySchema = z.object({}).passthrough();
+export const TotpManagementBodySchema = z.looseObject({});
 export type TotpManagementBody = z.infer<typeof TotpManagementBodySchema>;
 
 export const TotpRegenerateBackupCodesResponseSchema = z.object({

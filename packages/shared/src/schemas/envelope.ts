@@ -25,7 +25,7 @@ import { z, type ZodTypeAny } from 'zod';
  * list endpoint can extend with its own meta schema (see
  * `PasskeyListMetaSchema` for an example).
  */
-export const EmptyListMetaSchema = z.object({}).passthrough();
+export const EmptyListMetaSchema = z.looseObject({});
 export type EmptyListMeta = z.infer<typeof EmptyListMetaSchema>;
 
 /**

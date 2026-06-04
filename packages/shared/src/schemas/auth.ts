@@ -135,7 +135,7 @@ export type ChangeUsernameBody = z.infer<typeof ChangeUsernameBodySchema>;
  * Self-delete the authenticated user. Re-auth gated by the
  * `requireFreshPassword` middleware (Phase 7B); the body is empty.
  */
-export const DeleteSelfBodySchema = z.object({}).passthrough();
+export const DeleteSelfBodySchema = z.looseObject({});
 export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
 
 /**

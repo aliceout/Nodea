@@ -86,7 +86,7 @@ export type MfaTotpVerifyResponse = z.infer<typeof MfaTotpVerifyResponseSchema>;
  * (`pending_webauthn_challenge`, TTL 5 min) so /finish can verify
  * it without round-tripping additional client state.
  */
-export const MfaPasskeyStartBodySchema = z.object({}).passthrough();
+export const MfaPasskeyStartBodySchema = z.looseObject({});
 export type MfaPasskeyStartBody = z.infer<typeof MfaPasskeyStartBodySchema>;
 
 const WebAuthnOptionsJSON = z.record(z.string(), z.unknown());

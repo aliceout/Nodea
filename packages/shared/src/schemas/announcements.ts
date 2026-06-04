@@ -43,6 +43,6 @@ export type AnnouncementResponse = z.infer<typeof AnnouncementResponseSchema>;
  *  total count) land without breaking the wire contract. */
 export const AnnouncementListResponseSchema = z.object({
   data: z.array(AnnouncementResponseSchema),
-  meta: z.object({}).passthrough(),
+  meta: z.looseObject({}),
 });
 export type AnnouncementListResponse = z.infer<typeof AnnouncementListResponseSchema>;

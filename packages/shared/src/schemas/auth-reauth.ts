@@ -57,7 +57,7 @@ export type ReauthPasswordFinishBody = z.infer<
  * `reauth_passkey_at` instead of finalizing an `mfa_pending` row.
  * ========================================================================== */
 
-export const ReauthPasskeyStartBodySchema = z.object({}).passthrough();
+export const ReauthPasskeyStartBodySchema = z.looseObject({});
 export type ReauthPasskeyStartBody = z.infer<
   typeof ReauthPasskeyStartBodySchema
 >;

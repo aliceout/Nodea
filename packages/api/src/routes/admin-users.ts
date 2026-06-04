@@ -31,7 +31,7 @@ const UserListItemSchema = z.object({
 });
 const UserListResponseSchema = z.object({
   data: z.array(UserListItemSchema),
-  meta: z.object({}).passthrough(),
+  meta: z.looseObject({}),
 });
 
 const adminMiddlewares = [requireUser, requireAdmin];

@@ -57,7 +57,7 @@ const WebAuthnResponseJSON = z.record(z.string(), z.unknown());
  * fresh-password gating moved to the `requireFreshPassword`
  * middleware. Kept as an explicit schema for symmetry.
  */
-export const PasskeyEnrollStartBodySchema = z.object({}).passthrough();
+export const PasskeyEnrollStartBodySchema = z.looseObject({});
 export type PasskeyEnrollStartBody = z.infer<typeof PasskeyEnrollStartBodySchema>;
 
 /**
@@ -151,7 +151,7 @@ export type PasskeyRenameBody = z.infer<typeof PasskeyRenameBodySchema>;
  * only the route-specific payload (delete has none; rename has the
  * new label).
  */
-export const PasskeyDeleteBodySchema = z.object({}).passthrough();
+export const PasskeyDeleteBodySchema = z.looseObject({});
 export type PasskeyDeleteBody = z.infer<typeof PasskeyDeleteBodySchema>;
 
 export const PasskeyRenameWithProofBodySchema = z.object({

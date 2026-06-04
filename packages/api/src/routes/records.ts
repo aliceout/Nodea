@@ -71,7 +71,7 @@ function toView(row: EntryRow) {
 
 const EntryListResponseSchema = z.object({
   data: z.array(EntryViewSchema),
-  meta: z.object({}).passthrough(),
+  meta: z.looseObject({}),
 });
 
 export function createRecordsRoutes(collections: readonly CollectionDef[]) {

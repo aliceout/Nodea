@@ -39,7 +39,7 @@ const InviteListItemSchema = InviteRowSchema.extend({
 });
 const InviteListResponseSchema = z.object({
   data: z.array(InviteListItemSchema),
-  meta: z.object({}).passthrough(),
+  meta: z.looseObject({}),
 });
 
 const adminMiddlewares = [requireUser, requireAdmin];
