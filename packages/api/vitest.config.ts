@@ -54,11 +54,16 @@ process.env.EMAIL_SERVICE_IMPL = 'recording';
 
 export default defineConfig({
   // Tests hit a real Postgres instance; keep them sequential to avoid
-  // row-level interference across truncate cycles. `pool` /
-  // `poolOptions` moved out of `test:` in Vitest 4 — they're top-level
-  // config now (cf. https://vitest.dev/guide/migration#pool-rework).
+  // row-level interference across truncate cycles. Vitest 4 removed
+  // the old `test.poolOptions.forks.singleFork = true` knob ; the
+  // replacement is the top-level `fileParallelism: false`, which
+  // forces `maxWorkers = 1` and disables parallel file execution
+  // (cf. https://vitest.dev/guide/migration#pool-rework). Same end
+  // result : every test file runs sequentially in a single fork, so
+  // truncate cycles never race each other on the shared
+  // `nodea_test` database.
   pool: 'forks',
-  poolOptions: { forks: { singleFork: true } },
+  fileParallelism: false,
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
