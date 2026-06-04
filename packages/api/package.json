@@ -30,7 +30,7 @@
     "@nodea/shared": "workspace:*",
     "@sentry/node": "^10.56.0",
     "@serenity-kit/opaque": "1.1.0",
-    "@simplewebauthn/server": "13.3.0",
+    "@simplewebauthn/server": "13.3.1",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.23",
     "node-cron": "^4.2.1",

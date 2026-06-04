@@ -267,7 +267,7 @@ the factory loops over. There is nowhere to forget a guard.
   - Five authenticated routes (`enroll/start`, `enroll/finish`,
     `list`, `:id/label`, `:id/remove`) for Settings, two anonymous
     routes (`login/start`, `login/finish`) for the login flow.
-  - Server primitives via `@simplewebauthn/server@13.3.0`. Challenges
+  - Server primitives via `@simplewebauthn/server@13.3.1`. Challenges
     persisted on `sessions.pending_webauthn_challenge` for enrollment
     (TTL 5 min) and on a single-use in-memory pending entry
     (`auth/passkey-login-state.ts`) for login. UV `'required'` is
