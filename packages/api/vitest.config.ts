@@ -53,13 +53,15 @@ if (url && !/\/[^/?]*_test(?:\?|$)/.test(url)) {
 process.env.EMAIL_SERVICE_IMPL = 'recording';
 
 export default defineConfig({
+  // Tests hit a real Postgres instance; keep them sequential to avoid
+  // row-level interference across truncate cycles. `pool` /
+  // `poolOptions` moved out of `test:` in Vitest 4 — they're top-level
+  // config now (cf. https://vitest.dev/guide/migration#pool-rework).
+  pool: 'forks',
+  poolOptions: { forks: { singleFork: true } },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    // Tests hit a real Postgres instance; keep them sequential to avoid
-    // row-level interference across truncate cycles.
-    pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
     setupFiles: ['./src/test/setup.ts'],
     testTimeout: 20_000,
     coverage: {
