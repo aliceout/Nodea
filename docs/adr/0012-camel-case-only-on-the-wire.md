@@ -83,7 +83,7 @@ for it to translate.
 **Negative:**
 - **Breaking migration** on existing encrypted blobs: a user with
   Goals entries holding `completed_at` snake_case can no longer
-  decrypt them after the schema migration (Zod's `passthrough()`
+  decrypt them after the schema migration (Zod's `z.looseObject(...)`
   lets unknown fields through, but consuming code reads
   `entry.completedAt`, not `entry.completed_at`). Acceptable
   because the project is still at the "solo dev on their own

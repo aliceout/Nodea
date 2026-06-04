@@ -60,6 +60,7 @@ incremented monotonically. No reuse after `Deprecated` — one number
 | [0011](./0011-drizzle-forward-only-migrations.md) | Drizzle forward-only migrations, no rollback | Accepted |
 | [0012](./0012-camel-case-only-on-the-wire.md) | All-camelCase on the wire (supersedes 0003) | Accepted |
 | [0013](./0013-zustand-slice-pattern.md) | Zustand slice pattern for `nodea-store` (complements 0006) | Accepted |
+| [0014](./0014-zod-4-migration.md) | Zod 3 → 4 atomic migration (unblocks `@hono/zod-openapi` 1.x + `@hookform/resolvers` 5.x) | Accepted |
 
 ## When to write a new ADR
 
