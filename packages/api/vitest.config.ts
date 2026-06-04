@@ -59,7 +59,19 @@ export default defineConfig({
   // replacement is `fileParallelism: false` which forces
   // `maxWorkers = 1` and disables parallel file execution
   // (cf. https://vitest.dev/guide/migration#pool-rework).
-  pool: 'forks',
+  //
+  // `pool: 'threads'` — Vitest 4 + `pool: 'forks'` + the seed/login
+  // pattern dropped 17 / 30 api test files even with
+  // `fileParallelism: false`. The forks-pool spawns a fresh child
+  // process per test file in some scenarios (the singleFork knob
+  // that fenced this off in Vitest 3 was removed in Vitest 4) and
+  // the @serenity-kit/opaque WASM module ends up with subtle state
+  // divergence across forks — `client.finishLogin` silently
+  // returns `undefined` because the server's loginResponse was
+  // produced under a slightly different WASM instance from what
+  // the client expects. Threads share the worker process and the
+  // WASM module survives cleanly across files.
+  pool: 'threads',
   fileParallelism: false,
   test: {
     environment: 'node',
