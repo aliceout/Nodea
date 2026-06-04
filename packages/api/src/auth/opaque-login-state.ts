@@ -30,12 +30,6 @@ interface PendingState {
 
 const pending = new Map<string, PendingState>();
 
-// DEBUG (Vitest 4 migration) : unique id per module instance, lets the
-// trace lines below tell « stored in module A but consumed from module B »
-// apart from « token genuinely never stored ». Remove once the CI test
-// pattern is restored.
-const MODULE_ID = randomBytes(4).toString('hex');
-
 /**
  * Store a fresh `serverLoginState` and return the opaque token the
  * client echoes back at `/finish`. Caller owns the rate-limit on
@@ -51,9 +45,6 @@ export function storeLoginState(
     userIdentifier,
     expiresAt: Date.now() + TTL_MS,
   });
-  console.warn(
-    `[opaque-login-state DEBUG] store mod=${MODULE_ID} token=${token.slice(0, 8)}… size=${pending.size}`,
-  );
   return token;
 }
 
@@ -65,9 +56,6 @@ export function storeLoginState(
  */
 export function consumeLoginState(token: string): PendingState | null {
   const entry = pending.get(token);
-  console.warn(
-    `[opaque-login-state DEBUG] consume mod=${MODULE_ID} token=${token.slice(0, 8)}… size=${pending.size} hit=${entry !== undefined}`,
-  );
   if (!entry) return null;
   pending.delete(token);
   if (entry.expiresAt < Date.now()) return null;

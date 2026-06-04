@@ -54,25 +54,23 @@ process.env.EMAIL_SERVICE_IMPL = 'recording';
 
 export default defineConfig({
   // Tests hit a real Postgres instance; keep them sequential to avoid
-  // row-level interference across truncate cycles. Vitest 4 removed
-  // the old `test.poolOptions.forks.singleFork = true` knob ; the
-  // replacement is `fileParallelism: false` which forces
-  // `maxWorkers = 1` and disables parallel file execution
-  // (cf. https://vitest.dev/guide/migration#pool-rework).
+  // row-level interference across truncate cycles. Per the Vitest 4
+  // migration guide (https://vitest.dev/guide/migration), the verbatim
+  // replacement for the old « singleFork: true / singleThread: true » is :
   //
-  // `pool: 'threads'` — Vitest 4 + `pool: 'forks'` + the seed/login
-  // pattern dropped 17 / 30 api test files even with
-  // `fileParallelism: false`. The forks-pool spawns a fresh child
-  // process per test file in some scenarios (the singleFork knob
-  // that fenced this off in Vitest 3 was removed in Vitest 4) and
-  // the @serenity-kit/opaque WASM module ends up with subtle state
-  // divergence across forks — `client.finishLogin` silently
-  // returns `undefined` because the server's loginResponse was
-  // produced under a slightly different WASM instance from what
-  // the client expects. Threads share the worker process and the
-  // WASM module survives cleanly across files.
-  pool: 'threads',
-  fileParallelism: false,
+  //     maxWorkers: 1, isolate: false
+  //
+  // Both knobs are required. `maxWorkers: 1` forces a single worker
+  // process ; `isolate: false` keeps the module graph shared across
+  // test files so the api's module-level state (OPAQUE login-state
+  // Map, rate-limit counters, OPAQUE WASM instance) survives file
+  // boundaries the way it did under Vitest 3's `singleFork`. Using
+  // either knob alone leaves a partial setup that exposes OPAQUE
+  // protocol failures (`client.finishLogin` returns undefined) when
+  // the seed phase and the login phase end up running against
+  // different module instances.
+  maxWorkers: 1,
+  isolate: false,
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
