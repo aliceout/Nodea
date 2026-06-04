@@ -7,70 +7,12 @@
 # Rule of thumb : only ignore CVEs in code we vendor through a
 # third-party (Chrome via puppeteer, browser engines, etc.). Anything
 # in our own dependency tree gets patched via `pnpm.overrides` instead.
-
-# ---------------------------------------------------------------------
-# Go stdlib CVEs inside puppeteer's chrome-headless-shell
-# ---------------------------------------------------------------------
-# `puppeteer` (api dep, used by the Library module's Amazon book
-# lookup) downloads Chrome + chrome-headless-shell at postinstall.
-# Those binaries embed Go helpers (crash handler, telemetry shims) and
-# Trivy decompiles them to flag the Go stdlib version. We can't bump
-# Google's vendored Go without rebuilding Chrome ourselves — that's
-# upstream's problem. Track on each puppeteer bump : if the next
-# puppeteer release ships a Chrome with newer Go, these can drop.
 #
-# Reviewed for blast radius : the Go binaries only run when the api
-# spawns chrome-headless-shell for an Amazon scrape. They don't sit on
-# the request path and they don't terminate TLS. The CVE titles below
-# are TLS-cert-validation / RegexDoS / archive-parser issues — none
-# actionable through our HTTP surface.
-
-# CVE-2025-68121 — crypto/tls: incorrect cert validation on session
-# resumption. CRITICAL. Patched in Go 1.24.13.
-CVE-2025-68121
-
-# CVE-2025-58183 — archive/tar: unbounded allocation when parsing
-# malformed GNU headers. HIGH. Patched in Go 1.24.8.
-CVE-2025-58183
-
-# CVE-2025-61726, CVE-2025-61728, CVE-2025-61729 — Go runtime/stdlib
-# DoS surfaces. HIGH.
-CVE-2025-61726
-CVE-2025-61728
-CVE-2025-61729
-
-# CVE-2026-25679 — Go stdlib. HIGH.
-CVE-2026-25679
-
-# CVE-2026-32280, CVE-2026-32281, CVE-2026-32283 — crypto/x509,
-# crypto/tls: DoS via crafted cert chains / TLS 1.3 keys. HIGH.
-CVE-2026-32280
-CVE-2026-32281
-CVE-2026-32283
-
-# CVE-2026-33811, CVE-2026-33814 — Go stdlib. HIGH.
-CVE-2026-33811
-CVE-2026-33814
-
-# CVE-2026-39820, CVE-2026-39836 — Go stdlib. HIGH.
-CVE-2026-39820
-CVE-2026-39836
-
-# CVE-2026-42499 — Go stdlib. HIGH.
-CVE-2026-42499
-
-# CVE-2026-39823 — Go stdlib URL parsing follow-up of CVE-2026-27142. HIGH.
-CVE-2026-39823
-
-# CVE-2026-39825 — Go stdlib `net/http/httputil.ReverseProxy` query
-# forwarding. HIGH. Same blast-radius story as the rest of the Go
-# block — only reachable through Chrome's own helpers, not through
-# Nodea's HTTP surface.
-CVE-2026-39825
-
-# CVE-2026-39826 — Go stdlib `html/template` script tag handling.
-# HIGH. Chrome-only ; Nodea doesn't render Go templates.
-CVE-2026-39826
+# Note : `app/node_modules/` is fully skipped from the Trivy scan via
+# the workflow's `skip-dirs:` input — `pnpm audit --audit-level=high`
+# in the CI typecheck step is the source of truth for npm vulns.
+# Anything you'd put here for an api/web npm package should land in
+# `pnpm.auditConfig.ignoreGhsas` (in the root `package.json`) instead.
 
 # ---------------------------------------------------------------------
 # picomatch CVE-2026-33671 inside pnpm's bundled distribution
@@ -79,9 +21,8 @@ CVE-2026-39826
 # `pnpm.overrides`. But the pnpm binary itself (resolved by
 # `corepack enable`) ships a vendored picomatch 4.0.3 inside
 # `/root/.cache/node/corepack/.../pnpm/<v>/dist/node_modules/picomatch`.
-# Trivy decompiles the tarball and flags that copy. We can't
-# replace it without unrolling corepack — pnpm needs the tarball
-# to function.
+# That copy lives outside the `app/node_modules` tree the workflow
+# skips, so Trivy still finds it and we need this ignore explicitly.
 #
 # Blast radius : pnpm runs at container start (`db:migrate &&
 # start`) over our own lockfile, never against attacker-controlled
@@ -92,37 +33,6 @@ CVE-2026-39826
 # corepack-distributed release. Track on each pnpm bump in
 # `package.json` → `packageManager`.
 CVE-2026-33671
-
-# ---------------------------------------------------------------------
-# vitest GHSA-5xrq-8626-4rwp inside the api image's node_modules
-# ---------------------------------------------------------------------
-# `vitest` lives in `devDependencies` but the api Dockerfile installs
-# them with `--prod=false` because the runtime needs `tsx` (TypeScript
-# loader for the migrate + start commands). Trivy then scans the full
-# tree and flags vitest < 4.1.0.
-#
-# The advisory text (https://github.com/advisories/GHSA-5xrq-8626-4rwp) :
-#   « When the Vitest UI server is listening, arbitrary file can be
-#     read and executed. »
-#
-# Vitest UI is a feature spun up only when the binary is invoked with
-# `vitest --ui`. Nodea never does : the CI workflow runs `vitest run`
-# (CLI, no UI), no dev script in the monorepo references `--ui`, and
-# the api container starts with `pnpm db:migrate:docker && pnpm
-# start:docker` — no `vitest` invocation at all on the production
-# request path. The UI server's code sits dormant inside `node_modules`
-# and never binds to any port. Same logic as the `pnpm.auditConfig.
-# ignoreGhsas` entry in the root `package.json` (which mutes the same
-# advisory at audit time).
-#
-# Drop criterion : when we successfully complete the Vitest 4 migration
-# (see PR / issue for the failed attempt's history — Vitest 4's module
-# graph behaviour broke the api suite's OPAQUE round-trip).
-#
-# Trivy keys ignores off CVE ids, not GHSA ids — the canonical CVE
-# for this advisory is below. (Earlier commit bba179c used the GHSA
-# format which Trivy v0.70 silently ignored.)
-CVE-2026-47429
 
 # ---------------------------------------------------------------------
 # libxml2 CVE-2026-6732 inside the nginx:alpine base image

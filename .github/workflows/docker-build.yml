@@ -117,3 +117,15 @@ jobs:
           severity: HIGH,CRITICAL
           vuln-type: os,library
           trivyignores: ./.trivyignore
+          # Skip the npm dependency tree inside the image — `pnpm audit
+          # --audit-level=high` already covers npm vulns in the
+          # `typecheck + build + tests` job (sources of truth :
+          # `package.json` + `pnpm-lock.yaml`). Without this skip,
+          # Trivy decompiles every Go binary inside `node_modules`
+          # (esbuild's ~7 arch builds, puppeteer's chrome-headless-
+          # shell helpers, etc.) and reports every Go stdlib CVE the
+          # advisory DB ever ships — a chronic stream of « add this
+          # CVE to .trivyignore » commits for code we can't even fix
+          # at our layer. Two scanners, two scopes : pnpm audit for
+          # npm packages, Trivy for OS + non-npm binaries.
+          skip-dirs: app/node_modules
