@@ -1,5 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 
+import { globalSingleton } from '../lib/global-singleton.ts';
+
 /**
  * Trivial fixed-window rate limiter, in-process memory only.
  *
@@ -35,8 +37,18 @@ export interface RateLimitOptions {
   keyPrefix?: string;
 }
 
-const buckets = new Map<string, Bucket>();
-let lastSweep = Date.now();
+// Stashed on globalThis so Vitest 4's per-test-file module
+// re-evaluation can't fragment the storage — see [[global-singleton]].
+// `lastSweep` is wrapped in an object so the sweep can mutate it
+// through the shared reference.
+const buckets = globalSingleton(
+  '__nodea_rate_limit_buckets',
+  () => new Map<string, Bucket>(),
+);
+const sweepState = globalSingleton(
+  '__nodea_rate_limit_sweep',
+  () => ({ lastSweep: Date.now() }),
+);
 
 /** Extract the trusted client IP from a request's headers.
  *
@@ -64,11 +76,11 @@ function getClientKey(headers: Headers, prefix: string): string {
 }
 
 function sweep(now: number): void {
-  if (now - lastSweep < 60_000) return;
+  if (now - sweepState.lastSweep < 60_000) return;
   for (const [key, bucket] of buckets) {
     if (bucket.resetAt <= now) buckets.delete(key);
   }
-  lastSweep = now;
+  sweepState.lastSweep = now;
 }
 
 export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
@@ -95,5 +107,5 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
 /** Test-only: reset all buckets. */
 export function __resetRateLimits(): void {
   buckets.clear();
-  lastSweep = 0;
+  sweepState.lastSweep = 0;
 }

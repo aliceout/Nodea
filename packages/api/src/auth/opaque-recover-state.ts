@@ -14,6 +14,8 @@
  */
 import { randomBytes } from 'node:crypto';
 
+import { globalSingleton } from '../lib/global-singleton.ts';
+
 const TTL_MS = 5 * 60 * 1000;
 
 interface PendingEntry {
@@ -23,7 +25,12 @@ interface PendingEntry {
   expiresAt: number;
 }
 
-const pending = new Map<string, PendingEntry>();
+// Stashed on globalThis so Vitest 4's per-test-file module
+// re-evaluation can't fragment the storage — see [[global-singleton]].
+const pending = globalSingleton(
+  '__nodea_opaque_recover_pending',
+  () => new Map<string, PendingEntry>(),
+);
 
 export function storeRecoverPending(userId: string | null): string {
   const token = randomBytes(32).toString('base64url');

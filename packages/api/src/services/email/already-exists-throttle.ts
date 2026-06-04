@@ -28,6 +28,7 @@
 import type { Context } from 'hono';
 
 import { getConfig } from '../../config.ts';
+import { globalSingleton } from '../../lib/global-singleton.ts';
 import {
   extractEmailLanguage,
   type SupportedEmailLanguage,
@@ -41,7 +42,12 @@ import { renderRegisterAlreadyExistsEmail } from './templates/register-already-e
  *  legitimate owner the next day re-emits the notice. */
 const THROTTLE_MS = 60 * 60 * 1000;
 
-const lastSentAt = new Map<string, number>();
+// Stashed on globalThis so Vitest 4's per-test-file module
+// re-evaluation can't fragment the storage — see [[global-singleton]].
+const lastSentAt = globalSingleton(
+  '__nodea_already_exists_throttle',
+  () => new Map<string, number>(),
+);
 
 /** Send the « already exists » notice unless this email has
  *  already received one within the throttle window. Always

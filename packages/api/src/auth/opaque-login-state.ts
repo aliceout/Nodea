@@ -15,8 +15,14 @@
  * window. State is single-use: consuming a token deletes the
  * entry. A 5-minute TTL covers slow networks without keeping
  * abandoned sessions around forever.
+ *
+ * Storage anchored on `globalThis` via [[global-singleton]] so the
+ * test suite under Vitest 4 (which re-evaluates ESM modules per
+ * test file) keeps a single shared Map across every instance.
  */
 import { randomBytes } from 'node:crypto';
+
+import { globalSingleton } from '../lib/global-singleton.ts';
 
 const TTL_MS = 5 * 60 * 1000;
 
@@ -28,7 +34,10 @@ interface PendingState {
   expiresAt: number;
 }
 
-const pending = new Map<string, PendingState>();
+const pending = globalSingleton(
+  '__nodea_opaque_login_state',
+  () => new Map<string, PendingState>(),
+);
 
 /**
  * Store a fresh `serverLoginState` and return the opaque token the

@@ -59,7 +59,16 @@ export default defineConfig({
     // Tests hit a real Postgres instance; keep them sequential to avoid
     // row-level interference across truncate cycles.
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    // Vitest 4 hoisted `poolOptions.forks.*` to top-level keys, and
+    // also made `fileParallelism` default to `true` even inside a
+    // single fork: test files start interleaving each other's
+    // TRUNCATE + restore cycles, which fragments the in-memory state
+    // singletons (one file's beforeEach clearing while another is
+    // mid-test) and produces postgres deadlocks on cascading
+    // TRUNCATEs of users + sessions. Pin both to keep one test file
+    // running at a time in one process.
+    singleFork: true,
+    fileParallelism: false,
     setupFiles: ['./src/test/setup.ts'],
     testTimeout: 20_000,
     coverage: {
