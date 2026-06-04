@@ -68,6 +68,10 @@ CVE-2026-39823
 # Nodea's HTTP surface.
 CVE-2026-39825
 
+# CVE-2026-39826 — Go stdlib `html/template` script tag handling.
+# HIGH. Chrome-only ; Nodea doesn't render Go templates.
+CVE-2026-39826
+
 # ---------------------------------------------------------------------
 # picomatch CVE-2026-33671 inside pnpm's bundled distribution
 # ---------------------------------------------------------------------
