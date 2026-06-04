@@ -1,3 +1,4 @@
+import "./setup.ts";
 import { describe, it, expect, afterEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';

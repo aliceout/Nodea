@@ -7,6 +7,7 @@
  * The login flow itself (OPAQUE 2-step + activation gate + anti-enum)
  * has its own file `auth-login-v2.test.ts`.
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';

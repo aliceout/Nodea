@@ -22,6 +22,7 @@
  *      `verifyAuthenticationResponse` plus the
  *      Phase 4 / Phase 5C passkey suites for that path.)
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';

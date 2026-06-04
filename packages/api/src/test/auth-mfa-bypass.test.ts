@@ -12,6 +12,7 @@
  * `maximum` scenarios. Email side-effects are observed via the
  * `recording` email service.
  */
+import "./setup.ts";
 import { describe, it, expect, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';

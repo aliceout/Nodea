@@ -20,6 +20,7 @@
  *     covered by their negative paths (proof gating, malformed body)
  *     here.
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';

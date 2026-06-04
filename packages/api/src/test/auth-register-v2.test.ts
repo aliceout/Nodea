@@ -13,6 +13,7 @@
  * `vitest.config.ts`). OPAQUE handshake runs in-process via
  * `@serenity-kit/opaque` — there's no real client browser involved.
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';

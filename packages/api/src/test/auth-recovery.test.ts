@@ -13,6 +13,7 @@
  * tests can use 16 random bytes directly without round-tripping
  * through the wordlist.
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { createHash, randomBytes, webcrypto } from 'node:crypto';
 import { client, ready } from '@serenity-kit/opaque';

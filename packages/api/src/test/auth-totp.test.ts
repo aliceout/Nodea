@@ -13,6 +13,7 @@
  * exact secret returned by /enroll/start, so the test matches a
  * real authenticator's output without time travel.
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';

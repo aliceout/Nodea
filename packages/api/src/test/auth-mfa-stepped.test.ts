@@ -23,6 +23,7 @@
  * helpers. TOTP codes are generated with `otplib.generate` against
  * the secret returned by `/auth/totp/enroll/start`.
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';

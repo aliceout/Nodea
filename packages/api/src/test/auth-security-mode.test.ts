@@ -16,6 +16,7 @@
  *   - 200 + DB update on each mode when prerequisites are met.
  *   - Downgrade flow (back to password_or_passkey is always allowed).
  */
+import "./setup.ts";
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';

@@ -32,10 +32,7 @@ if (!/\/[^/?]*_test(?:\?|$)/.test(process.env.DATABASE_URL)) {
   );
 }
 
-let __beforeEachCount = 0;
 beforeEach(async () => {
-  __beforeEachCount += 1;
-  console.warn(`[setup DEBUG] beforeEach fire #${__beforeEachCount}`);
   // TRUNCATE ... CASCADE wipes every entry table, modules_config, invites,
   // sessions and users in one round-trip and resets FK state. Much faster
   // than DROP + migrate between tests.

@@ -69,13 +69,21 @@ export default defineConfig({
   // protocol failures (`client.finishLogin` returns undefined) when
   // the seed phase and the login phase end up running against
   // different module instances.
-  pool: 'vmThreads',
+  pool: 'threads',
   maxWorkers: 1,
   isolate: false,
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    setupFiles: ['./src/test/setup.ts'],
+    // Note: `setupFiles` is deliberately NOT used here. Under Vitest 4,
+    // setupFiles re-evaluate per test file even with isolate:false, which
+    // landed the api's module-level state (OPAQUE WASM, getConfig cache,
+    // postgres pool from db/client.ts) in a separate cache scope from the
+    // test files' graphs — `client.finishLogin` then rejected loginResponses
+    // produced by routes that were running against a slightly different
+    // WASM instance. Test files that need the DB-truncate isolation
+    // explicitly `import './setup'` at their top so the hooks register
+    // inside the test file's own module graph.
     testTimeout: 20_000,
     coverage: {
       provider: 'v8',
