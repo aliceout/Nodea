@@ -19,7 +19,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^2.2.0",
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.4.0",
     "@nodea/shared": "workspace:*",
     "@scure/bip39": "2.2.0",
     "@sentry/react": "^10.56.0",
@@ -47,7 +47,7 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
     "web-vitals": "^5.3.0",
-    "zod": "^3.25.76",
+    "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
