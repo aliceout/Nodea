@@ -79,3 +79,30 @@ CVE-2026-42499
 # corepack-distributed release. Track on each pnpm bump in
 # `package.json` → `packageManager`.
 CVE-2026-33671
+
+# ---------------------------------------------------------------------
+# vitest GHSA-5xrq-8626-4rwp inside the api image's node_modules
+# ---------------------------------------------------------------------
+# `vitest` lives in `devDependencies` but the api Dockerfile installs
+# them with `--prod=false` because the runtime needs `tsx` (TypeScript
+# loader for the migrate + start commands). Trivy then scans the full
+# tree and flags vitest < 4.1.0.
+#
+# The advisory text (https://github.com/advisories/GHSA-5xrq-8626-4rwp) :
+#   « When the Vitest UI server is listening, arbitrary file can be
+#     read and executed. »
+#
+# Vitest UI is a feature spun up only when the binary is invoked with
+# `vitest --ui`. Nodea never does : the CI workflow runs `vitest run`
+# (CLI, no UI), no dev script in the monorepo references `--ui`, and
+# the api container starts with `pnpm db:migrate:docker && pnpm
+# start:docker` — no `vitest` invocation at all on the production
+# request path. The UI server's code sits dormant inside `node_modules`
+# and never binds to any port. Same logic as the `pnpm.auditConfig.
+# ignoreGhsas` entry in the root `package.json` (which mutes the same
+# advisory at audit time).
+#
+# Drop criterion : when we successfully complete the Vitest 4 migration
+# (see PR / issue for the failed attempt's history — Vitest 4's module
+# graph behaviour broke the api suite's OPAQUE round-trip).
+GHSA-5xrq-8626-4rwp
