@@ -62,6 +62,12 @@ CVE-2026-42499
 # CVE-2026-39823 — Go stdlib URL parsing follow-up of CVE-2026-27142. HIGH.
 CVE-2026-39823
 
+# CVE-2026-39825 — Go stdlib `net/http/httputil.ReverseProxy` query
+# forwarding. HIGH. Same blast-radius story as the rest of the Go
+# block — only reachable through Chrome's own helpers, not through
+# Nodea's HTTP surface.
+CVE-2026-39825
+
 # ---------------------------------------------------------------------
 # picomatch CVE-2026-33671 inside pnpm's bundled distribution
 # ---------------------------------------------------------------------
