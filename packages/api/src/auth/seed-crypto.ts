@@ -20,7 +20,10 @@
  */
 import { webcrypto } from 'node:crypto';
 import { client, ready } from '@serenity-kit/opaque';
-import { startLogin as opaqueServerStartLogin } from './opaque.ts';
+import {
+  createRegistrationResponse,
+  startLogin as opaqueServerStartLogin,
+} from './opaque.ts';
 
 const HKDF_LABEL_WRAP_KEK = 'nodea:wrap-kek';
 const HKDF_LABEL_WRAP_MAIN = 'nodea:wrap-main';
@@ -166,7 +169,6 @@ export async function opaqueRegister(input: {
   const { clientRegistrationState, registrationRequest } = client.startRegistration({
     password: input.password,
   });
-  const { createRegistrationResponse } = await import('./opaque.ts');
   const { registrationResponse } = createRegistrationResponse({
     userIdentifier: input.email.toLowerCase(),
     registrationRequest,
