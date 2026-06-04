@@ -6,7 +6,7 @@ import {
   loginAs,
   seedAdmin,
   seedUser,
-} from './setup.ts';
+} from './helpers.ts';
 import type { AnnouncementResponse } from '@nodea/shared';
 
 const app = buildApp();

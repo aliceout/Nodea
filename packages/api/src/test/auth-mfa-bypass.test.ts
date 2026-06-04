@@ -30,7 +30,7 @@ import {
   TEST_PASSWORD,
   extractCookie,
   seedUser,
-} from './setup.ts';
+} from './helpers.ts';
 import {
   __getRecordingEmailService,
   __resetEmailServiceCache,

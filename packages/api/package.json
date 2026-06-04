@@ -30,12 +30,12 @@
     "@nodea/shared": "workspace:*",
     "@sentry/node": "^10.53.1",
     "@serenity-kit/opaque": "1.1.0",
-    "@simplewebauthn/server": "13.3.1",
+    "@simplewebauthn/server": "13.3.0",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.23",
+    "hono": "^4.12.18",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.10",
-    "otplib": "13.4.1",
+    "nodemailer": "^8.0.7",
+    "otplib": "13.4.0",
     "postgres": "^3.4.9",
     "puppeteer": "^24.43.1",
     "undici": "^8.3.0",
@@ -48,6 +48,6 @@
     "drizzle-kit": "^0.31.10",
     "tsx": "4.19.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "vitest": "^3.2.4"
   }
 }

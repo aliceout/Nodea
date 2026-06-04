@@ -9,7 +9,7 @@ import {
   loginAs,
   seedAdmin,
   seedUser,
-} from './setup.ts';
+} from './helpers.ts';
 
 const app = buildApp();
 

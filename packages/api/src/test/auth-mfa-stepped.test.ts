@@ -35,7 +35,7 @@ import {
   extractCookie,
   passwordProofFor,
   seedUser,
-} from './setup.ts';
+} from './helpers.ts';
 
 const app = buildApp();
 

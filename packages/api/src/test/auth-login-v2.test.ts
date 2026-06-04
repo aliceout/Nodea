@@ -15,7 +15,7 @@ import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { opaqueRecords, users } from '../db/schema.ts';
-import { TEST_PASSWORD, extractCookie, seedUser } from './setup.ts';
+import { TEST_PASSWORD, extractCookie, seedUser } from './helpers.ts';
 
 const app = buildApp();
 

@@ -4,7 +4,7 @@ import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { moodEntries } from '../db/schema.ts';
 import { COLLECTIONS } from '../collections.ts';
-import { loginAs, seedUser, TEST_PASSWORD } from './setup.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
 

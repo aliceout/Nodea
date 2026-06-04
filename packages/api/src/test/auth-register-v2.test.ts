@@ -27,7 +27,7 @@ import {
 import { __getRecordingEmailService } from '../services/email/index.ts';
 import { setOpenRegistration } from '../services/settings.ts';
 import { hashToken } from '../auth/email-verifications.ts';
-import { seedAdmin, seedInvite, seedUser } from './setup.ts';
+import { seedAdmin, seedInvite, seedUser } from './helpers.ts';
 
 const app = buildApp();
 const recording = __getRecordingEmailService();

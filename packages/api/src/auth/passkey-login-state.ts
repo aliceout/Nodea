@@ -29,12 +29,7 @@ interface PendingEntry {
   expiresAt: number;
 }
 
-// Shared via globalThis so Vitest 4's per-file module re-evaluation
-// doesn't fragment the Map between routes and test hooks ; production
-// has a single instance so the registry is a no-op there.
-const pending: Map<string, PendingEntry> =
-  ((globalThis as { __nodea_passkey_login_state__?: Map<string, PendingEntry> })
-    .__nodea_passkey_login_state__ ??= new Map<string, PendingEntry>());
+const pending = new Map<string, PendingEntry>();
 
 export function storePasskeyLoginPending(
   challenge: string,

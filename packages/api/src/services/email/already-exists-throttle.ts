@@ -41,12 +41,7 @@ import { renderRegisterAlreadyExistsEmail } from './templates/register-already-e
  *  legitimate owner the next day re-emits the notice. */
 const THROTTLE_MS = 60 * 60 * 1000;
 
-// Shared via globalThis so Vitest 4's per-file module re-evaluation
-// doesn't fragment the Map ; production has a single instance so the
-// registry is a no-op there.
-const lastSentAt: Map<string, number> =
-  ((globalThis as { __nodea_already_exists_throttle__?: Map<string, number> })
-    .__nodea_already_exists_throttle__ ??= new Map<string, number>());
+const lastSentAt = new Map<string, number>();
 
 /** Send the « already exists » notice unless this email has
  *  already received one within the throttle window. Always

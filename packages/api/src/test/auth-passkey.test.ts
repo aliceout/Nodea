@@ -27,7 +27,7 @@ import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { authFactors, mfaTotp, sessions, users } from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
-import { loginAs, seedUser, TEST_PASSWORD } from './setup.ts';
+import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 const app = buildApp();
 

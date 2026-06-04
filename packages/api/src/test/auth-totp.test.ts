@@ -27,7 +27,7 @@ import {
   users,
 } from '../db/schema.ts';
 import { __getRecordingEmailService } from '../services/email/index.ts';
-import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './setup.ts';
+import { loginAs, passwordProofFor, seedUser, TEST_PASSWORD } from './helpers.ts';
 
 async function enrollPasskeyDirect(userId: string): Promise<void> {
   await db.insert(authFactors).values({

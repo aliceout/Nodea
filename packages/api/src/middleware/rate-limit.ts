@@ -35,17 +35,7 @@ export interface RateLimitOptions {
   keyPrefix?: string;
 }
 
-// Shared via globalThis so Vitest 4's per-file module re-evaluation
-// (every test file that imports the api code re-evaluates this
-// module, even with `isolate: false` + `maxWorkers: 1` +
-// `pool: 'threads'`) doesn't fragment the bucket counter — the
-// route handler used Map A while the test's `__resetRateLimits`
-// cleared Map B, so after ~10 hits the route's Map A returned 429
-// to every subsequent request. Production has a single module
-// instance so the registry is a no-op there.
-const buckets: Map<string, Bucket> =
-  ((globalThis as { __nodea_rate_limit_buckets__?: Map<string, Bucket> })
-    .__nodea_rate_limit_buckets__ ??= new Map<string, Bucket>());
+const buckets = new Map<string, Bucket>();
 let lastSweep = Date.now();
 
 /** Extract the trusted client IP from a request's headers.

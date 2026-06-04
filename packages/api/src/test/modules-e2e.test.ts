@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { buildApp } from '../app.ts';
-import { TEST_PASSWORD, loginAs, seedUser } from './setup.ts';
+import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 import {
   simDeriveMainKeys,
   simEncryptPayload,

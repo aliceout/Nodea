@@ -4,7 +4,7 @@ import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { moodEntries, passwordResetTokens, users } from '../db/schema.ts';
-import { TEST_PASSWORD, loginAs, seedUser } from './setup.ts';
+import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 import { __setMailerInspector, type Mail } from '../auth/mailer.ts';
 
 const app = buildApp();

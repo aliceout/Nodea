@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildApp } from '../app.ts';
-import { TEST_PASSWORD, loginAs, seedUser } from './setup.ts';
+import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 
 const app = buildApp();
 

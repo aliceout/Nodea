@@ -53,37 +53,14 @@ if (url && !/\/[^/?]*_test(?:\?|$)/.test(url)) {
 process.env.EMAIL_SERVICE_IMPL = 'recording';
 
 export default defineConfig({
-  // Tests hit a real Postgres instance; keep them sequential to avoid
-  // row-level interference across truncate cycles. Per the Vitest 4
-  // migration guide (https://vitest.dev/guide/migration), the verbatim
-  // replacement for the old « singleFork: true / singleThread: true » is :
-  //
-  //     maxWorkers: 1, isolate: false
-  //
-  // Both knobs are required. `maxWorkers: 1` forces a single worker
-  // process ; `isolate: false` keeps the module graph shared across
-  // test files so the api's module-level state (OPAQUE login-state
-  // Map, rate-limit counters, OPAQUE WASM instance) survives file
-  // boundaries the way it did under Vitest 3's `singleFork`. Using
-  // either knob alone leaves a partial setup that exposes OPAQUE
-  // protocol failures (`client.finishLogin` returns undefined) when
-  // the seed phase and the login phase end up running against
-  // different module instances.
-  pool: 'threads',
-  maxWorkers: 1,
-  isolate: false,
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    // Note: `setupFiles` is deliberately NOT used here. Under Vitest 4,
-    // setupFiles re-evaluate per test file even with isolate:false, which
-    // landed the api's module-level state (OPAQUE WASM, getConfig cache,
-    // postgres pool from db/client.ts) in a separate cache scope from the
-    // test files' graphs — `client.finishLogin` then rejected loginResponses
-    // produced by routes that were running against a slightly different
-    // WASM instance. Test files that need the DB-truncate isolation
-    // explicitly `import './setup'` at their top so the hooks register
-    // inside the test file's own module graph.
+    // Tests hit a real Postgres instance; keep them sequential to avoid
+    // row-level interference across truncate cycles.
+    pool: 'forks',
+    poolOptions: { forks: { singleFork: true } },
+    setupFiles: ['./src/test/setup.ts'],
     testTimeout: 20_000,
     coverage: {
       provider: 'v8',
