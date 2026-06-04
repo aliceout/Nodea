@@ -5,6 +5,87 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.1.0 — 2026-06-04
+
+### Nouveautés
+
+- **auth,login** : normalise passkey 2FA recovery affordance to match TOTP _(1d8b988)_
+- **goals,mobile** : filters collapse _(97535df)_
+- **library,mobile** : hide view-mode toggles + filters collapse _(cde9c46)_
+- **journal,mobile** : compact frise + single-col entries + filters collapse _(ea0aefd)_
+- **mood,mobile** : compact frise + single-col entries + hide stats sidebar + chart toggle label _(d7dab04)_
+- **topbar,mobile** : right-anchor hamburger + bordered + hide label _(724aafc)_
+- **mood,composer** : editable date + wider modal + auto-grow textareas _(7fa3ae9)_
+- **ui** : add Modal size + Textarea autoGrow opt-in props _(a560f50)_
+- **api,config** : accept ADDRESS as bare host (e.g. nodea.app) _(5ec7edc)_
+
+### Corrections
+
+- **trivy** : skip-dirs app/node_modules to stop the Go-stdlib drip + clean .trivyignore _(8250b5b)_
+- **trivy** : mute CVE-2026-39826 (Go html/template via Chrome) _(8975729)_
+- **trivy** : mute CVE-2026-39825 (Go stdlib ReverseProxy query forwarding) _(81ec14e)_
+- **trivy** : use CVE-2026-47429 (not GHSA) + add Go and libxml2 follow-ups _(64c0712)_
+- **api,test** : merge helpers.ts into setup.ts so OPAQUE client/server share modules _(e3158d1)_
+- **api** : stash in-memory state on globalThis for Vitest 4 isolation _(cbab6c9)_
+- **api,test** : add setup.ts import to auth-login-v2 + log-opacity too _(80c4167)_
+- **api,test** : replace setupFiles config with explicit per-file import _(6a36c77)_
+- **api,test** : try pool:vmThreads — sandboxed VM context for true module sharing _(05acdd7)_
+- **api,test** : pool:threads + maxWorkers:1 + isolate:false (Vitest 4 singleThread) _(cd4f818)_
+- **api,test** : apply Vitest 4 official singleFork replacement (maxWorkers:1 + isolate:false) _(f0c34a8)_
+- **api,test** : switch pool from forks to threads for Vitest 4 OPAQUE stability _(f074b84)_
+- **api,opaque** : drop dynamic import of opaque.ts in seedOpaqueUser _(170a1f8)_
+- **api,test** : add isolate:false to share module graph across api test files _(18de0d6)_
+- **api,test** : use fileParallelism:false for sequential api tests on Vitest 4 _(e2ff3a9)_
+- **sidebar,mobile** : drawer width + close drawer on Account/Admin/Logout _(aa638ae)_
+- **deploy** : pull smtp/ and hsts/ Infisical sub-folders too _(4e96526)_
+- **ci** : rename WEB_BASE_URL → ADDRESS to match the new config schema _(3b7f9bc)_
+- **compose** : wire OPAQUE_SERVER_SETUP + 3 other api env vars compose was dropping _(fcf4e69)_
+- **api** : pin tsx 4.22 → 4.19.2 to dodge Node 24 JSON-loader regression _(7538f40)_
+- **api** : lazy-load @sentry/node so a broken transitive doesn't crash boot _(8e76435)_
+- **compose** : wire DOMAIN, WEB_BASE_URL, WEBAUTHN_RP_NAME into the api service _(f01ca97)_
+- **api,deploy** : fetch Infisical root + tolerate empty optional URLs _(71079bc)_
+
+### Refactor
+
+- **shared,api,web** : switch ZodTypeAny -> z.ZodType in the 3 generic-constraint helpers _(a0f673c)_
+- **shared,api** : migrate .passthrough() to z.looseObject() idiom _(2e5472a)_
+- **shared** : migrate UsernameField regex error to Zod 4 canonical { error: ... } form + canary test _(6d9b441)_
+- **shared,api** : migrate string-format validators to Zod 4 top-level forms _(526c9f4)_
+- **api** : factor every defaultHook into a single defaultInvalidBodyHook _(44b5ed8)_
+- **api,compose** : drop WEB_BASE_URL — ADDRESS becomes the canonical source _(acbfd88)_
+
+### Documentation
+
+- ADR-0014 Zod 3 -> 4 migration + sync passthrough mentions _(98f5870)_
+
+### Autres
+
+- revert: roll back the entire Vitest 4 migration saga + add audit-ignore for the unused-UI advisory _(3ea5d9c)_
+- debug(api,rate-limit): log module instance id + reset/429 events _(799e254)_
+- debug(api,test): count setup.ts beforeEach fires to localise Vitest 4 hook issue _(eec0032)_
+- debug(api,opaque): instrument storeLoginState + consumeLoginState _(f167ec3)_
+- revert(api,test): drop isolate:false — same 17/30 file failures as default _(d6885d6)_
+
+<details>
+<summary>Maintenance — 14 commits</summary>
+
+- **release** : bump version to 2.1.0 _(a69c05b)_
+- **shared** : lock module-payload .default() round-trip behaviour under Zod 4 _(9612f07)_
+- **deps** : bump zod 4.4.3 + @hookform/resolvers 5.4.0 + @hono/zod-openapi 1.4.0 (atomic) _(3e136dc)_
+- **deps,test** : bump vitest 4.1.8 + @vitest/coverage-v8 4.1.8, anchor in-memory state on globalThis _(292bc02)_
+- **deps** : bump typescript-eslint 8.59.3 -> 8.60.1 (lift collateral revert) _(43fbfdc)_
+- **deps** : bump tsx 4.19.2 -> 4.22.4 (Node 24 JSON regression resolved upstream) _(564ae84)_
+- **deps** : bump otplib 13.4.1 (api + e2e lockstep) _(b345cc4)_
+- **deps** : bump @simplewebauthn/server 13.3.1 (server-only Packed/SafetyNet fix) _(6e83121)_
+- **deps** : bump @types/react 19.2.16 patch _(1cc4edf)_
+- **deps** : bump web runtime patches/minors _(5e8769f)_
+- **deps** : bump api runtime patches (hono, nodemailer security, sentry-node) _(983af68)_
+- add Trivy ignore for GHSA-5xrq-8626-4rwp (vitest UI server, unused) _(bba179c)_
+- **deps** : bump patch/minor + vitest 4 (security) _(5ba86f7)_
+- **api,ci** : silence '.env not found' noise in containerised/CI runs _(4f2dfb2)_
+
+</details>
+
 ## v2.0.1 — 2026-05-15
 
 ### Corrections
@@ -15,9 +96,18 @@ pliés pour ne pas noyer l'essentiel.
 
 - **api** : derive WebAuthn rpId/origin from DOMAIN/WEB_BASE_URL _(469b044)_
 
-<details>
-<summary>Maintenance — 12 commits</summary>
+### Documentation
 
+- **changelog** : regenerate for v2.0.1 _(24dd825)_
+
+### Autres
+
+- revert(ci): restore .trivyignore — node 24 bump didn't clear the vendored CVEs _(f6816a7)_
+
+<details>
+<summary>Maintenance — 13 commits</summary>
+
+- **docker** : drop dangling `trivyignores: ./.trivyignore` reference _(13b7e0c)_
 - **release** : bump version to 2.0.1 _(3bb8821)_
 - untrack dev-setup.yaml, drop .trivyignore (CVEs cleared by base-image bump) _(beb5e1d)_
 - **deps-dev** : Bump vite in the minor-and-patch group _(a614d32)_
