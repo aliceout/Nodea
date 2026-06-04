@@ -28,7 +28,16 @@ interface PendingState {
   expiresAt: number;
 }
 
-const pending = new Map<string, PendingState>();
+// Vitest 4 re-evaluates this module for every test file that imports
+// the api code (even with `isolate: false` + `maxWorkers: 1` + `pool:
+// 'threads'`), which gave us N parallel `pending` Maps in tests — the
+// `/auth/login/start` handler stored state in Map A, the test then
+// hit `/auth/login/finish` which looked in Map B, and the route
+// returned 401 invalid_credentials. Production has a single module
+// instance so the globalThis registry is a no-op there.
+const pending: Map<string, PendingState> =
+  ((globalThis as { __nodea_opaque_login_state__?: Map<string, PendingState> })
+    .__nodea_opaque_login_state__ ??= new Map<string, PendingState>());
 
 /**
  * Store a fresh `serverLoginState` and return the opaque token the

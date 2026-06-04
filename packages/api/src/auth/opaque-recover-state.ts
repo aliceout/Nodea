@@ -23,7 +23,12 @@ interface PendingEntry {
   expiresAt: number;
 }
 
-const pending = new Map<string, PendingEntry>();
+// Shared via globalThis so Vitest 4's per-file module re-evaluation
+// doesn't fragment the Map between routes and test hooks ; production
+// has a single instance so the registry is a no-op there.
+const pending: Map<string, PendingEntry> =
+  ((globalThis as { __nodea_opaque_recover_state__?: Map<string, PendingEntry> })
+    .__nodea_opaque_recover_state__ ??= new Map<string, PendingEntry>());
 
 export function storeRecoverPending(userId: string | null): string {
   const token = randomBytes(32).toString('base64url');

@@ -23,8 +23,20 @@ interface PendingEntry {
   expiresAt: number;
 }
 
-const changePasswordPending = new Map<string, PendingEntry>();
-const resetPending = new Map<string, PendingEntry>();
+// Vitest 4 re-evaluates this module per test file even with
+// `isolate: false` ; route handlers and test setup hooks would
+// end up with separate Maps, dropping pending tokens between
+// /start and /finish. Stash the Maps on globalThis so every
+// re-evaluation references the same underlying store. Production
+// has a single module instance — the registry is a no-op there.
+const __g = globalThis as {
+  __nodea_opaque_change_password_pending__?: Map<string, PendingEntry>;
+  __nodea_opaque_reset_pending__?: Map<string, PendingEntry>;
+};
+const changePasswordPending: Map<string, PendingEntry> =
+  (__g.__nodea_opaque_change_password_pending__ ??= new Map<string, PendingEntry>());
+const resetPending: Map<string, PendingEntry> =
+  (__g.__nodea_opaque_reset_pending__ ??= new Map<string, PendingEntry>());
 
 function freshToken(): string {
   return randomBytes(32).toString('base64url');

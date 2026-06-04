@@ -35,14 +35,18 @@ export interface RateLimitOptions {
   keyPrefix?: string;
 }
 
-const buckets = new Map<string, Bucket>();
+// Shared via globalThis so Vitest 4's per-file module re-evaluation
+// (every test file that imports the api code re-evaluates this
+// module, even with `isolate: false` + `maxWorkers: 1` +
+// `pool: 'threads'`) doesn't fragment the bucket counter — the
+// route handler used Map A while the test's `__resetRateLimits`
+// cleared Map B, so after ~10 hits the route's Map A returned 429
+// to every subsequent request. Production has a single module
+// instance so the registry is a no-op there.
+const buckets: Map<string, Bucket> =
+  ((globalThis as { __nodea_rate_limit_buckets__?: Map<string, Bucket> })
+    .__nodea_rate_limit_buckets__ ??= new Map<string, Bucket>());
 let lastSweep = Date.now();
-
-// DEBUG : unique id per module instance. Logged from
-// `__resetRateLimits` and the rate-limit handler so we can correlate
-// "reset Map A but route incremented Map B".
-const __DEBUG_MOD_ID = Math.random().toString(36).slice(2, 10);
-console.warn(`[rate-limit DEBUG] module init mod=${__DEBUG_MOD_ID}`);
 
 /** Extract the trusted client IP from a request's headers.
  *
@@ -89,7 +93,6 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
     } else {
       bucket.count += 1;
       if (bucket.count > opts.max) {
-        console.warn(`[rate-limit DEBUG] 429 mod=${__DEBUG_MOD_ID} key=${key} count=${bucket.count}`);
         const retryAfterSec = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
         c.header('Retry-After', String(retryAfterSec));
         return c.json({ error: 'rate_limited' }, 429);
@@ -101,7 +104,6 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
 
 /** Test-only: reset all buckets. */
 export function __resetRateLimits(): void {
-  console.warn(`[rate-limit DEBUG] reset mod=${__DEBUG_MOD_ID} sizeBefore=${buckets.size}`);
   buckets.clear();
   lastSweep = 0;
 }
