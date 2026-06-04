@@ -38,6 +38,12 @@ export interface RateLimitOptions {
 const buckets = new Map<string, Bucket>();
 let lastSweep = Date.now();
 
+// DEBUG : unique id per module instance. Logged from
+// `__resetRateLimits` and the rate-limit handler so we can correlate
+// "reset Map A but route incremented Map B".
+const __DEBUG_MOD_ID = Math.random().toString(36).slice(2, 10);
+console.warn(`[rate-limit DEBUG] module init mod=${__DEBUG_MOD_ID}`);
+
 /** Extract the trusted client IP from a request's headers.
  *
  *  `X-Forwarded-For` is a comma-separated chain : each hop appends
@@ -83,6 +89,7 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
     } else {
       bucket.count += 1;
       if (bucket.count > opts.max) {
+        console.warn(`[rate-limit DEBUG] 429 mod=${__DEBUG_MOD_ID} key=${key} count=${bucket.count}`);
         const retryAfterSec = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
         c.header('Retry-After', String(retryAfterSec));
         return c.json({ error: 'rate_limited' }, 429);
@@ -94,6 +101,7 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
 
 /** Test-only: reset all buckets. */
 export function __resetRateLimits(): void {
+  console.warn(`[rate-limit DEBUG] reset mod=${__DEBUG_MOD_ID} sizeBefore=${buckets.size}`);
   buckets.clear();
   lastSweep = 0;
 }
