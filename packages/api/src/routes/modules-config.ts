@@ -38,7 +38,7 @@ export const modulesConfigRoutes = makeAuthedRouter();
 const ModulesConfigResponseSchema = z.object({
   cipherIv: z.string().nullable(),
   payload: z.string().nullable(),
-  updatedAt: z.string().datetime().optional(),
+  updatedAt: z.iso.datetime().optional(),
 });
 
 const getModulesConfigRoute = createRoute({

@@ -101,12 +101,12 @@ const inviteInfoLimiter = rateLimit({
 const RegisterFinishResponseSchema = z.object({
   ok: z.literal(true),
   activated: z.boolean().optional(),
-  email: z.string().email().optional(),
+  email: z.email().optional(),
 });
 
 const RegisterActivateResponseSchema = z.object({
   ok: z.literal(true),
-  email: z.string().email(),
+  email: z.email(),
 });
 
 const modeRoute = createRoute({

@@ -30,8 +30,8 @@ export type RegisterModeResponse = z.infer<typeof RegisterModeResponseSchema>;
  * page.
  */
 export const InviteInfoResponseSchema = z.object({
-  email: z.string().email(),
-  expiresAt: z.string().datetime().nullable(),
+  email: z.email(),
+  expiresAt: z.iso.datetime().nullable(),
 });
 export type InviteInfoResponse = z.infer<typeof InviteInfoResponseSchema>;
 

@@ -11,9 +11,9 @@ export const AnnouncementCreateBodySchema = z.object({
   body: z.string().min(1).max(10_000),
   active: z.boolean().default(true),
   /** ISO 8601 datetime — announcement goes live. Optional. */
-  startAt: z.string().datetime().nullable().optional(),
+  startAt: z.iso.datetime().nullable().optional(),
   /** ISO 8601 datetime — announcement auto-archives. Optional. */
-  endAt: z.string().datetime().nullable().optional(),
+  endAt: z.iso.datetime().nullable().optional(),
 });
 export type AnnouncementCreateBody = z.infer<typeof AnnouncementCreateBodySchema>;
 
@@ -26,11 +26,11 @@ export const AnnouncementResponseSchema = z.object({
   title: z.string(),
   body: z.string(),
   active: z.boolean(),
-  startAt: z.string().datetime().nullable(),
-  endAt: z.string().datetime().nullable(),
+  startAt: z.iso.datetime().nullable(),
+  endAt: z.iso.datetime().nullable(),
   createdBy: z.string().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 });
 export type AnnouncementResponse = z.infer<typeof AnnouncementResponseSchema>;
 

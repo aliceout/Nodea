@@ -80,7 +80,7 @@ export type RecoveryCodeUpsertBody = z.infer<typeof RecoveryCodeUpsertBodySchema
  * brute-forced into a hash oracle.
  */
 export const RecoverKekVerifyBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   recoveryCodeHash: Sha256Hex,
 });
 export type RecoverKekVerifyBody = z.infer<typeof RecoverKekVerifyBodySchema>;
@@ -108,7 +108,7 @@ export type RecoverKekVerifyResponse = z.infer<
  * the OPAQUE register handshake into its own pair of routes.
  */
 export const RecoverKekStartBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   /** OPAQUE `registrationRequest` produced by `client.startRegistration`
    *  on the new password. */
   registrationRequest: OpaqueBlob,
@@ -122,7 +122,7 @@ export const RecoverKekStartResponseSchema = z.object({
   /** UserId, returned for known users so the client can compute
    *  AAD bindings. For unknown emails this is a fresh random UUID
    *  that won't validate any hash — anti-enum. */
-  userId: z.string().uuid(),
+  userId: z.uuid(),
   /** OPAQUE `registrationResponse` for the new password. */
   registrationResponse: OpaqueBlob,
 });

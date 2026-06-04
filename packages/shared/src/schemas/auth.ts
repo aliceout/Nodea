@@ -34,7 +34,7 @@ export type OpaquePasswordProof = z.infer<typeof OpaquePasswordProofSchema>;
  * (Phase 2B). This schema isn't consumed by any live route.
  */
 export const RegisterBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   password: z.string().min(12).max(200),
   inviteCode: z.string().min(1).max(128),
   encryptionSalt: Base64ish,
@@ -43,7 +43,7 @@ export const RegisterBodySchema = z.object({
 export type RegisterBody = z.infer<typeof RegisterBodySchema>;
 
 export const LoginBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   password: z.string().min(1).max(200),
 });
 export type LoginBody = z.infer<typeof LoginBodySchema>;
@@ -105,7 +105,7 @@ export type ChangePasswordFinishBody = z.infer<typeof ChangePasswordFinishBodySc
  * V1 keeps this minimal — the server just updates the `email` column.
  */
 export const ChangeEmailBodySchema = z.object({
-  newEmail: z.string().email().max(254),
+  newEmail: z.email().max(254),
 });
 export type ChangeEmailBody = z.infer<typeof ChangeEmailBodySchema>;
 
@@ -144,7 +144,7 @@ export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
  * enumeration via response shape / latency.
  */
 export const RequestResetBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
 });
 export type RequestResetBody = z.infer<typeof RequestResetBodySchema>;
 
@@ -188,7 +188,7 @@ export const ResetPasswordStartResponseSchema = z.object({
   resetToken: z.string().min(1).max(2048),
   /** The user's stable id, returned so the client can compute the
    *  AAD bindings for the new wrap blobs. */
-  userId: z.string().uuid(),
+  userId: z.uuid(),
 });
 export type ResetPasswordStartResponse = z.infer<
   typeof ResetPasswordStartResponseSchema
@@ -215,8 +215,8 @@ export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
  * surfacing the code in the admin UI.
  */
 export const CreateInviteBodySchema = z.object({
-  email: z.string().email().max(254),
-  expiresAt: z.string().datetime().optional(),
+  email: z.email().max(254),
+  expiresAt: z.iso.datetime().optional(),
 });
 export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
 
@@ -234,7 +234,7 @@ export type CreateInviteBody = z.infer<typeof CreateInviteBodySchema>;
  */
 export const AuthMeResponseSchema = z.object({
   id: z.string(),
-  email: z.string().email(),
+  email: z.email(),
   username: z.string().nullable(),
   role: z.enum(['user', 'admin']),
   onboardingStatus: z.enum(['pending', 'complete']),

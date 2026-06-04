@@ -26,8 +26,8 @@ const UserListItemSchema = z.object({
   username: z.string().nullable(),
   role: z.string(),
   onboardingStatus: z.string(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 });
 const UserListResponseSchema = z.object({
   data: z.array(UserListItemSchema),

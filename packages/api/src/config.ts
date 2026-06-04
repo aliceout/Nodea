@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * `z.string().url().optional()` is too strict for env vars sourced
+ * `z.url().optional()` is too strict for env vars sourced
  * from secret managers : Infisical (and `.env` files in general)
  * surface an "unset" key as an empty string, not as `undefined`.
  * The plain optional URL schema then fails validation with
@@ -15,14 +15,14 @@ import { z } from 'zod';
 const optionalUrl = () =>
   z.preprocess(
     (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
-    z.string().url().optional(),
+    z.url().optional(),
   );
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
 
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
 
   /** Secret used to sign session cookies. Minimum 32 chars (~128 bits entropy). */
   COOKIE_SECRET: z.string().min(32),

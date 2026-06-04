@@ -31,11 +31,11 @@ export const adminInvitesRoutes = makeAuthedRouter();
 const InviteRowSchema = z.object({
   id: z.string(),
   email: z.string(),
-  expiresAt: z.string().datetime().nullable(),
+  expiresAt: z.iso.datetime().nullable(),
 });
 const InviteListItemSchema = InviteRowSchema.extend({
   createdBy: z.string().nullable(),
-  createdAt: z.string().datetime(),
+  createdAt: z.iso.datetime(),
 });
 const InviteListResponseSchema = z.object({
   data: z.array(InviteListItemSchema),

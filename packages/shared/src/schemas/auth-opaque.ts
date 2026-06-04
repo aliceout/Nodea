@@ -48,7 +48,7 @@ const OpaqueBlob = z.string().min(1).max(8192);
  * ========================================================================== */
 
 export const OpaqueRegisterStartBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   registrationRequest: OpaqueBlob,
   /** Optional invite token — sent at /start so the server can pre-
    *  validate the strict email match before burning a round-trip on
@@ -74,7 +74,7 @@ export type OpaqueRegisterStartBody = z.infer<
  */
 export const OpaqueRegisterStartResponseSchema = z.object({
   registrationResponse: OpaqueBlob,
-  userId: z.string().uuid(),
+  userId: z.uuid(),
 });
 export type OpaqueRegisterStartResponse = z.infer<
   typeof OpaqueRegisterStartResponseSchema
@@ -89,13 +89,13 @@ export type OpaqueRegisterStartResponse = z.infer<
  * lives in 2B's route handler — kept here as the wire contract.
  */
 export const OpaqueRegisterFinishBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   username: UsernameField,
   /** Server-issued at /start — echoed back so the server can use it
    *  as the new `users.id` PK. AAD bindings on the wrapped blobs
    *  reference this same value, so the client must NOT regenerate
    *  it locally. */
-  userId: z.string().uuid(),
+  userId: z.uuid(),
   registrationRecord: OpaqueBlob,
   wrappedMainKey: Base64ish,
   wrappedMainKeyIv: Base64ish,
@@ -112,7 +112,7 @@ export type OpaqueRegisterFinishBody = z.infer<
  * ========================================================================== */
 
 export const OpaqueLoginStartBodySchema = z.object({
-  email: z.string().email().max(254),
+  email: z.email().max(254),
   startLoginRequest: OpaqueBlob,
 });
 export type OpaqueLoginStartBody = z.infer<typeof OpaqueLoginStartBodySchema>;

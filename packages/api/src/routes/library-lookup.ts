@@ -136,7 +136,7 @@ const coverFetchRoute = createRoute({
   middleware: [requireUser, coverLimiter] as const,
   request: {
     query: z.object({
-      url: z.string().url().openapi({ description: 'HTTPS URL on an allowlisted host' }),
+      url: z.url().openapi({ description: 'HTTPS URL on an allowlisted host' }),
     }),
   },
   responses: {

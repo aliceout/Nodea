@@ -174,7 +174,7 @@ export type PasskeyRenameWithProofBody = z.infer<
  * `allowCredentials` to that user's enrolled passkeys.
  */
 export const PasskeyLoginStartBodySchema = z.object({
-  email: z.string().email().max(254).optional(),
+  email: z.email().max(254).optional(),
 });
 export type PasskeyLoginStartBody = z.infer<typeof PasskeyLoginStartBodySchema>;
 

@@ -84,7 +84,7 @@ const manageLimiter = rateLimit({
 
 const TotpVerifyOkSchema = z.object({
   ok: z.literal(true),
-  enabledAt: z.string().datetime(),
+  enabledAt: z.iso.datetime(),
 });
 
 const enrollStartRoute = createRoute({
