@@ -1,4 +1,4 @@
-import { z, type ZodTypeAny } from 'zod';
+import { z } from 'zod';
 
 /**
  * Uniform list-response envelope (audit follow-up API-06).
@@ -41,7 +41,7 @@ export type EmptyListMeta = z.infer<typeof EmptyListMetaSchema>;
  * Per-endpoint Zod schemas remain the canonical source of truth ; this
  * helper is offered for code that doesn't need a tighter `meta` shape.
  */
-export function listResponseSchema<TItem extends ZodTypeAny>(
+export function listResponseSchema<TItem extends z.ZodType>(
   itemSchema: TItem,
 ) {
   return z.object({

@@ -43,7 +43,7 @@ export const ErrorResponseSchema = z
   .openapi('ErrorResponse');
 
 /** Helper : declare a JSON response with the given Zod schema + description. */
-export function jsonContent<T extends z.ZodTypeAny>(schema: T, description: string) {
+export function jsonContent<T extends z.ZodType>(schema: T, description: string) {
   return {
     description,
     content: {

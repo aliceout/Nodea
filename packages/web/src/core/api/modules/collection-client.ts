@@ -11,7 +11,7 @@
  * The generic here does not know the payload shape; that's the point —
  * new modules (Habits, Library, Review) will reuse this verbatim.
  */
-import type { ZodTypeAny, z } from 'zod';
+import type { z } from 'zod';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
 import { encryptAESGCM, decryptAESGCM, type AesBlob } from '@/core/crypto/aes';
 import { deriveGuard } from '@/core/crypto/guard-derivation';
@@ -97,7 +97,7 @@ async function request<T = unknown>(
   return payload as T;
 }
 
-export interface CollectionClient<TSchema extends ZodTypeAny> {
+export interface CollectionClient<TSchema extends z.ZodType> {
   list(moduleUserId: string, key: MainKeyMaterial): Promise<DecryptedRecord<z.infer<TSchema>>[]>;
   create(
     moduleUserId: string,
@@ -124,7 +124,7 @@ function packBlob(blob: AesBlob): { cipherIv: CipherIV; payload: EncryptedBlob }
   return { cipherIv: blob.iv, payload: blob.data };
 }
 
-export function createCollectionClient<TSchema extends ZodTypeAny>(
+export function createCollectionClient<TSchema extends z.ZodType>(
   collectionName: string,
   schema: TSchema,
 ): CollectionClient<TSchema> {
