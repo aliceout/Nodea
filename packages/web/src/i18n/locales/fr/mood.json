@@ -15,7 +15,9 @@
     "hideChart": "Masquer la frise",
     "loading": "Chargement des entrées…",
     "empty": "Aucune entrée pour cette période.",
-    "emptySearch": "Aucune entrée ne correspond à cette recherche."
+    "emptySearch": "Aucune entrée ne correspond à cette recherche.",
+    "clearDayFilterTitle": "Voir toutes les entrées",
+    "clearDayFilterAria": "Effacer le filtre du jour"
   },
   "row": {
     "editAria": "Modifier l’entrée",

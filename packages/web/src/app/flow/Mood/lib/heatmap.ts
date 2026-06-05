@@ -51,6 +51,12 @@ export function buildHeatmap(
 ): {
   cells: Array<HeatmapCell | null>;
   monthLabels: MonthLabel[];
+  /** Parallel to `cells` ; the cell's ISO date for any cell that
+   *  represents a real entry, `null` for out-of-range / empty
+   *  cells. Used by the click handler to resolve a clicked cell
+   *  back to a single-day filter. Same shape Journal's heatmap
+   *  exposes. */
+  cellIsoDays: Array<string | null>;
 } {
   const total = weeks * HEATMAP_DAYS_PER_WEEK;
   const refToday = new Date(today);
@@ -88,18 +94,22 @@ export function buildHeatmap(
   });
 
   const cells: Array<HeatmapCell | null> = [];
+  const cellIsoDays: Array<string | null> = [];
   for (let i = 0; i < total; i++) {
     const cellDate = new Date(oldestMonday);
     cellDate.setDate(oldestMonday.getDate() + i);
     const t = cellDate.getTime();
     if (t < startTime || t > dataEndTime) {
       cells.push(null);
+      cellIsoDays.push(null);
       continue;
     }
-    const score = entriesByDate.get(toIsoDate(cellDate));
+    const iso = toIsoDate(cellDate);
+    const score = entriesByDate.get(iso);
     if (!score) {
       // Day in range but no entry — show as faint gap, not zero.
       cells.push(null);
+      cellIsoDays.push(null);
       continue;
     }
     const fmt = cellDate.getFullYear() === currentYear ? sameYearFmt : crossYearFmt;
@@ -108,6 +118,7 @@ export function buildHeatmap(
       isToday: t === todayTime,
       dateLabel: fmt.format(cellDate),
     });
+    cellIsoDays.push(iso);
   }
 
   // Month labels : every time a week's Monday lands in a
@@ -125,5 +136,5 @@ export function buildHeatmap(
       prevMonth = monday.getMonth();
     }
   }
-  return { cells, monthLabels };
+  return { cells, monthLabels, cellIsoDays };
 }

@@ -140,11 +140,15 @@ export default function Heatmap({
             ? { ...cellStyle, backgroundColor: cell.fill }
             : cellStyle;
         const cellClass = cn(
-          'aspect-square rounded-[2px]',
+          // `relative` + `hover:z-10` so the scaled cell floats
+          // above its neighbours during the hover bump rather than
+          // clipping behind them. The 125 % bump is large enough to
+          // feel tactile on the ~10 px cells without overflowing
+          // adjacent rows.
+          'relative aspect-square rounded-[2px] transition-transform duration-150 hover:z-10 hover:scale-125',
           cell.className,
           cell.isToday && 'ring-2 ring-accent ring-offset-1 ring-offset-bg',
-          onCellClick &&
-            'cursor-pointer transition-opacity hover:opacity-80',
+          onCellClick && 'cursor-pointer',
         );
         return (
           <Fragment key={i}>

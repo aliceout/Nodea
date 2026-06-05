@@ -62,7 +62,7 @@ function toHeatmapCells(
 export default function Chart() {
   const { t } = useI18n();
   const { entries, today } = useMoodData();
-  const { year } = useMoodFilters();
+  const { year, dayFilter, setDayFilter } = useMoodFilters();
   const fullYear = useMemo(
     () => buildHeatmap(year, entries, today),
     [year, entries, today],
@@ -93,6 +93,20 @@ export default function Chart() {
     [compact.cells],
   );
 
+  // Click a cell -> toggle dayFilter on that ISO date. Same pattern
+  // Journal uses : click the same cell again clears the filter.
+  // The isoDays array is parallel to the cells array ; out-of-range
+  // / empty days are `null` and the Heatmap component already
+  // suppresses the button wrapper for null cells, so this only
+  // fires for real entries.
+  function makeOnCellClick(isoDays: ReadonlyArray<string | null>) {
+    return (index: number) => {
+      const iso = isoDays[index];
+      if (!iso) return;
+      setDayFilter(dayFilter === iso ? null : iso);
+    };
+  }
+
   const legend = (
     <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
       {(['-2', '-1', '0', '1', '2'] as MoodScore[]).map((score) => (
@@ -119,6 +133,7 @@ export default function Chart() {
           monthLabels={fullYear.monthLabels}
           dayLabels={dayLabels}
           legend={legend}
+          onCellClick={makeOnCellClick(fullYear.cellIsoDays)}
         />
       </div>
       <div className="md:hidden">
@@ -128,6 +143,7 @@ export default function Chart() {
           monthLabels={compact.monthLabels}
           dayLabels={dayLabels}
           legend={legend}
+          onCellClick={makeOnCellClick(compact.cellIsoDays)}
         />
       </div>
     </>

@@ -1,4 +1,4 @@
-import { ChevronUpIcon } from '@heroicons/react/24/outline';
+import { ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 import { useEffect, useMemo, useRef } from 'react';
 
@@ -27,8 +27,16 @@ import EntryRow from './EntryRow';
 export default function PrimaryColumn() {
   const { t, language } = useI18n();
   const { entries, load } = useMoodData();
-  const { year, month, chartCollapsed, searchQuery, filtered, toggleChart } =
-    useMoodFilters();
+  const {
+    year,
+    month,
+    chartCollapsed,
+    searchQuery,
+    dayFilter,
+    filtered,
+    toggleChart,
+    setDayFilter,
+  } = useMoodFilters();
   const monthNamesLong = useMemo(
     () => getMonthNames(language, 'long'),
     [language],
@@ -44,6 +52,22 @@ export default function PrimaryColumn() {
   const chartToggleLabel = chartCollapsed
     ? t('mood.primary.showChart')
     : t('mood.primary.hideChart');
+
+  // « Lun. 4 juin 2026 » format for the dismissible day-filter chip.
+  // Parses the ISO bits directly to a local-zone date so the label
+  // never drifts by a day depending on the user's tz (constructing
+  // `new Date('2026-06-04')` treats it as UTC midnight).
+  const dayFilterLabel = useMemo(() => {
+    if (!dayFilter) return '';
+    const [yyyy, mm, dd] = dayFilter.split('-').map(Number);
+    const d = new Date(yyyy ?? 0, (mm ?? 1) - 1, dd ?? 1);
+    return new Intl.DateTimeFormat(language, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(d);
+  }, [dayFilter, language]);
 
   // Auto-collapse the frise when the user scrolls DOWN past a small
   // threshold — the heatmap is the heaviest visual element in the
@@ -109,10 +133,29 @@ export default function PrimaryColumn() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
-            {t('mood.primary.entriesHeading')} · {yearLabel}
-            {showMonth ? ` · ${monthNamesLong[month]}` : ''}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
+              {t('mood.primary.entriesHeading')} · {yearLabel}
+              {showMonth ? ` · ${monthNamesLong[month]}` : ''}
+            </h2>
+            {/* Active day-filter chip — surfaces the date the user
+                picked on the heatmap and offers an explicit clear
+                via the cross. Without this, the only way to undo
+                the filter is to re-click the same cell (not
+                discoverable). */}
+            {dayFilter ? (
+              <button
+                type="button"
+                onClick={() => setDayFilter(null)}
+                title={t('mood.primary.clearDayFilterTitle')}
+                aria-label={t('mood.primary.clearDayFilterAria')}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-hair bg-bg-2 px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <span>{dayFilterLabel}</span>
+                <XMarkIcon className="h-3 w-3" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
           <div className="flex items-center gap-2">
             {year !== null ? <MonthSelector /> : null}
             {/* Frise toggle — folds / unfolds the heatmap above. The

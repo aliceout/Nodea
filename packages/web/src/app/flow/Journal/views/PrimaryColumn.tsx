@@ -1,4 +1,5 @@
-import { ChevronUpIcon } from '@heroicons/react/24/outline';
+import { ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useMemo } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
@@ -26,10 +27,17 @@ import OnThisDayPanel from './OnThisDayPanel';
  * Reads everything from the data + filters contexts ; no props.
  */
 export default function PrimaryColumn() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { entries, load } = useJournalData();
-  const { groupBy, groups, year, chartCollapsed, toggleChart } =
-    useJournalFilters();
+  const {
+    groupBy,
+    groups,
+    year,
+    chartCollapsed,
+    dayFilter,
+    toggleChart,
+    setDayFilter,
+  } = useJournalFilters();
   const groupVariant = groupBy === 'month' ? 'eyebrow' : 'subtitle';
 
   const yearLabel =
@@ -37,6 +45,21 @@ export default function PrimaryColumn() {
   const chartToggleLabel = chartCollapsed
     ? t('journal.primary.showChart')
     : t('journal.primary.hideChart');
+
+  // « Lun. 4 juin 2026 » format for the dismissible day-filter chip.
+  // See Mood's PrimaryColumn for the rationale on the local-zone
+  // date parsing — same shape so the two modules read alike.
+  const dayFilterLabel = useMemo(() => {
+    if (!dayFilter) return '';
+    const [yyyy, mm, dd] = dayFilter.split('-').map(Number);
+    const d = new Date(yyyy ?? 0, (mm ?? 1) - 1, dd ?? 1);
+    return new Intl.DateTimeFormat(language, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(d);
+  }, [dayFilter, language]);
 
   return (
     <section className="flex min-w-0 flex-col">
@@ -67,9 +90,26 @@ export default function PrimaryColumn() {
         ) : null}
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
-            {t('journal.primary.entriesHeading')} · {yearLabel}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
+              {t('journal.primary.entriesHeading')} · {yearLabel}
+            </h2>
+            {/* Active day-filter chip — explicit clear affordance
+                for the heatmap-driven date narrowing. Same shape as
+                Mood's so the two modules read alike. */}
+            {dayFilter ? (
+              <button
+                type="button"
+                onClick={() => setDayFilter(null)}
+                title={t('journal.primary.clearDayFilterTitle')}
+                aria-label={t('journal.primary.clearDayFilterAria')}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-hair bg-bg-2 px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <span>{dayFilterLabel}</span>
+                <XMarkIcon className="h-3 w-3" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={toggleChart}

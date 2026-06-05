@@ -52,7 +52,9 @@
     "yearRolling": "En cours",
     "yearAria": "Année d’écriture",
     "showChart": "Voir la carte d’écriture",
-    "hideChart": "Masquer la carte d’écriture"
+    "hideChart": "Masquer la carte d’écriture",
+    "clearDayFilterTitle": "Voir toutes les entrées",
+    "clearDayFilterAria": "Effacer le filtre du jour"
   },
   "reader": {
     "noThreadEyebrow": "— sans fil —",

@@ -15,7 +15,9 @@
     "hideChart": "Hide heatmap",
     "loading": "Loading entries…",
     "empty": "No entry for this period.",
-    "emptySearch": "No entry matches this search."
+    "emptySearch": "No entry matches this search.",
+    "clearDayFilterTitle": "Show every entry",
+    "clearDayFilterAria": "Clear day filter"
   },
   "row": {
     "editAria": "Edit entry",

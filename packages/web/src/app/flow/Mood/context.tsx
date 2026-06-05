@@ -65,17 +65,22 @@ interface MoodFiltersValue {
    *  segment again clears it. Combines with year / month / search
    *  via AND. */
   scoreFilter: MoodScore | null;
+  /** Heatmap-driven single-day filter. `null` = no day narrowing.
+   *  Clicking a coloured cell of the frise sets this ; clicking the
+   *  same cell again clears it. Mirrors Journal's same affordance. */
+  dayFilter: string | null;
 
   /** Entries inside the selected year × month window AND matching
-   *  the current `searchQuery` AND the active `scoreFilter`.
-   *  Mirrors the heatmap's `dataEnd` (not `end`), so the list and
-   *  the frise agree. */
+   *  the current `searchQuery` AND the active `scoreFilter`ANDthe
+   *  active `dayFilter`. Mirrors the heatmap's `dataEnd` (not
+   *  `end`), so the list and the frise agree. */
   filtered: ReadonlyArray<MoodEntry>;
 
   setYear: (next: number | null) => void;
   setMonth: (next: number | null) => void;
   setSearchQuery: (next: string) => void;
   setScoreFilter: (next: MoodScore | null) => void;
+  setDayFilter: (next: string | null) => void;
   toggleChart: () => void;
 }
 
@@ -120,6 +125,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const [chartCollapsed, setChartCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scoreFilter, setScoreFilter] = useState<MoodScore | null>(null);
+  const [dayFilter, setDayFilter] = useState<string | null>(null);
 
   // Reference today, captured once at mount. The heatmap and the
   // entries-list filter both read it ; pinning it here avoids
@@ -199,6 +205,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       if (t < startTime || t > dataEndTime) return false;
       if (month !== null && d.getMonth() !== month) return false;
       if (scoreFilter !== null && entry.score !== scoreFilter) return false;
+      if (dayFilter !== null && entry.dateIso !== dayFilter) return false;
       // Cheap short-circuit when no search is active — avoids
       // running the normalisation pipeline on every entry.
       if (trimmedQuery.length === 0) return true;
@@ -216,7 +223,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         trimmedQuery,
       );
     });
-  }, [entries, year, month, today, searchQuery, scoreFilter]);
+  }, [entries, year, month, today, searchQuery, scoreFilter, dayFilter]);
 
   // ---- Filter setters ----
 
@@ -309,11 +316,13 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       chartCollapsed,
       searchQuery,
       scoreFilter,
+      dayFilter,
       filtered,
       setYear,
       setMonth,
       setSearchQuery,
       setScoreFilter,
+      setDayFilter,
       toggleChart,
     }),
     [
@@ -322,6 +331,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       chartCollapsed,
       searchQuery,
       scoreFilter,
+      dayFilter,
       filtered,
       setYear,
       toggleChart,

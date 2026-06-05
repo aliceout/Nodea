@@ -52,7 +52,9 @@
     "yearRolling": "Current",
     "yearAria": "Writing year",
     "showChart": "Show writing map",
-    "hideChart": "Hide writing map"
+    "hideChart": "Hide writing map",
+    "clearDayFilterTitle": "Show every entry",
+    "clearDayFilterAria": "Clear day filter"
   },
   "reader": {
     "noThreadEyebrow": "— no thread —",
