@@ -17,6 +17,17 @@
       "dark": "Dark"
     }
   },
+  "backgroundShade": {
+    "title": "Background shade",
+    "ariaLabel": "Choose background shade",
+    "options": {
+      "cream": "Cream",
+      "alabaster": "Alabaster",
+      "ivory": "Ivory",
+      "pearl": "Pearl",
+      "pebble": "Pebble"
+    }
+  },
   "modules": {
     "loading": "Loading modules...",
     "none": "No module is currently configurable.",

@@ -72,6 +72,54 @@
   --color-k-danger: #dc2626;
 }
 
+/*
+ * User-selectable background shades (light mode only).
+ *
+ * Overrides `--color-k-bg` and `--color-k-bg2` via a `data-bg-shade`
+ * attribute set on `<html>` by `backgroundManager.ts`. Each shade
+ * preserves the same ~5% darker step between `bg` and `bg2` so the
+ * sidebar / card affordance keeps reading at a glance, regardless
+ * of the chosen surface. All five are picked to harmonise with the
+ * sage `--color-k-accent #5a7a5e` — warm neutrals or very pale tints
+ * of the accent, no cool blues or pure whites that would jar with
+ * the desaturated-green identity.
+ *
+ * `cream` is the default and matches the `:root` block above, so
+ * `data-bg-shade="cream"` is a no-op. Omitting the attribute also
+ * falls through to `:root` — defensive in case the preferences
+ * blob hasn't loaded yet.
+ *
+ * Dark mode intentionally keeps its single « papier la nuit »
+ * surface — the warm-paper identity is the only acceptable dark
+ * background, and giving users five dark variants would dilute
+ * that. Bump this scope only if a real need surfaces.
+ */
+:root[data-bg-shade='alabaster'] {
+  --color-k-bg: #fbfbf6;
+  --color-k-bg2: #f6f6f1;
+}
+:root[data-bg-shade='ivory'] {
+  --color-k-bg: #f6f5f1;
+  --color-k-bg2: #edece8;
+}
+:root[data-bg-shade='pearl'] {
+  --color-k-bg: #f1efe8;
+  --color-k-bg2: #e8e6df;
+}
+:root[data-bg-shade='pebble'] {
+  --color-k-bg: #e7e4dd;
+  --color-k-bg2: #ddd9d0;
+}
+
+/* Dark mode wins over `data-bg-shade` — re-declared inside `.dark`
+ * via a higher-specificity rule below so any `data-bg-shade` value
+ * set while in dark mode stays inert until the user flips back to
+ * light. See note above on the dark-mode policy. */
+.dark[data-bg-shade] {
+  --color-k-bg: #272620;
+  --color-k-bg2: #312f29;
+}
+
 .dark {
   /* Papier la nuit, jamais bleuté.
      Lifted ~+5 in luminance from the original (`#1d1c18 / #262520

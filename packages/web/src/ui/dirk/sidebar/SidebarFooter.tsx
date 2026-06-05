@@ -1,3 +1,4 @@
+import { useBackgroundShade } from '@/core/theme/useBackgroundShade';
 import LanguageToggle from '@/ui/dirk/preferences/LanguageToggle';
 import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
 
@@ -8,8 +9,15 @@ import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
  * The sync line is a placeholder for the real status — once the
  * encrypted-collection sync gets a proper offline / pending /
  * conflict state machine, this is where its summary lands.
+ *
+ * Side-effect : also mounts `useBackgroundShade` so the user's
+ * chosen surface tint is applied to `<html>` as soon as the sidebar
+ * renders post-auth. The picker itself lives in the settings tab —
+ * here we just want the apply lifecycle to fire on every page, the
+ * same way `ThemeToggle`'s `useTheme()` call applies the theme.
  */
 export default function SidebarFooter() {
+  useBackgroundShade();
   return (
     <div className="mt-3 flex flex-col gap-2 border-t border-hair px-1.5 pt-2.5">
       {/* Top row: sync indicator alone, full-width. Status reads

@@ -24,8 +24,25 @@ export type ThemePreference = z.infer<typeof ThemePreferenceSchema>;
 export const LanguagePreferenceSchema = z.enum(['fr', 'en']);
 export type LanguagePreference = z.infer<typeof LanguagePreferenceSchema>;
 
+/**
+ * Light-mode background shade. Only takes effect when the resolved
+ * theme is `light` — dark mode keeps its single warm-paper-at-night
+ * surface. Each shade overrides `--color-k-bg` and `--color-k-bg2`
+ * via a `data-bg-shade` attribute on `<html>`. See `dirk.css` for
+ * the actual colour values.
+ */
+export const BackgroundShadeSchema = z.enum([
+  'cream',
+  'alabaster',
+  'ivory',
+  'pearl',
+  'pebble',
+]);
+export type BackgroundShade = z.infer<typeof BackgroundShadeSchema>;
+
 export const UserPreferencesPayloadSchema = z.looseObject({
   theme: ThemePreferenceSchema.optional(),
   language: LanguagePreferenceSchema.optional(),
+  backgroundShade: BackgroundShadeSchema.optional(),
 });
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;

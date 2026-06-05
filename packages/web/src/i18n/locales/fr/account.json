@@ -121,6 +121,7 @@
   },
   "preferences": {
     "themeDescription": "Clair, sombre, ou suit ton système.",
+    "backgroundShadeDescription": "Cinq nuances chaudes assorties au sauge de Nodea. Le mode sombre garde son fond unique.",
     "languageDescription": "Interface en français ou en anglais.",
     "languageAriaLabel": "Langue"
   },

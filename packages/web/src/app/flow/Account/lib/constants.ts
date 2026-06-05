@@ -1,3 +1,4 @@
+import type { BackgroundShade } from '@/core/theme/useBackgroundShade';
 import type { ThemePreference } from '@/core/theme/useTheme';
 
 import type { Tab } from './types';
@@ -22,4 +23,17 @@ export const THEME_OPTIONS: ReadonlyArray<ThemePreference> = [
   'light',
   'system',
   'dark',
+];
+
+/** Light-mode background shades surfaced by the Preferences tab.
+ *  Cream sits first as the default ; the rest walk from warmest
+ *  (ivory) to coolest (mist) so the eye can compare adjacent
+ *  options without surprise. The actual colour values live in
+ *  `dirk.css` keyed by `data-bg-shade`. */
+export const BACKGROUND_SHADE_OPTIONS: ReadonlyArray<BackgroundShade> = [
+  'cream',
+  'alabaster',
+  'ivory',
+  'pearl',
+  'pebble',
 ];

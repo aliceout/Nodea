@@ -17,6 +17,17 @@
       "dark": "Sombre"
     }
   },
+  "backgroundShade": {
+    "title": "Nuance de fond",
+    "ariaLabel": "Choisir la nuance de fond",
+    "options": {
+      "cream": "Crème",
+      "alabaster": "Albâtre",
+      "ivory": "Ivoire",
+      "pearl": "Perle",
+      "pebble": "Galet"
+    }
+  },
   "modules": {
     "loading": "Chargement des modules...",
     "none": "Aucun module n’est actuellement configurable.",
