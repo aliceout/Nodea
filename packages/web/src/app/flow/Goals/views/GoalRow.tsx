@@ -5,7 +5,6 @@ import { formatPartialDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/module/HoverActions';
-import { cn } from '@/lib/utils';
 
 import { useGoalsActions } from '../context';
 import type { GoalEntry } from '../lib/types';
@@ -16,10 +15,11 @@ interface GoalRowProps {
 }
 
 /**
- * One row of the Goals list — title + date + note, the inline
- * status pill on the right (clickable to cycle), and hover-revealed
- * edit / delete affordances. Reads the actions from the Goals
- * context ; only the entry itself comes in as a prop.
+ * One row of the Goals list — the inline status pill on the LEFT
+ * (clickable to cycle) with the hover-revealed edit / delete
+ * affordances stacked under it, then title + date + note filling
+ * the rest of the row. Reads the actions from the Goals context ;
+ * only the entry itself comes in as a prop.
  *
  * Quick-rename (issue #65) — double-click on the title swaps the
  * static `<p>` for an `<input>` and routes the change through
@@ -76,48 +76,14 @@ export default function GoalRow({ entry }: GoalRowProps) {
   }
 
   return (
-    <li className="group flex items-start gap-3 border-b border-hair py-3 last:border-b-0">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-3">
-          {editingTitle ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              onKeyDown={onTitleKeyDown}
-              onBlur={commitInlineEdit}
-              aria-label={t('goals.row.titleEditAria')}
-              className="min-w-0 flex-1 border-b border-accent bg-transparent text-[14px] font-medium text-ink outline-none focus:border-accent"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => openReader(entry.id)}
-              onDoubleClick={startInlineEdit}
-              title={t('goals.row.titleClickHint')}
-              className={cn(
-                'cursor-pointer rounded-sm bg-transparent p-0 text-left text-[14px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
-                entry.status === 'done'
-                  ? 'text-muted line-through hover:text-ink-soft'
-                  : 'text-ink hover:text-accent',
-              )}
-            >
-              {entry.title}
-            </button>
-          )}
-          {entry.date ? (
-            <span className="text-[11px] tabular-nums text-muted">
-              {formatPartialDate(entry.date, language)}
-            </span>
-          ) : null}
-        </div>
-        {entry.note ? (
-          <p className="mt-1 text-[13px] leading-[1.5] text-ink-soft">{entry.note}</p>
-        ) : null}
-      </div>
-
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
+    <li className="group flex items-start gap-5 border-b border-hair py-3 last:border-b-0">
+      {/* Status pill + hover actions live on the LEFT of the row :
+          the pill is read first (sage check = win) and the title
+          follows as the achievement text. Aligning to `items-start`
+          keeps the pill flush with the title's baseline rather
+          than centred against the (variably tall) title + note
+          block. */}
+      <div className="flex shrink-0 flex-col items-start gap-1.5">
         <StatusPill entry={entry} />
         <HoverActions>
           <Button
@@ -141,6 +107,47 @@ export default function GoalRow({ entry }: GoalRowProps) {
             <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </HoverActions>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          {editingTitle ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              onKeyDown={onTitleKeyDown}
+              onBlur={commitInlineEdit}
+              aria-label={t('goals.row.titleEditAria')}
+              className="min-w-0 flex-1 border-b border-accent bg-transparent text-[14px] font-medium text-ink outline-none focus:border-accent"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => openReader(entry.id)}
+              onDoubleClick={startInlineEdit}
+              title={t('goals.row.titleClickHint')}
+              // No strike-through / muting on `done` — Goals is a
+              // log of the year's wins, not a task tracker, so a
+              // completed goal should read at full weight just like
+              // an open or in-progress one. The StatusPill (sage
+              // filled with a white check) on the left carries the
+              // « achievement » signal.
+              className="cursor-pointer rounded-sm bg-transparent p-0 text-left text-[14px] font-medium text-ink transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              {entry.title}
+            </button>
+          )}
+          {entry.date ? (
+            <span className="text-[11px] tabular-nums text-muted">
+              {formatPartialDate(entry.date, language)}
+            </span>
+          ) : null}
+        </div>
+        {entry.note ? (
+          <p className="mt-1 text-[13px] leading-[1.5] text-ink-soft">{entry.note}</p>
+        ) : null}
       </div>
     </li>
   );

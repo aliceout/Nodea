@@ -44,18 +44,21 @@ export default function SideColumn() {
  */
 export function FiltersContent() {
   const { t } = useI18n();
-  const { stats } = useGoalsData();
+  const { entries, stats } = useGoalsData();
   const {
     search,
     statusFilter,
     groupBy,
     sortBy,
     hideDone,
+    threadFilter,
+    threads,
     setSearch,
     setStatusFilter,
     setGroupBy,
     setSortBy,
     setHideDone,
+    setThreadFilter,
   } = useGoalsFilters();
   const { openCarryOver } = useGoalsActions();
 
@@ -108,6 +111,34 @@ export function FiltersContent() {
           />
         </div>
       </section>
+
+      {groupBy === 'thread' ? (
+        <section>
+          <SectionLabel>{t('goals.side.threads')}</SectionLabel>
+          {threads.length === 0 ? (
+            <p className="text-[12px] italic text-muted">
+              {t('goals.side.threadsEmpty')}
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              <FilterChip
+                active={threadFilter === null}
+                onClick={() => setThreadFilter(null)}
+                label={t('goals.side.threadsAll')}
+                count={entries.length}
+              />
+              {threads.map((thread) => (
+                <FilterChip
+                  key={thread}
+                  active={threadFilter === thread}
+                  onClick={() => setThreadFilter(thread)}
+                  label={thread}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section>
         <SectionLabel>{t('goals.side.sortBy')}</SectionLabel>

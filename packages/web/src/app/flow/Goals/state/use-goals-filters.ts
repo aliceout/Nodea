@@ -22,15 +22,24 @@ export interface GoalsFiltersState {
   search: string;
   sortBy: SortBy;
   hideDone: boolean;
+  /** Active thread filter ; `null` means all threads. Mirrors the
+   *  Journal SideColumn UX — the chip list is rendered next to the
+   *  groupBy toggle when `groupBy === 'thread'`. Composes with
+   *  search / status / hide-done via AND. */
+  threadFilter: string | null;
 
   filtered: ReadonlyArray<GoalEntry>;
   groups: ReadonlyArray<readonly [string, GoalEntry[]]>;
+  /** Deduped sorted list of every thread that appears on at least
+   *  one goal. Drives the SideColumn chip list. */
+  threads: ReadonlyArray<string>;
 
   setStatusFilter: (next: CanonicalStatus | null) => void;
   setGroupBy: (next: GoalsGroupBy) => void;
   setSearch: (next: string) => void;
   setSortBy: (next: SortBy) => void;
   setHideDone: (next: boolean) => void;
+  setThreadFilter: (next: string | null) => void;
 }
 
 export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
@@ -41,6 +50,18 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [hideDone, setHideDone] = useState(false);
+  const [threadFilter, setThreadFilter] = useState<string | null>(null);
+
+  // Deduped sorted thread inventory — same shape Journal exposes
+  // for its sidebar chips. FR collation so accented threads sort
+  // naturally next to their ASCII neighbours.
+  const threads = useMemo<ReadonlyArray<string>>(() => {
+    const set = new Set<string>();
+    for (const e of entries) {
+      for (const tag of splitThreads(e.thread)) set.add(tag);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [entries]);
 
   const filtered = useMemo<ReadonlyArray<GoalEntry>>(() => {
     const needle = search.trim().toLocaleLowerCase('fr');
@@ -52,6 +73,9 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
         return false;
       }
       if (statusFilter && e.status !== statusFilter) return false;
+      if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
+        return false;
+      }
       if (needle.length > 0) {
         const haystack =
           `${e.title}\n${e.note}\n${e.thread}`.toLocaleLowerCase('fr');
@@ -72,7 +96,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
       return byDateDesc(a, b);
     });
     return out;
-  }, [entries, statusFilter, search, sortBy, hideDone]);
+  }, [entries, statusFilter, threadFilter, search, sortBy, hideDone]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, GoalEntry[]]>>(() => {
     const map = new Map<string, GoalEntry[]>();
@@ -101,12 +125,15 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     search,
     sortBy,
     hideDone,
+    threadFilter,
     filtered,
     groups,
+    threads,
     setStatusFilter,
     setGroupBy,
     setSearch,
     setSortBy,
     setHideDone,
+    setThreadFilter,
   };
 }

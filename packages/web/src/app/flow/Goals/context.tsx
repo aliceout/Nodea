@@ -54,15 +54,18 @@ interface GoalsFiltersValue {
   search: string;
   sortBy: SortBy;
   hideDone: boolean;
+  threadFilter: string | null;
 
   filtered: ReadonlyArray<GoalEntry>;
   groups: ReadonlyArray<readonly [string, GoalEntry[]]>;
+  threads: ReadonlyArray<string>;
 
   setStatusFilter: (next: CanonicalStatus | null) => void;
   setGroupBy: (next: GoalsGroupBy) => void;
   setSearch: (next: string) => void;
   setSortBy: (next: SortBy) => void;
   setHideDone: (next: boolean) => void;
+  setThreadFilter: (next: string | null) => void;
 }
 
 interface GoalsActionsValue {
@@ -127,13 +130,16 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       search: filters.search,
       sortBy: filters.sortBy,
       hideDone: filters.hideDone,
+      threadFilter: filters.threadFilter,
       filtered: filters.filtered,
       groups: filters.groups,
+      threads: filters.threads,
       setStatusFilter: filters.setStatusFilter,
       setGroupBy: filters.setGroupBy,
       setSearch: filters.setSearch,
       setSortBy: filters.setSortBy,
       setHideDone: filters.setHideDone,
+      setThreadFilter: filters.setThreadFilter,
     }),
     [filters],
   );
