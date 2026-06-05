@@ -5,6 +5,31 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.2.0 — 2026-06-05
+
+### Nouveautés
+
+- **mood,journal,heatmap** : filter on cell click + hover scale + dismissible day chip _(f269b61)_
+- **goals** : celebrate wins — pill+icons left, no strike-through, thread chips à la Journal _(cbe4924)_
+- **settings,theme** : pick a background shade among five sage-friendly tones _(3bf2f52)_
+- **mood,donut** : click a segment to filter entries by that score _(3985540)_
+- **mood,frise** : auto-collapse on scroll-down with a smooth grid-rows transition _(4bbcdea)_
+
+### Refactor
+
+- **sidebar,prefs** : turn language + theme toggles into text cyclers under the sync line _(8d85beb)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.1.0 _(41ab362)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.2.0 _(6ed6a3b)_
+
+</details>
+
 ## v2.1.0 — 2026-06-04
 
 ### Nouveautés
