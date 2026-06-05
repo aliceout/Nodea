@@ -1,3 +1,5 @@
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+
 import { useBackgroundShade } from '@/core/theme/useBackgroundShade';
 import LanguageToggle from '@/ui/dirk/preferences/LanguageToggle';
 import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
@@ -19,26 +21,45 @@ import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
 export default function SidebarFooter() {
   useBackgroundShade();
   return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-hair px-1.5 pt-2.5">
-      {/* Top row: sync indicator alone, full-width. Status reads
-          first when the eye sweeps the footer top-to-bottom. */}
-      <div className="flex items-center gap-2 text-[12px] text-muted">
-        <span
-          aria-hidden="true"
-          className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
-        />
-        Synchronisé · à l’instant
+    <div className="-mb-2.5 mt-3 flex flex-col gap-[5px] border-t border-hair px-1.5 pt-2.5 text-[12px] text-muted">
+      {/* Sync status — first line, with the live dot anchored at the
+          start so the eye lands on « state » first. The dot is
+          centred in a fixed-width slot so its visual axis lines up
+          column-perfect with the cog icon on the prefs line below
+          (the cog is ~50 % wider than the dot, so without the slot
+          the two indicators would drift apart horizontally). */}
+      <div className="flex items-center gap-2">
+        <span className="flex w-3 justify-center">
+          <span
+            aria-hidden="true"
+            className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
+          />
+        </span>
+        <span>Synchronisé · à l’instant</span>
       </div>
-      {/* Bottom row: language and theme pickers side by side. The
-          theme picker gets a slightly larger share (4:5 ratio,
-          ~44/56) since its labels are wider (« Système » vs short
-          autonyms like « FR ») — without that, the active theme
-          label hits the truncate ellipsis at the default 50/50
-          split. The flex bases keep both selects stable regardless
-          of the active option (no more resize-on-pick). */}
-      <div className="flex items-center gap-1.5">
-        <LanguageToggle className="flex-4" />
-        <ThemeToggle className="flex-5" />
+      {/* Preferences — second line, indented under the sync text so
+          the two lines read as a stacked status panel à la macOS
+          menu bar. Each label is a button : click cycles to the
+          next value ; hover underlines + surfaces « current →
+          next » as a tooltip. No icons, no chips — the footer
+          stays purely typographic.
+          5 px gap above this line so the prefs row reads as a
+          tight follow-up to the sync line, while the footer's
+          -mb-2.5 still cancels half of the nav wrapper's py-5
+          below — the prefs row hugs the sync line and the bottom
+          edge of the sidebar is the breathing space. */}
+      <div className="flex items-center gap-2">
+        <span className="flex w-3 justify-center">
+          <Cog6ToothIcon
+            aria-hidden="true"
+            className="h-[11px] w-[11px] shrink-0 text-muted"
+          />
+        </span>
+        <span>
+          <LanguageToggle />
+          <span aria-hidden="true" className="px-2">·</span>
+          <ThemeToggle />
+        </span>
       </div>
     </div>
   );

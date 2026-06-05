@@ -1,21 +1,22 @@
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 /**
- * Compact language picker for the sidebar footer — sits to the left
- * of the `<ThemeToggle>` and reads as a peer widget.
+ * Plain-text language cycler for the sidebar footer. Renders the
+ * active language's autonym (« Français », « English »…) as an
+ * inline button ; clicking advances to the next entry in
+ * `availableLanguages`, wrapping after the last.
  *
- * Why a custom chevron rather than `DirkSelect`'s native rendering:
- * the OS-default arrow on dark macOS is a thin grey "v" that's
- * easy to miss, and the user explicitly called it out as not
- * looking like a select. We strip the platform chrome with
- * `appearance-none` and overlay a Heroicon `ChevronDownIcon` so
- * it reads as a dropdown on every platform / theme combo.
+ * The text-link affordance pairs with `<ThemeToggle>` so the two
+ * sit in the footer as a status line à la macOS menu bar :
+ * « Synchronisé · à l'instant » on the first line,
+ * « Français · Clair » on the second. No icon chrome, no chip — the
+ * footer stays purely typographic, in line with Nodea's paper
+ * aesthetic. The « what happens if I click ? » signal is carried by
+ * an underline on hover + a `current → next` tooltip.
  *
  * Driven entirely by `useI18n()` — `availableLanguages` is the
- * source of truth, so a new locale dropped into the I18n provider
- * shows up here automatically.
+ * source of truth so adding a locale just lengthens the cycle.
  */
 export interface LanguageToggleProps {
   className?: string;
@@ -23,35 +24,25 @@ export interface LanguageToggleProps {
 
 export default function LanguageToggle({ className }: LanguageToggleProps) {
   const { language, setLanguage, availableLanguages, t } = useI18n();
+  const currentIdx = availableLanguages.findIndex((l) => l.id === language);
+  const current = availableLanguages[currentIdx] ?? availableLanguages[0];
+  if (!current) return null;
+  const nextLang =
+    availableLanguages[(currentIdx + 1) % availableLanguages.length] ?? current;
   return (
-    <div className={cn('relative inline-flex', className)}>
-      <select
-        aria-label={t('settings.language.ariaLabel', {
-          defaultValue: 'Préférence de langue',
-        })}
-        value={language}
-        onChange={(e) => setLanguage(e.target.value)}
-        className={cn(
-          // `appearance-none` strips the OS chrome so the chevron
-          // we paint over the right edge is the only one. `pr-7`
-          // reserves room for the icon. `bg-bg` on dark mode keeps
-          // the field colour consistent with the rest of the app
-          // chrome — Webkit otherwise paints selects with a system
-          // background that breaks K · Sauge's dark surface.
-          'h-7 w-full cursor-pointer appearance-none rounded-md border border-hair bg-bg pl-2.5 pr-7 text-[12px] text-ink',
-          'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none',
-        )}
-      >
-        {availableLanguages.map((lang) => (
-          <option key={lang.id} value={lang.id}>
-            {lang.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDownIcon
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 right-1.5 h-3.5 w-3.5 -translate-y-1/2 text-muted"
-      />
-    </div>
+    <button
+      type="button"
+      onClick={() => setLanguage(nextLang.id)}
+      aria-label={t('settings.language.ariaLabel', {
+        defaultValue: 'Préférence de langue',
+      })}
+      title={`${current.label} → ${nextLang.label}`}
+      className={cn(
+        'cursor-pointer underline-offset-2 transition-colors hover:text-ink hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+        className,
+      )}
+    >
+      {current.label}
+    </button>
   );
 }
