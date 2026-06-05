@@ -1,6 +1,6 @@
 import { ChevronUpIcon } from '@heroicons/react/24/outline';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { getMonthNames } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -45,6 +45,31 @@ export default function PrimaryColumn() {
     ? t('mood.primary.showChart')
     : t('mood.primary.hideChart');
 
+  // Auto-collapse the frise when the user scrolls DOWN past a small
+  // threshold — the heatmap is the heaviest visual element in the
+  // sticky header, so folding it as the entries-list comes into view
+  // reclaims the vertical real-estate the user is actually looking
+  // at. No auto-restore on scroll-up : reopening stays user-driven
+  // via the toggle, otherwise scrolling near the top would feel
+  // jumpy. The effect short-circuits when already collapsed so the
+  // listener is detached as soon as there's nothing left to do, and
+  // re-attaches when the user clicks the toggle to reopen.
+  const lastScrollYRef = useRef(0);
+  useEffect(() => {
+    if (chartCollapsed) return undefined;
+    lastScrollYRef.current = window.scrollY;
+    function handleScroll() {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+      lastScrollYRef.current = currentY;
+      if (delta > 0 && currentY > 80) {
+        toggleChart();
+      }
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [chartCollapsed, toggleChart]);
+
   return (
     <section className="flex min-w-0 flex-col">
       {/* Sticky upper region — H1 + year picker + frise (with its
@@ -65,11 +90,23 @@ export default function PrimaryColumn() {
           <YearSelector />
         </div>
 
-        {!chartCollapsed ? (
-          <div className="mt-6">
+        {/* Animatable collapse — the chart stays mounted and rides a
+            CSS grid-rows transition (`1fr` ↔ `0fr`) so the heatmap
+            unfurls / folds smoothly without us knowing its natural
+            height ahead of time. The inner `overflow-hidden` clips
+            the content as the row shrinks ; the `pt-6` lives inside
+            the collapsing region so the top-margin gap closes with
+            the chart rather than snapping. */}
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+            chartCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
+          )}
+        >
+          <div className="overflow-hidden pt-6">
             <Chart />
           </div>
-        ) : null}
+        </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
