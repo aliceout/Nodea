@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { MoodScore } from '@nodea/shared';
+
 import { moodClient } from '@/core/api/modules/mood';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
@@ -58,15 +60,22 @@ interface MoodFiltersValue {
    *  `question`, `answer` (cf. issue #92). Combines with year/month
    *  via AND ; an empty string disables the filter. */
   searchQuery: string;
+  /** Donut-driven score filter. `null` = show all scores. Clicking a
+   *  segment of the SideColumn donut sets this ; clicking the same
+   *  segment again clears it. Combines with year / month / search
+   *  via AND. */
+  scoreFilter: MoodScore | null;
 
   /** Entries inside the selected year × month window AND matching
-   *  the current `searchQuery`. Mirrors the heatmap's `dataEnd`
-   *  (not `end`), so the list and the frise agree. */
+   *  the current `searchQuery` AND the active `scoreFilter`.
+   *  Mirrors the heatmap's `dataEnd` (not `end`), so the list and
+   *  the frise agree. */
   filtered: ReadonlyArray<MoodEntry>;
 
   setYear: (next: number | null) => void;
   setMonth: (next: number | null) => void;
   setSearchQuery: (next: string) => void;
+  setScoreFilter: (next: MoodScore | null) => void;
   toggleChart: () => void;
 }
 
@@ -110,6 +119,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const [month, setMonth] = useState<number | null>(null);
   const [chartCollapsed, setChartCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [scoreFilter, setScoreFilter] = useState<MoodScore | null>(null);
 
   // Reference today, captured once at mount. The heatmap and the
   // entries-list filter both read it ; pinning it here avoids
@@ -188,6 +198,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       const t = d.getTime();
       if (t < startTime || t > dataEndTime) return false;
       if (month !== null && d.getMonth() !== month) return false;
+      if (scoreFilter !== null && entry.score !== scoreFilter) return false;
       // Cheap short-circuit when no search is active — avoids
       // running the normalisation pipeline on every entry.
       if (trimmedQuery.length === 0) return true;
@@ -205,7 +216,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         trimmedQuery,
       );
     });
-  }, [entries, year, month, today, searchQuery]);
+  }, [entries, year, month, today, searchQuery, scoreFilter]);
 
   // ---- Filter setters ----
 
@@ -297,13 +308,24 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       month,
       chartCollapsed,
       searchQuery,
+      scoreFilter,
       filtered,
       setYear,
       setMonth,
       setSearchQuery,
+      setScoreFilter,
       toggleChart,
     }),
-    [year, month, chartCollapsed, searchQuery, filtered, setYear, toggleChart],
+    [
+      year,
+      month,
+      chartCollapsed,
+      searchQuery,
+      scoreFilter,
+      filtered,
+      setYear,
+      toggleChart,
+    ],
   );
 
   const actionsValue = useMemo<MoodActionsValue>(
