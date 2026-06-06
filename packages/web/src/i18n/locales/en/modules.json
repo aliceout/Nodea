@@ -27,6 +27,10 @@
     "label": "Review",
     "description": "Guided yearly review inspired by YearCompass — 15 sections in three parts."
   },
+  "hrt": {
+    "label": "HRT",
+    "description": "Track hormone therapy administration and lab results over time."
+  },
   "account": {
     "label": "My account",
     "description": "Manage your personal information, security and account preferences."

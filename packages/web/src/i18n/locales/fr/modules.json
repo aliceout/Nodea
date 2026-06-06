@@ -27,6 +27,10 @@
     "label": "Review",
     "description": "Bilan annuel guidé façon YearCompass — 15 sections en trois parties."
   },
+  "hrt": {
+    "label": "HRT",
+    "description": "Suivez l’administration de votre hormonothérapie et vos résultats d’analyses dans le temps."
+  },
   "account": {
     "label": "Mon compte",
     "description": "Gérez vos informations personnelles, sécurité et préférences du compte."

@@ -1,0 +1,204 @@
+/**
+ * HRT · Administration — create / edit form for one dose-log entry.
+ *
+ * Catalog-only : an administration just references a product (by name)
+ * + a dose + a date/time. The molecule / route / dose unit /
+ * concentration all live on the product, so the form is tiny. The
+ * product `<Select>` is grouped by category ; a « + Nouveau produit »
+ * quick-add inlines `ProductForm` so you never leave the dose entry.
+ *
+ * RHF + Zod resolver on the shared `HrtAdminLogPayloadSchema` ;
+ * persistence (dose + product creation) injected by the caller.
+ */
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { z } from 'zod';
+
+import {
+  HRT_CATEGORY_VALUES,
+  HrtAdminLogPayloadSchema,
+  type HrtAdminLogPayload,
+  type HrtCategory,
+  type HrtProductPayload,
+} from '@nodea/shared';
+
+import Button from '@/ui/atoms/dirk/Button';
+import Select from '@/ui/atoms/dirk/Select';
+import Textarea from '@/ui/atoms/dirk/Textarea';
+
+import { HRT_CATEGORY_LABELS, todayIso } from '../lib/labels';
+import type { AdminLogEntry } from '../data/use-admin-logs';
+import FieldRow from './FieldRow';
+import ProductForm from './ProductForm';
+import TextField from './TextField';
+
+type FormIn = z.input<typeof HrtAdminLogPayloadSchema>;
+type FormOut = z.output<typeof HrtAdminLogPayloadSchema>;
+
+export interface ProductOption {
+  name: string;
+  medication?: string;
+  category: HrtCategory;
+  unit: string;
+  concentration?: number;
+}
+
+interface AdminLogFormProps {
+  /** When set, the form edits this entry instead of creating one. */
+  initial?: AdminLogEntry;
+  /** The catalog the dose references. Grouped by category in the picker. */
+  products: ReadonlyArray<ProductOption>;
+  /** Persist the entry. `id` is set on edit. */
+  onSubmit: (payload: HrtAdminLogPayload, id?: string) => Promise<void>;
+  /** Create a product from the inline quick-add. */
+  onCreateProduct: (payload: HrtProductPayload) => Promise<void>;
+  /** Close the form (cancel, or after a successful submit). */
+  onClose: () => void;
+}
+
+export default function AdminLogForm({
+  initial,
+  products,
+  onSubmit,
+  onCreateProduct,
+  onClose,
+}: AdminLogFormProps) {
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [addingProduct, setAddingProduct] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<FormIn, unknown, FormOut>({
+    resolver: zodResolver(HrtAdminLogPayloadSchema),
+    defaultValues: initial?.payload ?? {
+      date: todayIso(),
+      time: '',
+      product: '',
+      notes: '',
+      updatedAt: '',
+    },
+  });
+
+  const productVal = watch('product') ?? '';
+  const selected = products.find((p) => p.name === productVal);
+  const doseUnit = selected?.unit ?? '';
+  const doseLabel = doseUnit ? `Dose (${doseUnit})` : 'Dose';
+  const categories = HRT_CATEGORY_VALUES.filter((c) =>
+    products.some((p) => p.category === c),
+  );
+
+  async function onValid(values: FormOut): Promise<void> {
+    setServerError(null);
+    const payload: HrtAdminLogPayload = { ...values, updatedAt: new Date().toISOString() };
+    try {
+      await onSubmit(payload, initial?.id);
+      onClose();
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Enregistrement impossible.');
+    }
+  }
+
+  // Quick-add : create a product inline, then select it on the dose form.
+  if (addingProduct) {
+    return (
+      <ProductForm
+        onSubmit={async (p) => {
+          await onCreateProduct(p);
+          setValue('product', p.name, { shouldValidate: true });
+        }}
+        onClose={() => setAddingProduct(false)}
+      />
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit(onValid)}
+      className="rounded-md border border-hair bg-bg-2 p-4"
+      noValidate
+    >
+      <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+        <TextField
+          label="Date"
+          type="date"
+          error={errors.date?.message}
+          {...register('date')}
+        />
+        <TextField
+          label="Heure (optionnel)"
+          type="time"
+          error={errors.time?.message}
+          {...register('time')}
+        />
+
+        <FieldRow label="Produit" htmlFor="hrt-product" error={errors.product?.message}>
+          <div className="flex gap-2">
+            <Select id="hrt-product" {...register('product')}>
+              <option value="" disabled>
+                {products.length === 0 ? 'Aucun produit — ajoute-en un →' : 'Choisir un produit…'}
+              </option>
+              {categories.map((c) => (
+                <optgroup key={c} label={HRT_CATEGORY_LABELS[c]}>
+                  {products
+                    .filter((p) => p.category === c)
+                    .map((p) => (
+                      <option key={p.name} value={p.name}>
+                        {p.name}
+                        {p.medication ? ` · ${p.medication}` : ''}
+                        {typeof p.concentration === 'number'
+                          ? ` (${p.concentration} mg/mL)`
+                          : ''}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </Select>
+            <Button
+              type="button"
+              variant="neutral"
+              size="sm"
+              onClick={() => setAddingProduct(true)}
+              title="Nouveau produit"
+            >
+              + Produit
+            </Button>
+          </div>
+        </FieldRow>
+
+        <TextField
+          label={doseLabel}
+          type="number"
+          step="any"
+          inputMode="decimal"
+          placeholder="0.4"
+          error={errors.dose?.message}
+          {...register('dose', { valueAsNumber: true })}
+        />
+      </div>
+
+      <FieldRow label="Notes (optionnel)" htmlFor="hrt-notes" error={errors.notes?.message}>
+        <Textarea id="hrt-notes" minHeightPx={56} {...register('notes')} />
+      </FieldRow>
+
+      {serverError ? (
+        <p role="alert" className="mb-3 text-[12px] text-danger">
+          {serverError}
+        </p>
+      ) : null}
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
+          Annuler
+        </Button>
+        <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
+          {initial ? 'Enregistrer' : 'Ajouter'}
+        </Button>
+      </div>
+    </form>
+  );
+}

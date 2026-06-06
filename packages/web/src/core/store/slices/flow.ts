@@ -30,10 +30,26 @@ export function isLibrarySubview(value: unknown): value is LibrarySubview {
   );
 }
 
+/**
+ * HRT splits into two lenses on the same encrypted data : the
+ * administration log (`administration` — each dose/injection, timed)
+ * and the lab results with their chart (`labs`). Same privacy
+ * contract as Library : the active lens lives here, never in the URL.
+ */
+export const HRT_SUBVIEWS = ['administration', 'labs', 'products'] as const;
+export type HrtSubview = (typeof HRT_SUBVIEWS)[number];
+
+export function isHrtSubview(value: unknown): value is HrtSubview {
+  return (
+    typeof value === 'string' && (HRT_SUBVIEWS as readonly string[]).includes(value)
+  );
+}
+
 export interface FlowSlice {
   flow: {
     currentModule: ModuleId;
     librarySubview: LibrarySubview;
+    hrtSubview: HrtSubview;
   };
   /**
    * Imperative module switch. Pushes a new browser history entry so the
@@ -49,11 +65,13 @@ export interface FlowSlice {
    */
   syncCurrentModule(id: ModuleId): void;
   setLibrarySubview(sub: LibrarySubview): void;
+  setHrtSubview(sub: HrtSubview): void;
 }
 
 export const initialFlow: FlowSlice['flow'] = {
   currentModule: 'home',
   librarySubview: 'livres',
+  hrtSubview: 'administration',
 };
 
 export const createFlowSlice: StateCreator<NodeaState, [], [], FlowSlice> = (set, get) => ({
@@ -84,4 +102,6 @@ export const createFlowSlice: StateCreator<NodeaState, [], [], FlowSlice> = (set
     set((state) => ({ flow: { ...state.flow, currentModule: id } })),
   setLibrarySubview: (sub) =>
     set((state) => ({ flow: { ...state.flow, librarySubview: sub } })),
+  setHrtSubview: (sub) =>
+    set((state) => ({ flow: { ...state.flow, hrtSubview: sub } })),
 });

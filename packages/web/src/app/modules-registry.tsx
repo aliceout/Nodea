@@ -1,3 +1,10 @@
+/* eslint-disable react-refresh/only-export-components --
+ * Module *registry*, not a fast-refreshable component file : the per-
+ * module `lazy()` consts alongside the exported `MODULES` array trip
+ * `react-refresh/only-export-components`, which is a pure HMR hint with
+ * no bearing here. lint-staged runs eslint with `--max-warnings=0`, so
+ * the otherwise-tolerated warning would block any commit touching this
+ * file. */
 import { lazy, Suspense, type ComponentType, type ReactElement } from 'react';
 import {
   HomeIcon,
@@ -8,6 +15,7 @@ import {
   FireIcon,
   BookOpenIcon,
   CalendarIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
 
@@ -25,6 +33,7 @@ const Goals = lazy(() => import('@/app/flow/Goals'));
 const Habits = lazy(() => import('@/app/flow/Habits'));
 const Library = lazy(() => import('@/app/flow/Library'));
 const Review = lazy(() => import('@/app/flow/Review'));
+const Hrt = lazy(() => import('@/app/flow/HRT'));
 const Account = lazy(() => import('@/app/flow/Account'));
 const Admin = lazy(() => import('@/app/flow/Admin'));
 
@@ -136,6 +145,21 @@ export const MODULES: readonly ModuleDef[] = [
     to_toggle: true,
     description: 'modules.review.description',
     icon: CalendarIcon,
+    display: true,
+  },
+  {
+    /** Hormone replacement therapy tracking. Two encrypted
+     *  collections : `hrt_admin_logs_entries` (the dose/injection
+     *  log) and `hrt_lab_results_entries` (lab markers + chart).
+     *  `collection` here names the primary one for nav metadata —
+     *  the module owns both. Two sub-views, à la Library. */
+    id: 'hrt',
+    label: 'modules.hrt.label',
+    collection: 'hrt_admin_logs_entries',
+    element: lazyModule('hrt', Hrt),
+    to_toggle: true,
+    description: 'modules.hrt.description',
+    icon: BeakerIcon,
     display: true,
   },
   {

@@ -36,3 +36,4 @@ export const selectEnabledModuleCount = (s: NodeaState): number => {
 export const selectPreferences = (s: NodeaState) => s.preferences;
 export const selectCurrentModule = (s: NodeaState) => s.flow.currentModule;
 export const selectLibrarySubview = (s: NodeaState) => s.flow.librarySubview;
+export const selectHrtSubview = (s: NodeaState) => s.flow.hrtSubview;

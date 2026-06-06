@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import {
+  BeakerIcon,
   BookOpenIcon,
   CalendarIcon,
   CheckCircleIcon,
@@ -13,8 +14,10 @@ import {
   selectModules,
   selectCurrentModule,
   selectLibrarySubview,
+  selectHrtSubview,
   type ModuleId,
   type LibrarySubview,
+  type HrtSubview,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +41,7 @@ const MAIN_ITEMS: NavItem[] = [
   // produit soit tranchée.
   { id: 'library', label: 'Library', icon: BookOpenIcon },
   { id: 'review', label: 'Review', icon: CalendarIcon },
+  { id: 'hrt', label: 'HRT', icon: BeakerIcon },
 ];
 
 /**
@@ -57,6 +61,21 @@ const LIBRARY_SUB_ITEMS: readonly LibrarySubItem[] = [
   { subview: 'notes', label: 'Notes' },
 ];
 
+/**
+ * HRT splits into the administration log (each dose/injection, timed)
+ * and the lab results with their chart. Active lens is `hrtSubview`
+ * in the flow slice — same no-URL-leak contract as Library.
+ */
+interface HrtSubItem {
+  subview: HrtSubview;
+  label: string;
+}
+const HRT_SUB_ITEMS: readonly HrtSubItem[] = [
+  { subview: 'administration', label: 'Administration' },
+  { subview: 'labs', label: 'Analyses' },
+  { subview: 'products', label: 'Produits' },
+];
+
 interface SidebarNavProps {
   onNavigate: () => void;
 }
@@ -64,6 +83,7 @@ interface SidebarNavProps {
 export default function SidebarNav({ onNavigate }: SidebarNavProps) {
   const current = useNodeaStore(selectCurrentModule);
   const librarySubview = useNodeaStore(selectLibrarySubview);
+  const hrtSubview = useNodeaStore(selectHrtSubview);
   const modulesRuntime = useNodeaStore(selectModules);
 
   // Filter by toggle state, but keep the home item always visible.
@@ -91,6 +111,9 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
               activeSubview={librarySubview}
               onNavigate={onNavigate}
             />
+          ) : null}
+          {item.id === 'hrt' && current === 'hrt' ? (
+            <HrtSubNav activeSubview={hrtSubview} onNavigate={onNavigate} />
           ) : null}
         </Fragment>
       ))}
@@ -157,6 +180,50 @@ function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
                 // tab-flip to spawn a back-stack entry.
                 setModule('library');
                 setLibrarySubview(sub.subview);
+                onNavigate();
+              }}
+              data-active={active}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'block w-full rounded-md px-2 py-1 text-left text-[12.5px] transition-colors',
+                active
+                  ? 'bg-bg font-medium text-ink'
+                  : 'text-muted hover:bg-bg hover:text-ink',
+              )}
+            >
+              {sub.label}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+interface HrtSubNavProps {
+  activeSubview: HrtSubview;
+  onNavigate: () => void;
+}
+
+function HrtSubNav({ activeSubview, onNavigate }: HrtSubNavProps) {
+  const setModule = useNodeaStore((s) => s.setModule);
+  const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
+  return (
+    <ul className="ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
+      {HRT_SUB_ITEMS.map((sub) => {
+        const active = activeSubview === sub.subview;
+        return (
+          <li key={sub.subview}>
+            <button
+              type="button"
+              onClick={() => {
+                // Same two-step as Library : ensure we're on HRT
+                // (no-op if already there → no extra history entry),
+                // then swap the lens. Subview is its own slice — no
+                // history push, so tab-flips don't pollute the
+                // back-stack.
+                setModule('hrt');
+                setHrtSubview(sub.subview);
                 onNavigate();
               }}
               data-active={active}

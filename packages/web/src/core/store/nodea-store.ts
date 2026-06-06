@@ -61,6 +61,9 @@ export {
   LIBRARY_SUBVIEWS,
   isLibrarySubview,
   type LibrarySubview,
+  HRT_SUBVIEWS,
+  isHrtSubview,
+  type HrtSubview,
 } from './slices/flow.ts';
 export type { ComposerType, ComposerEditing } from './slices/composer.ts';
 
@@ -79,6 +82,7 @@ export {
   selectPreferences,
   selectCurrentModule,
   selectLibrarySubview,
+  selectHrtSubview,
 } from './selectors.ts';
 
 /**
