@@ -13,8 +13,13 @@ pliés pour ne pas noyer l'essentiel.
 - **api** : HRT collections, tables, migration + test seeder _(f878ad4)_
 - **shared** : HRT schemas, product catalog, marker presets + target ranges _(fc2b18d)_
 
+### Corrections
+
+- **hrt** : un-ignore data hooks — rename data/ -> hooks/ _(e71e690)_
+
 ### Documentation
 
+- **changelog** : regenerate for v2.3.0 _(94d28fb)_
 - **claude** : drop refacto-design-v2 refs, note HRT module _(2940a78)_
 - **changelog** : regenerate for v2.2.0 _(f87d437)_
 
