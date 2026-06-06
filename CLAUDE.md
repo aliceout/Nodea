@@ -8,9 +8,7 @@ This file is read automatically by Claude Code at the start of every session. It
 
 **Nodea** is a self-hosted, **end-to-end encrypted** journaling / life-tracking web app. Data is encrypted in the browser with a user-derived main key — the server stores only ciphertext + HMAC guards, never plaintext, never keys.
 
-Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **Review** (all implemented; Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md)).
-
-Active work lives on `refacto-design-v2` until it merges to `main`.
+Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **Review** (all implemented; Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md)). **HRT** (hormone replacement therapy) is in progress — data layer done, views WIP, see [`docs/Modules/HRT.md`](./docs/Modules/HRT.md).
 
 ---
 
@@ -236,7 +234,7 @@ Before marking a PR as ready:
 ## Git hygiene
 
 - **Never commit without the user explicitly asking.** "It works, should I commit?" — ask. Don't preempt.
-- **Never push to `main` directly.** Work happens on `refacto-design-v2` (current dev branch) or feature branches off it.
+- **Never push to `main` directly.** Work happens on feature branches off `main`.
 - **Never force-push shared branches.** Never `--no-verify`, `--no-gpg-sign`, `--amend` on pushed commits.
 - **Dependabot PRs stay open** until the user decides — do not delete their branches.
 - After any push, if CI is configured, check `gh run list` and fix failures before moving on.
