@@ -5,6 +5,26 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.3.0 — 2026-06-06
+
+### Nouveautés
+
+- **web,hrt** : HRT module — sidebar, Administration, Analyses, Produits _(06d12c0)_
+- **api** : HRT collections, tables, migration + test seeder _(f878ad4)_
+- **shared** : HRT schemas, product catalog, marker presets + target ranges _(fc2b18d)_
+
+### Documentation
+
+- **claude** : drop refacto-design-v2 refs, note HRT module _(2940a78)_
+- **changelog** : regenerate for v2.2.0 _(f87d437)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.3.0 _(8449dbb)_
+
+</details>
+
 ## v2.2.0 — 2026-06-05
 
 ### Nouveautés
