@@ -299,3 +299,118 @@ export const ReviewPayloadSchema = z.looseObject({
     updatedAt: z.string().default(''),
   });
 export type ReviewPayload = z.infer<typeof ReviewPayloadSchema>;
+
+// ---------------------------------------------------------------------
+// HRT — hormone replacement therapy : two collections (admin logs + labs)
+// ---------------------------------------------------------------------
+
+/**
+ * Therapy direction / class of a medication. Drives grouping and the
+ * default unit/route hints in `hrt-presets.ts`. `other` is the escape
+ * hatch — the module never assumes a single transition direction and
+ * supports transfeminine, transmasculine and non-binary regimens.
+ */
+export const HRT_CATEGORY_VALUES = [
+  'estrogen',
+  'antiandrogen',
+  'progestogen',
+  'testosterone',
+  'gnrh',
+  'other',
+] as const;
+export type HrtCategory = (typeof HRT_CATEGORY_VALUES)[number];
+
+/** Route of administration. `injection_im` / `injection_sc` are split
+ *  because the distinction matters clinically (and for site rotation). */
+export const HRT_ROUTE_VALUES = [
+  'oral',
+  'sublingual',
+  'injection_im',
+  'injection_sc',
+  'gel',
+  'patch',
+  'implant',
+  'other',
+] as const;
+export type HrtRoute = (typeof HRT_ROUTE_VALUES)[number];
+
+/**
+ * Timing of a blood draw relative to the last dose. Decisive for
+ * injectables (a trough and a peak read very differently) — the chart
+ * uses it so points aren't compared apples-to-oranges. `unknown` keeps
+ * legacy / quick entries valid.
+ */
+export const HRT_DRAW_CONTEXT_VALUES = ['trough', 'peak', 'random', 'unknown'] as const;
+export type HrtDrawContext = (typeof HRT_DRAW_CONTEXT_VALUES)[number];
+
+/**
+ * One administration event — a dose taken or an injection done.
+ *
+ * Normalised against the product catalog : an administration is just
+ * « product X, dose D, at date/time » — the molecule, category, route,
+ * dose unit and concentration all live on the referenced `HrtProduct`.
+ * `product` is the product **name** (the join key) ; `dose` is the
+ * numeric amount in that product's unit. `date` is the event date
+ * (`YYYY-MM-DD`), `time` an optional `HH:mm`. `updatedAt` is the ISO
+ * write timestamp used for the « Récent » sort (server-side timestamps
+ * don't exist by design — minimum-readable-surface).
+ */
+export const HrtAdminLogPayloadSchema = z.looseObject({
+    date: z.string().min(1),
+    time: z.string().default(''),
+    /** References an `HrtProduct` by name. Required — administrations
+     *  are catalog-only (the form only offers registered products). */
+    product: z.string().min(1),
+    dose: z.number().nonnegative(),
+    notes: z.string().default(''),
+    updatedAt: z.string().default(''),
+  });
+export type HrtAdminLogPayload = z.infer<typeof HrtAdminLogPayloadSchema>;
+
+/**
+ * A product in the user's catalog — the single source of truth for a
+ * given preparation. Holds everything an administration needs : the
+ * molecule, its therapy `category`, the `route`, the dose `unit`, and
+ * (for injectables) the `concentration` in mg/mL so a mL dose reads
+ * back in mg. `name` is the display label and the join key used by
+ * admin logs. The presets in `hrt-presets.ts` only *suggest* the
+ * molecule / category / route / unit — nothing is constrained.
+ *
+ * NB : the wire collection + table keep the legacy name `hrt-suppliers`
+ * / `hrt_suppliers_entries` (created in migration 0018). Renaming an
+ * internal, log-hidden identifier would be a destructive migration for
+ * zero user benefit, so only the domain type + UI say « product ».
+ */
+export const HrtProductPayloadSchema = z.looseObject({
+    name: z.string().min(1),
+    medication: z.string().default(''),
+    category: z.enum(HRT_CATEGORY_VALUES).default('other'),
+    route: z.enum(HRT_ROUTE_VALUES).default('other'),
+    unit: z.string().default('mg'),
+    /** Injectable concentration in mg/mL — optional (oral products omit it). */
+    concentration: z.number().positive().optional(),
+    notes: z.string().default(''),
+    updatedAt: z.string().default(''),
+  });
+export type HrtProductPayload = z.infer<typeof HrtProductPayloadSchema>;
+
+/**
+ * One lab measurement — a single marker value on a given date.
+ *
+ * `marker` and `unit` are free strings (presets suggest, never
+ * constrain). `value` may be 0 or negative-adjacent in edge assays, so
+ * it's a plain number with no positivity bound. `context` records the
+ * draw timing so the chart can separate trough vs peak series.
+ */
+export const HrtLabResultPayloadSchema = z.looseObject({
+    date: z.string().min(1),
+    marker: z.string().min(1),
+    value: z.number(),
+    unit: z.string().min(1),
+    context: z.enum(HRT_DRAW_CONTEXT_VALUES).default('unknown'),
+    /** Optional lab / source name. */
+    lab: z.string().default(''),
+    notes: z.string().default(''),
+    updatedAt: z.string().default(''),
+  });
+export type HrtLabResultPayload = z.infer<typeof HrtLabResultPayloadSchema>;

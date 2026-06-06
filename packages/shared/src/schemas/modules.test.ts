@@ -19,6 +19,9 @@ import { describe, expect, it } from 'vitest';
 import {
   GoalsPayloadSchema,
   MoodPayloadSchema,
+  HrtAdminLogPayloadSchema,
+  HrtLabResultPayloadSchema,
+  HrtProductPayloadSchema,
 } from './modules.ts';
 
 describe('Module payload defaults', () => {
@@ -54,5 +57,69 @@ describe('Module payload defaults', () => {
     });
     expect(parsed.status).toBe('done');
     expect(parsed.completedAt).toBe('2026-06-04T10:00:00.000Z');
+  });
+
+  it('HrtAdminLogPayload references a product, fills defaults, rejects bad dose', () => {
+    const parsed = HrtAdminLogPayloadSchema.parse({
+      date: '2026-06-04',
+      product: 'Estradiol valérate (préparation)',
+      dose: 0.4,
+    });
+    expect(parsed.time).toBe('');
+    expect(parsed.notes).toBe('');
+    expect(parsed.updatedAt).toBe('');
+    // product is required (catalog-only) and dose must be ≥ 0.
+    expect(() => HrtAdminLogPayloadSchema.parse({ date: '2026-06-04', dose: 1 })).toThrow();
+    expect(() =>
+      HrtAdminLogPayloadSchema.parse({ date: '2026-06-04', product: 'X', dose: -1 }),
+    ).toThrow();
+  });
+
+  it('HrtProductPayload requires a name, defaults its fields, keeps concentration optional', () => {
+    const parsed = HrtProductPayloadSchema.parse({ name: 'Aldactone' });
+    expect(parsed.medication).toBe('');
+    expect(parsed.category).toBe('other');
+    expect(parsed.route).toBe('other');
+    expect(parsed.unit).toBe('mg');
+    expect(parsed.concentration).toBeUndefined();
+    const inj = HrtProductPayloadSchema.parse({
+      name: 'Estradiol valérate',
+      medication: 'Estradiol valérate',
+      category: 'estrogen',
+      route: 'injection_im',
+      unit: 'mL',
+      concentration: 10,
+    });
+    expect(inj.concentration).toBe(10);
+    expect(() => HrtProductPayloadSchema.parse({ name: '' })).toThrow();
+    expect(() => HrtProductPayloadSchema.parse({ name: 'X', concentration: 0 })).toThrow();
+  });
+
+  it('HrtLabResultPayload.parse defaults context to unknown and keeps marker/unit free', () => {
+    const parsed = HrtLabResultPayloadSchema.parse({
+      date: '2026-06-04',
+      marker: 'estradiol',
+      value: 165,
+      unit: 'pg/mL',
+    });
+    expect(parsed.context).toBe('unknown');
+    expect(parsed.lab).toBe('');
+    expect(parsed.notes).toBe('');
+    expect(parsed.updatedAt).toBe('');
+  });
+
+  it('HrtLabResultPayload requires a unit and accepts a negative-adjacent value', () => {
+    expect(() =>
+      HrtLabResultPayloadSchema.parse({ date: '2026-06-04', marker: 'x', value: 1, unit: '' }),
+    ).toThrow();
+    const parsed = HrtLabResultPayloadSchema.parse({
+      date: '2026-06-04',
+      marker: 'custom_marker',
+      value: 0,
+      unit: 'arb',
+      context: 'trough',
+    });
+    expect(parsed.value).toBe(0);
+    expect(parsed.context).toBe('trough');
   });
 });

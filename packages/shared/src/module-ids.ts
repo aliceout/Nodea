@@ -26,6 +26,7 @@ export const MODULE_IDS = [
   'habits',
   'library',
   'review',
+  'hrt',
   'account',
   'admin',
 ] as const;
@@ -55,6 +56,7 @@ export const DATA_MODULE_IDS = [
   'habits',
   'library',
   'review',
+  'hrt',
 ] as const;
 
 export type DataModuleId = (typeof DATA_MODULE_IDS)[number];
