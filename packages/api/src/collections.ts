@@ -9,6 +9,9 @@ import {
   libraryReviewsEntries,
   libraryCoversEntries,
   reviewEntries,
+  hrtAdminLogsEntries,
+  hrtLabResultsEntries,
+  hrtSuppliersEntries,
   type EntryTable,
 } from './db/schema.ts';
 
@@ -39,4 +42,7 @@ export const COLLECTIONS: readonly CollectionDef[] = [
   { name: 'library-reviews', table: libraryReviewsEntries },
   { name: 'library-covers', table: libraryCoversEntries },
   { name: 'review', table: reviewEntries },
+  { name: 'hrt-admin-logs', table: hrtAdminLogsEntries },
+  { name: 'hrt-lab-results', table: hrtLabResultsEntries },
+  { name: 'hrt-suppliers', table: hrtSuppliersEntries },
 ];

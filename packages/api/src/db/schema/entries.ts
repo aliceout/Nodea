@@ -78,6 +78,9 @@ export const libraryItemsEntries = createEntryTable('library_items_entries');
 export const libraryReviewsEntries = createEntryTable('library_reviews_entries');
 export const libraryCoversEntries = createEntryTable('library_covers_entries');
 export const reviewEntries = createEntryTable('review_entries');
+export const hrtAdminLogsEntries = createEntryTable('hrt_admin_logs_entries');
+export const hrtLabResultsEntries = createEntryTable('hrt_lab_results_entries');
+export const hrtSuppliersEntries = createEntryTable('hrt_suppliers_entries');
 
 /**
  * Shared type alias. All entry tables are structurally
