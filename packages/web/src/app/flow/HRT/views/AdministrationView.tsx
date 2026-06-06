@@ -16,8 +16,8 @@ import Select from '@/ui/atoms/dirk/Select';
 
 import AdminLogForm, { type ProductOption } from '../components/AdminLogForm';
 import LabChart, { type ChartPoint } from '../components/LabChart';
-import { useHrtAdminLogs, type AdminLogEntry } from '../data/use-admin-logs';
-import { useHrtProducts } from '../data/use-products';
+import { useHrtAdminLogs, type AdminLogEntry } from '../hooks/use-admin-logs';
+import { useHrtProducts } from '../hooks/use-products';
 import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS, formatLogDate } from '../lib/labels';
 
 export default function AdministrationView() {

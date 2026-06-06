@@ -26,7 +26,7 @@ import Select from '@/ui/atoms/dirk/Select';
 
 import LabChart from '../components/LabChart';
 import LabResultForm from '../components/LabResultForm';
-import { useHrtLabResults, type LabResultEntry } from '../data/use-lab-results';
+import { useHrtLabResults, type LabResultEntry } from '../hooks/use-lab-results';
 import {
   buildChartSeries,
   defaultUnitForMarker,

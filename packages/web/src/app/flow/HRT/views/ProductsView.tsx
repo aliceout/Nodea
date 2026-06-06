@@ -13,7 +13,7 @@ import type { HrtProductPayload } from '@nodea/shared';
 import Button from '@/ui/atoms/dirk/Button';
 
 import ProductForm from '../components/ProductForm';
-import { useHrtProducts, type ProductEntry } from '../data/use-products';
+import { useHrtProducts, type ProductEntry } from '../hooks/use-products';
 import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS } from '../lib/labels';
 
 export default function ProductsView() {

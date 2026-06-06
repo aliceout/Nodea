@@ -28,7 +28,7 @@ import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
 import { HRT_CATEGORY_LABELS, todayIso } from '../lib/labels';
-import type { AdminLogEntry } from '../data/use-admin-logs';
+import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import FieldRow from './FieldRow';
 import ProductForm from './ProductForm';
 import TextField from './TextField';

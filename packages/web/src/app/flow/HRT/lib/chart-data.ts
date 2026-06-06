@@ -7,7 +7,7 @@
  */
 import { convertMarkerValue, findMarker } from '@nodea/shared';
 
-import type { LabResultEntry } from '../data/use-lab-results';
+import type { LabResultEntry } from '../hooks/use-lab-results';
 import type { ChartPoint } from '../components/LabChart';
 
 export interface MarkerCount {

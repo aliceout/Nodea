@@ -26,7 +26,7 @@ import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
 import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS } from '../lib/labels';
-import type { ProductEntry } from '../data/use-products';
+import type { ProductEntry } from '../hooks/use-products';
 import FieldRow from './FieldRow';
 import TextField from './TextField';
 

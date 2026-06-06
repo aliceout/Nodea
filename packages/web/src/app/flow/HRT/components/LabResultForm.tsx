@@ -30,7 +30,7 @@ import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
 import { HRT_DRAW_CONTEXT_LABELS, todayIso } from '../lib/labels';
-import type { LabResultEntry } from '../data/use-lab-results';
+import type { LabResultEntry } from '../hooks/use-lab-results';
 import FieldRow from './FieldRow';
 import TextField from './TextField';
 
