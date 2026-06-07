@@ -40,6 +40,10 @@ interface LabChartProps {
    *  points. Either bound may be absent. Folded into the value scale so
    *  it's always visible, and drawn behind the line. */
   target?: { min?: number; max?: number };
+  /** Force the time axis to span a date window (ISO `YYYY-MM-DD`) instead
+   *  of the data's own min/max — so a date filter visibly shapes the
+   *  chart. An empty bound falls back to the data extent. */
+  domain?: { from: string; to: string };
   /** Custom header content, replacing the default « label (unit) »
    *  caption — e.g. a molecule `<Select>` on the Summary dashboard. */
   caption?: ReactNode;
@@ -92,7 +96,15 @@ function useMeasured(): [RefObject<HTMLDivElement | null>, number, number] {
   return [ref, size.width, size.height];
 }
 
-export default function LabChart({ points, unit, label, target, caption, fillHeight }: LabChartProps) {
+export default function LabChart({
+  points,
+  unit,
+  label,
+  target,
+  caption,
+  fillHeight,
+  domain,
+}: LabChartProps) {
   const [ref, width, measuredH] = useMeasured();
   const gradId = `hrt-area-${useId()}`;
   const height = fillHeight ? Math.max(measuredH, MIN_HEIGHT) : DEFAULT_HEIGHT;
@@ -115,6 +127,7 @@ export default function LabChart({ points, unit, label, target, caption, fillHei
         height={height}
         gradId={gradId}
         {...(target ? { target } : {})}
+        {...(domain ? { domain } : {})}
       />
     );
 
@@ -144,7 +157,7 @@ interface PlotProps extends LabChartProps {
   gradId: string;
 }
 
-function Plot({ points, unit, width, height, gradId, target }: PlotProps) {
+function Plot({ points, unit, width, height, gradId, target, domain }: PlotProps) {
   const [hover, setHover] = useState<number | null>(null);
   const plotW = Math.max(width - PAD_L - PAD_R, 10);
   const plotH = height - PAD_T - PAD_B;
@@ -158,9 +171,12 @@ function Plot({ points, unit, width, height, gradId, target }: PlotProps) {
   );
   const scaleVals = values.concat(targetVals);
 
-  const xMin = Math.min(...times);
-  let xMax = Math.max(...times);
-  if (xMin === xMax) xMax = xMin + 1;
+  // Time axis : a `domain` (from a date filter) wins over the data extent,
+  // so the chart spans the selected window even when data is sparse. An
+  // empty bound falls back to the data.
+  const xMin = domain?.from ? dateMs(domain.from) : Math.min(...times);
+  let xMax = domain?.to ? dateMs(domain.to) : Math.max(...times);
+  if (xMin >= xMax) xMax = xMin + 1;
 
   const vMinData = Math.min(...scaleVals);
   const vMaxData = Math.max(...scaleVals);

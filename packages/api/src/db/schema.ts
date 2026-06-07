@@ -70,6 +70,7 @@ export {
   habitsLogsEntries,
   hrtAdminLogsEntries,
   hrtLabResultsEntries,
+  hrtSchedulesEntries,
   hrtSuppliersEntries,
   journalEntries,
   libraryCoversEntries,

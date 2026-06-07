@@ -1,8 +1,9 @@
-# HRT module (`hrt_admin_logs_entries` + `hrt_lab_results_entries` + `hrt_suppliers_entries`)
+# HRT module (`hrt_admin_logs_entries` + `hrt_lab_results_entries` + `hrt_suppliers_entries` + `hrt_schedules_entries`)
 
-Hormone replacement therapy tracking for trans people. Three encrypted
-collections, surfaced as three sidebar sub-views (à la Library) under a
-single `/flow` module:
+Hormone replacement therapy tracking for trans people. Four encrypted
+collections under a single `/flow` module — three surfaced as sidebar
+sub-views (à la Library), the fourth (recurring schedules) managed inside
+Administration:
 
 - **Synthèse** — the landing dashboard (default): a dose chart for the
   selected molecule + the product catalog (which lives here), then the
@@ -46,7 +47,19 @@ regimens equally — it never assumes a single transition direction.
   doses are dropped), so different products/forms of a molecule compare.
   A **date filter** (period presets — 30 j / 3 / 6 / 12 months — plus a
   custom Du→Au range, shared `DateRangeFilter`) narrows both the list and
-  the chart.
+  the chart. Two ways to log : **« + Prise manuelle »** (a one-off
+  `AdminLogForm`) and **« + Prise récurrente »**.
+- **Prises récurrentes** (`hrt_schedules`) are **materialised**, not
+  virtual : a schedule (`product` + `dose` + cadence `daily | every_n_days`
+  + `startDate` + `endDate?`) generates a real, individually editable
+  `HrtAdminLog` per occurrence, each carrying the schedule's server `id` as
+  `scheduleId` (the « récurrente » badge ; à la Habits `itemRid → item.id`).
+  The generator (`hooks/use-schedule-materialization`, run once at module
+  mount, idempotent via `materializedThrough`) back-fills the missing days
+  up to today, so a date is never created twice. Stopping a series
+  (« Arrêter » in the *Prises récurrentes en cours* panel) sets `endDate`
+  to today — future generation stops, the history stays. Skipping or
+  adjusting a single day = edit / delete that real entry.
 - **Analyses** records single lab measurements: a marker, a value, a
   unit, and the draw context (trough / peak / random) which matters for
   injectables. The chart reads these. The same **date filter** applies
@@ -56,7 +69,11 @@ regimens equally — it never assumes a single transition direction.
   `medication`, `category`, `route`, dose `unit` and an optional
   `concentration` (mg/mL). It is the single source those values join
   from. A « + Nouveau produit » quick-add also lives in the
-  Administration dose form.
+  Administration dose form. Products are **archived, never deleted**
+  (`archived` flag) : an archived product stays in the catalog so past
+  doses keep their molecule / unit display, but drops out of the dose-form
+  picker. A « Actifs / Archivés » select in the product column switches
+  the view ; archived products carry a « Réactiver » action.
 
 Curated vocabulary (molecules, markers, default units/routes, molar
 unit conversions) lives in [`packages/shared/src/hrt-presets.ts`](../../packages/shared/src/hrt-presets.ts).
@@ -71,6 +88,7 @@ unit is never blocked.
 | `hrt-admin-logs` | `hrt_admin_logs_entries` | `HrtAdminLogPayloadSchema` |
 | `hrt-lab-results` | `hrt_lab_results_entries` | `HrtLabResultPayloadSchema` |
 | `hrt-suppliers` | `hrt_suppliers_entries` | `HrtProductPayloadSchema` |
+| `hrt-schedules` | `hrt_schedules_entries` | `HrtSchedulePayloadSchema` |
 
 > The product catalog keeps the legacy wire name `hrt-suppliers` /
 > `hrt_suppliers_entries` (created in migration 0018). It's an
@@ -96,6 +114,7 @@ Defined in [`packages/shared/src/schemas/modules/hrt.ts`](../../packages/shared/
   "product": "Estradiol valérate (préparation)", // required; joins to HrtProduct by name
   "dose": 0.4,                   // number ≥ 0, in the product's unit
   "notes": "",
+  "scheduleId": "abc123",        // optional; set on occurrences generated from a schedule
   "updatedAt": "2026-06-04T06:30:00.000Z" // ISO; drives « Récent » sort
 }
 ```
@@ -110,6 +129,7 @@ Defined in [`packages/shared/src/schemas/modules/hrt.ts`](../../packages/shared/
   "route": "injection_im",       // oral|sublingual|injection_im|...
   "unit": "mL",                  // dose unit for this product
   "concentration": 10,           // mg/mL, optional — mL dose → mg
+  "archived": false,             // archived products stay joinable but leave the picker
   "notes": "",
   "updatedAt": "2026-06-04T..."
 }
@@ -127,6 +147,24 @@ Defined in [`packages/shared/src/schemas/modules/hrt.ts`](../../packages/shared/
   "lab": "",                     // optional source name
   "notes": "",
   "updatedAt": "2026-06-04T..."
+}
+```
+
+**Schedule** (`HrtSchedulePayload`) — a recurring series, materialised into
+admin-log occurrences:
+
+```jsonc
+{
+  "product": "Utrogestan",       // required; joins to HrtProduct by name
+  "dose": 100,                   // number ≥ 0
+  "frequency": "daily",          // daily | every_n_days
+  "everyNDays": 5,               // ≥ 1, only when frequency === every_n_days
+  "time": "",                    // optional HH:mm stamped on occurrences
+  "startDate": "2026-06-01",     // first occurrence, YYYY-MM-DD
+  "endDate": null,               // null = ongoing; set to today when stopped
+  "materializedThrough": "2026-06-07", // generator resume point (idempotency)
+  "notes": "",
+  "updatedAt": "2026-06-07T..."
 }
 ```
 

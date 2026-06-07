@@ -37,13 +37,21 @@ export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminL
         {entry.payload.time ? (
           <span className="block text-[11px] text-muted-soft">{entry.payload.time}</span>
         ) : null}
+        {entry.payload.scheduleId ? (
+          <span className="mt-1 block w-fit rounded-sm bg-bg-2 px-1.5 py-0.5 text-[10px] font-normal text-muted">
+            auto
+          </span>
+        ) : null}
       </span>
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13.5px] font-medium text-ink">
           {entry.payload.product}
+          {product?.medication ? (
+            <span className="font-normal"> · {product.medication}</span>
+          ) : null}
           {!product ? (
-            <span className="ml-1 text-[11px] text-muted-soft">(produit supprimé)</span>
+            <span className="ml-1 text-[12px] font-normal text-muted">(produit supprimé)</span>
           ) : null}
           <span className="ml-2 font-normal text-muted">
             {entry.payload.dose}
@@ -53,15 +61,17 @@ export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminL
         </p>
         {product ? (
           <p className="mt-0.5 text-[12px] text-muted">
-            {product.medication ? `${product.medication} · ` : ''}
-            {HRT_CATEGORY_LABELS[product.category]} · {HRT_ROUTE_LABELS[product.route]}
+            <span className="text-accent">{HRT_CATEGORY_LABELS[product.category]}</span> ·{' '}
+            {HRT_ROUTE_LABELS[product.route]}
             {typeof product.concentration === 'number' ? ` · ${product.concentration} mg/mL` : ''}
           </p>
         ) : null}
-        {entry.payload.notes ? (
-          <p className="mt-0.5 text-[12px] text-muted-soft">{entry.payload.notes}</p>
-        ) : null}
       </div>
+
+      {/* Notes as a second column (not a third stacked line). Always
+          rendered so the column lines up across rows. Same tone as the
+          meta line for readability. */}
+      <p className="min-w-0 flex-[2] text-[12px] text-muted">{entry.payload.notes}</p>
 
       {onEdit && onDelete ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : null}
     </li>

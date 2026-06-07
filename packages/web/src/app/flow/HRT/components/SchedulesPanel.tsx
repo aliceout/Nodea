@@ -1,0 +1,99 @@
+/**
+ * HRT · SchedulesPanel — the « Prises récurrentes en cours » block on the
+ * Administration page. Lists the active (non-stopped) recurring schedules
+ * with their cadence + start, and lets the user edit or stop each.
+ * Stopping is the parent's job (it sets `endDate` to today) ; the already
+ * generated occurrences stay in the journal. Renders nothing when no
+ * series is active. Foldable (like the Mood chart) to reclaim space.
+ */
+import { useState } from 'react';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
+
+import type { HrtProductPayload } from '@nodea/shared';
+import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
+
+import { frequencyLabel, formatLogDate } from '../lib/labels';
+import type { ScheduleEntry } from '../hooks/use-schedules';
+import CollapseToggle from './CollapseToggle';
+
+interface SchedulesPanelProps {
+  schedules: ReadonlyArray<ScheduleEntry>;
+  productByName: ReadonlyMap<string, HrtProductPayload>;
+  onEdit: (schedule: ScheduleEntry) => void;
+  onStop: (schedule: ScheduleEntry) => void;
+}
+
+export default function SchedulesPanel({
+  schedules,
+  productByName,
+  onEdit,
+  onStop,
+}: SchedulesPanelProps) {
+  const [open, setOpen] = useState(true);
+  // `endDate == null` ⇒ ongoing ; a stopped series carries its end date.
+  const active = schedules.filter((s) => s.payload.endDate == null);
+  if (active.length === 0) return null;
+
+  return (
+    <section className="mb-5 rounded-md border border-hair p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[13px] font-medium text-ink">Prises récurrentes en cours</h3>
+        <CollapseToggle
+          open={open}
+          onToggle={() => setOpen((o) => !o)}
+          label={open ? 'Masquer les prises récurrentes' : 'Afficher les prises récurrentes'}
+        />
+      </div>
+
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out',
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <ul className="flex flex-col pt-2">
+            {active.map((s) => {
+              const unit = productByName.get(s.payload.product)?.unit ?? '';
+              return (
+                <li
+                  key={s.id}
+                  className="flex items-start gap-3 border-b border-hair py-2 last:border-b-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-ink">
+                      {s.payload.product}
+                      <span className="ml-2 font-normal text-muted">
+                        {s.payload.dose}
+                        {unit ? ` ${unit}` : ''}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-muted">
+                      {frequencyLabel(s.payload.frequency, s.payload.everyNDays)} · depuis le{' '}
+                      {formatLogDate(s.payload.startDate)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      aria-label="Modifier la série"
+                      onClick={() => onEdit(s)}
+                    >
+                      <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button variant="danger-ghost" size="sm" onClick={() => onStop(s)}>
+                      Arrêter
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -15,12 +15,23 @@
  *
  * `summary` is the default landing. Product CRUD lives on it (the
  * Produits sub-view was folded in) ; the dose / lab lists are read-only
- * and deep-link to the two detail views. See `docs/Modules/HRT.md`.
+ * and deep-link to the two detail views.
+ *
+ * Recurring schedules are **materialised here, at module level** : the
+ * generator must run regardless of the open sub-view, since every lens
+ * reads admin logs. After a pass that creates occurrences out-of-band, we
+ * bump `dataVersion` to remount the active view so its journal hook
+ * re-fetches the fresh entries (rare — at most once per day). See
+ * `docs/Modules/HRT.md`.
  */
+import { useCallback, useReducer } from 'react';
+
 import { useNodeaStore, selectHrtSubview } from '@/core/store/nodea-store';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
+import { useHrtSchedules } from './hooks/use-schedules';
+import { useScheduleMaterialization } from './hooks/use-schedule-materialization';
 import AdministrationView from './views/AdministrationView';
 import LabsView from './views/LabsView';
 import SummaryView from './views/SummaryView';
@@ -35,19 +46,33 @@ export default function HrtPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectHrtSubview);
 
+  // Generate recurring-schedule occurrences once the schedules load. A
+  // pass that actually wrote entries bumps `dataVersion`, remounting the
+  // view so its admin-logs hook re-fetches them.
+  const [dataVersion, bumpData] = useReducer((v: number) => v + 1, 0);
+  const schedules = useHrtSchedules();
+  const reloadSchedules = schedules.reload;
+  const onMaterialized = useCallback(() => {
+    reloadSchedules();
+    bumpData();
+  }, [reloadSchedules]);
+  useScheduleMaterialization(schedules.entries, schedules.ready, onMaterialized);
+
   return (
     <ModuleShell
       topbar={
         <Topbar label={TOPBAR_LABELS[subview]} onOpenMenu={() => setMobileMenuOpen(true)} />
       }
     >
-      {subview === 'administration' ? (
-        <AdministrationView />
-      ) : subview === 'labs' ? (
-        <LabsView />
-      ) : (
-        <SummaryView />
-      )}
+      <div key={dataVersion} className="contents">
+        {subview === 'administration' ? (
+          <AdministrationView schedules={schedules} />
+        ) : subview === 'labs' ? (
+          <LabsView />
+        ) : (
+          <SummaryView />
+        )}
+      </div>
     </ModuleShell>
   );
 }

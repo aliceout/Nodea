@@ -4,7 +4,13 @@
  * pattern; a dedicated `hrt.json` can come later if the module grows
  * an EN audience.
  */
-import { findMarker, type HrtCategory, type HrtDrawContext, type HrtRoute } from '@nodea/shared';
+import {
+  findMarker,
+  type HrtCategory,
+  type HrtDrawContext,
+  type HrtFrequency,
+  type HrtRoute,
+} from '@nodea/shared';
 
 export const HRT_CATEGORY_LABELS: Record<HrtCategory, string> = {
   estrogen: 'Œstrogène',
@@ -38,6 +44,11 @@ export const HRT_DRAW_CONTEXT_LABELS: Record<HrtDrawContext, string> = {
  *  raw key (free-text markers). */
 export function markerLabel(key: string): string {
   return findMarker(key)?.label ?? key;
+}
+
+/** Human label for a schedule's cadence, e.g. « Tous les 5 jours ». */
+export function frequencyLabel(frequency: HrtFrequency, everyNDays?: number): string {
+  return frequency === 'every_n_days' ? `Tous les ${everyNDays ?? '?'} jours` : 'Tous les jours';
 }
 
 /** Local-midnight ISO date `YYYY-MM-DD` for today. */

@@ -220,6 +220,10 @@ rationale.
 | `library_reviews_entries`   | Reading / viewing notes per work.             |
 | `library_covers_entries`    | Encrypted cover blobs.                        |
 | `review_entries`            | Yearly YearCompass-inspired reviews.          |
+| `hrt_admin_logs_entries`    | HRT dose / injection log (manual + materialised series occurrences). |
+| `hrt_lab_results_entries`   | HRT lab marker readings.                      |
+| `hrt_suppliers_entries`     | HRT product catalog (legacy wire name; the domain concept is « product »). |
+| `hrt_schedules_entries`     | HRT recurring-dose schedules; the generator materialises one admin-log per occurrence. |
 
 Each row carries the strict minimum of plaintext columns:
 

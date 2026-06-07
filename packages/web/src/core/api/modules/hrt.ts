@@ -11,11 +11,14 @@
  *   - `hrtLabResultsClient` → `hrt-lab-results` (lab marker readings)
  *   - `hrtProductsClient`   → `hrt-suppliers`   (product catalog — the
  *     wire name stays `hrt-suppliers`, the domain concept is « product »)
+ *   - `hrtSchedulesClient`  → `hrt-schedules`   (recurring dose schedules
+ *     materialised into admin-log occurrences)
  */
 import {
   HrtAdminLogPayloadSchema,
   HrtLabResultPayloadSchema,
   HrtProductPayloadSchema,
+  HrtSchedulePayloadSchema,
 } from '@nodea/shared';
 import { createCollectionClient } from './collection-client.ts';
 
@@ -35,4 +38,9 @@ export const hrtLabResultsClient = createCollectionClient(
 export const hrtProductsClient = createCollectionClient(
   'hrt-suppliers',
   HrtProductPayloadSchema,
+);
+
+export const hrtSchedulesClient = createCollectionClient(
+  'hrt-schedules',
+  HrtSchedulePayloadSchema,
 );

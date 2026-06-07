@@ -22,6 +22,7 @@ import {
   HrtAdminLogPayloadSchema,
   HrtLabResultPayloadSchema,
   HrtProductPayloadSchema,
+  HrtSchedulePayloadSchema,
 } from './modules/index.ts';
 
 describe('Module payload defaults', () => {
@@ -68,10 +69,47 @@ describe('Module payload defaults', () => {
     expect(parsed.time).toBe('');
     expect(parsed.notes).toBe('');
     expect(parsed.updatedAt).toBe('');
+    expect(parsed.scheduleId).toBeUndefined();
     // product is required (catalog-only) and dose must be ≥ 0.
     expect(() => HrtAdminLogPayloadSchema.parse({ date: '2026-06-04', dose: 1 })).toThrow();
     expect(() =>
       HrtAdminLogPayloadSchema.parse({ date: '2026-06-04', product: 'X', dose: -1 }),
+    ).toThrow();
+  });
+
+  it('HrtAdminLogPayload keeps an optional scheduleId for generated occurrences', () => {
+    const auto = HrtAdminLogPayloadSchema.parse({
+      date: '2026-06-07',
+      product: 'Utrogestan',
+      dose: 100,
+      scheduleId: 'sched-1',
+    });
+    expect(auto.scheduleId).toBe('sched-1');
+  });
+
+  it('HrtSchedulePayload requires product + startDate, defaults frequency / endDate', () => {
+    const parsed = HrtSchedulePayloadSchema.parse({
+      product: 'Utrogestan',
+      dose: 100,
+      startDate: '2026-06-01',
+    });
+    expect(parsed.frequency).toBe('daily');
+    expect(parsed.endDate).toBeNull();
+    expect(parsed.materializedThrough).toBe('');
+    expect(parsed.everyNDays).toBeUndefined();
+    const every = HrtSchedulePayloadSchema.parse({
+      product: 'Astrovial',
+      dose: 4,
+      startDate: '2026-06-01',
+      frequency: 'every_n_days',
+      everyNDays: 5,
+    });
+    expect(every.everyNDays).toBe(5);
+    // product + startDate required ; interval must be a positive integer.
+    expect(() => HrtSchedulePayloadSchema.parse({ dose: 1, startDate: '2026-06-01' })).toThrow();
+    expect(() => HrtSchedulePayloadSchema.parse({ product: 'X', dose: 1 })).toThrow();
+    expect(() =>
+      HrtSchedulePayloadSchema.parse({ product: 'X', dose: 1, startDate: '2026-06-01', everyNDays: 0 }),
     ).toThrow();
   });
 
@@ -82,6 +120,7 @@ describe('Module payload defaults', () => {
     expect(parsed.route).toBe('other');
     expect(parsed.unit).toBe('mg');
     expect(parsed.concentration).toBeUndefined();
+    expect(parsed.archived).toBe(false);
     const inj = HrtProductPayloadSchema.parse({
       name: 'Estradiol valérate',
       medication: 'Estradiol valérate',
