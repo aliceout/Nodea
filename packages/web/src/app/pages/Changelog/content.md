@@ -5,6 +5,23 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.6.0 — 2026-06-07
+
+### Nouveautés
+
+- **ui** : borderless Select dropdown caret _(b3ab3fc)_
+- **hrt** : archive products instead of deleting them _(f7b0ca7)_
+- **hrt** : date-filter shapes the chart axis + foldable/sticky chart on Analyses _(3c4f995)_
+- **hrt** : recurring dose schedules (materialised series) _(2ae1dec)_
+
+<details>
+<summary>Maintenance — 2 commits</summary>
+
+- **release** : bump version to 2.6.0 _(cd032a9)_
+- **api** : set archived on the HRT product seed fixtures _(310df5e)_
+
+</details>
+
 ## v2.5.0 — 2026-06-07
 
 ### Nouveautés
@@ -12,6 +29,10 @@ pliés pour ne pas noyer l'essentiel.
 - **hrt** : date-range filter on Administration and Analyses _(472bd3d)_
 - **hrt** : Synthèse landing dashboard _(b45c022)_
 - **ui** : borderless variant for the Select atom _(00279a6)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.5.0 _(b87d102)_
 
 <details>
 <summary>Maintenance — 1 commit</summary>
