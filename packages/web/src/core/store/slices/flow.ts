@@ -31,12 +31,14 @@ export function isLibrarySubview(value: unknown): value is LibrarySubview {
 }
 
 /**
- * HRT splits into two lenses on the same encrypted data : the
- * administration log (`administration` — each dose/injection, timed)
- * and the lab results with their chart (`labs`). Same privacy
- * contract as Library : the active lens lives here, never in the URL.
+ * HRT has three lenses on the same encrypted data : the `summary`
+ * landing (read-only dashboard + the product catalog it absorbed), the
+ * administration log (`administration` — each dose/injection, timed),
+ * and the lab results with their chart (`labs`). `summary` is the
+ * default. Same privacy contract as Library : the active lens lives
+ * here, never in the URL.
  */
-export const HRT_SUBVIEWS = ['administration', 'labs', 'products'] as const;
+export const HRT_SUBVIEWS = ['summary', 'administration', 'labs'] as const;
 export type HrtSubview = (typeof HRT_SUBVIEWS)[number];
 
 export function isHrtSubview(value: unknown): value is HrtSubview {
@@ -71,7 +73,7 @@ export interface FlowSlice {
 export const initialFlow: FlowSlice['flow'] = {
   currentModule: 'home',
   librarySubview: 'livres',
-  hrtSubview: 'administration',
+  hrtSubview: 'summary',
 };
 
 export const createFlowSlice: StateCreator<NodeaState, [], [], FlowSlice> = (set, get) => ({

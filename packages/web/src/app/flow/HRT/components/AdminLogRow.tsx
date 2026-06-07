@@ -17,8 +17,10 @@ import type { AdminLogEntry } from '../hooks/use-admin-logs';
 interface AdminLogRowProps {
   entry: AdminLogEntry;
   product: HrtProductPayload | undefined;
-  onEdit: () => void;
-  onDelete: () => void;
+  /** Hover actions — omit both for a read-only row (e.g. the Summary
+   *  dashboard, where editing happens in the Administration view). */
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminLogRowProps) {
@@ -61,7 +63,7 @@ export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminL
         ) : null}
       </div>
 
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      {onEdit && onDelete ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : null}
     </li>
   );
 }

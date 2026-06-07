@@ -1,0 +1,191 @@
+/**
+ * HRT · Synthèse — the module's landing dashboard. Two sections over the
+ * three HRT collections, joined live : (1) a dose chart (3/4) whose
+ * molecule is picked from a Select, beside the **full** product catalog
+ * (1/4) — absorbed here, so product CRUD lives on this page ; the chart
+ * fills the product list's height (grid stretch + LabChart `fillHeight`).
+ * (2) the latest doses + lab results (1/2 each), read-only, linking to
+ * the Administration / Analyses views.
+ *
+ * On `lg+` the page is locked to the viewport height — `100dvh` minus the
+ * 52 px Topbar and the 56 px (`py-7`) content padding — so section 2
+ * fills the space left under section 1, each list scrolling within. If
+ * the Topbar / ModuleShell padding changes, update the `108px` offset.
+ *
+ * Orchestration only : grouping + mg-equivalent series from
+ * `lib/admin-data` ; rows / chart / form / panel are components. See
+ * `docs/Modules/HRT.md`.
+ */
+import { useMemo, useState } from 'react';
+
+import type { HrtProductPayload } from '@nodea/shared';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import Button from '@/ui/atoms/dirk/Button';
+
+import AdminLogRow from '../components/AdminLogRow';
+import DoseChartPanel from '../components/DoseChartPanel';
+import LabResultRow from '../components/LabResultRow';
+import ProductForm from '../components/ProductForm';
+import ProductRow from '../components/ProductRow';
+import RecentPanel from '../components/RecentPanel';
+import { useHrtAdminLogs } from '../hooks/use-admin-logs';
+import { useHrtLabResults } from '../hooks/use-lab-results';
+import { useHrtProducts, type ProductEntry } from '../hooks/use-products';
+import { buildDoseSeries, distinctMolecules } from '../lib/admin-data';
+
+// The recent lists render into a height-capped, scrollable panel : keep a
+// generous slice so a tall screen fills the area, while the « Voir les… »
+// link reaches the rest in the detail view.
+const RECENT = 12;
+
+export default function SummaryView() {
+  const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
+  const { entries: products, ready, create, update, remove } = useHrtProducts();
+  const { entries: adminEntries } = useHrtAdminLogs();
+  const { entries: labEntries } = useHrtLabResults();
+
+  const [selectedMolecule, setSelectedMolecule] = useState<string | null>(null);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductEntry | null>(null);
+  const productFormOpen = addingProduct || editingProduct !== null;
+
+  const productByName = useMemo(() => {
+    const m = new Map<string, HrtProductPayload>();
+    for (const p of products) m.set(p.payload.name, p.payload);
+    return m;
+  }, [products]);
+
+  // Molecules that have logged doses, most-logged first — the options of
+  // the chart's molecule picker. Defaults to the most-logged ; a stale
+  // selection (molecule no longer logged) falls back to it.
+  const molecules = useMemo(
+    () => distinctMolecules(adminEntries, productByName),
+    [adminEntries, productByName],
+  );
+  const activeMolecule =
+    selectedMolecule && molecules.some((m) => m.name === selectedMolecule)
+      ? selectedMolecule
+      : (molecules[0]?.name ?? null);
+
+  const series = useMemo(
+    () =>
+      activeMolecule
+        ? buildDoseSeries(adminEntries, activeMolecule, productByName)
+        : { points: [], skipped: 0 },
+    [adminEntries, activeMolecule, productByName],
+  );
+
+  const latestAdmins = adminEntries.slice(0, RECENT); // hook is newest-first
+  const latestLabs = useMemo(() => [...labEntries].reverse().slice(0, RECENT), [labEntries]);
+
+  function closeProductForm() {
+    setAddingProduct(false);
+    setEditingProduct(null);
+  }
+  async function onSubmitProduct(payload: HrtProductPayload, id?: string): Promise<void> {
+    if (id) await update(id, payload);
+    else await create(payload);
+  }
+  async function onDeleteProduct(entry: ProductEntry): Promise<void> {
+    if (!window.confirm(`Supprimer le produit « ${entry.payload.name} » ?`)) return;
+    await remove(entry.id);
+  }
+
+  return (
+    <section className="flex min-w-0 flex-col lg:h-[calc(100dvh-108px)]">
+      {productFormOpen ? (
+        <div className="mb-5 shrink-0">
+          <ProductForm
+            {...(editingProduct ? { initial: editingProduct } : {})}
+            onSubmit={onSubmitProduct}
+            onClose={closeProductForm}
+          />
+        </div>
+      ) : null}
+
+      {/* Section 1 — chart (3/4) + the FULL product catalog (1/4). The
+          product list is shown complete (no scroll) and the chart fills
+          the matching height : grid `items-stretch` + LabChart `fillHeight`.
+          The chart's molecule is picked from a Select in its header. */}
+      <div className="mb-4 grid shrink-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-4">
+        <DoseChartPanel
+          molecules={molecules}
+          activeMolecule={activeMolecule}
+          onSelectMolecule={setSelectedMolecule}
+          points={series.points}
+          hasProducts={products.length > 0}
+        />
+
+        <div className="flex min-h-[17.5rem] min-w-0 flex-col rounded-lg border border-hair p-4 lg:col-span-1">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 className="text-[13px] font-medium text-ink">Produits</h2>
+            {!productFormOpen ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setAddingProduct(true)}
+                disabled={!ready}
+              >
+                + Nouveau
+              </Button>
+            ) : null}
+          </div>
+          {products.length === 0 ? (
+            <p className="py-6 text-center text-[12px] text-muted">Aucun produit enregistré.</p>
+          ) : (
+            <ul className="flex flex-col">
+              {products.map((entry) => (
+                <ProductRow
+                  key={entry.id}
+                  entry={entry}
+                  onEdit={() => {
+                    setAddingProduct(false);
+                    setEditingProduct(entry);
+                  }}
+                  onDelete={() => void onDeleteProduct(entry)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Section 2 — latest doses (1/2) + latest labs (1/2), read-only.
+          Fills the viewport height left below section 1 (lg) ; each
+          panel's list scrolls within. */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-fr">
+        <RecentPanel
+          title="Dernières prises"
+          linkLabel="Voir les prises"
+          onOpen={() => setHrtSubview('administration')}
+          empty={latestAdmins.length === 0}
+          emptyText="Aucune prise enregistrée."
+        >
+          <ul className="flex flex-col">
+            {latestAdmins.map((entry) => (
+              <AdminLogRow
+                key={entry.id}
+                entry={entry}
+                product={productByName.get(entry.payload.product)}
+              />
+            ))}
+          </ul>
+        </RecentPanel>
+
+        <RecentPanel
+          title="Dernières analyses"
+          linkLabel="Voir les résultats"
+          onOpen={() => setHrtSubview('labs')}
+          empty={latestLabs.length === 0}
+          emptyText="Aucune analyse enregistrée."
+        >
+          <ul className="flex flex-col">
+            {latestLabs.map((entry) => (
+              <LabResultRow key={entry.id} entry={entry} />
+            ))}
+          </ul>
+        </RecentPanel>
+      </div>
+    </section>
+  );
+}

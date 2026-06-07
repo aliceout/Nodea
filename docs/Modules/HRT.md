@@ -4,10 +4,15 @@ Hormone replacement therapy tracking for trans people. Three encrypted
 collections, surfaced as three sidebar sub-views (à la Library) under a
 single `/flow` module:
 
+- **Synthèse** — the landing dashboard (default): a dose chart for the
+  selected molecule + the product catalog (which lives here), then the
+  latest doses and latest lab results, read-only.
 - **Administration** — a log of doses taken / injections done.
 - **Analyses** — lab marker readings, plotted over time.
-- **Produits** — the product catalog (molecule, route, dose unit,
-  concentration) that the dose log references.
+
+The standalone « Produits » sub-view was folded into **Synthèse**: the
+catalog has no separate tab — it's the dashboard's top-right column, the
+one surface where products are created / edited / deleted.
 
 The module supports transfeminine, transmasculine and non-binary
 regimens equally — it never assumes a single transition direction.
@@ -19,6 +24,13 @@ regimens equally — it never assumes a single transition direction.
 
 ## Functional description
 
+- **Synthèse** is the read-only landing dashboard — *except* its product
+  column, which keeps full CRUD (the catalog's only home now). Section 1:
+  a `LabChart` of the selected molecule's doses in mg-equivalent (3/4) +
+  the **full** product list (1/4) ; a Select in the chart header picks the
+  charted molecule, and the chart fills the product list's height. Section
+  2: the latest ~12 doses and lab results, read-only — their « Voir les
+  prises / résultats » links open the Administration / Analyses views.
 - **Administration** is **catalog-only**: a log row is just a `product`
   (referenced by name) + a `dose` + a date/time. The molecule, category,
   route, dose unit and concentration all come from the product. The form
@@ -32,13 +44,19 @@ regimens equally — it never assumes a single transition direction.
   continuous series. The chart (reusing `LabChart`) plots each intake in
   **mg-equivalent** (mL × concentration, or mg as-is; non-convertible
   doses are dropped), so different products/forms of a molecule compare.
+  A **date filter** (period presets — 30 j / 3 / 6 / 12 months — plus a
+  custom Du→Au range, shared `DateRangeFilter`) narrows both the list and
+  the chart.
 - **Analyses** records single lab measurements: a marker, a value, a
   unit, and the draw context (trough / peak / random) which matters for
-  injectables. The chart reads these.
-- **Produits** is a CRUD over the catalog. Each product holds `name`,
+  injectables. The chart reads these. The same **date filter** applies
+  here, alongside the marker / unit / target-band controls.
+- **Produits** (the catalog, managed from **Synthèse** — no standalone
+  tab) is a CRUD over the product set. Each product holds `name`,
   `medication`, `category`, `route`, dose `unit` and an optional
   `concentration` (mg/mL). It is the single source those values join
-  from.
+  from. A « + Nouveau produit » quick-add also lives in the
+  Administration dose form.
 
 Curated vocabulary (molecules, markers, default units/routes, molar
 unit conversions) lives in [`packages/shared/src/hrt-presets.ts`](../../packages/shared/src/hrt-presets.ts).

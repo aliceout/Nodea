@@ -8,16 +8,19 @@
  * y-gridlines and evenly-spaced date labels. Hover a dot for the exact
  * value via the native `<title>` tooltip.
  *
- * Rendered at a **fixed pixel height** with a width measured from the
- * container (ResizeObserver) — so the chart never balloons vertically
- * the way a width-scaled `viewBox` does, and strokes / dots stay
- * perfectly round at any width.
+ * Rendered at a **fixed pixel height** (260) with a width measured from
+ * the container (ResizeObserver) — so the chart never balloons
+ * vertically the way a width-scaled `viewBox` does, and strokes / dots
+ * stay perfectly round at any width. Opt into `fillHeight` to instead
+ * fill the parent's height (used by the Summary dashboard, where the
+ * chart matches the product list); the height is then measured too.
  *
  * Pure presentation : the caller converts every point to a single
  * `unit` first (see `LabsView`), so the chart never reasons about
- * units — it just scales numbers.
+ * units — it just scales numbers. An optional `caption` slot replaces
+ * the default header text (e.g. a molecule `<Select>`).
  */
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 import type { HrtDrawContext } from '@nodea/shared';
 
@@ -37,9 +40,16 @@ interface LabChartProps {
    *  points. Either bound may be absent. Folded into the value scale so
    *  it's always visible, and drawn behind the line. */
   target?: { min?: number; max?: number };
+  /** Custom header content, replacing the default « label (unit) »
+   *  caption — e.g. a molecule `<Select>` on the Summary dashboard. */
+  caption?: ReactNode;
+  /** Fill the parent's height instead of the fixed 260 px. The parent
+   *  must impose a height (e.g. a stretched grid cell). */
+  fillHeight?: boolean;
 }
 
-const HEIGHT = 260;
+const DEFAULT_HEIGHT = 260;
+const MIN_HEIGHT = 140;
 const PAD_L = 48;
 const PAD_R = 20;
 const PAD_T = 20;
@@ -59,31 +69,41 @@ function fmtDate(ms: number): string {
   return new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
-/** Track the container's pixel width so the SVG fills it at a fixed
- *  height without `viewBox` up-scaling. */
-function useMeasuredWidth(): [RefObject<HTMLDivElement | null>, number] {
+/** Track the container's pixel size. Width always fills the SVG ;
+ *  height is only read in `fillHeight` mode (else the chart uses the
+ *  fixed default). */
+function useMeasured(): [RefObject<HTMLDivElement | null>, number, number] {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(640);
+  const [size, setSize] = useState({ width: 640, height: DEFAULT_HEIGHT });
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setWidth(w);
+      const r = entries[0]?.contentRect;
+      if (!r) return;
+      setSize((s) => ({
+        width: r.width > 0 ? r.width : s.width,
+        height: r.height > 0 ? r.height : s.height,
+      }));
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  return [ref, width];
+  return [ref, size.width, size.height];
 }
 
-export default function LabChart({ points, unit, label, target }: LabChartProps) {
-  const [ref, width] = useMeasuredWidth();
+export default function LabChart({ points, unit, label, target, caption, fillHeight }: LabChartProps) {
+  const [ref, width, measuredH] = useMeasured();
   const gradId = `hrt-area-${useId()}`;
+  const height = fillHeight ? Math.max(measuredH, MIN_HEIGHT) : DEFAULT_HEIGHT;
 
   const body =
     points.length === 0 ? (
-      <div className="flex h-[200px] items-center justify-center text-[13px] text-muted">
+      <div
+        className={`flex items-center justify-center text-[13px] text-muted ${
+          fillHeight ? 'h-full' : 'h-[200px]'
+        }`}
+      >
         Pas encore de données pour {label}.
       </div>
     ) : (
@@ -92,17 +112,26 @@ export default function LabChart({ points, unit, label, target }: LabChartProps)
         unit={unit}
         label={label}
         width={width}
+        height={height}
         gradId={gradId}
         {...(target ? { target } : {})}
       />
     );
 
   return (
-    <figure className="rounded-lg border border-hair bg-bg p-3">
+    <figure
+      className={`rounded-lg border border-hair bg-bg p-3 ${
+        fillHeight ? 'flex h-full w-full flex-col' : ''
+      }`}
+    >
       <figcaption className="mb-1 px-1 text-[12px] font-medium text-ink">
-        {label} <span className="font-normal text-muted">({unit})</span>
+        {caption ?? (
+          <>
+            {label} <span className="font-normal text-muted">({unit})</span>
+          </>
+        )}
       </figcaption>
-      <div ref={ref} className="relative w-full">
+      <div ref={ref} className={`relative w-full ${fillHeight ? 'min-h-0 flex-1' : ''}`}>
         {body}
       </div>
     </figure>
@@ -111,13 +140,14 @@ export default function LabChart({ points, unit, label, target }: LabChartProps)
 
 interface PlotProps extends LabChartProps {
   width: number;
+  height: number;
   gradId: string;
 }
 
-function Plot({ points, unit, width, gradId, target }: PlotProps) {
+function Plot({ points, unit, width, height, gradId, target }: PlotProps) {
   const [hover, setHover] = useState<number | null>(null);
   const plotW = Math.max(width - PAD_L - PAD_R, 10);
-  const plotH = HEIGHT - PAD_T - PAD_B;
+  const plotH = height - PAD_T - PAD_B;
 
   const times = points.map((p) => dateMs(p.dateIso));
   const values = points.map((p) => p.value);
@@ -166,7 +196,7 @@ function Plot({ points, unit, width, gradId, target }: PlotProps) {
 
   return (
     <>
-      <svg width={width} height={HEIGHT} role="img" aria-label={`Évolution en ${unit}`}>
+      <svg width={width} height={height} role="img" aria-label={`Évolution en ${unit}`}>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" className="text-accent" stopOpacity={0.22} />
@@ -207,7 +237,7 @@ function Plot({ points, unit, width, gradId, target }: PlotProps) {
         <text
           key={`x-${i}`}
           x={x(t)}
-          y={HEIGHT - 8}
+          y={height - 8}
           textAnchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
           fill="currentColor"
           className="fill-current text-[10px] text-muted"

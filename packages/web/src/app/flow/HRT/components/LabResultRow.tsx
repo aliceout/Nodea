@@ -14,8 +14,10 @@ import type { LabResultEntry } from '../hooks/use-lab-results';
 
 interface LabResultRowProps {
   entry: LabResultEntry;
-  onEdit: () => void;
-  onDelete: () => void;
+  /** Hover actions — omit both for a read-only row (e.g. the Summary
+   *  dashboard, where editing happens in the Analyses view). */
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export default function LabResultRow({ entry, onEdit, onDelete }: LabResultRowProps) {
@@ -42,7 +44,7 @@ export default function LabResultRow({ entry, onEdit, onDelete }: LabResultRowPr
           <p className="mt-0.5 text-[12px] text-muted-soft">{entry.payload.notes}</p>
         ) : null}
       </div>
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      {onEdit && onDelete ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : null}
     </li>
   );
 }
