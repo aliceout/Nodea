@@ -22,10 +22,10 @@ import { daysAgo, monthsAgo, nowMinusDays } from './shared.ts';
 export function buildHrtProductFixtures(): HrtProductPayload[] {
   return [
     // Injectable estradiol — dosed in mL, 10 mg/mL (so 0.4 mL = 4 mg).
-    { name: 'Préparation magistrale', medication: 'Estradiol valérate', category: 'estrogen', route: 'injection_im', unit: 'mL', concentration: 10, notes: 'préparation magistrale 10 mg/mL', updatedAt: nowMinusDays(40) },
+    { name: 'Préparation magistrale', medication: 'Estradiol valérate', category: 'estrogen', route: 'injection_im', unit: 'mL', concentration: 10, archived: false, notes: 'préparation magistrale 10 mg/mL', updatedAt: nowMinusDays(40) },
     // Oral products — no concentration, dosed in mg.
-    { name: 'Aldactone', medication: 'Spironolactone', category: 'antiandrogen', route: 'oral', unit: 'mg', notes: '', updatedAt: nowMinusDays(40) },
-    { name: 'Utrogestan', medication: 'Progestérone', category: 'progestogen', route: 'oral', unit: 'mg', notes: '', updatedAt: nowMinusDays(40) },
+    { name: 'Aldactone', medication: 'Spironolactone', category: 'antiandrogen', route: 'oral', unit: 'mg', archived: false, notes: '', updatedAt: nowMinusDays(40) },
+    { name: 'Utrogestan', medication: 'Progestérone', category: 'progestogen', route: 'oral', unit: 'mg', archived: false, notes: '', updatedAt: nowMinusDays(40) },
   ];
 }
 
