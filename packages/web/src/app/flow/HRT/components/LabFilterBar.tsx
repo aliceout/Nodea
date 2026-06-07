@@ -29,6 +29,9 @@ interface LabFilterBarProps {
   goal: HrtGoal | null;
   onGoalChange: (goal: HrtGoal | null) => void;
   children?: ReactNode;
+  /** Rendered last, after the right-aligned goal Select — so it sits at
+   *  the far right of the bar (e.g. the chart collapse toggle). */
+  endSlot?: ReactNode;
 }
 
 export default function LabFilterBar({
@@ -42,6 +45,7 @@ export default function LabFilterBar({
   goal,
   onGoalChange,
   children,
+  endSlot,
 }: LabFilterBarProps) {
   if (markers.length <= 1 && !chartMarker) return null;
 
@@ -92,6 +96,7 @@ export default function LabFilterBar({
           <option value="masculinizing">Cibles : masculinisant</option>
         </Select>
       ) : null}
+      {endSlot}
     </div>
   );
 }

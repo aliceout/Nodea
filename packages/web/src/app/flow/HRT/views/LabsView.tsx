@@ -12,9 +12,11 @@
 import { useMemo, useState } from 'react';
 
 import { type HrtGoal, type HrtLabResultPayload } from '@nodea/shared';
+import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 
 import ChartNotes from '../components/ChartNotes';
+import CollapseToggle from '../components/CollapseToggle';
 import DateRangeFilter from '../components/DateRangeFilter';
 import LabChart from '../components/LabChart';
 import LabFilterBar from '../components/LabFilterBar';
@@ -29,7 +31,7 @@ import {
   unitsForMarker,
 } from '../lib/chart-data';
 import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
-import { formatLogDate, markerLabel } from '../lib/labels';
+import { formatLogDate, markerLabel, todayIso } from '../lib/labels';
 
 export default function LabsView() {
   const { entries, load, ready, create, update, remove } = useHrtLabResults();
@@ -40,6 +42,7 @@ export default function LabsView() {
   // Target bands are off by default — opting in picks a goal.
   const [goal, setGoal] = useState<HrtGoal | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_RANGE);
+  const [chartOpen, setChartOpen] = useState(true);
 
   const formOpen = adding || editing !== null;
 
@@ -76,6 +79,12 @@ export default function LabsView() {
         : { points: [], skipped: 0 },
     [dateFiltered, chartMarker, unit],
   );
+  // Span the chart's time axis over the filtered window (not just the
+  // data extent), so the date filter visibly reshapes the chart.
+  const domain =
+    dateRange.from || dateRange.to
+      ? { from: dateRange.from, to: dateRange.to || todayIso() }
+      : undefined;
 
   const target = useMemo(
     () => buildTargetBand(chartMarker, goal, unit),
@@ -140,38 +149,59 @@ export default function LabsView() {
         </div>
       ) : (
         <>
-          <LabFilterBar
-            markers={markers}
-            markerSel={markerSel}
-            onMarkerChange={(key) => {
-              setMarkerSel(key);
-              setUnitSel(null);
-            }}
-            chartMarker={chartMarker}
-            units={units}
-            unit={unit}
-            onUnitChange={setUnitSel}
-            goal={goal}
-            onGoalChange={setGoal}
-          >
-            <DateRangeFilter onChange={setDateRange} />
-          </LabFilterBar>
-          {chartMarker ? (
-            <div className="mb-6">
-              <LabChart
-                points={series.points}
-                unit={unit}
-                label={markerLabel(chartMarker)}
-                {...(target.band ? { target: target.band } : {})}
-              />
-              <ChartNotes
-                targetText={target.text ?? null}
-                goalActive={goal !== null}
-                skipped={series.skipped}
-                unit={unit}
-              />
-            </div>
-          ) : null}
+          {/* Filter bar + chart pin below the topbar while the list
+              scrolls ; the chart folds away via the toggle. */}
+          <div className="sticky top-13 z-10 bg-bg pb-3">
+            <LabFilterBar
+              markers={markers}
+              markerSel={markerSel}
+              onMarkerChange={(key) => {
+                setMarkerSel(key);
+                setUnitSel(null);
+              }}
+              chartMarker={chartMarker}
+              units={units}
+              unit={unit}
+              onUnitChange={setUnitSel}
+              goal={goal}
+              onGoalChange={setGoal}
+              endSlot={
+                chartMarker ? (
+                  <CollapseToggle
+                    open={chartOpen}
+                    onToggle={() => setChartOpen((o) => !o)}
+                    label={chartOpen ? 'Masquer le graphique' : 'Afficher le graphique'}
+                  />
+                ) : undefined
+              }
+            >
+              <DateRangeFilter onChange={setDateRange} />
+            </LabFilterBar>
+            {chartMarker ? (
+              <div
+                className={cn(
+                  'grid transition-[grid-template-rows] duration-300 ease-out',
+                  chartOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                )}
+              >
+                <div className="overflow-hidden">
+                  <LabChart
+                    points={series.points}
+                    unit={unit}
+                    label={markerLabel(chartMarker)}
+                    {...(target.band ? { target: target.band } : {})}
+                    {...(domain ? { domain } : {})}
+                  />
+                  <ChartNotes
+                    targetText={target.text ?? null}
+                    goalActive={goal !== null}
+                    skipped={series.skipped}
+                    unit={unit}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           <ul className="flex flex-col">
             {listEntries.map((entry) => (
