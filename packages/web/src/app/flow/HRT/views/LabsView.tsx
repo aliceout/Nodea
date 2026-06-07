@@ -1,19 +1,21 @@
 /**
  * HRT · Analyses — lab results + time-series chart (orchestration).
  *
- * Owns the marker / unit / goal selection state and wires the pieces :
- * `LabFilterBar` (toolbar), `LabChart` (curve + target band),
- * `LabResultRow` (list), `LabResultForm` (create/edit). All derivation
- * — markers, units, series, target band — is pure helpers in
- * `lib/chart-data`. The disclaimer is permanent ; target bands are off
- * by default (opt-in goal Select), informational only (WPATH /
- * Endocrine Society), never a recommendation. See `docs/Modules/HRT.md`.
+ * Owns the marker / unit / goal / date selection state and wires the
+ * pieces : `LabFilterBar` + `DateRangeFilter` (toolbar), `LabChart` +
+ * `ChartNotes` (curve + captions), `LabResultRow` (list), `LabResultForm`
+ * (create/edit). All derivation lives in pure helpers (`lib/chart-data`,
+ * `lib/date-range`). Target bands are opt-in + informational (WPATH /
+ * Endocrine Society) ; the disclaimer is permanent. See
+ * `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
 
 import { type HrtGoal, type HrtLabResultPayload } from '@nodea/shared';
 import Button from '@/ui/atoms/dirk/Button';
 
+import ChartNotes from '../components/ChartNotes';
+import DateRangeFilter from '../components/DateRangeFilter';
 import LabChart from '../components/LabChart';
 import LabFilterBar from '../components/LabFilterBar';
 import LabResultForm from '../components/LabResultForm';
@@ -26,6 +28,7 @@ import {
   distinctMarkers,
   unitsForMarker,
 } from '../lib/chart-data';
+import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
 import { formatLogDate, markerLabel } from '../lib/labels';
 
 export default function LabsView() {
@@ -36,6 +39,7 @@ export default function LabsView() {
   const [unitSel, setUnitSel] = useState<string | null>(null);
   // Target bands are off by default — opting in picks a goal.
   const [goal, setGoal] = useState<HrtGoal | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_RANGE);
 
   const formOpen = adding || editing !== null;
 
@@ -59,12 +63,18 @@ export default function LabsView() {
         ? unitSel
         : defaultUnitForMarker(entries, chartMarker);
 
+  // Date range narrows the list + chart (options stay from all entries).
+  const dateFiltered = useMemo(
+    () => entries.filter((e) => inDateRange(e.payload.date, dateRange)),
+    [entries, dateRange],
+  );
+
   const series = useMemo(
     () =>
       chartMarker
-        ? buildChartSeries(entries, chartMarker, unit)
+        ? buildChartSeries(dateFiltered, chartMarker, unit)
         : { points: [], skipped: 0 },
-    [entries, chartMarker, unit],
+    [dateFiltered, chartMarker, unit],
   );
 
   const target = useMemo(
@@ -89,14 +99,13 @@ export default function LabsView() {
   }
 
   // Newest-first for the list (the hook keeps entries oldest-first for
-  // the chart's left-to-right time axis). Filtered to the active marker
-  // when one is picked.
+  // the chart's time axis) ; filtered to the active marker when picked.
   const listEntries = useMemo(() => {
     const base = activeMarker
-      ? entries.filter((e) => e.payload.marker === activeMarker)
-      : entries;
+      ? dateFiltered.filter((e) => e.payload.marker === activeMarker)
+      : dateFiltered;
     return [...base].reverse();
-  }, [entries, activeMarker]);
+  }, [dateFiltered, activeMarker]);
 
   return (
     <section className="min-w-0">
@@ -144,7 +153,9 @@ export default function LabsView() {
             onUnitChange={setUnitSel}
             goal={goal}
             onGoalChange={setGoal}
-          />
+          >
+            <DateRangeFilter onChange={setDateRange} />
+          </LabFilterBar>
           {chartMarker ? (
             <div className="mb-6">
               <LabChart
@@ -153,22 +164,12 @@ export default function LabsView() {
                 label={markerLabel(chartMarker)}
                 {...(target.band ? { target: target.band } : {})}
               />
-              {target.text ? (
-                <p className="mt-1 text-[11px] text-muted-soft">
-                  {target.text} — informatif, pas un avis médical.
-                </p>
-              ) : goal ? (
-                <p className="mt-1 text-[11px] text-muted-soft">
-                  Pas de cible définie pour ce marqueur.
-                </p>
-              ) : null}
-              {series.skipped > 0 ? (
-                <p className="mt-1 text-[11px] text-muted-soft">
-                  {series.skipped} résultat{series.skipped > 1 ? 's' : ''} non convertible
-                  {series.skipped > 1 ? 's' : ''} en {unit} — masqué
-                  {series.skipped > 1 ? 's' : ''} du graphique.
-                </p>
-              ) : null}
+              <ChartNotes
+                targetText={target.text ?? null}
+                goalActive={goal !== null}
+                skipped={series.skipped}
+                unit={unit}
+              />
             </div>
           ) : null}
 

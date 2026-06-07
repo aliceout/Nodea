@@ -16,6 +16,7 @@ import Select from '@/ui/atoms/dirk/Select';
 
 import AdminLogForm, { type ProductOption } from '../components/AdminLogForm';
 import AdminLogRow from '../components/AdminLogRow';
+import DateRangeFilter from '../components/DateRangeFilter';
 import LabChart from '../components/LabChart';
 import { useHrtAdminLogs, type AdminLogEntry } from '../hooks/use-admin-logs';
 import { useHrtProducts } from '../hooks/use-products';
@@ -24,6 +25,7 @@ import {
   distinctMolecules,
   moleculeOf,
 } from '../lib/admin-data';
+import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
 import { formatLogDate } from '../lib/labels';
 
 export default function AdministrationView() {
@@ -32,6 +34,7 @@ export default function AdministrationView() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<AdminLogEntry | null>(null);
   const [chartSel, setChartSel] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_RANGE);
 
   const formOpen = adding || editing !== null;
 
@@ -69,17 +72,24 @@ export default function AdministrationView() {
   const chartMolecule =
     filterMolecule ?? (molecules.length === 1 ? (molecules[0]?.name ?? null) : null);
 
+  // Date range narrows both the list and the chart ; the molecule
+  // options stay computed from all entries so the picker doesn't flicker.
+  const dateFiltered = useMemo(
+    () => entries.filter((e) => inDateRange(e.payload.date, dateRange)),
+    [entries, dateRange],
+  );
+
   const series = useMemo(
     () =>
       chartMolecule
-        ? buildDoseSeries(entries, chartMolecule, productByName)
+        ? buildDoseSeries(dateFiltered, chartMolecule, productByName)
         : { points: [], skipped: 0 },
-    [entries, chartMolecule, productByName],
+    [dateFiltered, chartMolecule, productByName],
   );
 
   const listEntries = filterMolecule
-    ? entries.filter((e) => moleculeOf(e, productByName) === filterMolecule)
-    : entries;
+    ? dateFiltered.filter((e) => moleculeOf(e, productByName) === filterMolecule)
+    : dateFiltered;
   const showChart =
     (molecules.length === 1 || filterMolecule != null) &&
     chartMolecule != null &&
@@ -140,10 +150,11 @@ export default function AdministrationView() {
         </div>
       ) : (
         <>
-          {molecules.length > 1 ? (
-            <div className="mb-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {molecules.length > 1 ? (
               <Select
                 aria-label="Filtrer par molécule"
+                borderless
                 className="w-auto"
                 value={chartSel ?? ''}
                 onChange={(e) => setChartSel(e.target.value === '' ? null : e.target.value)}
@@ -155,8 +166,9 @@ export default function AdministrationView() {
                   </option>
                 ))}
               </Select>
-            </div>
-          ) : null}
+            ) : null}
+            <DateRangeFilter onChange={setDateRange} />
+          </div>
           {showChart && chartMolecule ? (
             <div className="mb-6">
               <LabChart points={series.points} unit="mg" label={chartMolecule} />

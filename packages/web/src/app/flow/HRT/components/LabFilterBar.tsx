@@ -7,8 +7,11 @@
  * orchestration ; each Select only renders when it has a real choice to
  * offer (≥ 2 markers, ≥ 2 units, a charted marker for the goal). The
  * goal Select is right-aligned (`ml-auto`) — target bands are off by
- * default and opting in is a deliberate, separate action.
+ * default and opting in is a deliberate, separate action. `children`
+ * (e.g. the date filter) render in the left group, before the goal.
  */
+import type { ReactNode } from 'react';
+
 import Select from '@/ui/atoms/dirk/Select';
 import type { HrtGoal } from '@nodea/shared';
 
@@ -25,6 +28,7 @@ interface LabFilterBarProps {
   onUnitChange: (unit: string) => void;
   goal: HrtGoal | null;
   onGoalChange: (goal: HrtGoal | null) => void;
+  children?: ReactNode;
 }
 
 export default function LabFilterBar({
@@ -37,6 +41,7 @@ export default function LabFilterBar({
   onUnitChange,
   goal,
   onGoalChange,
+  children,
 }: LabFilterBarProps) {
   if (markers.length <= 1 && !chartMarker) return null;
 
@@ -45,6 +50,7 @@ export default function LabFilterBar({
       {markers.length > 1 ? (
         <Select
           aria-label="Filtrer par marqueur"
+          borderless
           className="w-auto"
           value={markerSel ?? ''}
           onChange={(e) => onMarkerChange(e.target.value === '' ? null : e.target.value)}
@@ -60,6 +66,7 @@ export default function LabFilterBar({
       {chartMarker && units.length > 1 ? (
         <Select
           aria-label="Unité d’affichage"
+          borderless
           className="w-auto"
           value={unit}
           onChange={(e) => onUnitChange(e.target.value)}
@@ -71,9 +78,11 @@ export default function LabFilterBar({
           ))}
         </Select>
       ) : null}
+      {children}
       {chartMarker ? (
         <Select
           aria-label="Plages cibles"
+          borderless
           className="ml-auto w-auto"
           value={goal ?? ''}
           onChange={(e) => onGoalChange(e.target.value === '' ? null : (e.target.value as HrtGoal))}
