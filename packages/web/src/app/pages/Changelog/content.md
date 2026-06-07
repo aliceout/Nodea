@@ -5,6 +5,21 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.5.0 — 2026-06-07
+
+### Nouveautés
+
+- **hrt** : date-range filter on Administration and Analyses _(472bd3d)_
+- **hrt** : Synthèse landing dashboard _(b45c022)_
+- **ui** : borderless variant for the Select atom _(00279a6)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.5.0 _(b257a6b)_
+
+</details>
+
 ## v2.4.0 — 2026-06-07
 
 ### Nouveautés
@@ -18,6 +33,7 @@ pliés pour ne pas noyer l'essentiel.
 
 ### Documentation
 
+- **changelog** : regenerate for v2.4.0 _(2d7b38a)_
 - **changelog** : include CI fix in v2.3.0 _(e09c025)_
 
 <details>
