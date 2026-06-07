@@ -21,6 +21,7 @@ import { useMemo, useState } from 'react';
 import type { HrtProductPayload } from '@nodea/shared';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
+import Select from '@/ui/atoms/dirk/Select';
 
 import AdminLogRow from '../components/AdminLogRow';
 import DoseChartPanel from '../components/DoseChartPanel';
@@ -40,20 +41,30 @@ const RECENT = 12;
 
 export default function SummaryView() {
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
-  const { entries: products, ready, create, update, remove } = useHrtProducts();
+  const { entries: products, ready, create, update } = useHrtProducts();
   const { entries: adminEntries } = useHrtAdminLogs();
   const { entries: labEntries } = useHrtLabResults();
 
   const [selectedMolecule, setSelectedMolecule] = useState<string | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductEntry | null>(null);
+  const [productView, setProductView] = useState<'active' | 'archived'>('active');
   const productFormOpen = addingProduct || editingProduct !== null;
 
+  // The name→product map joins ALL products (incl. archived) so past
+  // doses keep their molecule / unit display ; the list below filters.
   const productByName = useMemo(() => {
     const m = new Map<string, HrtProductPayload>();
     for (const p of products) m.set(p.payload.name, p.payload);
     return m;
   }, [products]);
+  const archivedCount = useMemo(
+    () => products.filter((p) => p.payload.archived).length,
+    [products],
+  );
+  const visibleProducts = products.filter((p) =>
+    productView === 'archived' ? p.payload.archived : !p.payload.archived,
+  );
 
   // Molecules that have logged doses, most-logged first — the options of
   // the chart's molecule picker. Defaults to the most-logged ; a stale
@@ -86,9 +97,8 @@ export default function SummaryView() {
     if (id) await update(id, payload);
     else await create(payload);
   }
-  async function onDeleteProduct(entry: ProductEntry): Promise<void> {
-    if (!window.confirm(`Supprimer le produit « ${entry.payload.name} » ?`)) return;
-    await remove(entry.id);
+  async function setArchived(entry: ProductEntry, archived: boolean): Promise<void> {
+    await update(entry.id, { ...entry.payload, archived, updatedAt: new Date().toISOString() });
   }
 
   return (
@@ -119,7 +129,19 @@ export default function SummaryView() {
         <div className="flex min-h-[17.5rem] min-w-0 flex-col rounded-lg border border-hair p-4 lg:col-span-1">
           <div className="mb-1 flex items-center justify-between gap-2">
             <h2 className="text-[13px] font-medium text-ink">Produits</h2>
-            {!productFormOpen ? (
+            {archivedCount > 0 || productView === 'archived' ? (
+              <Select
+                aria-label="Afficher les produits"
+                borderless
+                className="w-auto text-[12px]"
+                value={productView}
+                onChange={(e) => setProductView(e.target.value as 'active' | 'archived')}
+              >
+                <option value="active">Actifs</option>
+                <option value="archived">Archivés ({archivedCount})</option>
+              </Select>
+            ) : null}
+            {!productFormOpen && productView === 'active' ? (
               <Button
                 variant="primary"
                 size="sm"
@@ -130,21 +152,31 @@ export default function SummaryView() {
               </Button>
             ) : null}
           </div>
-          {products.length === 0 ? (
-            <p className="py-6 text-center text-[12px] text-muted">Aucun produit enregistré.</p>
+          {visibleProducts.length === 0 ? (
+            <p className="py-6 text-center text-[12px] text-muted">
+              {productView === 'archived' ? 'Aucun produit archivé.' : 'Aucun produit enregistré.'}
+            </p>
           ) : (
             <ul className="flex flex-col">
-              {products.map((entry) => (
-                <ProductRow
-                  key={entry.id}
-                  entry={entry}
-                  onEdit={() => {
-                    setAddingProduct(false);
-                    setEditingProduct(entry);
-                  }}
-                  onDelete={() => void onDeleteProduct(entry)}
-                />
-              ))}
+              {visibleProducts.map((entry) =>
+                entry.payload.archived ? (
+                  <ProductRow
+                    key={entry.id}
+                    entry={entry}
+                    onReactivate={() => void setArchived(entry, false)}
+                  />
+                ) : (
+                  <ProductRow
+                    key={entry.id}
+                    entry={entry}
+                    onEdit={() => {
+                      setAddingProduct(false);
+                      setEditingProduct(entry);
+                    }}
+                    onArchive={() => void setArchived(entry, true)}
+                  />
+                ),
+              )}
             </ul>
           )}
         </div>
