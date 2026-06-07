@@ -4,6 +4,10 @@ import { cn } from '@/lib/utils';
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   children?: ReactNode;
   ref?: Ref<HTMLSelectElement>;
+  /** Drop the border, fill and focus ring — a chrome-less select that
+   *  reads as inline text. Used by the HRT toolbar + chart-header
+   *  pickers. Caller `className` still wins (it merges last). */
+  borderless?: boolean;
 }
 
 /**
@@ -16,7 +20,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
  * Padding is slightly tighter (`px-2`) than Input so the dropdown
  * arrow doesn't push the visible value off-centre.
  */
-export default function Select({ className, children, ref, ...props }: SelectProps) {
+export default function Select({ className, children, ref, borderless, ...props }: SelectProps) {
   return (
     <select
       ref={ref}
@@ -26,6 +30,7 @@ export default function Select({ className, children, ref, ...props }: SelectPro
         // below their declared `h-8` when content overflows.
         'block h-8 w-full shrink-0 cursor-pointer rounded-[var(--radius-input)] border border-hair bg-bg px-2 text-[12.5px] text-ink',
         'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60',
+        borderless && 'border-0 bg-transparent shadow-none focus:border-0 focus:shadow-none',
         className,
       )}
       {...props}
