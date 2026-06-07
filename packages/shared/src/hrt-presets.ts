@@ -6,9 +6,9 @@
  * runtime deps.
  *
  * Design contract : presets **suggest**, they never constrain. The Zod
- * payload schemas (`schemas/modules.ts`) keep `medication` / `marker` /
- * `unit` as free strings — someone on an uncommon protocol, or a lab
- * reporting an exotic unit, is never blocked. These lists drive
+ * payload schemas (`schemas/modules/hrt.ts`) keep `medication` /
+ * `marker` / `unit` as free strings — someone on an uncommon protocol,
+ * or a lab reporting an exotic unit, is never blocked. These lists drive
  * autocomplete, default-unit/route hints and unit conversion only.
  *
  * Not medical advice. Marker metadata (canonical unit, molar
@@ -16,7 +16,7 @@
  * are informational (WPATH / Endocrine Society) and decided at the
  * presentation layer, never here.
  */
-import type { HrtCategory, HrtRoute } from './schemas/modules.ts';
+import type { HrtCategory, HrtRoute } from './schemas/modules/hrt.ts';
 
 export interface HrtMedicationPreset {
   /** Stable key (snake_case) — safe to store / compare. */
@@ -35,25 +35,34 @@ export interface HrtMedicationPreset {
 export const HRT_MEDICATIONS: readonly HrtMedicationPreset[] = [
   // Œstrogènes
   { id: 'estradiol_valerate', label: 'Estradiol valérate', category: 'estrogen', defaultRoute: 'injection_im', defaultUnit: 'mg' },
-  { id: 'estradiol_cypionate', label: 'Estradiol cypionate', category: 'estrogen', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'estradiol_cypionate', label: 'Estradiol cypionate (Depo-Estradiol)', category: 'estrogen', defaultRoute: 'injection_im', defaultUnit: 'mg' },
   { id: 'estradiol_enantate', label: 'Estradiol énanthate', category: 'estrogen', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'estradiol_undecylate', label: 'Estradiol undécylate', category: 'estrogen', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'estradiol_hemihydrate', label: 'Estradiol hémihydrate (Estrofem)', category: 'estrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
   { id: 'estradiol_oral', label: 'Estradiol (oral)', category: 'estrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
-  { id: 'estradiol_gel', label: 'Estradiol gel', category: 'estrogen', defaultRoute: 'gel', defaultUnit: 'mg' },
+  { id: 'estradiol_gel', label: 'Estradiol gel (Oestrogel / Estreva)', category: 'estrogen', defaultRoute: 'gel', defaultUnit: 'mg' },
   { id: 'estradiol_patch', label: 'Estradiol patch', category: 'estrogen', defaultRoute: 'patch', defaultUnit: 'µg/24h' },
+  { id: 'estradiol_spray', label: 'Estradiol spray (Lenzetto)', category: 'estrogen', defaultRoute: 'spray', defaultUnit: 'pression' },
+  { id: 'estradiol_implant', label: 'Estradiol implant', category: 'estrogen', defaultRoute: 'implant', defaultUnit: 'mg' },
   // Anti-androgènes
-  { id: 'spironolactone', label: 'Spironolactone', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
-  { id: 'cyproterone_acetate', label: 'Cyprotérone acétate', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
-  { id: 'bicalutamide', label: 'Bicalutamide', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'spironolactone', label: 'Spironolactone (Aldactone)', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'cyproterone_acetate', label: 'Cyprotérone acétate (Androcur)', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'bicalutamide', label: 'Bicalutamide (Casodex)', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'flutamide', label: 'Flutamide (Eulexin)', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'finasteride', label: 'Finastéride (Propecia)', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'dutasteride', label: 'Dutastéride (Avodart)', category: 'antiandrogen', defaultRoute: 'oral', defaultUnit: 'mg' },
   // Agonistes GnRH
-  { id: 'triptorelin', label: 'Triptoréline', category: 'gnrh', defaultRoute: 'injection_im', defaultUnit: 'mg' },
-  { id: 'leuprorelin', label: 'Leuproréline', category: 'gnrh', defaultRoute: 'injection_sc', defaultUnit: 'mg' },
+  { id: 'triptorelin', label: 'Triptoréline (Décapeptyl)', category: 'gnrh', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'leuprorelin', label: 'Leuproréline (Lupron / Enantone)', category: 'gnrh', defaultRoute: 'injection_sc', defaultUnit: 'mg' },
+  { id: 'goserelin', label: 'Goséréline (Zoladex)', category: 'gnrh', defaultRoute: 'injection_sc', defaultUnit: 'mg' },
   // Progestatif
-  { id: 'progesterone', label: 'Progestérone', category: 'progestogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'progesterone', label: 'Progestérone (Utrogestan)', category: 'progestogen', defaultRoute: 'oral', defaultUnit: 'mg' },
+  { id: 'medroxyprogesterone', label: 'Médroxyprogestérone (Provera)', category: 'progestogen', defaultRoute: 'oral', defaultUnit: 'mg' },
   // Testostérone
-  { id: 'testosterone_enantate', label: 'Testostérone énanthate', category: 'testosterone', defaultRoute: 'injection_im', defaultUnit: 'mg' },
-  { id: 'testosterone_cypionate', label: 'Testostérone cypionate', category: 'testosterone', defaultRoute: 'injection_im', defaultUnit: 'mg' },
-  { id: 'testosterone_undecanoate', label: 'Testostérone undécanoate', category: 'testosterone', defaultRoute: 'injection_im', defaultUnit: 'mg' },
-  { id: 'testosterone_gel', label: 'Testostérone gel', category: 'testosterone', defaultRoute: 'gel', defaultUnit: 'mg' },
+  { id: 'testosterone_enantate', label: 'Testostérone énanthate (Androtardyl)', category: 'testosterone', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'testosterone_cypionate', label: 'Testostérone cypionate (Depo-Testosterone)', category: 'testosterone', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'testosterone_undecanoate', label: 'Testostérone undécanoate (Nébido)', category: 'testosterone', defaultRoute: 'injection_im', defaultUnit: 'mg' },
+  { id: 'testosterone_gel', label: 'Testostérone gel (Androgel / Testogel)', category: 'testosterone', defaultRoute: 'gel', defaultUnit: 'mg' },
 ];
 
 /** HRT goal — sex-hormone targets flip between the two directions. */
