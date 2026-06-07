@@ -53,7 +53,7 @@ and TS types derived via `z.infer` use **camelCase only**.
   `updatedAt`, `buildDate` rather than `cipher_iv`,
   `module_user_id`, `updated_at`, `build_date`.
 - **Encrypted payloads side**: schemas in
-  `packages/shared/src/schemas/modules.ts` (Mood, Goals, Habits,
+  `packages/shared/src/schemas/modules/` (Mood, Goals, Habits,
   Library, Review) use `moodScore`, `completedAt`, `itemRid`,
   `coverRid`, `lastYear`, etc. rather than `mood_score`,
   `completed_at`, etc. Old entries encrypted with the old names

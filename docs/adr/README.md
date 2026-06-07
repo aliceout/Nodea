@@ -61,6 +61,7 @@ incremented monotonically. No reuse after `Deprecated` — one number
 | [0012](./0012-camel-case-only-on-the-wire.md) | All-camelCase on the wire (supersedes 0003) | Accepted |
 | [0013](./0013-zustand-slice-pattern.md) | Zustand slice pattern for `nodea-store` (complements 0006) | Accepted |
 | [0014](./0014-zod-4-migration.md) | Zod 3 → 4 atomic migration (unblocks `@hono/zod-openapi` 1.x + `@hookform/resolvers` 5.x) | Accepted |
+| [0015](./0015-module-schemas-split-per-module.md) | Split module payload schemas one-file-per-module under `schemas/modules/` | Accepted |
 
 ## When to write a new ADR
 

@@ -22,7 +22,7 @@ import {
   HrtAdminLogPayloadSchema,
   HrtLabResultPayloadSchema,
   HrtProductPayloadSchema,
-} from './modules.ts';
+} from './modules/index.ts';
 
 describe('Module payload defaults', () => {
   it('MoodPayload.parse fills every defaulted field from a minimal input', () => {

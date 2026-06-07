@@ -16,7 +16,7 @@ export * from './schemas/auth-sessions.ts';
 export * from './schemas/auth-totp.ts';
 export * from './schemas/auth-register-v2.ts';
 export * from './schemas/entries.ts';
-export * from './schemas/modules.ts';
+export * from './schemas/modules/index.ts';
 export * from './schemas/announcements.ts';
 export * from './schemas/preferences.ts';
 export * from './schemas/library-lookup.ts';

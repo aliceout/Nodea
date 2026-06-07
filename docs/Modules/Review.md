@@ -39,7 +39,7 @@ a review belongs to or when it was written at the DB level.
 ## 2. Expected cleartext payload (encrypted client-side)
 
 Order and names follow the YearCompass booklet, page by page. The
-`ReviewPayloadSchema` (`packages/shared/src/schemas/modules.ts`) is
+`ReviewPayloadSchema` (`packages/shared/src/schemas/modules/review.ts`) is
 a `z.looseObject(...)` — adding or removing a field doesn't break
 validation, but the wizard and the reader only render what's listed
 here.
