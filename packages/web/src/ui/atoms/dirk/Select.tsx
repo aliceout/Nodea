@@ -30,7 +30,8 @@ export default function Select({ className, children, ref, borderless, ...props 
         // below their declared `h-8` when content overflows.
         'block h-8 w-full shrink-0 cursor-pointer rounded-[var(--radius-input)] border border-hair bg-bg px-2 text-[12.5px] text-ink',
         'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60',
-        borderless && 'border-0 bg-transparent shadow-none focus:border-0 focus:shadow-none',
+        borderless &&
+          'select-caret border-0 bg-transparent pr-5 shadow-none focus:border-0 focus:shadow-none',
         className,
       )}
       {...props}

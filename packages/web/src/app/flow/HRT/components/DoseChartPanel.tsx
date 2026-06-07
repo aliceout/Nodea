@@ -39,7 +39,7 @@ export default function DoseChartPanel({
               <Select
                 aria-label="Molécule du graphique"
                 borderless
-                className="w-auto px-0 font-medium"
+                className="w-auto pl-0 font-medium"
                 value={activeMolecule}
                 onChange={(e) => onSelectMolecule(e.target.value)}
               >
