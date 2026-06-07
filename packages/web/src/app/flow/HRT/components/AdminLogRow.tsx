@@ -1,0 +1,67 @@
+/**
+ * HRT · AdminLogRow — one dose/injection entry in the Administration
+ * journal. Joins the log to its product (passed in) to show molecule /
+ * category / route / concentration and the mg-equivalent of a mL dose.
+ *
+ * Pure presentation : grouping, filtering and the chart live in the
+ * parent view ; this file owns a single row's layout only. The product
+ * may be missing (deleted from the catalog after the dose was logged) —
+ * the row degrades to the stored product name + a « supprimé » hint.
+ */
+import type { HrtProductPayload } from '@nodea/shared';
+
+import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS, formatLogDate } from '../lib/labels';
+import RowActions from './RowActions';
+import type { AdminLogEntry } from '../hooks/use-admin-logs';
+
+interface AdminLogRowProps {
+  entry: AdminLogEntry;
+  product: HrtProductPayload | undefined;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminLogRowProps) {
+  const unit = product?.unit ?? '';
+  const mgEq =
+    unit === 'mL' && typeof product?.concentration === 'number'
+      ? Math.round(entry.payload.dose * product.concentration * 10) / 10
+      : null;
+
+  return (
+    <li className="group flex items-start gap-4 border-b border-hair py-3">
+      <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
+        {formatLogDate(entry.payload.date)}
+        {entry.payload.time ? (
+          <span className="block text-[11px] text-muted-soft">{entry.payload.time}</span>
+        ) : null}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13.5px] font-medium text-ink">
+          {entry.payload.product}
+          {!product ? (
+            <span className="ml-1 text-[11px] text-muted-soft">(produit supprimé)</span>
+          ) : null}
+          <span className="ml-2 font-normal text-muted">
+            {entry.payload.dose}
+            {unit ? ` ${unit}` : ''}
+            {mgEq != null ? ` ≈ ${mgEq} mg` : ''}
+          </span>
+        </p>
+        {product ? (
+          <p className="mt-0.5 text-[12px] text-muted">
+            {product.medication ? `${product.medication} · ` : ''}
+            {HRT_CATEGORY_LABELS[product.category]} · {HRT_ROUTE_LABELS[product.route]}
+            {typeof product.concentration === 'number' ? ` · ${product.concentration} mg/mL` : ''}
+          </p>
+        ) : null}
+        {entry.payload.notes ? (
+          <p className="mt-0.5 text-[12px] text-muted-soft">{entry.payload.notes}</p>
+        ) : null}
+      </div>
+
+      <RowActions onEdit={onEdit} onDelete={onDelete} />
+    </li>
+  );
+}

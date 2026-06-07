@@ -122,50 +122,39 @@ export default function AdminLogForm({
       className="rounded-md border border-hair bg-bg-2 p-4"
       noValidate
     >
-      <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-        <TextField
-          label="Date"
-          type="date"
-          error={errors.date?.message}
-          {...register('date')}
-        />
-        <TextField
-          label="Heure (optionnel)"
-          type="time"
-          error={errors.time?.message}
-          {...register('time')}
-        />
-
+      <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[2fr_1fr_1fr]">
         <FieldRow label="Produit" htmlFor="hrt-product" error={errors.product?.message}>
-          <div className="flex gap-2">
-            <Select id="hrt-product" {...register('product')}>
-              <option value="" disabled>
-                {products.length === 0 ? 'Aucun produit — ajoute-en un →' : 'Choisir un produit…'}
-              </option>
-              {categories.map((c) => (
-                <optgroup key={c} label={HRT_CATEGORY_LABELS[c]}>
-                  {products
-                    .filter((p) => p.category === c)
-                    .map((p) => (
-                      <option key={p.name} value={p.name}>
-                        {p.name}
-                        {p.medication ? ` · ${p.medication}` : ''}
-                        {typeof p.concentration === 'number'
-                          ? ` (${p.concentration} mg/mL)`
-                          : ''}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-            </Select>
+          <div className="flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <Select id="hrt-product" {...register('product')}>
+                <option value="" disabled>
+                  {products.length === 0 ? 'Aucun produit enregistré' : 'Choisir un produit…'}
+                </option>
+                {categories.map((c) => (
+                  <optgroup key={c} label={HRT_CATEGORY_LABELS[c]}>
+                    {products
+                      .filter((p) => p.category === c)
+                      .map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.name}
+                          {p.medication ? ` · ${p.medication}` : ''}
+                          {typeof p.concentration === 'number'
+                            ? ` (${p.concentration} mg/mL)`
+                            : ''}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </Select>
+            </div>
             <Button
               type="button"
-              variant="neutral"
+              variant="secondary"
               size="sm"
+              className="shrink-0 whitespace-nowrap"
               onClick={() => setAddingProduct(true)}
-              title="Nouveau produit"
             >
-              + Produit
+              + Nouveau produit
             </Button>
           </div>
         </FieldRow>
@@ -176,8 +165,17 @@ export default function AdminLogForm({
           step="any"
           inputMode="decimal"
           placeholder="0.4"
+          // Hide the native number-spinner arrows (webkit + Firefox).
+          className="[appearance:textfield] [&::-webkit-inner-spin-button]:[-webkit-appearance:none] [&::-webkit-outer-spin-button]:[-webkit-appearance:none] [&::-webkit-inner-spin-button]:m-0"
           error={errors.dose?.message}
           {...register('dose', { valueAsNumber: true })}
+        />
+
+        <TextField
+          label="Date"
+          type="date"
+          error={errors.date?.message}
+          {...register('date')}
         />
       </div>
 

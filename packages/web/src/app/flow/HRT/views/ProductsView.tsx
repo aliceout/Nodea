@@ -7,14 +7,13 @@
  * pickable in the Administration dose form — which is catalog-only.
  */
 import { useState } from 'react';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import type { HrtProductPayload } from '@nodea/shared';
 import Button from '@/ui/atoms/dirk/Button';
 
 import ProductForm from '../components/ProductForm';
+import ProductRow from '../components/ProductRow';
 import { useHrtProducts, type ProductEntry } from '../hooks/use-products';
-import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS } from '../lib/labels';
 
 export default function ProductsView() {
   const { entries, load, ready, create, update, remove } = useHrtProducts();
@@ -49,11 +48,16 @@ export default function ProductsView() {
         ) : null}
       </div>
 
-      <p className="mb-4 max-w-prose text-[12px] text-muted">
-        Enregistre tes produits (molécule, voie, unité, et concentration
-        mg/mL pour les injectables). Tu les retrouveras dans le menu d’une
-        prise — une dose en mL sera convertie en mg automatiquement.
-      </p>
+      <div className="mb-4 space-y-0.5 text-[12px] text-muted">
+        <p>
+          Enregistre tes produits (molécule, voie, unité, et concentration mg/mL
+          pour les injectables).
+        </p>
+        <p>
+          Tu les retrouveras dans le menu d’une prise — une dose en mL sera
+          convertie en mg automatiquement.
+        </p>
+      </div>
 
       {formOpen ? (
         <div className="mb-5">
@@ -79,53 +83,15 @@ export default function ProductsView() {
       ) : (
         <ul className="flex flex-col">
           {entries.map((entry) => (
-            <li
+            <ProductRow
               key={entry.id}
-              className="group flex items-start gap-4 border-b border-hair py-3"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13.5px] font-medium text-ink">
-                  {entry.payload.name}
-                  {typeof entry.payload.concentration === 'number' ? (
-                    <span className="ml-2 font-normal text-muted tabular-nums">
-                      {entry.payload.concentration} mg/mL
-                    </span>
-                  ) : null}
-                </p>
-                <p className="mt-0.5 text-[12px] text-muted">
-                  {entry.payload.medication ? `${entry.payload.medication} · ` : ''}
-                  {HRT_CATEGORY_LABELS[entry.payload.category]} ·{' '}
-                  {HRT_ROUTE_LABELS[entry.payload.route]} · {entry.payload.unit}
-                </p>
-                {entry.payload.notes ? (
-                  <p className="mt-0.5 text-[12px] text-muted-soft">{entry.payload.notes}</p>
-                ) : null}
-              </div>
-
-              <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconOnly
-                  aria-label="Modifier"
-                  onClick={() => {
-                    setAdding(false);
-                    setEditing(entry);
-                  }}
-                >
-                  <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="danger-ghost"
-                  size="sm"
-                  iconOnly
-                  aria-label="Supprimer"
-                  onClick={() => void onDelete(entry)}
-                >
-                  <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </li>
+              entry={entry}
+              onEdit={() => {
+                setAdding(false);
+                setEditing(entry);
+              }}
+              onDelete={() => void onDelete(entry)}
+            />
           ))}
         </ul>
       )}

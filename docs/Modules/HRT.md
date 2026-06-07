@@ -26,9 +26,12 @@ regimens equally — it never assumes a single transition direction.
   quick-add). When the product's unit is mL and it has a
   `concentration`, the list shows the mg-equivalent
   (`dose × product.concentration`) by **joining live** — editing the
-  product later re-derives every past dose. A per-product dose-over-time
-  chart (reusing `LabChart`) sits above the log, plotting each intake in
-  mg when the product is mL + concentration.
+  product later re-derives every past dose. The log filter + dose chart
+  group **by molecule** (the product's `medication`), not by product:
+  switching product/supplier while staying on the same molecule keeps one
+  continuous series. The chart (reusing `LabChart`) plots each intake in
+  **mg-equivalent** (mL × concentration, or mg as-is; non-convertible
+  doses are dropped), so different products/forms of a molecule compare.
 - **Analyses** records single lab measurements: a marker, a value, a
   unit, and the draw context (trough / peak / random) which matters for
   injectables. The chart reads these.
@@ -64,7 +67,7 @@ that enrolls them in the guard middleware automatically.
 
 ## Expected cleartext payloads
 
-Defined in [`packages/shared/src/schemas/modules.ts`](../../packages/shared/src/schemas/modules.ts).
+Defined in [`packages/shared/src/schemas/modules/hrt.ts`](../../packages/shared/src/schemas/modules/hrt.ts).
 
 **Admin log** (`HrtAdminLogPayload`):
 

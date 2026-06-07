@@ -2,23 +2,29 @@
  * HRT · Administration — the dose / injection log (catalog-only).
  *
  * Loads the `hrt-admin-logs` collection plus the product catalog. Each
- * log references a product by name ; this view joins them live for
- * display — molecule / route / unit / concentration all come from the
- * product, and a mL dose shows its mg-equivalent
- * (`dose × product.concentration`). See `docs/Modules/HRT.md`.
+ * log references a product by name ; this view joins them live so rows
+ * and the chart can show molecule / route / concentration. Grouping,
+ * filtering and the mg-equivalent dose series are pure helpers in
+ * `lib/admin-data` ; a single row is `AdminLogRow`. The filter +
+ * chart follow the MOLECULE, not the product. See `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import type { HrtAdminLogPayload, HrtProductPayload } from '@nodea/shared';
 import Button from '@/ui/atoms/dirk/Button';
 import Select from '@/ui/atoms/dirk/Select';
 
 import AdminLogForm, { type ProductOption } from '../components/AdminLogForm';
-import LabChart, { type ChartPoint } from '../components/LabChart';
+import AdminLogRow from '../components/AdminLogRow';
+import LabChart from '../components/LabChart';
 import { useHrtAdminLogs, type AdminLogEntry } from '../hooks/use-admin-logs';
 import { useHrtProducts } from '../hooks/use-products';
-import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS, formatLogDate } from '../lib/labels';
+import {
+  buildDoseSeries,
+  distinctMolecules,
+  moleculeOf,
+} from '../lib/admin-data';
+import { formatLogDate } from '../lib/labels';
 
 export default function AdministrationView() {
   const { entries, load, ready, create, update, remove } = useHrtAdminLogs();
@@ -51,54 +57,33 @@ export default function AdministrationView() {
     return m;
   }, [productEntries]);
 
-  // Dose-over-time chart : pick a product (most-logged first) and plot
-  // each intake. Volume doses (mL) with a known concentration are
-  // plotted in mg so the curve is comparable across products.
-  const loggedProducts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of entries) {
-      counts.set(e.payload.product, (counts.get(e.payload.product) ?? 0) + 1);
-    }
-    return Array.from(counts, ([name, count]) => ({ name, count })).sort(
-      (a, b) => b.count - a.count || a.name.localeCompare(b.name),
-    );
-  }, [entries]);
-  const chartProduct =
-    chartSel && loggedProducts.some((p) => p.name === chartSel)
-      ? chartSel
-      : (loggedProducts[0]?.name ?? null);
-  const chartSeries = useMemo(() => {
-    if (!chartProduct) return { points: [] as ChartPoint[], unit: '' };
-    const prod = productByName.get(chartProduct);
-    const useMg = prod?.unit === 'mL' && typeof prod.concentration === 'number';
-    const unit = useMg ? 'mg' : (prod?.unit ?? '');
-    const points: ChartPoint[] = entries
-      .filter((e) => e.payload.product === chartProduct)
-      .map((e) => ({
-        dateIso: e.payload.date,
-        value: useMg ? e.payload.dose * (prod!.concentration as number) : e.payload.dose,
-        context: 'unknown' as const,
-      }))
-      .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
-    return { points, unit };
-  }, [entries, chartProduct, productByName]);
-  const chartMed = chartProduct ? productByName.get(chartProduct)?.medication : undefined;
-  const chartLabel = chartProduct
-    ? `${chartProduct}${chartMed ? ` · ${chartMed}` : ''}`
-    : '';
+  // The molecule picker is also a filter : a specific molecule narrows
+  // the list (and charts it) ; « Toutes » shows every dose and hides the
+  // chart. A lone molecule charts without a picker.
+  const molecules = useMemo(
+    () => distinctMolecules(entries, productByName),
+    [entries, productByName],
+  );
+  const filterMolecule =
+    chartSel && molecules.some((m) => m.name === chartSel) ? chartSel : null;
+  const chartMolecule =
+    filterMolecule ?? (molecules.length === 1 ? (molecules[0]?.name ?? null) : null);
 
-  // The product picker is also a filter : a specific product narrows the
-  // list below (and the chart) ; « Tous » (chartSel = null) shows every
-  // entry while the chart falls back to the most-logged product.
-  const filterProduct =
-    chartSel && loggedProducts.some((p) => p.name === chartSel) ? chartSel : null;
-  const listEntries = filterProduct
-    ? entries.filter((e) => e.payload.product === filterProduct)
+  const series = useMemo(
+    () =>
+      chartMolecule
+        ? buildDoseSeries(entries, chartMolecule, productByName)
+        : { points: [], skipped: 0 },
+    [entries, chartMolecule, productByName],
+  );
+
+  const listEntries = filterMolecule
+    ? entries.filter((e) => moleculeOf(e, productByName) === filterMolecule)
     : entries;
-  // Chart shows for a specific product only ; « Tous » hides it. A lone
-  // product needs no picker, so it charts directly.
   const showChart =
-    (loggedProducts.length === 1 || filterProduct != null) && chartProduct != null;
+    (molecules.length === 1 || filterMolecule != null) &&
+    chartMolecule != null &&
+    series.points.length > 0;
 
   function closeForm() {
     setAdding(false);
@@ -155,105 +140,41 @@ export default function AdministrationView() {
         </div>
       ) : (
         <>
-          {loggedProducts.length > 1 ? (
+          {molecules.length > 1 ? (
             <div className="mb-2">
               <Select
-                aria-label="Filtrer par produit"
+                aria-label="Filtrer par molécule"
                 className="w-auto"
                 value={chartSel ?? ''}
                 onChange={(e) => setChartSel(e.target.value === '' ? null : e.target.value)}
               >
-                <option value="">Tous les produits</option>
-                {loggedProducts.map((p) => {
-                  const med = productByName.get(p.name)?.medication;
-                  return (
-                    <option key={p.name} value={p.name}>
-                      {p.name}
-                      {med ? ` · ${med}` : ''} ({p.count})
-                    </option>
-                  );
-                })}
+                <option value="">Toutes les molécules</option>
+                {molecules.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name} ({m.count})
+                  </option>
+                ))}
               </Select>
             </div>
           ) : null}
-          {showChart ? (
+          {showChart && chartMolecule ? (
             <div className="mb-6">
-              <LabChart points={chartSeries.points} unit={chartSeries.unit} label={chartLabel} />
+              <LabChart points={series.points} unit="mg" label={chartMolecule} />
             </div>
           ) : null}
           <ul className="flex flex-col">
-            {listEntries.map((entry) => {
-              const product = productByName.get(entry.payload.product);
-            const unit = product?.unit ?? '';
-            const mgEq =
-              unit === 'mL' && typeof product?.concentration === 'number'
-                ? Math.round(entry.payload.dose * product.concentration * 10) / 10
-                : null;
-            return (
-              <li
+            {listEntries.map((entry) => (
+              <AdminLogRow
                 key={entry.id}
-                className="group flex items-start gap-4 border-b border-hair py-3"
-              >
-                <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
-                  {formatLogDate(entry.payload.date)}
-                  {entry.payload.time ? (
-                    <span className="block text-[11px] text-muted-soft">{entry.payload.time}</span>
-                  ) : null}
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-medium text-ink">
-                    {entry.payload.product}
-                    {!product ? (
-                      <span className="ml-1 text-[11px] text-muted-soft">(produit supprimé)</span>
-                    ) : null}
-                    <span className="ml-2 font-normal text-muted">
-                      {entry.payload.dose}
-                      {unit ? ` ${unit}` : ''}
-                      {mgEq != null ? ` ≈ ${mgEq} mg` : ''}
-                    </span>
-                  </p>
-                  {product ? (
-                    <p className="mt-0.5 text-[12px] text-muted">
-                      {product.medication ? `${product.medication} · ` : ''}
-                      {HRT_CATEGORY_LABELS[product.category]} ·{' '}
-                      {HRT_ROUTE_LABELS[product.route]}
-                      {typeof product.concentration === 'number'
-                        ? ` · ${product.concentration} mg/mL`
-                        : ''}
-                    </p>
-                  ) : null}
-                  {entry.payload.notes ? (
-                    <p className="mt-0.5 text-[12px] text-muted-soft">{entry.payload.notes}</p>
-                  ) : null}
-                </div>
-
-                <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    iconOnly
-                    aria-label="Modifier"
-                    onClick={() => {
-                      setAdding(false);
-                      setEditing(entry);
-                    }}
-                  >
-                    <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    variant="danger-ghost"
-                    size="sm"
-                    iconOnly
-                    aria-label="Supprimer"
-                    onClick={() => void onDelete(entry)}
-                  >
-                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
+                entry={entry}
+                product={productByName.get(entry.payload.product)}
+                onEdit={() => {
+                  setAdding(false);
+                  setEditing(entry);
+                }}
+                onDelete={() => void onDelete(entry)}
+              />
+            ))}
           </ul>
         </>
       )}

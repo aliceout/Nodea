@@ -1,39 +1,32 @@
 /**
- * HRT · Analyses — lab results + time-series chart.
+ * HRT · Analyses — lab results + time-series chart (orchestration).
  *
- * Loads the `hrt-lab-results` collection, lets the user pick a marker
- * (and a display unit when several are in play), plots it with the
- * hand-rolled `LabChart`, and manages an inline create/edit form + a
- * results list. Unit conversion is delegated to the shared marker
- * presets via `lib/chart-data`. See `docs/Modules/HRT.md`.
- *
- * The medical disclaimer is permanent — the target bands (off by
- * default, opt-in via the goal Select) are informational guidance
- * (WPATH / Endocrine Society), never a recommendation.
+ * Owns the marker / unit / goal selection state and wires the pieces :
+ * `LabFilterBar` (toolbar), `LabChart` (curve + target band),
+ * `LabResultRow` (list), `LabResultForm` (create/edit). All derivation
+ * — markers, units, series, target band — is pure helpers in
+ * `lib/chart-data`. The disclaimer is permanent ; target bands are off
+ * by default (opt-in goal Select), informational only (WPATH /
+ * Endocrine Society), never a recommendation. See `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-import {
-  convertFromCanonical,
-  findMarker,
-  targetFor,
-  type HrtGoal,
-  type HrtLabResultPayload,
-} from '@nodea/shared';
+import { type HrtGoal, type HrtLabResultPayload } from '@nodea/shared';
 import Button from '@/ui/atoms/dirk/Button';
-import Select from '@/ui/atoms/dirk/Select';
 
 import LabChart from '../components/LabChart';
+import LabFilterBar from '../components/LabFilterBar';
 import LabResultForm from '../components/LabResultForm';
+import LabResultRow from '../components/LabResultRow';
 import { useHrtLabResults, type LabResultEntry } from '../hooks/use-lab-results';
 import {
   buildChartSeries,
+  buildTargetBand,
   defaultUnitForMarker,
   distinctMarkers,
   unitsForMarker,
 } from '../lib/chart-data';
-import { HRT_DRAW_CONTEXT_LABELS, formatLogDate, markerLabel } from '../lib/labels';
+import { formatLogDate, markerLabel } from '../lib/labels';
 
 export default function LabsView() {
   const { entries, load, ready, create, update, remove } = useHrtLabResults();
@@ -74,39 +67,10 @@ export default function LabsView() {
     [entries, chartMarker, unit],
   );
 
-  // Informational target band for the chart, converted to the display
-  // unit. `undefined` when no goal is picked or the marker has none.
-  const chartTarget = useMemo(() => {
-    if (!goal || !chartMarker) return undefined;
-    const preset = findMarker(chartMarker);
-    if (!preset) return undefined;
-    const t = targetFor(preset, goal);
-    if (!t) return undefined;
-    const conv = (v: number | undefined): number | undefined => {
-      if (v == null) return undefined;
-      const c = convertFromCanonical(preset, v, unit);
-      return c == null ? undefined : c;
-    };
-    const min = conv(t.min);
-    const max = conv(t.max);
-    if (min == null && max == null) return undefined;
-    return { ...(min != null ? { min } : {}), ...(max != null ? { max } : {}) };
-  }, [goal, chartMarker, unit]);
-
-  const targetText = useMemo(() => {
-    if (!chartTarget) return null;
-    const f = (v: number) => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10);
-    const { min, max } = chartTarget;
-    const range =
-      min != null && max != null
-        ? `${f(min)}–${f(max)}`
-        : max != null
-          ? `≤ ${f(max)}`
-          : min != null
-            ? `≥ ${f(min)}`
-            : '';
-    return `Cible indicative : ${range} ${unit}`;
-  }, [chartTarget, unit]);
+  const target = useMemo(
+    () => buildTargetBand(chartMarker, goal, unit),
+    [chartMarker, goal, unit],
+  );
 
   function closeForm() {
     setAdding(false);
@@ -167,67 +131,31 @@ export default function LabsView() {
         </div>
       ) : (
         <>
-          {markers.length > 1 || chartMarker ? (
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              {markers.length > 1 ? (
-                <Select
-                  aria-label="Filtrer par marqueur"
-                  className="w-auto"
-                  value={markerSel ?? ''}
-                  onChange={(e) => {
-                    setMarkerSel(e.target.value === '' ? null : e.target.value);
-                    setUnitSel(null);
-                  }}
-                >
-                  <option value="">Tous les marqueurs</option>
-                  {markers.map((m) => (
-                    <option key={m.key} value={m.key}>
-                      {markerLabel(m.key)} ({m.count})
-                    </option>
-                  ))}
-                </Select>
-              ) : null}
-              {chartMarker && units.length > 1 ? (
-                <Select
-                  aria-label="Unité d’affichage"
-                  className="w-auto"
-                  value={unit}
-                  onChange={(e) => setUnitSel(e.target.value)}
-                >
-                  {units.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </Select>
-              ) : null}
-              {chartMarker ? (
-                <Select
-                  aria-label="Plages cibles"
-                  className="ml-auto w-auto"
-                  value={goal ?? ''}
-                  onChange={(e) =>
-                    setGoal(e.target.value === '' ? null : (e.target.value as HrtGoal))
-                  }
-                >
-                  <option value="">Cibles : aucune</option>
-                  <option value="feminizing">Cibles : féminisant</option>
-                  <option value="masculinizing">Cibles : masculinisant</option>
-                </Select>
-              ) : null}
-            </div>
-          ) : null}
+          <LabFilterBar
+            markers={markers}
+            markerSel={markerSel}
+            onMarkerChange={(key) => {
+              setMarkerSel(key);
+              setUnitSel(null);
+            }}
+            chartMarker={chartMarker}
+            units={units}
+            unit={unit}
+            onUnitChange={setUnitSel}
+            goal={goal}
+            onGoalChange={setGoal}
+          />
           {chartMarker ? (
             <div className="mb-6">
               <LabChart
                 points={series.points}
                 unit={unit}
                 label={markerLabel(chartMarker)}
-                {...(chartTarget ? { target: chartTarget } : {})}
+                {...(target.band ? { target: target.band } : {})}
               />
-              {targetText ? (
+              {target.text ? (
                 <p className="mt-1 text-[11px] text-muted-soft">
-                  {targetText} — informatif, pas un avis médical.
+                  {target.text} — informatif, pas un avis médical.
                 </p>
               ) : goal ? (
                 <p className="mt-1 text-[11px] text-muted-soft">
@@ -246,55 +174,15 @@ export default function LabsView() {
 
           <ul className="flex flex-col">
             {listEntries.map((entry) => (
-              <li
+              <LabResultRow
                 key={entry.id}
-                className="group flex items-start gap-4 border-b border-hair py-3"
-              >
-                <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
-                  {formatLogDate(entry.payload.date)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-medium text-ink">
-                    {markerLabel(entry.payload.marker)}
-                    <span className="ml-2 font-normal text-muted tabular-nums">
-                      {entry.payload.value} {entry.payload.unit}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-[12px] text-muted">
-                    {entry.payload.context !== 'unknown'
-                      ? HRT_DRAW_CONTEXT_LABELS[entry.payload.context]
-                      : null}
-                    {entry.payload.context !== 'unknown' && entry.payload.lab ? ' · ' : ''}
-                    {entry.payload.lab}
-                  </p>
-                  {entry.payload.notes ? (
-                    <p className="mt-0.5 text-[12px] text-muted-soft">{entry.payload.notes}</p>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    iconOnly
-                    aria-label="Modifier"
-                    onClick={() => {
-                      setAdding(false);
-                      setEditing(entry);
-                    }}
-                  >
-                    <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    variant="danger-ghost"
-                    size="sm"
-                    iconOnly
-                    aria-label="Supprimer"
-                    onClick={() => void onDelete(entry)}
-                  >
-                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </li>
+                entry={entry}
+                onEdit={() => {
+                  setAdding(false);
+                  setEditing(entry);
+                }}
+                onDelete={() => void onDelete(entry)}
+              />
             ))}
           </ul>
         </>

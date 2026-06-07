@@ -22,6 +22,7 @@ export const HRT_ROUTE_LABELS: Record<HrtRoute, string> = {
   injection_sc: 'Injection SC',
   gel: 'Gel',
   patch: 'Patch',
+  spray: 'Spray',
   implant: 'Implant',
   other: 'Autre',
 };

@@ -5,7 +5,13 @@
  * converted to the chosen display unit are dropped and counted so the
  * view can warn rather than plot a misleading point.
  */
-import { convertMarkerValue, findMarker } from '@nodea/shared';
+import {
+  convertFromCanonical,
+  convertMarkerValue,
+  findMarker,
+  targetFor,
+  type HrtGoal,
+} from '@nodea/shared';
 
 import type { LabResultEntry } from '../hooks/use-lab-results';
 import type { ChartPoint } from '../components/LabChart';
@@ -102,4 +108,49 @@ export function buildChartSeries(
 
   points.sort((a, b) => a.dateIso.localeCompare(b.dateIso));
   return { points, skipped };
+}
+
+export interface TargetBand {
+  /** Band to draw behind the curve, in the display unit. Absent when
+   *  the marker has no target for the goal (caller still warns). */
+  band?: { min?: number; max?: number };
+  /** Human-readable range, e.g. « Cible indicative : 100–200 pg/mL ». */
+  text?: string;
+}
+
+/**
+ * Informational target band for a marker under a goal, converted to the
+ * display unit. Returns an empty object when no goal / no marker, and
+ * `{ band: undefined }` with no text when the marker has no target for
+ * that goal (so the caller can say « pas de cible définie »).
+ */
+export function buildTargetBand(
+  markerKey: string | null,
+  goal: HrtGoal | null,
+  displayUnit: string,
+): TargetBand {
+  if (!goal || !markerKey) return {};
+  const preset = findMarker(markerKey);
+  if (!preset) return {};
+  const t = targetFor(preset, goal);
+  if (!t) return {};
+
+  const conv = (v: number | undefined): number | undefined => {
+    if (v == null) return undefined;
+    const c = convertFromCanonical(preset, v, displayUnit);
+    return c == null ? undefined : c;
+  };
+  const min = conv(t.min);
+  const max = conv(t.max);
+  if (min == null && max == null) return {};
+
+  const band = { ...(min != null ? { min } : {}), ...(max != null ? { max } : {}) };
+  const f = (v: number) => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10);
+  const range =
+    min != null && max != null
+      ? `${f(min)}–${f(max)}`
+      : max != null
+        ? `≤ ${f(max)}`
+        : `≥ ${f(min as number)}`;
+  return { band, text: `Cible indicative : ${range} ${displayUnit}` };
 }
