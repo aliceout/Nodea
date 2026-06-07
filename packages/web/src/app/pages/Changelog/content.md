@@ -5,6 +5,28 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.4.0 — 2026-06-07
+
+### Nouveautés
+
+- **hrt** : enrich molecule catalog with brand hints and more molecules _(e661d3c)_
+
+### Refactor
+
+- **hrt** : extract list/filter components and group dose log by molecule _(ef460d1)_
+- **shared** : split module payload schemas into one file per module _(3f4c18c)_
+
+### Documentation
+
+- **changelog** : include CI fix in v2.3.0 _(e09c025)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.4.0 _(46fc953)_
+
+</details>
+
 ## v2.3.0 — 2026-06-06
 
 ### Nouveautés
