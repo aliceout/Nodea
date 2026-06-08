@@ -13,7 +13,7 @@ doctor recap:
 - **Administration** — a log of doses taken / injections done.
 - **Analyses** — lab marker readings, plotted over time.
 - **Export** — a downloadable **PDF** recap (current regimen + dose history
-  + analyses + charts) plus CSV downloads. Read-only.
+  + analyses + charts) plus Excel / LibreOffice data exports. Read-only.
 
 The standalone « Produits » sub-view was folded into **Synthèse**: the
 catalog has no separate tab — it's the dashboard's top-right column, the
@@ -100,12 +100,32 @@ regimens equally — it never assumes a single transition direction.
   **never rendered on screen** (the page shows only the controls). *Why
   client-side* : the recap is **decrypted health data** — it must never
   reach the server (no headless-Chrome render), and a browser can't silently
-  save-as-PDF from `window.print()` (the dialog is unavoidable). Two CSV
-  downloads (prises, analyses) serialise the same *filtered* rows via
-  [`lib/csv.ts`](../../packages/web/src/app/flow/HRT/lib/csv.ts) ; an
+  save-as-PDF from `window.print()` (the dialog is unavoidable). Two data
+  exports (prises, analyses) write the same *filtered* rows to Excel `.xlsx`
+  or LibreOffice `.ods` (a format select) via
+  [`lib/spreadsheet.ts`](../../packages/web/src/app/flow/HRT/lib/spreadsheet.ts) ; an
   optional intitulé goes in the PDF header but is **ephemeral** (typed in
   the controls, never stored). All shaping is pure
   ([`lib/export-model.ts`](../../packages/web/src/app/flow/HRT/lib/export-model.ts)).
+- **Import (analyses)** also lives in the Export sub-view (« Importer des
+  analyses »): many people keep their bloodwork in a spreadsheet, so this
+  imports it. Download a `.xlsx` **template** (an « Analyses » sheet with
+  **in-cell dropdowns** for Marqueur, Unité + Contexte, plus an « Aide » sheet
+  listing the recognised markers / units / contexts), paste the readings,
+  re-upload. Parsing is **client-side** (the
+  data is decrypted health data — nothing is sent): a **dry-run** shows how
+  many rows are valid / ignored (with a per-row reason) and a per-marker
+  **mapping** (each distinct imported marker → a preset key, or kept
+  verbatim as a custom marker, defaulted by a best-guess match) ; confirming
+  creates the valid rows and **skips exact duplicates** so a re-import is a
+  no-op. **Doses are out of scope** — they are entered through the
+  recurring/auto schedule mode. Pure parse / validate / match / dedupe in
+  [`lib/import-model.ts`](../../packages/web/src/app/flow/HRT/lib/import-model.ts),
+  the `.xlsx` read + template generation in
+  [`lib/xlsx.ts`](../../packages/web/src/app/flow/HRT/lib/xlsx.ts)
+  (lazy-imported `exceljs` — one lib for read + write + the in-cell
+  dropdowns, kept out of the main bundle like jsPDF), UI in
+  `components/ImportPanel.tsx` + `components/ImportReview.tsx`.
 
 Curated vocabulary (molecules, markers, default units/routes, molar
 unit conversions) lives in [`packages/shared/src/hrt-presets.ts`](../../packages/shared/src/hrt-presets.ts).
@@ -248,9 +268,18 @@ stays generic. Do not add `useDocumentTitle` inside the module.
   decrypted, so no server render) with Administration / Analyses checkbox
   columns, a date range and a « Grouper par » (type / date) toggle. Portrait
   data tables (autotable, selectable, auto-paginated) + one chart per
-  landscape page (redrawn with jsPDF). CSV downloads for the filtered doses
-  and analyses. Pure builders in `lib/export-model.ts`, CSV in `lib/csv.ts`,
+  landscape page (redrawn with jsPDF). Excel `.xlsx` / LibreOffice `.ods`
+  exports for the filtered doses and analyses (format select). Pure builders
+  in `lib/export-model.ts`, spreadsheet writers in `lib/spreadsheet.ts`,
   PDF in `lib/export-pdf.ts`.
+- **Phase 7** ✅ — Import (analyses) in the Export sub-view : a personalised
+  `.xlsx` template (« Analyses » + « Aide » sheets) → paste readings →
+  re-upload → dry-run (per-row validation + per-marker mapping) → bulk
+  create, skipping exact duplicates. **Client-side** via lazy-imported
+  `exceljs` (read + write + in-cell Marqueur / Unité / Contexte dropdowns).
+  Doses stay out (recurring/auto mode covers them). Pure core in `lib/import-model.ts` (+ Vitest), the
+  `.xlsx` boundary in `lib/xlsx.ts`, UI in `components/ImportPanel.tsx` +
+  `components/ImportReview.tsx`.
 - **Next** — goal/unit selection persistence ; adding HRT to the
   account-level JSON export/import (today the generic backup in Compte →
   Données skips HRT — see `core/api/modules/import-export/registry.data.ts`).

@@ -76,7 +76,7 @@ const HRT_SUB_ITEMS: readonly HrtSubItem[] = [
   { subview: 'summary', label: 'Synthèse' },
   { subview: 'administration', label: 'Administration' },
   { subview: 'labs', label: 'Analyses' },
-  { subview: 'export', label: 'Export' },
+  { subview: 'export', label: 'Import / Export' },
 ];
 
 interface SidebarNavProps {

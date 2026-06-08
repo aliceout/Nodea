@@ -307,12 +307,12 @@ export function flattenLabReadings(groups: ReadonlyArray<LabGroup>): FlatLabRead
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// ── CSV matrices ────────────────────────────────────────────────────────
-// Header row + records, ready for `toCsv`. Dates stay ISO (`YYYY-MM-DD`)
+// ── Data matrices ────────────────────────────────────────────────────────
+// Header row + records, ready for a spreadsheet writer. Dates stay ISO (`YYYY-MM-DD`)
 // here — sortable + locale-free in a spreadsheet, unlike the French long
 // form the printed report uses.
 
-export function doseCsvMatrix(doses: ReadonlyArray<DoseRow>): (string | number)[][] {
+export function doseMatrix(doses: ReadonlyArray<DoseRow>): (string | number)[][] {
   const header = [
     'Date', 'Heure', 'Produit', 'Molécule', 'Catégorie',
     'Voie', 'Dose', 'Unité', 'Équiv. mg', 'Type', 'Notes',
@@ -324,7 +324,7 @@ export function doseCsvMatrix(doses: ReadonlyArray<DoseRow>): (string | number)[
   return [header, ...rows];
 }
 
-export function labCsvMatrix(groups: ReadonlyArray<LabGroup>): (string | number)[][] {
+export function labMatrix(groups: ReadonlyArray<LabGroup>): (string | number)[][] {
   const header = ['Date', 'Marqueur', 'Valeur', 'Unité', 'Contexte', 'Laboratoire', 'Notes'];
   const rows = groups.flatMap((g) =>
     g.readings.map((r) => [r.date, g.label, r.value, r.unit, r.contextLabel, r.lab, r.notes]),

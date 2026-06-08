@@ -57,10 +57,10 @@ export default function ExportFilterColumn({
       {options.length === 0 ? (
         <p className="text-[12px] text-muted-soft">Aucune donnée.</p>
       ) : (
-        <ul className="flex flex-col gap-0.5">
+        <ul className="flex flex-col divide-y divide-hair">
           {options.map((o) => (
             <li key={o.value}>
-              <label className="-mx-2 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-ink transition-colors hover:bg-bg-2">
+              <label className="flex cursor-pointer items-center gap-2.5 py-2.5 text-[13px] text-ink transition-colors hover:bg-bg-2">
                 <input
                   type="checkbox"
                   className="h-4 w-4 shrink-0 cursor-pointer accent-accent"

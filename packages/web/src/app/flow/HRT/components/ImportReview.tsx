@@ -1,0 +1,116 @@
+/**
+ * HRT · Import — the dry-run review for an uploaded analyses file.
+ *
+ * Presentational : how many rows are valid / ignored, a per-marker mapping
+ * (each distinct imported marker -> a Nodea preset, or kept custom), the
+ * ignored-row reasons, and the import trigger. The parent (`ImportPanel`)
+ * owns the parse, the mapping state and the bulk create ; this only renders
+ * the decision surface.
+ */
+import { HRT_MARKERS } from '@nodea/shared';
+
+import Button from '@/ui/atoms/dirk/Button';
+import Select from '@/ui/atoms/dirk/Select';
+
+import type { RowError } from '../lib/import-model';
+
+interface ImportReviewProps {
+  validCount: number;
+  errors: readonly RowError[];
+  /** Distinct imported marker strings to reconcile. */
+  markers: readonly string[];
+  /** Imported marker -> chosen value (preset key, or the verbatim string). */
+  mapping: ReadonlyMap<string, string>;
+  onMap: (marker: string, value: string) => void;
+  onImport: () => void;
+  importing: boolean;
+  progress: number;
+}
+
+const plural = (n: number): string => (n > 1 ? 's' : '');
+
+export default function ImportReview({
+  validCount,
+  errors,
+  markers,
+  mapping,
+  onMap,
+  onImport,
+  importing,
+  progress,
+}: ImportReviewProps) {
+  return (
+    <div className="mt-5 rounded-lg border border-hair p-4">
+      <p className="text-[13px] text-ink">
+        <span className="font-semibold">{validCount}</span> analyse{plural(validCount)} prête
+        {plural(validCount)} à l’import
+        {errors.length > 0 && (
+          <span className="text-muted">
+            {' · '}
+            {errors.length} ligne{plural(errors.length)} ignorée{plural(errors.length)}
+          </span>
+        )}
+      </p>
+
+      {markers.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-[12px] font-semibold tracking-[0.02em] text-muted">
+            Rattacher les marqueurs
+          </p>
+          <ul className="flex flex-col gap-2">
+            {markers.map((marker) => (
+              <li key={marker} className="flex flex-wrap items-center gap-2">
+                <span className="min-w-[10rem] flex-1 truncate text-[13px] text-ink">{marker}</span>
+                <span aria-hidden="true" className="text-muted">→</span>
+                <Select
+                  className="w-auto"
+                  aria-label={`Marqueur Nodea pour « ${marker} »`}
+                  value={mapping.get(marker) ?? marker}
+                  onChange={(e) => onMap(marker, e.target.value)}
+                >
+                  <option value={marker}>Garder « {marker} »</option>
+                  {HRT_MARKERS.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.label}
+                    </option>
+                  ))}
+                </Select>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {errors.length > 0 && (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-[12px] text-muted">
+            Voir les lignes ignorées
+          </summary>
+          <ul className="mt-2 flex flex-col gap-1">
+            {errors.map((e) => (
+              <li key={e.row} className="text-[12px] text-muted">
+                Ligne {e.row} : {e.reason}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      <div className="mt-4 flex items-center gap-3">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onImport}
+          disabled={importing || validCount === 0}
+        >
+          {importing ? 'Import en cours…' : `Importer ${validCount} analyse${plural(validCount)}`}
+        </Button>
+        {importing && (
+          <span className="text-[12px] text-muted" role="status">
+            {progress} enregistrée{plural(progress)}…
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}

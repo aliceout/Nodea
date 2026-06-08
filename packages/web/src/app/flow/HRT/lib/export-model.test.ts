@@ -21,12 +21,12 @@ import {
   buildDoseHistory,
   buildLabGroups,
   buildRegimen,
-  doseCsvMatrix,
+  doseMatrix,
   doseUnitOf,
   flattenLabReadings,
   formatDose,
   groupDosesByMolecule,
-  labCsvMatrix,
+  labMatrix,
   mgEquivalent,
 } from './export-model';
 import { EMPTY_RANGE } from './date-range';
@@ -256,7 +256,7 @@ describe('CSV matrices', () => {
       products,
       EMPTY_RANGE,
     );
-    const matrix = doseCsvMatrix(rows);
+    const matrix = doseMatrix(rows);
     expect(matrix[0]).toContain('Équiv. mg');
     expect(matrix).toHaveLength(2);
     expect(matrix[1]).toEqual([
@@ -273,7 +273,7 @@ describe('CSV matrices', () => {
       ],
       EMPTY_RANGE,
     );
-    const matrix = labCsvMatrix(groups);
+    const matrix = labMatrix(groups);
     expect(matrix[0]?.[1]).toBe('Marqueur');
     expect(matrix).toHaveLength(3); // header + 2 readings
   });

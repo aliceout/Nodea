@@ -14,39 +14,41 @@
  * tables + marker charts. Every derivation is a pure `export-model` builder.
  * The recap isn't rendered on screen — « Télécharger le PDF » generates it
  * client-side via `lib/export-pdf` (jsPDF, lazy-loaded ; the recap is
- * decrypted health data, so no server render is possible), and the two CSV
- * downloads serialise the same (filtered) rows via `lib/csv`. See
- * `docs/Modules/HRT.md`.
+ * decrypted health data, so no server render is possible), and the two data
+ * downloads write the same (filtered) rows to Excel `.xlsx` or LibreOffice
+ * `.ods` via `lib/spreadsheet`. See `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 import type { HrtProductPayload } from '@nodea/shared';
 
 import { errorMessageOf } from '@/core/types/load-state';
+import Button from '@/ui/atoms/dirk/Button';
 
 import ExportControls from '../components/ExportControls';
 import type { FilterOption } from '../components/ExportFilterColumn';
+import ExportMenuButton from '../components/ExportMenuButton';
+import ImportPanel from '../components/ImportPanel';
 import { useHrtAdminLogs } from '../hooks/use-admin-logs';
 import { useHrtLabResults } from '../hooks/use-lab-results';
 import { useHrtProducts } from '../hooks/use-products';
 import { useHrtSchedules } from '../hooks/use-schedules';
 import { distinctMolecules } from '../lib/admin-data';
 import { distinctMarkers } from '../lib/chart-data';
-import { toCsv, downloadTextFile } from '../lib/csv';
 import { EMPTY_RANGE, type DateRange } from '../lib/date-range';
 import {
   buildDoseCharts,
   buildDoseHistory,
   buildLabGroups,
   buildRegimen,
-  doseCsvMatrix,
-  labCsvMatrix,
+  doseMatrix,
+  labMatrix,
   type ExportGroupBy,
 } from '../lib/export-model';
 import { downloadExportPdf } from '../lib/export-pdf';
+import { downloadSpreadsheet, type SpreadsheetFormat } from '../lib/spreadsheet';
 import { formatDotDate, markerLabel, todayIso } from '../lib/labels';
-
-const CSV_MIME = 'text/csv;charset=utf-8';
 
 /** Human « Période : … » label for the report header. */
 function periodText(range: DateRange): string {
@@ -143,11 +145,16 @@ export default function ExportView() {
   const allReady = loads.every((l) => l.status === 'ready');
   const errorMessage = loads.map(errorMessageOf).find((m) => m !== null) ?? null;
 
-  function exportDoses(): void {
-    downloadTextFile(`nodea_hrt_prises_${todayIso()}.csv`, CSV_MIME, toCsv(doseCsvMatrix(doses)));
+  function exportDoses(format: SpreadsheetFormat): void {
+    void downloadSpreadsheet(`nodea_hrt_prises_${todayIso()}`, 'Prises', doseMatrix(doses), format);
   }
-  function exportLabs(): void {
-    downloadTextFile(`nodea_hrt_analyses_${todayIso()}.csv`, CSV_MIME, toCsv(labCsvMatrix(labGroups)));
+  function exportLabs(format: SpreadsheetFormat): void {
+    void downloadSpreadsheet(
+      `nodea_hrt_analyses_${todayIso()}`,
+      'Analyses',
+      labMatrix(labGroups),
+      format,
+    );
   }
 
   async function downloadPdf(): Promise<void> {
@@ -173,6 +180,13 @@ export default function ExportView() {
 
   return (
     <section className="min-w-0">
+      <div className="mx-auto mb-6 max-w-5xl">
+        <h2 className="text-[14px] font-medium text-ink">Exporter des analyses</h2>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+          Générez un récapitulatif PDF (régime, prises, analyses + graphiques) à présenter en consultation, ou exportez les données brutes en Excel ou LibreOffice.
+        </p>
+      </div>
+
       <ExportControls
         onRangeChange={setRange}
         groupBy={groupBy}
@@ -193,25 +207,29 @@ export default function ExportView() {
         }}
         note={note}
         onNoteChange={setNote}
-        onDownloadPdf={() => void downloadPdf()}
-        generating={generating}
-        ready={allReady}
-        onExportDoses={exportDoses}
-        onExportLabs={exportLabs}
-        doseCount={doses.length}
-        labCount={labReadingCount}
       />
+
+      <div className="mx-auto mt-5 flex max-w-5xl flex-wrap items-center gap-3">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => void downloadPdf()}
+          disabled={!allReady || generating}
+        >
+          <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
+          {generating ? 'Génération…' : 'Récapitulatif PDF'}
+        </Button>
+        <ExportMenuButton label="Prises" disabled={doses.length === 0} onSelect={exportDoses} />
+        <ExportMenuButton label="Analyses" disabled={labReadingCount === 0} onSelect={exportLabs} />
+      </div>
 
       {errorMessage ? (
         <p className="py-8 text-center text-[13px] text-danger">{errorMessage}</p>
       ) : !allReady ? (
         <p className="py-8 text-center text-[13px] text-muted">Chargement…</p>
-      ) : (
-        <p className="mx-auto max-w-5xl py-6 text-center text-[12.5px] text-muted">
-          Le récapitulatif (régime, prises, analyses + graphiques) est généré en PDF à la
-          demande. Utilisez « Télécharger le PDF », ou un export CSV pour les données brutes.
-        </p>
-      )}
+      ) : null}
+
+      <ImportPanel />
     </section>
   );
 }
