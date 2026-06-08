@@ -43,6 +43,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 | TOTP | HOTP-SHA1 / RFC 6238 | digits=6, period=30 s, secret 20 bytes random, ±1 fenêtre de skew | RFC 6238, librairie `otplib` 13.4.0 |
 | Backup codes TOTP | random 130 bits | hash SHA-256 stocké, format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX` (base32) | — |
 | Recovery code KEK | BIP39 12 mots | 128 bits d'entropie + 4 bits checksum, wordlist anglaise | BIP-0039, librairie `@scure/bip39` 2.2.0 |
+| Backup chiffré portable | `age` (passphrase) — scrypt + ChaCha20-Poly1305 | scrypt logN=18 ; ChaCha20-Poly1305 clé 256 bits ; phrase secrète **indépendante du compte** ; blocage zxcvbn ≥ 3 | format `age`, librairie `age-encryption` 0.3.0 (Filippo Valsorda) — cf. ADR-0016 |
 | Random | `crypto.getRandomValues` (browser) / `crypto.randomBytes` (node) | jamais `Math.random` | — |
 
 ### Pourquoi ces choix
@@ -51,6 +52,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 - **PRF plutôt que credentialId-as-key** — PRF dérive un secret par credential, isolé par chaque assertion. Pas de fuite si l'attaquant a la liste des credentials sans avoir l'assertion.
 - **BIP39 plutôt qu'un code court** — 12 mots = 128 bits d'entropie, mémorisable, résistant aux fautes de frappe (checksum + wordlist optimisée). Un code court à 6 chiffres nécessiterait un compteur anti-DoS serveur compliqué.
 - **AES-GCM plutôt que AES-CBC + HMAC** — auth-tag intégré, AAD support natif, primitive moderne. CBC + HMAC requiert deux clés et un format custom.
+- **`age` (standard) plutôt qu'une enveloppe maison pour le backup** — primitives équivalentes (scrypt vs Argon2id, ChaCha20 vs AES-GCM), mais `age` est un format relu et interopérable : sa **composition** (nonces, AAD, wrapping — là où la crypto maison casse) est déjà éprouvée, et le backup reste déchiffrable au CLI `age` même sans Nodea (break-glass). La phrase secrète ne dérive ni du compte ni de la main key → le backup est réimportable dans un **nouveau** compte. Coût assumé : une 2ᵉ pile crypto isolée à cette feature. Voir ADR-0016.
 
 ## Hiérarchie des clés
 
@@ -540,6 +542,8 @@ Côté opérateur, la suppression apparaît dans les logs du prochain cron en de
 ### Droit à la portabilité (RGPD art. 20)
 
 La vue `Account` expose un export par module qui télécharge le JSON déchiffré de toutes les entrées de l'utilisateur·ice. Le déchiffrement se fait côté client ; le serveur ne voit jamais le clair. Ça satisfait la portabilité sans affaiblir le modèle E2EE.
+
+En complément, un second export — la **sauvegarde chiffrée** (`.age`) — produit une sauvegarde **portable et indépendante du compte** : scellée sous une phrase secrète choisie par l’utilisateur·ice (jamais dérivée du compte ni de la main key), elle est réimportable dans un **nouveau** compte. Format `age` (un blob opaque enveloppant un ZIP d’un JSON par module), déchiffré en local à l’import après saisie de la phrase. Export bloqué sous zxcvbn 3 — une phrase faible laisserait la sauvegarde brute-forçable hors-ligne. Voir ADR-0016.
 
 ### Logs serveur
 

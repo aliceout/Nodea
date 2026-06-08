@@ -54,13 +54,14 @@ export default defineConfig({
       "@ui": path.resolve(__dirname, "src/ui"),
     },
   },
-  // Pre-bundle the lazy-imported spreadsheet libs (exceljs for .xlsx +
-  // import, fflate for the .ods export) at dev startup. They're only reached
+  // Pre-bundle the lazy-imported heavy libs at dev startup: exceljs (.xlsx
+  // export + import), fflate (the .ods export + the encrypted-backup ZIP), and
+  // age-encryption (the encrypted-backup seal/open). They're only reached
   // through `await import(...)`, so without this Vite discovers them on first
   // click and force-reloads the page to re-optimise — which drops the
   // in-memory main key (logout).
   optimizeDeps: {
-    include: ["exceljs", "fflate"],
+    include: ["exceljs", "fflate", "age-encryption"],
   },
   // Manual chunks (FRONT-10) — without these, Vite bundles every
   // shared dep into a single 1.4 MB main chunk that has to download

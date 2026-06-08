@@ -143,7 +143,7 @@
       "title": "Import",
       "cta": "Import a file",
       "ctaLoading": "Importing…",
-      "description": "JSON or NDJSON previously exported. Duplicates are ignored.",
+      "description": "JSON, NDJSON or encrypted .age backup previously exported from Nodea. Duplicates are ignored.",
       "noKey": "Encryption key unavailable.",
       "errorPrefix": "Import error: ",
       "invalidJson": "Invalid JSON format.",
@@ -153,7 +153,27 @@
       "moduleSkippedDisabled": "{key}: skipped (disabled)",
       "moduleResult": "{key}: {created} added, {skipped} duplicate(s)",
       "moodResult": "mood: {count} added",
-      "successPrefix": "Import complete · {count} entry/entries — {parts}"
+      "successPrefix": "Import complete · {count} entry/entries — {parts}",
+      "backupDetected": "Encrypted backup detected. Enter your passphrase to restore it.",
+      "backupPassphrase": "Passphrase",
+      "backupRestoreCta": "Decrypt and restore",
+      "backupRestoreLoading": "Decrypting…",
+      "backupCancel": "Cancel",
+      "backupWrongPassphrase": "Wrong passphrase, or the backup file was altered."
+    },
+    "backup": {
+      "title": "Encrypted backup",
+      "description": "A portable backup protected by a passphrase: independent of your account, re-importable into a fresh account. Standard .age file (decryptable outside Nodea with the age tool).",
+      "passphrase": "Passphrase",
+      "confirm": "Confirm passphrase",
+      "mismatch": "The two passphrases do not match.",
+      "warning": "Lose this passphrase and the backup is permanently unrecoverable. Store it somewhere safe — there is no reset.",
+      "tooWeak": "Passphrase too easy to guess. Pick a longer or less predictable one — for example 4 to 5 random words.",
+      "cta": "Create encrypted backup",
+      "ctaLoading": "Encrypting…",
+      "noKey": "Encryption key unavailable.",
+      "empty": "No data to back up.",
+      "success": "Encrypted backup downloaded."
     }
   },
   "danger": {

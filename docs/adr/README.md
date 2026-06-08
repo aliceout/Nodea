@@ -62,6 +62,7 @@ incremented monotonically. No reuse after `Deprecated` — one number
 | [0013](./0013-zustand-slice-pattern.md) | Zustand slice pattern for `nodea-store` (complements 0006) | Accepted |
 | [0014](./0014-zod-4-migration.md) | Zod 3 → 4 atomic migration (unblocks `@hono/zod-openapi` 1.x + `@hookform/resolvers` 5.x) | Accepted |
 | [0015](./0015-module-schemas-split-per-module.md) | Split module payload schemas one-file-per-module under `schemas/modules/` | Accepted |
+| [0016](./0016-encrypted-backup-uses-age.md) | Encrypted account backup uses the `age` format (passphrase mode) | Accepted |
 
 ## When to write a new ADR
 

@@ -1,14 +1,11 @@
 import { useState } from 'react';
 
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
-import {
-  getDataPlugin,
-  knownModules,
-} from '@/core/api/modules/import-export/registry.data.ts';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import Feedback from '../../components/Feedback';
+import { collectModules } from './collect-modules';
 
 /** « Exporter » panel on the Data tab.
  *
@@ -33,25 +30,9 @@ export default function ExportPanel() {
     setLoading(true);
     try {
       if (!mainKey) throw new Error(t('account.data.export.noKey'));
-      const out: Record<string, unknown[]> = {};
-      for (const moduleKey of knownModules()) {
-        try {
-          const plugin = await getDataPlugin(moduleKey);
-          const runtimeKey = plugin.meta?.runtimeKey ?? moduleKey;
-          const sid = modules?.[runtimeKey]?.moduleUserId;
-          if (!sid) continue;
-          const items: unknown[] = [];
-          for await (const payload of plugin.exportQuery({
-            ctx: { moduleUserId: sid, mainKey },
-            pageSize: 200,
-          })) {
-            items.push(payload);
-          }
-          if (items.length) out[moduleKey] = items;
-        } catch (err) {
-          if (import.meta.env.DEV) console.error(`Export ${moduleKey} failed:`, err);
-        }
-      }
+      const out = await collectModules(mainKey, modules, (moduleKey, err) => {
+        if (import.meta.env.DEV) console.error(`Export ${moduleKey} failed:`, err);
+      });
       if (Object.keys(out).length === 0) {
         setError(t('account.data.export.empty'));
         return;
