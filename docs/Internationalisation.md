@@ -93,6 +93,20 @@ The "Today" / "Yesterday" labels come from
 `common.time.{today,yesterday}`; call sites pass them to
 `formatEntryLabel`.
 
+### Date input fields
+
+A native `<input type="date">` renders in the **browser's** locale, not
+the page's — a French Nodea on an English browser shows MM/DD/YYYY, and the
+`<html lang>` attribute (synced by the provider) can't override it. So
+every date field goes through
+[`ui/atoms/dirk/DateField.tsx`](../packages/web/src/ui/atoms/dirk/DateField.tsx):
+react-datepicker (already a dependency, with the vendored K · Sauge theme)
++ the `date-fns` `fr` locale, formatted **`jj/mm/aaaa`**, wrapping the dirk
+`Input` (so it matches every other field, incl. `borderless`). It speaks
+ISO `YYYY-MM-DD` on the wire — the value model forms + encrypted payloads
+already use — and parses at local midnight (no TZ day-shift). **Do not add
+a raw `<input type="date">`; use `DateField`.**
+
 ### Editorial content outside namespaces
 
 Two prompt arrays (~100 entries per language each) live outside `t()`,

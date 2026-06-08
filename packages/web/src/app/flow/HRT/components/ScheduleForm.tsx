@@ -22,6 +22,7 @@ import {
 } from '@nodea/shared';
 
 import Button from '@/ui/atoms/dirk/Button';
+import DateField from '@/ui/atoms/dirk/DateField';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
@@ -160,12 +161,14 @@ export default function ScheduleForm({
           {...register('dose', { valueAsNumber: true })}
         />
 
-        <TextField
-          label="Date de début"
-          type="date"
-          error={errors.startDate?.message}
-          {...register('startDate')}
-        />
+        <FieldRow label="Date de début" htmlFor="hrt-sched-start" error={errors.startDate?.message}>
+          <DateField
+            id="hrt-sched-start"
+            value={watch('startDate') ?? ''}
+            onChange={(iso) => setValue('startDate', iso, { shouldValidate: true })}
+            {...(errors.startDate ? { ariaInvalid: true } : {})}
+          />
+        </FieldRow>
       </div>
 
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[2fr_1fr_1fr]">

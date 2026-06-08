@@ -1,51 +1,77 @@
-.react-datepicker {
-  font-size: 0.95rem;
-  border-radius: 0.5rem;
-  border-color: #b7c2b7;
-  background: #f6f8f6;
-  color: #2d3a2d;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+/**
+ * react-datepicker — K · Sauge theme. Colour overrides ONLY, layered on
+ * top of the library's own base stylesheet (imported first in global.css).
+ * Layout (header, day grid, navigation, popup sizing) is left entirely to
+ * the base CSS — earlier overrides here came from a removed month/year
+ * picker (a flex header, `__month-wrapper` margins, a `!important`
+ * navigation hack) and broke the day calendar's layout.
+ */
+
+/* The library's base CSS sets the popup to `z-index: 1`, so later form
+   content (the Notes field, the form background) paints OVER the calendar's
+   lower half — the « white band ». Lift it above form content (stays below
+   the app's z-50 overlays / modals). */
+.react-datepicker-popper {
+  z-index: 40;
 }
 
-.react-datepicker__navigation {
-  top: 25px !important;
-  transform: translateY(-50%);
+.react-datepicker {
+  font-family: inherit;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-hair, #e7e5dd);
+  border-radius: 0.5rem;
+  background: var(--color-bg, #f9f8f3);
+  color: var(--color-ink, #2d3a2d);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
 }
 
 .react-datepicker__header {
-  background: #e6ede6;
-  border-bottom: 1px solid #b7c2b7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  background: var(--color-bg-2, #f5f4f0);
+  border-bottom: 1px solid var(--color-hair, #e7e5dd);
 }
 
-.react-datepicker__month-container {
-  padding: 0.5rem;
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker__day {
+  color: var(--color-ink, #2d3a2d);
 }
 
-.react-datepicker__current-month {
-  color: #2d3a2d;
-  font-weight: bold;
-  flex: 1;
-  text-align: center;
+.react-datepicker__day:hover {
+  background: var(--color-bg-2, #eef1ec);
 }
 
-.react-datepicker__month-wrapper {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: var(--color-accent, #7a9a7e);
+  color: #fff;
 }
 
-.react-datepicker__month-text--selected,
-.react-datepicker__month-text--keyboard-selected,
-.react-datepicker__month-text {
-  padding: 0.5rem;
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--keyboard-selected:hover {
+  background: var(--color-accent-hover, #6b8a6f);
 }
 
-.react-datepicker__month-text--selected,
-.react-datepicker__month-text--keyboard-selected {
-  background: #7bbf7b;
-  color: white;
-  border-radius: 0.25rem;
+.react-datepicker__day--today {
+  font-weight: 700;
+}
+
+.react-datepicker__day--outside-month {
+  color: var(--color-muted-soft, #b3b0a6);
+}
+
+/* Layout integration : a REAL box (never `display: contents`, which removes
+   the box react-datepicker's popup anchors to → no calendar) so the field
+   fills its FieldRow like any input. The inline variant (`DateField inline`)
+   shrinks to content for side-by-side date rows (the Du → Au range, the
+   Mood header). */
+.react-datepicker-wrapper,
+.react-datepicker__input-container {
+  display: block;
+  width: 100%;
+}
+
+.react-datepicker-wrapper.dp-inline,
+.react-datepicker-wrapper.dp-inline .react-datepicker__input-container {
+  display: inline-block;
+  width: auto;
 }

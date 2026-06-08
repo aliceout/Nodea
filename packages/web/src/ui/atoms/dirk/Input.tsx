@@ -5,6 +5,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Make the field's text centered (used for narrow numeric fields
    * like ISBN year, tome n°). Default left-aligned. */
   align?: 'left' | 'center';
+  /** Drop the border, fill and focus ring — a chrome-less field that
+   *  reads as inline text, mirroring `Select.borderless`. Used by the HRT
+   *  date-range « Personnalisé » Du / Au inputs so they match the
+   *  borderless period select beside them. Caller `className` still wins
+   *  (it merges last). */
+  borderless?: boolean;
   ref?: Ref<HTMLInputElement>;
 }
 
@@ -23,6 +29,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  */
 export default function Input({
   align = 'left',
+  borderless = false,
   className,
   ref,
   ...props
@@ -50,6 +57,12 @@ export default function Input({
         'block h-8 min-h-8 w-full rounded-[var(--radius-input)] border border-hair bg-bg px-3 text-[13px] text-ink placeholder:text-muted-soft',
         'focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none disabled:opacity-60',
         align === 'center' ? 'text-center tabular-nums' : '',
+        // Chrome-less variant: kill border / fill / focus ring in every
+        // state (the earlier select fix taught us a stray `focus:border`
+        // reappears otherwise). `px-1` keeps the value from hugging the
+        // text to its left when there's no frame.
+        borderless &&
+          'border-0 bg-transparent px-1 shadow-none focus:border-0 focus:shadow-none',
         className,
       )}
       {...props}

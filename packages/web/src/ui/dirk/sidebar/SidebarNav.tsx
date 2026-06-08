@@ -63,9 +63,10 @@ const LIBRARY_SUB_ITEMS: readonly LibrarySubItem[] = [
 
 /**
  * HRT opens on the `summary` dashboard (which absorbed the product
- * catalog), then the administration log (each dose/injection, timed)
- * and the lab results with their chart. Active lens is `hrtSubview`
- * in the flow slice — same no-URL-leak contract as Library.
+ * catalog), then the administration log (each dose/injection, timed),
+ * the lab results with their chart, and a printable doctor `export`.
+ * Active lens is `hrtSubview` in the flow slice — same no-URL-leak
+ * contract as Library.
  */
 interface HrtSubItem {
   subview: HrtSubview;
@@ -75,6 +76,7 @@ const HRT_SUB_ITEMS: readonly HrtSubItem[] = [
   { subview: 'summary', label: 'Synthèse' },
   { subview: 'administration', label: 'Administration' },
   { subview: 'labs', label: 'Analyses' },
+  { subview: 'export', label: 'Export' },
 ];
 
 interface SidebarNavProps {

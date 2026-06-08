@@ -185,6 +185,16 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
           </Select>
         </FieldRow>
 
+        <TextField
+          label="Concentration (mg/mL, optionnel)"
+          type="number"
+          step="any"
+          inputMode="decimal"
+          placeholder="10"
+          error={errors.concentration?.message}
+          {...register('concentration', { setValueAs: numFromInput })}
+        />
+
         <FieldRow label="Unité de dose" htmlFor="hrt-p-unit" error={errors.unit?.message}>
           <Select id="hrt-p-unit" {...register('unit')}>
             {DOSE_UNITS.map((u) => (
@@ -195,16 +205,6 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
             {showCurrentUnit ? <option value={unitVal}>{unitVal}</option> : null}
           </Select>
         </FieldRow>
-
-        <TextField
-          label="Concentration (mg/mL, optionnel)"
-          type="number"
-          step="any"
-          inputMode="decimal"
-          placeholder="10"
-          error={errors.concentration?.message}
-          {...register('concentration', { setValueAs: numFromInput })}
-        />
       </div>
 
       <FieldRow label="Notes (optionnel)" htmlFor="hrt-p-notes" error={errors.notes?.message}>

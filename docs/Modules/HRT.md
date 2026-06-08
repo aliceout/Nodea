@@ -1,15 +1,19 @@
 # HRT module (`hrt_admin_logs_entries` + `hrt_lab_results_entries` + `hrt_suppliers_entries` + `hrt_schedules_entries`)
 
 Hormone replacement therapy tracking for trans people. Four encrypted
-collections under a single `/flow` module — three surfaced as sidebar
-sub-views (à la Library), the fourth (recurring schedules) managed inside
-Administration:
+collections under a single `/flow` module with four sidebar sub-views (à
+la Library). The product catalog lives inside **Synthèse** and recurring
+schedules inside **Administration** — neither owns a tab — while a
+read-only **Export** sub-view recomposes the data into a downloadable PDF
+doctor recap:
 
 - **Synthèse** — the landing dashboard (default): a dose chart for the
   selected molecule + the product catalog (which lives here), then the
   latest doses and latest lab results, read-only.
 - **Administration** — a log of doses taken / injections done.
 - **Analyses** — lab marker readings, plotted over time.
+- **Export** — a downloadable **PDF** recap (current regimen + dose history
+  + analyses + charts) plus CSV downloads. Read-only.
 
 The standalone « Produits » sub-view was folded into **Synthèse**: the
 catalog has no separate tab — it's the dashboard's top-right column, the
@@ -74,12 +78,50 @@ regimens equally — it never assumes a single transition direction.
   doses keep their molecule / unit display, but drops out of the dose-form
   picker. A « Actifs / Archivés » select in the product column switches
   the view ; archived products carry a « Réactiver » action.
+- **Export** is a read-only **doctor recap**, downloaded as a **PDF**,
+  scoped by a date menu plus two **checkbox columns** — **Administration**
+  (molecules, which scope the regimen, the dose history and the dose charts)
+  and **Analyses** (markers, which scope the analyses tables and the marker
+  charts). Options list every molecule / marker ever logged ; both default
+  to « all shown », tracked as an *excluded* Set so no async init is needed.
+  A « Grouper par » toggle organises the dose + analyses tables either by
+  **type** (default — one sub-table per molecule / per marker, easier to
+  read than every substance mixed) or flat by **date** (chronological).
+  « Télécharger le PDF » generates the file **client-side** via
+  [`lib/export-pdf.ts`](../../packages/web/src/app/flow/HRT/lib/export-pdf.ts)
+  (jsPDF + jspdf-autotable, **lazy-imported** so they stay out of the main
+  bundle) : a **portrait** data section — the **current regimen** (ongoing
+  series, `endDate == null`), the **dose history** (admin logs in range,
+  with the mL→mg join + an « auto » tag on schedule-generated days) and the
+  **analyses tables** — then **one chart per landscape page** (the `LabChart`
+  trends redrawn with jsPDF primitives : an mg-equivalent **dose** chart per
+  molecule and a **marker** chart per analysis, ≥ 2 points). Tables are
+  crisp + selectable (autotable, auto-paginated, **no cap**) ; the recap is
+  **never rendered on screen** (the page shows only the controls). *Why
+  client-side* : the recap is **decrypted health data** — it must never
+  reach the server (no headless-Chrome render), and a browser can't silently
+  save-as-PDF from `window.print()` (the dialog is unavoidable). Two CSV
+  downloads (prises, analyses) serialise the same *filtered* rows via
+  [`lib/csv.ts`](../../packages/web/src/app/flow/HRT/lib/csv.ts) ; an
+  optional intitulé goes in the PDF header but is **ephemeral** (typed in
+  the controls, never stored). All shaping is pure
+  ([`lib/export-model.ts`](../../packages/web/src/app/flow/HRT/lib/export-model.ts)).
 
 Curated vocabulary (molecules, markers, default units/routes, molar
 unit conversions) lives in [`packages/shared/src/hrt-presets.ts`](../../packages/shared/src/hrt-presets.ts).
 **Presets only suggest — they never constrain.** `medication`, `marker`
 and `unit` are free strings so an uncommon protocol or an exotic lab
 unit is never blocked.
+
+**A product with a mg/mL `concentration` is dosed by volume (mL).** The
+concentration only makes sense for a volume dose, so it — not the stored
+`unit` — drives the dose entry : `doseUnitOf` (in `lib/export-model`)
+returns `mL` whenever a concentration is set, the AdminLogForm asks the
+dose in mL (and previews the derived mg live), and the list / charts /
+export derive `dose × concentration` **per prise**. The conversion lives at
+the dose entry, **never baked into the product** : the product just carries
+its mg/mL concentration once, and every prise converts. A product without a
+concentration keeps its own unit (e.g. an oral `mg`).
 
 ## Collections
 
@@ -201,7 +243,17 @@ stays generic. Do not add `useDocumentTitle` inside the module.
   default, opt-in via a Cibles : aucune / féminisant / masculinisant
   Select. Ranges live in `hrt-presets.ts` (`targets` per goal + `safe`
   for safety markers), drawn behind the line + folded into the scale.
-- **Next** — goal/unit selection persistence, doctor export.
+- **Phase 6** ✅ — Export sub-view: a **downloadable PDF** doctor recap
+  (jsPDF + jspdf-autotable, lazy-imported, client-side — the data is
+  decrypted, so no server render) with Administration / Analyses checkbox
+  columns, a date range and a « Grouper par » (type / date) toggle. Portrait
+  data tables (autotable, selectable, auto-paginated) + one chart per
+  landscape page (redrawn with jsPDF). CSV downloads for the filtered doses
+  and analyses. Pure builders in `lib/export-model.ts`, CSV in `lib/csv.ts`,
+  PDF in `lib/export-pdf.ts`.
+- **Next** — goal/unit selection persistence ; adding HRT to the
+  account-level JSON export/import (today the generic backup in Compte →
+  Données skips HRT — see `core/api/modules/import-export/registry.data.ts`).
 
 ## Seed
 

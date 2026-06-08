@@ -33,6 +33,7 @@ import Topbar from '@/ui/dirk/Topbar';
 import { useHrtSchedules } from './hooks/use-schedules';
 import { useScheduleMaterialization } from './hooks/use-schedule-materialization';
 import AdministrationView from './views/AdministrationView';
+import ExportView from './views/ExportView';
 import LabsView from './views/LabsView';
 import SummaryView from './views/SummaryView';
 
@@ -40,6 +41,7 @@ const TOPBAR_LABELS = {
   summary: 'HRT · Synthèse',
   administration: 'HRT · Administration',
   labs: 'HRT · Analyses',
+  export: 'HRT · Export',
 } as const;
 
 export default function HrtPage() {
@@ -69,6 +71,8 @@ export default function HrtPage() {
           <AdministrationView schedules={schedules} />
         ) : subview === 'labs' ? (
           <LabsView />
+        ) : subview === 'export' ? (
+          <ExportView />
         ) : (
           <SummaryView />
         )}
