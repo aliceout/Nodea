@@ -5,6 +5,29 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.8.0 — 2026-06-08
+
+### Nouveautés
+
+- **account** : portable encrypted .age backup _(e68a0bc)_
+- **import-export** : cover Journal + all HRT collections; harden dedup keys _(779f3c0)_
+
+### Corrections
+
+- **gitignore** : anchor data/ ignore to the repo root _(61ccfc2)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.7.0 _(f671f3f)_
+
+<details>
+<summary>Maintenance — 2 commits</summary>
+
+- **release** : bump version to 2.8.0 _(c7c020d)_
+- **deps** : bump the minor-and-patch group across 1 directory with 7 updates _(11202ae)_
+
+</details>
+
 ## v2.7.0 — 2026-06-08
 
 ### Nouveautés
