@@ -5,6 +5,24 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.7.0 — 2026-06-08
+
+### Nouveautés
+
+- **hrt** : analyses .xlsx import + data export to Excel/LibreOffice _(3e89196)_
+- **hrt** : doctor Export sub-view (PDF/CSV), mL dosing, FR date fields _(a5176db)_
+
+### Corrections
+
+- **deps** : bump jspdf to 4.2.1 + jspdf-autotable to 5.0.8 _(5c67235)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.7.0 _(111f857)_
+
+</details>
+
 ## v2.6.0 — 2026-06-07
 
 ### Nouveautés
@@ -13,6 +31,10 @@ pliés pour ne pas noyer l'essentiel.
 - **hrt** : archive products instead of deleting them _(f7b0ca7)_
 - **hrt** : date-filter shapes the chart axis + foldable/sticky chart on Analyses _(3c4f995)_
 - **hrt** : recurring dose schedules (materialised series) _(2ae1dec)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.6.0 _(2e40de5)_
 
 <details>
 <summary>Maintenance — 2 commits</summary>

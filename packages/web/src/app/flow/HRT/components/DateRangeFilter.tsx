@@ -12,7 +12,7 @@
  */
 import { useState } from 'react';
 
-import Input from '@/ui/atoms/dirk/Input';
+import DateField from '@/ui/atoms/dirk/DateField';
 import Select from '@/ui/atoms/dirk/Select';
 
 import { EMPTY_RANGE, type DateRange } from '../lib/date-range';
@@ -84,22 +84,24 @@ export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       </Select>
       {presetKey === 'custom' ? (
         <div className="flex items-center gap-1.5">
-          <Input
-            type="date"
-            aria-label="Du"
+          <DateField
+            ariaLabel="Du"
+            borderless
+            inline
             className="w-auto"
             value={from}
-            max={to || undefined}
-            onChange={(e) => onCustom({ from: e.target.value, to })}
+            {...(to ? { max: to } : {})}
+            onChange={(iso) => onCustom({ from: iso, to })}
           />
           <span className="text-[12px] text-muted">→</span>
-          <Input
-            type="date"
-            aria-label="Au"
+          <DateField
+            ariaLabel="Au"
+            borderless
+            inline
             className="w-auto"
             value={to}
-            min={from || undefined}
-            onChange={(e) => onCustom({ from, to: e.target.value })}
+            {...(from ? { min: from } : {})}
+            onChange={(iso) => onCustom({ from, to: iso })}
           />
         </div>
       ) : null}

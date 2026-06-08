@@ -11,6 +11,7 @@
 import type { HrtProductPayload } from '@nodea/shared';
 
 import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS, formatLogDate } from '../lib/labels';
+import { doseUnitOf, mgEquivalent } from '../lib/export-model';
 import RowActions from './RowActions';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 
@@ -24,11 +25,10 @@ interface AdminLogRowProps {
 }
 
 export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminLogRowProps) {
-  const unit = product?.unit ?? '';
-  const mgEq =
-    unit === 'mL' && typeof product?.concentration === 'number'
-      ? Math.round(entry.payload.dose * product.concentration * 10) / 10
-      : null;
+  // A product with a mg/mL concentration is dosed in mL → derive the mg
+  // here, per dose (the conversion lives at the entry, not the product).
+  const unit = doseUnitOf(product);
+  const mgEq = mgEquivalent(entry.payload.dose, product);
 
   return (
     <li className="group flex items-start gap-4 border-b border-hair py-3">

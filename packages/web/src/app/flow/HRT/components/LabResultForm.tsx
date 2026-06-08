@@ -25,6 +25,7 @@ import {
 } from '@nodea/shared';
 
 import Button from '@/ui/atoms/dirk/Button';
+import DateField from '@/ui/atoms/dirk/DateField';
 import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
@@ -131,7 +132,14 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
       noValidate
     >
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-        <TextField label="Date" type="date" error={errors.date?.message} {...register('date')} />
+        <FieldRow label="Date" htmlFor="hrt-lab-date" error={errors.date?.message}>
+          <DateField
+            id="hrt-lab-date"
+            value={watch('date') ?? ''}
+            onChange={(iso) => setValue('date', iso, { shouldValidate: true })}
+            {...(errors.date ? { ariaInvalid: true } : {})}
+          />
+        </FieldRow>
 
         <FieldRow label="Marqueur" htmlFor="hrt-marker" error={errors.marker?.message}>
           {customMarker ? (

@@ -6,6 +6,7 @@ import { moodClient } from '@/core/api/modules/mood';
 import { toIsoDate } from '@/core/i18n/date-format';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
+import DateField from '@/ui/atoms/dirk/DateField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import Footer from '../components/Footer';
@@ -141,13 +142,13 @@ export default function MoodBody({ onClose }: MoodBodyProps) {
           >
             {t('mood.composer.dateHeading')}
           </label>
-          <input
+          <DateField
             id="mood-date"
-            type="date"
+            inline
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
             max={toIsoDate(new Date())}
-            className="rounded-[var(--radius-input)] border border-hair bg-bg px-2 py-0.5 text-[12px] leading-[1.4] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
+            className="w-auto"
           />
         </div>
 

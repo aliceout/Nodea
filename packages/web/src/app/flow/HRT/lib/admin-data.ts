@@ -61,7 +61,10 @@ export function buildDoseSeries(
     if (moleculeOf(e, products) !== molecule) continue;
     const p = products.get(e.payload.product);
     let mg: number | null;
-    if (p?.unit === 'mL' && typeof p.concentration === 'number') {
+    // A concentration (mg/mL) ⇒ the dose is a volume (mL) → mg = mL × conc,
+    // regardless of the product's stored `unit`. A plain mg dose is taken
+    // as-is ; anything else can't be expressed in mg.
+    if (typeof p?.concentration === 'number') {
       mg = e.payload.dose * p.concentration;
     } else if (p?.unit === 'mg') {
       mg = e.payload.dose;

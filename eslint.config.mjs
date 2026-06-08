@@ -146,7 +146,12 @@ export default tseslint.config(
       // Import hygiene — duplicates and circulars are dead-weight
       // signals, not just style.
       'import-x/no-duplicates': 'error',
-      'import-x/no-cycle': ['warn', { maxDepth: 5 }],
+      // `ignoreExternal` keeps cycle detection inside our own code and
+      // stops the resolver from walking `node_modules` packages — some
+      // (e.g. the `read-excel-file` / `write-excel-file` subpath-`exports`
+      // builds) crash import-x's default resolver. We never police cycles
+      // through a third-party dependency anyway.
+      'import-x/no-cycle': ['warn', { maxDepth: 5, ignoreExternal: true }],
     },
   },
 

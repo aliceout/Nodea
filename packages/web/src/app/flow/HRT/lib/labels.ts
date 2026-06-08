@@ -68,3 +68,11 @@ export function formatLogDate(iso: string): string {
     year: 'numeric',
   });
 }
+
+/** Compact numeric date for the PDF export, e.g. « 06.12.26 » (DD.MM.YY).
+ *  The stored ISO is already zero-padded, so no reformatting is needed. */
+export function formatDotDate(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}.${m}.${y.slice(2)}`;
+}

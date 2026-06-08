@@ -6,6 +6,7 @@ import {
 } from '@nodea/shared';
 import { useHabits } from '../hooks/useHabits';
 import Button from '@/ui/atoms/dirk/Button';
+import DateField from '@/ui/atoms/dirk/DateField';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -134,15 +135,10 @@ export default function HabitsFormView() {
         </label>
       </div>
 
-      <label className="block">
-        <span className="text-sm">Date de début</span>
-        <input
-          type="date"
-          value={startedAt}
-          onChange={(e) => setStartedAt(e.target.value)}
-          className="mt-1 block w-full rounded border border-slate-300 p-2"
-        />
-      </label>
+      <div className="block">
+        <label htmlFor="habit-start" className="text-sm">Date de début</label>
+        <DateField id="habit-start" value={startedAt} onChange={setStartedAt} className="mt-1" />
+      </div>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {success ? <p className="text-sm text-emerald-700">{success}</p> : null}

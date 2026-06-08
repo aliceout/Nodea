@@ -24,14 +24,16 @@ import {
 } from '@nodea/shared';
 
 import Button from '@/ui/atoms/dirk/Button';
+import DateField from '@/ui/atoms/dirk/DateField';
+import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
 import { HRT_CATEGORY_LABELS, todayIso } from '../lib/labels';
+import { doseUnitOf, mgEquivalent } from '../lib/export-model';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import FieldRow from './FieldRow';
 import ProductForm from './ProductForm';
-import TextField from './TextField';
 
 type FormIn = z.input<typeof HrtAdminLogPayloadSchema>;
 type FormOut = z.output<typeof HrtAdminLogPayloadSchema>;
@@ -86,8 +88,13 @@ export default function AdminLogForm({
 
   const productVal = watch('product') ?? '';
   const selected = products.find((p) => p.name === productVal);
-  const doseUnit = selected?.unit ?? '';
+  // A product with a mg/mL concentration is dosed by volume → ask mL ; the
+  // conversion is per prise, derived from the product's concentration.
+  const doseUnit = doseUnitOf(selected);
   const doseLabel = doseUnit ? `Dose (${doseUnit})` : 'Dose';
+  // Show the derived mg live, so « 0.4 mL » reads « ≈ 4 mg » before saving.
+  const doseVal = watch('dose');
+  const mgPreview = Number.isFinite(doseVal) ? mgEquivalent(doseVal, selected) : null;
   const categories = HRT_CATEGORY_VALUES.filter((c) =>
     products.some((p) => p.category === c),
   );
@@ -159,24 +166,31 @@ export default function AdminLogForm({
           </div>
         </FieldRow>
 
-        <TextField
-          label={doseLabel}
-          type="number"
-          step="any"
-          inputMode="decimal"
-          placeholder="0.4"
-          // Hide the native number-spinner arrows (webkit + Firefox).
-          className="[appearance:textfield] [&::-webkit-inner-spin-button]:[-webkit-appearance:none] [&::-webkit-outer-spin-button]:[-webkit-appearance:none] [&::-webkit-inner-spin-button]:m-0"
-          error={errors.dose?.message}
-          {...register('dose', { valueAsNumber: true })}
-        />
+        <FieldRow label={doseLabel} htmlFor="hrt-dose" error={errors.dose?.message}>
+          <Input
+            id="hrt-dose"
+            type="number"
+            step="any"
+            inputMode="decimal"
+            placeholder="0.4"
+            // Hide the native number-spinner arrows (webkit + Firefox).
+            className="[appearance:textfield] [&::-webkit-inner-spin-button]:[-webkit-appearance:none] [&::-webkit-outer-spin-button]:[-webkit-appearance:none] [&::-webkit-inner-spin-button]:m-0"
+            {...(errors.dose ? { 'aria-invalid': true as const } : {})}
+            {...register('dose', { valueAsNumber: true })}
+          />
+          {mgPreview != null ? (
+            <p className="mt-1 text-[11px] text-muted">≈ {mgPreview} mg</p>
+          ) : null}
+        </FieldRow>
 
-        <TextField
-          label="Date"
-          type="date"
-          error={errors.date?.message}
-          {...register('date')}
-        />
+        <FieldRow label="Date" htmlFor="hrt-date" error={errors.date?.message}>
+          <DateField
+            id="hrt-date"
+            value={watch('date') ?? ''}
+            onChange={(iso) => setValue('date', iso, { shouldValidate: true })}
+            {...(errors.date ? { ariaInvalid: true } : {})}
+          />
+        </FieldRow>
       </div>
 
       <FieldRow label="Notes (optionnel)" htmlFor="hrt-notes" error={errors.notes?.message}>

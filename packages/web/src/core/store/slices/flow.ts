@@ -31,14 +31,15 @@ export function isLibrarySubview(value: unknown): value is LibrarySubview {
 }
 
 /**
- * HRT has three lenses on the same encrypted data : the `summary`
+ * HRT has four lenses on the same encrypted data : the `summary`
  * landing (read-only dashboard + the product catalog it absorbed), the
  * administration log (`administration` — each dose/injection, timed),
- * and the lab results with their chart (`labs`). `summary` is the
+ * the lab results with their chart (`labs`), and a printable doctor
+ * `export` (regimen + doses + analyses recap). `summary` is the
  * default. Same privacy contract as Library : the active lens lives
  * here, never in the URL.
  */
-export const HRT_SUBVIEWS = ['summary', 'administration', 'labs'] as const;
+export const HRT_SUBVIEWS = ['summary', 'administration', 'labs', 'export'] as const;
 export type HrtSubview = (typeof HRT_SUBVIEWS)[number];
 
 export function isHrtSubview(value: unknown): value is HrtSubview {
