@@ -18,7 +18,10 @@ coverage
 # Without DATA_DIR exported (the prod `deploy.sh` sets it to
 # `$HOME/data/nodea`), local dev falls back to `./data/postgres`
 # at the repo root. Never commit dev DB state.
-data/
+# Anchored to the repo root (`/data/`) on purpose: an unanchored
+# `data/` also swallowed source dirs like
+# `packages/web/.../Account/views/data/`.
+/data/
 
 # Editor directories and files
 .vscode/*

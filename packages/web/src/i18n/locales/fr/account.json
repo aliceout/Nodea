@@ -143,7 +143,7 @@
       "title": "Importer",
       "cta": "Importer un fichier",
       "ctaLoading": "Import en cours…",
-      "description": "JSON ou NDJSON exporté précédemment. Doublons ignorés.",
+      "description": "JSON, NDJSON ou sauvegarde chiffrée .age exportés depuis Nodea. Doublons ignorés.",
       "noKey": "Clé de chiffrement absente.",
       "errorPrefix": "Erreur d’import : ",
       "invalidJson": "Format JSON invalide.",
@@ -153,7 +153,27 @@
       "moduleSkippedDisabled": "{key}: ignoré (non activé)",
       "moduleResult": "{key}: {created} ajouté(s), {skipped} doublon(s)",
       "moodResult": "mood: {count} ajouté(s)",
-      "successPrefix": "Import terminé · {count} entrée(s) — {parts}"
+      "successPrefix": "Import terminé · {count} entrée(s) — {parts}",
+      "backupDetected": "Sauvegarde chiffrée détectée. Saisis ta phrase secrète pour la restaurer.",
+      "backupPassphrase": "Phrase secrète",
+      "backupRestoreCta": "Déchiffrer et restaurer",
+      "backupRestoreLoading": "Déchiffrement…",
+      "backupCancel": "Annuler",
+      "backupWrongPassphrase": "Phrase secrète incorrecte, ou fichier de sauvegarde altéré."
+    },
+    "backup": {
+      "title": "Sauvegarde chiffrée",
+      "description": "Une sauvegarde portable protégée par une phrase secrète : indépendante de ton compte, réimportable dans un nouveau compte. Fichier .age standard (déchiffrable hors Nodea avec l’outil age).",
+      "passphrase": "Phrase secrète",
+      "confirm": "Confirme la phrase secrète",
+      "mismatch": "Les deux phrases secrètes ne correspondent pas.",
+      "warning": "Phrase secrète perdue = sauvegarde définitivement irrécupérable. Note-la en lieu sûr : aucune réinitialisation n’est possible.",
+      "tooWeak": "Phrase secrète trop facile à deviner. Prends-en une plus longue ou plus imprévisible — par exemple 4 à 5 mots tirés au hasard.",
+      "cta": "Créer la sauvegarde chiffrée",
+      "ctaLoading": "Chiffrement…",
+      "noKey": "Clé de chiffrement absente.",
+      "empty": "Aucune donnée à sauvegarder.",
+      "success": "Sauvegarde chiffrée téléchargée."
     }
   },
   "danger": {

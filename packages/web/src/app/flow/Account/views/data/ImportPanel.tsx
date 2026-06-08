@@ -1,28 +1,59 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
-import { getDataPlugin } from '@/core/api/modules/import-export/registry.data.ts';
+import { openBackup } from '@/core/crypto/backup-crypto';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import Field from '@/ui/atoms/dirk/Field';
 
 import Feedback from '../../components/Feedback';
+import { restoreEnvelope } from './restore-envelope';
+import { unpackBackup } from './backup-pack';
+
+/** age's binary format opens with this ASCII line — the cheapest reliable
+ *  way to tell an encrypted backup (`.age`) from a plaintext JSON export
+ *  without trusting the file extension. */
+const AGE_MAGIC = 'age-encryption.org/v1';
 
 /** « Importer » panel on the Data tab.
  *
- * Accepts the JSON shape produced by `ExportPanel` (versioned
- * envelope with one bucket per module) plus a legacy NDJSON / array
- * shape that pre-dates the unified format and only contained
- * Mood. Per-record idempotency is enforced via each plugin's
- * `getNaturalKey` — re-importing the same file is a no-op rather
- * than a duplicator. */
+ * Accepts three shapes, auto-detected from the bytes (not the extension):
+ *   - the versioned JSON envelope produced by `ExportPanel` (one bucket
+ *     per module),
+ *   - a legacy NDJSON / array that pre-dates the unified format (Mood only),
+ *   - an encrypted backup (`.age`, from `BackupExportPanel`) — detected by
+ *     the age magic header, then decrypted in-browser with a passphrase.
+ *
+ * All three converge on `restoreEnvelope`, so per-record idempotency
+ * (each plugin's `getNaturalKey`) makes a re-import a no-op rather than a
+ * duplicator. */
 export default function ImportPanel() {
   const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const passInputRef = useRef<HTMLInputElement | null>(null);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Bytes of a picked `.age` file held while we prompt for its passphrase.
+  const [pendingBackup, setPendingBackup] = useState<Uint8Array | null>(null);
+  const [backupPass, setBackupPass] = useState('');
+
+  // When a backup is detected the trigger button goes disabled, so move
+  // focus to the freshly revealed passphrase field — keyboard / screen
+  // reader users would otherwise be stranded on a dead control.
+  useEffect(() => {
+    if (pendingBackup !== null) passInputRef.current?.focus();
+  }, [pendingBackup]);
+
+  function reportResult(count: number, parts: string[]): void {
+    setSuccess(
+      t('account.data.import.successPrefix', {
+        values: { count, parts: parts.join(' ; ') },
+      }),
+    );
+  }
 
   async function handleFile(evt: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = evt.target.files?.[0];
@@ -32,86 +63,69 @@ export default function ImportPanel() {
     setSuccess('');
     try {
       if (!mainKey) throw new Error(t('account.data.import.noKey'));
-      const text = (await file.text()).trim();
-      let count = 0;
-      const parts: string[] = [];
-
-      async function pluginFor(moduleKey: string) {
-        const plugin = await getDataPlugin(moduleKey);
-        const runtimeKey = plugin.meta?.runtimeKey ?? plugin.meta?.id ?? moduleKey;
-        if (!runtimeKey) return null;
-        const sid = modules?.[runtimeKey]?.moduleUserId;
-        if (!sid) return null;
-        return { plugin, sid };
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const header = new TextDecoder('latin1').decode(bytes.subarray(0, AGE_MAGIC.length));
+      if (header === AGE_MAGIC) {
+        // Encrypted backup — stash the bytes and switch to the passphrase
+        // prompt; nothing is decrypted until the user supplies one.
+        setPendingBackup(bytes);
+        return;
       }
 
+      const text = new TextDecoder().decode(bytes).trim();
       if (text.startsWith('{')) {
         const root = JSON.parse(text) as { modules?: Record<string, unknown[]> };
         if (!root?.modules) throw new Error(t('account.data.import.invalidJson'));
-        for (const [key, items] of Object.entries(root.modules)) {
-          if (!Array.isArray(items) || items.length === 0) continue;
-          let resolved;
-          try {
-            resolved = await pluginFor(key);
-          } catch {
-            parts.push(t('account.data.import.moduleSkippedUnknown', { values: { key } }));
-            continue;
-          }
-          if (!resolved) {
-            parts.push(t('account.data.import.moduleSkippedDisabled', { values: { key } }));
-            continue;
-          }
-          const { plugin, sid } = resolved;
-          const existing: Set<string> = await plugin.listExistingKeys({ sid, mainKey });
-          let created = 0;
-          let skipped = 0;
-          for (const payload of items) {
-            const k = plugin.getNaturalKey?.(payload) ?? null;
-            if (k && existing.has(k)) {
-              skipped += 1;
-              continue;
-            }
-            await plugin.importHandler({ payload, ctx: { moduleUserId: sid, mainKey } });
-            if (k) existing.add(k);
-            created += 1;
-          }
-          parts.push(
-            t('account.data.import.moduleResult', {
-              values: { key, created, skipped },
-            }),
-          );
-          count += created;
-        }
+        const { count, parts } = await restoreEnvelope(root.modules, mainKey, modules, t);
+        reportResult(count, parts);
       } else if (text.startsWith('[')) {
-        // Legacy mood array
+        // Legacy Mood-only array.
         const arr = JSON.parse(text) as unknown[];
-        const resolved = await pluginFor('mood');
-        if (!resolved) throw new Error(t('account.data.import.moodNotEnabled'));
-        const { plugin, sid } = resolved;
-        const existing: Set<string> = await plugin.listExistingKeys({ sid, mainKey });
-        for (const payload of arr) {
-          const k = plugin.getNaturalKey?.(payload) ?? null;
-          if (k && existing.has(k)) continue;
-          await plugin.importHandler({ payload, ctx: { moduleUserId: sid, mainKey } });
-          if (k) existing.add(k);
-          count += 1;
-        }
-        parts.push(t('account.data.import.moodResult', { values: { count } }));
+        const { count, parts } = await restoreEnvelope({ mood: arr }, mainKey, modules, t);
+        reportResult(count, parts);
       } else {
         throw new Error(t('account.data.import.unknownFormat'));
       }
-
-      setSuccess(
-        t('account.data.import.successPrefix', {
-          values: { count, parts: parts.join(' ; ') },
-        }),
-      );
     } catch (err) {
       setError(t('account.data.import.errorPrefix') + ((err as Error)?.message ?? ''));
     } finally {
       setLoading(false);
       if (inputRef.current) inputRef.current.value = '';
     }
+  }
+
+  async function handleRestoreBackup(): Promise<void> {
+    if (!pendingBackup) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      if (!mainKey) throw new Error(t('account.data.import.noKey'));
+      let files;
+      try {
+        files = await openBackup(pendingBackup, backupPass);
+      } catch {
+        // Wrong passphrase or tampered file — keep the prompt so the user
+        // can retry without re-picking the file.
+        setError(t('account.data.import.backupWrongPassphrase'));
+        return;
+      }
+      const { modules: modulesObj } = unpackBackup(files);
+      const { count, parts } = await restoreEnvelope(modulesObj, mainKey, modules, t);
+      reportResult(count, parts);
+      setPendingBackup(null);
+      setBackupPass('');
+    } catch (err) {
+      setError(t('account.data.import.errorPrefix') + ((err as Error)?.message ?? ''));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function cancelBackup(): void {
+    setPendingBackup(null);
+    setBackupPass('');
+    setError('');
   }
 
   return (
@@ -123,14 +137,14 @@ export default function ImportPanel() {
             variant="primary"
             size="sm"
             onClick={() => inputRef.current?.click()}
-            disabled={loading || !mainKey}
+            disabled={loading || !mainKey || pendingBackup !== null}
           >
             {loading ? t('account.data.import.ctaLoading') : t('account.data.import.cta')}
           </Button>
           <input
             ref={inputRef}
             type="file"
-            accept="application/json,.json,.ndjson"
+            accept="application/json,.json,.ndjson,.age"
             onChange={handleFile}
             className="hidden"
           />
@@ -139,6 +153,38 @@ export default function ImportPanel() {
           {t('account.data.import.description')}
         </p>
       </div>
+
+      {pendingBackup !== null ? (
+        <div className="mt-3 max-w-[420px] rounded-[var(--radius-control)] border border-hair bg-bg-2/40 p-3">
+          <p role="status" className="mb-2 text-[12px] leading-[1.5] text-ink-soft">
+            {t('account.data.import.backupDetected')}
+          </p>
+          <Field
+            ref={passInputRef}
+            label={t('account.data.import.backupPassphrase')}
+            type="password"
+            autoComplete="off"
+            value={backupPass}
+            onChange={(e) => setBackupPass(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleRestoreBackup}
+              disabled={loading || backupPass.length === 0}
+            >
+              {loading
+                ? t('account.data.import.backupRestoreLoading')
+                : t('account.data.import.backupRestoreCta')}
+            </Button>
+            <Button variant="neutral" size="sm" onClick={cancelBackup} disabled={loading}>
+              {t('account.data.import.backupCancel')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {success ? <Feedback tone="success">{success}</Feedback> : null}
       {error ? <Feedback tone="error">{error}</Feedback> : null}
     </section>

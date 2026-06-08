@@ -28,6 +28,7 @@
     "@tailwindcss/vite": "^4.3.0",
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
+    "age-encryption": "0.3.0",
     "boring-avatars": "^2.0.4",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",

@@ -5,7 +5,7 @@
  * shape declared in [`./types.ts`](./types.ts) — `meta`,
  * `importHandler`, `exportQuery`, etc. The registry imports
  * them on demand (so a user who never opens the data panel
- * doesn't pay for parsing the 7 plugins).
+ * doesn't pay for parsing every module's plugin).
  *
  * `aliases` keeps backward compat with old export envelopes
  * that used the pre-split keys « habits » / « library » (when
@@ -19,22 +19,36 @@ import type { ImportExportPlugin } from './types.ts';
 type ModuleKey =
   | 'mood'
   | 'goals'
+  | 'journal'
   | 'habits_items'
   | 'habits_logs'
   | 'library_items'
   | 'library_reviews'
-  | 'review';
+  | 'review'
+  | 'hrt_products'
+  | 'hrt_admin_logs'
+  | 'hrt_lab_results'
+  | 'hrt_schedules';
 
 type PluginLoader = () => Promise<{ default: ImportExportPlugin }>;
 
+// HRT order is intentional: `hrt_products` comes before the admin logs and
+// schedules that reference a product by name, so a restore recreates the
+// catalog first (the reference is a plain string, so this is for tidiness,
+// not referential integrity).
 const loaders: Record<ModuleKey, PluginLoader> = {
   mood: () => import('./mood.ts'),
   goals: () => import('./goals.ts'),
+  journal: () => import('./journal.ts'),
   habits_items: () => import('./habits-items.ts'),
   habits_logs: () => import('./habits-logs.ts'),
   library_items: () => import('./library-items.ts'),
   library_reviews: () => import('./library-reviews.ts'),
   review: () => import('./review.ts'),
+  hrt_products: () => import('./hrt-products.ts'),
+  hrt_admin_logs: () => import('./hrt-admin-logs.ts'),
+  hrt_lab_results: () => import('./hrt-lab-results.ts'),
+  hrt_schedules: () => import('./hrt-schedules.ts'),
 };
 
 const aliases: Readonly<Record<string, ModuleKey>> = {

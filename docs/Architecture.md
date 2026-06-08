@@ -639,7 +639,10 @@ Full protocol detail + guard formula at
 
 ### 7.3. Import / Export
 
-Common format, produced and consumed exclusively in the browser:
+Two exports, both produced and consumed **exclusively in the browser** —
+the server never sees cleartext or the passphrase.
+
+**Plaintext export** — the readable common JSON:
 
 ```json
 {
@@ -651,14 +654,32 @@ Common format, produced and consumed exclusively in the browser:
 ```
 
 - **Export**: the client lists page by page (200 entries),
-  decrypts each payload locally, aggregates into the JSON. The
-  server never sees cleartext.
+  decrypts each payload locally, aggregates into the JSON.
 - **Import**: the client re-encrypts each payload with the current
-  main key and replays the POST + PATCH flow. Modules with
-  potential duplicates (Mood, Goals, Habits) have a natural key
-  documented in their per-module file for deduplication.
-- Accepted formats: Nodea v1 export, NDJSON (one line per
-  payload), raw array for Mood backwards compatibility.
+  main key and replays the POST + PATCH flow. Idempotent per record
+  via each module's natural key (`getNaturalKey` — implemented by
+  **every** plugin, not just a subset).
+- The export/backup walk is driven by the `registry.data.ts` plugin
+  list: `mood, goals, journal, habits_items, habits_logs,
+  library_items, library_reviews, review, hrt_products,
+  hrt_admin_logs, hrt_lab_results, hrt_schedules` (legacy `habits` /
+  `library` keys alias onto their split variants). `library_covers`
+  is intentionally excluded — re-fetchable artwork.
+
+**Encrypted backup** (`.age`) — a portable, **account-independent**
+backup sealed under a user passphrase (see ADR-0016 and the security
+tech doc). It is an opaque `age` blob wrapping a ZIP of `manifest.json`
++ one `modules/<key>.json` per module. The import auto-detects it (the
+`age` magic header), prompts for the passphrase, decrypts in-browser,
+and converges on the **same** restore path as the plaintext import.
+Same-account restore is byte-faithful. Cross-account restore re-links
+by content for most modules, but `habits_logs` / `library_reviews`
+reference their parent item by **server id**, so on a *different*
+account those links are not yet remapped — tracked as a follow-up.
+
+- Accepted import formats: encrypted `.age` backup, Nodea v1 JSON
+  export, NDJSON (one line per payload), raw array for Mood
+  backwards compatibility.
 
 ### 7.4. Cross-module invariants
 
