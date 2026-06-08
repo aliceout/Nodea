@@ -4,7 +4,7 @@ import {
   type LibraryReviewPayload,
 } from '@nodea/shared';
 import { libraryReviewsClient } from '@/core/api/modules/library';
-import { normalizeKeyPart } from './utils';
+import { normalizeKeyPart, contentFingerprint } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -54,9 +54,17 @@ function normalizePayload(input: unknown): LibraryReviewPayload {
 
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
-  return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(
-    p.itemRid,
-  )}::${normalizeKeyPart(p.content.slice(0, 40))}`;
+  // Several reviews can share a day + book: two quotes from different
+  // pages, a quote + a note, two notes. Fold in kind + page + a full
+  // -content fingerprint (not a 40-char prefix, which collapsed quotes
+  // sharing an opening and dropped the second on restore).
+  return [
+    normalizeKeyPart(p.date),
+    normalizeKeyPart(p.itemRid),
+    normalizeKeyPart(p.kind),
+    normalizeKeyPart(String(p.page ?? '')),
+    contentFingerprint(p.content),
+  ].join('::');
 }
 
 export async function importHandler({
