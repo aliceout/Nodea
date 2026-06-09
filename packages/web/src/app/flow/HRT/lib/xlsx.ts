@@ -26,20 +26,27 @@
  */
 import type { Cell, DataValidation, Worksheet } from 'exceljs';
 
-import { HRT_MARKERS } from '@nodea/shared';
+import { HRT_DRAW_CONTEXT_VALUES, HRT_MARKERS } from '@nodea/shared';
 
-import { ANALYSE_TEMPLATE_HEADERS, type RawCell, type RawRow } from './import-model';
+import type { RawCell, RawRow } from './import-model';
+import { drawContextLabel, type HrtTranslate } from './labels';
 
 export interface ImportWorkbook {
   analyses: RawRow[];
 }
 
+/** Fixed sheet name, NOT translated : it's the read-side contract
+ *  (`readImportWorkbook` looks it up by name), and the word reads fine
+ *  in both FR and EN. */
 const SHEET = 'Analyses';
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 /** Pre-apply the dropdowns down to this many data rows (plenty for analyses;
  *  rows pasted past it still import, just without the in-cell list). */
 const TEMPLATE_ROWS = 200;
-const CONTEXT_ITEMS = ['Creux', 'Pic', 'Aléatoire', 'Non précisé'] as const;
+/** Logical columns of the « Analyses » sheet, in template order. The
+ *  localised headers come from `hrt.import.template.headers.<key>` ;
+ *  `import-model`'s alias table accepts both locales on re-import. */
+const HEADER_KEYS = ['date', 'marker', 'value', 'unit', 'context', 'lab', 'notes'] as const;
 
 // ── Reading an uploaded workbook ────────────────────────────────────────
 
@@ -109,25 +116,22 @@ function listValidation(items: readonly string[]): DataValidation {
  * default unit) and contexts, generated from the shared presets so it never
  * drifts. Documentation only — the dropdowns live on the « Analyses » sheet.
  */
-function buildAideSheet(ws: Worksheet): void {
+function buildAideSheet(ws: Worksheet, t: HrtTranslate, contextItems: readonly string[]): void {
   ws.getColumn(1).width = 34;
   ws.getColumn(2).width = 16;
 
   const title = ws.getCell('A1');
-  title.value = 'Modèle d’import HRT — Nodea (analyses)';
+  title.value = t('hrt.import.template.title');
   title.font = { bold: true };
-  ws.getCell('A2').value =
-    'Collez vos analyses dans l’onglet « Analyses ». Ne touchez pas aux en-têtes (ligne 1).';
-  ws.getCell('A3').value =
-    'Dates : 2026-06-04 (AAAA-MM-JJ) ou 04.06.2026. Décimale au point ou à la virgule (1.5 / 1,5).';
-  ws.getCell('A4').value =
-    'Tout est traité dans votre navigateur — le fichier n’est jamais envoyé au serveur.';
+  ws.getCell('A2').value = t('hrt.import.template.line1');
+  ws.getCell('A3').value = t('hrt.import.template.line2');
+  ws.getCell('A4').value = t('hrt.import.template.line3');
 
   const markerHead = ws.getCell('A6');
-  markerHead.value = 'Marqueurs reconnus';
+  markerHead.value = t('hrt.import.template.markersHead');
   markerHead.font = { bold: true };
   const unitHead = ws.getCell('B6');
-  unitHead.value = 'Unité par défaut';
+  unitHead.value = t('hrt.import.template.unitHead');
   unitHead.font = { bold: true };
   HRT_MARKERS.forEach((m, i) => {
     ws.getCell(7 + i, 1).value = m.label;
@@ -136,9 +140,9 @@ function buildAideSheet(ws: Worksheet): void {
 
   const ctxRow = 8 + HRT_MARKERS.length;
   const ctxHead = ws.getCell(ctxRow, 1);
-  ctxHead.value = 'Contextes';
+  ctxHead.value = t('hrt.import.template.contextsHead');
   ctxHead.font = { bold: true };
-  ws.getCell(ctxRow + 1, 1).value = CONTEXT_ITEMS.join(' · ');
+  ws.getCell(ctxRow + 1, 1).value = contextItems.join(' · ');
 }
 
 /** Trigger a client-side download of `blob` as `filename`. */
@@ -155,18 +159,19 @@ function downloadBlob(filename: string, blob: Blob): void {
 
 /**
  * Build + download the `.xlsx` import template : an « Analyses » sheet
- * (bold headers + Marqueur / Contexte dropdowns) and an « Aide » sheet. The
- * writer is lazy-loaded on first use.
+ * (bold localised headers + Marqueur / Contexte dropdowns) and a help
+ * sheet. The caller threads its `useI18n()` `t` — the template is a
+ * user-facing document. The writer is lazy-loaded on first use.
  */
-export async function downloadImportTemplate(): Promise<void> {
+export async function downloadImportTemplate(t: HrtTranslate): Promise<void> {
   const { Workbook } = await import('exceljs');
   const wb = new Workbook();
   wb.creator = 'Nodea';
 
   const ws = wb.addWorksheet(SHEET);
-  ws.columns = ANALYSE_TEMPLATE_HEADERS.map((header) => ({
-    header,
-    width: header === 'Notes' ? 28 : 16,
+  ws.columns = HEADER_KEYS.map((key) => ({
+    header: t(`hrt.import.template.headers.${key}`),
+    width: key === 'notes' ? 28 : 16,
   }));
   ws.getRow(1).eachCell((cell) => {
     cell.font = { bold: true };
@@ -177,14 +182,15 @@ export async function downloadImportTemplate(): Promise<void> {
   // marker's units depend on it, but the union stays short + finite).
   const markerItems = HRT_MARKERS.map((m) => m.label);
   const unitItems = [...new Set(HRT_MARKERS.flatMap((m) => [m.canonicalUnit, ...m.units]))];
+  const contextItems = HRT_DRAW_CONTEXT_VALUES.map((c) => drawContextLabel(t, c));
   for (let r = 2; r <= TEMPLATE_ROWS + 1; r += 1) {
     ws.getCell(r, 2).dataValidation = listValidation(markerItems);
     ws.getCell(r, 4).dataValidation = listValidation(unitItems);
-    ws.getCell(r, 5).dataValidation = listValidation(CONTEXT_ITEMS);
+    ws.getCell(r, 5).dataValidation = listValidation(contextItems);
   }
 
-  buildAideSheet(wb.addWorksheet('Aide'));
+  buildAideSheet(wb.addWorksheet(t('hrt.import.template.helpSheet')), t, contextItems);
 
   const blob = new Blob([await wb.xlsx.writeBuffer()], { type: XLSX_MIME });
-  downloadBlob('Nodea — modèle import analyses HRT.xlsx', blob);
+  downloadBlob(t('hrt.import.template.filename'), blob);
 }

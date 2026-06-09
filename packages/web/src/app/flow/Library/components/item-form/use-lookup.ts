@@ -38,6 +38,7 @@ import {
   isApiError,
   streamLibraryLookupByQuery,
 } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 export interface LibraryLookupState {
   input: string;
@@ -51,6 +52,7 @@ export interface LibraryLookupState {
 }
 
 export function useLibraryLookup(): LibraryLookupState {
+  const { t } = useI18n();
   const [input, setInput] = useState('');
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export function useLibraryLookup(): LibraryLookupState {
         if (abortRef.current !== ac) return; // superseded
         setResults(response.results);
         if (response.results.length === 0) {
-          setError('Aucun résultat. Tu peux saisir manuellement.');
+          setError(t('library.lookup.noResults'));
         }
         return;
       }
@@ -115,7 +117,7 @@ export function useLibraryLookup(): LibraryLookupState {
       );
       if (abortRef.current !== ac) return; // superseded
       if (lastResults.length === 0) {
-        setError('Aucun résultat. Tu peux saisir manuellement.');
+        setError(t('library.lookup.noResults'));
       }
     } catch (err) {
       // AbortError on stream cancellation is expected and not user-
@@ -123,9 +125,9 @@ export function useLibraryLookup(): LibraryLookupState {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       if (abortRef.current !== ac) return; // superseded
       if (isApiError(err) && err.status === 429) {
-        setError('Trop de recherches récentes — patiente une minute.');
+        setError(t('library.lookup.rateLimited'));
       } else {
-        setError('Recherche indisponible. Tu peux saisir manuellement.');
+        setError(t('library.lookup.unavailable'));
         if (import.meta.env.DEV) console.warn('library lookup failed', err);
       }
     } finally {

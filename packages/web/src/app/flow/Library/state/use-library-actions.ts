@@ -30,6 +30,7 @@ import {
 } from '@/core/api/modules/library';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import type { LibraryItem, LibraryReview } from '../lib/types';
 
@@ -100,6 +101,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     bumpReviewsVersion,
   } = deps;
 
+  const { t } = useI18n();
   const [reviewPicker, setReviewPicker] =
     useState<LibraryReviewPickerState>({ open: false });
   const [itemForm, setItemForm] = useState<LibraryItemFormState>(null);
@@ -142,7 +144,12 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
   const deleteItem = useCallback(
     async (it: LibraryItem) => {
       if (!ctx) return;
-      if (!window.confirm(`Supprimer « ${it.title} » et ses reviews ?`)) return;
+      if (
+        !window.confirm(
+          t('library.confirm.deleteItem', { values: { title: it.title } }),
+        )
+      )
+        return;
       trackerRef.current.begin(it.id);
       const orphanReviews = reviewsRef.current.filter(
         (r) => r.itemRid === it.id,
@@ -174,7 +181,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
           console.warn('library: delete item failed', err);
       }
     },
-    [ctx, bumpItemsVersion, bumpReviewsVersion, setItems, setReviews],
+    [ctx, t, bumpItemsVersion, bumpReviewsVersion, setItems, setReviews],
   );
 
   const toggleFavorite = useCallback(
@@ -223,7 +230,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
   const deleteReview = useCallback(
     async (review: LibraryReview) => {
       if (!ctx) return;
-      if (!window.confirm('Supprimer cette review ?')) return;
+      if (!window.confirm(t('library.confirm.deleteReview'))) return;
       const token = trackerRef.current.begin(review.id);
       setReviews((prev) => prev.filter((r) => r.id !== review.id));
       try {
@@ -244,7 +251,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
           console.warn('library: delete review failed', err);
       }
     },
-    [ctx, setReviews],
+    [ctx, t, setReviews],
   );
 
   const openReviewPicker = useCallback((kind: ReviewKind) => {

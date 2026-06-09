@@ -3,10 +3,10 @@ import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import type { LibraryStatus } from '@nodea/shared';
 
 import DirkButton from '@/ui/atoms/dirk/Button';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useLibraryActions, useLibraryData } from '../context';
-import { STATUS_LABEL } from '../lib/constants';
 import type { LibraryItem } from '../lib/types';
 
 interface BookGridProps {
@@ -32,6 +32,7 @@ const STATUS_PILL_CLASS: Record<LibraryStatus, string> = {
  * (already filtered + flattened) `items` list is passed in.
  */
 export default function BookGrid({ items }: BookGridProps) {
+  const { t } = useI18n();
   const { covers } = useLibraryData();
   const { editItem, deleteItem, toggleFavorite } = useLibraryActions();
 
@@ -51,7 +52,7 @@ export default function BookGrid({ items }: BookGridProps) {
             <button
               type="button"
               onClick={() => editItem(it)}
-              aria-label={`Ouvrir ${it.title}`}
+              aria-label={t('library.row.open', { values: { title: it.title } })}
               className="relative block w-full cursor-pointer overflow-hidden rounded-sm border border-hair bg-bg-2 transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
             >
               {cover ? (
@@ -68,7 +69,7 @@ export default function BookGrid({ items }: BookGridProps) {
                   className="flex aspect-[2/3] w-full items-center justify-center bg-bg-2 px-2 text-center text-[11px] italic text-muted-soft"
                   aria-hidden="true"
                 >
-                  Pas de couverture
+                  {t('library.row.noCover')}
                 </div>
               )}
               {/* Status pill in the corner so the user can tell apart
@@ -80,12 +81,12 @@ export default function BookGrid({ items }: BookGridProps) {
                   STATUS_PILL_CLASS[it.status],
                 )}
               >
-                {STATUS_LABEL[it.status]}
+                {t(`library.statusGroup.${it.status}`)}
               </span>
               {it.isFavorite ? (
                 <span
                   className="absolute top-1.5 right-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-bg/80 text-accent shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
-                  aria-label="Favori"
+                  aria-label={t('library.row.favorite')}
                 >
                   <StarSolidIcon className="h-3 w-3" aria-hidden="true" />
                 </span>
@@ -105,8 +106,16 @@ export default function BookGrid({ items }: BookGridProps) {
                 <button
                   type="button"
                   onClick={() => toggleFavorite(it)}
-                  aria-label={it.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                  title={it.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  aria-label={
+                    it.isFavorite
+                      ? t('library.row.favoriteRemove')
+                      : t('library.row.favoriteAdd')
+                  }
+                  title={
+                    it.isFavorite
+                      ? t('library.row.favoriteRemove')
+                      : t('library.row.favoriteAdd')
+                  }
                   className={cn(
                     'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm transition-colors',
                     it.isFavorite
@@ -125,8 +134,8 @@ export default function BookGrid({ items }: BookGridProps) {
                   size="xs"
                   iconOnly
                   onClick={() => deleteItem(it)}
-                  aria-label="Supprimer le livre"
-                  title="Supprimer"
+                  aria-label={t('library.row.delete')}
+                  title={t('common.actions.delete')}
                   className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                 >
                   <TrashIcon className="h-3 w-3" aria-hidden="true" />

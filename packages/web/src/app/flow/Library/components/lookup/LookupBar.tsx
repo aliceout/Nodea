@@ -7,7 +7,7 @@ import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
 
-import { FORMAT_LABEL, SEARCH_LANGUAGES } from '@/ui/dirk/forms/constants';
+import { SEARCH_LANGUAGES } from '@/ui/dirk/forms/constants';
 import { countBy, shortLang } from '@/ui/dirk/forms/format';
 import CoverGrid from './CoverGrid';
 import FilterRow from './FilterRow';
@@ -236,7 +236,7 @@ export default function LookupBar({
               onChange={setFormatFilter}
               entries={formatCounts.map((c) => ({
                 value: c.value,
-                label: c.value ? FORMAT_LABEL[c.value] : '—',
+                label: c.value ? t(`library.format.${c.value}`) : '—',
                 count: c.count,
               }))}
             />
@@ -250,11 +250,18 @@ export default function LookupBar({
           <ul className="mt-2 max-h-[60vh] min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg">
             {filteredResults.map((book, i) => {
               const isbn = book.isbn13 ?? book.isbn10;
-              const formatLabel = book.format ? FORMAT_LABEL[book.format] : null;
+              const formatLabel = book.format
+                ? t(`library.format.${book.format}`)
+                : null;
               const langCode = shortLang(book.language);
               const seriesLabel = book.series
                 ? book.series.position
-                  ? `${book.series.name}, t. ${book.series.position}`
+                  ? t('library.lookup.series', {
+                      values: {
+                        name: book.series.name,
+                        position: book.series.position,
+                      },
+                    })
                   : book.series.name
                 : null;
               return (

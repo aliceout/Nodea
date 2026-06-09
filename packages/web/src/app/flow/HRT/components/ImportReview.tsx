@@ -9,6 +9,7 @@
  */
 import { HRT_MARKERS } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Select from '@/ui/atoms/dirk/Select';
 
@@ -27,8 +28,6 @@ interface ImportReviewProps {
   progress: number;
 }
 
-const plural = (n: number): string => (n > 1 ? 's' : '');
-
 export default function ImportReview({
   validCount,
   errors,
@@ -39,15 +38,16 @@ export default function ImportReview({
   importing,
   progress,
 }: ImportReviewProps) {
+  const { t, tn } = useI18n();
   return (
     <div className="mt-5 rounded-lg border border-hair p-4">
       <p className="text-[13px] text-ink">
-        <span className="font-semibold">{validCount}</span> analyse{plural(validCount)} prête
-        {plural(validCount)} à l’import
+        <span className="font-semibold">{validCount}</span>{' '}
+        {tn('hrt.import.review.ready', validCount)}
         {errors.length > 0 && (
           <span className="text-muted">
             {' · '}
-            {errors.length} ligne{plural(errors.length)} ignorée{plural(errors.length)}
+            {tn('hrt.import.review.ignoredRows', errors.length)}
           </span>
         )}
       </p>
@@ -55,7 +55,7 @@ export default function ImportReview({
       {markers.length > 0 && (
         <div className="mt-4">
           <p className="mb-2 text-[12px] font-semibold tracking-[0.02em] text-muted">
-            Rattacher les marqueurs
+            {t('hrt.import.review.mapMarkers')}
           </p>
           <ul className="flex flex-col gap-2">
             {markers.map((marker) => (
@@ -64,11 +64,13 @@ export default function ImportReview({
                 <span aria-hidden="true" className="text-muted">→</span>
                 <Select
                   className="w-auto"
-                  aria-label={`Marqueur Nodea pour « ${marker} »`}
+                  aria-label={t('hrt.import.review.markerSelectAria', { values: { marker } })}
                   value={mapping.get(marker) ?? marker}
                   onChange={(e) => onMap(marker, e.target.value)}
                 >
-                  <option value={marker}>Garder « {marker} »</option>
+                  <option value={marker}>
+                    {t('hrt.import.review.keepMarker', { values: { marker } })}
+                  </option>
                   {HRT_MARKERS.map((m) => (
                     <option key={m.key} value={m.key}>
                       {m.label}
@@ -84,12 +86,12 @@ export default function ImportReview({
       {errors.length > 0 && (
         <details className="mt-4">
           <summary className="cursor-pointer text-[12px] text-muted">
-            Voir les lignes ignorées
+            {t('hrt.import.review.showIgnored')}
           </summary>
           <ul className="mt-2 flex flex-col gap-1">
             {errors.map((e) => (
               <li key={e.row} className="text-[12px] text-muted">
-                Ligne {e.row} : {e.reason}
+                {t('hrt.import.review.lineReason', { values: { row: e.row, reason: e.reason } })}
               </li>
             ))}
           </ul>
@@ -103,11 +105,13 @@ export default function ImportReview({
           onClick={onImport}
           disabled={importing || validCount === 0}
         >
-          {importing ? 'Import en cours…' : `Importer ${validCount} analyse${plural(validCount)}`}
+          {importing
+            ? t('hrt.import.review.importing')
+            : tn('hrt.import.review.importButton', validCount)}
         </Button>
         {importing && (
           <span className="text-[12px] text-muted" role="status">
-            {progress} enregistrée{plural(progress)}…
+            {tn('hrt.import.review.progress', progress)}
           </span>
         )}
       </div>

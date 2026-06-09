@@ -20,6 +20,7 @@ import { useMemo, useState } from 'react';
 
 import type { HrtProductPayload } from '@nodea/shared';
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Select from '@/ui/atoms/dirk/Select';
 
@@ -46,6 +47,7 @@ interface SummaryViewProps {
 }
 
 export default function SummaryView({ adminLogs }: SummaryViewProps) {
+  const { t } = useI18n();
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
   const { entries: products, ready, create, update } = useHrtProducts();
   const { entries: adminEntries } = adminLogs;
@@ -134,17 +136,19 @@ export default function SummaryView({ adminLogs }: SummaryViewProps) {
 
         <div className="flex min-h-[17.5rem] min-w-0 flex-col rounded-lg border border-hair p-4 lg:col-span-1">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <h2 className="text-[13px] font-medium text-ink">Produits</h2>
+            <h2 className="text-[13px] font-medium text-ink">{t('hrt.summary.products.title')}</h2>
             {archivedCount > 0 || productView === 'archived' ? (
               <Select
-                aria-label="Afficher les produits"
+                aria-label={t('hrt.summary.products.viewAria')}
                 borderless
                 className="w-auto text-[12px]"
                 value={productView}
                 onChange={(e) => setProductView(e.target.value as 'active' | 'archived')}
               >
-                <option value="active">Actifs</option>
-                <option value="archived">Archivés ({archivedCount})</option>
+                <option value="active">{t('hrt.summary.products.active')}</option>
+                <option value="archived">
+                  {t('hrt.summary.products.archived', { values: { count: archivedCount } })}
+                </option>
               </Select>
             ) : null}
             {!productFormOpen && productView === 'active' ? (
@@ -154,13 +158,15 @@ export default function SummaryView({ adminLogs }: SummaryViewProps) {
                 onClick={() => setAddingProduct(true)}
                 disabled={!ready}
               >
-                + Nouveau
+                {t('hrt.summary.products.new')}
               </Button>
             ) : null}
           </div>
           {visibleProducts.length === 0 ? (
             <p className="py-6 text-center text-[12px] text-muted">
-              {productView === 'archived' ? 'Aucun produit archivé.' : 'Aucun produit enregistré.'}
+              {productView === 'archived'
+                ? t('hrt.summary.products.emptyArchived')
+                : t('hrt.summary.products.empty')}
             </p>
           ) : (
             <ul className="flex flex-col">
@@ -193,11 +199,11 @@ export default function SummaryView({ adminLogs }: SummaryViewProps) {
           panel's list scrolls within. */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-fr">
         <RecentPanel
-          title="Dernières prises"
-          linkLabel="Voir les prises"
+          title={t('hrt.summary.recentDoses.title')}
+          linkLabel={t('hrt.summary.recentDoses.link')}
           onOpen={() => setHrtSubview('administration')}
           empty={latestAdmins.length === 0}
-          emptyText="Aucune prise enregistrée."
+          emptyText={t('hrt.summary.recentDoses.empty')}
         >
           <div className="flex flex-col">
             {latestAdmins.map((entry) => (
@@ -211,11 +217,11 @@ export default function SummaryView({ adminLogs }: SummaryViewProps) {
         </RecentPanel>
 
         <RecentPanel
-          title="Dernières analyses"
-          linkLabel="Voir les résultats"
+          title={t('hrt.summary.recentLabs.title')}
+          linkLabel={t('hrt.summary.recentLabs.link')}
           onOpen={() => setHrtSubview('labs')}
           empty={latestLabs.length === 0}
-          emptyText="Aucune analyse enregistrée."
+          emptyText={t('hrt.summary.recentLabs.empty')}
         >
           <ul className="flex flex-col">
             {latestLabs.map((entry) => (

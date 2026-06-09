@@ -20,12 +20,13 @@ import {
   type HrtProductPayload,
 } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
-import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS } from '../lib/labels';
+import { categoryLabel, routeLabel } from '../lib/labels';
 import type { ProductEntry } from '../hooks/use-products';
 import FieldRow from './FieldRow';
 import TextField from './TextField';
@@ -45,6 +46,7 @@ interface ProductFormProps {
 }
 
 export default function ProductForm({ initial, onSubmit, onClose }: ProductFormProps) {
+  const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -98,7 +100,7 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
       await onSubmit(payload, initial?.id);
       onClose();
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Enregistrement impossible.');
+      setServerError(err instanceof Error ? err.message : t('hrt.form.saveFailed'));
     }
   }
 
@@ -110,13 +112,13 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
     >
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
         <TextField
-          label="Nom du fournisseur"
-          placeholder="ex. Préparation magistrale, Aldactone…"
+          label={t('hrt.product.name')}
+          placeholder={t('hrt.product.namePlaceholder')}
           error={errors.name?.message}
           {...register('name')}
         />
 
-        <FieldRow label="Catégorie" htmlFor="hrt-p-category" error={errors.category?.message}>
+        <FieldRow label={t('hrt.product.category')} htmlFor="hrt-p-category" error={errors.category?.message}>
           <Select
             id="hrt-p-category"
             {...register('category', {
@@ -130,18 +132,18 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
           >
             {HRT_CATEGORY_VALUES.map((c) => (
               <option key={c} value={c}>
-                {HRT_CATEGORY_LABELS[c]}
+                {categoryLabel(t, c)}
               </option>
             ))}
           </Select>
         </FieldRow>
 
-        <FieldRow label="Molécule" htmlFor="hrt-p-medication" error={errors.medication?.message}>
+        <FieldRow label={t('hrt.product.molecule')} htmlFor="hrt-p-medication" error={errors.medication?.message}>
           {customMed ? (
             <div className="flex gap-2">
               <Input
                 id="hrt-p-medication"
-                placeholder="molécule personnalisée…"
+                placeholder={t('hrt.product.moleculePlaceholder')}
                 {...register('medication')}
               />
               <Button
@@ -153,7 +155,7 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
                   setValue('medication', '', { shouldValidate: false });
                 }}
               >
-                Liste
+                {t('hrt.form.backToList')}
               </Button>
             </div>
           ) : (
@@ -163,30 +165,30 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
               onChange={(e) => onMedChange(e.target.value)}
             >
               <option value="" disabled>
-                Choisir une molécule…
+                {t('hrt.product.chooseMolecule')}
               </option>
               {medsForCategory.map((m) => (
                 <option key={m.id} value={m.label}>
                   {m.label}
                 </option>
               ))}
-              <option value="__custom__">Autre…</option>
+              <option value="__custom__">{t('hrt.form.other')}</option>
             </Select>
           )}
         </FieldRow>
 
-        <FieldRow label="Voie" htmlFor="hrt-p-route" error={errors.route?.message}>
+        <FieldRow label={t('hrt.product.route')} htmlFor="hrt-p-route" error={errors.route?.message}>
           <Select id="hrt-p-route" {...register('route')}>
             {HRT_ROUTE_VALUES.map((r) => (
               <option key={r} value={r}>
-                {HRT_ROUTE_LABELS[r]}
+                {routeLabel(t, r)}
               </option>
             ))}
           </Select>
         </FieldRow>
 
         <TextField
-          label="Concentration (mg/mL, optionnel)"
+          label={t('hrt.product.concentration')}
           type="number"
           step="any"
           inputMode="decimal"
@@ -195,7 +197,7 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
           {...register('concentration', { setValueAs: numFromInput })}
         />
 
-        <FieldRow label="Unité de dose" htmlFor="hrt-p-unit" error={errors.unit?.message}>
+        <FieldRow label={t('hrt.product.doseUnit')} htmlFor="hrt-p-unit" error={errors.unit?.message}>
           <Select id="hrt-p-unit" {...register('unit')}>
             {DOSE_UNITS.map((u) => (
               <option key={u} value={u}>
@@ -207,7 +209,7 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
         </FieldRow>
       </div>
 
-      <FieldRow label="Notes (optionnel)" htmlFor="hrt-p-notes" error={errors.notes?.message}>
+      <FieldRow label={t('hrt.form.notes')} htmlFor="hrt-p-notes" error={errors.notes?.message}>
         <Textarea id="hrt-p-notes" minHeightPx={56} {...register('notes')} />
       </FieldRow>
 
@@ -219,10 +221,10 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-          {initial ? 'Enregistrer' : 'Ajouter'}
+          {initial ? t('common.actions.save') : t('common.actions.add')}
         </Button>
       </div>
     </form>

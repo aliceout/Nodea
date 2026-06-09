@@ -15,6 +15,7 @@ import type {
   HrtProductPayload,
   HrtSchedulePayload,
 } from '@nodea/shared';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import AdminJournal from '../components/AdminJournal';
@@ -37,6 +38,7 @@ interface AdministrationViewProps {
 }
 
 export default function AdministrationView({ schedules, adminLogs }: AdministrationViewProps) {
+  const { t, language } = useI18n();
   const { entries, load, ready, create, update, remove } = adminLogs;
   const { entries: productEntries, create: createProduct } = useHrtProducts();
 
@@ -89,14 +91,14 @@ export default function AdministrationView({ schedules, adminLogs }: Administrat
     await createProduct(payload);
   }
   async function onDelete(entry: AdminLogEntry): Promise<void> {
-    const label = `${entry.payload.product} — ${formatLogDate(entry.payload.date)}`;
-    if (!window.confirm(`Supprimer cette prise ?\n${label}`)) return;
+    const label = `${entry.payload.product} — ${formatLogDate(entry.payload.date, language)}`;
+    if (!window.confirm(t('hrt.administration.confirmDelete', { values: { label } }))) return;
     await remove(entry.id);
   }
   async function onStop(s: ScheduleEntry): Promise<void> {
     if (
       !window.confirm(
-        `Arrêter la série « ${s.payload.product} » ?\nLes prises déjà enregistrées sont conservées.`,
+        t('hrt.administration.confirmStop', { values: { product: s.payload.product } }),
       )
     )
       return;
@@ -106,7 +108,7 @@ export default function AdministrationView({ schedules, adminLogs }: Administrat
   return (
     <section className="min-w-0">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[14px] font-medium text-ink">Journal de prises</h2>
+        <h2 className="text-[14px] font-medium text-ink">{t('hrt.administration.title')}</h2>
         {!formOpen ? (
           <div className="flex items-center gap-2">
             <Button
@@ -118,7 +120,7 @@ export default function AdministrationView({ schedules, adminLogs }: Administrat
                 setMode('schedule');
               }}
             >
-              + Prise récurrente
+              {t('hrt.administration.newSchedule')}
             </Button>
             <Button
               variant="primary"
@@ -129,7 +131,7 @@ export default function AdministrationView({ schedules, adminLogs }: Administrat
                 setMode('manual');
               }}
             >
-              + Prise manuelle
+              {t('hrt.administration.newManual')}
             </Button>
           </div>
         ) : null}
@@ -171,14 +173,12 @@ export default function AdministrationView({ schedules, adminLogs }: Administrat
       ) : null}
 
       {load.status === 'loading' ? (
-        <p className="py-8 text-center text-[13px] text-muted">Chargement…</p>
+        <p className="py-8 text-center text-[13px] text-muted">{t('common.states.loading')}</p>
       ) : load.status === 'error' ? (
         <p className="py-8 text-center text-[13px] text-danger">{load.message}</p>
       ) : entries.length === 0 && !formOpen ? (
         <div className="rounded-md border border-dashed border-hair bg-bg-2 p-8 text-center">
-          <p className="text-[13px] text-muted">
-            Aucune prise enregistrée. Ajoute-en une, ou lance une prise récurrente.
-          </p>
+          <p className="text-[13px] text-muted">{t('hrt.administration.empty')}</p>
         </div>
       ) : (
         <AdminJournal

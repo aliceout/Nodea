@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import { Modal } from '@/ui/atoms/layout/Modal';
@@ -24,6 +25,7 @@ import { normaliseForSearch } from '../lib/search';
  * the caller can mount this unconditionally without a ternary.
  */
 export default function BookPickerModal() {
+  const { t } = useI18n();
   const { items, covers } = useLibraryData();
   const { reviewPicker, closeReviewPicker, pickBookForReview } =
     useLibraryActions();
@@ -46,7 +48,10 @@ export default function BookPickerModal() {
   if (!reviewPicker.open) return null;
 
   const { kind } = reviewPicker;
-  const heading = kind === 'quote' ? 'Nouvel extrait' : 'Nouvelle note';
+  const heading =
+    kind === 'quote'
+      ? t('library.picker.headingQuote')
+      : t('library.picker.headingNote');
 
   // Same fixed body height as the Composer modals — `h-[600px]`
   // capped at `100vh-200px` for short viewports. The shell
@@ -61,8 +66,9 @@ export default function BookPickerModal() {
             {heading}
           </h2>
           <p className="mt-0.5 text-[12px] text-muted">
-            Choisis le livre auquel rattacher
-            {kind === 'quote' ? ' cet extrait' : ' cette note'}.
+            {kind === 'quote'
+              ? t('library.picker.subtitleQuote')
+              : t('library.picker.subtitleNote')}
           </p>
         </div>
         <div className="px-[22px] pt-3">
@@ -77,15 +83,15 @@ export default function BookPickerModal() {
                 pickBookForReview(filtered[0].id, kind);
               }
             }}
-            placeholder="Rechercher un livre par titre ou auteur·rice…"
+            placeholder={t('library.picker.searchPlaceholder')}
           />
         </div>
         <ul className="min-h-0 flex-1 overflow-auto px-2 py-2">
           {filtered.length === 0 ? (
             <li className="px-3 py-6 text-center text-[12px] italic text-muted">
               {items.length === 0
-                ? 'Aucun livre dans la bibliothèque.'
-                : 'Aucun résultat pour cette recherche.'}
+                ? t('library.picker.emptyLibrary')
+                : t('library.picker.emptySearch')}
             </li>
           ) : (
             filtered.map((it) => {
@@ -137,7 +143,7 @@ export default function BookPickerModal() {
         </ul>
         <div className="flex justify-end gap-2 border-t border-hair bg-bg-2/40 px-[22px] py-3">
           <DirkButton variant="secondary" onClick={closeReviewPicker}>
-            Annuler
+            {t('common.actions.cancel')}
           </DirkButton>
         </div>
       </div>

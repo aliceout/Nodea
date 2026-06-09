@@ -18,14 +18,11 @@ import {
   type LibraryStatus,
 } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
 
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
-import {
-  LIBRARY_FORMAT_LABEL,
-  LIBRARY_STATUS_LABEL,
-} from '@/ui/dirk/forms/constants';
 import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 export interface LibraryItemFormFieldsProps {
@@ -76,6 +73,7 @@ export default function LibraryItemFormFields({
   status, setStatus, format, setFormat,
   tagsInput, setTagsInput,
 }: LibraryItemFormFieldsProps) {
+  const { t } = useI18n();
   return (
     <>
       <DirkInput
@@ -83,7 +81,7 @@ export default function LibraryItemFormFields({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-        placeholder="Titre — ex. Les Misérables"
+        placeholder={t('library.form.titlePlaceholder')}
         disabled={submitting}
       />
 
@@ -92,7 +90,7 @@ export default function LibraryItemFormFields({
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Auteur·rice — ex. Victor Hugo"
+          placeholder={t('library.form.authorPlaceholder')}
           disabled={submitting}
         />
         <DirkInput
@@ -100,7 +98,7 @@ export default function LibraryItemFormFields({
           value={year}
           onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Année"
+          placeholder={t('library.form.yearPlaceholder')}
           maxLength={4}
           disabled={submitting}
           align="center"
@@ -112,7 +110,7 @@ export default function LibraryItemFormFields({
           value={isbn}
           onChange={(e) => setIsbn(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="ISBN (optionnel)"
+          placeholder={t('library.form.isbnPlaceholder')}
           disabled={submitting}
           className="tabular-nums"
         />
@@ -120,7 +118,7 @@ export default function LibraryItemFormFields({
           value={publisher}
           onChange={(e) => setPublisher(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Éditeur (optionnel)"
+          placeholder={t('library.form.publisherPlaceholder')}
           disabled={submitting}
         />
       </div>
@@ -129,7 +127,7 @@ export default function LibraryItemFormFields({
         value={collection}
         onChange={(e) => setCollection(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-        placeholder="Collection (optionnel) — ex. Folio classique, Babel"
+        placeholder={t('library.form.collectionPlaceholder')}
         disabled={submitting}
       />
 
@@ -138,7 +136,7 @@ export default function LibraryItemFormFields({
           value={seriesName}
           onChange={(e) => setSeriesName(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Série (optionnel) — ex. Le Seigneur des Anneaux"
+          placeholder={t('library.form.seriesPlaceholder')}
           disabled={submitting}
         />
         <DirkInput
@@ -148,7 +146,7 @@ export default function LibraryItemFormFields({
             setSeriesPosition(e.target.value.replace(/\D/g, '').slice(0, 3))
           }
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Tome n°"
+          placeholder={t('library.form.seriesPositionPlaceholder')}
           disabled={submitting}
           align="center"
         />
@@ -193,24 +191,24 @@ export default function LibraryItemFormFields({
         <DirkSelect
           value={status}
           onChange={(e) => setStatus(e.target.value as LibraryStatus)}
-          aria-label="Statut"
+          aria-label={t('library.form.statusAria')}
           disabled={submitting}
         >
           {LIBRARY_STATUS_VALUES.map((s) => (
             <option key={s} value={s}>
-              {LIBRARY_STATUS_LABEL[s]}
+              {t(`library.status.${s}`)}
             </option>
           ))}
         </DirkSelect>
         <DirkSelect
           value={format}
           onChange={(e) => setFormat(e.target.value as LibraryFormat)}
-          aria-label="Format"
+          aria-label={t('library.form.formatAria')}
           disabled={submitting}
         >
           {LIBRARY_FORMAT_VALUES.map((f) => (
             <option key={f} value={f}>
-              {LIBRARY_FORMAT_LABEL[f]}
+              {t(`library.format.${f}`)}
             </option>
           ))}
         </DirkSelect>
@@ -218,7 +216,7 @@ export default function LibraryItemFormFields({
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-          placeholder="Tags (optionnel) — ex. classique, à offrir"
+          placeholder={t('library.form.tagsPlaceholder')}
           disabled={submitting}
         />
       </div>

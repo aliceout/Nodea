@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
@@ -5,7 +6,6 @@ import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import LibraryItemForm from '../components/LibraryItemForm';
 import { useLibraryActions, useLibraryData, useLibraryFilters } from '../context';
-import { CELL_FILTER_LABEL } from '../lib/cell-filter';
 import BookGrid from './BookGrid';
 import BookTable from './BookTable';
 import BookWall from './BookWall';
@@ -21,6 +21,7 @@ import ItemRow from './ItemRow';
  * No props — everything comes from the data + filters contexts.
  */
 export default function PrimaryColumn() {
+  const { t } = useI18n();
   const { items, load } = useLibraryData();
   const { viewMode, cellFilter, filteredItems, groups, setCellFilter } =
     useLibraryFilters();
@@ -39,7 +40,7 @@ export default function PrimaryColumn() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading>Library</PageHeading>
+      <PageHeading>{t('library.title')}</PageHeading>
 
       {/* Inline book form — surfaced above the catalogue when the
           topbar « + Nouveau livre » CTA (create) or a row's edit
@@ -69,18 +70,18 @@ export default function PrimaryColumn() {
 
       {cellFilter ? (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-[12px] text-ink-soft">
-          <span className="text-muted">Filtre :</span>
+          <span className="text-muted">{t('library.list.filterBanner')}</span>
           <span className="inline-flex items-center gap-1.5 rounded-sm border border-accent bg-accent-soft/40 px-2 py-0.5 text-accent-deep">
             <span>
               <span className="font-semibold">
-                {CELL_FILTER_LABEL[cellFilter.field]}
+                {t(`library.fields.${cellFilter.field}`)}
               </span>{' '}
               · {cellFilter.value}
             </span>
             <button
               type="button"
               onClick={() => setCellFilter(null)}
-              aria-label="Retirer le filtre"
+              aria-label={t('library.list.clearFilterAria')}
               className="cursor-pointer text-accent-deep transition-colors hover:text-ink"
             >
               ✕
@@ -91,12 +92,12 @@ export default function PrimaryColumn() {
 
       <div>
         {load.status === 'loading' && total === 0 ? (
-          <EmptyHint>Chargement de la bibliothèque…</EmptyHint>
+          <EmptyHint>{t('library.list.loading')}</EmptyHint>
         ) : filteredCount === 0 ? (
           <EmptyHint>
             {total === 0
-              ? 'Aucun livre — ajoute le premier avec « + Nouveau livre ».'
-              : 'Aucun livre pour cette sélection.'}
+              ? t('library.list.emptyCatalogue')
+              : t('library.list.emptySelection')}
           </EmptyHint>
         ) : isListMode ? (
           groups
@@ -106,7 +107,7 @@ export default function PrimaryColumn() {
                 key={g.key}
                 label={g.label}
                 count={g.items.length}
-                countNoun="livre"
+                countNoun={t('library.list.groupCountNoun')}
                 variant="subtitle"
                 listTag="div"
               >

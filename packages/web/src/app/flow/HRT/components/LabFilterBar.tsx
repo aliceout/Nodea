@@ -12,6 +12,7 @@
  */
 import type { ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Select from '@/ui/atoms/dirk/Select';
 import type { HrtGoal } from '@nodea/shared';
 
@@ -47,19 +48,20 @@ export default function LabFilterBar({
   children,
   endSlot,
 }: LabFilterBarProps) {
+  const { t } = useI18n();
   if (markers.length <= 1 && !chartMarker) return null;
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-2">
       {markers.length > 1 ? (
         <Select
-          aria-label="Filtrer par marqueur"
+          aria-label={t('hrt.labs.markerFilterAria')}
           borderless
           className="w-auto"
           value={markerSel ?? ''}
           onChange={(e) => onMarkerChange(e.target.value === '' ? null : e.target.value)}
         >
-          <option value="">Tous les marqueurs</option>
+          <option value="">{t('hrt.labs.allMarkers')}</option>
           {markers.map((m) => (
             <option key={m.key} value={m.key}>
               {markerLabel(m.key)} ({m.count})
@@ -69,7 +71,7 @@ export default function LabFilterBar({
       ) : null}
       {chartMarker && units.length > 1 ? (
         <Select
-          aria-label="Unité d’affichage"
+          aria-label={t('hrt.labs.unitAria')}
           borderless
           className="w-auto"
           value={unit}
@@ -85,15 +87,15 @@ export default function LabFilterBar({
       {children}
       {chartMarker ? (
         <Select
-          aria-label="Plages cibles"
+          aria-label={t('hrt.labs.goalAria')}
           borderless
           className="ml-auto w-auto"
           value={goal ?? ''}
           onChange={(e) => onGoalChange(e.target.value === '' ? null : (e.target.value as HrtGoal))}
         >
-          <option value="">Cibles : aucune</option>
-          <option value="feminizing">Cibles : féminisant</option>
-          <option value="masculinizing">Cibles : masculinisant</option>
+          <option value="">{t('hrt.labs.goalNone')}</option>
+          <option value="feminizing">{t('hrt.labs.goalFeminizing')}</option>
+          <option value="masculinizing">{t('hrt.labs.goalMasculinizing')}</option>
         </Select>
       ) : null}
       {endSlot}

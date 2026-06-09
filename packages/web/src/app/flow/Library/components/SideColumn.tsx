@@ -5,11 +5,11 @@ import {
   useNodeaStore,
   selectLibrarySubview,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
 
 import { useLibraryData, useLibraryFilters } from '../context';
-import { STATUS_LABEL } from '../lib/constants';
-import { LIBRARY_GROUP_BY_OPTIONS } from '../lib/grouping';
+import { LIBRARY_GROUP_BY_VALUES } from '../lib/grouping';
 import ViewModeToggle from './ViewModeToggle';
 
 /**
@@ -49,6 +49,7 @@ export default function SideColumn() {
  * effects + memo recomputes for hidden subtrees that don't render.
  */
 export function FiltersContent() {
+  const { t } = useI18n();
   const subview = useNodeaStore(selectLibrarySubview);
   const { items } = useLibraryData();
   const {
@@ -84,19 +85,19 @@ export function FiltersContent() {
       {showGroupBy ? (
         <>
           <section>
-            <SectionLabel>Vue</SectionLabel>
+            <SectionLabel>{t('library.side.view')}</SectionLabel>
             <ViewModeToggle />
           </section>
 
           <section>
-            <SectionLabel>Grouper par</SectionLabel>
+            <SectionLabel>{t('library.side.groupBy')}</SectionLabel>
             <div className="flex flex-wrap gap-1">
-              {LIBRARY_GROUP_BY_OPTIONS.map((opt) => (
+              {LIBRARY_GROUP_BY_VALUES.map((value) => (
                 <FilterChip
-                  key={opt.value}
-                  active={groupBy === opt.value}
-                  onClick={() => setGroupBy(opt.value)}
-                  label={opt.label}
+                  key={value}
+                  active={groupBy === value}
+                  onClick={() => setGroupBy(value)}
+                  label={t(`library.groupByOptions.${value}`)}
                 />
               ))}
             </div>
@@ -105,18 +106,18 @@ export function FiltersContent() {
       ) : null}
 
       <section>
-        <SectionLabel>Statut</SectionLabel>
+        <SectionLabel>{t('library.side.status')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={statusFilter === 'all'}
             onClick={() => setStatusFilter('all')}
-            label="Tous"
+            label={t('library.side.all')}
             count={counts.all}
           />
           <FilterChip
             active={statusFilter === 'favorites'}
             onClick={() => setStatusFilter('favorites')}
-            label="★ Favoris"
+            label={t('library.side.favorites')}
             count={counts.favorites}
           />
           {LIBRARY_STATUS_VALUES.map((s) => (
@@ -124,7 +125,7 @@ export function FiltersContent() {
               key={s}
               active={statusFilter === s}
               onClick={() => setStatusFilter(s)}
-              label={STATUS_LABEL[s]}
+              label={t(`library.statusGroup.${s}`)}
               count={counts[s]}
             />
           ))}
@@ -133,12 +134,12 @@ export function FiltersContent() {
 
       {allTags.length > 0 ? (
         <section>
-          <SectionLabel>Tags</SectionLabel>
+          <SectionLabel>{t('library.side.tags')}</SectionLabel>
           <div className="flex flex-wrap gap-1">
             <FilterChip
               active={tagFilter === null}
               onClick={() => setTagFilter(null)}
-              label="Tous"
+              label={t('library.side.all')}
             />
             {allTags.map((t) => (
               <FilterChip

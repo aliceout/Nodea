@@ -1,1 +1,363 @@
-{}
+{
+  "topbar": {
+    "summary": "HRT · Synthèse",
+    "administration": "HRT · Administration",
+    "labs": "HRT · Analyses",
+    "export": "HRT · Outils"
+  },
+  "load": {
+    "failed": "Chargement impossible."
+  },
+  "category": {
+    "estrogen": "Œstrogène",
+    "antiandrogen": "Anti-androgène",
+    "progestogen": "Progestatif",
+    "testosterone": "Testostérone",
+    "gnrh": "Agoniste GnRH",
+    "other": "Autre"
+  },
+  "route": {
+    "oral": "Orale",
+    "sublingual": "Sublinguale",
+    "injection_im": "Injection IM",
+    "injection_sc": "Injection SC",
+    "gel": "Gel",
+    "patch": "Patch",
+    "spray": "Spray",
+    "implant": "Implant",
+    "other": "Autre"
+  },
+  "drawContext": {
+    "trough": "Creux",
+    "peak": "Pic",
+    "random": "Aléatoire",
+    "unknown": "Non précisé"
+  },
+  "frequency": {
+    "daily": "Tous les jours",
+    "everyNDays": "Tous les {n} jours"
+  },
+  "dateRange": {
+    "periodAria": "Période",
+    "all": "Toutes les dates",
+    "last30Days": "30 derniers jours",
+    "months3": "3 mois",
+    "months6": "6 mois",
+    "months12": "12 mois",
+    "custom": "Personnalisé",
+    "fromAria": "Du",
+    "toAria": "Au"
+  },
+  "chart": {
+    "noData": "Pas encore de données pour {label}.",
+    "ariaLabel": "Évolution en {unit}",
+    "show": "Afficher le graphique",
+    "hide": "Masquer le graphique"
+  },
+  "form": {
+    "saveFailed": "Enregistrement impossible.",
+    "product": "Produit",
+    "productNone": "Aucun produit enregistré",
+    "productPlaceholder": "Choisir un produit…",
+    "newProduct": "+ Nouveau produit",
+    "dose": "Dose",
+    "doseWithUnit": "Dose ({unit})",
+    "date": "Date",
+    "notes": "Notes (optionnel)",
+    "backToList": "Liste",
+    "other": "Autre…"
+  },
+  "summary": {
+    "products": {
+      "title": "Produits",
+      "viewAria": "Afficher les produits",
+      "active": "Actifs",
+      "archived": "Archivés ({count})",
+      "new": "+ Nouveau",
+      "empty": "Aucun produit enregistré.",
+      "emptyArchived": "Aucun produit archivé."
+    },
+    "doseChart": {
+      "moleculeAria": "Molécule du graphique",
+      "emptyNoDoses": "Aucune prise enregistrée.",
+      "emptyNoProducts": "Enregistre un produit, puis une prise, pour voir le graphique."
+    },
+    "recentDoses": {
+      "title": "Dernières prises",
+      "link": "Voir les prises",
+      "empty": "Aucune prise enregistrée."
+    },
+    "recentLabs": {
+      "title": "Dernières analyses",
+      "link": "Voir les résultats",
+      "empty": "Aucune analyse enregistrée."
+    }
+  },
+  "administration": {
+    "title": "Journal de prises",
+    "newSchedule": "+ Prise récurrente",
+    "newManual": "+ Prise manuelle",
+    "empty": "Aucune prise enregistrée. Ajoute-en une, ou lance une prise récurrente.",
+    "confirmDelete": "Supprimer cette prise ?\n{label}",
+    "confirmStop": "Arrêter la série « {product} » ?\nLes prises déjà enregistrées sont conservées.",
+    "moleculeFilterAria": "Filtrer par molécule",
+    "allMolecules": "Toutes les molécules",
+    "autoTag": "auto",
+    "deletedProduct": "(produit supprimé)"
+  },
+  "schedule": {
+    "panelTitle": "Prises récurrentes en cours",
+    "show": "Afficher les prises récurrentes",
+    "hide": "Masquer les prises récurrentes",
+    "since": "depuis le {date}",
+    "editAria": "Modifier la série",
+    "stop": "Arrêter",
+    "startDate": "Date de début",
+    "frequencyField": "Fréquence",
+    "everyNDaysOption": "Tous les N jours",
+    "interval": "Intervalle (jours)",
+    "start": "Lancer la série"
+  },
+  "product": {
+    "name": "Nom du fournisseur",
+    "namePlaceholder": "ex. Préparation magistrale, Aldactone…",
+    "category": "Catégorie",
+    "molecule": "Molécule",
+    "moleculePlaceholder": "molécule personnalisée…",
+    "chooseMolecule": "Choisir une molécule…",
+    "route": "Voie",
+    "concentration": "Concentration (mg/mL, optionnel)",
+    "doseUnit": "Unité de dose",
+    "reactivate": "Réactiver",
+    "archiveAria": "Archiver"
+  },
+  "labs": {
+    "title": "Résultats d’analyses",
+    "new": "+ Nouveau résultat",
+    "empty": "Aucun résultat enregistré. Ajoute le premier avec « + Nouveau résultat ».",
+    "confirmDelete": "Supprimer ce résultat ?\n{label}",
+    "markerFilterAria": "Filtrer par marqueur",
+    "allMarkers": "Tous les marqueurs",
+    "unitAria": "Unité d’affichage",
+    "goalAria": "Plages cibles",
+    "goalNone": "Cibles : aucune",
+    "goalFeminizing": "Cibles : féminisant",
+    "goalMasculinizing": "Cibles : masculinisant",
+    "targetIndicative": "Cible indicative : {range} {unit}",
+    "targetInfo": "{target} — informatif, pas un avis médical.",
+    "noTarget": "Pas de cible définie pour ce marqueur.",
+    "skipped": {
+      "one": "{count} résultat non convertible en {unit} — masqué du graphique.",
+      "other": "{count} résultats non convertibles en {unit} — masqués du graphique."
+    },
+    "disclaimer": "Outil de suivi personnel — pas un avis médical. Les plages cibles sont informatives (WPATH / Endocrine Society) ; discutez-en avec votre médecin.",
+    "form": {
+      "marker": "Marqueur",
+      "markerPlaceholder": "marqueur personnalisé…",
+      "chooseMarker": "Choisir un marqueur…",
+      "value": "Valeur",
+      "unit": "Unité",
+      "unitPlaceholder": "Unité…",
+      "context": "Prélèvement",
+      "lab": "Labo (optionnel)",
+      "labPlaceholder": "Cerballiance…"
+    }
+  },
+  "export": {
+    "title": "Exporter des analyses",
+    "description": "Générez un récapitulatif PDF (régime, prises, analyses + graphiques) à présenter en consultation, ou exportez les données brutes en Excel ou LibreOffice.",
+    "period": {
+      "all": "toutes les dates",
+      "between": "du {from} au {to}",
+      "since": "depuis le {from}",
+      "until": "jusqu’au {to}"
+    },
+    "controls": {
+      "period": "Période",
+      "groupBy": "Grouper par",
+      "groupByType": "Molécule / marqueur",
+      "groupByDate": "Date",
+      "note": "Intitulé (optionnel)",
+      "notePlaceholder": "ex. prénom, n° de dossier — figure sur l’impression, jamais enregistré",
+      "administrationCard": "Administration",
+      "labsCard": "Analyses"
+    },
+    "filter": {
+      "all": "Tout",
+      "none": "Aucun",
+      "empty": "Aucune donnée."
+    },
+    "actions": {
+      "generating": "Génération…",
+      "pdf": "Récapitulatif PDF",
+      "doses": "Prises",
+      "labs": "Analyses"
+    },
+    "sheets": {
+      "doses": "Prises",
+      "labs": "Analyses"
+    },
+    "matrix": {
+      "date": "Date",
+      "time": "Heure",
+      "product": "Produit",
+      "molecule": "Molécule",
+      "category": "Catégorie",
+      "route": "Voie",
+      "dose": "Dose",
+      "unit": "Unité",
+      "mgEq": "Équiv. mg",
+      "type": "Type",
+      "notes": "Notes",
+      "marker": "Marqueur",
+      "value": "Valeur",
+      "context": "Contexte",
+      "lab": "Laboratoire",
+      "typeRecurring": "Récurrente",
+      "typeManual": "Manuelle"
+    },
+    "pdf": {
+      "title": "Récapitulatif d'hormonothérapie",
+      "meta": "Document généré le {date} · Période : {period}",
+      "regimenTitle": "Traitement en cours",
+      "regimenCount": {
+        "one": "{count} prise récurrente",
+        "other": "{count} prises récurrentes"
+      },
+      "regimenEmpty": "Aucune prise récurrente active.",
+      "regimenHead": {
+        "molecule": "Molécule / produit",
+        "dose": "Dose",
+        "frequency": "Fréquence",
+        "route": "Voie",
+        "since": "Depuis"
+      },
+      "dosesTitle": "Historique des prises",
+      "doseCount": {
+        "one": "{count} prise",
+        "other": "{count} prises"
+      },
+      "dosesEmpty": "Aucune prise sur la période.",
+      "doseChartLabel": "Doses · {molecule}",
+      "labsTitle": "Analyses biologiques",
+      "labCount": {
+        "one": "{count} résultat",
+        "other": "{count} résultats"
+      },
+      "labsEmpty": "Aucune analyse sur la période.",
+      "disclaimer": "Document généré par Nodea, outil de suivi personnel chiffré de bout en bout. Les informations ci-dessus sont déclaratives, saisies par la personne utilisatrice ; elles ne constituent pas un avis médical et doivent être interprétées par un·e professionnel·le de santé."
+    }
+  },
+  "dedup": {
+    "title": "Nettoyer les doublons",
+    "description": "Détecte les prises automatiquement créées plusieurs fois par les prises récurrentes (un ancien bug qui pouvait produire 2 ou 3 copies de la même dose). Le scan ne touche que les prises générées par un schedule ; les prises manuelles sont ignorées même si elles paraissent identiques. Pour chaque doublon, on garde la plus ancienne version et on supprime les copies.",
+    "analyze": "Analyser",
+    "analyzeFailed": "Analyse impossible.",
+    "analyzing": "Analyse en cours…",
+    "none": "Aucun doublon détecté. ✨",
+    "foundDuplicates": {
+      "one": "doublon détecté sur",
+      "other": "doublons détectés sur"
+    },
+    "foundGroups": {
+      "one": "prise matérialisée.",
+      "other": "prises matérialisées."
+    },
+    "deleteButton": {
+      "one": "Supprimer {count} doublon",
+      "other": "Supprimer {count} doublons"
+    },
+    "irreversible": "Action irréversible.",
+    "confirmBody": {
+      "one": "{count} prise va être supprimée définitivement. La prise la plus ancienne de chaque groupe est conservée.",
+      "other": "{count} prises vont être supprimées définitivement. La prise la plus ancienne de chaque groupe est conservée."
+    },
+    "confirmDelete": "Confirmer la suppression",
+    "deleting": "Suppression en cours… {done} / {total}",
+    "deleted": {
+      "one": "doublon supprimé.",
+      "other": "doublons supprimés."
+    },
+    "failures": {
+      "one": "{count} échec — réessaye dans un instant.",
+      "other": "{count} échecs — réessaye dans un instant."
+    },
+    "reloadHint": "Recharge la page pour voir les listes mises à jour.",
+    "rescan": "Refaire un scan"
+  },
+  "import": {
+    "title": "Importer des analyses",
+    "description": "Téléchargez le modèle Excel, collez-y vos analyses dans l’onglet « Analyses », puis réimportez le fichier. Tout est traité dans votre navigateur — rien n’est envoyé au serveur. Les prises ne sont pas concernées : elles s’ajoutent via les prises récurrentes.",
+    "preparing": "Préparation…",
+    "downloadTemplate": "Télécharger le modèle",
+    "chooseFile": "Choisir un fichier .xlsx",
+    "emptyFile": "Aucune analyse trouvée dans l’onglet « Analyses » du fichier.",
+    "unreadable": "Fichier illisible. Utilisez le modèle .xlsx fourni.",
+    "review": {
+      "ready": {
+        "one": "analyse prête à l’import",
+        "other": "analyses prêtes à l’import"
+      },
+      "ignoredRows": {
+        "one": "{count} ligne ignorée",
+        "other": "{count} lignes ignorées"
+      },
+      "mapMarkers": "Rattacher les marqueurs",
+      "markerSelectAria": "Marqueur Nodea pour « {marker} »",
+      "keepMarker": "Garder « {marker} »",
+      "showIgnored": "Voir les lignes ignorées",
+      "lineReason": "Ligne {row} : {reason}",
+      "importing": "Import en cours…",
+      "importButton": {
+        "one": "Importer {count} analyse",
+        "other": "Importer {count} analyses"
+      },
+      "progress": {
+        "one": "{count} enregistrée…",
+        "other": "{count} enregistrées…"
+      }
+    },
+    "errors": {
+      "invalidDate": "date invalide",
+      "missingMarker": "marqueur manquant",
+      "invalidValue": "valeur non numérique",
+      "missingUnit": "unité manquante pour « {marker} »"
+    },
+    "done": {
+      "imported": {
+        "one": "analyse importée.",
+        "other": "analyses importées."
+      },
+      "duplicates": {
+        "one": "{count} doublon ignoré.",
+        "other": "{count} doublons ignorés."
+      },
+      "skipped": {
+        "one": "{count} sans unité ignorée.",
+        "other": "{count} sans unité ignorées."
+      },
+      "failed": "{count} en échec.",
+      "another": "Importer un autre fichier"
+    },
+    "template": {
+      "filename": "Nodea — modèle import analyses HRT.xlsx",
+      "helpSheet": "Aide",
+      "title": "Modèle d’import HRT — Nodea (analyses)",
+      "line1": "Collez vos analyses dans l’onglet « Analyses ». Ne touchez pas aux en-têtes (ligne 1).",
+      "line2": "Dates : 2026-06-04 (AAAA-MM-JJ) ou 04.06.2026. Décimale au point ou à la virgule (1.5 / 1,5).",
+      "line3": "Tout est traité dans votre navigateur — le fichier n’est jamais envoyé au serveur.",
+      "markersHead": "Marqueurs reconnus",
+      "unitHead": "Unité par défaut",
+      "contextsHead": "Contextes",
+      "headers": {
+        "date": "Date",
+        "marker": "Marqueur",
+        "value": "Valeur",
+        "unit": "Unité",
+        "context": "Contexte",
+        "lab": "Laboratoire",
+        "notes": "Notes"
+      }
+    }
+  }
+}

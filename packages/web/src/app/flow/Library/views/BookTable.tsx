@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useLibraryActions } from '../context';
 import { authorsLabel, languageLabel } from '../lib/labels';
-import type { LibraryItem } from '../lib/types';
+import type { LibraryItem, TranslateFn } from '../lib/types';
 import FilterableCell from './FilterableCell';
 
 interface BookTableProps {
@@ -20,17 +21,21 @@ interface TableSort {
 
 const TABLE_COLUMNS: ReadonlyArray<{
   id: TableSortColumn;
-  label: string;
+  labelKey: string;
   className: string;
 }> = [
-  { id: 'title', label: 'Titre', className: 'py-2 pr-3' },
-  { id: 'author', label: 'Auteur·rice', className: 'px-3 py-2' },
-  { id: 'publisher', label: 'Éditeur', className: 'px-3 py-2' },
-  { id: 'language', label: 'Langue', className: 'px-3 py-2' },
-  { id: 'year', label: 'Année', className: 'px-3 py-2' },
+  { id: 'title', labelKey: 'library.table.title', className: 'py-2 pr-3' },
+  { id: 'author', labelKey: 'library.fields.author', className: 'px-3 py-2' },
+  { id: 'publisher', labelKey: 'library.fields.publisher', className: 'px-3 py-2' },
+  { id: 'language', labelKey: 'library.fields.language', className: 'px-3 py-2' },
+  { id: 'year', labelKey: 'library.fields.year', className: 'px-3 py-2' },
 ];
 
-function valueForSort(it: LibraryItem, column: TableSortColumn): string | number {
+function valueForSort(
+  it: LibraryItem,
+  column: TableSortColumn,
+  t: TranslateFn,
+): string | number {
   switch (column) {
     case 'title':
       return it.title.toLocaleLowerCase('fr');
@@ -39,7 +44,7 @@ function valueForSort(it: LibraryItem, column: TableSortColumn): string | number
     case 'publisher':
       return (it.publisher?.trim() ?? '').toLocaleLowerCase('fr');
     case 'language':
-      return languageLabel(it.language).toLocaleLowerCase('fr');
+      return languageLabel(it.language, t).toLocaleLowerCase('fr');
     case 'year':
       return it.year ?? -Infinity;
   }
@@ -64,6 +69,7 @@ function valueForSort(it: LibraryItem, column: TableSortColumn): string | number
  * table's visual rhythm.
  */
 export default function BookTable({ items }: BookTableProps) {
+  const { t } = useI18n();
   const { editItem } = useLibraryActions();
   const [sort, setSort] = useState<TableSort | null>(null);
 
@@ -79,8 +85,8 @@ export default function BookTable({ items }: BookTableProps) {
     if (!sort) return items;
     const out = [...items];
     out.sort((a, b) => {
-      const av = valueForSort(a, sort.column);
-      const bv = valueForSort(b, sort.column);
+      const av = valueForSort(a, sort.column, t);
+      const bv = valueForSort(b, sort.column, t);
       // Empty / missing values always sink to the bottom — both
       // strings and the year sentinel `-Infinity` are detected.
       const aEmpty = av === '' || av === -Infinity;
@@ -95,7 +101,7 @@ export default function BookTable({ items }: BookTableProps) {
       return sort.direction === 'asc' ? cmp : -cmp;
     });
     return out;
-  }, [items, sort]);
+  }, [items, sort, t]);
 
   return (
     <div className="overflow-x-auto">
@@ -126,7 +132,7 @@ export default function BookTable({ items }: BookTableProps) {
                       active ? 'text-ink' : 'text-muted hover:text-ink',
                     )}
                   >
-                    {col.label}
+                    {t(col.labelKey)}
                     {/* Stacked double-arrow affordance — always
                         rendered on every column header. The active
                         arrow takes the ink colour ; the inactive one
@@ -176,7 +182,7 @@ export default function BookTable({ items }: BookTableProps) {
                     type="button"
                     onClick={() => editItem(it)}
                     className="block w-full cursor-pointer truncate text-left font-medium text-ink transition-colors hover:text-accent"
-                    title="Modifier ce livre"
+                    title={t('library.row.editTitle')}
                   >
                     {it.title}
                   </button>
@@ -199,7 +205,7 @@ export default function BookTable({ items }: BookTableProps) {
                   <FilterableCell
                     field="language"
                     value={langCode}
-                    display={languageLabel(it.language)}
+                    display={languageLabel(it.language, t)}
                   />
                 </td>
                 <td className="px-3 py-2 tabular-nums text-ink-soft">

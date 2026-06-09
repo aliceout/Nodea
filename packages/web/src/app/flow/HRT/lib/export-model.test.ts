@@ -3,6 +3,10 @@
  * decrypted entries into the doctor-report rows + CSV matrices. Covers the
  * mg-equivalent join, the « ongoing » regimen filter, range filtering /
  * sort order on the dose history, and the marker grouping + chart series.
+ *
+ * The builders take the caller's `t` since the i18n pass — the tests
+ * feed one resolved over the real FR `hrt.json`, so the expected
+ * strings stay the French copy the module always shipped.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -12,6 +16,9 @@ import type {
   HrtProductPayload,
   HrtSchedulePayload,
 } from '@nodea/shared';
+
+import frHrt from '@/i18n/locales/fr/hrt.json';
+import { translate } from '@/i18n/translate';
 
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import type { LabResultEntry } from '../hooks/use-lab-results';
@@ -30,6 +37,11 @@ import {
   mgEquivalent,
 } from './export-model';
 import { EMPTY_RANGE } from './date-range';
+import type { HrtTranslate } from './labels';
+
+/** `t` resolved over the bundled FR namespace — pure, no React. */
+const t: HrtTranslate = (key, options) =>
+  translate({ fr: { hrt: frHrt } }, 'fr', key, options);
 
 function product(over: Partial<HrtProductPayload> & { name: string }): HrtProductPayload {
   return {
@@ -135,14 +147,14 @@ describe('buildRegimen', () => {
   ];
 
   it('keeps only ongoing series (endDate == null), sorted by category then molecule', () => {
-    const rows = buildRegimen(schedules, products);
+    const rows = buildRegimen(schedules, products, t);
     expect(rows).toHaveLength(2);
     expect(rows[0]?.molecule).toBe('Spironolactone'); // Anti-androgène before Œstrogène
     expect(rows[1]?.molecule).toBe('Estradiol valérate');
   });
 
   it('derives dose text + cadence from the product join', () => {
-    const rows = buildRegimen(schedules, products);
+    const rows = buildRegimen(schedules, products, t);
     expect(rows[1]?.doseText).toBe('0.4 mL ≈ 4 mg');
     expect(rows[1]?.cadence).toBe('Tous les 5 jours');
     expect(rows[1]?.routeLabel).toBe('Injection IM');
@@ -157,14 +169,14 @@ describe('buildDoseHistory', () => {
   ];
 
   it('filters to the range and sorts newest-first', () => {
-    const rows = buildDoseHistory(entries, products, { from: '2026-06-01', to: '' });
+    const rows = buildDoseHistory(entries, products, { from: '2026-06-01', to: '' }, t);
     expect(rows).toHaveLength(2);
     expect(rows[0]?.date).toBe('2026-06-03');
     expect(rows[1]?.date).toBe('2026-06-01');
   });
 
   it('flags schedule-generated occurrences and joins the mg-equivalent', () => {
-    const rows = buildDoseHistory(entries, products, EMPTY_RANGE);
+    const rows = buildDoseHistory(entries, products, EMPTY_RANGE, t);
     const ev = rows.find((r) => r.product === 'EV' && r.date === '2026-06-01');
     expect(ev?.auto).toBe(true);
     expect(ev?.mgEq).toBe(4);
@@ -200,7 +212,7 @@ describe('buildLabGroups', () => {
   ];
 
   it('groups by marker, most-measured first, readings oldest-first', () => {
-    const groups = buildLabGroups(entries, EMPTY_RANGE);
+    const groups = buildLabGroups(entries, EMPTY_RANGE, t);
     expect(groups.map((g) => g.key)).toEqual(['estradiol', 'testosterone_total']);
     expect(groups[0]?.readings.map((r) => r.date)).toEqual(['2026-06-01', '2026-06-15']);
     expect(groups[0]?.points).toHaveLength(2);
@@ -208,7 +220,7 @@ describe('buildLabGroups', () => {
   });
 
   it('honours the date range', () => {
-    const groups = buildLabGroups(entries, { from: '2026-06-12', to: '' });
+    const groups = buildLabGroups(entries, { from: '2026-06-12', to: '' }, t);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.key).toBe('estradiol');
     expect(groups[0]?.readings).toHaveLength(1);
@@ -225,6 +237,7 @@ describe('groupDosesByMolecule', () => {
       ],
       products,
       EMPTY_RANGE,
+      t,
     );
     const groups = groupDosesByMolecule(rows);
     expect(groups.map((g) => g.molecule)).toEqual(['Estradiol valérate', 'Spironolactone']);
@@ -242,6 +255,7 @@ describe('flattenLabReadings', () => {
         lab({ date: '2026-06-05', marker: 'estradiol', value: 120, unit: 'pg/mL' }),
       ],
       EMPTY_RANGE,
+      t,
     );
     const flat = flattenLabReadings(groups);
     expect(flat.map((r) => r.date)).toEqual(['2026-06-10', '2026-06-05', '2026-06-01']);
@@ -255,8 +269,9 @@ describe('CSV matrices', () => {
       [admin({ date: '2026-06-01', time: '08:00', product: 'EV', dose: 0.4, scheduleId: 'sid' })],
       products,
       EMPTY_RANGE,
+      t,
     );
-    const matrix = doseMatrix(rows);
+    const matrix = doseMatrix(rows, t);
     expect(matrix[0]).toContain('Équiv. mg');
     expect(matrix).toHaveLength(2);
     expect(matrix[1]).toEqual([
@@ -272,8 +287,9 @@ describe('CSV matrices', () => {
         lab({ date: '2026-06-02', marker: 'estradiol', value: 120, unit: 'pg/mL' }),
       ],
       EMPTY_RANGE,
+      t,
     );
-    const matrix = labMatrix(groups);
+    const matrix = labMatrix(groups, t);
     expect(matrix[0]?.[1]).toBe('Marqueur');
     expect(matrix).toHaveLength(3); // header + 2 readings
   });

@@ -3,6 +3,7 @@ import { StarIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
 import DirkButton from '@/ui/atoms/dirk/Button';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useLibraryActions, useLibraryData } from '../context';
@@ -35,6 +36,7 @@ interface ItemRowProps {
  * loaded cover still appears on the right row.
  */
 function ItemRowImpl({ item, showCover }: ItemRowProps) {
+  const { t } = useI18n();
   const { covers } = useLibraryData();
   const { editItem, deleteItem, toggleFavorite } = useLibraryActions();
 
@@ -66,7 +68,7 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
       <FilterableCell
         field="language"
         value={langCode}
-        display={languageLabel(item.language)}
+        display={languageLabel(item.language, t)}
       />
       <span aria-hidden="true">·</span>
       <FilterableCell field="year" value={yearStr} className="tabular-nums" />
@@ -106,7 +108,7 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
               type="button"
               onClick={() => editItem(item)}
               className="block w-full cursor-pointer truncate text-left text-[14px] font-medium text-ink transition-colors hover:text-accent"
-              title="Modifier ce livre"
+              title={t('library.row.editTitle')}
             >
               {item.title}
             </button>
@@ -125,7 +127,7 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
                 type="button"
                 onClick={() => editItem(item)}
                 className="cursor-pointer truncate text-left text-[14px] font-medium text-ink transition-colors hover:text-accent"
-                title="Modifier ce livre"
+                title={t('library.row.editTitle')}
               >
                 {item.title}
               </button>
@@ -147,7 +149,7 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
               <FilterableCell
                 field="language"
                 value={langCode}
-                display={languageLabel(item.language)}
+                display={languageLabel(item.language, t)}
               />
               <span aria-hidden="true">·</span>
               <FilterableCell
@@ -164,10 +166,14 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
             type="button"
             onClick={() => toggleFavorite(item)}
             aria-label={
-              item.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'
+              item.isFavorite
+                ? t('library.row.favoriteRemove')
+                : t('library.row.favoriteAdd')
             }
             title={
-              item.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'
+              item.isFavorite
+                ? t('library.row.favoriteRemove')
+                : t('library.row.favoriteAdd')
             }
             className={cn(
               'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm transition-colors',
@@ -187,8 +193,8 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
             size="sm"
             iconOnly
             onClick={() => deleteItem(item)}
-            aria-label="Supprimer le livre"
-            title="Supprimer"
+            aria-label={t('library.row.delete')}
+            title={t('common.actions.delete')}
             className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
           >
             <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />

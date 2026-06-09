@@ -14,7 +14,6 @@ import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
-import { LIBRARY_REVIEW_KIND_LABEL } from '@/ui/dirk/forms/constants';
 import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 import type { LibraryItem, LibraryReview } from '../lib/types';
@@ -72,15 +71,15 @@ export default function LibraryReviewForm({
     setError(null);
     const trimmedContent = content.trim();
     if (!trimmedContent) {
-      setError('Le contenu est requis.');
+      setError(t('library.reviewForm.contentRequired'));
       return;
     }
     if (!itemRid) {
-      setError('Aucun livre rattaché — ouvre la review depuis la page du livre.');
+      setError(t('library.reviewForm.noParent'));
       return;
     }
     if (!ctx) {
-      setError('Module Library non configuré ou clé absente — reconnecte-toi.');
+      setError(t('library.errors.notConfigured'));
       return;
     }
     setSubmitting(true);
@@ -114,7 +113,7 @@ export default function LibraryReviewForm({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
+        err instanceof Error ? err.message : t('library.errors.saveFailed'),
       );
       setSubmitting(false);
     }
@@ -134,7 +133,12 @@ export default function LibraryReviewForm({
           ; the writing surface is what matters. */}
       {parentItem ? (
         <p className="mb-3 text-[11.5px] text-muted">
-          Sur <span className="font-medium text-ink-soft">« {parentItem.title} »</span>
+          {t('library.reviewForm.captionPrefix')}{' '}
+          <span className="font-medium text-ink-soft">
+            {t('library.reviewForm.captionTitle', {
+              values: { title: parentItem.title },
+            })}
+          </span>
           {parentItem.creators?.[0]?.name
             ? ` · ${parentItem.creators[0].name}`
             : ''}
@@ -160,7 +164,7 @@ export default function LibraryReviewForm({
                       : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
                   )}
                 >
-                  {LIBRARY_REVIEW_KIND_LABEL[k]}
+                  {t(`library.reviewKind.${k}`)}
                 </button>
               );
             })}
@@ -170,7 +174,7 @@ export default function LibraryReviewForm({
             value={page}
             onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 5))}
             onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
-            placeholder="Page"
+            placeholder={t('library.reviewForm.pagePlaceholder')}
             disabled={submitting}
             align="center"
           />
@@ -200,13 +204,13 @@ export default function LibraryReviewForm({
           onClick={onClose}
           disabled={submitting}
         >
-          {t('common.actions.cancel', { defaultValue: 'Annuler' })}
+          {t('common.actions.cancel')}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={submitting}>
           {submitting
             ? isEdit
-              ? 'Mise à jour…'
-              : 'Enregistrement…'
+              ? t('common.states.updating')
+              : t('common.states.saving')
             : isEdit
               ? t('common.actions.update')
               : t('common.actions.save')}

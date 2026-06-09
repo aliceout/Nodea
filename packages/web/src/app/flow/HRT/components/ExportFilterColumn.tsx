@@ -9,6 +9,7 @@
  * the printable area, so it never reaches the page. Renders an empty hint
  * rather than collapsing, so the two-card grid stays stable.
  */
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 export interface FilterOption {
   value: string;
@@ -37,6 +38,7 @@ export default function ExportFilterColumn({
   onAll,
   onNone,
 }: ExportFilterColumnProps) {
+  const { t } = useI18n();
   return (
     <div role="group" aria-label={title} className="min-w-0 rounded-lg border border-hair p-5">
       <div className="mb-3 flex items-center justify-between gap-2 border-b border-hair pb-2.5">
@@ -44,18 +46,18 @@ export default function ExportFilterColumn({
         {options.length > 0 ? (
           <span className="flex items-center gap-2">
             <button type="button" onClick={onAll} className="text-[11px] text-accent hover:underline">
-              Tout
+              {t('hrt.export.filter.all')}
             </button>
             <span aria-hidden="true" className="text-[11px] text-muted-soft">·</span>
             <button type="button" onClick={onNone} className="text-[11px] text-muted hover:underline">
-              Aucun
+              {t('hrt.export.filter.none')}
             </button>
           </span>
         ) : null}
       </div>
 
       {options.length === 0 ? (
-        <p className="text-[12px] text-muted-soft">Aucune donnée.</p>
+        <p className="text-[12px] text-muted-soft">{t('hrt.export.filter.empty')}</p>
       ) : (
         <ul className="flex flex-col divide-y divide-hair">
           {options.map((o) => (

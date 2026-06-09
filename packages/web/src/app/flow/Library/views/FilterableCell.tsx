@@ -1,10 +1,8 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import { useLibraryFilters } from '../context';
-import {
-  CELL_FILTER_LABEL,
-  type CellFilterField,
-} from '../lib/cell-filter';
+import { type CellFilterField } from '../lib/cell-filter';
 
 interface FilterableCellProps {
   field: CellFilterField;
@@ -32,6 +30,7 @@ export default function FilterableCell({
   display,
   className,
 }: FilterableCellProps) {
+  const { t } = useI18n();
   const { setCellFilter } = useLibraryFilters();
   if (!value) {
     return <span className={cn('text-muted', className)}>—</span>;
@@ -47,7 +46,9 @@ export default function FilterableCell({
         'cursor-pointer text-left transition-colors hover:text-accent hover:underline underline-offset-2',
         className,
       )}
-      title={`Filtrer sur ${CELL_FILTER_LABEL[field]} : ${display ?? value}`}
+      title={t('library.cellFilter.filterTitle', {
+        values: { label: t(`library.fields.${field}`), value: display ?? value },
+      })}
     >
       {display ?? value}
     </button>

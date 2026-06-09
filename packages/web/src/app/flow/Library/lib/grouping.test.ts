@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 
 import { buildGroups, groupKeysFor } from './grouping';
-import type { LibraryItem } from './types';
+import type { LibraryItem, TranslateFn } from './types';
+
+/** Identity stub — group labels resolve through i18n at runtime ;
+ *  the tests only assert keys / membership, so echoing the key
+ *  back is enough. */
+const t: TranslateFn = (key) => key;
 
 /** Minimal LibraryItem fixture — only the fields the tests need ;
  *  everything else gets a sensible default. */
@@ -98,7 +103,7 @@ describe('buildGroups (status)', () => {
       fixture({ id: '2', title: 'B', status: 'planned' }),
       fixture({ id: '3', title: 'C', status: 'in_progress' }),
     ];
-    const groups = buildGroups(items, 'status');
+    const groups = buildGroups(items, 'status', t);
     expect(groups.map((g) => g.key)).toEqual([
       'in_progress',
       'planned',
@@ -114,7 +119,7 @@ describe('buildGroups (status)', () => {
       fixture({ id: '2', title: 'Albanie', status: 'finished' }),
       fixture({ id: '3', title: 'Élève', status: 'finished' }),
     ];
-    const groups = buildGroups(items, 'status');
+    const groups = buildGroups(items, 'status', t);
     const finished = groups.find((g) => g.key === 'finished');
     expect(finished?.items.map((i) => i.title)).toEqual([
       'Albanie',
@@ -139,7 +144,7 @@ describe('buildGroups (metadata axes)', () => {
       }),
       fixture({ id: '3', title: 'C' }), // no author
     ];
-    const groups = buildGroups(items, 'author');
+    const groups = buildGroups(items, 'author', t);
     expect(groups.map((g) => g.key)).toEqual(['Hugo', 'Zola', '__none__']);
     expect(groups[2]?.items.map((i) => i.title)).toEqual(['C']);
   });
@@ -149,7 +154,7 @@ describe('buildGroups (metadata axes)', () => {
       fixture({ id: '1', title: 'A', tags: ['classique', 'roman'] }),
       fixture({ id: '2', title: 'B', tags: ['classique'] }),
     ];
-    const groups = buildGroups(items, 'tag');
+    const groups = buildGroups(items, 'tag', t);
     const classique = groups.find((g) => g.key === 'classique');
     const roman = groups.find((g) => g.key === 'roman');
     expect(classique?.items.length).toBe(2);
@@ -162,7 +167,7 @@ describe('buildGroups (metadata axes)', () => {
       fixture({ id: '2', title: 'Modern', year: 2024 }),
       fixture({ id: '3', title: 'Mid', year: 1956 }),
     ];
-    const groups = buildGroups(items, 'year');
+    const groups = buildGroups(items, 'year', t);
     expect(groups.map((g) => g.key)).toEqual(['2024', '1956', '1862']);
   });
 
@@ -171,7 +176,7 @@ describe('buildGroups (metadata axes)', () => {
       fixture({ id: '1', title: 'A', publisher: 'Folio' }),
       fixture({ id: '2', title: 'B', publisher: 'Folio' }),
     ];
-    const groups = buildGroups(items, 'publisher');
+    const groups = buildGroups(items, 'publisher', t);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.key).toBe('Folio');
     expect(groups[0]?.items.map((i) => i.title)).toEqual(['A', 'B']);

@@ -36,6 +36,8 @@ import type { ModuleClient } from '@/core/modules/use-module-client';
 
 import { normaliseAuthorName } from '@/ui/dirk/forms/format';
 
+import type { TranslateFn } from '../../lib/types';
+
 export interface SaveLibraryItemFields {
   title: string;
   author: string;
@@ -57,6 +59,10 @@ export interface SaveLibraryItemFields {
 
 export interface SaveLibraryItemInput {
   ctx: ModuleClient | null;
+  /** Translate function from the calling component's `useI18n()` —
+   *  this module is hook-free, so validation / failure copy is
+   *  resolved by the caller's language. */
+  t: TranslateFn;
   /** When non-null, switches the orchestrator to the update path —
    *  preserves `coverRid` / `startedAt` / `finishedAt` / `rating`
    *  / `isFavorite` from `payload` (those aren't editable in the
@@ -70,20 +76,20 @@ export type SaveLibraryItemResult = { ok: true } | { ok: false; error: string };
 export async function saveLibraryItem(
   input: SaveLibraryItemInput,
 ): Promise<SaveLibraryItemResult> {
-  const { ctx, editing, fields } = input;
+  const { ctx, t, editing, fields } = input;
 
   const trimmedTitle = fields.title.trim();
   if (!trimmedTitle) {
-    return { ok: false, error: 'Le titre est requis.' };
+    return { ok: false, error: t('library.errors.titleRequired') };
   }
   if (!ctx) {
     return {
       ok: false,
-      error: 'Module Library non configuré ou clé absente — reconnecte-toi.',
+      error: t('library.errors.notConfigured'),
     };
   }
   if (fields.year && !/^\d{4}$/.test(fields.year)) {
-    return { ok: false, error: 'L’année doit être un nombre à 4 chiffres.' };
+    return { ok: false, error: t('library.errors.yearInvalid') };
   }
 
   try {
@@ -270,7 +276,7 @@ export async function saveLibraryItem(
     return {
       ok: false,
       error:
-        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
+        err instanceof Error ? err.message : t('library.errors.saveFailed'),
     };
   }
 }

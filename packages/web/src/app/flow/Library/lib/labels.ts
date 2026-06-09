@@ -1,29 +1,17 @@
-import type { LibraryItem } from './types';
+import type { LibraryItem, TranslateFn } from './types';
 
-/** FR display labels for ISO-639 language codes seen in book
- *  metadata. Used by the table / list views ; falls back to the raw
- *  code when unknown. */
-export const LANGUAGE_LABEL: Record<string, string> = {
-  fr: 'Français',
-  en: 'Anglais',
-  es: 'Espagnol',
-  de: 'Allemand',
-  it: 'Italien',
-  pt: 'Portugais',
-  jp: 'Japonais',
-  ja: 'Japonais',
-  zh: 'Chinois',
-  ar: 'Arabe',
-  ru: 'Russe',
-  he: 'Hébreu',
-};
-
-/** Resolve a raw `item.language` code to a French label, falling
- *  back to the raw code if unknown. Empty / undefined → empty
- *  string so the caller can render `—` for missing values. */
-export function languageLabel(code: string | undefined): string {
+/** Resolve a raw `item.language` ISO-639 code to a localised label
+ *  (`library.language.*` keys), falling back to the raw code when
+ *  the code isn't in the dictionary. Empty / undefined → empty
+ *  string so the caller can render `—` for missing values. Takes
+ *  the caller's `t` so this stays a pure, hook-free helper. */
+export function languageLabel(
+  code: string | undefined,
+  t: TranslateFn,
+): string {
   if (!code) return '';
-  return LANGUAGE_LABEL[code.toLowerCase()] ?? code;
+  const normalised = code.toLowerCase();
+  return t(`library.language.${normalised}`, { defaultValue: code });
 }
 
 /** Author names joined by `, `. Honors `role: 'author'` or

@@ -11,7 +11,7 @@
  * Splitting it out keeps the provider focused on orchestration, and
  * makes the data flow easy to read in isolation.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   libraryCoversClient,
@@ -20,6 +20,7 @@ import {
 } from '@/core/api/modules/library';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import type { LoadState } from '@/core/types/load-state';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { itemFromRecord, reviewFromRecord, buildCoverMap } from '../lib/mappers';
 import type { LibraryItem, LibraryReview } from '../lib/types';
@@ -46,6 +47,17 @@ export function useLibraryData(
   const [covers, setCovers] = useState<Map<string, string>>(() => new Map());
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
 
+  // `t` is read through a ref so a language switch never re-runs the
+  // fetch effect (it would re-download every cover blob for a label).
+  // Cost : an error message rendered before a language switch keeps
+  // the previous language until the next fetch — acceptable for a
+  // rare failure banner.
+  const { t } = useI18n();
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
   useEffect(() => {
     if (!ctx) return undefined;
     let cancelled = false;
@@ -67,7 +79,7 @@ export function useLibraryData(
         const message =
           err instanceof Error
             ? err.message
-            : 'Erreur lors du chargement de la bibliothèque.';
+            : tRef.current('library.list.loadError');
         setLoad({ status: 'error', message });
       });
     return () => {

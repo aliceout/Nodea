@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 export interface FilterEntry<T> {
@@ -32,6 +33,7 @@ export default function FilterRow<T>({
   entries,
   onChange,
 }: FilterRowProps<T>) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-1.5 overflow-hidden">
       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.04em] text-muted">
@@ -42,7 +44,7 @@ export default function FilterRow<T>({
           isActive={active === null}
           onClick={() => onChange(null)}
         >
-          Tous
+          {t('library.lookup.filterAll')}
         </FilterChip>
         {entries.map((entry, i) => (
           <FilterChip

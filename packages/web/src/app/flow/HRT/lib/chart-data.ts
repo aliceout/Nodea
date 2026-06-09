@@ -15,6 +15,7 @@ import {
 
 import type { LabResultEntry } from '../hooks/use-lab-results';
 import type { ChartPoint } from '../components/LabChart';
+import type { HrtTranslate } from './labels';
 
 export interface MarkerCount {
   key: string;
@@ -128,20 +129,21 @@ export function buildTargetBand(
   markerKey: string | null,
   goal: HrtGoal | null,
   displayUnit: string,
+  t: HrtTranslate,
 ): TargetBand {
   if (!goal || !markerKey) return {};
   const preset = findMarker(markerKey);
   if (!preset) return {};
-  const t = targetFor(preset, goal);
-  if (!t) return {};
+  const target = targetFor(preset, goal);
+  if (!target) return {};
 
   const conv = (v: number | undefined): number | undefined => {
     if (v == null) return undefined;
     const c = convertFromCanonical(preset, v, displayUnit);
     return c == null ? undefined : c;
   };
-  const min = conv(t.min);
-  const max = conv(t.max);
+  const min = conv(target.min);
+  const max = conv(target.max);
   if (min == null && max == null) return {};
 
   const band = { ...(min != null ? { min } : {}), ...(max != null ? { max } : {}) };
@@ -152,5 +154,8 @@ export function buildTargetBand(
       : max != null
         ? `≤ ${f(max)}`
         : `≥ ${f(min as number)}`;
-  return { band, text: `Cible indicative : ${range} ${displayUnit}` };
+  return {
+    band,
+    text: t('hrt.labs.targetIndicative', { values: { range, unit: displayUnit } }),
+  };
 }

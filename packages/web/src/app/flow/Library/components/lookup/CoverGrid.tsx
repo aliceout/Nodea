@@ -1,5 +1,7 @@
 import type { NormalisedBook } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 interface CoverGridProps {
   results: NormalisedBook[];
   onPick: (book: NormalisedBook) => void;
@@ -20,11 +22,12 @@ export default function CoverGrid({
   results,
   onPick,
 }: CoverGridProps): React.ReactElement {
+  const { t } = useI18n();
   const withCover = results.filter((b) => b.coverUrl);
   if (withCover.length === 0) {
     return (
       <div className="mt-2 flex min-h-0 flex-1 items-center justify-center rounded-sm border border-hair bg-bg p-6 text-center text-[12px] text-muted">
-        Aucun résultat ne propose de couverture — essaie une autre recherche.
+        {t('library.lookup.noCoverResults')}
       </div>
     );
   }

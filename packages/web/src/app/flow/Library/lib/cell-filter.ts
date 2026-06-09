@@ -15,14 +15,6 @@ export interface CellFilter {
   value: string;
 }
 
-/** FR display label for each axis, shown in the active-filter banner. */
-export const CELL_FILTER_LABEL: Record<CellFilterField, string> = {
-  author: 'Auteur·rice',
-  publisher: 'Éditeur',
-  language: 'Langue',
-  year: 'Année',
-};
-
 /**
  * Does this item match the active cell filter ? Used by the catalogue's
  * `filteredItems` memo. Author match is exact-string against any of

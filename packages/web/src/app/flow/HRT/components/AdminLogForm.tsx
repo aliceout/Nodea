@@ -23,13 +23,14 @@ import {
   type HrtProductPayload,
 } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
-import { HRT_CATEGORY_LABELS, todayIso } from '../lib/labels';
+import { categoryLabel, todayIso } from '../lib/labels';
 import { doseUnitOf, mgEquivalent } from '../lib/export-model';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import FieldRow from './FieldRow';
@@ -66,6 +67,7 @@ export default function AdminLogForm({
   onCreateProduct,
   onClose,
 }: AdminLogFormProps) {
+  const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
 
@@ -91,7 +93,9 @@ export default function AdminLogForm({
   // A product with a mg/mL concentration is dosed by volume → ask mL ; the
   // conversion is per prise, derived from the product's concentration.
   const doseUnit = doseUnitOf(selected);
-  const doseLabel = doseUnit ? `Dose (${doseUnit})` : 'Dose';
+  const doseLabel = doseUnit
+    ? t('hrt.form.doseWithUnit', { values: { unit: doseUnit } })
+    : t('hrt.form.dose');
   // Show the derived mg live, so « 0.4 mL » reads « ≈ 4 mg » before saving.
   const doseVal = watch('dose');
   const mgPreview = Number.isFinite(doseVal) ? mgEquivalent(doseVal, selected) : null;
@@ -106,7 +110,7 @@ export default function AdminLogForm({
       await onSubmit(payload, initial?.id);
       onClose();
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Enregistrement impossible.');
+      setServerError(err instanceof Error ? err.message : t('hrt.form.saveFailed'));
     }
   }
 
@@ -130,15 +134,17 @@ export default function AdminLogForm({
       noValidate
     >
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[2fr_1fr_1fr]">
-        <FieldRow label="Produit" htmlFor="hrt-product" error={errors.product?.message}>
+        <FieldRow label={t('hrt.form.product')} htmlFor="hrt-product" error={errors.product?.message}>
           <div className="flex items-center gap-1.5">
             <div className="min-w-0 flex-1">
               <Select id="hrt-product" {...register('product')}>
                 <option value="" disabled>
-                  {products.length === 0 ? 'Aucun produit enregistré' : 'Choisir un produit…'}
+                  {products.length === 0
+                    ? t('hrt.form.productNone')
+                    : t('hrt.form.productPlaceholder')}
                 </option>
                 {categories.map((c) => (
-                  <optgroup key={c} label={HRT_CATEGORY_LABELS[c]}>
+                  <optgroup key={c} label={categoryLabel(t, c)}>
                     {products
                       .filter((p) => p.category === c)
                       .map((p) => (
@@ -161,7 +167,7 @@ export default function AdminLogForm({
               className="shrink-0 whitespace-nowrap"
               onClick={() => setAddingProduct(true)}
             >
-              + Nouveau produit
+              {t('hrt.form.newProduct')}
             </Button>
           </div>
         </FieldRow>
@@ -183,7 +189,7 @@ export default function AdminLogForm({
           ) : null}
         </FieldRow>
 
-        <FieldRow label="Date" htmlFor="hrt-date" error={errors.date?.message}>
+        <FieldRow label={t('hrt.form.date')} htmlFor="hrt-date" error={errors.date?.message}>
           <DateField
             id="hrt-date"
             value={watch('date') ?? ''}
@@ -193,7 +199,7 @@ export default function AdminLogForm({
         </FieldRow>
       </div>
 
-      <FieldRow label="Notes (optionnel)" htmlFor="hrt-notes" error={errors.notes?.message}>
+      <FieldRow label={t('hrt.form.notes')} htmlFor="hrt-notes" error={errors.notes?.message}>
         <Textarea id="hrt-notes" minHeightPx={56} {...register('notes')} />
       </FieldRow>
 
@@ -205,10 +211,10 @@ export default function AdminLogForm({
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-          {initial ? 'Enregistrer' : 'Ajouter'}
+          {initial ? t('common.actions.save') : t('common.actions.add')}
         </Button>
       </div>
     </form>

@@ -20,6 +20,7 @@ import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import type { HrtLabResultPayload } from '@nodea/shared';
 import { hrtLabResultsClient } from '@/core/api/modules/hrt';
 import { useModuleClient } from '@/core/modules/use-module-client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import {
@@ -45,9 +46,9 @@ interface ImportResult {
 
 /** How many records to create concurrently (each is a POST + a PATCH). */
 const POOL = 4;
-const plural = (n: number): string => (n > 1 ? 's' : '');
 
 export default function ImportPanel() {
+  const { t, tn } = useI18n();
   const ctx = useModuleClient('hrt');
   const [preparing, setPreparing] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -63,7 +64,7 @@ export default function ImportPanel() {
   async function getTemplate(): Promise<void> {
     setPreparing(true);
     try {
-      await downloadImportTemplate();
+      await downloadImportTemplate(t);
     } catch (err) {
       if (import.meta.env.DEV) console.error('hrt: template download failed', err);
     } finally {
@@ -79,9 +80,9 @@ export default function ImportPanel() {
     setResult(null);
     try {
       const workbook = await readImportWorkbook(file);
-      const parsed = parseAnalyseRows(workbook.analyses);
+      const parsed = parseAnalyseRows(workbook.analyses, t);
       if (parsed.candidates.length === 0 && parsed.errors.length === 0) {
-        setParseError('Aucune analyse trouvée dans l’onglet « Analyses » du fichier.');
+        setParseError(t('hrt.import.emptyFile'));
         setPhase('idle');
         return;
       }
@@ -96,7 +97,7 @@ export default function ImportPanel() {
       setPhase('review');
     } catch (err) {
       if (import.meta.env.DEV) console.error('hrt: import parse failed', err);
-      setParseError('Fichier illisible. Utilisez le modèle .xlsx fourni.');
+      setParseError(t('hrt.import.unreadable'));
       setPhase('idle');
     }
   }
@@ -109,7 +110,7 @@ export default function ImportPanel() {
     if (!ctx) return;
     setPhase('importing');
     setProgress(0);
-    const { payloads, skipped } = buildLabResultPayloads(candidates, mapping);
+    const { payloads, skipped } = buildLabResultPayloads(candidates, mapping, t);
 
     // One list for the dedupe — re-importing the same file is then a no-op.
     let existing: HrtLabResultPayload[] = [];
@@ -165,21 +166,19 @@ export default function ImportPanel() {
 
   return (
     <section className="mx-auto mt-10 max-w-5xl border-t border-hair pt-8">
-      <h2 className="text-[14px] font-medium text-ink">Importer des analyses</h2>
+      <h2 className="text-[14px] font-medium text-ink">{t('hrt.import.title')}</h2>
       <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-muted">
-        Téléchargez le modèle Excel, collez-y vos analyses dans l’onglet « Analyses », puis
-        réimportez le fichier. Tout est traité dans votre navigateur — rien n’est envoyé au
-        serveur. Les prises ne sont pas concernées : elles s’ajoutent via les prises récurrentes.
+        {t('hrt.import.description')}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button variant="neutral" size="sm" onClick={() => void getTemplate()} disabled={preparing}>
           <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
-          {preparing ? 'Préparation…' : 'Télécharger le modèle'}
+          {preparing ? t('hrt.import.preparing') : t('hrt.import.downloadTemplate')}
         </Button>
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-hair px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-bg-2 focus-within:outline focus-within:outline-2 focus-within:outline-accent">
           <ArrowUpTrayIcon className="h-4 w-4" aria-hidden="true" />
-          Choisir un fichier .xlsx
+          {t('hrt.import.chooseFile')}
           <input
             type="file"
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -211,30 +210,24 @@ export default function ImportPanel() {
       {phase === 'done' && result && (
         <div className="mt-5 rounded-lg border border-hair p-4" role="status">
           <p className="text-[13px] text-ink">
-            <span className="font-semibold">{result.imported}</span> analyse{plural(result.imported)}{' '}
-            importée{plural(result.imported)}.
+            <span className="font-semibold">{result.imported}</span>{' '}
+            {tn('hrt.import.done.imported', result.imported)}
             {result.duplicates > 0 && (
-              <span className="text-muted">
-                {' '}
-                {result.duplicates} doublon{plural(result.duplicates)} ignoré{plural(result.duplicates)}.
-              </span>
+              <span className="text-muted"> {tn('hrt.import.done.duplicates', result.duplicates)}</span>
             )}
             {result.skipped > 0 && (
-              <span className="text-muted">
-                {' '}
-                {result.skipped} sans unité ignorée{plural(result.skipped)}.
-              </span>
+              <span className="text-muted"> {tn('hrt.import.done.skipped', result.skipped)}</span>
             )}
             {result.failed > 0 && (
               <span className="text-danger">
                 {' '}
-                {result.failed} en échec.
+                {t('hrt.import.done.failed', { values: { count: result.failed } })}
               </span>
             )}
           </p>
           <div className="mt-3">
             <Button variant="neutral" size="sm" onClick={reset}>
-              Importer un autre fichier
+              {t('hrt.import.done.another')}
             </Button>
           </div>
         </div>

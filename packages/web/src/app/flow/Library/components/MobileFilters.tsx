@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 import { FiltersContent } from './SideColumn';
 
 /**
@@ -14,11 +16,10 @@ import { FiltersContent } from './SideColumn';
  *
  * Toggle string mirrors the existing « + Filtres » pattern from
  * Journal's MobileFilters : a leading `+` / `−` carries the
- * affordance, no chevron icon. Hardcoded label (not i18n) because
- * Library's UI strings are still hardcoded across the board —
- * cf. « Grouper par », « Statut » in `SideColumn`.
+ * affordance, no chevron icon.
  */
 export default function MobileFilters() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
@@ -29,7 +30,8 @@ export default function MobileFilters() {
         aria-expanded={open}
         className="text-[12px] text-muted transition-colors hover:text-ink"
       >
-        {open ? '− ' : '+ '}Filtres
+        {open ? '− ' : '+ '}
+        {t('library.side.filtersToggle')}
       </button>
       {open ? (
         <div className="mt-3">

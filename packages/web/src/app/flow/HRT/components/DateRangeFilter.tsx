@@ -12,6 +12,7 @@
  */
 import { useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DateField from '@/ui/atoms/dirk/DateField';
 import Select from '@/ui/atoms/dirk/Select';
 
@@ -19,18 +20,19 @@ import { EMPTY_RANGE, type DateRange } from '../lib/date-range';
 
 interface Preset {
   key: string;
-  label: string;
+  /** `hrt.dateRange.*` key for the option label. */
+  labelKey: string;
   days?: number;
   months?: number;
 }
 
 const PRESETS: readonly Preset[] = [
-  { key: 'all', label: 'Toutes les dates' },
-  { key: '30d', label: '30 derniers jours', days: 30 },
-  { key: '3m', label: '3 mois', months: 3 },
-  { key: '6m', label: '6 mois', months: 6 },
-  { key: '12m', label: '12 mois', months: 12 },
-  { key: 'custom', label: 'Personnalisé' },
+  { key: 'all', labelKey: 'hrt.dateRange.all' },
+  { key: '30d', labelKey: 'hrt.dateRange.last30Days', days: 30 },
+  { key: '3m', labelKey: 'hrt.dateRange.months3', months: 3 },
+  { key: '6m', labelKey: 'hrt.dateRange.months6', months: 6 },
+  { key: '12m', labelKey: 'hrt.dateRange.months12', months: 12 },
+  { key: 'custom', labelKey: 'hrt.dateRange.custom' },
 ];
 
 /** ISO `YYYY-MM-DD` for « today » shifted back by the preset's window. */
@@ -47,6 +49,7 @@ interface DateRangeFilterProps {
 }
 
 export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
+  const { t } = useI18n();
   const [presetKey, setPresetKey] = useState('all');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -70,7 +73,7 @@ export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select
-        aria-label="Période"
+        aria-label={t('hrt.dateRange.periodAria')}
         borderless
         className="w-auto"
         value={presetKey}
@@ -78,14 +81,14 @@ export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       >
         {PRESETS.map((p) => (
           <option key={p.key} value={p.key}>
-            {p.label}
+            {t(p.labelKey)}
           </option>
         ))}
       </Select>
       {presetKey === 'custom' ? (
         <div className="flex items-center gap-1.5">
           <DateField
-            ariaLabel="Du"
+            ariaLabel={t('hrt.dateRange.fromAria')}
             borderless
             inline
             className="w-auto"
@@ -95,7 +98,7 @@ export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           />
           <span className="text-[12px] text-muted">→</span>
           <DateField
-            ariaLabel="Au"
+            ariaLabel={t('hrt.dateRange.toAria')}
             borderless
             inline
             className="w-auto"

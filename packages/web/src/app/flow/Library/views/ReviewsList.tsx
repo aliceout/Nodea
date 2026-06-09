@@ -21,16 +21,6 @@ interface ReviewsListProps {
   kind: LibraryReviewPayload['kind'];
 }
 
-const REVIEW_VIEW_HEADING: Record<LibraryReviewPayload['kind'], string> = {
-  quote: 'Extraits',
-  note: 'Notes',
-};
-
-const REVIEW_VIEW_EMPTY: Record<LibraryReviewPayload['kind'], string> = {
-  quote: 'Aucun extrait pour le moment — ouvre un livre et ajoute-en un.',
-  note: 'Aucune note pour le moment — ouvre un livre et ajoute-en une.',
-};
-
 /**
  * Flat list of reviews for the Extraits / Notes sub-views. Reviews
  * are filtered by `kind` and sorted newest-first ; each row pulls
@@ -40,6 +30,7 @@ const REVIEW_VIEW_EMPTY: Record<LibraryReviewPayload['kind'], string> = {
  * `editReview` / `deleteReview` actions from `useLibraryActions()`.
  */
 export default function ReviewsList({ kind }: ReviewsListProps) {
+  const { t } = useI18n();
   const { items, reviews, load } = useLibraryData();
   const { editReview, deleteReview, reviewForm, closeReviewForm } =
     useLibraryActions();
@@ -61,7 +52,7 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
     [reviews, kind],
   );
 
-  const heading = REVIEW_VIEW_HEADING[kind];
+  const heading = t(`library.reviews.heading.${kind}`);
 
   // Resolve the parent book so the form can display its title +
   // author. Create flow : the picker's chosen book. Edit flow : the
@@ -111,9 +102,9 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
       ) : null}
 
       {load.status === 'loading' ? (
-        <EmptyHint>Chargement…</EmptyHint>
+        <EmptyHint>{t('common.states.loading')}</EmptyHint>
       ) : filtered.length === 0 ? (
-        <EmptyHint>{REVIEW_VIEW_EMPTY[kind]}</EmptyHint>
+        <EmptyHint>{t(`library.reviews.empty.${kind}`)}</EmptyHint>
       ) : (
         <ul className="flex flex-col gap-5">
           {filtered.map((r) => (
@@ -142,10 +133,10 @@ interface FlatReviewRowProps {
 }
 
 function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const dateLabel = formatLongDate(review.date, language);
   const accent = review.kind === 'quote';
-  const bookTitle = book?.title ?? '(livre supprimé)';
+  const bookTitle = book?.title ?? t('library.reviews.deletedBook');
   const bookAuthor = book?.creators?.[0]?.name ?? '';
   return (
     <li className="group border-b border-hair pb-5 last:border-b-0">
@@ -159,7 +150,9 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
         <span className="ml-auto flex shrink-0 items-center gap-2">
           <span className="tabular-nums">{dateLabel}</span>
           {review.page ? (
-            <span className="tabular-nums">· p. {review.page}</span>
+            <span className="tabular-nums">
+              {t('library.reviews.page', { values: { page: review.page } })}
+            </span>
           ) : null}
           <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <DirkButton
@@ -167,8 +160,8 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
               size="xs"
               iconOnly
               onClick={onEdit}
-              aria-label="Modifier"
-              title="Modifier"
+              aria-label={t('common.actions.edit')}
+              title={t('common.actions.edit')}
             >
               <PencilSquareIcon className="h-3 w-3" aria-hidden="true" />
             </DirkButton>
@@ -177,8 +170,8 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
               size="xs"
               iconOnly
               onClick={onDelete}
-              aria-label="Supprimer"
-              title="Supprimer"
+              aria-label={t('common.actions.delete')}
+              title={t('common.actions.delete')}
             >
               <TrashIcon className="h-3 w-3" aria-hidden="true" />
             </DirkButton>

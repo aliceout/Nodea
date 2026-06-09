@@ -2,6 +2,7 @@ import {
   useNodeaStore,
   selectLibrarySubview,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -60,6 +61,7 @@ export default function LibraryPage() {
  *  shared chrome (topbar / sidebar) and the always-rendered (self-
  *  conditional) book picker. */
 function LibraryView() {
+  const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectLibrarySubview);
   const { items } = useLibraryData();
@@ -71,7 +73,7 @@ function LibraryView() {
       <ModuleShell
         topbar={
           <Topbar
-            label={`Library · ${items.length} ${items.length === 1 ? 'livre' : 'livres'}`}
+            label={tn('library.topbar.label', items.length)}
             onOpenMenu={() => setMobileMenuOpen(true)}
           >
             {subview === 'livres' ? (
@@ -79,12 +81,12 @@ function LibraryView() {
                 <TopbarSearchInput
                   value={searchQuery}
                   onChange={setSearchQuery}
-                  placeholder="Rechercher dans Library…"
-                  clearLabel="Effacer la recherche"
+                  placeholder={t('library.topbar.searchPlaceholder')}
+                  clearLabel={t('common.search.clearAria')}
                   className="w-44 md:w-56"
                 />
                 <DirkButton variant="primary" size="sm" onClick={addItem}>
-                  + Nouveau livre
+                  {t('library.topbar.newBook')}
                 </DirkButton>
               </>
             ) : (
@@ -96,10 +98,12 @@ function LibraryView() {
                 }
                 disabled={items.length === 0}
                 {...(items.length === 0
-                  ? { title: 'Ajoute d’abord un livre dans Library.' }
+                  ? { title: t('library.topbar.addBookFirst') }
                   : {})}
               >
-                {subview === 'extraits' ? '+ Nouvel extrait' : '+ Nouvelle note'}
+                {subview === 'extraits'
+                  ? t('library.topbar.newQuote')
+                  : t('library.topbar.newNote')}
               </DirkButton>
             )}
           </Topbar>

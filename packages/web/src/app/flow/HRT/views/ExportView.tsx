@@ -24,6 +24,7 @@ import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import type { HrtProductPayload } from '@nodea/shared';
 
 import { errorMessageOf } from '@/core/types/load-state';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import DedupPanel from '../components/DedupPanel';
@@ -49,15 +50,16 @@ import {
 } from '../lib/export-model';
 import { downloadExportPdf } from '../lib/export-pdf';
 import { downloadSpreadsheet, type SpreadsheetFormat } from '../lib/spreadsheet';
-import { formatDotDate, markerLabel, todayIso } from '../lib/labels';
+import { formatDotDate, markerLabel, todayIso, type HrtTranslate } from '../lib/labels';
 
 /** Human « Période : … » label for the report header. */
-function periodText(range: DateRange): string {
+function periodText(range: DateRange, t: HrtTranslate): string {
   const { from, to } = range;
-  if (!from && !to) return 'toutes les dates';
-  if (from && to) return `du ${formatDotDate(from)} au ${formatDotDate(to)}`;
-  if (from) return `depuis le ${formatDotDate(from)}`;
-  return `jusqu’au ${formatDotDate(to)}`;
+  if (!from && !to) return t('hrt.export.period.all');
+  const values = { from: formatDotDate(from), to: formatDotDate(to) };
+  if (from && to) return t('hrt.export.period.between', { values });
+  if (from) return t('hrt.export.period.since', { values });
+  return t('hrt.export.period.until', { values });
 }
 
 /** Immutable toggle of a value's membership in a Set. */
@@ -75,6 +77,7 @@ interface ExportViewProps {
 }
 
 export default function ExportView({ adminLogs }: ExportViewProps) {
+  const { t, tn, language } = useI18n();
   const products = useHrtProducts();
   const admin = adminLogs;
   const labResults = useHrtLabResults();
@@ -123,21 +126,21 @@ export default function ExportView({ adminLogs }: ExportViewProps) {
 
   const regimen = useMemo(
     () =>
-      buildRegimen(schedules.entries, productByName).filter(
+      buildRegimen(schedules.entries, productByName, t).filter(
         (r) => !excludedMolecules.has(r.molecule),
       ),
-    [schedules.entries, productByName, excludedMolecules],
+    [schedules.entries, productByName, excludedMolecules, t],
   );
   const doses = useMemo(
     () =>
-      buildDoseHistory(admin.entries, productByName, range).filter(
+      buildDoseHistory(admin.entries, productByName, range, t).filter(
         (d) => !excludedMolecules.has(d.molecule),
       ),
-    [admin.entries, productByName, range, excludedMolecules],
+    [admin.entries, productByName, range, excludedMolecules, t],
   );
   const labGroups = useMemo(
-    () => buildLabGroups(labResults.entries, range).filter((g) => !excludedMarkers.has(g.key)),
-    [labResults.entries, range, excludedMarkers],
+    () => buildLabGroups(labResults.entries, range, t).filter((g) => !excludedMarkers.has(g.key)),
+    [labResults.entries, range, excludedMarkers, t],
   );
   const doseCharts = useMemo(
     () =>
@@ -153,13 +156,18 @@ export default function ExportView({ adminLogs }: ExportViewProps) {
   const errorMessage = loads.map(errorMessageOf).find((m) => m !== null) ?? null;
 
   function exportDoses(format: SpreadsheetFormat): void {
-    void downloadSpreadsheet(`nodea_hrt_prises_${todayIso()}`, 'Prises', doseMatrix(doses), format);
+    void downloadSpreadsheet(
+      `nodea_hrt_prises_${todayIso()}`,
+      t('hrt.export.sheets.doses'),
+      doseMatrix(doses, t),
+      format,
+    );
   }
   function exportLabs(format: SpreadsheetFormat): void {
     void downloadSpreadsheet(
       `nodea_hrt_analyses_${todayIso()}`,
-      'Analyses',
-      labMatrix(labGroups),
+      t('hrt.export.sheets.labs'),
+      labMatrix(labGroups, t),
       format,
     );
   }
@@ -169,7 +177,7 @@ export default function ExportView({ adminLogs }: ExportViewProps) {
     try {
       await downloadExportPdf({
         generatedLabel: formatDotDate(todayIso()),
-        periodLabel: periodText(range),
+        periodLabel: periodText(range, t),
         note,
         groupBy,
         regimen,
@@ -177,6 +185,9 @@ export default function ExportView({ adminLogs }: ExportViewProps) {
         labs: labGroups,
         doseCharts,
         filename: `nodea_hrt_recap_${todayIso()}.pdf`,
+        t,
+        tn,
+        locale: language,
       });
     } catch (err) {
       if (import.meta.env.DEV) console.error('hrt: pdf export failed', err);
@@ -188,9 +199,9 @@ export default function ExportView({ adminLogs }: ExportViewProps) {
   return (
     <section className="min-w-0">
       <div className="mx-auto mb-6 max-w-5xl">
-        <h2 className="text-[14px] font-medium text-ink">Exporter des analyses</h2>
+        <h2 className="text-[14px] font-medium text-ink">{t('hrt.export.title')}</h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-          Générez un récapitulatif PDF (régime, prises, analyses + graphiques) à présenter en consultation, ou exportez les données brutes en Excel ou LibreOffice.
+          {t('hrt.export.description')}
         </p>
       </div>
 
@@ -224,16 +235,24 @@ export default function ExportView({ adminLogs }: ExportViewProps) {
           disabled={!allReady || generating}
         >
           <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
-          {generating ? 'Génération…' : 'Récapitulatif PDF'}
+          {generating ? t('hrt.export.actions.generating') : t('hrt.export.actions.pdf')}
         </Button>
-        <ExportMenuButton label="Prises" disabled={doses.length === 0} onSelect={exportDoses} />
-        <ExportMenuButton label="Analyses" disabled={labReadingCount === 0} onSelect={exportLabs} />
+        <ExportMenuButton
+          label={t('hrt.export.actions.doses')}
+          disabled={doses.length === 0}
+          onSelect={exportDoses}
+        />
+        <ExportMenuButton
+          label={t('hrt.export.actions.labs')}
+          disabled={labReadingCount === 0}
+          onSelect={exportLabs}
+        />
       </div>
 
       {errorMessage ? (
         <p className="py-8 text-center text-[13px] text-danger">{errorMessage}</p>
       ) : !allReady ? (
-        <p className="py-8 text-center text-[13px] text-muted">Chargement…</p>
+        <p className="py-8 text-center text-[13px] text-muted">{t('common.states.loading')}</p>
       ) : null}
 
       <ImportPanel />

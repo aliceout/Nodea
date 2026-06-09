@@ -24,13 +24,14 @@ import {
   type HrtLabResultPayload,
 } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
-import { HRT_DRAW_CONTEXT_LABELS, todayIso } from '../lib/labels';
+import { drawContextLabel, todayIso } from '../lib/labels';
 import type { LabResultEntry } from '../hooks/use-lab-results';
 import FieldRow from './FieldRow';
 import TextField from './TextField';
@@ -60,6 +61,7 @@ interface LabResultFormProps {
 }
 
 export default function LabResultForm({ initial, onSubmit, onClose }: LabResultFormProps) {
+  const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -121,7 +123,7 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
       await onSubmit(payload, initial?.id);
       onClose();
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Enregistrement impossible.');
+      setServerError(err instanceof Error ? err.message : t('hrt.form.saveFailed'));
     }
   }
 
@@ -132,7 +134,7 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
       noValidate
     >
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-        <FieldRow label="Date" htmlFor="hrt-lab-date" error={errors.date?.message}>
+        <FieldRow label={t('hrt.form.date')} htmlFor="hrt-lab-date" error={errors.date?.message}>
           <DateField
             id="hrt-lab-date"
             value={watch('date') ?? ''}
@@ -141,12 +143,12 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
           />
         </FieldRow>
 
-        <FieldRow label="Marqueur" htmlFor="hrt-marker" error={errors.marker?.message}>
+        <FieldRow label={t('hrt.labs.form.marker')} htmlFor="hrt-marker" error={errors.marker?.message}>
           {customMarker ? (
             <div className="flex gap-2">
               <Input
                 id="hrt-marker"
-                placeholder="marqueur personnalisé…"
+                placeholder={t('hrt.labs.form.markerPlaceholder')}
                 {...register('marker')}
               />
               <Button
@@ -158,7 +160,7 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
                   setValue('marker', '', { shouldValidate: false });
                 }}
               >
-                Liste
+                {t('hrt.form.backToList')}
               </Button>
             </div>
           ) : (
@@ -168,20 +170,20 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
               onChange={(e) => onPresetChange(e.target.value)}
             >
               <option value="" disabled>
-                Choisir un marqueur…
+                {t('hrt.labs.form.chooseMarker')}
               </option>
               {HRT_MARKERS.map((m) => (
                 <option key={m.key} value={m.key}>
                   {m.label}
                 </option>
               ))}
-              <option value="__custom__">Autre…</option>
+              <option value="__custom__">{t('hrt.form.other')}</option>
             </Select>
           )}
         </FieldRow>
 
         <TextField
-          label="Valeur"
+          label={t('hrt.labs.form.value')}
           type="number"
           step="any"
           inputMode="decimal"
@@ -189,10 +191,10 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
           error={errors.value?.message}
           {...register('value', { valueAsNumber: true })}
         />
-        <FieldRow label="Unité" htmlFor="hrt-lab-unit" error={errors.unit?.message}>
+        <FieldRow label={t('hrt.labs.form.unit')} htmlFor="hrt-lab-unit" error={errors.unit?.message}>
           <Select id="hrt-lab-unit" {...register('unit')}>
             <option value="" disabled>
-              Unité…
+              {t('hrt.labs.form.unitPlaceholder')}
             </option>
             {unitOptions.map((u) => (
               <option key={u} value={u}>
@@ -203,25 +205,25 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
           </Select>
         </FieldRow>
 
-        <FieldRow label="Prélèvement" htmlFor="hrt-context" error={errors.context?.message}>
+        <FieldRow label={t('hrt.labs.form.context')} htmlFor="hrt-context" error={errors.context?.message}>
           <Select id="hrt-context" {...register('context')}>
             {HRT_DRAW_CONTEXT_VALUES.map((c) => (
               <option key={c} value={c}>
-                {HRT_DRAW_CONTEXT_LABELS[c]}
+                {drawContextLabel(t, c)}
               </option>
             ))}
           </Select>
         </FieldRow>
 
         <TextField
-          label="Labo (optionnel)"
-          placeholder="Cerballiance…"
+          label={t('hrt.labs.form.lab')}
+          placeholder={t('hrt.labs.form.labPlaceholder')}
           error={errors.lab?.message}
           {...register('lab')}
         />
       </div>
 
-      <FieldRow label="Notes (optionnel)" htmlFor="hrt-lab-notes" error={errors.notes?.message}>
+      <FieldRow label={t('hrt.form.notes')} htmlFor="hrt-lab-notes" error={errors.notes?.message}>
         <Textarea id="hrt-lab-notes" minHeightPx={56} {...register('notes')} />
       </FieldRow>
 
@@ -233,10 +235,10 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-          {initial ? 'Enregistrer' : 'Ajouter'}
+          {initial ? t('common.actions.save') : t('common.actions.add')}
         </Button>
       </div>
     </form>

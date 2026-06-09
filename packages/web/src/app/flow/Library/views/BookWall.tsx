@@ -1,6 +1,8 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 import { useLibraryActions, useLibraryData } from '../context';
 import type { LibraryItem } from '../lib/types';
 
@@ -16,6 +18,7 @@ interface BookWallProps {
  * inline so the wall stays scannable.
  */
 export default function BookWall({ items }: BookWallProps) {
+  const { t } = useI18n();
   const { covers } = useLibraryData();
   const { editItem, deleteItem } = useLibraryActions();
 
@@ -77,7 +80,7 @@ export default function BookWall({ items }: BookWallProps) {
               {it.isFavorite ? (
                 <span
                   className="absolute top-1 left-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-bg/85 text-accent"
-                  aria-label="Favori"
+                  aria-label={t('library.row.favorite')}
                 >
                   <StarSolidIcon className="h-2.5 w-2.5" aria-hidden="true" />
                 </span>
@@ -91,8 +94,8 @@ export default function BookWall({ items }: BookWallProps) {
             <button
               type="button"
               onClick={() => deleteItem(it)}
-              aria-label="Supprimer le livre"
-              title="Supprimer"
+              aria-label={t('library.row.delete')}
+              title={t('common.actions.delete')}
               className="absolute top-1 right-1 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-bg/85 text-muted opacity-0 transition-[opacity,colors] hover:bg-danger/15 hover:text-danger group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
             >
               <TrashIcon className="h-3 w-3" aria-hidden="true" />

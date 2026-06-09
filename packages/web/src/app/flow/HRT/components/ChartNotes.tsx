@@ -3,8 +3,11 @@
  * informational target range, a « no target » hint when a goal is picked
  * but the marker has none, and a count of readings dropped because their
  * unit couldn't be converted to the display unit. Pure presentation,
- * lifted out of `LabsView` to keep it to orchestration.
+ * lifted out of `LabsView` to keep it to orchestration. Copy resolves
+ * through the `hrt.labs.*` i18n keys (plural-aware for the skip count).
  */
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 interface ChartNotesProps {
   /** Resolved target-range label, or null when no goal / no target. */
   targetText: string | null;
@@ -16,21 +19,19 @@ interface ChartNotesProps {
 }
 
 export default function ChartNotes({ targetText, goalActive, skipped, unit }: ChartNotesProps) {
-  const s = skipped > 1 ? 's' : '';
+  const { t, tn } = useI18n();
   return (
     <>
       {targetText ? (
         <p className="mt-1 text-[11px] text-muted-soft">
-          {targetText} — informatif, pas un avis médical.
+          {t('hrt.labs.targetInfo', { values: { target: targetText } })}
         </p>
       ) : goalActive ? (
-        <p className="mt-1 text-[11px] text-muted-soft">
-          Pas de cible définie pour ce marqueur.
-        </p>
+        <p className="mt-1 text-[11px] text-muted-soft">{t('hrt.labs.noTarget')}</p>
       ) : null}
       {skipped > 0 ? (
         <p className="mt-1 text-[11px] text-muted-soft">
-          {skipped} résultat{s} non convertible{s} en {unit} — masqué{s} du graphique.
+          {tn('hrt.labs.skipped', skipped, { values: { unit } })}
         </p>
       ) : null}
     </>

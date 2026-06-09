@@ -22,7 +22,9 @@
 import { memo } from 'react';
 import type { HrtProductPayload } from '@nodea/shared';
 
-import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS, formatLogDate } from '../lib/labels';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
+import { categoryLabel, formatLogDate, routeLabel } from '../lib/labels';
 import { doseUnitOf, mgEquivalent } from '../lib/export-model';
 import RowActions from './RowActions';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
@@ -37,6 +39,7 @@ interface AdminLogRowProps {
 }
 
 function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps) {
+  const { t, language } = useI18n();
   // A product with a mg/mL concentration is dosed in mL → derive the mg
   // here, per dose (the conversion lives at the entry, not the product).
   const unit = doseUnitOf(product);
@@ -45,13 +48,13 @@ function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps)
   return (
     <article className="group flex items-start gap-4 border-b border-hair py-3">
       <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
-        {formatLogDate(entry.payload.date)}
+        {formatLogDate(entry.payload.date, language)}
         {entry.payload.time ? (
           <span className="block text-[11px] text-muted-soft">{entry.payload.time}</span>
         ) : null}
         {entry.payload.scheduleId ? (
           <span className="mt-1 block w-fit rounded-sm bg-bg-2 px-1.5 py-0.5 text-[10px] font-normal text-muted">
-            auto
+            {t('hrt.administration.autoTag')}
           </span>
         ) : null}
       </span>
@@ -63,7 +66,9 @@ function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps)
             <span className="font-normal"> · {product.medication}</span>
           ) : null}
           {!product ? (
-            <span className="ml-1 text-[12px] font-normal text-muted">(produit supprimé)</span>
+            <span className="ml-1 text-[12px] font-normal text-muted">
+              {t('hrt.administration.deletedProduct')}
+            </span>
           ) : null}
           <span className="ml-2 font-normal text-muted">
             {entry.payload.dose}
@@ -73,8 +78,8 @@ function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps)
         </p>
         {product ? (
           <p className="mt-0.5 text-[12px] text-muted">
-            <span className="text-accent">{HRT_CATEGORY_LABELS[product.category]}</span> ·{' '}
-            {HRT_ROUTE_LABELS[product.route]}
+            <span className="text-accent">{categoryLabel(t, product.category)}</span> ·{' '}
+            {routeLabel(t, product.route)}
             {typeof product.concentration === 'number' ? ` · ${product.concentration} mg/mL` : ''}
           </p>
         ) : null}

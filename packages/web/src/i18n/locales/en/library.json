@@ -1,1 +1,177 @@
-{}
+{
+  "title": "Library",
+  "topbar": {
+    "label": {
+      "one": "Library · {count} book",
+      "other": "Library · {count} books"
+    },
+    "searchPlaceholder": "Search in Library…",
+    "newBook": "+ New book",
+    "newQuote": "+ New quote",
+    "newNote": "+ New note",
+    "addBookFirst": "Add a book to Library first."
+  },
+  "list": {
+    "loading": "Loading your library…",
+    "loadError": "Error while loading the library.",
+    "emptyCatalogue": "No books yet — add the first one with “+ New book”.",
+    "emptySelection": "No books match this selection.",
+    "groupCountNoun": "book",
+    "filterBanner": "Filter:",
+    "clearFilterAria": "Clear the filter"
+  },
+  "row": {
+    "editTitle": "Edit this book",
+    "open": "Open {title}",
+    "favoriteAdd": "Add to favorites",
+    "favoriteRemove": "Remove from favorites",
+    "favorite": "Favorite",
+    "delete": "Delete book",
+    "noCover": "No cover"
+  },
+  "table": {
+    "title": "Title"
+  },
+  "fields": {
+    "author": "Author",
+    "publisher": "Publisher",
+    "language": "Language",
+    "year": "Year"
+  },
+  "cellFilter": {
+    "filterTitle": "Filter by {label}: {value}"
+  },
+  "side": {
+    "view": "View",
+    "groupBy": "Group by",
+    "status": "Status",
+    "tags": "Tags",
+    "all": "All",
+    "favorites": "★ Favorites",
+    "filtersToggle": "Filters"
+  },
+  "viewMode": {
+    "list-plain": "Compact",
+    "list-cover": "Covers",
+    "table": "Table",
+    "grid": "Grid",
+    "wall": "Wall"
+  },
+  "groupByOptions": {
+    "status": "Status",
+    "author": "Author",
+    "year": "Year",
+    "tag": "Category",
+    "publisher": "Publisher",
+    "collection": "Collection"
+  },
+  "groupNone": {
+    "author": "Unknown author",
+    "year": "Unknown year",
+    "tag": "Uncategorised",
+    "publisher": "Unknown publisher",
+    "collection": "No collection"
+  },
+  "status": {
+    "planned": "To read",
+    "in_progress": "Reading",
+    "finished": "Finished",
+    "abandoned": "Abandoned"
+  },
+  "statusGroup": {
+    "planned": "To read",
+    "in_progress": "Reading",
+    "finished": "Finished",
+    "abandoned": "Abandoned"
+  },
+  "format": {
+    "paper": "Paper",
+    "ebook": "eBook",
+    "audio": "Audio",
+    "unknown": "—"
+  },
+  "reviewKind": {
+    "quote": "Quote",
+    "note": "Note"
+  },
+  "searchMode": {
+    "all": "Metadata + cover",
+    "cover-only": "Cover only"
+  },
+  "language": {
+    "fr": "French",
+    "en": "English",
+    "es": "Spanish",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "jp": "Japanese",
+    "ja": "Japanese",
+    "zh": "Chinese",
+    "ar": "Arabic",
+    "ru": "Russian",
+    "he": "Hebrew"
+  },
+  "form": {
+    "titlePlaceholder": "Title — e.g. Les Misérables",
+    "authorPlaceholder": "Author — e.g. Victor Hugo",
+    "yearPlaceholder": "Year",
+    "isbnPlaceholder": "ISBN (optional)",
+    "publisherPlaceholder": "Publisher (optional)",
+    "collectionPlaceholder": "Collection (optional) — e.g. Folio classique, Babel",
+    "seriesPlaceholder": "Series (optional) — e.g. The Lord of the Rings",
+    "seriesPositionPlaceholder": "Vol. #",
+    "tagsPlaceholder": "Tags (optional) — e.g. classic, to gift",
+    "statusAria": "Status",
+    "formatAria": "Format",
+    "submitCreate": "Add to my library"
+  },
+  "errors": {
+    "titleRequired": "Title is required.",
+    "yearInvalid": "Year must be a 4-digit number.",
+    "notConfigured": "Library module not configured or key missing — sign in again.",
+    "saveFailed": "Error while saving."
+  },
+  "lookup": {
+    "search": "Search",
+    "modeAria": "Choose what gets applied",
+    "filterAll": "All",
+    "noResults": "No results. You can enter the details manually.",
+    "rateLimited": "Too many recent searches — wait a minute.",
+    "unavailable": "Search unavailable. You can enter the details manually.",
+    "noCoverResults": "No result offers a cover — try another search.",
+    "series": "{name}, vol. {position}"
+  },
+  "picker": {
+    "headingQuote": "New quote",
+    "headingNote": "New note",
+    "subtitleQuote": "Choose the book this quote belongs to.",
+    "subtitleNote": "Choose the book this note belongs to.",
+    "searchPlaceholder": "Search a book by title or author…",
+    "emptyLibrary": "No books in the library.",
+    "emptySearch": "No results for this search."
+  },
+  "reviews": {
+    "heading": {
+      "quote": "Quotes",
+      "note": "Notes"
+    },
+    "empty": {
+      "quote": "No quotes yet — open a book and add one.",
+      "note": "No notes yet — open a book and add one."
+    },
+    "deletedBook": "(deleted book)",
+    "page": "· p. {page}"
+  },
+  "reviewForm": {
+    "captionPrefix": "On",
+    "captionTitle": "“{title}”",
+    "pagePlaceholder": "Page",
+    "contentRequired": "Content is required.",
+    "noParent": "No book attached — open the review from the book’s page."
+  },
+  "confirm": {
+    "deleteItem": "Delete “{title}” and its reviews?",
+    "deleteReview": "Delete this review?"
+  }
+}

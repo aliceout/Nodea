@@ -1,1 +1,177 @@
-{}
+{
+  "title": "Library",
+  "topbar": {
+    "label": {
+      "one": "Library · {count} livre",
+      "other": "Library · {count} livres"
+    },
+    "searchPlaceholder": "Rechercher dans Library…",
+    "newBook": "+ Nouveau livre",
+    "newQuote": "+ Nouvel extrait",
+    "newNote": "+ Nouvelle note",
+    "addBookFirst": "Ajoute d’abord un livre dans Library."
+  },
+  "list": {
+    "loading": "Chargement de la bibliothèque…",
+    "loadError": "Erreur lors du chargement de la bibliothèque.",
+    "emptyCatalogue": "Aucun livre — ajoute le premier avec « + Nouveau livre ».",
+    "emptySelection": "Aucun livre pour cette sélection.",
+    "groupCountNoun": "livre",
+    "filterBanner": "Filtre :",
+    "clearFilterAria": "Retirer le filtre"
+  },
+  "row": {
+    "editTitle": "Modifier ce livre",
+    "open": "Ouvrir {title}",
+    "favoriteAdd": "Ajouter aux favoris",
+    "favoriteRemove": "Retirer des favoris",
+    "favorite": "Favori",
+    "delete": "Supprimer le livre",
+    "noCover": "Pas de couverture"
+  },
+  "table": {
+    "title": "Titre"
+  },
+  "fields": {
+    "author": "Auteur·rice",
+    "publisher": "Éditeur",
+    "language": "Langue",
+    "year": "Année"
+  },
+  "cellFilter": {
+    "filterTitle": "Filtrer sur {label} : {value}"
+  },
+  "side": {
+    "view": "Vue",
+    "groupBy": "Grouper par",
+    "status": "Statut",
+    "tags": "Tags",
+    "all": "Tous",
+    "favorites": "★ Favoris",
+    "filtersToggle": "Filtres"
+  },
+  "viewMode": {
+    "list-plain": "Compacte",
+    "list-cover": "Couvertures",
+    "table": "Tableau",
+    "grid": "Grille",
+    "wall": "Mur"
+  },
+  "groupByOptions": {
+    "status": "Statut",
+    "author": "Auteur·ice",
+    "year": "Année",
+    "tag": "Catégorie",
+    "publisher": "Éditeur",
+    "collection": "Collection"
+  },
+  "groupNone": {
+    "author": "Auteur·ice inconnu·e",
+    "year": "Année inconnue",
+    "tag": "Sans catégorie",
+    "publisher": "Éditeur inconnu",
+    "collection": "Sans collection"
+  },
+  "status": {
+    "planned": "À lire",
+    "in_progress": "En cours",
+    "finished": "Terminé",
+    "abandoned": "Abandonné"
+  },
+  "statusGroup": {
+    "planned": "À lire",
+    "in_progress": "En cours",
+    "finished": "Terminés",
+    "abandoned": "Abandonnés"
+  },
+  "format": {
+    "paper": "Papier",
+    "ebook": "eBook",
+    "audio": "Audio",
+    "unknown": "—"
+  },
+  "reviewKind": {
+    "quote": "Extrait",
+    "note": "Note"
+  },
+  "searchMode": {
+    "all": "Métadonnées + couverture",
+    "cover-only": "Couverture seule"
+  },
+  "language": {
+    "fr": "Français",
+    "en": "Anglais",
+    "es": "Espagnol",
+    "de": "Allemand",
+    "it": "Italien",
+    "pt": "Portugais",
+    "jp": "Japonais",
+    "ja": "Japonais",
+    "zh": "Chinois",
+    "ar": "Arabe",
+    "ru": "Russe",
+    "he": "Hébreu"
+  },
+  "form": {
+    "titlePlaceholder": "Titre — ex. Les Misérables",
+    "authorPlaceholder": "Auteur·rice — ex. Victor Hugo",
+    "yearPlaceholder": "Année",
+    "isbnPlaceholder": "ISBN (optionnel)",
+    "publisherPlaceholder": "Éditeur (optionnel)",
+    "collectionPlaceholder": "Collection (optionnel) — ex. Folio classique, Babel",
+    "seriesPlaceholder": "Série (optionnel) — ex. Le Seigneur des Anneaux",
+    "seriesPositionPlaceholder": "Tome n°",
+    "tagsPlaceholder": "Tags (optionnel) — ex. classique, à offrir",
+    "statusAria": "Statut",
+    "formatAria": "Format",
+    "submitCreate": "Ajouter à ma bibliothèque"
+  },
+  "errors": {
+    "titleRequired": "Le titre est requis.",
+    "yearInvalid": "L’année doit être un nombre à 4 chiffres.",
+    "notConfigured": "Module Library non configuré ou clé absente — reconnecte-toi.",
+    "saveFailed": "Erreur lors de l’enregistrement."
+  },
+  "lookup": {
+    "search": "Chercher",
+    "modeAria": "Choisir ce qui sera appliqué",
+    "filterAll": "Tous",
+    "noResults": "Aucun résultat. Tu peux saisir manuellement.",
+    "rateLimited": "Trop de recherches récentes — patiente une minute.",
+    "unavailable": "Recherche indisponible. Tu peux saisir manuellement.",
+    "noCoverResults": "Aucun résultat ne propose de couverture — essaie une autre recherche.",
+    "series": "{name}, t. {position}"
+  },
+  "picker": {
+    "headingQuote": "Nouvel extrait",
+    "headingNote": "Nouvelle note",
+    "subtitleQuote": "Choisis le livre auquel rattacher cet extrait.",
+    "subtitleNote": "Choisis le livre auquel rattacher cette note.",
+    "searchPlaceholder": "Rechercher un livre par titre ou auteur·rice…",
+    "emptyLibrary": "Aucun livre dans la bibliothèque.",
+    "emptySearch": "Aucun résultat pour cette recherche."
+  },
+  "reviews": {
+    "heading": {
+      "quote": "Extraits",
+      "note": "Notes"
+    },
+    "empty": {
+      "quote": "Aucun extrait pour le moment — ouvre un livre et ajoute-en un.",
+      "note": "Aucune note pour le moment — ouvre un livre et ajoute-en une."
+    },
+    "deletedBook": "(livre supprimé)",
+    "page": "· p. {page}"
+  },
+  "reviewForm": {
+    "captionPrefix": "Sur",
+    "captionTitle": "« {title} »",
+    "pagePlaceholder": "Page",
+    "contentRequired": "Le contenu est requis.",
+    "noParent": "Aucun livre rattaché — ouvre la review depuis la page du livre."
+  },
+  "confirm": {
+    "deleteItem": "Supprimer « {title} » et ses reviews ?",
+    "deleteReview": "Supprimer cette review ?"
+  }
+}

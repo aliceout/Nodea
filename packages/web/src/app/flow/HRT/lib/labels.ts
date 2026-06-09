@@ -1,8 +1,18 @@
 /**
- * HRT display labels — FR strings for the typed enums + a tiny date
- * helper. Kept inline (no i18n namespace yet) to match Library's
- * pattern; a dedicated `hrt.json` can come later if the module grows
- * an EN audience.
+ * HRT display helpers — the typed enums resolved through the `hrt`
+ * i18n namespace, plus small date formatters.
+ *
+ * Where it sits : the lib layer of the HRT module. The enum labels used
+ * to live here as hardcoded FR `Record`s (the module's documented i18n
+ * debt) ; since the i18n pass they are thin wrappers over `t('hrt.…')`,
+ * with the FR / EN copy in `i18n/locales/{fr,en}/hrt.json`. The helpers
+ * stay pure by taking the caller's `t` (from `useI18n()`) as their first
+ * argument — no React, no context — so `export-model` & friends can
+ * reuse them and tests can feed a locally-built translator.
+ *
+ * `markerLabel` is the exception : marker preset labels are shared DATA
+ * (`@nodea/shared` presets, stored keys), not UI chrome — they are shown
+ * verbatim, never translated.
  */
 import {
   findMarker,
@@ -12,33 +22,34 @@ import {
   type HrtRoute,
 } from '@nodea/shared';
 
-export const HRT_CATEGORY_LABELS: Record<HrtCategory, string> = {
-  estrogen: 'Œstrogène',
-  antiandrogen: 'Anti-androgène',
-  progestogen: 'Progestatif',
-  testosterone: 'Testostérone',
-  gnrh: 'Agoniste GnRH',
-  other: 'Autre',
-};
+/** The `t` shape the HRT module threads around — structurally
+ *  compatible with the `useI18n()` provider function. */
+export type HrtTranslate = (
+  key: string,
+  options?: { values?: Record<string, string | number> },
+) => string;
 
-export const HRT_ROUTE_LABELS: Record<HrtRoute, string> = {
-  oral: 'Orale',
-  sublingual: 'Sublinguale',
-  injection_im: 'Injection IM',
-  injection_sc: 'Injection SC',
-  gel: 'Gel',
-  patch: 'Patch',
-  spray: 'Spray',
-  implant: 'Implant',
-  other: 'Autre',
-};
+/** Plural-aware `tn` — same threading contract as `HrtTranslate`. */
+export type HrtTranslatePlural = (
+  key: string,
+  count: number,
+  options?: { values?: Record<string, string | number> },
+) => string;
 
-export const HRT_DRAW_CONTEXT_LABELS: Record<HrtDrawContext, string> = {
-  trough: 'Creux',
-  peak: 'Pic',
-  random: 'Aléatoire',
-  unknown: 'Non précisé',
-};
+/** Display label for a product category. */
+export function categoryLabel(t: HrtTranslate, category: HrtCategory): string {
+  return t(`hrt.category.${category}`);
+}
+
+/** Display label for an administration route. */
+export function routeLabel(t: HrtTranslate, route: HrtRoute): string {
+  return t(`hrt.route.${route}`);
+}
+
+/** Display label for a lab draw context. */
+export function drawContextLabel(t: HrtTranslate, context: HrtDrawContext): string {
+  return t(`hrt.drawContext.${context}`);
+}
 
 /** Display label for a marker key — preset label when known, else the
  *  raw key (free-text markers). */
@@ -47,8 +58,14 @@ export function markerLabel(key: string): string {
 }
 
 /** Human label for a schedule's cadence, e.g. « Tous les 5 jours ». */
-export function frequencyLabel(frequency: HrtFrequency, everyNDays?: number): string {
-  return frequency === 'every_n_days' ? `Tous les ${everyNDays ?? '?'} jours` : 'Tous les jours';
+export function frequencyLabel(
+  t: HrtTranslate,
+  frequency: HrtFrequency,
+  everyNDays?: number,
+): string {
+  return frequency === 'every_n_days'
+    ? t('hrt.frequency.everyNDays', { values: { n: everyNDays ?? '?' } })
+    : t('hrt.frequency.daily');
 }
 
 /** Local-midnight ISO date `YYYY-MM-DD` for today. */
@@ -58,11 +75,12 @@ export function todayIso(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/** Human label for a log row's date, e.g. « 4 juin 2026 ». */
-export function formatLogDate(iso: string): string {
+/** Human label for a log row's date in the active locale, e.g.
+ *  « 4 juin 2026 » / "4 June 2026". `locale` is `useI18n().language`. */
+export function formatLogDate(iso: string, locale: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
+  return new Date(y, m - 1, d).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

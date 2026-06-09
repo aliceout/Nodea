@@ -35,6 +35,7 @@ import { TrashIcon } from '@heroicons/react/24/outline';
 import type { HrtAdminLogPayload } from '@nodea/shared';
 import { hrtAdminLogsClient } from '@/core/api/modules/hrt';
 import { useModuleClient } from '@/core/modules/use-module-client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 interface AdminEntry {
@@ -53,8 +54,6 @@ interface AnalysisResult {
   /** IDs to delete. The kept row of each group is implicit. */
   toDelete: string[];
 }
-
-const plural = (n: number): string => (n > 1 ? 's' : '');
 
 /** Build the dedup key from a payload. Only materialised entries
  *  participate ; everything else returns null. */
@@ -100,6 +99,7 @@ function analyse(entries: ReadonlyArray<AdminEntry>): AnalysisResult {
 const POOL = 8;
 
 export default function DedupPanel() {
+  const { t, tn } = useI18n();
   const ctx = useModuleClient('hrt');
   const [phase, setPhase] = useState<Phase>('idle');
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -118,7 +118,7 @@ export default function DedupPanel() {
       setPhase('preview');
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Analyse impossible.';
+        err instanceof Error ? err.message : t('hrt.dedup.analyzeFailed');
       setError(message);
       setPhase('idle');
     }
@@ -166,14 +166,9 @@ export default function DedupPanel() {
 
   return (
     <section className="mx-auto mt-10 max-w-5xl border-t border-hair pt-8">
-      <h2 className="text-[14px] font-medium text-ink">Nettoyer les doublons</h2>
+      <h2 className="text-[14px] font-medium text-ink">{t('hrt.dedup.title')}</h2>
       <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-muted">
-        Détecte les prises automatiquement créées plusieurs fois par les prises
-        récurrentes (un ancien bug qui pouvait produire 2 ou 3 copies de la même
-        dose). Le scan ne touche que les prises générées par un schedule ; les
-        prises manuelles sont ignorées même si elles paraissent identiques.
-        Pour chaque doublon, on garde la plus ancienne version et on supprime
-        les copies.
+        {t('hrt.dedup.description')}
       </p>
 
       {phase === 'idle' && (
@@ -184,7 +179,7 @@ export default function DedupPanel() {
             onClick={() => void runAnalysis()}
             disabled={!ctx}
           >
-            Analyser
+            {t('hrt.dedup.analyze')}
           </Button>
           {error ? (
             <p className="mt-3 text-[12.5px] text-danger" role="alert">
@@ -195,24 +190,22 @@ export default function DedupPanel() {
       )}
 
       {phase === 'analyzing' && (
-        <p className="mt-4 text-[12.5px] text-muted">Analyse en cours…</p>
+        <p className="mt-4 text-[12.5px] text-muted">{t('hrt.dedup.analyzing')}</p>
       )}
 
       {phase === 'preview' && analysis && (
         <div className="mt-4">
           {analysis.duplicateCount === 0 ? (
             <p className="text-[13px] text-ink" role="status">
-              Aucun doublon détecté. ✨
+              {t('hrt.dedup.none')}
             </p>
           ) : (
             <>
               <p className="text-[13px] text-ink">
                 <span className="font-semibold">{analysis.duplicateCount}</span>{' '}
-                doublon{plural(analysis.duplicateCount)} détecté
-                {plural(analysis.duplicateCount)} sur{' '}
+                {tn('hrt.dedup.foundDuplicates', analysis.duplicateCount)}{' '}
                 <span className="font-semibold">{analysis.groupCount}</span>{' '}
-                prise{plural(analysis.groupCount)} matérialisée
-                {plural(analysis.groupCount)}.
+                {tn('hrt.dedup.foundGroups', analysis.groupCount)}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button
@@ -221,11 +214,10 @@ export default function DedupPanel() {
                   onClick={() => setPhase('confirming')}
                 >
                   <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                  Supprimer {analysis.duplicateCount} doublon
-                  {plural(analysis.duplicateCount)}
+                  {tn('hrt.dedup.deleteButton', analysis.duplicateCount)}
                 </Button>
                 <Button variant="neutral" size="sm" onClick={reset}>
-                  Annuler
+                  {t('common.actions.cancel')}
                 </Button>
               </div>
             </>
@@ -240,12 +232,10 @@ export default function DedupPanel() {
           aria-labelledby="dedup-confirm-title"
         >
           <p id="dedup-confirm-title" className="text-[13px] font-medium text-ink">
-            Action irréversible.
+            {t('hrt.dedup.irreversible')}
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
-            {analysis.duplicateCount} prise{plural(analysis.duplicateCount)} vont
-            être supprimée{plural(analysis.duplicateCount)} définitivement. La
-            prise la plus ancienne de chaque groupe est conservée.
+            {tn('hrt.dedup.confirmBody', analysis.duplicateCount)}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button
@@ -253,14 +243,14 @@ export default function DedupPanel() {
               size="sm"
               onClick={() => void runDeletion()}
             >
-              Confirmer la suppression
+              {t('hrt.dedup.confirmDelete')}
             </Button>
             <Button
               variant="neutral"
               size="sm"
               onClick={() => setPhase('preview')}
             >
-              Annuler
+              {t('common.actions.cancel')}
             </Button>
           </div>
         </div>
@@ -269,7 +259,9 @@ export default function DedupPanel() {
       {phase === 'deleting' && analysis && (
         <div className="mt-4">
           <p className="text-[12.5px] text-muted" role="status">
-            Suppression en cours… {progress} / {analysis.duplicateCount}
+            {t('hrt.dedup.deleting', {
+              values: { done: progress, total: analysis.duplicateCount },
+            })}
           </p>
           <div
             className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg-2"
@@ -294,21 +286,15 @@ export default function DedupPanel() {
             <span className="font-semibold">
               {analysis.duplicateCount - failed}
             </span>{' '}
-            doublon{plural(analysis.duplicateCount - failed)} supprimé
-            {plural(analysis.duplicateCount - failed)}.
+            {tn('hrt.dedup.deleted', analysis.duplicateCount - failed)}
             {failed > 0 && (
-              <span className="text-danger">
-                {' '}
-                {failed} échec{plural(failed)} — réessaye dans un instant.
-              </span>
+              <span className="text-danger"> {tn('hrt.dedup.failures', failed)}</span>
             )}
           </p>
-          <p className="mt-2 text-[12.5px] text-muted">
-            Recharge la page pour voir les listes mises à jour.
-          </p>
+          <p className="mt-2 text-[12.5px] text-muted">{t('hrt.dedup.reloadHint')}</p>
           <div className="mt-3">
             <Button variant="neutral" size="sm" onClick={reset}>
-              Refaire un scan
+              {t('hrt.dedup.rescan')}
             </Button>
           </div>
         </div>

@@ -6,10 +6,17 @@
  * matching, the mapping-driven payload build (incl. the empty-unit
  * resolution) and the exact-match dedupe. No spreadsheet / xlsx library
  * involved.
+ *
+ * The row-error reasons resolve through the caller's `t` since the i18n
+ * pass — the tests feed one resolved over the real FR `hrt.json`, so the
+ * expected reasons stay the French copy the module always shipped.
  */
 import { describe, expect, it } from 'vitest';
 
 import type { HrtLabResultPayload } from '@nodea/shared';
+
+import frHrt from '@/i18n/locales/fr/hrt.json';
+import { translate } from '@/i18n/translate';
 
 import {
   buildLabResultPayloads,
@@ -19,6 +26,11 @@ import {
   suggestMarkerMatch,
   type AnalyseCandidate,
 } from './import-model';
+import type { HrtTranslate } from './labels';
+
+/** `t` resolved over the bundled FR namespace — pure, no React. */
+const t: HrtTranslate = (key, options) =>
+  translate({ fr: { hrt: frHrt } }, 'fr', key, options);
 
 describe('parseAnalyseRows', () => {
   it('parses a clean row, numbering from the row below the header', () => {
@@ -27,7 +39,7 @@ describe('parseAnalyseRows', () => {
         Date: '2026-06-04', Marqueur: 'Œstradiol', Valeur: 165,
         Unité: 'pg/mL', Contexte: 'Creux', Laboratoire: 'Cerba', Notes: '',
       },
-    ]);
+    ], t);
     expect(errors).toEqual([]);
     expect(candidates[0]).toEqual({
       row: 2, date: '2026-06-04', marker: 'Œstradiol', value: 165,
@@ -38,7 +50,7 @@ describe('parseAnalyseRows', () => {
   it('accepts a French date (JJ.MM.AAAA) and a comma decimal value', () => {
     const { candidates } = parseAnalyseRows([
       { Date: '04.06.2026', Marqueur: 'estradiol', Valeur: '1,5' },
-    ]);
+    ], t);
     expect(candidates[0]?.date).toBe('2026-06-04');
     expect(candidates[0]?.value).toBe(1.5);
   });
@@ -46,14 +58,14 @@ describe('parseAnalyseRows', () => {
   it('tolerates lower-case / accent-free headers', () => {
     const { candidates } = parseAnalyseRows([
       { date: '2026-06-04', marqueur: 'LH', valeur: 4, unite: 'IU/L' },
-    ]);
+    ], t);
     expect(candidates).toHaveLength(1);
     expect(candidates[0]?.unit).toBe('IU/L');
   });
 
   it('maps French draw-context labels (and falls back to unknown)', () => {
     const ctx = (label: string): string | undefined =>
-      parseAnalyseRows([{ Date: '2026-06-04', Marqueur: 'X', Valeur: 1, Contexte: label }])
+      parseAnalyseRows([{ Date: '2026-06-04', Marqueur: 'X', Valeur: 1, Contexte: label }], t)
         .candidates[0]?.context;
     expect(ctx('Creux')).toBe('trough');
     expect(ctx('Pic')).toBe('peak');
@@ -65,7 +77,7 @@ describe('parseAnalyseRows', () => {
   it('allows an empty unit at parse time (resolved later)', () => {
     const { candidates, errors } = parseAnalyseRows([
       { Date: '2026-06-04', Marqueur: 'estradiol', Valeur: 165, Unité: '' },
-    ]);
+    ], t);
     expect(errors).toEqual([]);
     expect(candidates[0]?.unit).toBe('');
   });
@@ -75,7 +87,7 @@ describe('parseAnalyseRows', () => {
       { Date: '2026-06-04', Marqueur: '', Valeur: 1 },
       { Date: '2026-06-04', Marqueur: 'X', Valeur: 'NA' },
       { Date: '32.13.2026', Marqueur: 'X', Valeur: 1 },
-    ]);
+    ], t);
     expect(candidates).toEqual([]);
     expect(errors).toEqual([
       { row: 2, reason: 'marqueur manquant' },
@@ -88,7 +100,7 @@ describe('parseAnalyseRows', () => {
     const { candidates, errors } = parseAnalyseRows([
       { Date: '', Marqueur: '', Valeur: '' },
       { Date: '2026-06-04', Marqueur: 'X', Valeur: 1, Unité: 'mg' },
-    ]);
+    ], t);
     expect(candidates).toHaveLength(1);
     expect(candidates[0]?.row).toBe(3);
     expect(errors).toEqual([]);
@@ -136,6 +148,7 @@ describe('buildLabResultPayloads', () => {
     const { payloads, skipped } = buildLabResultPayloads(
       [base],
       new Map([['estradiol', 'estradiol']]),
+      t,
     );
     expect(skipped).toEqual([]);
     expect(payloads).toEqual([
@@ -150,6 +163,7 @@ describe('buildLabResultPayloads', () => {
     const { payloads } = buildLabResultPayloads(
       [{ ...base, unit: 'pmol/L' }],
       new Map([['estradiol', 'estradiol']]),
+      t,
     );
     expect(payloads[0]?.unit).toBe('pmol/L');
   });
@@ -159,6 +173,7 @@ describe('buildLabResultPayloads', () => {
     const { payloads, skipped } = buildLabResultPayloads(
       [custom],
       new Map([['Ferritine', 'Ferritine']]),
+      t,
     );
     expect(payloads).toEqual([]);
     expect(skipped).toEqual([{ row: 2, reason: 'unité manquante pour « Ferritine »' }]);

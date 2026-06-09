@@ -15,6 +15,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { type LibraryStatus } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { matchesAnyField } from '@/lib/text-search';
 
 import { matchesCellFilter, type CellFilter } from '../lib/cell-filter';
@@ -68,6 +69,10 @@ export interface LibraryFiltersState {
 }
 
 export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
+  // `t` feeds the group headers built by `buildGroups` (status names,
+  // « no value » buckets). Listed in the memo deps so a language
+  // switch re-labels the groups without a data refetch.
+  const { t } = useI18n();
   const [statusFilter, setStatusFilter] =
     useState<LibraryStatus | 'all' | 'favorites'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
@@ -125,8 +130,8 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
   }, [items, statusFilter, tagFilter, cellFilter, deferredSearchQuery]);
 
   const groups = useMemo<LibraryGroup[]>(
-    () => buildGroups(filteredItems, groupBy),
-    [filteredItems, groupBy],
+    () => buildGroups(filteredItems, groupBy, t),
+    [filteredItems, groupBy, t],
   );
 
   return {

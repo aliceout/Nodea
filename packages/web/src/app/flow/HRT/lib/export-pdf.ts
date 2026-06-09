@@ -16,7 +16,7 @@
  */
 import type { DoseChart, DoseRow, ExportGroupBy, LabGroup, RegimenRow } from './export-model';
 import { flattenLabReadings, groupDosesByMolecule } from './export-model';
-import { formatDotDate } from './labels';
+import { formatDotDate, type HrtTranslate, type HrtTranslatePlural } from './labels';
 import type { ChartPoint } from '../components/LabChart';
 
 type RGB = readonly [number, number, number];
@@ -38,6 +38,12 @@ export interface ExportPdfArgs {
   labs: ReadonlyArray<LabGroup>;
   doseCharts: ReadonlyArray<DoseChart>;
   filename: string;
+  /** Caller's `useI18n()` translators — the report is a user-facing
+   *  document, so every string in it goes through them. */
+  t: HrtTranslate;
+  tn: HrtTranslatePlural;
+  /** BCP-47 language for the chart date labels (`useI18n().language`). */
+  locale: string;
 }
 
 /** Human dose string for the PDF — « 0.4 mL (4 mg) » (no « ≈ »). */
@@ -56,6 +62,7 @@ function doseProductCell(r: DoseRow): string {
 }
 
 export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
+  const { t, tn, locale } = args;
   const { jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
 
@@ -144,7 +151,7 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
       doc.addPage('a4', 'landscape');
       const lw = doc.internal.pageSize.getWidth();
       const lh = doc.internal.pageSize.getHeight();
-      drawChart(doc, c.points, c.unit, c.label, { x: 12, y: 12, w: lw - 24, h: lh - 24 });
+      drawChart(doc, c.points, c.unit, c.label, { x: 12, y: 12, w: lw - 24, h: lh - 24 }, locale);
     }
   };
 
@@ -153,7 +160,7 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...INK);
-  doc.text("Récapitulatif d'hormonothérapie", M, y);
+  doc.text(t('hrt.export.pdf.title'), M, y);
   y += 7;
   if (args.note.trim()) {
     doc.setFont('helvetica', 'normal');
@@ -165,16 +172,26 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
-  doc.text(`Document généré le ${args.generatedLabel} · Période : ${args.periodLabel}`, M, y);
+  doc.text(
+    t('hrt.export.pdf.meta', { values: { date: args.generatedLabel, period: args.periodLabel } }),
+    M,
+    y,
+  );
   y += 6;
 
-  // ── Traitement en cours ─────────────────────────────────────────────
-  y = sectionTitle('Traitement en cours', y, args.regimen.length ? `${args.regimen.length} prise(s) récurrente(s)` : undefined);
+  // ── Current treatment ───────────────────────────────────────────────
+  y = sectionTitle(
+    t('hrt.export.pdf.regimenTitle'),
+    y,
+    args.regimen.length ? tn('hrt.export.pdf.regimenCount', args.regimen.length) : undefined,
+  );
   if (args.regimen.length === 0) {
-    y = muted('Aucune prise récurrente active.', y);
+    y = muted(t('hrt.export.pdf.regimenEmpty'), y);
   } else {
     y = table(
-      ['Molécule / produit', 'Dose', 'Fréquence', 'Voie', 'Depuis'],
+      ['molecule', 'dose', 'frequency', 'route', 'since'].map((k) =>
+        t(`hrt.export.pdf.regimenHead.${k}`),
+      ),
       args.regimen.map((r) => [
         r.product !== r.molecule ? `${r.molecule} (${r.product})` : r.molecule,
         r.doseText.replace(/\s*≈\s*/, ' = '),
@@ -186,15 +203,20 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
     );
   }
 
-  // ── Historique des prises ───────────────────────────────────────────
-  y = sectionTitle('Historique des prises', y, args.doses.length ? `${args.doses.length} prise(s)` : undefined);
+  // ── Intake history ──────────────────────────────────────────────────
+  const doseHead = ['date', 'product', 'dose', 'route'].map((k) => t(`hrt.export.matrix.${k}`));
+  y = sectionTitle(
+    t('hrt.export.pdf.dosesTitle'),
+    y,
+    args.doses.length ? tn('hrt.export.pdf.doseCount', args.doses.length) : undefined,
+  );
   if (args.doses.length === 0) {
-    y = muted('Aucune prise sur la période.', y);
+    y = muted(t('hrt.export.pdf.dosesEmpty'), y);
   } else if (args.groupBy === 'type') {
     for (const g of groupDosesByMolecule(args.doses)) {
-      y = subHeading(`${g.molecule} · ${g.rows.length} prise(s)`, y);
+      y = subHeading(`${g.molecule} · ${tn('hrt.export.pdf.doseCount', g.rows.length)}`, y);
       y = table(
-        ['Date', 'Produit', 'Dose', 'Voie'],
+        doseHead,
         g.rows.map((r) => [
           formatDotDate(r.date),
           doseProductCell(r),
@@ -207,7 +229,7 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
     }
   } else {
     y = table(
-      ['Date', 'Produit', 'Dose', 'Voie'],
+      doseHead,
       args.doses.map((r) => [
         formatDotDate(r.date),
         doseProductCell(r),
@@ -224,28 +246,36 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
   drawChartPages(
     args.doseCharts
       .filter((c) => c.points.length >= 2)
-      .map((c) => ({ points: c.points, unit: 'mg', label: `Doses · ${c.molecule}` })),
+      .map((c) => ({
+        points: c.points,
+        unit: 'mg',
+        label: t('hrt.export.pdf.doseChartLabel', { values: { molecule: c.molecule } }),
+      })),
   );
 
-  // ── Analyses biologiques — always starts at the top of a fresh page ──
+  // ── Lab results — always start at the top of a fresh page ───────────
   doc.addPage('a4', 'portrait');
   y = M + 2;
   const totalLabs = args.labs.reduce((n, g) => n + g.readings.length, 0);
-  y = sectionTitle('Analyses biologiques', y, totalLabs ? `${totalLabs} résultat(s)` : undefined);
+  y = sectionTitle(
+    t('hrt.export.pdf.labsTitle'),
+    y,
+    totalLabs ? tn('hrt.export.pdf.labCount', totalLabs) : undefined,
+  );
   if (args.labs.length === 0) {
-    y = muted('Aucune analyse sur la période.', y);
+    y = muted(t('hrt.export.pdf.labsEmpty'), y);
   } else if (args.groupBy === 'type') {
     for (const g of args.labs) {
       y = subHeading(`${g.label} (${g.displayUnit})`, y);
       y = table(
-        ['Date', 'Valeur', 'Contexte', 'Laboratoire'],
+        ['date', 'value', 'context', 'lab'].map((k) => t(`hrt.export.matrix.${k}`)),
         g.readings.map((r) => [formatDotDate(r.date), `${r.value} ${r.unit}`, r.contextLabel || '—', r.lab || '—']),
         y,
       );
     }
   } else {
     y = table(
-      ['Date', 'Marqueur', 'Valeur', 'Contexte', 'Laboratoire'],
+      ['date', 'marker', 'value', 'context', 'lab'].map((k) => t(`hrt.export.matrix.${k}`)),
       flattenLabReadings(args.labs).map((r) => [
         formatDotDate(r.date),
         r.markerLabel,
@@ -266,14 +296,7 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text(
-    doc.splitTextToSize(
-      "Document généré par Nodea, outil de suivi personnel chiffré de bout en bout. Les informations ci-dessus sont déclaratives, saisies par la personne utilisatrice ; elles ne constituent pas un avis médical et doivent être interprétées par un·e professionnel·le de santé.",
-      pageW - 2 * M,
-    ),
-    M,
-    y,
-  );
+  doc.text(doc.splitTextToSize(t('hrt.export.pdf.disclaimer'), pageW - 2 * M), M, y);
 
   // Analyses charts (marker trends) — after the analyses tables.
   drawChartPages(
@@ -312,8 +335,8 @@ function dateMs(iso: string): number {
 function fmtVal(v: number): string {
   return Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
 }
-function fmtDate(ms: number): string {
-  return new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+function fmtDate(ms: number, locale: string): string {
+  return new Date(ms).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 function drawChart(
@@ -322,6 +345,7 @@ function drawChart(
   unit: string,
   label: string,
   box: Box,
+  locale: string,
 ): void {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
@@ -366,7 +390,7 @@ function drawChart(
   const n = points.length === 1 ? 1 : Math.min(points.length, Math.max(2, Math.floor(pw / 40)));
   for (let i = 0; i < n; i++) {
     const t = n === 1 ? xMin : xMin + (i * (xMax - xMin)) / (n - 1);
-    doc.text(fmtDate(t), sx(t), py + ph + 5, {
+    doc.text(fmtDate(t, locale), sx(t), py + ph + 5, {
       align: i === 0 ? 'left' : i === n - 1 ? 'right' : 'center',
     });
   }

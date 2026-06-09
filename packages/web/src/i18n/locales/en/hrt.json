@@ -1,1 +1,363 @@
-{}
+{
+  "topbar": {
+    "summary": "HRT · Overview",
+    "administration": "HRT · Administration",
+    "labs": "HRT · Lab results",
+    "export": "HRT · Tools"
+  },
+  "load": {
+    "failed": "Failed to load."
+  },
+  "category": {
+    "estrogen": "Estrogen",
+    "antiandrogen": "Anti-androgen",
+    "progestogen": "Progestogen",
+    "testosterone": "Testosterone",
+    "gnrh": "GnRH agonist",
+    "other": "Other"
+  },
+  "route": {
+    "oral": "Oral",
+    "sublingual": "Sublingual",
+    "injection_im": "IM injection",
+    "injection_sc": "SC injection",
+    "gel": "Gel",
+    "patch": "Patch",
+    "spray": "Spray",
+    "implant": "Implant",
+    "other": "Other"
+  },
+  "drawContext": {
+    "trough": "Trough",
+    "peak": "Peak",
+    "random": "Random",
+    "unknown": "Not specified"
+  },
+  "frequency": {
+    "daily": "Every day",
+    "everyNDays": "Every {n} days"
+  },
+  "dateRange": {
+    "periodAria": "Period",
+    "all": "All dates",
+    "last30Days": "Last 30 days",
+    "months3": "3 months",
+    "months6": "6 months",
+    "months12": "12 months",
+    "custom": "Custom",
+    "fromAria": "From",
+    "toAria": "To"
+  },
+  "chart": {
+    "noData": "No data yet for {label}.",
+    "ariaLabel": "Trend in {unit}",
+    "show": "Show chart",
+    "hide": "Hide chart"
+  },
+  "form": {
+    "saveFailed": "Could not save.",
+    "product": "Product",
+    "productNone": "No product recorded",
+    "productPlaceholder": "Pick a product…",
+    "newProduct": "+ New product",
+    "dose": "Dose",
+    "doseWithUnit": "Dose ({unit})",
+    "date": "Date",
+    "notes": "Notes (optional)",
+    "backToList": "List",
+    "other": "Other…"
+  },
+  "summary": {
+    "products": {
+      "title": "Products",
+      "viewAria": "Show products",
+      "active": "Active",
+      "archived": "Archived ({count})",
+      "new": "+ New",
+      "empty": "No product recorded.",
+      "emptyArchived": "No archived product."
+    },
+    "doseChart": {
+      "moleculeAria": "Chart molecule",
+      "emptyNoDoses": "No intake recorded.",
+      "emptyNoProducts": "Add a product, then log an intake, to see the chart."
+    },
+    "recentDoses": {
+      "title": "Latest intakes",
+      "link": "View intakes",
+      "empty": "No intake recorded."
+    },
+    "recentLabs": {
+      "title": "Latest lab results",
+      "link": "View results",
+      "empty": "No lab result recorded."
+    }
+  },
+  "administration": {
+    "title": "Intake journal",
+    "newSchedule": "+ Recurring intake",
+    "newManual": "+ Manual intake",
+    "empty": "No intake recorded. Add one, or start a recurring intake.",
+    "confirmDelete": "Delete this intake?\n{label}",
+    "confirmStop": "Stop the “{product}” series?\nIntakes already recorded are kept.",
+    "moleculeFilterAria": "Filter by molecule",
+    "allMolecules": "All molecules",
+    "autoTag": "auto",
+    "deletedProduct": "(deleted product)"
+  },
+  "schedule": {
+    "panelTitle": "Ongoing recurring intakes",
+    "show": "Show recurring intakes",
+    "hide": "Hide recurring intakes",
+    "since": "since {date}",
+    "editAria": "Edit the series",
+    "stop": "Stop",
+    "startDate": "Start date",
+    "frequencyField": "Frequency",
+    "everyNDaysOption": "Every N days",
+    "interval": "Interval (days)",
+    "start": "Start the series"
+  },
+  "product": {
+    "name": "Supplier name",
+    "namePlaceholder": "e.g. Compounded preparation, Aldactone…",
+    "category": "Category",
+    "molecule": "Molecule",
+    "moleculePlaceholder": "custom molecule…",
+    "chooseMolecule": "Pick a molecule…",
+    "route": "Route",
+    "concentration": "Concentration (mg/mL, optional)",
+    "doseUnit": "Dose unit",
+    "reactivate": "Reactivate",
+    "archiveAria": "Archive"
+  },
+  "labs": {
+    "title": "Lab results",
+    "new": "+ New result",
+    "empty": "No result recorded. Add the first one with “+ New result”.",
+    "confirmDelete": "Delete this result?\n{label}",
+    "markerFilterAria": "Filter by marker",
+    "allMarkers": "All markers",
+    "unitAria": "Display unit",
+    "goalAria": "Target ranges",
+    "goalNone": "Targets: none",
+    "goalFeminizing": "Targets: feminizing",
+    "goalMasculinizing": "Targets: masculinizing",
+    "targetIndicative": "Indicative target: {range} {unit}",
+    "targetInfo": "{target} — informational, not medical advice.",
+    "noTarget": "No target defined for this marker.",
+    "skipped": {
+      "one": "{count} result not convertible to {unit} — hidden from the chart.",
+      "other": "{count} results not convertible to {unit} — hidden from the chart."
+    },
+    "disclaimer": "Personal tracking tool — not medical advice. Target ranges are informational (WPATH / Endocrine Society); discuss them with your doctor.",
+    "form": {
+      "marker": "Marker",
+      "markerPlaceholder": "custom marker…",
+      "chooseMarker": "Pick a marker…",
+      "value": "Value",
+      "unit": "Unit",
+      "unitPlaceholder": "Unit…",
+      "context": "Draw context",
+      "lab": "Lab (optional)",
+      "labPlaceholder": "Cerballiance…"
+    }
+  },
+  "export": {
+    "title": "Export records",
+    "description": "Generate a PDF recap (regimen, intakes, lab results + charts) to bring to an appointment, or export the raw data to Excel or LibreOffice.",
+    "period": {
+      "all": "all dates",
+      "between": "from {from} to {to}",
+      "since": "since {from}",
+      "until": "until {to}"
+    },
+    "controls": {
+      "period": "Period",
+      "groupBy": "Group by",
+      "groupByType": "Molecule / marker",
+      "groupByDate": "Date",
+      "note": "Label (optional)",
+      "notePlaceholder": "e.g. first name, file number — appears on the printout, never stored",
+      "administrationCard": "Administration",
+      "labsCard": "Lab results"
+    },
+    "filter": {
+      "all": "All",
+      "none": "None",
+      "empty": "No data."
+    },
+    "actions": {
+      "generating": "Generating…",
+      "pdf": "PDF recap",
+      "doses": "Intakes",
+      "labs": "Lab results"
+    },
+    "sheets": {
+      "doses": "Intakes",
+      "labs": "Lab results"
+    },
+    "matrix": {
+      "date": "Date",
+      "time": "Time",
+      "product": "Product",
+      "molecule": "Molecule",
+      "category": "Category",
+      "route": "Route",
+      "dose": "Dose",
+      "unit": "Unit",
+      "mgEq": "mg equiv.",
+      "type": "Type",
+      "notes": "Notes",
+      "marker": "Marker",
+      "value": "Value",
+      "context": "Context",
+      "lab": "Laboratory",
+      "typeRecurring": "Recurring",
+      "typeManual": "Manual"
+    },
+    "pdf": {
+      "title": "Hormone therapy recap",
+      "meta": "Document generated on {date} · Period: {period}",
+      "regimenTitle": "Current treatment",
+      "regimenCount": {
+        "one": "{count} recurring intake",
+        "other": "{count} recurring intakes"
+      },
+      "regimenEmpty": "No active recurring intake.",
+      "regimenHead": {
+        "molecule": "Molecule / product",
+        "dose": "Dose",
+        "frequency": "Frequency",
+        "route": "Route",
+        "since": "Since"
+      },
+      "dosesTitle": "Intake history",
+      "doseCount": {
+        "one": "{count} intake",
+        "other": "{count} intakes"
+      },
+      "dosesEmpty": "No intake over the period.",
+      "doseChartLabel": "Doses · {molecule}",
+      "labsTitle": "Lab results",
+      "labCount": {
+        "one": "{count} result",
+        "other": "{count} results"
+      },
+      "labsEmpty": "No lab result over the period.",
+      "disclaimer": "Document generated by Nodea, a personal end-to-end encrypted tracking tool. The information above is self-reported, entered by the user; it does not constitute medical advice and must be interpreted by a healthcare professional."
+    }
+  },
+  "dedup": {
+    "title": "Clean up duplicates",
+    "description": "Detects intakes that recurring intakes created more than once (an old bug could produce 2 or 3 copies of the same dose). The scan only touches schedule-generated intakes; manual intakes are left alone even when they look identical. For each duplicate, the oldest version is kept and the copies are deleted.",
+    "analyze": "Analyze",
+    "analyzeFailed": "Analysis failed.",
+    "analyzing": "Analyzing…",
+    "none": "No duplicate found. ✨",
+    "foundDuplicates": {
+      "one": "duplicate found across",
+      "other": "duplicates found across"
+    },
+    "foundGroups": {
+      "one": "materialized intake.",
+      "other": "materialized intakes."
+    },
+    "deleteButton": {
+      "one": "Delete {count} duplicate",
+      "other": "Delete {count} duplicates"
+    },
+    "irreversible": "This cannot be undone.",
+    "confirmBody": {
+      "one": "{count} intake will be permanently deleted. The oldest intake of each group is kept.",
+      "other": "{count} intakes will be permanently deleted. The oldest intake of each group is kept."
+    },
+    "confirmDelete": "Confirm deletion",
+    "deleting": "Deleting… {done} / {total}",
+    "deleted": {
+      "one": "duplicate deleted.",
+      "other": "duplicates deleted."
+    },
+    "failures": {
+      "one": "{count} failure — try again in a moment.",
+      "other": "{count} failures — try again in a moment."
+    },
+    "reloadHint": "Reload the page to see the updated lists.",
+    "rescan": "Run another scan"
+  },
+  "import": {
+    "title": "Import lab results",
+    "description": "Download the Excel template, paste your lab results into its “Analyses” tab, then upload the file back. Everything is processed in your browser — nothing is sent to the server. Intakes are not covered: they are added through recurring intakes.",
+    "preparing": "Preparing…",
+    "downloadTemplate": "Download the template",
+    "chooseFile": "Choose an .xlsx file",
+    "emptyFile": "No lab result found in the file’s “Analyses” tab.",
+    "unreadable": "Unreadable file. Use the provided .xlsx template.",
+    "review": {
+      "ready": {
+        "one": "lab result ready to import",
+        "other": "lab results ready to import"
+      },
+      "ignoredRows": {
+        "one": "{count} row ignored",
+        "other": "{count} rows ignored"
+      },
+      "mapMarkers": "Map the markers",
+      "markerSelectAria": "Nodea marker for “{marker}”",
+      "keepMarker": "Keep “{marker}”",
+      "showIgnored": "Show ignored rows",
+      "lineReason": "Row {row}: {reason}",
+      "importing": "Importing…",
+      "importButton": {
+        "one": "Import {count} lab result",
+        "other": "Import {count} lab results"
+      },
+      "progress": {
+        "one": "{count} saved…",
+        "other": "{count} saved…"
+      }
+    },
+    "errors": {
+      "invalidDate": "invalid date",
+      "missingMarker": "missing marker",
+      "invalidValue": "non-numeric value",
+      "missingUnit": "missing unit for “{marker}”"
+    },
+    "done": {
+      "imported": {
+        "one": "lab result imported.",
+        "other": "lab results imported."
+      },
+      "duplicates": {
+        "one": "{count} duplicate ignored.",
+        "other": "{count} duplicates ignored."
+      },
+      "skipped": {
+        "one": "{count} without a unit ignored.",
+        "other": "{count} without a unit ignored."
+      },
+      "failed": "{count} failed.",
+      "another": "Import another file"
+    },
+    "template": {
+      "filename": "Nodea — HRT lab results import template.xlsx",
+      "helpSheet": "Help",
+      "title": "HRT import template — Nodea (lab results)",
+      "line1": "Paste your lab results into the “Analyses” tab. Do not change the headers (row 1).",
+      "line2": "Dates: 2026-06-04 (YYYY-MM-DD) or 04.06.2026. Decimal point or comma (1.5 / 1,5).",
+      "line3": "Everything is processed in your browser — the file is never sent to the server.",
+      "markersHead": "Recognized markers",
+      "unitHead": "Default unit",
+      "contextsHead": "Contexts",
+      "headers": {
+        "date": "Date",
+        "marker": "Marker",
+        "value": "Value",
+        "unit": "Unit",
+        "context": "Context",
+        "lab": "Lab",
+        "notes": "Notes"
+      }
+    }
+  }
+}

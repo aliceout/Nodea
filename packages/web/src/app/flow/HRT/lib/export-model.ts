@@ -6,8 +6,9 @@
  * (dose grouping) and `chart-data` (lab series) whose helpers it reuses —
  * so the export never re-derives the mL→mg join or the unit conversion,
  * it leans on the same single source the live views do. Pure functions,
- * no React, no I/O : the view passes decrypted entries in, gets display +
- * CSV rows out, and stays thin.
+ * no React, no I/O : the view passes decrypted entries in (plus its
+ * `useI18n()` translator for the display labels), gets display + CSV
+ * rows out, and stays thin.
  *
  * Three sections : the **current regimen** (the ongoing recurring series,
  * `endDate == null` — same « en cours » rule as `SchedulesPanel`), the
@@ -26,11 +27,12 @@ import { buildDoseSeries, distinctMolecules, moleculeOf, type ProductByName } fr
 import { buildChartSeries, defaultUnitForMarker } from './chart-data';
 import { inDateRange, type DateRange } from './date-range';
 import {
-  HRT_CATEGORY_LABELS,
-  HRT_DRAW_CONTEXT_LABELS,
-  HRT_ROUTE_LABELS,
+  categoryLabel,
+  drawContextLabel,
   frequencyLabel,
   markerLabel,
+  routeLabel,
+  type HrtTranslate,
 } from './labels';
 
 type ProductLike = Pick<HrtProductPayload, 'unit' | 'concentration'> | undefined;
@@ -80,10 +82,13 @@ export interface RegimenRow {
  * `endDate == null` (a stopped series carries its end date) — the same
  * rule the *Prises récurrentes en cours* panel uses. Sorted by category
  * then molecule so estrogens, anti-androgens… read as grouped blocks.
+ * Display labels resolve through the caller's `t` (threaded, not
+ * imported — keeps this module pure and locale-agnostic).
  */
 export function buildRegimen(
   schedules: ReadonlyArray<ScheduleEntry>,
   products: ProductByName,
+  t: HrtTranslate,
 ): RegimenRow[] {
   const rows = schedules
     .filter((s) => s.payload.endDate == null)
@@ -94,10 +99,10 @@ export function buildRegimen(
         id: s.id,
         product: s.payload.product,
         molecule: product?.medication?.trim() || s.payload.product,
-        categoryLabel: product ? HRT_CATEGORY_LABELS[product.category] : '',
+        categoryLabel: product ? categoryLabel(t, product.category) : '',
         doseText: formatDose(s.payload.dose, doseUnitOf(product), mgEq),
-        cadence: frequencyLabel(s.payload.frequency, s.payload.everyNDays),
-        routeLabel: product ? HRT_ROUTE_LABELS[product.route] : '',
+        cadence: frequencyLabel(t, s.payload.frequency, s.payload.everyNDays),
+        routeLabel: product ? routeLabel(t, product.route) : '',
         startDate: s.payload.startDate,
       };
     });
@@ -137,6 +142,7 @@ export function buildDoseHistory(
   entries: ReadonlyArray<AdminLogEntry>,
   products: ProductByName,
   range: DateRange,
+  t: HrtTranslate,
 ): DoseRow[] {
   return entries
     .filter((e) => inDateRange(e.payload.date, range))
@@ -148,8 +154,8 @@ export function buildDoseHistory(
         time: e.payload.time,
         product: e.payload.product,
         molecule: moleculeOf(e, products),
-        categoryLabel: product ? HRT_CATEGORY_LABELS[product.category] : '',
-        routeLabel: product ? HRT_ROUTE_LABELS[product.route] : '',
+        categoryLabel: product ? categoryLabel(t, product.category) : '',
+        routeLabel: product ? routeLabel(t, product.route) : '',
         dose: e.payload.dose,
         unit: doseUnitOf(product),
         mgEq: mgEquivalent(e.payload.dose, product),
@@ -227,6 +233,7 @@ export interface LabGroup {
 export function buildLabGroups(
   entries: ReadonlyArray<LabResultEntry>,
   range: DateRange,
+  t: HrtTranslate,
 ): LabGroup[] {
   const filtered = entries.filter((e) => inDateRange(e.payload.date, range));
   const keys = new Map<string, number>();
@@ -244,7 +251,7 @@ export function buildLabGroups(
         unit: e.payload.unit,
         context: e.payload.context,
         contextLabel:
-          e.payload.context === 'unknown' ? '' : HRT_DRAW_CONTEXT_LABELS[e.payload.context],
+          e.payload.context === 'unknown' ? '' : drawContextLabel(t, e.payload.context),
         lab: e.payload.lab,
         notes: e.payload.notes,
       }))
@@ -312,20 +319,26 @@ export function flattenLabReadings(groups: ReadonlyArray<LabGroup>): FlatLabRead
 // here — sortable + locale-free in a spreadsheet, unlike the French long
 // form the printed report uses.
 
-export function doseMatrix(doses: ReadonlyArray<DoseRow>): (string | number)[][] {
-  const header = [
-    'Date', 'Heure', 'Produit', 'Molécule', 'Catégorie',
-    'Voie', 'Dose', 'Unité', 'Équiv. mg', 'Type', 'Notes',
-  ];
+export function doseMatrix(
+  doses: ReadonlyArray<DoseRow>,
+  t: HrtTranslate,
+): (string | number)[][] {
+  const header = ['date', 'time', 'product', 'molecule', 'category', 'route', 'dose', 'unit', 'mgEq', 'type', 'notes']
+    .map((k) => t(`hrt.export.matrix.${k}`));
   const rows = doses.map((d) => [
     d.date, d.time, d.product, d.molecule, d.categoryLabel,
-    d.routeLabel, d.dose, d.unit, d.mgEq ?? '', d.auto ? 'Récurrente' : 'Manuelle', d.notes,
+    d.routeLabel, d.dose, d.unit, d.mgEq ?? '',
+    d.auto ? t('hrt.export.matrix.typeRecurring') : t('hrt.export.matrix.typeManual'), d.notes,
   ]);
   return [header, ...rows];
 }
 
-export function labMatrix(groups: ReadonlyArray<LabGroup>): (string | number)[][] {
-  const header = ['Date', 'Marqueur', 'Valeur', 'Unité', 'Contexte', 'Laboratoire', 'Notes'];
+export function labMatrix(
+  groups: ReadonlyArray<LabGroup>,
+  t: HrtTranslate,
+): (string | number)[][] {
+  const header = ['date', 'marker', 'value', 'unit', 'context', 'lab', 'notes']
+    .map((k) => t(`hrt.export.matrix.${k}`));
   const rows = groups.flatMap((g) =>
     g.readings.map((r) => [r.date, g.label, r.value, r.unit, r.contextLabel, r.lab, r.notes]),
   );

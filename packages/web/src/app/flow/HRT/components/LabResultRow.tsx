@@ -8,7 +8,9 @@
  * stored unit is shown verbatim (not the chart's display unit) so the
  * list always reflects what was actually entered.
  */
-import { markerLabel, formatLogDate, HRT_DRAW_CONTEXT_LABELS } from '../lib/labels';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
+import { drawContextLabel, formatLogDate, markerLabel } from '../lib/labels';
 import RowActions from './RowActions';
 import type { LabResultEntry } from '../hooks/use-lab-results';
 
@@ -21,12 +23,13 @@ interface LabResultRowProps {
 }
 
 export default function LabResultRow({ entry, onEdit, onDelete }: LabResultRowProps) {
+  const { t, language } = useI18n();
   const hasContext = entry.payload.context !== 'unknown';
 
   return (
     <li className="group flex items-start gap-4 border-b border-hair py-3">
       <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
-        {formatLogDate(entry.payload.date)}
+        {formatLogDate(entry.payload.date, language)}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13.5px] font-medium text-ink">
@@ -36,7 +39,7 @@ export default function LabResultRow({ entry, onEdit, onDelete }: LabResultRowPr
           </span>
         </p>
         <p className="mt-0.5 text-[12px] text-muted">
-          {hasContext ? HRT_DRAW_CONTEXT_LABELS[entry.payload.context] : null}
+          {hasContext ? drawContextLabel(t, entry.payload.context) : null}
           {hasContext && entry.payload.lab ? ' · ' : ''}
           {entry.payload.lab}
         </p>

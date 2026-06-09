@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import DirkButton from '@/ui/atoms/dirk/Button';
-
-import { SEARCH_MODE_LABEL } from '@/ui/dirk/forms/constants';
 
 interface SearchButtonProps {
   searching: boolean;
@@ -38,6 +37,7 @@ export default function SearchButton({
   mode,
   onModeChange,
 }: SearchButtonProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -67,7 +67,7 @@ export default function SearchButton({
         title={title}
         className={hasMenu ? 'rounded-r-none' : undefined}
       >
-        {searching ? '…' : 'Chercher'}
+        {searching ? '…' : t('library.lookup.search')}
       </DirkButton>
       {hasMenu ? (
         <>
@@ -77,8 +77,8 @@ export default function SearchButton({
             disabled={searching}
             aria-haspopup="menu"
             aria-expanded={open}
-            aria-label="Choisir ce qui sera appliqué"
-            title={SEARCH_MODE_LABEL[mode]}
+            aria-label={t('library.lookup.modeAria')}
+            title={t(`library.searchMode.${mode}`)}
             className={cn(
               'inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-l-none rounded-r-md bg-accent px-2 text-white font-semibold transition-[background-color,color] duration-150',
               'shadow-[inset_1px_0_0_rgba(255,255,255,0.25)]',
@@ -113,7 +113,7 @@ export default function SearchButton({
                         : 'text-ink hover:bg-bg-2',
                     )}
                   >
-                    {SEARCH_MODE_LABEL[opt]}
+                    {t(`library.searchMode.${opt}`)}
                   </button>
                 );
               })}

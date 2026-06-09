@@ -32,6 +32,7 @@
 import { useCallback } from 'react';
 
 import { useNodeaStore, selectHrtSubview } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -43,14 +44,8 @@ import ExportView from './views/ExportView';
 import LabsView from './views/LabsView';
 import SummaryView from './views/SummaryView';
 
-const TOPBAR_LABELS = {
-  summary: 'HRT · Synthèse',
-  administration: 'HRT · Administration',
-  labs: 'HRT · Analyses',
-  export: 'HRT · Outils',
-} as const;
-
 export default function HrtPage() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectHrtSubview);
 
@@ -69,7 +64,7 @@ export default function HrtPage() {
   return (
     <ModuleShell
       topbar={
-        <Topbar label={TOPBAR_LABELS[subview]} onOpenMenu={() => setMobileMenuOpen(true)} />
+        <Topbar label={t(`hrt.topbar.${subview}`)} onOpenMenu={() => setMobileMenuOpen(true)} />
       }
     >
       {subview === 'administration' ? (

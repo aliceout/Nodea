@@ -3,8 +3,7 @@ import {
   type LibraryStatus,
 } from '@nodea/shared';
 
-import { STATUS_LABEL } from './constants';
-import type { LibraryGroup, LibraryItem } from './types';
+import type { LibraryGroup, LibraryItem, TranslateFn } from './types';
 
 /**
  * Five grouping axes : status (the historical default, ordered by
@@ -31,18 +30,6 @@ export const LIBRARY_GROUP_BY_VALUES = [
 ] as const;
 export type LibraryGroupBy = (typeof LIBRARY_GROUP_BY_VALUES)[number];
 
-export const LIBRARY_GROUP_BY_OPTIONS: ReadonlyArray<{
-  value: LibraryGroupBy;
-  label: string;
-}> = [
-  { value: 'status', label: 'Statut' },
-  { value: 'author', label: 'Auteur·ice' },
-  { value: 'year', label: 'Année' },
-  { value: 'tag', label: 'Catégorie' },
-  { value: 'publisher', label: 'Éditeur' },
-  { value: 'collection', label: 'Collection' },
-];
-
 const STATUS_GROUP_ORDER: readonly LibraryStatus[] = [
   'in_progress',
   'planned',
@@ -50,20 +37,16 @@ const STATUS_GROUP_ORDER: readonly LibraryStatus[] = [
   'abandoned',
 ];
 
-/** Empty-bucket label used when an item has no value for the
- *  grouping axis (no author, no year, no tag, no publisher, no
- *  collection). */
-const NO_VALUE_LABEL: Record<Exclude<LibraryGroupBy, 'status'>, string> = {
-  author: 'Auteur·ice inconnu·e',
-  year: 'Année inconnue',
-  tag: 'Sans catégorie',
-  publisher: 'Éditeur inconnu',
-  collection: 'Sans collection',
-};
-
+/**
+ * Build the rendered groups. Group headers that are UI copy (the
+ * status names, the « no value » bucket) resolve through the
+ * caller-provided `t` — the i18n hook can't be called here because
+ * this stays a pure, hook-free function (tested with a stub `t`).
+ */
 export function buildGroups(
   items: readonly LibraryItem[],
   groupBy: LibraryGroupBy,
+  t: TranslateFn,
 ): LibraryGroup[] {
   if (groupBy === 'status') {
     const map = new Map<LibraryStatus, LibraryItem[]>();
@@ -75,7 +58,7 @@ export function buildGroups(
     return STATUS_GROUP_ORDER.map(
       (s): LibraryGroup => ({
         key: s,
-        label: STATUS_LABEL[s],
+        label: t(`library.statusGroup.${s}`),
         items: map.get(s) ?? [],
       }),
     );
@@ -113,7 +96,7 @@ export function buildGroups(
     noValueBucket.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
     groups.push({
       key: '__none__',
-      label: NO_VALUE_LABEL[groupBy],
+      label: t(`library.groupNone.${groupBy}`),
       items: noValueBucket,
     });
   }

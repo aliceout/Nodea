@@ -11,6 +11,7 @@
  * (see `ExportView`), not here — so this reads as a set of inputs, not a
  * button bar.
  */
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 
@@ -38,13 +39,14 @@ export default function ExportControls({
   note,
   onNoteChange,
 }: ExportControlsProps) {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       {/* Configuration : période + grouping + ephemeral label. */}
       <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
         <div>
           <span className="mb-1.5 block text-[12px] font-semibold tracking-[0.02em] text-muted">
-            Période
+            {t('hrt.export.controls.period')}
           </span>
           <DateRangeFilter onChange={onRangeChange} />
         </div>
@@ -53,7 +55,7 @@ export default function ExportControls({
             htmlFor="hrt-export-groupby"
             className="mb-1.5 block text-[12px] font-semibold tracking-[0.02em] text-muted"
           >
-            Grouper par
+            {t('hrt.export.controls.groupBy')}
           </label>
           <Select
             id="hrt-export-groupby"
@@ -62,8 +64,8 @@ export default function ExportControls({
             value={groupBy}
             onChange={(e) => onGroupByChange(e.target.value as ExportGroupBy)}
           >
-            <option value="type">Molécule / marqueur</option>
-            <option value="date">Date</option>
+            <option value="type">{t('hrt.export.controls.groupByType')}</option>
+            <option value="date">{t('hrt.export.controls.groupByDate')}</option>
           </Select>
         </div>
         <div className="min-w-[16rem] flex-1">
@@ -71,12 +73,12 @@ export default function ExportControls({
             htmlFor="hrt-export-note"
             className="mb-1.5 block text-[12px] font-semibold tracking-[0.02em] text-muted"
           >
-            Intitulé (optionnel)
+            {t('hrt.export.controls.note')}
           </label>
           <Input
             id="hrt-export-note"
             type="text"
-            placeholder="ex. prénom, n° de dossier — figure sur l’impression, jamais enregistré"
+            placeholder={t('hrt.export.controls.notePlaceholder')}
             value={note}
             maxLength={120}
             onChange={(e) => onNoteChange(e.target.value)}
@@ -86,8 +88,8 @@ export default function ExportControls({
 
       {/* Two filter cards : what to include in the document. */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <ExportFilterColumn title="Administration" {...molecules} />
-        <ExportFilterColumn title="Analyses" {...markers} />
+        <ExportFilterColumn title={t('hrt.export.controls.administrationCard')} {...molecules} />
+        <ExportFilterColumn title={t('hrt.export.controls.labsCard')} {...markers} />
       </div>
     </div>
   );

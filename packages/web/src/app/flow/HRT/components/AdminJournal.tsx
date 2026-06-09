@@ -11,6 +11,7 @@
 import { useMemo, useState } from 'react';
 
 import type { HrtProductPayload } from '@nodea/shared';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Select from '@/ui/atoms/dirk/Select';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
@@ -37,6 +38,7 @@ export default function AdminJournal({
   onEditEntry,
   onDeleteEntry,
 }: AdminJournalProps) {
+  const { t } = useI18n();
   const [chartSel, setChartSel] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_RANGE);
   const [chartOpen, setChartOpen] = useState(true);
@@ -86,13 +88,13 @@ export default function AdminJournal({
         <div className="mb-2 flex flex-wrap items-center gap-2">
           {molecules.length > 1 ? (
             <Select
-              aria-label="Filtrer par molécule"
+              aria-label={t('hrt.administration.moleculeFilterAria')}
               borderless
               className="w-auto"
               value={chartSel ?? ''}
               onChange={(e) => setChartSel(e.target.value === '' ? null : e.target.value)}
             >
-              <option value="">Toutes les molécules</option>
+              <option value="">{t('hrt.administration.allMolecules')}</option>
               {molecules.map((m) => (
                 <option key={m.name} value={m.name}>
                   {m.name} ({m.count})
@@ -105,7 +107,7 @@ export default function AdminJournal({
             <CollapseToggle
               open={chartOpen}
               onToggle={() => setChartOpen((o) => !o)}
-              label={chartOpen ? 'Masquer le graphique' : 'Afficher le graphique'}
+              label={chartOpen ? t('hrt.chart.hide') : t('hrt.chart.show')}
               className="ml-auto"
             />
           ) : null}

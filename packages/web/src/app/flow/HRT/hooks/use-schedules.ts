@@ -13,6 +13,7 @@ import type { HrtSchedulePayload } from '@nodea/shared';
 import { hrtSchedulesClient } from '@/core/api/modules/hrt';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import type { LoadState } from '@/core/types/load-state';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 export interface ScheduleEntry {
   id: string;
@@ -30,6 +31,7 @@ export interface UseHrtSchedules {
 }
 
 export function useHrtSchedules(): UseHrtSchedules {
+  const { t } = useI18n();
   const ctx = useModuleClient('hrt');
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
@@ -53,12 +55,12 @@ export function useHrtSchedules(): UseHrtSchedules {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setLoad({ status: 'error', message: err instanceof Error ? err.message : 'Chargement impossible.' });
+        setLoad({ status: 'error', message: err instanceof Error ? err.message : t('hrt.load.failed') });
       });
     return () => {
       cancelled = true;
     };
-  }, [ctx, version]);
+  }, [ctx, version, t]);
 
   const create = useCallback(
     async (payload: HrtSchedulePayload) => {

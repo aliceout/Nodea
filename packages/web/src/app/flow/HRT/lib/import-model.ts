@@ -21,8 +21,9 @@
  *   is *optional* canonicalisation (a stable key + a default unit + target
  *   bands) ; an unmatched marker is simply kept verbatim.
  * - **Fail soft, per row.** A bad cell drops *that* row to the error list
- *   with a French reason ; the rest still import. Fully-blank rows are
- *   skipped silently (trailing template lines).
+ *   with a translated reason (the caller threads its `t`) ; the rest
+ *   still import. Fully-blank rows are skipped silently (trailing
+ *   template lines).
  * - **Dates / numbers are locale-tolerant.** ISO `YYYY-MM-DD`,
  *   `JJ.MM.AAAA` / `JJ/MM/AAAA`, an Excel serial, or a `Date` cell all land
  *   on ISO ; a French decimal comma (`0,4`) and thin thousands spaces are
@@ -38,6 +39,8 @@ import {
   type HrtLabResultPayload,
 } from '@nodea/shared';
 
+import type { HrtTranslate } from './labels';
+
 // ── Inbound cell shapes (filled by `lib/xlsx`) ──────────────────────────
 
 /** A raw cell value as a spreadsheet parser hands it back. */
@@ -45,23 +48,17 @@ export type RawCell = string | number | boolean | Date | null | undefined;
 /** One parsed data row, keyed by its verbatim column header. */
 export type RawRow = Readonly<Record<string, RawCell>>;
 
-/**
- * Canonical FR headers : the template writes exactly these, the parser
- * reads them (the aliases below tolerate case / accents / synonyms).
- * Single source of truth, re-used by the template generator.
- */
-export const ANALYSE_TEMPLATE_HEADERS = [
-  'Date', 'Marqueur', 'Valeur', 'Unité', 'Contexte', 'Laboratoire', 'Notes',
-] as const;
-
 // Accepted (already-normalised) header spellings per logical column.
+// The template writes the localised headers (`hrt.import.template.headers`
+// keys, FR or EN) ; this alias table is the read-side contract that keeps
+// either spelling — plus case / accent variants — importable.
 const ANALYSE_ALIASES = {
   date: ['date'],
   marker: ['marqueur', 'marker'],
   value: ['valeur', 'value'],
   unit: ['unite', 'unit'],
   context: ['contexte', 'context'],
-  lab: ['laboratoire', 'labo', 'lab'],
+  lab: ['laboratoire', 'laboratory', 'labo', 'lab'],
   notes: ['notes', 'note', 'remarques'],
 } as const;
 
@@ -83,7 +80,7 @@ export interface AnalyseCandidate {
 
 export interface RowError {
   row: number;
-  /** Human reason (FR) shown in the dry-run preview. */
+  /** Human reason (already translated) shown in the dry-run preview. */
   reason: string;
 }
 
@@ -196,7 +193,10 @@ function normalizeContext(cell: RawCell): HrtDrawContext {
  * build time). `context` is lenient. Fully-blank rows are skipped. Row
  * numbers assume the header is row 1.
  */
-export function parseAnalyseRows(rows: readonly RawRow[]): ParsedSheet<AnalyseCandidate> {
+export function parseAnalyseRows(
+  rows: readonly RawRow[],
+  t: HrtTranslate,
+): ParsedSheet<AnalyseCandidate> {
   const candidates: AnalyseCandidate[] = [];
   const errors: RowError[] = [];
   rows.forEach((row, i) => {
@@ -210,9 +210,9 @@ export function parseAnalyseRows(rows: readonly RawRow[]): ParsedSheet<AnalyseCa
     const marker = asString(rawMarker);
     const value = normalizeNumber(rawValue);
     const problems: string[] = [];
-    if (date === null) problems.push('date invalide');
-    if (marker === '') problems.push('marqueur manquant');
-    if (value === null) problems.push('valeur non numérique');
+    if (date === null) problems.push(t('hrt.import.errors.invalidDate'));
+    if (marker === '') problems.push(t('hrt.import.errors.missingMarker'));
+    if (value === null) problems.push(t('hrt.import.errors.invalidValue'));
     if (date === null || marker === '' || value === null) {
       errors.push({ row: rowNum, reason: problems.join(', ') });
       return;
@@ -284,6 +284,7 @@ export interface BuiltLabResults {
 export function buildLabResultPayloads(
   candidates: readonly AnalyseCandidate[],
   mapping: MarkerMapping,
+  t: HrtTranslate,
 ): BuiltLabResults {
   const payloads: HrtLabResultPayload[] = [];
   const skipped: SkippedRow[] = [];
@@ -291,7 +292,10 @@ export function buildLabResultPayloads(
     const marker = mapping.get(c.marker) ?? c.marker;
     const unit = c.unit !== '' ? c.unit : (findMarker(marker)?.canonicalUnit ?? '');
     if (unit === '') {
-      skipped.push({ row: c.row, reason: `unité manquante pour « ${marker} »` });
+      skipped.push({
+        row: c.row,
+        reason: t('hrt.import.errors.missingUnit', { values: { marker } }),
+      });
       continue;
     }
     payloads.push({

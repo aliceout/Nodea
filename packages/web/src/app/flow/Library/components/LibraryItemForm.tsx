@@ -58,7 +58,7 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
   // return all languages, but the dispatcher reorders so books in the
   // user's language float to the top. Bilingual users still see the
   // alternatives below.
-  const { language: userLang } = useI18n();
+  const { language: userLang, t } = useI18n();
   const bumpItemsVersion = useNodeaStore((s) => s.bumpLibraryItemsVersion);
 
   const editing = initial ?? null;
@@ -154,6 +154,7 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
     setSubmitting(true);
     const result = await saveLibraryItem({
       ctx,
+      t,
       editing: editing
         ? { id: editing.id, payload: { ...editing } }
         : null,
@@ -254,16 +255,16 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
           onClick={onClose}
           disabled={submitting}
         >
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={submitting}>
           {submitting
             ? isEdit
-              ? 'Mise à jour…'
-              : 'Enregistrement…'
+              ? t('common.states.updating')
+              : t('common.states.saving')
             : isEdit
-              ? 'Mettre à jour'
-              : 'Ajouter à ma bibliothèque'}
+              ? t('common.actions.update')
+              : t('library.form.submitCreate')}
         </Button>
       </div>
     </form>

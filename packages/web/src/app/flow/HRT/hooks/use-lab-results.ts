@@ -12,6 +12,7 @@ import type { HrtLabResultPayload } from '@nodea/shared';
 import { hrtLabResultsClient } from '@/core/api/modules/hrt';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import type { LoadState } from '@/core/types/load-state';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 export interface LabResultEntry {
   id: string;
@@ -28,6 +29,7 @@ export interface UseHrtLabResults {
 }
 
 export function useHrtLabResults(): UseHrtLabResults {
+  const { t } = useI18n();
   const ctx = useModuleClient('hrt');
   const [entries, setEntries] = useState<LabResultEntry[]>([]);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
@@ -53,13 +55,13 @@ export function useHrtLabResults(): UseHrtLabResults {
       .catch((err: unknown) => {
         if (cancelled) return;
         const message =
-          err instanceof Error ? err.message : 'Chargement impossible.';
+          err instanceof Error ? err.message : t('hrt.load.failed');
         setLoad({ status: 'error', message });
       });
     return () => {
       cancelled = true;
     };
-  }, [ctx, version]);
+  }, [ctx, version, t]);
 
   const create = useCallback(
     async (payload: HrtLabResultPayload) => {

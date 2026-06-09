@@ -6,6 +6,7 @@
  * logged yet. Pure presentation — the molecule selection and the series
  * are owned by `SummaryView`.
  */
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Select from '@/ui/atoms/dirk/Select';
 
 import LabChart, { type ChartPoint } from './LabChart';
@@ -26,6 +27,7 @@ export default function DoseChartPanel({
   points,
   hasProducts,
 }: DoseChartPanelProps) {
+  const { t } = useI18n();
   return (
     <div className="flex min-w-0 lg:col-span-3">
       {activeMolecule ? (
@@ -37,7 +39,7 @@ export default function DoseChartPanel({
           caption={
             <span className="flex items-center gap-2">
               <Select
-                aria-label="Molécule du graphique"
+                aria-label={t('hrt.summary.doseChart.moleculeAria')}
                 borderless
                 className="w-auto pl-0 font-medium"
                 value={activeMolecule}
@@ -56,8 +58,8 @@ export default function DoseChartPanel({
       ) : (
         <div className="flex min-h-[200px] w-full items-center justify-center rounded-lg border border-dashed border-hair p-12 text-center text-[13px] text-muted">
           {hasProducts
-            ? 'Aucune prise enregistrée.'
-            : 'Enregistre un produit, puis une prise, pour voir le graphique.'}
+            ? t('hrt.summary.doseChart.emptyNoDoses')
+            : t('hrt.summary.doseChart.emptyNoProducts')}
         </div>
       )}
     </div>

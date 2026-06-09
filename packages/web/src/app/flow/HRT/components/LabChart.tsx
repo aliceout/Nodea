@@ -24,7 +24,9 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 
 import type { HrtDrawContext } from '@nodea/shared';
 
-import { HRT_DRAW_CONTEXT_LABELS } from '../lib/labels';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
+import { drawContextLabel, type HrtTranslate } from '../lib/labels';
 
 export interface ChartPoint {
   dateIso: string;
@@ -69,8 +71,8 @@ function fmtValue(v: number): string {
   return Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
 }
 
-function fmtDate(ms: number): string {
-  return new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+function fmtDate(ms: number, locale: string): string {
+  return new Date(ms).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 /** Track the container's pixel size. Width always fills the SVG ;
@@ -105,6 +107,7 @@ export default function LabChart({
   fillHeight,
   domain,
 }: LabChartProps) {
+  const { t, language } = useI18n();
   const [ref, width, measuredH] = useMeasured();
   const gradId = `hrt-area-${useId()}`;
   const height = fillHeight ? Math.max(measuredH, MIN_HEIGHT) : DEFAULT_HEIGHT;
@@ -116,7 +119,7 @@ export default function LabChart({
           fillHeight ? 'h-full' : 'h-[200px]'
         }`}
       >
-        Pas encore de données pour {label}.
+        {t('hrt.chart.noData', { values: { label } })}
       </div>
     ) : (
       <Plot
@@ -126,6 +129,8 @@ export default function LabChart({
         width={width}
         height={height}
         gradId={gradId}
+        t={t}
+        locale={language}
         {...(target ? { target } : {})}
         {...(domain ? { domain } : {})}
       />
@@ -155,9 +160,13 @@ interface PlotProps extends LabChartProps {
   width: number;
   height: number;
   gradId: string;
+  /** Threaded from the parent's `useI18n()` — `Plot` stays a plain
+   *  render helper (no second context subscription). */
+  t: HrtTranslate;
+  locale: string;
 }
 
-function Plot({ points, unit, width, height, gradId, target, domain }: PlotProps) {
+function Plot({ points, unit, width, height, gradId, target, domain, t, locale }: PlotProps) {
   const [hover, setHover] = useState<number | null>(null);
   const plotW = Math.max(width - PAD_L - PAD_R, 10);
   const plotH = height - PAD_T - PAD_B;
@@ -212,7 +221,12 @@ function Plot({ points, unit, width, height, gradId, target, domain }: PlotProps
 
   return (
     <>
-      <svg width={width} height={height} role="img" aria-label={`Évolution en ${unit}`}>
+      <svg
+        width={width}
+        height={height}
+        role="img"
+        aria-label={t('hrt.chart.ariaLabel', { values: { unit } })}
+      >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" className="text-accent" stopOpacity={0.22} />
@@ -249,16 +263,16 @@ function Plot({ points, unit, width, height, gradId, target, domain }: PlotProps
       })}
 
       {/* X labels */}
-      {xTicks.map((t, i) => (
+      {xTicks.map((tick, i) => (
         <text
           key={`x-${i}`}
-          x={x(t)}
+          x={x(tick)}
           y={height - 8}
           textAnchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
           fill="currentColor"
           className="fill-current text-[10px] text-muted"
         >
-          {fmtDate(t)}
+          {fmtDate(tick, locale)}
         </text>
       ))}
 
@@ -343,10 +357,10 @@ function Plot({ points, unit, width, height, gradId, target, domain }: PlotProps
           style={{ left: active.cx, top: active.cy - 10 }}
         >
           <span className="tabular-nums">
-            {fmtDate(dateMs(active.p.dateIso))} — {fmtValue(active.p.value)} {unit}
+            {fmtDate(dateMs(active.p.dateIso), locale)} — {fmtValue(active.p.value)} {unit}
           </span>
           {active.p.context !== 'unknown' ? (
-            <span className="text-muted"> ({HRT_DRAW_CONTEXT_LABELS[active.p.context]})</span>
+            <span className="text-muted"> ({drawContextLabel(t, active.p.context)})</span>
           ) : null}
         </div>
       ) : null}

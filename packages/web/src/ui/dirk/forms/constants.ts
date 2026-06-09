@@ -1,9 +1,4 @@
-import type {
-  LibraryFormat,
-  LibraryReviewKind,
-  LibraryStatus,
-  NormalisedBook,
-} from '@nodea/shared';
+import type { NormalisedBook } from '@nodea/shared';
 
 import { intlLocale } from '@/core/i18n/date-format';
 
@@ -14,11 +9,9 @@ import { intlLocale } from '@/core/i18n/date-format';
  * inline forms (Mood / Goals / Journal / Library) still import
  * from this path. A follow-up move will fan them out per module.
  *
- * Several constants here overlap with `flow/<Module>/lib/constants.ts`
- * (`SCORE_LABELS`, `GOAL_STATUS_LABEL`, `LIBRARY_*_LABEL`) ; rather
- * than cross-import (which would tie the shared atoms to a module's
- * internal lib), the duplicates stay local here. Promotion to a
- * shared atom can happen later if the labels start drifting.
+ * The Library label maps (status / format / review-kind / search
+ * mode) that used to live here moved to the `library.*` i18n
+ * namespace — Library components resolve them via `t()` now.
  */
 
 /** Two-digit month codes + locale-aware long labels for the
@@ -69,43 +62,6 @@ export const GOAL_STATUS_ACTIVE_TONE: Record<GoalStatus, string> = {
   open: 'border-ink-soft bg-bg-2 font-semibold text-ink',
   wip: 'border-accent-soft bg-accent-soft font-semibold text-accent-deep',
   done: 'border-accent bg-accent font-semibold text-white',
-};
-
-export const LIBRARY_STATUS_LABEL: Record<LibraryStatus, string> = {
-  planned: 'À lire',
-  in_progress: 'En cours',
-  finished: 'Terminé',
-  abandoned: 'Abandonné',
-};
-
-export const LIBRARY_FORMAT_LABEL: Record<LibraryFormat, string> = {
-  paper: 'Papier',
-  ebook: 'eBook',
-  audio: 'Audio',
-  unknown: '—',
-};
-
-export const LIBRARY_REVIEW_KIND_LABEL: Record<LibraryReviewKind, string> = {
-  quote: 'Extrait',
-  note: 'Note',
-};
-
-/** Filter chip in the LookupBar — narrower than
- *  `LIBRARY_FORMAT_LABEL` because the lookup never has the
- *  `unknown` bucket (a provider with no format is dropped from
- *  the filter row). */
-export const FORMAT_LABEL: Record<NonNullable<NormalisedBook['format']>, string> = {
-  paper: 'Papier',
-  ebook: 'eBook',
-  audio: 'Audio',
-};
-
-/** Mode dropdown next to the LookupBar's Search button — picks
- *  whether the search returns full metadata or just a cover
- *  grid. */
-export const SEARCH_MODE_LABEL: Record<'all' | 'cover-only', string> = {
-  all: 'Métadonnées + couverture',
-  'cover-only': 'Couverture seule',
 };
 
 /** Languages surfaced in the LookupBar's language `<select>`.

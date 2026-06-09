@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 
 import type { HrtProductPayload } from '@nodea/shared';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 
@@ -30,6 +31,7 @@ export default function SchedulesPanel({
   onEdit,
   onStop,
 }: SchedulesPanelProps) {
+  const { t, language } = useI18n();
   const [open, setOpen] = useState(true);
   // `endDate == null` ⇒ ongoing ; a stopped series carries its end date.
   const active = schedules.filter((s) => s.payload.endDate == null);
@@ -38,11 +40,11 @@ export default function SchedulesPanel({
   return (
     <section className="mb-5 rounded-md border border-hair p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-medium text-ink">Prises récurrentes en cours</h3>
+        <h3 className="text-[13px] font-medium text-ink">{t('hrt.schedule.panelTitle')}</h3>
         <CollapseToggle
           open={open}
           onToggle={() => setOpen((o) => !o)}
-          label={open ? 'Masquer les prises récurrentes' : 'Afficher les prises récurrentes'}
+          label={open ? t('hrt.schedule.hide') : t('hrt.schedule.show')}
         />
       </div>
 
@@ -70,8 +72,10 @@ export default function SchedulesPanel({
                       </span>
                     </p>
                     <p className="mt-0.5 text-[12px] text-muted">
-                      {frequencyLabel(s.payload.frequency, s.payload.everyNDays)} · depuis le{' '}
-                      {formatLogDate(s.payload.startDate)}
+                      {frequencyLabel(t, s.payload.frequency, s.payload.everyNDays)} ·{' '}
+                      {t('hrt.schedule.since', {
+                        values: { date: formatLogDate(s.payload.startDate, language) },
+                      })}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -79,13 +83,13 @@ export default function SchedulesPanel({
                       variant="ghost"
                       size="sm"
                       iconOnly
-                      aria-label="Modifier la série"
+                      aria-label={t('hrt.schedule.editAria')}
                       onClick={() => onEdit(s)}
                     >
                       <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
                     </Button>
                     <Button variant="danger-ghost" size="sm" onClick={() => onStop(s)}>
-                      Arrêter
+                      {t('hrt.schedule.stop')}
                     </Button>
                   </div>
                 </li>

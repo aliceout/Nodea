@@ -21,12 +21,13 @@ import {
   type HrtSchedulePayload,
 } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
-import { HRT_CATEGORY_LABELS, todayIso } from '../lib/labels';
+import { categoryLabel, todayIso } from '../lib/labels';
 import type { ScheduleEntry } from '../hooks/use-schedules';
 import type { ProductOption } from './AdminLogForm';
 import FieldRow from './FieldRow';
@@ -54,6 +55,7 @@ export default function ScheduleForm({
   onCreateProduct,
   onClose,
 }: ScheduleFormProps) {
+  const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
 
@@ -81,7 +83,9 @@ export default function ScheduleForm({
   const frequency = watch('frequency') ?? 'daily';
   const selected = products.find((p) => p.name === productVal);
   const doseUnit = selected?.unit ?? '';
-  const doseLabel = doseUnit ? `Dose (${doseUnit})` : 'Dose';
+  const doseLabel = doseUnit
+    ? t('hrt.form.doseWithUnit', { values: { unit: doseUnit } })
+    : t('hrt.form.dose');
   const categories = HRT_CATEGORY_VALUES.filter((c) => products.some((p) => p.category === c));
 
   async function onValid(values: FormOut): Promise<void> {
@@ -93,7 +97,7 @@ export default function ScheduleForm({
       await onSubmit(payload, initial?.id);
       onClose();
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Enregistrement impossible.');
+      setServerError(err instanceof Error ? err.message : t('hrt.form.saveFailed'));
     }
   }
 
@@ -116,15 +120,17 @@ export default function ScheduleForm({
       noValidate
     >
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[2fr_1fr_1fr]">
-        <FieldRow label="Produit" htmlFor="hrt-sched-product" error={errors.product?.message}>
+        <FieldRow label={t('hrt.form.product')} htmlFor="hrt-sched-product" error={errors.product?.message}>
           <div className="flex items-center gap-1.5">
             <div className="min-w-0 flex-1">
               <Select id="hrt-sched-product" {...register('product')}>
                 <option value="" disabled>
-                  {products.length === 0 ? 'Aucun produit enregistré' : 'Choisir un produit…'}
+                  {products.length === 0
+                    ? t('hrt.form.productNone')
+                    : t('hrt.form.productPlaceholder')}
                 </option>
                 {categories.map((c) => (
-                  <optgroup key={c} label={HRT_CATEGORY_LABELS[c]}>
+                  <optgroup key={c} label={categoryLabel(t, c)}>
                     {products
                       .filter((p) => p.category === c)
                       .map((p) => (
@@ -145,7 +151,7 @@ export default function ScheduleForm({
               className="shrink-0 whitespace-nowrap"
               onClick={() => setAddingProduct(true)}
             >
-              + Nouveau produit
+              {t('hrt.form.newProduct')}
             </Button>
           </div>
         </FieldRow>
@@ -161,7 +167,7 @@ export default function ScheduleForm({
           {...register('dose', { valueAsNumber: true })}
         />
 
-        <FieldRow label="Date de début" htmlFor="hrt-sched-start" error={errors.startDate?.message}>
+        <FieldRow label={t('hrt.schedule.startDate')} htmlFor="hrt-sched-start" error={errors.startDate?.message}>
           <DateField
             id="hrt-sched-start"
             value={watch('startDate') ?? ''}
@@ -172,16 +178,16 @@ export default function ScheduleForm({
       </div>
 
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[2fr_1fr_1fr]">
-        <FieldRow label="Fréquence" htmlFor="hrt-sched-freq" error={errors.frequency?.message}>
+        <FieldRow label={t('hrt.schedule.frequencyField')} htmlFor="hrt-sched-freq" error={errors.frequency?.message}>
           <Select id="hrt-sched-freq" {...register('frequency')}>
-            <option value="daily">Tous les jours</option>
-            <option value="every_n_days">Tous les N jours</option>
+            <option value="daily">{t('hrt.frequency.daily')}</option>
+            <option value="every_n_days">{t('hrt.schedule.everyNDaysOption')}</option>
           </Select>
         </FieldRow>
 
         {frequency === 'every_n_days' ? (
           <TextField
-            label="Intervalle (jours)"
+            label={t('hrt.schedule.interval')}
             type="number"
             min={1}
             step={1}
@@ -194,7 +200,7 @@ export default function ScheduleForm({
         ) : null}
       </div>
 
-      <FieldRow label="Notes (optionnel)" htmlFor="hrt-sched-notes" error={errors.notes?.message}>
+      <FieldRow label={t('hrt.form.notes')} htmlFor="hrt-sched-notes" error={errors.notes?.message}>
         <Textarea id="hrt-sched-notes" minHeightPx={56} {...register('notes')} />
       </FieldRow>
 
@@ -206,10 +212,10 @@ export default function ScheduleForm({
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
-          Annuler
+          {t('common.actions.cancel')}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-          {initial ? 'Enregistrer' : 'Lancer la série'}
+          {initial ? t('common.actions.save') : t('hrt.schedule.start')}
         </Button>
       </div>
     </form>
