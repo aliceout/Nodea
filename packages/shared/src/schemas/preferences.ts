@@ -43,9 +43,31 @@ export const BackgroundShadeSchema = z.enum([
 ]);
 export type BackgroundShade = z.infer<typeof BackgroundShadeSchema>;
 
+/**
+ * Library catalogue rendering mode. Moved out of localStorage into
+ * the encrypted preferences blob during the v2.8.0 audit cleanup :
+ * the previous `nodea:library:viewMode` localStorage key revealed
+ * « this user has been using Library » to anyone with browser-storage
+ * access on the same machine. Per the cross-device-sync side benefit,
+ * the chosen layout now follows the user across browsers.
+ *
+ * Accept-only ; the keystore reads these but the UI clamps to its own
+ * `LIBRARY_VIEW_MODES` tuple defensively in case the blob carries an
+ * unknown value from a future client version.
+ */
+export const LibraryViewModeSchema = z.enum([
+  'list-plain',
+  'list-cover',
+  'table',
+  'grid',
+  'wall',
+]);
+export type LibraryViewMode = z.infer<typeof LibraryViewModeSchema>;
+
 export const UserPreferencesPayloadSchema = z.looseObject({
   theme: ThemePreferenceSchema.optional(),
   language: LanguagePreferenceSchema.optional(),
   backgroundShade: BackgroundShadeSchema.optional(),
+  libraryViewMode: LibraryViewModeSchema.optional(),
 });
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;

@@ -11,19 +11,27 @@
  * this hook and republishes via `LibraryFiltersValue`. Splitting it
  * out keeps the filter logic reviewable in isolation.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { type LibraryStatus } from '@nodea/shared';
 
+import { usePreferences } from '@/core/auth/use-preferences';
 import { matchesAnyField } from '@/lib/text-search';
 
 import { matchesCellFilter, type CellFilter } from '../lib/cell-filter';
 import { buildGroups, type LibraryGroupBy } from '../lib/grouping';
 import type { LibraryGroup, LibraryItem } from '../lib/types';
 
-/** The five catalogue rendering modes. Persisted to localStorage so
- *  the user's choice sticks across sessions on the same device.
- *  Not synced to the encrypted preferences blob — local UI decision,
- *  the cross-device hop isn't worth the wiring. */
+/** The five catalogue rendering modes. Synced to the encrypted
+ *  preferences blob (audit v2.8.0) — the previous
+ *  `nodea:library:viewMode` localStorage key revealed « this user
+ *  has been using Library » to anyone with browser-storage access
+ *  on the same machine. Side effect : the chosen layout now
+ *  follows the user across browsers.
+ *
+ *  Default `list-plain` applies whenever the preferences blob hasn't
+ *  yet loaded (the few hundred milliseconds between login and the
+ *  main-key derivation) ; the UI then re-renders into the user's
+ *  pinned choice once the blob arrives. */
 export const LIBRARY_VIEW_MODES = [
   'list-plain',
   'list-cover',
@@ -33,16 +41,7 @@ export const LIBRARY_VIEW_MODES = [
 ] as const;
 export type LibraryViewMode = (typeof LIBRARY_VIEW_MODES)[number];
 
-const VIEW_MODE_STORAGE_KEY = 'nodea:library:viewMode';
-
-function readViewMode(): LibraryViewMode {
-  if (typeof window === 'undefined') return 'list-plain';
-  const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-  if (stored && (LIBRARY_VIEW_MODES as readonly string[]).includes(stored)) {
-    return stored as LibraryViewMode;
-  }
-  return 'list-plain';
-}
+const DEFAULT_VIEW_MODE: LibraryViewMode = 'list-plain';
 
 export interface LibraryFiltersState {
   statusFilter: LibraryStatus | 'all' | 'favorites';
@@ -74,14 +73,24 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<LibraryGroupBy>('status');
   const [cellFilter, setCellFilter] = useState<CellFilter | null>(null);
-  const [viewMode, setViewMode] = useState<LibraryViewMode>(() => readViewMode());
   const [searchQuery, setSearchQuery] = useState('');
 
-  // viewMode persistence (localStorage).
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
-  }, [viewMode]);
+  // viewMode persistence (encrypted preferences blob — audit v2.8.0).
+  // Read the current persisted choice from the preferences slice ;
+  // fall back to DEFAULT_VIEW_MODE while the blob hasn't loaded.
+  // Clamp to the LIBRARY_VIEW_MODES tuple defensively in case the
+  // blob carries an unknown value from a future client version.
+  const { preferences, setPreferences } = usePreferences();
+  const persistedViewMode =
+    preferences.libraryViewMode &&
+    (LIBRARY_VIEW_MODES as readonly string[]).includes(preferences.libraryViewMode)
+      ? (preferences.libraryViewMode as LibraryViewMode)
+      : DEFAULT_VIEW_MODE;
+  const setViewMode = (next: LibraryViewMode): void => {
+    if (next === persistedViewMode) return;
+    void setPreferences({ libraryViewMode: next });
+  };
+  const viewMode = persistedViewMode;
 
   const allTags = useMemo<string[]>(() => {
     const set = new Set<string>();
