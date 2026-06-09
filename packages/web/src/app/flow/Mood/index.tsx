@@ -6,7 +6,7 @@ import Topbar from '@/ui/dirk/Topbar';
 import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
 
 import SideColumn from './components/SideColumn';
-import { MoodProvider, useMoodData, useMoodFilters } from './context';
+import { MoodProvider, useMoodActions, useMoodData, useMoodFilters } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
 
 /**
@@ -50,9 +50,9 @@ export default function MoodPage() {
 function MoodView() {
   const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useMoodData();
   const { searchQuery, setSearchQuery } = useMoodFilters();
+  const { formOpen, openCreateForm } = useMoodActions();
   const total = entries.length;
 
   const topbarLabel = tn('mood.topbar.label', total);
@@ -68,9 +68,17 @@ function MoodView() {
             clearLabel={t('common.search.clearAria')}
             className="w-44 md:w-56"
           />
-          <Button variant="primary" size="sm" onClick={() => openComposer('mood')}>
-            {t('mood.topbar.newCta')}
-          </Button>
+          {/* Hide the « + Nouvelle entrée » button while the inline
+              form is already open — same affordance as HRT
+              `AdministrationView` (`{!formOpen ? <Button…/> : null}`).
+              Otherwise clicking it again while editing would reopen
+              a fresh create form on top of an in-progress edit and
+              lose the user's draft. */}
+          {!formOpen ? (
+            <Button variant="primary" size="sm" onClick={openCreateForm}>
+              {t('mood.topbar.newCta')}
+            </Button>
+          ) : null}
         </Topbar>
       }
       side={<SideColumn />}

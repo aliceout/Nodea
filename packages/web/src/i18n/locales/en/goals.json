@@ -22,7 +22,7 @@
     "confirmDelete": "Delete « {title} » ?"
   },
   "reader": {
-    "noThreadEyebrow": "— no thread —",
+    "noThreadEyebrow": "— no theme —",
     "edit": "Edit",
     "close": "Close",
     "prev": "Previous",
@@ -50,19 +50,25 @@
     "updated": "Recent",
     "alpha": "A→Z"
   },
+  "viewMode": {
+    "ariaLabel": "Display mode",
+    "list": "List",
+    "cards": "Cards"
+  },
   "side": {
     "search": "Search",
-    "searchPlaceholder": "Title, note or thread…",
+    "searchPlaceholder": "Title, note or theme…",
     "searchAria": "Search goals",
     "statusHeading": "Status",
     "all": "All",
     "groupBy": "Group by",
-    "groupByThread": "Thread",
+    "groupByThread": "Theme",
     "groupByYear": "Year",
-    "threads": "Threads",
+    "threads": "Themes",
     "threadsAll": "All",
-    "threadsEmpty": "No threads on your goals yet.",
+    "threadsEmpty": "No themes on your goals yet.",
     "sortBy": "Sort by",
+    "view": "View",
     "display": "Display",
     "hideDone": "Hide done ({count})",
     "actions": "Actions",
@@ -92,7 +98,7 @@
     "monthPlaceholder": "— month —",
     "yearPlaceholder": "Year",
     "yearAria": "Year (4 digits)",
-    "threadPlaceholder": "Threads (optional) — comma-separated, e.g. #MovingLyon, #Solo",
+    "threadPlaceholder": "Themes (optional) — comma-separated, e.g. #MovingLyon, #Solo",
     "existingThreads": "Existing:",
     "notePlaceholder": "Note (optional) — details, context, exact deadline…",
     "errors": {

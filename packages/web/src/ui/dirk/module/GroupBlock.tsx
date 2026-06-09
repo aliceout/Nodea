@@ -28,6 +28,14 @@ interface GroupBlockProps {
    *  are also the ones where item-of-count narration would just be
    *  noise. */
   listTag?: 'ul' | 'div';
+  /** Hairline under the label row. Default `true` because that's
+   *  the look the row-list surfaces (Mood / Journal / Goals list /
+   *  Library) lean on : the hairline echoes the per-row dividers
+   *  below it. Set to `false` in card-grid surfaces (Goals cards)
+   *  where the cards already carry their own border on every side,
+   *  so the extra horizontal line under the label reads as noise.
+   */
+  bordered?: boolean;
   children: ReactNode;
   className?: string;
 }
@@ -59,6 +67,7 @@ export default function GroupBlock({
   countNoun,
   variant = 'subtitle',
   listTag = 'ul',
+  bordered = true,
   children,
   className,
 }: GroupBlockProps) {
@@ -66,7 +75,12 @@ export default function GroupBlock({
   const ListTag = listTag;
   return (
     <div className={cn(WRAPPER_CLASS[variant], 'last:mb-0', className)}>
-      <div className="mb-2 flex items-baseline justify-between border-b border-hair pb-1.5">
+      <div
+        className={cn(
+          'mb-2 flex items-baseline justify-between pb-1.5',
+          bordered && 'border-b border-hair',
+        )}
+      >
         <h2 className={HEADER_CLASS[variant]}>{label}</h2>
         <span className="text-[11px] tabular-nums text-muted">
           {count} {plural}

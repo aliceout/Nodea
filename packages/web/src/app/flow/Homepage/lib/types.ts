@@ -53,24 +53,6 @@ export interface GoalEntryLite {
   completedAt: string | null;
 }
 
-/**
- * Lite shape of a Library item consumed by `ReadingBlock`. The
- * block only ever sees items with `status === 'in_progress'`.
- *
- * Locally defined rather than `Pick<LibraryItem, …>` because
- * `author` is a derived display string (joined from the
- * `creators` array filtered to `role === 'author'`) — there's
- * no canonical `author` field to pick from.
- */
-export interface LibraryReadingLite {
-  id: string;
-  title: string;
-  author: string;
-  /** Whether the user marked this book as a favourite — surfaced
-   *  by an inline star on the home block. */
-  isFavorite: boolean;
-}
-
 /** One cell of the 14-day mood strip rendered by `MoodBlock`. A
  *  cell without `score` renders as a faint outline so a missed
  *  day reads as a gap, not a zero. */

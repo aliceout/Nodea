@@ -11,14 +11,26 @@
 import { useMemo, useState } from 'react';
 import { splitThreads } from '@nodea/shared';
 
+import { usePreferences } from '@/core/auth/use-preferences';
+
 import { byDateDesc } from '../lib/sort';
 import type { CanonicalStatus, GoalEntry, SortBy } from '../lib/types';
 
 export type GoalsGroupBy = 'thread' | 'year';
 
+/** The two presentation modes the Goals primary surface can take.
+ *  Synced to the encrypted preferences blob (same posture as
+ *  `libraryViewMode`) so the choice follows the user across
+ *  devices instead of leaking through localStorage. */
+export const GOALS_VIEW_MODES = ['list', 'cards'] as const;
+export type GoalsViewMode = (typeof GOALS_VIEW_MODES)[number];
+
+const DEFAULT_VIEW_MODE: GoalsViewMode = 'list';
+
 export interface GoalsFiltersState {
   statusFilter: CanonicalStatus | null;
   groupBy: GoalsGroupBy;
+  viewMode: GoalsViewMode;
   search: string;
   sortBy: SortBy;
   hideDone: boolean;
@@ -36,6 +48,7 @@ export interface GoalsFiltersState {
 
   setStatusFilter: (next: CanonicalStatus | null) => void;
   setGroupBy: (next: GoalsGroupBy) => void;
+  setViewMode: (next: GoalsViewMode) => void;
   setSearch: (next: string) => void;
   setSortBy: (next: SortBy) => void;
   setHideDone: (next: boolean) => void;
@@ -51,6 +64,22 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [hideDone, setHideDone] = useState(false);
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
+
+  // viewMode persistence (encrypted preferences blob — same posture
+  // as `libraryViewMode`). Clamps unknown stored values to the
+  // default so a future client version that adds a third mode
+  // can't paint this version into a bad layout.
+  const { preferences, setPreferences } = usePreferences();
+  const persistedViewMode =
+    preferences.goalsViewMode &&
+    (GOALS_VIEW_MODES as readonly string[]).includes(preferences.goalsViewMode)
+      ? (preferences.goalsViewMode as GoalsViewMode)
+      : DEFAULT_VIEW_MODE;
+  const setViewMode = (next: GoalsViewMode): void => {
+    if (next === persistedViewMode) return;
+    void setPreferences({ goalsViewMode: next });
+  };
+  const viewMode = persistedViewMode;
 
   // Deduped sorted thread inventory — same shape Journal exposes
   // for its sidebar chips. FR collation so accented threads sort
@@ -122,6 +151,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   return {
     statusFilter,
     groupBy,
+    viewMode,
     search,
     sortBy,
     hideDone,
@@ -131,6 +161,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     threads,
     setStatusFilter,
     setGroupBy,
+    setViewMode,
     setSearch,
     setSortBy,
     setHideDone,

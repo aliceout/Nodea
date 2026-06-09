@@ -10,8 +10,9 @@ import PageHeading from '@/ui/dirk/module/PageHeading';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import MonthSelector from '../components/MonthSelector';
+import MoodForm from '../components/MoodForm';
 import YearSelector from '../components/YearSelector';
-import { useMoodData, useMoodFilters } from '../context';
+import { useMoodActions, useMoodData, useMoodFilters } from '../context';
 import Chart from './Chart';
 import EntryRow from './EntryRow';
 
@@ -38,6 +39,7 @@ export default function PrimaryColumn() {
     toggleChart,
     setDayFilter,
   } = useMoodFilters();
+  const { formOpen, editingEntry, closeForm } = useMoodActions();
   const monthNamesLong = useMemo(
     () => getMonthNames(language, 'long'),
     [language],
@@ -182,6 +184,24 @@ export default function PrimaryColumn() {
           </div>
         </div>
       </div>
+
+      {/* Inline form — sits above the entries list when the topbar
+          « + Nouvelle entrée » button or an edit affordance opens
+          it. The form's own Cancel / Save buttons toggle
+          `formOpen` back off via `closeForm`. Keyed on
+          `editingEntry?.id` so switching from « edit row A » to
+          « edit row B » without closing in between remounts the
+          form with the right initial values rather than
+          re-applying defaults to a still-mounted draft. */}
+      {formOpen ? (
+        <div className="mt-4">
+          <MoodForm
+            key={editingEntry?.id ?? 'create'}
+            {...(editingEntry ? { initial: editingEntry } : {})}
+            onClose={closeForm}
+          />
+        </div>
+      ) : null}
 
       {load.status === 'error' ? (
         <p

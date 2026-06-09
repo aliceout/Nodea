@@ -10,7 +10,6 @@ import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
 import BookPickerModal from './components/BookPickerModal';
 import MobileFilters from './components/MobileFilters';
 import SideColumn from './components/SideColumn';
-import ViewModeToggle from './components/ViewModeToggle';
 import {
   LibraryProvider,
   useLibraryActions,
@@ -84,15 +83,6 @@ function LibraryView() {
                   clearLabel="Effacer la recherche"
                   className="w-44 md:w-56"
                 />
-                {/* The 5 view-mode toggles are a desktop affordance —
-                    on a phone the layout is a single column anyway,
-                    so the choice between list/grid/wall is moot, and
-                    keeping the pill in the topbar pushes the CTA off
-                    the edge. `md:contents` keeps it as a regular
-                    flex item at md+, hides it entirely below. */}
-                <div className="hidden md:contents">
-                  <ViewModeToggle />
-                </div>
                 <DirkButton variant="primary" size="sm" onClick={addItem}>
                   + Nouveau livre
                 </DirkButton>

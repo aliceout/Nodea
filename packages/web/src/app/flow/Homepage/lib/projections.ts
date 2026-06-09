@@ -1,7 +1,6 @@
 import type {
   GoalsPayload,
   JournalPayload,
-  LibraryItemPayload,
   MoodPayload,
   MoodScore,
 } from '@nodea/shared';
@@ -15,7 +14,6 @@ import type {
   GoalEntryLite,
   GoalStatusLite,
   JournalEntryLite,
-  LibraryReadingLite,
   MoodEntryLite,
 } from './types';
 
@@ -89,41 +87,6 @@ export function projectGoalEntries(
       // flips into `done` ; null otherwise. The homepage uses
       // it to filter « réalisés ces 12 mois ».
       completedAt: p.completedAt ?? null,
-    });
-  }
-  return out;
-}
-
-/**
- * Project decrypted Library items onto the « En cours de
- * lecture » Lite shape, keeping only items whose status is
- * `in_progress`. Authors are derived from the `creators` array,
- * filtered to the `author` role (or no role at all), trimmed,
- * deduped on the way in by `Array.filter(Boolean)`, and joined
- * with `, ` for display.
- *
- * Pure : no I/O, no global clock, no React.
- */
-export function projectLibraryReadings(
-  records: ReadonlyArray<DecryptedRecord<LibraryItemPayload>>,
-): LibraryReadingLite[] {
-  const out: LibraryReadingLite[] = [];
-  for (const r of records) {
-    const p = r.payload;
-    if (p.status !== 'in_progress') continue;
-    const title = p.title?.trim();
-    if (!title) continue;
-    const author =
-      p.creators
-        ?.filter((c) => !c.role || c.role === 'author')
-        .map((c) => c.name.trim())
-        .filter(Boolean)
-        .join(', ') ?? '';
-    out.push({
-      id: r.id,
-      title,
-      author,
-      isFavorite: p.isFavorite ?? false,
     });
   }
   return out;

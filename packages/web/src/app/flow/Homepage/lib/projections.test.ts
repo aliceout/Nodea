@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
   GoalsPayload,
-  LibraryItemPayload,
   MoodPayload,
 } from '@nodea/shared';
 
@@ -9,7 +8,6 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 
 import {
   projectGoalEntries,
-  projectLibraryReadings,
   projectMoodEntries,
 } from './projections';
 
@@ -50,17 +48,6 @@ function goalRecord(
       updatedAt: '2026-03-15T00:00:00Z',
       ...payload,
     } as GoalsPayload,
-  };
-}
-
-function libraryRecord(
-  id: string,
-  payload: Partial<LibraryItemPayload>,
-): DecryptedRecord<LibraryItemPayload> {
-  return {
-    id,
-    moduleUserId: 'sid-x',
-    payload: { title: 'x', ...payload } as LibraryItemPayload,
   };
 }
 
@@ -137,48 +124,3 @@ describe('projectGoalEntries', () => {
   });
 });
 
-describe('projectLibraryReadings', () => {
-  it('keeps only items with status === in_progress', () => {
-    const out = projectLibraryReadings([
-      libraryRecord('a', { title: 'A', status: 'in_progress' }),
-      libraryRecord('b', { title: 'B', status: 'finished' }),
-      libraryRecord('c', { title: 'C', status: 'planned' }),
-    ]);
-    expect(out.map((r) => r.id)).toEqual(['a']);
-  });
-
-  it('drops items with an empty title', () => {
-    const out = projectLibraryReadings([
-      libraryRecord('a', { title: '   ', status: 'in_progress' }),
-    ]);
-    expect(out).toEqual([]);
-  });
-
-  it('joins author creators (and accepts un-roled creators)', () => {
-    const out = projectLibraryReadings([
-      libraryRecord('a', {
-        title: 'Slow Productivity',
-        status: 'in_progress',
-        creators: [
-          { name: 'Cal Newport', role: 'author' },
-          { name: 'Translator', role: 'translator' },
-          { name: '  Editor  ', role: undefined as never },
-        ],
-      } as Partial<LibraryItemPayload>),
-    ]);
-    expect(out[0]?.author).toBe('Cal Newport, Editor');
-  });
-
-  it('defaults isFavorite to false', () => {
-    const out = projectLibraryReadings([
-      libraryRecord('a', { title: 'A', status: 'in_progress' }),
-      libraryRecord('b', {
-        title: 'B',
-        status: 'in_progress',
-        isFavorite: true,
-      }),
-    ]);
-    expect(out[0]?.isFavorite).toBe(false);
-    expect(out[1]?.isFavorite).toBe(true);
-  });
-});

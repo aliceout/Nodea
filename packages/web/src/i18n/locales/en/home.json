@@ -13,6 +13,7 @@
     "ariaLabel": "Writing density over the last 30 days"
   },
   "hero": {
+    "module": "Journal",
     "eyebrow": "Latest entry",
     "cta": "open the journal",
     "ariaLabel": "Latest journal entry"
@@ -21,6 +22,9 @@
     "label": "Update",
     "publishedOn": "Published on {date}",
     "loading": "Loading announcements…"
+  },
+  "announcements": {
+    "title": "Announcements"
   },
   "mood": {
     "quickView": "Quick glance",

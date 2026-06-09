@@ -106,7 +106,7 @@ export default function JournalHeatmap() {
 
   return (
     <HomeCard
-      title="ÉCRITURE · 6 MOIS"
+      title="JOURNAL · 6 MOIS"
       trailing={
         <span className="tabular-nums">
           {writtenCount} {writtenCount === 1 ? 'jour' : 'jours'}

@@ -46,12 +46,28 @@ export default function ScoreSection({ value, onChange }: ScoreSectionProps) {
               type="button"
               onClick={() => onChange(v)}
               aria-pressed={selected}
+              // Single-line layout (number + label inline) with
+              // `h-8` so the button matches the dirk `Input`'s
+              // height exactly — the date picker next to it uses
+              // the same atom, so the top + bottom edges of the
+              // date row and the score row now align pixel-
+              // perfectly. `items-center` (not `items-baseline`)
+              // because the two spans have different font sizes ;
+              // baseline alignment would visibly drop the smaller
+              // « très bon » span below the centre line.
+              //
+              // Border-radius driven by the shared `--radius-input`
+              // token so these picker cells stay aligned with the
+              // form's Input / Textarea / Select corners. Was the
+              // hardcoded `rounded-sm` (2px) which drifted visibly
+              // when the inputs around them used a different
+              // value.
               className={cn(
-                'flex flex-col items-center gap-0.5 rounded-sm border px-2 py-1.5 text-[11px] transition-colors',
+                'flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius-input)] border px-2 text-[11px] transition-colors',
                 tone,
               )}
             >
-              <span className="text-[14px] font-semibold tabular-nums">
+              <span className="text-[13px] font-semibold tabular-nums">
                 {numeric > 0 ? `+${v}` : v}
               </span>
               <span className="text-[10px] tracking-[0.02em]">

@@ -13,6 +13,7 @@
     "ariaLabel": "Densité d’écriture sur les 30 derniers jours"
   },
   "hero": {
+    "module": "Journal",
     "eyebrow": "Dernière entrée",
     "cta": "voir le journal",
     "ariaLabel": "Dernière entrée du journal"
@@ -21,6 +22,9 @@
     "label": "Nouvelle",
     "publishedOn": "Publié le {date}",
     "loading": "Chargement des nouveautés…"
+  },
+  "announcements": {
+    "title": "Annonces"
   },
   "mood": {
     "quickView": "Aperçu rapide",

@@ -1,29 +1,29 @@
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
+import AnnouncementsCard from '../components/AnnouncementsCard';
 import GoalsCard from '../components/GoalsCard';
 import HeroEntry from '../components/HeroEntry';
 import JournalHeatmap from '../components/JournalHeatmap';
-import JournalFlashback from '../components/JournalFlashback';
 import MoodBlock from '../components/MoodBlock';
-import ReadingBlock from '../components/ReadingBlock';
 import { useHomepageData } from '../context';
 
 /**
- * Homepage primary column — typographic, hairline-ruled layout.
+ * Homepage primary column — bordered-card grid layout.
  *
  *   1. Greeting (serif, page anchor).
- *   2. Two-column row : latest journal Hero (left) · Écriture
- *      26-week strip (right). Opens the page on the narrative
- *      half + the writing-density half side-by-side.
- *   3. Two-column row : Mood 26-week frise (left) · Moments
- *      d'il y a un an (right). The flashback's typographic list
- *      balances the heatmap's grid visually.
- *   4. Two-column row : Lectures (left) · Goals (right).
+ *   2. Two-column grid auto-flowing four bordered home cards :
+ *      HeroEntry, JournalHeatmap, MoodBlock, GoalsCard. The grid
+ *      lands as two even rows on lg+ ; one column on smaller
+ *      surfaces.
  *
- * The visual rhythm is carried by hairline rules above each
- * section rather than card chrome. Nodea's homepage reads more
- * like a page of a notebook than a dashboard — flat surfaces,
- * generous vertical space, an eyebrow + body per section.
+ * Two previous blocks were retired :
+ *   - `JournalFlashback` overlapped with `HeroEntry` (both pulled
+ *     from the journal, the doublon was visible on a surface
+ *     meant to read as a single glance).
+ *   - `ReadingBlock` (Library « en cours ») was dropped per
+ *     product call — the home keeps only the four « gauges » that
+ *     summarise the broader habit (writing, mood, daily entry,
+ *     goals).
  */
 export default function PrimaryColumn() {
   const { displayName } = useHomepageData();
@@ -34,20 +34,18 @@ export default function PrimaryColumn() {
         {displayName ? `Bonjour, ${displayName}.` : 'Bonjour.'}
       </PageHeading>
 
-      <div className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Admin-pushed announcements span both columns on lg+ so
+            news land before the personal cards. The card spans
+            via its own `lg:col-span-2` className passthrough — when
+            the announcements array is empty it returns `null`
+            entirely, so no phantom grid cell shows up and the
+            personal 2×2 grid stays unchanged. */}
+        <AnnouncementsCard />
         <HeroEntry />
         <JournalHeatmap />
-      </div>
-
-      <div className="mt-6 flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-2">
-          <MoodBlock />
-          <JournalFlashback />
-        </div>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-2">
-          <ReadingBlock />
-          <GoalsCard />
-        </div>
+        <MoodBlock />
+        <GoalsCard />
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ import FilterChip from '@/ui/dirk/module/FilterChip';
 import { useGoalsActions, useGoalsData, useGoalsFilters } from '../context';
 import { CANONICAL_STATUSES } from '../lib/constants';
 import type { SortBy } from '../lib/types';
+import ViewModeToggle from './ViewModeToggle';
 
 const SORT_VALUES: ReadonlyArray<SortBy> = ['date', 'updated', 'alpha'];
 
@@ -112,33 +113,37 @@ export function FiltersContent() {
         </div>
       </section>
 
-      {groupBy === 'thread' ? (
-        <section>
-          <SectionLabel>{t('goals.side.threads')}</SectionLabel>
-          {threads.length === 0 ? (
-            <p className="text-[12px] italic text-muted">
-              {t('goals.side.threadsEmpty')}
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-1">
+      {/* Thèmes filter — always visible regardless of `groupBy`. The
+          old conditional (`groupBy === 'thread' ? ...`) hid the
+          chips whenever the user switched to « grouper par année »,
+          which made the filter feel attached to the grouping
+          choice. They're independent : you can group by year AND
+          want to scope to a single theme. */}
+      <section>
+        <SectionLabel>{t('goals.side.threads')}</SectionLabel>
+        {threads.length === 0 ? (
+          <p className="text-[12px] italic text-muted">
+            {t('goals.side.threadsEmpty')}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            <FilterChip
+              active={threadFilter === null}
+              onClick={() => setThreadFilter(null)}
+              label={t('goals.side.threadsAll')}
+              count={entries.length}
+            />
+            {threads.map((thread) => (
               <FilterChip
-                active={threadFilter === null}
-                onClick={() => setThreadFilter(null)}
-                label={t('goals.side.threadsAll')}
-                count={entries.length}
+                key={thread}
+                active={threadFilter === thread}
+                onClick={() => setThreadFilter(thread)}
+                label={thread}
               />
-              {threads.map((thread) => (
-                <FilterChip
-                  key={thread}
-                  active={threadFilter === thread}
-                  onClick={() => setThreadFilter(thread)}
-                  label={thread}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
+            ))}
+          </div>
+        )}
+      </section>
 
       <section>
         <SectionLabel>{t('goals.side.sortBy')}</SectionLabel>
@@ -152,6 +157,13 @@ export function FiltersContent() {
             />
           ))}
         </div>
+      </section>
+
+      <section>
+        <SectionLabel>
+          {t('goals.side.view', { defaultValue: 'Vue' })}
+        </SectionLabel>
+        <ViewModeToggle />
       </section>
 
       <section>

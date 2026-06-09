@@ -9,22 +9,18 @@ import { HOME_GOAL_LIMIT, STATUS_LABEL, STATUS_TONE } from '../lib/constants';
 import { pickHomeGoals } from '../lib/intentions';
 import HomeCard from './HomeCard';
 
-const MONTHS_WINDOW = 12;
-
 /**
- * Goals section on the Homepage. Two stacked subsections under
- * a single hairline-ruled header :
- *   - `EN COURS` — picks `wip` and recently-touched `open` goals
- *     via `pickHomeGoals` (same logic as the legacy
- *     `IntentionsBlock`). Capped at `HOME_GOAL_LIMIT`.
- *   - `RÉALISÉS · 12 MOIS` — most recent 3 by `completedAt`,
- *     rendered struck-through. Drops `null` completedAt rows
- *     (the field is only populated when a goal crosses into
- *     `done` ; older done goals from before that field landed
- *     won't surface here, by design).
+ * Goals section on the Homepage — a single « EN COURS » list of
+ * `wip` and recently-touched `open` goals picked by
+ * `pickHomeGoals`. Capped at `HOME_GOAL_LIMIT`.
  *
- * The card's eyebrow now folds the count in (« GOALS · 5 EN
- * COURS ») so the header reads in a single beat instead of two.
+ * The « RÉALISÉS · 12 MOIS » subsection was removed so the card's
+ * height matches the Mood heatmap card on the same row (Goals was
+ * stretching the bottom row taller than the top, breaking the
+ * 2×2 visual symmetry between the four cards).
+ *
+ * The card's eyebrow folds the count in (« GOALS · 5 EN COURS »)
+ * so the header reads in a single beat instead of two.
  */
 export default function GoalsCard() {
   const { goals } = useHomepageData();
@@ -32,23 +28,6 @@ export default function GoalsCard() {
   const goToGoals = () => setModule('goals');
 
   const inProgress = useMemo(() => pickHomeGoals(goals), [goals]);
-
-  const { completedRecent, completedCount } = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - MONTHS_WINDOW);
-    cutoff.setHours(0, 0, 0, 0);
-    const cutoffTime = cutoff.getTime();
-    const done = goals
-      .filter((g) => g.status === 'done' && g.completedAt !== null)
-      .filter((g) => {
-        const t = Date.parse(g.completedAt as string);
-        return Number.isFinite(t) && t >= cutoffTime;
-      })
-      .sort((a, b) =>
-        (b.completedAt as string).localeCompare(a.completedAt as string),
-      );
-    return { completedRecent: done.slice(0, 3), completedCount: done.length };
-  }, [goals]);
 
   return (
     <HomeCard
@@ -94,37 +73,6 @@ export default function GoalsCard() {
         </ul>
       )}
 
-      {completedCount > 0 ? (
-        <div className="mt-5">
-          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Réalisés · 12 mois · {completedCount}
-          </p>
-          <ul className="space-y-1.5">
-            {completedRecent.map((g) => (
-              <li key={g.id}>
-                <button
-                  type="button"
-                  onClick={goToGoals}
-                  className="group flex w-full cursor-pointer items-baseline gap-2 text-left text-[13px] text-muted transition-colors hover:text-accent"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full border border-accent bg-accent"
-                  />
-                  <span className="min-w-0 flex-1 truncate line-through">
-                    {g.title}
-                  </span>
-                </button>
-              </li>
-            ))}
-            {completedCount > completedRecent.length ? (
-              <li className="pl-[18px] text-[11px] text-muted">
-                + {completedCount - completedRecent.length} de plus
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      ) : null}
     </HomeCard>
   );
 }

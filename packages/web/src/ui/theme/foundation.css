@@ -39,12 +39,15 @@
        softer. `--radius-control/input` are for form-sized elements
        where tight corners stay crisp at small heights. Atoms read
        from these tokens via `rounded-[var(--radius-*)]` — do not
-       hardcode `rounded-sm`, `rounded-md`, etc. on atoms. */
+       hardcode `rounded-sm`, `rounded-md`, etc. on atoms.
+       `--radius-input` bumped from 0.125rem to 0.25rem so the
+       form-field rounding stays visible next to the bigger
+       Button radius (0.375rem) instead of reading as square. */
     --radius-sm: 0.5rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
     --radius-control: 0.375rem;
-    --radius-input: 0.125rem;
+    --radius-input: 0.25rem;
 
     /* Spacing */
     --surface-padding-sm: 0.75rem;

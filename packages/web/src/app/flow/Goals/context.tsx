@@ -14,7 +14,12 @@ import { useGoalsData as useDataState, type GoalsStats } from './state/use-goals
 import {
   useGoalsFilters as useFiltersState,
   type GoalsGroupBy,
+  type GoalsViewMode,
 } from './state/use-goals-filters';
+
+// Re-exported for consumers that import the view-mode type
+// alongside the `useGoalsFilters` accessor.
+export type { GoalsViewMode };
 
 /**
  * Goals page-local state, exposed through three React contexts so
@@ -51,6 +56,7 @@ interface GoalsDataValue {
 interface GoalsFiltersValue {
   statusFilter: CanonicalStatus | null;
   groupBy: GoalsGroupBy;
+  viewMode: GoalsViewMode;
   search: string;
   sortBy: SortBy;
   hideDone: boolean;
@@ -62,6 +68,7 @@ interface GoalsFiltersValue {
 
   setStatusFilter: (next: CanonicalStatus | null) => void;
   setGroupBy: (next: GoalsGroupBy) => void;
+  setViewMode: (next: GoalsViewMode) => void;
   setSearch: (next: string) => void;
   setSortBy: (next: SortBy) => void;
   setHideDone: (next: boolean) => void;
@@ -127,6 +134,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     () => ({
       statusFilter: filters.statusFilter,
       groupBy: filters.groupBy,
+      viewMode: filters.viewMode,
       search: filters.search,
       sortBy: filters.sortBy,
       hideDone: filters.hideDone,
@@ -136,6 +144,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       threads: filters.threads,
       setStatusFilter: filters.setStatusFilter,
       setGroupBy: filters.setGroupBy,
+      setViewMode: filters.setViewMode,
       setSearch: filters.setSearch,
       setSortBy: filters.setSortBy,
       setHideDone: filters.setHideDone,

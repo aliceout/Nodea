@@ -22,7 +22,7 @@
     "confirmDelete": "Supprimer « {title} » ?"
   },
   "reader": {
-    "noThreadEyebrow": "— sans fil —",
+    "noThreadEyebrow": "— sans thème —",
     "edit": "Modifier",
     "close": "Fermer",
     "prev": "Précédent",
@@ -50,19 +50,25 @@
     "updated": "Récent",
     "alpha": "A→Z"
   },
+  "viewMode": {
+    "ariaLabel": "Mode d'affichage",
+    "list": "Liste",
+    "cards": "Cartes"
+  },
   "side": {
     "search": "Recherche",
-    "searchPlaceholder": "Titre, note ou fil…",
+    "searchPlaceholder": "Titre, note ou thème…",
     "searchAria": "Rechercher dans les objectifs",
     "statusHeading": "Statut",
     "all": "Tous",
     "groupBy": "Grouper par",
-    "groupByThread": "Thread",
+    "groupByThread": "Thème",
     "groupByYear": "Année",
-    "threads": "Fils",
+    "threads": "Thèmes",
     "threadsAll": "Tous",
-    "threadsEmpty": "Aucun fil sur tes goals pour le moment.",
+    "threadsEmpty": "Aucun thème sur tes goals pour le moment.",
     "sortBy": "Trier par",
+    "view": "Vue",
     "display": "Affichage",
     "hideDone": "Masquer les terminés ({count})",
     "actions": "Actions",
@@ -92,7 +98,7 @@
     "monthPlaceholder": "— mois —",
     "yearPlaceholder": "Année",
     "yearAria": "Année (4 chiffres)",
-    "threadPlaceholder": "Threads (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo",
+    "threadPlaceholder": "Thèmes (optionnel) — séparés par une virgule, ex. #DéménagementLyon, #Solo",
     "existingThreads": "Existants :",
     "notePlaceholder": "Note (optionnelle) — détails, contexte, échéance précise…",
     "errors": {

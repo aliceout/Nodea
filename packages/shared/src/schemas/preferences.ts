@@ -64,10 +64,49 @@ export const LibraryViewModeSchema = z.enum([
 ]);
 export type LibraryViewMode = z.infer<typeof LibraryViewModeSchema>;
 
+/**
+ * Goals catalogue rendering mode. Same encrypted-prefs posture as
+ * `libraryViewMode` — survives device hops and never lands in
+ * localStorage (which would leak « this user has Goals enabled »
+ * to anyone with browser-storage access on the machine).
+ *
+ *   - `list`   : the legacy grouped-rows layout (one entry per row,
+ *                inline status pill + hover actions).
+ *   - `cards`  : a responsive card grid (1/2/3/4 columns from mobile
+ *                to xl-desktop), one card per goal.
+ *
+ * Accept-only ; the UI clamps to the local `GOALS_VIEW_MODES` tuple
+ * defensively in case a future client version writes a value this
+ * release doesn't know about.
+ */
+export const GoalsViewModeSchema = z.enum(['list', 'cards']);
+export type GoalsViewMode = z.infer<typeof GoalsViewModeSchema>;
+
+/**
+ * Per-user list of admin-announcement ids the user has dismissed
+ * from the Homepage. Stored encrypted alongside the other
+ * preferences so the server never sees which announcements a
+ * specific user has interacted with (consistent with the privacy
+ * posture for module ids + reading-mode preferences).
+ *
+ * The list is append-only on the client. Server-side, an
+ * announcement can also drop off the live feed (active=false,
+ * outside its start/end window, or simply deleted), at which
+ * point this list still references its id — that's fine, the
+ * client filter just never matches it again. A future garbage
+ * collection pass could prune stale ids, but the 32 KB
+ * preferences cap leaves ~900 UUIDs of headroom which is well
+ * past anything a user would ever accumulate.
+ */
+export const DismissedAnnouncementsSchema = z.array(z.string().min(1).max(128));
+export type DismissedAnnouncements = z.infer<typeof DismissedAnnouncementsSchema>;
+
 export const UserPreferencesPayloadSchema = z.looseObject({
   theme: ThemePreferenceSchema.optional(),
   language: LanguagePreferenceSchema.optional(),
   backgroundShade: BackgroundShadeSchema.optional(),
   libraryViewMode: LibraryViewModeSchema.optional(),
+  goalsViewMode: GoalsViewModeSchema.optional(),
+  dismissedAnnouncements: DismissedAnnouncementsSchema.optional(),
 });
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;

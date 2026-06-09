@@ -10,6 +10,7 @@ import FilterChip from '@/ui/dirk/module/FilterChip';
 import { useLibraryData, useLibraryFilters } from '../context';
 import { STATUS_LABEL } from '../lib/constants';
 import { LIBRARY_GROUP_BY_OPTIONS } from '../lib/grouping';
+import ViewModeToggle from './ViewModeToggle';
 
 /**
  * Filter sidebar for the Library catalogue. Renders three sections :
@@ -81,19 +82,26 @@ export function FiltersContent() {
   return (
     <div className="flex min-w-0 flex-col gap-6">
       {showGroupBy ? (
-        <section>
-          <SectionLabel>Grouper par</SectionLabel>
-          <div className="flex flex-wrap gap-1">
-            {LIBRARY_GROUP_BY_OPTIONS.map((opt) => (
-              <FilterChip
-                key={opt.value}
-                active={groupBy === opt.value}
-                onClick={() => setGroupBy(opt.value)}
-                label={opt.label}
-              />
-            ))}
-          </div>
-        </section>
+        <>
+          <section>
+            <SectionLabel>Vue</SectionLabel>
+            <ViewModeToggle />
+          </section>
+
+          <section>
+            <SectionLabel>Grouper par</SectionLabel>
+            <div className="flex flex-wrap gap-1">
+              {LIBRARY_GROUP_BY_OPTIONS.map((opt) => (
+                <FilterChip
+                  key={opt.value}
+                  active={groupBy === opt.value}
+                  onClick={() => setGroupBy(opt.value)}
+                  label={opt.label}
+                />
+              ))}
+            </div>
+          </section>
+        </>
       ) : null}
 
       <section>

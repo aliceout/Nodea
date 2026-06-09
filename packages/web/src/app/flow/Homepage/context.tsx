@@ -7,9 +7,11 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { AnnouncementResponse } from '@nodea/shared';
+
+import { apiListLiveAnnouncements } from '@/core/api/announcements';
 import { goalsClient } from '@/core/api/modules/goals';
 import { journalClient } from '@/core/api/modules/journal';
-import { libraryItemsClient } from '@/core/api/modules/library';
 import { moodClient } from '@/core/api/modules/mood';
 import {
   useNodeaStore,
@@ -24,13 +26,11 @@ import { preferredName } from './lib/format';
 import {
   projectGoalEntries,
   projectJournalEntries,
-  projectLibraryReadings,
   projectMoodEntries,
 } from './lib/projections';
 import type {
   GoalEntryLite,
   JournalEntryLite,
-  LibraryReadingLite,
   MoodEntryLite,
 } from './lib/types';
 
@@ -53,11 +53,15 @@ interface HomepageDataValue {
   formattedDate: string;
   mood: ReadonlyArray<MoodEntryLite>;
   goals: ReadonlyArray<GoalEntryLite>;
-  readings: ReadonlyArray<LibraryReadingLite>;
   /** Journal entries, newest-first. Drives `ToSeeList`'s « Entrée
    *  Journal aujourd'hui » row, `RecentJournal`'s snippet preview,
    *  and `JournalHeatmap`'s density grid. */
   journal: ReadonlyArray<JournalEntryLite>;
+  /** Live admin-authored announcements, newest-first. The server
+   *  already filters on `active` + the optional start/end window
+   *  so the array is rendered as-is by `AnnouncementsCard`. Empty
+   *  array hides the card entirely. */
+  announcements: ReadonlyArray<AnnouncementResponse>;
 }
 
 const HomepageDataContext = createContext<HomepageDataValue | null>(null);
@@ -80,19 +84,17 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   const modules = useNodeaStore(selectModules);
   const moodVersion = useNodeaStore((s) => s.moodVersion);
   const goalsVersion = useNodeaStore((s) => s.goalsVersion);
-  const libraryItemsVersion = useNodeaStore((s) => s.libraryItemsVersion);
   const journalVersion = useNodeaStore((s) => s.journalVersion);
   const { language } = useI18n();
 
   const moodModuleId = modules['mood']?.moduleUserId ?? null;
   const goalsModuleId = modules['goals']?.moduleUserId ?? null;
-  const libraryModuleId = modules['library']?.moduleUserId ?? null;
   const journalModuleId = modules['journal']?.moduleUserId ?? null;
 
   const [mood, setMood] = useState<MoodEntryLite[]>([]);
   const [goals, setGoals] = useState<GoalEntryLite[]>([]);
-  const [readings, setReadings] = useState<LibraryReadingLite[]>([]);
   const [journal, setJournal] = useState<JournalEntryLite[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementResponse[]>([]);
 
   // ---- Fetch effects (one per module). Failures are silenced —
   // the matching module's own page surfaces real errors. ----
@@ -132,23 +134,6 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   }, [mainKey, goalsModuleId, goalsVersion]);
 
   useEffect(() => {
-    if (!mainKey || !libraryModuleId) return undefined;
-    let cancelled = false;
-    libraryItemsClient
-      .list(libraryModuleId, mainKey)
-      .then((records) => {
-        if (cancelled) return;
-        setReadings(projectLibraryReadings(records));
-      })
-      .catch(() => {
-        // Silent — Library page surfaces the real error.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mainKey, libraryModuleId, libraryItemsVersion]);
-
-  useEffect(() => {
     if (!mainKey || !journalModuleId) return undefined;
     let cancelled = false;
     journalClient
@@ -164,6 +149,28 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [mainKey, journalModuleId, journalVersion]);
+
+  // Public announcements — fetched once per Homepage mount (no
+  // store version slice, no refetch trigger). Failures stay silent
+  // since the announcements card hides itself when the array is
+  // empty, which is the same UX an offline / errored request lands
+  // on. The user logs in and reaches the home before the SSE /
+  // periodic-poll story is in place ; if an admin pushes mid-
+  // session, a page refresh picks it up.
+  useEffect(() => {
+    let cancelled = false;
+    apiListLiveAnnouncements()
+      .then((rows) => {
+        if (cancelled) return;
+        setAnnouncements(rows);
+      })
+      .catch(() => {
+        // Silent — empty array hides the card.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ---- Derived ----
 
@@ -188,8 +195,8 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   }, [language]);
 
   const value = useMemo<HomepageDataValue>(
-    () => ({ displayName, formattedDate, mood, goals, readings, journal }),
-    [displayName, formattedDate, mood, goals, readings, journal],
+    () => ({ displayName, formattedDate, mood, goals, journal, announcements }),
+    [displayName, formattedDate, mood, goals, journal, announcements],
   );
 
   return (

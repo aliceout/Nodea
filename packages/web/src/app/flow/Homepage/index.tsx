@@ -1,6 +1,4 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
-import { useI18n } from '@/i18n/I18nProvider.jsx';
-import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
@@ -42,21 +40,23 @@ export default function HomePage() {
 
 function HomepageView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const openComposer = useNodeaStore((s) => s.openComposer);
-  const { t } = useI18n();
   const { formattedDate } = useHomepageData();
 
+  // The « + Nouvelle entrée » topbar CTA was removed when we
+  // pivoted from the global `ComposerModal` to per-module inline
+  // forms : a home-level button no longer has a single, sensible
+  // target to dispatch to, and pushing the user back into the
+  // composer modal pattern just for a quick capture broke the
+  // consistency of the new inline flow. Each module's own
+  // « + Nouvelle entrée » CTA lives in its own topbar (Mood today,
+  // Goals / Journal / Library / HRT as they migrate).
   return (
     <ModuleShell
       topbar={
         <Topbar
           label={formattedDate}
           onOpenMenu={() => setMobileMenuOpen(true)}
-        >
-          <Button variant="primary" size="sm" onClick={() => openComposer()}>
-            {t('home.topbar.newEntry', { defaultValue: '+ Nouvelle entrée' })}
-          </Button>
-        </Topbar>
+        />
       }
     >
       <PrimaryColumn />

@@ -85,7 +85,24 @@ interface MoodFiltersValue {
 }
 
 interface MoodActionsValue {
+  /** When `true`, `PrimaryColumn` renders `MoodForm` above the
+   *  entries list. Driven by the create/edit affordances below. */
+  formOpen: boolean;
+  /** The entry being edited, or `null` for a fresh « create »
+   *  flow. The form reads this to decide between insert / update
+   *  + which initial values to seed. */
+  editingEntry: MoodEntry | null;
+  /** Open the inline form on a blank entry (topbar
+   *  « + Nouvelle entrée » button). */
+  openCreateForm: () => void;
+  /** Open the inline form pre-filled with the given entry — the
+   *  edit affordance on each row in the list. Kept as `editEntry`
+   *  too (alias) so existing EntryRow markup compiles unchanged. */
+  openEditForm: (entry: MoodEntry) => void;
   editEntry: (entry: MoodEntry) => void;
+  /** Cancel / dismiss the form (the form's own Cancel button +
+   *  post-save callback). */
+  closeForm: () => void;
   deleteEntry: (entry: MoodEntry) => Promise<void>;
 }
 
@@ -113,7 +130,11 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const ctx = useModuleClient('mood');
   const moodVersion = useNodeaStore((s) => s.moodVersion);
   const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
-  const openComposer = useNodeaStore((s) => s.openComposer);
+
+  // ---- Inline-form state (local to the Mood module ; no longer
+  // routed through the global Zustand composer slice) ----
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<MoodEntry | null>(null);
 
   // ---- Data state ----
   const [entries, setEntries] = useState<MoodEntry[]>([]);
@@ -242,26 +263,33 @@ export function MoodProvider({ children }: { children: ReactNode }) {
 
   // ---- Actions ----
 
-  const editEntry = useCallback(
-    (entry: MoodEntry) => {
-      openComposer('mood', {
-        type: 'mood',
-        id: entry.id,
-        payload: {
-          date: entry.dateIso,
-          moodScore: entry.score,
-          moodEmoji: '',
-          positive1: entry.positives[0],
-          positive2: entry.positives[1],
-          positive3: entry.positives[2],
-          comment: entry.comment ?? '',
-          ...(entry.question ? { question: entry.question } : {}),
-          ...(entry.answer ? { answer: entry.answer } : {}),
-        },
-      });
-    },
-    [openComposer],
-  );
+  // Opening the form auto-collapses the chart, closing it brings
+  // it back. The frise is the biggest visual block on the page —
+  // leaving it open while the inline form expands underneath
+  // would push the form below the fold on every laptop. Tying the
+  // two states together here keeps the « focus mode » predictable
+  // without the user having to fold the chart manually first.
+  const openCreateForm = useCallback(() => {
+    setEditingEntry(null);
+    setFormOpen(true);
+    setChartCollapsed(true);
+  }, []);
+
+  const openEditForm = useCallback((entry: MoodEntry) => {
+    setEditingEntry(entry);
+    setFormOpen(true);
+    setChartCollapsed(true);
+  }, []);
+
+  // Alias kept so EntryRow's existing `onClick={() => editEntry(entry)}`
+  // compiles untouched. Internally it's the same as `openEditForm`.
+  const editEntry = openEditForm;
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    setEditingEntry(null);
+    setChartCollapsed(false);
+  }, []);
 
   // FRONT-13 — per-entry mutation tracker so concurrent rollbacks
   // don't clobber each other. Each delete gets a unique token ; the
@@ -339,8 +367,24 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   );
 
   const actionsValue = useMemo<MoodActionsValue>(
-    () => ({ editEntry, deleteEntry }),
-    [editEntry, deleteEntry],
+    () => ({
+      formOpen,
+      editingEntry,
+      openCreateForm,
+      openEditForm,
+      editEntry,
+      closeForm,
+      deleteEntry,
+    }),
+    [
+      formOpen,
+      editingEntry,
+      openCreateForm,
+      openEditForm,
+      editEntry,
+      closeForm,
+      deleteEntry,
+    ],
   );
 
   return (

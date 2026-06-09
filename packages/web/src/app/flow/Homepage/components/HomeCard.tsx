@@ -17,11 +17,13 @@ interface HomeCardProps {
 }
 
 /**
- * Section scaffold for the Homepage's typographic layout. No
- * card chrome (no bg, no rounded border, no shadow) — the visual
- * rhythm comes from a single hairline rule above each section
- * plus generous vertical padding. The home reads as a page of a
- * notebook, not a dashboard.
+ * Section scaffold for the Homepage's typographic layout. Card-style
+ * chrome (rounded border on every side, soft hover shadow) matching
+ * the Goals « Cartes » view so the home and the per-module surfaces
+ * feel like they share the same visual idiom. The earlier hairline-
+ * above-only version read more like a notebook page ; the bordered
+ * card variant trades that for a clearer block-by-block separation
+ * once the home has 5+ tiles fighting for attention.
  *
  * The eyebrow + trailing baseline pattern is the page's main
  * shape : every block opens with `{count} · {NOUN}` left and the
@@ -37,7 +39,10 @@ export default function HomeCard({
 }: HomeCardProps) {
   return (
     <section
-      className={cn('min-w-0 border-t border-hair pt-4 pb-1', className)}
+      className={cn(
+        'flex min-w-0 flex-col rounded-md border border-hair/60 bg-bg p-4 transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]',
+        className,
+      )}
     >
       <header className="mb-3 flex items-baseline justify-between gap-3">
         <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted">
@@ -51,7 +56,7 @@ export default function HomeCard({
           </div>
         ) : null}
       </header>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 flex-1">{children}</div>
     </section>
   );
 }
