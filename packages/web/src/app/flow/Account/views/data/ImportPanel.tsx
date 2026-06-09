@@ -110,9 +110,21 @@ export default function ImportPanel() {
         setError(t('account.data.import.backupWrongPassphrase'));
         return;
       }
-      const { modules: modulesObj } = unpackBackup(files);
+      const { modules: modulesObj, failedModules } = unpackBackup(files);
       const { count, parts } = await restoreEnvelope(modulesObj, mainKey, modules, t);
       reportResult(count, parts);
+      if (failedModules.length > 0) {
+        // The backup was partially corrupted — restore the modules we
+        // could read, but warn the user that one or more module files
+        // were unreadable. The success path above already counted what
+        // landed ; the warning is additive, not a replacement.
+        setError(
+          t('account.data.import.partialBackupWarning', {
+            values: { modules: failedModules.join(', ') },
+            defaultValue: `Modules non importés (fichiers corrompus) : ${failedModules.join(', ')}`,
+          }),
+        );
+      }
       setPendingBackup(null);
       setBackupPass('');
     } catch (err) {

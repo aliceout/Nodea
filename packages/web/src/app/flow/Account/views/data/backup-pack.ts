@@ -28,6 +28,14 @@ export interface BackupManifest {
   /** Module keys present as `modules/<key>.json` — informational; the
    *  restore reads the actual files, not this list. */
   modules: string[];
+  /** Module keys that the export tried to collect but couldn't
+   *  serialise (decrypt error, schema mismatch, network blip on a
+   *  paginated fetch). Present only when at least one module failed ;
+   *  the missing modules are NOT in `modules` and have no
+   *  `modules/<key>.json` file. Versions that don't know about this
+   *  field (Nodea ≤ v2.8.0) ignore it cleanly because the JSON.parse
+   *  in `unpackBackup` reads the manifest only as informational. */
+  failed_modules?: string[];
 }
 
 /**
@@ -36,10 +44,18 @@ export interface BackupManifest {
  * `exportedAt` is passed in (the crypto layer forbids `new Date()` deep
  * down; here the caller stamps it once for both the manifest and the
  * download name).
+ *
+ * When the export caller couldn't serialise some modules (e.g. a
+ * decrypt error mid-collect, a per-module size cap exceeded), pass them
+ * in `failedModules` so the manifest records the gap. Restoring a
+ * backup with `failed_modules` is still legal — the missing keys just
+ * don't show up in `unpackBackup`'s output ; the user is warned via
+ * the export UI that the backup is partial.
  */
 export function packBackup(
   modules: Record<string, unknown[]>,
   exportedAt: string,
+  failedModules: string[] = [],
 ): BackupFiles {
   const keys = Object.keys(modules);
   const manifest: BackupManifest = {
@@ -48,6 +64,7 @@ export function packBackup(
     app: 'Nodea',
     exported_at: exportedAt,
     modules: keys,
+    ...(failedModules.length > 0 ? { failed_modules: failedModules } : {}),
   };
   const files: BackupFiles = {
     'manifest.json': encoder.encode(JSON.stringify(manifest, null, 2)),
@@ -64,17 +81,34 @@ export function packBackup(
  * Reverse {@link packBackup}: read every `modules/<key>.json` back into a
  * `{ modules }` envelope (the manifest is skipped — it's informational).
  * Non-array module files are ignored defensively.
+ *
+ * **Resilience to partial corruption (audit v2.8.0).** A single
+ * malformed `modules/<key>.json` (JSON.parse throws, or the parsed
+ * value isn't an array) used to abort the whole loop and lose every
+ * other module the user had backed up. We now skip the bad file and
+ * record it in `failedModules` so the caller can warn the user, while
+ * the rest of the backup restores cleanly.
  */
 export function unpackBackup(files: BackupFiles): {
   modules: Record<string, unknown[]>;
+  failedModules: string[];
 } {
   const modules: Record<string, unknown[]> = {};
+  const failedModules: string[] = [];
   for (const [name, bytes] of Object.entries(files)) {
     const match = MODULE_FILE.exec(name);
     const key = match?.[1];
     if (!key) continue; // manifest.json or anything unexpected
-    const parsed: unknown = JSON.parse(decoder.decode(bytes));
-    if (Array.isArray(parsed)) modules[key] = parsed;
+    try {
+      const parsed: unknown = JSON.parse(decoder.decode(bytes));
+      if (Array.isArray(parsed)) {
+        modules[key] = parsed;
+      } else {
+        failedModules.push(key);
+      }
+    } catch {
+      failedModules.push(key);
+    }
   }
-  return { modules };
+  return { modules, failedModules };
 }

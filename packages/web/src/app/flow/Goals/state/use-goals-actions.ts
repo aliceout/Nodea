@@ -22,7 +22,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { goalsClient } from '@/core/api/modules/goals';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
-import type { ComposerEditing, ComposerType } from '@/core/store/nodea-store';
+import {
+  useNodeaStore,
+  type ComposerEditing,
+  type ComposerType,
+} from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { nextStatus } from '../lib/status';
@@ -73,6 +77,7 @@ interface GoalsActionsDeps {
 export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const { ctx, entries, setEntries, bumpGoalsVersion, openComposer } = deps;
   const { t } = useI18n();
+  const pushToast = useNodeaStore((s) => s.pushToast);
 
   const [carryOverOpen, setCarryOverOpen] = useState(false);
   const [readingId, setReadingId] = useState<string | null>(null);
@@ -282,10 +287,20 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         ),
       );
       setCarryOverOpen(false);
-      try {
-        const now = new Date().toISOString();
-        for (const e of affected) {
-          const newDate = renumbered.get(e.id)!;
+
+      // Per-entry try / catch so a mid-batch failure doesn't roll back
+      // the entries that already landed server-side (audit v2.8.0
+      // high). Before this, the for-loop's outer try caught the first
+      // rejection and the catch rolled back EVERY affected entry,
+      // including the ones whose server update had already succeeded
+      // ; the UI then lied (« nothing moved ») while the DB carried
+      // the move ; a second carry-over click then double-moved the
+      // already-shifted goals or hit unique-key collisions.
+      const failedIds = new Set<string>();
+      const now = new Date().toISOString();
+      for (const e of affected) {
+        const newDate = renumbered.get(e.id)!;
+        try {
           await goalsClient.update(ctx.moduleUserId, ctx.mainKey, e.id, {
             date: newDate,
             title: e.title,
@@ -295,15 +310,23 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
             completedAt: e.completedAt,
             updatedAt: now,
           });
+        } catch (err) {
+          failedIds.add(e.id);
+          if (import.meta.env.DEV) {
+            console.warn('goals: carry-over update failed for', e.id, err);
+          }
         }
-        bumpGoalsVersion();
-      } catch (err) {
-        // Targeted rollback per entry : restore each entry's date
-        // only if our carry-over token is still the latest mutation
-        // for that entry. Entries whose date was further mutated by
-        // a concurrent action are left as-is.
+      }
+
+      if (failedIds.size > 0) {
+        // Targeted rollback : restore the date only for the entries
+        // that actually failed server-side, and only if our carry-
+        // over token is still the latest for that entry. Succeeded
+        // entries stay on the new year ; concurrently-mutated
+        // entries (token no longer latest) keep their newer state.
         setEntries((prev) =>
           prev.map((e) => {
+            if (!failedIds.has(e.id)) return e;
             const token = tokens.get(e.id);
             if (token === undefined) return e;
             if (!trackerRef.current.isLatest(e.id, token)) return e;
@@ -311,14 +334,29 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
             return original !== undefined ? { ...e, date: original } : e;
           }),
         );
-        if (import.meta.env.DEV) console.warn('goals: carry-over failed', err);
+        const movedCount = affected.length - failedIds.size;
+        pushToast({
+          kind: 'warning',
+          message:
+            movedCount > 0
+              ? `${movedCount} goals reportés sur ${to}, ${failedIds.size} en échec. Réessaie pour les non-déplacés.`
+              : `Échec du report sur ${to}. Réessaie dans un instant.`,
+        });
       }
+
+      // Always bump so the next refetch reconciles the local list to
+      // whatever actually landed server-side — even when every update
+      // succeeded (the optimistic state matches but a fresh fetch is
+      // cheap), and especially when some failed (the rollback restored
+      // the local date, but the source of truth is the server).
+      bumpGoalsVersion();
+
       // `from` is unused at runtime — used by the call site to
       // scope `affected`. Keep it in the signature so the contract
       // stays explicit.
       void from;
     },
-    [ctx, bumpGoalsVersion, setEntries],
+    [ctx, bumpGoalsVersion, setEntries, pushToast],
   );
 
   return {
