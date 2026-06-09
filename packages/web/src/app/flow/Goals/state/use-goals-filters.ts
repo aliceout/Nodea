@@ -8,7 +8,7 @@
  * Not a React context — the provider in `../context.tsx` consumes
  * this hook and republishes via `GoalsFiltersValue`.
  */
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { splitThreads } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
@@ -92,8 +92,12 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [entries]);
 
+  // Deferred search — keeps the input responsive while the filter +
+  // sort pass runs at deferred priority (audit 2026-06).
+  const deferredSearch = useDeferredValue(search);
+
   const filtered = useMemo<ReadonlyArray<GoalEntry>>(() => {
-    const needle = search.trim().toLocaleLowerCase('fr');
+    const needle = deferredSearch.trim().toLocaleLowerCase('fr');
     const out = entries.filter((e) => {
       // « Masquer les terminés » overrides nothing — when an
       // explicit status filter is `done`, the user clearly wants
@@ -125,7 +129,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
       return byDateDesc(a, b);
     });
     return out;
-  }, [entries, statusFilter, threadFilter, search, sortBy, hideDone]);
+  }, [entries, statusFilter, threadFilter, deferredSearch, sortBy, hideDone]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, GoalEntry[]]>>(() => {
     const map = new Map<string, GoalEntry[]>();

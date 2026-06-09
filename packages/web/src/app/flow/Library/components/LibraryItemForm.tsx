@@ -9,6 +9,7 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
+import { useLibraryData } from '../context';
 import { makeApplyResult } from './item-form/apply-result';
 import LibraryItemFormFields from './item-form/form-fields';
 import { saveLibraryItem } from './item-form/save';
@@ -50,6 +51,7 @@ interface LibraryItemFormProps {
  */
 export default function LibraryItemForm({ initial, onClose }: LibraryItemFormProps) {
   const ctx = useModuleClient('library');
+  const { covers } = useLibraryData();
   // The user's Nodea-app language (synced from encrypted preferences,
   // falling back to localStorage / navigator on first paint). Passed
   // to the lookup as a *soft boost*, not a filter — providers still
@@ -118,11 +120,13 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
   });
 
   // Load the existing cover when editing a book that already has a
-  // `coverRid`. No-op on create.
+  // `coverRid`. No-op on create. The provider's covers Map serves
+  // the thumbnail without any network round-trip (audit 2026-06).
   useExistingCover({
     isEdit,
     coverRid: editingPayload?.coverRid ?? null,
     ctx,
+    covers,
     setCoverUrl,
     setCoverLoadFailed,
   });

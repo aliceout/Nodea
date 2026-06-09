@@ -11,7 +11,7 @@
  * this hook and republishes via `LibraryFiltersValue`. Splitting it
  * out keeps the filter logic reviewable in isolation.
  */
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { type LibraryStatus } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
@@ -98,8 +98,12 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [items]);
 
+  // Deferred search — keeps the input responsive while the filter
+  // pass over N items runs at deferred priority (audit 2026-06).
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   const filteredItems = useMemo<LibraryItem[]>(() => {
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = deferredSearchQuery.trim();
     return items.filter((it) => {
       if (statusFilter === 'favorites') {
         if (!it.isFavorite) return false;
@@ -118,7 +122,7 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
         trimmedQuery,
       );
     });
-  }, [items, statusFilter, tagFilter, cellFilter, searchQuery]);
+  }, [items, statusFilter, tagFilter, cellFilter, deferredSearchQuery]);
 
   const groups = useMemo<LibraryGroup[]>(
     () => buildGroups(filteredItems, groupBy),

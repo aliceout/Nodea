@@ -157,7 +157,29 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       setHideDone: filters.setHideDone,
       setThreadFilter: filters.setThreadFilter,
     }),
-    [filters],
+    // Field-by-field deps (audit 2026-06) : the state hook returns a
+    // fresh object literal every render, so `[filters]` memoised
+    // nothing and every provider render re-rendered every consumer
+    // of the filters context. Same pattern as Mood / Journal.
+    [
+      filters.statusFilter,
+      filters.groupBy,
+      filters.viewMode,
+      filters.search,
+      filters.sortBy,
+      filters.hideDone,
+      filters.threadFilter,
+      filters.filtered,
+      filters.groups,
+      filters.threads,
+      filters.setStatusFilter,
+      filters.setGroupBy,
+      filters.setViewMode,
+      filters.setSearch,
+      filters.setSortBy,
+      filters.setHideDone,
+      filters.setThreadFilter,
+    ],
   );
 
   const actionsValue = useMemo<GoalsActionsValue>(
@@ -179,7 +201,24 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       closeCarryOver: actions.closeCarryOver,
       carryOver: actions.carryOver,
     }),
-    [actions],
+    [
+      actions.carryOverOpen,
+      actions.readingId,
+      actions.formOpen,
+      actions.editingEntry,
+      actions.openCreateForm,
+      actions.openEditForm,
+      actions.closeForm,
+      actions.cycleStatus,
+      actions.editEntry,
+      actions.updateTitle,
+      actions.deleteEntry,
+      actions.openReader,
+      actions.closeReader,
+      actions.openCarryOver,
+      actions.closeCarryOver,
+      actions.carryOver,
+    ],
   );
 
   return (

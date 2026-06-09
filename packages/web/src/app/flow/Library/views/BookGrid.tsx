@@ -54,6 +54,8 @@ export default function BookGrid({ items }: BookGridProps) {
                   src={cover}
                   alt=""
                   aria-hidden="true"
+                  loading="lazy"
+                  decoding="async"
                   className="aspect-[2/3] w-full object-cover"
                 />
               ) : (

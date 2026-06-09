@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -206,11 +207,15 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     return Array.from(set).sort((a, b) => b - a);
   }, [entries, today]);
 
+  // Deferred search — keeps the input responsive while the filter
+  // pass runs at deferred priority (audit 2026-06).
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   const filtered = useMemo<ReadonlyArray<MoodEntry>>(() => {
     const { start, dataEnd } = rangeFor(year, today);
     const startTime = start.getTime();
     const dataEndTime = dataEnd.getTime();
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = deferredSearchQuery.trim();
     return entries.filter((entry) => {
       // `entry.dateIso` is a bare YYYY-MM-DD string and `new Date(...)`
       // parses it as UTC midnight. The window bounds (`start`, `dataEnd`)
@@ -244,7 +249,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         trimmedQuery,
       );
     });
-  }, [entries, year, month, today, searchQuery, scoreFilter, dayFilter]);
+  }, [entries, year, month, today, deferredSearchQuery, scoreFilter, dayFilter]);
 
   // ---- Filter setters ----
 

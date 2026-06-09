@@ -106,6 +106,8 @@ export default function BookPickerModal() {
                         src={cover}
                         alt=""
                         aria-hidden="true"
+                        loading="lazy"
+                        decoding="async"
                         className="h-12 w-8 shrink-0 rounded-sm border border-hair bg-bg-2 object-cover"
                       />
                     ) : (

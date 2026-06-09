@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -250,8 +251,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return Array.from(set).sort((a, b) => b - a);
   }, [entries]);
 
+  // `useDeferredValue` keeps the search input responsive : the
+  // filter + regroup pass over N entries runs at deferred priority
+  // instead of synchronously inside the keystroke's render (audit
+  // 2026-06).
+  const deferredSearch = useDeferredValue(search);
+
   const filtered = useMemo<ReadonlyArray<JournalEntry>>(() => {
-    const trimmedQuery = search.trim();
+    const trimmedQuery = deferredSearch.trim();
     return entries.filter((e) => {
       if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
         return false;
@@ -276,7 +283,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       // search for « thérapie » expecting the thread to match.
       return matchesAnyField([e.title, e.content, e.thread], trimmedQuery);
     });
-  }, [entries, threadFilter, year, dayFilter, search]);
+  }, [entries, threadFilter, year, dayFilter, deferredSearch]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, JournalEntry[]]>>(
     () => {

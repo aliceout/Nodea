@@ -167,6 +167,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [data.items, data.reviews, data.covers, data.load],
   );
 
+  // Deps listed FIELD BY FIELD (audit 2026-06) : the state hooks
+  // return a fresh object literal every render, so depending on
+  // `[filters]` memoised nothing — every provider render re-created
+  // the context value and re-rendered every consumer (all the
+  // tiles/rows on each search keystroke). Same pattern as Mood /
+  // Journal, which always did it this way.
   const filtersValue = useMemo<LibraryFiltersValue>(
     () => ({
       statusFilter: filters.statusFilter,
@@ -185,7 +191,23 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setCellFilter: filters.setCellFilter,
       setSearchQuery: filters.setSearchQuery,
     }),
-    [filters],
+    [
+      filters.statusFilter,
+      filters.tagFilter,
+      filters.groupBy,
+      filters.viewMode,
+      filters.cellFilter,
+      filters.searchQuery,
+      filters.allTags,
+      filters.filteredItems,
+      filters.groups,
+      filters.setStatusFilter,
+      filters.setTagFilter,
+      filters.setGroupBy,
+      filters.setViewMode,
+      filters.setCellFilter,
+      filters.setSearchQuery,
+    ],
   );
 
   const actionsValue = useMemo<LibraryActionsValue>(
@@ -206,7 +228,23 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       closeItemForm: actions.closeItemForm,
       closeReviewForm: actions.closeReviewForm,
     }),
-    [actions],
+    [
+      actions.reviewPicker,
+      actions.itemForm,
+      actions.reviewForm,
+      actions.addItem,
+      actions.editItem,
+      actions.deleteItem,
+      actions.toggleFavorite,
+      actions.addReview,
+      actions.editReview,
+      actions.deleteReview,
+      actions.openReviewPicker,
+      actions.closeReviewPicker,
+      actions.pickBookForReview,
+      actions.closeItemForm,
+      actions.closeReviewForm,
+    ],
   );
 
   return (

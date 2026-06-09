@@ -37,6 +37,8 @@ export default function BookWall({ items }: BookWallProps) {
                 <img
                   src={cover}
                   alt={author ? `${it.title} — ${author}` : it.title}
+                  loading="lazy"
+                  decoding="async"
                   className="aspect-[2/3] w-full object-cover"
                 />
               ) : (

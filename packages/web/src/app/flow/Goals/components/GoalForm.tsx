@@ -15,8 +15,8 @@ import { isCanonicalGoalStatus } from '@/ui/dirk/forms/guards';
 import GoalFormFields from './form/form-fields';
 import { buildGoalPayload } from './form/save-payload';
 import { useDraftCoordination } from './form/use-draft-coordination';
-import { useThreadTokens } from './form/use-thread-tokens';
 
+import { useGoalsFilters } from '../context';
 import type { GoalEntry } from '../lib/types';
 
 interface GoalFormProps {
@@ -80,7 +80,12 @@ export default function GoalForm({ initial, onClose }: GoalFormProps) {
 
   const isEdit = initial !== undefined;
 
-  const threadOptions = useThreadTokens(ctx);
+  // Thread chips come from the provider's already-computed list —
+  // this form renders inside `GoalsProvider`. The old
+  // `useThreadTokens(ctx)` hook re-fetched + re-decrypted the whole
+  // goals collection on every form mount to rebuild the same list
+  // (audit 2026-06).
+  const { threads: threadOptions } = useGoalsFilters();
 
   const { draftRestored, resetDraft, clearDraft } = useDraftCoordination({
     isEdit,

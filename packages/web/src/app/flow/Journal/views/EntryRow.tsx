@@ -76,6 +76,8 @@ function EntryRowImpl({ entry }: EntryRowProps) {
                 <img
                   src={attachmentSrc(att)}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               </button>

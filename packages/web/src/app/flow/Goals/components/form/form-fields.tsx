@@ -48,7 +48,7 @@ export interface GoalFormFieldsProps {
   toggleThreadToken: (token: string) => void;
 
   // Derived data
-  threadOptions: string[];
+  threadOptions: ReadonlyArray<string>;
   activeThreads: string[];
   monthOptions: ReadonlyArray<{ value: string; label: string }>;
 

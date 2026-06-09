@@ -22,6 +22,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import ThreadSuggestInput from '@/ui/dirk/forms/ThreadSuggestInput';
 
+import { useJournalFilters } from '../context';
 import type { JournalEntry } from '../lib/types';
 
 interface JournalFormProps {
@@ -56,6 +57,12 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
   const { t, language } = useI18n();
   const ctx = useModuleClient('journal');
   const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
+  // Thread suggestions come from the provider's already-computed,
+  // memoised list — this form is rendered inside `JournalProvider`.
+  // It used to re-fetch + re-decrypt the WHOLE collection
+  // (attachments included) on every form mount just to rebuild
+  // this exact list (audit 2026-06).
+  const { threads: threadOptions } = useJournalFilters();
 
   // Drafts live for « new entry » flows only — when editing an
   // existing record the canonical state is the server payload.
@@ -71,7 +78,6 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
   const [attachments, setAttachments] = useState<JournalAttachment[]>(
     initial?.attachments ?? [],
   );
-  const [threadOptions, setThreadOptions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
@@ -161,39 +167,6 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
   function handleRemoveAttachment(id: string): void {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }
-
-  // Pull existing threads once on mount so the input can offer
-  // them as suggestions. Pre-multi-thread entries that hold a
-  // comma-separated value get split out so each fil shows up
-  // individually. Failures are swallowed — the dropdown stays
-  // empty rather than showing an error inside the form.
-  useEffect(() => {
-    if (!ctx) return undefined;
-    let cancelled = false;
-    journalClient
-      .list(ctx.moduleUserId, ctx.mainKey)
-      .then((records) => {
-        if (cancelled) return;
-        const set = new Set<string>();
-        for (const r of records) {
-          const raw = r.payload.thread ?? '';
-          for (const tag of raw.split(',')) {
-            const trimmed = tag.trim();
-            if (trimmed) set.add(trimmed);
-          }
-        }
-        setThreadOptions(
-          Array.from(set).sort((a, b) => a.localeCompare(b, 'fr')),
-        );
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setThreadOptions([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ctx]);
 
   async function handleSave(): Promise<void> {
     if (submitting) return;
@@ -298,6 +271,8 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
               <img
                 src={attachmentSrc(att)}
                 alt=""
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover"
               />
               <button
