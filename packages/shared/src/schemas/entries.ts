@@ -11,17 +11,20 @@ import { z } from 'zod';
  *     · Mood / Goals / Habits entries are ≤ 2-5 KB each ;
  *     · Journal entries with inline image attachments can reach
  *       ~500 KB if multiple photos are bundled ;
- *     · Library covers run 30-300 KB.
- *   A 2 MB cap (≈ 1.5 MB raw) accommodates the largest realistic
+ *     · Library covers : the cover-fetch proxy in `library-lookup.ts`
+ *       caps the raw response at 5 MB ; base64 inflates that to
+ *       ~6.7 MB on the wire when the client re-uploads it as a
+ *       `library_covers_entries` record.
+ *   An 8 MB cap (≈ 6 MB raw) accommodates the largest realistic
  *   single record while bounding the per-row write so a malicious
  *   or runaway client can't push 100 MB blobs through every PATCH.
  *
  * Without these caps the body size is gated only by Hono's default
  * `bodyLimit` (usually 100 MB) — far too generous for the encrypted-
- * record surface where the legitimate top end sits ~50× lower.
+ * record surface where the legitimate top end sits ~12× lower.
  */
 const CIPHER_IV_MAX_CHARS = 64;
-const PAYLOAD_MAX_CHARS = 2 * 1024 * 1024;
+const PAYLOAD_MAX_CHARS = 8 * 1024 * 1024;
 const Base64ish = z.string().min(1).max(PAYLOAD_MAX_CHARS);
 const CipherIvField = z.string().min(1).max(CIPHER_IV_MAX_CHARS);
 

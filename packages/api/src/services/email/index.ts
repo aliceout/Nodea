@@ -43,7 +43,21 @@ export function getEmailService(): EmailService {
       // stderr logs, which CLAUDE.md forbids for any secret. So by the
       // time we reach this fallback, NODE_ENV is guaranteed not to be
       // `production`.
-      cached = cfg.SMTP_HOST ? smtpInstance : consoleInstance;
+      if (cfg.SMTP_HOST) {
+        cached = smtpInstance;
+      } else {
+        // Dev-only heads-up so the operator isn't surprised when mail
+        // « just works » without a real SMTP server in the loop. We
+        // log once at the moment we pick the transport, not on every
+        // send, to keep the dev log tidy.
+        console.warn(
+          '[email] EMAIL_SERVICE_IMPL=smtp but SMTP_HOST is unset — ' +
+            'falling back to the console transport (dev/test only ; ' +
+            'production refuses to boot in this combination). Set ' +
+            'SMTP_HOST or EMAIL_SERVICE_IMPL=console to silence this.',
+        );
+        cached = consoleInstance;
+      }
       break;
     case 'recording':
       cached = recordingInstance;
