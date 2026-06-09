@@ -2,7 +2,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkTextarea from '@/ui/atoms/dirk/Textarea';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
-import { submitOnCmdEnter } from '../../lib/format';
+import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 /**
  * Mood composer — collapsible « question du jour » + free

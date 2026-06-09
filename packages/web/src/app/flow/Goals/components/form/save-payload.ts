@@ -21,8 +21,8 @@
  */
 import type { GoalsPayload } from '@nodea/shared';
 
-import { isCanonicalGoalStatus } from '../../lib/guards';
-import type { GoalStatus } from '../../lib/constants';
+import { isCanonicalGoalStatus } from '@/ui/dirk/forms/guards';
+import type { GoalStatus } from '@/ui/dirk/forms/constants';
 
 export function composeDate(year: string, month: string): string {
   if (year && month) return `${year}-${month}`;

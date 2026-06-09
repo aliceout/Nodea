@@ -34,7 +34,7 @@ import {
 } from '@/core/api/modules/library';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 
-import { normaliseAuthorName } from '../../lib/format';
+import { normaliseAuthorName } from '@/ui/dirk/forms/format';
 
 export interface SaveLibraryItemFields {
   title: string;

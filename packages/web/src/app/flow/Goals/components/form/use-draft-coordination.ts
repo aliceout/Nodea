@@ -31,8 +31,8 @@ import {
   type GoalDraftPayload,
 } from '@/app/flow/Goals/hooks/useGoalDraft';
 
-import { isCanonicalGoalStatus } from '../../lib/guards';
-import type { GoalStatus } from '../../lib/constants';
+import { isCanonicalGoalStatus } from '@/ui/dirk/forms/guards';
+import type { GoalStatus } from '@/ui/dirk/forms/constants';
 
 export interface UseDraftCoordinationArgs {
   isEdit: boolean;

@@ -17,12 +17,12 @@ import { cn } from '@/lib/utils';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
 
-import MarkdownEditor from '../../components/MarkdownEditor';
+import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import {
   GOAL_STATUS_ACTIVE_TONE,
   type GoalStatus,
-} from '../../lib/constants';
-import { submitOnCmdEnter } from '../../lib/format';
+} from '@/ui/dirk/forms/constants';
+import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 export interface GoalFormFieldsProps {
   // Field values + setters (kept as raw strings / typed unions,

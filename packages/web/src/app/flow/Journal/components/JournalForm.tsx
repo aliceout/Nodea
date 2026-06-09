@@ -18,8 +18,8 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 
-import MarkdownEditor from '@/ui/dirk/ComposerModal/components/MarkdownEditor';
-import ThreadSuggestInput from '@/ui/dirk/ComposerModal/components/ThreadSuggestInput';
+import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
+import ThreadSuggestInput from '@/ui/dirk/forms/ThreadSuggestInput';
 
 import type { JournalEntry } from '../lib/types';
 
@@ -31,16 +31,13 @@ interface JournalFormProps {
 }
 
 /**
- * Journal entry form — the inline equivalent of the old
- * `ComposerModal/bodies/Journal.tsx`. Lives in the Journal module
- * surface itself (rendered by `PrimaryColumn` above the entries
- * list), mirroring the HRT / Mood / Goals posture : a bordered
- * card with the form fields + a cancel/save row, no modal.
+ * Journal entry form — inline composer rendered by `PrimaryColumn`
+ * above the entries list, mirroring the HRT / Mood / Goals posture :
+ * a bordered card with the form fields + a cancel/save row, no
+ * modal.
  *
  * Reuses the shared atoms (`MarkdownEditor`, `ThreadSuggestInput`)
- * from `ui/dirk/ComposerModal/components/` — those will move to a
- * neutral location once Library finishes migrating and the
- * `ComposerModal` shell is dismantled.
+ * from `@/ui/dirk/forms/`.
  *
  * Edit vs create :
  *   - On edit, the entry's date is preserved and `initial`

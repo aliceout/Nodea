@@ -9,13 +9,13 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
-import { makeApplyResult } from '@/ui/dirk/ComposerModal/bodies/library-item/apply-result';
-import LibraryItemFormFields from '@/ui/dirk/ComposerModal/bodies/library-item/form-fields';
-import { saveLibraryItem } from '@/ui/dirk/ComposerModal/bodies/library-item/save';
-import { useExistingCover } from '@/ui/dirk/ComposerModal/bodies/library-item/use-existing-cover';
-import { useLibraryLookup } from '@/ui/dirk/ComposerModal/bodies/library-item/use-lookup';
-import { useLookupSeed } from '@/ui/dirk/ComposerModal/bodies/library-item/use-lookup-seed';
-import LookupBar from '@/ui/dirk/ComposerModal/lookup/LookupBar';
+import { makeApplyResult } from './item-form/apply-result';
+import LibraryItemFormFields from './item-form/form-fields';
+import { saveLibraryItem } from './item-form/save';
+import { useExistingCover } from './item-form/use-existing-cover';
+import { useLibraryLookup } from './item-form/use-lookup';
+import { useLookupSeed } from './item-form/use-lookup-seed';
+import LookupBar from './lookup/LookupBar';
 
 import type { LibraryItem } from '../lib/types';
 
@@ -28,17 +28,15 @@ interface LibraryItemFormProps {
 }
 
 /**
- * Library item (book) form — the inline equivalent of the old
- * `ComposerModal/bodies/LibraryItem.tsx`. Rendered inside Library's
- * `PrimaryColumn` (above the catalogue) when `formOpen` is true and
- * the active sub-view is `livres`.
+ * Library item (book) form — inline composer rendered inside
+ * Library's `PrimaryColumn` (above the catalogue) when `formOpen`
+ * is true and the active sub-view is `livres`.
  *
- * Reuses every helper from `ui/dirk/ComposerModal/bodies/library-item/`
- * — `saveLibraryItem`, `useLibraryLookup`, `useExistingCover`,
- * `useLookupSeed`, `makeApplyResult`, `LibraryItemFormFields` — plus
- * the `LookupBar` shell from `ui/dirk/ComposerModal/lookup/`. These
- * atoms will move to a neutral location once the modal tree itself
- * is dismantled.
+ * Decomposed across `./item-form/` siblings (orchestration helpers,
+ * stateless fields, lookup seed, cover loader) and the `./lookup/`
+ * subfolder (the BNF / Google / OpenLibrary search shell). Both
+ * folders live next door so the « inline form » feature is one
+ * cohesive unit, not a tour through the UI atom tree.
  *
  * Lookup behaviour : the LookupBar is on both paths. On create it's
  * the entry point (search → pick → form prefills) ; on edit it

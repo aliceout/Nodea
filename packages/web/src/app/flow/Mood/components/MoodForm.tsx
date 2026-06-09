@@ -10,10 +10,11 @@ import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
-import OptionalsSection from '@/ui/dirk/ComposerModal/bodies/mood/OptionalsSection';
-import PositivesSection from '@/ui/dirk/ComposerModal/bodies/mood/PositivesSection';
-import ScoreSection from '@/ui/dirk/ComposerModal/bodies/mood/ScoreSection';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
+
+import OptionalsSection from './form-sections/OptionalsSection';
+import PositivesSection from './form-sections/PositivesSection';
+import ScoreSection from './form-sections/ScoreSection';
 
 import type { MoodEntry } from '../lib/types';
 
@@ -25,20 +26,15 @@ interface MoodFormProps {
 }
 
 /**
- * Mood entry form — the inline equivalent of the old
- * `ComposerModal/bodies/Mood.tsx`. Lives in the Mood module
- * surface itself (rendered by `PrimaryColumn` above the entries
- * list) instead of behind a global modal, mirroring the HRT
- * `AdminLogForm` posture : a bordered card with the form fields
- * grid + a cancel/save row, no chrome that pulls the user away
- * from the page.
+ * Mood entry form — inline composer rendered by `PrimaryColumn`
+ * above the entries list, mirroring the HRT `AdminLogForm`
+ * posture : a bordered card with the form fields grid + a
+ * cancel/save row, no chrome that pulls the user away from the
+ * page.
  *
- * Reuses the three sub-sections (`PositivesSection`,
- * `ScoreSection`, `OptionalsSection`) from the legacy modal
- * bodies — the surface around them is what changed, not the
- * input UX. The sections will move closer to `Mood/components/`
- * once the other modules finish their own inline migration and
- * the `ComposerModal` tree is dismantled.
+ * Decomposed across three sub-sections (`PositivesSection`,
+ * `ScoreSection`, `OptionalsSection`) living next door in
+ * `./form-sections/`.
  *
  * Save / update / error handling are identical to the legacy
  * body : `bumpMoodVersion` triggers the data refetch on success,

@@ -2,7 +2,7 @@ import type { NormalisedBook } from '@nodea/shared';
 
 import { cn } from '@/lib/utils';
 
-import { PROVIDER_LABEL, PROVIDER_ORDER } from '../lib/constants';
+import { PROVIDER_LABEL, PROVIDER_ORDER } from '@/ui/dirk/forms/constants';
 
 interface ProviderBadgesProps {
   /** The provider whose record won the merge (got top

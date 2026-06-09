@@ -21,12 +21,12 @@ import {
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
 
-import MarkdownEditor from '../../components/MarkdownEditor';
+import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import {
   LIBRARY_FORMAT_LABEL,
   LIBRARY_STATUS_LABEL,
-} from '../../lib/constants';
-import { submitOnCmdEnter } from '../../lib/format';
+} from '@/ui/dirk/forms/constants';
+import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 export interface LibraryItemFormFieldsProps {
   isEdit: boolean;

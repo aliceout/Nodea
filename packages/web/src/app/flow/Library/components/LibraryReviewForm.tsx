@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
-import MarkdownEditor from '@/ui/dirk/ComposerModal/components/MarkdownEditor';
-import { LIBRARY_REVIEW_KIND_LABEL } from '@/ui/dirk/ComposerModal/lib/constants';
-import { submitOnCmdEnter } from '@/ui/dirk/ComposerModal/lib/format';
+import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
+import { LIBRARY_REVIEW_KIND_LABEL } from '@/ui/dirk/forms/constants';
+import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 import type { LibraryItem, LibraryReview } from '../lib/types';
 
@@ -36,20 +36,14 @@ interface LibraryReviewFormProps {
 }
 
 /**
- * Library review form — the inline equivalent of the old
- * `ComposerModal/bodies/LibraryReview.tsx`. Rendered inside Library's
+ * Library review form — inline composer rendered inside Library's
  * `ReviewsList` (above the list) when `formOpen` is true on the
  * actions context.
  *
- * Reuses `MarkdownEditor` from `ui/dirk/ComposerModal/components/`
- * and the kind / page widgets pattern from the original body — the
- * fields shape stays identical, only the outer chrome changes (no
- * modal footer, bordered card instead).
- *
- * A review always needs a parent book : in create mode the picker
- * provides the `create.itemRid`, in edit mode `initial.itemRid` is
- * the source of truth. The form never reads the global Composer
- * editing slice — `openComposer` is no longer involved.
+ * Reuses the shared `MarkdownEditor` from `@/ui/dirk/forms/`
+ * + the kind / page widgets. A review always needs a parent book :
+ * in create mode the picker provides the `create.itemRid`, in edit
+ * mode `initial.itemRid` is the source of truth.
  */
 export default function LibraryReviewForm({
   initial,

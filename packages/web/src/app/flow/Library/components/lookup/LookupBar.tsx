@@ -7,8 +7,8 @@ import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import DirkSelect from '@/ui/atoms/dirk/Select';
 
-import { FORMAT_LABEL, SEARCH_LANGUAGES } from '../lib/constants';
-import { countBy, shortLang } from '../lib/format';
+import { FORMAT_LABEL, SEARCH_LANGUAGES } from '@/ui/dirk/forms/constants';
+import { countBy, shortLang } from '@/ui/dirk/forms/format';
 import CoverGrid from './CoverGrid';
 import FilterRow from './FilterRow';
 import ProviderBadges from './ProviderBadges';

@@ -7,10 +7,10 @@ interface SectionLabelProps {
 }
 
 /**
- * Small uppercase eyebrow used inside SideColumn / ComposerModal /
- * Goals filters as a section header — 11 px, semibold, muted, with
- * a touch of letter-spacing so it reads as a label rather than as
- * body copy. Direction K · Sauge baseline.
+ * Small uppercase eyebrow used inside SideColumn / module inline
+ * forms / Goals filters as a section header — 11 px, semibold,
+ * muted, with a touch of letter-spacing so it reads as a label
+ * rather than as body copy. Direction K · Sauge baseline.
  */
 export default function SectionLabel({ children, className }: SectionLabelProps) {
   return (

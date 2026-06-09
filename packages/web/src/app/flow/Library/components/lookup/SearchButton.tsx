@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import DirkButton from '@/ui/atoms/dirk/Button';
 
-import { SEARCH_MODE_LABEL } from '../lib/constants';
+import { SEARCH_MODE_LABEL } from '@/ui/dirk/forms/constants';
 
 interface SearchButtonProps {
   searching: boolean;

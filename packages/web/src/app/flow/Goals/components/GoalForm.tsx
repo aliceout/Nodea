@@ -6,15 +6,16 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
-import GoalFormFields from '@/ui/dirk/ComposerModal/bodies/goal/form-fields';
-import { buildGoalPayload } from '@/ui/dirk/ComposerModal/bodies/goal/save-payload';
-import { useDraftCoordination } from '@/ui/dirk/ComposerModal/bodies/goal/use-draft-coordination';
-import { useThreadTokens } from '@/ui/dirk/ComposerModal/bodies/goal/use-thread-tokens';
 import {
   genMonthOptions,
   type GoalStatus,
-} from '@/ui/dirk/ComposerModal/lib/constants';
-import { isCanonicalGoalStatus } from '@/ui/dirk/ComposerModal/lib/guards';
+} from '@/ui/dirk/forms/constants';
+import { isCanonicalGoalStatus } from '@/ui/dirk/forms/guards';
+
+import GoalFormFields from './form/form-fields';
+import { buildGoalPayload } from './form/save-payload';
+import { useDraftCoordination } from './form/use-draft-coordination';
+import { useThreadTokens } from './form/use-thread-tokens';
 
 import type { GoalEntry } from '../lib/types';
 
@@ -26,21 +27,17 @@ interface GoalFormProps {
 }
 
 /**
- * Goal entry form — the inline equivalent of the old
- * `ComposerModal/bodies/Goal.tsx`. Lives in the Goals module
- * surface itself (rendered by `PrimaryColumn` above the entries
- * list / card grid), mirroring the HRT `AdminLogForm` posture :
- * a bordered card with the form fields + a cancel/save row,
- * no chrome that pulls the user away from the page.
+ * Goal entry form — inline composer rendered by `PrimaryColumn`
+ * above the entries list / card grid, mirroring the HRT
+ * `AdminLogForm` posture : a bordered card with the form fields
+ * + a cancel/save row, no chrome that pulls the user away from
+ * the page.
  *
- * Reuses every piece of the legacy modal body verbatim — the
- * stateless `GoalFormFields` render, the `useThreadTokens` chip
- * hook, the `useDraftCoordination` draft-save/restore hook, the
- * pure `buildGoalPayload` helper. The surface around them is
- * what changed, not the input UX. The helpers will move from
- * `ui/dirk/ComposerModal/bodies/goal/` to `Goals/lib/` once
- * Journal + Library finish their own inline migration and the
- * `ComposerModal` tree is dismantled.
+ * Decomposed across `./form/` siblings :
+ *   - `form-fields.tsx` — stateless field render
+ *   - `use-thread-tokens.ts` — fil chip input
+ *   - `use-draft-coordination.ts` — draft auto-save / restore
+ *   - `save-payload.ts` — pure build helper
  *
  * Edit vs create :
  *   - On edit, the `initial` entry pre-fills every field. The

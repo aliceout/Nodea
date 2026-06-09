@@ -15,9 +15,9 @@ interface KeyMissingModalProps {
  * way out is to log out and log back in, so `onClose` is a no-op:
  * Esc and outside-click stay disabled.
  *
- * Mirrors the ComposerModal's Dialog/Transition shell so the visual
- * weight matches other K surfaces (papier crème, hairline border,
- * 12 px radius, soft shadow).
+ * Reuses the shared `Modal` atom (Dialog/Transition shell) so the
+ * visual weight matches other K surfaces (papier crème, hairline
+ * border, 12 px radius, soft shadow).
  */
 export default function KeyMissingModal({ onLogout, open = true }: KeyMissingModalProps) {
   return (

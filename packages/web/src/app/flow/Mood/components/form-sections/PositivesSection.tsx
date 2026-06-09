@@ -2,8 +2,8 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
-import { POSITIVE_PLACEHOLDERS } from '../../lib/constants';
-import { submitOnCmdEnter } from '../../lib/format';
+import { POSITIVE_PLACEHOLDERS } from '@/ui/dirk/forms/constants';
+import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 /**
  * Mood composer — "three positive things" section.
