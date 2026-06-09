@@ -13,7 +13,11 @@ import type { LibraryGroup, LibraryItem, LibraryReview } from './lib/types';
 // `useLibraryData / Filters / Actions` accessors we re-export from
 // the React context below.
 import { useLibraryActions as useActionsState } from './state/use-library-actions';
-import type { LibraryReviewPickerState } from './state/use-library-actions';
+import type {
+  LibraryItemFormState,
+  LibraryReviewFormState,
+  LibraryReviewPickerState,
+} from './state/use-library-actions';
 import { useLibraryData as useDataState } from './state/use-library-data';
 import {
   LIBRARY_VIEW_MODES,
@@ -55,7 +59,12 @@ import {
 // Re-export view-mode union + picker type so existing consumers
 // (sidebar, view switcher) keep their import path stable.
 export { LIBRARY_VIEW_MODES };
-export type { LibraryViewMode, LibraryReviewPickerState };
+export type {
+  LibraryViewMode,
+  LibraryReviewPickerState,
+  LibraryItemFormState,
+  LibraryReviewFormState,
+};
 
 /* ---- Context value shapes --------------------------------------- */
 
@@ -88,6 +97,15 @@ interface LibraryFiltersValue {
 
 interface LibraryActionsValue {
   reviewPicker: LibraryReviewPickerState;
+  /** Inline item-form state. `null` = form closed ; `{ mode: 'create' }`
+   *  = create flow ; `{ mode: 'edit', item }` = editing an existing
+   *  book. Mirrors the Mood / Goals / Journal posture — no more
+   *  `openComposer` from the global Zustand slice. */
+  itemForm: LibraryItemFormState;
+  /** Inline review-form state. `null` = form closed ; on create the
+   *  parent itemRid + chosen kind are baked in ; on edit the
+   *  source-of-truth is the existing review. */
+  reviewForm: LibraryReviewFormState;
   addItem: () => void;
   editItem: (it: LibraryItem) => void;
   deleteItem: (it: LibraryItem) => Promise<void>;
@@ -98,6 +116,8 @@ interface LibraryActionsValue {
   openReviewPicker: (kind: 'quote' | 'note') => void;
   closeReviewPicker: () => void;
   pickBookForReview: (itemId: string, kind: 'quote' | 'note') => void;
+  closeItemForm: () => void;
+  closeReviewForm: () => void;
 }
 
 const {
@@ -122,7 +142,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const reviewsVersion = useNodeaStore((s) => s.libraryReviewsVersion);
   const bumpItemsVersion = useNodeaStore((s) => s.bumpLibraryItemsVersion);
   const bumpReviewsVersion = useNodeaStore((s) => s.bumpLibraryReviewsVersion);
-  const openComposer = useNodeaStore((s) => s.openComposer);
 
   const data = useDataState(ctx, itemsVersion, reviewsVersion);
   const filters = useFiltersState(data.items);
@@ -134,7 +153,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setReviews: data.setReviews,
     bumpItemsVersion,
     bumpReviewsVersion,
-    openComposer,
   });
 
   // ---- Memoised context values ----
@@ -173,6 +191,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const actionsValue = useMemo<LibraryActionsValue>(
     () => ({
       reviewPicker: actions.reviewPicker,
+      itemForm: actions.itemForm,
+      reviewForm: actions.reviewForm,
       addItem: actions.addItem,
       editItem: actions.editItem,
       deleteItem: actions.deleteItem,
@@ -183,6 +203,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       openReviewPicker: actions.openReviewPicker,
       closeReviewPicker: actions.closeReviewPicker,
       pickBookForReview: actions.pickBookForReview,
+      closeItemForm: actions.closeItemForm,
+      closeReviewForm: actions.closeReviewForm,
     }),
     [actions],
   );

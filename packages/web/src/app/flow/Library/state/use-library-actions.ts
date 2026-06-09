@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   type LibraryItemPayload,
-  type LibraryReviewPayload,
+  type LibraryReviewKind,
 } from '@nodea/shared';
 
 import {
@@ -29,21 +29,41 @@ import {
   libraryReviewsClient,
 } from '@/core/api/modules/library';
 import type { ModuleClient } from '@/core/modules/use-module-client';
-import type { ComposerEditing, ComposerType } from '@/core/store/nodea-store';
 
 import type { LibraryItem, LibraryReview } from '../lib/types';
 
-type ReviewKind = 'quote' | 'note';
+type ReviewKind = LibraryReviewKind;
 
 /** UI state for the « + Nouvel extrait » / « + Nouvelle note » two-
- *  step flow : the user picks a parent book first, then the standard
- *  composer opens with the kind + itemRid pre-filled. */
+ *  step flow : the user picks a parent book first, then the inline
+ *  review form opens with the kind + itemRid pre-filled. */
 export type LibraryReviewPickerState =
   | { open: false }
   | { open: true; kind: ReviewKind };
 
+/** Inline form state for the Library item path. `null` = form closed
+ *  ; `{ mode: 'create' }` = create flow ; `{ mode: 'edit', item }` =
+ *  editing an existing book. Mirrors the Mood / Goals / Journal
+ *  posture — `openComposer` from the global Zustand slice is no
+ *  longer used by Library. */
+export type LibraryItemFormState =
+  | null
+  | { mode: 'create' }
+  | { mode: 'edit'; item: LibraryItem };
+
+/** Inline form state for the Library review path. `null` = form
+ *  closed ; on create the parent itemRid + chosen kind are baked in
+ *  (the picker hands them over) ; on edit the source-of-truth is the
+ *  existing review. */
+export type LibraryReviewFormState =
+  | null
+  | { mode: 'create'; itemRid: string; kind: ReviewKind }
+  | { mode: 'edit'; review: LibraryReview };
+
 export interface LibraryActionsState {
   reviewPicker: LibraryReviewPickerState;
+  itemForm: LibraryItemFormState;
+  reviewForm: LibraryReviewFormState;
   addItem: () => void;
   editItem: (it: LibraryItem) => void;
   deleteItem: (it: LibraryItem) => Promise<void>;
@@ -54,6 +74,8 @@ export interface LibraryActionsState {
   openReviewPicker: (kind: ReviewKind) => void;
   closeReviewPicker: () => void;
   pickBookForReview: (itemId: string, kind: ReviewKind) => void;
+  closeItemForm: () => void;
+  closeReviewForm: () => void;
 }
 
 interface LibraryActionsDeps {
@@ -64,7 +86,6 @@ interface LibraryActionsDeps {
   setReviews: React.Dispatch<React.SetStateAction<LibraryReview[]>>;
   bumpItemsVersion: () => void;
   bumpReviewsVersion: () => void;
-  openComposer: (kind?: ComposerType, editing?: ComposerEditing) => void;
 }
 
 export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState {
@@ -76,11 +97,12 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     setReviews,
     bumpItemsVersion,
     bumpReviewsVersion,
-    openComposer,
   } = deps;
 
   const [reviewPicker, setReviewPicker] =
     useState<LibraryReviewPickerState>({ open: false });
+  const [itemForm, setItemForm] = useState<LibraryItemFormState>(null);
+  const [reviewForm, setReviewForm] = useState<LibraryReviewFormState>(null);
 
   // Refs let callbacks read the freshest data without listing items /
   // reviews in their dep arrays. See file-level comment for the why.
@@ -94,20 +116,20 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
   }, [reviews]);
 
   const addItem = useCallback(() => {
-    openComposer('library-item');
-  }, [openComposer]);
+    setItemForm({ mode: 'create' });
+  }, []);
 
-  const editItem = useCallback(
-    (it: LibraryItem) => {
-      const { id, ...payload } = it;
-      openComposer('library-item', {
-        type: 'library-item',
-        id,
-        payload: payload as LibraryItemPayload,
-      });
-    },
-    [openComposer],
-  );
+  const editItem = useCallback((it: LibraryItem) => {
+    setItemForm({ mode: 'edit', item: it });
+  }, []);
+
+  const closeItemForm = useCallback(() => {
+    setItemForm(null);
+  }, []);
+
+  const closeReviewForm = useCallback(() => {
+    setReviewForm(null);
+  }, []);
 
   const deleteItem = useCallback(
     async (it: LibraryItem) => {
@@ -165,36 +187,13 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     [ctx, bumpItemsVersion, setItems],
   );
 
-  const addReview = useCallback(
-    (itemId: string) => {
-      openComposer('library-review', {
-        type: 'library-review',
-        id: '',
-        payload: {
-          itemRid: itemId,
-          date: new Date().toISOString(),
-          kind: 'note',
-          title: null,
-          content: '',
-          page: null,
-          spoiler: false,
-        },
-      });
-    },
-    [openComposer],
-  );
+  const addReview = useCallback((itemId: string) => {
+    setReviewForm({ mode: 'create', itemRid: itemId, kind: 'note' });
+  }, []);
 
-  const editReview = useCallback(
-    (review: LibraryReview) => {
-      const { id, ...payload } = review;
-      openComposer('library-review', {
-        type: 'library-review',
-        id,
-        payload: payload as LibraryReviewPayload,
-      });
-    },
-    [openComposer],
-  );
+  const editReview = useCallback((review: LibraryReview) => {
+    setReviewForm({ mode: 'edit', review });
+  }, []);
 
   const deleteReview = useCallback(
     async (review: LibraryReview) => {
@@ -227,30 +226,20 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
   }, []);
 
   /** Called by the picker once the user chose which book the new
-   *  review attaches to. Closes the picker and opens the standard
-   *  review composer with the kind + itemRid pre-filled. */
+   *  review attaches to. Closes the picker and opens the inline
+   *  review form with the kind + itemRid pre-filled. */
   const pickBookForReview = useCallback(
     (itemId: string, kind: ReviewKind) => {
       setReviewPicker({ open: false });
-      openComposer('library-review', {
-        type: 'library-review',
-        id: '',
-        payload: {
-          itemRid: itemId,
-          date: new Date().toISOString(),
-          kind,
-          title: null,
-          content: '',
-          page: null,
-          spoiler: false,
-        },
-      });
+      setReviewForm({ mode: 'create', itemRid: itemId, kind });
     },
-    [openComposer],
+    [],
   );
 
   return {
     reviewPicker,
+    itemForm,
+    reviewForm,
     addItem,
     editItem,
     deleteItem,
@@ -261,5 +250,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     openReviewPicker,
     closeReviewPicker,
     pickBookForReview,
+    closeItemForm,
+    closeReviewForm,
   };
 }

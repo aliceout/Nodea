@@ -1,0 +1,220 @@
+import { useState } from 'react';
+import {
+  LIBRARY_REVIEW_KIND_VALUES,
+  type LibraryReviewKind,
+  type LibraryReviewPayload,
+} from '@nodea/shared';
+
+import { libraryReviewsClient } from '@/core/api/modules/library';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
+import DirkInput from '@/ui/atoms/dirk/Input';
+
+import MarkdownEditor from '@/ui/dirk/ComposerModal/components/MarkdownEditor';
+import { LIBRARY_REVIEW_KIND_LABEL } from '@/ui/dirk/ComposerModal/lib/constants';
+import { submitOnCmdEnter } from '@/ui/dirk/ComposerModal/lib/format';
+
+import type { LibraryItem, LibraryReview } from '../lib/types';
+
+interface LibraryReviewFormProps {
+  /** When set, the form edits this review. The kind / page / content
+   *  are pre-filled and the date stays the original `payload.date`. */
+  initial?: LibraryReview;
+  /** When creating a fresh review, this carries the parent book id +
+   *  the picker-chosen kind (note / quote). Ignored on edit (the
+   *  parent comes from `initial.itemRid`). */
+  create?: { itemRid: string; kind: LibraryReviewKind };
+  /** Parent book being attached to — surfaced as a discreet caption
+   *  above the form so the user can confirm before saving. Looked up
+   *  by the caller from `data.items` ; the form itself doesn't need
+   *  the item list. */
+  parentItem: LibraryItem | undefined;
+  onClose: () => void;
+}
+
+/**
+ * Library review form — the inline equivalent of the old
+ * `ComposerModal/bodies/LibraryReview.tsx`. Rendered inside Library's
+ * `ReviewsList` (above the list) when `formOpen` is true on the
+ * actions context.
+ *
+ * Reuses `MarkdownEditor` from `ui/dirk/ComposerModal/components/`
+ * and the kind / page widgets pattern from the original body — the
+ * fields shape stays identical, only the outer chrome changes (no
+ * modal footer, bordered card instead).
+ *
+ * A review always needs a parent book : in create mode the picker
+ * provides the `create.itemRid`, in edit mode `initial.itemRid` is
+ * the source of truth. The form never reads the global Composer
+ * editing slice — `openComposer` is no longer involved.
+ */
+export default function LibraryReviewForm({
+  initial,
+  create,
+  parentItem,
+  onClose,
+}: LibraryReviewFormProps) {
+  const { t } = useI18n();
+  const ctx = useModuleClient('library');
+  const bumpReviewsVersion = useNodeaStore((s) => s.bumpLibraryReviewsVersion);
+
+  const isEdit = initial !== undefined;
+  const itemRid = initial?.itemRid ?? create?.itemRid ?? '';
+
+  const [kind, setKind] = useState<LibraryReviewKind>(
+    initial?.kind ?? create?.kind ?? 'note',
+  );
+  const [page, setPage] = useState(initial?.page ? String(initial.page) : '');
+  const [content, setContent] = useState(initial?.content ?? '');
+  const [editorMode, setEditorMode] = useState<'visual' | 'markdown'>('visual');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave(): Promise<void> {
+    if (submitting) return;
+    setError(null);
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
+      setError('Le contenu est requis.');
+      return;
+    }
+    if (!itemRid) {
+      setError('Aucun livre rattaché — ouvre la review depuis la page du livre.');
+      return;
+    }
+    if (!ctx) {
+      setError('Module Library non configuré ou clé absente — reconnecte-toi.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const dateIso = isEdit
+        ? (initial?.date ?? new Date().toISOString())
+        : new Date().toISOString();
+      const payload: LibraryReviewPayload = {
+        itemRid,
+        date: dateIso,
+        kind,
+        title: null,
+        content: trimmedContent,
+        page: page ? Number(page) : null,
+        spoiler: initial?.spoiler ?? false,
+      };
+      if (isEdit && initial) {
+        await libraryReviewsClient.update(
+          ctx.moduleUserId,
+          ctx.mainKey,
+          initial.id,
+          payload,
+        );
+      } else {
+        await libraryReviewsClient.create(ctx.moduleUserId, ctx.mainKey, payload);
+      }
+      bumpReviewsVersion();
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
+      );
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+      className="mb-5 rounded-md border border-hair bg-bg-2 p-4"
+      noValidate
+    >
+      {/* Parent book caption — gives the user a quick read on which
+          book the review attaches to before they commit. Stays muted
+          ; the writing surface is what matters. */}
+      {parentItem ? (
+        <p className="mb-3 text-[11.5px] text-muted">
+          Sur <span className="font-medium text-ink-soft">« {parentItem.title} »</span>
+          {parentItem.creators?.[0]?.name
+            ? ` · ${parentItem.creators[0].name}`
+            : ''}
+        </p>
+      ) : null}
+
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px]">
+          <div className="grid grid-cols-2 gap-1.5">
+            {LIBRARY_REVIEW_KIND_VALUES.map((k) => {
+              const active = kind === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setKind(k)}
+                  aria-pressed={active}
+                  disabled={submitting}
+                  className={cn(
+                    'h-8 cursor-pointer rounded-[var(--radius-input)] border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                    active
+                      ? 'border-accent bg-accent font-semibold text-white'
+                      : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
+                  )}
+                >
+                  {LIBRARY_REVIEW_KIND_LABEL[k]}
+                </button>
+              );
+            })}
+          </div>
+          <DirkInput
+            inputMode="numeric"
+            value={page}
+            onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 5))}
+            onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
+            placeholder="Page"
+            disabled={submitting}
+            align="center"
+          />
+        </div>
+
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          onSubmit={handleSave}
+          disabled={submitting}
+          mode={editorMode}
+          onModeChange={setEditorMode}
+        />
+      </div>
+
+      {error ? (
+        <p role="alert" className="mt-3 text-[12px] text-danger">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="neutral"
+          size="sm"
+          onClick={onClose}
+          disabled={submitting}
+        >
+          {t('common.actions.cancel', { defaultValue: 'Annuler' })}
+        </Button>
+        <Button type="submit" variant="primary" size="sm" disabled={submitting}>
+          {submitting
+            ? isEdit
+              ? 'Mise à jour…'
+              : 'Enregistrement…'
+            : isEdit
+              ? t('common.actions.update')
+              : t('common.actions.save')}
+        </Button>
+      </div>
+    </form>
+  );
+}

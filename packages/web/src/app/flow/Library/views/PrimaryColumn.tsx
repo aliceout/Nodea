@@ -3,7 +3,8 @@ import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
-import { useLibraryData, useLibraryFilters } from '../context';
+import LibraryItemForm from '../components/LibraryItemForm';
+import { useLibraryActions, useLibraryData, useLibraryFilters } from '../context';
 import { CELL_FILTER_LABEL } from '../lib/cell-filter';
 import BookGrid from './BookGrid';
 import BookTable from './BookTable';
@@ -23,6 +24,7 @@ export default function PrimaryColumn() {
   const { items, load } = useLibraryData();
   const { viewMode, cellFilter, filteredItems, groups, setCellFilter } =
     useLibraryFilters();
+  const { itemForm, closeItemForm } = useLibraryActions();
 
   const total = items.length;
   const filteredCount = filteredItems.length;
@@ -38,6 +40,23 @@ export default function PrimaryColumn() {
   return (
     <section className="flex min-w-0 flex-col">
       <PageHeading>Library</PageHeading>
+
+      {/* Inline book form — surfaced above the catalogue when the
+          topbar « + Nouveau livre » CTA (create) or a row's edit
+          affordance (edit) flips `itemForm` on the actions context.
+          Keyed on the editing target's id so flipping between two
+          edit targets remounts the form with the right initial
+          values + a clean LookupBar. Same posture as Mood / Goals
+          / Journal. */}
+      {itemForm ? (
+        <div className="mb-2">
+          <LibraryItemForm
+            key={itemForm.mode === 'edit' ? itemForm.item.id : 'create'}
+            {...(itemForm.mode === 'edit' ? { initial: itemForm.item } : {})}
+            onClose={closeItemForm}
+          />
+        </div>
+      ) : null}
 
       {load.status === 'error' ? (
         <p

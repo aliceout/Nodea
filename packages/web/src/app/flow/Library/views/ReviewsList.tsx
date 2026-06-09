@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
+import LibraryReviewForm from '../components/LibraryReviewForm';
 import { useLibraryActions, useLibraryData } from '../context';
 import type { LibraryItem, LibraryReview } from '../lib/types';
 
@@ -40,7 +41,8 @@ const REVIEW_VIEW_EMPTY: Record<LibraryReviewPayload['kind'], string> = {
  */
 export default function ReviewsList({ kind }: ReviewsListProps) {
   const { items, reviews, load } = useLibraryData();
-  const { editReview, deleteReview } = useLibraryActions();
+  const { editReview, deleteReview, reviewForm, closeReviewForm } =
+    useLibraryActions();
 
   // Build a quick lookup so each review row can show its book's
   // title / author without having to re-scan `items` linearly. The
@@ -60,9 +62,44 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
   );
 
   const heading = REVIEW_VIEW_HEADING[kind];
+
+  // Resolve the parent book so the form can display its title +
+  // author. Create flow : the picker's chosen book. Edit flow : the
+  // book the review already points at.
+  const formItemRid =
+    reviewForm?.mode === 'create'
+      ? reviewForm.itemRid
+      : reviewForm?.mode === 'edit'
+        ? reviewForm.review.itemRid
+        : null;
+  const formParentBook = formItemRid ? itemsById.get(formItemRid) : undefined;
+
   return (
     <section className="flex min-w-0 flex-col">
       <PageHeading>{heading}</PageHeading>
+
+      {/* Inline review form — surfaced above the list when the
+          actions context flips `reviewForm` (picker → create, or
+          row's edit affordance → edit). Keyed on the review id (edit)
+          or on `{itemRid}-{kind}` (create) so switching targets
+          remounts with the right initial values. Same posture as
+          Mood / Goals / Journal / LibraryItem. */}
+      {reviewForm ? (
+        <div className="mb-2">
+          <LibraryReviewForm
+            key={
+              reviewForm.mode === 'edit'
+                ? reviewForm.review.id
+                : `create-${reviewForm.itemRid}-${reviewForm.kind}`
+            }
+            {...(reviewForm.mode === 'edit'
+              ? { initial: reviewForm.review }
+              : { create: { itemRid: reviewForm.itemRid, kind: reviewForm.kind } })}
+            parentItem={formParentBook}
+            onClose={closeReviewForm}
+          />
+        </div>
+      ) : null}
 
       {load.status === 'error' ? (
         <p
