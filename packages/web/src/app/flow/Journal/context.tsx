@@ -104,6 +104,16 @@ interface JournalActionsValue {
    *  than index so the reader survives a refetch that reorders
    *  entries. */
   readingId: string | null;
+  /** Inline composer state. `formOpen` toggles the form's visibility
+   *  in `PrimaryColumn` ; `editingEntry` is the entry being edited
+   *  (or `null` on a fresh create). Mirrors the Mood / Goals posture
+   *  — `openComposer` from the global Zustand slice is no longer
+   *  used by Journal. */
+  formOpen: boolean;
+  editingEntry: JournalEntry | null;
+  openCreateForm: () => void;
+  openEditForm: (entry: JournalEntry) => void;
+  closeForm: () => void;
   editEntry: (entry: JournalEntry) => void;
   deleteEntry: (entry: JournalEntry) => Promise<void>;
   openReader: (id: string) => void;
@@ -152,7 +162,6 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const ctx = useModuleClient('journal');
   const journalVersion = useNodeaStore((s) => s.journalVersion);
   const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
-  const openComposer = useNodeaStore((s) => s.openComposer);
 
   // ---- Data state ----
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -176,6 +185,10 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   // ---- Reader UI state ----
   const [readingId, setReadingId] = useState<string | null>(null);
+
+  // ---- Inline composer state ----
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
 
   // Ref keeps action callbacks stable across data fetches.
   const entriesRef = useRef(entries);
@@ -303,23 +316,32 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   // ---- Actions ----
 
-  const editEntry = useCallback(
-    (entry: JournalEntry) => {
-      openComposer('journal', {
-        type: 'journal',
-        id: entry.id,
-        payload: {
-          type: 'journal.entry',
-          date: entry.dateIso,
-          thread: entry.thread,
-          title: entry.title,
-          content: entry.content,
-          attachments: entry.attachments,
-        },
-      });
-    },
-    [openComposer],
-  );
+  // Inline form lifecycle. Opening the form auto-collapses the
+  // heatmap so the writing surface gets the full width — same UX
+  // posture as Mood's chart collapse. Closing the form re-opens
+  // the heatmap if the user had it expanded ; we restore it to
+  // « collapsed » by default (the natural Journal landing state).
+  const openCreateForm = useCallback(() => {
+    setEditingEntry(null);
+    setFormOpen(true);
+    setChartCollapsed(true);
+  }, []);
+
+  const openEditForm = useCallback((entry: JournalEntry) => {
+    setEditingEntry(entry);
+    setFormOpen(true);
+    setChartCollapsed(true);
+  }, []);
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    setEditingEntry(null);
+  }, []);
+
+  // Public action — kept for the row's « pencil » affordance and
+  // for the reader's edit button. Same call site as before but now
+  // surfaces the inline form instead of the global Composer.
+  const editEntry = openEditForm;
 
   const deleteEntry = useCallback(
     async (entry: JournalEntry) => {
@@ -479,6 +501,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const actionsValue = useMemo<JournalActionsValue>(
     () => ({
       readingId,
+      formOpen,
+      editingEntry,
+      openCreateForm,
+      openEditForm,
+      closeForm,
       editEntry,
       deleteEntry,
       openReader,
@@ -488,6 +515,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     }),
     [
       readingId,
+      formOpen,
+      editingEntry,
+      openCreateForm,
+      openEditForm,
+      closeForm,
       editEntry,
       deleteEntry,
       openReader,

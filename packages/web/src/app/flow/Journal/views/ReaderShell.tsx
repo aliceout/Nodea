@@ -93,7 +93,10 @@ export default function ReaderShell() {
     <EntryReader
       topbarLabel={t('journal.topbar.readerLabel', { values: { position, total } })}
       onOpenMenu={() => setMobileMenuOpen(true)}
-      onEdit={() => editEntry(entry)}
+      onEdit={() => {
+        closeReader();
+        editEntry(entry);
+      }}
       onClose={closeReader}
       onPrev={onPrev}
       onNext={onNext}

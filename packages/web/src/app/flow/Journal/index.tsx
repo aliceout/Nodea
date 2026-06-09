@@ -34,9 +34,12 @@ import ReaderShell from './views/ReaderShell';
  *   - Pure helpers in `lib/` (mappers, threads, date format,
  *     stats) carry the Vitest coverage.
  *
- * Create / edit lifecycle : the « + Nouvelle entrée » CTA opens
- * the global Composer with `type='journal'`. Edit prefills via
- * the Composer ; new entries flow through the Composer.
+ * Create / edit lifecycle : the « + Nouvelle entrée » CTA flips
+ * `formOpen` on the actions context ; `PrimaryColumn` renders
+ * `JournalForm` inline above the list. The row's edit affordance
+ * routes through `openEditForm` (aliased as `editEntry`) and the
+ * form pre-fills via the entry payload. Same posture as Mood /
+ * Goals / HRT — no global Composer modal.
  */
 export default function JournalPage() {
   return (
@@ -52,10 +55,9 @@ export default function JournalPage() {
 function JournalView() {
   const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const openComposer = useNodeaStore((s) => s.openComposer);
   const { entries } = useJournalData();
   const { search, setSearch } = useJournalFilters();
-  const { readingId } = useJournalActions();
+  const { readingId, formOpen, openCreateForm } = useJournalActions();
 
   if (readingId !== null) {
     return <ReaderShell />;
@@ -74,9 +76,15 @@ function JournalView() {
             clearLabel={t('common.search.clearAria')}
             className="w-44 md:w-56"
           />
-          <Button variant="primary" size="sm" onClick={() => openComposer('journal')}>
-            {t('journal.topbar.newCta')}
-          </Button>
+          {/* Hide the « + Nouvelle entrée » button while the inline
+              form is already open — same posture as Mood / Goals /
+              HRT : clicking again would reopen a fresh create form
+              on top of an in-progress edit and lose the draft. */}
+          {!formOpen ? (
+            <Button variant="primary" size="sm" onClick={openCreateForm}>
+              {t('journal.topbar.newCta')}
+            </Button>
+          ) : null}
         </Topbar>
       }
       side={<SideColumn />}

@@ -8,9 +8,10 @@ import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
+import JournalForm from '../components/JournalForm';
 import MobileFilters from '../components/MobileFilters';
 import YearSelector from '../components/YearSelector';
-import { useJournalData, useJournalFilters } from '../context';
+import { useJournalActions, useJournalData, useJournalFilters } from '../context';
 import Chart from './Chart';
 import EntryRow from './EntryRow';
 import OnThisDayPanel from './OnThisDayPanel';
@@ -39,6 +40,7 @@ export default function PrimaryColumn() {
     toggleChart,
     setDayFilter,
   } = useJournalFilters();
+  const { formOpen, editingEntry, closeForm } = useJournalActions();
   const groupVariant = groupBy === 'month' ? 'eyebrow' : 'subtitle';
 
   const yearLabel =
@@ -127,6 +129,20 @@ export default function PrimaryColumn() {
           </button>
         </div>
       </div>
+
+      {/* Inline composer — rendered above the « Il y a un an » block
+          and the entries list. Same posture as Mood / Goals : a
+          bordered card that takes over the writing flow without
+          stealing the surrounding chrome. Keyed on the edited entry
+          id so switching from edit-A to edit-B remounts the form
+          with the right initial values. */}
+      {formOpen ? (
+        <JournalForm
+          key={editingEntry?.id ?? 'create'}
+          {...(editingEntry ? { initial: editingEntry } : {})}
+          onClose={closeForm}
+        />
+      ) : null}
 
       {/* « Il y a un an » — issue #58. Renders only on days when
           past-them left a trail ; returns null otherwise. */}
