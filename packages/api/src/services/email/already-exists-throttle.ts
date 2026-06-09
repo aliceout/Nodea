@@ -83,9 +83,17 @@ export async function maybeSendAlreadyExistsNotice(
       tag: 'register-already-exists',
     });
   } catch (err) {
-    if (process.env['NODE_ENV'] !== 'production') {
-      console.warn('[auth/register] already-exists notice mail failed', err);
-    }
+    // Log in every env, prod included (audit v2.8.0). The previous
+    // gate hid SMTP-transport failures from production logs ; an
+    // operator chasing « mail not arriving » had nothing in the
+    // logs because the catch silently swallowed the error. We log
+    // only the error's presence + a class hint, never the
+    // recipient nor the rendered body — the user-tag identifies
+    // the surface (anti-enum « already-exists » notice).
+    console.warn(
+      '[auth/register] already-exists notice mail failed',
+      err instanceof Error ? err.message : String(err),
+    );
   }
 }
 

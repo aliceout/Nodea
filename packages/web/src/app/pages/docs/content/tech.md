@@ -40,6 +40,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 | Wrapping key derivation | HKDF-SHA-256 | labels figés ci-dessous | RFC 5869, WebCrypto |
 | Symmetric encryption | AES-256-GCM | clé 256 bits, IV 96 bits aléatoire par chiffrement, tag 128 bits | NIST SP 800-38D, WebCrypto |
 | Integrity (guards) | HMAC-SHA-256 | sub-key dérivée par HKDF label `nodea:hmac` | RFC 2104, WebCrypto |
+| Anti-enum recover-KEK | HMAC-SHA-256 | dérive un `userId` UUID v4 déterministe sous `COOKIE_SECRET`, label `nodea:recover-enum-shield`, pour les emails inconnus à `/auth/recover-kek/start` | RFC 2104 ; ajouté audit v2.8.0 |
 | TOTP | HOTP-SHA1 / RFC 6238 | digits=6, period=30 s, secret 20 bytes random, ±1 fenêtre de skew | RFC 6238, librairie `otplib` 13.4.0 |
 | Backup codes TOTP | random 130 bits | hash SHA-256 stocké, format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX` (base32) | — |
 | Recovery code KEK | BIP39 12 mots | 128 bits d'entropie + 4 bits checksum, wordlist anglaise | BIP-0039, librairie `@scure/bip39` 2.2.0 |

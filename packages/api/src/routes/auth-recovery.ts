@@ -1,5 +1,5 @@
 import { eq, isNotNull } from 'drizzle-orm';
-import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   RecoverKekFinishBodySchema,
   RecoverKekStartBodySchema,
@@ -9,6 +9,7 @@ import {
   RecoveryCodeUpsertBodySchema,
   type RecoverKekStartResponse,
 } from '@nodea/shared';
+import { getConfig } from '../config.ts';
 import { db } from '../db/client.ts';
 import { opaqueRecords, users } from '../db/schema.ts';
 import {
@@ -272,12 +273,54 @@ interface FakeBlobs {
  * Real `wrappedKekRecovery` is AES-GCM(KEK, …) → 32-byte KEK +
  * 16-byte tag = 48 bytes ciphertext → 64 chars base64.
  * IV is 12 bytes → 16 chars base64.
+ *
+ * **userId determinism (audit v2.8.0).** Before, the fake userId
+ * used `randomUUID()` and was therefore different on every call —
+ * an attacker who hit `/recover-kek/start` twice with the same
+ * unknown email got two different userIds, whereas the same call
+ * for a known email returned the real (stable) `users.id`. That
+ * difference distinguished known from unknown, defeating the
+ * anti-enum. The fix derives the fake userId via HMAC-SHA-256
+ * under the server's COOKIE_SECRET, formatted as a RFC-4122
+ * compliant UUID v4. Same email → same fake UUID, byte-shape and
+ * value-stability indistinguishable from a real `user.id`.
  */
-function fakeRecoveryBlobs(): FakeBlobs {
+const RECOVER_ENUM_SHIELD_LABEL = 'nodea:recover-enum-shield';
+
+function deriveFakeUserId(email: string, secret: string): string {
+  const digest = createHmac('sha256', secret)
+    .update(RECOVER_ENUM_SHIELD_LABEL)
+    .update('\x1f')
+    .update(email)
+    .digest('hex');
+  // Format as UUID v4 : 8-4-4-4-12 hex with the version nibble
+  // forced to 4 (RFC 4122 §4.4) and the variant bits to '10xx'
+  // (§4.1.1, encoded as the high two bits of the 17th hex). All
+  // bytes derive from the HMAC, so the value is deterministic per
+  // (secret, email).
+  const variantHex = (
+    (parseInt(digest.slice(16, 17), 16) & 0b0011) | 0b1000
+  ).toString(16);
+  return (
+    digest.slice(0, 8) +
+    '-' +
+    digest.slice(8, 12) +
+    '-' +
+    '4' +
+    digest.slice(13, 16) +
+    '-' +
+    variantHex +
+    digest.slice(17, 20) +
+    '-' +
+    digest.slice(20, 32)
+  );
+}
+
+function fakeRecoveryBlobs(email: string, secret: string): FakeBlobs {
   return {
     wrappedKekRecovery: randomBytes(48).toString('base64'),
     wrappedKekRecoveryIv: randomBytes(12).toString('base64'),
-    userId: randomUUID(),
+    userId: deriveFakeUserId(email, secret),
   };
 }
 
@@ -333,7 +376,7 @@ authRecoveryRoutes.openapi(recoverStartRoute, async (c) => {
     };
     userIdForSession = user.id;
   } else {
-    blobs = fakeRecoveryBlobs();
+    blobs = fakeRecoveryBlobs(email, getConfig().COOKIE_SECRET);
     userIdForSession = null;
   }
 
