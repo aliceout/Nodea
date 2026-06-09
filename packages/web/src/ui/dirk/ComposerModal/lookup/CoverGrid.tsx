@@ -29,7 +29,7 @@ export default function CoverGrid({
     );
   }
   return (
-    <div className="mt-2 min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg p-2">
+    <div className="mt-2 max-h-[60vh] min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg p-2">
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-2">
         {withCover.map((book, i) => (
           <li key={`${book.source}-${book.title}-${i}`}>

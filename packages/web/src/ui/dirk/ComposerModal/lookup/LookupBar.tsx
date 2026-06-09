@@ -247,7 +247,7 @@ export default function LookupBar({
         mode === 'cover-only' ? (
           <CoverGrid results={filteredResults} onPick={onApply} />
         ) : (
-          <ul className="mt-2 min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg">
+          <ul className="mt-2 max-h-[60vh] min-h-0 flex-1 overflow-auto rounded-sm border border-hair bg-bg">
             {filteredResults.map((book, i) => {
               const isbn = book.isbn13 ?? book.isbn10;
               const formatLabel = book.format ? FORMAT_LABEL[book.format] : null;
