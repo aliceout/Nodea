@@ -5,19 +5,20 @@ import type {
   NormalisedBook,
 } from '@nodea/shared';
 
-import type { ComposerType } from '@/core/store/nodea-store';
 import { intlLocale } from '@/core/i18n/date-format';
 
 /**
- * UI constants for the ComposerModal — labels, colour ramps,
- * placeholder copy. Lifted out of the monolithic component so a
- * tweak to a label propagates everywhere it surfaces.
+ * UI constants for the now-inline module forms — labels, colour
+ * ramps, placeholder copy. Originally lifted out of the legacy
+ * `ComposerModal` body files ; kept here for now because the
+ * inline forms (Mood / Goals / Journal / Library) still import
+ * from this path. A follow-up move will fan them out per module.
  *
  * Several constants here overlap with `flow/<Module>/lib/constants.ts`
  * (`SCORE_LABELS`, `GOAL_STATUS_LABEL`, `LIBRARY_*_LABEL`) ; rather
- * than cross-import (which would tie the global Composer to the
- * module's internal lib), the duplicates stay local here. Promotion
- * to a shared atom can happen later if the labels start drifting.
+ * than cross-import (which would tie the shared atoms to a module's
+ * internal lib), the duplicates stay local here. Promotion to a
+ * shared atom can happen later if the labels start drifting.
  */
 
 /** Two-digit month codes + locale-aware long labels for the
@@ -39,32 +40,6 @@ export function genMonthOptions(
     return { value, label };
   });
 }
-
-/** Top tab strip of the modal — picks which body renders.
- *  Library variants (`library-item`, `library-review`) are not
- *  here because their entry points live elsewhere (the Library
- *  page itself opens the composer pre-typed for those). */
-export const TYPE_OPTIONS: Array<{ id: ComposerType; label: string }> = [
-  { id: 'mood', label: 'Mood' },
-  { id: 'journal', label: 'Journal' },
-  { id: 'goal', label: 'Goal' },
-  { id: 'habit', label: 'Habit' },
-  { id: 'note', label: 'Note libre' },
-];
-
-/** Modules with a free-text body (no structured fields). The
- *  union mirrors `ComposerType` minus the four typed bodies. */
-export type SimpleType = Exclude<
-  ComposerType,
-  'mood' | 'goal' | 'journal' | 'library-item' | 'library-review'
->;
-
-/** Placeholder copy for the free-text body. Each module gets a
- *  one-liner so the empty textarea isn't intimidating. */
-export const SIMPLE_PLACEHOLDERS: Record<SimpleType, string> = {
-  habit: 'Une habitude à suivre — quoi, à quel rythme.',
-  note: 'Une note libre. Aucune contrainte.',
-};
 
 /** Placeholder copy for the three « positive » fields on the
  *  Mood body. Each one nudges the user toward a different angle

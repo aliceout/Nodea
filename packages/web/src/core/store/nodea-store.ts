@@ -35,11 +35,6 @@ import {
 } from './slices/notifications.ts';
 import { createUiSlice, type UiSlice } from './slices/ui.ts';
 import { createFlowSlice, initialFlow, type FlowSlice } from './slices/flow.ts';
-import {
-  createComposerSlice,
-  initialComposer,
-  type ComposerSlice,
-} from './slices/composer.ts';
 import { createVersionsSlice, type VersionsSlice } from './slices/versions.ts';
 
 // --- Re-exports : public surface preserved for ~30 consumers ---
@@ -65,8 +60,6 @@ export {
   isHrtSubview,
   type HrtSubview,
 } from './slices/flow.ts';
-export type { ComposerType, ComposerEditing } from './slices/composer.ts';
-
 // Selectors live in their own file but ship from this barrel so
 // existing consumers (`useNodeaStore, selectUser`-style imports)
 // keep working unchanged.
@@ -99,7 +92,6 @@ export interface NodeaState
     NotificationsSlice,
     UiSlice,
     FlowSlice,
-    ComposerSlice,
     VersionsSlice {
   /**
    * Atomic logout reset — flips every slice back to its post-login
@@ -122,7 +114,6 @@ export const useNodeaStore = create<NodeaState>()((...a) => {
     ...createNotificationsSlice(...a),
     ...createUiSlice(...a),
     ...createFlowSlice(...a),
-    ...createComposerSlice(...a),
     ...createVersionsSlice(...a),
 
     resetAll: () =>
@@ -134,7 +125,6 @@ export const useNodeaStore = create<NodeaState>()((...a) => {
         notifications: [],
         mobileMenuOpen: false,
         flow: initialFlow,
-        composer: initialComposer,
         goalsVersion: 0,
         moodVersion: 0,
         journalVersion: 0,

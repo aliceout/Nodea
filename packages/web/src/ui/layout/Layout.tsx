@@ -11,7 +11,6 @@ import { usePreferences } from '@/core/auth/use-preferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
 import { useFirstRunSeed } from '@/core/modules/useFirstRunSeed';
 import Sidebar from '@/ui/dirk/Sidebar';
-import ComposerModal from '@/ui/dirk/ComposerModal';
 
 /**
  * Direction K shell — fixed sidebar (240px) on `lg+`, slide-in
@@ -23,6 +22,10 @@ import ComposerModal from '@/ui/dirk/ComposerModal';
  * Crypto status `missing` keeps blocking with `KeyMissingModal`.
  * First-run onboarding now lives inline on the home page (see
  * `app/flow/Homepage/Onboarding.tsx`) — no shell-level modal.
+ *
+ * Each module owns its own inline « + Nouvel … » form ; the
+ * former shell-level Composer (modal + ⌘K hotkey) is gone. The
+ * shortcut is reserved for a future global command palette.
  */
 export default function Layout() {
   // The active module lives in the store, not in the URL — see
@@ -33,9 +36,6 @@ export default function Layout() {
   const current = useNodeaStore(selectCurrentModule);
   const syncCurrentModule = useNodeaStore((s) => s.syncCurrentModule);
   const keyStatus = useNodeaStore(selectKeyStatus);
-  const openComposer = useNodeaStore((s) => s.openComposer);
-  const closeComposer = useNodeaStore((s) => s.closeComposer);
-  const composerOpen = useNodeaStore((s) => s.composer.open);
   const session = useSession();
   // Hydrate the encrypted user preferences + modules-config slices as
   // soon as the layout mounts — each runs at most once per
@@ -46,23 +46,6 @@ export default function Layout() {
   usePreferences();
   useModulesHydration();
   useFirstRunSeed();
-
-  // ⌘K (or Ctrl+K) toggles the global composer from anywhere in the
-  // shell. Disabled when the key is missing — the blocking
-  // KeyMissingModal owns input focus until the user re-auths.
-  useEffect(() => {
-    if (keyStatus === 'missing') return undefined;
-    function handleKey(event: KeyboardEvent): void {
-      const isComposerHotkey =
-        (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
-      if (!isComposerHotkey) return;
-      event.preventDefault();
-      if (composerOpen) closeComposer();
-      else openComposer();
-    }
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [keyStatus, composerOpen, openComposer, closeComposer]);
 
   const moduleKnown = useMemo(() => nav.some((t) => t.id === current), [current]);
   const ActiveView = useMemo(() => {
@@ -97,8 +80,6 @@ export default function Layout() {
 
       <Sidebar />
       <main id="main" className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
-
-      <ComposerModal />
     </div>
   );
 }
