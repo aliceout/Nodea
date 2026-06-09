@@ -13,9 +13,12 @@
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
 import { getDataPlugin } from '@/core/api/modules/import-export/registry.data.ts';
 
-/** Minimal structural view of the Zustand modules slice this needs. */
+/** Minimal structural view of the Zustand modules slice this needs.
+ *  `| undefined` on the field keeps the zod-derived store entry
+ *  (`moduleUserId?: string | undefined`) assignable under
+ *  `exactOptionalPropertyTypes`. */
 type ModulesSlice =
-  | Record<string, { moduleUserId?: string | null } | undefined>
+  | Record<string, { moduleUserId?: string | null | undefined } | undefined>
   | null
   | undefined;
 

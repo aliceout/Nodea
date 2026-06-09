@@ -5,9 +5,13 @@
  * `{ cipher_iv, payload }`, the browser handles JSON + AES-GCM.
  * Payload shape is `UserPreferencesPayload` from `@nodea/shared`.
  *
- * On decrypt failure (stale blob, wrong key), we return an empty
- * object rather than throw — the caller falls back to its defaults
- * without a UI tombstone.
+ * « Blob absent » and « blob indéchiffrable » are DIFFERENT
+ * outcomes (audit 2026-06) : absent returns `{}` (a fresh account,
+ * safe to write) while a decrypt/parse failure returns `null` so
+ * the caller can flip into read-only mode — the previous behaviour
+ * (both → `{}`) meant the first `setPreferences()` after a corrupt
+ * read silently re-encrypted an EMPTY object over every preference
+ * the user had (theme, language, dismissed announcements…).
  */
 import type {
   AesMainKey,
@@ -25,7 +29,7 @@ import {
 
 export async function loadDecryptedPreferences(
   aesKey: AesMainKey,
-): Promise<UserPreferencesPayload> {
+): Promise<UserPreferencesPayload | null> {
   const res = await apiGetUserPreferences();
   if (!res.cipherIv || !res.payload) return {};
   try {
@@ -38,7 +42,9 @@ export async function loadDecryptedPreferences(
     );
     return UserPreferencesPayloadSchema.parse(JSON.parse(clear));
   } catch {
-    return {};
+    // A blob exists but we can't read it — surface the distinction
+    // so the caller refuses to overwrite it (see header comment).
+    return null;
   }
 }
 

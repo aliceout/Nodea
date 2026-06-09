@@ -77,7 +77,16 @@ async function wipeOne(
     body: JSON.stringify({ sid }),
   });
   const text = await res.text();
-  const payload: unknown = text ? JSON.parse(text) : null;
+  // A proxy error page (502/504 HTML) is not JSON — don't let the
+  // SyntaxError mask the actual HTTP status (audit 2026-06).
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+  }
   if (!res.ok) {
     throw Object.assign(new Error(`wipe ${collection} -> ${res.status}`), {
       status: res.status,
@@ -88,6 +97,39 @@ async function wipeOne(
   return body?.deleted ?? 0;
 }
 
+/** Error thrown on a mid-list failure : carries what *was* wiped
+ *  before the failing collection so the UI can report precisely
+ *  which data is gone instead of a bare error (audit 2026-06). */
+export class PartialWipeError extends Error {
+  constructor(
+    message: string,
+    /** Collections successfully wiped before the failure. */
+    readonly partial: WipeResult['perCollection'],
+    /** Collection the failure happened on. */
+    readonly failedCollection: CollectionName,
+    /** Underlying error (preserves `status` for reauth detection). */
+    override readonly cause: unknown,
+  ) {
+    super(message);
+    this.name = 'PartialWipeError';
+  }
+}
+
+/** Remove the module's local draft slot, if any. A wipe presented
+ *  as « toutes les entrées sont supprimées » must not resurrect a
+ *  draft built from the wiped data at the next form open (audit
+ *  2026-06). Prefix match covers per-year Review slots. */
+function purgeModuleDrafts(moduleId: string): void {
+  if (typeof localStorage === 'undefined') return;
+  const prefix = `nodea:${moduleId}:draft`;
+  const doomed: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(prefix)) doomed.push(key);
+  }
+  for (const key of doomed) localStorage.removeItem(key);
+}
+
 /**
  * Wipe every collection the module owns under the given sid.
  * Returns a summary the UI surfaces as « X entrées supprimées ».
@@ -95,7 +137,8 @@ async function wipeOne(
  * Each collection is one network round-trip ; we run them serially
  * because the typical module owns 1-4 collections and parallelism
  * would only buy ~100 ms while making error attribution harder.
- * Aborts on the first failure (typically a 401 reauth_required if
+ * A mid-list failure throws `PartialWipeError` carrying the
+ * already-wiped collections (typically a 401 reauth_required if
  * the freshness window lapsed mid-flight).
  */
 export async function wipeModule(
@@ -109,9 +152,20 @@ export async function wipeModule(
   const perCollection: WipeResult['perCollection'] = [];
   let total = 0;
   for (const collection of collections) {
-    const deleted = await wipeOne(collection, sid);
+    let deleted: number;
+    try {
+      deleted = await wipeOne(collection, sid);
+    } catch (err) {
+      throw new PartialWipeError(
+        `wipe ${moduleId} failed on ${collection}`,
+        perCollection,
+        collection,
+        err,
+      );
+    }
     perCollection.push({ collection, deleted });
     total += deleted;
   }
+  purgeModuleDrafts(moduleId);
   return { deleted: total, perCollection };
 }

@@ -8,17 +8,20 @@
  * Sits inside `useNodeaStore` (Zustand slice pattern, see ADR-0013).
  */
 import type { StateCreator } from 'zustand';
+import type {
+  ModuleRuntimeEntryPayload,
+  ModulesRuntimePayload,
+} from '@nodea/shared';
 import type { NodeaState } from '../nodea-store.ts';
 
-/** Per-module decrypted runtime config (what used to live in modulesRuntime). */
-export interface ModuleRuntimeEntry {
-  enabled: boolean;
-  moduleUserId?: string;
-  deleteSecret?: string;
-  algo?: string;
-}
+/** Per-module decrypted runtime config (what used to live in
+ *  modulesRuntime). Derived from the shared Zod schema
+ *  (`ModulesRuntimeSchema`) since audit 2026-06 so the validated
+ *  decrypt in `modules-config-client` and the store agree by
+ *  construction — single source of truth in `packages/shared`. */
+export type ModuleRuntimeEntry = ModuleRuntimeEntryPayload;
 
-export type ModulesRuntime = Record<string, ModuleRuntimeEntry>;
+export type ModulesRuntime = ModulesRuntimePayload;
 
 export interface ModulesSlice {
   modules: ModulesRuntime;

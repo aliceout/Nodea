@@ -43,6 +43,22 @@
     "badges": {
       "active": "Module actif",
       "inactive": "Module inactif"
+    },
+    "wipe": {
+      "open": "Vider toutes les entrées {module}",
+      "title": "Vider toutes les entrées de {module} ?",
+      "description": "Action irréversible. Le module reste activé mais toutes ses entrées chiffrées sont supprimées du serveur. Saisis ton mot de passe pour confirmer.",
+      "passwordLabel": "Mot de passe actuel",
+      "passwordRequired": "Renseigne ton mot de passe pour confirmer.",
+      "confirm": "Confirmer la suppression",
+      "wiping": "Suppression…",
+      "wrongPassword": "Mot de passe incorrect.",
+      "failedNone": "Échec — aucune donnée n’a été supprimée.",
+      "failedPartial": "Échec en cours de route. Déjà vidé : {wiped}. Relance pour terminer.",
+      "done": {
+        "one": "{count} entrée supprimée sur {module}.",
+        "other": "{count} entrées supprimées sur {module}."
+      }
     }
   }
 }

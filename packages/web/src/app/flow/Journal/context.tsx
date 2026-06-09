@@ -349,17 +349,27 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       const label = entry.title ?? entry.dateLabel;
       if (!window.confirm(t('journal.context.confirmDelete', { values: { label } })))
         return;
-      const previous = entriesRef.current;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
         await journalClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
-        bumpJournalVersion();
+        // Success : the optimistic removal IS the server state — the
+        // old `bumpJournalVersion()` re-downloaded + re-decrypted the
+        // whole collection (attachments included) right after it
+        // (audit 2026-06).
       } catch (err) {
-        setEntries(previous);
+        // Targeted rollback : re-insert THIS entry only, instead of
+        // restoring a full-list snapshot that would undo concurrent
+        // mutations. The list re-sorts on render is not needed —
+        // entries state is kept newest-first, so re-insert sorted.
+        setEntries((prev) => {
+          const next = [...prev, entry];
+          next.sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+          return next;
+        });
         if (import.meta.env.DEV) console.warn('journal: delete failed', err);
       }
     },
-    [ctx, bumpJournalVersion, t],
+    [ctx, t],
   );
 
   const openReader = useCallback((id: string) => setReadingId(id), []);

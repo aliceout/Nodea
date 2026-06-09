@@ -43,6 +43,22 @@
     "badges": {
       "active": "Module enabled",
       "inactive": "Module disabled"
+    },
+    "wipe": {
+      "open": "Wipe all {module} entries",
+      "title": "Wipe all {module} entries?",
+      "description": "Irreversible. The module stays enabled but every encrypted entry it owns is deleted from the server. Type your password to confirm.",
+      "passwordLabel": "Current password",
+      "passwordRequired": "Type your password to confirm.",
+      "confirm": "Confirm deletion",
+      "wiping": "Deleting…",
+      "wrongPassword": "Incorrect password.",
+      "failedNone": "Failed — no data was deleted.",
+      "failedPartial": "Failed midway. Already wiped: {wiped}. Run it again to finish.",
+      "done": {
+        "one": "{count} entry deleted from {module}.",
+        "other": "{count} entries deleted from {module}."
+      }
     }
   }
 }

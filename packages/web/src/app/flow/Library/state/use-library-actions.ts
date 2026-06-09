@@ -29,6 +29,7 @@ import {
   libraryReviewsClient,
 } from '@/core/api/modules/library';
 import type { ModuleClient } from '@/core/modules/use-module-client';
+import { createMutationTracker } from '@/core/state/mutation-tracker';
 
 import type { LibraryItem, LibraryReview } from '../lib/types';
 
@@ -131,32 +132,44 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     setReviewForm(null);
   }, []);
 
+  // FRONT-13 tracker (audit 2026-06) : Library used to roll back by
+  // restoring a snapshot of the ENTIRE list captured before the
+  // mutation — a failed delete undid every concurrent action made in
+  // the meantime (a favorite toggled on another book, etc.). Same
+  // per-entry token pattern as Mood / Goals now.
+  const trackerRef = useRef(createMutationTracker<string>());
+
   const deleteItem = useCallback(
     async (it: LibraryItem) => {
       if (!ctx) return;
       if (!window.confirm(`Supprimer « ${it.title} » et ses reviews ?`)) return;
-      const previousItems = itemsRef.current;
-      const previousReviews = reviewsRef.current;
+      trackerRef.current.begin(it.id);
+      const orphanReviews = reviewsRef.current.filter(
+        (r) => r.itemRid === it.id,
+      );
       setItems((prev) => prev.filter((i) => i.id !== it.id));
       setReviews((prev) => prev.filter((r) => r.itemRid !== it.id));
       try {
         // Delete reviews first so we never leave orphans if the
         // item delete fails. They're encrypted but unreachable, so
         // failing here is a soft warning rather than a hard error.
-        const orphanReviews = previousReviews.filter(
-          (r) => r.itemRid === it.id,
-        );
         await Promise.all(
           orphanReviews.map((r) =>
             libraryReviewsClient.remove(ctx.moduleUserId, ctx.mainKey, r.id),
           ),
         );
         await libraryItemsClient.remove(ctx.moduleUserId, ctx.mainKey, it.id);
+        // Success : the optimistic removal IS the server state — no
+        // refetch needed (the old bump re-downloaded all 3
+        // collections, covers included, after every delete).
+        trackerRef.current.forget(it.id);
+      } catch (err) {
+        // Partial failure (some reviews may be gone server-side, the
+        // item may remain) — a local snapshot can't represent that.
+        // Refetch both collections so the UI converges on the
+        // server's truth instead of resurrecting deleted reviews.
         bumpItemsVersion();
         bumpReviewsVersion();
-      } catch (err) {
-        setItems(previousItems);
-        setReviews(previousReviews);
         if (import.meta.env.DEV)
           console.warn('library: delete item failed', err);
       }
@@ -168,23 +181,35 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     (it: LibraryItem) => {
       if (!ctx) return;
       const next = !it.isFavorite;
-      const previous = itemsRef.current;
+      const token = trackerRef.current.begin(it.id);
       setItems((prev) =>
         prev.map((i) => (i.id === it.id ? { ...i, isFavorite: next } : i)),
       );
+      // Strip the row id before persisting — `LibraryItem` is
+      // payload + id, and the loose payload schema would happily
+      // store the stray `id` field inside the encrypted blob on
+      // every toggle (audit 2026-06).
+      const { id: _rowId, ...payload } = it;
       libraryItemsClient
         .update(ctx.moduleUserId, ctx.mainKey, it.id, {
-          ...(it as LibraryItemPayload),
+          ...(payload as LibraryItemPayload),
           isFavorite: next,
         })
-        .then(() => bumpItemsVersion())
+        // Success : optimistic state is the server state — no
+        // refetch. The old bump re-downloaded every cover blob
+        // (10-20 MB at 300 books) for a one-boolean flip.
         .catch((err) => {
-          setItems(previous);
+          if (!trackerRef.current.isLatest(it.id, token)) return;
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === it.id ? { ...i, isFavorite: !next } : i,
+            ),
+          );
           if (import.meta.env.DEV)
             console.warn('library: favorite toggle failed', err);
         });
     },
-    [ctx, bumpItemsVersion, setItems],
+    [ctx, setItems],
   );
 
   const addReview = useCallback((itemId: string) => {
@@ -199,7 +224,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     async (review: LibraryReview) => {
       if (!ctx) return;
       if (!window.confirm('Supprimer cette review ?')) return;
-      const previous = reviewsRef.current;
+      const token = trackerRef.current.begin(review.id);
       setReviews((prev) => prev.filter((r) => r.id !== review.id));
       try {
         await libraryReviewsClient.remove(
@@ -207,14 +232,19 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
           ctx.mainKey,
           review.id,
         );
-        bumpReviewsVersion();
+        // Success : optimistic removal is the server state — no
+        // refetch needed.
+        trackerRef.current.forget(review.id);
       } catch (err) {
-        setReviews(previous);
+        if (!trackerRef.current.isLatest(review.id, token)) return;
+        // Targeted rollback : re-insert THIS review only (the views
+        // re-sort by date, so position doesn't matter).
+        setReviews((prev) => [review, ...prev]);
         if (import.meta.env.DEV)
           console.warn('library: delete review failed', err);
       }
     },
-    [ctx, bumpReviewsVersion, setReviews],
+    [ctx, setReviews],
   );
 
   const openReviewPicker = useCallback((kind: ReviewKind) => {

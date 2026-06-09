@@ -12,6 +12,7 @@
  *     }
  */
 import type { AesMainKey, Base64, CipherIV, EncryptedBlob } from '@nodea/shared';
+import { ModulesRuntimeSchema } from '@nodea/shared';
 import { encryptAESGCM, decryptAESGCM } from '@/core/crypto/aes';
 import {
   apiGetModulesConfig,
@@ -19,7 +20,15 @@ import {
 } from '@/core/api/client';
 import type { ModulesRuntime } from '@/core/store/nodea-store';
 
-/** Serialise → decrypt the stored blob into the runtime map. */
+/** Serialise → decrypt the stored blob into the runtime map.
+ *
+ *  The decrypted JSON is validated against `ModulesRuntimeSchema`
+ *  (audit 2026-06) — this blob carries the `moduleUserId`s that
+ *  scope every encrypted-records request, and it was the only one
+ *  parsed without a structural check (`as ModulesRuntime` after a
+ *  bare is-object test). A blob that parses but doesn't match the
+ *  schema now throws ; the caller (`useModulesHydration`) keeps the
+ *  store on its defaults instead of running on garbage. */
 export async function loadDecryptedModulesConfig(
   aesKey: AesMainKey,
 ): Promise<ModulesRuntime> {
@@ -32,9 +41,7 @@ export async function loadDecryptedModulesConfig(
     },
     aesKey,
   );
-  const parsed = JSON.parse(clear) as unknown;
-  if (!parsed || typeof parsed !== 'object') return {};
-  return parsed as ModulesRuntime;
+  return ModulesRuntimeSchema.parse(JSON.parse(clear));
 }
 
 /** Encrypt + PUT the runtime map. */

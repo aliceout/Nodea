@@ -22,6 +22,16 @@
  * second invocation a no-op while the first pass completes, idempotency
  * covers any overlap, and a `mounted` ref gates the final `onMaterialized`
  * so we never refresh after a *real* unmount.
+ *
+ * Cross-tab safe via the Web Locks API (audit 2026-06). The `running`
+ * ref only guards one React tree — two TABS (or two windows) used to
+ * run LIST → compute → createMany concurrently, and since the server
+ * can't dedupe encrypted blobs, the window between the LIST and the
+ * POST produced duplicate occurrences (the reason the DedupPanel
+ * exists). `navigator.locks` serialises the pass across every tab of
+ * the same origin ; the second tab waits, re-LISTs, finds the dates
+ * covered and writes nothing. Two *devices* can still race — that gap
+ * is structural (no shared lock) and stays covered by the DedupPanel.
  */
 import { useEffect, useRef } from 'react';
 
@@ -31,6 +41,20 @@ import { useModuleClient } from '@/core/modules/use-module-client';
 import { computeOccurrences } from '../lib/materialize';
 import { todayIso } from '../lib/labels';
 import type { ScheduleEntry } from './use-schedules';
+
+const MATERIALIZE_LOCK = 'nodea:hrt:materialize';
+
+/** Run `fn` under a cross-tab exclusive lock when the Web Locks API
+ *  is available (every supported browser ships it ; the fallback is
+ *  the pre-audit behaviour, single-tab safety only). */
+async function withCrossTabLock(fn: () => Promise<void>): Promise<void> {
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    // `await` flattens the lib's `Promise<Promise<void>>` inference.
+    await navigator.locks.request(MATERIALIZE_LOCK, fn);
+    return;
+  }
+  await fn();
+}
 
 export function useScheduleMaterialization(
   schedules: ReadonlyArray<ScheduleEntry>,
@@ -51,7 +75,7 @@ export function useScheduleMaterialization(
 
       if (plans.length > 0) {
         running.current = true;
-        void (async () => {
+        void withCrossTabLock(async () => {
           try {
             // Belt-and-suspenders against a stale `materializedThrough` :
             // we load the admin logs once and build a per-schedule set
@@ -128,7 +152,7 @@ export function useScheduleMaterialization(
           } finally {
             running.current = false;
           }
-        })();
+        });
       }
     }
 

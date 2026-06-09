@@ -7,7 +7,11 @@ import { isApiError } from '@/core/api/client';
 import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
 import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { generateModuleUserId } from '@/core/crypto/ids';
-import { MODULE_COLLECTIONS, wipeModule } from '@/core/modules/wipe-module';
+import {
+  MODULE_COLLECTIONS,
+  PartialWipeError,
+  wipeModule,
+} from '@/core/modules/wipe-module';
 import {
   useNodeaStore,
   selectMainKey,
@@ -33,6 +37,12 @@ import Field from './Field';
  * `useModulesHydration` (mounted in `Layout`), so this component reads
  * straight from the store and only writes back on toggle.
  *
+ * `WipePanel` and `Toggle` are module-level components ON PURPOSE
+ * (audit 2026-06) : they used to be declared inside the parent's
+ * body, so every parent re-render changed their identity and React
+ * unmounted/remounted them — wiping the typed password and dropping
+ * the « wiping » progress state mid-flight.
+ *
  * Visual language is aligned with the inline onboarding picker
  * (`app/flow/Homepage/Onboarding.tsx`): same heroicon at the start of
  * each row, same toggle widget chrome, same accent treatment for the
@@ -40,6 +50,242 @@ import Field from './Field';
  * because Settings is a maintenance surface (efficiency) where
  * onboarding is a deliberation surface (breathing).
  */
+
+/** Map module id → store version bumps to fire after a successful
+ *  wipe, so any mounted consumer refetches instead of showing stale
+ *  rows. Modules absent here (habits / review / hrt) have no store
+ *  version — their hooks refetch on every page mount, which is
+ *  enough since Settings is a different surface. */
+const WIPE_VERSION_BUMPS: Record<string, ReadonlyArray<string>> = {
+  mood: ['bumpMoodVersion'],
+  journal: ['bumpJournalVersion'],
+  goals: ['bumpGoalsVersion'],
+  library: ['bumpLibraryItemsVersion', 'bumpLibraryReviewsVersion'],
+};
+
+/** Inline destructive confirmation expanded under a module row.
+ *  Owns the password re-auth + the wipe fan-out. Closes via
+ *  `onClose` ; on success the relevant store versions are bumped so
+ *  mounted consumers refetch. */
+function WipePanel({
+  moduleId,
+  moduleLabel,
+  sid,
+  onClose,
+}: {
+  moduleId: string;
+  moduleLabel: string;
+  sid: string;
+  onClose: () => void;
+}) {
+  const { t, tn } = useI18n();
+  const [password, setPassword] = useState('');
+  const [phase, setPhase] = useState<'idle' | 'wiping' | 'done'>('idle');
+  const [panelError, setPanelError] = useState<string | null>(null);
+  const [deletedCount, setDeletedCount] = useState(0);
+
+  async function handleConfirm(): Promise<void> {
+    setPanelError(null);
+    if (!password) {
+      setPanelError(
+        t('settings.modules.wipe.passwordRequired', {
+          defaultValue: 'Renseigne ton mot de passe pour confirmer.',
+        }),
+      );
+      return;
+    }
+    setPhase('wiping');
+    try {
+      // Step 1 : OPAQUE re-auth round-trip — same posture as the
+      // plaintext-export gate in `ExportPanel`. Stamps a fresh
+      // `reauth_password_at` on the session so the wipe endpoint's
+      // `requireFreshPassword` middleware lets the calls through
+      // for the next 5 minutes.
+      await freshenPasswordReauth(password);
+      // Step 2 : fan out one POST /records/wipe per collection
+      // the module owns. The server-side delete is one transaction
+      // per call ; we let the helper iterate the list.
+      const result = await wipeModule(moduleId, sid);
+      setDeletedCount(result.deleted);
+      setPassword('');
+      // Refetch trigger for mounted consumers of this module's data.
+      const state = useNodeaStore.getState() as unknown as Record<
+        string,
+        unknown
+      >;
+      for (const bump of WIPE_VERSION_BUMPS[moduleId] ?? []) {
+        const fn = state[bump];
+        if (typeof fn === 'function') (fn as () => void)();
+      }
+      setPhase('done');
+    } catch (err) {
+      setPhase('idle');
+      if (isApiError(err) && err.status === 401) {
+        setPanelError(
+          t('settings.modules.wipe.wrongPassword', {
+            defaultValue: 'Mot de passe incorrect.',
+          }),
+        );
+      } else if (err instanceof PartialWipeError) {
+        // Mid-list failure : say exactly what WAS wiped so the user
+        // doesn't have to guess which data survived (audit 2026-06).
+        const wiped = err.partial.map((p) => p.collection).join(', ');
+        setPanelError(
+          err.partial.length === 0
+            ? t('settings.modules.wipe.failedNone', {
+                defaultValue: 'Échec — aucune donnée n’a été supprimée.',
+              })
+            : t('settings.modules.wipe.failedPartial', {
+                defaultValue: `Échec en cours de route. Déjà vidé : ${wiped}. Relance pour terminer.`,
+                values: { wiped },
+              }),
+        );
+        if (import.meta.env.DEV)
+          console.warn('wipe module partial failure', moduleId, err);
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        setPanelError(msg);
+        if (import.meta.env.DEV)
+          console.warn('wipe module failed', moduleId, err);
+      }
+    }
+  }
+
+  if (phase === 'done') {
+    return (
+      <div
+        role="status"
+        className="border-t border-hair bg-bg-2/40 px-4 py-4 text-[13px] text-ink"
+      >
+        <p>
+          {tn('settings.modules.wipe.done', deletedCount, {
+            values: { module: moduleLabel },
+          })}
+        </p>
+        <div className="mt-3">
+          <Button variant="neutral" size="sm" onClick={onClose}>
+            {t('common.actions.close', { defaultValue: 'Fermer' })}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="alertdialog"
+      aria-labelledby={`wipe-${moduleId}-title`}
+      className="border-t border-danger/30 bg-danger/5 px-4 py-4"
+    >
+      <p
+        id={`wipe-${moduleId}-title`}
+        className="text-[13px] font-medium text-ink"
+      >
+        {t('settings.modules.wipe.title', {
+          defaultValue: `Vider toutes les entrées de ${moduleLabel} ?`,
+          values: { module: moduleLabel },
+        })}
+      </p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+        {t('settings.modules.wipe.description', {
+          defaultValue:
+            'Action irréversible. Le module reste activé mais toutes ses entrées chiffrées sont supprimées du serveur. Saisis ton mot de passe pour confirmer.',
+        })}
+      </p>
+      <div className="mt-3 max-w-sm">
+        <Field
+          label={t('settings.modules.wipe.passwordLabel', {
+            defaultValue: 'Mot de passe actuel',
+          })}
+          type="password"
+          value={password}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setPassword(e.target.value)
+          }
+          autoFocus
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => void handleConfirm()}
+          disabled={phase === 'wiping' || password.length === 0}
+        >
+          {phase === 'wiping'
+            ? t('settings.modules.wipe.wiping', {
+                defaultValue: 'Suppression…',
+              })
+            : t('settings.modules.wipe.confirm', {
+                defaultValue: 'Confirmer la suppression',
+              })}
+        </Button>
+        <Button
+          variant="neutral"
+          size="sm"
+          onClick={onClose}
+          disabled={phase === 'wiping'}
+        >
+          {t('common.actions.cancel', { defaultValue: 'Annuler' })}
+        </Button>
+      </div>
+      {panelError ? (
+        <p role="alert" className="mt-3 text-[12.5px] text-danger">
+          {panelError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function Toggle({
+  checked,
+  isBusy,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  isBusy: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div
+      className={clsx(
+        'relative inline-flex h-6 w-11 shrink-0 items-center',
+        isBusy && 'pointer-events-none opacity-60',
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={clsx(
+          'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
+          checked ? 'bg-accent' : 'bg-hair',
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className={clsx(
+          'absolute left-0.5 top-0.5 h-5 w-5 rounded-full border border-hair bg-bg transition-transform duration-150 ease-out',
+          checked ? 'translate-x-5' : '',
+        )}
+      />
+      <input
+        type="checkbox"
+        aria-label={t('settings.modules.toggle', {
+          defaultValue: `Activer ${label}`,
+          values: { module: label },
+        })}
+        className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={isBusy}
+      />
+    </div>
+  );
+}
+
 export default function ModulesManager() {
   const { t } = useI18n();
   const mainKey = useNodeaStore(selectMainKey);
@@ -110,199 +356,6 @@ export default function ModulesManager() {
       <EmptyHint>
         {t('settings.modules.none', { defaultValue: 'Aucun module configurable.' })}
       </EmptyHint>
-    );
-  }
-
-  /** Inline destructive confirmation expanded under a row. Lives
-   *  inside ModulesManager so the password re-auth + wipe pass
-   *  reuse the parent's `t` and live next to the row that triggered
-   *  it. Closes via `onClose` after success — the wiped module's
-   *  hooks will re-fetch on their next mount and see an empty list. */
-  function WipePanel({
-    moduleId,
-    moduleLabel,
-    sid,
-    onClose,
-  }: {
-    moduleId: string;
-    moduleLabel: string;
-    sid: string;
-    onClose: () => void;
-  }) {
-    const [password, setPassword] = useState('');
-    const [phase, setPhase] = useState<'idle' | 'wiping' | 'done'>('idle');
-    const [panelError, setPanelError] = useState<string | null>(null);
-    const [deletedCount, setDeletedCount] = useState(0);
-
-    async function handleConfirm(): Promise<void> {
-      setPanelError(null);
-      if (!password) {
-        setPanelError(
-          t('settings.modules.wipe.passwordRequired', {
-            defaultValue: 'Renseigne ton mot de passe pour confirmer.',
-          }),
-        );
-        return;
-      }
-      setPhase('wiping');
-      try {
-        // Step 1 : OPAQUE re-auth round-trip — same posture as the
-        // plaintext-export gate in `ExportPanel`. Stamps a fresh
-        // `reauth_password_at` on the session so the wipe endpoint's
-        // `requireFreshPassword` middleware lets the calls through
-        // for the next 5 minutes.
-        await freshenPasswordReauth(password);
-        // Step 2 : fan out one POST /records/wipe per collection
-        // the module owns. The server-side delete is one transaction
-        // per call ; we let the helper iterate the list.
-        const result = await wipeModule(moduleId, sid);
-        setDeletedCount(result.deleted);
-        setPassword('');
-        setPhase('done');
-      } catch (err) {
-        setPhase('idle');
-        if (isApiError(err) && err.status === 401) {
-          setPanelError(
-            t('settings.modules.wipe.wrongPassword', {
-              defaultValue: 'Mot de passe incorrect.',
-            }),
-          );
-        } else {
-          const msg = err instanceof Error ? err.message : String(err);
-          setPanelError(msg);
-          if (import.meta.env.DEV)
-            console.warn('wipe module failed', moduleId, err);
-        }
-      }
-    }
-
-    if (phase === 'done') {
-      return (
-        <div
-          role="status"
-          className="border-t border-hair bg-bg-2/40 px-4 py-4 text-[13px] text-ink"
-        >
-          <p>
-            <span className="font-semibold">{deletedCount}</span> entrée
-            {deletedCount > 1 ? 's' : ''} supprimée
-            {deletedCount > 1 ? 's' : ''} sur {moduleLabel}. Recharge le module
-            pour voir les listes à jour.
-          </p>
-          <div className="mt-3">
-            <Button variant="neutral" size="sm" onClick={onClose}>
-              {t('common.actions.close', { defaultValue: 'Fermer' })}
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        role="alertdialog"
-        aria-labelledby={`wipe-${moduleId}-title`}
-        className="border-t border-danger/30 bg-danger/5 px-4 py-4"
-      >
-        <p
-          id={`wipe-${moduleId}-title`}
-          className="text-[13px] font-medium text-ink"
-        >
-          {t('settings.modules.wipe.title', {
-            defaultValue: `Vider toutes les entrées de ${moduleLabel} ?`,
-            module: moduleLabel,
-          })}
-        </p>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
-          {t('settings.modules.wipe.description', {
-            defaultValue:
-              'Action irréversible. Le module reste activé mais toutes ses entrées chiffrées sont supprimées du serveur. Saisis ton mot de passe pour confirmer.',
-          })}
-        </p>
-        <div className="mt-3 max-w-sm">
-          <Field
-            label={t('settings.modules.wipe.passwordLabel', {
-              defaultValue: 'Mot de passe actuel',
-            })}
-            type="password"
-            value={password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setPassword(e.target.value)
-            }
-            autoFocus
-          />
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => void handleConfirm()}
-            disabled={phase === 'wiping' || password.length === 0}
-          >
-            {phase === 'wiping'
-              ? t('settings.modules.wipe.wiping', {
-                  defaultValue: 'Suppression…',
-                })
-              : t('settings.modules.wipe.confirm', {
-                  defaultValue: 'Confirmer la suppression',
-                })}
-          </Button>
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={onClose}
-            disabled={phase === 'wiping'}
-          >
-            {t('common.actions.cancel', { defaultValue: 'Annuler' })}
-          </Button>
-        </div>
-        {panelError ? (
-          <p role="alert" className="mt-3 text-[12.5px] text-danger">
-            {panelError}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  function Toggle({ checked, isBusy, onChange, label }: {
-    checked: boolean;
-    isBusy: boolean;
-    onChange: (next: boolean) => void;
-    label: string;
-  }) {
-    return (
-      <div
-        className={clsx(
-          'relative inline-flex h-6 w-11 shrink-0 items-center',
-          isBusy && 'pointer-events-none opacity-60',
-        )}
-      >
-        <span
-          aria-hidden="true"
-          className={clsx(
-            'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
-            checked ? 'bg-accent' : 'bg-hair',
-          )}
-        />
-        <span
-          aria-hidden="true"
-          className={clsx(
-            'absolute left-0.5 top-0.5 h-5 w-5 rounded-full border border-hair bg-bg transition-transform duration-150 ease-out',
-            checked ? 'translate-x-5' : '',
-          )}
-        />
-        <input
-          type="checkbox"
-          aria-label={t('settings.modules.toggle', {
-            defaultValue: `Activer ${label}`,
-            module: label,
-          })}
-          className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          disabled={isBusy}
-        />
-      </div>
     );
   }
 
@@ -382,7 +435,7 @@ export default function ModulesManager() {
                   aria-expanded={wipeFor === m.id}
                   aria-label={t('settings.modules.wipe.open', {
                     defaultValue: `Vider toutes les entrées ${label}`,
-                    module: label,
+                    values: { module: label },
                   })}
                   className={cn(
                     'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors',
