@@ -22,11 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { goalsClient } from '@/core/api/modules/goals';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
-import {
-  useNodeaStore,
-  type ComposerEditing,
-  type ComposerType,
-} from '@/core/store/nodea-store';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { nextStatus } from '../lib/status';
@@ -39,6 +35,22 @@ export interface GoalsActionsState {
    *  Auto-clears if the underlying entry disappears (delete / filter
    *  change leaves it out of `filtered`). */
   readingId: string | null;
+  /** Inline composer state (replaces the global Zustand
+   *  `composer.editing` slice the modal used). `formOpen` toggles
+   *  the form visibility in `PrimaryColumn` ; `editingEntry` is the
+   *  entry being edited (or `null` on a fresh create). */
+  formOpen: boolean;
+  editingEntry: GoalEntry | null;
+  /** Open the inline form on a blank entry (the topbar
+   *  « + Nouvel objectif » button). */
+  openCreateForm: () => void;
+  /** Open the inline form pre-filled with the given entry — the
+   *  edit affordance on each row + each card. Aliased to
+   *  `editEntry` below so existing call-sites compile unchanged. */
+  openEditForm: (entry: GoalEntry) => void;
+  /** Cancel / dismiss the form (own Cancel button + post-save
+   *  callback). */
+  closeForm: () => void;
   cycleStatus: (entry: GoalEntry) => Promise<void>;
   editEntry: (entry: GoalEntry) => void;
   /** Inline title quick-rename (issue #65). Same optimistic-update +
@@ -71,16 +83,20 @@ interface GoalsActionsDeps {
   entries: GoalEntry[];
   setEntries: React.Dispatch<React.SetStateAction<GoalEntry[]>>;
   bumpGoalsVersion: () => void;
-  openComposer: (kind?: ComposerType, editing?: ComposerEditing) => void;
 }
 
 export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
-  const { ctx, entries, setEntries, bumpGoalsVersion, openComposer } = deps;
+  const { ctx, entries, setEntries, bumpGoalsVersion } = deps;
   const { t } = useI18n();
   const pushToast = useNodeaStore((s) => s.pushToast);
 
   const [carryOverOpen, setCarryOverOpen] = useState(false);
   const [readingId, setReadingId] = useState<string | null>(null);
+  // Inline-form state (replaces the legacy global Zustand composer
+  // slice). Independent of the reader (`readingId`) so closing the
+  // form doesn't toggle the reader on / off.
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<GoalEntry | null>(null);
 
   const entriesRef = useRef(entries);
   useEffect(() => {
@@ -162,24 +178,25 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     [ctx, bumpGoalsVersion, setEntries],
   );
 
-  const editEntry = useCallback(
-    (entry: GoalEntry) => {
-      openComposer('goal', {
-        type: 'goal',
-        id: entry.id,
-        payload: {
-          date: entry.date,
-          title: entry.title,
-          note: entry.note,
-          status: entry.status,
-          thread: entry.thread,
-          completedAt: entry.completedAt,
-          updatedAt: entry.updatedAt,
-        },
-      });
-    },
-    [openComposer],
-  );
+  const openCreateForm = useCallback(() => {
+    setEditingEntry(null);
+    setFormOpen(true);
+  }, []);
+
+  const openEditForm = useCallback((entry: GoalEntry) => {
+    setEditingEntry(entry);
+    setFormOpen(true);
+  }, []);
+
+  // Alias kept so GoalRow / GoalCard's existing
+  // `onClick={() => editEntry(entry)}` compiles untouched.
+  // Internally identical to `openEditForm`.
+  const editEntry = openEditForm;
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    setEditingEntry(null);
+  }, []);
 
   const updateTitle = useCallback(
     async (entry: GoalEntry, nextTitle: string) => {
@@ -371,6 +388,11 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   return {
     carryOverOpen,
     readingId,
+    formOpen,
+    editingEntry,
+    openCreateForm,
+    openEditForm,
+    closeForm,
     cycleStatus,
     editEntry,
     updateTitle,

@@ -56,9 +56,8 @@ export default function GoalsPage() {
 function GoalsView() {
   const { t, tn } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const openComposer = useNodeaStore((s) => s.openComposer);
   const { stats } = useGoalsData();
-  const { readingId } = useGoalsActions();
+  const { readingId, formOpen, openCreateForm } = useGoalsActions();
 
   if (readingId !== null) {
     return (
@@ -75,9 +74,16 @@ function GoalsView() {
     <ModuleShell
       topbar={
         <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
-          <Button variant="primary" size="sm" onClick={() => openComposer('goal')}>
-            {t('goals.topbar.newCta')}
-          </Button>
+          {/* Hide the « + Nouvel objectif » button while the inline
+              form is already open — same posture as Mood / HRT.
+              Clicking it again while editing would reopen a fresh
+              create form on top of an in-progress edit and lose
+              the user's draft. */}
+          {!formOpen ? (
+            <Button variant="primary" size="sm" onClick={openCreateForm}>
+              {t('goals.topbar.newCta')}
+            </Button>
+          ) : null}
         </Topbar>
       }
       side={<SideColumn />}

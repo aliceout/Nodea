@@ -78,6 +78,15 @@ interface GoalsFiltersValue {
 interface GoalsActionsValue {
   carryOverOpen: boolean;
   readingId: string | null;
+  /** Inline composer state. `formOpen` toggles the form's visibility
+   *  in `PrimaryColumn` ; `editingEntry` is the entry being edited
+   *  (or `null` on a fresh create). Mirrors the Mood module's posture
+   *  — `openComposer` from the global Zustand slice is no longer used. */
+  formOpen: boolean;
+  editingEntry: GoalEntry | null;
+  openCreateForm: () => void;
+  openEditForm: (entry: GoalEntry) => void;
+  closeForm: () => void;
   cycleStatus: (entry: GoalEntry) => Promise<void>;
   editEntry: (entry: GoalEntry) => void;
   updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
@@ -111,7 +120,6 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
   const ctx = useModuleClient('goals');
   const goalsVersion = useNodeaStore((s) => s.goalsVersion);
   const bumpGoalsVersion = useNodeaStore((s) => s.bumpGoalsVersion);
-  const openComposer = useNodeaStore((s) => s.openComposer);
 
   const data = useDataState(ctx, goalsVersion);
   const filters = useFiltersState(data.entries);
@@ -120,7 +128,6 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     entries: data.entries,
     setEntries: data.setEntries,
     bumpGoalsVersion,
-    openComposer,
   });
 
   // ---- Memoised context values ----
@@ -157,6 +164,11 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     () => ({
       carryOverOpen: actions.carryOverOpen,
       readingId: actions.readingId,
+      formOpen: actions.formOpen,
+      editingEntry: actions.editingEntry,
+      openCreateForm: actions.openCreateForm,
+      openEditForm: actions.openEditForm,
+      closeForm: actions.closeForm,
       cycleStatus: actions.cycleStatus,
       editEntry: actions.editEntry,
       updateTitle: actions.updateTitle,
