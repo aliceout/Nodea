@@ -595,11 +595,13 @@ knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
 
 ## 7. Common modules schema
 
-The six modules (Mood, Goals, Journal, Habits, Library, Review) all
-build on the same encrypted technical base: one `*_entries` table per
-module, two-phase creation with HMAC validation, server-unreadable
-data. See [`docs/Modules/<Module>.md`](./Modules/) for each module's
-cleartext payload and module-specific rules.
+The seven modules (Mood, Goals, Journal, Habits, Library, Review,
+HRT) all build on the same encrypted technical base: one `*_entries`
+table per module (HRT spreads across four : `hrt_admin_logs_entries`,
+`hrt_lab_results_entries`, `hrt_suppliers_entries`,
+`hrt_schedules_entries`), two-phase creation with HMAC validation,
+server-unreadable data. See [`docs/Modules/<Module>.md`](./Modules/)
+for each module's cleartext payload and module-specific rules.
 
 ### 7.1. Fields visible on the server
 

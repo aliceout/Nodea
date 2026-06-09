@@ -24,6 +24,7 @@ lire.
 | **Habits** | Habitudes + logs datés (heatmap, taux de régularité) |
 | **Library** | Bibliothèque (livres, fiches de lecture, vignettes chiffrées) |
 | **Review** | Bilan annuel guidé (parcours YearCompass, 15 sections) |
+| **HRT** | Traitement hormonal — doses, biomarqueurs labo, fournisseurs, schémas récurrents |
 
 Chaque module est activable indépendamment depuis **Paramètres**.
 

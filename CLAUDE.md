@@ -8,7 +8,7 @@ This file is read automatically by Claude Code at the start of every session. It
 
 **Nodea** is a self-hosted, **end-to-end encrypted** journaling / life-tracking web app. Data is encrypted in the browser with a user-derived main key — the server stores only ciphertext + HMAC guards, never plaintext, never keys.
 
-Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **Review** (all implemented; Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md)). **HRT** (hormone replacement therapy) is in progress — data layer done, views WIP, see [`docs/Modules/HRT.md`](./docs/Modules/HRT.md).
+Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **Review** · **HRT** (all implemented and shipping ; Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md) ; **HRT** (hormone replacement therapy) ships its data layer + views — see [`docs/Modules/HRT.md`](./docs/Modules/HRT.md)).
 
 ---
 
@@ -26,7 +26,7 @@ Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **
 | `docs/Architecture.md` | Code structure, runtime flow |
 | `packages/web/src/app/pages/docs/content/tech.md` (rendered at `nodea.app/docs/security/tech`) | Before touching anything crypto, auth, or guards — single source of truth |
 | `docs/Database.md` | Before touching schema, collections, or guard validation |
-| `docs/Modules/<Module>.md` (per-module spec) + `docs/Architecture.md` §7 (cross-module schema + invariants) | Before touching a specific module (Mood, Goals, Journal, Habits, Library, Review) |
+| `docs/Modules/<Module>.md` (per-module spec) + `docs/Architecture.md` §7 (cross-module schema + invariants) | Before touching a specific module (Mood, Goals, Journal, Habits, Library, Review, HRT) |
 | `docs/Auth-Spec.md` (threat model + DB + sessions + cross-cutting) + `docs/auth/<Flow>.md` (per-flow detail : Register, Login, ChangePassword, ChangeEmail, Recovery, BypassMfa, Lifecycle) | Before touching anything in the auth flows (OPAQUE, MFA, recovery, re-auth) |
 | `docs/Internationalisation.md` | Before touching i18n files |
 | `docs/security-audit.md` | Findings list + per-area sweep — cross-check before closing any crypto / auth / response-leakage task |

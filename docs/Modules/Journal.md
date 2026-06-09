@@ -1,4 +1,4 @@
-# Journal module (`passage_entries`)
+# Journal module (`journal_entries`)
 
 ## Functional description
 
