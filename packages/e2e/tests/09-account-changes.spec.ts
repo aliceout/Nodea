@@ -28,14 +28,13 @@ import { registerAndActivate } from '../helpers/flows.ts';
  *      save, assert success feedback + value updated.
  *
  * What this spec does NOT cover :
- *   - **Re-login with the new email** — V1 limitation : the OPAQUE
- *     envelope is bound to the registered email (`userIdentifier`)
- *     and `PATCH /auth/email` only flips the column, not the
- *     envelope. Future Phase 2+ will re-register OPAQUE on email
- *     change ; until then, the change is « cosmetic » for OPAQUE
- *     purposes (login still uses the old email under the hood,
- *     even though the row shows the new one). Cf. JSDoc on
- *     `auth-account.ts` `PATCH /email` handler.
+ *   - **Re-login with the new email** — works since audit 2026-06 :
+ *     login replays the registration-time OPAQUE identifier stored
+ *     on `opaque_records.user_identifier` while the row lookup uses
+ *     the current email, so a changed email no longer locks the
+ *     account out. Not exercised here because it needs a full
+ *     logout/login round-trip — candidate for its own spec. Cf.
+ *     JSDoc on `auth-account.ts` `PATCH /email` handler.
  *   - Self-delete via the Danger tab (covered by `06-account-deletion-cascade`).
  *   - Onboarding completion (auto-completed by `registerAndActivate`).
  *   - Email-change cooldown (« 1 change per 24 h » rate limit) —

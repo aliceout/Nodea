@@ -349,6 +349,9 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
           await tx.insert(opaqueRecords).values({
             userId,
             envelope: body.registrationRecord,
+            // Identifier baked into the envelope at /start — login
+            // must replay it even after a later change-email.
+            userIdentifier: email,
           });
         } catch {
           // Constraint violation — most likely email already taken,
@@ -427,6 +430,9 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
       await tx.insert(opaqueRecords).values({
         userId,
         envelope: body.registrationRecord,
+        // Identifier baked into the envelope at /start — login
+        // must replay it even after a later change-email.
+        userIdentifier: email,
       });
     });
   } catch {

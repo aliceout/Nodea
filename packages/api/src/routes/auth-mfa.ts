@@ -66,10 +66,19 @@ export const authMfaRoutes = new OpenAPIHono<{ Variables: MfaPendingVariables }>
   defaultHook: defaultInvalidBodyHook,
 });
 
+// Keyed on the pending session's USER (set by `requireMfaPending`,
+// which runs before this limiter), not the caller's IP — an
+// attacker holding a stolen password + the `mfa_pending` cookie
+// could otherwise multiply TOTP guesses by rotating IPs (audit
+// 2026-06). IP stays the fallback if the variable is ever absent.
 const verifyLimiter = rateLimit({
   max: 10,
   windowMs: 5 * 60_000,
   keyPrefix: 'mfa-totp-verify',
+  keyFn: (c) => {
+    const user = c.get('user') as { id?: string } | undefined;
+    return user?.id ?? null;
+  },
 });
 
 const passkeyMfaLimiter = rateLimit({

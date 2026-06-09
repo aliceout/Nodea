@@ -8,13 +8,21 @@
 
 ## 7.6 Change email (partial design — full flow not shipped)
 
-> **Status.** The `PATCH /auth/email` route only does the
-> `UPDATE users.email` after a fresh password re-auth. The flow
-> below describes the complete envisioned version with email
-> re-verification + 7-day cooldown + OPAQUE re-register (because the
-> `userIdentifier` baked into the envelope IS the email). To be
-> implemented in a dedicated issue if we want the full lock; for now
-> the simple route does the minimal job.
+> **Status (updated audit 2026-06).** The `PATCH /auth/email` route
+> does the `UPDATE users.email` after a fresh password re-auth,
+> **revokes every other session**, and **notifies the old address**
+> (best-effort). The OPAQUE envelope is *not* re-registered — and no
+> longer needs to be for login to keep working : the
+> registration-time identifier is persisted on
+> `opaque_records.user_identifier` and login replays it while the
+> row lookup uses the current email. (Before that fix, changing the
+> email permanently locked the account out of password login.)
+>
+> The flow below describes the complete envisioned version with
+> email re-verification + 7-day cooldown + OPAQUE re-register
+> (which would realign the envelope identifier with the current
+> email). To be implemented in a dedicated issue if we want the
+> full lock; for now the simple route does the job safely.
 
 Heavier than we'd like. Three steps.
 

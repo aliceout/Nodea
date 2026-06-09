@@ -19,7 +19,7 @@ import {
   type ReauthPasswordStartResponse,
 } from '@nodea/shared';
 import { db } from '../db/client.ts';
-import { authFactors, sessions, opaqueRecords, users } from '../db/schema.ts';
+import { authFactors, sessions, opaqueRecords } from '../db/schema.ts';
 import {
   finishLogin as opaqueFinishLogin,
   opaqueReady,
@@ -137,17 +137,25 @@ authReauthRoutes.openapi(reauthPasswordStartRoute, async (c) => {
   const userIdentifier = user.email.toLowerCase();
 
   const [record] = await db
-    .select({ envelope: opaqueRecords.envelope })
+    .select({
+      envelope: opaqueRecords.envelope,
+      opaqueIdentifier: opaqueRecords.userIdentifier,
+    })
     .from(opaqueRecords)
-    .innerJoin(users, eq(opaqueRecords.userId, users.id))
-    .where(eq(users.email, userIdentifier))
+    .where(eq(opaqueRecords.userId, user.id))
     .limit(1);
+
+  // OPAQUE needs the registration-time identifier, not the current
+  // email — they diverge after a change-email (audit 2026-06). The
+  // in-memory state below still binds on the CURRENT email ; only
+  // the protocol call uses the historical one.
+  const opaqueIdentifier = record?.opaqueIdentifier ?? userIdentifier;
 
   let serverLoginState: string;
   let loginResponse: string;
   try {
     const result = opaqueStartLogin({
-      userIdentifier,
+      userIdentifier: opaqueIdentifier,
       registrationRecord: record?.envelope ?? null,
       startLoginRequest: parsed.data.startLoginRequest,
     });

@@ -25,6 +25,16 @@ import { users } from './users.ts';
  * atomically on change-password / change-email / recover-kek
  * without losing the 1:1 invariant.
  *
+ * `user_identifier` is the identifier the envelope was registered
+ * under (the lowercased email at registration / last re-register).
+ * OPAQUE requires the SAME identifier at `startLogin` as at
+ * `createRegistrationResponse` — before this column existed, login
+ * derived it from `users.email`, so changing the account email
+ * permanently locked the account out (audit 2026-06). NULL on
+ * legacy rows means « identifier = current users.email » (correct
+ * for every account that never changed email — the only kind that
+ * could log in before this fix).
+ *
  * `server_key_version` lets us track which version of the
  * server static key signed each envelope. V1 ships with
  * version 1 only ; issue #39 covers the rotation mechanism
@@ -36,6 +46,7 @@ export const opaqueRecords = pgTable('opaque_records', {
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
   envelope: text('envelope').notNull(),
+  userIdentifier: text('user_identifier'),
   serverKeyVersion: integer('server_key_version').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

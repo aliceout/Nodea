@@ -9,16 +9,33 @@ const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 /**
  * Mint a new reset token, store its SHA-256 hash, and return the
  * clear token to the caller (sent by email, never persisted).
+ *
+ * Minting supersedes every previous outstanding token for the same
+ * user — only the most recently emailed link works. Two « mot de
+ * passe oublié » requests used to leave two live tokens in
+ * parallel (audit 2026-06) ; `/reset/finish` additionally
+ * invalidates all remaining tokens on success as a second layer.
  */
 export async function createResetToken(userId: string): Promise<{ id: string; token: string }> {
   const token = randomBytes(TOKEN_BYTES).toString('base64url');
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const id = randomUUID();
-  await db.insert(passwordResetTokens).values({
-    id,
-    userId,
-    tokenHash,
-    expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+  await db.transaction(async (tx) => {
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(passwordResetTokens.userId, userId),
+          isNull(passwordResetTokens.usedAt),
+        ),
+      );
+    await tx.insert(passwordResetTokens).values({
+      id,
+      userId,
+      tokenHash,
+      expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+    });
   });
   return { id, token };
 }

@@ -1,4 +1,4 @@
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 import {
   AuthMeCryptoResponseSchema,
   AuthMeResponseSchema,
@@ -10,11 +10,13 @@ import {
 } from '@nodea/shared';
 
 import { clearSessionCookie } from '../auth/cookies.ts';
+import { sendMail } from '../auth/mailer.ts';
 import { db } from '../db/client.ts';
 import {
   authFactors,
   mfaTotp,
   mfaTotpRecoveryCodes,
+  sessions,
   users,
 } from '../db/schema.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
@@ -33,18 +35,29 @@ import { isUniqueViolation } from './auth-shared.ts';
 export const authAccountRoutes = makeAuthedRouter();
 
 /**
- * Rate limit on email change : one change per IP per 24 h. Closes
- * a hijack scenario where a stolen session cookie would otherwise
- * let an attacker swap the account email silently and then trigger
- * `/request-reset` on their own address to lock the legitimate
- * user out. The 24 h window is wide enough that an honest user
- * who mistypes never hits it twice in the same day ; narrow enough
- * that a real attack triggers the limiter on the first try.
+ * Rate limit on email change : one change per ACCOUNT per 24 h.
+ * Closes a hijack scenario where a stolen session cookie would
+ * otherwise let an attacker swap the account email silently and
+ * then trigger `/request-reset` on their own address to lock the
+ * legitimate user out. The 24 h window is wide enough that an
+ * honest user who mistypes never hits it twice in the same day ;
+ * narrow enough that a real attack triggers the limiter on the
+ * first try.
+ *
+ * Audit 2026-06 : previously keyed by IP and mounted BEFORE
+ * `requireUser` — one anonymous request burned the day's budget
+ * for every user behind the same NAT. Now keyed on the
+ * authenticated user id and mounted last in the chain, so only a
+ * fully re-authenticated call consumes the quota.
  */
 const changeEmailLimiter = rateLimit({
   max: 1,
   windowMs: 24 * 60 * 60 * 1000,
   keyPrefix: 'rl:change-email',
+  keyFn: (c) => {
+    const user = c.get('user') as { id?: string } | undefined;
+    return user?.id ?? null;
+  },
 });
 
 const meRoute = createRoute({
@@ -76,7 +89,7 @@ const changeEmailRoute = createRoute({
   path: '/email',
   tags: ['auth-account'],
   summary: 'Change account email (re-auth gated)',
-  middleware: [changeEmailLimiter, requireUser, requireFreshPassword] as const,
+  middleware: [requireUser, requireFreshPassword, changeEmailLimiter] as const,
   request: {
     body: {
       content: {
@@ -258,11 +271,20 @@ authAccountRoutes.openapi(meCryptoRoute, async (c) => {
  * the `requireFreshPassword` middleware (Phase 7B).
  *
  * The envelope stays untouched : email isn't part of the KEK
- * derivation in V1. Only the `email` column moves. Future
- * Phase 2+ design intends a re-register OPAQUE on email
- * change because the `userIdentifier` baked into the envelope
- * IS the email — that's a separate spec section (§7.6) and
- * not implemented here.
+ * derivation in V1, and login no longer derives the OPAQUE
+ * `userIdentifier` from the *current* email — it replays the
+ * registration-time identifier stored on `opaque_records`
+ * (audit 2026-06 ; before that fix this route permanently
+ * locked the account out of password login).
+ *
+ * Post-change hardening (same audit) :
+ *   - a notification email goes to the OLD address, so the
+ *     rightful owner learns about a hijack while their inbox
+ *     still receives it. Best-effort — a mailer hiccup doesn't
+ *     roll back the change.
+ *   - every OTHER session is revoked. The caller keeps theirs
+ *     (they just proved the password) ; a stolen parallel
+ *     session loses access the moment the email moves.
  */
 authAccountRoutes.openapi(changeEmailRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
@@ -270,9 +292,11 @@ authAccountRoutes.openapi(changeEmailRoute, async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const body = parsed.data;
   const user = c.get('user');
+  const sessionId = c.get('sessionId');
 
   const newEmail = body.newEmail.toLowerCase();
   if (newEmail === user.email) return c.json({ ok: true as const }, 200);
+  const oldEmail = user.email;
 
   try {
     await db
@@ -284,6 +308,35 @@ authAccountRoutes.openapi(changeEmailRoute, async (c) => {
       return c.json({ error: 'email_taken' }, 409);
     }
     throw err;
+  }
+
+  // Revoke every session except the calling one — same posture as
+  // change-password, minus the cookie rotation (the caller's
+  // session is the one that just proved the password).
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, user.id), ne(sessions.id, sessionId)));
+
+  // Notify the OLD address. Best-effort : the change is already
+  // committed, an SMTP hiccup must not surface as a failure to the
+  // legitimate caller.
+  const noticeText =
+    `L'adresse email de votre compte Nodea vient d'être remplacée par ${newEmail}.\n\n` +
+    `Si vous êtes à l'origine de ce changement, vous pouvez ignorer ce message.\n` +
+    `Sinon, votre compte est peut-être compromis : utilisez votre code de récupération ` +
+    `ou contactez l'administrateur·ice de votre instance sans attendre.`;
+  try {
+    await sendMail({
+      to: oldEmail,
+      subject: 'Nodea — votre adresse email a été modifiée',
+      text: noticeText,
+      html: noticeText.replace(/\n/g, '<br>'),
+    });
+  } catch (err) {
+    console.warn(
+      '[auth/email] change notification send failed',
+      err instanceof Error ? err.message : 'unknown',
+    );
   }
 
   return c.json({ ok: true as const }, 200);

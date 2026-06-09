@@ -92,6 +92,7 @@ async function main() {
     await tx.insert(opaqueRecords).values({
       userId: id,
       envelope: opaque.registrationRecord,
+      userIdentifier: email,
     });
   });
 

@@ -139,17 +139,29 @@ authLoginRoutes.openapi(loginStartRoute, async (c) => {
   // unknown. The OPAQUE lib handles the null case opaquely
   // (anti-enum).
   const [record] = await db
-    .select({ envelope: opaqueRecords.envelope })
+    .select({
+      envelope: opaqueRecords.envelope,
+      opaqueIdentifier: opaqueRecords.userIdentifier,
+    })
     .from(opaqueRecords)
     .innerJoin(users, eq(opaqueRecords.userId, users.id))
     .where(eq(users.email, userIdentifier))
     .limit(1);
 
+  // The OPAQUE protocol requires the SAME identifier at startLogin
+  // as the one baked into the envelope at registration. That is the
+  // *registration-time* email (`opaque_records.user_identifier`),
+  // not necessarily the *current* one — they diverge after a
+  // change-email (audit 2026-06 : using the current email locked
+  // those accounts out permanently). NULL on legacy rows means the
+  // email never changed, so the current one is correct.
+  const opaqueIdentifier = record?.opaqueIdentifier ?? userIdentifier;
+
   let serverLoginState: string;
   let loginResponse: string;
   try {
     const result = opaqueStartLogin({
-      userIdentifier,
+      userIdentifier: opaqueIdentifier,
       registrationRecord: record?.envelope ?? null,
       startLoginRequest: body.startLoginRequest,
     });
@@ -178,7 +190,7 @@ authLoginRoutes.openapi(loginStartRoute, async (c) => {
     // the client never gets a usable `loginToken`.
     try {
       const fallback = opaqueStartLogin({
-        userIdentifier,
+        userIdentifier: opaqueIdentifier,
         registrationRecord: null,
         startLoginRequest: body.startLoginRequest,
       });

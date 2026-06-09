@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import {
   RequestResetBodySchema,
   ResetPasswordFinishBodySchema,
@@ -231,15 +231,23 @@ authResetRoutes.openapi(resetFinishRoute, async (c) => {
   const pending = consumeResetPending(body.resetToken);
   if (!pending) return c.json({ error: 'invalid_token' }, 400);
 
-  // The pending entry binds the reset to a specific user.
-  // Re-find the active reset-token row that started the flow
-  // so we can mark it used at the same transaction ; if it's
-  // gone the flow expired between /start and /finish and we
-  // bail.
+  // The pending entry binds the reset to a specific user. Confirm
+  // at least one still-active token row started the flow ; if none
+  // is left the flow expired between /start and /finish and we
+  // bail. (The actual single-use guarantee is the in-memory
+  // `consumeResetPending` above ; the rows are the persistent
+  // audit trail.)
+  const now = new Date();
   const [tokenRow] = await db
     .select()
     .from(passwordResetTokens)
-    .where(eq(passwordResetTokens.userId, pending.userId))
+    .where(
+      and(
+        eq(passwordResetTokens.userId, pending.userId),
+        isNull(passwordResetTokens.usedAt),
+        gt(passwordResetTokens.expiresAt, now),
+      ),
+    )
     .limit(1);
   if (!tokenRow) return c.json({ error: 'invalid_token' }, 400);
 
@@ -256,7 +264,13 @@ authResetRoutes.openapi(resetFinishRoute, async (c) => {
 
     await tx
       .update(opaqueRecords)
-      .set({ envelope: body.registrationRecord })
+      .set({
+        envelope: body.registrationRecord,
+        // Identifier the new envelope was registered under at
+        // /reset/start (the email of that moment) — login must
+        // replay it even after a later change-email.
+        userIdentifier: pending.email,
+      })
       .where(eq(opaqueRecords.userId, user.id));
 
     await tx
@@ -271,10 +285,19 @@ authResetRoutes.openapi(resetFinishRoute, async (c) => {
       })
       .where(eq(users.id, user.id));
 
+    // Invalidate EVERY outstanding reset token for this user, not
+    // just the one that started the flow — two « mot de passe
+    // oublié » requests used to leave the second link fully usable
+    // for a whole hour after a successful reset (audit 2026-06).
     await tx
       .update(passwordResetTokens)
       .set({ usedAt: new Date() })
-      .where(eq(passwordResetTokens.id, tokenRow.id));
+      .where(
+        and(
+          eq(passwordResetTokens.userId, user.id),
+          isNull(passwordResetTokens.usedAt),
+        ),
+      );
   });
 
   await revokeAllUserSessions(user.id);

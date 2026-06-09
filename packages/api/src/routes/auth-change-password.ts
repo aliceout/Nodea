@@ -154,7 +154,14 @@ authChangePasswordRoutes.openapi(finishRoute, async (c) => {
   await db.transaction(async (tx) => {
     await tx
       .update(opaqueRecords)
-      .set({ envelope: body.registrationRecord })
+      .set({
+        envelope: body.registrationRecord,
+        // The new envelope was registered at /start under the
+        // user's email AT THAT MOMENT (carried in the pending
+        // entry) — record it so login replays the right
+        // identifier even after a later change-email.
+        userIdentifier: pending.email,
+      })
       .where(eq(opaqueRecords.userId, user.id));
     await tx
       .update(users)

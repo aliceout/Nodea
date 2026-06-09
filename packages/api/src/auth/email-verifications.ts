@@ -158,10 +158,25 @@ export async function consumeEmailVerification(
     return { ok: false, reason: 'expired' };
   }
 
-  await db
+  // Conditional consume — `consumed_at IS NULL` in the WHERE plus a
+  // row-count check, so two concurrent calls with the same token
+  // can't both pass the in-memory check above and double-consume
+  // (audit 2026-06 ; harmless for `register` thanks to the
+  // idempotent activation UPDATE, but the primitive must hold for
+  // future kinds like `email_change`).
+  const updated = await db
     .update(emailVerifications)
     .set({ consumedAt: now })
-    .where(eq(emailVerifications.id, row.id));
+    .where(
+      and(
+        eq(emailVerifications.id, row.id),
+        isNull(emailVerifications.consumedAt),
+      ),
+    )
+    .returning({ id: emailVerifications.id });
+  if (updated.length === 0) {
+    return { ok: false, reason: 'already_consumed' };
+  }
   return { ok: true, verification: row };
 }
 

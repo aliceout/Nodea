@@ -433,7 +433,14 @@ authRecoveryRoutes.openapi(recoverFinishRoute, async (c) => {
   await db.transaction(async (tx) => {
     await tx
       .update(opaqueRecords)
-      .set({ envelope: body.registrationRecord })
+      .set({
+        envelope: body.registrationRecord,
+        // The new envelope was registered at /start under the email
+        // the user typed — which had to match `users.email` for the
+        // real-blobs branch to fire, so the DB value is the same
+        // string. Login must replay it after a later change-email.
+        userIdentifier: user.email,
+      })
       .where(eq(opaqueRecords.userId, user.id));
 
     // Tier 3 : the old code is consumed, NOT rotated in-place.

@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 
 import { globalSingleton } from '../lib/global-singleton.ts';
 
@@ -35,6 +35,14 @@ export interface RateLimitOptions {
   windowMs: number;
   /** Prefix for the key — useful if multiple limiters coexist. */
   keyPrefix?: string;
+  /**
+   * Optional custom bucket key — e.g. the authenticated user id
+   * (mount the limiter AFTER `requireUser` in that case), or the
+   * pending-MFA session's user so a TOTP brute-force can't dodge
+   * the limiter by rotating IPs (audit 2026-06). When it returns
+   * `null` the limiter falls back to the trusted client IP.
+   */
+  keyFn?: (c: Context) => string | null;
 }
 
 // Stashed on globalThis so Vitest 4's per-test-file module
@@ -88,7 +96,10 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
   return async (c, next) => {
     const now = Date.now();
     sweep(now);
-    const key = getClientKey(c.req.raw.headers, prefix);
+    const customKey = opts.keyFn?.(c) ?? null;
+    const key = customKey
+      ? `${prefix}:${customKey}`
+      : getClientKey(c.req.raw.headers, prefix);
     const bucket = buckets.get(key);
     if (!bucket || bucket.resetAt <= now) {
       buckets.set(key, { count: 1, resetAt: now + opts.windowMs });

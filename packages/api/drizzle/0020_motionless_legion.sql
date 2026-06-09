@@ -1,0 +1,1 @@
+ALTER TABLE "opaque_records" ADD COLUMN "user_identifier" text;
