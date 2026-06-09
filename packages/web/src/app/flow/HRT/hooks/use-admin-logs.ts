@@ -3,10 +3,15 @@
  *
  * Self-contained (no global store slice) : loads + decrypts the
  * `hrt-admin-logs` collection via the typed client, exposes the
- * entries newest-first plus create / update / remove that re-fetch on
- * success. Kept local to the view because HRT's two sub-views own
- * separate collections and never need each other's data mounted at
- * once — simpler than the 3-context factory the bigger modules use.
+ * entries newest-first plus create / update / remove.
+ *
+ * Owned by `HrtPage` and passed down to the views since audit
+ * 2026-06 — each consumer used to instantiate its own copy, so the
+ * same collection was listed 2-3× per module mount and once more on
+ * every sub-view switch. Mutations apply the server response
+ * locally (the create/update responses ARE the fresh records) ;
+ * `reload` is exposed for the cases where rows were created
+ * out-of-band (schedule materialisation).
  */
 import { useCallback, useEffect, useState } from 'react';
 
@@ -33,6 +38,8 @@ export interface UseHrtAdminLogs {
   create: (payload: HrtAdminLogPayload) => Promise<void>;
   update: (id: string, payload: HrtAdminLogPayload) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Full re-fetch — for rows created out-of-band (materialisation). */
+  reload: () => void;
 }
 
 export function useHrtAdminLogs(): UseHrtAdminLogs {
@@ -71,30 +78,50 @@ export function useHrtAdminLogs(): UseHrtAdminLogs {
   const create = useCallback(
     async (payload: HrtAdminLogPayload) => {
       if (!ctx) return;
-      await hrtAdminLogsClient.create(ctx.moduleUserId, ctx.mainKey, payload);
-      reload();
+      const created = await hrtAdminLogsClient.create(
+        ctx.moduleUserId,
+        ctx.mainKey,
+        payload,
+      );
+      // The create response IS the new record — insert it sorted
+      // instead of re-fetching the whole collection (audit 2026-06).
+      setEntries((prev) => {
+        const next = [{ id: created.id, payload: created.payload }, ...prev];
+        next.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
+        return next;
+      });
     },
-    [ctx, reload],
+    [ctx],
   );
 
   const update = useCallback(
     async (id: string, payload: HrtAdminLogPayload) => {
       if (!ctx) return;
-      await hrtAdminLogsClient.update(ctx.moduleUserId, ctx.mainKey, id, payload);
-      reload();
+      const updated = await hrtAdminLogsClient.update(
+        ctx.moduleUserId,
+        ctx.mainKey,
+        id,
+        payload,
+      );
+      setEntries((prev) => {
+        const next = prev.map((e) =>
+          e.id === id ? { id, payload: updated.payload } : e,
+        );
+        next.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
+        return next;
+      });
     },
-    [ctx, reload],
+    [ctx],
   );
 
   const remove = useCallback(
     async (id: string) => {
       if (!ctx) return;
-      // Optimistic removal — drop the row immediately, re-fetch on
-      // success to converge. On failure we reload to restore truth.
+      // Optimistic removal — drop the row immediately ; success
+      // needs no reconciliation, failure re-fetches to restore truth.
       setEntries((prev) => prev.filter((e) => e.id !== id));
       try {
         await hrtAdminLogsClient.remove(ctx.moduleUserId, ctx.mainKey, id);
-        reload();
       } catch (err) {
         if (import.meta.env.DEV) console.warn('hrt: delete failed', err);
         reload();
@@ -103,5 +130,5 @@ export function useHrtAdminLogs(): UseHrtAdminLogs {
     [ctx, reload],
   );
 
-  return { entries, load, ready: !!ctx, create, update, remove };
+  return { entries, load, ready: !!ctx, create, update, remove, reload };
 }

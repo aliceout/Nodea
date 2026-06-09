@@ -29,7 +29,7 @@ import LabResultRow from '../components/LabResultRow';
 import ProductForm from '../components/ProductForm';
 import ProductRow from '../components/ProductRow';
 import RecentPanel from '../components/RecentPanel';
-import { useHrtAdminLogs } from '../hooks/use-admin-logs';
+import type { UseHrtAdminLogs } from '../hooks/use-admin-logs';
 import { useHrtLabResults } from '../hooks/use-lab-results';
 import { useHrtProducts, type ProductEntry } from '../hooks/use-products';
 import { buildDoseSeries, distinctMolecules } from '../lib/admin-data';
@@ -39,10 +39,16 @@ import { buildDoseSeries, distinctMolecules } from '../lib/admin-data';
 // link reaches the rest in the detail view.
 const RECENT = 12;
 
-export default function SummaryView() {
+interface SummaryViewProps {
+  /** The single shared admin-logs instance — owned by `HrtPage`
+   *  (audit 2026-06 : one LIST per module mount, not per view). */
+  adminLogs: UseHrtAdminLogs;
+}
+
+export default function SummaryView({ adminLogs }: SummaryViewProps) {
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
   const { entries: products, ready, create, update } = useHrtProducts();
-  const { entries: adminEntries } = useHrtAdminLogs();
+  const { entries: adminEntries } = adminLogs;
   const { entries: labEntries } = useHrtLabResults();
 
   const [selectedMolecule, setSelectedMolecule] = useState<string | null>(null);

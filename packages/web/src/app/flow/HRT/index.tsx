@@ -19,17 +19,23 @@
  *
  * Recurring schedules are **materialised here, at module level** : the
  * generator must run regardless of the open sub-view, since every lens
- * reads admin logs. After a pass that creates occurrences out-of-band, we
- * bump `dataVersion` to remount the active view so its journal hook
- * re-fetches the fresh entries (rare — at most once per day). See
- * `docs/Modules/HRT.md`.
+ * reads admin logs. After a pass that creates occurrences out-of-band,
+ * the shared admin-logs hook re-fetches (`adminLogs.reload()`).
+ *
+ * The admin-logs hook is owned HERE and passed to the views (audit
+ * 2026-06) : each view used to mount its own instance, so the same
+ * collection was listed 2-3× per module mount, once more per
+ * sub-view switch, and the whole view tree was remounted via a
+ * `key={dataVersion}` after materialisation. One shared instance +
+ * a targeted reload replaces all of that. See `docs/Modules/HRT.md`.
  */
-import { useCallback, useReducer } from 'react';
+import { useCallback } from 'react';
 
 import { useNodeaStore, selectHrtSubview } from '@/core/store/nodea-store';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
+import { useHrtAdminLogs } from './hooks/use-admin-logs';
 import { useHrtSchedules } from './hooks/use-schedules';
 import { useScheduleMaterialization } from './hooks/use-schedule-materialization';
 import AdministrationView from './views/AdministrationView';
@@ -48,16 +54,16 @@ export default function HrtPage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectHrtSubview);
 
-  // Generate recurring-schedule occurrences once the schedules load. A
-  // pass that actually wrote entries bumps `dataVersion`, remounting the
-  // view so its admin-logs hook re-fetches them.
-  const [dataVersion, bumpData] = useReducer((v: number) => v + 1, 0);
+  // Single shared instances — schedules drive the materialisation
+  // engine, admin logs feed every lens.
   const schedules = useHrtSchedules();
+  const adminLogs = useHrtAdminLogs();
   const reloadSchedules = schedules.reload;
+  const reloadAdminLogs = adminLogs.reload;
   const onMaterialized = useCallback(() => {
     reloadSchedules();
-    bumpData();
-  }, [reloadSchedules]);
+    reloadAdminLogs();
+  }, [reloadSchedules, reloadAdminLogs]);
   useScheduleMaterialization(schedules.entries, schedules.ready, onMaterialized);
 
   return (
@@ -66,17 +72,15 @@ export default function HrtPage() {
         <Topbar label={TOPBAR_LABELS[subview]} onOpenMenu={() => setMobileMenuOpen(true)} />
       }
     >
-      <div key={dataVersion} className="contents">
-        {subview === 'administration' ? (
-          <AdministrationView schedules={schedules} />
-        ) : subview === 'labs' ? (
-          <LabsView />
-        ) : subview === 'export' ? (
-          <ExportView />
-        ) : (
-          <SummaryView />
-        )}
-      </div>
+      {subview === 'administration' ? (
+        <AdministrationView schedules={schedules} adminLogs={adminLogs} />
+      ) : subview === 'labs' ? (
+        <LabsView />
+      ) : subview === 'export' ? (
+        <ExportView adminLogs={adminLogs} />
+      ) : (
+        <SummaryView adminLogs={adminLogs} />
+      )}
     </ModuleShell>
   );
 }

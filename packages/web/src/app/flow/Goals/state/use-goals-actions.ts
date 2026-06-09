@@ -157,7 +157,9 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           completedAt: nextCompletedAt,
           updatedAt: new Date().toISOString(),
         });
-        bumpGoalsVersion();
+        // Success : the optimistic flip IS the server state — no
+        // refetch. The old bump re-downloaded + re-decrypted the
+        // whole collection after every status click (audit 2026-06).
       } catch (err) {
         if (!trackerRef.current.isLatest(entry.id, token)) return;
         // Targeted rollback : revert THIS entry's status +
@@ -175,7 +177,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           console.warn('goals: toggle status failed', err);
       }
     },
-    [ctx, bumpGoalsVersion, setEntries],
+    [ctx, setEntries],
   );
 
   const openCreateForm = useCallback(() => {
@@ -224,7 +226,8 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           completedAt: entry.completedAt,
           updatedAt: now,
         });
-        bumpGoalsVersion();
+        // Success : optimistic rename is the server state — no
+        // refetch (audit 2026-06).
       } catch (err) {
         if (!trackerRef.current.isLatest(entry.id, token)) return;
         setEntries((prev) =>
@@ -236,7 +239,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           console.warn('goals: inline rename failed', err);
       }
     },
-    [ctx, bumpGoalsVersion, setEntries],
+    [ctx, setEntries],
   );
 
   const deleteEntry = useCallback(
@@ -254,7 +257,8 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
       try {
         await goalsClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
         trackerRef.current.forget(entry.id);
-        bumpGoalsVersion();
+        // Success : optimistic removal is the server state — no
+        // refetch (audit 2026-06).
       } catch (err) {
         if (!trackerRef.current.isLatest(entry.id, token)) return;
         // Re-insert this entry at its original position. If a
@@ -271,7 +275,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         if (import.meta.env.DEV) console.warn('goals: delete failed', err);
       }
     },
-    [ctx, bumpGoalsVersion, setEntries, t],
+    [ctx, setEntries, t],
   );
 
   const openCarryOver = useCallback(() => setCarryOverOpen(true), []);

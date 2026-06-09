@@ -21,7 +21,7 @@ import AdminJournal from '../components/AdminJournal';
 import AdminLogForm, { type ProductOption } from '../components/AdminLogForm';
 import ScheduleForm from '../components/ScheduleForm';
 import SchedulesPanel from '../components/SchedulesPanel';
-import { useHrtAdminLogs, type AdminLogEntry } from '../hooks/use-admin-logs';
+import { type AdminLogEntry, type UseHrtAdminLogs } from '../hooks/use-admin-logs';
 import { useHrtProducts } from '../hooks/use-products';
 import type { ScheduleEntry, UseHrtSchedules } from '../hooks/use-schedules';
 import { formatLogDate, todayIso } from '../lib/labels';
@@ -30,10 +30,14 @@ interface AdministrationViewProps {
   /** The single shared schedules instance — owned by `HrtPage` so that
    *  creating a series here triggers the materialisation engine there. */
   schedules: UseHrtSchedules;
+  /** The single shared admin-logs instance — owned by `HrtPage` so the
+   *  collection is listed once per module mount, not once per view
+   *  (audit 2026-06). */
+  adminLogs: UseHrtAdminLogs;
 }
 
-export default function AdministrationView({ schedules }: AdministrationViewProps) {
-  const { entries, load, ready, create, update, remove } = useHrtAdminLogs();
+export default function AdministrationView({ schedules, adminLogs }: AdministrationViewProps) {
+  const { entries, load, ready, create, update, remove } = adminLogs;
   const { entries: productEntries, create: createProduct } = useHrtProducts();
 
   const [mode, setMode] = useState<'manual' | 'schedule' | null>(null);

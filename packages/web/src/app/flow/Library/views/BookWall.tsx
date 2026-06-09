@@ -25,7 +25,16 @@ export default function BookWall({ items }: BookWallProps) {
         const cover = it.coverRid ? covers.get(it.coverRid) ?? null : null;
         const author = it.creators?.[0]?.name ?? '';
         return (
-          <li key={it.id} className="group relative min-w-0">
+          // `content-visibility:auto` lets the browser skip layout +
+          // paint for offscreen tiles — the wall isn't virtualised,
+          // so at 300+ books this is what keeps the initial render
+          // and the search-filter re-renders cheap (audit 2026-06).
+          // `contain-intrinsic-size` reserves an approximate slot so
+          // the scrollbar doesn't jump.
+          <li
+            key={it.id}
+            className="group relative min-w-0 [contain-intrinsic-size:auto_220px] [content-visibility:auto]"
+          >
             <button
               type="button"
               onClick={() => editItem(it)}

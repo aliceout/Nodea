@@ -42,7 +42,12 @@ export default function BookGrid({ items }: BookGridProps) {
         const author = it.creators?.[0]?.name ?? '';
         const yearLabel = it.year ? String(it.year) : '';
         return (
-          <li key={it.id} className="group flex min-w-0 flex-col">
+          // Offscreen tiles skip layout + paint — see BookWall for
+          // the rationale (audit 2026-06).
+          <li
+            key={it.id}
+            className="group flex min-w-0 flex-col [contain-intrinsic-size:auto_280px] [content-visibility:auto]"
+          >
             <button
               type="button"
               onClick={() => editItem(it)}

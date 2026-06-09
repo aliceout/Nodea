@@ -111,14 +111,23 @@ export function useHabits(): HabitsContext {
   const logOccurrence = useCallback(
     async (itemId: string, date: string) => {
       if (!mainKey || !logsSid) return;
-      await habitsLogsClient.create(logsSid, mainKey, {
+      const created = await habitsLogsClient.create(logsSid, mainKey, {
         date,
         itemRid: itemId,
         done: true,
       });
-      await refresh();
+      // The create response IS the new log — insert it locally
+      // instead of re-fetching + re-decrypting every item and every
+      // log on each tick. Checking a habit is the module's most
+      // frequent action and was visibly sluggish past a few hundred
+      // logs (audit 2026-06). List stays date-desc sorted.
+      setLogs((prev) => {
+        const next = [created, ...prev];
+        next.sort((a, b) => b.payload.date.localeCompare(a.payload.date));
+        return next;
+      });
     },
-    [mainKey, logsSid, refresh],
+    [mainKey, logsSid],
   );
 
   const deleteLog = useCallback(

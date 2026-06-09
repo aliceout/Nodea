@@ -130,7 +130,6 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   // ---- Pulled from the global store ----
   const ctx = useModuleClient('mood');
   const moodVersion = useNodeaStore((s) => s.moodVersion);
-  const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
 
   // ---- Inline-form state (local to the Mood module ; no longer
   // routed through the global Zustand composer slice) ----
@@ -315,7 +314,8 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       try {
         await moodClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
         trackerRef.current.forget(entry.id);
-        bumpMoodVersion();
+        // Success : optimistic removal is the server state — no
+        // refetch (audit 2026-06).
       } catch (err) {
         if (!trackerRef.current.isLatest(entry.id, token)) return;
         // Targeted rollback : re-insert THIS entry at its original
@@ -332,7 +332,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         if (import.meta.env.DEV) console.warn('mood: delete failed', err);
       }
     },
-    [ctx, bumpMoodVersion, t],
+    [ctx, t],
   );
 
   // ---- Memoised context values ----

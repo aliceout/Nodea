@@ -31,7 +31,7 @@ import ExportControls from '../components/ExportControls';
 import type { FilterOption } from '../components/ExportFilterColumn';
 import ExportMenuButton from '../components/ExportMenuButton';
 import ImportPanel from '../components/ImportPanel';
-import { useHrtAdminLogs } from '../hooks/use-admin-logs';
+import type { UseHrtAdminLogs } from '../hooks/use-admin-logs';
 import { useHrtLabResults } from '../hooks/use-lab-results';
 import { useHrtProducts } from '../hooks/use-products';
 import { useHrtSchedules } from '../hooks/use-schedules';
@@ -68,9 +68,15 @@ function toggled(set: ReadonlySet<string>, value: string): Set<string> {
   return next;
 }
 
-export default function ExportView() {
+interface ExportViewProps {
+  /** The single shared admin-logs instance — owned by `HrtPage`
+   *  (audit 2026-06 : one LIST per module mount, not per view). */
+  adminLogs: UseHrtAdminLogs;
+}
+
+export default function ExportView({ adminLogs }: ExportViewProps) {
   const products = useHrtProducts();
-  const admin = useHrtAdminLogs();
+  const admin = adminLogs;
   const labResults = useHrtLabResults();
   const schedules = useHrtSchedules();
 
