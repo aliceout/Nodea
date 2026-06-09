@@ -1,11 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  clearGuardsCache,
-  deleteEntryGuard,
-  deriveGuard,
-  getEntryGuard,
-  setEntryGuard,
-} from './guard-derivation.ts';
+import { describe, it, expect } from 'vitest';
+import { deriveGuard } from './guard-derivation.ts';
 import { deriveMainKeys } from './key-material.ts';
 import { randomBytes } from './base64.ts';
 
@@ -54,38 +48,12 @@ describe('deriveGuard', () => {
   });
 });
 
-describe('In-memory guard cache', () => {
-  beforeEach(() => clearGuardsCache());
-
-  it('stores and retrieves a guard per (collection, id)', () => {
-    setEntryGuard('mood', 'r1', 'g_aaaa');
-    setEntryGuard('goals', 'r1', 'g_bbbb');
-    expect(getEntryGuard('mood', 'r1')).toBe('g_aaaa');
-    expect(getEntryGuard('goals', 'r1')).toBe('g_bbbb');
-    expect(getEntryGuard('mood', 'r2')).toBeUndefined();
-  });
-
-  it('deleteEntryGuard removes just that one', () => {
-    setEntryGuard('mood', 'r1', 'g_x');
-    setEntryGuard('mood', 'r2', 'g_y');
-    deleteEntryGuard('mood', 'r1');
-    expect(getEntryGuard('mood', 'r1')).toBeUndefined();
-    expect(getEntryGuard('mood', 'r2')).toBe('g_y');
-  });
-
-  it('clearGuardsCache wipes everything', () => {
-    setEntryGuard('mood', 'r1', 'g_x');
-    setEntryGuard('goals', 'r2', 'g_y');
-    clearGuardsCache();
-    expect(getEntryGuard('mood', 'r1')).toBeUndefined();
-    expect(getEntryGuard('goals', 'r2')).toBeUndefined();
-  });
-
-  it('never touches localStorage (structurally: we never imported it)', () => {
-    // If this test ever needs to spy on localStorage it means we've reintroduced
-    // a persistent cache — the finding would regress. Keep this test as a
-    // documentation tripwire: the assertion is a smoke check that there's
-    // nothing stored under the legacy key.
+describe('Guard persistence tripwire', () => {
+  // The in-memory guard cache was removed (audit 2026-06) — it was
+  // dead code whose header claimed a logout purge nobody performed.
+  // This tripwire stays : if a future cache ever persists guards
+  // under the legacy localStorage key, this fails before review.
+  it('never touches localStorage', () => {
     if (typeof globalThis.localStorage !== 'undefined') {
       expect(globalThis.localStorage.getItem('nodea.guards.v1')).toBeNull();
     }

@@ -80,6 +80,14 @@ export function useJournalDraft(): JournalDraftControls {
   const [hydrating, setHydrating] = useState(true);
   const pending = useRef<JournalDraftPayload | null>(null);
   const timer = useRef<number | null>(null);
+  // Mirrors `hydrating` for the flush closure — the empty-draft wipe
+  // must not fire while the async restore is still decrypting, or a
+  // slow decrypt (large draft, busy machine) loses the stored draft
+  // before it ever reaches the form (audit 2026-06).
+  const hydratingRef = useRef(true);
+  useEffect(() => {
+    hydratingRef.current = hydrating;
+  }, [hydrating]);
 
   // Hydrate once per mount (or when the AES key arrives — happens
   // when a re-auth surfaces the key after the form was already
@@ -112,13 +120,16 @@ export function useJournalDraft(): JournalDraftControls {
     const payload = pending.current;
     if (!payload) return;
     // Wipe slot on empty draft so we don't keep a never-ending
-    // « brouillon en cours » that's just whitespace.
+    // « brouillon en cours » that's just whitespace — but never
+    // while hydration is still in flight (the form is empty THEN
+    // by definition ; wiping would delete the very draft being
+    // restored).
     if (
       payload.thread.trim() === '' &&
       payload.content.trim() === '' &&
       payload.attachments.length === 0
     ) {
-      localStorage.removeItem(STORAGE_KEY);
+      if (!hydratingRef.current) localStorage.removeItem(STORAGE_KEY);
       return;
     }
     const encoded = await encode(mainKey, payload);

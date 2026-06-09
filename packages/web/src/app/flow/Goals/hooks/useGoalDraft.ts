@@ -97,6 +97,13 @@ export function useGoalDraft(): GoalDraftControls {
   const [hydrating, setHydrating] = useState(true);
   const pending = useRef<GoalDraftPayload | null>(null);
   const timer = useRef<number | null>(null);
+  // Mirrors `hydrating` for the flush closure — see useJournalDraft
+  // for the rationale (audit 2026-06 : the empty-draft wipe must not
+  // fire while the async restore is still decrypting).
+  const hydratingRef = useRef(true);
+  useEffect(() => {
+    hydratingRef.current = hydrating;
+  }, [hydrating]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +133,7 @@ export function useGoalDraft(): GoalDraftControls {
     const payload = pending.current;
     if (!payload) return;
     if (isEmpty(payload)) {
-      localStorage.removeItem(STORAGE_KEY);
+      if (!hydratingRef.current) localStorage.removeItem(STORAGE_KEY);
       return;
     }
     const encoded = await encode(mainKey, payload);

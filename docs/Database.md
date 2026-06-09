@@ -249,6 +249,18 @@ guard before calling `DELETE /auth/me`). Admin delete and destructive
 password reset leave entries orphaned in their tables, encrypted with
 the now-lost main key — unreadable, accepted bounded growth.
 
+**`POST /records/wipe` — guard exemption (documented exception).**
+The per-module wipe deletes every row matching a sid with NO per-row
+guard verification, gated by `requireFreshPassword` + the wipe rate
+limit. The fresh-password proof authenticates the *caller*, not the
+caller's ownership of the sid — the sole inter-user barrier on this
+destructive route is the secrecy of the sid (crypto material derived
+from the main key, same trust model as LIST/CREATE). Accepted because
+a sid never leaves the client except as the `X-Sid` header (never
+logged), but worth knowing : a leaked sid + any fresh-authed account
+= a wiped module. Same exemption class as `modules_config` (no guard,
+`requireUser` only).
+
 ### Auth tables (live, Phases 2-7)
 
 Created by migration `0007_perpetual_tyrannus.sql` and now wired

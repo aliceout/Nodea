@@ -3,6 +3,7 @@ import { MOOD_SCORE_VALUES, type MoodPayload, type MoodScore } from '@nodea/shar
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import {
   formatEntryLabel,
+  toIsoDate,
   type EntryLabelOptions,
 } from '@/core/i18n/date-format';
 
@@ -45,10 +46,14 @@ export function recordToEntry(
   labels: EntryLabelOptions,
 ): MoodEntry {
   const p = record.payload;
+  // Defensive fallback for a malformed stored date : LOCAL today,
+  // not `toISOString()` (UTC) — east of UTC after midnight the UTC
+  // slice still reads yesterday (audit 2026-06). The whole module's
+  // date convention is local.
   const dateIso =
     p.date && /^\d{4}-\d{2}-\d{2}/.test(p.date)
       ? p.date.slice(0, 10)
-      : today.toISOString().slice(0, 10);
+      : toIsoDate(today);
   const positives: [string, string, string] = [
     p.positive1 ?? '',
     p.positive2 ?? '',

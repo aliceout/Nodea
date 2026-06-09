@@ -146,6 +146,18 @@ The external provider only sees **one IP per Nodea instance** with
 no cross-account correlation. The Nodea server does see the
 searches — acceptable since the user is also the host.
 
+> **Privacy tradeoff (assumed, audit 2026-06).** Unlike the
+> encrypted-records surface (single `/records` path + `X-Collection`
+> header, issue #67), the lookup endpoints keep explicit
+> `/library/lookup/*` paths — every search logs a request line that
+> says « this user is using Library, now » to whoever reads the api
+> stdout. The search TEXT never leaks (POST body, not query string ;
+> the `?url=` of cover-fetch is wholesale-redacted from logs), and
+> the searches do transit in clear to the external providers via the
+> proxy by design. Neutralising the path (e.g. generic `/lookup`)
+> would buy little since Library is the only lookup consumer —
+> revisit if a second module gains a lookup.
+
 ### 4.1 Selected providers
 
 | Provider | Auth | Coverage | Notes |

@@ -204,12 +204,14 @@ libraryLookupRoutes.openapi(byQueryStreamRoute, async (c) => {
     } catch (err) {
       console.error('[library-lookup] by-query/stream error', err);
       // Best-effort: try to surface the failure to the client as a
-      // last NDJSON line. If the connection is already half-broken
-      // this write will throw — swallow, the client will see EOF.
-      const message = err instanceof Error ? err.message : String(err);
+      // last NDJSON line. Generic message only (audit 2026-06) —
+      // the raw error can carry upstream infrastructure details ;
+      // the operator gets the full object in the log above. If the
+      // connection is already half-broken this write will throw —
+      // swallow, the client will see EOF.
       try {
         await s.write(
-          `${JSON.stringify({ results: [], queried: [], errored: [{ provider: 'openlibrary', message }], done: true })}\n`,
+          `${JSON.stringify({ results: [], queried: [], errored: [{ provider: 'openlibrary', message: 'upstream_error' }], done: true })}\n`,
         );
       } catch {
         /* connection gone */

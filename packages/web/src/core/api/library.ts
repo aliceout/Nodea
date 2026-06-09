@@ -140,7 +140,11 @@ export async function streamLibraryLookupByQuery(
             const parsed = LibraryLookupStreamSnapshotSchema.parse(JSON.parse(line));
             opts.onSnapshot(parsed);
           } catch (parseErr) {
-            console.warn('streamLibraryLookupByQuery: skipping bad chunk', parseErr);
+            // DEV-gated (audit 2026-06) : the bad chunk's parse error
+            // can embed lookup payload fragments — a prod console
+            // line naming the Library feature feeds nothing useful.
+            if (import.meta.env.DEV)
+              console.warn('streamLibraryLookupByQuery: skipping bad chunk', parseErr);
           }
         }
         nl = buffer.indexOf('\n');

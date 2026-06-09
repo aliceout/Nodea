@@ -330,6 +330,44 @@ export function createCollectionClient<TSchema extends z.ZodType>(
     return results;
   }
 
+  /**
+   * Promotion catch-up (audit 2026-06). `create()` is two round
+   * trips : a POST with the constant `guard: 'init'` then a PATCH
+   * that promotes it to the derived `g_<hex>`. If the promotion is
+   * lost (network drop, tab closed), the row stays on `init`
+   * forever — every later mutation 403s because we send the
+   * derived guard, and the HMAC tamper protection never applies to
+   * that row. On a 403 we attempt the promotion once (only
+   * succeeds if the row genuinely still carries `init`) and tell
+   * the caller whether a retry makes sense.
+   */
+  async function tryPromoteStaleInit(
+    moduleUserId: string,
+    key: MainKeyMaterial,
+    id: string,
+  ): Promise<boolean> {
+    try {
+      const guard = await deriveGuard(key.hmacKey, moduleUserId, id);
+      await request<EncryptedRecord>(
+        'PATCH',
+        `/records/${encodeURIComponent(id)}`,
+        { sid: moduleUserId, guard: 'init', collection: collectionName, body: { guard } },
+      );
+      return true;
+    } catch {
+      // Not an `init` row (or gone) — the original 403 stands.
+      return false;
+    }
+  }
+
+  function isForbidden(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      (err as { status?: number }).status === 403
+    );
+  }
+
   async function update(
     moduleUserId: string,
     key: MainKeyMaterial,
@@ -338,11 +376,21 @@ export function createCollectionClient<TSchema extends z.ZodType>(
   ): Promise<DecryptedRecord<Payload>> {
     const guard = await deriveGuard(key.hmacKey, moduleUserId, id);
     const blob = await encodePayload(key, payload);
-    const updated = await request<EncryptedRecord>(
-      'PATCH',
-      `/records/${encodeURIComponent(id)}`,
-      { sid: moduleUserId, guard, collection: collectionName, body: packBlob(blob) },
-    );
+    const doPatch = () =>
+      request<EncryptedRecord>(
+        'PATCH',
+        `/records/${encodeURIComponent(id)}`,
+        { sid: moduleUserId, guard, collection: collectionName, body: packBlob(blob) },
+      );
+    let updated: EncryptedRecord;
+    try {
+      updated = await doPatch();
+    } catch (err) {
+      if (!isForbidden(err)) throw err;
+      const promoted = await tryPromoteStaleInit(moduleUserId, key, id);
+      if (!promoted) throw err;
+      updated = await doPatch();
+    }
     return {
       id: updated.id,
       moduleUserId: updated.moduleUserId,
@@ -356,11 +404,20 @@ export function createCollectionClient<TSchema extends z.ZodType>(
     id: string,
   ): Promise<void> {
     const guard = await deriveGuard(key.hmacKey, moduleUserId, id);
-    await request<void>(
-      'DELETE',
-      `/records/${encodeURIComponent(id)}`,
-      { sid: moduleUserId, guard, collection: collectionName },
-    );
+    const doDelete = () =>
+      request<void>(
+        'DELETE',
+        `/records/${encodeURIComponent(id)}`,
+        { sid: moduleUserId, guard, collection: collectionName },
+      );
+    try {
+      await doDelete();
+    } catch (err) {
+      if (!isForbidden(err)) throw err;
+      const promoted = await tryPromoteStaleInit(moduleUserId, key, id);
+      if (!promoted) throw err;
+      await doDelete();
+    }
   }
 
   return { list, create, createMany, update, remove };

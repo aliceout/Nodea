@@ -14,12 +14,17 @@
  * can forge a valid guard — a compromised server cannot silently tamper
  * with records.
  *
- * Difference vs. the legacy `guards.js`:
- *   - The cache is in-memory only (Map keyed by collection + id).
- *     Nothing is written to `localStorage`; it is purged at logout via
- *     {@link clearGuardsCache}.
- *   - The input key is the HMAC sub-key (HmacMainKey), not the raw main
- *     key doubly-imported as AES and HMAC.
+ * NO CACHE — on purpose (audit 2026-06). `collection-client` re-derives
+ * the guard on every mutation : two cheap HMAC passes, deterministic,
+ * nothing worth memoising. A previous in-memory cache
+ * (`setEntryGuard`/`getEntryGuard`/`clearGuardsCache`) sat here unused
+ * by production code while its header *claimed* a logout purge that no
+ * call site performed — a trap for the next contributor who would have
+ * wired the cache believing the purge already existed. Deleted ; the
+ * real full purge remains the logout `location.replace()` reload.
+ *
+ * The input key is the HMAC sub-key (HmacMainKey), never the raw main
+ * key doubly-imported as AES and HMAC.
  */
 import type { HmacMainKey } from '@nodea/shared/crypto-types';
 import { hmacSha256 } from './hmac.ts';
@@ -66,36 +71,3 @@ export async function deriveGuard(
   }
 }
 
-// --- In-memory cache ---------------------------------------------------
-
-type CollectionKey = string;
-type RecordId = string;
-
-const cache = new Map<CollectionKey, Map<RecordId, string>>();
-
-export function setEntryGuard(collection: string, recordId: string, guard: string): void {
-  let inner = cache.get(collection);
-  if (!inner) {
-    inner = new Map();
-    cache.set(collection, inner);
-  }
-  inner.set(recordId, guard);
-}
-
-export function getEntryGuard(collection: string, recordId: string): string | undefined {
-  return cache.get(collection)?.get(recordId);
-}
-
-export function deleteEntryGuard(collection: string, recordId: string): void {
-  cache.get(collection)?.delete(recordId);
-}
-
-/**
- * Purge the whole in-memory cache. Must be called on logout (the session
- * is dead; keeping stale guards around is a minor leak). The cache never
- * survives a page reload — no persistence — so this is a pure
- * memory-hygiene call.
- */
-export function clearGuardsCache(): void {
-  cache.clear();
-}

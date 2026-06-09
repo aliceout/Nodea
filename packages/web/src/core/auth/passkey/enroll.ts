@@ -32,7 +32,10 @@
  *   6. POST `/auth/passkeys/enroll/finish` with the attestation,
  *      label, prfSupported flag, wrap blobs.
  */
-import { startRegistration } from '@simplewebauthn/browser';
+import {
+  startRegistration,
+  type PublicKeyCredentialCreationOptionsJSON,
+} from '@simplewebauthn/browser';
 import type { Base64 } from '@nodea/shared';
 
 import {
@@ -169,9 +172,11 @@ export async function enrollPasskey(
     const attestation = await startRegistration({
       // The runtime shape matches `PublicKeyCredentialCreationOptionsJSON`
       // — we narrowed via Zod's `record(string, unknown)` for transit
-      // and don't want to duplicate the WebAuthn type schema.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      optionsJSON: optionsJSON as any,
+      // and don't want to duplicate the WebAuthn type schema. Named
+      // target (ex-`as any`, audit 2026-06) so the compiler keeps
+      // checking everything downstream of the cast.
+      optionsJSON:
+        optionsJSON as unknown as PublicKeyCredentialCreationOptionsJSON,
     });
 
     const credentialIdB64Url = attestation.id;
@@ -219,8 +224,7 @@ export async function enrollPasskey(
 
     // Step 6: ship the attestation + PRF status + wrap blobs.
     const finishRes = await apiPasskeyEnrollFinish({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      attestationResponse: attestation as any,
+      attestationResponse: attestation as unknown as Record<string, unknown>,
       label,
       prfSupported,
       wrappedKek,

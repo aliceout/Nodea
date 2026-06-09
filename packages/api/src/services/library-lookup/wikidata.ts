@@ -53,14 +53,19 @@ export const wikidataAdapter: ProviderAdapter = {
 
   async byQuery(query, lang): Promise<NormalisedBook[]> {
     const search = escapeLiteral(query);
-    const langs = lang ? `${lang.slice(0, 2)},fr,en,es` : 'fr,en,es,de,it';
+    // Whitelist the language code before interpolating it into the
+    // SPARQL string (audit 2026-06) — `slice(0, 2)` alone let any
+    // 2-char junk through. Bounded to lowercase ASCII letters ; a
+    // non-matching value falls back to the default chain.
+    const langCode = lang && /^[a-z]{2}/.test(lang) ? lang.slice(0, 2) : null;
+    const langs = langCode ? `${langCode},fr,en,es` : 'fr,en,es,de,it';
     const sparql = `
       SELECT ?work ?workLabel ?authorLabel ?date ?pages ?isbn13 ?language ?seriesLabel ?ordinal WHERE {
         SERVICE wikibase:mwapi {
           bd:serviceParam wikibase:api "EntitySearch" ;
                           wikibase:endpoint "www.wikidata.org" ;
                           mwapi:search "${search}" ;
-                          mwapi:language "${lang ? lang.slice(0, 2) : 'en'}" .
+                          mwapi:language "${langCode ?? 'en'}" .
           ?work wikibase:apiOutputItem mwapi:item .
         }
         ?work wdt:P31/wdt:P279* wd:Q571 .

@@ -37,7 +37,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('[ErrorBoundary]', this.props.scope ?? 'global', error, info);
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary]', this.props.scope ?? 'global', error, info);
+    } else {
+      // Prod : keep the crash visible for self-hosting operators,
+      // but never print the scope — it names the active module
+      // (« mood », « journal »…), the same metadata the /flow URL
+      // invariant protects (audit 2026-06).
+      console.error('[ErrorBoundary]', error);
+    }
   }
 
   private readonly reset = (): void => {

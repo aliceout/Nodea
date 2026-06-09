@@ -24,7 +24,12 @@ export const openLibraryAdapter: ProviderAdapter = {
 
   async byIsbn(isbn): Promise<NormalisedBook[]> {
     const { stripped } = normaliseIsbn(isbn);
-    const res = await fetchWithTimeout(`https://openlibrary.org/isbn/${stripped}.json`, {
+    // `encodeURIComponent` — `normaliseIsbn` only strips spaces and
+    // dashes, so a hostile "ISBN" containing `/` or `?` could
+    // otherwise rewrite the request path (same-host only — the
+    // origin is hardcoded — but path traversal on the provider is
+    // still bad hygiene ; audit 2026-06).
+    const res = await fetchWithTimeout(`https://openlibrary.org/isbn/${encodeURIComponent(stripped)}.json`, {
       redirect: 'follow',
       headers: { 'User-Agent': 'Nodea/0.1 (library-lookup)' },
       timeoutMs: 6000,

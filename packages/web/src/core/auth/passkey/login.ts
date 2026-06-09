@@ -18,7 +18,10 @@
  * The session cookie is set by the server on /finish — this helper
  * only deals with credential / wrap material.
  */
-import { startAuthentication } from '@simplewebauthn/browser';
+import {
+  startAuthentication,
+  type PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/browser';
 
 import {
   apiPasskeyLoginFinish,
@@ -69,15 +72,16 @@ export async function loginWithPasskey(
   );
 
   const optionsJSON = augmentWithPrfEval(startRes.requestOptions);
+  // Wire-frontier casts (ex-`as any`, audit 2026-06) — named targets
+  // so the compiler keeps checking everything downstream.
   const assertion = await startAuthentication({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    optionsJSON: optionsJSON as any,
+    optionsJSON:
+      optionsJSON as unknown as PublicKeyCredentialRequestOptionsJSON,
   });
 
   const finishRes = await apiPasskeyLoginFinish({
     loginToken: startRes.loginToken,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    assertionResponse: assertion as any,
+    assertionResponse: assertion as unknown as Record<string, unknown>,
   });
 
   const prfOutput = readPrfFirst(

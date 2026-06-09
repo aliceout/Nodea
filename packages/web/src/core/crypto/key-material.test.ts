@@ -1,13 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { deriveMainKeys, __debugDeriveRawSubkeys, wipeRawBytes } from './key-material.ts';
+import { deriveMainKeys, wipeRawBytes } from './key-material.ts';
 import { encryptAESGCM, decryptAESGCM } from './aes.ts';
+import { HKDF_LABEL_AES, HKDF_LABEL_HMAC, hkdfDeriveBits } from './hkdf.ts';
 import { hmacSha256 } from './hmac.ts';
 import { randomBytes } from './base64.ts';
+
+/**
+ * Test-local re-derivation of the raw sub-key bytes — lives HERE
+ * (audit 2026-06), not in `key-material.ts` : a production-importable
+ * « give me the sub-key bytes in clear » helper was an unnecessary
+ * surface, even as a pure function. The derivation is reproducible
+ * from the exported `hkdfDeriveBits` + labels.
+ */
+async function deriveRawSubkeys(
+  rawBytes: Uint8Array,
+): Promise<{ aesBytes: Uint8Array; hmacBytes: Uint8Array }> {
+  const [aesBytes, hmacBytes] = await Promise.all([
+    hkdfDeriveBits(rawBytes, HKDF_LABEL_AES, 32),
+    hkdfDeriveBits(rawBytes, HKDF_LABEL_HMAC, 32),
+  ]);
+  return { aesBytes, hmacBytes };
+}
 
 describe('deriveMainKeys — HKDF domain separation', () => {
   it('produces AES and HMAC sub-keys that are byte-level distinct', async () => {
     const raw = randomBytes(32);
-    const { aesBytes, hmacBytes } = await __debugDeriveRawSubkeys(raw);
+    const { aesBytes, hmacBytes } = await deriveRawSubkeys(raw);
     expect(aesBytes).toHaveLength(32);
     expect(hmacBytes).toHaveLength(32);
     expect(Array.from(aesBytes)).not.toEqual(Array.from(hmacBytes));
@@ -15,8 +33,8 @@ describe('deriveMainKeys — HKDF domain separation', () => {
 
   it('is deterministic for the same input', async () => {
     const raw = new Uint8Array(32).fill(7);
-    const a = await __debugDeriveRawSubkeys(raw);
-    const b = await __debugDeriveRawSubkeys(raw);
+    const a = await deriveRawSubkeys(raw);
+    const b = await deriveRawSubkeys(raw);
     expect(Array.from(a.aesBytes)).toEqual(Array.from(b.aesBytes));
     expect(Array.from(a.hmacBytes)).toEqual(Array.from(b.hmacBytes));
   });

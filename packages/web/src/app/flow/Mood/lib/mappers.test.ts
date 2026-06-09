@@ -75,8 +75,11 @@ describe('recordToEntry', () => {
     expect(out.positives).toEqual(['a', 'b', 'c']);
   });
 
-  it('falls back to today when payload date is missing or malformed', () => {
-    const todayIso = TODAY.toISOString().slice(0, 10);
+  it('falls back to LOCAL today when payload date is missing or malformed', () => {
+    // Local calendar date, NOT `toISOString()` (UTC) — east of UTC
+    // after midnight the UTC slice reads yesterday (audit 2026-06 ;
+    // the previous expectation reproduced that very bug).
+    const todayIso = '2026-03-15';
     expect(
       recordToEntry(record({ moodScore: '0' }), TODAY, LABELS).dateIso,
     ).toBe(todayIso);

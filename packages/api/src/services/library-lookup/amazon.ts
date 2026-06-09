@@ -121,8 +121,18 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
   // /s path counts as "still on search". A redirect to e.g.
   // `/gp/help/customer/display.html` means we got bounced.
   if (!/\/s(\/|\?)/.test(finalUrl)) {
+    // Log/report the PATH only (audit 2026-06) : the interstitial's
+    // full URL often embeds the original search URL as a parameter
+    // (`amzn-r=%2Fs%3Fk%3D<recherche>`) — the user's query would
+    // land in the server log via the dispatcher's console.warn.
+    let finalPath = finalUrl;
+    try {
+      finalPath = new URL(finalUrl).pathname;
+    } catch {
+      finalPath = finalUrl.split('?')[0] ?? finalUrl;
+    }
     throw new Error(
-      `amazon — navigation hors page de recherche (final: ${finalUrl})`,
+      `amazon — navigation hors page de recherche (final: ${finalPath})`,
     );
   }
 

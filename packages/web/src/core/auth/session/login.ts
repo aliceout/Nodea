@@ -1,3 +1,4 @@
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import type { Base64, LoginBody } from '@nodea/shared';
 
 import {
@@ -227,13 +228,16 @@ export async function verifyMfaPasskey(
 > {
   const { startAuthentication } = await import('@simplewebauthn/browser');
   const startRes = await apiMfaPasskeyStart({});
+  // Wire-frontier casts (audit 2026-06, ex-`as any`) : the server
+  // ships the options as a loose JSON record, the lib wants its
+  // precise JSON type — and symmetrically for the assertion. Named
+  // targets so the compiler still checks everything downstream.
   const assertion = await startAuthentication({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    optionsJSON: startRes.requestOptions as any,
+    optionsJSON:
+      startRes.requestOptions as unknown as PublicKeyCredentialRequestOptionsJSON,
   });
   const finishRes = await apiMfaPasskeyFinish({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    assertionResponse: assertion as any,
+    assertionResponse: assertion as unknown as Record<string, unknown>,
   });
   if (finishRes.finalized) {
     const me = await apiMe();

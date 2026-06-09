@@ -83,20 +83,3 @@ export function wipeRawBytes(bytes: Uint8Array | null | undefined): void {
   }
 }
 
-/**
- * Test-only helper that returns the raw derived sub-key bytes for both
- * labels so tests can assert the HKDF domain separation actually produces
- * different outputs. Do not call from production code — CryptoKey
- * derivation already hides these bytes intentionally.
- *
- * @internal
- */
-export async function __debugDeriveRawSubkeys(
-  rawBytes: Uint8Array,
-): Promise<{ aesBytes: Uint8Array; hmacBytes: Uint8Array }> {
-  const [aesBytes, hmacBytes] = await Promise.all([
-    hkdfDeriveBits(rawBytes, HKDF_LABEL_AES, AES_KEY_BYTES),
-    hkdfDeriveBits(rawBytes, HKDF_LABEL_HMAC, HMAC_KEY_BYTES),
-  ]);
-  return { aesBytes, hmacBytes };
-}

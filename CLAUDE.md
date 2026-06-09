@@ -29,7 +29,7 @@ Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **
 | `docs/Modules/<Module>.md` (per-module spec) + `docs/Architecture.md` §7 (cross-module schema + invariants) | Before touching a specific module (Mood, Goals, Journal, Habits, Library, Review, HRT) |
 | `docs/Auth-Spec.md` (threat model + DB + sessions + cross-cutting) + `docs/auth/<Flow>.md` (per-flow detail : Register, Login, ChangePassword, ChangeEmail, Recovery, BypassMfa, Lifecycle) | Before touching anything in the auth flows (OPAQUE, MFA, recovery, re-auth) |
 | `docs/Internationalisation.md` | Before touching i18n files |
-| `docs/security-audit.md` | Findings list + per-area sweep — cross-check before closing any crypto / auth / response-leakage task |
+| `docs/Audit-2026-06.md` | Latest full audit (sécurité / perf / correctifs) : findings + roadmap de correction — cross-check before closing any crypto / auth / response-leakage task |
 | `docs/adr/` | Before changing an architectural decision documented in an ADR |
 
 ---
@@ -58,7 +58,7 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 1. **Never log, persist, or expose a `CryptoKey` or raw key material.** No `console.log(mainKey)`, no localStorage, no `window.mainKey`. Any fallback that stashes the key on the global object is a critical regression — do not reintroduce one under any circumstance.
 2. **AES and HMAC keys must be domain-separated via HKDF** with distinct labels (`"nodea:aes"` / `"nodea:hmac"`). Never import the same raw bytes as both AES-GCM and HMAC-SHA-256 — each sub-key is derived separately and imported as a non-extractable `CryptoKey`.
 3. **One source for base64.** Do not add a new base64 encoder/decoder. Use the shared module. Same for `randomBytes`.
-4. **Guards are never persisted to localStorage.** In-memory cache only, purged at logout.
+4. **Guards are never persisted to localStorage.** No cache at all since audit 2026-06 — they're re-derived on demand (two cheap HMAC passes). If a cache ever comes back, it must be in-memory only and actually purged at logout.
 5. **Use branded types for crypto primitives** (TypeScript only):
    ```ts
    type Base64 = string & { readonly __b: 'Base64' };

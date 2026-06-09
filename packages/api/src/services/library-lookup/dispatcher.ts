@@ -159,9 +159,12 @@ export async function* streamLookupByQuery(
     if (settled.ok) {
       accumulator.push(...settled.books);
     } else {
-      const message =
-        settled.error instanceof Error ? settled.error.message : String(settled.error);
-      errored.push({ provider: adapter.name, message });
+      // Generic message client-side (audit 2026-06) : the raw
+      // `err.message` leaked upstream infrastructure details to the
+      // browser (SPARQL endpoint hosts, DNS/TLS error codes, and the
+      // Amazon final URL which can embed the user's search). The
+      // full error stays in the server log below for the operator.
+      errored.push({ provider: adapter.name, message: 'upstream_error' });
       console.warn(`[library-lookup] ${adapter.name} failed:`, settled.error);
     }
     const deduped = dedupeAcrossProviders([...accumulator]);

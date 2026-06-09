@@ -122,6 +122,20 @@ const recordsWipeLimiter = rateLimit({
   windowMs: 60_000,
   keyPrefix: 'records-wipe',
 });
+// LIST and DELETE were the only unthrottled routes on the surface
+// (audit 2026-06). Reads are cheap but a scripted scraper hammering
+// the full-collection LIST has no business above 300/min ; deletes
+// align with the write budget.
+const recordsListLimiter = rateLimit({
+  max: 300,
+  windowMs: 60_000,
+  keyPrefix: 'records-list',
+});
+const recordsDeleteLimiter = rateLimit({
+  max: 600,
+  windowMs: 60_000,
+  keyPrefix: 'records-delete',
+});
 
 export function createRecordsRoutes(collections: readonly CollectionDef[]) {
   const byName = new Map<string, EntryTable>(
@@ -139,7 +153,7 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
     path: '/records',
     tags: ['records'],
     summary: 'List records for the given access scope (sid)',
-    middleware: [requireUser, collectionResolver] as const,
+    middleware: [recordsListLimiter, requireUser, collectionResolver] as const,
     request: {
       headers: z.object({
         'x-collection': z.string().min(1).openapi({
@@ -289,7 +303,12 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
     path: '/records/{id}',
     tags: ['records'],
     summary: 'Delete an encrypted record (guard-protected)',
-    middleware: [requireUser, collectionResolver, requireGuard] as const,
+    middleware: [
+      recordsDeleteLimiter,
+      requireUser,
+      collectionResolver,
+      requireGuard,
+    ] as const,
     request: {
       headers: z.object({
         'x-collection': z.string().min(1),
@@ -494,9 +513,18 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
   //
   // No per-row guard verification : a wipe doesn't operate on the
   // « I know the secret for this specific row » trust model — it's
-  // a maintenance op on the user's own data, scoped by sid (which is
-  // itself crypto material derived from mainKey, like LIST). The
-  // requireFreshPassword middleware is the substitute defence.
+  // a maintenance op scoped by sid (which is itself crypto material
+  // derived from mainKey, like LIST).
+  //
+  // Threat-model honesty (audit 2026-06) : `requireFreshPassword`
+  // proves the CALLER re-typed their own password — it does NOT
+  // bind the caller to the sid. The sole inter-user barrier on this
+  // destructive route is the secrecy of the sid. That is the
+  // documented sid+guard model (same as LIST/CREATE), but unlike a
+  // PATCH/DELETE no row-secret is ever demanded ; if a sid ever
+  // leaks through a side channel, any fresh-authed account could
+  // wipe that module. Exception documented in docs/Database.md
+  // alongside the modules_config guard exemption.
   router.openapi(wipeRoute, async (c) => {
     const table = c.get('table');
     const body = c.req.valid('json');

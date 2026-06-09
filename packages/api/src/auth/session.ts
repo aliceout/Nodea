@@ -158,13 +158,18 @@ export async function getSessionReauth(
  * or `migrate` sessions — mismatched kinds return null (the caller's
  * middleware decides which 401 message to surface).
  */
+/** Don't rewrite `last_seen_at` more than once per 5 minutes per
+ *  session — liveness display doesn't need per-request precision,
+ *  and an UPDATE per request would double the write load. */
+const LAST_SEEN_STALE_MS = 5 * 60_000;
+
 export async function resolveSession(
   id: string,
   expectedKind: SessionKind = 'full',
 ): Promise<User | null> {
   const now = new Date();
   const [row] = await db
-    .select({ user: users })
+    .select({ user: users, lastSeenAt: sessions.lastSeenAt })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(
@@ -175,7 +180,27 @@ export async function resolveSession(
       ),
     )
     .limit(1);
-  return row?.user ?? null;
+  if (!row) return null;
+
+  // Liveness stamp (audit 2026-06) : `last_seen_at` existed in the
+  // schema and was read by /auth/sessions but never written — the
+  // « dernière activité » column stayed empty forever. Throttled +
+  // fire-and-forget : the request never waits on it and a missed
+  // stamp costs nothing.
+  if (
+    !row.lastSeenAt ||
+    now.getTime() - row.lastSeenAt.getTime() > LAST_SEEN_STALE_MS
+  ) {
+    void db
+      .update(sessions)
+      .set({ lastSeenAt: now })
+      .where(eq(sessions.id, id))
+      .catch(() => {
+        // Liveness metadata only — losing one stamp is harmless.
+      });
+  }
+
+  return row.user;
 }
 
 export async function revokeSession(id: string): Promise<void> {

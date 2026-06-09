@@ -17,7 +17,10 @@
  * consume `clientExtensionResults.prf.results.first` and discard
  * the rest.
  */
-import { startAuthentication } from '@simplewebauthn/browser';
+import {
+  startAuthentication,
+  type PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/browser';
 
 import { bytesToBase64Url, randomBytes } from '../../crypto/base64.ts';
 import { PRF_INPUT_V1 } from '../../crypto/passkey-prf.ts';
@@ -92,8 +95,8 @@ export async function runCalibrationAssertion(
   let assertion;
   try {
     assertion = await startAuthentication({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      optionsJSON: requestOptions as any,
+      optionsJSON:
+        requestOptions as unknown as PublicKeyCredentialRequestOptionsJSON,
     });
   } catch {
     // User dismissed the WebAuthn prompt, or no credential was

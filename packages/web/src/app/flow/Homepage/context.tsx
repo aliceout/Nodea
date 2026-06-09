@@ -176,23 +176,40 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
 
   const displayName = useMemo(() => preferredName(user), [user]);
 
-  // « samedi 25 avril 2025 · jour 116 ». Re-computed on every
-  // render so it stays correct across midnight, but cheap (one
-  // formatter + a few date arithmetic ops).
+  // Track the calendar day with a cheap 1-minute poll so the header
+  // flips at midnight without a reload. The old comment claimed a
+  // per-render recompute, but the memo was keyed on `[language]`
+  // only — an app left open overnight kept yesterday's header
+  // (audit 2026-06).
+  const [todayKey, setTodayKey] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = new Date().toDateString();
+      setTodayKey((cur) => (cur === next ? cur : next));
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // « samedi 25 avril 2025 · jour 116 ».
   const formattedDate = useMemo(() => {
-    const now = new Date();
+    // `todayKey` parses back to local midnight of the current day.
+    const now = new Date(todayKey);
     const formatter = new Intl.DateTimeFormat(intlLocale(language), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
-    const dayOfYear = Math.floor(
-      (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) /
+    // Day-of-year via UTC timestamps of the LOCAL calendar dates —
+    // immune to the DST off-by-one a raw millisecond division had
+    // the day after a clock change (audit 2026-06).
+    const dayOfYear = Math.round(
+      (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) -
+        Date.UTC(now.getFullYear(), 0, 0)) /
         86_400_000,
     );
     return `${formatter.format(now)} · jour ${dayOfYear}`;
-  }, [language]);
+  }, [language, todayKey]);
 
   const value = useMemo<HomepageDataValue>(
     () => ({ displayName, formattedDate, mood, goals, journal, announcements }),
