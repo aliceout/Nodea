@@ -87,12 +87,16 @@ export async function maybeSendAlreadyExistsNotice(
     // gate hid SMTP-transport failures from production logs ; an
     // operator chasing « mail not arriving » had nothing in the
     // logs because the catch silently swallowed the error. We log
-    // only the error's presence + a class hint, never the
-    // recipient nor the rendered body — the user-tag identifies
-    // the surface (anti-enum « already-exists » notice).
+    // only the error's CLASS name, never the message (nodemailer's
+    // err.message routinely embeds the recipient — e.g. « Recipient
+    // address rejected: user@example.com » — which would defeat
+    // both the anti-enum invariant of this very notice and CLAUDE.md's
+    // log-presence-not-value rule). The user-tag in the log line
+    // identifies the surface ; an operator can correlate with the
+    // SMTP server's own logs for the recipient if they really need it.
     console.warn(
       '[auth/register] already-exists notice mail failed',
-      err instanceof Error ? err.message : String(err),
+      err instanceof Error ? err.name : 'non-Error',
     );
   }
 }

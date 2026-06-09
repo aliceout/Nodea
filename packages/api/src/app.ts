@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
@@ -158,9 +160,11 @@ export function buildApp() {
   const testHarnessSecret = getConfig().NODEA_TEST_HARNESS_SECRET;
   if (getConfig().NODE_ENV === 'test' && testHarnessSecret) {
     // Constant-time equality so the secret can't be brute-forced via
-    // response-timing side channels. `Buffer.compare` short-circuits
-    // on length mismatch (cheap, no entropy leak on length alone) ;
-    // for equal lengths it walks the full buffer.
+    // response-timing side channels. `node:crypto.timingSafeEqual` is
+    // the canonical Node API for this : it requires equal-length
+    // buffers (a length mismatch returns immediately, cheap and
+    // leaking nothing beyond the obvious header-vs-secret length
+    // difference) and walks the full buffer for equal lengths.
     const expected = Buffer.from(testHarnessSecret);
     const gate: MiddlewareHandler<{ Variables: AuthVariables }> = async (
       c,
@@ -169,7 +173,7 @@ export function buildApp() {
       const received = Buffer.from(c.req.header('x-test-secret') ?? '');
       if (
         received.length !== expected.length ||
-        Buffer.compare(received, expected) !== 0
+        !timingSafeEqual(received, expected)
       ) {
         return c.json({ error: 'forbidden' }, 403);
       }
