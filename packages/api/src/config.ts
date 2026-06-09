@@ -254,7 +254,64 @@ const EnvSchema = z.object({
    * no events are captured.
    */
   SENTRY_DSN: optionalUrl(),
-}).transform((env) => {
+
+  /**
+   * Shared secret that gates the `/__test__/*` administrative
+   * endpoints (rate-limit reset, user-id lookup, admin promotion,
+   * MFA-bypass backdating). Only consumed when `NODE_ENV === 'test'`
+   * ; in any other env the routes are not mounted at all, regardless
+   * of whether the secret is set.
+   *
+   * **Hardening rationale (audit v2.8.0).** Before this gate, the
+   * `/__test__/*` routes mounted whenever `NODE_ENV !== 'production'`,
+   * which means a deploy that forgot to set `NODE_ENV` (the api
+   * Dockerfile defaults to `development`) exposed unauthenticated
+   * admin promotion to anyone on the network. The two-layer fix is :
+   *   1. routes ONLY mount on `NODE_ENV === 'test'` AND a secret set ;
+   *   2. each handler additionally verifies an `X-Test-Secret` header
+   *      whose value matches this env var.
+   *
+   * Required minimum 32 chars so the secret is not trivially
+   * guessable ; the e2e workflow generates one per run via
+   * `openssl rand -hex 32`.
+   */
+  NODEA_TEST_HARNESS_SECRET: z.string().min(32).optional(),
+})
+  .superRefine((env, ctx) => {
+    // Hardened email policy : production must not allow the silent
+    // fallback to the console transport (which would log magic-link
+    // tokens, password reset URLs and MFA-bypass confirmations to
+    // stderr — CLAUDE.md forbids any secret in logs, even at debug).
+    // Either pick `smtp` AND provide a real `SMTP_HOST`, or pick a
+    // non-prod env. Recording is reserved for tests.
+    if (env.NODE_ENV === 'production') {
+      if (env.EMAIL_SERVICE_IMPL === 'console') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['EMAIL_SERVICE_IMPL'],
+          message:
+            'EMAIL_SERVICE_IMPL=console is forbidden in production — magic-link tokens, password reset URLs and MFA-bypass confirmations would land in stderr logs.',
+        });
+      }
+      if (env.EMAIL_SERVICE_IMPL === 'recording') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['EMAIL_SERVICE_IMPL'],
+          message:
+            'EMAIL_SERVICE_IMPL=recording is reserved for tests — outgoing mail would never be sent. Use EMAIL_SERVICE_IMPL=smtp in production.',
+        });
+      }
+      if (env.EMAIL_SERVICE_IMPL === 'smtp' && !env.SMTP_HOST) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['SMTP_HOST'],
+          message:
+            'SMTP_HOST is required when NODE_ENV=production and EMAIL_SERVICE_IMPL=smtp. Without it the mailer silently falls back to the console transport which logs every credential token to stderr.',
+        });
+      }
+    }
+  })
+  .transform((env) => {
   // Normalise `ADDRESS` into a canonical URL with scheme and no
   // trailing slash. Bare host (`nodea.app`) becomes `https://nodea.app` ;
   // full URL is kept as-is, sans le `/` final. Every downstream consumer

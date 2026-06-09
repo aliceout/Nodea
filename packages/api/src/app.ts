@@ -1,3 +1,4 @@
+import type { MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { swaggerUI } from '@hono/swagger-ui';
@@ -141,9 +142,42 @@ export function buildApp() {
   // a sequence of register/login attempts doesn't run into the
   // in-process rate-limit buckets that survive across runs (the dev
   // api process is reused via reuseExistingServer, so the buckets
-  // never reset on their own). Guarded by NODE_ENV so prod cannot
-  // hit it.
-  if (getConfig().NODE_ENV !== 'production') {
+  // never reset on their own).
+  //
+  // **Hardening (audit v2.8.0).** Previously gated by
+  // `NODE_ENV !== 'production'`, which let the routes mount on any
+  // deploy that forgot to set `NODE_ENV` (the api Dockerfile
+  // defaults to `development`) — that exposed unauthenticated admin
+  // promotion to anyone on the network. Two-layer fix :
+  //   1. Routes mount only when `NODE_ENV === 'test'` AND
+  //      `NODEA_TEST_HARNESS_SECRET` is set ;
+  //   2. Each handler then verifies an `X-Test-Secret` header against
+  //      that env var (constant-time compare).
+  // The Playwright helpers in packages/e2e/ send the matching header
+  // ; CI generates the secret per run.
+  const testHarnessSecret = getConfig().NODEA_TEST_HARNESS_SECRET;
+  if (getConfig().NODE_ENV === 'test' && testHarnessSecret) {
+    // Constant-time equality so the secret can't be brute-forced via
+    // response-timing side channels. `Buffer.compare` short-circuits
+    // on length mismatch (cheap, no entropy leak on length alone) ;
+    // for equal lengths it walks the full buffer.
+    const expected = Buffer.from(testHarnessSecret);
+    const gate: MiddlewareHandler<{ Variables: AuthVariables }> = async (
+      c,
+      next,
+    ) => {
+      const received = Buffer.from(c.req.header('x-test-secret') ?? '');
+      if (
+        received.length !== expected.length ||
+        Buffer.compare(received, expected) !== 0
+      ) {
+        return c.json({ error: 'forbidden' }, 403);
+      }
+      await next();
+    };
+
+    app.use('/__test__/*', gate);
+
     app.post('/__test__/reset-rate-limits', (c) => {
       __resetRateLimits();
       return c.json({ ok: true });

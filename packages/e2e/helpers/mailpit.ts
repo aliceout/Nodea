@@ -81,8 +81,15 @@ export async function clearInbox(): Promise<void> {
   if (!res.ok) throw new Error(`Mailpit DELETE → ${res.status}`);
 
   const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  const secret = process.env['E2E_TEST_HARNESS_SECRET'] ?? '';
+  const headers: Record<string, string> = secret
+    ? { 'x-test-secret': secret }
+    : {};
   try {
-    await fetch(`${apiUrl}/__test__/reset-rate-limits`, { method: 'POST' });
+    await fetch(`${apiUrl}/__test__/reset-rate-limits`, {
+      method: 'POST',
+      headers,
+    });
   } catch {
     // Endpoint may not exist on a custom build ; skip.
   }

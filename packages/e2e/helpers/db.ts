@@ -16,6 +16,23 @@ const E2E_DB_URL =
   process.env['E2E_DATABASE_URL'] ??
   'postgres://nodea:Wise-Sinless6-Untainted-Unwed-Onward@127.0.0.1:5433/nodea_e2e';
 
+/**
+ * Shared secret expected by the api's `/__test__/*` handlers as an
+ * `X-Test-Secret` header. The hardening introduced in the v2.8.0
+ * audit no longer lets these routes mount without it, and the
+ * per-request gate refuses calls without a matching header. The
+ * e2e runner (CI workflow or local Playwright invocation) must set
+ * `E2E_TEST_HARNESS_SECRET` to the same value the api was booted
+ * with (`NODEA_TEST_HARNESS_SECRET`).
+ */
+const E2E_TEST_HARNESS_SECRET = process.env['E2E_TEST_HARNESS_SECRET'] ?? '';
+
+function testHarnessHeaders(): Record<string, string> {
+  return E2E_TEST_HARNESS_SECRET
+    ? { 'x-test-secret': E2E_TEST_HARNESS_SECRET }
+    : {};
+}
+
 let _sql: ReturnType<typeof postgres> | null = null;
 
 export function db(): ReturnType<typeof postgres> {
@@ -45,7 +62,7 @@ export async function backdateBypassConfirmation(userId: string): Promise<number
   const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
   const res = await fetch(`${apiUrl}/__test__/backdate-bypass`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...testHarnessHeaders() },
     body: JSON.stringify({ userId }),
   });
   if (!res.ok) {
@@ -81,6 +98,7 @@ export async function getUserIdByEmail(email: string): Promise<string | null> {
   const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
   const res = await fetch(
     `${apiUrl}/__test__/user-id?email=${encodeURIComponent(email)}`,
+    { headers: testHarnessHeaders() },
   );
   if (!res.ok) return null;
   const json = (await res.json()) as { id: string | null };
@@ -93,7 +111,7 @@ export async function promoteToAdmin(userId: string): Promise<void> {
   const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
   await fetch(`${apiUrl}/__test__/promote-admin`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...testHarnessHeaders() },
     body: JSON.stringify({ userId }),
   });
 }

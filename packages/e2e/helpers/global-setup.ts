@@ -92,9 +92,22 @@ async function resetRateLimits(): Promise<void> {
   // survive a `reuseExistingServer: true` Playwright run. Hitting the dev
   // test endpoint flushes them so the 13-spec sequence doesn't run into
   // /auth/register's 10/h bucket halfway through.
+  //
+  // Sends the `X-Test-Secret` header that the api's `/__test__/*` gate
+  // requires post-v2.8.0 hardening. When unset (legacy local runs), the
+  // request goes through without it ; the api will then 403 it and the
+  // catch below silently swallows so a custom prod-like build (where
+  // the route doesn't even mount) doesn't break the setup.
   const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3000';
+  const secret = process.env['E2E_TEST_HARNESS_SECRET'] ?? '';
+  const headers: Record<string, string> = secret
+    ? { 'x-test-secret': secret }
+    : {};
   try {
-    await fetch(`${apiUrl}/__test__/reset-rate-limits`, { method: 'POST' });
+    await fetch(`${apiUrl}/__test__/reset-rate-limits`, {
+      method: 'POST',
+      headers,
+    });
   } catch {
     // Endpoint may not exist on a custom prod-like build; skip silently.
   }

@@ -34,24 +34,16 @@ export function getEmailService(): EmailService {
   const cfg = getConfig();
   switch (cfg.EMAIL_SERVICE_IMPL) {
     case 'smtp':
-      // Smart fallback: if `smtp` is selected but SMTP_HOST is unset,
-      // gracefully degrade to console rather than crash on first send.
-      // This preserves the legacy mailer UX (dev/test work without
-      // configuring SMTP) and avoids surprising existing test suites.
-      // Prod must set SMTP_HOST or pick console explicitly — config
-      // validation flags either as a deployment misconfiguration via
-      // the startup log below.
-      if (!cfg.SMTP_HOST) {
-         
-        console.warn(
-          '[email] EMAIL_SERVICE_IMPL=smtp but SMTP_HOST is unset — ' +
-            'falling back to console transport. Set SMTP_HOST or ' +
-            'EMAIL_SERVICE_IMPL=console to silence this.',
-        );
-        cached = consoleInstance;
-      } else {
-        cached = smtpInstance;
-      }
+      // Dev/test fallback : when `smtp` is selected but SMTP_HOST is
+      // unset, degrade gracefully to the console transport so a local
+      // `pnpm dev:api` boots without a real SMTP server. In production
+      // this combination is rejected at config-validation time
+      // (`config.ts` superRefine) — magic-link tokens, password reset
+      // URLs and MFA-bypass confirmations would otherwise land in
+      // stderr logs, which CLAUDE.md forbids for any secret. So by the
+      // time we reach this fallback, NODE_ENV is guaranteed not to be
+      // `production`.
+      cached = cfg.SMTP_HOST ? smtpInstance : consoleInstance;
       break;
     case 'recording':
       cached = recordingInstance;

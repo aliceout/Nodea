@@ -89,6 +89,21 @@ jobs:
             "import { ready, server } from '@serenity-kit/opaque'; await ready; process.stdout.write(server.createSetup());")
           echo "OPAQUE_SERVER_SETUP=$SETUP" >> "$GITHUB_ENV"
 
+      # Hardened test-harness gate (v2.8.0 audit). The api's
+      # `/__test__/*` routes mount only when `NODE_ENV === 'test'` AND
+      # `NODEA_TEST_HARNESS_SECRET` is set, and each handler then
+      # verifies an `X-Test-Secret` header. We generate a 32-byte hex
+      # secret per CI run and export it under both names :
+      #   - `NODEA_TEST_HARNESS_SECRET` for the api process,
+      #   - `E2E_TEST_HARNESS_SECRET` for the Playwright helpers.
+      # The two are deliberately the same value ; the rename keeps the
+      # producer / consumer contract obvious at each call site.
+      - name: Generate test-harness secret
+        run: |
+          SECRET=$(openssl rand -hex 32)
+          echo "NODEA_TEST_HARNESS_SECRET=$SECRET" >> "$GITHUB_ENV"
+          echo "E2E_TEST_HARNESS_SECRET=$SECRET" >> "$GITHUB_ENV"
+
       # CVE scan on the dep tree (OPS-08). Fails the build on `high`
       # or `critical` advisories — the seuil that the team has agreed
       # to surface as blocking. `moderate` and below are surfaced via
