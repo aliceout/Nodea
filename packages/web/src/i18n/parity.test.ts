@@ -30,9 +30,13 @@ import frReview from '@/i18n/locales/fr/review.json';
 import enReview from '@/i18n/locales/en/review.json';
 import frSettings from '@/i18n/locales/fr/settings.json';
 import enSettings from '@/i18n/locales/en/settings.json';
+import frLibrary from '@/i18n/locales/fr/library.json';
+import enLibrary from '@/i18n/locales/en/library.json';
+import frHrt from '@/i18n/locales/fr/hrt.json';
+import enHrt from '@/i18n/locales/en/hrt.json';
 
 /**
- * The 14 namespaces under `i18n/locales/{fr,en}/`. Listed
+ * The 16 namespaces under `i18n/locales/{fr,en}/`. Listed
  * explicitly (rather than enumerating the directory at runtime)
  * so a missing locale file fails the type-check before it fails
  * a test — the JSON imports are the contract.
@@ -52,6 +56,8 @@ const NAMESPACES: ReadonlyArray<readonly [string, Bag, Bag]> = [
   ['journal', frJournal as Bag, enJournal as Bag],
   ['review', frReview as Bag, enReview as Bag],
   ['settings', frSettings as Bag, enSettings as Bag],
+  ['library', frLibrary as Bag, enLibrary as Bag],
+  ['hrt', frHrt as Bag, enHrt as Bag],
 ];
 
 describe('i18n parity (FR ↔ EN)', () => {
