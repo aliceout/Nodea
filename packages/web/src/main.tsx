@@ -10,8 +10,15 @@ import App from '@/app/App.tsx';
 
 // Initialise Sentry (no-op when VITE_SENTRY_DSN is unset). Done
 // here at import time so unhandled errors fired during the early
-// theme setup or React mount are captured too.
-initSentryWeb();
+// theme setup or React mount are captured too. `initSentryWeb` is
+// async now — the SDK is dynamic-imported behind the DSN check so
+// it never lands in the main chunk for DSN-less builds. We don't
+// await it : errors raised before the SDK finishes loading would
+// land on the browser's default `window.onerror` and surface in
+// the console ; once the SDK initialises (a few hundred ms later)
+// subsequent errors flow through the privacy beforeSend hook as
+// expected.
+void initSentryWeb();
 
 // Core Web Vitals — log to console in dev only (FRONT-03).
 // Lazy import so the lib (~3 KB gzip) never lands in the prod

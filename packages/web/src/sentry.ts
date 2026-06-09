@@ -9,8 +9,15 @@
  * **No-op when DSN is unset.** Call `initSentryWeb()`
  * unconditionally ; if `VITE_SENTRY_DSN` is empty (the dev
  * default), the function returns immediately without ever
- * touching the Sentry SDK. Operators who don't want Nodea to
- * phone home keep `VITE_SENTRY_DSN` empty in `.env`.
+ * loading the Sentry SDK. The dynamic `import('@sentry/react')`
+ * inside the if-DSN branch lets Vite tree-shake / code-split the
+ * SDK into a separate chunk that is only fetched + parsed by
+ * browsers running a DSN-configured build (audit v2.8.0, perf).
+ * Operators who don't want Nodea to phone home keep
+ * `VITE_SENTRY_DSN` empty in `.env` ; the chunk never leaves the
+ * server in that case (Vite only emits chunks that have at least
+ * one reachable import at build time, which is the case here, but
+ * the browser never asks for it).
  *
  * **`beforeSend` privacy contract.** Same posture as the api
  * (`packages/api/src/sentry.ts`) :
@@ -33,8 +40,6 @@
  * tells Sentry "this user uses Mood"). Operators of Nodea who
  * care strictly about that should keep `VITE_SENTRY_DSN` unset.
  */
-import * as Sentry from '@sentry/react';
-
 const HEADER_BLACKLIST = new Set([
   'cookie',
   'authorization',
@@ -42,10 +47,15 @@ const HEADER_BLACKLIST = new Set([
   'x-guard',
 ]);
 
-export function initSentryWeb(): void {
+export async function initSentryWeb(): Promise<void> {
   const env = import.meta.env as Record<string, string | undefined>;
   const dsn = env.VITE_SENTRY_DSN;
   if (!dsn) return;
+
+  // Dynamic import — Vite code-splits @sentry/react into a separate
+  // chunk that's only fetched by browsers running a DSN-configured
+  // build. ~80 KB saved on the main bundle when DSN is unset.
+  const Sentry = await import('@sentry/react');
 
   Sentry.init({
     dsn,
