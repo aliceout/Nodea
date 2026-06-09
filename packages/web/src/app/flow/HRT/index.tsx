@@ -41,7 +41,7 @@ const TOPBAR_LABELS = {
   summary: 'HRT · Synthèse',
   administration: 'HRT · Administration',
   labs: 'HRT · Analyses',
-  export: 'HRT · Import / Export',
+  export: 'HRT · Outils',
 } as const;
 
 export default function HrtPage() {

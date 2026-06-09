@@ -32,8 +32,6 @@ import { computeOccurrences } from '../lib/materialize';
 import { todayIso } from '../lib/labels';
 import type { ScheduleEntry } from './use-schedules';
 
-const CHUNK = 16;
-
 export function useScheduleMaterialization(
   schedules: ReadonlyArray<ScheduleEntry>,
   ready: boolean,
@@ -55,26 +53,73 @@ export function useScheduleMaterialization(
         running.current = true;
         void (async () => {
           try {
+            // Belt-and-suspenders against a stale `materializedThrough` :
+            // we load the admin logs once and build a per-schedule set
+            // of dates already covered, then filter `plan.dates` so a
+            // partial run that left the schedule's bookkeeping out of
+            // sync can't re-create duplicates on the next mount.
+            //
+            // Cost : one extra LIST call per HRT mount. Acceptable —
+            // the views below load the same data anyway, and the cost
+            // is dwarfed by what we save on schedules that no longer
+            // re-issue hundreds of POSTs against the rate-limit.
+            const existingLogs = await hrtAdminLogsClient.list(
+              ctx.moduleUserId,
+              ctx.mainKey,
+            );
+            const coveredByScheduleId = new Map<string, Set<string>>();
+            for (const log of existingLogs) {
+              const sid = log.payload.scheduleId;
+              if (!sid) continue;
+              const dates =
+                coveredByScheduleId.get(sid) ?? new Set<string>();
+              dates.add(log.payload.date);
+              coveredByScheduleId.set(sid, dates);
+            }
+
             for (const { entry, plan } of plans) {
-              for (let i = 0; i < plan.dates.length; i += CHUNK) {
-                await Promise.all(
-                  plan.dates.slice(i, i + CHUNK).map((date) =>
-                    hrtAdminLogsClient.create(ctx.moduleUserId, ctx.mainKey, {
-                      date,
-                      time: entry.payload.time,
-                      product: entry.payload.product,
-                      dose: entry.payload.dose,
-                      notes: entry.payload.notes,
-                      scheduleId: entry.id,
-                      updatedAt: new Date().toISOString(),
-                    }),
-                  ),
+              const alreadyCovered =
+                coveredByScheduleId.get(entry.id) ?? new Set<string>();
+              const datesToCreate = plan.dates.filter(
+                (d) => !alreadyCovered.has(d),
+              );
+
+              // `now` captured once per schedule so every occurrence
+              // produced by the same pass shares the same `updatedAt`
+              // — matches the schedule's own `updatedAt` bump below.
+              const now = new Date().toISOString();
+
+              if (datesToCreate.length > 0) {
+                // One bulk POST + one promote-guards per chunk of
+                // BULK_MAX_ENTRIES inside `createMany`, instead of the
+                // old per-row create that ran 2 round-trips per
+                // occurrence and routinely tripped the 600/min
+                // single-create rate-limit on multi-month back-fills
+                // (cf. the « 32 s HRT load + 429s in the network
+                // panel » incident).
+                const payloads = datesToCreate.map((date) => ({
+                  date,
+                  time: entry.payload.time,
+                  product: entry.payload.product,
+                  dose: entry.payload.dose,
+                  notes: entry.payload.notes,
+                  scheduleId: entry.id,
+                  updatedAt: now,
+                }));
+                await hrtAdminLogsClient.createMany(
+                  ctx.moduleUserId,
+                  ctx.mainKey,
+                  payloads,
                 );
               }
+              // Always advance `materializedThrough` even when nothing
+              // was created : the cached `coveredByScheduleId` already
+              // proved every plan date exists, so the schedule's
+              // bookkeeping is allowed to catch up.
               await hrtSchedulesClient.update(ctx.moduleUserId, ctx.mainKey, entry.id, {
                 ...entry.payload,
                 materializedThrough: plan.materializedThrough,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
               });
             }
             if (mounted.current) onMaterialized();

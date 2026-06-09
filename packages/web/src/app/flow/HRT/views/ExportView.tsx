@@ -26,6 +26,7 @@ import type { HrtProductPayload } from '@nodea/shared';
 import { errorMessageOf } from '@/core/types/load-state';
 import Button from '@/ui/atoms/dirk/Button';
 
+import DedupPanel from '../components/DedupPanel';
 import ExportControls from '../components/ExportControls';
 import type { FilterOption } from '../components/ExportFilterColumn';
 import ExportMenuButton from '../components/ExportMenuButton';
@@ -230,6 +231,8 @@ export default function ExportView() {
       ) : null}
 
       <ImportPanel />
+
+      <DedupPanel />
     </section>
   );
 }
