@@ -8,6 +8,8 @@ import {
   CreateEntryBodySchema,
   EntryViewSchema,
   UpdateEntryBodySchema,
+  WipeBySidBodySchema,
+  WipeBySidResponseSchema,
   INIT_GUARD,
 } from '@nodea/shared/schemas/entries';
 import { OpenAPIHono } from '@hono/zod-openapi';
@@ -16,6 +18,7 @@ import type { EntryRow, EntryTable } from '../db/schema.ts';
 import type { CollectionDef } from '../collections.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser } from '../middleware/require-user.ts';
+import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 import {
   requireCollection,
   requireGuard,
@@ -109,6 +112,15 @@ const recordsBulkPromoteLimiter = rateLimit({
   max: 60,
   windowMs: 60_000,
   keyPrefix: 'records-bulk-promote',
+});
+// Wipe-by-sid is a per-user maintenance action — never expected
+// to fire more than a handful of times per session. 10/min/IP
+// catches a runaway client without throttling the legitimate use
+// case (wiping a multi-collection module via N back-to-back calls).
+const recordsWipeLimiter = rateLimit({
+  max: 10,
+  windowMs: 60_000,
+  keyPrefix: 'records-wipe',
 });
 
 export function createRecordsRoutes(collections: readonly CollectionDef[]) {
@@ -214,6 +226,34 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
       401: errorContent('Unauthenticated'),
       404: errorContent('One or more targeted records not found under sid'),
       500: errorContent('Update failed'),
+    },
+  });
+
+  const wipeRoute = createRoute({
+    method: 'post',
+    path: '/records/wipe',
+    tags: ['records'],
+    summary: 'Delete every record under the given sid (re-auth gated)',
+    middleware: [
+      recordsWipeLimiter,
+      requireUser,
+      requireFreshPassword,
+      collectionResolver,
+    ] as const,
+    request: {
+      headers: z.object({
+        'x-collection': z.string().min(1),
+      }),
+      body: {
+        content: {
+          'application/json': { schema: WipeBySidBodySchema },
+        },
+      },
+    },
+    responses: {
+      200: jsonContent(WipeBySidResponseSchema, 'Rows deleted'),
+      400: errorContent('Invalid body or unknown collection'),
+      401: errorContent('Unauthenticated or re-auth required'),
     },
   });
 
@@ -443,6 +483,30 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
     if (result.kind === 'guard_already_promoted')
       return c.json({ error: 'guard_already_promoted' }, 400);
     return c.json({ promoted: result.promoted }, 200);
+  });
+
+  // --- WIPE BY SID ---
+  // Bulk-delete every row whose `module_user_id` matches the sid in
+  // the body. Drives the « Vider toutes les entrées » action in
+  // Settings → Modules. Re-auth-gated via `requireFreshPassword` —
+  // even a stolen session cookie can't trigger the destruction
+  // without a fresh password proof in the last 5 minutes.
+  //
+  // No per-row guard verification : a wipe doesn't operate on the
+  // « I know the secret for this specific row » trust model — it's
+  // a maintenance op on the user's own data, scoped by sid (which is
+  // itself crypto material derived from mainKey, like LIST). The
+  // requireFreshPassword middleware is the substitute defence.
+  router.openapi(wipeRoute, async (c) => {
+    const table = c.get('table');
+    const body = c.req.valid('json');
+
+    const deleted = await db
+      .delete(table)
+      .where(eq(table.moduleUserId, body.sid))
+      .returning({ id: table.id });
+
+    return c.json({ deleted: deleted.length }, 200);
   });
 
   // --- UPDATE (guard-protected; supports one-time promotion init → g_...) ---

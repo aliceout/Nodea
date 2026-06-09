@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { moodEntries } from '../db/schema.ts';
+import { moodEntries, sessions } from '../db/schema.ts';
 import { COLLECTIONS } from '../collections.ts';
 import { loginAs, seedUser, TEST_PASSWORD } from './helpers.ts';
 
@@ -543,6 +543,139 @@ describe('Bulk records — POST /records/bulk + POST /records/promote-guards (is
       }),
     });
     expect(noAuthPromote.status).toBe(401);
+  });
+});
+
+describe('Wipe by sid — POST /records/wipe', () => {
+  /** Backdate the session's reauth_password_at past the 5-min
+   *  freshness window so `requireFreshPassword` rejects. */
+  async function expireFreshPassword(cookie: string): Promise<void> {
+    const signed = cookie.replace(/^nodea_session=/, '');
+    const sessionId = signed.split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasswordAt: new Date(Date.now() - 6 * 60_000) })
+      .where(eq(sessions.id, sessionId));
+  }
+
+  async function seedThree(cookie: string, sid: string): Promise<string[]> {
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const created = await app.request('/records', {
+        ...jsonBodyForCollection(
+          { sid, cipherIv: 'iv-' + i, payload: 'p-' + i, guard: 'init' },
+          cookie,
+          'mood',
+        ),
+      });
+      const body = (await created.json()) as { id: string };
+      ids.push(body.id);
+    }
+    return ids;
+  }
+
+  it('deletes every row whose moduleUserId matches the sid', async () => {
+    const cookie = await authFor('wipe-ok@example.com');
+    const sid = 'sid-wipe-ok';
+    await seedThree(cookie, sid);
+
+    const res = await app.request('/records/wipe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { deleted: number };
+    expect(body.deleted).toBe(3);
+
+    const list = await app.request('/records', {
+      headers: { cookie, 'x-sid': sid, 'x-collection': 'mood' },
+    });
+    const listBody = (await list.json()) as { data: unknown[] };
+    expect(listBody.data).toHaveLength(0);
+  });
+
+  it('returns deleted: 0 on an empty collection', async () => {
+    const cookie = await authFor('wipe-empty@example.com');
+    const res = await app.request('/records/wipe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid: 'sid-no-rows' }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ deleted: 0 });
+  });
+
+  it('leaves other sids in the same collection untouched', async () => {
+    const cookie = await authFor('wipe-scoped@example.com');
+    await seedThree(cookie, 'sid-target');
+    await seedThree(cookie, 'sid-other');
+
+    const res = await app.request('/records/wipe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid: 'sid-target' }),
+    });
+    expect(res.status).toBe(200);
+
+    const otherList = await app.request('/records', {
+      headers: { cookie, 'x-sid': 'sid-other', 'x-collection': 'mood' },
+    });
+    const otherBody = (await otherList.json()) as { data: unknown[] };
+    expect(otherBody.data).toHaveLength(3);
+  });
+
+  it('only affects the collection passed in X-Collection', async () => {
+    // Same sid used across two collections (the realistic case for
+    // multi-collection modules like Library / HRT). Wiping `mood`
+    // must leave `goals` alone.
+    const cookie = await authFor('wipe-cross@example.com');
+    const sid = 'sid-cross';
+    await seedThree(cookie, sid);
+    // Seed one goals entry under the same sid.
+    await app.request('/records', {
+      ...jsonBodyForCollection(
+        { sid, cipherIv: 'iv', payload: 'p', guard: 'init' },
+        cookie,
+        'goals',
+      ),
+    });
+
+    await app.request('/records/wipe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid }),
+    });
+
+    const goalsList = await app.request('/records', {
+      headers: { cookie, 'x-sid': sid, 'x-collection': 'goals' },
+    });
+    const goalsBody = (await goalsList.json()) as { data: unknown[] };
+    expect(goalsBody.data).toHaveLength(1);
+  });
+
+  it('401 reauth_required when the password freshness has lapsed', async () => {
+    const cookie = await authFor('wipe-stale@example.com');
+    await expireFreshPassword(cookie);
+
+    const res = await app.request('/records/wipe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid: 'sid-anything' }),
+    });
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: string; reauth_required?: string };
+    expect(body.error).toBe('reauth_required');
+    expect(body.reauth_required).toBe('password');
+  });
+
+  it('401 when no session cookie is sent', async () => {
+    const res = await app.request('/records/wipe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-collection': 'mood' },
+      body: JSON.stringify({ sid: 'sid-anything' }),
+    });
+    expect(res.status).toBe(401);
   });
 });
 

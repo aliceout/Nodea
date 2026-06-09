@@ -161,6 +161,27 @@ export const BulkPromoteGuardsResponseSchema = z.object({
 });
 export type BulkPromoteGuardsResponse = z.infer<typeof BulkPromoteGuardsResponseSchema>;
 
+/**
+ * Wipe-by-sid envelope.
+ *
+ * Body for `POST /records/wipe` — deletes every row in the
+ * targeted collection whose `module_user_id` matches `sid`. The
+ * route is gated by `requireFreshPassword` so a stolen session
+ * cookie can't trigger the destruction without a fresh password
+ * proof in the last 5 minutes. The « Vider toutes les entrées »
+ * action in Settings → Modules drives this endpoint, one call per
+ * collection the module owns.
+ */
+export const WipeBySidBodySchema = z.object({
+  sid: z.string().min(1).max(128),
+});
+export type WipeBySidBody = z.infer<typeof WipeBySidBodySchema>;
+
+export const WipeBySidResponseSchema = z.object({
+  deleted: z.number().int().nonnegative(),
+});
+export type WipeBySidResponse = z.infer<typeof WipeBySidResponseSchema>;
+
 /** Modules-config payload — 1:1 on user_id, no guard/sid. The
  *  payload here is a small JSON descriptor of which modules are
  *  enabled / parameterised ; 64 KB is generous. */

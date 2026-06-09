@@ -1,9 +1,13 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import clsx from 'clsx';
+import { TrashIcon } from '@heroicons/react/24/outline';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { MODULES } from '@/app/modules-registry';
+import { isApiError } from '@/core/api/client';
 import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
+import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { generateModuleUserId } from '@/core/crypto/ids';
+import { MODULE_COLLECTIONS, wipeModule } from '@/core/modules/wipe-module';
 import {
   useNodeaStore,
   selectMainKey,
@@ -12,7 +16,10 @@ import {
   type ModulesRuntime,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
+import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
+
+import Field from './Field';
 
 /**
  * ModulesManager (TSX).
@@ -47,6 +54,10 @@ export default function ModulesManager() {
           defaultValue: 'Clé principale absente — reconnecte-toi.',
         }),
   );
+  /** Module id of the row whose « Vider toutes les entrées » panel
+   *  is currently expanded. At most one expanded panel at a time so
+   *  the destructive UI is hard to confuse with a sibling row. */
+  const [wipeFor, setWipeFor] = useState<string | null>(null);
 
   const rows = useMemo(
     () => MODULES.filter((m) => m.to_toggle === true && !!m.id),
@@ -99,6 +110,157 @@ export default function ModulesManager() {
       <EmptyHint>
         {t('settings.modules.none', { defaultValue: 'Aucun module configurable.' })}
       </EmptyHint>
+    );
+  }
+
+  /** Inline destructive confirmation expanded under a row. Lives
+   *  inside ModulesManager so the password re-auth + wipe pass
+   *  reuse the parent's `t` and live next to the row that triggered
+   *  it. Closes via `onClose` after success — the wiped module's
+   *  hooks will re-fetch on their next mount and see an empty list. */
+  function WipePanel({
+    moduleId,
+    moduleLabel,
+    sid,
+    onClose,
+  }: {
+    moduleId: string;
+    moduleLabel: string;
+    sid: string;
+    onClose: () => void;
+  }) {
+    const [password, setPassword] = useState('');
+    const [phase, setPhase] = useState<'idle' | 'wiping' | 'done'>('idle');
+    const [panelError, setPanelError] = useState<string | null>(null);
+    const [deletedCount, setDeletedCount] = useState(0);
+
+    async function handleConfirm(): Promise<void> {
+      setPanelError(null);
+      if (!password) {
+        setPanelError(
+          t('settings.modules.wipe.passwordRequired', {
+            defaultValue: 'Renseigne ton mot de passe pour confirmer.',
+          }),
+        );
+        return;
+      }
+      setPhase('wiping');
+      try {
+        // Step 1 : OPAQUE re-auth round-trip — same posture as the
+        // plaintext-export gate in `ExportPanel`. Stamps a fresh
+        // `reauth_password_at` on the session so the wipe endpoint's
+        // `requireFreshPassword` middleware lets the calls through
+        // for the next 5 minutes.
+        await freshenPasswordReauth(password);
+        // Step 2 : fan out one POST /records/wipe per collection
+        // the module owns. The server-side delete is one transaction
+        // per call ; we let the helper iterate the list.
+        const result = await wipeModule(moduleId, sid);
+        setDeletedCount(result.deleted);
+        setPassword('');
+        setPhase('done');
+      } catch (err) {
+        setPhase('idle');
+        if (isApiError(err) && err.status === 401) {
+          setPanelError(
+            t('settings.modules.wipe.wrongPassword', {
+              defaultValue: 'Mot de passe incorrect.',
+            }),
+          );
+        } else {
+          const msg = err instanceof Error ? err.message : String(err);
+          setPanelError(msg);
+          if (import.meta.env.DEV)
+            console.warn('wipe module failed', moduleId, err);
+        }
+      }
+    }
+
+    if (phase === 'done') {
+      return (
+        <div
+          role="status"
+          className="border-t border-hair bg-bg-2/40 px-4 py-4 text-[13px] text-ink"
+        >
+          <p>
+            <span className="font-semibold">{deletedCount}</span> entrée
+            {deletedCount > 1 ? 's' : ''} supprimée
+            {deletedCount > 1 ? 's' : ''} sur {moduleLabel}. Recharge le module
+            pour voir les listes à jour.
+          </p>
+          <div className="mt-3">
+            <Button variant="neutral" size="sm" onClick={onClose}>
+              {t('common.actions.close', { defaultValue: 'Fermer' })}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        role="alertdialog"
+        aria-labelledby={`wipe-${moduleId}-title`}
+        className="border-t border-danger/30 bg-danger/5 px-4 py-4"
+      >
+        <p
+          id={`wipe-${moduleId}-title`}
+          className="text-[13px] font-medium text-ink"
+        >
+          {t('settings.modules.wipe.title', {
+            defaultValue: `Vider toutes les entrées de ${moduleLabel} ?`,
+            module: moduleLabel,
+          })}
+        </p>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+          {t('settings.modules.wipe.description', {
+            defaultValue:
+              'Action irréversible. Le module reste activé mais toutes ses entrées chiffrées sont supprimées du serveur. Saisis ton mot de passe pour confirmer.',
+          })}
+        </p>
+        <div className="mt-3 max-w-sm">
+          <Field
+            label={t('settings.modules.wipe.passwordLabel', {
+              defaultValue: 'Mot de passe actuel',
+            })}
+            type="password"
+            value={password}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setPassword(e.target.value)
+            }
+            autoFocus
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => void handleConfirm()}
+            disabled={phase === 'wiping' || password.length === 0}
+          >
+            {phase === 'wiping'
+              ? t('settings.modules.wipe.wiping', {
+                  defaultValue: 'Suppression…',
+                })
+              : t('settings.modules.wipe.confirm', {
+                  defaultValue: 'Confirmer la suppression',
+                })}
+          </Button>
+          <Button
+            variant="neutral"
+            size="sm"
+            onClick={onClose}
+            disabled={phase === 'wiping'}
+          >
+            {t('common.actions.cancel', { defaultValue: 'Annuler' })}
+          </Button>
+        </div>
+        {panelError ? (
+          <p role="alert" className="mt-3 text-[12.5px] text-danger">
+            {panelError}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
@@ -155,49 +317,93 @@ export default function ModulesManager() {
         const description = m.description
           ? t(m.description, { defaultValue: m.description })
           : '';
+        // « Vider » only makes sense for modules that own
+        // encrypted collections AND that the user has enabled
+        // (otherwise there's no `moduleUserId` to scope the wipe
+        // by, and an empty disabled-module wipe is a no-op).
+        const canWipe = !!MODULE_COLLECTIONS[m.id] && !!entry?.moduleUserId;
 
         return (
-          <label
+          <div
             key={m.id}
-            className="group flex cursor-pointer items-center gap-3 border-b border-hair py-3.5 last:border-b-0"
+            className="border-b border-hair last:border-b-0"
           >
-            {/* Heroicon — same set as the sidebar nav and the
-                onboarding cards, so the visual identity stays
-                consistent across the app surface. Active state
-                flips to bg-accent / white so the row carries an
-                unmistakable cue at a glance, no need to read the
-                toggle widget on the right. */}
-            <span
-              aria-hidden="true"
-              className={cn(
-                'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors',
-                checked ? 'bg-accent text-white' : 'bg-bg-2 text-ink-soft',
-              )}
-            >
-              <Icon className="h-4 w-4" />
-            </span>
-
-            <div className="min-w-0 flex-1">
-              <p
+            <label className="group flex cursor-pointer items-center gap-3 py-3.5">
+              {/* Heroicon — same set as the sidebar nav and the
+                  onboarding cards, so the visual identity stays
+                  consistent across the app surface. Active state
+                  flips to bg-accent / white so the row carries an
+                  unmistakable cue at a glance, no need to read the
+                  toggle widget on the right. */}
+              <span
+                aria-hidden="true"
                 className={cn(
-                  'text-[14px] font-medium transition-colors',
-                  checked ? 'text-ink' : 'text-ink-soft',
+                  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors',
+                  checked ? 'bg-accent text-white' : 'bg-bg-2 text-ink-soft',
                 )}
               >
-                {label}
-              </p>
-              {description ? (
-                <p className="mt-0.5 text-[12.5px] text-muted">{description}</p>
-              ) : null}
-            </div>
+                <Icon className="h-4 w-4" />
+              </span>
 
-            <Toggle
-              checked={checked}
-              isBusy={isBusy}
-              onChange={(next) => toggleModule(m.id, next)}
-              label={label}
-            />
-          </label>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn(
+                    'text-[14px] font-medium transition-colors',
+                    checked ? 'text-ink' : 'text-ink-soft',
+                  )}
+                >
+                  {label}
+                </p>
+                {description ? (
+                  <p className="mt-0.5 text-[12.5px] text-muted">{description}</p>
+                ) : null}
+              </div>
+
+              <Toggle
+                checked={checked}
+                isBusy={isBusy}
+                onChange={(next) => toggleModule(m.id, next)}
+                label={label}
+              />
+
+              {canWipe ? (
+                <button
+                  type="button"
+                  // Buttons nested inside a <label> don't toggle
+                  // the wrapped input by default, but we still
+                  // stopPropagation defensively so a future
+                  // refactor of the row can't surprise the
+                  // destructive affordance into firing the toggle.
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setWipeFor((cur) => (cur === m.id ? null : m.id));
+                  }}
+                  aria-expanded={wipeFor === m.id}
+                  aria-label={t('settings.modules.wipe.open', {
+                    defaultValue: `Vider toutes les entrées ${label}`,
+                    module: label,
+                  })}
+                  className={cn(
+                    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors',
+                    'hover:bg-danger/10 hover:text-danger',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger',
+                  )}
+                >
+                  <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
+            </label>
+
+            {wipeFor === m.id && entry?.moduleUserId ? (
+              <WipePanel
+                moduleId={m.id}
+                moduleLabel={label}
+                sid={entry.moduleUserId}
+                onClose={() => setWipeFor(null)}
+              />
+            ) : null}
+          </div>
         );
       })}
       {error ? (
