@@ -5,6 +5,52 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.10.0 — 2026-06-10
+
+### Nouveautés
+
+- **web** : lot G fin — sweep i18n partagé + accessibilité des formulaires _(b212ab8)_
+- **library** : migrate item + review forms to inline pattern _(a6aeaa2)_
+- **journal** : migrate « + Nouvelle entrée » to inline form _(27226e6)_
+- **goals** : migrate « + Nouvel objectif » to inline form _(4f65f04)_
+- Goals cards view + bordered Home cards + Mood inline form + announcements _(61882eb)_
+- **records** : bulk wipe-by-sid endpoint + per-module « Vider » UI _(008cfa6)_
+
+### Corrections
+
+- **data** : lot D — pertes de données silencieuses + courses _(c4fa53b)_
+- **auth** : lot C — change-email lockout, reset tokens, TOTP lockout par compte _(7ff1f55)_
+- **audit** : lots A+B — quick wins sécu/privacy + séquelles formulaires inline _(ad58e80)_
+- **library** : cap LookupBar results height at 60vh _(7a3f8a7)_
+- **hrt** : kill schedule-materialisation duplicate loop + dedup tool _(4d028ca)_
+
+### Performance
+
+- **web** : lot F — fin des refetch complets après mutation + HRT partagé _(c0ca377)_
+- **web** : lot E — quick wins (contexte, memo, deferred, lazy) _(dfeeb46)_
+
+### Refactor
+
+- **web** : move inline-form atoms out of legacy ComposerModal/ _(6036155)_
+- **web** : dismantle global Composer shell + slice _(99f802b)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.9.0 _(0f025d2)_
+
+### Autres
+
+- i18n(library+hrt): traduction complète des deux modules (FR + EN) _(5ceab88)_
+- i18n(web): enregistre les namespaces library + hrt (squelettes) _(6a13f88)_
+
+<details>
+<summary>Maintenance — 2 commits</summary>
+
+- **release** : bump version to 2.10.0 _(c967929)_
+- **audit** : lot H — hygiène, robustesse, dérives doc-code _(57ffeb4)_
+
+</details>
+
 ## v2.9.0 — 2026-06-09
 
 ### Corrections
