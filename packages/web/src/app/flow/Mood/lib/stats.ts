@@ -1,4 +1,4 @@
-import { getDayNames, getMonthNames } from '@/core/i18n/date-format';
+import { getDayNames, getMonthNames, parseLocalDate } from '@/core/i18n/date-format';
 
 import type { MoodEntry, Pattern } from './types';
 
@@ -14,7 +14,15 @@ export function computeAverage30d(
   const refToday = new Date(today);
   refToday.setHours(0, 0, 0, 0);
   const cutoff = refToday.getTime() - 30 * 24 * 3600 * 1000;
-  const recent = entries.filter((e) => new Date(e.dateIso).getTime() >= cutoff);
+  // `e.dateIso` is `YYYY-MM-DD`. `new Date(iso)` parses as UTC
+  // midnight, drifting by up to 14 h from the local-midnight cutoff
+  // above ; on UTC+10 the « today » entry lands BEFORE the cutoff
+  // and silently drops out of the rolling average. `parseLocalDate`
+  // builds the same calendar day at the user's local midnight, so
+  // both sides of the comparison sit on the same axis.
+  const recent = entries.filter(
+    (e) => parseLocalDate(e.dateIso).getTime() >= cutoff,
+  );
   if (recent.length === 0) return null;
   const sum = recent.reduce((acc, e) => acc + Number(e.score), 0);
   return Math.round((sum / recent.length) * 10) / 10;
@@ -72,7 +80,10 @@ export function computePatterns(
   // 1) Best / worst day of the week
   const buckets: number[][] = [[], [], [], [], [], [], []]; // Mon..Sun
   for (const e of entries) {
-    const d = new Date(e.dateIso);
+    // Use parseLocalDate so a YYYY-MM-DD entered on Saturday by a
+    // user east of UTC after their local evening doesn't slide to
+    // Friday when read as UTC.
+    const d = parseLocalDate(e.dateIso);
     if (Number.isNaN(d.getTime())) continue;
     const dow = (d.getDay() + 6) % 7; // shift Sun=0..Sat=6 → Mon=0..Sun=6
     buckets[dow]!.push(Number(e.score));
@@ -149,7 +160,10 @@ export function computePatterns(
   const last30: number[] = [];
   const last90: number[] = [];
   for (const e of entries) {
-    const t = new Date(e.dateIso).getTime();
+    // Same TZ-safety rationale as `computeAverage30d` above :
+    // `parseLocalDate` keeps the entry date on the local-midnight
+    // axis matching `cutoff30` / `cutoff90`.
+    const t = parseLocalDate(e.dateIso).getTime();
     if (Number.isNaN(t)) continue;
     if (t >= cutoff30) last30.push(Number(e.score));
     if (t >= cutoff90) last90.push(Number(e.score));

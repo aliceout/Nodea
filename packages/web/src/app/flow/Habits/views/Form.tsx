@@ -5,11 +5,15 @@ import {
   type HabitsItemPayload,
 } from '@nodea/shared';
 import { useHabits } from '../hooks/useHabits';
+import { toIsoDate } from '@/core/i18n/date-format';
 import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 
+// `new Date().toISOString().slice(0, 10)` returns the UTC calendar
+// day, off by one for users east of UTC after their local evening.
+// `toIsoDate(new Date())` reads the local year / month / day.
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toIsoDate(new Date());
 }
 
 export default function HabitsFormView() {

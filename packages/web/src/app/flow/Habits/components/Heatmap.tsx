@@ -1,4 +1,7 @@
 import { useMemo } from 'react';
+
+import { toIsoDate } from '@/core/i18n/date-format';
+
 import type { HabitLog } from '../hooks/useHabits';
 
 interface HeatmapProps {
@@ -18,9 +21,13 @@ const INTENSITY_COLORS = [
   'rgb(22 163 74)',
 ];
 
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+// `toISOString().slice(0,10)` returns the UTC calendar day for a
+// local-midnight Date, which drifts by up to 14 h relative to the
+// user's local day. On UTC+10 the « today » cell is one day ahead ;
+// on UTC-8 it is one day behind. `toIsoDate` reads the LOCAL year /
+// month / day so every cell lines up with the day the user actually
+// lived through.
+const isoDay = toIsoDate;
 
 /**
  * GitHub-style activity heatmap.

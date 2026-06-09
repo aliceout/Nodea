@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
 import HabitCard from '../components/HabitCard';
 import { useHabits, type HabitItem } from '../hooks/useHabits';
+import { toIsoDate } from '@/core/i18n/date-format';
 
+// `toISOString().slice(0, 10)` would return the UTC day, off by one
+// for users east of UTC after their local evening. `toIsoDate` reads
+// the local calendar day.
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toIsoDate(new Date());
 }
 
 export default function HabitsHistoryView() {

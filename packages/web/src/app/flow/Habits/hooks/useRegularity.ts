@@ -1,3 +1,5 @@
+import { parseLocalDate } from '@/core/i18n/date-format';
+
 import type { HabitItem, HabitLog } from './useHabits';
 
 /**
@@ -45,9 +47,17 @@ export function regularityRate(
   const expected = expectedCount(item, from, now);
   if (expected == null || expected === 0) return null;
 
+  // `log.payload.date` is a `YYYY-MM-DD` string ; constructing a
+  // `Date` from it via `new Date(iso)` parses as UTC midnight, which
+  // drifts by up to 14 h relative to the local-midnight `from` and
+  // `now` above. On UTC+10 (Sydney) or UTC-8 (Pacific) the day
+  // boundary lands inside a separate calendar day, so a log entered
+  // « today » falls outside the window and `regularityRate` reads as
+  // « one observation missing ». Switch to `parseLocalDate` which
+  // builds the same calendar day at the user's local midnight.
   const count = logs.filter((log) => {
     if (log.payload.itemRid !== item.id) return false;
-    const d = new Date(log.payload.date);
+    const d = parseLocalDate(log.payload.date);
     if (Number.isNaN(d.getTime())) return false;
     return d >= from && d <= now;
   }).length;
