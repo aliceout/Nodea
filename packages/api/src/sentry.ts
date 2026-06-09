@@ -28,30 +28,32 @@
  * before continuing (see `index.ts`).
  *
  * **`beforeSend` privacy contract.** Every event passes through
- * the hook below before being shipped. The hook strips :
- *   - Cookies (entire `request.cookies` object)
- *   - Headers known to carry crypto material (`x-sid`,
- *     `x-guard`, `cookie`, `authorization`)
- *   - Query strings (the whole `request.query_string`)
- *   - Request body (`request.data` set to undefined)
- *   - User context that can carry identifiable info (`user.email`,
- *     `user.username`, `user.ip_address`)
+ * `scrubSentryEvent` (`middleware/sentry-scrub.ts`) before being
+ * shipped. The scrubber strips : cookies, every header except
+ * `content-type`, query strings (with `redactQueryParams` on the
+ * URL itself), the request body, and user PII (`email`,
+ * `username`, `ip_address` — the opaque `id` is kept for issue
+ * dedup). Audit 2026-06 : the scrubber existed, was tested, but
+ * was never wired here — an inline subset ran instead, letting
+ * breadcrumbs through.
+ *
+ * **Breadcrumbs are disabled at the integration level.** The
+ * default `Http` integration records every *outgoing* request as
+ * a breadcrumb — including the library-lookup provider URLs that
+ * carry the user's search text in clear
+ * (`amazon.fr/s?k=<recherche>`, Google Books `?q=…`). The
+ * `Console` integration records `console.warn` lines that name
+ * the active module. Both bypass the `/flow` privacy invariant,
+ * so we re-instantiate `Http` with `breadcrumbs: false` and drop
+ * `Console` entirely. `scrubSentryEvent` still scrubs whatever
+ * breadcrumbs remain, as a second layer.
  *
  * Trade-off : we lose the ability to debug issues that depend on
  * the request body. Acceptable — crash signal + stack trace + URL
  * is enough for most cases ; for the rest, reproduce in dev.
  */
 import { getConfig } from './config.ts';
-
-/** Headers that must never reach Sentry. Match case-insensitively
- *  since Hono lowercases incoming header names but Sentry may pull
- *  them from native runtime APIs that preserve case. */
-const HEADER_BLACKLIST = new Set([
-  'cookie',
-  'authorization',
-  'x-sid',
-  'x-guard',
-]);
+import { scrubSentryEvent } from './middleware/sentry-scrub.ts';
 
 export async function initSentryApi(): Promise<void> {
   const { SENTRY_DSN, NODE_ENV, BUILD_COMMIT } = getConfig();
@@ -77,34 +79,14 @@ export async function initSentryApi(): Promise<void> {
     // No PII in default events. Combined with `beforeSend`, this
     // double-locks the privacy contract.
     sendDefaultPii: false,
+    // Outgoing-request and console breadcrumbs leak the user's
+    // search text + the active module — see header comment.
+    integrations: (defaults) => [
+      ...defaults.filter((i) => i.name !== 'Http' && i.name !== 'Console'),
+      Sentry.httpIntegration({ breadcrumbs: false }),
+    ],
     beforeSend(event) {
-      // Drop cookies, sensitive headers, query strings, and body
-      // from any event before it leaves the process.
-      if (event.request) {
-        delete event.request.cookies;
-        delete event.request.query_string;
-        // `data` holds the request body — Sentry adds it when
-        // integrations capture HTTP traffic. We strip it
-        // unconditionally since /auth/* bodies contain crypto
-        // material.
-        event.request.data = undefined;
-        if (event.request.headers && typeof event.request.headers === 'object') {
-          const headers = event.request.headers as Record<string, unknown>;
-          for (const key of Object.keys(headers)) {
-            if (HEADER_BLACKLIST.has(key.toLowerCase())) {
-              delete headers[key];
-            }
-          }
-        }
-      }
-      // Strip user identifiers — even if some integration sets them,
-      // they don't survive `beforeSend`.
-      if (event.user) {
-        delete event.user.email;
-        delete event.user.username;
-        delete event.user.ip_address;
-      }
-      return event;
+      return scrubSentryEvent(event);
     },
   });
 }

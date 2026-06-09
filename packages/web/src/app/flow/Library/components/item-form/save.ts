@@ -92,9 +92,23 @@ export async function saveLibraryItem(
       ? normaliseAuthorName(trimmedAuthor)
       : '';
     const isbnTrimmed = fields.isbn.replace(/[\s-]/g, '');
-    const providers: Record<string, string> = {};
-    if (isbnTrimmed.length === 13) providers.isbn13 = isbnTrimmed;
-    else if (isbnTrimmed.length === 10) providers.isbn10 = isbnTrimmed;
+    const isbnProviders: Record<string, string> = {};
+    if (isbnTrimmed.length === 13) isbnProviders.isbn13 = isbnTrimmed;
+    else if (isbnTrimmed.length === 10) isbnProviders.isbn10 = isbnTrimmed;
+    // Merge with the existing providers, ISBN keys driven by the
+    // FIELD : an emptied ISBN input drops isbn13/isbn10 (the old
+    // wholesale fallback made an ISBN impossible to remove — audit
+    // 2026-06) while the non-ISBN provider ids (openlibrary,
+    // googlebooks, amazon) survive the edit untouched.
+    const {
+      isbn13: _droppedIsbn13,
+      isbn10: _droppedIsbn10,
+      ...keptProviders
+    } = editing?.payload.providers ?? {};
+    const providers: Record<string, string> = {
+      ...(keptProviders as Record<string, string>),
+      ...isbnProviders,
+    };
 
     const tags = fields.tagsInput
       .split(',')
@@ -121,11 +135,7 @@ export async function saveLibraryItem(
       rating: basePayload?.rating ?? null,
       isFavorite: basePayload?.isFavorite ?? false,
       tags,
-      ...(Object.keys(providers).length > 0
-        ? { providers }
-        : basePayload?.providers
-          ? { providers: basePayload.providers }
-          : {}),
+      ...(Object.keys(providers).length > 0 ? { providers } : {}),
       ...(fields.year ? { year: Number(fields.year) } : {}),
       ...(fields.publisher.trim()
         ? { publisher: fields.publisher.trim() }
@@ -147,22 +157,28 @@ export async function saveLibraryItem(
     };
 
     if (editing) {
-      // Edit path: cover swap mid-edit isn't wired (would need to
-      // delete the old encrypted blob row and create a new one).
-      // We just update the item, keeping the existing `coverRid`
-      // from `basePayload`. If the user wants to add a cover to a
-      // book that didn't have one, that's still supported below.
       await libraryItemsClient.update(
         ctx.moduleUserId,
         ctx.mainKey,
         editing.id,
         payload,
       );
-      if (fields.coverUrl && !basePayload?.coverRid) {
-        // Late-add a cover to an existing item: download via the
-        // proxy, store the encrypted blob, then patch the item to
-        // point at it. Best-effort — failure leaves the book without
-        // a cover but doesn't roll back the rest of the edit.
+      // Cover add OR swap on the edit path. `coverUrl` can be two
+      // things : a `data:` URL (the existing cover's preview, set
+      // by `useExistingCover` — nothing to persist) or a remote
+      // http(s) URL (a NEW cover the user picked from the lookup).
+      // Only the remote case triggers persistence. Audit 2026-06 :
+      // the previous guard (`!basePayload?.coverRid`) silently
+      // dropped a newly picked cover whenever the book already had
+      // one — while the UI showed the new preview and offered an
+      // explicit « Couverture seule » mode.
+      const isNewRemoteCover =
+        fields.coverUrl !== null && /^https?:\/\//i.test(fields.coverUrl);
+      if (fields.coverUrl && isNewRemoteCover) {
+        // Download via the proxy, store the encrypted blob, then
+        // patch the item to point at it. Best-effort — failure
+        // leaves the book on its previous cover (or none) but
+        // doesn't roll back the rest of the edit.
         const fetched = await apiLibraryFetchCover(fields.coverUrl);
         if (fetched) {
           try {
@@ -186,6 +202,21 @@ export async function saveLibraryItem(
                 coverRid: newCover.id,
               },
             );
+            // The replaced blob is unreachable once the item points
+            // elsewhere — delete it so wiped covers don't accumulate.
+            // Best-effort : an orphan blob is invisible, not harmful.
+            if (basePayload?.coverRid) {
+              try {
+                await libraryCoversClient.remove(
+                  ctx.moduleUserId,
+                  ctx.mainKey,
+                  basePayload.coverRid,
+                );
+              } catch (err) {
+                if (import.meta.env.DEV)
+                  console.warn('old cover delete failed', err);
+              }
+            }
           } catch (err) {
             if (import.meta.env.DEV)
               console.warn('cover persist failed', err);

@@ -92,7 +92,10 @@ export default function LibraryReviewForm({
         itemRid,
         date: dateIso,
         kind,
-        title: null,
+        // The form has no title field — preserve whatever the
+        // record carries (imports can set one) instead of nulling
+        // it on every edit (audit 2026-06).
+        title: initial?.title ?? null,
         content: trimmedContent,
         page: page ? Number(page) : null,
         spoiler: initial?.spoiler ?? false,

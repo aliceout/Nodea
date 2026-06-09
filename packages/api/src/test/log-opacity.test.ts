@@ -137,4 +137,24 @@ describe('Runtime opacity — request logs', () => {
     // wholesale behaviour fires.
     expect(allLogs).toMatch(/\/auth\/mfa\/bypass\/confirm\?__redacted__/);
   });
+
+  it('does not leak the cover URL on /library/lookup/cover-fetch', async () => {
+    // The cover URL identifies the exact book the user just added
+    // (OpenLibrary id, Google Books id, Amazon ASIN). Audit 2026-06 :
+    // `/library/` was missing from the wholesale list while the
+    // header comment claimed otherwise — the URL reached stdout.
+    const coverSentinel =
+      'https%3A%2F%2Fcovers.openlibrary.org%2Fb%2Fid%2FSECRET_BOOK_ID_9999-L.jpg';
+    const res = await app.request(
+      `/library/lookup/cover-fetch?url=${coverSentinel}`,
+      { method: 'GET' },
+    );
+    // Unauthenticated → 401 ; the request still goes through the
+    // logger, which is all this test needs.
+    expect([200, 400, 401, 404, 429]).toContain(res.status);
+
+    const allLogs = captured.join('\n');
+    expect(allLogs).not.toContain('SECRET_BOOK_ID_9999');
+    expect(allLogs).toMatch(/\/library\/lookup\/cover-fetch\?__redacted__/);
+  });
 });

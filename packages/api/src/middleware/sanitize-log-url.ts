@@ -59,6 +59,12 @@
 const WHOLESALE_REDACT_PREFIXES = [
   '/auth/',
   '/records',
+  // `/library/lookup/cover-fetch?url=<provider URL>` — the cover URL
+  // resolves to the exact book the user just added (OpenLibrary id,
+  // Google Books id, Amazon ASIN). Audit 2026-06 found this prefix
+  // was *claimed* covered by the header comment but missing from the
+  // list — the URL reached stdout in clear.
+  '/library/',
 ] as const;
 
 /** Parameter names whose values must never reach the log stream
@@ -86,6 +92,9 @@ const REDACT_PARAMS = [
   // helper might pass one — defence in depth.
   'session',
   'sid_token',
+  // Remote-resource fetch helpers (`?url=…`) — the target URL can
+  // identify the content being fetched (book cover → book title).
+  'url',
 ] as const;
 
 const REDACT_PATTERN = new RegExp(

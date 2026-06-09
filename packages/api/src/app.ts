@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
 import type { MiddlewareHandler } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { swaggerUI } from '@hono/swagger-ui';
@@ -82,6 +83,22 @@ export function buildApp() {
   //
   // CLAUDE.md §Error handling forbids logging crypto material.
   app.use('*', logger(redactingPrintFunc));
+
+  // Hard cap on request body size (audit 2026-06). Hono buffers the
+  // whole body in memory before any Zod bound applies — without this
+  // cap, a single authenticated request could OOM the process (the
+  // Zod per-item bounds on /records/bulk validate items *before* the
+  // 16 MB total check, so 100 × 8 MB items were materialised first).
+  // 24 MB = BULK_TOTAL_PAYLOAD_MAX (16 MB of ciphertext) + JSON
+  // envelope + per-item guards/ids headroom. Everything legitimate
+  // fits well under it ; anything bigger is hostile or a bug.
+  app.use(
+    '*',
+    bodyLimit({
+      maxSize: 24 * 1024 * 1024,
+      onError: (c) => c.json({ error: 'payload_too_large' }, 413),
+    }),
+  );
 
   // Cache-Control on every API response (Tier 3 follow-up — the
   // « no proxy ever caches authenticated data » rule). Without it,

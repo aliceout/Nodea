@@ -70,12 +70,12 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-bg text-ink">
       {keyStatus === 'missing' ? (
-        <KeyMissingModal
-          onLogout={() => {
-            void session.logout();
-            window.location.href = '/login';
-          }}
-        />
+        // `session.logout()` awaits the server-side session purge,
+        // then redirects itself (location.replace). Navigating here
+        // in parallel (the old `window.location.href = '/login'`)
+        // cancelled the in-flight logout request — the cookie stayed
+        // valid server-side on a shared computer (audit 2026-06).
+        <KeyMissingModal onLogout={() => void session.logout()} />
       ) : null}
 
       <Sidebar />

@@ -1,10 +1,11 @@
 /**
- * Pre-written Sentry `beforeSend` scrubber for the web bundle.
+ * Sentry `beforeSend` scrubber for the web bundle.
  *
- * NOT WIRED YET — `@sentry/react` is not a dependency. The function
- * is exported and tested so it's ready to drop into a
- * `Sentry.init({ beforeSend: scrubSentryEvent })` call the day the
- * operator decides to ship error tracking (issue #83).
+ * WIRED in `src/sentry.ts` (`Sentry.init({ beforeSend })`) since
+ * audit 2026-06 — the header previously claimed the SDK wasn't a
+ * dependency, which had become false, and an inline subset ran in
+ * its place letting breadcrumbs through. Exported as a pure
+ * function so it stays unit-testable.
  *
  * Mirror of the API-side scrubber in
  * `packages/api/src/middleware/sentry-scrub.ts` — same contract,
@@ -96,25 +97,31 @@ function redactQueryParams(input: string): string {
   });
 }
 
-/** Minimal structural shape of a Sentry event we touch. We avoid
- *  pulling `@sentry/types` as a dep until Sentry is installed. */
+/** Minimal structural shape of a Sentry event we touch.
+ *  Deliberately *wider* than what we read (`unknown` on fields we
+ *  only overwrite) so the real `@sentry/react` `ErrorEvent`
+ *  satisfies the generic constraint structurally — `query_string`
+ *  can be a tuple array there, `user.id` can be a number. We avoid
+ *  importing `@sentry/react` types here so the module stays
+ *  loadable when the SDK chunk hasn't been pulled (DSN unset). */
 export interface SentryEventLike {
   request?: {
     url?: string;
-    query_string?: string | Record<string, string>;
-    cookies?: Record<string, string> | string;
+    query_string?: unknown;
+    cookies?: unknown;
     headers?: Record<string, string>;
     data?: unknown;
   };
   user?: {
-    id?: string;
-    email?: string;
-    username?: string;
-    ip_address?: string;
+    id?: unknown;
+    email?: unknown;
+    username?: unknown;
+    ip_address?: unknown;
+    [key: string]: unknown;
   };
   breadcrumbs?: Array<{
     category?: string;
-    data?: { url?: string } & Record<string, unknown>;
+    data?: Record<string, unknown>;
     message?: string;
   }>;
   /** Sentry's free-form bag — we don't push anything here, but if

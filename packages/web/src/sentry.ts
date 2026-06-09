@@ -19,20 +19,24 @@
  * one reachable import at build time, which is the case here, but
  * the browser never asks for it).
  *
- * **`beforeSend` privacy contract.** Same posture as the api
- * (`packages/api/src/sentry.ts`) :
- *   - Cookies stripped from any request data Sentry attaches.
- *   - Headers `x-sid`, `x-guard`, `cookie`, `authorization` stripped.
- *   - Query strings stripped.
- *   - Request body stripped.
- *   - User context fields (`email`, `username`, `ip_address`) stripped.
+ * **`beforeSend` privacy contract.** Every event passes through
+ * `scrubSentryEvent` (`core/sentry/sentry-scrub.ts`) : cookies,
+ * every header except `content-type`, query strings, request
+ * body, user PII, breadcrumb URLs, and the free-form
+ * `extra`/`contexts` bags are all stripped or redacted. Audit
+ * 2026-06 : the scrubber existed, was tested, but was never wired
+ * here — an inline subset ran instead, letting breadcrumbs
+ * through.
  *
- * **No BrowserTracing, no Replay.** The default integrations would
- * ship navigations, clicks, and DOM snapshots to Sentry as
- * breadcrumbs / replays. That bypasses the `/flow` privacy
- * invariant — module-visited metadata would leak through Sentry's
- * pipeline. We filter them out at init time so they can never
- * be silently re-enabled by a stale config.
+ * **No BrowserTracing, no Replay, no Breadcrumbs.** The default
+ * integrations ship navigations, clicks, console lines and
+ * fetch/xhr URLs to Sentry as breadcrumbs / replays. That
+ * bypasses the `/flow` privacy invariant — console lines name the
+ * active module (`goals: toggle status failed`), fetch URLs
+ * reveal `/library/lookup/*` usage. We filter all three out at
+ * init time so they can never be silently re-enabled by a stale
+ * config ; `scrubSentryEvent` still scrubs whatever breadcrumbs
+ * remain, as a second layer.
  *
  * **Privacy tradeoff acknowledged.** Stack traces are still
  * shipped to Sentry's cloud, and a stack trace can leak which
@@ -40,12 +44,7 @@
  * tells Sentry "this user uses Mood"). Operators of Nodea who
  * care strictly about that should keep `VITE_SENTRY_DSN` unset.
  */
-const HEADER_BLACKLIST = new Set([
-  'cookie',
-  'authorization',
-  'x-sid',
-  'x-guard',
-]);
+import { scrubSentryEvent } from './core/sentry/sentry-scrub';
 
 export async function initSentryWeb(): Promise<void> {
   const env = import.meta.env as Record<string, string | undefined>;
@@ -66,31 +65,18 @@ export async function initSentryWeb(): Promise<void> {
     tracesSampleRate: 0,
     sendDefaultPii: false,
     // Filter out integrations that would leak module-visited
-    // metadata to Sentry through breadcrumbs / replays.
+    // metadata to Sentry through breadcrumbs / replays. The
+    // `Breadcrumbs` integration is the one that records console
+    // lines, DOM clicks and fetch URLs — see header comment.
     integrations: (defaults) =>
       defaults.filter(
-        (i) => i.name !== 'BrowserTracing' && i.name !== 'Replay',
+        (i) =>
+          i.name !== 'BrowserTracing' &&
+          i.name !== 'Replay' &&
+          i.name !== 'Breadcrumbs',
       ),
     beforeSend(event) {
-      if (event.request) {
-        delete event.request.cookies;
-        delete event.request.query_string;
-        event.request.data = undefined;
-        if (event.request.headers && typeof event.request.headers === 'object') {
-          const headers = event.request.headers as Record<string, unknown>;
-          for (const key of Object.keys(headers)) {
-            if (HEADER_BLACKLIST.has(key.toLowerCase())) {
-              delete headers[key];
-            }
-          }
-        }
-      }
-      if (event.user) {
-        delete event.user.email;
-        delete event.user.username;
-        delete event.user.ip_address;
-      }
-      return event;
+      return scrubSentryEvent(event);
     },
   });
 }

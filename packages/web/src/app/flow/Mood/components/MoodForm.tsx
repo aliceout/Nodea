@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { MoodScore } from '@nodea/shared';
 
 import { pickQuestion } from '@/app/flow/Mood/data/questions';
@@ -73,13 +73,17 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
   const isEdit = initial !== undefined;
 
   // Pin the « question du jour » once at mount on create so it
-  // doesn't shuffle while the user types. On edit, the original
-  // question stays paired with the saved answer.
-  const question = useMemo<string>(() => {
+  // doesn't shuffle while the user types. `useState` initialiser
+  // (not `useMemo([language])`) — a language switch mid-typing
+  // used to draw a *different* random question, orphaning the
+  // answer already typed under the previous one (audit 2026-06).
+  // On edit, the original question stays paired with the saved
+  // answer.
+  const [question] = useState<string>(() => {
     if (initial?.question) return initial.question;
     if (initial) return '';
     return pickQuestion(language);
-  }, [initial, language]);
+  });
 
   function setPositive(idx: 0 | 1 | 2, value: string): void {
     setPositives((prev) => {

@@ -36,6 +36,8 @@ import { useEffect } from 'react';
 import { apiLogout, apiMe } from '../api/client.ts';
 import { selectAuthStatus, selectUser, useNodeaStore } from '../store/nodea-store.ts';
 
+import { purgeLocalDrafts } from './purge-local-drafts.ts';
+
 import { changePassword as changePasswordAction } from './session/change-password.ts';
 import {
   login as loginAction,
@@ -124,6 +126,11 @@ export function useSession() {
         // same React session re-runs the /auth/me round-trip.
         hydrationStarted = false;
         resetAll();
+        // Encrypted draft slots stay decryptable only by this
+        // account, but their key names + timestamps reveal module
+        // usage to the next person on a shared computer — purge
+        // them with the session (audit 2026-06).
+        purgeLocalDrafts();
         // Force a full reload (CLAUDE.md crypto rule 7 : « Full purge
         // = location.reload() »). `wipeMainKeyMaterial` cannot erase
         // the `CryptoKey` references kept on the JS heap, and the

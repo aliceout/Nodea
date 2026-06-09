@@ -1,11 +1,10 @@
 /**
- * Pre-written Sentry `beforeSend` scrubber for the API process.
+ * Sentry `beforeSend` scrubber for the API process.
  *
- * NOT WIRED YET — Sentry hasn't been installed (`@sentry/node` is
- * not a dependency). The function is exported and tested so it's
- * ready to drop into a `Sentry.init({ beforeSend: scrubSentryEvent })`
- * call the day the operator decides to ship error tracking
- * (tracked in issue #83).
+ * WIRED in `src/sentry.ts` (`Sentry.init({ beforeSend })`) since
+ * audit 2026-06 — the header previously claimed the SDK wasn't
+ * installed, which had become false. Exported as a pure function
+ * so it stays unit-testable.
  *
  * Strategy : **scrub aggressively, ship the minimum**. Sentry events
  * are mostly useful for stack traces + the originating route ; the
@@ -40,31 +39,39 @@
 import { redactQueryParams } from './sanitize-log-url.ts';
 
 /**
- * Minimal shape of a Sentry event we care about. We avoid pulling
- * `@sentry/types` as a dep until Sentry is actually installed —
- * the type lives here as a structural duck-type that matches the
- * runtime payload.
+ * Minimal shape of a Sentry event we care about. Deliberately
+ * *wider* than what we read (`unknown` on fields we only
+ * overwrite) so the real `@sentry/node` `ErrorEvent` satisfies the
+ * generic constraint structurally — `query_string` can be a tuple
+ * array there, `user.id` can be a number. We avoid importing
+ * `@sentry/node` types here so the module stays loadable when the
+ * SDK chunk hasn't been pulled (DSN unset).
  */
 export interface SentryEventLike {
   request?: {
     method?: string;
     url?: string;
-    query_string?: string | Record<string, string>;
-    cookies?: Record<string, string> | string;
+    query_string?: unknown;
+    cookies?: unknown;
     headers?: Record<string, string>;
     data?: unknown;
   };
   user?: {
-    id?: string;
-    email?: string;
-    username?: string;
-    ip_address?: string;
+    id?: unknown;
+    email?: unknown;
+    username?: unknown;
+    ip_address?: unknown;
+    [key: string]: unknown;
   };
   breadcrumbs?: Array<{
     category?: string;
-    data?: { url?: string } & Record<string, unknown>;
+    data?: Record<string, unknown>;
     message?: string;
   }>;
+  /** Free-form bags (device/os info, integration extras) — never
+   *  useful for Nodea's triage, dropped wholesale. */
+  extra?: Record<string, unknown>;
+  contexts?: Record<string, unknown>;
 }
 
 const REDACTED = '[redacted]';
@@ -144,6 +151,12 @@ export function scrubSentryEvent<T extends SentryEventLike>(event: T): T {
       }
     }
   }
+
+  // Drop the free-form bags entirely — device/os info and any
+  // future integration's extras are not triage value for Nodea,
+  // and they're the most likely surface for accidental leaks.
+  if (event.extra !== undefined) delete event.extra;
+  if (event.contexts !== undefined) delete event.contexts;
 
   return event;
 }

@@ -89,25 +89,25 @@ export default function MarkdownEditor({
   const placeholder = placeholderProp ?? t('modals.composer.markdownDefaultPlaceholder');
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const ceRef = useRef<HTMLDivElement | null>(null);
-  const prevMode = useRef<'visual' | 'markdown'>(mode);
 
-  // Hydrate the contentEditable from `value` on mount and on
-  // every toggle into visual mode. We deliberately don't
-  // include `value` in the deps — once the surface is alive,
-  // the user's typing IS the source of changes (we serialise
-  // back to `value` on input), so re-setting `innerHTML` here
-  // would clobber the cursor.
+  // Keep the contentEditable in sync with `value` — on mount, on
+  // toggle into visual mode, AND on external value changes (a
+  // draft restored after its async decrypt, a « repartir à zéro »
+  // reset). The one case we must NOT touch innerHTML is while the
+  // user is typing — the surface is the source of changes then
+  // (serialised back via onInput) and re-setting it would clobber
+  // the cursor — so we skip the re-hydrate whenever the editor
+  // has focus. Audit 2026-06 : the previous mount-only hydration
+  // left restored drafts rendering an EMPTY editor ; one
+  // keystroke then silently overwrote the restored content.
   useEffect(() => {
-    if (mode === 'visual' && ceRef.current) {
-      const wasMarkdown = prevMode.current !== 'visual';
-      const isFirstMount = ceRef.current.innerHTML === '';
-      if (wasMarkdown || isFirstMount) {
-        ceRef.current.innerHTML = markdownToHtml(value);
-      }
+    const el = ceRef.current;
+    if (mode !== 'visual' || !el) return;
+    if (document.activeElement === el) return;
+    if (htmlToMarkdown(el.innerHTML) !== value) {
+      el.innerHTML = markdownToHtml(value);
     }
-    prevMode.current = mode;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [value, mode]);
 
   /* ---- Markdown-mode helpers (textarea source view) ----------- */
 
@@ -227,6 +227,19 @@ export default function MarkdownEditor({
     document.execCommand('insertText', false, text);
   }
 
+  function handleVisualDrop(e: React.DragEvent<HTMLDivElement>): void {
+    // Same posture as paste : never let foreign HTML enter the
+    // contentEditable alive (a dragged `<img onerror>` from a
+    // hostile page would execute before re-serialisation).
+    // Insert the plain-text payload at the caret instead.
+    e.preventDefault();
+    const text = e.dataTransfer.getData('text/plain');
+    if (!text || disabled) return;
+    ceRef.current?.focus();
+    document.execCommand('insertText', false, text);
+    syncFromContentEditable();
+  }
+
   /* ---- Render ------------------------------------------------ */
 
   const toolbarDisabled = Boolean(disabled);
@@ -288,6 +301,7 @@ export default function MarkdownEditor({
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}
           onPaste={handleVisualPaste}
+          onDrop={handleVisualDrop}
           style={
             fillParent
               ? undefined

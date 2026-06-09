@@ -9,6 +9,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { JournalAttachment } from '@nodea/shared';
 
 import { journalClient } from '@/core/api/modules/journal';
+import { bytesToBase64Url, randomBytes } from '@/core/crypto/base64';
 import { attachmentSrc, resizeImageFile } from '@/app/flow/Journal/hooks/imageResize';
 import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
 import { pickJournalPrompt } from '@/app/flow/Journal/prompts';
@@ -126,10 +127,10 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
   }, [thread, content, attachments, isEdit, saveDraft]);
 
   function randomAttachmentId(): string {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-      return crypto.randomUUID();
-    }
-    return `att-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    // Central randomness only (CLAUDE.md crypto rule 3) — the id is
+    // not secret (it lives inside the encrypted payload) but the
+    // codebase has exactly one source of random bytes on purpose.
+    return `att-${bytesToBase64Url(randomBytes(9))}`;
   }
 
   async function handleAttach(e: ChangeEvent<HTMLInputElement>): Promise<void> {
@@ -256,6 +257,10 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
               onClick={() => {
                 setThread('');
                 setContent('');
+                // Without this, the restored images stayed visible
+                // AND the 800 ms auto-save flush re-wrote the slot
+                // `clearDraft()` just removed (audit 2026-06).
+                setAttachments([]);
                 setDraftRestored(false);
                 clearDraft();
               }}
