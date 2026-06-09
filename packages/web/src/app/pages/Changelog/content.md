@@ -5,6 +5,43 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.9.0 — 2026-06-09
+
+### Corrections
+
+- **web,export** : gate the plaintext export behind a password re-auth _(f5a5711)_
+- **web** : partial-failure UX for Goals carryOver + backup restore _(5a1663b)_
+- **api** : use crypto.timingSafeEqual + redact mail-error message to err.name _(53d5359)_
+- **api,shared** : restore dev-only SMTP-fallback warning + bump payload cap to 8 MB _(906df5e)_
+- **web,habits,mood** : replace UTC date arithmetic with local-day across analytics _(e79a70d)_
+- **api,auth** : anti-enum recover-KEK userId + log mail-failures in prod _(775318b)_
+- **api** : rate limits + body caps on record/config/prefs/change-password + SSRF redirect guard on cover proxy _(82231d6)_
+- **api,config** : refuse to boot on misconfigured env + harden /__test__/* with X-Test-Secret gate _(4962bf6)_
+
+### Performance
+
+- bulk records endpoint (#127) + virtualize long lists + cron N+1 fix _(2404d67)_
+- **web,sentry** : dynamic-import @sentry/react behind the DSN check _(03ac3e0)_
+
+### Refactor
+
+- **library,prefs** : persist viewMode in the encrypted preferences blob _(ce0f991)_
+
+### Documentation
+
+- sync architecture/auth-spec/database/READMEs with v2.8.0 reality _(3f1c8cc)_
+- **changelog** : regenerate for v2.8.0 _(7575c2a)_
+
+<details>
+<summary>Maintenance — 4 commits</summary>
+
+- **release** : bump version to 2.9.0 _(84c75b2)_
+- **deps** : remove unused boring-avatars + emoji-picker-react _(851c1fb)_
+- **deps** : ignore core-js install scripts via pnpm.ignoredBuiltDependencies _(884ee44)_
+- **deps** : override exceljs's uuid to >=11.1.1 (GHSA-w5hq-g745-h8pq) _(a73d993)_
+
+</details>
+
 ## v2.8.0 — 2026-06-08
 
 ### Nouveautés
