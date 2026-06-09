@@ -12,6 +12,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { splitThreads } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { byDateDesc } from '../lib/sort';
 import type { CanonicalStatus, GoalEntry, SortBy } from '../lib/types';
@@ -56,6 +57,7 @@ export interface GoalsFiltersState {
 }
 
 export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
+  const { t } = useI18n();
   const [statusFilter, setStatusFilter] = useState<CanonicalStatus | null>(
     null,
   );
@@ -133,13 +135,16 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
 
   const groups = useMemo<ReadonlyArray<readonly [string, GoalEntry[]]>>(() => {
     const map = new Map<string, GoalEntry[]>();
+    // Same label the reader's eyebrow uses for thread-less goals —
+    // the bucket key doubles as the rendered group header.
+    const noThreadLabel = t('goals.reader.noThreadEyebrow');
     for (const entry of filtered) {
       const keys =
         groupBy === 'year'
           ? [entry.date.slice(0, 4) || '—']
           : (() => {
               const ts = splitThreads(entry.thread);
-              return ts.length > 0 ? ts : ['— sans thread —'];
+              return ts.length > 0 ? ts : [noThreadLabel];
             })();
       for (const key of keys) {
         const bucket = map.get(key) ?? [];
@@ -150,7 +155,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     return Array.from(map.entries()).sort(([a], [b]) =>
       b.localeCompare(a, 'fr', { numeric: true }),
     );
-  }, [filtered, groupBy]);
+  }, [filtered, groupBy, t]);
 
   return {
     statusFilter,

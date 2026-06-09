@@ -34,15 +34,6 @@ export function genMonthOptions(
   });
 }
 
-/** Placeholder copy for the three « positive » fields on the
- *  Mood body. Each one nudges the user toward a different angle
- *  on the day so the prompt feels less repetitive. */
-export const POSITIVE_PLACEHOLDERS: ReadonlyArray<string> = [
-  'Un premier moment qui a tenu la journée debout.',
-  'Un deuxième — plus discret peut-être.',
-  'Un troisième — même tout petit.',
-];
-
 /** Three-state goal status as the picker exposes it. Narrower
  *  than the canonical `CanonicalStatus` (which still tolerates
  *  legacy `active` / `archived` on read) — the Composer never

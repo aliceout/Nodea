@@ -4,6 +4,9 @@
     "afternoon": "Good afternoon",
     "evening": "Good evening"
   },
+  "header": {
+    "dayOfYear": "day {day}"
+  },
   "journalRecent": {
     "heading": "Recent journal",
     "cta": "open the journal"

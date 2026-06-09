@@ -162,7 +162,17 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
             />
           </div>
 
-          <ScoreSection value={score} onChange={setScore} />
+          <ScoreSection
+            value={score}
+            onChange={setScore}
+            // The form-level alert is about the score while no score
+            // is picked (« Choisis une note du jour. ») — point the
+            // group at it ; once a score exists the error concerns
+            // the save path, not this group.
+            ariaDescribedBy={
+              error && score === null ? 'mood-form-error' : undefined
+            }
+          />
         </div>
 
         <PositivesSection
@@ -195,7 +205,7 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 text-[12px] text-danger">
+        <p id="mood-form-error" role="alert" className="mt-3 text-[12px] text-danger">
           {error}
         </p>
       ) : null}

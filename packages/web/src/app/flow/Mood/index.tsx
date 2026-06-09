@@ -1,5 +1,6 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -53,6 +54,10 @@ function MoodView() {
   const { entries } = useMoodData();
   const { searchQuery, setSearchQuery } = useMoodFilters();
   const { formOpen, openCreateForm } = useMoodActions();
+  // Focus restore (audit 2026-06, lot G) : the CTA below unmounts
+  // while the form is open ; when it comes back, hand focus to it
+  // again unless the user already moved on.
+  const newEntryRef = useRefocusTrigger(formOpen);
   const total = entries.length;
 
   const topbarLabel = tn('mood.topbar.label', total);
@@ -75,7 +80,12 @@ function MoodView() {
               a fresh create form on top of an in-progress edit and
               lose the user's draft. */}
           {!formOpen ? (
-            <Button variant="primary" size="sm" onClick={openCreateForm}>
+            <Button
+              ref={newEntryRef}
+              variant="primary"
+              size="sm"
+              onClick={openCreateForm}
+            >
               {t('mood.topbar.newCta')}
             </Button>
           ) : null}

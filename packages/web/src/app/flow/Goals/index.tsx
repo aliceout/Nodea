@@ -1,5 +1,6 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -58,6 +59,9 @@ function GoalsView() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { stats } = useGoalsData();
   const { readingId, formOpen, openCreateForm } = useGoalsActions();
+  // Focus restore (audit 2026-06, lot G) — must run before the
+  // reader early-return so the hook order stays stable.
+  const newGoalRef = useRefocusTrigger(formOpen);
 
   if (readingId !== null) {
     return (
@@ -80,7 +84,12 @@ function GoalsView() {
               create form on top of an in-progress edit and lose
               the user's draft. */}
           {!formOpen ? (
-            <Button variant="primary" size="sm" onClick={openCreateForm}>
+            <Button
+              ref={newGoalRef}
+              variant="primary"
+              size="sm"
+              onClick={openCreateForm}
+            >
               {t('goals.topbar.newCta')}
             </Button>
           ) : null}

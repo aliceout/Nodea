@@ -37,6 +37,15 @@
   "a11y": {
     "skipToMain": "Skip to main content"
   },
+  "editor": {
+    "bold": "Bold",
+    "boldTitle": "Bold (Cmd/Ctrl + B)",
+    "italic": "Italic",
+    "italicTitle": "Italic (Cmd/Ctrl + I)",
+    "bulletList": "Bulleted list",
+    "visualHint": "Visual editing",
+    "markdownHint": "**bold** · *italic* · - list"
+  },
   "search": {
     "clearAria": "Clear search"
   }

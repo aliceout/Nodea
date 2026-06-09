@@ -10,6 +10,10 @@ interface ThreadSuggestInputProps {
   options: ReadonlyArray<string>;
   disabled?: boolean;
   onSubmit: () => void;
+  /** Id of an external description (typically the host form's
+   *  `role="alert"` error line) wired to the input via
+   *  `aria-describedby` (audit 2026-06, lot G). */
+  ariaDescribedBy?: string | undefined;
 }
 
 /**
@@ -40,6 +44,7 @@ export default function ThreadSuggestInput({
   options,
   disabled,
   onSubmit,
+  ariaDescribedBy,
 }: ThreadSuggestInputProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -110,6 +115,11 @@ export default function ThreadSuggestInput({
   }
 
   const showDropdown = open && suggestions.length > 0;
+  // Stable per-index option ids so `aria-activedescendant` can
+  // point the combobox at the highlighted option (audit 2026-06,
+  // lot G). Index-based (not value-based) — thread names are
+  // user-typed and may contain characters invalid in an id.
+  const optionId = (i: number): string => `journal-thread-suggest-opt-${i}`;
 
   return (
     <div ref={containerRef} className="relative">
@@ -122,6 +132,7 @@ export default function ThreadSuggestInput({
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={t('modals.composer.threadSuggest.placeholder')}
+        aria-label={t('modals.composer.threadSuggest.placeholder')}
         disabled={disabled}
         autoComplete="off"
         autoFocus
@@ -129,6 +140,8 @@ export default function ThreadSuggestInput({
         aria-autocomplete="list"
         aria-expanded={showDropdown}
         aria-controls="journal-thread-suggest"
+        aria-activedescendant={showDropdown ? optionId(highlight) : undefined}
+        aria-describedby={ariaDescribedBy}
       />
       {showDropdown ? (
         <ul
@@ -139,7 +152,12 @@ export default function ThreadSuggestInput({
           {suggestions.map((option, i) => {
             const isHighlighted = i === highlight;
             return (
-              <li key={option} role="option" aria-selected={isHighlighted}>
+              <li
+                key={option}
+                id={optionId(i)}
+                role="option"
+                aria-selected={isHighlighted}
+              >
                 <button
                   type="button"
                   onMouseDown={(e) => {

@@ -88,11 +88,18 @@
     },
     "moreCount": "… et {count} de plus",
     "submitting": "Report en cours…",
-    "submitCta": "Reporter"
+    "submitCta": "Reporter",
+    "partialFailure": {
+      "one": "{count} objectif reporté sur {year}, {failed} en échec. Réessaie pour les non-déplacés.",
+      "other": "{count} objectifs reportés sur {year}, {failed} en échec. Réessaie pour les non-déplacés."
+    },
+    "allFailed": "Échec du report sur {year}. Réessaie dans un instant."
   },
   "composer": {
     "draftRestored": "Brouillon en cours repris.",
     "resetDraft": "Repartir à zéro",
+    "titleAria": "Titre de l’objectif",
+    "threadAria": "Thèmes",
     "titlePlaceholder": "Titre — ex. Lancer un blog",
     "monthAria": "Mois",
     "monthPlaceholder": "— mois —",

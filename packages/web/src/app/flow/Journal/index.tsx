@@ -1,5 +1,6 @@
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -58,6 +59,9 @@ function JournalView() {
   const { entries } = useJournalData();
   const { search, setSearch } = useJournalFilters();
   const { readingId, formOpen, openCreateForm } = useJournalActions();
+  // Focus restore (audit 2026-06, lot G) — must run before the
+  // reader early-return so the hook order stays stable.
+  const newEntryRef = useRefocusTrigger(formOpen);
 
   if (readingId !== null) {
     return <ReaderShell />;
@@ -81,7 +85,12 @@ function JournalView() {
               HRT : clicking again would reopen a fresh create form
               on top of an in-progress edit and lose the draft. */}
           {!formOpen ? (
-            <Button variant="primary" size="sm" onClick={openCreateForm}>
+            <Button
+              ref={newEntryRef}
+              variant="primary"
+              size="sm"
+              onClick={openCreateForm}
+            >
               {t('journal.topbar.newCta')}
             </Button>
           ) : null}

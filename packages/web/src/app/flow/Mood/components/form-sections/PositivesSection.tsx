@@ -2,7 +2,6 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
-import { POSITIVE_PLACEHOLDERS } from '@/ui/dirk/forms/constants';
 import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
 /**
@@ -26,16 +25,25 @@ export default function PositivesSection({
   onSubmit,
 }: PositivesSectionProps) {
   const { t } = useI18n();
+  // Translated at the render site — each placeholder nudges the
+  // user toward a different angle on the day. It doubles as the
+  // input's accessible name (no visible per-field label).
+  const placeholders: [string, string, string] = [
+    t('mood.composer.positivePlaceholder1'),
+    t('mood.composer.positivePlaceholder2'),
+    t('mood.composer.positivePlaceholder3'),
+  ];
   return (
     <div className="space-y-2">
       <SectionLabel>{t('mood.composer.positivesHeading')}</SectionLabel>
-      {[0, 1, 2].map((i) => (
+      {([0, 1, 2] as const).map((i) => (
         <DirkInput
           key={i}
-          value={values[i as 0 | 1 | 2]}
-          onChange={(e) => onChange(i as 0 | 1 | 2, e.target.value)}
+          value={values[i]}
+          onChange={(e) => onChange(i, e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
-          placeholder={POSITIVE_PLACEHOLDERS[i] ?? ''}
+          placeholder={placeholders[i]}
+          aria-label={placeholders[i]}
           autoFocus={i === 0}
         />
       ))}

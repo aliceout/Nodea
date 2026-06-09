@@ -87,7 +87,7 @@ interface GoalsActionsDeps {
 
 export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const { ctx, entries, setEntries, bumpGoalsVersion } = deps;
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
   const pushToast = useNodeaStore((s) => s.pushToast);
 
   const [carryOverOpen, setCarryOverOpen] = useState(false);
@@ -369,8 +369,10 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
           kind: 'warning',
           message:
             movedCount > 0
-              ? `${movedCount} goals reportés sur ${to}, ${failedIds.size} en échec. Réessaie pour les non-déplacés.`
-              : `Échec du report sur ${to}. Réessaie dans un instant.`,
+              ? tn('goals.carryOver.partialFailure', movedCount, {
+                  values: { year: to, failed: failedIds.size },
+                })
+              : t('goals.carryOver.allFailed', { values: { year: to } }),
         });
       }
 
@@ -386,7 +388,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
       // stays explicit.
       void from;
     },
-    [ctx, bumpGoalsVersion, setEntries, pushToast],
+    [ctx, bumpGoalsVersion, setEntries, pushToast, t, tn],
   );
 
   return {

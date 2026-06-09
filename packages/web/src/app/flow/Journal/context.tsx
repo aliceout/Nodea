@@ -305,9 +305,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       }
       // Default : group by thread (multi-thread entries land in
       // each of their thread buckets — same convention as Goals).
+      // The « no thread » bucket reuses the list's display label —
+      // the key doubles as the rendered group header.
+      const noThreadLabel = t('journal.list.noThread');
       for (const entry of filtered) {
         const keys = splitThreads(entry.thread);
-        const list = keys.length > 0 ? keys : ['— sans thread —'];
+        const list = keys.length > 0 ? keys : [noThreadLabel];
         for (const key of list) {
           const bucket = map.get(key) ?? [];
           bucket.push(entry);
@@ -318,7 +321,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         a.localeCompare(b, 'fr'),
       );
     },
-    [filtered, groupBy, language],
+    [filtered, groupBy, language, t],
   );
 
   // ---- Actions ----

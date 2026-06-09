@@ -87,6 +87,25 @@
     "opResult": "{ok} mis à jour, {failed} échecs"
   },
   "composer": {
-    "submittingUpdate": "Mise à jour…"
+    "submittingUpdate": "Mise à jour…",
+    "draftRestored": "Brouillon en cours repris.",
+    "resetDraft": "Repartir à zéro",
+    "removeImageAria": "Retirer l’image",
+    "removeImageTitle": "Retirer",
+    "attachImageAria": "Joindre une image",
+    "attachImageCta": "+ Image",
+    "attachmentCount": {
+      "one": "{count} / 3 image — chiffrée avec l’entrée.",
+      "other": "{count} / 3 images — chiffrées avec l’entrée."
+    },
+    "errors": {
+      "threadRequired": "Le fil est requis — choisis-en un existant ou crée-en un nouveau.",
+      "contentRequired": "Le contenu est requis.",
+      "missingConfig": "Module Journal non configuré ou clé absente — reconnecte-toi.",
+      "saveFailed": "Erreur lors de l’enregistrement.",
+      "maxAttachments": "Trois images maximum par entrée.",
+      "attachmentTooLarge": "Image trop volumineuse (10 Mo maximum avant compression).",
+      "attachmentReadFailed": "Impossible de lire l’image."
+    }
   }
 }

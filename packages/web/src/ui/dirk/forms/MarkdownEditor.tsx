@@ -43,6 +43,12 @@ interface MarkdownEditorProps {
    *  The toolbar stays sticky on top via `shrink-0`. Default
    *  `false` (legacy fixed sizing). */
   fillParent?: boolean;
+  /** Id of an external description (typically the host form's
+   *  `role="alert"` error line) wired to the writing surface via
+   *  `aria-describedby` — both the visual contentEditable and the
+   *  markdown textarea carry it so assistive tech announces the
+   *  error in context (audit 2026-06, lot G). */
+  ariaDescribedBy?: string | undefined;
 }
 
 /**
@@ -84,6 +90,7 @@ export default function MarkdownEditor({
   maxHeightPx = 360,
   placeholder: placeholderProp,
   fillParent = false,
+  ariaDescribedBy,
 }: MarkdownEditorProps) {
   const { t } = useI18n();
   const placeholder = placeholderProp ?? t('modals.composer.markdownDefaultPlaceholder');
@@ -250,16 +257,16 @@ export default function MarkdownEditor({
       <div className="flex shrink-0 items-center gap-0.5">
         <ToolbarButton
           onClick={() => (isVisual ? execCommand('bold') : wrapSelection('**'))}
-          ariaLabel="Gras"
-          title="Gras (Cmd/Ctrl + B)"
+          ariaLabel={t('common.editor.bold')}
+          title={t('common.editor.boldTitle')}
           disabled={toolbarDisabled}
         >
           <span className="font-bold">B</span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => (isVisual ? execCommand('italic') : wrapSelection('*'))}
-          ariaLabel="Italique"
-          title="Italique (Cmd/Ctrl + I)"
+          ariaLabel={t('common.editor.italic')}
+          title={t('common.editor.italicTitle')}
           disabled={toolbarDisabled}
         >
           <span className="font-serif italic">I</span>
@@ -268,16 +275,16 @@ export default function MarkdownEditor({
           onClick={() =>
             isVisual ? execCommand('insertUnorderedList') : toggleBulletList()
           }
-          ariaLabel="Liste à puce"
-          title="Liste à puce"
+          ariaLabel={t('common.editor.bulletList')}
+          title={t('common.editor.bulletList')}
           disabled={toolbarDisabled}
         >
           <span className="leading-none">•</span>
         </ToolbarButton>
         <span className="ml-2 text-[11px] text-muted">
           {isVisual
-            ? 'Édition visuelle'
-            : '**gras** · *italique* · - liste'}
+            ? t('common.editor.visualHint')
+            : t('common.editor.markdownHint')}
         </span>
         {onModeChange ? (
           <div className="ml-auto">
@@ -297,6 +304,7 @@ export default function MarkdownEditor({
           tabIndex={disabled ? -1 : 0}
           aria-multiline="true"
           aria-label={t('modals.composer.markdownContentAria')}
+          aria-describedby={ariaDescribedBy}
           data-placeholder={placeholder}
           onInput={syncFromContentEditable}
           onKeyDown={handleVisualKeyDown}
@@ -324,6 +332,8 @@ export default function MarkdownEditor({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleTextareaKeyDown}
+          aria-label={t('modals.composer.markdownContentAria')}
+          aria-describedby={ariaDescribedBy}
           placeholder={placeholder}
           rows={fillParent ? undefined : 8}
           disabled={disabled}

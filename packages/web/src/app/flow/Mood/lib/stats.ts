@@ -46,6 +46,15 @@ export function signedFormat(value: number): string {
   return `${sign}${abs}`;
 }
 
+/** Minimal translate contract this pure lib depends on — the
+ *  consuming component adapts `useI18n().t` to it (the lib must
+ *  stay React-free, so we thread the resolver in rather than
+ *  calling the hook here). Keys live under `mood.stats.*`. */
+export type StatsTranslate = (
+  key: string,
+  values?: Record<string, string | number>,
+) => string;
+
 /**
  * Patterns are computed over `{date, score}` only — no external
  * signals (sleep, calendar, weather…) because the app doesn't
@@ -62,10 +71,13 @@ export function signedFormat(value: number): string {
  *    the gap is meaningful (≥ 0.2 on the −2..+2 scale).
  *
  * `today` is a parameter (default `new Date()`) so tests pin a
- * fixed reference rather than fight the wall clock.
+ * fixed reference rather than fight the wall clock. `t` resolves
+ * the user-facing labels (audit 2026-06 — the FR strings used to
+ * be hardcoded here).
  */
 export function computePatterns(
   entries: ReadonlyArray<MoodEntry>,
+  t: StatsTranslate,
   today: Date = new Date(),
   language: string = 'fr',
 ): Pattern[] {
@@ -110,14 +122,18 @@ export function computePatterns(
   }
   if (bestIdx >= 0) {
     out.push({
-      label: `${cap(dayNamesLong[bestIdx]!)} est ton meilleur jour`,
-      delta: `${signedFormat(bestMean - overallMean)} vs moyenne`,
+      label: t('mood.stats.bestDay', { day: cap(dayNamesLong[bestIdx]!) }),
+      delta: t('mood.stats.vsAverage', {
+        delta: signedFormat(bestMean - overallMean),
+      }),
     });
   }
   if (worstIdx >= 0 && worstIdx !== bestIdx) {
     out.push({
-      label: `${cap(dayNamesLong[worstIdx]!)} reste ton point bas`,
-      delta: `${signedFormat(worstMean - overallMean)} vs moyenne`,
+      label: t('mood.stats.worstDay', { day: cap(dayNamesLong[worstIdx]!) }),
+      delta: t('mood.stats.vsAverage', {
+        delta: signedFormat(worstMean - overallMean),
+      }),
     });
   }
 
@@ -146,8 +162,8 @@ export function computePatterns(
   }
   if (bestCount >= 3 && bestStart && bestEnd) {
     out.push({
-      label: `${bestCount} entrées ≥ 0 d’affilée`,
-      delta: formatStreakRange(bestStart, bestEnd, monthNamesShort),
+      label: t('mood.stats.streak', { count: bestCount }),
+      delta: formatStreakRange(bestStart, bestEnd, monthNamesShort, t),
     });
   }
 
@@ -174,8 +190,8 @@ export function computePatterns(
     const delta = m30 - m90;
     if (Math.abs(delta) >= 0.2) {
       out.push({
-        label: delta > 0 ? 'Tendance à la hausse' : 'Tendance à la baisse',
-        delta: `${signedFormat(delta)} vs 90 j`,
+        label: t(delta > 0 ? 'mood.stats.trendUp' : 'mood.stats.trendDown'),
+        delta: t('mood.stats.vs90d', { delta: signedFormat(delta) }),
       });
     }
   }
@@ -192,6 +208,7 @@ function formatStreakRange(
   startIso: string,
   endIso: string,
   monthNames: ReadonlyArray<string>,
+  t: StatsTranslate,
 ): string {
   const start = new Date(startIso);
   const end = new Date(endIso);
@@ -199,12 +216,20 @@ function formatStreakRange(
     return `${startIso} → ${endIso}`;
   }
   if (startIso === endIso) {
-    return `le ${formatShortDate(start, monthNames)}`;
+    return t('mood.stats.streakSingleDay', {
+      date: formatShortDate(start, monthNames),
+    });
   }
   if (start.getFullYear() === end.getFullYear()) {
-    return `du ${start.getDate()} ${monthNames[start.getMonth()]} au ${formatShortDate(end, monthNames)}`;
+    return t('mood.stats.streakRange', {
+      start: `${start.getDate()} ${monthNames[start.getMonth()]}`,
+      end: formatShortDate(end, monthNames),
+    });
   }
-  return `du ${formatShortDate(start, monthNames)} au ${formatShortDate(end, monthNames)}`;
+  return t('mood.stats.streakRange', {
+    start: formatShortDate(start, monthNames),
+    end: formatShortDate(end, monthNames),
+  });
 }
 
 function formatShortDate(d: Date, monthNames: ReadonlyArray<string>): string {

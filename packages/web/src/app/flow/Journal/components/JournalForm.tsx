@@ -54,7 +54,7 @@ interface JournalFormProps {
  * messages.
  */
 export default function JournalForm({ initial, onClose }: JournalFormProps) {
-  const { t, language } = useI18n();
+  const { t, tn, language } = useI18n();
   const ctx = useModuleClient('journal');
   const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
   // Thread suggestions come from the provider's already-computed,
@@ -144,11 +144,11 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     e.target.value = '';
     if (!file) return;
     if (attachments.length >= 3) {
-      setError('Trois images maximum par entrée.');
+      setError(t('journal.composer.errors.maxAttachments'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError('Image trop volumineuse (10 Mo maximum avant compression).');
+      setError(t('journal.composer.errors.attachmentTooLarge'));
       return;
     }
     setError(null);
@@ -160,7 +160,11 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
         { id, mime: resized.mime, data: resized.data },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible de lire l'image.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('journal.composer.errors.attachmentReadFailed'),
+      );
     }
   }
 
@@ -174,15 +178,15 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     const trimmedThread = thread.trim();
     const trimmedContent = content.trim();
     if (!trimmedThread) {
-      setError('Le fil est requis — choisis-en un existant ou crée-en un nouveau.');
+      setError(t('journal.composer.errors.threadRequired'));
       return;
     }
     if (!trimmedContent) {
-      setError('Le contenu est requis.');
+      setError(t('journal.composer.errors.contentRequired'));
       return;
     }
     if (!ctx) {
-      setError('Module Journal non configuré ou clé absente — reconnecte-toi.');
+      setError(t('journal.composer.errors.missingConfig'));
       return;
     }
     setSubmitting(true);
@@ -206,7 +210,9 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erreur lors de l’enregistrement.',
+        err instanceof Error
+          ? err.message
+          : t('journal.composer.errors.saveFailed'),
       );
       setSubmitting(false);
     }
@@ -224,7 +230,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
       <div className="space-y-3">
         {draftRestored ? (
           <div className="flex items-baseline justify-between gap-2 rounded-sm border-l-2 border-accent bg-accent-soft/40 px-3 py-1.5 text-[12px] text-accent-deep">
-            <span>Brouillon en cours repris.</span>
+            <span>{t('journal.composer.draftRestored')}</span>
             <button
               type="button"
               onClick={() => {
@@ -239,7 +245,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
               }}
               className="cursor-pointer text-[11px] underline-offset-2 hover:underline"
             >
-              Repartir à zéro
+              {t('journal.composer.resetDraft')}
             </button>
           </div>
         ) : null}
@@ -250,6 +256,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
           options={threadOptions}
           disabled={submitting}
           onSubmit={handleSave}
+          {...(error ? { ariaDescribedBy: 'journal-form-error' } : {})}
         />
 
         <MarkdownEditor
@@ -260,6 +267,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
           mode={editorMode}
           onModeChange={setEditorMode}
           {...(prompt ? { placeholder: prompt } : {})}
+          {...(error ? { ariaDescribedBy: 'journal-form-error' } : {})}
         />
 
         <div className="flex flex-wrap items-center gap-2">
@@ -278,8 +286,8 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
               <button
                 type="button"
                 onClick={() => handleRemoveAttachment(att.id)}
-                aria-label="Retirer l'image"
-                title="Retirer"
+                aria-label={t('journal.composer.removeImageAria')}
+                title={t('journal.composer.removeImageTitle')}
                 className="absolute right-0.5 top-0.5 cursor-pointer rounded-sm bg-bg/85 p-0.5 text-ink-soft opacity-0 transition-opacity hover:text-danger group-hover/att:opacity-100 group-focus-within/att:opacity-100"
               >
                 <XMarkIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -304,25 +312,23 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
                   'transition-colors hover:border-accent hover:text-accent',
                   'disabled:cursor-not-allowed disabled:opacity-50',
                 )}
-                aria-label="Joindre une image"
-                title="Joindre une image"
+                aria-label={t('journal.composer.attachImageAria')}
+                title={t('journal.composer.attachImageAria')}
               >
-                + Image
+                {t('journal.composer.attachImageCta')}
               </button>
             </>
           ) : null}
           {attachments.length > 0 ? (
             <p className="text-[11px] italic text-muted">
-              {attachments.length} / 3 image
-              {attachments.length === 1 ? '' : 's'} — chiffrée
-              {attachments.length === 1 ? '' : 's'} avec l’entrée.
+              {tn('journal.composer.attachmentCount', attachments.length)}
             </p>
           ) : null}
         </div>
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 text-[12px] text-danger">
+        <p id="journal-form-error" role="alert" className="mt-3 text-[12px] text-danger">
           {error}
         </p>
       ) : null}

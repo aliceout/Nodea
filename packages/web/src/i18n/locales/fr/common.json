@@ -37,6 +37,15 @@
   "a11y": {
     "skipToMain": "Passer au contenu principal"
   },
+  "editor": {
+    "bold": "Gras",
+    "boldTitle": "Gras (Cmd/Ctrl + B)",
+    "italic": "Italique",
+    "italicTitle": "Italique (Cmd/Ctrl + I)",
+    "bulletList": "Liste à puce",
+    "visualHint": "Édition visuelle",
+    "markdownHint": "**gras** · *italique* · - liste"
+  },
   "search": {
     "clearAria": "Effacer la recherche"
   }

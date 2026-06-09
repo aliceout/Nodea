@@ -85,7 +85,7 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   const moodVersion = useNodeaStore((s) => s.moodVersion);
   const goalsVersion = useNodeaStore((s) => s.goalsVersion);
   const journalVersion = useNodeaStore((s) => s.journalVersion);
-  const { language } = useI18n();
+  const { t, language } = useI18n();
 
   const moodModuleId = modules['mood']?.moduleUserId ?? null;
   const goalsModuleId = modules['goals']?.moduleUserId ?? null;
@@ -208,8 +208,10 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
         Date.UTC(now.getFullYear(), 0, 0)) /
         86_400_000,
     );
-    return `${formatter.format(now)} · jour ${dayOfYear}`;
-  }, [language, todayKey]);
+    return `${formatter.format(now)} · ${t('home.header.dayOfYear', {
+      values: { day: dayOfYear },
+    })}`;
+  }, [language, todayKey, t]);
 
   const value = useMemo<HomepageDataValue>(
     () => ({ displayName, formattedDate, mood, goals, journal, announcements }),

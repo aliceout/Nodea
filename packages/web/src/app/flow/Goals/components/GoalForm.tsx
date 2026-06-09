@@ -225,11 +225,12 @@ export default function GoalForm({ initial, onClose }: GoalFormProps) {
           activeThreads={activeThreads}
           monthOptions={monthOptions}
           t={t}
+          errorId={error ? 'goal-form-error' : null}
         />
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 text-[12px] text-danger">
+        <p id="goal-form-error" role="alert" className="mt-3 text-[12px] text-danger">
           {error}
         </p>
       ) : null}

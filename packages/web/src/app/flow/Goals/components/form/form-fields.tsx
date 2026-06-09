@@ -54,6 +54,12 @@ export interface GoalFormFieldsProps {
 
   // i18n
   t: (key: string) => string;
+
+  /** Id of the parent form's `role="alert"` error line, or `null`
+   *  when no error is showing. Wired to the validated inputs
+   *  (title, year) via `aria-describedby` so assistive tech reads
+   *  the error with the field (audit 2026-06, lot G). */
+  errorId?: string | null;
 }
 
 export default function GoalFormFields({
@@ -78,6 +84,7 @@ export default function GoalFormFields({
   activeThreads,
   monthOptions,
   t,
+  errorId,
 }: GoalFormFieldsProps) {
   return (
     <>
@@ -87,6 +94,8 @@ export default function GoalFormFields({
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder={t('goals.composer.titlePlaceholder')}
+        aria-label={t('goals.composer.titleAria')}
+        aria-describedby={errorId ?? undefined}
         disabled={submitting}
       />
 
@@ -119,6 +128,7 @@ export default function GoalFormFields({
             placeholder={t('goals.composer.yearPlaceholder')}
             maxLength={4}
             aria-label={t('goals.composer.yearAria')}
+            aria-describedby={errorId ?? undefined}
             disabled={submitting}
             align="center"
           />
@@ -153,6 +163,7 @@ export default function GoalFormFields({
           onChange={(e) => setThread(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('goals.composer.threadPlaceholder')}
+          aria-label={t('goals.composer.threadAria')}
           disabled={submitting}
         />
         {threadOptions.length > 0 ? (

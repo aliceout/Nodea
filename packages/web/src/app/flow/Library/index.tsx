@@ -3,6 +3,7 @@ import {
   selectLibrarySubview,
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
@@ -66,7 +67,13 @@ function LibraryView() {
   const subview = useNodeaStore(selectLibrarySubview);
   const { items } = useLibraryData();
   const { searchQuery, setSearchQuery } = useLibraryFilters();
-  const { addItem, openReviewPicker } = useLibraryActions();
+  const { addItem, openReviewPicker, itemForm, reviewForm } =
+    useLibraryActions();
+  // Focus restore (audit 2026-06, lot G) : Library's topbar CTA
+  // stays mounted while its inline form is open, but closing the
+  // form still drops focus on <body>. Only one of the two CTAs
+  // renders at a time (subview branch), so they share the ref.
+  const newCtaRef = useRefocusTrigger(itemForm !== null || reviewForm !== null);
 
   return (
     <>
@@ -85,12 +92,18 @@ function LibraryView() {
                   clearLabel={t('common.search.clearAria')}
                   className="w-44 md:w-56"
                 />
-                <DirkButton variant="primary" size="sm" onClick={addItem}>
+                <DirkButton
+                  ref={newCtaRef}
+                  variant="primary"
+                  size="sm"
+                  onClick={addItem}
+                >
                   {t('library.topbar.newBook')}
                 </DirkButton>
               </>
             ) : (
               <DirkButton
+                ref={newCtaRef}
                 variant="primary"
                 size="sm"
                 onClick={() =>

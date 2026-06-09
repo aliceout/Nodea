@@ -17,14 +17,29 @@ import SectionLabel from '@/ui/dirk/module/SectionLabel';
 interface ScoreSectionProps {
   value: MoodScore | null;
   onChange: (next: MoodScore) => void;
+  /** Id of the parent form's `role="alert"` error line when the
+   *  surfaced error concerns the score (e.g. « Choisis une note du
+   *  jour. ») — wired to the button group via `aria-describedby`
+   *  so assistive tech reads the error with the group (audit
+   *  2026-06, lot G). */
+  ariaDescribedBy?: string | undefined;
 }
 
-export default function ScoreSection({ value, onChange }: ScoreSectionProps) {
+export default function ScoreSection({
+  value,
+  onChange,
+  ariaDescribedBy,
+}: ScoreSectionProps) {
   const { t } = useI18n();
   return (
     <div>
       <SectionLabel>{t('mood.composer.scoreHeading')}</SectionLabel>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div
+        role="group"
+        aria-label={t('mood.composer.scoreHeading')}
+        aria-describedby={ariaDescribedBy}
+        className="grid grid-cols-5 gap-1.5"
+      >
         {MOOD_SCORE_VALUES.map((v) => {
           const selected = value === v;
           const numeric = Number(v);

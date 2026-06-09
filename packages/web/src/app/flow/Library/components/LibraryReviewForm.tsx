@@ -175,6 +175,8 @@ export default function LibraryReviewForm({
             onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 5))}
             onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
             placeholder={t('library.reviewForm.pagePlaceholder')}
+            aria-label={t('library.reviewForm.pagePlaceholder')}
+            aria-describedby={error ? 'library-review-form-error' : undefined}
             disabled={submitting}
             align="center"
           />
@@ -187,11 +189,12 @@ export default function LibraryReviewForm({
           disabled={submitting}
           mode={editorMode}
           onModeChange={setEditorMode}
+          {...(error ? { ariaDescribedBy: 'library-review-form-error' } : {})}
         />
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 text-[12px] text-danger">
+        <p id="library-review-form-error" role="alert" className="mt-3 text-[12px] text-danger">
           {error}
         </p>
       ) : null}

@@ -60,6 +60,11 @@ export interface LibraryItemFormFieldsProps {
   setFormat: (next: LibraryFormat) => void;
   tagsInput: string;
   setTagsInput: (next: string) => void;
+  /** Id of the parent form's `role="alert"` error line, or `null`
+   *  when no error is showing. Wired to the validated inputs
+   *  (title, year) via `aria-describedby` so assistive tech reads
+   *  the error with the field (audit 2026-06, lot G). */
+  errorId?: string | null;
 }
 
 export default function LibraryItemFormFields({
@@ -72,6 +77,7 @@ export default function LibraryItemFormFields({
   coverUrl, coverLoadFailed, setCoverLoadFailed,
   status, setStatus, format, setFormat,
   tagsInput, setTagsInput,
+  errorId,
 }: LibraryItemFormFieldsProps) {
   const { t } = useI18n();
   return (
@@ -82,6 +88,8 @@ export default function LibraryItemFormFields({
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder={t('library.form.titlePlaceholder')}
+        aria-label={t('library.form.titlePlaceholder')}
+        aria-describedby={errorId ?? undefined}
         disabled={submitting}
       />
 
@@ -91,6 +99,7 @@ export default function LibraryItemFormFields({
           onChange={(e) => setAuthor(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.authorPlaceholder')}
+          aria-label={t('library.form.authorPlaceholder')}
           disabled={submitting}
         />
         <DirkInput
@@ -99,6 +108,8 @@ export default function LibraryItemFormFields({
           onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.yearPlaceholder')}
+          aria-label={t('library.form.yearPlaceholder')}
+          aria-describedby={errorId ?? undefined}
           maxLength={4}
           disabled={submitting}
           align="center"
@@ -111,6 +122,7 @@ export default function LibraryItemFormFields({
           onChange={(e) => setIsbn(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.isbnPlaceholder')}
+          aria-label={t('library.form.isbnPlaceholder')}
           disabled={submitting}
           className="tabular-nums"
         />
@@ -119,6 +131,7 @@ export default function LibraryItemFormFields({
           onChange={(e) => setPublisher(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.publisherPlaceholder')}
+          aria-label={t('library.form.publisherPlaceholder')}
           disabled={submitting}
         />
       </div>
@@ -128,6 +141,7 @@ export default function LibraryItemFormFields({
         onChange={(e) => setCollection(e.target.value)}
         onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
         placeholder={t('library.form.collectionPlaceholder')}
+        aria-label={t('library.form.collectionPlaceholder')}
         disabled={submitting}
       />
 
@@ -137,6 +151,7 @@ export default function LibraryItemFormFields({
           onChange={(e) => setSeriesName(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.seriesPlaceholder')}
+          aria-label={t('library.form.seriesPlaceholder')}
           disabled={submitting}
         />
         <DirkInput
@@ -147,6 +162,7 @@ export default function LibraryItemFormFields({
           }
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.seriesPositionPlaceholder')}
+          aria-label={t('library.form.seriesPositionPlaceholder')}
           disabled={submitting}
           align="center"
         />
@@ -217,6 +233,7 @@ export default function LibraryItemFormFields({
           onChange={(e) => setTagsInput(e.target.value)}
           onKeyDown={(e) => submitOnCmdEnter(e, handleSave)}
           placeholder={t('library.form.tagsPlaceholder')}
+          aria-label={t('library.form.tagsPlaceholder')}
           disabled={submitting}
         />
       </div>

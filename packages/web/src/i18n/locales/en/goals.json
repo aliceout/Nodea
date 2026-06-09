@@ -88,11 +88,18 @@
     },
     "moreCount": "… and {count} more",
     "submitting": "Carrying over…",
-    "submitCta": "Carry over"
+    "submitCta": "Carry over",
+    "partialFailure": {
+      "one": "{count} goal carried over to {year}, {failed} failed. Retry for the ones left behind.",
+      "other": "{count} goals carried over to {year}, {failed} failed. Retry for the ones left behind."
+    },
+    "allFailed": "Carry-over to {year} failed. Try again in a moment."
   },
   "composer": {
     "draftRestored": "Restored an in-progress draft.",
     "resetDraft": "Start over",
+    "titleAria": "Goal title",
+    "threadAria": "Themes",
     "titlePlaceholder": "Title — e.g. Launch a blog",
     "monthAria": "Month",
     "monthPlaceholder": "— month —",

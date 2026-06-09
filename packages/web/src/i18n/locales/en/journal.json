@@ -87,6 +87,25 @@
     "opResult": "{ok} updated, {failed} failed"
   },
   "composer": {
-    "submittingUpdate": "Updating…"
+    "submittingUpdate": "Updating…",
+    "draftRestored": "Restored an in-progress draft.",
+    "resetDraft": "Start over",
+    "removeImageAria": "Remove image",
+    "removeImageTitle": "Remove",
+    "attachImageAria": "Attach an image",
+    "attachImageCta": "+ Image",
+    "attachmentCount": {
+      "one": "{count} / 3 image — encrypted with the entry.",
+      "other": "{count} / 3 images — encrypted with the entry."
+    },
+    "errors": {
+      "threadRequired": "A thread is required — pick an existing one or create a new one.",
+      "contentRequired": "Content is required.",
+      "missingConfig": "Journal module not configured or key missing — sign in again.",
+      "saveFailed": "Failed to save.",
+      "maxAttachments": "Three images max per entry.",
+      "attachmentTooLarge": "Image too large (10 MB max before compression).",
+      "attachmentReadFailed": "Could not read the image."
+    }
   }
 }

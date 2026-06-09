@@ -31,6 +31,17 @@
     "rollingAvgScale": "sur 30 j · échelle −2 → +2",
     "noPatterns": "Pas encore assez d’entrées pour dégager des motifs."
   },
+  "stats": {
+    "bestDay": "{day} est ton meilleur jour",
+    "worstDay": "{day} reste ton point bas",
+    "vsAverage": "{delta} vs moyenne",
+    "streak": "{count} entrées ≥ 0 d’affilée",
+    "trendUp": "Tendance à la hausse",
+    "trendDown": "Tendance à la baisse",
+    "vs90d": "{delta} vs 90 j",
+    "streakSingleDay": "le {date}",
+    "streakRange": "du {start} au {end}"
+  },
   "selectors": {
     "yearAria": "Année",
     "monthAria": "Mois",
@@ -69,6 +80,9 @@
   "composer": {
     "dateHeading": "Date",
     "positivesHeading": "Trois choses positives aujourd’hui",
+    "positivePlaceholder1": "Un premier moment qui a tenu la journée debout.",
+    "positivePlaceholder2": "Un deuxième — plus discret peut-être.",
+    "positivePlaceholder3": "Un troisième — même tout petit.",
     "scoreHeading": "Note du jour",
     "optionalsExpand": "+ Question du jour & commentaire",
     "optionalsCollapse": "− Replier",

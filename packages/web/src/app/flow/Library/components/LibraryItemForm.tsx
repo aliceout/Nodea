@@ -237,12 +237,13 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
               status, setStatus, format, setFormat,
               tagsInput, setTagsInput,
             }}
+            errorId={error ? 'library-item-form-error' : null}
           />
         ) : null}
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 text-[12px] text-danger">
+        <p id="library-item-form-error" role="alert" className="mt-3 text-[12px] text-danger">
           {error}
         </p>
       ) : null}

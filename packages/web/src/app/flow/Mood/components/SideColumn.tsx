@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -7,6 +7,7 @@ import {
   computeAverage30d,
   computePatterns,
   formatMoodAvg,
+  type StatsTranslate,
 } from '../lib/stats';
 import ScoreDonut from './ScoreDonut';
 
@@ -42,9 +43,16 @@ import ScoreDonut from './ScoreDonut';
 export default function SideColumn() {
   const { t, language } = useI18n();
   const { entries, today } = useMoodData();
+  // Adapter from the provider's `t(key, { values })` shape to the
+  // pure lib's `(key, values)` contract — `lib/stats` stays
+  // React-free and the i18n resolution happens here.
+  const statsT = useCallback<StatsTranslate>(
+    (key, values) => (values ? t(key, { values }) : t(key)),
+    [t],
+  );
   const patterns = useMemo(
-    () => computePatterns(entries, today, language),
-    [entries, today, language],
+    () => computePatterns(entries, statsT, today, language),
+    [entries, statsT, today, language],
   );
   // 30-day rolling mean — used to be displayed in the page
   // subtitle ; now lives in the Patterns block as a permanent

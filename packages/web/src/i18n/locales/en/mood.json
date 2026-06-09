@@ -31,6 +31,17 @@
     "rollingAvgScale": "over 30 d · scale −2 → +2",
     "noPatterns": "Not enough entries yet to surface patterns."
   },
+  "stats": {
+    "bestDay": "{day} is your best day",
+    "worstDay": "{day} stays your low point",
+    "vsAverage": "{delta} vs average",
+    "streak": "{count} entries ≥ 0 in a row",
+    "trendUp": "Trending up",
+    "trendDown": "Trending down",
+    "vs90d": "{delta} vs 90 d",
+    "streakSingleDay": "on {date}",
+    "streakRange": "from {start} to {end}"
+  },
   "selectors": {
     "yearAria": "Year",
     "monthAria": "Month",
@@ -69,6 +80,9 @@
   "composer": {
     "dateHeading": "Date",
     "positivesHeading": "Three positive things today",
+    "positivePlaceholder1": "A first moment that held the day up.",
+    "positivePlaceholder2": "A second one — quieter, maybe.",
+    "positivePlaceholder3": "A third one — even a tiny one.",
     "scoreHeading": "Today's score",
     "optionalsExpand": "+ Question of the day & comment",
     "optionalsCollapse": "− Collapse",

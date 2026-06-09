@@ -5,10 +5,34 @@ import {
   computePatterns,
   formatMoodAvg,
   signedFormat,
+  type StatsTranslate,
 } from './stats';
 import type { MoodEntry } from './types';
 
 const TODAY = new Date(2026, 2, 15); // 15 mars 2026 (Sunday)
+
+// Tiny FR catalog mirroring `locales/fr/mood.json` `stats.*` — the
+// lib takes a translate fn now, so the assertions below keep
+// matching the real FR copy without a React tree.
+const FR_STATS: Record<string, string> = {
+  'mood.stats.bestDay': '{day} est ton meilleur jour',
+  'mood.stats.worstDay': '{day} reste ton point bas',
+  'mood.stats.vsAverage': '{delta} vs moyenne',
+  'mood.stats.streak': '{count} entrées ≥ 0 d’affilée',
+  'mood.stats.trendUp': 'Tendance à la hausse',
+  'mood.stats.trendDown': 'Tendance à la baisse',
+  'mood.stats.vs90d': '{delta} vs 90 j',
+  'mood.stats.streakSingleDay': 'le {date}',
+  'mood.stats.streakRange': 'du {start} au {end}',
+};
+
+const t: StatsTranslate = (key, values) => {
+  let out = FR_STATS[key] ?? key;
+  for (const [token, value] of Object.entries(values ?? {})) {
+    out = out.replaceAll(`{${token}}`, String(value));
+  }
+  return out;
+};
 
 function entry(dateIso: string, score: MoodEntry['score']): MoodEntry {
   return {
@@ -73,9 +97,9 @@ describe('computeAverage30d', () => {
 
 describe('computePatterns', () => {
   it('returns [] when fewer than 5 entries', () => {
-    expect(computePatterns([], TODAY)).toEqual([]);
+    expect(computePatterns([], t, TODAY)).toEqual([]);
     expect(
-      computePatterns([entry('2026-03-14', '2')], TODAY),
+      computePatterns([entry('2026-03-14', '2')], t, TODAY),
     ).toEqual([]);
   });
 
@@ -91,7 +115,7 @@ describe('computePatterns', () => {
       entry('2026-03-11', '0'),
       entry('2026-03-10', '0'),
     ];
-    const patterns = computePatterns(entries, TODAY);
+    const patterns = computePatterns(entries, t, TODAY);
     const best = patterns.find((p) => p.label.includes('meilleur jour'));
     expect(best).toBeDefined();
     expect(best?.label).toMatch(/Dimanche/i);
@@ -105,7 +129,7 @@ describe('computePatterns', () => {
       entry('2026-03-13', '1'),
       entry('2026-03-14', '0'),
     ];
-    const patterns = computePatterns(entries, TODAY);
+    const patterns = computePatterns(entries, t, TODAY);
     const streak = patterns.find((p) => p.label.includes('d’affilée'));
     expect(streak).toBeDefined();
     expect(streak?.label).toMatch(/^5 entrées ≥ 0/);
@@ -129,7 +153,7 @@ describe('computePatterns', () => {
       entry('2026-01-18', '-2'),
       entry('2026-01-19', '-2'),
     ];
-    const patterns = computePatterns([...recent, ...older], TODAY);
+    const patterns = computePatterns([...recent, ...older], t, TODAY);
     const trend = patterns.find((p) => p.label.includes('Tendance'));
     expect(trend).toBeDefined();
     expect(trend?.label).toBe('Tendance à la hausse');
@@ -140,7 +164,7 @@ describe('computePatterns', () => {
       const day = String((i % 28) + 1).padStart(2, '0');
       return entry(`2026-02-${day}`, '0');
     });
-    const patterns = computePatterns(flat, TODAY);
+    const patterns = computePatterns(flat, t, TODAY);
     expect(patterns.find((p) => p.label.includes('Tendance'))).toBeUndefined();
   });
 });
