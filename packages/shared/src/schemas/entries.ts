@@ -88,6 +88,79 @@ export const EntryViewSchema = z.object({
 });
 export type EntryView = z.infer<typeof EntryViewSchema>;
 
+/**
+ * Bulk-create envelope (issue #127).
+ *
+ * Two endpoints address the N-roundtrip cost of imports :
+ *   - `POST /records/bulk`           : create up to BULK_MAX_ENTRIES rows
+ *                                       in one transaction, all under the
+ *                                       same `sid`, all starting with
+ *                                       `guard = "init"`.
+ *   - `POST /records/promote-guards` : flip up to BULK_MAX_ENTRIES rows
+ *                                       from `"init"` to their final
+ *                                       HMAC guard in one transaction.
+ *
+ * The single per-row PATCH path stays available for content updates ;
+ * the bulk variants exist specifically to collapse the import flow
+ * (was 2 RT × N records, becomes 2 RT total for N ≤ 100).
+ *
+ * Caps :
+ *   - **BULK_MAX_ENTRIES (100)** — per-request row count. Picked
+ *     conservatively to keep one transaction bounded ; the client
+ *     batches larger imports into multiple bulk requests.
+ *   - **BULK_TOTAL_PAYLOAD_MAX (16 MB)** — aggregate sum of all
+ *     payload+IV strings. Twice the single-record cap so a single
+ *     bulk request can still carry a few Library covers, but tight
+ *     enough that a runaway client can't push 800 MB through one
+ *     POST.
+ */
+export const BULK_MAX_ENTRIES = 100;
+export const BULK_TOTAL_PAYLOAD_MAX = 16 * 1024 * 1024;
+
+const BulkCreateItemSchema = z.object({
+  cipherIv: CipherIvField,
+  payload: Base64ish,
+});
+
+export const BulkCreateEntryBodySchema = z
+  .object({
+    sid: z.string().min(1).max(128),
+    entries: z.array(BulkCreateItemSchema).min(1).max(BULK_MAX_ENTRIES),
+  })
+  .superRefine((data, ctx) => {
+    let total = 0;
+    for (const e of data.entries) total += e.payload.length + e.cipherIv.length;
+    if (total > BULK_TOTAL_PAYLOAD_MAX) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'bulk_payload_too_large',
+        path: ['entries'],
+      });
+    }
+  });
+export type BulkCreateEntryBody = z.infer<typeof BulkCreateEntryBodySchema>;
+
+export const BulkCreateEntryResponseSchema = z.object({
+  data: z.array(EntryViewSchema),
+});
+export type BulkCreateEntryResponse = z.infer<typeof BulkCreateEntryResponseSchema>;
+
+const BulkPromoteItemSchema = z.object({
+  id: z.string().min(1).max(128),
+  guard: PromotedGuardSchema,
+});
+
+export const BulkPromoteGuardsBodySchema = z.object({
+  sid: z.string().min(1).max(128),
+  promotions: z.array(BulkPromoteItemSchema).min(1).max(BULK_MAX_ENTRIES),
+});
+export type BulkPromoteGuardsBody = z.infer<typeof BulkPromoteGuardsBodySchema>;
+
+export const BulkPromoteGuardsResponseSchema = z.object({
+  promoted: z.number().int().nonnegative(),
+});
+export type BulkPromoteGuardsResponse = z.infer<typeof BulkPromoteGuardsResponseSchema>;
+
 /** Modules-config payload — 1:1 on user_id, no guard/sid. The
  *  payload here is a small JSON descriptor of which modules are
  *  enabled / parameterised ; 64 KB is generous. */

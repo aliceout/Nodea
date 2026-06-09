@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StarIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
@@ -26,8 +27,14 @@ interface ItemRowProps {
  * Cover lookup, action callbacks, and the cell-filter setter all
  * come from the Library contexts — the caller only passes the
  * item itself and the layout variant.
+ *
+ * Wrapped in `React.memo` so search-input keystrokes / filter
+ * changes on the parent only re-render the rows whose `item`
+ * reference moved. The context-driven cover stream still
+ * propagates (memo is bypassed on context churn), so a freshly
+ * loaded cover still appears on the right row.
  */
-export default function ItemRow({ item, showCover }: ItemRowProps) {
+function ItemRowImpl({ item, showCover }: ItemRowProps) {
   const { covers } = useLibraryData();
   const { editItem, deleteItem, toggleFavorite } = useLibraryActions();
 
@@ -67,7 +74,7 @@ export default function ItemRow({ item, showCover }: ItemRowProps) {
   );
 
   return (
-    <li className="group border-b border-hair last:border-b-0">
+    <article className="group block border-b border-hair last:border-b-0">
       <div
         className={cn('flex gap-3 py-2', showCover ? 'items-center' : 'items-baseline')}
       >
@@ -186,6 +193,9 @@ export default function ItemRow({ item, showCover }: ItemRowProps) {
           </DirkButton>
         </div>
       </div>
-    </li>
+    </article>
   );
 }
+
+const ItemRow = memo(ItemRowImpl);
+export default ItemRow;

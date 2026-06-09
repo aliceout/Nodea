@@ -62,7 +62,12 @@ export async function restoreEnvelope(
     }
     const { plugin, sid } = resolved;
     const existing: Set<string> = await plugin.listExistingKeys({ sid, mainKey });
-    let created = 0;
+
+    // Two passes : (1) filter via the natural-key dedup, (2) commit.
+    // Splitting them lets the bulk path see the full deduped list and
+    // collapse 2×N round-trips into 2 per chunk. The per-row fallback
+    // still loops, identically to the pre-bulk code.
+    const filtered: unknown[] = [];
     let skipped = 0;
     for (const payload of items) {
       const k = plugin.getNaturalKey?.(payload) ?? null;
@@ -70,9 +75,26 @@ export async function restoreEnvelope(
         skipped += 1;
         continue;
       }
-      await plugin.importHandler({ payload, ctx: { moduleUserId: sid, mainKey } });
+      filtered.push(payload);
       if (k) existing.add(k);
-      created += 1;
+    }
+
+    let created = 0;
+    if (plugin.bulkImportHandler && filtered.length > 0) {
+      // Atomicity is per CollectionClient chunk (BULK_MAX_ENTRIES) ; an
+      // exception below leaves earlier chunks committed and aborts the
+      // module's restore, mirroring the per-row loop's "stops on first
+      // throw" semantics.
+      const res = await plugin.bulkImportHandler({
+        payloads: filtered,
+        ctx: { moduleUserId: sid, mainKey },
+      });
+      created = res.ids.length;
+    } else {
+      for (const payload of filtered) {
+        await plugin.importHandler({ payload, ctx: { moduleUserId: sid, mainKey } });
+        created += 1;
+      }
     }
     parts.push(
       t('account.data.import.moduleResult', { values: { key, created, skipped } }),

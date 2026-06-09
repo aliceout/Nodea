@@ -193,7 +193,7 @@ export default function SummaryView() {
           empty={latestAdmins.length === 0}
           emptyText="Aucune prise enregistrée."
         >
-          <ul className="flex flex-col">
+          <div className="flex flex-col">
             {latestAdmins.map((entry) => (
               <AdminLogRow
                 key={entry.id}
@@ -201,7 +201,7 @@ export default function SummaryView() {
                 product={productByName.get(entry.payload.product)}
               />
             ))}
-          </ul>
+          </div>
         </RecentPanel>
 
         <RecentPanel

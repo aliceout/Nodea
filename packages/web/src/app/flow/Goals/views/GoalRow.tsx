@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { memo, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import { formatPartialDate } from '@/core/i18n/date-format';
@@ -27,8 +27,14 @@ interface GoalRowProps {
  * commits, Escape cancels. Empty / unchanged values short-circuit.
  * The pencil icon in `HoverActions` still opens the full composer
  * for date / note / status / thread edits.
+ *
+ * Wrapped in `React.memo` so a sibling-entry change (status
+ * cycle, inline rename, delete) only re-renders the row whose
+ * `entry` reference moved. Without it, every keystroke into one
+ * row's inline-edit input re-renders every other row through the
+ * actions context, jankying scroll at high entry counts.
  */
-export default function GoalRow({ entry }: GoalRowProps) {
+function GoalRowImpl({ entry }: GoalRowProps) {
   const { t, language } = useI18n();
   const { editEntry, updateTitle, deleteEntry, openReader } = useGoalsActions();
 
@@ -76,7 +82,7 @@ export default function GoalRow({ entry }: GoalRowProps) {
   }
 
   return (
-    <li className="group flex items-start gap-5 border-b border-hair py-3 last:border-b-0">
+    <article className="group flex items-start gap-5 border-b border-hair py-3 last:border-b-0">
       {/* Status pill + hover actions live on the LEFT of the row :
           the pill is read first (sage check = win) and the title
           follows as the achievement text. Aligning to `items-start`
@@ -149,6 +155,9 @@ export default function GoalRow({ entry }: GoalRowProps) {
           <p className="mt-1 text-[13px] leading-[1.5] text-ink-soft">{entry.note}</p>
         ) : null}
       </div>
-    </li>
+    </article>
   );
 }
+
+const GoalRow = memo(GoalRowImpl);
+export default GoalRow;

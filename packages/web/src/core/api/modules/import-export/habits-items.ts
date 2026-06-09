@@ -5,7 +5,7 @@ import {
   type HabitsItemPayload,
 } from '@nodea/shared';
 import { habitsItemsClient } from '@/core/api/modules/habits';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -70,6 +70,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  habitsItemsClient,
+  normalizePayload,
+  'habits_items',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -108,6 +114,7 @@ export async function listExistingKeys({
 const HabitsItemsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

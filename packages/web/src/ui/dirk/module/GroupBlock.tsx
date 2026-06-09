@@ -18,6 +18,16 @@ interface GroupBlockProps {
    *    meta categorisation (status filter, status bucket). Pairs
    *    with the slightly tighter `mb-7`. */
   variant?: GroupBlockVariant;
+  /** Wrapper tag for the children block. Default `ul` keeps the
+   *  semantic « list of items » signal. Set to `div` when the
+   *  children are virtualized (`VirtualWindowList`), because the
+   *  virtualizer wraps each item in an absolutely-positioned `div`
+   *  that's invalid as a direct child of `<ul>`. The accessibility
+   *  trade-off (no « item N of M » announcement on virtualized
+   *  groups) is acceptable since the lists that need virtualization
+   *  are also the ones where item-of-count narration would just be
+   *  noise. */
+  listTag?: 'ul' | 'div';
   children: ReactNode;
   className?: string;
 }
@@ -48,10 +58,12 @@ export default function GroupBlock({
   count,
   countNoun,
   variant = 'subtitle',
+  listTag = 'ul',
   children,
   className,
 }: GroupBlockProps) {
   const plural = count !== 1 ? `${countNoun}s` : countNoun;
+  const ListTag = listTag;
   return (
     <div className={cn(WRAPPER_CLASS[variant], 'last:mb-0', className)}>
       <div className="mb-2 flex items-baseline justify-between border-b border-hair pb-1.5">
@@ -60,7 +72,7 @@ export default function GroupBlock({
           {count} {plural}
         </span>
       </div>
-      <ul>{children}</ul>
+      <ListTag>{children}</ListTag>
     </div>
   );
 }

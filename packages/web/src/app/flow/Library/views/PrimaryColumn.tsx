@@ -1,6 +1,7 @@
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import { useLibraryData, useLibraryFilters } from '../context';
 import { CELL_FILTER_LABEL } from '../lib/cell-filter';
@@ -88,14 +89,19 @@ export default function PrimaryColumn() {
                 count={g.items.length}
                 countNoun="livre"
                 variant="subtitle"
+                listTag="div"
               >
-                {g.items.map((it) => (
-                  <ItemRow
-                    key={it.id}
-                    item={it}
-                    showCover={viewMode === 'list-cover'}
-                  />
-                ))}
+                <VirtualWindowList
+                  items={g.items}
+                  estimateRowHeight={viewMode === 'list-cover' ? 60 : 44}
+                  getKey={(it) => it.id}
+                  renderItem={(it) => (
+                    <ItemRow
+                      item={it}
+                      showCover={viewMode === 'list-cover'}
+                    />
+                  )}
+                />
               </GroupBlock>
             ))
         ) : viewMode === 'table' ? (

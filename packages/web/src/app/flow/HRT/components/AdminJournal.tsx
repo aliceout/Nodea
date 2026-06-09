@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import type { HrtProductPayload } from '@nodea/shared';
 import { cn } from '@/lib/utils';
 import Select from '@/ui/atoms/dirk/Select';
+import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import { buildDoseSeries, distinctMolecules, moleculeOf } from '../lib/admin-data';
 import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
@@ -127,17 +128,21 @@ export default function AdminJournal({
           </div>
         ) : null}
       </div>
-      <ul className="flex flex-col">
-        {listEntries.map((entry) => (
-          <AdminLogRow
-            key={entry.id}
-            entry={entry}
-            product={productByName.get(entry.payload.product)}
-            onEdit={() => onEditEntry(entry)}
-            onDelete={() => onDeleteEntry(entry)}
-          />
-        ))}
-      </ul>
+      <div className="flex flex-col">
+        <VirtualWindowList
+          items={listEntries}
+          estimateRowHeight={68}
+          getKey={(e) => e.id}
+          renderItem={(entry) => (
+            <AdminLogRow
+              entry={entry}
+              product={productByName.get(entry.payload.product)}
+              onEdit={() => onEditEntry(entry)}
+              onDelete={() => onDeleteEntry(entry)}
+            />
+          )}
+        />
+      </div>
     </>
   );
 }

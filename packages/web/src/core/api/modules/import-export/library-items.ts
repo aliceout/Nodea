@@ -5,7 +5,7 @@ import {
   type LibraryItemPayload,
 } from '@nodea/shared';
 import { libraryItemsClient } from '@/core/api/modules/library';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -91,6 +91,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  libraryItemsClient,
+  normalizePayload,
+  'library_items',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -129,6 +135,7 @@ export async function listExistingKeys({
 const LibraryItemsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

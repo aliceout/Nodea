@@ -3,7 +3,7 @@ import {
   type HrtAdminLogPayload,
 } from '@nodea/shared';
 import { hrtAdminLogsClient } from '@/core/api/modules/hrt';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -58,6 +58,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  hrtAdminLogsClient,
+  normalizePayload,
+  'hrt_admin_logs',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -96,6 +102,7 @@ export async function listExistingKeys({
 const HrtAdminLogsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

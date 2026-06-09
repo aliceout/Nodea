@@ -3,7 +3,7 @@ import {
   type GoalsPayload,
 } from '@nodea/shared';
 import { goalsClient } from '@/core/api/modules/goals';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -58,6 +58,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  goalsClient,
+  normalizePayload,
+  'goals',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -100,6 +106,7 @@ export async function listExistingKeys({
 const GoalsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

@@ -3,7 +3,7 @@ import {
   type HrtSchedulePayload,
 } from '@nodea/shared';
 import { hrtSchedulesClient } from '@/core/api/modules/hrt';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -56,6 +56,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  hrtSchedulesClient,
+  normalizePayload,
+  'hrt_schedules',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -94,6 +100,7 @@ export async function listExistingKeys({
 const HrtSchedulesImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

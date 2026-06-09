@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { and, eq, isNull, lt } from 'drizzle-orm';
+import { and, eq, isNull, lt, notExists } from 'drizzle-orm';
 import { db } from './db/client.ts';
 import { emailVerifications, sessions, users } from './db/schema.ts';
 
@@ -83,31 +83,32 @@ export async function runCleanupUnactivatedAccounts(): Promise<JobResult> {
     )
     .returning({ id: emailVerifications.id });
 
-  // Find unactivated users whose only verifications (if any) are
-  // already gone. Done as a single SQL pass via a subquery would be
-  // tighter, but the table is small in V1 — sequential scan is fine.
-  const unactivatedUsers = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(isNull(users.emailVerifiedAt));
-
-  let deletedUsers = 0;
-  for (const user of unactivatedUsers) {
-    const remaining = await db
-      .select({ id: emailVerifications.id })
-      .from(emailVerifications)
-      .where(
-        and(
-          eq(emailVerifications.userId, user.id),
-          isNull(emailVerifications.consumedAt),
+  // Drop every unactivated user whose pending verifications are all
+  // gone — done in a single SQL pass via `NOT EXISTS`. The previous
+  // version SELECT-then-DELETE-per-row loop ran one extra query per
+  // unactivated user on every job tick ; harmless on a small table,
+  // wasteful on a busy install where the unactivated bucket builds
+  // up between weekly runs.
+  const deletedRows = await db
+    .delete(users)
+    .where(
+      and(
+        isNull(users.emailVerifiedAt),
+        notExists(
+          db
+            .select({ id: emailVerifications.id })
+            .from(emailVerifications)
+            .where(
+              and(
+                eq(emailVerifications.userId, users.id),
+                isNull(emailVerifications.consumedAt),
+              ),
+            ),
         ),
-      )
-      .limit(1);
-    if (remaining.length === 0) {
-      await db.delete(users).where(eq(users.id, user.id));
-      deletedUsers += 1;
-    }
-  }
+      ),
+    )
+    .returning({ id: users.id });
+  const deletedUsers = deletedRows.length;
 
   // Sessions tied to deleted users went with them via FK CASCADE.
   // Sweep any other expired sessions while we're at it.

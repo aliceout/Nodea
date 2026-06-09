@@ -276,6 +276,21 @@ const EnvSchema = z.object({
    * `openssl rand -hex 32`.
    */
   NODEA_TEST_HARNESS_SECRET: z.string().min(32).optional(),
+
+  /**
+   * Drizzle query logger toggle (`'1'` enables, anything else disables).
+   * Off by default. Set in dev to print every SQL the api runs to
+   * stdout — used to measure before/after when chasing perf wins
+   * (audit follow-up, issue #128 — perf bullets).
+   *
+   * **Ignored in production** : the surface drizzle would log
+   * (every SELECT, with parameter values) could include encrypted
+   * payloads and module-user-ids, both of which Nodea's privacy
+   * model treats as side-channel-sensitive. The `db/client.ts`
+   * boot reads this flag AND `NODE_ENV !== 'production'` ; flipping
+   * the env var alone in prod has no effect.
+   */
+  NODEA_DRIZZLE_LOG: z.enum(['0', '1']).default('0'),
 })
   .superRefine((env, ctx) => {
     // Hardened email policy : production must not allow the silent

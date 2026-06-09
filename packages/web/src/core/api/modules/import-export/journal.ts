@@ -3,7 +3,7 @@ import {
   type JournalPayload,
 } from '@nodea/shared';
 import { journalClient } from '@/core/api/modules/journal';
-import { normalizeKeyPart, contentFingerprint } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart, contentFingerprint } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -66,6 +66,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  journalClient,
+  normalizePayload,
+  'journal',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -104,6 +110,7 @@ export async function listExistingKeys({
 const JournalImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

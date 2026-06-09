@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
+  BulkCreateEntryBodySchema,
+  BulkCreateEntryResponseSchema,
+  BulkPromoteGuardsBodySchema,
+  BulkPromoteGuardsResponseSchema,
   CreateEntryBodySchema,
   EntryViewSchema,
   UpdateEntryBodySchema,
@@ -92,6 +96,20 @@ const recordsUpdateLimiter = rateLimit({
   windowMs: 60_000,
   keyPrefix: 'records-update',
 });
+// Bulk variants process up to BULK_MAX_ENTRIES (100) rows per call, so
+// a 60/min cap matches the same "rows per minute" budget as the
+// single-row 600/min limit. Tighter than that breaks legitimate
+// import flows (a full archive restore can fan out to many batches).
+const recordsBulkCreateLimiter = rateLimit({
+  max: 60,
+  windowMs: 60_000,
+  keyPrefix: 'records-bulk-create',
+});
+const recordsBulkPromoteLimiter = rateLimit({
+  max: 60,
+  windowMs: 60_000,
+  keyPrefix: 'records-bulk-promote',
+});
 
 export function createRecordsRoutes(collections: readonly CollectionDef[]) {
   const byName = new Map<string, EntryTable>(
@@ -147,6 +165,55 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
       400: errorContent('Invalid body or unknown collection'),
       401: errorContent('Unauthenticated'),
       500: errorContent('Insert failed'),
+    },
+  });
+
+  const bulkCreateRoute = createRoute({
+    method: 'post',
+    path: '/records/bulk',
+    tags: ['records'],
+    summary: 'Create up to N encrypted records in one transaction',
+    middleware: [recordsBulkCreateLimiter, requireUser, collectionResolver] as const,
+    request: {
+      headers: z.object({
+        'x-collection': z.string().min(1),
+      }),
+      body: {
+        content: {
+          'application/json': { schema: BulkCreateEntryBodySchema },
+        },
+      },
+    },
+    responses: {
+      201: jsonContent(BulkCreateEntryResponseSchema, 'Records created'),
+      400: errorContent('Invalid body or unknown collection'),
+      401: errorContent('Unauthenticated'),
+      500: errorContent('Insert failed'),
+    },
+  });
+
+  const bulkPromoteRoute = createRoute({
+    method: 'post',
+    path: '/records/promote-guards',
+    tags: ['records'],
+    summary: 'Promote multiple init-guards to their HMAC value in one transaction',
+    middleware: [recordsBulkPromoteLimiter, requireUser, collectionResolver] as const,
+    request: {
+      headers: z.object({
+        'x-collection': z.string().min(1),
+      }),
+      body: {
+        content: {
+          'application/json': { schema: BulkPromoteGuardsBodySchema },
+        },
+      },
+    },
+    responses: {
+      200: jsonContent(BulkPromoteGuardsResponseSchema, 'Guards promoted'),
+      400: errorContent('Invalid body, unknown collection, or some target is not at init guard'),
+      401: errorContent('Unauthenticated'),
+      404: errorContent('One or more targeted records not found under sid'),
+      500: errorContent('Update failed'),
     },
   });
 
@@ -245,6 +312,137 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
     if (!row) return c.json({ error: 'insert_failed' }, 500);
     c.header('location', `${c.req.path}/${row.id}`);
     return c.json(toView(row), 201);
+  });
+
+  // --- BULK CREATE (issue #127) ---
+  // All entries land with `guard = "init"` and a server-generated id.
+  // One multi-value INSERT inside a transaction so the batch is
+  // atomic (a Postgres failure halfway through rolls every row back
+  // and returns 500). The returned `data` array preserves input
+  // order — clients rely on it to derive the per-entry HMAC guard
+  // from the ids during the follow-up `/records/promote-guards`
+  // call.
+  // Per-route validation hook that distinguishes the aggregate-payload
+  // size failure (« bulk_payload_too_large ») from the generic
+  // « invalid_body ». The size cap is the one schema rule a
+  // well-behaved client can run into legitimately ; every other
+  // failure is a wire-shape bug. Without a dedicated code the client
+  // can't fall back to splitting the batch on its own.
+  //
+  // Mirrors the @hono/zod-openapi `Hook` signature with the same
+  // light typing trick `defaultInvalidBodyHook` uses : we only care
+  // about the discriminant + the issues array, no need to drag the
+  // full union through the file.
+  function bulkCreateInvalidBodyHook(
+    result: {
+      success: boolean;
+      error?: { issues: ReadonlyArray<{ code: string; message: string }> };
+    },
+    c: Parameters<typeof defaultInvalidBodyHook>[1],
+  ) {
+    if (!result.success) {
+      const tooLarge =
+        result.error?.issues.some(
+          (i) => i.code === 'custom' && i.message === 'bulk_payload_too_large',
+        ) ?? false;
+      return c.json(
+        { error: tooLarge ? 'bulk_payload_too_large' : 'invalid_body' },
+        400,
+      );
+    }
+    return undefined;
+  }
+
+  router.openapi(
+    bulkCreateRoute,
+    async (c) => {
+      const table = c.get('table');
+      // OpenAPI hook already validated + ran the per-route hook above ;
+      // we can safely re-read the parsed body straight from the lib.
+      const body = c.req.valid('json');
+
+      const values = body.entries.map((entry) => ({
+        id: randomUUID(),
+        moduleUserId: body.sid,
+        cipherIv: entry.cipherIv,
+        payload: entry.payload,
+        guard: INIT_GUARD,
+      }));
+
+      const rows = await db.transaction(async (tx) => {
+        return tx.insert(table).values(values).returning();
+      });
+
+      if (rows.length !== values.length) {
+        return c.json({ error: 'insert_failed' }, 500);
+      }
+      return c.json({ data: rows.map(toView) }, 201);
+    },
+    bulkCreateInvalidBodyHook,
+  );
+
+  // --- BULK PROMOTE GUARDS (issue #127) ---
+  // Atomic promotion of N init-guards to their final HMAC value.
+  // Steps (all inside one transaction) :
+  //   1. SELECT every targeted row by id under the caller's sid.
+  //   2. Refuse if not all promotions match a row, or any matched
+  //      row is no longer at the init guard (already promoted, or
+  //      raced).
+  //   3. Apply the new guards via N UPDATEs. The transaction makes
+  //      this all-or-nothing — a partial failure rolls back so the
+  //      client retries from a consistent state.
+  // The route does no body / payload mutation ; content updates
+  // keep going through the single-row PATCH for now.
+  router.openapi(bulkPromoteRoute, async (c) => {
+    const table = c.get('table');
+    const raw = await c.req.json().catch(() => null);
+    const parsed = BulkPromoteGuardsBodySchema.safeParse(raw);
+    if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+    const body = parsed.data;
+
+    const ids = body.promotions.map((p) => p.id);
+    // Defence : reject any duplicate id up-front so the SELECT below
+    // can use `inArray` without us double-promoting on collisions.
+    if (new Set(ids).size !== ids.length) {
+      return c.json({ error: 'invalid_body' }, 400);
+    }
+
+    const result = await db.transaction(async (tx) => {
+      // `FOR UPDATE` locks the targeted rows for the rest of the
+      // transaction. Without it, a concurrent single-row PATCH from
+      // another tab could promote a guard between the SELECT below
+      // and the UPDATE further down, and we'd silently overwrite the
+      // other tab's promoted value with whatever guard the bulk
+      // request shipped. The race window is tiny in practice (only
+      // happens if the user has two sessions racing on the same
+      // freshly-init records) but the cost of the lock is also tiny
+      // for ≤ 100 rows.
+      const rows = await tx
+        .select()
+        .from(table)
+        .where(and(eq(table.moduleUserId, body.sid), inArray(table.id, ids)))
+        .for('update');
+
+      if (rows.length !== ids.length) {
+        return { kind: 'not_found' as const };
+      }
+      if (rows.some((r) => r.guard !== INIT_GUARD)) {
+        return { kind: 'guard_already_promoted' as const };
+      }
+
+      for (const p of body.promotions) {
+        await tx
+          .update(table)
+          .set({ guard: p.guard })
+          .where(and(eq(table.id, p.id), eq(table.moduleUserId, body.sid)));
+      }
+      return { kind: 'ok' as const, promoted: body.promotions.length };
+    });
+
+    if (result.kind === 'not_found') return c.json({ error: 'not_found' }, 404);
+    if (result.kind === 'guard_already_promoted')
+      return c.json({ error: 'guard_already_promoted' }, 400);
+    return c.json({ promoted: result.promoted }, 200);
   });
 
   // --- UPDATE (guard-protected; supports one-time promotion init → g_...) ---

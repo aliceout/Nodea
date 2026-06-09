@@ -3,7 +3,7 @@ import {
   type MoodPayload,
 } from '@nodea/shared';
 import { moodClient } from '@/core/api/modules/mood';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -76,6 +76,12 @@ export async function importHandler({
   return { action: 'created', id: rec.id };
 }
 
+export const bulkImportHandler = makeBulkImportHandler(
+  moodClient,
+  normalizePayload,
+  'mood',
+);
+
 export async function* exportQuery({
   ctx,
 }: {
@@ -103,6 +109,7 @@ export function exportSerialize(plainPayload: unknown): {
 const MoodImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

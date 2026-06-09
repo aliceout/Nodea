@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -24,8 +25,14 @@ import type { MoodEntry } from '../lib/types';
  *    real mobile edit/delete path is a separate concern.
  *  - `md+` : the historical 4-col single row (110 px date,
  *    44 px badge, 1 fr body, auto actions).
+ *
+ *  Wrapped in `React.memo` so a sibling-entry change (cycle status,
+ *  inline edit, delete) only re-renders the row whose `entry`
+ *  reference moved. Without it, every keystroke / status flip
+ *  through the actions context invalidates the whole list and
+ *  scrolls become janky at 10k entries.
  */
-export default function EntryRow({ entry }: { entry: MoodEntry }) {
+function EntryRowImpl({ entry }: { entry: MoodEntry }) {
   const { t } = useI18n();
   const { editEntry, deleteEntry } = useMoodActions();
 
@@ -109,3 +116,6 @@ export default function EntryRow({ entry }: { entry: MoodEntry }) {
     </article>
   );
 }
+
+const EntryRow = memo(EntryRowImpl);
+export default EntryRow;

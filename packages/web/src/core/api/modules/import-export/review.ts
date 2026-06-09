@@ -3,7 +3,7 @@ import {
   type ReviewPayload,
 } from '@nodea/shared';
 import { reviewClient } from '@/core/api/modules/review';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -41,6 +41,17 @@ export function getNaturalKey(plain: unknown): string | null {
   return normalizeKeyPart(String(p.year));
 }
 
+/** `normalizePayload` + a domain pass that rejects non-finite years
+ *  (the schema's `z.number()` doesn't catch `NaN`). Shared between
+ *  per-row and bulk paths. */
+function normalizeForCreate(input: unknown): ReviewPayload {
+  const clear = normalizePayload(input);
+  if (!Number.isFinite(clear.year)) {
+    throw new Error('review: year doit être un nombre.');
+  }
+  return clear;
+}
+
 export async function importHandler({
   payload,
   ctx,
@@ -49,13 +60,16 @@ export async function importHandler({
   ctx: ImportExportPluginCtx;
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
-  const clear = normalizePayload(payload);
-  if (!Number.isFinite(clear.year)) {
-    throw new Error('review: year doit être un nombre.');
-  }
+  const clear = normalizeForCreate(payload);
   const rec = await reviewClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
+
+export const bulkImportHandler = makeBulkImportHandler(
+  reviewClient,
+  normalizeForCreate,
+  'review',
+);
 
 export async function* exportQuery({
   ctx,
@@ -95,6 +109,7 @@ export async function listExistingKeys({
 const ReviewImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

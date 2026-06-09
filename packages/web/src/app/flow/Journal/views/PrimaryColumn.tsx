@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import MobileFilters from '../components/MobileFilters';
 import YearSelector from '../components/YearSelector';
@@ -153,11 +154,15 @@ export default function PrimaryColumn() {
               count={items.length}
               countNoun={t('journal.list.groupCountNoun')}
               variant={groupVariant}
+              listTag="div"
               className="mb-0"
             >
-              {items.map((entry) => (
-                <EntryRow key={entry.id} entry={entry} />
-              ))}
+              <VirtualWindowList
+                items={items}
+                estimateRowHeight={110}
+                getKey={(e) => e.id}
+                renderItem={(entry) => <EntryRow entry={entry} />}
+              />
             </GroupBlock>
           ))
         )}

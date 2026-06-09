@@ -2,6 +2,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import { useGoalsData, useGoalsFilters } from '../context';
 import GoalRow from './GoalRow';
@@ -42,10 +43,14 @@ export default function PrimaryColumn() {
               count={items.length}
               countNoun={t('goals.list.groupCountNoun')}
               variant="eyebrow"
+              listTag="div"
             >
-              {items.map((entry) => (
-                <GoalRow key={entry.id} entry={entry} />
-              ))}
+              <VirtualWindowList
+                items={items}
+                estimateRowHeight={64}
+                getKey={(e) => e.id}
+                renderItem={(entry) => <GoalRow entry={entry} />}
+              />
             </GroupBlock>
           ))
         )}

@@ -7,7 +7,19 @@
  * parent view ; this file owns a single row's layout only. The product
  * may be missing (deleted from the catalog after the dose was logged) —
  * the row degrades to the stored product name + a « supprimé » hint.
+ *
+ * Root element is `<article>`, not `<li>` : the journal list is
+ * virtualized (issue #128) through `VirtualWindowList`, whose
+ * absolute-positioned wrappers can't host valid `<li>` children.
+ * `<article>` keeps the row independently meaningful for assistive
+ * tech without the list semantics that the virtualizer breaks.
+ *
+ * Wrapped in `React.memo` so sibling-row mutations (delete, edit)
+ * only re-render the row whose `entry` reference moved. Combined
+ * with the virtualizer above, scrolling stays smooth at ≥ 1000
+ * dose entries.
  */
+import { memo } from 'react';
 import type { HrtProductPayload } from '@nodea/shared';
 
 import { HRT_CATEGORY_LABELS, HRT_ROUTE_LABELS, formatLogDate } from '../lib/labels';
@@ -24,14 +36,14 @@ interface AdminLogRowProps {
   onDelete?: () => void;
 }
 
-export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminLogRowProps) {
+function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps) {
   // A product with a mg/mL concentration is dosed in mL → derive the mg
   // here, per dose (the conversion lives at the entry, not the product).
   const unit = doseUnitOf(product);
   const mgEq = mgEquivalent(entry.payload.dose, product);
 
   return (
-    <li className="group flex items-start gap-4 border-b border-hair py-3">
+    <article className="group flex items-start gap-4 border-b border-hair py-3">
       <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
         {formatLogDate(entry.payload.date)}
         {entry.payload.time ? (
@@ -74,6 +86,9 @@ export default function AdminLogRow({ entry, product, onEdit, onDelete }: AdminL
       <p className="min-w-0 flex-[2] text-[12px] text-muted">{entry.payload.notes}</p>
 
       {onEdit && onDelete ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : null}
-    </li>
+    </article>
   );
 }
+
+const AdminLogRow = memo(AdminLogRowImpl);
+export default AdminLogRow;

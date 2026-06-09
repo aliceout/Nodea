@@ -3,7 +3,7 @@ import {
   type HabitsLogPayload,
 } from '@nodea/shared';
 import { habitsLogsClient } from '@/core/api/modules/habits';
-import { normalizeKeyPart } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -31,6 +31,18 @@ function normalizePayload(input: unknown): HabitsLogPayload {
   });
 }
 
+/** `normalizePayload` + a second pass that rejects entries the schema
+ *  accepts but the domain doesn't : empty `date` / `itemRid` would let
+ *  an orphan log through. Shared between the per-row and bulk paths so
+ *  the rule stays in one place. */
+function normalizeForCreate(input: unknown): HabitsLogPayload {
+  const clear = normalizePayload(input);
+  if (!clear.date || !clear.itemRid) {
+    throw new Error('habits_logs: date et itemRid requis.');
+  }
+  return clear;
+}
+
 export function getNaturalKey(plain: unknown): string | null {
   const p = normalizePayload(plain);
   return `${normalizeKeyPart(p.date)}::${normalizeKeyPart(p.itemRid)}`;
@@ -44,13 +56,16 @@ export async function importHandler({
   ctx: ImportExportPluginCtx;
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
-  const clear = normalizePayload(payload);
-  if (!clear.date || !clear.itemRid) {
-    throw new Error('habits_logs: date et itemRid requis.');
-  }
+  const clear = normalizeForCreate(payload);
   const rec = await habitsLogsClient.create(ctx.moduleUserId, ctx.mainKey, clear);
   return { action: 'created', id: rec.id };
 }
+
+export const bulkImportHandler = makeBulkImportHandler(
+  habitsLogsClient,
+  normalizeForCreate,
+  'habits_logs',
+);
 
 export async function* exportQuery({
   ctx,
@@ -90,6 +105,7 @@ export async function listExistingKeys({
 const HabitsLogsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

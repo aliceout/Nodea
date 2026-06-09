@@ -306,6 +306,246 @@ describe('Every registered collection is routable via X-Collection (issue #67)',
   });
 });
 
+describe('Bulk records — POST /records/bulk + POST /records/promote-guards (issue #127)', () => {
+  it('creates N entries in one POST, all at init guard, in input order', async () => {
+    const cookie = await authFor('bulkA@example.com');
+    const sid = 'sid-bulkA';
+
+    const res = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid,
+        entries: [
+          { cipherIv: 'iv-1', payload: 'c-1' },
+          { cipherIv: 'iv-2', payload: 'c-2' },
+          { cipherIv: 'iv-3', payload: 'c-3' },
+        ],
+      }),
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      data: Array<{ id: string; moduleUserId: string; cipherIv: string; payload: string }>;
+    };
+    expect(body.data).toHaveLength(3);
+    expect(body.data[0]!.cipherIv).toBe('iv-1');
+    expect(body.data[1]!.cipherIv).toBe('iv-2');
+    expect(body.data[2]!.cipherIv).toBe('iv-3');
+    expect(body.data[0]).not.toHaveProperty('guard');
+
+    // List the sid: all 3 rows visible.
+    const list = await app.request('/records', {
+      headers: { cookie, 'x-sid': sid, 'x-collection': 'mood' },
+    });
+    const listBody = (await list.json()) as { data: Array<{ id: string }> };
+    expect(listBody.data).toHaveLength(3);
+  });
+
+  it('promote-guards flips every init guard to its HMAC value atomically', async () => {
+    const cookie = await authFor('bulkB@example.com');
+    const sid = 'sid-bulkB';
+
+    const created = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid,
+        entries: [
+          { cipherIv: 'iv-a', payload: 'a' },
+          { cipherIv: 'iv-b', payload: 'b' },
+        ],
+      }),
+    });
+    const createdBody = (await created.json()) as { data: Array<{ id: string }> };
+    const ids = createdBody.data.map((r) => r.id);
+
+    const guardA = 'g_' + 'a'.repeat(64);
+    const guardB = 'g_' + 'b'.repeat(64);
+
+    const promote = await app.request('/records/promote-guards', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid,
+        promotions: [
+          { id: ids[0], guard: guardA },
+          { id: ids[1], guard: guardB },
+        ],
+      }),
+    });
+    expect(promote.status).toBe(200);
+    expect((await promote.json()) as { promoted: number }).toEqual({ promoted: 2 });
+
+    // The new guard is the only valid X-Guard for subsequent PATCH.
+    const goodPatch = await app.request(`/records/${ids[0]}`, {
+      method: 'PATCH',
+      headers: authHeaders(cookie, sid, 'mood', guardA),
+      body: JSON.stringify({ cipherIv: 'iv-a2' }),
+    });
+    expect(goodPatch.status).toBe(200);
+
+    // Old "init" guard no longer works on a promoted row.
+    const staleInit = await app.request(`/records/${ids[1]}`, {
+      method: 'PATCH',
+      headers: authHeaders(cookie, sid, 'mood', 'init'),
+      body: JSON.stringify({ cipherIv: 'iv-b2' }),
+    });
+    expect(staleInit.status).toBe(403);
+  });
+
+  it('promote-guards rejects an already-promoted row with 400', async () => {
+    const cookie = await authFor('bulkC@example.com');
+    const sid = 'sid-bulkC';
+
+    const created = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid,
+        entries: [{ cipherIv: 'iv', payload: 'p' }],
+      }),
+    });
+    const { data } = (await created.json()) as { data: Array<{ id: string }> };
+    const id = data[0]!.id;
+
+    // First promote: ok.
+    const guard1 = 'g_' + '1'.repeat(64);
+    const first = await app.request('/records/promote-guards', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid, promotions: [{ id, guard: guard1 }] }),
+    });
+    expect(first.status).toBe(200);
+
+    // Second attempt: already promoted → 400 + transaction NOT applied.
+    const guard2 = 'g_' + '2'.repeat(64);
+    const second = await app.request('/records/promote-guards', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid, promotions: [{ id, guard: guard2 }] }),
+    });
+    expect(second.status).toBe(400);
+    const err = (await second.json()) as { error: string };
+    expect(err.error).toBe('guard_already_promoted');
+
+    // PATCH with the original promoted guard still works — the second
+    // promote-guards left no trace.
+    const stillWorks = await app.request(`/records/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(cookie, sid, 'mood', guard1),
+      body: JSON.stringify({ cipherIv: 'iv2' }),
+    });
+    expect(stillWorks.status).toBe(200);
+  });
+
+  it('promote-guards returns 404 when one of the ids doesn’t exist under the sid', async () => {
+    const cookie = await authFor('bulkD@example.com');
+    const sid = 'sid-bulkD';
+
+    const created = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid, entries: [{ cipherIv: 'iv', payload: 'p' }] }),
+    });
+    const { data } = (await created.json()) as { data: Array<{ id: string }> };
+
+    const guard = 'g_' + 'f'.repeat(64);
+    const res = await app.request('/records/promote-guards', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid,
+        promotions: [
+          { id: data[0]!.id, guard },
+          { id: 'not-a-real-id', guard },
+        ],
+      }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('promote-guards rejects a body with duplicate ids', async () => {
+    const cookie = await authFor('bulkE@example.com');
+    const sid = 'sid-bulkE';
+
+    const created = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid, entries: [{ cipherIv: 'iv', payload: 'p' }] }),
+    });
+    const { data } = (await created.json()) as { data: Array<{ id: string }> };
+    const id = data[0]!.id;
+    const guard = 'g_' + '9'.repeat(64);
+
+    const res = await app.request('/records/promote-guards', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid,
+        promotions: [{ id, guard }, { id, guard }],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('bulk POST rejects bodies past BULK_MAX_ENTRIES', async () => {
+    const cookie = await authFor('bulkF@example.com');
+    const sid = 'sid-bulkF';
+    const entries = Array.from({ length: 101 }, (_, i) => ({
+      cipherIv: 'iv-' + i,
+      payload: 'p',
+    }));
+    const res = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid, entries }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('bulk POST returns `bulk_payload_too_large` when aggregate size exceeds the cap', async () => {
+    // Three entries at 6 MB each pass the per-entry 8 MB cap but
+    // aggregate to 18 MB, above the 16 MB bulk cap. The handler must
+    // distinguish this from a generic `invalid_body` so a client can
+    // react (split into smaller chunks + retry).
+    const cookie = await authFor('bulkG@example.com');
+    const sid = 'sid-bulkG';
+    const big = 'A'.repeat(6 * 1024 * 1024);
+    const entries = [
+      { cipherIv: 'iv-1', payload: big },
+      { cipherIv: 'iv-2', payload: big },
+      { cipherIv: 'iv-3', payload: big },
+    ];
+    const res = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie, 'x-collection': 'mood' },
+      body: JSON.stringify({ sid, entries }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('bulk_payload_too_large');
+  });
+
+  it('bulk POST and promote-guards both require authentication', async () => {
+    const noAuthBulk = await app.request('/records/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-collection': 'mood' },
+      body: JSON.stringify({ sid: 's', entries: [{ cipherIv: 'i', payload: 'p' }] }),
+    });
+    expect(noAuthBulk.status).toBe(401);
+
+    const noAuthPromote = await app.request('/records/promote-guards', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-collection': 'mood' },
+      body: JSON.stringify({
+        sid: 's',
+        promotions: [{ id: 'x', guard: 'g_' + '0'.repeat(64) }],
+      }),
+    });
+    expect(noAuthPromote.status).toBe(401);
+  });
+});
+
 describe('/modules-config (no guard)', () => {
   it('returns an empty shape for a fresh user', async () => {
     const cookie = await authFor('cfg1@example.com');

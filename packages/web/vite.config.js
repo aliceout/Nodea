@@ -81,6 +81,14 @@ export default defineConfig({
   //     splitting lets the rest of the app skip it.
   //   - `headlessui` : @headlessui/react. Common across the modals,
   //     stable.
+  //   - `zxcvbn` : @zxcvbn-ts/core + the common language dictionary
+  //     (top-10k passwords list + adjacency graph). ~240 KB gzip,
+  //     used by Register / ChangePassword / Recover /
+  //     BackupExport — all lazy-loaded auth pages. The explicit
+  //     manualChunk slot just gives it a stable readable name
+  //     (`zxcvbn-*`) instead of the auto-generated `index.esm-*`,
+  //     so a future audit sees at a glance what the cold-path 240
+  //     KB chunk represents.
   build: {
     rollupOptions: {
       output: {
@@ -93,6 +101,7 @@ export default defineConfig({
             "@scure/bip39",
           ],
           markdown: ["react-markdown"],
+          zxcvbn: ["@zxcvbn-ts/core", "@zxcvbn-ts/language-common"],
         },
       },
     },

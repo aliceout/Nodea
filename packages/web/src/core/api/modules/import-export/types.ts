@@ -65,6 +65,15 @@ export interface ImportExportPlugin {
     payload: unknown;
     ctx: ImportExportPluginCtx;
   }): Promise<{ action: 'created'; id: string }>;
+  /** Optional batched insert (issue #127). When present, the restore
+   *  pipeline collapses N records into one bulk POST per chunk of
+   *  `BULK_MAX_ENTRIES`, instead of one round-trip per row. Plugins
+   *  that don't expose this fall back to the per-row `importHandler`
+   *  loop. Each chunk is atomic server-side. */
+  bulkImportHandler?(args: {
+    payloads: ReadonlyArray<unknown>;
+    ctx: ImportExportPluginCtx;
+  }): Promise<{ ids: string[] }>;
   /** Stream every record for export. Yields normalised payloads ;
    *  the caller handles JSON-Lines wrapping via
    *  `exportSerialize`. `pageSize` is currently a no-op signal

@@ -4,7 +4,7 @@ import {
   type LibraryReviewPayload,
 } from '@nodea/shared';
 import { libraryReviewsClient } from '@/core/api/modules/library';
-import { normalizeKeyPart, contentFingerprint } from './utils';
+import { makeBulkImportHandler, normalizeKeyPart, contentFingerprint } from './utils';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -67,6 +67,18 @@ export function getNaturalKey(plain: unknown): string | null {
   ].join('::');
 }
 
+/** `normalizePayload` + a second pass that rejects payloads the schema
+ *  accepts but the domain doesn't (empty date/itemRid/content would
+ *  let an orphan review through). Shared with the bulk path so the
+ *  rule lives in one spot. */
+function normalizeForCreate(input: unknown): LibraryReviewPayload {
+  const clear = normalizePayload(input);
+  if (!clear.date || !clear.itemRid || !clear.content) {
+    throw new Error('library_reviews: date, itemRid et content requis.');
+  }
+  return clear;
+}
+
 export async function importHandler({
   payload,
   ctx,
@@ -75,10 +87,7 @@ export async function importHandler({
   ctx: ImportExportPluginCtx;
 }): Promise<{ action: 'created'; id: string }> {
   ensureContext(ctx);
-  const clear = normalizePayload(payload);
-  if (!clear.date || !clear.itemRid || !clear.content) {
-    throw new Error('library_reviews: date, itemRid et content requis.');
-  }
+  const clear = normalizeForCreate(payload);
   const rec = await libraryReviewsClient.create(
     ctx.moduleUserId,
     ctx.mainKey,
@@ -86,6 +95,12 @@ export async function importHandler({
   );
   return { action: 'created', id: rec.id };
 }
+
+export const bulkImportHandler = makeBulkImportHandler(
+  libraryReviewsClient,
+  normalizeForCreate,
+  'library_reviews',
+);
 
 export async function* exportQuery({
   ctx,
@@ -125,6 +140,7 @@ export async function listExistingKeys({
 const LibraryReviewsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
+  bulkImportHandler,
   exportQuery,
   exportSerialize,
   getNaturalKey,

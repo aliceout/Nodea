@@ -296,6 +296,15 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
       // ; the UI then lied (« nothing moved ») while the DB carried
       // the move ; a second carry-over click then double-moved the
       // already-shifted goals or hit unique-key collisions.
+      //
+      // Carry-over is a bulk UPDATE, not a bulk CREATE — the bulk
+      // endpoint added in #127 only collapses the imports' POST +
+      // promote-guard round-trip. A `PATCH /records/bulk` would
+      // need per-row guard verification + per-row guard headers,
+      // which is meaningfully more complex than the current
+      // CREATE-only contract ; deferred to a follow-up. Practical
+      // impact stays small : carry-over touches ~5-50 unfinished
+      // goals per user once a year.
       const failedIds = new Set<string>();
       const now = new Date().toISOString();
       for (const e of affected) {

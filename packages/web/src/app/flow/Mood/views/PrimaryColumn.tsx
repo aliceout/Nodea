@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import MonthSelector from '../components/MonthSelector';
 import YearSelector from '../components/YearSelector';
@@ -201,7 +202,12 @@ export default function PrimaryColumn() {
               : t('mood.primary.empty')}
           </EmptyHint>
         ) : (
-          filtered.map((entry) => <EntryRow key={entry.id} entry={entry} />)
+          <VirtualWindowList
+            items={filtered}
+            estimateRowHeight={75}
+            getKey={(e) => e.id}
+            renderItem={(e) => <EntryRow entry={e} />}
+          />
         )}
       </div>
     </section>

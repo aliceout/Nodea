@@ -15,7 +15,13 @@ import type { z } from 'zod';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
 import { encryptAESGCM, decryptAESGCM, type AesBlob } from '@/core/crypto/aes';
 import { deriveGuard } from '@/core/crypto/guard-derivation';
-import type { Base64, CipherIV, EncryptedBlob } from '@nodea/shared';
+import {
+  BULK_MAX_ENTRIES,
+  BULK_TOTAL_PAYLOAD_MAX,
+  type Base64,
+  type CipherIV,
+  type EncryptedBlob,
+} from '@nodea/shared';
 
 export interface EncryptedRecord {
   id: string;
@@ -104,6 +110,25 @@ export interface CollectionClient<TSchema extends z.ZodType> {
     key: MainKeyMaterial,
     payload: z.infer<TSchema>,
   ): Promise<DecryptedRecord<z.infer<TSchema>>>;
+  /**
+   * Batched create — collapses N records into one bulk POST + one
+   * bulk-promote round-trip per chunk of {@link BULK_MAX_ENTRIES}.
+   *
+   * **Atomicity** : each chunk is atomic (server-side transaction). A
+   * partial failure across chunks is possible at large N — the caller
+   * gets a rejection mid-flight and the previously-committed chunks
+   * stay in place. Import / restore flows already accept this : they
+   * wrap with their own per-batch try/catch and report progress.
+   *
+   * Returns the freshly-created records in input order, with `payload`
+   * mirrored from the input (the server stores ciphertext verbatim
+   * so a re-decrypt round-trip would be wasted work at large N).
+   */
+  createMany(
+    moduleUserId: string,
+    key: MainKeyMaterial,
+    payloads: ReadonlyArray<z.infer<TSchema>>,
+  ): Promise<DecryptedRecord<z.infer<TSchema>>[]>;
   update(
     moduleUserId: string,
     key: MainKeyMaterial,
@@ -197,6 +222,114 @@ export function createCollectionClient<TSchema extends z.ZodType>(
     };
   }
 
+  async function createMany(
+    moduleUserId: string,
+    key: MainKeyMaterial,
+    payloads: ReadonlyArray<Payload>,
+  ): Promise<DecryptedRecord<Payload>[]> {
+    if (payloads.length === 0) return [];
+    const results: DecryptedRecord<Payload>[] = [];
+
+    interface PendingEntry {
+      payload: Payload;
+      blob: AesBlob;
+      size: number;
+    }
+    let pending: PendingEntry[] = [];
+    let pendingSize = 0;
+
+    /** POST the currently-pending chunk + promote its guards, then
+     *  reset. Called when adding the next entry would cross the count
+     *  or size cap, and once at the end for the trailing chunk. */
+    async function flushChunk(): Promise<void> {
+      if (pending.length === 0) return;
+      const created = await request<{ data: EncryptedRecord[] }>(
+        'POST',
+        `/records/bulk`,
+        {
+          collection: collectionName,
+          body: {
+            sid: moduleUserId,
+            entries: pending.map((e) => packBlob(e.blob)),
+          },
+        },
+      );
+      const rows = created.data;
+      if (rows.length !== pending.length) {
+        throw new Error('bulk_create_response_mismatch');
+      }
+      const promotions = await Promise.all(
+        rows.map(async (r) => ({
+          id: r.id,
+          guard: await deriveGuard(key.hmacKey, moduleUserId, r.id),
+        })),
+      );
+      await request<{ promoted: number }>('POST', `/records/promote-guards`, {
+        collection: collectionName,
+        body: { sid: moduleUserId, promotions },
+      });
+      // Server stores ciphertext verbatim — input payload === output
+      // payload semantically, so we skip the decrypt + JSON.parse
+      // round-trip the single-create path does. Keeps a 100-row import
+      // from running 100 unnecessary AES-GCM decrypts.
+      for (let i = 0; i < pending.length; i += 1) {
+        const row = rows[i]!;
+        results.push({
+          id: row.id,
+          moduleUserId: row.moduleUserId,
+          payload: pending[i]!.payload,
+        });
+      }
+      pending = [];
+      pendingSize = 0;
+    }
+
+    // Encrypt in mini-batches of `BULK_MAX_ENTRIES` so AES-GCM stays
+    // parallelized while the in-flight memory stays bounded (a 3000-
+    // entry Journal import doesn't try to hold every encrypted blob
+    // at once).
+    //
+    // Inside each mini-batch we stream the encrypted blobs into a
+    // pending list and flush as soon as adding the next one would
+    // overflow either the count cap (BULK_MAX_ENTRIES) OR the size cap
+    // (BULK_TOTAL_PAYLOAD_MAX). This is what makes the same
+    // `createMany` work for tiny Mood entries (count-bound) and for
+    // Journal entries with inline images (size-bound).
+    for (let off = 0; off < payloads.length; off += BULK_MAX_ENTRIES) {
+      const batch = payloads.slice(off, off + BULK_MAX_ENTRIES);
+      const blobs = await Promise.all(batch.map((p) => encodePayload(key, p)));
+      for (let i = 0; i < blobs.length; i += 1) {
+        const blob = blobs[i]!;
+        const payload = batch[i]!;
+        const size = blob.iv.length + blob.data.length;
+
+        // A single entry larger than the bulk cap can never fit in any
+        // batch — flush whatever's pending and refuse with a meaningful
+        // message rather than ship a hopeless request that the server
+        // will 400.
+        if (size > BULK_TOTAL_PAYLOAD_MAX) {
+          await flushChunk();
+          throw new Error(
+            `Entry at index ${off + i} is ${size} chars after encryption ` +
+              `— exceeds the ${BULK_TOTAL_PAYLOAD_MAX}-char bulk-transport ` +
+              `cap. Reduce attachment size or import this record on its own.`,
+          );
+        }
+
+        if (
+          pending.length >= BULK_MAX_ENTRIES ||
+          pendingSize + size > BULK_TOTAL_PAYLOAD_MAX
+        ) {
+          await flushChunk();
+        }
+        pending.push({ payload, blob, size });
+        pendingSize += size;
+      }
+    }
+    await flushChunk();
+    return results;
+  }
+
   async function update(
     moduleUserId: string,
     key: MainKeyMaterial,
@@ -230,5 +363,5 @@ export function createCollectionClient<TSchema extends z.ZodType>(
     );
   }
 
-  return { list, create, update, remove };
+  return { list, create, createMany, update, remove };
 }

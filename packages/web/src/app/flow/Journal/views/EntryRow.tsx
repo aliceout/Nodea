@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   BookOpenIcon,
   PencilSquareIcon,
@@ -31,14 +32,20 @@ interface EntryRowProps {
  * dropped on mobile via `hidden md:contents` since the underlying
  * `HoverActions` cluster relies on `group-hover` which never fires
  * on touch — a real touch path is a separate concern.
+ *
+ * Wrapped in `React.memo` so a sibling-entry change (delete,
+ * edit) only re-renders the row whose `entry` reference moved.
+ * Without it, every other-row action through the actions context
+ * invalidates the whole list and re-renders all rows including
+ * the (potentially heavy) ClampedJournalContent on each.
  */
-export default function EntryRow({ entry }: EntryRowProps) {
+function EntryRowImpl({ entry }: EntryRowProps) {
   const { t } = useI18n();
   const { openReader, editEntry, deleteEntry } = useJournalActions();
   const onRead = () => openReader(entry.id);
 
   return (
-    <li className="group flex flex-col gap-1.5 border-b border-hair py-4 last:border-b-0 md:flex-row md:items-start md:gap-4">
+    <article className="group flex flex-col gap-1.5 border-b border-hair py-4 last:border-b-0 md:flex-row md:items-start md:gap-4">
       <button
         type="button"
         onClick={onRead}
@@ -111,6 +118,9 @@ export default function EntryRow({ entry }: EntryRowProps) {
           </Button>
         </HoverActions>
       </div>
-    </li>
+    </article>
   );
 }
+
+const EntryRow = memo(EntryRowImpl);
+export default EntryRow;
