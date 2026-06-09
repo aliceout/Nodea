@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { ModulesConfigBodySchema } from '@nodea/shared/schemas/entries';
 import { db } from '../db/client.ts';
 import { modulesConfig } from '../db/schema.ts';
+import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import {
   createRoute,
@@ -35,6 +36,17 @@ import {
  */
 export const modulesConfigRoutes = makeAuthedRouter();
 
+// Modules-config is rewritten in full on every flag toggle. A typical
+// user changes a flag less than once a minute ; 30/min per IP leaves
+// generous headroom for rapid-fire UI tweaks while bounding a
+// misbehaving client from overwriting the row at thousands of writes
+// per second.
+const modulesConfigWriteLimiter = rateLimit({
+  max: 30,
+  windowMs: 60_000,
+  keyPrefix: 'modules-config-put',
+});
+
 const ModulesConfigResponseSchema = z.object({
   cipherIv: z.string().nullable(),
   payload: z.string().nullable(),
@@ -58,7 +70,7 @@ const putModulesConfigRoute = createRoute({
   path: '/',
   tags: ['modules-config'],
   summary: 'Replace modules config (atomic, encrypted blob)',
-  middleware: [requireUser] as const,
+  middleware: [modulesConfigWriteLimiter, requireUser] as const,
   request: {
     body: {
       content: {

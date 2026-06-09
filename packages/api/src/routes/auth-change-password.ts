@@ -23,6 +23,7 @@ import {
 } from '../auth/session.ts';
 import { db } from '../db/client.ts';
 import { opaqueRecords, users } from '../db/schema.ts';
+import { rateLimit } from '../middleware/rate-limit.ts';
 import {
   requireFreshPasswordOrPasskey,
 } from '../middleware/require-fresh-reauth.ts';
@@ -37,12 +38,23 @@ import {
 
 export const authChangePasswordRoutes = makeAuthedRouter();
 
+// Same posture as the other mutating /auth/* routes (recovery setup,
+// change-email, reset finish) : 5 attempts per hour per IP. A
+// legitimate user changes their password at most a handful of times
+// per year ; this bucket is wide enough not to block them, narrow
+// enough that an OPAQUE downgrade attack can't iterate freely.
+const changePasswordLimiter = rateLimit({
+  max: 5,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'change-password',
+});
+
 const startRoute = createRoute({
   method: 'post',
   path: '/change-password/start',
   tags: ['auth-change-password'],
   summary: 'Change password — step 1 (re-auth gated)',
-  middleware: [requireUser, requireFreshPasswordOrPasskey] as const,
+  middleware: [changePasswordLimiter, requireUser, requireFreshPasswordOrPasskey] as const,
   request: {
     body: {
       content: {
@@ -62,7 +74,7 @@ const finishRoute = createRoute({
   path: '/change-password/finish',
   tags: ['auth-change-password'],
   summary: 'Change password — step 2 (rotate envelope + session)',
-  middleware: [requireUser] as const,
+  middleware: [changePasswordLimiter, requireUser] as const,
   request: {
     body: {
       content: {

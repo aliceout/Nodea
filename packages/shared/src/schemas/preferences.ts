@@ -1,16 +1,19 @@
 import { z } from 'zod';
 
-const Base64ish = z.string().min(1);
-
 /**
  * Envelope for the encrypted user preferences blob — same 1:1 shape
  * as `modules_config`. The server only handles the wrapper; the inner
  * payload (see `UserPreferencesPayloadSchema`) is parsed client-side
  * after AES-GCM decryption.
+ *
+ * Body caps mirror modules-config : 64-char IV (AES-GCM IV is 16
+ * base64 chars, the cap is paranoid headroom) and 32 KB payload
+ * (preferences are a handful of enums + occasional booleans — even
+ * with future expansion they should not approach this ceiling).
  */
 export const UserPreferencesBodySchema = z.object({
-  cipherIv: Base64ish,
-  payload: Base64ish,
+  cipherIv: z.string().min(1).max(64),
+  payload: z.string().min(1).max(32 * 1024),
 });
 export type UserPreferencesBody = z.infer<typeof UserPreferencesBodySchema>;
 

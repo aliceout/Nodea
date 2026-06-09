@@ -10,6 +10,7 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { db } from '../db/client.ts';
 import type { EntryRow, EntryTable } from '../db/schema.ts';
 import type { CollectionDef } from '../collections.ts';
+import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import {
   requireCollection,
@@ -74,6 +75,24 @@ const EntryListResponseSchema = z.object({
   meta: z.looseObject({}),
 });
 
+// Per-IP rate limits on the encrypted-record write surface. Picked
+// generous enough that a bulk import (50 imports of 500 records via
+// the existing 2-RT-per-record path = ~200 RT/min from one client) is
+// not throttled, but tight enough that a single misbehaving client
+// can't pin the api with 10k record creates per minute. Bumps the
+// per-route bucket independently so a read-mostly client isn't
+// drained by another tab pushing writes.
+const recordsCreateLimiter = rateLimit({
+  max: 600,
+  windowMs: 60_000,
+  keyPrefix: 'records-create',
+});
+const recordsUpdateLimiter = rateLimit({
+  max: 600,
+  windowMs: 60_000,
+  keyPrefix: 'records-update',
+});
+
 export function createRecordsRoutes(collections: readonly CollectionDef[]) {
   const byName = new Map<string, EntryTable>(
     collections.map((c) => [c.name, c.table]),
@@ -112,7 +131,7 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
     path: '/records',
     tags: ['records'],
     summary: 'Create a new encrypted record',
-    middleware: [requireUser, collectionResolver] as const,
+    middleware: [recordsCreateLimiter, requireUser, collectionResolver] as const,
     request: {
       headers: z.object({
         'x-collection': z.string().min(1),
@@ -136,7 +155,7 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
     path: '/records/{id}',
     tags: ['records'],
     summary: 'Update an encrypted record (guard-protected)',
-    middleware: [requireUser, collectionResolver, requireGuard] as const,
+    middleware: [recordsUpdateLimiter, requireUser, collectionResolver, requireGuard] as const,
     request: {
       headers: z.object({
         'x-collection': z.string().min(1),

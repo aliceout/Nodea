@@ -1,6 +1,29 @@
 import { z } from 'zod';
 
-const Base64ish = z.string().min(1);
+/**
+ * Body-size caps for the encrypted record envelope. Both `cipherIv`
+ * and `payload` cross the wire as base64-encoded strings.
+ *
+ * - **cipherIv** is the AES-GCM IV — 12 raw bytes = 16 base64 chars.
+ *   A 64-char cap is paranoid (4× the theoretical max) and rejects
+ *   any client trying to smuggle bytes through the IV field.
+ * - **payload** is the encrypted JSON. Real-world ceiling :
+ *     · Mood / Goals / Habits entries are ≤ 2-5 KB each ;
+ *     · Journal entries with inline image attachments can reach
+ *       ~500 KB if multiple photos are bundled ;
+ *     · Library covers run 30-300 KB.
+ *   A 2 MB cap (≈ 1.5 MB raw) accommodates the largest realistic
+ *   single record while bounding the per-row write so a malicious
+ *   or runaway client can't push 100 MB blobs through every PATCH.
+ *
+ * Without these caps the body size is gated only by Hono's default
+ * `bodyLimit` (usually 100 MB) — far too generous for the encrypted-
+ * record surface where the legitimate top end sits ~50× lower.
+ */
+const CIPHER_IV_MAX_CHARS = 64;
+const PAYLOAD_MAX_CHARS = 2 * 1024 * 1024;
+const Base64ish = z.string().min(1).max(PAYLOAD_MAX_CHARS);
+const CipherIvField = z.string().min(1).max(CIPHER_IV_MAX_CHARS);
 
 /** Initial guard value on record creation. */
 export const INIT_GUARD = 'init';
@@ -23,7 +46,7 @@ export type GuardValue = z.infer<typeof GuardSchema>;
  */
 export const CreateEntryBodySchema = z.object({
   sid: z.string().min(1).max(128),
-  cipherIv: Base64ish,
+  cipherIv: CipherIvField,
   payload: Base64ish,
   guard: z.literal(INIT_GUARD),
 });
@@ -37,7 +60,7 @@ export type CreateEntryBody = z.infer<typeof CreateEntryBodySchema>;
  * change afterwards.
  */
 export const UpdateEntryBodySchema = z.object({
-  cipherIv: Base64ish.optional(),
+  cipherIv: CipherIvField.optional(),
   payload: Base64ish.optional(),
   guard: PromotedGuardSchema.optional(),
 });
@@ -57,15 +80,17 @@ export type UpdateEntryBody = z.infer<typeof UpdateEntryBodySchema>;
 export const EntryViewSchema = z.object({
   id: z.string(),
   moduleUserId: z.string(),
-  cipherIv: Base64ish,
+  cipherIv: CipherIvField,
   payload: Base64ish,
 });
 export type EntryView = z.infer<typeof EntryViewSchema>;
 
-/** Modules-config payload — 1:1 on user_id, no guard/sid. */
+/** Modules-config payload — 1:1 on user_id, no guard/sid. The
+ *  payload here is a small JSON descriptor of which modules are
+ *  enabled / parameterised ; 64 KB is generous. */
 export const ModulesConfigBodySchema = z.object({
-  cipherIv: Base64ish,
-  payload: Base64ish,
+  cipherIv: CipherIvField,
+  payload: z.string().min(1).max(64 * 1024),
 });
 export type ModulesConfigBody = z.infer<typeof ModulesConfigBodySchema>;
 

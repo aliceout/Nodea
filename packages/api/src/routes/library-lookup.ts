@@ -266,7 +266,22 @@ libraryLookupRoutes.openapi(coverFetchRoute, async (c) => {
       // 8 s is plenty for a cover image; longer than that is a
       // signal the provider is wedged.
       signal: AbortSignal.timeout(8000),
+      // SSRF hardening (audit v2.8.0). The default `fetch` follows
+      // 3xx redirects transparently, which means a benign allowlist
+      // entry (e.g. covers.openlibrary.org) could redirect us into
+      // an arbitrary host — including internal IPs or cloud metadata
+      // endpoints — and the second fetch would not re-check the
+      // allowlist. `redirect: 'manual'` makes the response surface
+      // the 3xx as-is ; we explicitly refuse below rather than
+      // chasing the Location header.
+      redirect: 'manual',
     });
+    // A manual-mode 3xx surfaces as `status` in the 300-399 range.
+    // We don't follow it — the upstream is on the allowlist, an
+    // attacker-controlled Location header would not be.
+    if (upstream.status >= 300 && upstream.status < 400) {
+      return c.json({ error: 'redirect_refused' }, 502);
+    }
     if (!upstream.ok) {
       return c.json({ error: `upstream_${upstream.status}` }, 502);
     }

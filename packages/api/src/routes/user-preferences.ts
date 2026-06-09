@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { UserPreferencesBodySchema } from '@nodea/shared/schemas/preferences';
 import { db } from '../db/client.ts';
 import { userPreferences } from '../db/schema.ts';
+import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import {
   createRoute,
@@ -26,6 +27,16 @@ import {
  */
 export const userPreferencesRoutes = makeAuthedRouter();
 
+// User preferences are written when the user toggles a setting. The
+// limiter is generous (60/min) so debounced theme / language toggles
+// don't trip the bucket on fast-clickers, but tight enough that a
+// runaway client can't pin the row at thousands of writes / second.
+const userPreferencesWriteLimiter = rateLimit({
+  max: 60,
+  windowMs: 60_000,
+  keyPrefix: 'user-preferences-put',
+});
+
 const UserPreferencesResponseSchema = z.object({
   cipherIv: z.string().nullable(),
   payload: z.string().nullable(),
@@ -49,7 +60,7 @@ const putUserPreferencesRoute = createRoute({
   path: '/',
   tags: ['user-preferences'],
   summary: 'Replace user preferences (atomic, encrypted blob)',
-  middleware: [requireUser] as const,
+  middleware: [userPreferencesWriteLimiter, requireUser] as const,
   request: {
     body: {
       content: {
