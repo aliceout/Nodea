@@ -198,7 +198,16 @@ export const emailVerifications = pgTable(
     consumedAt: timestamp('consumed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('email_verifications_email_idx').on(t.email)],
+  (t) => [
+    index('email_verifications_email_idx').on(t.email),
+    // The token-validation lookup filters by (kind, code_hash) — see
+    // `auth/email-verifications.ts`. Without an index on code_hash that
+    // was a sequential scan on every magic-link / verification submit
+    // (audit 2026-06 passe 2). The table stays small (the weekly
+    // cleanup cron purges expired/consumed rows), but the index is
+    // cheap insurance against a slow-validate as volume grows.
+    index('email_verifications_code_hash_idx').on(t.codeHash),
+  ],
 );
 
 /**

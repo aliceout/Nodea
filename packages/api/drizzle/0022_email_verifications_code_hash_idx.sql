@@ -1,0 +1,1 @@
+CREATE INDEX "email_verifications_code_hash_idx" ON "email_verifications" USING btree ("code_hash");

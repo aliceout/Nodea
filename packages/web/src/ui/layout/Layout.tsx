@@ -20,8 +20,10 @@ import Sidebar from '@/ui/dirk/Sidebar';
  * dates, page-level CTAs, custom hierarchies).
  *
  * Crypto status `missing` keeps blocking with `KeyMissingModal`.
- * First-run onboarding now lives inline on the home page (see
- * `app/flow/Homepage/Onboarding.tsx`) — no shell-level modal.
+ * First-run onboarding is now a silent seed — no picker, no modal :
+ * `core/modules/useFirstRunSeed.ts` turns every toggleable module on
+ * by default on the first login. (The old inline `Onboarding.tsx`
+ * picker was removed with that change.)
  *
  * Each module owns its own inline « + Nouvel … » form ; the
  * former shell-level Composer (modal + ⌘K hotkey) is gone. The
@@ -68,8 +70,19 @@ export default function Layout() {
   }, [moduleKnown, syncCurrentModule]);
 
   return (
-    <div className="flex min-h-screen bg-bg text-ink">
-      {keyStatus === 'missing' ? (
+    <>
+      {/* Print guardrail (see ui/theme/print.css) : on screen this is
+          hidden ; when the user prints, the protected shell below is
+          blanked and only this notice spools to the printer, so the
+          decrypted surface never lands on paper / a print-to-PDF
+          driver by accident. */}
+      <div className="nodea-print-notice" aria-hidden="true">
+        Nodea — le contenu chiffré est masqué à l’impression pour votre
+        confidentialité. / Encrypted content is hidden from print for your
+        privacy.
+      </div>
+      <div data-print-protect className="flex min-h-screen bg-bg text-ink">
+        {keyStatus === 'missing' ? (
         // `session.logout()` awaits the server-side session purge,
         // then redirects itself (location.replace). Navigating here
         // in parallel (the old `window.location.href = '/login'`)
@@ -78,8 +91,9 @@ export default function Layout() {
         <KeyMissingModal onLogout={() => void session.logout()} />
       ) : null}
 
-      <Sidebar />
-      <main id="main" className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
-    </div>
+        <Sidebar />
+        <main id="main" className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
+      </div>
+    </>
   );
 }

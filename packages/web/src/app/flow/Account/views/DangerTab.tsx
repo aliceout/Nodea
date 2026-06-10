@@ -75,6 +75,7 @@ export default function DangerTab() {
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
           type="password"
+          autoComplete="current-password"
         />
         <Button
           variant="danger"

@@ -146,6 +146,7 @@ export default function ExportPanel() {
                   setPassword(e.target.value)
                 }
                 type="password"
+                autoComplete="current-password"
                 autoFocus
               />
               <div className="flex gap-2">

@@ -201,6 +201,7 @@ function WipePanel({
             defaultValue: 'Mot de passe actuel',
           })}
           type="password"
+          autoComplete="current-password"
           value={password}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             setPassword(e.target.value)

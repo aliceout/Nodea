@@ -1,0 +1,39 @@
+/**
+ * Print guardrail (audit 2026-06 passe 2).
+ *
+ * Nodea handles mental-health + trans-health data. A casual Ctrl+P on
+ * the authenticated surface would otherwise spool the full decrypted
+ * content to a printer (and to every "print to PDF" / cloud-print
+ * driver in the path) — a cheap, silent leak. We blank the protected
+ * app shell when printing and show a short notice instead.
+ *
+ * Scope : only the authenticated shell carries `data-print-protect`
+ * (see `ui/layout/Layout.tsx`). Public routes (docs, login, the legal
+ * pages) print normally — there's nothing sensitive there, and the
+ * docs are meant to be printable. The HRT "export PDF" is a deliberate
+ * jsPDF download, not a browser print, so it is unaffected.
+ *
+ * This is a guardrail, not a security boundary : a determined user can
+ * still screenshot or disable the stylesheet. It exists to stop the
+ * accidental print, which is the realistic threat.
+ */
+
+/* Hidden on screen ; revealed only on the print canvas. */
+.nodea-print-notice {
+  display: none;
+}
+
+@media print {
+  [data-print-protect] {
+    display: none !important;
+  }
+
+  .nodea-print-notice {
+    display: block !important;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #000;
+  }
+}

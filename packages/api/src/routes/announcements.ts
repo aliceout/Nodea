@@ -10,7 +10,7 @@ import {
   makeAuthedRouter,
   z,
 } from '../openapi/index.ts';
-import { serialize } from './announcements-serialize.ts';
+import { serializePublic } from './announcements-serialize.ts';
 
 /**
  * Public feed of active announcements. Authenticated users only — the
@@ -58,5 +58,5 @@ announcementsRoutes.openapi(listAnnouncementsRoute, async (c) => {
     .limit(limit);
 
   // Uniform `{ data, meta }` envelope (audit API-06).
-  return c.json({ data: rows.map(serialize), meta: {} }, 200);
+  return c.json({ data: rows.map(serializePublic), meta: {} }, 200);
 });

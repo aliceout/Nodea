@@ -186,6 +186,11 @@ describe('GET /announcements (public feed)', () => {
     expect(ids).toContain(live.id);
     expect(ids).not.toContain(inactive.id);
     expect(ids).not.toContain(future.id);
+
+    // The public feed must not leak the authoring admin's id to every
+    // logged-in reader (audit 2026-06 passe 2).
+    const liveRow = rows.find((r) => r.id === live.id);
+    expect(liveRow?.createdBy).toBeNull();
   });
 
   it('returns 401 without a session cookie', async () => {

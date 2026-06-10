@@ -130,11 +130,11 @@ export async function consumeEmailVerification(
   const now = new Date();
 
   // Match the hash directly. With 256 bits of entropy collisions are
-  // not a concern, so an indexed lookup on `code_hash` would be
-  // efficient — but we also need to find the row by kind. The current
-  // schema doesn't index on (kind, code_hash); for V1 this is a
-  // sequential scan but the table stays small (cleanup cron purges
-  // expired/consumed rows weekly).
+  // not a concern. `code_hash` is now indexed
+  // (`email_verifications_code_hash_idx`, audit 2026-06 passe 2), so
+  // this lookup is index-backed rather than the prior sequential scan ;
+  // the `kind` equality further narrows the candidate set. The cleanup
+  // cron still purges expired/consumed rows weekly, keeping it small.
   const [row] = await db
     .select()
     .from(emailVerifications)

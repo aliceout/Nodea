@@ -8,7 +8,7 @@ This file is read automatically by Claude Code at the start of every session. It
 
 **Nodea** is a self-hosted, **end-to-end encrypted** journaling / life-tracking web app. Data is encrypted in the browser with a user-derived main key — the server stores only ciphertext + HMAC guards, never plaintext, never keys.
 
-Modules: **Mood** · **Goals** · **Journal** · **Habits** · **Library** · **Review** · **HRT** (all implemented and shipping ; Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md) ; **HRT** (hormone replacement therapy) ships its data layer + views — see [`docs/Modules/HRT.md`](./docs/Modules/HRT.md)).
+Modules: **Mood** · **Goals** · **Journal** · **Library** · **Review** · **HRT** are implemented and shipping (Library Phase 4 imports remaining — see [`docs/Modules/Library.md`](./docs/Modules/Library.md) ; **HRT** (hormone replacement therapy) ships its data layer + views — see [`docs/Modules/HRT.md`](./docs/Modules/HRT.md)). **Habits** is **dormant** : its data layer (view + entries collections) exists but the module is hidden from the UI (`to_toggle: false`, `display: false` in `modules-registry.tsx`) until the product angle is settled — tracked on issue #98. Its code still lives via import/export, so keep its data-layer invariants intact when touching shared paths.
 
 ---
 
@@ -76,7 +76,7 @@ Nodea is E2E encrypted. Crypto mistakes are never "just a bug" — they silently
 2. **Every record mutation goes through a guard middleware.** The factory of module routes must be driven by a single typed array of collections — adding a collection automatically enrolls it in guard validation.
 3. **`modules_config` is keyed PK on `user_id`** and does not need a guard; `requireUser` is sufficient. Document this in the route.
 4. **Invite codes stored hashed**, never in clear. Validation happens only inside `/auth/register`, never exposed via a standalone "check" endpoint. Rate-limit `/auth/*`.
-5. **Session cookies, not JWT.** `httpOnly; Secure; SameSite=Lax; Signed`. Server-side logout must invalidate the session immediately.
+5. **Session cookies, not JWT.** `httpOnly; Secure; SameSite=Strict; Signed` (see `auth/cookies.ts`, SEC-08). Server-side logout must invalidate the session immediately.
 6. **Multi-table writes wrapped in a transaction.** Invite atomicity (`SELECT ... FOR UPDATE` → create user → delete invite) is a hard requirement.
 7. **Response serialization never leaks `guard` or other users' `encrypted_key`.** Write an integration test that verifies this — once.
 8. **Argon2id** for password hashing. Zod + zxcvbn (score ≥ 3) for password policy enforcement on the server.
