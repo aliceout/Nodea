@@ -75,7 +75,12 @@ export const LiteMarkdown = memo(function LiteMarkdown({
   flushList();
 
   return (
-    <div lang="fr" className="space-y-0.5">
+    // No `lang` attribute on purpose : the content's language isn't
+    // tracked per-entry, and a hardcoded `lang="fr"` made the browser
+    // hyphenate English content with French rules (audit 2026-06 passe
+    // 2 review). Without `lang`, `hyphens: auto` stays inert and word
+    // breaks are neutral — correct for mixed-language content.
+    <div className="space-y-0.5">
       {blocks}
     </div>
   );
