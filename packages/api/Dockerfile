@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Nodea API — single-stage Node 22 + pnpm.
+# Nodea API — single-stage Node 24 + pnpm.
 #
 # The API runs TypeScript directly via `tsx` (see `packages/api/package.json`
 # → `start`), so there is no dedicated compile step. Migrations run once on
@@ -56,7 +56,7 @@ RUN pnpm install --frozen-lockfile --prod=false
 ENV NODE_ENV=production
 
 # OPS-03 : drop privileges before the long-running process starts.
-# The official `node:22-alpine` image already ships a `node` user
+# The official `node:24-alpine` image already ships a `node` user
 # (UID 1000). We chown the workspace + the pnpm store so the
 # unprivileged process can read them, then switch via USER. The
 # api binds on 3000 (unprivileged port) so no CAP_NET_BIND_SERVICE
