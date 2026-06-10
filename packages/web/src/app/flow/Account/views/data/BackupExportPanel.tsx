@@ -88,15 +88,24 @@ export default function BackupExportPanel() {
       return;
     }
     try {
-      const modulesData = await collectModules(mainKey, modules, (key, err) => {
-        if (import.meta.env.DEV) console.error(`backup ${key} failed:`, err);
-      });
+      const { out: modulesData, failed } = await collectModules(
+        mainKey,
+        modules,
+        (key, err) => {
+          if (import.meta.env.DEV) console.error(`backup ${key} failed:`, err);
+        },
+      );
       if (Object.keys(modulesData).length === 0) {
         setError(t('account.data.backup.empty'));
         return;
       }
       const exportedAt = new Date().toISOString();
-      const sealed = await sealBackup(packBackup(modulesData, exportedAt), values.passphrase);
+      // Record the failed modules in the manifest (the `failed_modules`
+      // field existed but was never passed — audit 2026-06 passe 2).
+      const sealed = await sealBackup(
+        packBackup(modulesData, exportedAt, failed),
+        values.passphrase,
+      );
       // Copy into a concrete ArrayBuffer-backed view: `age` types its
       // output as the generic `Uint8Array<ArrayBufferLike>`, which the DOM
       // `BlobPart` type rejects (it could be SharedArrayBuffer-backed).
@@ -107,8 +116,20 @@ export default function BackupExportPanel() {
       a.href = url;
       a.download = `nodea-backup-${exportedAt.slice(0, 10)}.age`;
       a.click();
-      URL.revokeObjectURL(url);
-      setSuccess(t('account.data.backup.success'));
+      // Defer revoke a tick — synchronous revoke can abort the download
+      // in some browsers (passe 2).
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      // A partial backup must NOT read as « ✓ réussi » : name the
+      // missing modules so the user knows the backup is incomplete.
+      if (failed.length > 0) {
+        setError(
+          t('account.data.backup.partial', {
+            values: { modules: failed.join(', ') },
+          }),
+        );
+      } else {
+        setSuccess(t('account.data.backup.success'));
+      }
       // Never leave the passphrase lingering in state or the inputs after
       // the .age has downloaded — it's the key to an account-portable backup.
       reset();

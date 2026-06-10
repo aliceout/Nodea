@@ -24,7 +24,12 @@ import { z } from 'zod';
  * record surface where the legitimate top end sits ~12× lower.
  */
 const CIPHER_IV_MAX_CHARS = 64;
-const PAYLOAD_MAX_CHARS = 8 * 1024 * 1024;
+/** Per-record ciphertext cap (chars of base64). The server validates
+ *  each row's `payload` field against this on every create / update /
+ *  bulk item ; the client's `createMany` pre-check uses it too so a
+ *  single oversized entry is refused with an actionable message
+ *  instead of 400-ing its whole bulk chunk (audit 2026-06 passe 2). */
+export const PAYLOAD_MAX_CHARS = 8 * 1024 * 1024;
 const Base64ish = z.string().min(1).max(PAYLOAD_MAX_CHARS);
 const CipherIvField = z.string().min(1).max(CIPHER_IV_MAX_CHARS);
 

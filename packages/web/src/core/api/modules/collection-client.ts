@@ -18,6 +18,7 @@ import { deriveGuard } from '@/core/crypto/guard-derivation';
 import {
   BULK_MAX_ENTRIES,
   BULK_TOTAL_PAYLOAD_MAX,
+  PAYLOAD_MAX_CHARS,
   type Base64,
   type CipherIV,
   type EncryptedBlob,
@@ -303,16 +304,21 @@ export function createCollectionClient<TSchema extends z.ZodType>(
         const payload = batch[i]!;
         const size = blob.iv.length + blob.data.length;
 
-        // A single entry larger than the bulk cap can never fit in any
-        // batch — flush whatever's pending and refuse with a meaningful
-        // message rather than ship a hopeless request that the server
-        // will 400.
-        if (size > BULK_TOTAL_PAYLOAD_MAX) {
+        // A single entry whose ciphertext exceeds the SERVER'S
+        // per-record cap can never be accepted — refuse it up front
+        // with an actionable message rather than ship a chunk the
+        // server 400s wholesale (audit 2026-06 passe 2 : the check
+        // used the 16 MB bulk-total cap, so an 8–16 MB entry passed
+        // the client and then failed the whole import chunk on the
+        // 8 MB per-row `Base64ish` bound). `blob.data` is the
+        // ciphertext the server validates ; the iv is a constant ~24
+        // chars on top.
+        if (blob.data.length > PAYLOAD_MAX_CHARS) {
           await flushChunk();
           throw new Error(
-            `Entry at index ${off + i} is ${size} chars after encryption ` +
-              `— exceeds the ${BULK_TOTAL_PAYLOAD_MAX}-char bulk-transport ` +
-              `cap. Reduce attachment size or import this record on its own.`,
+            `Entry at index ${off + i} is ${blob.data.length} chars after ` +
+              `encryption — exceeds the ${PAYLOAD_MAX_CHARS}-char per-record ` +
+              `cap. Reduce attachment size or split this record.`,
           );
         }
 

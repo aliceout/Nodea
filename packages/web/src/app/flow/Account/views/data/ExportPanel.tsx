@@ -46,7 +46,7 @@ export default function ExportPanel() {
 
   async function runExport(): Promise<void> {
     if (!mainKey) throw new Error(t('account.data.export.noKey'));
-    const out = await collectModules(mainKey, modules, (moduleKey, err) => {
+    const { out, failed } = await collectModules(mainKey, modules, (moduleKey, err) => {
       if (import.meta.env.DEV) console.error(`Export ${moduleKey} failed:`, err);
     });
     if (Object.keys(out).length === 0) {
@@ -54,7 +54,12 @@ export default function ExportPanel() {
       return;
     }
     const payload = {
-      meta: { version: 1, exported_at: new Date().toISOString(), app: 'Nodea' },
+      meta: {
+        version: 1,
+        exported_at: new Date().toISOString(),
+        app: 'Nodea',
+        ...(failed.length > 0 ? { failed_modules: failed } : {}),
+      },
       modules: out,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -63,8 +68,20 @@ export default function ExportPanel() {
     a.href = url;
     a.download = `nodea_export_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     a.click();
-    URL.revokeObjectURL(url);
-    setSuccess(t('account.data.export.success'));
+    // Defer revoke a tick — some browsers abort an in-flight download if
+    // the object URL is revoked synchronously after click (passe 2).
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    // A partial export must NOT read as « ✓ réussi » : name the modules
+    // the user is missing so they don't discover the gap at restore time.
+    if (failed.length > 0) {
+      setError(
+        t('account.data.export.partial', {
+          values: { modules: failed.join(', ') },
+        }),
+      );
+    } else {
+      setSuccess(t('account.data.export.success'));
+    }
   }
 
   async function handleConfirm(): Promise<void> {

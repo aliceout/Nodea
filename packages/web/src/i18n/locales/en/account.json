@@ -137,13 +137,14 @@
       "description": "Decrypted JSON, generated locally. Never leaves your browser.",
       "noKey": "Encryption key unavailable",
       "empty": "No data to export",
-      "success": "Export complete"
+      "success": "Export complete",
+      "partial": "Partial export — these modules could not be exported and are missing from the file: {modules}. Try again for a complete backup."
     },
     "import": {
       "title": "Import",
       "cta": "Import a file",
       "ctaLoading": "Importing…",
-      "description": "JSON, NDJSON or encrypted .age backup previously exported from Nodea. Duplicates are ignored.",
+      "description": "JSON, NDJSON or encrypted .age backup previously exported from Nodea. Duplicates are ignored. Note: links between records (reviews ↔ books, habit logs ↔ habits, HRT intakes ↔ schedules) are not preserved when restoring into a different account.",
       "noKey": "Encryption key unavailable.",
       "errorPrefix": "Import error: ",
       "invalidJson": "Invalid JSON format.",
@@ -152,6 +153,7 @@
       "moduleSkippedUnknown": "{key}: skipped (unknown)",
       "moduleSkippedDisabled": "{key}: skipped (disabled)",
       "moduleResult": "{key}: {created} added, {skipped} duplicate(s)",
+      "moduleFailed": "{key}: failed — interrupted, run again to finish",
       "moodResult": "mood: {count} added",
       "successPrefix": "Import complete · {count} entry/entries — {parts}",
       "backupDetected": "Encrypted backup detected. Enter your passphrase to restore it.",
@@ -173,7 +175,8 @@
       "ctaLoading": "Encrypting…",
       "noKey": "Encryption key unavailable.",
       "empty": "No data to back up.",
-      "success": "Encrypted backup downloaded."
+      "success": "Encrypted backup downloaded.",
+      "partial": "Partial backup — these modules could not be included: {modules}. Try again for a complete backup."
     }
   },
   "danger": {

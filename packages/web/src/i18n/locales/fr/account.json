@@ -137,13 +137,14 @@
       "description": "JSON déchiffré, généré chez toi. Ne quitte jamais ton navigateur.",
       "noKey": "Clé de chiffrement absente",
       "empty": "Aucune donnée à exporter",
-      "success": "Export terminé"
+      "success": "Export terminé",
+      "partial": "Export partiel — ces modules n’ont pas pu être exportés et manquent du fichier : {modules}. Réessaie pour obtenir une sauvegarde complète."
     },
     "import": {
       "title": "Importer",
       "cta": "Importer un fichier",
       "ctaLoading": "Import en cours…",
-      "description": "JSON, NDJSON ou sauvegarde chiffrée .age exportés depuis Nodea. Doublons ignorés.",
+      "description": "JSON, NDJSON ou sauvegarde chiffrée .age exportés depuis Nodea. Doublons ignorés. Note : les liens entre fiches (notes ↔ livres, journaux d’habitudes ↔ habitudes, prises ↔ plannings HRT) ne sont pas conservés lors d’une restauration dans un autre compte.",
       "noKey": "Clé de chiffrement absente.",
       "errorPrefix": "Erreur d’import : ",
       "invalidJson": "Format JSON invalide.",
@@ -152,6 +153,7 @@
       "moduleSkippedUnknown": "{key}: ignoré (inconnu)",
       "moduleSkippedDisabled": "{key}: ignoré (non activé)",
       "moduleResult": "{key}: {created} ajouté(s), {skipped} doublon(s)",
+      "moduleFailed": "{key}: échec — interrompu, relance pour terminer",
       "moodResult": "mood: {count} ajouté(s)",
       "successPrefix": "Import terminé · {count} entrée(s) — {parts}",
       "backupDetected": "Sauvegarde chiffrée détectée. Saisis ta phrase secrète pour la restaurer.",
@@ -173,7 +175,8 @@
       "ctaLoading": "Chiffrement…",
       "noKey": "Clé de chiffrement absente.",
       "empty": "Aucune donnée à sauvegarder.",
-      "success": "Sauvegarde chiffrée téléchargée."
+      "success": "Sauvegarde chiffrée téléchargée.",
+      "partial": "Sauvegarde partielle — ces modules n’ont pas pu être inclus : {modules}. Réessaie pour une sauvegarde complète."
     }
   },
   "danger": {
