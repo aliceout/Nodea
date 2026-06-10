@@ -177,6 +177,12 @@ adminInvitesRoutes.openapi(createInviteRoute, async (c) => {
     if (process.env.NODE_ENV !== 'production') {
       console.error('[admin/invites] email send failed', err);
     }
+    // No phantom invite (audit 2026-06 passe 2, 3.10) : an invite has
+    // value only once its link reached the recipient. A failed send
+    // must not leave a valid-but-undelivered row behind — otherwise
+    // every retry stacks one more orphan the admin can't tell from a
+    // live invite. Delete it before surfacing the 502.
+    await db.delete(invites).where(eq(invites.id, invite.id));
     // Surface to admin since they need to know the email didn't fly.
     return c.json({ error: 'email_send_failed' }, 502);
   }
@@ -211,13 +217,15 @@ adminInvitesRoutes.openapi(resendInviteRoute, async (c) => {
     .limit(1);
   if (!existing) return c.json({ error: 'not_found_or_used' }, 404);
 
-  // Re-mint via createInvite, then DELETE the old row inside a tx so
-  // the (email) gets exactly one pending invite at a time.
+  // Delete the old row + insert the fresh one in ONE transaction, both
+  // through the same `tx` executor (audit 2026-06 passe 2, 3.2 : the
+  // insert used to run on the global pool, outside this tx, so the
+  // "atomicity" was a lie — a failed insert left the old invite deleted
+  // and no replacement). Default TTL ; admin can revoke + recreate with
+  // a custom expiry if needed.
   const refreshed = await db.transaction(async (tx) => {
     await tx.delete(invites).where(eq(invites.id, existing.id));
-    // Fall back to the global default TTL. Admin can revoke + recreate
-    // with a custom expiry if needed.
-    return createInvite({ email: existing.email, createdBy: admin.id });
+    return createInvite({ email: existing.email, createdBy: admin.id }, tx);
   });
 
   try {
@@ -228,6 +236,11 @@ adminInvitesRoutes.openapi(resendInviteRoute, async (c) => {
     if (process.env.NODE_ENV !== 'production') {
       console.error('[admin/invites] resend email failed', err);
     }
+    // No phantom invite (3.10) : the rotated row is undelivered, so
+    // delete it rather than leave a live-looking invite the recipient
+    // never received. The old invite is already gone (its token was
+    // rotated out) ; the admin re-issues from scratch.
+    await db.delete(invites).where(eq(invites.id, refreshed.id));
     return c.json({ error: 'email_send_failed' }, 502);
   }
 

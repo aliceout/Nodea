@@ -23,13 +23,25 @@ export class RecordingEmailService implements EmailService {
    *  read this directly; reset between tests via `reset()`. */
   readonly sent: RecordedMail[] = [];
 
+  /** Test hook : when > 0, the next N `send()` calls reject (simulating
+   *  a transient SMTP failure) instead of recording. Lets tests cover
+   *  the « email failed » branches — e.g. the invite phantom-cleanup
+   *  (audit 2026-06 passe 2, 3.10) — without mocking the module. */
+  failNext = 0;
+
   async send(params: SendMailParams): Promise<void> {
+    if (this.failNext > 0) {
+      this.failNext -= 1;
+      throw new Error('recording-email: simulated send failure');
+    }
     this.sent.push({ ...params, sentAt: new Date() });
   }
 
-  /** Drop all recorded mails. Call from `beforeEach` or `afterEach`. */
+  /** Drop all recorded mails (and clear any pending failure). Call
+   *  from `beforeEach` or `afterEach`. */
   reset(): void {
     this.sent.length = 0;
+    this.failNext = 0;
   }
 
   /**

@@ -51,6 +51,17 @@ export interface CreateInviteOptions {
   expiresAt?: Date | undefined;
 }
 
+/**
+ * Either the pooled `db` handle or a transaction handle from
+ * `db.transaction`. Lets a caller run `createInvite` INSIDE its own
+ * transaction so a delete + re-insert (invite resend) is genuinely
+ * atomic — before this, `createInvite` always used the global pool,
+ * so the resend route's `tx.delete` and the insert ran on different
+ * connections and the "transaction" guaranteed nothing (audit
+ * 2026-06 passe 2, 3.2).
+ */
+type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export interface CreatedInvite {
   id: string;
   /** Clear token to embed in the invite link. Returned ONCE; never
@@ -63,9 +74,14 @@ export interface CreatedInvite {
 /**
  * Provision a fresh invite for an email. Caller (admin route) is
  * responsible for sending the actual invitation email after this
- * resolves.
+ * resolves — and for cleaning up the row if that send fails (the
+ * invite must not outlive a failed email, see the resend / create
+ * routes). Pass `executor` to run inside an existing transaction.
  */
-export async function createInvite(opts: CreateInviteOptions): Promise<CreatedInvite> {
+export async function createInvite(
+  opts: CreateInviteOptions,
+  executor: DbExecutor = db,
+): Promise<CreatedInvite> {
   const token = generateInviteToken();
   const codeHash = hashInviteToken(token);
   const id = randomUUID();
@@ -80,7 +96,7 @@ export async function createInvite(opts: CreateInviteOptions): Promise<CreatedIn
   };
   if (opts.createdBy !== undefined) values.createdBy = opts.createdBy;
 
-  await db.insert(invites).values(values);
+  await executor.insert(invites).values(values);
   return { id, token, email, expiresAt };
 }
 

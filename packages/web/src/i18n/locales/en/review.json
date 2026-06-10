@@ -22,6 +22,8 @@
     "newSubtitle": "A guided journey in {count} steps.",
     "yearLabel": "Year covered",
     "startCta": "Start",
+    "editExistingCta": "Edit the {year} review",
+    "yearTakenHint": "A review already exists for {year}. Open it to complete or edit it.",
     "draftsHeading": "In-progress drafts",
     "draftsCountNoun": "draft",
     "loading": "Loading reviews…",

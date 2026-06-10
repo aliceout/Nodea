@@ -57,6 +57,19 @@ function isFilled(step: Step, value: unknown): boolean {
   return false;
 }
 
+/** Whether the payload carries any actual answer (across the three
+ *  answer buckets). Used to gate the draft auto-save : opening the
+ *  wizard on a year and leaving without typing must NOT persist a
+ *  phantom « Reprendre » draft (audit 2026-06 passe 2, 3.7). */
+function hasAnyContent(payload: ReviewPayload): boolean {
+  const buckets = [payload.lastYear, payload.nextYear, payload.closing];
+  return buckets.some((bucket) =>
+    Object.values(bucket as Record<string, unknown>).some((v) =>
+      isFilled({} as Step, v),
+    ),
+  );
+}
+
 export default function ReviewWizard({
   year,
   existing,
@@ -102,9 +115,14 @@ export default function ReviewWizard({
     }
   }, [hydrating, hydrationOffered, hydrated, existing, resume, year, clearDraft, t]);
 
-  // Auto-save on every payload change (skip the initial empty state).
+  // Auto-save on every payload change — but only once the user has
+  // actually typed something. Persisting the empty initial payload
+  // created a phantom « Reprendre » draft the instant the wizard
+  // opened, even if the user immediately quit (audit 2026-06 passe 2,
+  // 3.7).
   useEffect(() => {
     if (existing) return;
+    if (!hasAnyContent(payload)) return;
     saveDraft(payload);
   }, [payload, saveDraft, existing]);
 

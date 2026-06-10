@@ -114,6 +114,30 @@ describe('PATCH /admin/announcements/:id', () => {
     });
     expect(res.status).toBe(404);
   });
+
+  it('does not re-activate an archived row when active is omitted (3.1)', async () => {
+    // Regression : `active: z.boolean().default(true)` used to survive
+    // `.partial()` on the Update schema, so a PATCH that never mentioned
+    // `active` silently flipped an archived announcement back to live.
+    const cookie = await adminCookie();
+    const created = await createAnnouncement(cookie, {
+      title: 'Archived',
+      body: 'B',
+      active: false,
+    });
+    expect(created.active).toBe(false);
+
+    const res = await app.request(`/admin/announcements/${created.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      // Body deliberately omits `active`.
+      body: JSON.stringify({ title: 'Archived (edited)' }),
+    });
+    expect(res.status).toBe(200);
+    const updated = (await res.json()) as AnnouncementResponse;
+    expect(updated.title).toBe('Archived (edited)');
+    expect(updated.active).toBe(false);
+  });
 });
 
 describe('DELETE /admin/announcements/:id', () => {

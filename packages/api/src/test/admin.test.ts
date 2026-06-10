@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
 import { invites, users } from '../db/schema.ts';
+import { __getRecordingEmailService } from '../services/email/index.ts';
 import {
   ADMIN_PASSWORD,
   TEST_PASSWORD,
@@ -88,6 +89,79 @@ describe('DELETE /admin/invites/:id', () => {
       headers: { cookie },
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /admin/invites — email failure leaves no phantom (3.10)', () => {
+  it('deletes the invite row when the email send fails', async () => {
+    const cookie = await adminCookie();
+    const email = 'phantom-create@example.com';
+    const recording = __getRecordingEmailService();
+    recording.failNext = 1;
+
+    const res = await app.request('/admin/invites', {
+      ...postJson({ email }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(502);
+
+    // No valid-but-undelivered invite must survive a failed send.
+    const rows = await db.select().from(invites).where(eq(invites.email, email));
+    expect(rows).toHaveLength(0);
+    recording.reset();
+  });
+
+  it('does not stack one orphan per retry', async () => {
+    const cookie = await adminCookie();
+    const email = 'phantom-retry@example.com';
+    const recording = __getRecordingEmailService();
+    recording.failNext = 2;
+
+    for (let i = 0; i < 2; i++) {
+      const res = await app.request('/admin/invites', {
+        ...postJson({ email }),
+        headers: { 'content-type': 'application/json', cookie },
+      });
+      expect(res.status).toBe(502);
+    }
+    const rows = await db.select().from(invites).where(eq(invites.email, email));
+    expect(rows).toHaveLength(0);
+
+    // A subsequent successful send leaves exactly one invite.
+    const ok = await app.request('/admin/invites', {
+      ...postJson({ email }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(ok.status).toBe(201);
+    const after = await db.select().from(invites).where(eq(invites.email, email));
+    expect(after).toHaveLength(1);
+    recording.reset();
+  });
+});
+
+describe('POST /admin/invites/:id/resend — atomic + no phantom (3.2/3.10)', () => {
+  it('removes the rotated row when the resend email fails', async () => {
+    const cookie = await adminCookie();
+    const email = 'resend-fail@example.com';
+    const recording = __getRecordingEmailService();
+
+    const mint = await app.request('/admin/invites', {
+      ...postJson({ email }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    const { id } = (await mint.json()) as { id: string };
+
+    recording.failNext = 1;
+    const res = await app.request(`/admin/invites/${id}/resend`, {
+      method: 'POST',
+      headers: { cookie },
+    });
+    expect(res.status).toBe(502);
+
+    // Old row rotated out + new row cleaned up → no invite for this email.
+    const rows = await db.select().from(invites).where(eq(invites.email, email));
+    expect(rows).toHaveLength(0);
+    recording.reset();
   });
 });
 

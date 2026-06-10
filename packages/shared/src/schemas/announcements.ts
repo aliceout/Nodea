@@ -6,18 +6,37 @@ import { z } from 'zod';
  * feature is to broadcast news to every logged-in user without
  * touching their main key.
  */
-export const AnnouncementCreateBodySchema = z.object({
+/** Fields shared by Create and Update, WITHOUT the `active` default.
+ *  Kept separate so the Update schema can stay free of that default :
+ *  `z.boolean().default(true)` survives `.partial()` (the default
+ *  fires on an absent key before `.optional()` can yield `undefined`),
+ *  so deriving Update via `Create.partial()` made every PATCH that
+ *  omitted `active` silently re-activate an archived announcement
+ *  (audit 2026-06 passe 2, 3.1). The Update schema below declares
+ *  `active` as a plain optional boolean — absent means « leave as-is ». */
+const announcementFields = {
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(10_000),
-  active: z.boolean().default(true),
   /** ISO 8601 datetime — announcement goes live. Optional. */
   startAt: z.iso.datetime().nullable().optional(),
   /** ISO 8601 datetime — announcement auto-archives. Optional. */
   endAt: z.iso.datetime().nullable().optional(),
+} as const;
+
+export const AnnouncementCreateBodySchema = z.object({
+  ...announcementFields,
+  active: z.boolean().default(true),
 });
 export type AnnouncementCreateBody = z.infer<typeof AnnouncementCreateBodySchema>;
 
-export const AnnouncementUpdateBodySchema = AnnouncementCreateBodySchema.partial();
+export const AnnouncementUpdateBodySchema = z
+  .object({
+    ...announcementFields,
+    // No `.default` here — an omitted `active` must parse to
+    // `undefined` so the PATCH leaves the stored value untouched.
+    active: z.boolean(),
+  })
+  .partial();
 export type AnnouncementUpdateBody = z.infer<typeof AnnouncementUpdateBodySchema>;
 
 /** Row shape returned by every response. Dates are ISO strings. */

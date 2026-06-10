@@ -68,6 +68,34 @@ describe('useNodeaStore', () => {
     expect(useNodeaStore.getState().modules.goals).toEqual({ enabled: true });
   });
 
+  it('hydrateModules applies only when no local write raced (3.6)', () => {
+    // Simulate the first-login race : a hydration GET captures the seq,
+    // then the seed writes the config before the GET resolves.
+    const baseline = useNodeaStore.getState().modulesWriteSeq;
+
+    // Seed lands first (a local write — bumps the seq).
+    useNodeaStore
+      .getState()
+      .setModules({ mood: { enabled: true, moduleUserId: 'seeded' } });
+
+    // The stale GET now tries to apply an empty config with the old
+    // baseline — it must be ignored, the seeded config survives.
+    useNodeaStore.getState().hydrateModules({}, baseline);
+    expect(useNodeaStore.getState().modules.mood).toEqual({
+      enabled: true,
+      moduleUserId: 'seeded',
+    });
+
+    // A hydration with the CURRENT seq (no race) does apply.
+    const fresh = useNodeaStore.getState().modulesWriteSeq;
+    useNodeaStore
+      .getState()
+      .hydrateModules({ goals: { enabled: true, moduleUserId: 'srv' } }, fresh);
+    expect(useNodeaStore.getState().modules).toEqual({
+      goals: { enabled: true, moduleUserId: 'srv' },
+    });
+  });
+
   it('push/dismiss toast lifecycle', () => {
     useNodeaStore.getState().pushToast({ kind: 'info', message: 'hello' });
     useNodeaStore.getState().pushToast({ kind: 'error', message: 'bad' });

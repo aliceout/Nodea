@@ -53,8 +53,19 @@ export default function ReviewListView({
   // Load draft summaries from localStorage on mount and whenever
   // the entries list changes (a finalized save clears its draft,
   // so the in-progress section should refresh).
+  //
+  // A draft whose year already has a finalized entry is stale leftover
+  // (submitted on another device, or finalized after the draft was
+  // started). It used to be merely hidden from the list — but it
+  // lingered in localStorage with no way to remove it from the UI
+  // (audit 2026-06 passe 2, 3.7). Prune those here so they can't pile
+  // up invisibly.
   useEffect(() => {
-    setDrafts(listReviewDrafts());
+    const all = listReviewDrafts();
+    const finalized = new Set(entries.map((e) => e.payload.year));
+    const stale = all.filter((d) => finalized.has(d.year));
+    for (const d of stale) clearReviewDraft(d.year);
+    setDrafts(all.filter((d) => !finalized.has(d.year)));
   }, [entries]);
 
   const sorted = useMemo(
@@ -62,9 +73,8 @@ export default function ReviewListView({
     [entries],
   );
 
-  // A year that has a finalized entry shouldn't appear in the
-  // « Brouillons » list — the draft was either already submitted
-  // (and cleared) or is stale leftover from a different device.
+  // Drafts are already pruned of finalized years in the effect above ;
+  // this stays as a render-time safety net while a prune is in flight.
   const finalizedYears = useMemo(
     () => new Set(entries.map((e) => e.payload.year)),
     [entries],
@@ -72,6 +82,15 @@ export default function ReviewListView({
   const activeDrafts = useMemo(
     () => drafts.filter((d) => !finalizedYears.has(d.year)),
     [drafts, finalizedYears],
+  );
+
+  // A « bilan annuel » is unique per year. If the chosen year already
+  // has a finalized entry, « Commencer » would silently create a
+  // second one (audit 2026-06 passe 2, 3.7). Detect it and steer the
+  // user to EDIT the existing review instead.
+  const existingForYear = useMemo(
+    () => entries.find((e) => e.payload.year === draftYear) ?? null,
+    [entries, draftYear],
   );
 
   async function handleDelete(record: ReviewRecord): Promise<void> {
@@ -140,14 +159,32 @@ export default function ReviewListView({
               className="w-28"
             />
           </label>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => onStartNew(draftYear)}
-          >
-            {t('review.list.startCta')}
-          </Button>
+          {existingForYear ? (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => onEdit(existingForYear)}
+            >
+              {t('review.list.editExistingCta', { values: { year: draftYear } })}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => onStartNew(draftYear)}
+            >
+              {t('review.list.startCta')}
+            </Button>
+          )}
         </div>
+        {existingForYear ? (
+          <p
+            role="status"
+            className="mt-3 text-[12px] leading-[1.5] text-muted"
+          >
+            {t('review.list.yearTakenHint', { values: { year: draftYear } })}
+          </p>
+        ) : null}
       </section>
 
       {activeDrafts.length > 0 ? (

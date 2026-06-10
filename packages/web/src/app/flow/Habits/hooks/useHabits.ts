@@ -104,8 +104,33 @@ export function useHabits(): HabitsContext {
       if (!mainKey || !itemsSid) return;
       await habitsItemsClient.remove(itemsSid, mainKey, id);
       setItems((prev) => prev.filter((i) => i.id !== id));
+      // Cascade-delete the habit's logs (audit 2026-06 passe 2, 3.8).
+      // The server can't cascade : `itemRid` lives inside the encrypted
+      // log payload, invisible to it — so the client sweeps the logs it
+      // already holds. Without this, deleting a habit left every past
+      // tick as an orphan log (still counted in stats, undeletable from
+      // the UI now that its parent habit is gone), contradicting the
+      // « et tous ses logs » the confirm dialog promises. `allSettled`
+      // so one failed delete doesn't abort the rest ; only the logs
+      // that actually left the server are dropped locally.
+      if (logsSid) {
+        const orphanIds = logs
+          .filter((l) => l.payload.itemRid === id)
+          .map((l) => l.id);
+        if (orphanIds.length > 0) {
+          const results = await Promise.allSettled(
+            orphanIds.map((logId) =>
+              habitsLogsClient.remove(logsSid, mainKey, logId),
+            ),
+          );
+          const removed = new Set(
+            orphanIds.filter((_, i) => results[i]?.status === 'fulfilled'),
+          );
+          setLogs((prev) => prev.filter((l) => !removed.has(l.id)));
+        }
+      }
     },
-    [mainKey, itemsSid],
+    [mainKey, itemsSid, logsSid, logs],
   );
 
   const logOccurrence = useCallback(

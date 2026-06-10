@@ -17,7 +17,9 @@ WORKDIR /app
 RUN corepack enable && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Ensure pnpm installs devDeps (`tsx`, `drizzle-kit`) regardless of any
-# stray NODE_ENV=production in the build env.
+# stray NODE_ENV=production in the build env. Reset to `production` AFTER
+# install (below) so the install-time value never becomes the runtime
+# default.
 ENV NODE_ENV=development
 
 # Build-time metadata surfaced by `GET /version`. Pass these from CI :
@@ -41,6 +43,17 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile --prod=false
+
+# Fail-secure runtime default (audit 2026-06 passe 2, 3.12). The image
+# runs `tsx` at runtime, but devDeps are already on disk from the install
+# above — NODE_ENV no longer needs to be `development` past this point.
+# Baking `development` into the runtime meant any deploy that forgot to
+# set NODE_ENV (anything but the repo's own compose, which overrides to
+# `production`) ran with the dev posture : credentialed localhost CORS
+# accepted, the SMTP→console email fallback allowed, etc. Default to
+# `production` here so a bare `docker run` is safe ; compose / dev still
+# override freely.
+ENV NODE_ENV=production
 
 # OPS-03 : drop privileges before the long-running process starts.
 # The official `node:22-alpine` image already ships a `node` user

@@ -28,18 +28,24 @@ import { loadDecryptedModulesConfig } from '@/core/api/modules-config-client';
 export function useModulesHydration(): void {
   const mainKey = useNodeaStore(selectMainKey);
   const isAuth = useNodeaStore(selectIsAuthenticated);
-  const setModules = useNodeaStore((s) => s.setModules);
+  const hydrateModules = useNodeaStore((s) => s.hydrateModules);
 
   useEffect(() => {
     if (!isAuth || !mainKey) return;
     let cancelled = false;
+    // Capture the write-seq BEFORE the GET leaves. If the first-run
+    // seed (or any toggle) writes the config while this fetch is in
+    // flight, the seq advances and `hydrateModules` skips applying our
+    // now-stale result — the seeded config survives (audit 2026-06
+    // passe 2, 3.6).
+    const baselineSeq = useNodeaStore.getState().modulesWriteSeq;
     loadDecryptedModulesConfig(mainKey.aesKey)
       .then((runtime) => {
         // `null` = blob present but unreadable (audit 2026-06 passe
         // 2). Do NOT push it into the store : keep whatever's there
         // (defaults). `ModulesManager` re-reads + refuses to write on
         // a null read, so the unreadable blob is never overwritten.
-        if (!cancelled && runtime !== null) setModules(runtime);
+        if (!cancelled && runtime !== null) hydrateModules(runtime, baselineSeq);
       })
       .catch((err: unknown) => {
         if (import.meta.env.DEV) {
@@ -49,5 +55,5 @@ export function useModulesHydration(): void {
     return () => {
       cancelled = true;
     };
-  }, [isAuth, mainKey, setModules]);
+  }, [isAuth, mainKey, hydrateModules]);
 }

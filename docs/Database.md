@@ -174,6 +174,43 @@ Per-user UI preferences (theme, language, …). Same envelope shape as
 | `payload`    | `text`    | Base64 AES-GCM ciphertext of `{ theme, language, …}`. |
 | `updated_at` | `ts+tz`   | `defaultNow()`.                                     |
 
+#### Concurrency — last-write-wins (documented limitation, audit 2026-06 passe 2, 3.11)
+
+Both `modules_config` and `user_preferences` are single-row blobs
+written with a plain `PUT` (full-payload replace). There is **no
+optimistic-concurrency token** : the server accepts whatever ciphertext
+arrives and overwrites `payload` wholesale. Two devices that load the
+blob, edit it, and save in an interleaved order therefore resolve to
+**last-write-wins** — the later write silently discards the earlier
+device's change.
+
+For `user_preferences` the blast radius is cosmetic (a lost theme /
+language toggle). For `modules_config` it is more serious : the blob
+carries each module's `moduleUserId` (sid), and a sid is the *sole*
+access scope for that module's encrypted rows. A clobbering write that
+drops a sid orphans the data behind it (the rows still exist server-side
+but nothing maps to them anymore).
+
+**Why this is accepted, not yet fixed with a 409 precondition.** The
+write window is already narrowed on both ends by the client :
+
+- `ModulesManager.toggleModule` does a **read-modify-write against a
+  fresh server fetch** before every save (audit P2-A 1.2), so it never
+  writes a stale full blob from memory.
+- The preferences layer **merges dirty local keys over a fresh server
+  read** before its `PUT` (audit P2-A 1.3, `mergeDirtyOverServer`).
+
+What remains is the genuinely-concurrent case : two devices writing
+inside the millisecond-scale gap between one device's read and its
+write. For a self-hosted, typically single-user app that is a rare
+event, and a full `If-Match`/version-column precondition (with the
+client-side conflict-resolution UI it implies) is disproportionate to
+the risk *given the read-modify-write mitigations already in place*.
+The behaviour is documented here so it is a known, deliberate trade-off
+rather than a silent surprise. Revisit (add a `version` column + `409
+Conflict` on mismatch) if multi-device concurrent editing ever becomes
+a real usage pattern.
+
 ### `announcements`
 
 Admin-curated plaintext feed shown on the Homepage. The **one**

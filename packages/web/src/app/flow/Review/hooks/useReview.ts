@@ -85,8 +85,18 @@ export function useReview(): ReviewContext {
   const deleteReview = useCallback(
     async (id: string) => {
       if (!mainKey || !sid) return;
-      await reviewClient.remove(sid, mainKey, id);
-      setEntries((prev) => prev.filter((e) => e.id !== id));
+      setError(null);
+      try {
+        await reviewClient.remove(sid, mainKey, id);
+        // Remove locally only after the server confirms (audit 2026-06
+        // passe 2, 3.7) : the old code had no catch, so a failed remove
+        // threw an unhandled rejection and the user got zero feedback —
+        // the row stayed with no explanation. Now the row stays AND the
+        // error banner explains why.
+        setEntries((prev) => prev.filter((e) => e.id !== id));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur de suppression.');
+      }
     },
     [mainKey, sid],
   );

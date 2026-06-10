@@ -22,6 +22,8 @@
     "newSubtitle": "Un parcours guidé en {count} étapes.",
     "yearLabel": "Année concernée",
     "startCta": "Démarrer",
+    "editExistingCta": "Modifier le bilan {year}",
+    "yearTakenHint": "Un bilan existe déjà pour {year}. Ouvrez-le pour le compléter ou le modifier.",
     "draftsHeading": "Brouillons en cours",
     "draftsCountNoun": "brouillon",
     "loading": "Chargement des bilans…",
