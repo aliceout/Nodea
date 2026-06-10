@@ -1,4 +1,4 @@
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, ne, sql } from 'drizzle-orm';
 import {
   AuthMeCryptoResponseSchema,
   AuthMeResponseSchema,
@@ -16,6 +16,7 @@ import {
   authFactors,
   mfaTotp,
   mfaTotpRecoveryCodes,
+  opaqueRecords,
   sessions,
   users,
 } from '../db/schema.ts';
@@ -273,9 +274,12 @@ authAccountRoutes.openapi(meCryptoRoute, async (c) => {
  * The envelope stays untouched : email isn't part of the KEK
  * derivation in V1, and login no longer derives the OPAQUE
  * `userIdentifier` from the *current* email — it replays the
- * registration-time identifier stored on `opaque_records`
- * (audit 2026-06 ; before that fix this route permanently
- * locked the account out of password login).
+ * registration-time identifier stored on `opaque_records`. This
+ * route PINS that identifier (`COALESCE(existing, oldEmail)`) in
+ * the same transaction as the email move, so the envelope stays
+ * loggable after the change (audit 2026-06 passe 2 ; the original
+ * 2026-06 fix added the column + login fallback but never stamped
+ * it here, re-opening the lockout for pre-0020 accounts).
  *
  * Post-change hardening (same audit) :
  *   - a notification email goes to the OLD address, so the
@@ -298,24 +302,40 @@ authAccountRoutes.openapi(changeEmailRoute, async (c) => {
   if (newEmail === user.email) return c.json({ ok: true as const }, 200);
   const oldEmail = user.email;
 
+  // Email change + OPAQUE-identifier pin + session revocation in one
+  // transaction (audit 2026-06 passe 2). The pin is the crux : the
+  // OPAQUE envelope was registered under `oldEmail`, so login must
+  // keep replaying that identifier after the email moves. We
+  // `COALESCE` so an already-stamped row keeps its true
+  // registration-time identifier (which may differ from `oldEmail`
+  // if the user changed email twice) ; a NULL row — a pre-0020
+  // account the 0021 backfill may not have reached yet — gets pinned
+  // to `oldEmail`, the identifier it was last loggable under.
   try {
-    await db
-      .update(users)
-      .set({ email: newEmail, updatedAt: new Date() })
-      .where(eq(users.id, user.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ email: newEmail, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+
+      await tx
+        .update(opaqueRecords)
+        .set({ userIdentifier: sql`COALESCE(${opaqueRecords.userIdentifier}, ${oldEmail})` })
+        .where(eq(opaqueRecords.userId, user.id));
+
+      // Revoke every session except the calling one — same posture
+      // as change-password, minus the cookie rotation (the caller's
+      // session just proved the password).
+      await tx
+        .delete(sessions)
+        .where(and(eq(sessions.userId, user.id), ne(sessions.id, sessionId)));
+    });
   } catch (err) {
     if (isUniqueViolation(err, 'users_email_unique')) {
       return c.json({ error: 'email_taken' }, 409);
     }
     throw err;
   }
-
-  // Revoke every session except the calling one — same posture as
-  // change-password, minus the cookie rotation (the caller's
-  // session is the one that just proved the password).
-  await db
-    .delete(sessions)
-    .where(and(eq(sessions.userId, user.id), ne(sessions.id, sessionId)));
 
   // Notify the OLD address. Best-effort : the change is already
   // committed, an SMTP hiccup must not surface as a failure to the
@@ -333,10 +353,14 @@ authAccountRoutes.openapi(changeEmailRoute, async (c) => {
       html: noticeText.replace(/\n/g, '<br>'),
     });
   } catch (err) {
-    console.warn(
-      '[auth/email] change notification send failed',
-      err instanceof Error ? err.message : 'unknown',
-    );
+    // DEV-gated like every sibling mailer-failure log (audit 2026-06
+    // passe 2) : SMTP errors routinely echo the envelope recipient
+    // (`550 5.1.1 <old@addr>: ...`), so logging `err` in prod would
+    // write the user's old email to stdout — the « identifier in
+    // logs » class the project forbids.
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[auth/email] change notification send failed', err);
+    }
   }
 
   return c.json({ ok: true as const }, 200);

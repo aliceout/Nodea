@@ -172,7 +172,11 @@ adminInvitesRoutes.openapi(createInviteRoute, async (c) => {
   try {
     await sendInviteMail(invite.email, invite.token, extractEmailLanguage(c));
   } catch (err) {
-    console.error('[admin/invites] email send failed', err);
+    // DEV-gated (audit 2026-06 passe 2) : SMTP errors echo the
+    // recipient — the admin still gets the 502, no prod stdout leak.
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[admin/invites] email send failed', err);
+    }
     // Surface to admin since they need to know the email didn't fly.
     return c.json({ error: 'email_send_failed' }, 502);
   }
@@ -219,7 +223,11 @@ adminInvitesRoutes.openapi(resendInviteRoute, async (c) => {
   try {
     await sendInviteMail(refreshed.email, refreshed.token, extractEmailLanguage(c));
   } catch (err) {
-    console.error('[admin/invites] resend email failed', err);
+    // DEV-gated (audit 2026-06 passe 2) : SMTP errors echo the
+    // recipient — never to prod stdout.
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[admin/invites] resend email failed', err);
+    }
     return c.json({ error: 'email_send_failed' }, 502);
   }
 

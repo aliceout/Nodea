@@ -465,8 +465,11 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
       tag: 'register-activate',
     });
   } catch (err) {
-
-    console.error('[auth/register] activation email send failed', err);
+    // DEV-gated (audit 2026-06 passe 2) : SMTP errors echo the
+    // recipient address — never to prod stdout.
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[auth/register] activation email send failed', err);
+    }
   }
 
   return c.json({ ok: true as const, activated: false }, 200);

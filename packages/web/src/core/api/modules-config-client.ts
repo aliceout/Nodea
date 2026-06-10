@@ -28,20 +28,37 @@ import type { ModulesRuntime } from '@/core/store/nodea-store';
  *  parsed without a structural check (`as ModulesRuntime` after a
  *  bare is-object test). A blob that parses but doesn't match the
  *  schema now throws ; the caller (`useModulesHydration`) keeps the
- *  store on its defaults instead of running on garbage. */
+ *  store on its defaults instead of running on garbage.
+ *
+ *  « Blob absent » and « blob unreadable » are DIFFERENT outcomes
+ *  (audit 2026-06 passe 2) : absent returns `{}` (fresh account,
+ *  safe to write) ; a decrypt/parse failure returns `null` so the
+ *  caller can refuse to overwrite. Conflating them (both → `{}`,
+ *  the previous behaviour) meant a corrupt read followed by a
+ *  module toggle re-encrypted a near-empty blob over every
+ *  `moduleUserId` — orphaning ALL encrypted data of ALL modules,
+ *  irreversibly (entry rows have no `user_id`). The stricter schema
+ *  parse this commit's predecessor added made that corrupt-read
+ *  path MORE likely. */
 export async function loadDecryptedModulesConfig(
   aesKey: AesMainKey,
-): Promise<ModulesRuntime> {
+): Promise<ModulesRuntime | null> {
   const res = await apiGetModulesConfig();
   if (!res.cipherIv || !res.payload) return {};
-  const clear = await decryptAESGCM(
-    {
-      iv: res.cipherIv as Base64 as CipherIV,
-      data: res.payload as Base64 as EncryptedBlob,
-    },
-    aesKey,
-  );
-  return ModulesRuntimeSchema.parse(JSON.parse(clear));
+  try {
+    const clear = await decryptAESGCM(
+      {
+        iv: res.cipherIv as Base64 as CipherIV,
+        data: res.payload as Base64 as EncryptedBlob,
+      },
+      aesKey,
+    );
+    return ModulesRuntimeSchema.parse(JSON.parse(clear));
+  } catch {
+    // A blob exists but we can't read it — surface the distinction
+    // so the caller refuses to overwrite it (see header comment).
+    return null;
+  }
 }
 
 /** Encrypt + PUT the runtime map. */

@@ -35,7 +35,8 @@
       "missingKey": "Clé absente : reconnecte-toi pour retrouver tes réglages.",
       "loadFailed": "Impossible de charger tes réglages.",
       "keyMissingAction": "Clé de chiffrement absente. Reconnecte-toi avant de modifier les modules.",
-      "saveFailed": "Impossible d’enregistrer tes réglages."
+      "saveFailed": "Impossible d’enregistrer tes réglages.",
+      "configUnreadable": "Réglages des modules illisibles — reconnecte-toi avant de les modifier (ne pas écraser)."
     },
     "title": "Activation des modules",
     "description": "Choisis les espaces que tu souhaites rendre accessibles dans Nodea.",

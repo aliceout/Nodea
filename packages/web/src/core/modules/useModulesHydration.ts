@@ -35,7 +35,11 @@ export function useModulesHydration(): void {
     let cancelled = false;
     loadDecryptedModulesConfig(mainKey.aesKey)
       .then((runtime) => {
-        if (!cancelled) setModules(runtime);
+        // `null` = blob present but unreadable (audit 2026-06 passe
+        // 2). Do NOT push it into the store : keep whatever's there
+        // (defaults). `ModulesManager` re-reads + refuses to write on
+        // a null read, so the unreadable blob is never overwritten.
+        if (!cancelled && runtime !== null) setModules(runtime);
       })
       .catch((err: unknown) => {
         if (import.meta.env.DEV) {

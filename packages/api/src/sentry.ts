@@ -81,9 +81,20 @@ export async function initSentryApi(): Promise<void> {
     sendDefaultPii: false,
     // Outgoing-request and console breadcrumbs leak the user's
     // search text + the active module — see header comment.
+    // Audit 2026-06 passe 2 : `@sentry/node` ships BOTH `Http` and
+    // `NodeFetch` as default integrations, and the library-lookup
+    // providers are reached via `fetch()` (undici) — so dropping
+    // only `Http` left the outgoing provider host/path leaking
+    // through the `NodeFetch` breadcrumbs. Both must be silenced,
+    // and re-instantiated with `breadcrumbs: false` so spans/tracing
+    // still work without the crumb side channel.
     integrations: (defaults) => [
-      ...defaults.filter((i) => i.name !== 'Http' && i.name !== 'Console'),
+      ...defaults.filter(
+        (i) =>
+          i.name !== 'Http' && i.name !== 'NodeFetch' && i.name !== 'Console',
+      ),
       Sentry.httpIntegration({ breadcrumbs: false }),
+      Sentry.nativeNodeFetchIntegration({ breadcrumbs: false }),
     ],
     beforeSend(event) {
       return scrubSentryEvent(event);

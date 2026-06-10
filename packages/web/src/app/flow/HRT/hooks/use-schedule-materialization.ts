@@ -101,12 +101,33 @@ export function useScheduleMaterialization(
               coveredByScheduleId.set(sid, dates);
             }
 
+            // Re-LIST the schedules UNDER the lock too (audit 2026-06
+            // passe 2). The `plans` array was built from the
+            // `schedules` prop captured BEFORE the lock was acquired ;
+            // another tab waiting on the lock may have edited a
+            // schedule (dose, notes) in the meantime. We must PATCH
+            // `materializedThrough` into the FRESH payload, not the
+            // pre-lock one, or the bookkeeping write would clobber the
+            // concurrent edit (`update` replaces the whole blob).
+            const freshSchedules = await hrtSchedulesClient.list(
+              ctx.moduleUserId,
+              ctx.mainKey,
+            );
+            const freshPayloadById = new Map(
+              freshSchedules.map((s) => [s.id, s.payload]),
+            );
+
             for (const { entry, plan } of plans) {
               const alreadyCovered =
                 coveredByScheduleId.get(entry.id) ?? new Set<string>();
               const datesToCreate = plan.dates.filter(
                 (d) => !alreadyCovered.has(d),
               );
+              // A schedule deleted by another tab while we waited on
+              // the lock is gone from the fresh list — skip it rather
+              // than recreate it via a stale-payload PATCH.
+              const livePayload = freshPayloadById.get(entry.id);
+              if (!livePayload) continue;
 
               // `now` captured once per schedule so every occurrence
               // produced by the same pass shares the same `updatedAt`
@@ -123,10 +144,10 @@ export function useScheduleMaterialization(
                 // panel » incident).
                 const payloads = datesToCreate.map((date) => ({
                   date,
-                  time: entry.payload.time,
-                  product: entry.payload.product,
-                  dose: entry.payload.dose,
-                  notes: entry.payload.notes,
+                  time: livePayload.time,
+                  product: livePayload.product,
+                  dose: livePayload.dose,
+                  notes: livePayload.notes,
                   scheduleId: entry.id,
                   updatedAt: now,
                 }));
@@ -141,7 +162,7 @@ export function useScheduleMaterialization(
               // proved every plan date exists, so the schedule's
               // bookkeeping is allowed to catch up.
               await hrtSchedulesClient.update(ctx.moduleUserId, ctx.mainKey, entry.id, {
-                ...entry.payload,
+                ...livePayload,
                 materializedThrough: plan.materializedThrough,
                 updatedAt: now,
               });

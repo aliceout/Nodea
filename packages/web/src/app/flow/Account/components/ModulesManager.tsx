@@ -4,7 +4,10 @@ import { TrashIcon } from '@heroicons/react/24/outline';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { MODULES } from '@/app/modules-registry';
 import { isApiError } from '@/core/api/client';
-import { saveEncryptedModulesConfig } from '@/core/api/modules-config-client';
+import {
+  loadDecryptedModulesConfig,
+  saveEncryptedModulesConfig,
+} from '@/core/api/modules-config-client';
 import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { generateModuleUserId } from '@/core/crypto/ids';
 import {
@@ -322,7 +325,25 @@ export default function ModulesManager() {
     setBusy(moduleId);
     setError(null);
     try {
-      const current = cfg[moduleId];
+      // Read-modify-write against a FRESH copy of the stored config
+      // (audit 2026-06 passe 2), never against the in-memory `cfg` :
+      // if hydration failed, `cfg` is `{}` and writing it back would
+      // destroy every `moduleUserId` — orphaning all encrypted data
+      // of every module, irreversibly. Re-reading right before the
+      // write also narrows the multi-device last-write-wins race.
+      const fresh = await loadDecryptedModulesConfig(mainKey.aesKey);
+      if (fresh === null) {
+        // Blob present but unreadable — refuse to overwrite it.
+        setError(
+          t('settings.modules.errors.configUnreadable', {
+            defaultValue:
+              'Réglages des modules illisibles — reconnecte-toi avant de les modifier (ne pas écraser).',
+          }),
+        );
+        return;
+      }
+
+      const current = fresh[moduleId];
       const nextEntry: ModuleRuntimeEntry = nextEnabled
         ? {
             enabled: true,
@@ -334,7 +355,7 @@ export default function ModulesManager() {
             ...(current?.moduleUserId ? { moduleUserId: current.moduleUserId } : {}),
           };
 
-      const updated: ModulesRuntime = { ...cfg, [moduleId]: nextEntry };
+      const updated: ModulesRuntime = { ...fresh, [moduleId]: nextEntry };
       await saveEncryptedModulesConfig(mainKey.aesKey, updated);
       setModulesStore(updated);
     } catch (err) {

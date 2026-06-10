@@ -132,7 +132,11 @@ authResetRoutes.openapi(requestResetRoute, async (c) => {
         html: rendered.html,
       });
     } catch (err) {
-      console.error('[auth] reset-password mailer failed', err);
+      // DEV-gated (audit 2026-06 passe 2) : SMTP errors echo the
+      // recipient address — never to prod stdout.
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[auth] reset-password mailer failed', err);
+      }
       // Never surface the failure to the caller — still 200
       // so an attacker can't distinguish « email exists but
       // SMTP is down » from the happy path.
