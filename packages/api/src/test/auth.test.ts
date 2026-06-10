@@ -421,6 +421,68 @@ describe('PATCH /auth/email', () => {
     expect(meBody.email).toBe(newEmail);
   });
 
+  it('lets the user log in with the NEW email afterwards (audit 1.5 — no OPAQUE lockout)', async () => {
+    // The original 2026-06 finding 1.5 : the OPAQUE envelope is bound
+    // to the registration-time identifier, so naively swapping the
+    // email locked the account out permanently (« invalid password »
+    // on every future login). The fix pins `opaque_records.
+    // user_identifier` on change and replays it at login. This test
+    // proves the round-trip end-to-end : change email, then actually
+    // log in with the new address + same password.
+    await seedUser('lockout@example.com');
+    const cookie = await loginAs(app, 'lockout@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'lockout@example.com', TEST_PASSWORD);
+
+    const res = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ ...proof, newEmail: 'moved@example.com' }),
+    });
+    expect(res.status).toBe(200);
+
+    // The crux : a full OPAQUE login under the new email must succeed.
+    // `loginAs` throws if /start, /finish, or the client-side proof
+    // fail — so reaching a cookie IS the assertion.
+    const freshCookie = await loginAs(app, 'moved@example.com', TEST_PASSWORD);
+    expect(freshCookie).toBeTruthy();
+
+    // And the old address is gone : a login attempt there can no longer
+    // produce a session (`loginAs` throws when the proof / finish fail).
+    await expect(
+      loginAs(app, 'lockout@example.com', TEST_PASSWORD),
+    ).rejects.toThrow();
+  });
+
+  it('revokes other sessions on email change, keeps the caller (audit 1.5)', async () => {
+    await seedUser('multi@example.com');
+    const callerCookie = await loginAs(app, 'multi@example.com', TEST_PASSWORD);
+    const otherCookie = await loginAs(app, 'multi@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'multi@example.com', TEST_PASSWORD);
+
+    const res = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie: callerCookie },
+      body: JSON.stringify({ ...proof, newEmail: 'multi-moved@example.com' }),
+    });
+    expect(res.status).toBe(200);
+
+    // The parallel session is revoked …
+    const otherMe = await app.request('/auth/me', {
+      headers: { cookie: otherCookie },
+    });
+    expect(otherMe.status).toBe(401);
+
+    // … while the caller's own session survives (they just proved the
+    // password) and sees the new email.
+    const callerMe = await app.request('/auth/me', {
+      headers: { cookie: callerCookie },
+    });
+    expect(callerMe.status).toBe(200);
+    expect(((await callerMe.json()) as { email: string }).email).toBe(
+      'multi-moved@example.com',
+    );
+  });
+
   it('rejects when the session is not fresh (Phase 7B middleware)', async () => {
     await seedUser('rename2@example.com');
     const cookie = await loginAs(app, 'rename2@example.com', TEST_PASSWORD);
