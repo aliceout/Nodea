@@ -23,6 +23,12 @@ export interface GoalEntry {
    *  null otherwise. Pre-existing `done` records that never went
    *  through the new flow keep `null` here. */
   completedAt: string | null;
+  /** Normalised search haystack (title + note + thread), built once
+   *  at map time so the per-keystroke filter only normalises the
+   *  query — and so search is accent-insensitive + multi-token, like
+   *  Mood / Journal / Library (audit 2026-06 passe 2 review). Not for
+   *  display — search only. */
+  searchHaystack: string;
 }
 
 export type SortBy = 'date' | 'updated' | 'alpha';

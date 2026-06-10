@@ -14,6 +14,7 @@ import { splitThreads } from '@nodea/shared';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { matchesHaystack } from '@/lib/text-search';
 
 import { byDateDesc } from '../lib/sort';
 import type { CanonicalStatus, GoalEntry, SortBy } from '../lib/types';
@@ -111,7 +112,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const deferredSearch = useDeferredValue(search);
 
   const filtered = useMemo<ReadonlyArray<GoalEntry>>(() => {
-    const needle = deferredSearch.trim().toLocaleLowerCase('fr');
+    const query = deferredSearch.trim();
     const out = entries.filter((e) => {
       // « Masquer les terminés » overrides nothing — when an
       // explicit status filter is `done`, the user clearly wants
@@ -123,10 +124,14 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
       if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
         return false;
       }
-      if (needle.length > 0) {
-        const haystack =
-          `${e.title}\n${e.note}\n${e.thread}`.toLocaleLowerCase('fr');
-        if (!haystack.includes(needle)) return false;
+      // Search via the precomputed haystack (built in `recordToEntry`)
+      // — accent-insensitive + multi-token AND, identical to Mood /
+      // Journal / Library. The old inline `toLocaleLowerCase('fr')`
+      // substring match was accent-SENSITIVE (« therapie » missed
+      // « thérapie ») and single-token, the odd one out (audit 2026-06
+      // passe 2 review).
+      if (query.length > 0 && !matchesHaystack(e.searchHaystack, query)) {
+        return false;
       }
       return true;
     });

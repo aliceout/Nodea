@@ -1,6 +1,7 @@
 import { GOAL_STATUS_VALUES, type GoalsPayload } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
+import { buildSearchHaystack } from '@/lib/text-search';
 
 import type { CanonicalStatus, GoalEntry } from './types';
 
@@ -32,17 +33,21 @@ export function normalizeStatus(raw: string | undefined): CanonicalStatus {
  *  every read. */
 export function recordToEntry(record: DecryptedRecord<GoalsPayload>): GoalEntry {
   const p = record.payload;
+  const title = p.title ?? '';
+  const note = p.note ?? '';
+  const thread = p.thread ?? '';
   return {
     id: record.id,
     date: p.date ?? '',
-    title: p.title ?? '',
-    note: p.note ?? '',
+    title,
+    note,
     status: normalizeStatus(p.status),
-    thread: p.thread ?? '',
+    thread,
     // `payload.updatedAt` is the in-payload timestamp the writer
     // bumps on every save — server-side timestamps were dropped in
     // the minimum-readable-surface refactor.
     updatedAt: p.updatedAt,
     completedAt: typeof p.completedAt === 'string' ? p.completedAt : null,
+    searchHaystack: buildSearchHaystack([title, note, thread]),
   };
 }
