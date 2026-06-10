@@ -29,7 +29,6 @@ Modules: **Mood** · **Goals** · **Journal** · **Library** · **Review** · **
 | `docs/Modules/<Module>.md` (per-module spec) + `docs/Architecture.md` §7 (cross-module schema + invariants) | Before touching a specific module (Mood, Goals, Journal, Habits, Library, Review, HRT) |
 | `docs/Auth-Spec.md` (threat model + DB + sessions + cross-cutting) + `docs/auth/<Flow>.md` (per-flow detail : Register, Login, ChangePassword, ChangeEmail, Recovery, BypassMfa, Lifecycle) | Before touching anything in the auth flows (OPAQUE, MFA, recovery, re-auth) |
 | `docs/Internationalisation.md` | Before touching i18n files |
-| `docs/Audit-2026-06.md` | Latest full audit (sécurité / perf / correctifs) : findings + roadmap de correction — cross-check before closing any crypto / auth / response-leakage task |
 | `docs/adr/` | Before changing an architectural decision documented in an ADR |
 
 ---
