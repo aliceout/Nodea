@@ -143,6 +143,21 @@ the dose entry, **never baked into the product** : the product just carries
 its mg/mL concentration once, and every prise converts. A product without a
 concentration keeps its own unit (e.g. an oral `mg`).
 
+## Data flow — shared hooks
+
+The four collection hooks (`use-admin-logs`, `use-products`,
+`use-lab-results`, `use-schedules`) are each instantiated **once**, at
+`HrtPage` (`index.tsx`), and passed to the views as props — never called
+from inside a view. Schedules + admin logs were hoisted first (they drive
+the materialisation engine, which must run regardless of the open lens) ;
+products + lab results joined them in the 2026-06 passe-2 audit. Before
+that, each view mounted its own hook instances, so switching sub-views
+re-LISTed + re-decrypted the same collections every time (Summary reads
+products + labs + admin logs ; Export reads all four). One instance each,
+mounted for the module's life, removes that per-switch refetch. When a
+materialisation pass creates occurrences out-of-band, the shared hooks
+expose a `reload()` the engine calls — no remount, no version-key churn.
+
 ## Collections
 
 | Collection name (`X-Collection`) | Table | Payload schema |

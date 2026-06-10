@@ -17,7 +17,7 @@ import { type LibraryStatus } from '@nodea/shared';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { matchesAnyField } from '@/lib/text-search';
+import { matchesHaystack } from '@/lib/text-search';
 
 import { matchesCellFilter, type CellFilter } from '../lib/cell-filter';
 import { buildGroups, type LibraryGroupBy } from '../lib/grouping';
@@ -42,6 +42,19 @@ export const LIBRARY_VIEW_MODES = [
   'wall',
 ] as const;
 export type LibraryViewMode = (typeof LIBRARY_VIEW_MODES)[number];
+
+/** The view modes that render cover thumbnails. The other two
+ *  (`list-plain`, `table`) never read the covers map, so the data
+ *  hook skips downloading the blobs while one of them is active
+ *  (audit 2026-06 passe 2). */
+const COVER_VIEW_MODES = new Set<string>(['list-cover', 'grid', 'wall']);
+
+/** Whether a (possibly raw / unvalidated) view-mode string needs the
+ *  cover blobs fetched. An unknown value answers `false` — it clamps
+ *  to the cover-less default, so skipping covers is the safe call. */
+export function viewModeNeedsCovers(viewMode: string | undefined): boolean {
+  return viewMode !== undefined && COVER_VIEW_MODES.has(viewMode);
+}
 
 const DEFAULT_VIEW_MODE: LibraryViewMode = 'list-plain';
 
@@ -127,13 +140,11 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
       if (cellFilter && !matchesCellFilter(it, cellFilter)) return false;
       // Cheap short-circuit when no search is active.
       if (trimmedQuery.length === 0) return true;
-      // Search across title + every creator name + every tag. The
-      // creator-list spread keeps multi-author works (« Hugo &
+      // Search across title + every creator name + every tag via the
+      // precomputed haystack (built once in `itemFromRecord`). The
+      // creator-list inclusion keeps multi-author works (« Hugo &
       // Sand ») searchable on either side.
-      return matchesAnyField(
-        [it.title, ...it.creators.map((c) => c.name), ...(it.tags ?? [])],
-        trimmedQuery,
-      );
+      return matchesHaystack(it.searchHaystack, trimmedQuery);
     });
   }, [items, statusFilter, tagFilter, cellFilter, deferredSearchQuery]);
 

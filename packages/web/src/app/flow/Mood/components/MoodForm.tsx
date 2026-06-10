@@ -5,12 +5,13 @@ import { pickQuestion } from '@/app/flow/Mood/data/questions';
 import { moodClient } from '@/core/api/modules/mood';
 import { toIsoDate } from '@/core/i18n/date-format';
 import { useModuleClient } from '@/core/modules/use-module-client';
-import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
+
+import { useMoodActions } from '../context';
 
 import OptionalsSection from './form-sections/OptionalsSection';
 import PositivesSection from './form-sections/PositivesSection';
@@ -36,16 +37,16 @@ interface MoodFormProps {
  * `ScoreSection`, `OptionalsSection`) living next door in
  * `./form-sections/`.
  *
- * Save / update / error handling are identical to the legacy
- * body : `bumpMoodVersion` triggers the data refetch on success,
- * `onClose` returns the user to the list, and the in-component
- * error feedback shows the friendly message when validation or
- * the network call fails.
+ * Save / update / error handling : `upsertRecord` splices the saved
+ * record into the in-memory list on success (no full-collection
+ * refetch — audit 2026-06 passe 2), `onClose` returns the user to the
+ * list, and the in-component error feedback shows the friendly
+ * message when validation or the network call fails.
  */
 export default function MoodForm({ initial, onClose }: MoodFormProps) {
   const { t, language } = useI18n();
   const ctx = useModuleClient('mood');
-  const bumpMoodVersion = useNodeaStore((s) => s.bumpMoodVersion);
+  const { upsertRecord } = useMoodActions();
 
   // Initial values come from `initial` on edit (the entry being
   // re-opened from the list) or sensible defaults on create.
@@ -117,12 +118,10 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
         comment,
         ...(trimmedAnswer ? { question, answer: trimmedAnswer } : {}),
       };
-      if (initial) {
-        await moodClient.update(ctx.moduleUserId, ctx.mainKey, initial.id, payload);
-      } else {
-        await moodClient.create(ctx.moduleUserId, ctx.mainKey, payload);
-      }
-      bumpMoodVersion();
+      const record = initial
+        ? await moodClient.update(ctx.moduleUserId, ctx.mainKey, initial.id, payload)
+        : await moodClient.create(ctx.moduleUserId, ctx.mainKey, payload);
+      upsertRecord(record);
       onClose();
     } catch (err) {
       setError(

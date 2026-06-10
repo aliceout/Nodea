@@ -16,6 +16,11 @@ export interface MoodEntry {
   comment?: string;
   question?: string;
   answer?: string;
+  /** Normalised search haystack (positives + comment + question +
+   *  answer), built once at map time so the per-keystroke search
+   *  filter only normalises the query, not every field of every
+   *  entry (audit 2026-06 passe 2). Not for display — search only. */
+  searchHaystack: string;
 }
 
 /** One cell of the 52 × 7 heatmap grid. `null` is rendered as a

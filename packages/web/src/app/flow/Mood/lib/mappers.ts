@@ -6,6 +6,7 @@ import {
   toIsoDate,
   type EntryLabelOptions,
 } from '@/core/i18n/date-format';
+import { buildSearchHaystack } from '@/lib/text-search';
 
 import type { MoodEntry } from './types';
 
@@ -65,6 +66,12 @@ export function recordToEntry(
     date: formatEntryLabel(dateIso, today, labels),
     score: normalizeScore(p.moodScore ?? '0'),
     positives,
+    searchHaystack: buildSearchHaystack([
+      ...positives,
+      p.comment,
+      p.question,
+      p.answer,
+    ]),
   };
   if (p.comment && p.comment.trim().length > 0) entry.comment = p.comment;
   if (p.question && p.question.trim().length > 0) entry.question = p.question;

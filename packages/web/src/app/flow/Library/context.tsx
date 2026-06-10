@@ -22,6 +22,7 @@ import { useLibraryData as useDataState } from './state/use-library-data';
 import {
   LIBRARY_VIEW_MODES,
   useLibraryFilters as useFiltersState,
+  viewModeNeedsCovers,
   type LibraryViewMode,
 } from './state/use-library-filters';
 
@@ -143,7 +144,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const bumpItemsVersion = useNodeaStore((s) => s.bumpLibraryItemsVersion);
   const bumpReviewsVersion = useNodeaStore((s) => s.bumpLibraryReviewsVersion);
 
-  const data = useDataState(ctx, itemsVersion, reviewsVersion);
+  // Covers are only fetched when the persisted view mode renders
+  // thumbnails (audit 2026-06 passe 2). Read straight from the
+  // preferences slice — same source the filters hook clamps for
+  // display — so the data hook can gate the heavy blob download
+  // without waiting on the filters hook that runs after it.
+  const coversNeeded = useNodeaStore((s) =>
+    viewModeNeedsCovers(s.preferences.libraryViewMode),
+  );
+
+  const data = useDataState(ctx, itemsVersion, reviewsVersion, coversNeeded);
   const filters = useFiltersState(data.items);
   const actions = useActionsState({
     ctx,

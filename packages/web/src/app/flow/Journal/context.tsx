@@ -8,15 +8,17 @@ import {
   type ReactNode,
 } from 'react';
 import { splitThreads } from '@nodea/shared';
+import type { JournalPayload } from '@nodea/shared';
 
 import { journalClient } from '@/core/api/modules/journal';
+import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { formatMonthLabel } from '@/core/i18n/date-format';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { matchesAnyField } from '@/lib/text-search';
+import { matchesHaystack } from '@/lib/text-search';
 
 import { recordToEntry } from './lib/mappers';
 import { computeStats } from './lib/stats';
@@ -117,6 +119,11 @@ interface JournalActionsValue {
   closeForm: () => void;
   editEntry: (entry: JournalEntry) => void;
   deleteEntry: (entry: JournalEntry) => Promise<void>;
+  /** Insert-or-replace a single record locally after a form save —
+   *  the inline composer calls this with the record returned by
+   *  `journalClient.create` / `.update` instead of bumping the version
+   *  and forcing a full collection refetch (audit 2026-06 passe 2). */
+  upsertRecord: (record: DecryptedRecord<JournalPayload>) => void;
   openReader: (id: string) => void;
   closeReader: () => void;
   /**
@@ -278,10 +285,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       // Cheap short-circuit when no search is active — avoids the
       // normalisation pipeline on every entry.
       if (trimmedQuery.length === 0) return true;
-      // Search across title + content + thread. The thread inclusion
+      // Search across title + content + thread via the precomputed
+      // haystack (built once in `recordToEntry`). The thread inclusion
       // is intentional : users group entries by thread and often
       // search for « thérapie » expecting the thread to match.
-      return matchesAnyField([e.title, e.content, e.thread], trimmedQuery);
+      return matchesHaystack(e.searchHaystack, trimmedQuery);
     });
   }, [entries, threadFilter, year, dayFilter, deferredSearch]);
 
@@ -380,6 +388,26 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       }
     },
     [ctx, t],
+  );
+
+  const upsertRecord = useCallback(
+    (record: DecryptedRecord<JournalPayload>) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const labels = {
+        language,
+        todayLabel: t('common.time.today'),
+        yesterdayLabel: t('common.time.yesterday'),
+      };
+      const entry = recordToEntry(record, today, labels);
+      setEntries((prev) => {
+        const without = prev.filter((e) => e.id !== entry.id);
+        const next = [entry, ...without];
+        next.sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+        return next;
+      });
+    },
+    [language, t],
   );
 
   const openReader = useCallback((id: string) => setReadingId(id), []);
@@ -528,6 +556,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       closeForm,
       editEntry,
       deleteEntry,
+      upsertRecord,
       openReader,
       closeReader,
       renameThread,
@@ -542,6 +571,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       closeForm,
       editEntry,
       deleteEntry,
+      upsertRecord,
       openReader,
       closeReader,
       renameThread,

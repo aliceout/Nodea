@@ -16,6 +16,11 @@ export type TranslateFn = I18nValue['t'];
  *  the fields come from the decrypted payload. */
 export interface LibraryItem extends LibraryItemPayload {
   id: string;
+  /** Normalised search haystack (title + creator names + tags),
+   *  built once in `itemFromRecord` so the per-keystroke search
+   *  filter only normalises the query, not every field of every
+   *  item (audit 2026-06 passe 2). Not for display — search only. */
+  searchHaystack: string;
 }
 
 /** Decrypted review record + id. */

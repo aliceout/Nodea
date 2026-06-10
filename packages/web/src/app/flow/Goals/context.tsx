@@ -1,5 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
+import type { GoalsPayload } from '@nodea/shared';
 
+import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
@@ -91,6 +93,7 @@ interface GoalsActionsValue {
   editEntry: (entry: GoalEntry) => void;
   updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
   deleteEntry: (entry: GoalEntry) => Promise<void>;
+  upsertRecord: (record: DecryptedRecord<GoalsPayload>) => void;
   openReader: (id: string) => void;
   closeReader: () => void;
   openCarryOver: () => void;
@@ -195,6 +198,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       editEntry: actions.editEntry,
       updateTitle: actions.updateTitle,
       deleteEntry: actions.deleteEntry,
+      upsertRecord: actions.upsertRecord,
       openReader: actions.openReader,
       closeReader: actions.closeReader,
       openCarryOver: actions.openCarryOver,
@@ -213,6 +217,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       actions.editEntry,
       actions.updateTitle,
       actions.deleteEntry,
+      actions.upsertRecord,
       actions.openReader,
       actions.closeReader,
       actions.openCarryOver,

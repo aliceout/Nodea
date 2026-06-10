@@ -23,7 +23,7 @@ import AdminLogForm, { type ProductOption } from '../components/AdminLogForm';
 import ScheduleForm from '../components/ScheduleForm';
 import SchedulesPanel from '../components/SchedulesPanel';
 import { type AdminLogEntry, type UseHrtAdminLogs } from '../hooks/use-admin-logs';
-import { useHrtProducts } from '../hooks/use-products';
+import type { UseHrtProducts } from '../hooks/use-products';
 import type { ScheduleEntry, UseHrtSchedules } from '../hooks/use-schedules';
 import { formatLogDate, todayIso } from '../lib/labels';
 
@@ -35,12 +35,19 @@ interface AdministrationViewProps {
    *  collection is listed once per module mount, not once per view
    *  (audit 2026-06). */
   adminLogs: UseHrtAdminLogs;
+  /** Shared products instance — owned by `HrtPage` (audit 2026-06
+   *  passe 2 : hoisted so switching sub-views doesn't re-LIST it). */
+  products: UseHrtProducts;
 }
 
-export default function AdministrationView({ schedules, adminLogs }: AdministrationViewProps) {
+export default function AdministrationView({
+  schedules,
+  adminLogs,
+  products,
+}: AdministrationViewProps) {
   const { t, language } = useI18n();
   const { entries, load, ready, create, update, remove } = adminLogs;
-  const { entries: productEntries, create: createProduct } = useHrtProducts();
+  const { entries: productEntries, create: createProduct } = products;
 
   const [mode, setMode] = useState<'manual' | 'schedule' | null>(null);
   const [editing, setEditing] = useState<AdminLogEntry | null>(null);

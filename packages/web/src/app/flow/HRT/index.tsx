@@ -37,6 +37,8 @@ import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 
 import { useHrtAdminLogs } from './hooks/use-admin-logs';
+import { useHrtLabResults } from './hooks/use-lab-results';
+import { useHrtProducts } from './hooks/use-products';
 import { useHrtSchedules } from './hooks/use-schedules';
 import { useScheduleMaterialization } from './hooks/use-schedule-materialization';
 import AdministrationView from './views/AdministrationView';
@@ -50,9 +52,15 @@ export default function HrtPage() {
   const subview = useNodeaStore(selectHrtSubview);
 
   // Single shared instances — schedules drive the materialisation
-  // engine, admin logs feed every lens.
+  // engine, admin logs feed every lens. Products + lab results are
+  // hoisted here too (audit 2026-06 passe 2) so switching sub-views
+  // doesn't re-LIST + re-decrypt either collection : Summary reads
+  // both, Labs reads labs, Administration reads products, Export
+  // reads all four. One instance each, mounted for the module's life.
   const schedules = useHrtSchedules();
   const adminLogs = useHrtAdminLogs();
+  const products = useHrtProducts();
+  const labResults = useHrtLabResults();
   const reloadSchedules = schedules.reload;
   const reloadAdminLogs = adminLogs.reload;
   const onMaterialized = useCallback(() => {
@@ -68,13 +76,26 @@ export default function HrtPage() {
       }
     >
       {subview === 'administration' ? (
-        <AdministrationView schedules={schedules} adminLogs={adminLogs} />
+        <AdministrationView
+          schedules={schedules}
+          adminLogs={adminLogs}
+          products={products}
+        />
       ) : subview === 'labs' ? (
-        <LabsView />
+        <LabsView labResults={labResults} />
       ) : subview === 'export' ? (
-        <ExportView adminLogs={adminLogs} />
+        <ExportView
+          adminLogs={adminLogs}
+          products={products}
+          labResults={labResults}
+          schedules={schedules}
+        />
       ) : (
-        <SummaryView adminLogs={adminLogs} />
+        <SummaryView
+          adminLogs={adminLogs}
+          products={products}
+          labResults={labResults}
+        />
       )}
     </ModuleShell>
   );

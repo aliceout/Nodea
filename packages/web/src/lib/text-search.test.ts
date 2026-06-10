@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildSearchHaystack,
   matchesAnyField,
+  matchesHaystack,
   matchesSearch,
   normalizeForSearch,
 } from './text-search';
@@ -82,5 +84,47 @@ describe('matchesAnyField', () => {
   it('handles diacritics consistently across query and field', () => {
     expect(matchesAnyField(['Eva à la plage'], 'eva a la')).toBe(true);
     expect(matchesAnyField(['eva a la plage'], 'à la')).toBe(true);
+  });
+});
+
+describe('buildSearchHaystack + matchesHaystack', () => {
+  it('precomputed haystack matches the same way matchesAnyField does', () => {
+    // The precomputed path must be behaviourally identical to the
+    // one-shot path — this is the equivalence the perf optimisation
+    // rests on (audit 2026-06 passe 2).
+    const fields = ['Anouk était là', 'plage de Tana', null];
+    const haystack = buildSearchHaystack(fields);
+    for (const query of ['anouk', 'anouk plage', 'anouk tennis', 'à la', '']) {
+      expect(matchesHaystack(haystack, query)).toBe(
+        matchesAnyField(fields, query),
+      );
+    }
+  });
+
+  it('normalises fields at build time (diacritics + case)', () => {
+    const haystack = buildSearchHaystack(['Éva À LA Plage']);
+    expect(haystack).toBe('eva a la plage');
+    expect(matchesHaystack(haystack, 'eva a la')).toBe(true);
+  });
+
+  it('skips null / undefined / empty fields', () => {
+    const haystack = buildSearchHaystack([null, undefined, '', 'Eva']);
+    expect(matchesHaystack(haystack, 'eva')).toBe(true);
+    expect(matchesHaystack(haystack, 'anything')).toBe(false);
+  });
+
+  it('does not match a single token spanning two fields (boundary)', () => {
+    // A single token must live wholly inside one field — the newline
+    // separator prevents « abcdef » from matching « abc » + « def »
+    // glued across the boundary. (Multi-token queries AND across
+    // fields ; that's covered by the equivalence test above.)
+    const haystack = buildSearchHaystack(['abc', 'def']);
+    expect(matchesHaystack(haystack, 'abcdef')).toBe(false);
+    expect(matchesHaystack(haystack, 'abc')).toBe(true);
+  });
+
+  it('returns true on empty / whitespace query (no-filter contract)', () => {
+    expect(matchesHaystack(buildSearchHaystack(['x']), '')).toBe(true);
+    expect(matchesHaystack(buildSearchHaystack(['x']), '   ')).toBe(true);
   });
 });

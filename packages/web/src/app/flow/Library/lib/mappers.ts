@@ -4,14 +4,23 @@ import type {
   LibraryReviewPayload,
 } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
+import { buildSearchHaystack } from '@/lib/text-search';
 import type { LibraryItem, LibraryReview } from './types';
 
 /** Flatten a decrypted item record into the `{ id, ...payload }`
- *  shape the page passes around. */
+ *  shape the page passes around, plus a precomputed search haystack
+ *  (title + creator names + tags) so the list filter doesn't
+ *  re-normalise every field on every keystroke (audit 2026-06). */
 export function itemFromRecord(
   r: DecryptedRecord<LibraryItemPayload>,
 ): LibraryItem {
-  return { id: r.id, ...r.payload };
+  const p = r.payload;
+  const searchHaystack = buildSearchHaystack([
+    p.title,
+    ...(p.creators ?? []).map((c) => c.name),
+    ...(p.tags ?? []),
+  ]);
+  return { id: r.id, ...p, searchHaystack };
 }
 
 /** Flatten a decrypted review record into the `{ id, ...payload }`

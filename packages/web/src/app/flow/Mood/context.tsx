@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { MoodScore } from '@nodea/shared';
+import type { MoodPayload, MoodScore } from '@nodea/shared';
+
+import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 
 import { moodClient } from '@/core/api/modules/mood';
 import { createModuleContexts } from '@/core/contexts/module-contexts';
@@ -18,7 +20,7 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
-import { matchesAnyField } from '@/lib/text-search';
+import { matchesHaystack } from '@/lib/text-search';
 
 import { rangeFor } from './lib/date-format';
 import { recordToEntry } from './lib/mappers';
@@ -105,6 +107,11 @@ interface MoodActionsValue {
    *  post-save callback). */
   closeForm: () => void;
   deleteEntry: (entry: MoodEntry) => Promise<void>;
+  /** Insert (create) or replace (edit) a single record locally after
+   *  the form saved it — avoids the full-collection refetch the
+   *  version bump used to trigger on every « Enregistrer » (audit
+   *  2026-06 passe 2). The provider owns the record→entry mapping. */
+  upsertRecord: (record: DecryptedRecord<MoodPayload>) => void;
 }
 
 const {
@@ -234,19 +241,10 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       // Cheap short-circuit when no search is active — avoids
       // running the normalisation pipeline on every entry.
       if (trimmedQuery.length === 0) return true;
-      // Search across the textual payload fields. `positives` is
-      // already an array — spreading is fine. Optional fields
-      // (`comment`, `question`, `answer`) are filtered out by
-      // `matchesAnyField` itself.
-      return matchesAnyField(
-        [
-          ...entry.positives,
-          entry.comment,
-          entry.question,
-          entry.answer,
-        ],
-        trimmedQuery,
-      );
+      // Search across the textual payload fields via the precomputed
+      // haystack (built once in `recordToEntry`) — positives, comment,
+      // question, answer.
+      return matchesHaystack(entry.searchHaystack, trimmedQuery);
     });
   }, [entries, year, month, today, deferredSearchQuery, scoreFilter, dayFilter]);
 
@@ -335,6 +333,24 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     [ctx, t],
   );
 
+  const upsertRecord = useCallback(
+    (record: DecryptedRecord<MoodPayload>) => {
+      const labels = {
+        language,
+        todayLabel: t('common.time.today'),
+        yesterdayLabel: t('common.time.yesterday'),
+      };
+      const entry = recordToEntry(record, today, labels);
+      setEntries((prev) => {
+        const without = prev.filter((e) => e.id !== entry.id);
+        const next = [entry, ...without];
+        next.sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+        return next;
+      });
+    },
+    [today, t, language],
+  );
+
   // ---- Memoised context values ----
 
   const dataValue = useMemo<MoodDataValue>(
@@ -380,6 +396,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       editEntry,
       closeForm,
       deleteEntry,
+      upsertRecord,
     }),
     [
       formOpen,
@@ -389,6 +406,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       editEntry,
       closeForm,
       deleteEntry,
+      upsertRecord,
     ],
   );
 

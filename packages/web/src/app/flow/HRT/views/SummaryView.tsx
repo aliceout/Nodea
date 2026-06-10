@@ -31,8 +31,8 @@ import ProductForm from '../components/ProductForm';
 import ProductRow from '../components/ProductRow';
 import RecentPanel from '../components/RecentPanel';
 import type { UseHrtAdminLogs } from '../hooks/use-admin-logs';
-import { useHrtLabResults } from '../hooks/use-lab-results';
-import { useHrtProducts, type ProductEntry } from '../hooks/use-products';
+import type { UseHrtLabResults } from '../hooks/use-lab-results';
+import { type ProductEntry, type UseHrtProducts } from '../hooks/use-products';
 import { buildDoseSeries, distinctMolecules } from '../lib/admin-data';
 
 // The recent lists render into a height-capped, scrollable panel : keep a
@@ -41,17 +41,23 @@ import { buildDoseSeries, distinctMolecules } from '../lib/admin-data';
 const RECENT = 12;
 
 interface SummaryViewProps {
-  /** The single shared admin-logs instance — owned by `HrtPage`
-   *  (audit 2026-06 : one LIST per module mount, not per view). */
+  /** Shared instances owned by `HrtPage` (audit 2026-06 : one LIST
+   *  per module mount, not per view nor per sub-view switch). */
   adminLogs: UseHrtAdminLogs;
+  products: UseHrtProducts;
+  labResults: UseHrtLabResults;
 }
 
-export default function SummaryView({ adminLogs }: SummaryViewProps) {
+export default function SummaryView({
+  adminLogs,
+  products: productsHook,
+  labResults,
+}: SummaryViewProps) {
   const { t } = useI18n();
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
-  const { entries: products, ready, create, update } = useHrtProducts();
+  const { entries: products, ready, create, update } = productsHook;
   const { entries: adminEntries } = adminLogs;
-  const { entries: labEntries } = useHrtLabResults();
+  const { entries: labEntries } = labResults;
 
   const [selectedMolecule, setSelectedMolecule] = useState<string | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);

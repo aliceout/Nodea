@@ -19,12 +19,17 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { GoalsPayload } from '@nodea/shared';
+
 import { goalsClient } from '@/core/api/modules/goals';
+import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
+import { recordToEntry } from '../lib/mappers';
+import { byDateDesc } from '../lib/sort';
 import { nextStatus } from '../lib/status';
 import type { GoalEntry } from '../lib/types';
 
@@ -60,6 +65,11 @@ export interface GoalsActionsState {
    *  site so this stays a single round-trip. */
   updateTitle: (entry: GoalEntry, nextTitle: string) => Promise<void>;
   deleteEntry: (entry: GoalEntry) => Promise<void>;
+  /** Insert-or-replace a single record locally after a form save —
+   *  the inline composer calls this with the record returned by
+   *  `goalsClient.create` / `.update` instead of bumping the version
+   *  and forcing a full refetch (audit 2026-06 passe 2). */
+  upsertRecord: (record: DecryptedRecord<GoalsPayload>) => void;
   /** Open the focus reader on a specific goal (issue #64). */
   openReader: (id: string) => void;
   /** Close the focus reader and return to the regular list. */
@@ -278,6 +288,22 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     [ctx, setEntries, t],
   );
 
+  // Insert (create) or replace (edit) a single record locally after
+  // the form saved it — avoids the full-collection refetch the version
+  // bump used to trigger on every « Enregistrer » (audit 2026-06 passe
+  // 2). The mapper + sort match `useGoalsData`'s load path so the
+  // optimistic row lands in the same position a refetch would place it.
+  const upsertRecord = useCallback(
+    (record: DecryptedRecord<GoalsPayload>) => {
+      const entry = recordToEntry(record);
+      setEntries((prev) => {
+        const without = prev.filter((e) => e.id !== entry.id);
+        return [...without, entry].sort(byDateDesc);
+      });
+    },
+    [setEntries],
+  );
+
   const openCarryOver = useCallback(() => setCarryOverOpen(true), []);
   const closeCarryOver = useCallback(() => setCarryOverOpen(false), []);
 
@@ -403,6 +429,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     editEntry,
     updateTitle,
     deleteEntry,
+    upsertRecord,
     openReader,
     closeReader,
     openCarryOver,

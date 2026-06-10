@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import { useModuleClient } from '@/core/modules/use-module-client';
-import { useNodeaStore } from '@/core/store/nodea-store';
 import Button from '@/ui/atoms/dirk/Button';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -16,7 +15,7 @@ import GoalFormFields from './form/form-fields';
 import { buildGoalPayload } from './form/save-payload';
 import { useDraftCoordination } from './form/use-draft-coordination';
 
-import { useGoalsFilters } from '../context';
+import { useGoalsActions, useGoalsFilters } from '../context';
 import type { GoalEntry } from '../lib/types';
 
 interface GoalFormProps {
@@ -46,17 +45,17 @@ interface GoalFormProps {
  *     restore banner can surface a previously-typed-but-not-
  *     saved goal.
  *
- * Save / update / error handling are identical to the legacy
- * body : `bumpGoalsVersion` triggers the data refetch on success,
- * `onClose` returns the user to the list, and the in-component
- * error feedback shows the friendly message when validation or
- * the network call fails.
+ * Save / update / error handling : `upsertRecord` splices the saved
+ * record into the in-memory list on success (no full-collection
+ * refetch — audit 2026-06 passe 2), `onClose` returns the user to the
+ * list, and the in-component error feedback shows the friendly
+ * message when validation or the network call fails.
  */
 export default function GoalForm({ initial, onClose }: GoalFormProps) {
   const { t, language } = useI18n();
   const monthOptions = useMemo(() => genMonthOptions(language), [language]);
   const ctx = useModuleClient('goals');
-  const bumpGoalsVersion = useNodeaStore((s) => s.bumpGoalsVersion);
+  const { upsertRecord } = useGoalsActions();
 
   // Initial values come from `initial` on edit, or empty defaults
   // on create. The « date » field is split into month + year by
@@ -164,13 +163,19 @@ export default function GoalForm({ initial, onClose }: GoalFormProps) {
             }
           : null,
       });
+      let record;
       if (initial) {
-        await goalsClient.update(ctx.moduleUserId, ctx.mainKey, initial.id, payload);
+        record = await goalsClient.update(
+          ctx.moduleUserId,
+          ctx.mainKey,
+          initial.id,
+          payload,
+        );
       } else {
-        await goalsClient.create(ctx.moduleUserId, ctx.mainKey, payload);
+        record = await goalsClient.create(ctx.moduleUserId, ctx.mainKey, payload);
         clearDraft();
       }
-      bumpGoalsVersion();
+      upsertRecord(record);
       onClose();
     } catch (err) {
       setError(

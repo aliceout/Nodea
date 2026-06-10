@@ -20,6 +20,7 @@ function entry(
     title: opts.title ?? null,
     content,
     attachments: [],
+    searchHaystack: '',
   };
 }
 

@@ -11,6 +11,7 @@ function fixture(partial: Partial<JournalEntry> & { id: string }): JournalEntry 
     title: null,
     content: '',
     attachments: [],
+    searchHaystack: '',
     ...partial,
   };
 }

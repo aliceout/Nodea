@@ -52,7 +52,14 @@ export function matchesSearch(haystack: string, query: string): boolean {
  *  Tokens are AND-combined across the whole field set: a query
  *  « anouk plage » matches if « anouk » lives anywhere in the
  *  fields and « plage » lives anywhere too (possibly different
- *  fields). */
+ *  fields).
+ *
+ *  NOTE — re-normalises the fields on every call. Fine for one-shot
+ *  use ; on a list filter that runs per-keystroke over thousands of
+ *  entries, precompute a haystack with `buildSearchHaystack` at map
+ *  time and match with `matchesHaystack` instead (audit 2026-06
+ *  passe 2 — search was the #2 lag source after un-virtualized
+ *  lists). */
 export function matchesAnyField(
   fields: ReadonlyArray<string | null | undefined>,
   query: string,
@@ -68,4 +75,38 @@ export function matchesAnyField(
   return tokens.every((token) =>
     normalisedFields.some((field) => field.includes(token)),
   );
+}
+
+// Field separator for precomputed haystacks. A normalised query
+// token can never contain a newline (the query is whitespace-split),
+// so joining fields with `\n` keeps the same "a token must live
+// wholly inside one field" semantics `matchesAnyField` has — a token
+// can't accidentally match across a field boundary.
+const HAYSTACK_SEP = '\n';
+
+/** Build the normalised search haystack for a record ONCE, at the
+ *  point its entry is mapped from the decrypted payload. Stored on
+ *  the entry (e.g. `searchHaystack`) and fed to `matchesHaystack` so
+ *  the per-keystroke filter normalises only the (short) query, not
+ *  every (long) field of every entry. */
+export function buildSearchHaystack(
+  fields: ReadonlyArray<string | null | undefined>,
+): string {
+  return fields
+    .filter(
+      (value): value is string => typeof value === 'string' && value.length > 0,
+    )
+    .map(normalizeForSearch)
+    .join(HAYSTACK_SEP);
+}
+
+/** Match a query against a haystack already produced by
+ *  `buildSearchHaystack` (i.e. already normalised). Only the query
+ *  is normalised here. Multi-token AND, same contract as
+ *  `matchesAnyField`. Empty query always matches. */
+export function matchesHaystack(haystack: string, query: string): boolean {
+  const normalisedQuery = normalizeForSearch(query).trim();
+  if (normalisedQuery.length === 0) return true;
+  const tokens = normalisedQuery.split(/\s+/);
+  return tokens.every((token) => haystack.includes(token));
 }

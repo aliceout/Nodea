@@ -5,6 +5,7 @@ import {
   formatEntryLabel,
   type EntryLabelOptions,
 } from '@/core/i18n/date-format';
+import { buildSearchHaystack } from '@/lib/text-search';
 
 import type { JournalEntry } from './types';
 
@@ -22,13 +23,17 @@ export function recordToEntry(
   const p = record.payload;
   const todayIso = today.toISOString().slice(0, 10);
   const dateIso = p.date ?? todayIso;
+  const thread = p.thread ?? '';
+  const title = p.title ?? null;
+  const content = p.content ?? '';
   return {
     id: record.id,
     dateIso,
     dateLabel: formatEntryLabel(dateIso, today, labels),
-    thread: p.thread ?? '',
-    title: p.title ?? null,
-    content: p.content ?? '',
+    thread,
+    title,
+    content,
     attachments: Array.isArray(p.attachments) ? p.attachments : [],
+    searchHaystack: buildSearchHaystack([title, content, thread]),
   };
 }

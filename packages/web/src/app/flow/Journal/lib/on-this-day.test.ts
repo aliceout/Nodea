@@ -12,6 +12,7 @@ function entry(dateIso: string, title = 'x'): JournalEntry {
     title,
     content: 'body',
     attachments: [],
+    searchHaystack: '',
   };
 }
 

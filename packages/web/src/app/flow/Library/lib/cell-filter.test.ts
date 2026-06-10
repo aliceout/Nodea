@@ -17,6 +17,7 @@ function fixture(
     rating: null,
     tags: [],
     isFavorite: false,
+    searchHaystack: '',
     ...partial,
   };
 }

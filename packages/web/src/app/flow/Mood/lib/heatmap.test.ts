@@ -12,6 +12,7 @@ function entry(dateIso: string, score: MoodEntry['score']): MoodEntry {
     date: dateIso,
     score,
     positives: ['', '', ''],
+    searchHaystack: '',
   };
 }
 

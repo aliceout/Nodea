@@ -23,7 +23,7 @@ import LabChart from '../components/LabChart';
 import LabFilterBar from '../components/LabFilterBar';
 import LabResultForm from '../components/LabResultForm';
 import LabResultRow from '../components/LabResultRow';
-import { useHrtLabResults, type LabResultEntry } from '../hooks/use-lab-results';
+import { type LabResultEntry, type UseHrtLabResults } from '../hooks/use-lab-results';
 import {
   buildChartSeries,
   buildTargetBand,
@@ -34,9 +34,15 @@ import {
 import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
 import { formatLogDate, markerLabel, todayIso } from '../lib/labels';
 
-export default function LabsView() {
+interface LabsViewProps {
+  /** Shared lab-results instance — owned by `HrtPage` (audit 2026-06
+   *  passe 2 : hoisted so switching sub-views doesn't re-LIST it). */
+  labResults: UseHrtLabResults;
+}
+
+export default function LabsView({ labResults }: LabsViewProps) {
   const { t, language } = useI18n();
-  const { entries, load, ready, create, update, remove } = useHrtLabResults();
+  const { entries, load, ready, create, update, remove } = labResults;
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<LabResultEntry | null>(null);
   const [markerSel, setMarkerSel] = useState<string | null>(null);

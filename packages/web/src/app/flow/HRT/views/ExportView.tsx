@@ -33,9 +33,9 @@ import type { FilterOption } from '../components/ExportFilterColumn';
 import ExportMenuButton from '../components/ExportMenuButton';
 import ImportPanel from '../components/ImportPanel';
 import type { UseHrtAdminLogs } from '../hooks/use-admin-logs';
-import { useHrtLabResults } from '../hooks/use-lab-results';
-import { useHrtProducts } from '../hooks/use-products';
-import { useHrtSchedules } from '../hooks/use-schedules';
+import type { UseHrtLabResults } from '../hooks/use-lab-results';
+import type { UseHrtProducts } from '../hooks/use-products';
+import type { UseHrtSchedules } from '../hooks/use-schedules';
 import { distinctMolecules } from '../lib/admin-data';
 import { distinctMarkers } from '../lib/chart-data';
 import { EMPTY_RANGE, type DateRange } from '../lib/date-range';
@@ -71,17 +71,22 @@ function toggled(set: ReadonlySet<string>, value: string): Set<string> {
 }
 
 interface ExportViewProps {
-  /** The single shared admin-logs instance — owned by `HrtPage`
-   *  (audit 2026-06 : one LIST per module mount, not per view). */
+  /** Shared instances owned by `HrtPage` (audit 2026-06 : one LIST
+   *  per module mount, not per view nor per sub-view switch). */
   adminLogs: UseHrtAdminLogs;
+  products: UseHrtProducts;
+  labResults: UseHrtLabResults;
+  schedules: UseHrtSchedules;
 }
 
-export default function ExportView({ adminLogs }: ExportViewProps) {
+export default function ExportView({
+  adminLogs,
+  products,
+  labResults,
+  schedules,
+}: ExportViewProps) {
   const { t, tn, language } = useI18n();
-  const products = useHrtProducts();
   const admin = adminLogs;
-  const labResults = useHrtLabResults();
-  const schedules = useHrtSchedules();
 
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE);
   const [note, setNote] = useState('');

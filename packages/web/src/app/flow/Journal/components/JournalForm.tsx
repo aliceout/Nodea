@@ -14,7 +14,6 @@ import { attachmentSrc, resizeImageFile } from '@/app/flow/Journal/hooks/imageRe
 import { useJournalDraft } from '@/app/flow/Journal/hooks/useJournalDraft';
 import { pickJournalPrompt } from '@/app/flow/Journal/prompts';
 import { useModuleClient } from '@/core/modules/use-module-client';
-import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
@@ -22,7 +21,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import ThreadSuggestInput from '@/ui/dirk/forms/ThreadSuggestInput';
 
-import { useJournalFilters } from '../context';
+import { useJournalActions, useJournalFilters } from '../context';
 import type { JournalEntry } from '../lib/types';
 
 interface JournalFormProps {
@@ -48,7 +47,8 @@ interface JournalFormProps {
  *     and the draft slot (`useJournalDraft`) auto-saves +
  *     auto-restores the form state across reloads.
  *
- * `bumpJournalVersion` triggers the data refetch on success ;
+ * `upsertRecord` splices the saved record into the in-memory list on
+ * success (no full-collection refetch — audit 2026-06 passe 2) ;
  * `onClose` returns the user to the list ; the in-component error
  * feedback surfaces validation + network failures with friendly
  * messages.
@@ -56,7 +56,7 @@ interface JournalFormProps {
 export default function JournalForm({ initial, onClose }: JournalFormProps) {
   const { t, tn, language } = useI18n();
   const ctx = useModuleClient('journal');
-  const bumpJournalVersion = useNodeaStore((s) => s.bumpJournalVersion);
+  const { upsertRecord } = useJournalActions();
   // Thread suggestions come from the provider's already-computed,
   // memoised list — this form is rendered inside `JournalProvider`.
   // It used to re-fetch + re-decrypt the WHOLE collection
@@ -200,13 +200,19 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
         content: trimmedContent,
         attachments,
       };
+      let record;
       if (initial) {
-        await journalClient.update(ctx.moduleUserId, ctx.mainKey, initial.id, payload);
+        record = await journalClient.update(
+          ctx.moduleUserId,
+          ctx.mainKey,
+          initial.id,
+          payload,
+        );
       } else {
-        await journalClient.create(ctx.moduleUserId, ctx.mainKey, payload);
+        record = await journalClient.create(ctx.moduleUserId, ctx.mainKey, payload);
         clearDraft();
       }
-      bumpJournalVersion();
+      upsertRecord(record);
       onClose();
     } catch (err) {
       setError(
