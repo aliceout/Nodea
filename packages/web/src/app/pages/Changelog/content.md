@@ -5,6 +5,38 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.10.1 — 2026-06-10
+
+### Corrections
+
+- **web** : drop hardcoded lang="fr" on rendered markdown content _(d2717dc)_
+- **goals** : accent-insensitive, multi-token search (align with other modules) _(2d9ea83)_
+- **web** : unique row keys in flattened virtualized list + doc drift (post-audit review) _(2c8f854)_
+- **audit** : medium bugs — announcement re-activation, invite atomicity, modules race, Review, Habits, NODE_ENV (P2-E) _(53486fd)_
+- **audit-p2** : lot P2-B — intégrité des exports / restaurations _(3f4bd26)_
+- **audit-p2** : lot P2-A — régressions de la passe 1 _(3da562b)_
+
+### Performance
+
+- **flow** : kill per-save refetch, lazy covers, precomputed search haystacks (audit P2-D) _(8f09722)_
+- **web** : lot P2-C — virtualisation aplatie + memo (le plan anti-lag) _(a1751d4)_
+
+### Documentation
+
+- remove audit reports (merged) + drop CLAUDE.md reference _(1e9f576)_
+- **api** : fix stale Node 22 comments in Dockerfile (image is node:24-alpine) _(1870c8c)_
+- **audit** : rapport passe 2 + roadmap de correction _(218d31b)_
+- **changelog** : regenerate for v2.10.0 _(aec5697)_
+
+<details>
+<summary>Maintenance — 3 commits</summary>
+
+- **release** : bump version to 2.10.1 _(2c5251e)_
+- **auth** : prove change-email no longer locks the account out (audit 1.5) _(9094d74)_
+- **audit** : hygiene — print guard, token purges, code_hash index, createdBy, autocomplete, docs drift (P2-F) _(d2409da)_
+
+</details>
+
 ## v2.10.0 — 2026-06-10
 
 ### Nouveautés
