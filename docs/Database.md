@@ -128,7 +128,9 @@ re-vérification step (Auth-Spec §7.6) — currently the
 | `consumed_at` | `ts+tz?`  | Set on first successful consumption.                             |
 | `created_at`  | `ts+tz`   | `defaultNow()`.                                                  |
 
-**Index**: `email_verifications_email_idx`.
+**Indexes**: `email_verifications_email_idx` (lookup by email) ;
+`email_verifications_code_hash_idx` (token-validation lookup by
+`code_hash`, added by migration 0022 — see `auth/email-verifications.ts`).
 
 ### `password_reset_tokens`
 
@@ -293,9 +295,11 @@ limit. The fresh-password proof authenticates the *caller*, not the
 caller's ownership of the sid — the sole inter-user barrier on this
 destructive route is the secrecy of the sid (crypto material derived
 from the main key, same trust model as LIST/CREATE). Accepted because
-a sid never leaves the client except as the `X-Sid` header (never
-logged), but worth knowing : a leaked sid + any fresh-authed account
-= a wiped module. Same exemption class as `modules_config` (no guard,
+a sid never leaves the client except inside a request the proxy does
+not log — the `X-Sid` header on LIST/CREATE, or the JSON body on this
+wipe route (`POST /records/wipe`, `sid` field). Neither is written to
+the access logs. Worth knowing though : a leaked sid + any fresh-authed
+account = a wiped module. Same exemption class as `modules_config` (no guard,
 `requireUser` only).
 
 ### Auth tables (live, Phases 2-7)

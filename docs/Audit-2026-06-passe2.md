@@ -131,8 +131,8 @@ Chaque navigation sidebar démonte le provider et jette les données déchiffré
 - [ ] 2.5a Hisser les 3 hooks HRT restants
 - [ ] 2.5b Haystacks de recherche pré-normalisés
 - [ ] 2.5c Couvertures Library à la demande par mode
-- [ ] 2.3 Cache inter-montage versionné des listes déchiffrées
-- [ ] 2.5d `promote-guards` en un seul UPDATE ; `res.json()` ; `Uint8Array.fromBase64` ; `tRef` sur les effets de fetch
+- [ ] 2.3 Cache inter-montage versionné des listes déchiffrées — **non livré.** Les gains 2.2 (fin des refetch après save) + 2.5a-c (hoist HRT, haystacks, covers à la demande) couvrent déjà l'essentiel du ressenti « ça rame » sans introduire un cache mémoire de plaintext déchiffré (qui demande sa propre invalidation + une purge stricte au logout — surface de risque crypto non négligeable). Reporté en suivi dédié plutôt que bâclé dans ce lot.
+- [ ] 2.5d `promote-guards` en un seul UPDATE ; `res.json()` ; `Uint8Array.fromBase64` ; `tRef` sur les effets de fetch — **non livré (réexaminé).** `res.json()` casserait la gestion des 204/corps vide (le `text()`+parse actuel est correct) ; `Uint8Array.fromBase64` est sous la baseline navigateur sur un chemin de déchiffrement ; la réécriture `UPDATE…FROM VALUES` de promote-guards est risquée sur le chemin d'attribution des guards pour un gain ressenti seulement à l'import (<100 lignes dans une transaction).
 
 ## Lot P2-E — Bugs moyens *(1-2 jours)*
 - [ ] 3.1 Schéma Update des annonces sans `.default` résiduel + test

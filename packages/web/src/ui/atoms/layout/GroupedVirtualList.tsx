@@ -25,14 +25,10 @@ import { useMemo, type ReactNode } from 'react';
 
 import GroupBlock, { type GroupBlockVariant } from '@/ui/dirk/module/GroupBlock';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
+import { buildGroupRows, type Group } from '@/ui/atoms/layout/group-rows';
 import { cn } from '@/lib/utils';
 
-/** One group : a label + its items, in display order. */
-export type Group<T> = readonly [label: string, items: T[]];
-
-type Row<T> =
-  | { kind: 'header'; key: string; label: string; count: number; first: boolean }
-  | { kind: 'entry'; key: string; item: T };
+export type { Group };
 
 interface GroupedVirtualListProps<T> {
   groups: ReadonlyArray<Group<T>>;
@@ -99,26 +95,13 @@ export default function GroupedVirtualList<T>({
   );
 
   // Flat heterogeneous row stream — only built (and only consumed)
-  // on the virtualized path.
-  const rows = useMemo<Row<T>[]>(() => {
-    if (total < threshold) return [];
-    const out: Row<T>[] = [];
-    let firstGroup = true;
-    for (const [label, items] of groups) {
-      out.push({
-        kind: 'header',
-        key: `__h__${label}`,
-        label,
-        count: items.length,
-        first: firstGroup,
-      });
-      firstGroup = false;
-      for (const item of items) {
-        out.push({ kind: 'entry', key: getItemKey(item), item });
-      }
-    }
-    return out;
-  }, [groups, total, threshold, getItemKey]);
+  // on the virtualized path. `buildGroupRows` namespaces every key by
+  // group index so a cross-group item (multi-thread goal, multi-tag
+  // book) doesn't collide with itself once flattened (see group-rows.ts).
+  const rows = useMemo(
+    () => (total < threshold ? [] : buildGroupRows(groups, getItemKey)),
+    [groups, total, threshold, getItemKey],
+  );
 
   // Below threshold : identical to the previous per-group rendering.
   if (total < threshold) {
