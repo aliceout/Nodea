@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { LibraryReviewPayload } from '@nodea/shared';
 
@@ -9,6 +9,7 @@ import { LiteMarkdown } from '@/lib/lite-markdown';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import LibraryReviewForm from '../components/LibraryReviewForm';
 import { useLibraryActions, useLibraryData } from '../context';
@@ -106,17 +107,25 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
       ) : filtered.length === 0 ? (
         <EmptyHint>{t(`library.reviews.empty.${kind}`)}</EmptyHint>
       ) : (
-        <ul className="flex flex-col gap-5">
-          {filtered.map((r) => (
+        // Virtualized (audit 2026-06 passe 2) : was a flat <ul> that
+        // mounted + LiteMarkdown-parsed EVERY review. `editReview` /
+        // `deleteReview` are stable `useCallback`s and the row is
+        // `memo`'d + takes them directly (no inline closures), so a
+        // covers-stream or favorite-toggle no longer re-parses every
+        // review's markdown.
+        <VirtualWindowList
+          items={filtered}
+          estimateRowHeight={120}
+          getKey={(r) => r.id}
+          renderItem={(r) => (
             <FlatReviewRow
-              key={r.id}
               review={r}
               book={itemsById.get(r.itemRid) ?? null}
-              onEdit={() => editReview(r)}
-              onDelete={() => deleteReview(r)}
+              onEdit={editReview}
+              onDelete={deleteReview}
             />
-          ))}
-        </ul>
+          )}
+        />
       )}
     </section>
   );
@@ -128,18 +137,23 @@ interface FlatReviewRowProps {
    *  under the review (orphan — should be rare but we render
    *  defensively). */
   book: LibraryItem | null;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit: (review: LibraryReview) => void;
+  onDelete: (review: LibraryReview) => void;
 }
 
-function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
+const FlatReviewRow = memo(function FlatReviewRow({
+  review,
+  book,
+  onEdit,
+  onDelete,
+}: FlatReviewRowProps) {
   const { language, t } = useI18n();
   const dateLabel = formatLongDate(review.date, language);
   const accent = review.kind === 'quote';
   const bookTitle = book?.title ?? t('library.reviews.deletedBook');
   const bookAuthor = book?.creators?.[0]?.name ?? '';
   return (
-    <li className="group border-b border-hair pb-5 last:border-b-0">
+    <div className="group border-b border-hair py-2.5 first:pt-0">
       <div className="mb-1 flex items-center gap-2 text-[11.5px] text-muted">
         <span className="truncate font-medium text-ink-soft" title={bookTitle}>
           {bookTitle}
@@ -159,7 +173,7 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
               variant="ghost"
               size="xs"
               iconOnly
-              onClick={onEdit}
+              onClick={() => onEdit(review)}
               aria-label={t('common.actions.edit')}
               title={t('common.actions.edit')}
             >
@@ -169,7 +183,7 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
               variant="danger-ghost"
               size="xs"
               iconOnly
-              onClick={onDelete}
+              onClick={() => onDelete(review)}
               aria-label={t('common.actions.delete')}
               title={t('common.actions.delete')}
             >
@@ -181,6 +195,6 @@ function FlatReviewRow({ review, book, onEdit, onDelete }: FlatReviewRowProps) {
       <div className={cn(accent ? 'border-l-2 border-accent-soft pl-3 italic' : '')}>
         <LiteMarkdown text={review.content} />
       </div>
-    </li>
+    </div>
   );
-}
+});

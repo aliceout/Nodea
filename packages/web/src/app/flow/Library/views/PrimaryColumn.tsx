@@ -1,8 +1,7 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
-import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
-import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
+import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
 import LibraryItemForm from '../components/LibraryItemForm';
 import { useLibraryActions, useLibraryData, useLibraryFilters } from '../context';
@@ -100,30 +99,18 @@ export default function PrimaryColumn() {
               : t('library.list.emptySelection')}
           </EmptyHint>
         ) : isListMode ? (
-          groups
-            .filter((g) => g.items.length > 0)
-            .map((g) => (
-              <GroupBlock
-                key={g.key}
-                label={g.label}
-                count={g.items.length}
-                countNoun={t('library.list.groupCountNoun')}
-                variant="subtitle"
-                listTag="div"
-              >
-                <VirtualWindowList
-                  items={g.items}
-                  estimateRowHeight={viewMode === 'list-cover' ? 60 : 44}
-                  getKey={(it) => it.id}
-                  renderItem={(it) => (
-                    <ItemRow
-                      item={it}
-                      showCover={viewMode === 'list-cover'}
-                    />
-                  )}
-                />
-              </GroupBlock>
-            ))
+          <GroupedVirtualList
+            groups={groups
+              .filter((g) => g.items.length > 0)
+              .map((g) => [g.label, g.items] as const)}
+            getItemKey={(it) => it.id}
+            renderItem={(it) => (
+              <ItemRow item={it} showCover={viewMode === 'list-cover'} />
+            )}
+            countNoun={t('library.list.groupCountNoun')}
+            variant="subtitle"
+            estimateRowHeight={viewMode === 'list-cover' ? 60 : 44}
+          />
         ) : viewMode === 'table' ? (
           <BookTable items={flatItems} />
         ) : viewMode === 'grid' ? (

@@ -1,8 +1,7 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
-import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
-import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
+import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
 import { useGoalsData, useGoalsFilters } from '../context';
 import GoalRow from './GoalRow';
@@ -37,23 +36,14 @@ export default function GoalsList() {
         ) : groups.length === 0 ? (
           <EmptyHint>{t('goals.list.empty')}</EmptyHint>
         ) : (
-          groups.map(([groupLabel, items]) => (
-            <GroupBlock
-              key={groupLabel}
-              label={groupLabel}
-              count={items.length}
-              countNoun={t('goals.list.groupCountNoun')}
-              variant="eyebrow"
-              listTag="div"
-            >
-              <VirtualWindowList
-                items={items}
-                estimateRowHeight={64}
-                getKey={(e) => e.id}
-                renderItem={(entry) => <GoalRow entry={entry} />}
-              />
-            </GroupBlock>
-          ))
+          <GroupedVirtualList
+            groups={groups}
+            getItemKey={(e) => e.id}
+            renderItem={(entry) => <GoalRow entry={entry} />}
+            countNoun={t('goals.list.groupCountNoun')}
+            variant="eyebrow"
+            estimateRowHeight={64}
+          />
         )}
       </div>
     </section>

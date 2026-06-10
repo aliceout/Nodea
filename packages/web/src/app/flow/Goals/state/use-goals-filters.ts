@@ -8,10 +8,11 @@
  * Not a React context — the provider in `../context.tsx` consumes
  * this hook and republishes via `GoalsFiltersValue`.
  */
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { splitThreads } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { byDateDesc } from '../lib/sort';
@@ -77,10 +78,21 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     (GOALS_VIEW_MODES as readonly string[]).includes(preferences.goalsViewMode)
       ? (preferences.goalsViewMode as GoalsViewMode)
       : DEFAULT_VIEW_MODE;
-  const setViewMode = (next: GoalsViewMode): void => {
-    if (next === persistedViewMode) return;
-    void setPreferences({ goalsViewMode: next });
-  };
+  // `useCallback` (audit 2026-06 passe 2) : an inline `setViewMode`
+  // is a fresh function each render, and it sits in the deps of the
+  // provider's `filtersValue` memo — so the « field-by-field » memo
+  // of the first pass actually re-created the context value on every
+  // provider render, re-rendering every consumer (rows, sidebar…) on
+  // every keystroke. The equal-to-current guard reads the latest
+  // persisted value via `getState()` to stay dep-free.
+  const setViewMode = useCallback(
+    (next: GoalsViewMode): void => {
+      const cur = useNodeaStore.getState().preferences.goalsViewMode;
+      if (next === cur) return;
+      void setPreferences({ goalsViewMode: next });
+    },
+    [setPreferences],
+  );
   const viewMode = persistedViewMode;
 
   // Deduped sorted thread inventory — same shape Journal exposes

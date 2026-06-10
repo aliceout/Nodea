@@ -11,10 +11,11 @@
  * this hook and republishes via `LibraryFiltersValue`. Splitting it
  * out keeps the filter logic reviewable in isolation.
  */
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { type LibraryStatus } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { matchesAnyField } from '@/lib/text-search';
 
@@ -91,10 +92,17 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
     (LIBRARY_VIEW_MODES as readonly string[]).includes(preferences.libraryViewMode)
       ? (preferences.libraryViewMode as LibraryViewMode)
       : DEFAULT_VIEW_MODE;
-  const setViewMode = (next: LibraryViewMode): void => {
-    if (next === persistedViewMode) return;
-    void setPreferences({ libraryViewMode: next });
-  };
+  // `useCallback` (audit 2026-06 passe 2) — see the Goals filter hook
+  // for the why : an inline setter defeated the provider's
+  // field-by-field memo, re-rendering every tile on every keystroke.
+  const setViewMode = useCallback(
+    (next: LibraryViewMode): void => {
+      const cur = useNodeaStore.getState().preferences.libraryViewMode;
+      if (next === cur) return;
+      void setPreferences({ libraryViewMode: next });
+    },
+    [setPreferences],
+  );
   const viewMode = persistedViewMode;
 
   const allTags = useMemo<string[]>(() => {

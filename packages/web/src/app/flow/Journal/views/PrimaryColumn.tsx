@@ -4,9 +4,8 @@ import { useMemo } from 'react';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
-import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import PageHeading from '@/ui/dirk/module/PageHeading';
-import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
+import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
 import JournalForm from '../components/JournalForm';
 import MobileFilters from '../components/MobileFilters';
@@ -163,24 +162,18 @@ export default function PrimaryColumn() {
         ) : groups.length === 0 ? (
           <EmptyHint>{t('journal.list.empty')}</EmptyHint>
         ) : (
-          groups.map(([groupLabel, items]) => (
-            <GroupBlock
-              key={groupLabel}
-              label={groupLabel}
-              count={items.length}
-              countNoun={t('journal.list.groupCountNoun')}
-              variant={groupVariant}
-              listTag="div"
-              className="mb-0"
-            >
-              <VirtualWindowList
-                items={items}
-                estimateRowHeight={110}
-                getKey={(e) => e.id}
-                renderItem={(entry) => <EntryRow entry={entry} />}
-              />
-            </GroupBlock>
-          ))
+          // Single flattened virtualized list across all groups
+          // (audit 2026-06 passe 2) : the old per-group
+          // VirtualWindowList never crossed its threshold inside any
+          // one thread, so nothing was virtualized at scale.
+          <GroupedVirtualList
+            groups={groups}
+            getItemKey={(e) => e.id}
+            renderItem={(entry) => <EntryRow entry={entry} />}
+            countNoun={t('journal.list.groupCountNoun')}
+            variant={groupVariant}
+            estimateRowHeight={110}
+          />
         )}
       </div>
     </section>
