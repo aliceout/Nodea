@@ -340,7 +340,7 @@
       "another": "Importer un autre fichier"
     },
     "template": {
-      "filename": "Nodea — modèle import analyses HRT.xlsx",
+      "filename": "modèle import analyses.xlsx",
       "helpSheet": "Aide",
       "title": "Modèle d’import HRT — Nodea (analyses)",
       "line1": "Collez vos analyses dans l’onglet « Analyses ». Ne touchez pas aux en-têtes (ligne 1).",

@@ -160,9 +160,15 @@ export default function ExportView({
   const allReady = loads.every((l) => l.status === 'ready');
   const errorMessage = loads.map(errorMessageOf).find((m) => m !== null) ?? null;
 
+  // Export filenames are intentionally NEUTRAL : no `nodea` (the app)
+  // and no `hrt` (the module) in the name, so a file sitting in the
+  // Downloads folder doesn't out the user as using Nodea — and above
+  // all doesn't label them with a trans-health module (audit 2026-06
+  // passe 2, Priorité 4). A bland content word stays so the two
+  // spreadsheets don't collide on the same day.
   function exportDoses(format: SpreadsheetFormat): void {
     void downloadSpreadsheet(
-      `nodea_hrt_prises_${todayIso()}`,
+      `prises_${todayIso()}`,
       t('hrt.export.sheets.doses'),
       doseMatrix(doses, t),
       format,
@@ -170,7 +176,7 @@ export default function ExportView({
   }
   function exportLabs(format: SpreadsheetFormat): void {
     void downloadSpreadsheet(
-      `nodea_hrt_analyses_${todayIso()}`,
+      `analyses_${todayIso()}`,
       t('hrt.export.sheets.labs'),
       labMatrix(labGroups, t),
       format,
@@ -189,7 +195,7 @@ export default function ExportView({
         doses,
         labs: labGroups,
         doseCharts,
-        filename: `nodea_hrt_recap_${todayIso()}.pdf`,
+        filename: `recap_${todayIso()}.pdf`,
         t,
         tn,
         locale: language,

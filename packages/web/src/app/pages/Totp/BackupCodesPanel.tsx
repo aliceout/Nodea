@@ -59,7 +59,10 @@ export default function BackupCodesPanel({
     a.href = url;
     a.download = 'nodea-totp-backup-codes.txt';
     a.click();
-    URL.revokeObjectURL(url);
+    // Defer the revoke one tick : revoking synchronously after click()
+    // can abort the download in some browsers before it's committed
+    // (audit 2026-06 passe 2, Priorité 4 — same fix as the data exports).
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   return (

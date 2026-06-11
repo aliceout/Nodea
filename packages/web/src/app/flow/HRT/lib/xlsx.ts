@@ -166,7 +166,9 @@ function downloadBlob(filename: string, blob: Blob): void {
 export async function downloadImportTemplate(t: HrtTranslate): Promise<void> {
   const { Workbook } = await import('exceljs');
   const wb = new Workbook();
-  wb.creator = 'Nodea';
+  // Blank author metadata — don't write the app name into the file's
+  // core properties (audit 2026-06 passe 2, Priorité 4).
+  wb.creator = '';
 
   const ws = wb.addWorksheet(SHEET);
   ws.columns = HEADER_KEYS.map((key) => ({

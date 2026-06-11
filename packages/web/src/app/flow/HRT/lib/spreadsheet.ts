@@ -42,7 +42,10 @@ export async function downloadSpreadsheet(
 async function toXlsx(sheetName: string, matrix: Matrix): Promise<Blob> {
   const { Workbook } = await import('exceljs');
   const wb = new Workbook();
-  wb.creator = 'Nodea';
+  // Blank the author metadata : `creator = 'Nodea'` would write the app
+  // name into the file's core properties (right-click → Properties →
+  // Author), outing the user (audit 2026-06 passe 2, Priorité 4).
+  wb.creator = '';
   const ws = wb.addWorksheet(sheetName);
   matrix.forEach((row, i) => {
     const added = ws.addRow([...row]);

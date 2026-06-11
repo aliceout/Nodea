@@ -340,7 +340,7 @@
       "another": "Import another file"
     },
     "template": {
-      "filename": "Nodea — HRT lab results import template.xlsx",
+      "filename": "lab results import template.xlsx",
       "helpSheet": "Help",
       "title": "HRT import template — Nodea (lab results)",
       "line1": "Paste your lab results into the “Analyses” tab. Do not change the headers (row 1).",
