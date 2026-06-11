@@ -16,6 +16,15 @@ rely on this. Invite rows created by a user survive, with
 
 ## 1. Tables
 
+> **Convention temporelle.** Toutes les colonnes `ts+tz` sont des
+> `timestamp with time zone` : PostgreSQL les stocke en **UTC**. L'API
+> émet et reçoit des datetimes ISO 8601 en UTC (`toISOString()`), et les
+> timestamps embarqués dans les payloads chiffrés (`updatedAt`, etc.)
+> suivent la même règle. La conversion en heure locale est **purement
+> côté client**, à l'affichage. Aucune date n'est stockée en heure
+> locale — c'est ce qui garde le tri et les comparaisons corrects quel
+> que soit le fuseau de l'appareil.
+
 ### `users`
 
 Central identity row.
