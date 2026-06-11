@@ -61,6 +61,16 @@ const changeEmailLimiter = rateLimit({
   },
 });
 
+/**
+ * Cooldown between two successful email changes (Auth-Spec §13). The
+ * 24 h limiter above is an anti-hammer rate-limit ; this is the
+ * business rule : after moving your email you can't move it again for
+ * 7 days. Enforced from `users.email_changed_at` (stamped on every
+ * successful change), so it survives restarts unlike the in-memory
+ * limiter, and yields a clear « retry after » instead of a generic 429.
+ */
+const EMAIL_CHANGE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
 const meRoute = createRoute({
   method: 'get',
   path: '/me',
@@ -302,6 +312,23 @@ authAccountRoutes.openapi(changeEmailRoute, async (c) => {
   if (newEmail === user.email) return c.json({ ok: true as const }, 200);
   const oldEmail = user.email;
 
+  // 7-day cooldown (Auth-Spec §13). A no-op email change short-circuits
+  // above, so this only gates a real move. Stamped on every success
+  // below ; a NULL `email_changed_at` (never changed, or a legacy row)
+  // means no cooldown applies.
+  if (user.emailChangedAt) {
+    const elapsed = Date.now() - user.emailChangedAt.getTime();
+    if (elapsed < EMAIL_CHANGE_COOLDOWN_MS) {
+      const retryAt = new Date(
+        user.emailChangedAt.getTime() + EMAIL_CHANGE_COOLDOWN_MS,
+      );
+      return c.json(
+        { error: 'email_change_cooldown', retryAt: retryAt.toISOString() },
+        429,
+      );
+    }
+  }
+
   // Email change + OPAQUE-identifier pin + session revocation in one
   // transaction (audit 2026-06 passe 2). The pin is the crux : the
   // OPAQUE envelope was registered under `oldEmail`, so login must
@@ -315,7 +342,7 @@ authAccountRoutes.openapi(changeEmailRoute, async (c) => {
     await db.transaction(async (tx) => {
       await tx
         .update(users)
-        .set({ email: newEmail, updatedAt: new Date() })
+        .set({ email: newEmail, emailChangedAt: new Date(), updatedAt: new Date() })
         .where(eq(users.id, user.id));
 
       await tx

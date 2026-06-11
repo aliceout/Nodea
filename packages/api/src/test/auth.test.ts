@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { invites, sessions } from '../db/schema.ts';
+import { invites, sessions, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
@@ -505,6 +505,27 @@ describe('PATCH /auth/email', () => {
       error: 'reauth_required',
       reauth_required: 'password',
     });
+  });
+
+  it('blocks a second email change within the 7-day cooldown (429)', async () => {
+    // Stamp `email_changed_at` to an hour ago so the handler's cooldown
+    // is what fires — not the 24 h rate limiter (this user has made no
+    // prior change-email request, so the limiter still has budget).
+    await seedUser('cooldown@example.com');
+    await db
+      .update(users)
+      .set({ emailChangedAt: new Date(Date.now() - 60 * 60 * 1000) })
+      .where(eq(users.email, 'cooldown@example.com'));
+    const cookie = await loginAs(app, 'cooldown@example.com', TEST_PASSWORD);
+    const proof = await passwordProofFor(app, 'cooldown@example.com', TEST_PASSWORD);
+
+    const res = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ ...proof, newEmail: 'cooldown-new@example.com' }),
+    });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ error: 'email_change_cooldown' });
   });
 
   it('409 when the new email is already taken', async () => {
