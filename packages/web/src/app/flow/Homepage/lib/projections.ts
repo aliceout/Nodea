@@ -115,6 +115,14 @@ export function projectJournalEntries(
       content: p.content ?? '',
     });
   }
-  out.sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+  // `dateIso` is day-granular (`YYYY-MM-DD`), so several entries on the
+  // same day tie on the primary key. Break the tie deterministically by
+  // id — there's no finer timestamp on the entry (server timestamps are
+  // dropped by design), but a stable order beats an arbitrary one that
+  // could reshuffle which entry the Home hero shows between renders
+  // (audit 2026-06 passe 2, Priorité 4).
+  out.sort(
+    (a, b) => b.dateIso.localeCompare(a.dateIso) || b.id.localeCompare(a.id),
+  );
   return out;
 }

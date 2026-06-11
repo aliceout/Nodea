@@ -30,6 +30,13 @@ interface ListProps {
  *  Specific to this surface (no other module surfaces a date with
  *  hour / minute on the same line), so it stays local instead of
  *  going to `core/i18n/date-fr.ts`. */
+/** Sane bounds for the « bilan » year — a review is a yearly
+ *  retrospective, not an arbitrary integer. Matches the number input's
+ *  min/max ; enforced on blur so a stray « 2 » can't create a year-2
+ *  review. */
+const YEAR_MIN = 1900;
+const YEAR_MAX = 2200;
+
 const DRAFT_DATETIME_FMT = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
   month: 'long',
@@ -149,13 +156,26 @@ export default function ReviewListView({
             </span>
             <Input
               type="number"
-              min={1900}
-              max={2200}
+              min={YEAR_MIN}
+              max={YEAR_MAX}
               value={draftYear}
               align="center"
               onChange={(e) =>
                 setDraftYear(Number(e.target.value) || currentYear)
               }
+              // Clamp on blur, not on every keystroke : clamping live
+              // would block typing « 2026 » (it'd snap « 2 » to 1900
+              // mid-entry). On blur we correct an out-of-range value to
+              // the nearest bound — so « 2 » can never create a « year 2 »
+              // review (audit 2026-06 passe 2, Priorité 4).
+              onBlur={(e) => {
+                const n = Number(e.target.value);
+                if (!Number.isFinite(n) || n === 0) {
+                  setDraftYear(currentYear);
+                  return;
+                }
+                setDraftYear(Math.min(YEAR_MAX, Math.max(YEAR_MIN, Math.trunc(n))));
+              }}
               className="w-28"
             />
           </label>

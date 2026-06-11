@@ -68,6 +68,32 @@ describe('POST /admin/announcements', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('rejects a window where startAt is after endAt (400)', async () => {
+    const cookie = await adminCookie();
+    const res = await app.request('/admin/announcements', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({
+        title: 'Backwards window',
+        body: 'never live',
+        startAt: '2026-12-01T00:00:00Z',
+        endAt: '2026-01-01T00:00:00Z',
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts an open-ended window (one bound null)', async () => {
+    const cookie = await adminCookie();
+    const created = await createAnnouncement(cookie, {
+      title: 'Open-ended',
+      body: 'starts, never auto-archives',
+      startAt: '2026-01-01T00:00:00Z',
+    });
+    expect(created.startAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(created.endAt).toBeNull();
+  });
 });
 
 describe('GET /admin/announcements', () => {
