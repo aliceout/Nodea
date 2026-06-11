@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
+import { copyWithExpiry } from '@/lib/clipboard';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import RowCard from '@/ui/dirk/module/RowCard';
@@ -62,7 +63,9 @@ export default function RecoveryCodeDisplay({
 
   async function copyToClipboard(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(mnemonic);
+      // Auto-clears after a delay (issue #137) — the recovery code
+      // unlocks the whole account, don't let it linger.
+      await copyWithExpiry(mnemonic);
     } catch {
       // Browsers without clipboard permission (or insecure
       // context) — silently fail. The user can transcribe by

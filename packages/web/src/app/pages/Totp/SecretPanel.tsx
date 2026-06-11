@@ -4,6 +4,7 @@ import { ClipboardIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outlin
 
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { copyWithExpiry } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
@@ -56,7 +57,10 @@ export default function SecretPanel({
 
   async function copySecret(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(data.secretBase32);
+      // Auto-clears the clipboard after a delay so the TOTP seed doesn't
+      // linger (issue #137) — the seed derives every code, treat it like
+      // a password.
+      await copyWithExpiry(data.secretBase32);
       setSecretCopied(true);
       // Brief visual confirmation ; revert after 2 s so the user
       // can copy again if their app rejected the paste.

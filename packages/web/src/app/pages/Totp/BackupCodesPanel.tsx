@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 
+import { copyWithExpiry } from '@/lib/clipboard';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import RowCard from '@/ui/dirk/module/RowCard';
@@ -49,7 +50,9 @@ export default function BackupCodesPanel({
   const [acknowledged, setAcknowledged] = useState(false);
 
   function copy(): void {
-    void navigator.clipboard.writeText(codes.join('\n')).catch(() => undefined);
+    // Auto-clears after a delay (issue #137) — backup codes are account
+    // recovery secrets, they shouldn't linger in the clipboard.
+    void copyWithExpiry(codes.join('\n')).catch(() => undefined);
   }
 
   function download(): void {
