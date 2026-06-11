@@ -81,6 +81,28 @@ let localWriteSeq = 0;
  *  the whole (mostly-default) store. */
 const dirtyKeys = new Set<keyof UserPreferencesPayload>();
 
+/**
+ * Serialised write chain (audit 2026-06 passe 2, Priorité 4). Two
+ * settings changed in quick succession fire two PUTs ; if the FIRST
+ * (still carrying only change A) lands AFTER the second (carrying
+ * A + B) because of network reordering, the server ends on `{A}` and
+ * B is silently lost. Chaining the saves guarantees each PUT only
+ * leaves once the previous one resolved, so they always arrive in
+ * call order. Each task reads the store at execution time, so the
+ * last writer ships the freshest full blob. Module-level (shared by
+ * every hook instance), wiped by the full-reload logout. */
+let prefsWriteChain: Promise<unknown> = Promise.resolve();
+
+function enqueuePrefsWrite(task: () => Promise<void>): Promise<void> {
+  // Run after the previous write settles, success OR failure (a failed
+  // PUT must not wedge the queue forever).
+  const run = prefsWriteChain.then(task, task);
+  // Keep the chain tail un-rejected so a thrown task doesn't surface as
+  // an unhandled rejection nor poison the next link.
+  prefsWriteChain = run.catch(() => undefined);
+  return run;
+}
+
 function unionDismissed(
   server: UserPreferencesPayload,
   local: UserPreferencesPayload,
@@ -222,17 +244,23 @@ export function usePreferences(): {
       }
 
       // hydration === 'ok' : the store already reflects server ∪ local,
-      // so writing the whole store is correct.
-      const next: UserPreferencesPayload = {
-        ...useNodeaStore.getState().preferences,
-      };
-      try {
-        await saveEncryptedPreferences(mainKey.aesKey, next);
-      } catch {
-        // Write failed — keep the optimistic state; next reload will
-        // re-sync from the server. A toast surface could be added
-        // later when the notifications slice wires up UI.
-      }
+      // so writing the whole store is correct. Serialised so two rapid
+      // writes can't reorder on the wire and drop a change (see
+      // `enqueuePrefsWrite`). The store is read INSIDE the task — when
+      // this write's turn actually comes — so the last writer always
+      // ships the freshest full blob.
+      await enqueuePrefsWrite(async () => {
+        const next: UserPreferencesPayload = {
+          ...useNodeaStore.getState().preferences,
+        };
+        try {
+          await saveEncryptedPreferences(mainKey.aesKey, next);
+        } catch {
+          // Write failed — keep the optimistic state; next reload will
+          // re-sync from the server. A toast surface could be added
+          // later when the notifications slice wires up UI.
+        }
+      });
     },
     [mainKey, update, setStore],
   );
