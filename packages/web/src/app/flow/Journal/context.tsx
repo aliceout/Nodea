@@ -18,6 +18,7 @@ import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import { matchesHaystack } from '@/lib/text-search';
 
 import { recordToEntry } from './lib/mappers';
@@ -166,6 +167,7 @@ export { useJournalData, useJournalFilters, useJournalActions };
 
 export function JournalProvider({ children }: { children: ReactNode }) {
   const { t, language } = useI18n();
+  const confirm = useConfirm();
   // ---- Pulled from the global store ----
   const ctx = useModuleClient('journal');
   const journalVersion = useNodeaStore((s) => s.journalVersion);
@@ -365,8 +367,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     async (entry: JournalEntry) => {
       if (!ctx) return;
       const label = entry.title ?? entry.dateLabel;
-      if (!window.confirm(t('journal.context.confirmDelete', { values: { label } })))
-        return;
+      const ok = await confirm({
+        message: t('journal.context.confirmDelete', { values: { label } }),
+        tone: 'danger',
+      });
+      if (!ok) return;
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
       try {
         await journalClient.remove(ctx.moduleUserId, ctx.mainKey, entry.id);
@@ -387,7 +392,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         if (import.meta.env.DEV) console.warn('journal: delete failed', err);
       }
     },
-    [ctx, t],
+    [ctx, t, confirm],
   );
 
   const upsertRecord = useCallback(

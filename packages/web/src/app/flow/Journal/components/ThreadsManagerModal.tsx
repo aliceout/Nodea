@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { splitThreads } from '@nodea/shared';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import { Modal } from '@/ui/atoms/layout/Modal';
 
@@ -39,6 +40,7 @@ export default function ThreadsManagerModal({
   onClose,
 }: ThreadsManagerModalProps) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const { entries } = useJournalData();
   const { renameThread, deleteThread } = useJournalActions();
 
@@ -89,12 +91,11 @@ export default function ThreadsManagerModal({
   }
 
   async function handleDelete(name: string) {
-    if (
-      !window.confirm(
-        t('journal.threadsManager.confirmDelete', { values: { name } }),
-      )
-    )
-      return;
+    const ok = await confirm({
+      message: t('journal.threadsManager.confirmDelete', { values: { name } }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     setLastResult(null);
     setWorking(true);
     try {

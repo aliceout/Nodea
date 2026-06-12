@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 
 import { type HrtGoal, type HrtLabResultPayload } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 
@@ -42,6 +43,7 @@ interface LabsViewProps {
 
 export default function LabsView({ labResults }: LabsViewProps) {
   const { t, language } = useI18n();
+  const confirm = useConfirm();
   const { entries, load, ready, create, update, remove } = labResults;
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<LabResultEntry | null>(null);
@@ -111,7 +113,11 @@ export default function LabsView({ labResults }: LabsViewProps) {
 
   async function onDelete(entry: LabResultEntry): Promise<void> {
     const label = `${markerLabel(entry.payload.marker)} — ${formatLogDate(entry.payload.date, language)}`;
-    if (!window.confirm(t('hrt.labs.confirmDelete', { values: { label } }))) return;
+    const ok = await confirm({
+      message: t('hrt.labs.confirmDelete', { values: { label } }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     await remove(entry.id);
   }
 

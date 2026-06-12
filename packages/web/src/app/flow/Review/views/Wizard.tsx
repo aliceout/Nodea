@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReviewPayload } from '@nodea/shared';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
@@ -78,6 +79,7 @@ export default function ReviewWizard({
   onCancel,
 }: WizardProps) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { createReview, updateReview } = useReview();
   const {
@@ -105,15 +107,35 @@ export default function ReviewWizard({
     if (hydrating || hydrationOffered || existing) return;
     setHydrationOffered(true);
     if (!hydrated) return;
-    if (
-      resume ||
-      window.confirm(t('review.wizard.resumePrompt', { values: { year } }))
-    ) {
+    // « Reprendre » from the list already validated the intent — skip
+    // the prompt. Otherwise ask via the in-app dialog (async, unlike the
+    // old blocking window.confirm) and act on the answer.
+    if (resume) {
       setPayload(hydrated);
-    } else {
-      clearDraft();
+      return;
     }
-  }, [hydrating, hydrationOffered, hydrated, existing, resume, year, clearDraft, t]);
+    let cancelled = false;
+    void confirm({
+      message: t('review.wizard.resumePrompt', { values: { year } }),
+    }).then((ok) => {
+      if (cancelled) return;
+      if (ok) setPayload(hydrated);
+      else clearDraft();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    hydrating,
+    hydrationOffered,
+    hydrated,
+    existing,
+    resume,
+    year,
+    clearDraft,
+    t,
+    confirm,
+  ]);
 
   // Auto-save on every payload change — but only once the user has
   // actually typed something. Persisting the empty initial payload

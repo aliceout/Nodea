@@ -6,6 +6,7 @@ import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { useSession } from '@/core/auth/use-session';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 
 import Feedback from '../components/Feedback';
@@ -15,10 +16,11 @@ import Field from '../components/Field';
  *  confirmations : the user must retype their email and supply
  *  their current password. The password reauth has to be fresh
  *  (`freshenPasswordReauth`) so the server sees a recent proof
- *  before honouring `apiDeleteMe`. A `window.confirm` adds a
+ *  before honouring `apiDeleteMe`. An in-app `confirm` dialog adds a
  *  third gate to soften double-click accidents. */
 export default function DangerTab() {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const session = useSession();
   const navigate = useNavigate();
   const user = useNodeaStore(selectUser);
@@ -37,9 +39,11 @@ export default function DangerTab() {
       setError(t('account.danger.confirmGate'));
       return;
     }
-    if (!window.confirm(t('account.danger.windowConfirm'))) {
-      return;
-    }
+    const ok = await confirm({
+      message: t('account.danger.windowConfirm'),
+      tone: 'danger',
+    });
+    if (!ok) return;
     setSubmitting(true);
     try {
       await freshenPasswordReauth(currentPassword);

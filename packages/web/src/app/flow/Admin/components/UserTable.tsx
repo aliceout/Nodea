@@ -1,6 +1,7 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
 import type { AdminUserRow } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
@@ -20,12 +21,14 @@ export interface UserTableProps {
  */
 export default function UserTable({ users, currentUserId, onDelete }: UserTableProps) {
   const { t } = useI18n();
+  const confirm = useConfirm();
 
-  function confirmDelete(user: AdminUserRow): void {
+  async function confirmDelete(user: AdminUserRow): Promise<void> {
     const label = user.username ?? user.email;
-    const ok = window.confirm(
-      t('admin.userTable.confirmDelete', { values: { label } }),
-    );
+    const ok = await confirm({
+      message: t('admin.userTable.confirmDelete', { values: { label } }),
+      tone: 'danger',
+    });
     if (ok) onDelete(user.id);
   }
 
@@ -62,7 +65,7 @@ export default function UserTable({ users, currentUserId, onDelete }: UserTableP
                 variant="danger-ghost"
                 size="sm"
                 iconOnly
-                onClick={() => confirmDelete(user)}
+                onClick={() => void confirmDelete(user)}
                 aria-label={t('admin.userTable.deleteAria')}
                 title={t('admin.userTable.deleteTitle')}
               >

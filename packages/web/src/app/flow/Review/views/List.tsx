@@ -3,6 +3,7 @@ import { ArrowUturnLeftIcon, PencilSquareIcon, TrashIcon } from '@heroicons/reac
 import { formatLongDate } from '@/core/i18n/date-format';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
@@ -51,6 +52,7 @@ export default function ReviewListView({
   onEdit,
 }: ListProps) {
   const { t, tn } = useI18n();
+  const confirm = useConfirm();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { loading, error, entries, deleteReview } = useReview();
   const currentYear = new Date().getFullYear();
@@ -101,18 +103,20 @@ export default function ReviewListView({
   );
 
   async function handleDelete(record: ReviewRecord): Promise<void> {
-    if (
-      !window.confirm(
-        t('review.list.confirmDelete', { values: { year: record.payload.year } }),
-      )
-    )
-      return;
+    const ok = await confirm({
+      message: t('review.list.confirmDelete', { values: { year: record.payload.year } }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     await deleteReview(record.id);
   }
 
-  function handleDeleteDraft(year: number): void {
-    if (!window.confirm(t('review.list.confirmDeleteDraft', { values: { year } })))
-      return;
+  async function handleDeleteDraft(year: number): Promise<void> {
+    const ok = await confirm({
+      message: t('review.list.confirmDeleteDraft', { values: { year } }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     clearReviewDraft(year);
     setDrafts(listReviewDrafts());
   }
@@ -219,7 +223,7 @@ export default function ReviewListView({
               key={d.year}
               draft={d}
               onResume={() => onResume(d.year)}
-              onDelete={() => handleDeleteDraft(d.year)}
+              onDelete={() => void handleDeleteDraft(d.year)}
             />
           ))}
         </GroupBlock>

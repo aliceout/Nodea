@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useAlert } from '@/ui/dirk/confirm/confirm-context';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import {
   apiAdminListUsers,
@@ -51,6 +52,7 @@ type Feedback = { kind: 'ok' | 'error'; message: string };
 
 export default function AdminPage() {
   const { t } = useI18n();
+  const alert = useAlert();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const currentUser = useNodeaStore(selectUser);
 
@@ -99,7 +101,9 @@ export default function AdminPage() {
       await apiAdminDeleteUser(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (err) {
-      alert('Erreur suppression : ' + (err instanceof Error ? err.message : ''));
+      await alert({
+        message: 'Erreur suppression : ' + (err instanceof Error ? err.message : ''),
+      });
     }
   }
 

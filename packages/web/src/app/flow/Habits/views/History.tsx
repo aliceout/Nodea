@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import HabitCard from '../components/HabitCard';
 import { useHabits, type HabitItem } from '../hooks/useHabits';
 import { toIsoDate } from '@/core/i18n/date-format';
+import { useAlert, useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 // `toISOString().slice(0, 10)` would return the UTC day, off by one
 // for users east of UTC after their local evening. `toIsoDate` reads
@@ -21,6 +22,9 @@ export default function HabitsHistoryView() {
     deleteItem,
   } = useHabits();
 
+  const confirm = useConfirm();
+  const alert = useAlert();
+
   const [scope, setScope] = useState<'active' | 'archived' | 'all'>('active');
 
   const visible = useMemo(() => {
@@ -36,7 +40,7 @@ export default function HabitsHistoryView() {
     try {
       await logOccurrence(item.id, today());
     } catch (err) {
-      alert('Erreur : ' + (err instanceof Error ? err.message : ''));
+      await alert({ message: 'Erreur : ' + (err instanceof Error ? err.message : '') });
     }
   }
 
@@ -45,17 +49,20 @@ export default function HabitsHistoryView() {
     try {
       await updateItem(item.id, { ...item.payload, archived: next });
     } catch (err) {
-      alert('Erreur : ' + (err instanceof Error ? err.message : ''));
+      await alert({ message: 'Erreur : ' + (err instanceof Error ? err.message : '') });
     }
   }
 
   async function handleDelete(item: HabitItem): Promise<void> {
-    if (!window.confirm(`Supprimer « ${item.payload.title} » et tous ses logs ?`))
-      return;
+    const ok = await confirm({
+      message: `Supprimer « ${item.payload.title} » et tous ses logs ?`,
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteItem(item.id);
     } catch (err) {
-      alert('Erreur : ' + (err instanceof Error ? err.message : ''));
+      await alert({ message: 'Erreur : ' + (err instanceof Error ? err.message : '') });
     }
   }
 

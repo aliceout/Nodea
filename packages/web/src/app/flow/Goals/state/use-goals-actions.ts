@@ -27,6 +27,7 @@ import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import { recordToEntry } from '../lib/mappers';
 import { byDateDesc } from '../lib/sort';
@@ -98,6 +99,7 @@ interface GoalsActionsDeps {
 export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const { ctx, entries, setEntries, bumpGoalsVersion } = deps;
   const { t, tn } = useI18n();
+  const confirm = useConfirm();
   const pushToast = useNodeaStore((s) => s.pushToast);
 
   const [carryOverOpen, setCarryOverOpen] = useState(false);
@@ -255,12 +257,11 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const deleteEntry = useCallback(
     async (entry: GoalEntry) => {
       if (!ctx) return;
-      if (
-        !window.confirm(
-          t('goals.row.confirmDelete', { values: { title: entry.title } }),
-        )
-      )
-        return;
+      const ok = await confirm({
+        message: t('goals.row.confirmDelete', { values: { title: entry.title } }),
+        tone: 'danger',
+      });
+      if (!ok) return;
       const token = trackerRef.current.begin(entry.id);
       const indexBefore = entriesRef.current.findIndex((e) => e.id === entry.id);
       setEntries((prev) => prev.filter((e) => e.id !== entry.id));
@@ -285,7 +286,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
         if (import.meta.env.DEV) console.warn('goals: delete failed', err);
       }
     },
-    [ctx, setEntries, t],
+    [ctx, setEntries, t, confirm],
   );
 
   // Insert (create) or replace (edit) a single record locally after

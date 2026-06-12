@@ -11,6 +11,7 @@ import {
 import type { AnnouncementResponse } from '@nodea/shared';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
@@ -27,6 +28,7 @@ const INITIAL_FORM = { title: '', body: '' };
  */
 export default function AnnouncementsManager() {
   const { t, language } = useI18n();
+  const confirm = useConfirm();
   const [form, setForm] = useState(INITIAL_FORM);
   const [items, setItems] = useState<AnnouncementResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,7 +100,11 @@ export default function AnnouncementsManager() {
   }
 
   async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm(t('admin.announcementsManager.confirmDelete'))) return;
+    const ok = await confirm({
+      message: t('admin.announcementsManager.confirmDelete'),
+      tone: 'danger',
+    });
+    if (!ok) return;
     setError(null);
     try {
       await apiAdminDeleteAnnouncement(id);

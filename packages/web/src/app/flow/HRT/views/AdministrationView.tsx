@@ -16,6 +16,7 @@ import type {
   HrtSchedulePayload,
 } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 
 import AdminJournal from '../components/AdminJournal';
@@ -46,6 +47,7 @@ export default function AdministrationView({
   products,
 }: AdministrationViewProps) {
   const { t, language } = useI18n();
+  const confirm = useConfirm();
   const { entries, load, ready, create, update, remove } = adminLogs;
   const { entries: productEntries, create: createProduct } = products;
 
@@ -99,16 +101,19 @@ export default function AdministrationView({
   }
   async function onDelete(entry: AdminLogEntry): Promise<void> {
     const label = `${entry.payload.product} — ${formatLogDate(entry.payload.date, language)}`;
-    if (!window.confirm(t('hrt.administration.confirmDelete', { values: { label } }))) return;
+    const ok = await confirm({
+      message: t('hrt.administration.confirmDelete', { values: { label } }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     await remove(entry.id);
   }
   async function onStop(s: ScheduleEntry): Promise<void> {
-    if (
-      !window.confirm(
-        t('hrt.administration.confirmStop', { values: { product: s.payload.product } }),
-      )
-    )
-      return;
+    const ok = await confirm({
+      message: t('hrt.administration.confirmStop', { values: { product: s.payload.product } }),
+      tone: 'danger',
+    });
+    if (!ok) return;
     await schedules.update(s.id, { ...s.payload, endDate: todayIso(), updatedAt: new Date().toISOString() });
   }
 

@@ -19,6 +19,7 @@ import { createMutationTracker } from '@/core/state/mutation-tracker';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import { matchesHaystack } from '@/lib/text-search';
 
@@ -134,6 +135,7 @@ export { useMoodData, useMoodFilters, useMoodActions };
 
 export function MoodProvider({ children }: { children: ReactNode }) {
   const { t, language } = useI18n();
+  const confirm = useConfirm();
   // ---- Pulled from the global store ----
   const ctx = useModuleClient('mood');
   const moodVersion = useNodeaStore((s) => s.moodVersion);
@@ -302,8 +304,11 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const deleteEntry = useCallback(
     async (entry: MoodEntry) => {
       if (!ctx) return;
-      if (!window.confirm(t('mood.context.confirmDelete', { values: { date: entry.date } })))
-        return;
+      const ok = await confirm({
+        message: t('mood.context.confirmDelete', { values: { date: entry.date } }),
+        tone: 'danger',
+      });
+      if (!ok) return;
       const token = trackerRef.current.begin(entry.id);
       // Capture the original index so a rollback re-inserts at the
       // same position rather than at the end of the list.
@@ -330,7 +335,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
         if (import.meta.env.DEV) console.warn('mood: delete failed', err);
       }
     },
-    [ctx, t],
+    [ctx, t, confirm],
   );
 
   const upsertRecord = useCallback(
