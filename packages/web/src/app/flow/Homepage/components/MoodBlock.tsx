@@ -2,11 +2,15 @@ import { useMemo } from 'react';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useMediaQuery } from '@/lib/use-media-query';
 import Heatmap, { type HeatmapCellInput } from '@/ui/dirk/Heatmap';
 
 import { buildHeatmap } from '../../Mood/lib/heatmap';
 
-const HOME_WEEKS = 26;
+// 6 months (26 weeks) on desktop ; 4 months (17 weeks) below `lg`,
+// where 26 columns of 1fr squares get too small to read / tap.
+const WEEKS_DESKTOP = 26;
+const WEEKS_MOBILE = 17;
 
 import { useHomepageData } from '../context';
 import { MOOD_BLOCK_FILL } from '../lib/constants';
@@ -28,10 +32,13 @@ export default function MoodBlock() {
   const { t } = useI18n();
   const { mood } = useHomepageData();
   const setModule = useNodeaStore((s) => s.setModule);
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const weeks = isDesktop ? WEEKS_DESKTOP : WEEKS_MOBILE;
+  const months = isDesktop ? 6 : 4;
 
   const { cells, monthLabels } = useMemo(
-    () => buildHeatmap(null, mood, new Date(), HOME_WEEKS),
-    [mood],
+    () => buildHeatmap(null, mood, new Date(), weeks),
+    [mood, weeks],
   );
 
   const heatmapCells = useMemo<Array<HeatmapCellInput | null>>(
@@ -71,7 +78,7 @@ export default function MoodBlock() {
 
   return (
     <HomeCard
-      title="MOOD · 6 MOIS"
+      title={`MOOD · ${months} MOIS`}
       trailing={
         avg !== null ? (
           <span className="tabular-nums">moyenne {formatMoodAvg(avg)}</span>
@@ -90,7 +97,7 @@ export default function MoodBlock() {
       }
     >
       <Heatmap
-        weeks={HOME_WEEKS}
+        weeks={weeks}
         cells={heatmapCells}
         monthLabels={monthLabels}
         dayLabels={dayLabels}

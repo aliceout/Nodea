@@ -12,9 +12,9 @@ import { isoDay } from './stats';
 export const HEATMAP_WEEKS = 52;
 
 /** Mobile fallback width. Below `md:`, the 52-column grid renders
- *  cells at ≈ 5 px each and the month labels collide. 26 weeks ≈
- *  6 months — same compromise as `Mood/lib/heatmap.ts`. */
-export const COMPACT_HEATMAP_WEEKS = 26;
+ *  cells at ≈ 5 px each and the month labels collide. 17 weeks ≈
+ *  4 months — same compromise as `Mood/lib/heatmap.ts`. */
+export const COMPACT_HEATMAP_WEEKS = 17;
 
 const DAYS_PER_WEEK = 7;
 

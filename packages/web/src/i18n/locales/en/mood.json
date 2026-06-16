@@ -1,10 +1,6 @@
 {
   "title": "Mood",
   "topbar": {
-    "label": {
-      "one": "Mood · {count} entry",
-      "other": "Mood · {count} entries"
-    },
     "newCta": "+ New entry",
     "searchPlaceholder": "Search in Mood…"
   },

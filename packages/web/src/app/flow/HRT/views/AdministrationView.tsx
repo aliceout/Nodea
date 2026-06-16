@@ -18,6 +18,7 @@ import type {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 
 import AdminJournal from '../components/AdminJournal';
 import AdminLogForm, { type ProductOption } from '../components/AdminLogForm';
@@ -131,6 +132,7 @@ export default function AdministrationView({
                 setEditingSchedule(null);
                 setMode('schedule');
               }}
+              className="hidden lg:inline-flex"
             >
               {t('hrt.administration.newSchedule')}
             </Button>
@@ -142,12 +144,41 @@ export default function AdministrationView({
                 setEditing(null);
                 setMode('manual');
               }}
+              className="hidden lg:inline-flex"
             >
               {t('hrt.administration.newManual')}
             </Button>
           </div>
         ) : null}
       </div>
+
+      {/* Mobile speed-dial — one bubble fanning out to both header
+          actions (primary « prise manuelle » nearest the thumb). The
+          in-body buttons above are desktop-only. */}
+      <SpeedDial
+        addLabel={t('common.actions.add')}
+        closeLabel={t('common.actions.close')}
+        hidden={formOpen}
+        actions={[
+          {
+            label: t('hrt.administration.newSchedule'),
+            onClick: () => {
+              setEditingSchedule(null);
+              setMode('schedule');
+            },
+            disabled: !ready,
+          },
+          {
+            label: t('hrt.administration.newManual'),
+            onClick: () => {
+              setEditing(null);
+              setMode('manual');
+            },
+            disabled: !ready,
+          },
+        ]}
+      />
+
 
       {mode === 'manual' ? (
         <div className="mb-5">

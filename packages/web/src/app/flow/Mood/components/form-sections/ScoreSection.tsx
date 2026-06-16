@@ -85,7 +85,10 @@ export default function ScoreSection({
               <span className="text-[13px] font-semibold tabular-nums">
                 {numeric > 0 ? `+${v}` : v}
               </span>
-              <span className="text-[10px] tracking-[0.02em]">
+              {/* Word label hidden on phones (<sm) — five cells can't
+                  fit « +2 très bon » in ~68px ; the number alone is the
+                  control there. Shown from sm+ where there's room. */}
+              <span className="hidden text-[10px] tracking-[0.02em] sm:inline">
                 {t(`mood.scoreLabels.${v}`)}
               </span>
             </button>

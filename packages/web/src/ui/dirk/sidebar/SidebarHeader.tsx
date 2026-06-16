@@ -29,8 +29,12 @@ interface SidebarHeaderProps {
 export default function SidebarHeader({ onNavigate }: SidebarHeaderProps) {
   return (
     <div className="flex items-center gap-2 px-2.5 pb-4 pt-1">
-      <NodeaSymbol className="h-4 w-4 text-accent" />
-      <span className="text-[14px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
+      {/* Brand mark + wordmark are larger on mobile (the drawer is
+          finger-driven) ; `lg:` restores the compact desktop sizes. */}
+      <NodeaSymbol className="h-6 w-6 text-accent lg:h-4 lg:w-4" />
+      <span className="text-[17px] font-semibold tracking-[-0.01em] text-ink lg:text-[14px]">
+        Nodea
+      </span>
       <UserMenu onNavigate={onNavigate} />
     </div>
   );
@@ -55,7 +59,7 @@ function UserMenu({ onNavigate }: UserMenuProps) {
   }
 
   return (
-    <div className="ml-auto flex items-center gap-0.5">
+    <div className="ml-auto flex items-center gap-1 lg:gap-0.5">
       <UserMenuIcon
         icon={Cog6ToothIcon}
         label={t('layout.userMenu.profile', { defaultValue: 'Mon compte' })}
@@ -100,8 +104,11 @@ function UserMenuIcon({ icon: Icon, label, tone = 'default', onClick }: UserMenu
       onClick={onClick}
       aria-label={label}
       title={label}
+      // Larger tap target on mobile (40px) ; compact (h-6) on desktop
+      // where it's pointer-driven.
+      className="h-10 w-10 lg:h-6 lg:w-6"
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
+      <Icon className="h-5 w-5 lg:h-4 lg:w-4" aria-hidden="true" />
     </Button>
   );
 }

@@ -1,10 +1,6 @@
 {
   "title": "Goals",
   "topbar": {
-    "label": {
-      "one": "Goals · {count} objectif",
-      "other": "Goals · {count} objectifs"
-    },
     "newCta": "+ Nouvel objectif",
     "readerLabel": "Goals · {position} / {total}"
   },

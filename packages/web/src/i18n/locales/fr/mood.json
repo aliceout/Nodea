@@ -1,10 +1,6 @@
 {
   "title": "Mood",
   "topbar": {
-    "label": {
-      "one": "Mood · {count} entrée",
-      "other": "Mood · {count} entrées"
-    },
     "newCta": "+ Nouvelle entrée",
     "searchPlaceholder": "Rechercher dans Mood…"
   },

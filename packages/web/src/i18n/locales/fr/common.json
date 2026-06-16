@@ -48,6 +48,8 @@
     "markdownHint": "**gras** · *italique* · - liste"
   },
   "search": {
-    "clearAria": "Effacer la recherche"
+    "clearAria": "Effacer la recherche",
+    "openAria": "Ouvrir la recherche",
+    "closeAria": "Fermer la recherche"
   }
 }

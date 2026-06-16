@@ -113,7 +113,8 @@ export default function PrimaryColumn() {
           keeps it below the topbar (`z-20`). */}
       <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-          <PageHeading className="mb-0">{t('mood.title')}</PageHeading>
+          {/* lg+ only — on mobile the topbar carries the module name. */}
+          <PageHeading className="mb-0 hidden lg:block">{t('mood.title')}</PageHeading>
           <YearSelector />
         </div>
 

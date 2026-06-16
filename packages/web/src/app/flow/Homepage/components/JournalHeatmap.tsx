@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { formatLongDate } from '@/core/i18n/date-format';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { useMediaQuery } from '@/lib/use-media-query';
 import Heatmap, {
   type HeatmapCellInput,
   type HeatmapMonthLabel,
@@ -18,7 +19,10 @@ import { isoDay } from '@/app/flow/Journal/lib/stats';
 import { useHomepageData } from '../context';
 import HomeCard from './HomeCard';
 
-const WEEKS = 26;
+// 6 months (26 weeks) on desktop ; 4 months (17 weeks) below `lg`,
+// where 26 columns of 1fr squares get too small to read / tap.
+const WEEKS_DESKTOP = 26;
+const WEEKS_MOBILE = 17;
 const DAYS_PER_WEEK = 7;
 
 /**
@@ -37,6 +41,9 @@ export default function JournalHeatmap() {
   const { t, language } = useI18n();
   const { journal } = useHomepageData();
   const setModule = useNodeaStore((s) => s.setModule);
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const weeks = isDesktop ? WEEKS_DESKTOP : WEEKS_MOBILE;
+  const months = isDesktop ? 6 : 4;
 
   const byDay = useMemo(() => aggregateByDay(journal), [journal]);
 
@@ -49,11 +56,11 @@ export default function JournalHeatmap() {
     const thisMonday = new Date(today);
     thisMonday.setDate(today.getDate() - endDow);
     const oldestMonday = new Date(thisMonday);
-    oldestMonday.setDate(thisMonday.getDate() - (WEEKS - 1) * 7);
+    oldestMonday.setDate(thisMonday.getDate() - (weeks - 1) * 7);
 
     const cellsOut: Array<HeatmapCellInput | null> = [];
     let written = 0;
-    for (let i = 0; i < WEEKS * DAYS_PER_WEEK; i++) {
+    for (let i = 0; i < weeks * DAYS_PER_WEEK; i++) {
       const cellDate = new Date(oldestMonday);
       cellDate.setDate(oldestMonday.getDate() + i);
       const cellTime = cellDate.getTime();
@@ -82,7 +89,7 @@ export default function JournalHeatmap() {
     const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
     const labels: HeatmapMonthLabel[] = [];
     let prevMonth = -1;
-    for (let w = 0; w < WEEKS; w++) {
+    for (let w = 0; w < weeks; w++) {
       const monday = new Date(oldestMonday);
       monday.setDate(oldestMonday.getDate() + w * 7);
       if (monday.getMonth() !== prevMonth) {
@@ -92,7 +99,7 @@ export default function JournalHeatmap() {
     }
 
     return { cells: cellsOut, monthLabels: labels, writtenCount: written };
-  }, [byDay, language, t]);
+  }, [byDay, language, t, weeks]);
 
   const dayLabels = [
     t('mood.chart.day0'),
@@ -106,7 +113,7 @@ export default function JournalHeatmap() {
 
   return (
     <HomeCard
-      title="JOURNAL · 6 MOIS"
+      title={`JOURNAL · ${months} MOIS`}
       trailing={
         <span className="tabular-nums">
           {writtenCount} {writtenCount === 1 ? 'jour' : 'jours'}
@@ -123,7 +130,7 @@ export default function JournalHeatmap() {
       }
     >
       <Heatmap
-        weeks={WEEKS}
+        weeks={weeks}
         cells={cells}
         monthLabels={monthLabels}
         dayLabels={dayLabels}

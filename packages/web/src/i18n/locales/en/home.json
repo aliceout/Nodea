@@ -4,8 +4,22 @@
     "afternoon": "Good afternoon",
     "evening": "Good evening"
   },
-  "header": {
-    "dayOfYear": "day {day}"
+  "tips": {
+    "recovery": {
+      "title": "Important",
+      "body": "No recovery code configured. Without it, forgetting your password = losing all your data.",
+      "action": "Set up"
+    },
+    "totp": {
+      "title": "Suggestion",
+      "body": "Enable 2FA (TOTP) to add a layer to your login.",
+      "action": "Enable"
+    },
+    "modules": {
+      "title": "Tip",
+      "body": "All modules are enabled by default.",
+      "action": "Customize"
+    }
   },
   "journalRecent": {
     "heading": "Recent journal",

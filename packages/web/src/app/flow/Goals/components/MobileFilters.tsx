@@ -24,16 +24,25 @@ export default function MobileFilters() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="lg:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="text-[12px] text-muted transition-colors hover:text-ink"
-      >
-        {open ? '− ' : '+ '}
-        {t('goals.side.filtersToggle')}
-      </button>
+    // `-mt-3.5` halves the grid's `py-7` (28px) above → 14px. The space
+    // below is set here (`mb-[18px]`, half the old `gap-9`) because the
+    // index wraps this + the content in one grid cell, so no grid gap
+    // sits between them — a negative margin couldn't reduce that gap
+    // reliably.
+    <div className="-mt-3.5 mb-[18px] lg:hidden">
+      {/* Toggle aligned right ; the expandable content stays
+          full-width below. */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="text-[12px] text-muted transition-colors hover:text-ink"
+        >
+          {open ? '− ' : '+ '}
+          {t('goals.side.filtersToggle')}
+        </button>
+      </div>
       {open ? (
         <div className="mt-3">
           <FiltersContent />

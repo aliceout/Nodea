@@ -3,11 +3,12 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 import Topbar from '@/ui/dirk/Topbar';
-import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
+import TopbarSearch from '@/ui/dirk/TopbarSearch';
 
 import SideColumn from './components/SideColumn';
-import { MoodProvider, useMoodActions, useMoodData, useMoodFilters } from './context';
+import { MoodProvider, useMoodActions, useMoodFilters } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
 
 /**
@@ -49,29 +50,31 @@ export default function MoodPage() {
  *  primary column and the sidebar, which subscribe to the contexts
  *  themselves. */
 function MoodView() {
-  const { t, tn } = useI18n();
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const { entries } = useMoodData();
   const { searchQuery, setSearchQuery } = useMoodFilters();
   const { formOpen, openCreateForm } = useMoodActions();
   // Focus restore (audit 2026-06, lot G) : the CTA below unmounts
   // while the form is open ; when it comes back, hand focus to it
   // again unless the user already moved on.
   const newEntryRef = useRefocusTrigger(formOpen);
-  const total = entries.length;
 
-  const topbarLabel = tn('mood.topbar.label', total);
+  // Topbar shows just the bold module name — the entry count lived here
+  // before but carried little value, and on mobile the name doubles as
+  // the page title (the big in-content heading is `lg:`-only now).
+  const topbarLabel = t('mood.title');
 
   return (
     <ModuleShell
       topbar={
         <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
-          <TopbarSearchInput
+          <TopbarSearch
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder={t('mood.topbar.searchPlaceholder')}
             clearLabel={t('common.search.clearAria')}
-            className="w-44 md:w-56"
+            openLabel={t('common.search.openAria')}
+            closeLabel={t('common.search.closeAria')}
           />
           {/* Hide the « + Nouvelle entrée » button while the inline
               form is already open — same affordance as HRT
@@ -79,17 +82,29 @@ function MoodView() {
               Otherwise clicking it again while editing would reopen
               a fresh create form on top of an in-progress edit and
               lose the user's draft. */}
+          {/* Desktop CTA. On mobile it gives way to the <SpeedDial>
+              below — the 52px topbar can't hold search + CTA + burger
+              at once (the search was already truncating on phones). */}
           {!formOpen ? (
             <Button
               ref={newEntryRef}
               variant="primary"
               size="sm"
               onClick={openCreateForm}
+              className="hidden lg:inline-flex"
             >
               {t('mood.topbar.newCta')}
             </Button>
           ) : null}
         </Topbar>
+      }
+      fab={
+        <SpeedDial
+          addLabel={t('common.actions.add')}
+          closeLabel={t('common.actions.close')}
+          hidden={formOpen}
+          actions={[{ label: t('mood.topbar.newCta'), onClick: openCreateForm }]}
+        />
       }
       side={<SideColumn />}
     >

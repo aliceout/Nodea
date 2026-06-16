@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
 import Button from '@/ui/atoms/dirk/Button';
+import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
 /**
  * Per-page topbar — shared chassis for every module / settings
@@ -23,8 +24,10 @@ import Button from '@/ui/atoms/dirk/Button';
  * and the row collapses to label-only.
  */
 interface TopbarProps {
-  /** Muted breadcrumb-style label on the left, after the hamburger.
-   *  Strings work; ReactNode is allowed for the rare case where
+  /** Muted breadcrumb-style label on the left, visible at every
+   *  breakpoint (it carries the module name on mobile, where the big
+   *  in-content heading is the only other cue). Truncates rather than
+   *  wraps. Strings work; ReactNode is allowed for the rare case where
    *  the label needs inline emphasis. */
   label: ReactNode;
   /** Opens the mobile sidebar drawer. Wired through to the page
@@ -39,8 +42,12 @@ interface TopbarProps {
 
 export default function Topbar({ label, onOpenMenu, children }: TopbarProps) {
   return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center gap-3 border-b border-hair bg-bg px-6 sm:px-9">
-      <span className="hidden min-w-0 truncate text-[12px] tracking-[0.02em] text-muted md:inline">
+    <div className="sticky top-0 z-20 flex h-[52px] items-center gap-2 border-b border-hair bg-bg px-6 sm:px-9">
+      {/* Brand mark on the left, mobile-only — desktop carries the
+          logo in the persistent sidebar. Decorative (the label is the
+          accessible name). */}
+      <NodeaSymbol className="h-5 w-5 shrink-0 text-accent lg:hidden" />
+      <span className="block min-w-0 truncate text-[13px] font-semibold tracking-[0.02em] text-ink">
         {label}
       </span>
       <div className="ml-auto flex items-center gap-1.5">

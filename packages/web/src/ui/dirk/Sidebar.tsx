@@ -4,16 +4,10 @@ import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import {
   useNodeaStore,
   selectMobileMenuOpen,
-  selectUser,
 } from '@/core/store/nodea-store';
 
 import SidebarHeader from './sidebar/SidebarHeader';
 import SidebarNav from './sidebar/SidebarNav';
-import {
-  SidebarTipModules,
-  SidebarTipRecoveryCode,
-  SidebarTipTotp,
-} from './sidebar/SidebarTip';
 import SidebarFooter from './sidebar/SidebarFooter';
 
 /**
@@ -32,9 +26,11 @@ import SidebarFooter from './sidebar/SidebarFooter';
  * new tip or a new footer widget doesn't require touching this
  * file.
  *
- * Tip slot lives between the nav (which can be short) and the
- * footer (always at the bottom). The `flex-1` spacer pushes the
- * tip + footer to the bottom of the viewport when the nav is short.
+ * The `flex-1` spacer pushes the footer to the bottom of the viewport
+ * when the nav is short. Onboarding / security nudges that used to sit
+ * here now live in the Homepage announcements card (one display
+ * location + persistent, encrypted dismissal — see
+ * `Homepage/lib/local-announcements.ts`).
  */
 export default function Sidebar() {
   const open = useNodeaStore(selectMobileMenuOpen);
@@ -93,30 +89,11 @@ interface SidebarBodyProps {
 }
 
 function SidebarBody({ onNavigate }: SidebarBodyProps) {
-  const user = useNodeaStore(selectUser);
-  // The recovery-code warning is non-dismissable + only relevant
-  // for authenticated users without a code yet — gate it here so
-  // freshly-set-up users don't keep seeing a stale tip.
-  const showRecoveryWarning = user !== null && user.recoveryCodeSet === false;
-  // TOTP suggestion: dismissable amber tip visible until the user
-  // enrolls. `totpEnabled` flips to true only after
-  // `/auth/totp/enroll/verify`, so a half-completed enrollment
-  // still shows the tip (= "tu n'as pas fini"). The passkey
-  // suggestion lives on the TOTP page itself — surfacing both at
-  // sidebar level just stacked two warnings on a fresh account.
-  const showTotpTip = user !== null && user.totpEnabled === false;
-
   return (
     <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
       <SidebarHeader onNavigate={onNavigate} />
       <SidebarNav onNavigate={onNavigate} />
       <div className="flex-1" />
-      {/* Tip slot — drop more `<SidebarTip*>` instances here as
-          new nudges appear. Each one is independently dismissable
-          and self-contained, so the slot stays a passive container. */}
-      {showRecoveryWarning ? <SidebarTipRecoveryCode /> : null}
-      {showTotpTip ? <SidebarTipTotp /> : null}
-      <SidebarTipModules />
       <SidebarFooter />
     </nav>
   );

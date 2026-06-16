@@ -63,6 +63,27 @@ export default function PrimaryColumn() {
     }).format(d);
   }, [dayFilter, language]);
 
+  // Defined once, rendered in two places : the mobile filters row
+  // (via MobileFilters' `trailing`) and the desktop entries-heading
+  // row. Only one is visible per breakpoint (the other's container is
+  // hidden), so there's no duplicate on screen.
+  const chartToggleButton = (
+    <button
+      type="button"
+      onClick={toggleChart}
+      className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 text-[11.5px] text-muted transition-colors hover:bg-bg-2 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+    >
+      <span>{chartToggleLabel}</span>
+      <ChevronUpIcon
+        className={cn(
+          'h-3 w-3 transition-transform duration-200',
+          chartCollapsed && 'rotate-180',
+        )}
+        aria-hidden="true"
+      />
+    </button>
+  );
+
   return (
     <section className="flex min-w-0 flex-col">
       {/* Sticky upper region — H1 + year picker + heatmap + the
@@ -72,17 +93,19 @@ export default function PrimaryColumn() {
           pattern as Mood's sticky header. */}
       <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-          <PageHeading className="mb-0">{t('journal.title')}</PageHeading>
+          {/* lg+ only — on mobile the topbar carries the module name. */}
+          <PageHeading className="mb-0 hidden lg:block">{t('journal.title')}</PageHeading>
           <YearSelector />
         </div>
 
-        {/* Mobile-only filters collapse — sits above the heatmap
-            so the toggle stays inside the sticky header and
-            remains accessible from any scroll position. Folded by
-            default ; renders nothing at `lg+` because the right
-            sidebar (`SideColumn`) takes over. */}
+        {/* Mobile-only filters collapse — sits above the heatmap so
+            the toggle stays inside the sticky header, accessible from
+            any scroll position. The « carte d'écriture » toggle shares
+            this row on mobile (passed as `trailing`). Renders nothing
+            at `lg+`, where the sidebar (`SideColumn`) + the desktop
+            heading row below take over. */}
         <div className="mt-3">
-          <MobileFilters />
+          <MobileFilters trailing={chartToggleButton} />
         </div>
 
         {!chartCollapsed ? (
@@ -91,7 +114,11 @@ export default function PrimaryColumn() {
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {/* Desktop entries heading + « carte d'écriture » toggle.
+            Hidden on mobile : there the toggle rides the filters row
+            above and the heading is redundant with the topbar name.
+            The day-filter chip lives here (desktop-only for now). */}
+        <div className="mt-3 hidden flex-wrap items-center justify-between gap-x-4 gap-y-2 lg:flex">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
               {t('journal.primary.entriesHeading')} · {yearLabel}
@@ -112,20 +139,7 @@ export default function PrimaryColumn() {
               </button>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={toggleChart}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 text-[11.5px] text-muted transition-colors hover:bg-bg-2 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            <span>{chartToggleLabel}</span>
-            <ChevronUpIcon
-              className={cn(
-                'h-3 w-3 transition-transform duration-200',
-                chartCollapsed && 'rotate-180',
-              )}
-              aria-hidden="true"
-            />
-          </button>
+          {chartToggleButton}
         </div>
       </div>
 

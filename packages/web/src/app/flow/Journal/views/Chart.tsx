@@ -13,7 +13,7 @@ import {
 
 /**
  * Writing-density heatmap for the Journal (issue #56). 52 weeks
- * × 7 days on `md+`, 26 weeks × 7 days below `md` so the cells
+ * × 7 days on `md+`, 17 weeks × 7 days below `md` so the cells
  * stay readable on phone widths — same compact-on-mobile pattern
  * as `Mood/views/Chart.tsx`. Both heatmaps render and CSS
  * (`hidden md:block` / `md:hidden`) picks which one is visible ;
@@ -21,11 +21,11 @@ import {
  * cheaper than a runtime media-query hook.
  *
  * Range driven by `year` from the filters context :
- *   - `null` (« En cours ») : rolling 52 / 26 weeks ending today.
+ *   - `null` (« En cours ») : rolling 52 / 17 weeks ending today.
  *     Trailing days of the current week render as faint outlines.
  *   - a number (e.g. 2025) : anchored on Jan 1 of that year.
  *     The compact view also uses this branch (showing the first
- *     26 weeks of the year) ; if anyone needs « last 26 weeks of
+ *     17 weeks of the year) ; if anyone needs « last 17 weeks of
  *     a past year » we'll branch then.
  *
  * Click a cell → toggle `dayFilter` on the filters context to

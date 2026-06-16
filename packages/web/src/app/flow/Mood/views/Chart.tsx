@@ -38,10 +38,10 @@ function toHeatmapCells(
  * GitHub-style mood frise. 52 columns of weeks on desktop (`md+`,
  * rolling year — when the current year isn't complete, the
  * trailing weeks come from last year, exactly like GitHub's
- * contribution graph) ; 26 columns below `md`. Same component on
+ * contribution graph) ; 17 columns below `md`. Same component on
  * both sides — only the `weeks` prop changes — so the colour
  * scheme, today-ring, and tooltip behaviour stay identical. The
- * 26-column compact view matches the Homepage's `MoodBlock`,
+ * 17-column compact view matches the Homepage's `MoodBlock`,
  * which is already vetted on phones. 7 rows of days
  * (Mon..Sun, French convention) in both modes. Days without an
  * entry render as a faint outline so the grid stays legible

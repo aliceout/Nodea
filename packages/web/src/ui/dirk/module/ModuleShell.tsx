@@ -11,6 +11,11 @@ interface ModuleShellProps {
   /** Primary content (left column when `side` is provided, full
    *  width otherwise). */
   children: ReactNode;
+  /** Optional mobile floating action button (`<SpeedDial>`). Fixed-
+   *  position (portalled to body), so it renders outside the grid flow;
+   *  `lg:hidden` lives in the dial itself. Pass the module's create
+   *  CTA(s) here for the mobile layout. */
+  fab?: ReactNode;
   /** Two-column layout flavour at `lg+` :
    *   - `'aside'` (default) : `1fr / 280 px` — narrow sidebar for
    *     chip filters and stats. Used by Mood / Journal / Goals /
@@ -42,11 +47,13 @@ export default function ModuleShell({
   topbar,
   side,
   children,
+  fab,
   layout = 'aside',
 }: ModuleShellProps) {
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       {topbar}
+      {fab}
       {side ? (
         <div
           className={

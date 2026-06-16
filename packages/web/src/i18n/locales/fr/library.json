@@ -1,10 +1,6 @@
 {
   "title": "Library",
   "topbar": {
-    "label": {
-      "one": "Library · {count} livre",
-      "other": "Library · {count} livres"
-    },
     "searchPlaceholder": "Rechercher dans Library…",
     "newBook": "+ Nouveau livre",
     "newQuote": "+ Nouvel extrait",

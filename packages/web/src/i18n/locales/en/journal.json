@@ -1,10 +1,6 @@
 {
   "title": "Journal",
   "topbar": {
-    "label": {
-      "one": "Journal · {count} entry",
-      "other": "Journal · {count} entries"
-    },
     "newCta": "+ New entry",
     "readerLabel": "Journal · {position} / {total}",
     "searchPlaceholder": "Search in Journal…"

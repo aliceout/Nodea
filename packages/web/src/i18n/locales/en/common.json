@@ -48,6 +48,8 @@
     "markdownHint": "**bold** · *italic* · - list"
   },
   "search": {
-    "clearAria": "Clear search"
+    "clearAria": "Clear search",
+    "openAria": "Open search",
+    "closeAria": "Close search"
   }
 }

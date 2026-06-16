@@ -6,8 +6,9 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 import Topbar from '@/ui/dirk/Topbar';
-import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
+import TopbarSearch from '@/ui/dirk/TopbarSearch';
 
 import BookPickerModal from './components/BookPickerModal';
 import MobileFilters from './components/MobileFilters';
@@ -62,7 +63,7 @@ export default function LibraryPage() {
  *  shared chrome (topbar / sidebar) and the always-rendered (self-
  *  conditional) book picker. */
 function LibraryView() {
-  const { t, tn } = useI18n();
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectLibrarySubview);
   const { items } = useLibraryData();
@@ -80,23 +81,25 @@ function LibraryView() {
       <ModuleShell
         topbar={
           <Topbar
-            label={tn('library.topbar.label', items.length)}
+            label={t('library.title')}
             onOpenMenu={() => setMobileMenuOpen(true)}
           >
             {subview === 'livres' ? (
               <>
-                <TopbarSearchInput
+                <TopbarSearch
                   value={searchQuery}
                   onChange={setSearchQuery}
                   placeholder={t('library.topbar.searchPlaceholder')}
                   clearLabel={t('common.search.clearAria')}
-                  className="w-44 md:w-56"
+                  openLabel={t('common.search.openAria')}
+                  closeLabel={t('common.search.closeAria')}
                 />
                 <DirkButton
                   ref={newCtaRef}
                   variant="primary"
                   size="sm"
                   onClick={addItem}
+                  className="hidden lg:inline-flex"
                 >
                   {t('library.topbar.newBook')}
                 </DirkButton>
@@ -110,6 +113,7 @@ function LibraryView() {
                   openReviewPicker(subview === 'extraits' ? 'quote' : 'note')
                 }
                 disabled={items.length === 0}
+                className="hidden lg:inline-flex"
                 {...(items.length === 0
                   ? { title: t('library.topbar.addBookFirst') }
                   : {})}
@@ -121,21 +125,53 @@ function LibraryView() {
             )}
           </Topbar>
         }
+        fab={
+          // Mobile speed-dial — mirrors the subview-dependent topbar CTA.
+          subview === 'livres' ? (
+            <SpeedDial
+              addLabel={t('common.actions.add')}
+              closeLabel={t('common.actions.close')}
+              hidden={itemForm !== null}
+              actions={[{ label: t('library.topbar.newBook'), onClick: addItem }]}
+            />
+          ) : (
+            <SpeedDial
+              addLabel={t('common.actions.add')}
+              closeLabel={t('common.actions.close')}
+              hidden={reviewForm !== null}
+              actions={[
+                {
+                  label:
+                    subview === 'extraits'
+                      ? t('library.topbar.newQuote')
+                      : t('library.topbar.newNote'),
+                  onClick: () =>
+                    openReviewPicker(subview === 'extraits' ? 'quote' : 'note'),
+                  disabled: items.length === 0,
+                },
+              ]}
+            />
+          )
+        }
         side={<SideColumn />}
       >
-        {/* Mobile-only filters collapse — sits at the top of the
-            children flow (above the subview content) so it's the
-            first thing the user sees below the topbar. Folded by
-            default ; renders nothing at `lg+` because the right
-            sidebar (`SideColumn`) takes over. Shared across both
-            subviews (livres / extraits / notes) because the
-            status filter applies to all. */}
-        <MobileFilters />
-        {subview === 'livres' ? (
-          <PrimaryColumn />
-        ) : (
-          <ReviewsList kind={subview === 'extraits' ? 'quote' : 'note'} />
-        )}
+        {/* One grid cell wraps the mobile filters toggle + the subview
+            content so no `gap-9` sits between them — MobileFilters owns
+            that spacing itself (see its margins). On desktop
+            MobileFilters is hidden, so this cell is just the 1fr
+            content column. */}
+        <div className="min-w-0">
+          {/* Mobile-only filters collapse — first thing below the
+              topbar ; renders nothing at `lg+` where the sidebar
+              (`SideColumn`) takes over. Shared across subviews
+              (livres / extraits / notes). */}
+          <MobileFilters />
+          {subview === 'livres' ? (
+            <PrimaryColumn />
+          ) : (
+            <ReviewsList kind={subview === 'extraits' ? 'quote' : 'note'} />
+          )}
+        </div>
       </ModuleShell>
       <BookPickerModal />
     </>

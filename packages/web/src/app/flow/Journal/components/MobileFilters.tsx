@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -17,22 +18,30 @@ import { FiltersContent } from './SideColumn';
  * Toggle string mirrors the existing « + Question du jour &
  * commentaire » pattern from the Mood composer : a leading
  * `+` / `−` carries the affordance, no chevron icon.
+ *
+ * `trailing` renders on the right of the toggle row (the entries list
+ * shares this line with the « carte d'écriture » toggle on mobile, so
+ * PrimaryColumn passes that button here). The expandable filters
+ * content still unfurls full-width below the row.
  */
-export default function MobileFilters() {
+export default function MobileFilters({ trailing }: { trailing?: ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
     <div className="lg:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="text-[12px] text-muted transition-colors hover:text-ink"
-      >
-        {open ? '− ' : '+ '}
-        {t('journal.side.filtersToggle')}
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="text-[12px] text-muted transition-colors hover:text-ink"
+        >
+          {open ? '− ' : '+ '}
+          {t('journal.side.filtersToggle')}
+        </button>
+        {trailing}
+      </div>
       {open ? (
         <div className="mt-3">
           <FiltersContent />

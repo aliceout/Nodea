@@ -23,6 +23,7 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Select from '@/ui/atoms/dirk/Select';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 
 import AdminLogRow from '../components/AdminLogRow';
 import DoseChartPanel from '../components/DoseChartPanel';
@@ -163,11 +164,29 @@ export default function SummaryView({
                 size="sm"
                 onClick={() => setAddingProduct(true)}
                 disabled={!ready}
+                className="hidden lg:inline-flex"
               >
                 {t('hrt.summary.products.new')}
               </Button>
             ) : null}
           </div>
+
+          {/* Mobile speed-dial — « ajouter un produit ». Only on the
+              actives view (no add on the archive lens), hidden while the
+              form is open. */}
+          <SpeedDial
+            addLabel={t('common.actions.add')}
+            closeLabel={t('common.actions.close')}
+            hidden={productFormOpen || productView !== 'active'}
+            actions={[
+              {
+                label: t('hrt.summary.products.new'),
+                onClick: () => setAddingProduct(true),
+                disabled: !ready,
+              },
+            ]}
+          />
+
           {visibleProducts.length === 0 ? (
             <p className="py-6 text-center text-[12px] text-muted">
               {productView === 'archived'

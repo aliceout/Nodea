@@ -3,12 +3,13 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 import Topbar from '@/ui/dirk/Topbar';
 
 import CarryOverDialog from './components/CarryOverDialog';
 import MobileFilters from './components/MobileFilters';
 import SideColumn from './components/SideColumn';
-import { GoalsProvider, useGoalsActions, useGoalsData } from './context';
+import { GoalsProvider, useGoalsActions } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
 import GoalsReaderShell from './views/ReaderShell';
 
@@ -55,9 +56,8 @@ export default function GoalsPage() {
  *  dialog stays mounted unconditionally so closing the reader
  *  doesn't reset its draft state. */
 function GoalsView() {
-  const { t, tn } = useI18n();
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const { stats } = useGoalsData();
   const { readingId, formOpen, openCreateForm } = useGoalsActions();
   // Focus restore (audit 2026-06, lot G) — must run before the
   // reader early-return so the hook order stays stable.
@@ -72,7 +72,8 @@ function GoalsView() {
     );
   }
 
-  const topbarLabel = tn('goals.topbar.label', stats.total);
+  // Just the bold module name (no count) — see Mood for the rationale.
+  const topbarLabel = t('goals.title');
 
   return (
     <ModuleShell
@@ -82,29 +83,43 @@ function GoalsView() {
               form is already open — same posture as Mood / HRT.
               Clicking it again while editing would reopen a fresh
               create form on top of an in-progress edit and lose
-              the user's draft. */}
+              the user's draft. Desktop-only : the <SpeedDial> takes
+              over on mobile. */}
           {!formOpen ? (
             <Button
               ref={newGoalRef}
               variant="primary"
               size="sm"
               onClick={openCreateForm}
+              className="hidden lg:inline-flex"
             >
               {t('goals.topbar.newCta')}
             </Button>
           ) : null}
         </Topbar>
       }
+      fab={
+        <SpeedDial
+          addLabel={t('common.actions.add')}
+          closeLabel={t('common.actions.close')}
+          hidden={formOpen}
+          actions={[{ label: t('goals.topbar.newCta'), onClick: openCreateForm }]}
+        />
+      }
       side={<SideColumn />}
     >
-      {/* Mobile-only filters collapse — sits at the top of the
-          children flow (above PrimaryColumn) so it's the first
-          thing the user sees below the topbar. Folded by default ;
-          renders nothing at `lg+` because the right sidebar
-          (`SideColumn`) takes over. */}
-      <MobileFilters />
-      <PrimaryColumn />
-      <CarryOverDialog />
+      {/* One grid cell wraps the mobile filters toggle + the content
+          so no `gap-9` sits between them — MobileFilters owns that
+          spacing itself (see its margins). On desktop MobileFilters is
+          hidden, so this cell is just the 1fr content column. */}
+      <div className="min-w-0">
+        {/* Mobile-only filters collapse — sits at the top, the first
+            thing below the topbar. Renders nothing at `lg+` where the
+            sidebar (`SideColumn`) takes over. */}
+        <MobileFilters />
+        <PrimaryColumn />
+        <CarryOverDialog />
+      </div>
     </ModuleShell>
   );
 }

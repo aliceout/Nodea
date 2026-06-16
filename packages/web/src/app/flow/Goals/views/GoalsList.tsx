@@ -19,7 +19,8 @@ export default function GoalsList() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading>{t('goals.title')}</PageHeading>
+      {/* lg+ only — on mobile the topbar carries the module name. */}
+      <PageHeading className="hidden lg:block">{t('goals.title')}</PageHeading>
 
       {load.status === 'error' ? (
         <p

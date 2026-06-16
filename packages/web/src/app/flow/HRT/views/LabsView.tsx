@@ -16,6 +16,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 
 import ChartNotes from '../components/ChartNotes';
 import CollapseToggle from '../components/CollapseToggle';
@@ -135,11 +136,28 @@ export default function LabsView({ labResults }: LabsViewProps) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-[14px] font-medium text-ink">{t('hrt.labs.title')}</h2>
         {!formOpen ? (
-          <Button variant="primary" size="sm" onClick={() => setAdding(true)} disabled={!ready}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setAdding(true)}
+            disabled={!ready}
+            className="hidden lg:inline-flex"
+          >
             {t('hrt.labs.new')}
           </Button>
         ) : null}
       </div>
+
+      {/* Mobile speed-dial — mirrors the desktop « ajouter un résultat » CTA. */}
+      <SpeedDial
+        addLabel={t('common.actions.add')}
+        closeLabel={t('common.actions.close')}
+        hidden={formOpen}
+        actions={[
+          { label: t('hrt.labs.new'), onClick: () => setAdding(true), disabled: !ready },
+        ]}
+      />
+
 
       {formOpen ? (
         <div className="mb-5">

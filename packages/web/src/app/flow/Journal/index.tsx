@@ -3,14 +3,14 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import SpeedDial from '@/ui/dirk/SpeedDial';
 import Topbar from '@/ui/dirk/Topbar';
-import TopbarSearchInput from '@/ui/dirk/TopbarSearchInput';
+import TopbarSearch from '@/ui/dirk/TopbarSearch';
 
 import SideColumn from './components/SideColumn';
 import {
   JournalProvider,
   useJournalActions,
-  useJournalData,
   useJournalFilters,
 } from './context';
 import PrimaryColumn from './views/PrimaryColumn';
@@ -54,9 +54,8 @@ export default function JournalPage() {
  *  (when the user is reading an entry) and the regular module
  *  shell. Both routes rely on the `<JournalProvider>` for state. */
 function JournalView() {
-  const { t, tn } = useI18n();
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
-  const { entries } = useJournalData();
   const { search, setSearch } = useJournalFilters();
   const { readingId, formOpen, openCreateForm } = useJournalActions();
   // Focus restore (audit 2026-06, lot G) — must run before the
@@ -67,34 +66,46 @@ function JournalView() {
     return <ReaderShell />;
   }
 
-  const topbarLabel = tn('journal.topbar.label', entries.length);
+  // Just the bold module name (no count) — see Mood for the rationale.
+  const topbarLabel = t('journal.title');
 
   return (
     <ModuleShell
       topbar={
         <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
-          <TopbarSearchInput
+          <TopbarSearch
             value={search}
             onChange={setSearch}
             placeholder={t('journal.topbar.searchPlaceholder')}
             clearLabel={t('common.search.clearAria')}
-            className="w-44 md:w-56"
+            openLabel={t('common.search.openAria')}
+            closeLabel={t('common.search.closeAria')}
           />
           {/* Hide the « + Nouvelle entrée » button while the inline
               form is already open — same posture as Mood / Goals /
               HRT : clicking again would reopen a fresh create form
-              on top of an in-progress edit and lose the draft. */}
+              on top of an in-progress edit and lose the draft.
+              Desktop-only : on mobile the <SpeedDial> below takes over. */}
           {!formOpen ? (
             <Button
               ref={newEntryRef}
               variant="primary"
               size="sm"
               onClick={openCreateForm}
+              className="hidden lg:inline-flex"
             >
               {t('journal.topbar.newCta')}
             </Button>
           ) : null}
         </Topbar>
+      }
+      fab={
+        <SpeedDial
+          addLabel={t('common.actions.add')}
+          closeLabel={t('common.actions.close')}
+          hidden={formOpen}
+          actions={[{ label: t('journal.topbar.newCta'), onClick: openCreateForm }]}
+        />
       }
       side={<SideColumn />}
     >

@@ -4,8 +4,22 @@
     "afternoon": "Bon après-midi",
     "evening": "Bonsoir"
   },
-  "header": {
-    "dayOfYear": "jour {day}"
+  "tips": {
+    "recovery": {
+      "title": "Important",
+      "body": "Aucun code de récupération configuré. Sans lui, oublier ton mot de passe = perte de toutes tes données.",
+      "action": "Configurer"
+    },
+    "totp": {
+      "title": "Suggestion",
+      "body": "Active la 2FA (TOTP) pour ajouter une couche au login.",
+      "action": "Activer"
+    },
+    "modules": {
+      "title": "Astuce",
+      "body": "Tous les modules sont activés par défaut.",
+      "action": "Personnaliser"
+    }
   },
   "journalRecent": {
     "heading": "Journal récent",

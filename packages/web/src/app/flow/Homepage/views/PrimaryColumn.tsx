@@ -30,7 +30,9 @@ export default function PrimaryColumn() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading className="mb-6">
+      {/* Smaller on mobile — the 30px desktop size dominates a phone
+          screen. */}
+      <PageHeading className="mb-6 text-[22px] lg:text-[30px]">
         {displayName ? `Bonjour, ${displayName}.` : 'Bonjour.'}
       </PageHeading>
 

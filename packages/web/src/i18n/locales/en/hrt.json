@@ -73,7 +73,7 @@
       "viewAria": "Show products",
       "active": "Active",
       "archived": "Archived ({count})",
-      "new": "+ New",
+      "new": "+ New product",
       "empty": "No product recorded.",
       "emptyArchived": "No archived product."
     },

@@ -39,7 +39,8 @@ export default function PrimaryColumn() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      <PageHeading>{t('library.title')}</PageHeading>
+      {/* lg+ only — on mobile the topbar carries the module name. */}
+      <PageHeading className="hidden lg:block">{t('library.title')}</PageHeading>
 
       {/* Inline book form — surfaced above the catalogue when the
           topbar « + Nouveau livre » CTA (create) or a row's edit
