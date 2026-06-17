@@ -28,7 +28,7 @@ export type GoalsGroupBy = 'thread' | 'year';
 export const GOALS_VIEW_MODES = ['list', 'cards'] as const;
 export type GoalsViewMode = (typeof GOALS_VIEW_MODES)[number];
 
-const DEFAULT_VIEW_MODE: GoalsViewMode = 'list';
+const DEFAULT_VIEW_MODE: GoalsViewMode = 'cards';
 
 export interface GoalsFiltersState {
   statusFilter: CanonicalStatus | null;
@@ -63,7 +63,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const [statusFilter, setStatusFilter] = useState<CanonicalStatus | null>(
     null,
   );
-  const [groupBy, setGroupBy] = useState<GoalsGroupBy>('thread');
+  const [groupBy, setGroupBy] = useState<GoalsGroupBy>('year');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [hideDone, setHideDone] = useState(false);
