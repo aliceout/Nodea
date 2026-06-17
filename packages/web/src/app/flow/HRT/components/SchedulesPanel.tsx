@@ -40,7 +40,9 @@ export default function SchedulesPanel({
   return (
     <section className="mb-5 rounded-md border border-hair p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-medium text-ink">{t('hrt.schedule.panelTitle')}</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted">
+          {t('hrt.schedule.panelTitle')}
+        </h3>
         <CollapseToggle
           open={open}
           onToggle={() => setOpen((o) => !o)}
@@ -55,13 +57,19 @@ export default function SchedulesPanel({
         )}
       >
         <div className="overflow-hidden">
-          <ul className="flex flex-col pt-2">
+          {/* Up to 3 per row so a handful of active series doesn't eat a
+              tall stacked list. Columns are separated by a vertical
+              hairline (a left border on every cell but the first), no
+              fill. ponytail: the « not-first » rule is exact for one row
+              (the common 1–3 case) ; a 4th+ wrapped item gets a stray
+              left rule — fine until someone runs many concurrent series. */}
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-3 pt-4 sm:grid-cols-2 lg:grid-cols-3">
             {active.map((s) => {
               const unit = productByName.get(s.payload.product)?.unit ?? '';
               return (
                 <li
                   key={s.id}
-                  className="flex items-start gap-3 border-b border-hair py-2 last:border-b-0"
+                  className="flex items-start justify-between gap-2 border-hair sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:pl-6"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-ink">
