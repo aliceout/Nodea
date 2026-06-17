@@ -90,11 +90,16 @@ interface SidebarBodyProps {
 
 function SidebarBody({ onNavigate }: SidebarBodyProps) {
   return (
-    <nav className="flex h-full min-h-0 w-full flex-col gap-0.5 px-3 py-5">
+    <nav className="flex h-full min-h-0 w-full flex-col">
+      {/* Header flush at the top in a 52px row (matching the topbar's
+          height + bottom hairline) so « Nodea » lines up with the page
+          date ; the rest of the menu sits in a padded container below. */}
       <SidebarHeader onNavigate={onNavigate} />
-      <SidebarNav onNavigate={onNavigate} />
-      <div className="flex-1" />
-      <SidebarFooter />
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 px-3 pb-5 pt-4">
+        <SidebarNav onNavigate={onNavigate} />
+        <div className="flex-1" />
+        <SidebarFooter />
+      </div>
     </nav>
   );
 }

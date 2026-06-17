@@ -28,7 +28,7 @@ interface SidebarHeaderProps {
  */
 export default function SidebarHeader({ onNavigate }: SidebarHeaderProps) {
   return (
-    <div className="flex items-center gap-2 px-2.5 pb-4 pt-1">
+    <div className="flex h-[52px] shrink-0 items-center gap-2 px-3">
       {/* Brand mark + wordmark are larger on mobile (the drawer is
           finger-driven) ; `lg:` restores the compact desktop sizes. */}
       <NodeaSymbol className="h-6 w-6 text-accent lg:h-4 lg:w-4" />
