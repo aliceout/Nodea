@@ -22,6 +22,9 @@ const Recover = lazy(() => import('./pages/Recover'));
 const Passkeys = lazy(() => import('./pages/Passkeys'));
 const Totp = lazy(() => import('./pages/Totp'));
 const SecurityMode = lazy(() => import('./pages/SecurityMode'));
+const DataExport = lazy(() => import('./pages/DataExport'));
+const BackupExport = lazy(() => import('./pages/BackupExport'));
+const DeleteAccount = lazy(() => import('./pages/DeleteAccount'));
 const BypassConfirm = lazy(() => import('./pages/BypassConfirm'));
 const Docs = lazy(() => import('./pages/Docs'));
 const Terms = lazy(() => import('./pages/Terms'));
@@ -96,6 +99,11 @@ function AppWithKeyModal() {
       <Route path="/passkeys" element={lazyPage(<Passkeys />)} />
       <Route path="/totp" element={lazyPage(<Totp />)} />
       <Route path="/security-mode" element={lazyPage(<SecurityMode />)} />
+      {/* Sensitive data tunnels (re-auth ceremonies, like /recovery-code).
+          Reached from Settings → Données / Suppression du compte. */}
+      <Route path="/export" element={lazyPage(<DataExport />)} />
+      <Route path="/backup" element={lazyPage(<BackupExport />)} />
+      <Route path="/delete-account" element={lazyPage(<DeleteAccount />)} />
       <Route path="/auth/bypass/confirm" element={lazyPage(<BypassConfirm />)} />
       {/* Public docs : 3 sections (security / contribute / self-host).
           - /docs/security/{newbie,advanced,tech} — modèle de sécu en

@@ -9,9 +9,9 @@ import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
+import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
 
 import ModeSelector, { type ModeOption } from './ModeSelector';
-import PasswordProofForm from './PasswordProofForm';
 
 /**
  * Settings → Mode de sécurité (Auth-Roadmap Phase 5D, Auth-Spec §6.1).
@@ -31,7 +31,7 @@ import PasswordProofForm from './PasswordProofForm';
  *
  * Split (REFACTO-12) :
  *   - `ModeSelector` renders the 3 cards.
- *   - `PasswordProofForm` collects the confirmation password.
+ *   - `PasswordReauthForm` (shared) collects the confirmation password.
  *   - This file orchestrates : option list derivation, click +
  *     confirm handlers, error / success rendering, AuthLayout wrap.
  */
@@ -179,16 +179,26 @@ export default function SecurityModePage() {
       />
 
       {selected !== null ? (
-        <PasswordProofForm
-          targetMode={selected}
-          targetLabel={labelFor(selected)}
-          submitting={submitting}
-          onConfirm={handleConfirm}
-          onCancel={() => {
-            setSelected(null);
-            setError(null);
-          }}
-        />
+        <div className="mt-3">
+          <PasswordReauthForm
+            prompt={
+              <>
+                {t('auth.securityMode.passwordProof.instructionBefore')}
+                <strong className="font-semibold text-ink">{labelFor(selected)}</strong>
+                {t('auth.securityMode.passwordProof.instructionAfter')}
+              </>
+            }
+            passwordLabel={t('auth.securityMode.passwordProof.passwordPlaceholder')}
+            confirmLabel={t('common.actions.confirm')}
+            cancelLabel={t('common.actions.cancel')}
+            submitting={submitting}
+            onConfirm={handleConfirm}
+            onCancel={() => {
+              setSelected(null);
+              setError(null);
+            }}
+          />
+        </div>
       ) : null}
 
       {error ? (
