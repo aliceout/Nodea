@@ -46,7 +46,7 @@ function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps)
   const mgEq = mgEquivalent(entry.payload.dose, product);
 
   return (
-    <article className="group flex items-start gap-4 border-b border-hair py-3">
+    <article className="group flex items-start gap-2 border-b border-hair py-3">
       <span className="w-[112px] shrink-0 text-[12px] tabular-nums text-muted">
         {formatLogDate(entry.payload.date, language)}
         {entry.payload.time ? (
@@ -60,7 +60,9 @@ function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps)
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13.5px] font-medium text-ink">
+        {/* Wraps on mobile (full entry always visible) ; single-line
+            ellipsis from md+ where the row is wide enough. */}
+        <p className="text-[13.5px] font-medium text-ink md:truncate">
           {entry.payload.product}
           {product?.medication ? (
             <span className="font-normal"> · {product.medication}</span>
@@ -83,12 +85,20 @@ function AdminLogRowImpl({ entry, product, onEdit, onDelete }: AdminLogRowProps)
             {typeof product.concentration === 'number' ? ` · ${product.concentration} mg/mL` : ''}
           </p>
         ) : null}
+        {/* Notes stacked under the meta on mobile — a second column here
+            would starve the product name (it truncated to « Utroge… »).
+            md+ uses the aligned second column below instead. */}
+        {entry.payload.notes ? (
+          <p className="mt-0.5 text-[12px] text-muted md:hidden">{entry.payload.notes}</p>
+        ) : null}
       </div>
 
-      {/* Notes as a second column (not a third stacked line). Always
-          rendered so the column lines up across rows. Same tone as the
-          meta line for readability. */}
-      <p className="min-w-0 flex-[2] text-[12px] text-muted">{entry.payload.notes}</p>
+      {/* Notes as a second column on md+ (not a third stacked line).
+          Always rendered there so the column lines up across rows; on
+          mobile it's hidden in favour of the stacked line above. */}
+      <p className="hidden min-w-0 flex-[2] text-[12px] text-muted md:block">
+        {entry.payload.notes}
+      </p>
 
       {onEdit && onDelete ? <RowActions onEdit={onEdit} onDelete={onDelete} /> : null}
     </article>

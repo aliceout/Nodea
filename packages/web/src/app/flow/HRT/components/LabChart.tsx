@@ -56,11 +56,23 @@ interface LabChartProps {
 
 const DEFAULT_HEIGHT = 260;
 const MIN_HEIGHT = 140;
-const PAD_L = 48;
-const PAD_R = 20;
+// Equal left/right gutters so the plot sits symmetrically inside the
+// figure's border. The left still has to host the y-axis value labels
+// (`PAD_L - 8`), so 30 px is the floor that keeps a 3-digit reading
+// (« 165 ») from clipping while staying balanced with the right.
+// Left gutter is wider than the right on purpose now : it carries the
+// rotated Y-axis unit title AND the tick value labels (standard charted
+// axis). The right has neither.
+const PAD_L = 42;
+const PAD_R = 30;
 const PAD_T = 20;
 const PAD_B = 30;
 const Y_TICKS = 4;
+/** Below this average px-spacing between points, the per-dot halos start
+ *  to overlap into a « caterpillar » blob — past it we drop the dots and
+ *  let the line + area carry the shape (a year of weekly doses still
+ *  shows dots; « toutes les dates » over years doesn't). */
+const MIN_DOT_SPACING = 10;
 
 function dateMs(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number);
@@ -170,6 +182,11 @@ function Plot({ points, unit, width, height, gradId, target, domain, t, locale }
   const [hover, setHover] = useState<number | null>(null);
   const plotW = Math.max(width - PAD_L - PAD_R, 10);
   const plotH = height - PAD_T - PAD_B;
+  // Drop the per-point dots (and their hover) once they'd overlap ; the
+  // line + area still convey the shape, and filtering to a shorter range
+  // brings the dots back.
+  const showDots =
+    points.length <= 1 || plotW / (points.length - 1) >= MIN_DOT_SPACING;
 
   const times = points.map((p) => dateMs(p.dateIso));
   const values = points.map((p) => p.value);
@@ -233,6 +250,21 @@ function Plot({ points, unit, width, height, gradId, target, domain, t, locale }
           <stop offset="100%" stopColor="currentColor" className="text-accent" stopOpacity={0} />
         </linearGradient>
       </defs>
+
+      {/* Y-axis unit title — rotated alongside the axis, the standard
+          charted-axis convention. */}
+      {unit ? (
+        <text
+          x={11}
+          y={PAD_T + plotH / 2}
+          transform={`rotate(-90 11 ${PAD_T + plotH / 2})`}
+          textAnchor="middle"
+          fill="currentColor"
+          className="fill-current text-[10px] text-muted"
+        >
+          {unit}
+        </text>
+      ) : null}
 
       {/* Y gridlines + labels */}
       {yTicks.map((v, i) => {
@@ -328,28 +360,31 @@ function Plot({ points, unit, width, height, gradId, target, domain, t, locale }
         className="text-accent"
       />
 
-      {/* Points : soft halo + solid dot with a light ring */}
-      {coords.map(({ cx, cy, p }, i) => (
-        <g
-          key={p.dateIso + i}
-          className="text-accent"
-          onMouseEnter={() => setHover(i)}
-          onMouseLeave={() => setHover(null)}
-        >
-          <circle cx={cx} cy={cy} r={hover === i ? 9 : 7} fill="currentColor" opacity={0.14} />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={hover === i ? 5 : 4}
-            fill="currentColor"
-            stroke="currentColor"
-            strokeWidth={2}
-            className="[stroke:var(--color-bg,#fff)]"
-          />
-          {/* Bigger transparent hit area for an easier hover target. */}
-          <circle cx={cx} cy={cy} r={11} fill="transparent" />
-        </g>
-      ))}
+      {/* Points : soft halo + solid dot with a light ring. Hidden when
+          too dense (see `showDots`) so they don't blob into a caterpillar. */}
+      {showDots
+        ? coords.map(({ cx, cy, p }, i) => (
+            <g
+              key={p.dateIso + i}
+              className="text-accent"
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+            >
+              <circle cx={cx} cy={cy} r={hover === i ? 9 : 7} fill="currentColor" opacity={0.14} />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={hover === i ? 5 : 4}
+                fill="currentColor"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="[stroke:var(--color-bg,#fff)]"
+              />
+              {/* Bigger transparent hit area for an easier hover target. */}
+              <circle cx={cx} cy={cy} r={11} fill="transparent" />
+            </g>
+          ))
+        : null}
       </svg>
       {active ? (
         <div

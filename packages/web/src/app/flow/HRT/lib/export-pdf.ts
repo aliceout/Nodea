@@ -352,7 +352,9 @@ function drawChart(
   doc.setTextColor(...INK);
   doc.text(`${label} (${unit})`, box.x, box.y + 4);
 
-  const pad = { l: 18, r: 6, t: 10, b: 12 };
+  // Wider left gutter than right : it carries the rotated Y-axis unit
+  // title + the tick value labels (standard charted axis).
+  const pad = { l: 24, r: 6, t: 10, b: 12 };
   const px = box.x + pad.l;
   const py = box.y + pad.t;
   const pw = box.w - pad.l - pad.r;
@@ -408,4 +410,12 @@ function drawChart(
   points.forEach((p, i) => {
     doc.circle(sx(times[i] ?? 0), sy(p.value), 0.9, 'F');
   });
+
+  // Y-axis unit title — rotated alongside the axis (matches the web chart).
+  if (unit) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text(unit, box.x + 3.5, py + ph / 2, { angle: 90, align: 'center' });
+  }
 }
