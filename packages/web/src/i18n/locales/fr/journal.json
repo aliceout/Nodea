@@ -8,7 +8,6 @@
   "list": {
     "loading": "Chargement du journal…",
     "empty": "Aucune entrée pour cette sélection.",
-    "groupCountNoun": "entrée",
     "noThread": "— sans thread —"
   },
   "row": {
@@ -45,7 +44,6 @@
     "monthAll": "Tous"
   },
   "primary": {
-    "entriesHeading": "Entrées",
     "yearRolling": "En cours",
     "yearAria": "Année d’écriture",
     "showChart": "Voir la carte d’écriture",

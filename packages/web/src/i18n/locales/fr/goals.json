@@ -6,8 +6,7 @@
   },
   "list": {
     "loading": "Chargement des objectifs…",
-    "empty": "Aucun objectif pour cette sélection.",
-    "groupCountNoun": "objectif"
+    "empty": "Aucun objectif pour cette sélection."
   },
   "row": {
     "editAria": "Modifier l’objectif",

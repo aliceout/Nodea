@@ -12,7 +12,6 @@
     "loadError": "Erreur lors du chargement de la bibliothèque.",
     "emptyCatalogue": "Aucun livre — ajoute le premier avec « + Nouveau livre ».",
     "emptySelection": "Aucun livre pour cette sélection.",
-    "groupCountNoun": "livre",
     "filterBanner": "Filtre :",
     "clearFilterAria": "Retirer le filtre"
   },

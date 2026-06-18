@@ -6,8 +6,7 @@
   },
   "list": {
     "loading": "Loading goals…",
-    "empty": "No goal matches the current filters.",
-    "groupCountNoun": "goal"
+    "empty": "No goal matches the current filters."
   },
   "row": {
     "editAria": "Edit goal",

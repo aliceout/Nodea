@@ -12,7 +12,6 @@
     "loadError": "Error while loading the library.",
     "emptyCatalogue": "No books yet — add the first one with “+ New book”.",
     "emptySelection": "No books match this selection.",
-    "groupCountNoun": "book",
     "filterBanner": "Filter:",
     "clearFilterAria": "Clear the filter"
   },

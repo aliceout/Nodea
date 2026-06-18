@@ -8,7 +8,6 @@
   "list": {
     "loading": "Loading journal…",
     "empty": "No entry matches the current filters.",
-    "groupCountNoun": "entry",
     "noThread": "— no thread —"
   },
   "row": {
@@ -45,7 +44,6 @@
     "monthAll": "All"
   },
   "primary": {
-    "entriesHeading": "Entries",
     "yearRolling": "Current",
     "yearAria": "Writing year",
     "showChart": "Show writing map",
