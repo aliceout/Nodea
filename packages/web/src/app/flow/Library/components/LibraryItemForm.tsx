@@ -8,6 +8,7 @@ import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 
 import { useLibraryData } from '../context';
 import { makeApplyResult } from './item-form/apply-result';
@@ -196,7 +197,7 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
         e.preventDefault();
         void handleSave();
       }}
-      className="mb-5 rounded-md border border-hair bg-bg-2 p-4"
+      className={MODULE_FORM_CARD}
       noValidate
     >
       <div className="space-y-3">

@@ -9,6 +9,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
+import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import { useMoodActions } from '../context';
@@ -137,7 +138,7 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
         e.preventDefault();
         void handleSave();
       }}
-      className="mb-5 rounded-md border border-hair bg-bg-2 p-4"
+      className={MODULE_FORM_CARD}
       noValidate
     >
       <div className="space-y-3.5">

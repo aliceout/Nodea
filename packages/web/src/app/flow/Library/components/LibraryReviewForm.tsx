@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
+import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
@@ -125,7 +126,7 @@ export default function LibraryReviewForm({
         e.preventDefault();
         void handleSave();
       }}
-      className="mb-5 rounded-md border border-hair bg-bg-2 p-4"
+      className={MODULE_FORM_CARD}
       noValidate
     >
       {/* Parent book caption — gives the user a quick read on which

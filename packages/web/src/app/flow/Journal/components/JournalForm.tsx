@@ -18,6 +18,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 
+import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import ThreadSuggestInput from '@/ui/dirk/forms/ThreadSuggestInput';
 
@@ -230,7 +231,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
         e.preventDefault();
         void handleSave();
       }}
-      className="mb-5 rounded-md border border-hair bg-bg-2 p-4"
+      className={MODULE_FORM_CARD}
       noValidate
     >
       <div className="space-y-3">

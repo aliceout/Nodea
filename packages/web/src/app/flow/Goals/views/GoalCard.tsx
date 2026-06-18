@@ -5,6 +5,7 @@ import { splitThreads } from '@nodea/shared';
 import { formatPartialDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import HoverActions from '@/ui/dirk/module/HoverActions';
 
 import { useGoalsActions } from '../context';
 import type { GoalEntry } from '../lib/types';
@@ -40,7 +41,7 @@ function GoalCardImpl({ entry }: GoalCardProps) {
         {/* Edit / delete affordances live in the corner. Hidden until
             hover (group-hover) to keep the card visually calm at
             rest — same posture as Library's BookGrid hover bar. */}
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <HoverActions>
           <Button
             variant="ghost"
             size="sm"
@@ -61,7 +62,7 @@ function GoalCardImpl({ entry }: GoalCardProps) {
           >
             <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
-        </div>
+        </HoverActions>
       </div>
 
       <div className="min-w-0 flex-1">

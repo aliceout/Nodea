@@ -12,6 +12,7 @@ import { ArchiveBoxArrowDownIcon, PencilSquareIcon } from '@heroicons/react/24/o
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import HoverActions from '@/ui/dirk/module/HoverActions';
 
 import { categoryLabel, routeLabel } from '../lib/labels';
 import type { ProductEntry } from '../hooks/use-products';
@@ -54,7 +55,7 @@ export default function ProductRow({ entry, onEdit, onArchive, onReactivate }: P
             {t('hrt.product.reactivate')}
           </Button>
         ) : (
-          <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <HoverActions className="gap-1">
             {onEdit ? (
               <Button
                 variant="ghost"
@@ -77,7 +78,7 @@ export default function ProductRow({ entry, onEdit, onArchive, onReactivate }: P
                 <ArchiveBoxArrowDownIcon className="h-4 w-4" aria-hidden="true" />
               </Button>
             ) : null}
-          </div>
+          </HoverActions>
         )}
       </div>
     </li>

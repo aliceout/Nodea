@@ -4,6 +4,7 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Tabs from '@/ui/dirk/Tabs';
 import Topbar from '@/ui/dirk/Topbar';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import { TAB_IDS } from './lib/constants';
 import type { Tab } from './lib/types';
@@ -55,9 +56,7 @@ export default function AccountPage() {
       />
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
-        <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
-          {t('account.title')}
-        </h1>
+        <PageHeading className="m-0">{t('account.title')}</PageHeading>
         <Tabs tabs={tabs} value={tab} onChange={setTab} />
       </div>
 

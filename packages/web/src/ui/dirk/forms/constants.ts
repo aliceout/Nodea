@@ -14,6 +14,19 @@ import { getMonthNames } from '@/core/i18n/date-format';
  * namespace — Library components resolve them via `t()` now.
  */
 
+/** Card chrome shared by every inline module composer (Mood / Goals /
+ *  Journal / Library / HRT) — a muted-surface panel with a hairline
+ *  border. Not `Surface`: that primitive rides a different token axis
+ *  (`--surface-*` / injected flex gap) and would shift the look + add
+ *  gaps these grids don't want. Factored per the « third copy » rule
+ *  (nine call sites before this). */
+export const FORM_CARD = 'rounded-md border border-hair bg-bg-2 p-4';
+
+/** `FORM_CARD` plus the bottom margin the reader-shell composers
+ *  (Mood / Goals / Journal / Library) want below them. The HRT forms
+ *  sit flush in their own layout and use `FORM_CARD` directly. */
+export const MODULE_FORM_CARD = `mb-5 ${FORM_CARD}`;
+
 /** Two-digit month codes + locale-aware long labels for the
  *  « date » selector shared by Goal / Library bodies. Built
  *  on demand from `Intl.DateTimeFormat` so EN / FR / a future

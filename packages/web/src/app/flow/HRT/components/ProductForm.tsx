@@ -25,6 +25,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
+import { FORM_CARD } from '@/ui/dirk/forms/constants';
 
 import { categoryLabel, routeLabel } from '../lib/labels';
 import type { ProductEntry } from '../hooks/use-products';
@@ -107,7 +108,7 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
   return (
     <form
       onSubmit={handleSubmit(onValid)}
-      className="rounded-md border border-hair bg-bg-2 p-4"
+      className={FORM_CARD}
       noValidate
     >
       <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">

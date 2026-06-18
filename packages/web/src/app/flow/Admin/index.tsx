@@ -18,6 +18,7 @@ import {
 } from '@/core/api/client';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 import Tabs from '@/ui/dirk/Tabs';
 import Topbar from '@/ui/dirk/Topbar';
 import UserTable from './components/UserTable';
@@ -204,9 +205,7 @@ export default function AdminPage() {
       <Topbar label="Paramètres · Administration" onOpenMenu={() => setMobileMenuOpen(true)} />
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
-        <h1 className="m-0 text-[30px] font-semibold tracking-[-0.025em] text-ink">
-          Administration
-        </h1>
+        <PageHeading className="m-0">Administration</PageHeading>
         <Tabs tabs={TABS} value={tab} onChange={setTab} />
       </div>
 
