@@ -176,16 +176,22 @@ export function formatPartialDate(dateIso: string, language: string): string {
 
 /**
  * Long-form date — « 8 janvier 2025 » (FR) / « January 8, 2025 »
- * (EN), no weekday. Used by the Library review header and the
- * Review list. Returns the raw input on parse failure so the UI
- * keeps rendering rather than crashing on a stale / malformed
- * payload.
+ * (EN), no weekday. Used by the Library review header, the Review
+ * list, the Homepage / Journal heatmap tooltips and the HRT log
+ * rows. Returns the raw input on parse failure so the UI keeps
+ * rendering rather than crashing on a stale / malformed payload.
  */
 export function formatLongDate(rawIso: string, language: string): string {
-  // `parseLocalDate` (not `new Date(rawIso)`) so a bare `YYYY-MM-DD`
-  // isn't read as UTC midnight and drifted to the previous local day in
-  // UTC− zones — the same fix this module documents for `parseLocalDate`.
-  const d = parseLocalDate(rawIso);
+  // Two kinds of caller, two correct readings:
+  //   - a bare `YYYY-MM-DD` (heatmap day tooltips, HRT log dates) must
+  //     parse as LOCAL midnight — `new Date('2025-01-08')` is UTC
+  //     midnight and drifts to the previous day in UTC− zones.
+  //   - a full ISO timestamp (review / announcement `createdAt` /
+  //     `updatedAt`, stamped via `toISOString()`) must keep `new Date()`
+  //     so we render the LOCAL calendar date of that *instant*, not its
+  //     UTC date prefix (which `parseLocalDate` would slice to).
+  // The `T` tells them apart: ISO timestamps carry it, bare dates don't.
+  const d = rawIso.includes('T') ? new Date(rawIso) : parseLocalDate(rawIso);
   if (Number.isNaN(d.getTime())) return rawIso;
   const fmt = new Intl.DateTimeFormat(intlLocale(language), {
     day: 'numeric',

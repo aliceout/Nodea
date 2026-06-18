@@ -186,6 +186,26 @@ describe('formatLongDate', () => {
     expect(formatLongDate('not-a-date', 'fr')).toBe('not-a-date');
     expect(formatLongDate('', 'fr')).toBe('');
   });
+
+  it('reads a bare YYYY-MM-DD as a local date (no UTC drift)', () => {
+    // `new Date('2025-01-08')` is UTC midnight and renders as the 7th in
+    // UTC− zones; the bare-date branch must parse local midnight so the
+    // day stays the 8th in every timezone. TZ-robust assertion.
+    const out = formatLongDate('2025-01-08', 'fr');
+    expect(out).toContain('8');
+    expect(out).toContain('janvier');
+    expect(out).not.toContain('7');
+  });
+
+  it('reads a full ISO timestamp as the local date of that instant', () => {
+    // Noon UTC lands on the 8th in every real timezone (UTC−12..+14), so
+    // this pins the timestamp branch without depending on the host TZ —
+    // and would fail if the timestamp were sliced to its UTC date prefix
+    // and then re-read as local midnight.
+    const out = formatLongDate('2025-01-08T12:00:00.000Z', 'fr');
+    expect(out).toContain('8');
+    expect(out).toContain('janvier');
+  });
 });
 
 describe('formatNumber', () => {

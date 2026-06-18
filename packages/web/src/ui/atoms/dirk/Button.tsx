@@ -91,6 +91,11 @@ export default function Button({
       className={cn(
         'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-[var(--radius-control)] font-semibold',
         'transition-[background-color,transform,color] duration-150',
+        // Visible keyboard focus ring — the global reset in utilities.css
+        // strips the native outline on every <button>, and this atom is
+        // the single source for clickable surfaces, so the ring lives
+        // here once (WCAG 2.4.7) instead of per call-site.
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         'disabled:cursor-not-allowed disabled:opacity-60',
         iconOnly ? ICON_SIZE_CLASS[size] : SIZE_CLASS[size],
         VARIANT_CLASS[variant],
