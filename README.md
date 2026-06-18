@@ -126,10 +126,7 @@ contributions humaines comme IA-assistées).
   la contrepartie directe du « personne d'autre ne peut les lire ».
 - **Limite supply-chain web honnête.** Un serveur compromis pourrait
   servir du JS modifié qui exfiltre la clé au moment du login.
-  Inhérent à toute webapp E2EE — Bitwarden, Standard Notes, Cryptee
-  partagent la même limite. Mitigations : Subresource Integrity sur
-  l'entry chunk + manifest `INTEGRITY.txt` (SHA-384) publié à chaque
-  release. **Pour des usages très sensibles, auto-héberge.**
+  Inhérent à toute webapp E2EE **Pour des usages très sensibles, auto-héberge.**
 
 Threat model complet, matrice d'accès (équipe Nodea / hébergeur /
 réquisition judiciaire), et inventaire des champs en clair dans la
