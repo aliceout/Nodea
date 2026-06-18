@@ -2,25 +2,36 @@ import { Fragment, type ReactNode } from 'react';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import { cn } from '@/lib/utils';
 
-export type ModalSize = 'md' | 'lg' | 'xl';
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
+export type ModalAlign = 'top' | 'center';
 
 interface ModalProps {
   /** Controls visibility — Headless UI's Transition handles the
    * fade/slide animation when this flips. */
   open: boolean;
-  /** Called when the user dismisses via Esc / backdrop click. */
+  /** Called when the user dismisses via Esc / backdrop click. Pass a
+   * no-op to make the modal non-dismissible (e.g. a blocking
+   * "session locked" prompt whose only exit is its own action). */
   onClose: () => void;
   /** Maximum panel width — stays responsive on mobile/tablet, scales
    * up on large screens for content-heavy modals (Composer bodies
    * with multiple multi-line fields). Defaults to `md` (620 px),
-   * the historical value every existing call-site relied on. */
+   * the historical value every existing call-site relied on. `sm`
+   * (420 px) is for short blocking prompts. */
   size?: ModalSize;
+  /** Vertical placement. Defaults to `top` (the historical 12vh drop
+   * every Composer/picker relies on); `center` is for short blocking
+   * prompts that read better centred on screen. */
+  align?: ModalAlign;
   /** Panel contents — typically a fixed-height body (`h-[600px]`)
    * so every modal in Nodea ends up the same physical size. */
   children: ReactNode;
 }
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
+  // Short blocking prompts (KeyMissingModal) — a narrow panel that
+  // doesn't read as a content surface.
+  sm: 'max-w-[420px]',
   // Historical default — every modal in the app before the `size`
   // prop existed rendered at exactly 620 px. Kept as the no-op
   // default so existing call-sites are unaffected.
@@ -61,7 +72,7 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
  * implementation drifts on padding, animation timing, or shadow,
  * and we end up with three "almost-the-same" modal styles.
  */
-export function Modal({ open, onClose, size = 'md', children }: ModalProps) {
+export function Modal({ open, onClose, size = 'md', align = 'top', children }: ModalProps) {
   return (
     <Transition show={open} as={Fragment}>
       <Dialog className="relative z-50" onClose={onClose}>
@@ -76,7 +87,14 @@ export function Modal({ open, onClose, size = 'md', children }: ModalProps) {
         >
           <div className="fixed inset-0 bg-ink/30" aria-hidden="true" />
         </Transition.Child>
-        <div className="fixed inset-0 flex items-start justify-center px-4 pt-[12vh] sm:pt-[110px]">
+        <div
+          className={cn(
+            'fixed inset-0 flex justify-center px-4',
+            align === 'center'
+              ? 'items-center'
+              : 'items-start pt-[12vh] sm:pt-[110px]',
+          )}
+        >
           <Transition.Child
             as={Fragment}
             enter="transition ease-out duration-200"
