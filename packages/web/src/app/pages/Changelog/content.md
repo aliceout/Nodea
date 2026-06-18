@@ -5,6 +5,58 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.11.0 — 2026-06-18
+
+### Nouveautés
+
+- **journal** : editable entry date in the composer _(45cc689)_
+- **goals** : default to cards view, grouped by year _(f7b00ea)_
+- **account** : re-auth tunnels for export, backup & account deletion _(9f30706)_
+- **mobile** : /flow shell mobile pass + tips→announcements _(611eae2)_
+- **ui** : in-app confirm/alert dialog, replacing native window.confirm / alert (#143) _(22e41e9)_
+- **auth** : 7-day cooldown between email changes (#138) _(970ce40)_
+
+### Corrections
+
+- **ui** : restore Button focus ring + correct formatLongDate for timestamps _(295d372)_
+- **hrt** : compact recurring-schedules panel _(57ac366)_
+- **ui** : align the sidebar header with the topbar _(cd6995e)_
+- **hrt** : mobile journal layout + dense-chart polish _(a374996)_
+- **deps** : patch high-severity transitive advisories (pnpm overrides) _(ffcea24)_
+- **auth** : clear the clipboard after copying TOTP seed / recovery / backup codes (#137) _(0ab9e8f)_
+- **preferences** : serialize writes against wire reordering (#138) _(76f4f23)_
+- **audit** : privacy residuals — neutralize HRT export naming/metadata, defer auth-code URL revoke (#138) _(8666ade)_
+- **audit** : correctness residuals — announcement date window, Review year bound, Home sort tiebreaker (#138) _(575d16a)_
+
+### Refactor
+
+- **ui** : make KeyMissingModal actually reuse the Modal atom _(695c744)_
+- **ui** : factor FormError, promote CollapseToggle to shared _(e4e641e)_
+- **ui** : reuse PageHeading / HoverActions / form-card across modules _(5072ed7)_
+- **ui** : route re-implemented date/search/cn utils onto shared helpers _(39cec1b)_
+- **ui** : swap hand-rolled fields/buttons to dirk atoms _(b0155f0)_
+- **ui** : consolidate inline alert banners onto InlineAlert _(fc4a8ad)_
+
+### Documentation
+
+- **claude** : trim CLAUDE.md ~32% — fix stale refs, merge checklists, compress prose _(acdf480)_
+- **db** : document the UTC timestamp convention (#138) _(9c73fe9)_
+- **changelog** : regenerate for v2.10.1 _(1ef12d6)_
+
+### Autres
+
+- i18n: wire all hardcoded user-facing strings through t()/tn() _(18e0041)_
+- Update E2EE limitations and self-hosting note _(a7199c5)_
+
+<details>
+<summary>Maintenance — 3 commits</summary>
+
+- **release** : bump version to 2.11.0 _(a9d5f18)_
+- **deps** : bump the minor-and-patch group (11 updates) _(485d52a)_
+- **trivy** : ignore base-image openssl CVE-2026-45447 (libcrypto3/libssl3) _(09d605e)_
+
+</details>
+
 ## v2.10.1 — 2026-06-10
 
 ### Corrections
