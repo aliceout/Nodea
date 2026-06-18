@@ -14,6 +14,7 @@
  * NB : jsPDF's standard fonts use WinAnsi encoding (covers é/è/à/ç/œ/µ/— )
  * but NOT « ≈ » — so dose strings here use « (N mg) », never the ≈ form.
  */
+import { parseLocalDate } from '@/core/i18n/date-format';
 import type { DoseChart, DoseRow, ExportGroupBy, LabGroup, RegimenRow } from './export-model';
 import { flattenLabReadings, groupDosesByMolecule } from './export-model';
 import { formatDotDate, type HrtTranslate, type HrtTranslatePlural } from './labels';
@@ -329,8 +330,7 @@ interface Box {
 }
 
 function dateMs(iso: string): number {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1).getTime();
+  return parseLocalDate(iso).getTime();
 }
 function fmtVal(v: number): string {
   return Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);

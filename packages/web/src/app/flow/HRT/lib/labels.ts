@@ -14,6 +14,7 @@
  * (`@nodea/shared` presets, stored keys), not UI chrome — they are shown
  * verbatim, never translated.
  */
+import { toIsoDate } from '@/core/i18n/date-format';
 import {
   findMarker,
   type HrtCategory,
@@ -70,22 +71,14 @@ export function frequencyLabel(
 
 /** Local-midnight ISO date `YYYY-MM-DD` for today. */
 export function todayIso(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return toIsoDate(new Date());
 }
 
 /** Human label for a log row's date in the active locale, e.g.
- *  « 4 juin 2026 » / "4 June 2026". `locale` is `useI18n().language`. */
-export function formatLogDate(iso: string, locale: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
+ *  « 4 juin 2026 » / "4 June 2026". `locale` is `useI18n().language`.
+ *  Same long-date shape as `formatLongDate` — re-exported under the
+ *  HRT-local name the module's call sites already import. */
+export { formatLongDate as formatLogDate } from '@/core/i18n/date-format';
 
 /** Compact numeric date for the PDF export, e.g. « 06.12.26 » (DD.MM.YY).
  *  The stored ISO is already zero-padded, so no reformatting is needed. */

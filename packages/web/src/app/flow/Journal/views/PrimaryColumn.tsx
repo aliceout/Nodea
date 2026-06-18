@@ -1,6 +1,7 @@
 import { ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
 
+import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -54,9 +55,8 @@ export default function PrimaryColumn() {
   // date parsing — same shape so the two modules read alike.
   const dayFilterLabel = useMemo(() => {
     if (!dayFilter) return '';
-    const [yyyy, mm, dd] = dayFilter.split('-').map(Number);
-    const d = new Date(yyyy ?? 0, (mm ?? 1) - 1, dd ?? 1);
-    return new Intl.DateTimeFormat(language, {
+    const d = parseLocalDate(dayFilter);
+    return new Intl.DateTimeFormat(intlLocale(language), {
       weekday: 'short',
       day: 'numeric',
       month: 'long',

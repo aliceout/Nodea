@@ -1,6 +1,6 @@
 import type { NormalisedBook } from '@nodea/shared';
 
-import { intlLocale } from '@/core/i18n/date-format';
+import { getMonthNames } from '@/core/i18n/date-format';
 
 /**
  * UI constants for the now-inline module forms — labels, colour
@@ -23,12 +23,10 @@ import { intlLocale } from '@/core/i18n/date-format';
 export function genMonthOptions(
   language: string,
 ): ReadonlyArray<{ value: string; label: string }> {
-  const fmt = new Intl.DateTimeFormat(intlLocale(language), {
-    month: 'long',
-  });
+  const names = getMonthNames(language, 'long');
   return Array.from({ length: 12 }, (_, i) => {
     const value = String(i + 1).padStart(2, '0');
-    const raw = fmt.format(new Date(2000, i, 1));
+    const raw = names[i] ?? '';
     const label = raw.charAt(0).toUpperCase() + raw.slice(1);
     return { value, label };
   });

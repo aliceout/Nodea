@@ -1,5 +1,4 @@
 import { useMemo, useState, type ComponentType } from 'react';
-import clsx from 'clsx';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { MODULES } from '@/app/modules-registry';
@@ -222,21 +221,21 @@ function Toggle({
   const { t } = useI18n();
   return (
     <div
-      className={clsx(
+      className={cn(
         'relative inline-flex h-6 w-11 shrink-0 items-center',
         isBusy && 'pointer-events-none opacity-60',
       )}
     >
       <span
         aria-hidden="true"
-        className={clsx(
+        className={cn(
           'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
           checked ? 'bg-accent' : 'bg-hair',
         )}
       />
       <span
         aria-hidden="true"
-        className={clsx(
+        className={cn(
           'absolute left-0.5 top-0.5 h-5 w-5 rounded-full border border-hair bg-bg transition-transform duration-150 ease-out',
           checked ? 'translate-x-5' : '',
         )}

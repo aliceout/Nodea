@@ -39,6 +39,8 @@ import {
   type HrtLabResultPayload,
 } from '@nodea/shared';
 
+import { normalizeForSearch } from '@/lib/text-search';
+
 import type { HrtTranslate } from './labels';
 
 // ── Inbound cell shapes (filled by `lib/xlsx`) ──────────────────────────
@@ -91,21 +93,10 @@ export interface ParsedSheet<T> {
 
 // ── Cell coercion (private) ─────────────────────────────────────────────
 
-/** Drop the combining diacritical marks (U+0300–U+036F) left by an NFD
- *  decomposition. Char-code range check — no regex / Unicode-escape source. */
-function stripDiacritics(decomposed: string): string {
-  let out = '';
-  for (const ch of decomposed) {
-    const code = ch.codePointAt(0) ?? 0;
-    if (code < 0x0300 || code > 0x036f) out += ch;
-  }
-  return out;
-}
-
 /** Lowercased, accent- and edge-space-stripped — the comparison form used
  *  for headers, marker matching and context labels. */
 function norm(s: string): string {
-  return stripDiacritics(s.normalize('NFD')).trim().toLowerCase();
+  return normalizeForSearch(s).trim();
 }
 
 /** First cell whose header matches one of `aliases` (normalised). */

@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   ComputerDesktopIcon,
   MoonIcon,
@@ -7,6 +6,7 @@ import {
 
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { cn } from '@/lib/utils';
 
 interface ThemeOption {
   id: ThemePreference;
@@ -71,7 +71,7 @@ export default function ThemeSwitch({ className }: ThemeSwitchProps) {
       aria-label={t('settings.theme.ariaLabel', {
         defaultValue: 'Préférence de thème',
       })}
-      className={clsx(
+      className={cn(
         'inline-flex items-center gap-px rounded-md border border-hair bg-bg p-0.5',
         className,
       )}
@@ -87,7 +87,7 @@ export default function ThemeSwitch({ className }: ThemeSwitchProps) {
             aria-pressed={active}
             aria-label={label}
             title={label}
-            className={clsx(
+            className={cn(
               'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
               active

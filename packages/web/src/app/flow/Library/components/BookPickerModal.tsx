@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { normalizeForSearch } from '@/lib/text-search';
 import DirkButton from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 import { Modal } from '@/ui/atoms/layout/Modal';
 
 import { useLibraryActions, useLibraryData } from '../context';
-import { normaliseForSearch } from '../lib/search';
 
 /**
  * Picker shown after the user clicks « + Nouvel extrait » /
@@ -32,13 +32,13 @@ export default function BookPickerModal() {
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
-    const q = normaliseForSearch(query.trim());
+    const q = normalizeForSearch(query.trim());
     const sorted = [...items].sort((a, b) =>
       a.title.localeCompare(b.title, 'fr'),
     );
     if (!q) return sorted;
     return sorted.filter((it) => {
-      const haystack = normaliseForSearch(
+      const haystack = normalizeForSearch(
         `${it.title} ${it.creators?.[0]?.name ?? ''}`,
       );
       return haystack.includes(q);

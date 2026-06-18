@@ -1,5 +1,6 @@
-import clsx from 'clsx';
 import { createElement, type ElementType, type ReactNode } from 'react';
+
+import { cn } from '@/lib/utils';
 
 export type SurfaceTone = 'base' | 'muted' | 'subtle' | 'inverse';
 export type SurfaceBorder = 'default' | 'strong' | 'minimal';
@@ -99,7 +100,7 @@ export default function Surface({
     Component,
     {
       ...props,
-      className: clsx(
+      className: cn(
         'surface flex flex-col transition-[background-color,border-color,box-shadow,color,transform] duration-150 ease-out',
         toneClasses[tone],
         borderClassName,

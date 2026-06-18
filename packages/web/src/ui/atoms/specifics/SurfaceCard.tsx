@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import type { ElementType, ReactNode } from 'react';
 import Surface, {
   type SurfaceBorder,
@@ -66,7 +65,7 @@ export default function SurfaceCard({
           ) : null}
         </header>
       ) : null}
-      <div className={clsx(bodyClassName)}>{children}</div>
+      <div className={bodyClassName}>{children}</div>
     </Surface>
   );
 }

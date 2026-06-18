@@ -182,7 +182,10 @@ export function formatPartialDate(dateIso: string, language: string): string {
  * payload.
  */
 export function formatLongDate(rawIso: string, language: string): string {
-  const d = new Date(rawIso);
+  // `parseLocalDate` (not `new Date(rawIso)`) so a bare `YYYY-MM-DD`
+  // isn't read as UTC midnight and drifted to the previous local day in
+  // UTC− zones — the same fix this module documents for `parseLocalDate`.
+  const d = parseLocalDate(rawIso);
   if (Number.isNaN(d.getTime())) return rawIso;
   const fmt = new Intl.DateTimeFormat(intlLocale(language), {
     day: 'numeric',

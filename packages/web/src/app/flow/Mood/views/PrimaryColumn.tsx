@@ -2,7 +2,7 @@ import { ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import { getMonthNames } from '@/core/i18n/date-format';
+import { getMonthNames, intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
@@ -63,9 +63,8 @@ export default function PrimaryColumn() {
   // `new Date('2026-06-04')` treats it as UTC midnight).
   const dayFilterLabel = useMemo(() => {
     if (!dayFilter) return '';
-    const [yyyy, mm, dd] = dayFilter.split('-').map(Number);
-    const d = new Date(yyyy ?? 0, (mm ?? 1) - 1, dd ?? 1);
-    return new Intl.DateTimeFormat(language, {
+    const d = parseLocalDate(dayFilter);
+    return new Intl.DateTimeFormat(intlLocale(language), {
       weekday: 'short',
       day: 'numeric',
       month: 'long',
