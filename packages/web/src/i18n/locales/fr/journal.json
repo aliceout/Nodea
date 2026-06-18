@@ -84,6 +84,7 @@
   },
   "composer": {
     "submittingUpdate": "Mise à jour…",
+    "dateLabel": "Date",
     "draftRestored": "Brouillon en cours repris.",
     "resetDraft": "Repartir à zéro",
     "removeImageAria": "Retirer l’image",

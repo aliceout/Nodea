@@ -135,7 +135,6 @@ export default function ThreadSuggestInput({
         aria-label={t('modals.composer.threadSuggest.placeholder')}
         disabled={disabled}
         autoComplete="off"
-        autoFocus
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={showDropdown}

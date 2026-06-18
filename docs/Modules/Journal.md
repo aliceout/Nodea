@@ -61,7 +61,8 @@ Journal follows the rules shared by every module — see
 1. One entry = a dated free-form text, no constraint on count per
    day.
 2. The **thread** is a free grouping — no imposed hierarchy. The UI
-   displays entries grouped by thread in reverse chronological order.
+   defaults to a by-month view (newest month first); a side-column
+   toggle switches to grouping by thread.
 3. Attachments stay inline (base64) — sized for the "0-3 small
    photos per entry" use case.
 4. Blind server: title, content, photos, threads — everything is

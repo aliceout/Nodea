@@ -16,7 +16,9 @@ import { pickJournalPrompt } from '@/app/flow/Journal/prompts';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import { toIsoDate } from '@/core/i18n/date-format';
 import Button from '@/ui/atoms/dirk/Button';
+import DateField from '@/ui/atoms/dirk/DateField';
 
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import FormError from '@/ui/dirk/forms/FormError';
@@ -43,11 +45,12 @@ interface JournalFormProps {
  * from `@/ui/dirk/forms/`.
  *
  * Edit vs create :
- *   - On edit, the entry's date is preserved and `initial`
- *     pre-fills every field. The draft auto-restore is skipped.
- *   - On create, `new Date().toISOString()` is the entry date
- *     and the draft slot (`useJournalDraft`) auto-saves +
- *     auto-restores the form state across reloads.
+ *   - On edit, `initial` pre-fills every field (date included,
+ *     now editable via the DateField). The draft auto-restore is
+ *     skipped.
+ *   - On create, the date defaults to today and the draft slot
+ *     (`useJournalDraft`) auto-saves + auto-restores the form
+ *     state across reloads.
  *
  * `upsertRecord` splices the saved record into the in-memory list on
  * success (no full-collection refetch — audit 2026-06 passe 2) ;
@@ -75,6 +78,14 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     clear: clearDraft,
   } = useJournalDraft();
 
+  // Date is editable on both flows — create defaults to today,
+  // edit pre-fills the entry's day (sliced off the stored ISO,
+  // which may carry a time component). Stored as the bare
+  // `YYYY-MM-DD` the DateField speaks ; `dateIso` consumers already
+  // `.slice(0, 10)` so the dropped time is a no-op.
+  const [date, setDate] = useState(
+    initial ? initial.dateIso.slice(0, 10) : toIsoDate(new Date()),
+  );
   const [thread, setThread] = useState(initial?.thread ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [attachments, setAttachments] = useState<JournalAttachment[]>(
@@ -193,7 +204,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     }
     setSubmitting(true);
     try {
-      const dateIso = initial ? initial.dateIso : new Date().toISOString();
+      const dateIso = date || toIsoDate(new Date());
       const payload = {
         type: 'journal.entry' as const,
         date: dateIso,
@@ -258,14 +269,34 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
           </div>
         ) : null}
 
-        <ThreadSuggestInput
-          value={thread}
-          onChange={setThread}
-          options={threadOptions}
-          disabled={submitting}
-          onSubmit={handleSave}
-          {...(error ? { ariaDescribedBy: 'journal-form-error' } : {})}
-        />
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <ThreadSuggestInput
+              value={thread}
+              onChange={setThread}
+              options={threadOptions}
+              disabled={submitting}
+              onSubmit={handleSave}
+              {...(error ? { ariaDescribedBy: 'journal-form-error' } : {})}
+            />
+          </div>
+          {/* Fixed-width block wrapper (NOT the `inline` variant) :
+              react-datepicker's inline wrapper is `inline-block;
+              width:auto`, so its shrink-to-fit width recomputes when
+              the calendar mounts on focus and the field visibly jumps.
+              A `w-32` block container pins the width either way. */}
+          <div className="w-32 shrink-0">
+            <DateField
+              id="journal-date"
+              value={date}
+              onChange={setDate}
+              max={toIsoDate(new Date())}
+              disabled={submitting}
+              ariaLabel={t('journal.composer.dateLabel')}
+              className="text-right"
+            />
+          </div>
+        </div>
 
         <MarkdownEditor
           value={content}
@@ -332,36 +363,39 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
               {tn('journal.composer.attachmentCount', attachments.length)}
             </p>
           ) : null}
+
+          {/* Cancel / save share the attachments row, pushed right.
+              `flex-wrap` on the parent lets them drop below on narrow
+              widths instead of crushing the image thumbnails. */}
+          <div className="ml-auto flex gap-2">
+            <Button
+              type="button"
+              variant="neutral"
+              size="sm"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              {t('common.actions.cancel', { defaultValue: 'Annuler' })}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={submitting}
+            >
+              {submitting
+                ? isEdit
+                  ? t('journal.composer.submittingUpdate')
+                  : t('common.states.saving')
+                : isEdit
+                  ? t('common.actions.update')
+                  : t('common.actions.save')}
+            </Button>
+          </div>
         </div>
       </div>
 
       <FormError id="journal-form-error">{error}</FormError>
-
-      <div className="mt-4 flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          onClick={onClose}
-          disabled={submitting}
-        >
-          {t('common.actions.cancel', { defaultValue: 'Annuler' })}
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          size="sm"
-          disabled={submitting}
-        >
-          {submitting
-            ? isEdit
-              ? t('journal.composer.submittingUpdate')
-              : t('common.states.saving')
-            : isEdit
-              ? t('common.actions.update')
-              : t('common.actions.save')}
-        </Button>
-      </div>
     </form>
   );
 }
