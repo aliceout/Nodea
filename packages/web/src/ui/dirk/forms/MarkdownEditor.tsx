@@ -162,6 +162,35 @@ export default function MarkdownEditor({
     });
   }
 
+  function toggleQuote(): void {
+    const ta = taRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd =
+      value.indexOf('\n', end) === -1 ? value.length : value.indexOf('\n', end);
+    const block = value.slice(lineStart, lineEnd);
+    const lines = block.split('\n');
+    const nonEmpty = lines.filter((l) => l.length > 0);
+    const allQuoted =
+      nonEmpty.length > 0 && nonEmpty.every((l) => l.startsWith('>'));
+    const transformed = lines
+      .map((l) => {
+        if (l.length === 0) return l;
+        if (allQuoted) return l.replace(/^>\s?/, '');
+        return l.startsWith('>') ? l : `> ${l}`;
+      })
+      .join('\n');
+    const next = value.slice(0, lineStart) + transformed + value.slice(lineEnd);
+    onChange(next);
+    const delta = transformed.length - block.length;
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start, end + delta);
+    });
+  }
+
   function handleTextareaKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -195,6 +224,16 @@ export default function MarkdownEditor({
     if (!el) return;
     el.focus();
     document.execCommand(command);
+    syncFromContentEditable();
+  }
+
+  function formatQuote(): void {
+    const el = ceRef.current;
+    if (!el) return;
+    el.focus();
+    // `formatBlock` toggles the current line(s) into a <blockquote> ;
+    // markdownToHtml / htmlToMarkdown round-trip it to `> ` lines.
+    document.execCommand('formatBlock', false, 'blockquote');
     syncFromContentEditable();
   }
 
@@ -280,6 +319,14 @@ export default function MarkdownEditor({
           disabled={toolbarDisabled}
         >
           <span className="leading-none">•</span>
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => (isVisual ? formatQuote() : toggleQuote())}
+          ariaLabel={t('common.editor.quote')}
+          title={t('common.editor.quote')}
+          disabled={toolbarDisabled}
+        >
+          <span className="font-serif leading-none">«&#8239;»</span>
         </ToolbarButton>
         <span className="ml-2 text-[11px] text-muted">
           {isVisual

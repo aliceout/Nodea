@@ -38,6 +38,7 @@ export const LiteMarkdown = memo(function LiteMarkdown({
   const blocks: ReactNode[] = [];
   const lines = text.split('\n');
   let listBuffer: string[] = [];
+  let quoteBuffer: string[] = [];
   let key = 0;
 
   function flushList() {
@@ -57,11 +58,37 @@ export const LiteMarkdown = memo(function LiteMarkdown({
     listBuffer = [];
   }
 
+  // Blockquote / citation : consecutive `>`-prefixed lines collapse
+  // into one quote block — a sage left rule + italic, indented from
+  // the body. `>` on its own is an in-quote blank line (stanza gap).
+  function flushQuote() {
+    if (quoteBuffer.length === 0) return;
+    blocks.push(
+      <blockquote
+        key={key++}
+        className="my-2 border-l-2 border-accent pl-3 text-[13px] italic leading-[1.5] text-ink-soft"
+      >
+        {quoteBuffer.map((q, i) => (
+          <p key={i} className="min-h-[1lh] whitespace-pre-wrap">
+            {renderInline(q)}
+          </p>
+        ))}
+      </blockquote>,
+    );
+    quoteBuffer = [];
+  }
+
   for (const line of lines) {
     if (line.startsWith('- ')) {
+      flushQuote();
       listBuffer.push(line.slice(2));
+    } else if (line.startsWith('>')) {
+      flushList();
+      // Strip the marker + one optional space : « > x » → « x ».
+      quoteBuffer.push(line.replace(/^>\s?/, ''));
     } else {
       flushList();
+      flushQuote();
       blocks.push(
         <p
           key={key++}
@@ -73,6 +100,7 @@ export const LiteMarkdown = memo(function LiteMarkdown({
     }
   }
   flushList();
+  flushQuote();
 
   return (
     // No `lang` attribute on purpose : the content's language isn't

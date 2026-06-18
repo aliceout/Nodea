@@ -44,8 +44,9 @@
     "italic": "Italic",
     "italicTitle": "Italic (Cmd/Ctrl + I)",
     "bulletList": "Bulleted list",
+    "quote": "Quote",
     "visualHint": "Visual editing",
-    "markdownHint": "**bold** · *italic* · - list"
+    "markdownHint": "**bold** · *italic* · - list · > quote"
   },
   "search": {
     "clearAria": "Clear search",

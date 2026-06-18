@@ -44,8 +44,9 @@
     "italic": "Italique",
     "italicTitle": "Italique (Cmd/Ctrl + I)",
     "bulletList": "Liste à puce",
+    "quote": "Citation",
     "visualHint": "Édition visuelle",
-    "markdownHint": "**gras** · *italique* · - liste"
+    "markdownHint": "**gras** · *italique* · - liste · > citation"
   },
   "search": {
     "clearAria": "Effacer la recherche",

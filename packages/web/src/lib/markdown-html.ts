@@ -25,6 +25,7 @@ export function markdownToHtml(md: string): string {
   const lines = md.split('\n');
   const out: string[] = [];
   let inList = false;
+  let inQuote = false;
 
   function closeList() {
     if (inList) {
@@ -32,16 +33,34 @@ export function markdownToHtml(md: string): string {
       inList = false;
     }
   }
+  function closeQuote() {
+    if (inQuote) {
+      out.push('</blockquote>');
+      inQuote = false;
+    }
+  }
 
   for (const line of lines) {
     if (line.startsWith('- ')) {
+      closeQuote();
       if (!inList) {
         out.push('<ul>');
         inList = true;
       }
       out.push(`<li>${inlineMdToHtml(line.slice(2))}</li>`);
+    } else if (line.startsWith('>')) {
+      closeList();
+      if (!inQuote) {
+        out.push('<blockquote>');
+        inQuote = true;
+      }
+      // Strip the marker + one optional space ; each quoted line is a
+      // `<div>` so the contentEditable edits it like any other line.
+      const inner = inlineMdToHtml(line.replace(/^>\s?/, ''));
+      out.push(`<div>${inner === '' ? '<br>' : inner}</div>`);
     } else {
       closeList();
+      closeQuote();
       // contentEditable expects each visible line as its own block
       // wrapper (Chrome creates `<div>` per line, Firefox uses `<br>`
       // — we use `<div>` which both browsers accept and edit cleanly).
@@ -52,6 +71,7 @@ export function markdownToHtml(md: string): string {
     }
   }
   closeList();
+  closeQuote();
   return out.join('');
 }
 
@@ -115,6 +135,17 @@ function walkNode(node: Node): string {
       return inner;
     case 'li':
       return `- ${inner.replace(/\n+$/, '')}\n`;
+    case 'blockquote': {
+      // Each inner line (the child `<div>`s emit one `\n` apiece)
+      // gets the `> ` marker back ; blank lines stay a bare `>`.
+      const body = inner.replace(/\n+$/, '');
+      return (
+        body
+          .split('\n')
+          .map((l) => (l.length > 0 ? `> ${l}` : '>'))
+          .join('\n') + '\n'
+      );
+    }
     case 'div':
     case 'p': {
       // A `<div>` whose only child is `<br>` is a literal blank

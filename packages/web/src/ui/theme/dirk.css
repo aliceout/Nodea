@@ -275,3 +275,14 @@ html {
 .journal-ce li {
   margin: 0.125rem 0;
 }
+
+/* Citation dans le contentEditable — même allure que le rendu
+   `LiteMarkdown` (filet sage à gauche + italique) pour que l'écriture
+   ressemble au résultat affiché. */
+.journal-ce blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-k-accent);
+  font-style: italic;
+  color: var(--color-k-ink-soft);
+}
