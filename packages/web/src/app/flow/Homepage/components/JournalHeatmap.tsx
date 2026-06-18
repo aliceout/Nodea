@@ -38,7 +38,7 @@ const DAYS_PER_WEEK = 7;
  * streaks) without needing the user to leave the homepage.
  */
 export default function JournalHeatmap() {
-  const { t, language } = useI18n();
+  const { t, tn, language } = useI18n();
   const { journal } = useHomepageData();
   const setModule = useNodeaStore((s) => s.setModule);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -113,10 +113,12 @@ export default function JournalHeatmap() {
 
   return (
     <HomeCard
-      title={`JOURNAL · ${months} MOIS`}
+      title={t('home.journal.eyebrow', { values: { months } })}
       trailing={
         <span className="tabular-nums">
-          {writtenCount} {writtenCount === 1 ? 'jour' : 'jours'}
+          {tn('home.journal.daysWritten', writtenCount, {
+            values: { count: writtenCount },
+          })}
         </span>
       }
       cta={
@@ -125,7 +127,7 @@ export default function JournalHeatmap() {
           onClick={() => setModule('journal')}
           className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
         >
-          tout voir →
+          {t('home.viewAll')} →
         </button>
       }
     >

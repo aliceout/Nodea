@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { PasskeyListItem } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
@@ -33,18 +34,29 @@ export default function ListView({
   onRename,
   onRemove,
 }: ListViewProps) {
+  const { t, tn } = useI18n();
+
+  let subtitle: string;
+  if (passkeys === null) {
+    subtitle = t('common.states.loading');
+  } else if (passkeys.length === 0) {
+    subtitle = t('auth.passkeys.list.empty');
+  } else {
+    subtitle = t('auth.passkeys.list.subtitle', {
+      values: {
+        count: tn('auth.passkeys.list.countLabel', passkeys.length),
+        prf: tn('auth.passkeys.list.prfLabel', prfCount),
+        note: prfCount === 0 ? t('auth.passkeys.list.prfNone') : '',
+      },
+    });
+  }
+
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Sécurité"
-        title="Mes passkeys"
-        subtitle={
-          passkeys === null
-            ? 'Chargement…'
-            : passkeys.length === 0
-              ? 'Aucune passkey enregistrée. Ajoute-en une pour te connecter sans retaper ton mot de passe.'
-              : `${passkeys.length} passkey${passkeys.length > 1 ? 's' : ''} · ${prfCount} déchiffre${prfCount > 1 ? 'nt' : ''} tes données${prfCount === 0 ? ' (aucune compatible PRF)' : ''}.`
-        }
+        eyebrow={t('auth.passkeys.list.eyebrow')}
+        title={t('auth.passkeys.list.title')}
+        subtitle={subtitle}
       />
 
       {error ? <InlineAlert className="mb-4">{error}</InlineAlert> : null}
@@ -69,7 +81,7 @@ export default function ListView({
         onClick={onAdd}
         className="mt-2 w-full"
       >
-        Ajouter une passkey
+        {t('auth.passkeys.list.addCta')}
       </Button>
 
       <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -77,7 +89,7 @@ export default function ListView({
           to="/flow"
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour
+          {t('auth.passkeys.list.back')}
         </Link>
       </div>
     </>
@@ -91,23 +103,31 @@ interface PasskeyRowProps {
 }
 
 function PasskeyRow({ passkey, onRename, onRemove }: PasskeyRowProps) {
+  const { t } = useI18n();
   return (
     <RowCard>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-[14px] font-medium text-ink">
-            {passkey.label ?? 'Sans nom'}
+            {passkey.label ?? t('auth.passkeys.row.unnamed')}
           </p>
           <p className="mt-1 text-[11.5px] text-muted">
             {passkey.prfSupported ? (
-              <span className="text-accent-deep">Déchiffre tes données</span>
+              <span className="text-accent-deep">
+                {t('auth.passkeys.row.decrypts')}
+              </span>
             ) : (
-              <span>Connexion uniquement</span>
+              <span>{t('auth.passkeys.row.loginOnly')}</span>
             )}
             {passkey.lastUsedAt ? (
-              <span> · Utilisée {formatDate(passkey.lastUsedAt)}</span>
+              <span>
+                {' · '}
+                {t('auth.passkeys.row.lastUsed', {
+                  values: { date: formatDate(passkey.lastUsedAt) },
+                })}
+              </span>
             ) : (
-              <span> · Jamais utilisée</span>
+              <span> · {t('auth.passkeys.row.neverUsed')}</span>
             )}
           </p>
         </div>
@@ -118,7 +138,7 @@ function PasskeyRow({ passkey, onRename, onRemove }: PasskeyRowProps) {
             size="xs"
             onClick={onRename}
           >
-            Renommer
+            {t('auth.passkeys.row.rename')}
           </Button>
           <Button
             type="button"
@@ -126,7 +146,7 @@ function PasskeyRow({ passkey, onRename, onRemove }: PasskeyRowProps) {
             size="xs"
             onClick={onRemove}
           >
-            Retirer
+            {t('auth.passkeys.row.remove')}
           </Button>
         </div>
       </div>

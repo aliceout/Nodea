@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import HabitCard from '../components/HabitCard';
 import { useHabits, type HabitItem } from '../hooks/useHabits';
 import { toIsoDate } from '@/core/i18n/date-format';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useAlert, useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 // `toISOString().slice(0, 10)` would return the UTC day, off by one
@@ -12,6 +13,7 @@ function today(): string {
 }
 
 export default function HabitsHistoryView() {
+  const { t } = useI18n();
   const {
     loading,
     error,
@@ -40,7 +42,11 @@ export default function HabitsHistoryView() {
     try {
       await logOccurrence(item.id, today());
     } catch (err) {
-      await alert({ message: 'Erreur : ' + (err instanceof Error ? err.message : '') });
+      await alert({
+        message: t('habits.errors.generic', {
+          values: { message: err instanceof Error ? err.message : '' },
+        }),
+      });
     }
   }
 
@@ -49,27 +55,35 @@ export default function HabitsHistoryView() {
     try {
       await updateItem(item.id, { ...item.payload, archived: next });
     } catch (err) {
-      await alert({ message: 'Erreur : ' + (err instanceof Error ? err.message : '') });
+      await alert({
+        message: t('habits.errors.generic', {
+          values: { message: err instanceof Error ? err.message : '' },
+        }),
+      });
     }
   }
 
   async function handleDelete(item: HabitItem): Promise<void> {
     const ok = await confirm({
-      message: `Supprimer « ${item.payload.title} » et tous ses logs ?`,
+      message: t('habits.history.deleteConfirm', { values: { title: item.payload.title } }),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await deleteItem(item.id);
     } catch (err) {
-      await alert({ message: 'Erreur : ' + (err instanceof Error ? err.message : '') });
+      await alert({
+        message: t('habits.errors.generic', {
+          values: { message: err instanceof Error ? err.message : '' },
+        }),
+      });
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 py-6">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Mes habitudes</h1>
+        <h1 className="text-2xl font-bold">{t('habits.history.title')}</h1>
         <div className="flex gap-1 rounded border border-slate-200 p-1 text-xs dark:border-slate-700">
           {(['active', 'archived', 'all'] as const).map((s) => (
             <button
@@ -83,22 +97,26 @@ export default function HabitsHistoryView() {
                   : 'hover:bg-slate-100 dark:hover:bg-slate-800')
               }
             >
-              {s === 'active' ? 'Actives' : s === 'archived' ? 'Archivées' : 'Toutes'}
+              {s === 'active'
+                ? t('habits.history.filters.active')
+                : s === 'archived'
+                  ? t('habits.history.filters.archived')
+                  : t('habits.history.filters.all')}
             </button>
           ))}
         </div>
       </header>
 
-      {loading ? <p className="opacity-60">Chargement…</p> : null}
+      {loading ? <p className="opacity-60">{t('common.states.loading')}</p> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       {!loading && visible.length === 0 ? (
         <p className="opacity-60">
           {scope === 'archived'
-            ? "Aucune habitude archivée."
+            ? t('habits.history.empty.archived')
             : scope === 'active'
-              ? "Aucune habitude active pour le moment."
-              : "Aucune habitude enregistrée."}
+              ? t('habits.history.empty.active')
+              : t('habits.history.empty.all')}
         </p>
       ) : null}
 

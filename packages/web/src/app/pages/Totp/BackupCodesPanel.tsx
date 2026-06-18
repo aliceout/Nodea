@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
 import { copyWithExpiry } from '@/lib/clipboard';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
@@ -48,6 +49,7 @@ export default function BackupCodesPanel({
   codes,
   onDone,
 }: BackupCodesPanelProps) {
+  const { t } = useI18n();
   const [acknowledged, setAcknowledged] = useState(false);
 
   function copy(): void {
@@ -74,7 +76,7 @@ export default function BackupCodesPanel({
       <AuthPanelHeader eyebrow={eyebrow} title={title} />
 
       <InlineAlert className="mb-4">
-        <p className="font-semibold">À noter MAINTENANT</p>
+        <p className="font-semibold">{t('auth.totp.backupCodes.noteNow')}</p>
         <p className="mt-1 text-ink-soft">{alertBody}</p>
       </InlineAlert>
 
@@ -97,7 +99,7 @@ export default function BackupCodesPanel({
           onClick={copy}
           className="flex-1"
         >
-          Copier
+          {t('common.actions.copy')}
         </Button>
         <Button
           type="button"
@@ -106,7 +108,7 @@ export default function BackupCodesPanel({
           onClick={download}
           className="flex-1"
         >
-          Télécharger .txt
+          {t('auth.totp.backupCodes.downloadTxt')}
         </Button>
       </div>
 
@@ -128,7 +130,7 @@ export default function BackupCodesPanel({
         disabled={!acknowledged}
         className="mt-2 w-full"
       >
-        Terminé
+        {t('auth.totp.backupCodes.done')}
       </Button>
     </>
   );

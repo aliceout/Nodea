@@ -72,9 +72,7 @@ export default function PasskeyButton({
       } else if (result.fullyUnlocked) {
         navigate('/flow', { replace: true });
       } else {
-        setError(
-          'Cette passkey ne déchiffre pas tes données. Saisis ton mot de passe pour finaliser.',
-        );
+        setError(t('auth.login.passkeyNoDecrypt'));
       }
     } catch (err) {
       if (isWebAuthnCancel(err)) {
@@ -98,11 +96,11 @@ export default function PasskeyButton({
         className="mt-2 w-full gap-2 font-normal"
       >
         {busy ? (
-          'Vérification…'
+          t('common.states.verifying')
         ) : (
           <>
             <FingerPrintIcon className="h-4 w-4" aria-hidden="true" />
-            Se connecter avec une passkey
+            {t('auth.login.passkeyCta')}
           </>
         )}
       </Button>

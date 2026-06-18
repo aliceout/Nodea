@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
 import { isApiError } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -40,11 +41,12 @@ export default function ListView({
   onRegen,
   onDisable,
 }: ListViewProps) {
+  const { t } = useI18n();
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Sécurité"
-        title="Authentification à deux facteurs"
+        eyebrow={t('auth.totp.list.eyebrow')}
+        title={t('auth.totp.list.title')}
       />
 
       {totpEnabled ? (
@@ -59,7 +61,7 @@ export default function ListView({
 
       <div className="mt-4.5 text-center text-[12.5px] text-muted">
         <Link to="/flow" className="cursor-pointer transition-colors hover:text-ink">
-          ← Retour
+          {t('auth.totp.back')}
         </Link>
       </div>
     </>
@@ -73,11 +75,11 @@ interface EnabledViewProps {
 }
 
 function EnabledView({ backupCodesRemaining, onRegen, onDisable }: EnabledViewProps) {
+  const { t, tn } = useI18n();
   return (
     <>
       <p className="mb-4 text-[13.5px] leading-[1.5] text-ink-soft">
-        TOTP activé. Tu auras besoin d’un code à 6 chiffres généré par ton
-        appli d’authentification à chaque connexion.
+        {t('auth.totp.enabled.intro')}
       </p>
 
       <div className="mb-5 rounded-md border border-hair bg-bg-2 px-3 py-2.5 text-[12.5px]">
@@ -85,11 +87,10 @@ function EnabledView({ backupCodesRemaining, onRegen, onDisable }: EnabledViewPr
           <strong className="font-semibold text-ink">
             {backupCodesRemaining}
           </strong>{' '}
-          code{backupCodesRemaining > 1 ? 's' : ''} de secours restant
-          {backupCodesRemaining > 1 ? 's' : ''}.
+          {tn('auth.totp.enabled.codesRemaining', backupCodesRemaining)}
           {backupCodesRemaining === 0 ? (
             <span className="block mt-1 text-danger">
-              Plus aucun code disponible. Régénère-les maintenant.
+              {t('auth.totp.enabled.noneLeft')}
             </span>
           ) : null}
         </p>
@@ -102,7 +103,7 @@ function EnabledView({ backupCodesRemaining, onRegen, onDisable }: EnabledViewPr
         onClick={onRegen}
         className="mb-2 w-full"
       >
-        Régénérer les codes de secours
+        {t('auth.totp.enabled.regenerateCta')}
       </Button>
       <Button
         type="button"
@@ -111,7 +112,7 @@ function EnabledView({ backupCodesRemaining, onRegen, onDisable }: EnabledViewPr
         onClick={onDisable}
         className="w-full"
       >
-        Désactiver TOTP
+        {t('auth.totp.enabled.disableCta')}
       </Button>
     </>
   );
@@ -122,6 +123,7 @@ interface DisabledActivateViewProps {
 }
 
 function DisabledActivateView({ onActivate }: DisabledActivateViewProps) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +132,7 @@ function DisabledActivateView({ onActivate }: DisabledActivateViewProps) {
     e.preventDefault();
     setError(null);
     if (!password) {
-      setError('Mot de passe requis.');
+      setError(t('auth.totp.errors.passwordRequired'));
       return;
     }
     setSubmitting(true);
@@ -139,15 +141,15 @@ function DisabledActivateView({ onActivate }: DisabledActivateViewProps) {
       setPassword('');
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.totp.errors.wrongPassword'));
       } else if (
         typeof err === 'object' &&
         err !== null &&
         (err as { status?: number }).status === 401
       ) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.totp.errors.wrongPassword'));
       } else {
-        setError('Erreur. Réessaie.');
+        setError(t('auth.totp.errors.generic'));
         if (import.meta.env.DEV) console.warn('totp activate failed', err);
       }
     } finally {
@@ -158,13 +160,12 @@ function DisabledActivateView({ onActivate }: DisabledActivateViewProps) {
   return (
     <>
       <p className="mb-6 text-[13.5px] leading-[1.5] text-ink-soft">
-        Aucun TOTP configuré. Tape ton mot de passe pour générer la clé et
-        commencer l’activation.
+        {t('auth.totp.disabledActivate.intro')}
       </p>
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="Mot de passe actuel"
+          label={t('auth.totp.passwordLabel')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -181,7 +182,7 @@ function DisabledActivateView({ onActivate }: DisabledActivateViewProps) {
           disabled={submitting || !password}
           className="mt-2 w-full"
         >
-          {submitting ? '…' : 'Activer TOTP'}
+          {submitting ? '…' : t('auth.totp.disabledActivate.cta')}
         </Button>
       </form>
     </>

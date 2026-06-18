@@ -57,8 +57,8 @@ type BackupForm = z.infer<typeof BackupFormSchema>;
 type Stage = { kind: 'reauth' } | { kind: 'passphrase' } | { kind: 'done'; failed: string[] };
 
 export default function BackupExportPage() {
-  useDocumentTitle('Sauvegarde chiffrée');
   const { t } = useI18n();
+  useDocumentTitle(t('auth.backup.documentTitle'));
   const navigate = useNavigate();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
@@ -170,19 +170,17 @@ export default function BackupExportPage() {
 
   return (
     <AuthLayout
-      headline="Une sauvegarde qui survit au compte."
+      headline={t('auth.backup.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            La sauvegarde chiffrée est un fichier <code>.age</code> portable, protégé
-            par une phrase secrète que tu choisis — indépendant de ton compte,
-            réimportable ailleurs.
+            {t('auth.backup.marketing1Before')}
+            <code>.age</code>
+            {t('auth.backup.marketing1After')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            D’abord ton mot de passe (c’est bien toi), puis la phrase secrète qui
-            chiffre la sauvegarde. Cette phrase n’a rien à voir avec ton mot de
-            passe : c’est ce qui rend le fichier indépendant.
+            {t('auth.backup.marketing2')}
           </p>
         </>
       }
@@ -190,16 +188,16 @@ export default function BackupExportPage() {
       {stage.kind === 'reauth' ? (
         <>
           <AuthPanelHeader
-            eyebrow="Données"
-            title="Sauvegarde chiffrée"
-            subtitle="Tape ton mot de passe pour continuer."
+            eyebrow={t('auth.backup.eyebrow')}
+            title={t('auth.backup.panelTitle')}
+            subtitle={t('auth.backup.subtitle')}
           />
           <PasswordReauthForm
             size="lg"
             canConfirm={mainKey != null}
-            passwordLabel="Mot de passe actuel"
-            confirmLabel="Continuer"
-            submittingLabel="…"
+            passwordLabel={t('auth.backup.passwordLabel')}
+            confirmLabel={t('auth.backup.confirmCta')}
+            submittingLabel={t('auth.backup.reauthLoading')}
             submitting={reauthSubmitting}
             error={reauthError ?? undefined}
             onConfirm={onReauth}
@@ -210,7 +208,7 @@ export default function BackupExportPage() {
       {stage.kind === 'passphrase' ? (
         <>
           <AuthPanelHeader
-            eyebrow="Données"
+            eyebrow={t('auth.backup.eyebrow')}
             title={t('account.data.backup.title')}
             subtitle={t('account.data.backup.description')}
           />
@@ -257,7 +255,7 @@ export default function BackupExportPage() {
           </InlineAlert>
         ) : (
           <div role="status">
-            <AuthPanelHeader eyebrow="Données" title={t('account.data.backup.success')} />
+            <AuthPanelHeader eyebrow={t('auth.backup.eyebrow')} title={t('account.data.backup.success')} />
           </div>
         )
       ) : null}
@@ -268,7 +266,7 @@ export default function BackupExportPage() {
           onClick={back}
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour
+          {t('auth.backup.back')}
         </button>
       </div>
     </AuthLayout>

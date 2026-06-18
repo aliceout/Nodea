@@ -1,5 +1,7 @@
 import type { useSession } from '@/core/auth/use-session';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 import BackupCodesPanel from './BackupCodesPanel';
 import SecretPanel from './SecretPanel';
 import type { Stage } from './types';
@@ -22,6 +24,7 @@ export default function SetupFlow({
   onCancel,
   onDone,
 }: SetupFlowProps) {
+  const { t } = useI18n();
   if (stage.sub === 'secret') {
     const data = stage.data;
     return (
@@ -37,16 +40,10 @@ export default function SetupFlow({
   if (stage.sub === 'codes') {
     return (
       <BackupCodesPanel
-        eyebrow="Activation TOTP · 2/2"
-        title="Codes de secours"
-        alertBody={
-          <>
-            TOTP est activé. Ces 10 codes te dépanneront si tu perds l’accès à
-            ton appli d’authentification. Single-use, ne te seront jamais
-            re-affichés.
-          </>
-        }
-        ackLabel="J’ai noté les 10 codes dans un endroit sûr."
+        eyebrow={t('auth.totp.setup.codes.eyebrow')}
+        title={t('auth.totp.setup.codes.title')}
+        alertBody={t('auth.totp.setup.codes.alertBody')}
+        ackLabel={t('auth.totp.setup.codes.ackLabel')}
         codes={stage.data.backupCodes}
         onDone={onDone}
       />

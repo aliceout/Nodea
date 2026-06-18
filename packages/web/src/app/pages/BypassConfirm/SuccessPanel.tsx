@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
 /**
@@ -23,35 +24,45 @@ export default function SuccessPanel({
   earliestApplyAt: Date;
   alreadyConfirmed: boolean;
 }) {
-  const factorLabel = factor === 'totp' ? 'TOTP' : 'passkey';
+  const { t } = useI18n();
+  const factorLabel =
+    factor === 'totp'
+      ? t('auth.bypass.success.factorTotp')
+      : t('auth.bypass.success.factorPasskey');
   const sideEffect =
     factor === 'totp'
-      ? 'Ton TOTP sera désactivé et tes codes de secours invalidés.'
-      : 'Toutes tes passkeys seront supprimées — tu pourras en réenrôler après.';
+      ? t('auth.bypass.success.sideEffectTotp')
+      : t('auth.bypass.success.sideEffectPasskey');
 
   return (
     <div>
       <AuthPanelHeader
-        eyebrow={<>Récupération {factorLabel}</>}
-        title={alreadyConfirmed ? 'Demande déjà confirmée' : 'Demande validée'}
+        eyebrow={t('auth.bypass.success.eyebrow', { values: { factor: factorLabel } })}
+        title={
+          alreadyConfirmed
+            ? t('auth.bypass.success.titleAlreadyConfirmed')
+            : t('auth.bypass.success.title')
+        }
         subtitle={
           alreadyConfirmed
-            ? `Tu avais déjà cliqué le lien — le compteur 7 jours tourne déjà depuis. Tu pourras te reconnecter sans ${factorLabel} dès que le compteur atteint zéro.`
-            : `Tu pourras te reconnecter sans ${factorLabel} dans 7 jours. ${sideEffect}`
+            ? t('auth.bypass.success.subtitleAlreadyConfirmed', {
+                values: { factor: factorLabel },
+              })
+            : t('auth.bypass.success.subtitle', {
+                values: { factor: factorLabel, sideEffect },
+              })
         }
       />
 
       <Countdown target={earliestApplyAt} />
 
       <p className="mt-6 text-[12.5px] leading-[1.5] text-muted">
-        Si ce n’est pas toi qui as déclenché cette demande, ferme cet onglet et{' '}
-        <strong>reconnecte-toi normalement à Nodea</strong>. Une connexion
-        réussie annule automatiquement le bypass, personne ne pourra contourner
-        ton {factorLabel}.
+        {t('auth.bypass.success.warningNotYouBefore')}{' '}
+        <strong>{t('auth.bypass.success.warningNotYouStrong')}</strong>
+        {t('auth.bypass.success.warningNotYouAfter', { values: { factor: factorLabel } })}
       </p>
       <p className="mt-3 text-[12.5px] leading-[1.5] text-muted">
-        Si tu suspectes que ton compte est compromis, change ton mot de passe
-        depuis Compte → Sécurité.
+        {t('auth.bypass.success.warningCompromised')}
       </p>
 
       <div className="mt-6 text-center text-[12.5px] text-muted">
@@ -59,7 +70,7 @@ export default function SuccessPanel({
           to="/login"
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour à la connexion
+          {t('auth.bypass.success.backToLogin')}
         </Link>
       </div>
     </div>
@@ -79,6 +90,7 @@ export default function SuccessPanel({
  * because `SuccessPanel` is the only consumer.
  */
 function Countdown({ target }: { target: Date }) {
+  const { t, language } = useI18n();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -93,11 +105,10 @@ function Countdown({ target }: { target: Date }) {
     return (
       <div className="rounded-md border border-accent bg-accent/5 px-4 py-4 text-center">
         <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-accent-deep">
-          Délai écoulé
+          {t('auth.bypass.countdown.expiredLabel')}
         </p>
         <p className="text-[14px] text-ink-soft">
-          Tu peux te reconnecter dès maintenant — le bypass s’appliquera au
-          prochain login.
+          {t('auth.bypass.countdown.expiredBody')}
         </p>
       </div>
     );
@@ -107,7 +118,7 @@ function Countdown({ target }: { target: Date }) {
   const days = Math.floor(totalMinutes / (60 * 24));
   const hours = Math.floor((totalMinutes - days * 60 * 24) / 60);
   const minutes = totalMinutes % 60;
-  const targetText = target.toLocaleString('fr-FR', {
+  const targetText = target.toLocaleString(language === 'en' ? 'en-US' : 'fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -118,21 +129,23 @@ function Countdown({ target }: { target: Date }) {
   return (
     <div className="rounded-md border border-hair bg-bg-soft px-4 py-4 text-center">
       <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-muted">
-        Reconnexion possible dans
+        {t('auth.bypass.countdown.remainingLabel')}
       </p>
       <p className="font-mono text-[28px] font-semibold tracking-[0.02em] text-ink tabular-nums">
         {days > 0 ? (
           <>
             {days}
-            <span className="px-1 text-muted">j</span>
+            <span className="px-1 text-muted">{t('auth.bypass.countdown.unitDays')}</span>
           </>
         ) : null}
         {String(hours).padStart(2, '0')}
-        <span className="px-1 text-muted">h</span>
+        <span className="px-1 text-muted">{t('auth.bypass.countdown.unitHours')}</span>
         {String(minutes).padStart(2, '0')}
-        <span className="pl-1 text-muted">min</span>
+        <span className="pl-1 text-muted">{t('auth.bypass.countdown.unitMinutes')}</span>
       </p>
-      <p className="mt-2 text-[12px] text-muted">le {targetText}</p>
+      <p className="mt-2 text-[12px] text-muted">
+        {t('auth.bypass.countdown.targetPrefix', { values: { date: targetText } })}
+      </p>
     </div>
   );
 }

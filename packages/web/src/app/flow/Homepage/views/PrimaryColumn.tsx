@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import AnnouncementsCard from '../components/AnnouncementsCard';
@@ -26,6 +27,7 @@ import { useHomepageData } from '../context';
  *     goals).
  */
 export default function PrimaryColumn() {
+  const { t } = useI18n();
   const { displayName } = useHomepageData();
 
   return (
@@ -33,7 +35,9 @@ export default function PrimaryColumn() {
       {/* Smaller on mobile — the 30px desktop size dominates a phone
           screen. */}
       <PageHeading className="mb-6 text-[22px] lg:text-[30px]">
-        {displayName ? `Bonjour, ${displayName}.` : 'Bonjour.'}
+        {displayName
+          ? t('home.greeting.named', { values: { name: displayName } })
+          : t('home.greeting.anonymous')}
       </PageHeading>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

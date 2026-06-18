@@ -12,7 +12,10 @@
       "title": "Codes d'invitation",
       "description": "Crée et partage des codes pour inviter des membres."
     },
-    "restricted": "Accès réservé aux administrateurs."
+    "restricted": "Accès réservé aux administrateurs.",
+    "sources": {
+      "description": "Sources de métadonnées externes utilisées par les modules. Vérifie que chaque source répond et que les clés API sont actives."
+    }
   },
   "states": {
     "loading": "Chargement...",
@@ -51,5 +54,67 @@
     "deleteAria": "Supprimer l’utilisateur·ice",
     "deleteTitle": "Supprimer l’utilisateur·ice",
     "confirmDelete": "Supprimer le compte « {label} » ?\n\nLe compte, ses sessions et toutes ses données chiffrées seront supprimés (cascade FK)."
+  },
+  "topbarLabel": "Paramètres · Administration",
+  "heading": "Administration",
+  "tabs": {
+    "users": "Utilisateur·ice·s",
+    "invites": "Invitations",
+    "announcements": "Annonces",
+    "sources": "Sources"
+  },
+  "errors": {
+    "loadFailed": "Erreur chargement",
+    "deleteUserFailed": "Erreur suppression : {reason}"
+  },
+  "invites": {
+    "feedback": {
+      "sent": "Invitation envoyée à {email}.",
+      "alreadyAccount": "{email} a déjà un compte.",
+      "emailSendFailed": "L'envoi de l'e-mail a échoué — vérifie la config SMTP.",
+      "sendFailed": "Échec de l'invitation.",
+      "resent": "Lien renvoyé à {email}.",
+      "resendFailed": "Échec du renvoi.",
+      "revoked": "Invitation révoquée.",
+      "revokeFailed": "Échec de la révocation.",
+      "updateFailed": "Échec de la mise à jour."
+    },
+    "openRegistration": {
+      "heading": "Inscription ouverte (sans invitation)",
+      "description": "Quand actif, n'importe qui peut créer un compte sans invitation (parcours d'activation par e-mail). Sinon (par défaut), l'inscription exige un lien envoyé par un·e admin.",
+      "toggleAria": "Autoriser les inscriptions ouvertes (sans invitation)"
+    },
+    "emailToInvite": {
+      "heading": "E-mail à inviter",
+      "submit": "Envoyer l'invitation",
+      "inputAria": "E-mail à inviter",
+      "placeholder": "ami@example.com"
+    },
+    "pending": {
+      "heading": "Invitations en attente",
+      "empty": "Aucune invitation en attente.",
+      "columns": {
+        "sent": "Envoyée",
+        "expires": "Expire"
+      },
+      "resendAria": "Renvoyer l'invitation",
+      "revokeAria": "Révoquer cette invitation"
+    }
+  },
+  "sources": {
+    "unknownError": "Erreur inconnue.",
+    "lastChecked": "Dernière vérification : {time}",
+    "awaitingFirstCheck": "En attente de la première vérification…",
+    "retest": "Re-tester",
+    "responseMs": "{ms} ms",
+    "moduleLabels": {
+      "library": "Library"
+    },
+    "status": {
+      "keyRequired": "Clé requise",
+      "notConfigured": "Non configurée",
+      "offline": "Hors ligne",
+      "online": "En ligne"
+    }
   }
 }

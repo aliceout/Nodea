@@ -1,5 +1,6 @@
 import { FingerPrintIcon, KeyIcon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
@@ -29,17 +30,14 @@ export default function FactorPicker({
   onPickPasskey,
   onRestartLogin,
 }: FactorPickerProps) {
+  const { t } = useI18n();
+
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Vérification 2FA"
-        title="Choisis ton 2ᵉ facteur"
-        subtitle={
-          <>
-            Ton mode de sécurité accepte deux options. Prends celle
-            qui est sous la main — les deux finalisent la connexion.
-          </>
-        }
+        eyebrow={t('auth.mfa.eyebrow')}
+        title={t('auth.mfa.picker.title')}
+        subtitle={<>{t('auth.mfa.picker.subtitle')}</>}
       />
 
       <Button
@@ -49,7 +47,7 @@ export default function FactorPicker({
         className="mt-2 w-full gap-2"
       >
         <KeyIcon className="h-4 w-4" aria-hidden="true" />
-        Saisir mon code TOTP
+        {t('auth.mfa.picker.pickTotp')}
       </Button>
 
       <Button
@@ -59,7 +57,7 @@ export default function FactorPicker({
         className="mt-3 w-full gap-2"
       >
         <FingerPrintIcon className="h-4 w-4" aria-hidden="true" />
-        Confirmer avec ma passkey
+        {t('auth.mfa.picker.pickPasskey')}
       </Button>
 
       <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -68,7 +66,7 @@ export default function FactorPicker({
           onClick={onRestartLogin}
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Recommencer la connexion
+          {t('auth.mfa.restartLogin')}
         </button>
       </div>
     </>

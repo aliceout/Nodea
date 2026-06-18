@@ -16,6 +16,7 @@ import { useId } from 'react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { fr } from 'date-fns/locale/fr';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Input from './Input';
 
 registerLocale('fr', fr);
@@ -66,6 +67,7 @@ export default function DateField({
   ariaLabel,
   ariaInvalid = false,
 }: DateFieldProps) {
+  const { t } = useI18n();
   const reactId = useId();
   const minD = min ? isoToDate(min) : null;
   const maxD = max ? isoToDate(max) : null;
@@ -77,7 +79,7 @@ export default function DateField({
       onChange={(d) => onChange(d ? dateToIso(d) : '')}
       dateFormat="dd/MM/yyyy"
       locale="fr"
-      placeholderText="jj/mm/aaaa"
+      placeholderText={t('layout.dateField.placeholder')}
       disabled={disabled}
       {...(inline ? { wrapperClassName: 'dp-inline' } : {})}
       {...(minD ? { minDate: minD } : {})}

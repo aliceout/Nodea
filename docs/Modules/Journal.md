@@ -7,10 +7,12 @@ running notes, personal journals, or structured tracking along
 thematic threads.
 
 - One entry = a dated text with an optional title and Markdown
-  content.
-- Grouping by **thread** (free string like `#travel`, `#therapy`,
-  `#project-X`) — autocomplete over existing threads via
-  `ThreadSuggestInput`.
+  content. The entry date is user-pickable in the composer
+  (defaults to today) via the shared `DateField`.
+- Two grouping views, toggled in the side column: **by month**
+  (the default — date headers like « Mars 2026 ») and **by
+  thread** (free string like `#travel`, `#therapy`, `#project-X`,
+  autocomplete over existing threads via `ThreadSuggestInput`).
 - Inline attachments: 0 to 3 photos per entry, base64-encoded in the
   encrypted payload.
 

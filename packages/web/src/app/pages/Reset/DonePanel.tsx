@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 /** Confirmation screen after a successful reset. The server has
  *  purged the old encrypted data, the new credentials are in
  *  place, the only path forward is `/login` with the new
@@ -7,6 +9,7 @@ import { Link } from 'react-router-dom';
  *  session was never authenticated to begin with, the user
  *  arrived at `/reset` from an email link). */
 export default function DonePanel() {
+  const { t } = useI18n();
   return (
     <>
       <div
@@ -16,17 +19,16 @@ export default function DonePanel() {
         ✓
       </div>
       <h2 className="mb-2 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Mot de passe réinitialisé.
+        {t('auth.reset.done.title')}
       </h2>
       <p className="mb-6 text-[14px] text-ink-soft">
-        Tu peux te reconnecter avec ton nouveau mot de passe. Le compte a été remis à
-        zéro — les entrées précédentes ont été supprimées.
+        {t('auth.reset.done.body')}
       </p>
       <Link
         to="/login"
         className="inline-block rounded-md bg-accent px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
       >
-        Se connecter
+        {t('auth.reset.done.loginCta')}
       </Link>
     </>
   );

@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -31,25 +32,26 @@ export default function FormPanel({
   submitting,
   onSubmit,
 }: FormPanelProps) {
+  const { t } = useI18n();
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Sécurité"
+        eyebrow={t('auth.recoveryCode.eyebrow')}
         title={
           isRegenerate
-            ? 'Régénérer le code de récupération'
-            : 'Configurer un code de récupération'
+            ? t('auth.recoveryCode.form.titleRegenerate')
+            : t('auth.recoveryCode.form.titleSetup')
         }
         subtitle={
           isRegenerate
-            ? 'Génère un nouveau code de 12 mots. L’ancien sera invalidé immédiatement — assure-toi de pouvoir noter le nouveau avant de continuer.'
-            : 'On va générer 12 mots à noter. Tape ton mot de passe pour autoriser la génération.'
+            ? t('auth.recoveryCode.form.subtitleRegenerate')
+            : t('auth.recoveryCode.form.subtitleSetup')
         }
       />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="Mot de passe actuel"
+          label={t('auth.recoveryCode.form.passwordLabel')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -66,7 +68,11 @@ export default function FormPanel({
           disabled={submitting || !password}
           className="mt-2 w-full"
         >
-          {submitting ? 'Génération…' : isRegenerate ? 'Régénérer' : 'Générer mes 12 mots'}
+          {submitting
+            ? t('auth.recoveryCode.form.submitting')
+            : isRegenerate
+              ? t('auth.recoveryCode.form.submitRegenerate')
+              : t('auth.recoveryCode.form.submitSetup')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -74,7 +80,7 @@ export default function FormPanel({
             to="/flow"
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Retour
+            {t('auth.recoveryCode.form.back')}
           </Link>
         </div>
       </form>

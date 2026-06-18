@@ -4,6 +4,7 @@ import { ClipboardIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outlin
 
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { copyWithExpiry } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
@@ -48,6 +49,7 @@ export default function SecretPanel({
   onCancel,
   onActivated,
 }: SecretPanelProps) {
+  const { t } = useI18n();
   const [qrSvg, setQrSvg] = useState<string | null>(null);
   const [secretRevealed, setSecretRevealed] = useState(false);
   const [secretCopied, setSecretCopied] = useState(false);
@@ -99,7 +101,7 @@ export default function SecretPanel({
     e.preventDefault();
     setError(null);
     if (code.length !== 6 || !/^\d{6}$/.test(code)) {
-      setError('Tape les 6 chiffres affichés par ton appli.');
+      setError(t('auth.totp.secret.errors.invalidFormat'));
       return;
     }
     setSubmitting(true);
@@ -108,11 +110,11 @@ export default function SecretPanel({
       onActivated();
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
-        setError('Code incorrect. Réessaie avec celui en cours.');
+        setError(t('auth.totp.secret.errors.wrongCode'));
       } else if (isApiError(err) && err.status === 400) {
-        setError('Aucune activation en cours. Recommence depuis le début.');
+        setError(t('auth.totp.secret.errors.noEnrollment'));
       } else {
-        setError('Erreur. Réessaie.');
+        setError(t('auth.totp.errors.generic'));
         if (import.meta.env.DEV) console.warn('totp verify failed', err);
       }
     } finally {
@@ -123,14 +125,9 @@ export default function SecretPanel({
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Activation TOTP · 1/2"
-        title="Scanne le QR code"
-        subtitle={
-          <>
-            Ouvre ton appli d’authentification et ajoute ce compte. Si tu ne peux
-            pas scanner, dévoile la clé et tape-la manuellement.
-          </>
-        }
+        eyebrow={t('auth.totp.secret.eyebrow')}
+        title={t('auth.totp.secret.title')}
+        subtitle={t('auth.totp.secret.subtitle')}
       />
 
       {qrSvg ? (
@@ -140,14 +137,14 @@ export default function SecretPanel({
         />
       ) : (
         <div className="mx-auto mb-4 flex h-[180px] w-[180px] items-center justify-center rounded-md border border-hair bg-bg-2 text-[12px] text-muted">
-          Génération…
+          {t('auth.totp.secret.generating')}
         </div>
       )}
 
       <div className="mb-5 rounded-md border border-hair bg-bg-2 px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[11px] uppercase tracking-[0.04em] text-muted">
-            Clé secrète (saisie manuelle)
+            {t('auth.totp.secret.manualKeyLabel')}
           </p>
           <div className="flex items-center gap-1">
             <Button
@@ -156,8 +153,8 @@ export default function SecretPanel({
               size="xs"
               iconOnly
               onClick={() => void copySecret()}
-              aria-label={secretCopied ? 'Copié' : 'Copier la clé'}
-              title={secretCopied ? 'Copié' : 'Copier'}
+              aria-label={secretCopied ? t('common.states.copied') : t('auth.totp.secret.copyKeyAria')}
+              title={secretCopied ? t('common.states.copied') : t('common.actions.copy')}
               className={cn(secretCopied ? 'text-accent-deep' : 'text-muted')}
             >
               <ClipboardIcon className="h-4 w-4" aria-hidden="true" />
@@ -168,7 +165,7 @@ export default function SecretPanel({
               size="xs"
               iconOnly
               onClick={() => setSecretRevealed((v) => !v)}
-              aria-label={secretRevealed ? 'Masquer la clé' : 'Afficher la clé'}
+              aria-label={secretRevealed ? t('auth.totp.secret.hideKeyAria') : t('auth.totp.secret.showKeyAria')}
               aria-pressed={secretRevealed}
             >
               {secretRevealed ? (
@@ -189,7 +186,7 @@ export default function SecretPanel({
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="Code à 6 chiffres de ton appli"
+          label={t('auth.totp.secret.codeLabel')}
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
@@ -207,7 +204,7 @@ export default function SecretPanel({
           disabled={submitting || code.length !== 6}
           className="mt-2 w-full"
         >
-          {submitting ? 'Activation…' : 'Activer'}
+          {submitting ? t('common.states.enabling') : t('common.actions.enable')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -216,7 +213,7 @@ export default function SecretPanel({
             onClick={onCancel}
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Annuler
+            {t('auth.totp.cancel')}
           </button>
         </div>
       </form>

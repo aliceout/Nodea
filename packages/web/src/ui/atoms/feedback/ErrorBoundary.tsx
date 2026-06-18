@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 export interface ErrorBoundaryProps {
@@ -57,15 +58,39 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     if (!error) return this.props.children;
     if (this.props.fallback) return this.props.fallback(error, this.reset);
     return (
-      <div role="alert" className="p-6 text-center">
-        <p className="mb-2 font-medium">
-          Une erreur est survenue{this.props.scope ? ` dans ${this.props.scope}` : ''}.
-        </p>
-        <p className="mb-4 text-sm opacity-80">{error.message}</p>
-        <Button variant="primary" size="md" onClick={this.reset}>
-          Réessayer
-        </Button>
-      </div>
+      <DefaultErrorFallback
+        error={error}
+        reset={this.reset}
+        {...(this.props.scope ? { scope: this.props.scope } : {})}
+      />
     );
   }
+}
+
+interface DefaultErrorFallbackProps {
+  error: Error;
+  reset: () => void;
+  scope?: string;
+}
+
+/**
+ * Default fallback UI, split out as a function component so it can read
+ * the active locale via `useI18n` — the class boundary itself can't use
+ * hooks, but its render delegates here.
+ */
+function DefaultErrorFallback({ error, reset, scope }: DefaultErrorFallbackProps) {
+  const { t } = useI18n();
+  return (
+    <div role="alert" className="p-6 text-center">
+      <p className="mb-2 font-medium">
+        {scope
+          ? t('layout.errorBoundary.titleScoped', { values: { scope } })
+          : t('layout.errorBoundary.title')}
+      </p>
+      <p className="mb-4 text-sm opacity-80">{error.message}</p>
+      <Button variant="primary" size="md" onClick={reset}>
+        {t('common.actions.retry')}
+      </Button>
+    </div>
+  );
 }

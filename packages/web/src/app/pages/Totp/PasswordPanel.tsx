@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
 import { isApiError } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -34,6 +35,7 @@ export default function PasswordPanel({
   onSubmit,
   onCancel,
 }: PasswordPanelProps) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function PasswordPanel({
     e.preventDefault();
     setError(null);
     if (!password) {
-      setError('Mot de passe requis.');
+      setError(t('auth.totp.errors.passwordRequired'));
       return;
     }
     setSubmitting(true);
@@ -51,15 +53,15 @@ export default function PasswordPanel({
       setPassword('');
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.totp.errors.wrongPassword'));
       } else if (
         typeof err === 'object' &&
         err !== null &&
         (err as { status?: number }).status === 401
       ) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.totp.errors.wrongPassword'));
       } else {
-        setError('Erreur. Réessaie.');
+        setError(t('auth.totp.errors.generic'));
         if (import.meta.env.DEV) console.warn('totp password panel failed', err);
       }
     } finally {
@@ -69,11 +71,11 @@ export default function PasswordPanel({
 
   return (
     <>
-      <AuthPanelHeader eyebrow="Sécurité" title={title} subtitle={body} />
+      <AuthPanelHeader eyebrow={t('auth.totp.list.eyebrow')} title={title} subtitle={body} />
 
       <form onSubmit={handle} noValidate>
         <Field
-          label="Mot de passe actuel"
+          label={t('auth.totp.passwordLabel')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -99,7 +101,7 @@ export default function PasswordPanel({
             onClick={onCancel}
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Annuler
+            {t('auth.totp.cancel')}
           </button>
         </div>
       </form>

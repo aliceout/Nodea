@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { apiMfaBypassConfirm } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
@@ -44,7 +45,8 @@ type Status =
   | { state: 'error'; reason: ErrorReason };
 
 export default function BypassConfirmPage() {
-  useDocumentTitle('Confirmation MFA');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.bypass.docTitle'));
   const [params] = useSearchParams();
   const [status, setStatus] = useState<Status>({ state: 'pending' });
   const calledRef = useRef(false);
@@ -80,23 +82,18 @@ export default function BypassConfirmPage() {
 
   return (
     <AuthLayout
-      headline="Récupération MFA."
+      headline={t('auth.bypass.headline')}
       maxWidth="400"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Quelqu’un a demandé à se connecter sans un de tes facteurs 2FA
-            (TOTP ou passkey). Toi, on espère.
+            {t('auth.bypass.marketing.p1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Une fois confirmé, le compteur 7 jours démarre. Cette latence te
-            laisse le temps de réagir si ce n’est pas toi qui as déclenché la
-            demande — il suffit de te reconnecter normalement à Nodea pour que
-            la demande soit annulée.
+            {t('auth.bypass.marketing.p2')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Au prochain login après le délai, le facteur sera retiré et tu
-            pourras te reconnecter.
+            {t('auth.bypass.marketing.p3')}
           </p>
         </>
       }

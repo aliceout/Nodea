@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
@@ -38,16 +39,16 @@ type Stage =
   | { kind: 'sent'; email: string };
 
 export default function RequestResetPage() {
-  useDocumentTitle('Demander une réinitialisation');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.requestReset.documentTitle'));
   const [stage, setStage] = useState<Stage>({ kind: 'fork' });
 
   return (
     <AuthLayout
-      headline="Récupère l’accès."
+      headline={t('auth.requestReset.marketing.headline')}
       marketing={
         <p className="text-[18px] leading-[1.5] text-ink-soft">
-          Le mot de passe est aussi la clé qui chiffre tes entrées. Le
-          réinitialiser efface les données existantes.
+          {t('auth.requestReset.marketing.body')}
         </p>
       }
     >

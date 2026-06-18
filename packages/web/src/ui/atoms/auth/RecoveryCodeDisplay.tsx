@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { copyWithExpiry } from '@/lib/clipboard';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -60,6 +61,7 @@ export default function RecoveryCodeDisplay({
   doneLabel,
   onDone,
 }: RecoveryCodeDisplayProps) {
+  const { t } = useI18n();
   const rows = splitMnemonicForDisplay(mnemonic);
 
   async function copyToClipboard(): Promise<void> {
@@ -96,11 +98,9 @@ export default function RecoveryCodeDisplay({
       />
 
       <InlineAlert className="mb-4">
-        <p className="font-semibold">À noter MAINTENANT</p>
+        <p className="font-semibold">{t('auth.recoveryDisplay.warningTitle')}</p>
         <p className="mt-1 text-ink-soft">
-          Ces 12 mots ne te seront jamais re-affichés. Recopie-les sur papier ou
-          dans un gestionnaire de mots de passe — sans eux, oublier ton mot de
-          passe = perte de toutes tes données.
+          {t('auth.recoveryDisplay.warningBody')}
         </p>
       </InlineAlert>
 
@@ -123,7 +123,7 @@ export default function RecoveryCodeDisplay({
           onClick={copyToClipboard}
           className="flex-1"
         >
-          Copier
+          {t('common.actions.copy')}
         </Button>
         <Button
           type="button"
@@ -132,7 +132,7 @@ export default function RecoveryCodeDisplay({
           onClick={downloadAsTxt}
           className="flex-1"
         >
-          Télécharger .txt
+          {t('auth.recoveryDisplay.downloadTxt')}
         </Button>
       </div>
 
@@ -143,7 +143,7 @@ export default function RecoveryCodeDisplay({
           onChange={(e) => setAcknowledged(e.target.checked)}
           className="mt-0.5 h-4 w-4 cursor-pointer rounded-[var(--radius-input)] border border-hair accent-accent"
         />
-        <span>J’ai noté ces 12 mots et je les ai mis dans un endroit sûr.</span>
+        <span>{t('auth.recoveryDisplay.ackLabel')}</span>
       </label>
 
       <Button

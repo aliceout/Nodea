@@ -2,7 +2,9 @@
   "greeting": {
     "morning": "Bonjour",
     "afternoon": "Bon après-midi",
-    "evening": "Bonsoir"
+    "evening": "Bonsoir",
+    "named": "Bonjour, {name}.",
+    "anonymous": "Bonjour."
   },
   "tips": {
     "recovery": {
@@ -41,11 +43,16 @@
     "loading": "Chargement des nouveautés…"
   },
   "announcements": {
-    "title": "Annonces"
+    "title": "Annonces",
+    "dismiss": "Masquer",
+    "dismissAria": "Masquer cette annonce"
   },
   "mood": {
     "quickView": "Aperçu rapide",
-    "recentAverage": "Moyenne ({count} dernières entrées)"
+    "recentAverage": "Moyenne ({count} dernières entrées)",
+    "eyebrow": "MOOD · {months} MOIS",
+    "average": "moyenne {avg}",
+    "empty": "aucune entrée"
   },
   "sections": {
     "actions": {
@@ -57,5 +64,27 @@
       "description": "Active de nouveaux espaces pour enrichir ton accompagnement.",
       "cta": "Ouvrir les paramètres"
     }
+  },
+  "viewAll": "tout voir",
+  "journal": {
+    "eyebrow": "JOURNAL · {months} MOIS",
+    "daysWritten": {
+      "one": "{count} jour",
+      "other": "{count} jours"
+    }
+  },
+  "goals": {
+    "eyebrow": "GOALS · {count} EN COURS",
+    "empty": "Aucun goal en cours.",
+    "status": {
+      "open": "ouvert",
+      "wip": "en cours",
+      "done": "terminé"
+    }
+  },
+  "habits": {
+    "title": "Habits",
+    "thisMonth": "{percent} % ce mois",
+    "delta": "{delta} % vs {month}"
   }
 }

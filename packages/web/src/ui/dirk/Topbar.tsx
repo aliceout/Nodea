@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
@@ -41,6 +42,7 @@ interface TopbarProps {
 }
 
 export default function Topbar({ label, onOpenMenu, children }: TopbarProps) {
+  const { t } = useI18n();
   return (
     <div className="sticky top-0 z-20 flex h-[52px] items-center gap-2 border-b border-hair bg-bg px-6 sm:px-9">
       {/* Brand mark on the left, mobile-only — desktop carries the
@@ -57,7 +59,7 @@ export default function Topbar({ label, onOpenMenu, children }: TopbarProps) {
           size="md"
           iconOnly
           onClick={onOpenMenu}
-          aria-label="Ouvrir le menu"
+          aria-label={t('layout.header.openMenu')}
           className="text-ink-soft lg:hidden"
         >
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />

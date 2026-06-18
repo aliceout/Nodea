@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
@@ -69,6 +70,7 @@ interface LoginMfaLocationState {
 
 export default function LoginMfaPage() {
   useDocumentTitle('Vérification 2FA');
+  const { t } = useI18n();
   const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -122,14 +124,14 @@ export default function LoginMfaPage() {
         // `maximum`. Only path forward is the destructive reset.
         navigate('/request-reset', { replace: true });
       } else if (isApiError(err) && err.status === 409 && err.error === 'bypass_already_active') {
-        setError('Une demande de récupération est déjà en cours.');
+        setError(t('auth.mfa.errors.bypassAlreadyActive'));
         setLost({ kind: 'idle' });
       } else if (isApiError(err) && err.status === 401) {
-        setError('Session expirée. Reconnecte-toi.');
+        setError(t('auth.mfa.errors.sessionExpired'));
         window.setTimeout(() => navigate('/login', { replace: true }), 1500);
         setLost({ kind: 'idle' });
       } else {
-        setError('Erreur. Réessaie.');
+        setError(t('auth.mfa.errors.generic'));
         if (import.meta.env.DEV) console.warn('mfa bypass request failed', err);
         setLost({ kind: 'idle' });
       }
@@ -156,21 +158,23 @@ export default function LoginMfaPage() {
     // maximum). Surface a generic message — the auth routes
     // never return only `password` in practice today.
     setError(
-      `Vérification incomplète. Facteur(s) encore requis : ${missing.join(', ')}.`,
+      t('auth.mfa.errors.incompleteFactors', {
+        values: { factors: missing.join(', ') },
+      }),
     );
   }
 
   function handleApiError(err: unknown, fallback: string): void {
     if (isApiError(err)) {
       if (err.status === 401 && err.error === 'unauthenticated') {
-        setError('Session expirée. Reconnecte-toi.');
+        setError(t('auth.mfa.errors.sessionExpired'));
         window.setTimeout(() => navigate('/login', { replace: true }), 1500);
       } else if (err.status === 401) {
         setError(fallback);
       } else if (err.status === 429) {
-        setError('Trop de tentatives. Réessaie dans quelques minutes.');
+        setError(t('auth.mfa.errors.tooManyAttempts'));
       } else {
-        setError('Erreur de vérification. Réessaie.');
+        setError(t('auth.mfa.errors.verifyFailed'));
         if (import.meta.env.DEV) console.warn('mfa verify failed', err);
       }
     } else if (
@@ -178,9 +182,9 @@ export default function LoginMfaPage() {
       err !== null &&
       (err as { name?: unknown }).name === 'NotAllowedError'
     ) {
-      setError('Confirmation passkey annulée.');
+      setError(t('auth.mfa.errors.passkeyCancelled'));
     } else {
-      setError('Erreur de vérification. Réessaie.');
+      setError(t('auth.mfa.errors.verifyFailed'));
       if (import.meta.env.DEV) console.warn('mfa verify failed', err);
     }
   }
@@ -198,7 +202,7 @@ export default function LoginMfaPage() {
         applyMissing(result.missing);
       }
     } catch (err) {
-      handleApiError(err, 'Code incorrect. Réessaie avec celui en cours.');
+      handleApiError(err, t('auth.mfa.errors.wrongTotpCode'));
     } finally {
       setSubmitting(false);
     }
@@ -215,7 +219,7 @@ export default function LoginMfaPage() {
         applyMissing(result.missing);
       }
     } catch (err) {
-      handleApiError(err, 'Aucune passkey valide n’a répondu.');
+      handleApiError(err, t('auth.mfa.errors.noValidPasskey'));
     } finally {
       setSubmitting(false);
     }
@@ -229,18 +233,14 @@ export default function LoginMfaPage() {
 
   return (
     <AuthLayout
-      headline="Une dernière étape."
+      headline={t('auth.mfa.layout.headline')}
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le mot de passe seul ne suffit pas dans ton mode de sécurité.
-            Confirme avec ton TOTP ou ta passkey pour finir d’ouvrir ta
-            session.
+            {t('auth.mfa.layout.marketing1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Si tu n’as plus accès à ton facteur, tu peux demander une
-            récupération par email — le délai de 7 jours te protège des
-            demandes malveillantes.
+            {t('auth.mfa.layout.marketing2')}
           </p>
         </>
       }

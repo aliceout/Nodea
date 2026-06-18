@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
@@ -42,26 +43,31 @@ export default function LostFlow({
   onConfirm,
   onCancel,
 }: LostFlowProps) {
+  const { t } = useI18n();
+
   if (lost.kind === 'idle') return null;
   if (lost.factor !== factor) return null;
 
-  const verbose = factor === 'totp' ? 'TOTP' : 'passkey';
+  const verbose =
+    factor === 'totp'
+      ? t('auth.mfa.lost.factorTotp')
+      : t('auth.mfa.lost.factorPasskey');
   const sideEffect =
     factor === 'totp'
-      ? 'Ton TOTP sera désactivé et tes codes de secours invalidés.'
-      : 'Toutes tes passkeys seront supprimées — tu pourras en réenrôler après le login.';
+      ? t('auth.mfa.lost.sideEffectTotp')
+      : t('auth.mfa.lost.sideEffectPasskey');
 
   if (lost.kind === 'confirm') {
     return (
       <>
         <AuthPanelHeader
-          eyebrow="Vérification 2FA"
-          title={<>Récupération {verbose}</>}
+          eyebrow={t('auth.mfa.eyebrow')}
+          title={t('auth.mfa.lost.confirmTitle', { values: { factor: verbose } })}
           subtitle={
             <>
-              On va t’envoyer un email avec un lien à confirmer. 7 jours après ta
-              confirmation, ta prochaine connexion sera autorisée sans {verbose}.{' '}
-              {sideEffect}
+              {t('auth.mfa.lost.confirmSubtitle', {
+                values: { factor: verbose, sideEffect },
+              })}
             </>
           }
         />
@@ -73,7 +79,9 @@ export default function LostFlow({
           disabled={lost.submitting}
           className="w-full"
         >
-          {lost.submitting ? 'Envoi…' : 'Envoyer l’email'}
+          {lost.submitting
+            ? t('common.states.submitting')
+            : t('auth.mfa.lost.sendEmailCta')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -83,7 +91,7 @@ export default function LostFlow({
             disabled={lost.submitting}
             className="cursor-pointer transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
           >
-            ← Annuler
+            {t('auth.mfa.lost.cancel')}
           </button>
         </div>
       </>
@@ -93,12 +101,11 @@ export default function LostFlow({
   // `sent` — terminal screen, no back-out
   return (
     <AuthPanelHeader
-      eyebrow="Vérification 2FA"
-      title="Email envoyé"
+      eyebrow={t('auth.mfa.eyebrow')}
+      title={t('auth.mfa.lost.sentTitle')}
       subtitle={
         <>
-          Vérifie ta boîte mail. Confirme dans le lien — 7 jours après cette
-          confirmation, tu pourras te reconnecter sans {verbose}.
+          {t('auth.mfa.lost.sentSubtitle', { values: { factor: verbose } })}
         </>
       }
     />

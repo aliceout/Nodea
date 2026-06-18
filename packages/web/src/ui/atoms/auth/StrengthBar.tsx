@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 interface StrengthBarProps {
@@ -34,6 +35,7 @@ export default function StrengthBar({
   warning,
   rulesOk,
 }: StrengthBarProps) {
+  const { t } = useI18n();
   const score: 0 | 1 | 2 | 3 | 4 = rulesOk
     ? rawScore
     : rawScore > 1
@@ -49,12 +51,12 @@ export default function StrengthBar({
   };
   const label =
     score <= 1
-      ? 'Trop faible'
+      ? t('auth.password.strength.weak')
       : score === 2
-        ? 'Moyen'
+        ? t('auth.password.strength.medium')
         : score === 3
-          ? 'Solide'
-          : 'Très solide';
+          ? t('auth.password.strength.strong')
+          : t('auth.password.strength.veryStrong');
 
   return (
     <div className="-mt-2 mb-3">
@@ -68,7 +70,8 @@ export default function StrengthBar({
         ))}
       </div>
       <p className="mt-1 text-[11px] text-muted">
-        Force&nbsp;: <span className="font-medium text-ink-soft">{label}</span>
+        {t('auth.password.strength.label')}&nbsp;:{' '}
+        <span className="font-medium text-ink-soft">{label}</span>
         {warning ? <span className="text-low-deep"> — {warning}</span> : null}
       </p>
     </div>

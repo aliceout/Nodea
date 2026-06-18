@@ -2,7 +2,9 @@
   "greeting": {
     "morning": "Good morning",
     "afternoon": "Good afternoon",
-    "evening": "Good evening"
+    "evening": "Good evening",
+    "named": "Hello, {name}.",
+    "anonymous": "Hello."
   },
   "tips": {
     "recovery": {
@@ -41,11 +43,16 @@
     "loading": "Loading announcements…"
   },
   "announcements": {
-    "title": "Announcements"
+    "title": "Announcements",
+    "dismiss": "Dismiss",
+    "dismissAria": "Dismiss this announcement"
   },
   "mood": {
     "quickView": "Quick glance",
-    "recentAverage": "Average (last {count} entries)"
+    "recentAverage": "Average (last {count} entries)",
+    "eyebrow": "MOOD · {months} MONTHS",
+    "average": "average {avg}",
+    "empty": "no entries"
   },
   "sections": {
     "actions": {
@@ -57,5 +64,27 @@
       "description": "Enable new spaces to enrich your guidance.",
       "cta": "Open settings"
     }
+  },
+  "viewAll": "view all",
+  "journal": {
+    "eyebrow": "JOURNAL · {months} MONTHS",
+    "daysWritten": {
+      "one": "{count} day",
+      "other": "{count} days"
+    }
+  },
+  "goals": {
+    "eyebrow": "GOALS · {count} IN PROGRESS",
+    "empty": "No goal in progress.",
+    "status": {
+      "open": "open",
+      "wip": "in progress",
+      "done": "done"
+    }
+  },
+  "habits": {
+    "title": "Habits",
+    "thisMonth": "{percent}% this month",
+    "delta": "{delta}% vs {month}"
   }
 }

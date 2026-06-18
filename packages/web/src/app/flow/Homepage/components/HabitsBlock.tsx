@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 import SectionLabel from './SectionLabel';
@@ -9,10 +10,11 @@ import SectionLabel from './SectionLabel';
  * `MoodBlock`.
  */
 export default function HabitsBlock() {
+  const { t } = useI18n();
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between">
-        <SectionLabel>Habits</SectionLabel>
+        <SectionLabel>{t('home.habits.title')}</SectionLabel>
         <span className="animate-streak-pulse text-[12px] font-semibold tabular-nums text-accent">
           12 j
         </span>
@@ -39,8 +41,10 @@ export default function HabitsBlock() {
         })}
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted">
-        <span>78 % ce mois</span>
-        <span className="font-semibold text-sync">+6 % vs mars</span>
+        <span>{t('home.habits.thisMonth', { values: { percent: 78 } })}</span>
+        <span className="font-semibold text-sync">
+          {t('home.habits.delta', { values: { delta: '+6', month: 'mars' } })}
+        </span>
       </div>
     </section>
   );

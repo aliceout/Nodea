@@ -64,26 +64,21 @@ export default function DestroyForm({
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Réinitialisation"
-        title="Réinitialiser sans code"
-        subtitle={
-          <>
-            Indique ton email — on t’enverra un lien pour définir un nouveau mot
-            de passe.
-          </>
-        }
+        eyebrow={t('auth.requestReset.destroy.eyebrow')}
+        title={t('auth.requestReset.destroy.title')}
+        subtitle={t('auth.requestReset.destroy.subtitle')}
       />
 
       {/* Hard data-loss warning — the user chose the destructive
           path on the fork, but we still want the consequence
           framed before the form. */}
-      <Warning title="Tes données seront effacées">
-        Le chiffrement n’est pas réversible sans ton mot de passe d’origine.
+      <Warning title={t('auth.requestReset.destroy.warningTitle')}>
+        {t('auth.requestReset.destroy.warningBody')}
       </Warning>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-5">
         <Field
-          label="E-mail"
+          label={t('auth.requestReset.destroy.emailLabel')}
           type="email"
           autoComplete="email"
           required
@@ -102,7 +97,9 @@ export default function DestroyForm({
           disabled={isSubmitting}
           className="mt-2 w-full"
         >
-          {isSubmitting ? 'Envoi…' : 'M’envoyer le lien'}
+          {isSubmitting
+            ? t('common.states.submitting')
+            : t('auth.requestReset.destroy.submit')}
         </Button>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
@@ -111,7 +108,7 @@ export default function DestroyForm({
             onClick={onBack}
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Retour
+            {t('auth.requestReset.destroy.back')}
           </button>
         </div>
       </form>

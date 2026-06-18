@@ -180,7 +180,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   // ---- Filter state ----
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [groupBy, setGroupBy] = useState<GroupBy>('thread');
+  const [groupBy, setGroupBy] = useState<GroupBy>('month');
   const [year, setYear] = useState<number | null>(null);
   const [dayFilter, setDayFilter] = useState<string | null>(null);
   // Heatmap starts collapsed (issue #56 follow-up) — Journal is

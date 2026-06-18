@@ -40,8 +40,8 @@ type Stage =
   | { kind: 'done' };
 
 export default function RecoveryCodePage() {
-  useDocumentTitle('Code de récupération');
   const { t } = useI18n();
+  useDocumentTitle(t('auth.recoveryCode.docTitle'));
   const navigate = useNavigate();
   const session = useSession();
   const user = useNodeaStore(selectUser);
@@ -57,7 +57,7 @@ export default function RecoveryCodePage() {
     e.preventDefault();
     setError(null);
     if (!password) {
-      setError('Mot de passe requis.');
+      setError(t('auth.recoveryCode.passwordRequired'));
       return;
     }
     setSubmitting(true);
@@ -84,19 +84,15 @@ export default function RecoveryCodePage() {
 
   return (
     <AuthLayout
-      headline="Un filet de sécurité, sans backdoor."
+      headline={t('auth.recoveryCode.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le code de récupération est un mot de passe de secours, sous forme de 12
-            mots simples à recopier. Il dérive une clé qui chiffre la même clé
-            maître que ton mot de passe.
+            {t('auth.recoveryCode.marketing.p1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Si tu oublies ton mot de passe, ces 12 mots te permettent de récupérer
-            ton compte sans perdre tes données. Sans eux, le seul recours est de
-            tout effacer.
+            {t('auth.recoveryCode.marketing.p2')}
           </p>
         </>
       }
@@ -114,12 +110,16 @@ export default function RecoveryCodePage() {
 
       {stage.kind === 'displaying' ? (
         <RecoveryCodeDisplay
-          eyebrow="Sécurité"
-          title={stage.regenerated ? 'Nouveau code généré' : 'Ton code de récupération'}
+          eyebrow={t('auth.recoveryCode.eyebrow')}
+          title={
+            stage.regenerated
+              ? t('auth.recoveryCode.display.titleRegenerated')
+              : t('auth.recoveryCode.display.title')
+          }
           mnemonic={stage.mnemonic}
           acknowledged={acknowledged}
           setAcknowledged={setAcknowledged}
-          doneLabel="Terminé"
+          doneLabel={t('auth.recoveryCode.display.doneLabel')}
           onDone={handleDone}
         />
       ) : null}

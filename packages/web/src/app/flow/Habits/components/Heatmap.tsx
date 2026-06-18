@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { toIsoDate } from '@/core/i18n/date-format';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import type { HabitLog } from '../hooks/useHabits';
 
@@ -40,6 +41,7 @@ const isoDay = toIsoDate;
  * geometric.
  */
 export default function Heatmap({ itemId, logs, days = 365 }: HeatmapProps) {
+  const { t, tn } = useI18n();
   const { cells, weeks } = useMemo(() => {
     const end = new Date();
     end.setHours(0, 0, 0, 0);
@@ -78,7 +80,7 @@ export default function Heatmap({ itemId, logs, days = 365 }: HeatmapProps) {
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label="Heatmap des logs sur les 12 derniers mois"
+      aria-label={t('habits.heatmap.ariaLabel')}
       className="max-w-full"
     >
       {cells.map((cell) => {
@@ -94,7 +96,7 @@ export default function Heatmap({ itemId, logs, days = 365 }: HeatmapProps) {
             ry={2}
             fill={INTENSITY_COLORS[intensity]}
           >
-            <title>{`${cell.date} — ${cell.count} log${cell.count > 1 ? 's' : ''}`}</title>
+            <title>{tn('habits.heatmap.tooltip', cell.count, { values: { date: cell.date } })}</title>
           </rect>
         );
       })}

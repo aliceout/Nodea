@@ -12,7 +12,10 @@
       "title": "Invitation codes",
       "description": "Create and share access codes for new members."
     },
-    "restricted": "Administrator access only."
+    "restricted": "Administrator access only.",
+    "sources": {
+      "description": "External metadata sources used by the modules. Check that each source responds and that the API keys are active."
+    }
   },
   "states": {
     "loading": "Loading…",
@@ -51,5 +54,67 @@
     "deleteAria": "Delete user",
     "deleteTitle": "Delete user",
     "confirmDelete": "Delete the account « {label} »?\n\nThe account, its sessions and all encrypted data will be deleted (FK cascade)."
+  },
+  "topbarLabel": "Settings · Administration",
+  "heading": "Administration",
+  "tabs": {
+    "users": "Users",
+    "invites": "Invitations",
+    "announcements": "Announcements",
+    "sources": "Sources"
+  },
+  "errors": {
+    "loadFailed": "Loading error",
+    "deleteUserFailed": "Deletion error: {reason}"
+  },
+  "invites": {
+    "feedback": {
+      "sent": "Invitation sent to {email}.",
+      "alreadyAccount": "{email} already has an account.",
+      "emailSendFailed": "Sending the e-mail failed — check the SMTP config.",
+      "sendFailed": "Invitation failed.",
+      "resent": "Link resent to {email}.",
+      "resendFailed": "Resend failed.",
+      "revoked": "Invitation revoked.",
+      "revokeFailed": "Revocation failed.",
+      "updateFailed": "Update failed."
+    },
+    "openRegistration": {
+      "heading": "Open registration (no invitation)",
+      "description": "When on, anyone can create an account without an invitation (e-mail activation flow). Otherwise (the default), registration requires a link sent by an admin.",
+      "toggleAria": "Allow open registration (without invitation)"
+    },
+    "emailToInvite": {
+      "heading": "E-mail to invite",
+      "submit": "Send the invitation",
+      "inputAria": "E-mail to invite",
+      "placeholder": "friend@example.com"
+    },
+    "pending": {
+      "heading": "Pending invitations",
+      "empty": "No pending invitation.",
+      "columns": {
+        "sent": "Sent",
+        "expires": "Expires"
+      },
+      "resendAria": "Resend the invitation",
+      "revokeAria": "Revoke this invitation"
+    }
+  },
+  "sources": {
+    "unknownError": "Unknown error.",
+    "lastChecked": "Last check: {time}",
+    "awaitingFirstCheck": "Awaiting the first check…",
+    "retest": "Re-test",
+    "responseMs": "{ms} ms",
+    "moduleLabels": {
+      "library": "Library"
+    },
+    "status": {
+      "keyRequired": "Key required",
+      "notConfigured": "Not configured",
+      "offline": "Offline",
+      "online": "Online"
+    }
   }
 }

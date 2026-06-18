@@ -1,5 +1,6 @@
 import type { SecurityMode } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 interface ModeOption {
@@ -34,6 +35,7 @@ export default function ModeSelector({
   selected: SecurityMode | null;
   onSelect: (mode: SecurityMode) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="mb-3 grid gap-2">
       {options.map((opt) => {
@@ -63,7 +65,7 @@ export default function ModeSelector({
               </span>
               {isCurrent ? (
                 <span className="rounded-sm bg-accent px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.04em] text-white">
-                  Actif
+                  {t('auth.securityMode.activeBadge')}
                 </span>
               ) : null}
             </div>

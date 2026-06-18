@@ -1,5 +1,7 @@
 import type { useSession } from '@/core/auth/use-session';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 import BackupCodesPanel from './BackupCodesPanel';
 import PasswordPanel from './PasswordPanel';
 import type { Stage } from './types';
@@ -23,12 +25,13 @@ export default function RegenFlow({
   onCancel,
   onDone,
 }: RegenFlowProps) {
+  const { t } = useI18n();
   if (stage.sub === 'password') {
     return (
       <PasswordPanel
-        title="Régénérer les codes de secours"
-        body="Tape ton mot de passe. L’ancien lot de codes sera invalidé immédiatement — assure-toi de pouvoir noter le nouveau."
-        cta="Régénérer"
+        title={t('auth.totp.regen.title')}
+        body={t('auth.totp.regen.body')}
+        cta={t('auth.totp.regen.cta')}
         onCancel={onCancel}
         onSubmit={async (password) => {
           const codes = await session.regenerateTotpBackupCodes(password);
@@ -41,15 +44,10 @@ export default function RegenFlow({
   if (stage.sub === 'display' && stage.codes) {
     return (
       <BackupCodesPanel
-        eyebrow="Sécurité"
-        title="Nouveaux codes de secours"
-        alertBody={
-          <>
-            Ces 10 codes ne te seront jamais re-affichés. L’ancien lot est
-            invalidé.
-          </>
-        }
-        ackLabel="J’ai noté les 10 nouveaux codes."
+        eyebrow={t('auth.totp.list.eyebrow')}
+        title={t('auth.totp.regen.display.title')}
+        alertBody={t('auth.totp.regen.display.alertBody')}
+        ackLabel={t('auth.totp.regen.display.ackLabel')}
         codes={stage.codes}
         onDone={onDone}
       />

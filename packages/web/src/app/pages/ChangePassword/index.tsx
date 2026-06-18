@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
@@ -18,26 +19,28 @@ import ChangePasswordForm from './ChangePasswordForm';
  *   - This file is the AuthLayout wrap + back link.
  */
 export default function ChangePasswordPage() {
-  useDocumentTitle('Changer le mot de passe');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.changePassword.documentTitle'));
   const navigate = useNavigate();
 
   return (
     <AuthLayout
-      headline="Renouvelle ta clé."
+      headline={t('auth.changePassword.headline')}
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le mot de passe protège la clé qui chiffre tes données. Le changer
-            rechiffre la clé localement — les données restent intactes.
+            {t('auth.changePassword.marketing.p1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le serveur ne voit jamais l’ancien ni le nouveau mot de passe : tout
-            se passe sur ton appareil avant l’envoi.
+            {t('auth.changePassword.marketing.p2')}
           </p>
         </>
       }
     >
-      <AuthPanelHeader eyebrow="Sécurité" title="Changer le mot de passe" />
+      <AuthPanelHeader
+        eyebrow={t('auth.changePassword.eyebrow')}
+        title={t('auth.changePassword.pageTitle')}
+      />
 
       <ChangePasswordForm />
 
@@ -50,7 +53,7 @@ export default function ChangePasswordPage() {
           }}
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour
+          {t('auth.back')}
         </Link>
       </div>
     </AuthLayout>

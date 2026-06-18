@@ -42,12 +42,7 @@ import SourcesPanel from './components/SourcesPanel';
 
 type Tab = 'users' | 'invites' | 'announcements' | 'sources';
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'users', label: 'Utilisateur·ice·s' },
-  { id: 'invites', label: 'Invitations' },
-  { id: 'announcements', label: 'Annonces' },
-  { id: 'sources', label: 'Sources' },
-];
+const TAB_IDS: Tab[] = ['users', 'invites', 'announcements', 'sources'];
 
 type Feedback = { kind: 'ok' | 'error'; message: string };
 
@@ -56,6 +51,11 @@ export default function AdminPage() {
   const alert = useAlert();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const currentUser = useNodeaStore(selectUser);
+
+  const tabs: Array<{ id: Tab; label: string }> = TAB_IDS.map((id) => ({
+    id,
+    label: t(`admin.tabs.${id}`),
+  }));
 
   const [tab, setTab] = useState<Tab>('users');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
@@ -87,7 +87,8 @@ export default function AdminPage() {
           setOpenRegistration(s.open_registration);
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur chargement');
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : t('admin.errors.loadFailed'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -95,7 +96,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdmin, t]);
 
   async function handleDeleteUser(id: string): Promise<void> {
     try {
@@ -103,7 +104,9 @@ export default function AdminPage() {
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (err) {
       await alert({
-        message: 'Erreur suppression : ' + (err instanceof Error ? err.message : ''),
+        message: t('admin.errors.deleteUserFailed', {
+          values: { reason: err instanceof Error ? err.message : '' },
+        }),
       });
     }
   }
@@ -126,20 +129,23 @@ export default function AdminPage() {
         },
         ...prev,
       ]);
-      showInviteFeedback({ kind: 'ok', message: `Invitation envoyée à ${created.email}.` });
+      showInviteFeedback({
+        kind: 'ok',
+        message: t('admin.invites.feedback.sent', { values: { email: created.email } }),
+      });
     } catch (err) {
       if (isApiError(err) && err.status === 409) {
         showInviteFeedback({
           kind: 'error',
-          message: `${email} a déjà un compte.`,
+          message: t('admin.invites.feedback.alreadyAccount', { values: { email } }),
         });
       } else if (isApiError(err) && err.error === 'email_send_failed') {
         showInviteFeedback({
           kind: 'error',
-          message: "L'envoi de l'e-mail a échoué — vérifie la config SMTP.",
+          message: t('admin.invites.feedback.emailSendFailed'),
         });
       } else {
-        showInviteFeedback({ kind: 'error', message: "Échec de l'invitation." });
+        showInviteFeedback({ kind: 'error', message: t('admin.invites.feedback.sendFailed') });
       }
     }
   }
@@ -165,10 +171,10 @@ export default function AdminPage() {
       );
       showInviteFeedback({
         kind: 'ok',
-        message: `Lien renvoyé à ${refreshed.email}.`,
+        message: t('admin.invites.feedback.resent', { values: { email: refreshed.email } }),
       });
     } catch {
-      showInviteFeedback({ kind: 'error', message: "Échec du renvoi." });
+      showInviteFeedback({ kind: 'error', message: t('admin.invites.feedback.resendFailed') });
     } finally {
       setBusyInviteId(null);
     }
@@ -179,9 +185,9 @@ export default function AdminPage() {
     try {
       await apiAdminDeleteInvite(id);
       setInvites((prev) => prev.filter((i) => i.id !== id));
-      showInviteFeedback({ kind: 'ok', message: 'Invitation révoquée.' });
+      showInviteFeedback({ kind: 'ok', message: t('admin.invites.feedback.revoked') });
     } catch {
-      showInviteFeedback({ kind: 'error', message: "Échec de la révocation." });
+      showInviteFeedback({ kind: 'error', message: t('admin.invites.feedback.revokeFailed') });
     } finally {
       setBusyInviteId(null);
     }
@@ -194,7 +200,7 @@ export default function AdminPage() {
       setOpenRegistration(updated.open_registration);
     } catch {
       // Revert UI on failure so the toggle reflects server state.
-      showInviteFeedback({ kind: 'error', message: 'Échec de la mise à jour.' });
+      showInviteFeedback({ kind: 'error', message: t('admin.invites.feedback.updateFailed') });
     } finally {
       setToggleBusy(false);
     }
@@ -202,11 +208,11 @@ export default function AdminPage() {
 
   return (
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
-      <Topbar label="Paramètres · Administration" onOpenMenu={() => setMobileMenuOpen(true)} />
+      <Topbar label={t('admin.topbarLabel')} onOpenMenu={() => setMobileMenuOpen(true)} />
 
       <div className="flex flex-col gap-[18px] border-b border-hair px-6 pb-2 pt-6 sm:px-9">
-        <PageHeading className="m-0">Administration</PageHeading>
-        <Tabs tabs={TABS} value={tab} onChange={setTab} />
+        <PageHeading className="m-0">{t('admin.heading')}</PageHeading>
+        <Tabs tabs={tabs} value={tab} onChange={setTab} />
       </div>
 
       <div key={tab} className="animate-fade-up flex-1 overflow-auto px-6 py-7 sm:px-9">

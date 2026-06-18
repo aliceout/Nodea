@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRegisterActivate, isApiError } from '@/core/api/client';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
@@ -33,7 +34,8 @@ type ActivationStatus =
     };
 
 export default function ActivatePage() {
-  useDocumentTitle('Activation du compte');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.activate.docTitle'));
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<ActivationStatus>({ state: 'pending' });
@@ -80,7 +82,7 @@ export default function ActivatePage() {
   }, [params, navigate]);
 
   return (
-    <AuthLayout headline="Active ton compte." marketing={<PrivacyBody />}>
+    <AuthLayout headline={t('auth.activate.headline')} marketing={<PrivacyBody />}>
       {status.state === 'pending' ? <PendingPanel /> : null}
       {status.state === 'success' ? (
         <SuccessPanel email={status.email} />
@@ -93,17 +95,19 @@ export default function ActivatePage() {
 }
 
 function PendingPanel() {
+  const { t } = useI18n();
   return (
     <div className="text-center">
-      <h2 className="mb-2 text-[20px] font-semibold text-ink">Activation en cours…</h2>
+      <h2 className="mb-2 text-[20px] font-semibold text-ink">{t('auth.activate.pending.title')}</h2>
       <p className="text-[13px] text-muted">
-        On vérifie ton lien, deux secondes.
+        {t('auth.activate.pending.body')}
       </p>
     </div>
   );
 }
 
 function SuccessPanel({ email }: { email: string }) {
+  const { t } = useI18n();
   return (
     <div className="text-center">
       <div
@@ -112,41 +116,22 @@ function SuccessPanel({ email }: { email: string }) {
       >
         ✓
       </div>
-      <h2 className="mb-2 text-[20px] font-semibold text-ink">Compte activé !</h2>
+      <h2 className="mb-2 text-[20px] font-semibold text-ink">{t('auth.activate.success.title')}</h2>
       <p className="mb-4 text-[14px] text-ink-soft">
-        <strong>{email}</strong> est prêt. Redirection vers la connexion…
+        <strong>{email}</strong> {t('auth.activate.success.body')}
       </p>
     </div>
   );
 }
 
-const ERROR_MESSAGES: Record<
-  Exclude<
-    Extract<ActivationStatus, { state: 'error' }>['reason'],
-    never
-  >,
-  { title: string; body: string; cta: { label: string; to: string } }
+const ERROR_CTA_TARGETS: Record<
+  Extract<ActivationStatus, { state: 'error' }>['reason'],
+  string
 > = {
-  invalid_token: {
-    title: 'Lien invalide',
-    body: 'Ce lien d’activation n’est pas reconnu. Il a peut-être été tronqué pendant la copie. Recommence l’inscription pour en recevoir un nouveau.',
-    cta: { label: 'Recommencer l’inscription', to: '/register' },
-  },
-  already_consumed: {
-    title: 'Compte déjà activé',
-    body: 'Ce lien a déjà été utilisé. Tu peux te connecter directement.',
-    cta: { label: 'Aller à la connexion', to: '/login' },
-  },
-  expired: {
-    title: 'Lien expiré',
-    body: 'Le lien d’activation est valable 7 jours. Recommence l’inscription pour en recevoir un nouveau.',
-    cta: { label: 'Recommencer l’inscription', to: '/register' },
-  },
-  network: {
-    title: 'Erreur réseau',
-    body: 'On n’a pas pu joindre le serveur. Vérifie ta connexion et réessaie.',
-    cta: { label: 'Réessayer', to: '/activate' },
-  },
+  invalid_token: '/register',
+  already_consumed: '/login',
+  expired: '/register',
+  network: '/activate',
 };
 
 function ErrorPanel({
@@ -154,16 +139,20 @@ function ErrorPanel({
 }: {
   reason: Extract<ActivationStatus, { state: 'error' }>['reason'];
 }) {
-  const msg = ERROR_MESSAGES[reason];
+  const { t } = useI18n();
   return (
     <div className="text-center">
-      <h2 className="mb-2 text-[20px] font-semibold text-ink">{msg.title}</h2>
-      <p className="mb-6 text-[14px] text-ink-soft">{msg.body}</p>
+      <h2 className="mb-2 text-[20px] font-semibold text-ink">
+        {t(`auth.activate.errors.${reason}.title`)}
+      </h2>
+      <p className="mb-6 text-[14px] text-ink-soft">
+        {t(`auth.activate.errors.${reason}.body`)}
+      </p>
       <Link
-        to={msg.cta.to}
+        to={ERROR_CTA_TARGETS[reason]}
         className="inline-block rounded-md bg-accent px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
       >
-        {msg.cta.label}
+        {t(`auth.activate.errors.${reason}.cta`)}
       </Link>
     </div>
   );

@@ -80,14 +80,14 @@ export default function LoginForm({ disabled = false }: { disabled?: boolean }) 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <Field
-        label="E-mail"
+        label={t('auth.login.emailLabel')}
         type="email"
         autoComplete="email"
         error={errors.email?.message}
         {...register('email')}
       />
       <Field
-        label="Mot de passe"
+        label={t('auth.login.passwordLabel')}
         type="password"
         autoComplete="current-password"
         error={errors.password?.message}
@@ -105,7 +105,7 @@ export default function LoginForm({ disabled = false }: { disabled?: boolean }) 
         disabled={isSubmitting || disabled}
         className="mt-2 w-full"
       >
-        {isSubmitting ? 'Connexion…' : 'Se connecter'}
+        {isSubmitting ? t('auth.login.submitting') : t('auth.login.submit')}
       </Button>
     </form>
   );

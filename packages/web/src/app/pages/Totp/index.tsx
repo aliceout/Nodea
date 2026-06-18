@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
@@ -35,7 +36,8 @@ import type { Stage } from './types';
  * `/recovery-code`).
  */
 export default function TotpPage() {
-  useDocumentTitle('Authentification à deux facteurs');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.totp.documentTitle'));
   const navigate = useNavigate();
   const session = useSession();
   const user = useNodeaStore(selectUser);
@@ -46,19 +48,15 @@ export default function TotpPage() {
 
   return (
     <AuthLayout
-      headline="Un code à six chiffres en plus."
+      headline={t('auth.totp.marketing.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le TOTP (mot de passe à usage unique basé sur le temps) ajoute une
-            deuxième couche : à chaque connexion, ton appli d’authentification
-            (Bitwarden, Ente Auth, Aegis, Google Auth…) génère un code de 6
-            chiffres valide 30 secondes.
+            {t('auth.totp.marketing.paragraph1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Une fuite de ton mot de passe ne suffit alors plus à entrer — il
-            faut aussi avoir ton téléphone ou ta clé hardware sous la main.
+            {t('auth.totp.marketing.paragraph2')}
           </p>
         </>
       }

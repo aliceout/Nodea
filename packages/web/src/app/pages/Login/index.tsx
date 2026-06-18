@@ -4,6 +4,7 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
 import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
 import { useDocumentTitle } from '@/lib/use-document-title';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -27,7 +28,8 @@ import PasskeyButton from './PasskeyButton';
  *     bottom links (forgot / register), and the AuthLayout wrap.
  */
 export default function LoginPage() {
-  useDocumentTitle('Connexion');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.login.title'));
   const [params] = useSearchParams();
   const [passkeyBusy, setPasskeyBusy] = useState(false);
 
@@ -44,7 +46,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      headline="Un espace à soi"
+      headline={t('auth.login.marketingHeadline')}
       marketing={
         <>
           <PrivacyBody />
@@ -57,7 +59,7 @@ export default function LoginPage() {
             to="/docs/newbie"
             className="group inline-flex cursor-pointer items-center gap-1.5 pt-1 text-[15px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
           >
-            Voir comment Nodea protège mes données
+            {t('auth.login.privacyLink')}
             <ArrowRightIcon
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
               aria-hidden="true"
@@ -66,17 +68,20 @@ export default function LoginPage() {
         </>
       }
     >
-      <AuthPanelHeader eyebrow="Connexion" title="Entre dans ton espace" />
+      <AuthPanelHeader
+        eyebrow={t('auth.login.title')}
+        title={t('auth.login.panelTitle')}
+      />
 
       {justActivated ? (
         <InlineAlert tone="success" className="mb-4">
-          ✓ Compte activé. Connecte-toi avec ton e-mail et ton mot de passe.
+          ✓ {t('auth.login.activatedBanner')}
         </InlineAlert>
       ) : null}
 
       {justChangedPassword ? (
         <InlineAlert tone="success" className="mb-4">
-          ✓ Mot de passe mis à jour. Connecte-toi avec le nouveau.
+          ✓ {t('auth.login.passwordChangedBanner')}
         </InlineAlert>
       ) : null}
 
@@ -89,13 +94,13 @@ export default function LoginPage() {
           to="/request-reset"
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          Mot de passe oublié
+          {t('auth.login.forgotPassword')}
         </Link>
         <Link
           to="/register"
           className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
         >
-          Créer un compte
+          {t('auth.login.createAccount')}
         </Link>
       </div>
 
@@ -108,14 +113,14 @@ export default function LoginPage() {
           to="/terms"
           className="cursor-pointer transition-colors hover:text-ink hover:underline"
         >
-          Conditions générales d'utilisation
+          {t('auth.login.termsLink')}
         </Link>
         <span aria-hidden="true">·</span>
         <Link
           to="/changelog"
           className="cursor-pointer transition-colors hover:text-ink hover:underline"
         >
-          Changelog
+          {t('auth.login.changelogLink')}
         </Link>
       </div>
     </AuthLayout>

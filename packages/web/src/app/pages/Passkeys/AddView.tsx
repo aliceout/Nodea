@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -26,6 +27,7 @@ interface AddViewProps {
  * « impossible d'enregistrer ».
  */
 export default function AddView({ session, onCancel, onSuccess }: AddViewProps) {
+  const { t } = useI18n();
   const [label, setLabel] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -35,11 +37,11 @@ export default function AddView({ session, onCancel, onSuccess }: AddViewProps) 
     e.preventDefault();
     setError(null);
     if (!label.trim()) {
-      setError('Donne un nom à cette passkey.');
+      setError(t('auth.passkeys.errors.labelRequired'));
       return;
     }
     if (!password) {
-      setError('Mot de passe requis.');
+      setError(t('auth.passkeys.errors.passwordRequired'));
       return;
     }
     setSubmitting(true);
@@ -49,11 +51,11 @@ export default function AddView({ session, onCancel, onSuccess }: AddViewProps) 
       await onSuccess();
     } catch (err) {
       if (isPasswordError(err)) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.passkeys.errors.wrongPassword'));
       } else if (isWebAuthnCancel(err)) {
-        setError('Enregistrement annulé.');
+        setError(t('auth.passkeys.errors.enrollCancelled'));
       } else {
-        setError('Impossible d’enregistrer cette passkey.');
+        setError(t('auth.passkeys.errors.enrollFailed'));
         if (import.meta.env.DEV) console.warn('passkey enroll failed', err);
       }
     } finally {
@@ -64,26 +66,21 @@ export default function AddView({ session, onCancel, onSuccess }: AddViewProps) 
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Ajout"
-        title="Ajouter une passkey"
-        subtitle={
-          <>
-            Donne-lui un nom, retape ton mot de passe, puis confirme avec ton
-            empreinte / Face ID / PIN.
-          </>
-        }
+        eyebrow={t('auth.passkeys.add.eyebrow')}
+        title={t('auth.passkeys.add.title')}
+        subtitle={t('auth.passkeys.add.subtitle')}
       />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="Nom"
-          placeholder="iPhone perso, Yubikey bureau…"
+          label={t('auth.passkeys.add.labelField')}
+          placeholder={t('auth.passkeys.add.labelPlaceholder')}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           required
         />
         <Field
-          label="Mot de passe actuel"
+          label={t('auth.passkeys.fields.currentPassword')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -100,7 +97,9 @@ export default function AddView({ session, onCancel, onSuccess }: AddViewProps) 
           disabled={submitting}
           className="mt-2 w-full"
         >
-          {submitting ? 'Enregistrement…' : 'Confirmer avec ma passkey'}
+          {submitting
+            ? t('common.states.saving')
+            : t('auth.passkeys.add.submit')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -109,7 +108,7 @@ export default function AddView({ session, onCancel, onSuccess }: AddViewProps) 
             onClick={onCancel}
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Annuler
+            {t('auth.passkeys.cancelBack')}
           </button>
         </div>
       </form>

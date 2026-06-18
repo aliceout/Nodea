@@ -78,12 +78,14 @@ export default function MoodBlock() {
 
   return (
     <HomeCard
-      title={`MOOD · ${months} MOIS`}
+      title={t('home.mood.eyebrow', { values: { months } })}
       trailing={
         avg !== null ? (
-          <span className="tabular-nums">moyenne {formatMoodAvg(avg)}</span>
+          <span className="tabular-nums">
+            {t('home.mood.average', { values: { avg: formatMoodAvg(avg) } })}
+          </span>
         ) : (
-          <span className="italic">aucune entrée</span>
+          <span className="italic">{t('home.mood.empty')}</span>
         )
       }
       cta={
@@ -92,7 +94,7 @@ export default function MoodBlock() {
           onClick={() => setModule('mood')}
           className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
         >
-          tout voir →
+          {t('home.viewAll')} →
         </button>
       }
     >

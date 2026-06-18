@@ -17,5 +17,47 @@
     "sectionsAria": "Onglets {title}",
     "sectionsFallback": "Sections",
     "mobileMenuLabel": "Liens de la section"
+  },
+  "nav": {
+    "home": "Aujourd’hui",
+    "mood": "Mood",
+    "journal": "Journal",
+    "goals": "Goals",
+    "library": "Library",
+    "review": "Review",
+    "hrt": "HRT",
+    "libraryBooks": "Livres",
+    "libraryExtracts": "Extraits",
+    "libraryNotes": "Notes",
+    "hrtSummary": "Synthèse",
+    "hrtAdministration": "Administration",
+    "hrtLabs": "Analyses",
+    "hrtExport": "Outils"
+  },
+  "sync": {
+    "justNow": "Synchronisé · à l’instant"
+  },
+  "errorBoundary": {
+    "title": "Une erreur est survenue.",
+    "titleScoped": "Une erreur est survenue dans {scope}."
+  },
+  "markdownToggle": {
+    "label": "Markdown",
+    "switchToVisual": "Repasser en édition visuelle",
+    "showMarkdown": "Voir la source Markdown"
+  },
+  "marketing": {
+    "clientEncrypted": "Chiffré côté client",
+    "openSource": "Open-source",
+    "selfHostable": "Auto-hébergeable",
+    "security": "Sécurité",
+    "body": {
+      "purpose": "Un espace pour écrire, faire le point, suivre tes humeurs, tes lectures, ce que tu vises.",
+      "encryption": "Toutes les données sont chiffrées dans ton navigateur. Illisibles pour d’autres, même pour l’équipe de {brand} — tu es la seule personne à y avoir accès.",
+      "noTracking": "Pas de tracking, pas de cookie, pas de pub, pas de surveillance."
+    }
+  },
+  "dateField": {
+    "placeholder": "jj/mm/aaaa"
   }
 }

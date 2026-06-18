@@ -29,8 +29,8 @@ import { collectModules } from '@/app/flow/Account/views/data/collect-modules';
 type Stage = { kind: 'reauth' } | { kind: 'done'; failed: string[] };
 
 export default function DataExportPage() {
-  useDocumentTitle('Exporter mes données');
   const { t } = useI18n();
+  useDocumentTitle(t('auth.dataExport.documentTitle'));
   const navigate = useNavigate();
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
@@ -99,18 +99,15 @@ export default function DataExportPage() {
 
   return (
     <AuthLayout
-      headline="Tes données, en clair, chez toi."
+      headline={t('auth.dataExport.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            L’export rassemble toutes tes entrées déchiffrées dans un seul fichier
-            JSON, généré entièrement dans ton navigateur. Rien ne transite par le
-            serveur.
+            {t('auth.dataExport.marketing1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Comme il sort tout en clair, on te redemande ton mot de passe : une
-            preuve fraîche que c’est bien toi.
+            {t('auth.dataExport.marketing2')}
           </p>
         </>
       }
@@ -118,9 +115,9 @@ export default function DataExportPage() {
       {stage.kind === 'reauth' ? (
         <>
           <AuthPanelHeader
-            eyebrow="Données"
-            title="Exporter mes données"
-            subtitle="Tape ton mot de passe pour autoriser l’export."
+            eyebrow={t('auth.dataExport.eyebrow')}
+            title={t('auth.dataExport.panelTitle')}
+            subtitle={t('auth.dataExport.subtitle')}
           />
           <PasswordReauthForm
             size="lg"
@@ -143,7 +140,7 @@ export default function DataExportPage() {
         </InlineAlert>
       ) : (
         <div role="status">
-          <AuthPanelHeader eyebrow="Données" title={t('account.data.export.success')} />
+          <AuthPanelHeader eyebrow={t('auth.dataExport.eyebrow')} title={t('account.data.export.success')} />
         </div>
       )}
 
@@ -153,7 +150,7 @@ export default function DataExportPage() {
           onClick={back}
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour
+          {t('auth.dataExport.back')}
         </button>
       </div>
     </AuthLayout>

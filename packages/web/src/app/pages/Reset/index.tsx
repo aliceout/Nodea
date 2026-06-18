@@ -51,8 +51,8 @@ import ResetForm from './ResetForm';
  *     stage state machine (form → done / invalid-link).
  */
 export default function ResetPage() {
-  useDocumentTitle('Nouveau mot de passe');
   const { t } = useI18n();
+  useDocumentTitle(t('auth.reset.documentTitle'));
   const [params] = useSearchParams();
   const token = params.get('token') ?? '';
 
@@ -127,16 +127,14 @@ export default function ResetPage() {
 
   return (
     <AuthLayout
-      headline="Repars sur de bonnes bases."
+      headline={t('auth.reset.marketing.headline')}
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le mot de passe est aussi la clé qui chiffre tes entrées. Le réinitialiser
-            remet ton compte à zéro — toutes les données existantes sont supprimées.
+            {t('auth.reset.marketing.body1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            C’est volontaire : sans la clé, personne ne peut récupérer le contenu —
-            y compris l’équipe de Nodea.
+            {t('auth.reset.marketing.body2')}
           </p>
         </>
       }

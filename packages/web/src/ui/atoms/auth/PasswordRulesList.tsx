@@ -1,18 +1,11 @@
 import { PASSWORD_MIN_LENGTH, type PasswordRulesCheck } from '@nodea/shared';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 interface PasswordRulesListProps {
   rules: PasswordRulesCheck;
 }
-
-const RULE_LABELS: Array<{ key: keyof PasswordRulesCheck; label: string }> = [
-  { key: 'length', label: `${PASSWORD_MIN_LENGTH} caractères minimum` },
-  { key: 'lowercase', label: 'une minuscule' },
-  { key: 'uppercase', label: 'une majuscule' },
-  { key: 'digit', label: 'un chiffre' },
-  { key: 'special', label: 'un caractère spécial' },
-];
 
 /**
  * Live checklist of the five canonical password rules — surfaced
@@ -29,6 +22,17 @@ const RULE_LABELS: Array<{ key: keyof PasswordRulesCheck; label: string }> = [
  * propagates everywhere.
  */
 export default function PasswordRulesList({ rules }: PasswordRulesListProps) {
+  const { t } = useI18n();
+  const RULE_LABELS: Array<{ key: keyof PasswordRulesCheck; label: string }> = [
+    {
+      key: 'length',
+      label: t('auth.password.rules.length', { values: { n: PASSWORD_MIN_LENGTH } }),
+    },
+    { key: 'lowercase', label: t('auth.password.rules.lowercase') },
+    { key: 'uppercase', label: t('auth.password.rules.uppercase') },
+    { key: 'digit', label: t('auth.password.rules.digit') },
+    { key: 'special', label: t('auth.password.rules.special') },
+  ];
   return (
     <ul className="-mt-2 mb-3 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11.5px]">
       {RULE_LABELS.map(({ key, label }) => {

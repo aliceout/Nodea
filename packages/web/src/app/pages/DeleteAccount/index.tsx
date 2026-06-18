@@ -23,8 +23,8 @@ import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
  * dialog. Only then is the account purged and the session logged out.
  */
 export default function DeleteAccountPage() {
-  useDocumentTitle('Suppression du compte');
   const { t } = useI18n();
+  useDocumentTitle(t('auth.deleteAccount.documentTitle'));
   const confirm = useConfirm();
   const session = useSession();
   const navigate = useNavigate();
@@ -77,24 +77,21 @@ export default function DeleteAccountPage() {
 
   return (
     <AuthLayout
-      headline="Une suppression sans retour."
+      headline={t('auth.deleteAccount.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Supprimer le compte efface toutes tes entrées chiffrées, tes sessions
-            et tes invitations. Aucune récupération n’est possible — pense à
-            exporter avant.
+            {t('auth.deleteAccount.marketing.p1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Trois confirmations : retape ton e-mail, ton mot de passe, puis une
-            dernière validation.
+            {t('auth.deleteAccount.marketing.p2')}
           </p>
         </>
       }
     >
       <AuthPanelHeader
-        eyebrow="Compte"
+        eyebrow={t('auth.deleteAccount.eyebrow')}
         title={t('account.danger.heading')}
         subtitle={t('account.danger.gateHint')}
       />
@@ -131,7 +128,7 @@ export default function DeleteAccountPage() {
           onClick={back}
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour
+          {t('auth.back')}
         </button>
       </div>
     </AuthLayout>

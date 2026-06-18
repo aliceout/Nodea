@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 interface MarkdownToggleProps {
@@ -15,12 +16,17 @@ interface MarkdownToggleProps {
  * `value === false` = visual edit (default).
  */
 export default function MarkdownToggle({ value, onChange }: MarkdownToggleProps) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
       onClick={() => onChange(!value)}
       aria-pressed={value}
-      title={value ? 'Repasser en édition visuelle' : 'Voir la source Markdown'}
+      title={
+        value
+          ? t('layout.markdownToggle.switchToVisual')
+          : t('layout.markdownToggle.showMarkdown')
+      }
       className={cn(
         'cursor-pointer rounded-sm px-2.5 py-1 text-[11px] font-medium transition-colors',
         value
@@ -28,7 +34,7 @@ export default function MarkdownToggle({ value, onChange }: MarkdownToggleProps)
           : 'text-muted hover:bg-bg-2 hover:text-ink',
       )}
     >
-      Markdown
+      {t('layout.markdownToggle.label')}
     </button>
   );
 }

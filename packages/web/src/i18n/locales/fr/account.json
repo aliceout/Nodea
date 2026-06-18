@@ -163,7 +163,8 @@
       "backupRestoreCta": "Déchiffrer et restaurer",
       "backupRestoreLoading": "Déchiffrement…",
       "backupCancel": "Annuler",
-      "backupWrongPassphrase": "Phrase secrète incorrecte, ou fichier de sauvegarde altéré."
+      "backupWrongPassphrase": "Phrase secrète incorrecte, ou fichier de sauvegarde altéré.",
+      "partialBackupWarning": "Modules non importés (fichiers corrompus) : {modules}"
     },
     "backup": {
       "title": "Sauvegarde chiffrée",

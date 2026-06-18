@@ -9,6 +9,7 @@ import {
   apiRegisterMode,
 } from '@/core/api/client';
 import { useDocumentTitle } from '@/lib/use-document-title';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
@@ -50,7 +51,8 @@ type Mode =
   | { kind: 'closed' };
 
 export default function RegisterPage() {
-  useDocumentTitle('Inscription');
+  const { t } = useI18n();
+  useDocumentTitle(t('auth.register.documentTitle'));
   const session = useSession();
   const [params] = useSearchParams();
   const [mode, setMode] = useState<Mode>({ kind: 'loading' });
@@ -86,7 +88,7 @@ export default function RegisterPage() {
   }, [params]);
 
   return (
-    <AuthLayout headline="Crée ton espace." marketing={<PrivacyBody />}>
+    <AuthLayout headline={t('auth.register.headline')} marketing={<PrivacyBody />}>
       {mode.kind === 'loading' ? <LoadingPanel /> : null}
       {mode.kind === 'closed' ? <ClosedPanel /> : null}
       {mode.kind === 'invalid_invite' ? <InvalidInvitePanel /> : null}

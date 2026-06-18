@@ -1,5 +1,7 @@
 import type { useSession } from '@/core/auth/use-session';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+
 import PasswordPanel from './PasswordPanel';
 
 interface DisableViewProps {
@@ -20,11 +22,12 @@ interface DisableViewProps {
  * mode stays — the passkey carries the 2nd factor (issue #72).
  */
 export default function DisableView({ session, onCancel, onDone }: DisableViewProps) {
+  const { t } = useI18n();
   return (
     <PasswordPanel
-      title="Désactiver TOTP"
-      body="Confirmer désactive ton TOTP. En mode maximum, ou en 2FA requis sans passkey enrôlée, le mode redescend automatiquement à Standard ; sinon la passkey continue de couvrir le 2ᵉ facteur."
-      cta="Désactiver"
+      title={t('auth.totp.disable.title')}
+      body={t('auth.totp.disable.body')}
+      cta={t('common.actions.disable')}
       destructive
       onCancel={onCancel}
       onSubmit={async (password) => {

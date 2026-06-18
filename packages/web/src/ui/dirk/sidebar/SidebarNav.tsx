@@ -19,11 +19,13 @@ import {
   type LibrarySubview,
   type HrtSubview,
 } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
   id: ModuleId;
-  label: string;
+  /** i18n key for the visible label (under `layout.nav.*`). */
+  labelKey: string;
   /** Heroicon to render before the label. Main items only — sub-items
    * (Library categories) sit under their group eyebrow and stay
    * icon-less for visual hierarchy. */
@@ -31,17 +33,17 @@ interface NavItem {
 }
 
 const MAIN_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Aujourd’hui', icon: HomeIcon },
-  { id: 'mood', label: 'Mood', icon: HeartIcon },
-  { id: 'journal', label: 'Journal', icon: DocumentTextIcon },
-  { id: 'goals', label: 'Goals', icon: CheckCircleIcon },
+  { id: 'home', labelKey: 'layout.nav.home', icon: HomeIcon },
+  { id: 'mood', labelKey: 'layout.nav.mood', icon: HeartIcon },
+  { id: 'journal', labelKey: 'layout.nav.journal', icon: DocumentTextIcon },
+  { id: 'goals', labelKey: 'layout.nav.goals', icon: CheckCircleIcon },
   // Habits temporairement retiré — module dormant (cf. commentaire
   // dans `modules-registry.tsx` et issue #98). Le code reste en
   // place, juste pas exposé dans la nav le temps que l'expérience
   // produit soit tranchée.
-  { id: 'library', label: 'Library', icon: BookOpenIcon },
-  { id: 'review', label: 'Review', icon: CalendarIcon },
-  { id: 'hrt', label: 'HRT', icon: BeakerIcon },
+  { id: 'library', labelKey: 'layout.nav.library', icon: BookOpenIcon },
+  { id: 'review', labelKey: 'layout.nav.review', icon: CalendarIcon },
+  { id: 'hrt', labelKey: 'layout.nav.hrt', icon: BeakerIcon },
 ];
 
 /**
@@ -53,12 +55,13 @@ const MAIN_ITEMS: NavItem[] = [
  */
 interface LibrarySubItem {
   subview: LibrarySubview;
-  label: string;
+  /** i18n key for the visible label (under `layout.nav.library*`). */
+  labelKey: string;
 }
 const LIBRARY_SUB_ITEMS: readonly LibrarySubItem[] = [
-  { subview: 'livres', label: 'Livres' },
-  { subview: 'extraits', label: 'Extraits' },
-  { subview: 'notes', label: 'Notes' },
+  { subview: 'livres', labelKey: 'layout.nav.libraryBooks' },
+  { subview: 'extraits', labelKey: 'layout.nav.libraryExtracts' },
+  { subview: 'notes', labelKey: 'layout.nav.libraryNotes' },
 ];
 
 /**
@@ -70,13 +73,14 @@ const LIBRARY_SUB_ITEMS: readonly LibrarySubItem[] = [
  */
 interface HrtSubItem {
   subview: HrtSubview;
-  label: string;
+  /** i18n key for the visible label (under `layout.nav.hrt*`). */
+  labelKey: string;
 }
 const HRT_SUB_ITEMS: readonly HrtSubItem[] = [
-  { subview: 'summary', label: 'Synthèse' },
-  { subview: 'administration', label: 'Administration' },
-  { subview: 'labs', label: 'Analyses' },
-  { subview: 'export', label: 'Outils' },
+  { subview: 'summary', labelKey: 'layout.nav.hrtSummary' },
+  { subview: 'administration', labelKey: 'layout.nav.hrtAdministration' },
+  { subview: 'labs', labelKey: 'layout.nav.hrtLabs' },
+  { subview: 'export', labelKey: 'layout.nav.hrtExport' },
 ];
 
 interface SidebarNavProps {
@@ -131,6 +135,7 @@ interface SidebarItemProps {
 }
 
 function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
+  const { t } = useI18n();
   const setModule = useNodeaStore((s) => s.setModule);
   const Icon = item.icon;
 
@@ -153,7 +158,7 @@ function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
     >
       <span className="flex min-w-0 items-center gap-2.5">
         {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
-        <span className="truncate">{item.label}</span>
+        <span className="truncate">{t(item.labelKey)}</span>
       </span>
     </button>
   );
@@ -165,6 +170,7 @@ interface LibrarySubNavProps {
 }
 
 function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
+  const { t } = useI18n();
   const setModule = useNodeaStore((s) => s.setModule);
   const setLibrarySubview = useNodeaStore((s) => s.setLibrarySubview);
   return (
@@ -194,7 +200,7 @@ function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
                   : 'text-muted hover:bg-bg hover:text-ink',
               )}
             >
-              {sub.label}
+              {t(sub.labelKey)}
             </button>
           </li>
         );
@@ -209,6 +215,7 @@ interface HrtSubNavProps {
 }
 
 function HrtSubNav({ activeSubview, onNavigate }: HrtSubNavProps) {
+  const { t } = useI18n();
   const setModule = useNodeaStore((s) => s.setModule);
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
   return (
@@ -238,7 +245,7 @@ function HrtSubNav({ activeSubview, onNavigate }: HrtSubNavProps) {
                   : 'text-muted hover:bg-bg hover:text-ink',
               )}
             >
-              {sub.label}
+              {t(sub.labelKey)}
             </button>
           </li>
         );

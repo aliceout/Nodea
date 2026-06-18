@@ -33,7 +33,7 @@ const ChangePasswordFormSchema = z
   })
   .refine((v) => v.newPassword === v.confirmPassword, {
     path: ['confirmPassword'],
-    message: 'Les deux mots de passe ne correspondent pas.',
+    message: 'auth.recover.form.confirmMismatch',
   });
 type ChangePasswordForm = z.infer<typeof ChangePasswordFormSchema>;
 
@@ -79,17 +79,15 @@ export default function ChangePasswordForm() {
   async function onSubmit(values: ChangePasswordForm): Promise<void> {
     setServerError(null);
     if (!user) {
-      setServerError('Session absente — reconnecte-toi.');
+      setServerError(t('auth.changePassword.errors.noSession'));
       return;
     }
     if (!rulesOk) {
-      setServerError('Le mot de passe ne respecte pas toutes les règles.');
+      setServerError(t('auth.changePassword.errors.rulesNotMet'));
       return;
     }
     if ((strength?.score ?? 0) < 3) {
-      setServerError(
-        'Mot de passe trop facile à deviner — essaie quelque chose de plus complexe.',
-      );
+      setServerError(t('auth.changePassword.errors.tooWeak'));
       return;
     }
     try {
@@ -120,7 +118,7 @@ export default function ChangePasswordForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <Field
-        label="Mot de passe actuel"
+        label={t('auth.changePassword.currentPasswordLabel')}
         type="password"
         autoComplete="current-password"
         required
@@ -129,7 +127,7 @@ export default function ChangePasswordForm() {
       />
 
       <Field
-        label="Nouveau mot de passe"
+        label={t('auth.changePassword.newPasswordLabel')}
         type="password"
         autoComplete="new-password"
         required
@@ -147,14 +145,14 @@ export default function ChangePasswordForm() {
       ) : null}
 
       <Field
-        label="Confirmer le nouveau mot de passe"
+        label={t('auth.changePassword.confirmNewPasswordLabel')}
         type="password"
         autoComplete="new-password"
         required
         error={
-          confirmMismatch
-            ? 'Les deux mots de passe ne correspondent pas.'
-            : errors.confirmPassword?.message
+          confirmMismatch || errors.confirmPassword
+            ? t('auth.recover.form.confirmMismatch')
+            : undefined
         }
         {...confirmRegister}
       />
@@ -172,7 +170,9 @@ export default function ChangePasswordForm() {
         }
         className="mt-2 w-full"
       >
-        {isSubmitting ? 'Mise à jour…' : 'Mettre à jour et se reconnecter'}
+        {isSubmitting
+          ? t('common.states.updating')
+          : t('auth.changePassword.submitCta')}
       </Button>
     </form>
   );

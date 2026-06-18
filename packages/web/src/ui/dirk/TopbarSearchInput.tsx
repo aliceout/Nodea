@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/20/solid';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
 /**
@@ -26,8 +27,8 @@ interface TopbarSearchInputProps {
    *  field has no companion `<label>` in the Topbar layout. */
   placeholder: string;
   /** Optional override for the internal aria-label of the X button.
-   *  Default: "Effacer la recherche" — callers in other locales
-   *  should pass the translated string. */
+   *  Defaults to the translated `common.search.clearAria` ("Effacer
+   *  la recherche") — callers rarely need to override it. */
   clearLabel?: string;
   /** Optional className for layout tweaks (extra width, hide on
    *  small screens, etc.). Most callers don't need this. */
@@ -38,10 +39,12 @@ export default function TopbarSearchInput({
   value,
   onChange,
   placeholder,
-  clearLabel = 'Effacer la recherche',
+  clearLabel,
   className,
 }: TopbarSearchInputProps) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
+  const resolvedClearLabel = clearLabel ?? t('common.search.clearAria');
 
   // Escape clears + keeps focus. Wired here rather than as `onKeyDown`
   // prop so callers don't have to thread it through.
@@ -101,7 +104,7 @@ export default function TopbarSearchInput({
         <button
           type="button"
           onClick={handleClear}
-          aria-label={clearLabel}
+          aria-label={resolvedClearLabel}
           className="absolute right-1 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm text-muted hover:text-ink focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-k-accent-soft)]"
         >
           <XMarkIcon className="h-4 w-4" aria-hidden="true" />

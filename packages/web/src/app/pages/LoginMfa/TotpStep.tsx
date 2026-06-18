@@ -1,5 +1,6 @@
 import { type FormEvent } from 'react';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -60,17 +61,23 @@ export default function TotpStep({
   onConfirmLost,
   onRestartLogin,
 }: TotpStepProps) {
+  const { t } = useI18n();
+
   return (
     <>
       {lost.kind === 'idle' ? (
         <>
           <AuthPanelHeader
-            eyebrow="Vérification 2FA"
-            title={totpMode === 'code' ? 'Code à six chiffres' : 'Code de secours'}
+            eyebrow={t('auth.mfa.eyebrow')}
+            title={
+              totpMode === 'code'
+                ? t('auth.mfa.totp.titleCode')
+                : t('auth.mfa.totp.titleBackup')
+            }
             subtitle={
               totpMode === 'code'
-                ? 'Tape le code affiché par ton appli d’authentification (Bitwarden, Ente Auth, Aegis, Google Auth…). Le code change toutes les 30 secondes.'
-                : 'Tape un de tes 10 codes de secours (24 caractères, tirets optionnels). Chaque code n’est utilisable qu’une seule fois.'
+                ? t('auth.mfa.totp.subtitleCode')
+                : t('auth.mfa.totp.subtitleBackup')
             }
           />
 
@@ -78,7 +85,7 @@ export default function TotpStep({
             {totpMode === 'code' ? (
               <Field
                 key="totp-code"
-                label="Code TOTP"
+                label={t('auth.mfa.totp.codeLabel')}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 autoFocus
@@ -91,7 +98,7 @@ export default function TotpStep({
             ) : (
               <Field
                 key="totp-backup"
-                label="Code de secours"
+                label={t('auth.mfa.totp.backupLabel')}
                 inputMode="text"
                 autoComplete="one-time-code"
                 autoFocus
@@ -110,7 +117,7 @@ export default function TotpStep({
               disabled={!canSubmit}
               className="mt-2 w-full"
             >
-              {submitting ? 'Vérification…' : 'Vérifier'}
+              {submitting ? t('common.states.verifying') : t('common.actions.verify')}
             </Button>
           </form>
 
@@ -124,7 +131,7 @@ export default function TotpStep({
                 onClick={onSwitchToBackup}
                 className="cursor-pointer transition-colors hover:text-ink"
               >
-                J’ai perdu mon TOTP → utiliser un code de secours
+                {t('auth.mfa.totp.switchToBackup')}
               </button>
             </div>
           ) : null}
@@ -140,7 +147,7 @@ export default function TotpStep({
               onClick={onStartLost}
               className="mt-6 w-full"
             >
-              Demander une récupération par email
+              {t('auth.mfa.requestEmailRecovery')}
             </Button>
           ) : null}
 
@@ -153,7 +160,7 @@ export default function TotpStep({
               onClick={onRestartLogin}
               className="cursor-pointer transition-colors hover:text-ink"
             >
-              ← Recommencer la connexion
+              {t('auth.mfa.restartLogin')}
             </button>
           </div>
         </>

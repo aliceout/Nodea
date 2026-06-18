@@ -23,17 +23,12 @@ export const MOOD_BLOCK_FILL: Record<MoodScore, string> = {
   '-2': 'bg-low',
 };
 
-/** Tone class for the small status dot next to each goal. */
+/** Tone class for the small status dot next to each goal. The
+ *  human-readable status label (hover hint) is resolved at the call
+ *  site via i18n (`home.goals.status.<status>`), not stored here. */
 export const STATUS_TONE: Record<GoalStatusLite, string> = {
   open: 'border-hair bg-bg',
   wip: 'border-accent bg-accent',
   done: 'border-accent bg-accent',
-};
-
-/** FR label for the status dot's `title` attribute (hover hint). */
-export const STATUS_LABEL: Record<GoalStatusLite, string> = {
-  open: 'ouvert',
-  wip: 'en cours',
-  done: 'terminé',
 };
 

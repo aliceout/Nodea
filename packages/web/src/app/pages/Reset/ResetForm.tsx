@@ -7,6 +7,7 @@ import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
 import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -24,7 +25,9 @@ const ResetFormSchema = z
   })
   .refine((v) => v.password === v.confirm, {
     path: ['confirm'],
-    message: 'Les deux mots de passe ne correspondent pas.',
+    // Sentinel resolved to a localized string at render time (the schema
+    // lives at module scope where the `t` hook isn't available).
+    message: 'auth.reset.form.confirmMismatch',
   });
 type ResetFormValues = z.infer<typeof ResetFormSchema>;
 
@@ -59,6 +62,7 @@ export default function ResetForm({
   error: string | null;
   onValidSubmit: (password: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const {
     register,
     handleSubmit,
@@ -85,9 +89,9 @@ export default function ResetForm({
 
   return (
     <>
-      <p className="mb-1 text-[13px] text-muted">Réinitialisation</p>
+      <p className="mb-1 text-[13px] text-muted">{t('auth.reset.form.eyebrow')}</p>
       <h2 className="mb-5 text-[24px] font-semibold tracking-[-0.02em] text-ink">
-        Choisis un nouveau mot de passe.
+        {t('auth.reset.form.title')}
       </h2>
 
       {/* The destructive warning lives here in the form column
@@ -96,17 +100,15 @@ export default function ResetForm({
           before clicking submit. K · Sauge danger tone
           (border-l, danger/5 wash). */}
       <InlineAlert className="mb-4">
-        <p className="font-semibold">Perte définitive de données</p>
+        <p className="font-semibold">{t('auth.reset.form.warning.title')}</p>
         <p className="mt-1 text-ink-soft">
-          La clé qui chiffre tes entrées dérive du mot de passe. Comme l’ancienne clé
-          a été perdue avec l’ancien mot de passe, toutes tes entrées existantes
-          seront supprimées au moment de la validation.
+          {t('auth.reset.form.warning.body')}
         </p>
       </InlineAlert>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field
-          label="Nouveau mot de passe (≥ 12 caractères)"
+          label={t('auth.reset.form.newPasswordLabel')}
           type="password"
           autoComplete="new-password"
           minLength={12}
@@ -115,19 +117,27 @@ export default function ResetForm({
           legend={
             strength ? (
               <span className={cn(strengthOk ? 'text-accent-deep' : 'text-muted')}>
-                Force : {strength.score} / 4
-                {strength.warning ? ` — ${strength.warning}` : ''}
+                {t('auth.reset.form.strength', {
+                  values: { score: strength.score },
+                })}
+                {strength.warning
+                  ? t('auth.reset.form.strengthWarning', {
+                      values: { warning: strength.warning },
+                    })
+                  : ''}
               </span>
             ) : undefined
           }
           {...register('password')}
         />
         <Field
-          label="Confirmation"
+          label={t('auth.reset.form.confirmLabel')}
           type="password"
           autoComplete="new-password"
           required
-          error={errors.confirm?.message}
+          error={
+            errors.confirm?.message ? t(errors.confirm.message) : undefined
+          }
           {...register('confirm')}
         />
 
@@ -137,10 +147,7 @@ export default function ResetForm({
             className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
             {...register('acknowledged')}
           />
-          <span>
-            Je comprends que toutes mes données existantes seront supprimées lors de
-            cette réinitialisation.
-          </span>
+          <span>{t('auth.reset.form.acknowledge')}</span>
         </label>
 
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
@@ -152,12 +159,14 @@ export default function ResetForm({
           disabled={!isValid || !strengthOk || submitting}
           className="mt-2 w-full"
         >
-          {submitting ? 'Réinitialisation…' : 'Réinitialiser et effacer mes données'}
+          {submitting
+            ? t('auth.reset.form.submitting')
+            : t('auth.reset.form.submit')}
         </Button>
 
         <div className="mt-[18px] text-center text-[12.5px] text-muted">
           <Link to="/login" className="cursor-pointer transition-colors hover:text-ink">
-            ← Annuler
+            {t('auth.reset.form.cancel')}
           </Link>
         </div>
       </form>

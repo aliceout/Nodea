@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { PasskeyListItem } from '@nodea/shared';
 
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -28,6 +29,7 @@ export default function RenameView({
   onCancel,
   onSuccess,
 }: RenameViewProps) {
+  const { t } = useI18n();
   const [label, setLabel] = useState(passkey.label ?? '');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -37,11 +39,11 @@ export default function RenameView({
     e.preventDefault();
     setError(null);
     if (!label.trim()) {
-      setError('Donne un nom à cette passkey.');
+      setError(t('auth.passkeys.errors.labelRequired'));
       return;
     }
     if (!password) {
-      setError('Mot de passe requis.');
+      setError(t('auth.passkeys.errors.passwordRequired'));
       return;
     }
     setSubmitting(true);
@@ -51,9 +53,9 @@ export default function RenameView({
       await onSuccess();
     } catch (err) {
       if (isPasswordError(err)) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.passkeys.errors.wrongPassword'));
       } else {
-        setError('Impossible de renommer cette passkey.');
+        setError(t('auth.passkeys.errors.renameFailed'));
         if (import.meta.env.DEV) console.warn('passkey rename failed', err);
       }
     } finally {
@@ -63,17 +65,20 @@ export default function RenameView({
 
   return (
     <>
-      <AuthPanelHeader eyebrow="Renommer" title="Renommer une passkey" />
+      <AuthPanelHeader
+        eyebrow={t('auth.passkeys.rename.eyebrow')}
+        title={t('auth.passkeys.rename.title')}
+      />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="Nouveau nom"
+          label={t('auth.passkeys.rename.labelField')}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           required
         />
         <Field
-          label="Mot de passe actuel"
+          label={t('auth.passkeys.fields.currentPassword')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -90,7 +95,9 @@ export default function RenameView({
           disabled={submitting}
           className="mt-2 w-full"
         >
-          {submitting ? 'Renommage…' : 'Renommer'}
+          {submitting
+            ? t('auth.passkeys.rename.renaming')
+            : t('auth.passkeys.rename.submit')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -99,7 +106,7 @@ export default function RenameView({
             onClick={onCancel}
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Annuler
+            {t('auth.passkeys.cancelBack')}
           </button>
         </div>
       </form>

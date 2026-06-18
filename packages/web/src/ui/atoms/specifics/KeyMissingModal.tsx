@@ -1,4 +1,5 @@
 import { DialogTitle } from '@headlessui/react';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import { Modal } from '@/ui/atoms/layout/Modal';
 
@@ -23,17 +24,18 @@ interface KeyMissingModalProps {
  * so the panel keeps its `aria-labelledby` wiring.
  */
 export default function KeyMissingModal({ onLogout, open = true }: KeyMissingModalProps) {
+  const { t } = useI18n();
   return (
     <Modal open={open} onClose={() => undefined} size="sm" align="center">
       <div className="flex flex-col items-stretch gap-3 px-6 py-6 text-center">
         <DialogTitle className="text-[18px] font-semibold tracking-[-0.01em] text-ink">
-          Session verrouillée
+          {t('auth.login.keyMissingModal.title')}
         </DialogTitle>
         <p className="text-[13.5px] leading-[1.5] text-ink-soft">
-          Merci de bien vouloir vous reconnecter.
+          {t('auth.login.keyMissingModal.description')}
         </p>
         <Button variant="primary" size="md" onClick={onLogout} autoFocus className="mx-auto mt-2">
-          Se reconnecter
+          {t('auth.login.keyMissingModal.logout')}
         </Button>
       </div>
     </Modal>

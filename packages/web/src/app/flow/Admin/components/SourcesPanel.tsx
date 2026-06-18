@@ -4,6 +4,7 @@ import type { AdminSourcesResponse, SourceHealth } from '@nodea/shared';
 
 import { apiAdminSources } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
@@ -26,6 +27,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
  * timeouts (~6–8s), so the worst-case wait is around 8s.
  */
 export default function SourcesPanel() {
+  const { t, language } = useI18n();
   const [data, setData] = useState<AdminSourcesResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function SourcesPanel() {
       const response = await apiAdminSources();
       setData(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+      setError(err instanceof Error ? err.message : t('admin.sources.unknownError'));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,10 @@ export default function SourcesPanel() {
 
   useEffect(() => {
     void probe();
-     
+    // Mount-once probe. `probe` now closes over `t`, so listing it would
+    // re-hit the sources API on every render that changes the t identity —
+    // not wanted; the « Re-tester » button covers manual refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -53,8 +58,10 @@ export default function SourcesPanel() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-[12px] text-muted">
           {data
-            ? `Dernière vérification : ${new Date(data.meta.generatedAt).toLocaleTimeString('fr-FR')}`
-            : 'En attente de la première vérification…'}
+            ? t('admin.sources.lastChecked', {
+                values: { time: new Date(data.meta.generatedAt).toLocaleTimeString(language) },
+              })
+            : t('admin.sources.awaitingFirstCheck')}
         </p>
         <Button
           variant="neutral"
@@ -66,7 +73,7 @@ export default function SourcesPanel() {
             className={cn('h-3.5 w-3.5', loading ? 'animate-spin' : '')}
             aria-hidden="true"
           />
-          {loading ? 'Vérification…' : 'Re-tester'}
+          {loading ? t('common.states.verifying') : t('admin.sources.retest')}
         </Button>
       </div>
 
@@ -99,17 +106,16 @@ function groupByModule(sources: SourceHealth[]): Record<string, SourceHealth[]> 
   return grouped;
 }
 
-const MODULE_LABELS: Record<string, string> = {
-  library: 'Library',
-};
-
 interface ModuleBlockProps {
   moduleName: string;
   sources: SourceHealth[];
 }
 
 function ModuleBlock({ moduleName, sources }: ModuleBlockProps) {
-  const label = MODULE_LABELS[moduleName] ?? moduleName;
+  const { t } = useI18n();
+  // Known modules carry a curated label; unknown ones fall back to
+  // the raw server-provided module id.
+  const label = t(`admin.sources.moduleLabels.${moduleName}`, { defaultValue: moduleName });
   return (
     <section className="py-[24px] first:pt-0 last:pb-0">
       <h3 className="mb-2 text-[16px] font-semibold text-ink">{label}</h3>
@@ -123,6 +129,7 @@ function ModuleBlock({ moduleName, sources }: ModuleBlockProps) {
 }
 
 function SourceRow({ source }: { source: SourceHealth }) {
+  const { t } = useI18n();
   const status = computeStatus(source);
   return (
     <li className="border-b border-hair py-2.5 last:border-b-0">
@@ -131,14 +138,16 @@ function SourceRow({ source }: { source: SourceHealth }) {
           <span className="truncate">{source.label}</span>
           {source.needsKey ? (
             <span className="shrink-0 rounded bg-bg-2 px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.04em] text-muted">
-              Clé requise
+              {t('admin.sources.status.keyRequired')}
             </span>
           ) : null}
         </p>
         <span className="shrink-0 text-[11.5px] tabular-nums text-muted">
-          {source.responseMs !== null ? `${source.responseMs} ms` : '—'}
+          {source.responseMs !== null
+            ? t('admin.sources.responseMs', { values: { ms: source.responseMs } })
+            : '—'}
         </span>
-        <StatusBadge tone={status.tone} label={status.label} />
+        <StatusBadge tone={status.tone} label={t(status.labelKey)} />
       </div>
       {source.error ? (
         <p className="mt-1 text-[11.5px] text-danger">{source.error}</p>
@@ -148,7 +157,8 @@ function SourceRow({ source }: { source: SourceHealth }) {
 }
 
 interface StatusInfo {
-  label: string;
+  /** i18n key for the status label, resolved at render. */
+  labelKey: string;
   tone: 'ok' | 'fail' | 'idle';
 }
 
@@ -160,15 +170,15 @@ interface StatusInfo {
  */
 function computeStatus(s: SourceHealth): StatusInfo {
   if (!s.configured) {
-    return { tone: 'idle', label: 'Non configurée' };
+    return { tone: 'idle', labelKey: 'admin.sources.status.notConfigured' };
   }
   if (!s.online) {
-    return { tone: 'fail', label: 'Hors ligne' };
+    return { tone: 'fail', labelKey: 'admin.sources.status.offline' };
   }
-  return { tone: 'ok', label: 'En ligne' };
+  return { tone: 'ok', labelKey: 'admin.sources.status.online' };
 }
 
-function StatusBadge({ tone, label }: StatusInfo) {
+function StatusBadge({ tone, label }: { tone: StatusInfo['tone']; label: string }) {
   return (
     <span
       className={cn(

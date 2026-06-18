@@ -163,7 +163,8 @@
       "backupRestoreCta": "Decrypt and restore",
       "backupRestoreLoading": "Decrypting…",
       "backupCancel": "Cancel",
-      "backupWrongPassphrase": "Wrong passphrase, or the backup file was altered."
+      "backupWrongPassphrase": "Wrong passphrase, or the backup file was altered.",
+      "partialBackupWarning": "Modules not imported (corrupted files): {modules}"
     },
     "backup": {
       "title": "Encrypted backup",

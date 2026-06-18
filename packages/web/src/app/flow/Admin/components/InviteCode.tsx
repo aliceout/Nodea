@@ -3,6 +3,7 @@ import { ArrowPathIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import type { AdminInviteRow } from '@/core/api/client';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
@@ -45,6 +46,7 @@ export default function InviteManager({
   onResendInvite,
   onRevokeInvite,
 }: InviteManagerProps) {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const trimmed = email.trim();
   const looksValidEmail = /\S+@\S+\.\S+/.test(trimmed);
@@ -60,7 +62,7 @@ export default function InviteManager({
     <div className="divide-y divide-hair">
       <section className="py-[24px] first:pt-0 last:pb-0">
         <h3 className="mb-2 text-[16px] font-semibold text-ink">
-          Inscription ouverte (sans invitation)
+          {t('admin.invites.openRegistration.heading')}
         </h3>
         <div className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6">
           <OpenRegistrationToggle
@@ -69,23 +71,21 @@ export default function InviteManager({
             onChange={onToggleOpenRegistration}
           />
           <p className="text-[12px] leading-[1.55] text-muted">
-            Quand actif, n'importe qui peut créer un compte sans invitation
-            (parcours d'activation par e-mail). Sinon (par défaut),
-            l'inscription exige un lien envoyé par un·e admin.
+            {t('admin.invites.openRegistration.description')}
           </p>
         </div>
       </section>
 
       <section className="py-[24px] first:pt-0 last:pb-0">
         <h3 className="mb-2 text-[16px] font-semibold text-ink">
-          E-mail à inviter
+          {t('admin.invites.emailToInvite.heading')}
         </h3>
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 items-center gap-y-3 lg:grid-cols-[200px_1fr] lg:gap-x-6"
         >
           <Button type="submit" size="sm" disabled={!looksValidEmail}>
-            Envoyer l'invitation
+            {t('admin.invites.emailToInvite.submit')}
           </Button>
           <DirkInput
             id="invite-email"
@@ -94,8 +94,8 @@ export default function InviteManager({
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="ami@example.com"
-            aria-label="E-mail à inviter"
+            placeholder={t('admin.invites.emailToInvite.placeholder')}
+            aria-label={t('admin.invites.emailToInvite.inputAria')}
             className="max-w-[320px]"
           />
         </form>
@@ -115,11 +115,11 @@ export default function InviteManager({
 
       <section className="py-[24px] first:pt-0 last:pb-0">
         <h3 className="mb-2 text-[16px] font-semibold text-ink">
-          Invitations en attente
+          {t('admin.invites.pending.heading')}
         </h3>
         {pendingInvites.length === 0 ? (
           <p className="text-[12px] italic text-muted">
-            Aucune invitation en attente.
+            {t('admin.invites.pending.empty')}
           </p>
         ) : (
           /* Real <table> rather than a CSS-grid fake — `table-auto`
@@ -131,10 +131,10 @@ export default function InviteManager({
               <tr className="text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-muted">
                 <th className="min-w-[220px] border-b border-hair px-4 pb-1.5 font-semibold" />
                 <th className="min-w-[200px] border-b border-hair px-4 pb-1.5 font-semibold">
-                  Envoyée
+                  {t('admin.invites.pending.columns.sent')}
                 </th>
                 <th className="min-w-[200px] border-b border-hair px-4 pb-1.5 font-semibold">
-                  Expire
+                  {t('admin.invites.pending.columns.expires')}
                 </th>
                 <th className="border-b border-hair px-4 pb-1.5 font-semibold" />
               </tr>
@@ -168,8 +168,8 @@ export default function InviteManager({
                           iconOnly
                           onClick={() => onResendInvite(i.id)}
                           disabled={busy}
-                          aria-label="Renvoyer l'invitation"
-                          title="Renvoyer l'invitation"
+                          aria-label={t('admin.invites.pending.resendAria')}
+                          title={t('admin.invites.pending.resendAria')}
                         >
                           <ArrowPathIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
@@ -179,8 +179,8 @@ export default function InviteManager({
                           iconOnly
                           onClick={() => onRevokeInvite(i.id)}
                           disabled={busy}
-                          aria-label="Révoquer cette invitation"
-                          title="Révoquer cette invitation"
+                          aria-label={t('admin.invites.pending.revokeAria')}
+                          title={t('admin.invites.pending.revokeAria')}
                         >
                           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
@@ -218,6 +218,7 @@ function OpenRegistrationToggle({
   busy,
   onChange,
 }: OpenRegistrationToggleProps) {
+  const { t } = useI18n();
   const id = 'admin-open-registration-toggle';
   return (
     <label
@@ -242,7 +243,7 @@ function OpenRegistrationToggle({
       <input
         id={id}
         type="checkbox"
-        aria-label="Autoriser les inscriptions ouvertes (sans invitation)"
+        aria-label={t('admin.invites.openRegistration.toggleAria')}
         className="absolute inset-0 cursor-pointer appearance-none focus:outline-hidden disabled:cursor-not-allowed"
         checked={checked}
         disabled={busy}

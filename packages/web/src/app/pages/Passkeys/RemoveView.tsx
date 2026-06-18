@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { PasskeyListItem } from '@nodea/shared';
 
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -31,6 +32,7 @@ export default function RemoveView({
   onCancel,
   onSuccess,
 }: RemoveViewProps) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function RemoveView({
     e.preventDefault();
     setError(null);
     if (!password) {
-      setError('Mot de passe requis.');
+      setError(t('auth.passkeys.errors.passwordRequired'));
       return;
     }
     setSubmitting(true);
@@ -49,9 +51,9 @@ export default function RemoveView({
       await onSuccess();
     } catch (err) {
       if (isPasswordError(err)) {
-        setError('Mot de passe incorrect.');
+        setError(t('auth.passkeys.errors.wrongPassword'));
       } else {
-        setError('Impossible de retirer cette passkey.');
+        setError(t('auth.passkeys.errors.removeFailed'));
         if (import.meta.env.DEV) console.warn('passkey remove failed', err);
       }
     } finally {
@@ -62,23 +64,22 @@ export default function RemoveView({
   return (
     <>
       <AuthPanelHeader
-        eyebrow="Retrait"
-        title="Retirer une passkey"
+        eyebrow={t('auth.passkeys.remove.eyebrow')}
+        title={t('auth.passkeys.remove.title')}
         subtitle={
           <>
-            Tu vas retirer{' '}
+            {t('auth.passkeys.remove.subtitleBefore')}{' '}
             <strong className="font-semibold text-ink">
-              {passkey.label ?? 'Sans nom'}
+              {passkey.label ?? t('auth.passkeys.row.unnamed')}
             </strong>
-            . Cette passkey ne pourra plus être utilisée pour se connecter à ton
-            compte.
+            {t('auth.passkeys.remove.subtitleAfter')}
           </>
         }
       />
 
       <form onSubmit={onSubmit} noValidate>
         <Field
-          label="Mot de passe actuel"
+          label={t('auth.passkeys.fields.currentPassword')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -95,7 +96,9 @@ export default function RemoveView({
           disabled={submitting}
           className="mt-2 w-full"
         >
-          {submitting ? 'Retrait…' : 'Retirer'}
+          {submitting
+            ? t('auth.passkeys.remove.removing')
+            : t('auth.passkeys.remove.submit')}
         </Button>
 
         <div className="mt-4.5 text-center text-[12.5px] text-muted">
@@ -104,7 +107,7 @@ export default function RemoveView({
             onClick={onCancel}
             className="cursor-pointer transition-colors hover:text-ink"
           >
-            ← Annuler
+            {t('auth.passkeys.cancelBack')}
           </button>
         </div>
       </form>

@@ -28,7 +28,9 @@ const RegisterFormSchema = z
   })
   .refine((v) => v.password === v.confirmPassword, {
     path: ['confirmPassword'],
-    message: 'Les deux mots de passe ne correspondent pas.',
+    // Stable sentinel translated at render time via i18n; the Zod
+    // schema runs outside the React tree so `t` isn't available here.
+    message: 'password_mismatch',
   });
 type RegisterForm = z.infer<typeof RegisterFormSchema>;
 
@@ -95,11 +97,11 @@ export default function RegisterFormView({
   async function onSubmit(values: RegisterForm): Promise<void> {
     setServerError(null);
     if (!rulesOk) {
-      setServerError('Le mot de passe ne respecte pas toutes les règles.');
+      setServerError(t('auth.register.form.passwordRulesUnmet'));
       return;
     }
     if (mode.kind === 'open' && !emailLooksValid) {
-      setServerError('E-mail invalide.');
+      setServerError(t('auth.register.form.emailInvalid'));
       return;
     }
     try {
@@ -139,11 +141,14 @@ export default function RegisterFormView({
 
   return (
     <>
-      <AuthPanelHeader eyebrow="Inscription" title="Créer un compte" />
+      <AuthPanelHeader
+        eyebrow={t('auth.register.eyebrow')}
+        title={t('auth.register.form.title')}
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field
-          label="E-mail"
+          label={t('auth.register.form.emailLabel')}
           type="email"
           autoComplete="email"
           value={emailInput}
@@ -156,29 +161,29 @@ export default function RegisterFormView({
         />
         {mode.kind === 'invited' ? (
           <p className="-mt-2 mb-3.5 text-[11.5px] text-muted">
-            E-mail défini lors de l'invitation, non modifiable.
+            {t('auth.register.form.emailLockedHint')}
           </p>
         ) : null}
 
         <Field
-          label="Nom d'utilisateur·ice"
+          label={t('auth.register.form.usernameLabel')}
           type="text"
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
           error={
             errors.username?.message === 'invalid_username'
-              ? 'Lettres, chiffres, et . _ - uniquement (2 à 32 caractères).'
+              ? t('auth.register.form.usernameInvalid')
               : errors.username?.message
           }
           {...field('username')}
         />
         <p className="-mt-2 mb-3.5 text-[11.5px] text-muted">
-          Un prénom ou un pseudo, comme tu préfères.
+          {t('auth.register.form.usernameHint')}
         </p>
 
         <Field
-          label="Mot de passe"
+          label={t('auth.register.form.passwordLabel')}
           type="password"
           autoComplete="new-password"
           error={errors.password?.message}
@@ -197,12 +202,12 @@ export default function RegisterFormView({
         ) : null}
 
         <Field
-          label="Confirmer le mot de passe"
+          label={t('auth.register.form.confirmPasswordLabel')}
           type="password"
           autoComplete="new-password"
           error={
-            confirmMismatch
-              ? 'Les deux mots de passe ne correspondent pas.'
+            confirmMismatch || errors.confirmPassword?.message === 'password_mismatch'
+              ? t('auth.register.form.passwordMismatch')
               : errors.confirmPassword?.message
           }
           {...field('confirmPassword', {
@@ -227,7 +232,9 @@ export default function RegisterFormView({
           }
           className="mt-2 w-full"
         >
-          {isSubmitting ? 'Envoi…' : 'Créer mon compte'}
+          {isSubmitting
+            ? t('common.states.submitting')
+            : t('auth.register.form.submit')}
         </Button>
 
         {/*
@@ -242,12 +249,12 @@ export default function RegisterFormView({
          */}
         {mode.kind === 'open' ? (
           <div className="mt-[18px] flex items-center justify-between text-[12.5px] text-muted">
-            <span>Déjà un compte&nbsp;?</span>
+            <span>{t('auth.register.hasAccountQuestion')}</span>
             <Link
               to="/login"
               className="cursor-pointer text-accent transition-colors hover:text-accent-deep hover:underline"
             >
-              Se connecter
+              {t('auth.register.goToLogin')}
             </Link>
           </div>
         ) : null}

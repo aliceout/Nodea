@@ -4,6 +4,7 @@ import type { PasskeyListItem } from '@nodea/shared';
 
 import { apiPasskeyList, isApiError } from '@/core/api/client';
 import { useSession } from '@/core/auth/use-session';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
@@ -45,6 +46,7 @@ type Stage =
 
 export default function PasskeysPage() {
   useDocumentTitle('Passkeys');
+  const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();
   const [stage, setStage] = useState<Stage>({ kind: 'list' });
@@ -62,7 +64,7 @@ export default function PasskeysPage() {
         navigate('/login', { replace: true });
         return;
       }
-      setError('Impossible de charger tes passkeys.');
+      setError(t('auth.passkeys.errors.listFailed'));
       if (import.meta.env.DEV) console.warn('passkey list failed', err);
     }
   }
@@ -75,19 +77,15 @@ export default function PasskeysPage() {
 
   return (
     <AuthLayout
-      headline="Une passkey à la place du mot de passe."
+      headline={t('auth.passkeys.marketing.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Une passkey, c’est l’empreinte de ton téléphone, le PIN de ta clé
-            hardware, ou ton gestionnaire de mots de passe. Confirmer une
-            connexion devient un geste — plus de mot de passe à retenir.
+            {t('auth.passkeys.marketing.para1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Une passkey compatible PRF (Touch ID, Face ID, Bitwarden, 1Password)
-            peut aussi déchiffrer tes données — sinon elle te connecte mais te
-            demandera ton mot de passe pour ouvrir tes entrées.
+            {t('auth.passkeys.marketing.para2')}
           </p>
         </>
       }

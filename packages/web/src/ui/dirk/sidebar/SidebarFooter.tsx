@@ -1,6 +1,7 @@
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 import { useBackgroundShade } from '@/core/theme/useBackgroundShade';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import LanguageToggle from '@/ui/dirk/preferences/LanguageToggle';
 import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
 
@@ -19,6 +20,7 @@ import ThemeToggle from '@/ui/dirk/preferences/ThemeToggle';
  * same way `ThemeToggle`'s `useTheme()` call applies the theme.
  */
 export default function SidebarFooter() {
+  const { t } = useI18n();
   useBackgroundShade();
   return (
     <div className="-mb-2.5 mt-3 flex flex-col gap-[5px] border-t border-hair px-1.5 pt-2.5 text-[12px] text-muted">
@@ -35,7 +37,7 @@ export default function SidebarFooter() {
             className="h-[7px] w-[7px] animate-sync-pulse rounded-full bg-sync"
           />
         </span>
-        <span>Synchronisé · à l’instant</span>
+        <span>{t('layout.sync.justNow')}</span>
       </div>
       {/* Preferences — second line, indented under the sync text so
           the two lines read as a stacked status panel à la macOS

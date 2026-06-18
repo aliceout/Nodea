@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
 /**
@@ -31,6 +32,7 @@ interface AuthMarketingPanelProps {
 }
 
 export default function AuthMarketingPanel({ headline, children }: AuthMarketingPanelProps) {
+  const { t } = useI18n();
   return (
     <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
       <div className="flex items-center gap-2.5">
@@ -53,7 +55,7 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12px] text-muted">
-        <span>Chiffré côté client</span>
+        <span>{t('layout.marketing.clientEncrypted')}</span>
         <span>·</span>
         {/* « Open-source » is a claim, so link it to the actual code
             — readers shouldn't have to take our word for it. Styled
@@ -69,14 +71,14 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
           rel="noopener noreferrer"
           className="inline-flex cursor-pointer items-center gap-1 text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
         >
-          Open-source
+          {t('layout.marketing.openSource')}
           <ArrowTopRightOnSquareIcon
             className="h-3 w-3"
             aria-hidden="true"
           />
         </a>
         <span>·</span>
-        <span>Auto-hébergeable</span>
+        <span>{t('layout.marketing.selfHostable')}</span>
         <span>·</span>
         {/* Public docs entry — short label matching the register
             of the surrounding items. The verbose "Voir comment
@@ -87,7 +89,7 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
           to="/docs/newbie"
           className="cursor-pointer text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
         >
-          Sécurité
+          {t('layout.marketing.security')}
         </Link>
       </div>
     </aside>
@@ -106,18 +108,17 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
  * directly.
  */
 export function PrivacyBody() {
+  const { t } = useI18n();
   return (
     <>
       <p className="text-[18px] leading-[1.5] text-ink-soft">
-        Un espace pour écrire, faire le point, suivre tes humeurs, tes lectures,
-        ce que tu vises.
+        {t('layout.marketing.body.purpose')}
       </p>
       <p className="text-[18px] leading-[1.5] text-ink-soft">
-        Toutes les données sont chiffrées dans ton navigateur. Illisibles pour d’autres,
-        même pour l’équipe de Nodea — tu es la seule personne à y avoir accès.
+        {t('layout.marketing.body.encryption', { values: { brand: 'Nodea' } })}
       </p>
       <p className="text-[18px] leading-[1.5] text-ink-soft">
-        Pas de tracking, pas de cookie, pas de pub, pas de surveillance.
+        {t('layout.marketing.body.noTracking')}
       </p>
     </>
   );

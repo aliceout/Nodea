@@ -37,8 +37,8 @@ import ModeSelector, { type ModeOption } from './ModeSelector';
  *     confirm handlers, error / success rendering, AuthLayout wrap.
  */
 export default function SecurityModePage() {
-  useDocumentTitle('Mode de sécurité');
   const { t } = useI18n();
+  useDocumentTitle(t('auth.securityMode.documentTitle'));
   const navigate = useNavigate();
   const setModule = useNodeaStore((s) => s.setModule);
   const session = useSession();
@@ -57,29 +57,26 @@ export default function SecurityModePage() {
   const options: ReadonlyArray<ModeOption> = [
     {
       id: 'password_or_passkey',
-      label: 'Standard',
-      description:
-        'Mot de passe OU passkey suffit pour se connecter. Le défaut.',
+      label: t('auth.securityMode.options.standard.label'),
+      description: t('auth.securityMode.options.standard.description'),
       unmetRequirement: null,
     },
     {
       id: 'always_2fa',
-      label: '2FA requis',
-      description:
-        '2ᵉ facteur en plus à chaque connexion : code TOTP ou passkey, au choix. Configure au moins un des deux pour pouvoir le sélectionner.',
+      label: t('auth.securityMode.options.always2fa.label'),
+      description: t('auth.securityMode.options.always2fa.description'),
       unmetRequirement: hasAny2ndFactor
         ? null
-        : 'Active TOTP ou enrôle une passkey avant.',
+        : t('auth.securityMode.unmet.secondFactor'),
     },
     {
       id: 'maximum',
-      label: 'Maximum',
-      description:
-        'Mot de passe + passkey + TOTP, les trois. Une passkey PRF-capable obligatoire.',
+      label: t('auth.securityMode.options.maximum.label'),
+      description: t('auth.securityMode.options.maximum.description'),
       unmetRequirement: !totpEnabled
-        ? 'Active TOTP avant.'
+        ? t('auth.securityMode.unmet.totp')
         : passkeysPrfCount === 0
-          ? 'Enrôle une passkey PRF avant.'
+          ? t('auth.securityMode.unmet.passkeyPrf')
           : null,
     },
   ];
@@ -106,7 +103,9 @@ export default function SecurityModePage() {
     setSubmitting(true);
     try {
       await session.changeSecurityMode(selected, password);
-      setSuccess(`Mode mis à jour : ${labelFor(selected)}.`);
+      setSuccess(
+        t('auth.securityMode.success', { values: { mode: labelFor(selected, t) } }),
+      );
       setSelected(null);
     } catch (err) {
       // Page-specific overrides : back-end error codes map to
@@ -143,33 +142,23 @@ export default function SecurityModePage() {
 
   return (
     <AuthLayout
-      headline="Combien de facteurs à chaque login."
+      headline={t('auth.securityMode.headline')}
       maxWidth="420"
       marketing={
         <>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Le mode de sécurité gouverne ce que tu dois fournir à chaque
-            connexion : mot de passe seul, mot de passe + TOTP, ou les trois
-            facteurs (mot de passe + passkey + TOTP).
+            {t('auth.securityMode.marketing.p1')}
           </p>
           <p className="text-[18px] leading-[1.5] text-ink-soft">
-            Plus tu montes en exigence, plus tu protèges l’accès — au prix
-            d’une étape supplémentaire au login. Tes données sont déjà
-            chiffrées côté client : le mode ne change pas la crypto, juste les
-            preuves demandées au serveur.
+            {t('auth.securityMode.marketing.p2')}
           </p>
         </>
       }
     >
       <AuthPanelHeader
-        eyebrow="Sécurité"
-        title="Mode de sécurité"
-        subtitle={
-          <>
-            Choisis combien de facteurs sont requis à chaque connexion. Un
-            changement nécessite ton mot de passe.
-          </>
-        }
+        eyebrow={t('auth.securityMode.eyebrow')}
+        title={t('auth.securityMode.title')}
+        subtitle={<>{t('auth.securityMode.subtitle')}</>}
       />
 
       <ModeSelector
@@ -185,7 +174,7 @@ export default function SecurityModePage() {
             prompt={
               <>
                 {t('auth.securityMode.passwordProof.instructionBefore')}
-                <strong className="font-semibold text-ink">{labelFor(selected)}</strong>
+                <strong className="font-semibold text-ink">{labelFor(selected, t)}</strong>
                 {t('auth.securityMode.passwordProof.instructionAfter')}
               </>
             }
@@ -218,15 +207,17 @@ export default function SecurityModePage() {
           }}
           className="cursor-pointer transition-colors hover:text-ink"
         >
-          ← Retour
+          {t('auth.back')}
         </button>
       </div>
     </AuthLayout>
   );
 }
 
-function labelFor(mode: SecurityMode): string {
-  if (mode === 'password_or_passkey') return 'Standard';
-  if (mode === 'always_2fa') return '2FA requis';
-  return 'Maximum';
+function labelFor(mode: SecurityMode, t: (key: string) => string): string {
+  if (mode === 'password_or_passkey')
+    return t('auth.securityMode.options.standard.label');
+  if (mode === 'always_2fa')
+    return t('auth.securityMode.options.always2fa.label');
+  return t('auth.securityMode.options.maximum.label');
 }

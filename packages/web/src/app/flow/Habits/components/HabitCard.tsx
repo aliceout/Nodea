@@ -1,6 +1,7 @@
 import type { HabitItem, HabitLog } from '../hooks/useHabits';
 import { regularityRate } from '../hooks/useRegularity';
 import Heatmap from './Heatmap';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 interface HabitCardProps {
@@ -23,6 +24,7 @@ export default function HabitCard({
   onToggleArchive,
   onDelete,
 }: HabitCardProps) {
+  const { t, tn } = useI18n();
   const logsForItem = logs.filter((l) => l.payload.itemRid === item.id);
   const rate = regularityRate(item, logs);
   const archived = item.payload.archived === true;
@@ -39,13 +41,15 @@ export default function HabitCard({
           <h3 className="font-semibold">{item.payload.title}</h3>
           <p className="text-xs opacity-60">
             {item.payload.category} · {item.payload.frequency}
-            {item.payload.target ? ` · cible ${item.payload.target}` : ''}
+            {item.payload.target
+              ? ` · ${t('habits.card.target', { values: { count: item.payload.target } })}`
+              : ''}
             {item.payload.duration ? ` · ${item.payload.duration}` : ''}
           </p>
         </div>
         <div className="text-right">
           <div className="text-lg font-semibold tabular-nums">{formatRate(rate)}</div>
-          <p className="text-xs opacity-60">30 j</p>
+          <p className="text-xs opacity-60">{t('habits.card.windowDays', { values: { count: 30 } })}</p>
         </div>
       </header>
 
@@ -58,21 +62,21 @@ export default function HabitCard({
           onClick={onLogToday}
           disabled={archived}
         >
-          Log aujourd'hui
+          {t('habits.card.logToday')}
         </Button>
         <Button variant="neutral" size="sm" onClick={onToggleArchive}>
-          {archived ? 'Désarchiver' : 'Archiver'}
+          {archived ? t('habits.card.unarchive') : t('habits.card.archive')}
         </Button>
         <span className="flex-1" />
         <span className="text-xs opacity-60">
-          {logsForItem.length} log{logsForItem.length > 1 ? 's' : ''} au total
+          {tn('habits.card.logCount', logsForItem.length)}
         </span>
         <Button
           variant="danger-ghost"
           size="xs"
           iconOnly
           onClick={onDelete}
-          aria-label="Supprimer l'habitude"
+          aria-label={t('habits.card.deleteAria')}
         >
           ✕
         </Button>

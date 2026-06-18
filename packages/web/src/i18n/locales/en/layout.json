@@ -17,5 +17,47 @@
     "sectionsAria": "{title} tabs",
     "sectionsFallback": "Sections",
     "mobileMenuLabel": "Section links"
+  },
+  "nav": {
+    "home": "Today",
+    "mood": "Mood",
+    "journal": "Journal",
+    "goals": "Goals",
+    "library": "Library",
+    "review": "Review",
+    "hrt": "HRT",
+    "libraryBooks": "Books",
+    "libraryExtracts": "Highlights",
+    "libraryNotes": "Notes",
+    "hrtSummary": "Summary",
+    "hrtAdministration": "Administration",
+    "hrtLabs": "Labs",
+    "hrtExport": "Tools"
+  },
+  "sync": {
+    "justNow": "Synced · just now"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong.",
+    "titleScoped": "Something went wrong in {scope}."
+  },
+  "markdownToggle": {
+    "label": "Markdown",
+    "switchToVisual": "Switch back to visual editing",
+    "showMarkdown": "View Markdown source"
+  },
+  "marketing": {
+    "clientEncrypted": "Client-side encrypted",
+    "openSource": "Open-source",
+    "selfHostable": "Self-hostable",
+    "security": "Security",
+    "body": {
+      "purpose": "A space to write, take stock, and track your moods, your reading, and what you’re aiming for.",
+      "encryption": "All data is encrypted in your browser. Unreadable to anyone else, even the {brand} team — you’re the only person who can access it.",
+      "noTracking": "No tracking, no cookies, no ads, no surveillance."
+    }
+  },
+  "dateField": {
+    "placeholder": "mm/dd/yyyy"
   }
 }

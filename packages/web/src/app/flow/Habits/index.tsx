@@ -1,5 +1,6 @@
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import PageHeading from '@/ui/dirk/module/PageHeading';
@@ -19,48 +20,44 @@ import { useHabits } from './hooks/useHabits';
  * module n'est pas finalisé.
  */
 export default function HabitsIndex() {
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { keyMissing, moduleMissing } = useHabits();
 
   if (keyMissing) {
     return (
       <ModuleShell
-        topbar={<Topbar label="Habits" onOpenMenu={() => setMobileMenuOpen(true)} />}
+        topbar={<Topbar label={t('habits.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
       >
-        <EmptyHint>
-          Clé principale absente — reconnecte-toi pour voir tes habitudes.
-        </EmptyHint>
+        <EmptyHint>{t('habits.empty.keyMissing')}</EmptyHint>
       </ModuleShell>
     );
   }
   if (moduleMissing) {
     return (
       <ModuleShell
-        topbar={<Topbar label="Habits" onOpenMenu={() => setMobileMenuOpen(true)} />}
+        topbar={<Topbar label={t('habits.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
       >
-        <EmptyHint>
-          Active le module Habits dans les paramètres pour commencer.
-        </EmptyHint>
+        <EmptyHint>{t('habits.empty.moduleMissing')}</EmptyHint>
       </ModuleShell>
     );
   }
 
   return (
     <ModuleShell
-      topbar={<Topbar label="Habits" onOpenMenu={() => setMobileMenuOpen(true)} />}
+      topbar={<Topbar label={t('habits.title')} onOpenMenu={() => setMobileMenuOpen(true)} />}
     >
-      <PageHeading>Habits</PageHeading>
+      <PageHeading>{t('habits.title')}</PageHeading>
 
       <div className="mx-auto mt-12 max-w-md rounded-md border border-hair bg-bg-2 p-8 text-center">
         <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-hair bg-bg text-muted">
           <WrenchScrewdriverIcon className="h-5 w-5" aria-hidden="true" />
         </div>
         <h2 className="mb-2 text-[15px] font-semibold tracking-[-0.005em] text-ink">
-          En cours de construction
+          {t('habits.construction.title')}
         </h2>
         <p className="text-[13px] leading-[1.55] text-ink-soft">
-          Le suivi d'habitudes (heatmap quotidienne, séries, régularité) est
-          documenté mais pas encore branché côté app. Reviens bientôt.
+          {t('habits.construction.body')}
         </p>
       </div>
     </ModuleShell>

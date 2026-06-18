@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
@@ -48,20 +49,16 @@ export default function PasskeyStep({
   onConfirmLost,
   onRestartLogin,
 }: PasskeyStepProps) {
+  const { t } = useI18n();
+
   return (
     <>
       {lost.kind === 'idle' ? (
         <>
           <AuthPanelHeader
-            eyebrow="Vérification 2FA · 2/2"
-            title="Confirme avec ta passkey"
-            subtitle={
-              <>
-                Ton mode de sécurité demande une passkey en plus du code TOTP.
-                Confirme avec Touch ID, Face ID, Windows Hello ou ta clé
-                hardware pour finaliser la connexion.
-              </>
-            }
+            eyebrow={t('auth.mfa.passkey.eyebrow')}
+            title={t('auth.mfa.passkey.title')}
+            subtitle={<>{t('auth.mfa.passkey.subtitle')}</>}
           />
 
           {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
@@ -73,7 +70,7 @@ export default function PasskeyStep({
             disabled={submitting}
             className="mt-2 w-full"
           >
-            {submitting ? 'Vérification…' : 'Confirmer avec ma passkey'}
+            {submitting ? t('common.states.verifying') : t('auth.mfa.picker.pickPasskey')}
           </Button>
 
           {/* Escalation : direct → email recovery. Same discreet
@@ -88,7 +85,7 @@ export default function PasskeyStep({
               onClick={onStartLost}
               className="cursor-pointer transition-colors hover:text-ink"
             >
-              J’ai perdu ma passkey → demander une récupération par email
+              {t('auth.mfa.passkey.lostPasskey')}
             </button>
           </div>
 
@@ -98,7 +95,7 @@ export default function PasskeyStep({
               onClick={onRestartLogin}
               className="cursor-pointer transition-colors hover:text-ink"
             >
-              ← Recommencer la connexion
+              {t('auth.mfa.restartLogin')}
             </button>
           </div>
         </>
