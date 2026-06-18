@@ -8,8 +8,10 @@ import ThreadsManagerModal from './ThreadsManagerModal';
 
 /**
  * Filter sidebar for the Journal. Sections : vue (par fil / par
- * mois), fils (chip per thread, only when grouping by thread, with
- * a « Gérer les fils » link — #57).
+ * mois), fils (chip per thread, with a « Gérer les fils » link —
+ * #57). The thread filter stays available in both views — it
+ * filters the entry set before grouping, so « par mois » narrowed
+ * to one fil is a valid, useful combination.
  *
  * The text search lives in the topbar (cf. issue #93 / umbrella
  * #33) — sidebar is for chip-style filters only. The 12-month
@@ -73,8 +75,7 @@ export function FiltersContent() {
         </div>
       </section>
 
-      {groupBy === 'thread' ? (
-        <section>
+      <section>
           <SectionLabel>{t('journal.side.threads')}</SectionLabel>
           {threads.length === 0 ? (
             <p className="text-[12px] italic text-muted">
@@ -107,8 +108,7 @@ export function FiltersContent() {
               {t('journal.side.threadsManageCta')}
             </button>
           ) : null}
-        </section>
-      ) : null}
+      </section>
 
       <ThreadsManagerModal
         open={threadsManagerOpen}

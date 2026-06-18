@@ -20,9 +20,6 @@
     "editAria": "Edit entry",
     "deleteAria": "Delete entry"
   },
-  "clamped": {
-    "readMore": "read more →"
-  },
   "onThisDay": {
     "title": "On this day",
     "subtitle": "What you wrote on the same day, in past years",
@@ -42,6 +39,10 @@
     "threadsAll": "All",
     "threadsManageCta": "Manage threads",
     "filtersToggle": "Filters"
+  },
+  "selectors": {
+    "monthAria": "Month",
+    "monthAll": "All"
   },
   "primary": {
     "entriesHeading": "Entries",

@@ -20,9 +20,6 @@
     "editAria": "Modifier l’entrée",
     "deleteAria": "Supprimer l’entrée"
   },
-  "clamped": {
-    "readMore": "lire la suite →"
-  },
   "onThisDay": {
     "title": "Il y a quelques années",
     "subtitle": "Ce que tu as écrit le même jour, les années passées",
@@ -42,6 +39,10 @@
     "threadsAll": "Tous",
     "threadsManageCta": "Gérer les fils",
     "filtersToggle": "Filtres"
+  },
+  "selectors": {
+    "monthAria": "Mois",
+    "monthAll": "Tous"
   },
   "primary": {
     "entriesHeading": "Entrées",

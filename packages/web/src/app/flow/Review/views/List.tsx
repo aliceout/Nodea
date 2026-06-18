@@ -208,8 +208,6 @@ export default function ReviewListView({
       {activeDrafts.length > 0 ? (
         <GroupBlock
           label={t('review.list.draftsHeading')}
-          count={activeDrafts.length}
-          countNoun={t('review.list.draftsCountNoun')}
           variant="eyebrow"
         >
           {activeDrafts.map((d) => (
@@ -230,8 +228,6 @@ export default function ReviewListView({
       ) : sorted.length === 0 ? null : (
         <GroupBlock
           label={t('review.list.pastHeading')}
-          count={sorted.length}
-          countNoun={t('review.list.pastCountNoun')}
         >
           {sorted.map((entry) => (
             <ReviewRow

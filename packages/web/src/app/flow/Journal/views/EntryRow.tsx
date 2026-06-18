@@ -4,6 +4,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import { splitThreads } from '@nodea/shared';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
@@ -16,6 +17,14 @@ import ClampedJournalContent from './ClampedJournalContent';
 
 interface EntryRowProps {
   entry: JournalEntry;
+  /** Render the entry's thread(s) as inline chips. On in the
+   *  by-month view (where the thread is no longer the group header)
+   *  so the grouping doesn't hide it ; off in the by-thread view
+   *  where the header already names it. */
+  showThread?: boolean;
+  /** Last entry of its group — drops the bottom separator so it
+   *  doesn't double up with the next month/thread header's border. */
+  isLast?: boolean;
 }
 
 /**
@@ -39,31 +48,58 @@ interface EntryRowProps {
  * invalidates the whole list and re-renders all rows including
  * the (potentially heavy) ClampedJournalContent on each.
  */
-function EntryRowImpl({ entry }: EntryRowProps) {
+function EntryRowImpl({ entry, showThread = false, isLast = false }: EntryRowProps) {
   const { t } = useI18n();
   const { openReader, editEntry, deleteEntry } = useJournalActions();
   const onRead = () => openReader(entry.id);
+  const threads = showThread ? splitThreads(entry.thread) : [];
 
   return (
-    <article className="group flex flex-col gap-1.5 border-b border-hair py-4 last:border-b-0 md:flex-row md:items-start md:gap-4">
+    <article className="group relative flex flex-col gap-1.5 pt-4 md:flex-row md:items-start md:gap-4">
+      {/* Whole-entry click target → the reader. A real absolute
+          overlay button (not a `::after`, which needs a `content`
+          and rendered unreliably) covers the row ; the body can't
+          itself be a button since LiteMarkdown may render links.
+          `z-[1]` lifts it above the clamped body's own `relative`
+          wrapper (used for the fade) so the TEXT zone is clickable,
+          not just the static date ; attachments + hover actions ride
+          above the overlay at `z-[2]`. */}
       <button
         type="button"
         onClick={onRead}
-        className="cursor-pointer text-left text-[12px] tabular-nums text-muted transition-colors hover:text-accent md:w-[110px] md:shrink-0"
         aria-label={t('journal.row.openAria', {
           values: { label: entry.title ?? entry.dateLabel },
         })}
-      >
-        {entry.dateLabel}
-      </button>
+        className="absolute inset-0 z-[1] cursor-pointer rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      />
 
-      <div className="min-w-0 md:flex-1">
+      <div className="md:w-[110px] md:shrink-0">
+        <p className="text-[12px] tabular-nums text-muted transition-colors group-hover:text-accent">
+          {entry.dateLabel}
+        </p>
+        {threads.length > 0 ? (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {threads.map((th) => (
+              <span
+                key={th}
+                className="rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent-deep"
+              >
+                {th}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        className={`min-w-0 pb-4 md:flex-1 ${isLast ? '' : 'border-b border-hair'}`}
+      >
         {entry.title ? (
           <p className="mb-1 text-[14px] font-medium text-ink">{entry.title}</p>
         ) : null}
-        <ClampedJournalContent text={entry.content} onExpand={onRead} />
+        <ClampedJournalContent text={entry.content} />
         {entry.attachments.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="relative z-[2] mt-2 flex flex-wrap gap-1.5">
             {entry.attachments.map((att) => (
               <button
                 key={att.id}
@@ -87,7 +123,7 @@ function EntryRowImpl({ entry }: EntryRowProps) {
       </div>
 
       <div className="hidden md:contents">
-        <HoverActions>
+        <HoverActions className="relative z-[2]">
           <Button
             variant="ghost"
             size="sm"

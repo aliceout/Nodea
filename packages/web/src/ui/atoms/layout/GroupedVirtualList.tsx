@@ -33,9 +33,10 @@ export type { Group };
 interface GroupedVirtualListProps<T> {
   groups: ReadonlyArray<Group<T>>;
   getItemKey: (item: T) => string;
-  renderItem: (item: T) => ReactNode;
-  /** Singular noun for the group count (« entrée », « objectif »…). */
-  countNoun: string;
+  /** `isLast` is true for the last item of its group — lets a row
+   *  drop its bottom separator so it doesn't double up with the next
+   *  group header's border. */
+  renderItem: (item: T, isLast: boolean) => ReactNode;
   variant?: GroupBlockVariant;
   /** Rough entry-row height for the virtualizer's initial estimate. */
   estimateRowHeight?: number;
@@ -44,23 +45,18 @@ interface GroupedVirtualListProps<T> {
   threshold?: number;
 }
 
-/** Standalone group header — the same label/count/hairline bar
+/** Standalone group header — the same label / hairline bar
  *  `GroupBlock` renders, extracted so it can be a virtualized row.
  *  `first` drops the top margin so the list doesn't start with a gap. */
 function GroupHeaderRow({
   label,
-  count,
-  countNoun,
   variant,
   first,
 }: {
   label: string;
-  count: number;
-  countNoun: string;
   variant: GroupBlockVariant;
   first: boolean;
 }) {
-  const plural = count !== 1 ? `${countNoun}s` : countNoun;
   const headerClass =
     variant === 'eyebrow'
       ? 'text-[12px] font-semibold uppercase tracking-[0.04em] text-muted'
@@ -68,14 +64,11 @@ function GroupHeaderRow({
   return (
     <div
       className={cn(
-        'mb-2 flex items-baseline justify-between border-b border-hair pb-1.5',
+        'mb-2 border-b border-hair pb-1.5',
         first ? '' : variant === 'eyebrow' ? 'mt-7' : 'mt-9',
       )}
     >
       <h2 className={headerClass}>{label}</h2>
-      <span className="text-[11px] tabular-nums text-muted">
-        {count} {plural}
-      </span>
     </div>
   );
 }
@@ -84,7 +77,6 @@ export default function GroupedVirtualList<T>({
   groups,
   getItemKey,
   renderItem,
-  countNoun,
   variant = 'subtitle',
   estimateRowHeight = 90,
   threshold = 100,
@@ -111,14 +103,14 @@ export default function GroupedVirtualList<T>({
           <GroupBlock
             key={label}
             label={label}
-            count={items.length}
-            countNoun={countNoun}
             variant={variant}
             listTag="div"
             className="mb-0"
           >
-            {items.map((item) => (
-              <div key={getItemKey(item)}>{renderItem(item)}</div>
+            {items.map((item, i) => (
+              <div key={getItemKey(item)}>
+                {renderItem(item, i === items.length - 1)}
+              </div>
             ))}
           </GroupBlock>
         ))}
@@ -134,15 +126,9 @@ export default function GroupedVirtualList<T>({
       getKey={(r) => r.key}
       renderItem={(r) =>
         r.kind === 'header' ? (
-          <GroupHeaderRow
-            label={r.label}
-            count={r.count}
-            countNoun={countNoun}
-            variant={variant}
-            first={r.first}
-          />
+          <GroupHeaderRow label={r.label} variant={variant} first={r.first} />
         ) : (
-          renderItem(r.item)
+          renderItem(r.item, r.lastInGroup)
         )
       }
     />

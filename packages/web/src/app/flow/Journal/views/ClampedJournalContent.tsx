@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { LiteMarkdown } from '@/lib/lite-markdown';
 
 const CLAMP_LINES = 4;
@@ -16,10 +15,6 @@ const PREVIEW_MAX_CHARS = 600;
 
 interface ClampedJournalContentProps {
   text: string;
-  /** Called when the user clicks the « lire la suite » affordance.
-   *  Wired by the row to its `onRead` so the expansion route is
-   *  the same as the « Lire » hover action — the focus reader. */
-  onExpand: () => void;
 }
 
 /**
@@ -27,17 +22,17 @@ interface ClampedJournalContentProps {
  * at ~4 lines so the list stays scannable when entries grow long.
  * Detects whether the content overflows post-render via a
  * `scrollHeight` check ; conditionally paints a fade gradient at
- * the bottom + a discreet « lire la suite » trigger that opens
- * the focus reader.
+ * the bottom to signal there's more.
  *
- * No clamp = no extra DOM (the fade and the link are rendered
- * only when `overflowing`), so short entries stay visually pure.
+ * No explicit « read more » trigger : the whole entry row is
+ * clickable (the row owns a stretched button to the focus reader),
+ * so the fade is the only overflow cue. No clamp = no extra DOM
+ * (the fade is rendered only when `overflowing`), so short entries
+ * stay visually pure.
  */
 export default function ClampedJournalContent({
   text,
-  onExpand,
 }: ClampedJournalContentProps) {
-  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [overflowing, setOverflowing] = useState(false);
 
@@ -78,15 +73,6 @@ export default function ClampedJournalContent({
           />
         ) : null}
       </div>
-      {overflowing ? (
-        <button
-          type="button"
-          onClick={onExpand}
-          className="mt-1 cursor-pointer text-[12px] text-accent underline-offset-2 transition-colors hover:underline"
-        >
-          {t('journal.clamped.readMore')}
-        </button>
-      ) : null}
     </div>
   );
 }

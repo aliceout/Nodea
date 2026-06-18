@@ -48,8 +48,6 @@ export default function GoalCardGrid() {
           <GroupBlock
             key={groupLabel}
             label={groupLabel}
-            count={items.length}
-            countNoun={t('goals.list.groupCountNoun')}
             variant="eyebrow"
             listTag="div"
             bordered={false}

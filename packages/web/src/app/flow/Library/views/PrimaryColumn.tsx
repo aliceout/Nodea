@@ -104,7 +104,6 @@ export default function PrimaryColumn() {
             renderItem={(it) => (
               <ItemRow item={it} showCover={viewMode === 'list-cover'} />
             )}
-            countNoun={t('library.list.groupCountNoun')}
             variant="subtitle"
             estimateRowHeight={viewMode === 'list-cover' ? 60 : 44}
           />

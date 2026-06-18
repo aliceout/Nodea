@@ -5,10 +5,6 @@ export type GroupBlockVariant = 'subtitle' | 'eyebrow';
 
 interface GroupBlockProps {
   label: string;
-  count: number;
-  /** Singular noun (« entrée », « objectif », « livre »). The atom
-   *  appends « s » when count !== 1. */
-  countNoun: string;
   /** Header style:
    *  - `subtitle` (default) — 15-px tight-tracking ink. Used when
    *    the group label is a user-facing title (thread name, year).
@@ -52,10 +48,10 @@ const WRAPPER_CLASS: Record<GroupBlockVariant, string> = {
 };
 
 /**
- * Group-of-rows block — a hairline-bordered header that pairs a
- * label (left) with a count + noun (right), then renders a `<ul>`
- * of children below. Used by Mood / Journal / Goals / Library to
- * organise their entries lists by thread / status / year.
+ * Group-of-rows block — a hairline-bordered label header, then a
+ * `<ul>` of children below. Used by Mood / Journal / Goals /
+ * Library to organise their entries lists by thread / status /
+ * year. (The per-group entry count was dropped — it was noise.)
  *
  * The variant tag picks between two visual registers (subtitle vs
  * eyebrow) and ties spacing to it so the call site never has to
@@ -63,28 +59,22 @@ const WRAPPER_CLASS: Record<GroupBlockVariant, string> = {
  */
 export default function GroupBlock({
   label,
-  count,
-  countNoun,
   variant = 'subtitle',
   listTag = 'ul',
   bordered = true,
   children,
   className,
 }: GroupBlockProps) {
-  const plural = count !== 1 ? `${countNoun}s` : countNoun;
   const ListTag = listTag;
   return (
     <div className={cn(WRAPPER_CLASS[variant], 'last:mb-0', className)}>
       <div
         className={cn(
-          'mb-2 flex items-baseline justify-between pb-1.5',
+          'mb-2 pb-1.5',
           bordered && 'border-b border-hair',
         )}
       >
         <h2 className={HEADER_CLASS[variant]}>{label}</h2>
-        <span className="text-[11px] tabular-nums text-muted">
-          {count} {plural}
-        </span>
       </div>
       <ListTag>{children}</ListTag>
     </div>

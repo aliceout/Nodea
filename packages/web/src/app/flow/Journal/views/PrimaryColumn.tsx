@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 
 import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { cn } from '@/lib/utils';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
@@ -11,6 +12,7 @@ import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
 import JournalForm from '../components/JournalForm';
 import MobileFilters from '../components/MobileFilters';
+import MonthSelector from '../components/MonthSelector';
 import YearSelector from '../components/YearSelector';
 import { useJournalActions, useJournalData, useJournalFilters } from '../context';
 import Chart from './Chart';
@@ -42,10 +44,11 @@ export default function PrimaryColumn() {
     setDayFilter,
   } = useJournalFilters();
   const { formOpen, editingEntry, closeForm } = useJournalActions();
-  const groupVariant = groupBy === 'month' ? 'eyebrow' : 'subtitle';
+  // Group headers match Goals : uppercase « eyebrow » for both the
+  // by-month and by-thread groupings (the « par fil » headers used to
+  // be the heavier 15px subtitle, out of step with the rest).
+  const groupVariant = 'eyebrow' as const;
 
-  const yearLabel =
-    year === null ? t('journal.primary.yearRolling') : String(year);
   const chartToggleLabel = chartCollapsed
     ? t('journal.primary.showChart')
     : t('journal.primary.hideChart');
@@ -96,11 +99,22 @@ export default function PrimaryColumn() {
           <MobileFilters trailing={chartToggleButton} />
         </div>
 
-        {!chartCollapsed ? (
-          <div className="mt-6">
+        {/* Animatable collapse — same pattern as Mood : the chart
+            stays mounted and rides a CSS grid-rows transition
+            (`1fr` ↔ `0fr`) so the writing heatmap unfurls / folds
+            smoothly without knowing its height ahead of time. The
+            inner `overflow-hidden` clips as the row shrinks ; the
+            `pt-6` lives inside so the gap closes with the chart. */}
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+            chartCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
+          )}
+        >
+          <div className="overflow-hidden pt-6">
             <Chart />
           </div>
-        ) : null}
+        </div>
 
         {/* Desktop entries heading + « carte d'écriture » toggle.
             Hidden on mobile : there the toggle rides the filters row
@@ -108,9 +122,6 @@ export default function PrimaryColumn() {
             The day-filter chip lives here (desktop-only for now). */}
         <div className="mt-3 hidden flex-wrap items-center justify-between gap-x-4 gap-y-2 lg:flex">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
-              {t('journal.primary.entriesHeading')} · {yearLabel}
-            </h2>
             {/* Active day-filter chip — explicit clear affordance
                 for the heatmap-driven date narrowing. Same shape as
                 Mood's so the two modules read alike. */}
@@ -127,7 +138,13 @@ export default function PrimaryColumn() {
               </button>
             ) : null}
           </div>
-          {chartToggleButton}
+          <div className="flex items-center gap-2">
+            {/* Month strip — appears when a year is selected, like
+                Mood's. Narrows the list to one month ; the heatmap
+                above stays full-year. */}
+            {year !== null ? <MonthSelector /> : null}
+            {chartToggleButton}
+          </div>
         </div>
       </div>
 
@@ -166,8 +183,13 @@ export default function PrimaryColumn() {
           <GroupedVirtualList
             groups={groups}
             getItemKey={(e) => e.id}
-            renderItem={(entry) => <EntryRow entry={entry} />}
-            countNoun={t('journal.list.groupCountNoun')}
+            renderItem={(entry, isLast) => (
+            <EntryRow
+              entry={entry}
+              showThread={groupBy === 'month'}
+              isLast={isLast}
+            />
+          )}
             variant={groupVariant}
             estimateRowHeight={110}
           />

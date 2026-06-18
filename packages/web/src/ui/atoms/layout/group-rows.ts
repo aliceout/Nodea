@@ -19,8 +19,8 @@
 export type Group<T> = readonly [label: string, items: T[]];
 
 export type GroupRow<T> =
-  | { kind: 'header'; key: string; label: string; count: number; first: boolean }
-  | { kind: 'entry'; key: string; item: T };
+  | { kind: 'header'; key: string; label: string; first: boolean }
+  | { kind: 'entry'; key: string; item: T; lastInGroup: boolean };
 
 /** Flatten grouped items into the heterogeneous header/entry row
  *  stream the virtualized path renders. Group index `g` namespaces
@@ -36,11 +36,16 @@ export function buildGroupRows<T>(
       kind: 'header',
       key: `__h__${g}`,
       label,
-      count: items.length,
       first: g === 0,
     });
-    for (const item of items) {
-      out.push({ kind: 'entry', key: `${g}__${getItemKey(item)}`, item });
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i]!;
+      out.push({
+        kind: 'entry',
+        key: `${g}__${getItemKey(item)}`,
+        item,
+        lastInGroup: i === items.length - 1,
+      });
     }
     g += 1;
   }

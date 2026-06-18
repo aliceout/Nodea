@@ -71,6 +71,10 @@ interface JournalFiltersValue {
    *  weeks ending today, no list-side filtering). A number = list
    *  + heatmap focused on that calendar year. */
   year: number | null;
+  /** Month filter (0-11) inside the selected year ; `null` = all
+   *  months. Only meaningful when `year` is set — picking a year
+   *  resets it. Mirrors Mood's month strip below the frise. */
+  month: number | null;
   /** Single-day focus filter (issue #56) — set when the user clicks
    *  a heatmap cell. ISO `YYYY-MM-DD` ; null = no day focus. The
    *  filter applies on top of the other filters in `filtered`. */
@@ -87,6 +91,7 @@ interface JournalFiltersValue {
   setGroupBy: (next: GroupBy) => void;
   setSearch: (next: string) => void;
   setYear: (next: number | null) => void;
+  setMonth: (next: number | null) => void;
   setDayFilter: (next: string | null) => void;
   toggleChart: () => void;
 }
@@ -181,8 +186,17 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('month');
-  const [year, setYear] = useState<number | null>(null);
+  const [year, setYearState] = useState<number | null>(null);
+  const [month, setMonth] = useState<number | null>(null);
   const [dayFilter, setDayFilter] = useState<string | null>(null);
+
+  // Reset the month when the year changes so a stale « Mars » filter
+  // doesn't silently empty the list when jumping into a year that has
+  // no entries that month (same guard as Mood).
+  const setYear = useCallback((next: number | null) => {
+    setYearState(next);
+    setMonth(null);
+  }, []);
   // Heatmap starts collapsed (issue #56 follow-up) — Journal is
   // primarily a writing surface ; the year-density overview is a
   // « step back » affordance the user opts into when they want
@@ -279,6 +293,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       if (year !== null && e.dateIso.slice(0, 4) !== String(year)) {
         return false;
       }
+      // Month filter — the strip below the frise narrows the list to
+      // one month of the selected year (the heatmap above stays
+      // full-year). `dateIso` is `YYYY-MM-DD`, so chars 5-7 are the
+      // 1-based month ; `month` is 0-based like Date.getMonth().
+      if (month !== null && Number(e.dateIso.slice(5, 7)) - 1 !== month) {
+        return false;
+      }
       // Single-day focus filter (issue #56) — clicking a heatmap
       // cell drops everything except that day's entries.
       if (dayFilter && e.dateIso.slice(0, 10) !== dayFilter) {
@@ -293,7 +314,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       // search for « thérapie » expecting the thread to match.
       return matchesHaystack(e.searchHaystack, trimmedQuery);
     });
-  }, [entries, threadFilter, year, dayFilter, deferredSearch]);
+  }, [entries, threadFilter, year, month, dayFilter, deferredSearch]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, JournalEntry[]]>>(
     () => {
@@ -525,6 +546,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       groupBy,
       search,
       year,
+      month,
       dayFilter,
       chartCollapsed,
       threads,
@@ -534,6 +556,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       setGroupBy,
       setSearch,
       setYear,
+      setMonth,
       setDayFilter,
       toggleChart,
     }),
@@ -542,11 +565,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       groupBy,
       search,
       year,
+      month,
       dayFilter,
       chartCollapsed,
       threads,
       filtered,
       groups,
+      setYear,
       toggleChart,
     ],
   );

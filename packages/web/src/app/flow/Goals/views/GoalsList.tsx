@@ -37,7 +37,6 @@ export default function GoalsList() {
             groups={groups}
             getItemKey={(e) => e.id}
             renderItem={(entry) => <GoalRow entry={entry} />}
-            countNoun={t('goals.list.groupCountNoun')}
             variant="eyebrow"
             estimateRowHeight={64}
           />
