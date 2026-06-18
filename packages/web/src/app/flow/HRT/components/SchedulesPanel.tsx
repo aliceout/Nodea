@@ -16,7 +16,7 @@ import Button from '@/ui/atoms/dirk/Button';
 
 import { frequencyLabel, formatLogDate } from '../lib/labels';
 import type { ScheduleEntry } from '../hooks/use-schedules';
-import CollapseToggle from './CollapseToggle';
+import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 
 interface SchedulesPanelProps {
   schedules: ReadonlyArray<ScheduleEntry>;

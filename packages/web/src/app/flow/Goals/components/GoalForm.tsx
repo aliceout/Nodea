@@ -10,6 +10,7 @@ import {
   MODULE_FORM_CARD,
   type GoalStatus,
 } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
 import { isCanonicalGoalStatus } from '@/ui/dirk/forms/guards';
 
 import GoalFormFields from './form/form-fields';
@@ -235,11 +236,7 @@ export default function GoalForm({ initial, onClose }: GoalFormProps) {
         />
       </div>
 
-      {error ? (
-        <p id="goal-form-error" role="alert" className="mt-3 text-[12px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      <FormError id="goal-form-error">{error}</FormError>
 
       <div className="mt-4 flex justify-end gap-2">
         <Button

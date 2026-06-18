@@ -1,8 +1,9 @@
 /**
- * HRT · CollapseToggle — the chevron button that folds / unfolds a
- * section (the recurring-schedules panel, the dose / lab charts). Matches
- * the Mood frise toggle so the affordance reads the same across modules :
- * a chevron that points up when open and flips down when collapsed.
+ * CollapseToggle — the chevron button that folds / unfolds a section:
+ * the chevron points up when open and flips down when collapsed. Shared
+ * across modules (HRT schedules + dose/lab charts, Mood / Journal frise)
+ * so the affordance reads identically everywhere; lives in `ui/dirk/
+ * module/` next to the other cross-module surface atoms.
  */
 import { ChevronUpIcon } from '@heroicons/react/24/outline';
 

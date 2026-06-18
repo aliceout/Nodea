@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import ThreadSuggestInput from '@/ui/dirk/forms/ThreadSuggestInput';
 
@@ -334,11 +335,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
         </div>
       </div>
 
-      {error ? (
-        <p id="journal-form-error" role="alert" className="mt-3 text-[12px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      <FormError id="journal-form-error">{error}</FormError>
 
       <div className="mt-4 flex justify-end gap-2">
         <Button

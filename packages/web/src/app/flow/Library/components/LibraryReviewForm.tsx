@@ -14,6 +14,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
 
@@ -194,11 +195,7 @@ export default function LibraryReviewForm({
         />
       </div>
 
-      {error ? (
-        <p id="library-review-form-error" role="alert" className="mt-3 text-[12px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      <FormError id="library-review-form-error">{error}</FormError>
 
       <div className="mt-4 flex justify-end gap-2">
         <Button

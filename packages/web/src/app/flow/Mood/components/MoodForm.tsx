@@ -10,6 +10,7 @@ import DateField from '@/ui/atoms/dirk/DateField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import { useMoodActions } from '../context';
@@ -204,11 +205,7 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
         ) : null}
       </div>
 
-      {error ? (
-        <p id="mood-form-error" role="alert" className="mt-3 text-[12px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      <FormError id="mood-form-error">{error}</FormError>
 
       <div className="mt-4 flex justify-end gap-2">
         <Button

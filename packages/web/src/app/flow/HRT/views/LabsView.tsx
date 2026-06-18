@@ -19,7 +19,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import SpeedDial from '@/ui/dirk/SpeedDial';
 
 import ChartNotes from '../components/ChartNotes';
-import CollapseToggle from '../components/CollapseToggle';
+import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import DateRangeFilter from '../components/DateRangeFilter';
 import LabChart from '../components/LabChart';
 import LabFilterBar from '../components/LabFilterBar';

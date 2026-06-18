@@ -9,6 +9,7 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
 
 import { useLibraryData } from '../context';
 import { makeApplyResult } from './item-form/apply-result';
@@ -243,11 +244,7 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
         ) : null}
       </div>
 
-      {error ? (
-        <p id="library-item-form-error" role="alert" className="mt-3 text-[12px] text-danger">
-          {error}
-        </p>
-      ) : null}
+      <FormError id="library-item-form-error">{error}</FormError>
 
       <div className="mt-4 flex justify-end gap-2">
         <Button

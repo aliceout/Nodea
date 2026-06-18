@@ -21,7 +21,7 @@ import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
 import { todayIso } from '../lib/labels';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import AdminLogRow from './AdminLogRow';
-import CollapseToggle from './CollapseToggle';
+import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import DateRangeFilter from './DateRangeFilter';
 import LabChart from './LabChart';
 

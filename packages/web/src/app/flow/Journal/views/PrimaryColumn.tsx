@@ -1,10 +1,10 @@
-import { ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useMemo } from 'react';
 
 import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
@@ -69,20 +69,7 @@ export default function PrimaryColumn() {
   // row. Only one is visible per breakpoint (the other's container is
   // hidden), so there's no duplicate on screen.
   const chartToggleButton = (
-    <button
-      type="button"
-      onClick={toggleChart}
-      className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 text-[11.5px] text-muted transition-colors hover:bg-bg-2 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-    >
-      <span>{chartToggleLabel}</span>
-      <ChevronUpIcon
-        className={cn(
-          'h-3 w-3 transition-transform duration-200',
-          chartCollapsed && 'rotate-180',
-        )}
-        aria-hidden="true"
-      />
-    </button>
+    <CollapseToggle open={!chartCollapsed} onToggle={toggleChart} label={chartToggleLabel} />
   );
 
   return (
