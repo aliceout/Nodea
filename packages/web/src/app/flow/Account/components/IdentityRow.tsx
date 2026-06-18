@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 import type { FeedbackState } from '../lib/types';
-import Feedback from './Feedback';
 
 interface IdentityRowProps {
   label: string;
@@ -75,7 +75,14 @@ export default function IdentityRow({
         </div>
       )}
 
-      {feedback ? <Feedback tone={feedback.tone}>{feedback.text}</Feedback> : null}
+      {feedback ? (
+        <InlineAlert
+          tone={feedback.tone === 'success' ? 'success' : 'danger'}
+          className="mt-3"
+        >
+          {feedback.text}
+        </InlineAlert>
+      ) : null}
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
@@ -135,14 +136,11 @@ export default function DataExportPage() {
       ) : stage.failed.length > 0 ? (
         // Partial run must NOT read as « ✓ réussi » (audit 2026-06) :
         // a danger live-region, never the green success heading.
-        <div
-          role="alert"
-          className="border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] leading-[1.5] text-danger"
-        >
+        <InlineAlert>
           {t('account.data.export.partial', {
             values: { modules: stage.failed.join(', ') },
           })}
-        </div>
+        </InlineAlert>
       ) : (
         <div role="status">
           <AuthPanelHeader eyebrow="Données" title={t('account.data.export.success')} />

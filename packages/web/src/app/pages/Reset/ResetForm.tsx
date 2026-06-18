@@ -95,17 +95,14 @@ export default function ResetForm({
           it's actionable, the user needs to read it right
           before clicking submit. K · Sauge danger tone
           (border-l, danger/5 wash). */}
-      <div
-        role="alert"
-        className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-      >
+      <InlineAlert className="mb-4">
         <p className="font-semibold">Perte définitive de données</p>
         <p className="mt-1 text-ink-soft">
           La clé qui chiffre tes entrées dérive du mot de passe. Comme l’ancienne clé
           a été perdue avec l’ancien mot de passe, toutes tes entrées existantes
           seront supprimées au moment de la validation.
         </p>
-      </div>
+      </InlineAlert>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Field

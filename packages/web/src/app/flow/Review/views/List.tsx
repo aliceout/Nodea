@@ -4,6 +4,7 @@ import { formatLongDate } from '@/core/i18n/date-format';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
@@ -137,14 +138,7 @@ export default function ReviewListView({
         <p>{t('review.list.intro2')}</p>
       </div>
 
-      {error ? (
-        <p
-          role="alert"
-          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert className="mb-4">{error}</InlineAlert> : null}
 
       <section className="mb-9">
         <h2 className="mb-2 border-b border-hair pb-1.5 text-[15px] font-semibold tracking-[-0.005em] text-ink">

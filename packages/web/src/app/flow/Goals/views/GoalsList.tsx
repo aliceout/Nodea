@@ -2,6 +2,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 import { useGoalsData, useGoalsFilters } from '../context';
 import GoalRow from './GoalRow';
@@ -23,12 +24,7 @@ export default function GoalsList() {
       <PageHeading className="hidden lg:block">{t('goals.title')}</PageHeading>
 
       {load.status === 'error' ? (
-        <p
-          role="alert"
-          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {load.message}
-        </p>
+        <InlineAlert className="mb-4">{load.message}</InlineAlert>
       ) : null}
 
       <div>

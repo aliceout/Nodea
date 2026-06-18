@@ -26,6 +26,7 @@ import { useNodeaStore, selectMainKey, selectUser } from '@/core/store/nodea-sto
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { parseDeviceLabel } from '@/lib/device-label';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import { Modal } from '@/ui/atoms/layout/Modal';
 
 import Field from './Field';
@@ -309,12 +310,7 @@ export default function SessionsCard() {
       </p>
 
       {loadError ? (
-        <p
-          role="alert"
-          className="mb-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {loadError}
-        </p>
+        <InlineAlert className="mb-3">{loadError}</InlineAlert>
       ) : null}
 
       {sessions === null ? (

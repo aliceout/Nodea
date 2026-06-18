@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import MonthSelector from '../components/MonthSelector';
@@ -205,12 +206,7 @@ export default function PrimaryColumn() {
       ) : null}
 
       {load.status === 'error' ? (
-        <p
-          role="alert"
-          className="mt-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {load.message}
-        </p>
+        <InlineAlert className="mt-4">{load.message}</InlineAlert>
       ) : null}
 
       <div>

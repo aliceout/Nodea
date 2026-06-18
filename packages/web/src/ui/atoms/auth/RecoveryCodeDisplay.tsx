@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { splitMnemonicForDisplay } from '@/core/crypto/bip39';
 import { copyWithExpiry } from '@/lib/clipboard';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import RowCard from '@/ui/dirk/module/RowCard';
 
@@ -94,17 +95,14 @@ export default function RecoveryCodeDisplay({
         {...(subtitle !== undefined ? { subtitle } : {})}
       />
 
-      <div
-        role="alert"
-        className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-      >
+      <InlineAlert className="mb-4">
         <p className="font-semibold">À noter MAINTENANT</p>
         <p className="mt-1 text-ink-soft">
           Ces 12 mots ne te seront jamais re-affichés. Recopie-les sur papier ou
           dans un gestionnaire de mots de passe — sans eux, oublier ton mot de
           passe = perte de toutes tes données.
         </p>
-      </div>
+      </InlineAlert>
 
       <RowCard as="div" className="mb-4">
         <ol className="grid grid-cols-3 gap-x-4 gap-y-2 text-[13px] tabular-nums">

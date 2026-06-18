@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 
 import { copyWithExpiry } from '@/lib/clipboard';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import RowCard from '@/ui/dirk/module/RowCard';
 
@@ -72,13 +73,10 @@ export default function BackupCodesPanel({
     <>
       <AuthPanelHeader eyebrow={eyebrow} title={title} />
 
-      <div
-        role="alert"
-        className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-      >
+      <InlineAlert className="mb-4">
         <p className="font-semibold">À noter MAINTENANT</p>
         <p className="mt-1 text-ink-soft">{alertBody}</p>
-      </div>
+      </InlineAlert>
 
       <RowCard as="div" className="mb-4">
         <ol className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px] tabular-nums">

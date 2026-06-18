@@ -7,6 +7,7 @@ import { useSession } from '@/core/auth/use-session';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useDocumentTitle } from '@/lib/use-document-title';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
@@ -201,21 +202,11 @@ export default function SecurityModePage() {
         </div>
       ) : null}
 
-      {error ? (
-        <div
-          role="alert"
-          className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-        >
-          {error}
-        </div>
-      ) : null}
+      {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
       {success ? (
-        <div
-          role="status"
-          className="mt-3 border-l-2 border-accent bg-accent/5 px-3 py-2 text-[12.5px] text-accent-deep"
-        >
+        <InlineAlert tone="success" className="mt-3">
           {success}
-        </div>
+        </InlineAlert>
       ) : null}
 
       <div className="mt-4.5 text-center text-[12.5px] text-muted">

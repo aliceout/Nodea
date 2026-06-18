@@ -26,8 +26,7 @@ import SecurityTab from './views/SecurityTab';
  *   - `lib/` carries the pure helpers (security-mode label, the
  *     tab definition list, theme options) with their tests.
  *   - `components/` hosts the layout primitives shared between
- *     tabs : `Field`, `Feedback`, `IdentityRow`, `DescribedSection`,
- *     `Stats`.
+ *     tabs : `Field`, `IdentityRow`, `DescribedSection`, `Stats`.
  *   - `views/` hosts one file per tab. The Data tab further nests
  *     `views/data/{ExportPanel,ImportPanel}.tsx` since both panels
  *     own their own state and don't share a parent provider.

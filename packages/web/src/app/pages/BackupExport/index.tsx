@@ -14,6 +14,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import StrengthBar from '@/ui/atoms/auth/StrengthBar';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
@@ -244,26 +245,16 @@ export default function BackupExportPage() {
               {isSubmitting ? t('account.data.backup.ctaLoading') : t('account.data.backup.cta')}
             </Button>
           </form>
-          {error ? (
-            <div
-              role="alert"
-              className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-            >
-              {error}
-            </div>
-          ) : null}
+          {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
         </>
       ) : null}
 
       {stage.kind === 'done' ? (
         stage.failed.length > 0 ? (
           // Partial run must NOT read as « ✓ réussi » (audit 2026-06).
-          <div
-            role="alert"
-            className="border-l-2 border-danger bg-danger/5 px-3 py-2 text-[13px] leading-[1.5] text-danger"
-          >
+          <InlineAlert>
             {t('account.data.backup.partial', { values: { modules: stage.failed.join(', ') } })}
-          </div>
+          </InlineAlert>
         ) : (
           <div role="status">
             <AuthPanelHeader eyebrow="Données" title={t('account.data.backup.success')} />

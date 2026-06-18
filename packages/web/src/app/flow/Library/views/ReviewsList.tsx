@@ -3,6 +3,7 @@ import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { LibraryReviewPayload } from '@nodea/shared';
 
 import DirkButton from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import { formatLongDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { LiteMarkdown } from '@/lib/lite-markdown';
@@ -94,12 +95,7 @@ export default function ReviewsList({ kind }: ReviewsListProps) {
       ) : null}
 
       {load.status === 'error' ? (
-        <p
-          role="alert"
-          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {load.message}
-        </p>
+        <InlineAlert className="mb-4">{load.message}</InlineAlert>
       ) : null}
 
       {load.status === 'loading' ? (

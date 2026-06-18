@@ -14,6 +14,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 const INITIAL_FORM = { title: '', body: '' };
@@ -155,14 +156,7 @@ export default function AnnouncementsManager() {
           </Button>
         </div>
 
-        {error ? (
-          <p
-            role="alert"
-            className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-          >
-            {error}
-          </p>
-        ) : null}
+        {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
       </form>
 
       {/* Existing announcements list */}

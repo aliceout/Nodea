@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
@@ -162,12 +163,7 @@ export default function PrimaryColumn() {
       <OnThisDayPanel />
 
       {load.status === 'error' ? (
-        <p
-          role="alert"
-          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {load.message}
-        </p>
+        <InlineAlert className="mb-4">{load.message}</InlineAlert>
       ) : null}
 
       <div>

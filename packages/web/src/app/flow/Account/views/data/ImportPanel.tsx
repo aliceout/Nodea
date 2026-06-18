@@ -5,8 +5,8 @@ import { openBackup } from '@/core/crypto/backup-crypto';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
-import Feedback from '../../components/Feedback';
 import { restoreEnvelope } from './restore-envelope';
 import { unpackBackup } from './backup-pack';
 
@@ -197,8 +197,12 @@ export default function ImportPanel() {
         </div>
       ) : null}
 
-      {success ? <Feedback tone="success">{success}</Feedback> : null}
-      {error ? <Feedback tone="error">{error}</Feedback> : null}
+      {success ? (
+        <InlineAlert tone="success" className="mt-3">
+          {success}
+        </InlineAlert>
+      ) : null}
+      {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
     </section>
   );
 }

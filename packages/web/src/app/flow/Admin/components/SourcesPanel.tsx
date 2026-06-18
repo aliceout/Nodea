@@ -5,6 +5,7 @@ import type { AdminSourcesResponse, SourceHealth } from '@nodea/shared';
 import { apiAdminSources } from '@/core/api/client';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
 /**
  * Admin "Sources" tab — health check for every external metadata
@@ -69,14 +70,7 @@ export default function SourcesPanel() {
         </Button>
       </div>
 
-      {error ? (
-        <p
-          role="alert"
-          className="mb-4 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12px] text-danger"
-        >
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert className="mb-4">{error}</InlineAlert> : null}
 
       {data ? (
         <div className="divide-y divide-hair">

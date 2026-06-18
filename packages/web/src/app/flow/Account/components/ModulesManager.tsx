@@ -24,6 +24,7 @@ import {
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
 import Field from './Field';
@@ -481,14 +482,7 @@ export default function ModulesManager() {
           </div>
         );
       })}
-      {error ? (
-        <p
-          role="alert"
-          className="mt-3 border-l-2 border-danger bg-danger/5 px-3 py-2 text-[12.5px] text-danger"
-        >
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
     </div>
   );
 }
