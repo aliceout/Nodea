@@ -69,7 +69,7 @@ Concrètement : une fois ton compte fermé, même un dump SQL postérieur ne do
 
 L'onglet *L'essentiel* a couvert les trois acteurs et ce qu'ils voient en clair. Quelques précisions techniques pour qui veut creuser :
 
-**L'équipe Nodea** voit ton email en clair (c'est l'identifiant OPAQUE — il faut bien le matcher au login), tes heures de connexion, ton rôle (`user` / `admin`), ton mode de sécurité, le label de tes passkeys, et le fait que tu utilises tel module — mais pas quelle entrée t'appartient (les blobs sont écrits derrière un sid opaque sans `user_id`).
+**L'équipe Nodea** voit ton email en clair (c'est l'identifiant OPAQUE — il faut bien le matcher au login), tes heures de connexion, ton rôle (`user` / `admin`), ton mode de sécurité, et le label de tes passkeys. En revanche elle ne sait **pas** quels modules *toi* tu utilises, ni quelle entrée t'appartient : les entries n'ont pas de `user_id`, le nom de collection voyage dans un en-tête `X-Collection` que les logs n'enregistrent pas, et la correspondance user→sid vit chiffrée dans `modules_config`. Tout au plus un comptage agrégé par module (« 1247 entrées Mood », tous comptes confondus).
 
 **L'hébergeur** voit tout ça plus le filesystem, la RAM du process, et le journal d'écritures Postgres (WAL). Avec le WAL on peut faire du *forensic statistique* — « ces deux lignes ont été écrites à 50 ms d'écart sur deux tables → probablement même user ». Pas du plain SQL, mais reconstructible si on s'en donne la peine. C'est aussi l'hébergeur qui a la possibilité de servir un bundle JS modifié (voir section *Serveur compromis* ci-dessous).
 

@@ -26,7 +26,7 @@ Tu peux régénérer ce code à tout moment depuis *Compte → Sécurité* ; l'
 
 Trois cas possibles. Voilà ce que chacun peut voir, en clair.
 
-**L'équipe Nodea** (nous, qui développons et faisons tourner le serveur). On voit ton email, ton nom d'affichage, tes heures de connexion, et le fait que tu utilises tel ou tel module. **On ne voit pas** le contenu de ce que tu écris — c'est chiffré avec une clé qu'on n'a pas.
+**L'équipe Nodea** (nous, qui développons et faisons tourner le serveur). On voit ton email, ton nom d'affichage et tes heures de connexion. **On ne voit pas** le contenu de ce que tu écris — c'est chiffré avec une clé qu'on n'a pas — ni même quels modules tu utilises.
 
 **L'hébergeur** (le fournisseur cloud qui loue le serveur). Pareil que l'équipe Nodea, plus quelques détails techniques bas niveau (ordre dans lequel les écritures arrivent dans la base). Toujours pas de contenu en clair.
 
