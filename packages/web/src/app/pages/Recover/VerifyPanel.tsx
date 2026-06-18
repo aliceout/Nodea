@@ -1,10 +1,10 @@
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
-import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
+import Textarea from '@/ui/atoms/dirk/Textarea';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
@@ -84,7 +84,7 @@ export default function VerifyPanel(props: VerifyPanelProps) {
           >
             {t('auth.recover.form.mnemonicLabel')}
           </label>
-          <textarea
+          <Textarea
             id="recover-mnemonic"
             value={mnemonic}
             onChange={(e) => setMnemonic(e.target.value)}
@@ -93,11 +93,7 @@ export default function VerifyPanel(props: VerifyPanelProps) {
             spellCheck={false}
             autoCapitalize="none"
             autoCorrect="off"
-            className={cn(
-              'w-full resize-none rounded-md border border-hair bg-bg px-3 py-2.5 font-mono text-[13px] text-ink',
-              'outline-none transition-[border-color,box-shadow]',
-              'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
-            )}
+            className="font-mono"
           />
           <p className="mt-1 text-[11px] text-muted">
             {t('auth.recover.form.wordCount', { values: { count: wordCount } })}

@@ -6,6 +6,7 @@ import {
 } from '@/core/theme/useBackgroundShade';
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Select from '@/ui/atoms/dirk/Select';
 
 import DescribedSection from '../components/DescribedSection';
 import {
@@ -50,18 +51,17 @@ export default function PreferencesTab() {
         controlWidth={200}
         align="center"
       >
-        <select
+        <Select
           aria-label={t('settings.theme.ariaLabel')}
           value={theme}
           onChange={handleTheme}
-          className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
         >
           {THEME_OPTIONS.map((id) => (
             <option key={id} value={id}>
               {t(`settings.theme.options.${id}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </DescribedSection>
 
       <DescribedSection
@@ -70,18 +70,17 @@ export default function PreferencesTab() {
         controlWidth={200}
         align="center"
       >
-        <select
+        <Select
           aria-label={t('settings.backgroundShade.ariaLabel')}
           value={shade}
           onChange={handleShade}
-          className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
         >
           {BACKGROUND_SHADE_OPTIONS.map((id) => (
             <option key={id} value={id}>
               {t(`settings.backgroundShade.options.${id}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </DescribedSection>
 
       <DescribedSection
@@ -90,18 +89,17 @@ export default function PreferencesTab() {
         controlWidth={200}
         align="center"
       >
-        <select
+        <Select
           aria-label={t('account.preferences.languageAriaLabel')}
           value={language}
           onChange={handleLanguage}
-          className="block h-8 w-full cursor-pointer rounded-md border border-hair bg-bg px-3 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
         >
           {availableLanguages.map((lang) => (
             <option key={lang.id} value={lang.id}>
               {lang.label}
             </option>
           ))}
-        </select>
+        </Select>
       </DescribedSection>
     </div>
   );

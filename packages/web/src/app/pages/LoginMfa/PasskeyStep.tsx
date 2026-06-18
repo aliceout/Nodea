@@ -1,3 +1,4 @@
+import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 
@@ -65,14 +66,15 @@ export default function PasskeyStep({
 
           {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
             onClick={onSubmit}
             disabled={submitting}
-            className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 w-full"
           >
             {submitting ? 'Vérification…' : 'Confirmer avec ma passkey'}
-          </button>
+          </Button>
 
           {/* Escalation : direct → email recovery. Same discreet
               link styling as TOTP's « J'ai perdu mon TOTP » lever

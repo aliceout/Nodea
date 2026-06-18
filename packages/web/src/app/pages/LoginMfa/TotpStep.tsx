@@ -103,13 +103,15 @@ export default function TotpStep({
 
             {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              size="lg"
               disabled={!canSubmit}
-              className="mt-2 w-full cursor-pointer rounded-md bg-accent px-4 py-2.75 text-[14px] font-semibold text-white transition-[background-color,transform] hover:bg-accent-hover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full"
             >
               {submitting ? 'Vérification…' : 'Vérifier'}
-            </button>
+            </Button>
           </form>
 
           {/* Escalation 1 : code → backup. Visible only in

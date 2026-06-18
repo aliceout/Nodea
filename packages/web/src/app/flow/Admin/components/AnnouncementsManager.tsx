@@ -14,6 +14,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import DirkInput from '@/ui/atoms/dirk/Input';
+import Textarea from '@/ui/atoms/dirk/Textarea';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 
@@ -135,13 +136,12 @@ export default function AnnouncementsManager() {
             placeholder={t('admin.announcementsManager.titlePlaceholder')}
             aria-label={t('admin.announcementsManager.titleAria')}
           />
-          <textarea
+          <Textarea
             value={form.body}
             onChange={(e) => setForm((prev) => ({ ...prev, body: e.target.value }))}
-            rows={4}
+            minHeightPx={96}
             placeholder={t('admin.announcementsManager.messagePlaceholder')}
             aria-label={t('admin.announcementsManager.messageAria')}
-            className="block w-full rounded-md border border-hair bg-bg px-3 py-2 text-[13px] leading-[1.55] text-ink transition-[border-color,box-shadow] focus:border-accent focus:shadow-[0_0_0_3px_var(--color-k-accent-soft)] focus:outline-none"
           />
         </div>
 

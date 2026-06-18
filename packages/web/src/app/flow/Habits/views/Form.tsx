@@ -7,6 +7,8 @@ import {
 import { useHabits } from '../hooks/useHabits';
 import { toIsoDate } from '@/core/i18n/date-format';
 import Button from '@/ui/atoms/dirk/Button';
+import Input from '@/ui/atoms/dirk/Input';
+import Select from '@/ui/atoms/dirk/Select';
 import DateField from '@/ui/atoms/dirk/DateField';
 
 // `new Date().toISOString().slice(0, 10)` returns the UTC calendar
@@ -74,12 +76,12 @@ export default function HabitsFormView() {
 
       <label className="block">
         <span className="text-sm">Titre</span>
-        <input
+        <Input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Ex. Tennis"
-          className="mt-1 block w-full rounded border border-slate-300 p-2"
+          className="mt-1"
           required
         />
       </label>
@@ -87,54 +89,54 @@ export default function HabitsFormView() {
       <div className="flex gap-3">
         <label className="flex-1 block">
           <span className="text-sm">Catégorie</span>
-          <select
+          <Select
             value={category}
             onChange={(e) => setCategory(e.target.value as HabitsItemPayload['category'])}
-            className="mt-1 block w-full rounded border border-slate-300 p-2"
+            className="mt-1"
           >
             {HABIT_CATEGORY_VALUES.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex-1 block">
           <span className="text-sm">Fréquence</span>
-          <select
+          <Select
             value={frequency}
             onChange={(e) => setFrequency(e.target.value as HabitsItemPayload['frequency'])}
-            className="mt-1 block w-full rounded border border-slate-300 p-2"
+            className="mt-1"
           >
             {HABIT_FREQUENCY_VALUES.map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 
       <div className="flex gap-3">
         <label className="flex-1 block">
           <span className="text-sm">Cible (optionnel)</span>
-          <input
+          <Input
             type="number"
             min={1}
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             placeholder="ex. 1 / semaine"
-            className="mt-1 block w-full rounded border border-slate-300 p-2"
+            className="mt-1"
           />
         </label>
         <label className="flex-1 block">
           <span className="text-sm">Durée prévue (ISO 8601)</span>
-          <input
+          <Input
             type="text"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
             placeholder="ex. P6M"
-            className="mt-1 block w-full rounded border border-slate-300 p-2"
+            className="mt-1"
           />
         </label>
       </div>

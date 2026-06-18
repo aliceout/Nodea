@@ -25,9 +25,8 @@ import {
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
-
-import Field from './Field';
 
 /**
  * ModulesManager (TSX).
@@ -83,21 +82,12 @@ function WipePanel({
   onClose: () => void;
 }) {
   const { t, tn } = useI18n();
-  const [password, setPassword] = useState('');
   const [phase, setPhase] = useState<'idle' | 'wiping' | 'done'>('idle');
   const [panelError, setPanelError] = useState<string | null>(null);
   const [deletedCount, setDeletedCount] = useState(0);
 
-  async function handleConfirm(): Promise<void> {
+  async function handleConfirm(password: string): Promise<void> {
     setPanelError(null);
-    if (!password) {
-      setPanelError(
-        t('settings.modules.wipe.passwordRequired', {
-          defaultValue: 'Renseigne ton mot de passe pour confirmer.',
-        }),
-      );
-      return;
-    }
     setPhase('wiping');
     try {
       // Step 1 : OPAQUE re-auth round-trip — same posture as the
@@ -111,7 +101,6 @@ function WipePanel({
       // per call ; we let the helper iterate the list.
       const result = await wipeModule(moduleId, sid);
       setDeletedCount(result.deleted);
-      setPassword('');
       // Refetch trigger for mounted consumers of this module's data.
       const state = useNodeaStore.getState() as unknown as Record<
         string,
@@ -197,48 +186,24 @@ function WipePanel({
         })}
       </p>
       <div className="mt-3 max-w-sm">
-        <Field
-          label={t('settings.modules.wipe.passwordLabel', {
+        <PasswordReauthForm
+          tone="danger"
+          passwordLabel={t('settings.modules.wipe.passwordLabel', {
             defaultValue: 'Mot de passe actuel',
           })}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setPassword(e.target.value)
-          }
-          autoFocus
+          confirmLabel={t('settings.modules.wipe.confirm', {
+            defaultValue: 'Confirmer la suppression',
+          })}
+          submittingLabel={t('settings.modules.wipe.wiping', {
+            defaultValue: 'Suppression…',
+          })}
+          cancelLabel={t('common.actions.cancel', { defaultValue: 'Annuler' })}
+          onCancel={onClose}
+          error={panelError ?? undefined}
+          submitting={phase === 'wiping'}
+          onConfirm={handleConfirm}
         />
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => void handleConfirm()}
-          disabled={phase === 'wiping' || password.length === 0}
-        >
-          {phase === 'wiping'
-            ? t('settings.modules.wipe.wiping', {
-                defaultValue: 'Suppression…',
-              })
-            : t('settings.modules.wipe.confirm', {
-                defaultValue: 'Confirmer la suppression',
-              })}
-        </Button>
-        <Button
-          variant="neutral"
-          size="sm"
-          onClick={onClose}
-          disabled={phase === 'wiping'}
-        >
-          {t('common.actions.cancel', { defaultValue: 'Annuler' })}
-        </Button>
-      </div>
-      {panelError ? (
-        <p role="alert" className="mt-3 text-[12.5px] text-danger">
-          {panelError}
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -443,8 +408,10 @@ export default function ModulesManager() {
               />
 
               {canWipe ? (
-                <button
-                  type="button"
+                <Button
+                  variant="danger-ghost"
+                  size="md"
+                  iconOnly
                   // Buttons nested inside a <label> don't toggle
                   // the wrapped input by default, but we still
                   // stopPropagation defensively so a future
@@ -460,14 +427,9 @@ export default function ModulesManager() {
                     defaultValue: `Vider toutes les entrées ${label}`,
                     values: { module: label },
                   })}
-                  className={cn(
-                    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors',
-                    'hover:bg-danger/10 hover:text-danger',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger',
-                  )}
                 >
                   <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                </button>
+                </Button>
               ) : null}
             </label>
 
