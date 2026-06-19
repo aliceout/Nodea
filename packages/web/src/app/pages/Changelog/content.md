@@ -5,6 +5,44 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.12.0 — 2026-06-19
+
+### Nouveautés
+
+- **auth** : enforce fixed 7-day session TTL + self-labelling sessions _(1ff255c)_
+- **ui** : reader column wider + left-biased, Modifier left, eyebrow as Tag _(a4c9e44)_
+- **journal** : writing chart open by default, folds on first scroll _(02ab968)_
+- **library** : default to the Tableau view _(bcf09a9)_
+- **mood** : donut score-filter chip; drop the entries heading _(19913e6)_
+- **journal** : 4-full-line entry clamp + Home shows the 3 latest _(90a2ba3)_
+- **ui** : shared Tag pill for thread / status / score badges _(5098f2b)_
+- **journal** : list UX — clickable entries, thread tags, month selector _(f101a35)_
+- **journal** : markdown citations + editor quote button _(b7272d2)_
+
+### Corrections
+
+- **ui** : enlarge sidebar brand mark + align it with the module nav rail _(6da6270)_
+
+### Refactor
+
+- **ui** : tighter vertical padding on the tabs _(2d01cb8)_
+- **ui** : square + sage-tint selectors and settings tabs _(fd18ccf)_
+- **ui** : squarer sidebar filter chips, matching the Tag pills _(0b512c2)_
+- **ui** : trim chrome — logout red, drop counts, normalize margins _(1a5156c)_
+
+### Documentation
+
+- **privacy** : correct the "server sees which module you use" claim _(a5b7d00)_
+- **changelog** : regenerate for v2.11.0 _(2c4e274)_
+
+<details>
+<summary>Maintenance — 2 commits</summary>
+
+- **release** : bump version to 2.12.0 _(b6c389c)_
+- **i18n** : drop keys orphaned by the count + heading removal _(091b2c9)_
+
+</details>
+
 ## v2.11.0 — 2026-06-18
 
 ### Nouveautés
