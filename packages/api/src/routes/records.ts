@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   BulkCreateEntryBodySchema,
   BulkCreateEntryResponseSchema,
@@ -489,12 +489,18 @@ export function createRecordsRoutes(collections: readonly CollectionDef[]) {
         return { kind: 'guard_already_promoted' as const };
       }
 
-      for (const p of body.promotions) {
-        await tx
-          .update(table)
-          .set({ guard: p.guard })
-          .where(and(eq(table.id, p.id), eq(table.moduleUserId, body.sid)));
-      }
+      // Single batched UPDATE instead of one query per promotion: a
+      // `CASE WHEN id = … THEN <guard>` over the locked rows. Values stay
+      // parameterized (Drizzle `sql` placeholders), so no user input is
+      // interpolated. Every targeted id has a matching WHEN branch, so no
+      // row is set to NULL.
+      const guardCases = body.promotions.map(
+        (p) => sql`when ${table.id} = ${p.id} then ${p.guard}`,
+      );
+      await tx
+        .update(table)
+        .set({ guard: sql`case ${sql.join(guardCases, sql` `)} end` })
+        .where(and(eq(table.moduleUserId, body.sid), inArray(table.id, ids)));
       return { kind: 'ok' as const, promoted: body.promotions.length };
     });
 
