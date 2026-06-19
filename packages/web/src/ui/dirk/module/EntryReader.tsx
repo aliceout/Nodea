@@ -8,6 +8,7 @@ import {
 
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from './ModuleShell';
+import Tag from './Tag';
 import Topbar from '../Topbar';
 
 interface EntryReaderProps {
@@ -125,14 +126,15 @@ export default function EntryReader({
     <ModuleShell
       topbar={<Topbar label={topbarLabel} onOpenMenu={onOpenMenu} />}
     >
-      <article className="mx-auto max-w-2xl">
-        {/* Action bar — right-aligned `Modifier` + extras + `Fermer`,
-            placed directly above the entry rather than in the
-            global topbar. Closer to the content the user is reading,
-            matches the K · Sauge contextual-affordance rhythm
-            (cf. Composer modals, EntryRow hover actions). */}
-        <div className="mb-5 flex items-center justify-end gap-1.5 border-b border-hair pb-3">
-          <Button variant="ghost" size="sm" onClick={onEdit}>
+      {/* Reading column is biased left, not centred : the left gutter
+          is half the right one (1/3 vs 2/3 of the free space) so the
+          text sits closer to the sidebar/nav side. `max()` clamps the
+          offset to 0 on viewports narrower than the column. */}
+      <article className="ml-[max(0px,calc((100%_-_50rem)/3))] max-w-[50rem]">
+        {/* Action bar above the entry. `Modifier` is pushed to the
+            left (mr-auto) ; the extras + `Fermer` stay on the right. */}
+        <div className="mb-5 flex items-center gap-1.5 border-b border-hair pb-3">
+          <Button variant="ghost" size="sm" onClick={onEdit} className="mr-auto">
             <PencilSquareIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
             {editLabel}
           </Button>
@@ -149,10 +151,8 @@ export default function EntryReader({
         </div>
 
         <header className="mb-7">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-              {eyebrow}
-            </p>
+          <div className="flex items-center justify-between gap-3">
+            <Tag>{eyebrow}</Tag>
             {dateLabel ? (
               <p className="text-[12px] tabular-nums text-muted">{dateLabel}</p>
             ) : null}
