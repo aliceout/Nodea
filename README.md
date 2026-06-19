@@ -8,7 +8,7 @@ ses habitudes, ses lectures, faire son bilan annuel. Tout ce que tu
 personne d'autre que toi, pas même l'admin de l'instance, ne peut le
 lire.
 
-> **Stack** — Node 22 · Hono · Drizzle ORM · PostgreSQL 16 · React 19 ·
+> **Stack** — Node 24 · Hono · Drizzle ORM · PostgreSQL 16 · React 19 ·
 > TypeScript strict · OPAQUE (login sans password en clair) · WebAuthn
 > + PRF (passkeys) · TOTP RFC 6238 · BIP39 (code de récupération).
 
@@ -79,7 +79,7 @@ pnpm dev:web    # port 5173
 Tests :
 
 ```sh
-pnpm -r test    # 222 tests d'intégration api + 83 tests unitaires web
+pnpm -r test    # 383 tests d'intégration api + 489 tests unitaires web
 ```
 
 Trois bases Postgres coexistent sur la même instance, jamais

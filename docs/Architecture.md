@@ -13,7 +13,7 @@ Docker-compose deployment bundle.
 ```
 /
 ├── packages/
-│   ├── api/        # Node 22 · Hono · Drizzle · PostgreSQL 16
+│   ├── api/        # Node 24 · Hono · Drizzle · PostgreSQL 16
 │   ├── web/        # React 19 · Vite · Tailwind · Zustand · TypeScript strict
 │   └── shared/     # Zod schemas + branded crypto types, used by both sides
 ├── docs/           # This folder
@@ -37,7 +37,7 @@ Docker-compose deployment bundle.
 
 ### Runtime
 
-- **Hono** on `@hono/node-server`, Node 22 ESM.
+- **Hono** on `@hono/node-server`, Node 24 ESM.
 - **Drizzle ORM** against **PostgreSQL 16**. Schema:
   [`packages/api/src/db/schema.ts`](../packages/api/src/db/schema.ts).
   Migrations in [`packages/api/drizzle/`](../packages/api/drizzle/). Run
@@ -406,7 +406,7 @@ sequential to avoid row-level interference. Setup under
 [`packages/api/src/test/setup.ts`](../packages/api/src/test/setup.ts)
 runs `TRUNCATE … CASCADE` before each test, and forces
 `EMAIL_SERVICE_IMPL=recording` (cf. `vitest.config.ts`) so suites can
-assert on outgoing mail without spinning up Mailpit. 221 integration
+assert on outgoing mail without spinning up Mailpit. 383 integration
 tests at the time of writing, covering register / login / activation
 gates, OPAQUE round-trips, OPAQUE re-auth, change-password / reset /
 change-email / delete-self, recovery-code KEK, passkey enroll +
@@ -541,7 +541,7 @@ stays a Tailwind class (universal CSS, no token needed).
 
 Vitest + jsdom. Crypto round-trips (AES, HKDF, factor-wrap, guard
 derivation, passkey-PRF unwrap), base64 encoders, the typed HTTP
-client (mocked fetch), and the Zustand store. 83 unit tests at the
+client (mocked fetch), and the Zustand store. 489 unit tests at the
 time of writing.
 
 ---
