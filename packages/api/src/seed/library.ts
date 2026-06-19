@@ -70,48 +70,56 @@ export async function seedLibrary(ctx: SeedContext): Promise<SeedResult> {
 
   const fixtures = buildLibraryFixtures();
 
-  // Pass 1 : insert each item, remember its freshly-minted id.
+  // Pass 1 : build each item row (encrypt + guard) in parallel, record
+  // its freshly-minted id, then insert the batch in one query.
   const idsByHandle = new Map<string, string>();
-  let insertedItems = 0;
-  for (const fx of fixtures) {
-    const payload = LibraryItemPayloadSchema.parse(fx.item);
-    const id = randomUUID();
-    const guard = await deriveGuard(ctx.hmacKey, sid, id);
-    const blob = await encryptJson(ctx.aesKey, payload);
-    await db.insert(libraryItemsEntries).values({
-      id,
-      moduleUserId: sid,
-      cipherIv: blob.iv,
-      payload: blob.data,
-      guard,
-    });
-    idsByHandle.set(fx.handle, id);
-    insertedItems += 1;
-  }
-
-  // Pass 2 : insert each review with its parent item's real id.
-  let insertedReviews = 0;
-  for (const fx of fixtures) {
-    const itemRid = idsByHandle.get(fx.handle);
-    if (!itemRid) continue;
-    for (const review of fx.reviews) {
-      const payload = LibraryReviewPayloadSchema.parse({
-        ...review,
-        itemRid: itemRid,
-      });
+  const itemRows = await Promise.all(
+    fixtures.map(async (fx) => {
+      const payload = LibraryItemPayloadSchema.parse(fx.item);
       const id = randomUUID();
       const guard = await deriveGuard(ctx.hmacKey, sid, id);
       const blob = await encryptJson(ctx.aesKey, payload);
-      await db.insert(libraryReviewsEntries).values({
+      idsByHandle.set(fx.handle, id);
+      return {
         id,
         moduleUserId: sid,
         cipherIv: blob.iv,
         payload: blob.data,
         guard,
+      };
+    }),
+  );
+  if (itemRows.length > 0) await db.insert(libraryItemsEntries).values(itemRows);
+  const insertedItems = itemRows.length;
+
+  // Pass 2 : build every review row across all items (with its parent's
+  // real id), then insert the flattened batch in one query.
+  const reviewRows = await Promise.all(
+    fixtures.flatMap((fx) => {
+      const itemRid = idsByHandle.get(fx.handle);
+      if (!itemRid) return [];
+      return fx.reviews.map(async (review) => {
+        const payload = LibraryReviewPayloadSchema.parse({
+          ...review,
+          itemRid,
+        });
+        const id = randomUUID();
+        const guard = await deriveGuard(ctx.hmacKey, sid, id);
+        const blob = await encryptJson(ctx.aesKey, payload);
+        return {
+          id,
+          moduleUserId: sid,
+          cipherIv: blob.iv,
+          payload: blob.data,
+          guard,
+        };
       });
-      insertedReviews += 1;
-    }
+    }),
+  );
+  if (reviewRows.length > 0) {
+    await db.insert(libraryReviewsEntries).values(reviewRows);
   }
+  const insertedReviews = reviewRows.length;
 
   return {
     cleared: clearedItems.length + clearedReviews.length + clearedOrphans,

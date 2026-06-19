@@ -304,22 +304,27 @@ export async function replaceEntries<T>(
     .where(eq(table.moduleUserId, moduleUserId))
     .returning({ id: table.id });
 
-  let inserted = 0;
-  for (const fixture of fixtures) {
-    const blob = await encryptJson(aesKey, fixture);
-    const id = randomUUID();
-    const guard = await deriveGuard(hmacKey, moduleUserId, id);
-    await db.insert(table).values({
-      id,
-      moduleUserId,
-      cipherIv: blob.iv,
-      payload: blob.data,
-      guard,
-    });
-    inserted += 1;
-  }
+  // Build every row (encrypt + derive its per-record guard) in parallel,
+  // then insert them in a single batched query instead of one INSERT per
+  // fixture. Guards stay per-record (HMAC over each id), so correctness
+  // is unchanged — only the round-trips collapse.
+  const rows = await Promise.all(
+    fixtures.map(async (fixture) => {
+      const blob = await encryptJson(aesKey, fixture);
+      const id = randomUUID();
+      const guard = await deriveGuard(hmacKey, moduleUserId, id);
+      return {
+        id,
+        moduleUserId,
+        cipherIv: blob.iv,
+        payload: blob.data,
+        guard,
+      };
+    }),
+  );
+  if (rows.length > 0) await db.insert(table).values(rows);
 
-  return { cleared: cleared.length, inserted };
+  return { cleared: cleared.length, inserted: rows.length };
 }
 
 // ---------------------------------------------------------------------
