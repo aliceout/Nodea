@@ -125,7 +125,7 @@ async function search(query: string, tld: string, limit: number): Promise<Normal
     // full URL often embeds the original search URL as a parameter
     // (`amzn-r=%2Fs%3Fk%3D<recherche>`) — the user's query would
     // land in the server log via the dispatcher's console.warn.
-    let finalPath = finalUrl;
+    let finalPath: string;
     try {
       finalPath = new URL(finalUrl).pathname;
     } catch {

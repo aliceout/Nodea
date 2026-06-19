@@ -212,7 +212,9 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
     args.doses.length ? tn('hrt.export.pdf.doseCount', args.doses.length) : undefined,
   );
   if (args.doses.length === 0) {
-    y = muted(t('hrt.export.pdf.dosesEmpty'), y);
+    // Terminal write of the section : the next section resets `y` on a
+    // fresh page (see the lab block below), so this position is not read.
+    muted(t('hrt.export.pdf.dosesEmpty'), y);
   } else if (args.groupBy === 'type') {
     for (const g of groupDosesByMolecule(args.doses)) {
       y = subHeading(`${g.molecule} · ${tn('hrt.export.pdf.doseCount', g.rows.length)}`, y);
@@ -229,7 +231,9 @@ export async function downloadExportPdf(args: ExportPdfArgs): Promise<void> {
       );
     }
   } else {
-    y = table(
+    // Terminal write : the lab section below resets `y` on a fresh page,
+    // so the position returned here is intentionally not captured.
+    table(
       doseHead,
       args.doses.map((r) => [
         formatDotDate(r.date),

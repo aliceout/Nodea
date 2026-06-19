@@ -70,7 +70,11 @@ export default tseslint.config(
     rules: {
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
-      ...reactHooks.configs.recommended.rules,
+      // react-hooks 7's `configs.recommended` now bundles the whole
+      // React-Compiler rule set; we only want the two classic hook
+      // rules, so pin them explicitly rather than spread the preset.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       ...jsxA11y.configs.recommended.rules,
       // React 17+ JSX transform — `import React` not required.
       'react/react-in-jsx-scope': 'off',
