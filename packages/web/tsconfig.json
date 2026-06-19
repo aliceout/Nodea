@@ -6,13 +6,12 @@
     "types": ["vite/client"],
     "allowJs": false,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@app/*": ["src/app/*"],
-      "@core/*": ["src/core/*"],
-      "@i18n/*": ["src/i18n/*"],
-      "@ui/*": ["src/ui/*"],
+      "@/*": ["./src/*"],
+      "@app/*": ["./src/app/*"],
+      "@core/*": ["./src/core/*"],
+      "@i18n/*": ["./src/i18n/*"],
+      "@ui/*": ["./src/ui/*"],
       "@nodea/shared": ["../shared/src/index.ts"],
       "@nodea/shared/*": ["../shared/src/*"]
     }
