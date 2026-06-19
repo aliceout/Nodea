@@ -161,16 +161,13 @@ authPasskeyManageRoutes.openapi(removeRoute, async (c) => {
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
   const user = c.get('user');
 
-  const result = await db
-    .delete(authFactors)
-    .where(and(eq(authFactors.id, id), eq(authFactors.userId, user.id)))
-    .returning({
-      id: authFactors.id,
-      prfSupported: authFactors.prfSupported,
-    });
-
-  if (result.length === 0) return c.json({ error: 'not_found' }, 404);
-
+  // Delete + the §6.1 auto-downgrade run in ONE transaction so a
+  // failure between the deletion and the mode update can't leave a
+  // `maximum`-mode account with no PRF passkey (a lock-out). The
+  // downgrade DECISION reads also live inside the tx so they observe a
+  // consistent snapshot. The notification email is sent AFTER commit —
+  // an SMTP hiccup must not roll back the security change.
+  //
   // §6.1 downgrade auto. Two branches:
   //  - `maximum` strictly requires a PRF-capable passkey. Removing
   //    the last PRF credential downgrades to `password_or_passkey`.
@@ -178,56 +175,86 @@ authPasskeyManageRoutes.openapi(removeRoute, async (c) => {
   //  - `always_2fa` (since #72) accepts a passkey as the sole 2nd
   //    factor. Removing the last passkey of *any* kind, while the
   //    user has no TOTP enabled, downgrades to `password_or_passkey`.
-  let downgradeTrigger:
-    | 'last_prf_passkey_removed'
-    | 'last_passkey_removed'
-    | null = null;
-  let downgradedFrom: 'always_2fa' | 'maximum' | null = null;
-  if (result[0]?.prfSupported && user.securityMode === 'maximum') {
-    const [remainingPrf] = await db
-      .select({ id: authFactors.id })
-      .from(authFactors)
-      .where(
-        and(
-          eq(authFactors.userId, user.id),
-          eq(authFactors.prfSupported, true),
-        ),
-      )
-      .limit(1);
-    if (!remainingPrf) {
-      downgradeTrigger = 'last_prf_passkey_removed';
-      downgradedFrom = 'maximum';
-    }
-  } else if (user.securityMode === 'always_2fa') {
-    const [remainingAny] = await db
-      .select({ id: authFactors.id })
-      .from(authFactors)
-      .where(
-        and(
-          eq(authFactors.userId, user.id),
-          eq(authFactors.kind, 'passkey'),
-        ),
-      )
-      .limit(1);
-    if (!remainingAny) {
-      const [totp] = await db
-        .select({ enabledAt: mfaTotp.enabledAt })
-        .from(mfaTotp)
-        .where(eq(mfaTotp.userId, user.id))
-        .limit(1);
-      const hasTotp = !!totp && totp.enabledAt !== null;
-      if (!hasTotp) {
-        downgradeTrigger = 'last_passkey_removed';
-        downgradedFrom = 'always_2fa';
+  const { removed, downgradeTrigger, downgradedFrom } = await db.transaction(
+    async (tx) => {
+      const result = await tx
+        .delete(authFactors)
+        .where(and(eq(authFactors.id, id), eq(authFactors.userId, user.id)))
+        .returning({
+          id: authFactors.id,
+          prfSupported: authFactors.prfSupported,
+        });
+
+      if (result.length === 0) {
+        return {
+          removed: false,
+          downgradeTrigger: null as
+            | 'last_prf_passkey_removed'
+            | 'last_passkey_removed'
+            | null,
+          downgradedFrom: null as 'always_2fa' | 'maximum' | null,
+        };
       }
-    }
-  }
+
+      let downgradeTrigger:
+        | 'last_prf_passkey_removed'
+        | 'last_passkey_removed'
+        | null = null;
+      let downgradedFrom: 'always_2fa' | 'maximum' | null = null;
+      if (result[0]?.prfSupported && user.securityMode === 'maximum') {
+        const [remainingPrf] = await tx
+          .select({ id: authFactors.id })
+          .from(authFactors)
+          .where(
+            and(
+              eq(authFactors.userId, user.id),
+              eq(authFactors.prfSupported, true),
+            ),
+          )
+          .limit(1);
+        if (!remainingPrf) {
+          downgradeTrigger = 'last_prf_passkey_removed';
+          downgradedFrom = 'maximum';
+        }
+      } else if (user.securityMode === 'always_2fa') {
+        const [remainingAny] = await tx
+          .select({ id: authFactors.id })
+          .from(authFactors)
+          .where(
+            and(
+              eq(authFactors.userId, user.id),
+              eq(authFactors.kind, 'passkey'),
+            ),
+          )
+          .limit(1);
+        if (!remainingAny) {
+          const [totp] = await tx
+            .select({ enabledAt: mfaTotp.enabledAt })
+            .from(mfaTotp)
+            .where(eq(mfaTotp.userId, user.id))
+            .limit(1);
+          const hasTotp = !!totp && totp.enabledAt !== null;
+          if (!hasTotp) {
+            downgradeTrigger = 'last_passkey_removed';
+            downgradedFrom = 'always_2fa';
+          }
+        }
+      }
+
+      if (downgradeTrigger && downgradedFrom) {
+        await tx
+          .update(users)
+          .set({ securityMode: 'password_or_passkey', updatedAt: new Date() })
+          .where(eq(users.id, user.id));
+      }
+
+      return { removed: true, downgradeTrigger, downgradedFrom };
+    },
+  );
+
+  if (!removed) return c.json({ error: 'not_found' }, 404);
 
   if (downgradeTrigger && downgradedFrom) {
-    await db
-      .update(users)
-      .set({ securityMode: 'password_or_passkey', updatedAt: new Date() })
-      .where(eq(users.id, user.id));
     try {
       const rendered = renderSecurityModeDowngradedEmail({
         language: extractEmailLanguage(c),
