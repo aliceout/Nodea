@@ -63,7 +63,14 @@ export default function GoalsReaderShell() {
     <EntryReader
       topbarLabel={t('goals.topbar.readerLabel', { values: { position, total } })}
       onOpenMenu={() => setMobileMenuOpen(true)}
-      onEdit={() => editEntry(entry)}
+      onEdit={() => {
+        // Close the reader first: Goals renders the reader *instead of*
+        // the inline form while `readingId` is set, so opening the edit
+        // form without clearing readingId would leave the reader on top
+        // (the form opened underneath, invisible). Mirrors Journal.
+        closeReader();
+        editEntry(entry);
+      }}
       onClose={closeReader}
       onPrev={onPrev}
       onNext={onNext}
