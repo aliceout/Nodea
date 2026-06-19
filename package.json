@@ -54,7 +54,7 @@
       "@babel/core@<=7.29.0": ">=7.29.6",
       "dompurify@<3.4.9": ">=3.4.9",
       "@opentelemetry/core@<2.8.0": ">=2.8.0",
-      "undici@>=7.23.0 <7.28.0": ">=7.28.0"
+      "undici@>=7.23.0 <7.28.0": "7.28.0"
     },
     "ignoredBuiltDependencies": [
       "core-js"
