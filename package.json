@@ -1,7 +1,7 @@
 {
   "name": "nodea",
   "private": true,
-  "version": "2.12.0",
+  "version": "2.13.0",
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
