@@ -383,14 +383,21 @@ the factory loops over. There is nowhere to forget a guard.
 
 ### Background jobs
 
-A single `node-cron` schedule lives in
-[`packages/api/src/cron/index.ts`](../packages/api/src/cron/index.ts),
+The `node-cron` schedules live in
+[`packages/api/src/cron.ts`](../packages/api/src/cron.ts),
 started from `index.ts` after `buildApp()` :
 
 - **`cleanup-unactivated-accounts`** — Mondays 03:00 UTC. Purges
   expired `email_verifications` rows + the inactive `users` whose
   activation window (7 days) has elapsed, plus stale sessions. Logs a
   summary line per run (`[cron] cleanup-unactivated done {…}`).
+- **`cleanup-expired-tokens`** — daily 03:30 UTC. Drops expired
+  password-reset tokens, expired invites, consumed/cancelled/expired
+  MFA-bypass requests, and stale `sessions` — anything past its
+  `expires_at`, plus any `full` session older than the fixed 7-day TTL
+  (Auth-Spec §5.1 "no slide"). The age clause also clears rows minted
+  under the legacy 30-day TTL and matches the cutoff `resolveSession`
+  applies on read.
 
 ### Tests
 

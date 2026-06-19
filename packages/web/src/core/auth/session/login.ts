@@ -13,13 +13,36 @@ import {
 import {
   buildKekAAD,
   buildMainKeyAAD,
+  buildSessionDeviceLabelAAD,
   unwrapKekUnderFactor,
   unwrapMainKeyUnderKek,
 } from '../../crypto/factor-wrap.ts';
-import { deriveMainKeys } from '../../crypto/key-material.ts';
+import { deriveMainKeys, type MainKeyMaterial } from '../../crypto/key-material.ts';
+import { encryptMetaString } from '../../crypto/session-meta.ts';
+import { apiPatchCurrentSessionDeviceLabel } from '../../api/sessions.ts';
+import { parseDeviceLabel } from '../../../lib/device-label.ts';
 import { clientLoginFinish, clientLoginStart, opaqueReady } from '../opaque.ts';
 
 import type { SetAuth, SetMainKey } from './types.ts';
+
+/**
+ * Fire-and-forget : encrypt a coarse device hint (« MacBook » /
+ * « iPhone » …) derived from the UA and PATCH it onto the just-minted
+ * session. Without this a session shows « Appareil inconnu » until the
+ * user happens to open Account (where SessionsCard PATCHes the current
+ * row opportunistically). Labelling at login means every session
+ * self-labels the moment it's created. Best-effort : a failure just
+ * leaves the row unlabeled, retried on the next Account visit.
+ */
+function labelCurrentSession(material: MainKeyMaterial, userId: string): void {
+  const hint = parseDeviceLabel(navigator.userAgent);
+  const aad = buildSessionDeviceLabelAAD(userId);
+  void encryptMetaString(hint.label, material.aesKey, aad)
+    .then(({ cipher, iv }) => apiPatchCurrentSessionDeviceLabel({ cipher, iv }))
+    .catch((err: unknown) => {
+      if (import.meta.env.DEV) console.warn('device-label PATCH failed', err);
+    });
+}
 
 interface LoginDeps {
   setAuth: SetAuth;
@@ -175,6 +198,7 @@ export async function login(
   try {
     const material = await deriveMainKeys(rawBytes);
     deps.setMainKey(material);
+    labelCurrentSession(material, me.id);
   } finally {
     rawBytes.fill(0);
   }

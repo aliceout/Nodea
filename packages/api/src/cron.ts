@@ -9,6 +9,7 @@ import {
   sessions,
   users,
 } from './db/schema.ts';
+import { getConfig } from './config.ts';
 
 /**
  * Background cron jobs (Auth-Spec.md §13.2).
@@ -210,12 +211,31 @@ export async function runCleanupExpiredTokens(): Promise<JobResult> {
     )
     .returning({ id: mfaBypassRequests.id });
 
+  // Stale sessions : anything past its `expires_at`, plus any `full`
+  // session older than the fixed TTL (Auth-Spec §5.1 "no slide") —
+  // the second clause clears rows minted under the old 30-day TTL and
+  // enforces the 7-day cap at the table level, matching the cutoff
+  // `resolveSession` applies on read.
+  const sessionTtlCutoff = new Date(
+    now.getTime() - getConfig().SESSION_TTL_SECONDS * 1000,
+  );
+  const droppedSessions = await db
+    .delete(sessions)
+    .where(
+      or(
+        lt(sessions.expiresAt, now),
+        and(eq(sessions.kind, 'full'), lt(sessions.createdAt, sessionTtlCutoff)),
+      ),
+    )
+    .returning({ id: sessions.id });
+
   const result: JobResult = {
     name: 'cleanup-expired-tokens',
     counts: {
       resetTokens: droppedResetTokens.length,
       invites: droppedInvites.length,
       bypassRequests: droppedBypass.length,
+      sessions: droppedSessions.length,
     },
   };
 

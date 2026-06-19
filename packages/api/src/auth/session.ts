@@ -19,7 +19,7 @@ export interface SessionRecord {
  * Default TTLs per session kind (Auth-Spec.md §5.1).
  *
  * - `full`        : the runtime config `SESSION_TTL_SECONDS`
- *                   (default 30 days, Auth-Spec target 7 days).
+ *                   (default 7 days, fixed — Auth-Spec §5.1).
  * - `register`    : 24h — gives the user time to come back and finish a
  *                   multi-step inscription without retyping the email code.
  * - `mfa_pending` : 5 min — wired in Phase 5 (TOTP) and Phase 4 (passkey).
@@ -168,6 +168,15 @@ export async function resolveSession(
   expectedKind: SessionKind = 'full',
 ): Promise<User | null> {
   const now = new Date();
+  // Fixed cap (Auth-Spec §5.1, "no slide") : a session is invalid once
+  // it is older than the TTL, regardless of its stored `expires_at`.
+  // This enforces the 7-day cutoff from `created_at` even on rows
+  // minted under a longer legacy TTL. Short-lived kinds (register /
+  // mfa_pending) are always younger than this cutoff, so it's a no-op
+  // for them — their own `expires_at` bites first.
+  const capCutoff = new Date(
+    now.getTime() - getConfig().SESSION_TTL_SECONDS * 1000,
+  );
   const [row] = await db
     .select({ user: users, lastSeenAt: sessions.lastSeenAt })
     .from(sessions)
@@ -177,6 +186,7 @@ export async function resolveSession(
         eq(sessions.id, id),
         eq(sessions.kind, expectedKind),
         gt(sessions.expiresAt, now),
+        gt(sessions.createdAt, capCutoff),
       ),
     )
     .limit(1);

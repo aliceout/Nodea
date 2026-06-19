@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ListActiveSessionsResponseSchema,
@@ -10,6 +10,7 @@ import { revokeAllUserSessions, revokeSession } from '../auth/session.ts';
 import { clearSessionCookie } from '../auth/cookies.ts';
 import { db } from '../db/client.ts';
 import { sessions } from '../db/schema.ts';
+import { getConfig } from '../config.ts';
 import { requireFreshPassword } from '../middleware/require-fresh-reauth.ts';
 import { requireUser } from '../middleware/require-user.ts';
 import {
@@ -115,6 +116,13 @@ const patchDeviceLabelRoute = createRoute({
 authSessionsRoutes.openapi(listSessionsRoute, async (c) => {
   const user = c.get('user');
   const currentSessionId = c.get('sessionId');
+  // Only surface live sessions : not past `expires_at`, and within the
+  // fixed TTL window (Auth-Spec §5.1 "no slide"). Mirrors the cutoff
+  // `resolveSession` applies on read, so the list never shows a row the
+  // user couldn't actually be authenticated on — including legacy rows
+  // minted under the old 30-day TTL, before the daily cron prunes them.
+  const now = new Date();
+  const ttlCutoff = new Date(now.getTime() - getConfig().SESSION_TTL_SECONDS * 1000);
   const rows = await db
     .select({
       id: sessions.id,
@@ -124,7 +132,14 @@ authSessionsRoutes.openapi(listSessionsRoute, async (c) => {
       deviceLabelIv: sessions.deviceLabelIv,
     })
     .from(sessions)
-    .where(and(eq(sessions.userId, user.id), eq(sessions.kind, 'full')))
+    .where(
+      and(
+        eq(sessions.userId, user.id),
+        eq(sessions.kind, 'full'),
+        gt(sessions.expiresAt, now),
+        gt(sessions.createdAt, ttlCutoff),
+      ),
+    )
     .orderBy(desc(sessions.createdAt));
   const response: ListActiveSessionsResponse = {
     sessions: rows.map((r) => ({

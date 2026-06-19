@@ -27,8 +27,11 @@ const EnvSchema = z.object({
   /** Secret used to sign session cookies. Minimum 32 chars (~128 bits entropy). */
   COOKIE_SECRET: z.string().min(32),
 
-  /** How long a session cookie is valid, in seconds. Default 30 days. */
-  SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 30),
+  /** How long a `full` session is valid, in seconds. Default 7 days
+   *  — fixed, no slide (Auth-Spec §5.1) : the cap is enforced from
+   *  `created_at`, so even an active session forces a re-login after
+   *  7 days, bounding a stolen cookie's lifetime. */
+  SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 7),
 
   /**
    * Cookies marked `Secure` — must be true in production behind TLS.
