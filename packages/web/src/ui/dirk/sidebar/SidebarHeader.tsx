@@ -32,8 +32,11 @@ export default function SidebarHeader({ onNavigate }: SidebarHeaderProps) {
     <div className="flex h-[52px] shrink-0 items-center gap-2 px-3">
       {/* Brand mark + wordmark are larger on mobile (the drawer is
           finger-driven) ; `lg:` restores the compact desktop sizes. */}
-      <NodeaSymbol className="h-6 w-6 text-accent lg:h-4 lg:w-4" />
-      <span className="text-[17px] font-semibold tracking-[-0.01em] text-ink lg:text-[14px]">
+      {/* Indented to match the module icons below : their left edge
+          sits at nav `px-3` + button `px-2.5` = the header `px-3` plus
+          this `ml-2.5`, so the brand mark lines up with the nav rail. */}
+      <NodeaSymbol className="ml-2.5 h-7 w-7 text-accent lg:h-6 lg:w-6" />
+      <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink lg:text-[14px]">
         Nodea
       </span>
       <UserMenu onNavigate={onNavigate} />
