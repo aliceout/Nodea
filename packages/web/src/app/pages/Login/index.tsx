@@ -43,6 +43,11 @@ export default function LoginPage() {
   // their new password to continue. The banner confirms the rotation
   // happened so they don't think it failed silently.
   const justChangedPassword = params.get('password-changed') === '1';
+  // `?session-lost=1` lands here from the flow Layout when the in-memory
+  // main key went missing (e.g. a page reload on a still-valid session):
+  // the user was signed out and bounced here. Red banner asks them to
+  // sign in again.
+  const sessionLost = params.get('session-lost') === '1';
 
   return (
     <AuthLayout
@@ -72,6 +77,12 @@ export default function LoginPage() {
         eyebrow={t('auth.login.title')}
         title={t('auth.login.panelTitle')}
       />
+
+      {sessionLost ? (
+        <InlineAlert className="mb-4">
+          {t('auth.login.sessionLostBanner')}
+        </InlineAlert>
+      ) : null}
 
       {justActivated ? (
         <InlineAlert tone="success" className="mb-4">

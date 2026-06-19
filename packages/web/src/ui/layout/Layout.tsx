@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react';
-import KeyMissingModal from '@/ui/atoms/specifics/KeyMissingModal';
 import { nav } from './navigation/Navigation';
 import {
   useNodeaStore,
@@ -10,6 +9,7 @@ import { useSession } from '@/core/auth/use-session';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
 import { useFirstRunSeed } from '@/core/modules/useFirstRunSeed';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Sidebar from '@/ui/dirk/Sidebar';
 
 /**
@@ -19,7 +19,11 @@ import Sidebar from '@/ui/dirk/Sidebar';
  * column to keep the visual rhythm of the handoff (per-page
  * dates, page-level CTAs, custom hierarchies).
  *
- * Crypto status `missing` keeps blocking with `KeyMissingModal`.
+ * Crypto status `missing` (valid session cookie but no in-memory key —
+ * e.g. a page reload) signs the user out and redirects to
+ * `/login?session-lost=1`, where a red banner asks them to sign in
+ * again. (Previously a blocking in-app modal ; the redirect is clearer
+ * and gets the keyless shell off screen.)
  * First-run onboarding is now a silent seed — no picker, no modal :
  * `core/modules/useFirstRunSeed.ts` turns every toggleable module on
  * by default on the first login. (The old inline `Onboarding.tsx`
@@ -35,10 +39,24 @@ export default function Layout() {
   // `App.jsx`. URL stays at `/flow` regardless of which module is
   // active so module-visited metadata never leaks into Nginx /
   // Pino logs.
+  const { t } = useI18n();
   const current = useNodeaStore(selectCurrentModule);
   const syncCurrentModule = useNodeaStore((s) => s.syncCurrentModule);
   const keyStatus = useNodeaStore(selectKeyStatus);
   const session = useSession();
+  const sessionLost = keyStatus === 'missing';
+
+  // Lost in-memory key → sign out and bounce to /login with a banner.
+  // `session.logout()` purges the server session, then does its own
+  // `location.replace()`; we deliberately don't navigate in parallel —
+  // that would cancel the in-flight purge and leave the cookie valid on
+  // a shared computer (audit 2026-06). Fires once when the key goes
+  // missing (guarded by the boolean), never on unrelated re-renders.
+  useEffect(() => {
+    if (!sessionLost) return;
+    void session.logout('/login?session-lost=1');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionLost]);
   // Hydrate the encrypted user preferences + modules-config slices as
   // soon as the layout mounts — each runs at most once per
   // (session, mainKey) pair. The first-run seed then enables every
@@ -81,19 +99,26 @@ export default function Layout() {
         confidentialité. / Encrypted content is hidden from print for your
         privacy.
       </div>
-      <div data-print-protect className="flex min-h-screen bg-bg text-ink">
-        {keyStatus === 'missing' ? (
-        // `session.logout()` awaits the server-side session purge,
-        // then redirects itself (location.replace). Navigating here
-        // in parallel (the old `window.location.href = '/login'`)
-        // cancelled the in-flight logout request — the cookie stayed
-        // valid server-side on a shared computer (audit 2026-06).
-        <KeyMissingModal onLogout={() => void session.logout()} />
-      ) : null}
-
-        <Sidebar />
-        <main id="main" className="flex min-w-0 flex-1 flex-col">{ActiveView}</main>
-      </div>
+      {sessionLost ? (
+        // Key missing → the effect above is signing the user out and
+        // redirecting to /login. Show a minimal placeholder instead of
+        // the keyless shell during the brief purge-then-redirect window.
+        <div
+          data-print-protect
+          className="flex min-h-screen items-center justify-center bg-bg text-ink-soft"
+        >
+          <p className="text-[13.5px]" role="status">
+            {t('auth.login.signingOut')}
+          </p>
+        </div>
+      ) : (
+        <div data-print-protect className="flex min-h-screen bg-bg text-ink">
+          <Sidebar />
+          <main id="main" className="flex min-w-0 flex-1 flex-col">
+            {ActiveView}
+          </main>
+        </div>
+      )}
     </>
   );
 }
