@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { zxcvbn } from '@zxcvbn-ts/core';
 import {
   PASSWORD_MIN_LENGTH,
   UsernameField,
   checkPasswordRules,
   passwordRulesPassed,
 } from '@nodea/shared';
+
+import { zxcvbn } from '@/core/auth/password-strength';
 
 import { apiErrorMessage, isApiError } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';

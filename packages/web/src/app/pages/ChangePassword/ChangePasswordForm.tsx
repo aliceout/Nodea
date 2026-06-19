@@ -2,14 +2,13 @@ import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
-import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import {
   PASSWORD_MIN_LENGTH,
   checkPasswordRules,
   passwordRulesPassed,
 } from '@nodea/shared';
 
+import { zxcvbn } from '@/core/auth/password-strength';
 import { useSession } from '@/core/auth/use-session';
 import { apiErrorMessage } from '@/core/api/client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -19,11 +18,6 @@ import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import PasswordRulesList from '@/ui/atoms/auth/PasswordRulesList';
 import StrengthBar from '@/ui/atoms/auth/StrengthBar';
-
-zxcvbnOptions.setOptions({
-  dictionary: zxcvbnCommon.dictionary,
-  graphs: zxcvbnCommon.adjacencyGraphs,
-});
 
 const ChangePasswordFormSchema = z
   .object({

@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { zxcvbnOptions } from '@zxcvbn-ts/core';
-import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 
 import { useSession } from '@/core/auth/use-session';
 import {
@@ -21,11 +19,6 @@ import {
   LoadingPanel,
   RedirectingToLoginCard,
 } from './Stages';
-
-zxcvbnOptions.setOptions({
-  dictionary: zxcvbnCommon.dictionary,
-  graphs: zxcvbnCommon.adjacencyGraphs,
-});
 
 /**
  * Register — three modes (Auth-Roadmap Phase 1, post-rework v2):

@@ -1,11 +1,10 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
-import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 import {
   checkPasswordRules,
   passwordRulesPassed,
 } from '@nodea/shared';
+import { zxcvbn } from '@/core/auth/password-strength';
 import { useSession } from '@/core/auth/use-session';
 import {
   apiErrorMessage,
@@ -19,11 +18,6 @@ import { recoveryMnemonicToEntropy, sha256Hex } from '@/core/crypto/bip39';
 
 import PasswordPanel from './PasswordPanel';
 import VerifyPanel from './VerifyPanel';
-
-zxcvbnOptions.setOptions({
-  dictionary: zxcvbnCommon.dictionary,
-  graphs: zxcvbnCommon.adjacencyGraphs,
-});
 
 type Step = 'verify' | 'password';
 

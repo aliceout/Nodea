@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
-import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 
 import { isApiError } from '@/core/api/client';
+import { zxcvbn } from '@/core/auth/password-strength';
 import { freshenPasswordReauth } from '@/core/auth/opaque';
 import { sealBackup } from '@/core/crypto/backup-crypto';
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
@@ -22,11 +21,6 @@ import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
 
 import { collectModules } from '@/app/flow/Account/views/data/collect-modules';
 import { packBackup } from '@/app/flow/Account/views/data/backup-pack';
-
-zxcvbnOptions.setOptions({
-  dictionary: zxcvbnCommon.dictionary,
-  graphs: zxcvbnCommon.adjacencyGraphs,
-});
 
 /** A passphrase is entropy, not character-classes — gate on the zxcvbn
  *  score (« block if < 3 ») plus a length floor; the account password's

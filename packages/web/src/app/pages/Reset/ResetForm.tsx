@@ -3,19 +3,13 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { zxcvbn, zxcvbnOptions } from '@zxcvbn-ts/core';
-import * as zxcvbnCommon from '@zxcvbn-ts/language-common';
 
+import { zxcvbn } from '@/core/auth/password-strength';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
-
-zxcvbnOptions.setOptions({
-  dictionary: zxcvbnCommon.dictionary,
-  graphs: zxcvbnCommon.adjacencyGraphs,
-});
 
 const ResetFormSchema = z
   .object({
