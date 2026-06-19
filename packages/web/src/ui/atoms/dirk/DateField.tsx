@@ -76,7 +76,7 @@ export default function DateField({
     <DatePicker
       id={id ?? reactId}
       selected={isoToDate(value)}
-      onChange={(d) => onChange(d ? dateToIso(d) : '')}
+      onChange={(d: Date | null) => onChange(d ? dateToIso(d) : '')}
       dateFormat="dd/MM/yyyy"
       locale="fr"
       placeholderText={t('layout.dateField.placeholder')}
