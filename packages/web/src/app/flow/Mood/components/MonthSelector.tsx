@@ -32,7 +32,7 @@ export default function MonthSelector() {
         aria-selected={month === null}
         onClick={() => setMonth(null)}
         className={cn(
-          'cursor-pointer rounded-md px-2 py-0.5 text-[11px] transition-colors',
+          'cursor-pointer rounded px-2 py-0.5 text-[11px] transition-colors',
           month === null
             ? 'bg-accent-soft font-semibold text-accent-deep'
             : 'text-muted hover:bg-bg-2 hover:text-ink',
@@ -50,7 +50,7 @@ export default function MonthSelector() {
             aria-selected={active}
             onClick={() => setMonth(i)}
             className={cn(
-              'cursor-pointer rounded-md px-2 py-0.5 text-[11px] transition-colors',
+              'cursor-pointer rounded px-2 py-0.5 text-[11px] transition-colors',
               active
                 ? 'bg-accent-soft font-semibold text-accent-deep'
                 : 'text-muted hover:bg-bg-2 hover:text-ink',

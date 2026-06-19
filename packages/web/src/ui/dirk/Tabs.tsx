@@ -57,9 +57,9 @@ export default function Tabs<Id extends string>({
                   : 'border-transparent text-muted hover:text-ink',
               )
             : cn(
-                'cursor-pointer rounded-md px-3 py-[7px] text-[13px] transition-[background-color,color] duration-200',
+                'cursor-pointer rounded px-3 py-[7px] text-[13px] transition-[background-color,color] duration-200',
                 active
-                  ? 'bg-bg-2 font-semibold text-ink'
+                  ? 'bg-accent-soft font-semibold text-accent-deep'
                   : 'text-muted hover:bg-bg-2 hover:text-ink',
               );
         return (

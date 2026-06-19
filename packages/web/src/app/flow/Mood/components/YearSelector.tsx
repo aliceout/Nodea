@@ -27,9 +27,9 @@ export default function YearSelector() {
         aria-selected={year === null}
         onClick={() => setYear(null)}
         className={cn(
-          'cursor-pointer rounded-md px-2.5 py-1 text-[12px] transition-colors',
+          'cursor-pointer rounded px-2.5 py-1 text-[12px] transition-colors',
           year === null
-            ? 'bg-accent text-white'
+            ? 'bg-accent-soft font-semibold text-accent-deep'
             : 'text-muted hover:bg-bg-2 hover:text-ink',
         )}
       >
@@ -45,9 +45,9 @@ export default function YearSelector() {
             aria-selected={active}
             onClick={() => setYear(y)}
             className={cn(
-              'cursor-pointer rounded-md px-2.5 py-1 text-[12px] tabular-nums transition-colors',
+              'cursor-pointer rounded px-2.5 py-1 text-[12px] tabular-nums transition-colors',
               active
-                ? 'bg-accent text-white'
+                ? 'bg-accent-soft font-semibold text-accent-deep'
                 : 'text-muted hover:bg-bg-2 hover:text-ink',
             )}
           >
