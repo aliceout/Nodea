@@ -32,7 +32,7 @@
     "@serenity-kit/opaque": "1.1.0",
     "@simplewebauthn/server": "13.3.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.25",
+    "hono": "4.12.26",
     "node-cron": "^4.2.1",
     "nodemailer": "^9.0.1",
     "otplib": "13.4.1",
