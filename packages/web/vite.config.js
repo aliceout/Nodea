@@ -85,23 +85,39 @@ export default defineConfig({
   //     (top-10k passwords list + adjacency graph). ~240 KB gzip,
   //     used by Register / ChangePassword / Recover /
   //     BackupExport — all lazy-loaded auth pages. The explicit
-  //     manualChunk slot just gives it a stable readable name
-  //     (`zxcvbn-*`) instead of the auto-generated `index.esm-*`,
-  //     so a future audit sees at a glance what the cold-path 240
-  //     KB chunk represents.
+  //     group just gives it a stable readable name (`zxcvbn-*`).
+  //
+  // Vite 8 (Rolldown) dropped the object form of `manualChunks`, so
+  // these are expressed as `rolldownOptions.output.codeSplitting.groups`
+  // — each `test` is a regex matched against the module path. The split
+  // is verified against `dist/stats.html` since regex grouping is not a
+  // 1:1 translation of the old name→module-list map.
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          "react-vendor": ["react", "react-dom", "react-router-dom"],
-          headlessui: ["@headlessui/react"],
-          crypto: [
-            "@serenity-kit/opaque",
-            "@simplewebauthn/browser",
-            "@scure/bip39",
+        codeSplitting: {
+          groups: [
+            {
+              name: "react-vendor",
+              test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+            },
+            {
+              name: "headlessui",
+              test: /[\\/]node_modules[\\/]@headlessui[\\/]react[\\/]/,
+            },
+            {
+              name: "crypto",
+              test: /[\\/]node_modules[\\/](@serenity-kit[\\/]opaque|@simplewebauthn[\\/]browser|@scure[\\/]bip39|@noble)[\\/]/,
+            },
+            {
+              name: "markdown",
+              test: /[\\/]node_modules[\\/](react-markdown|remark[^\\/]*|rehype[^\\/]*|micromark[^\\/]*|mdast[^\\/]*|hast[^\\/]*|unist[^\\/]*|unified|vfile[^\\/]*|property-information|devlop|decode-named-character-reference|character-entities[^\\/]*|comma-separated-tokens|space-separated-tokens|html-url-attributes|trim-lines|zwitch|longest-streak|ccount|markdown-table|bail|trough|is-plain-obj|estree-util[^\\/]*)[\\/]/,
+            },
+            {
+              name: "zxcvbn",
+              test: /[\\/]node_modules[\\/]@zxcvbn-ts[\\/](core|language-common)[\\/]/,
+            },
           ],
-          markdown: ["react-markdown"],
-          zxcvbn: ["@zxcvbn-ts/core", "@zxcvbn-ts/language-common"],
         },
       },
     },
