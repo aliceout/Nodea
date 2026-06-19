@@ -93,8 +93,8 @@ importers:
         specifier: 4.12.26
         version: 4.12.26
       node-cron:
-        specifier: ^4.2.1
-        version: 4.2.1
+        specifier: 4.4.1
+        version: 4.4.1
       nodemailer:
         specifier: ^9.0.1
         version: 9.0.1
@@ -3505,9 +3505,9 @@ packages:
     resolution: {integrity: sha512-eonl3sLUha+S1GzTPxychyhnUzKyeQkZ7jLjKrBagJgPla13F+uQ71HgpFefyHgqrjEbCPkDArxYsjY8/+gLKA==}
     engines: {node: '>= 0.4.0'}
 
-  node-cron@4.2.1:
-    resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
-    engines: {node: '>=6.0.0'}
+  node-cron@4.4.1:
+    resolution: {integrity: sha512-1e4Gku1qeKx1ywNnMoA0o5hiZ8iA4klH84TIszTHZAME68xVIjLkiBo5KrtowbcOJn8MQqJG/yWHjC/dFdMWyQ==}
+    engines: {node: '>=20'}
 
   node-exports-info@1.6.0:
     resolution: {integrity: sha512-pyFS63ptit/P5WqUkt+UUfe+4oevH+bFeIiPPdfb0pFeYEu/1ELnJu5l+5EcTKYL5M7zaAa7S8ddywgXypqKCw==}
@@ -8161,7 +8161,7 @@ snapshots:
 
   netmask@2.1.1: {}
 
-  node-cron@4.2.1: {}
+  node-cron@4.4.1: {}
 
   node-exports-info@1.6.0:
     dependencies:
