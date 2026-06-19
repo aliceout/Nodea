@@ -36,8 +36,6 @@ export default function Stats() {
       <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
         {t('account.stats.title')}
       </div>
-      <StatRow label={t('account.stats.encryptedEntries')} value="428" mono />
-      <StatRow label={t('account.stats.habitsStreak')} value="12 j" mono accent />
       <StatRow label={t('account.stats.memberSince')} value="mars 2024" />
     </div>
   );

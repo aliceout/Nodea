@@ -95,7 +95,7 @@ export default function PrimaryColumn() {
             this row on mobile (passed as `trailing`). Renders nothing
             at `lg+`, where the sidebar (`SideColumn`) + the desktop
             heading row below take over. */}
-        <div className="mt-3">
+        <div className="mt-3 lg:hidden">
           <MobileFilters trailing={chartToggleButton} />
         </div>
 

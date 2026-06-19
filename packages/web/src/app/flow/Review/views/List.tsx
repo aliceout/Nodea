@@ -52,7 +52,7 @@ export default function ReviewListView({
   onOpen,
   onEdit,
 }: ListProps) {
-  const { t, tn } = useI18n();
+  const { t } = useI18n();
   const confirm = useConfirm();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { loading, error, entries, deleteReview } = useReview();
@@ -126,7 +126,7 @@ export default function ReviewListView({
     <ModuleShell
       topbar={
         <Topbar
-          label={tn('review.topbar.label', entries.length)}
+          label={t('review.title')}
           onOpenMenu={() => setMobileMenuOpen(true)}
         />
       }

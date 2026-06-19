@@ -8,6 +8,7 @@ import {
 import { useSession } from '@/core/auth/use-session';
 import { useNodeaStore, selectUser } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
@@ -105,8 +106,9 @@ function UserMenuIcon({ icon: Icon, label, tone = 'default', onClick }: UserMenu
       aria-label={label}
       title={label}
       // Larger tap target on mobile (40px) ; compact (h-6) on desktop
-      // where it's pointer-driven.
-      className="h-10 w-10 lg:h-6 lg:w-6"
+      // where it's pointer-driven. Danger tone (sign out) shows red at
+      // rest — not just on hover — so it's easy to spot.
+      className={cn('h-10 w-10 lg:h-6 lg:w-6', tone === 'danger' && 'text-danger')}
     >
       <Icon className="h-5 w-5 lg:h-4 lg:w-4" aria-hidden="true" />
     </Button>
