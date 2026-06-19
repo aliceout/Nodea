@@ -1,5 +1,7 @@
 import { memo, type ReactNode } from 'react';
 
+import { cn } from '@/lib/utils';
+
 /**
  * Render plain-text content with the lightweight Markdown subset
  * the Composer's `MarkdownEditor` produces : `**bold**`, `*italic*`,
@@ -32,8 +34,12 @@ import { memo, type ReactNode } from 'react';
  */
 export const LiteMarkdown = memo(function LiteMarkdown({
   text,
+  className,
 }: {
   text: string;
+  /** Extra classes on the root — e.g. `line-clamp-4` for a clamped
+   *  list preview. Merged after the base so the caller wins. */
+  className?: string;
 }) {
   const blocks: ReactNode[] = [];
   const lines = text.split('\n');
@@ -108,7 +114,7 @@ export const LiteMarkdown = memo(function LiteMarkdown({
     // hyphenate English content with French rules (audit 2026-06 passe
     // 2 review). Without `lang`, `hyphens: auto` stays inert and word
     // breaks are neutral — correct for mixed-language content.
-    <div className="space-y-0.5">
+    <div className={cn('space-y-0.5', className)}>
       {blocks}
     </div>
   );

@@ -6,50 +6,30 @@ import { LiteMarkdown } from '@/lib/lite-markdown';
 import { useHomepageData } from '../context';
 import HomeCard from './HomeCard';
 
-const SNIPPET_WORDS = 35;
+const SNIPPET_WORDS = 28;
+const MAX_ENTRIES = 3;
 
 /**
- * Hero block on the Homepage — the most recent journal entry.
+ * Journal block on the Homepage — the three most recent entries.
  * Wrapped in the shared `HomeCard` like every other home block so
- * border weight / radius / padding / hover all stay aligned (a
- * previous version rolled its own `<section>` with bespoke serif
- * chrome and ended up reading thicker than the rest once the
- * cards landed side-by-side).
+ * border weight / radius / padding / hover stay aligned.
  *
- * The `title` slot packs « DERNIÈRE ENTRÉE · date · thread » into
- * one eyebrow ; the « voir le journal → » CTA lives in the
- * trailing-link slot, matching the « tout voir → » affordance the
- * other cards use. Body markdown is rendered via `LiteMarkdown`
- * so the snippet isn't littered with literal asterisks.
- *
- * Hides entirely on an empty journal — the homepage skips
- * straight to the next section.
+ * The `title` slot packs « JOURNAL · DERNIÈRES ENTRÉES » into one
+ * eyebrow ; the « voir le journal → » CTA lives in the trailing-link
+ * slot. Each entry shows its date · thread on a muted line, the
+ * title, then a 2-line markdown snippet (rendered via `LiteMarkdown`
+ * so it isn't littered with literal asterisks). Hides entirely on an
+ * empty journal — the homepage skips to the next section.
  */
 export default function HeroEntry() {
   const { t, language } = useI18n();
   const { journal } = useHomepageData();
   const setModule = useNodeaStore((s) => s.setModule);
 
-  const latest = journal[0];
-  if (!latest) return null;
+  const entries = journal.slice(0, MAX_ENTRIES);
+  if (entries.length === 0) return null;
 
-  const title = latest.title?.trim() ?? '';
-  const contentWords = latest.content.trim().split(/\s+/);
-  const truncated = contentWords.length > SNIPPET_WORDS;
-  const snippetText = contentWords.slice(0, SNIPPET_WORDS).join(' ');
-  const snippetForMd = truncated ? `${snippetText}…` : snippetText;
-
-  // Eyebrow = « JOURNAL · DERNIÈRE ENTRÉE » so the card title
-  // names the module the data comes from (consistent with the
-  // « MOOD · 6 MOIS », « GOALS · N EN COURS » pattern). The date +
-  // thread metadata moves into the body just under the title as a
-  // small muted line — same info, but no longer fights with the
-  // module prefix for the eyebrow's tracking-wide space.
   const eyebrow = `${t('home.hero.module')} · ${t('home.hero.eyebrow')}`;
-  const metaParts = [
-    formatLongDate(latest.dateIso, language),
-    latest.thread.length > 0 ? latest.thread : null,
-  ].filter((part): part is string => !!part);
 
   return (
     <HomeCard
@@ -64,27 +44,40 @@ export default function HeroEntry() {
         </button>
       }
     >
-      {metaParts.length > 0 ? (
-        <p className="mb-2 text-[11px] text-muted">
-          {metaParts.join(' · ')}
-        </p>
-      ) : null}
-      {title.length > 0 ? (
-        <>
-          <h2 className="text-[14px] font-semibold leading-snug text-ink">
-            {title}
-          </h2>
-          {snippetText.length > 0 ? (
-            <div className="mt-2 text-[13px] leading-[1.5] text-ink-soft">
-              <LiteMarkdown text={snippetForMd} />
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <div className="text-[13px] leading-[1.5] text-ink-soft">
-          <LiteMarkdown text={snippetForMd} />
-        </div>
-      )}
+      <ul className="divide-y divide-hair">
+        {entries.map((entry) => {
+          const title = entry.title?.trim() ?? '';
+          const contentWords = entry.content.trim().split(/\s+/);
+          const truncated = contentWords.length > SNIPPET_WORDS;
+          const snippetText = contentWords.slice(0, SNIPPET_WORDS).join(' ');
+          const snippetForMd = truncated ? `${snippetText}…` : snippetText;
+          const metaParts = [
+            formatLongDate(entry.dateIso, language),
+            entry.thread.length > 0 ? entry.thread : null,
+          ].filter((part): part is string => !!part);
+
+          return (
+            <li key={entry.id} className="py-2.5 first:pt-0 last:pb-0">
+              {metaParts.length > 0 ? (
+                <p className="mb-1 text-[11px] text-muted">
+                  {metaParts.join(' · ')}
+                </p>
+              ) : null}
+              {title.length > 0 ? (
+                <h3 className="text-[13.5px] font-semibold leading-snug text-ink">
+                  {title}
+                </h3>
+              ) : null}
+              {snippetText.length > 0 ? (
+                <LiteMarkdown
+                  text={snippetForMd}
+                  className="mt-1 line-clamp-2 text-[12.5px]"
+                />
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
     </HomeCard>
   );
 }
