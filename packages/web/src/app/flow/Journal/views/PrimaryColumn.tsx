@@ -1,5 +1,5 @@
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -66,6 +66,26 @@ export default function PrimaryColumn() {
       year: 'numeric',
     }).format(d);
   }, [dayFilter, language]);
+
+  // Fold the heatmap away on the first downward scroll (same posture
+  // as Mood) — it opens on landing, then gets out of the way once the
+  // user starts reading the entries. Only armed while open ; the
+  // listener re-attaches when the toggle reopens it.
+  const lastScrollYRef = useRef(0);
+  useEffect(() => {
+    if (chartCollapsed) return undefined;
+    lastScrollYRef.current = window.scrollY;
+    function handleScroll() {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+      lastScrollYRef.current = currentY;
+      if (delta > 0 && currentY > 80) {
+        toggleChart();
+      }
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [chartCollapsed, toggleChart]);
 
   // Defined once, rendered in two places : the mobile filters row
   // (via MobileFilters' `trailing`) and the desktop entries-heading

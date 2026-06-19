@@ -197,11 +197,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     setYearState(next);
     setMonth(null);
   }, []);
-  // Heatmap starts collapsed (issue #56 follow-up) — Journal is
-  // primarily a writing surface ; the year-density overview is a
-  // « step back » affordance the user opts into when they want
-  // it, not the default landing.
-  const [chartCollapsed, setChartCollapsed] = useState(true);
+  // Heatmap starts open (like Mood) and folds away on the first
+  // downward scroll — see PrimaryColumn's scroll-collapse effect.
+  const [chartCollapsed, setChartCollapsed] = useState(false);
   const toggleChart = useCallback(
     () => setChartCollapsed((prev) => !prev),
     [],
