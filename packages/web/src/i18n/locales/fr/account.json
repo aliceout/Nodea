@@ -9,12 +9,6 @@
     "data": "Données",
     "danger": "Suppression du compte"
   },
-  "stats": {
-    "title": "En chiffres",
-    "encryptedEntries": "Entrées chiffrées",
-    "habitsStreak": "Série habits",
-    "memberSince": "Membre depuis"
-  },
   "identity": {
     "username": {
       "label": "Nom d’affichage",

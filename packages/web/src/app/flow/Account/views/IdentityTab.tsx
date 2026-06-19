@@ -12,7 +12,6 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DirkInput from '@/ui/atoms/dirk/Input';
 
 import IdentityRow from '../components/IdentityRow';
-import Stats from '../components/Stats';
 import type { FeedbackState } from '../lib/types';
 
 /** « Identité » tab — username + e-mail edits.
@@ -184,8 +183,6 @@ export default function IdentityTab() {
           </div>
         </IdentityRow>
       </div>
-
-      <Stats />
     </div>
   );
 }

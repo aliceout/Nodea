@@ -9,12 +9,6 @@
     "data": "Data",
     "danger": "Account deletion"
   },
-  "stats": {
-    "title": "By the numbers",
-    "encryptedEntries": "Encrypted entries",
-    "habitsStreak": "Habits streak",
-    "memberSince": "Member since"
-  },
   "identity": {
     "username": {
       "label": "Display name",
