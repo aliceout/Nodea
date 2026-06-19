@@ -56,7 +56,7 @@ export function viewModeNeedsCovers(viewMode: string | undefined): boolean {
   return viewMode !== undefined && COVER_VIEW_MODES.has(viewMode);
 }
 
-const DEFAULT_VIEW_MODE: LibraryViewMode = 'list-plain';
+const DEFAULT_VIEW_MODE: LibraryViewMode = 'table';
 
 export interface LibraryFiltersState {
   statusFilter: LibraryStatus | 'all' | 'favorites';
