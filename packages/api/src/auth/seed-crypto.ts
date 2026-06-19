@@ -91,7 +91,12 @@ async function deriveAesKey(
     ikmKey,
     32 * 8,
   );
-  return webcrypto.subtle.importKey('raw', subkey, { name: 'AES-GCM' }, false, usage);
+  const key = await webcrypto.subtle.importKey('raw', subkey, { name: 'AES-GCM' }, false, usage);
+  // Node 24's webcrypto.CryptoKey widened its KeyUsage union with the
+  // post-quantum (ML-KEM) literals, so it no longer assigns to the DOM
+  // global CryptoKey. The key object is identical at runtime — narrow the
+  // type back so the shared `CryptoKey` annotation holds across helpers.
+  return key as CryptoKey;
 }
 
 async function aesGcmEncrypt(

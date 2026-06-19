@@ -51,7 +51,10 @@ export async function simDeriveMainKeys(rawBytes: Uint8Array): Promise<SimMainKe
     false,
     ['sign', 'verify'],
   );
-  return { aesKey, hmacKey };
+  // Node 24's webcrypto.CryptoKey widened KeyUsage with post-quantum
+  // (ML-KEM) literals, so the importKey results no longer assign to the
+  // DOM global CryptoKey used in SimMainKeys. Same object at runtime.
+  return { aesKey, hmacKey } as SimMainKeys;
 }
 
 function bytesToB64(u8: Uint8Array): string {
