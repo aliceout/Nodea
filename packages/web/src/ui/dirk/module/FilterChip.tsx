@@ -24,7 +24,7 @@ export default function FilterChip({ active, onClick, label, count }: FilterChip
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'cursor-pointer rounded-md px-2.5 py-1 text-[12px] tabular-nums transition-colors',
+        'cursor-pointer rounded px-2.5 py-1 text-[12px] tabular-nums transition-colors',
         active
           ? 'bg-accent-soft font-semibold text-accent-deep'
           : 'text-muted hover:bg-bg-2 hover:text-ink',
