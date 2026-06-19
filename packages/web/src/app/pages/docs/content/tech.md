@@ -303,7 +303,7 @@ Liste prescriptive utilisée à la revue de PR. La version exhaustive (avec rati
 - Dériver les sous-clés AES et HMAC via HKDF avec labels distincts (`"nodea:aes"`, `"nodea:hmac"`).
 - Utiliser les branded types (`AesMainKey`, `HmacMainKey`, `Base64`, `CipherIV`…) — mélanger les primitives doit échouer à la compilation.
 - Pour un nouveau module : réutiliser `createCollectionClient`, ne pas réimplémenter le POST/PATCH dance.
-- Quand le slice Zustand `crypto.status` flippe à `'missing'` : ne pas tenter de déchiffrer, surfacer le `KeyMissingModal` existant.
+- Quand le slice Zustand `crypto.status` flippe à `'missing'` : ne pas tenter de déchiffrer ; le `Layout` du flow déconnecte l'utilisateur·ice et redirige vers `/login?session-lost=1` (bandeau rouge « reconnectez-vous »).
 
 **Interdit :**
 
