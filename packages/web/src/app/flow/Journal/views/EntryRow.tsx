@@ -9,6 +9,7 @@ import { splitThreads } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/module/HoverActions';
+import Tag from '@/ui/dirk/module/Tag';
 
 import { useJournalActions } from '../context';
 import { attachmentSrc } from '../hooks/imageResize';
@@ -80,12 +81,7 @@ function EntryRowImpl({ entry, showThread = false, isLast = false }: EntryRowPro
         {threads.length > 0 ? (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {threads.map((th) => (
-              <span
-                key={th}
-                className="rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent-deep"
-              >
-                {th}
-              </span>
+              <Tag key={th}>{th}</Tag>
             ))}
           </div>
         ) : null}

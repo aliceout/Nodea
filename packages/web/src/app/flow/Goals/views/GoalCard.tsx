@@ -35,13 +35,10 @@ function GoalCardImpl({ entry }: GoalCardProps) {
   const threads = splitThreads(entry.thread);
 
   return (
-    <article className="group relative flex h-full flex-col gap-3 rounded-md border border-hair bg-bg p-4 transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-      <div className="flex items-start justify-between gap-2">
-        <StatusPill entry={entry} />
-        {/* Edit / delete affordances live in the corner. Hidden until
-            hover (group-hover) to keep the card visually calm at
-            rest — same posture as Library's BookGrid hover bar. */}
-        <HoverActions>
+    <article className="group relative flex h-full flex-col rounded-md border border-hair bg-bg p-4 transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+      {/* Edit / delete affordances in the top-right corner, hidden
+          until hover — same posture as Library's BookGrid hover bar. */}
+      <HoverActions className="absolute right-3 top-3">
           <Button
             variant="ghost"
             size="sm"
@@ -63,35 +60,37 @@ function GoalCardImpl({ entry }: GoalCardProps) {
             <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </HoverActions>
-      </div>
 
       <div className="min-w-0 flex-1">
         <button
           type="button"
           onClick={() => openReader(entry.id)}
           title={t('goals.row.titleClickHint')}
-          className="cursor-pointer rounded-sm bg-transparent p-0 text-left text-[14px] font-semibold leading-snug text-ink transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="cursor-pointer rounded-sm bg-transparent py-0 pl-0 pr-14 text-left text-[14px] font-semibold leading-snug text-ink transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           {entry.title}
         </button>
-        {(entry.date || threads.length > 0) && (
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
-            {entry.date ? (
-              <span className="tabular-nums">
-                {formatPartialDate(entry.date, language)}
-              </span>
-            ) : null}
-            {entry.date && threads.length > 0 ? (
-              <span aria-hidden="true">·</span>
-            ) : null}
-            {threads.map((th, i) => (
-              <span key={th}>
-                {i > 0 ? <span aria-hidden="true">, </span> : null}
-                {th}
-              </span>
-            ))}
-          </p>
-        )}
+        {/* Meta line : date · thread(s) on the left, the status tag
+            pushed to the right (same sage Tag as Journal's threads). */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
+          {entry.date ? (
+            <span className="tabular-nums">
+              {formatPartialDate(entry.date, language)}
+            </span>
+          ) : null}
+          {entry.date && threads.length > 0 ? (
+            <span aria-hidden="true">·</span>
+          ) : null}
+          {threads.map((th, i) => (
+            <span key={th}>
+              {i > 0 ? <span aria-hidden="true">, </span> : null}
+              {th}
+            </span>
+          ))}
+          <span className="ml-auto">
+            <StatusPill entry={entry} />
+          </span>
+        </div>
         {entry.note ? (
           <p className="mt-3 line-clamp-4 text-[12.5px] leading-[1.5] text-ink-soft">
             {entry.note}
