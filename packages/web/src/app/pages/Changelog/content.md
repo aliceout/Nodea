@@ -5,6 +5,56 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.13.0 — 2026-06-19
+
+### Nouveautés
+
+- **auth** : redirect to /login with a red banner on missing key (was a modal) _(2c972e8)_
+
+### Corrections
+
+- **goals** : close the reader when « Modifier » is clicked _(bb79699)_
+- **account** : remove the fabricated « En chiffres » stats block _(853c894)_
+- **web** : stop swallowing errors silently + harden two parse paths _(ad5d589)_
+- **auth** : wrap passkey removal + auto-downgrade in a transaction _(e392d03)_
+- **deps** : bound jsdom's undici override to 7.28.0 (8.x breaks jsdom) _(c65923e)_
+- **deps** : clear high-severity advisories (nodemailer, undici) _(6d1b039)_
+
+### Performance
+
+- **seed** : batch inserts instead of one INSERT per fixture _(fdcdfe5)_
+- **api** : batch guard-promotion into one UPDATE (was N queries) _(7fe9ebb)_
+
+### Documentation
+
+- **tech** : update the crypto.status==='missing' handling note _(4d48b37)_
+- correct Node version (24) and stale test counts (383 api / 489 web) _(bae1b09)_
+- **changelog** : regenerate for v2.12.0 _(d733a98)_
+
+<details>
+<summary>Maintenance — 18 commits</summary>
+
+- **release** : bump version to 2.13.0 _(525daf3)_
+- **deps** : drop unused classnames + heroicons from @nodea/web _(19ed202)_
+- **deps** : bump Vite 7 → 8 + @vitejs/plugin-react 6, drop vite-tsconfig-paths _(ac9853d)_
+- **deps** : bump lint-staged 16.4.0 → 17.0.7 _(b0e23b2)_
+- **deps** : bump ESLint 9 → 10 (+ @eslint/js, react-hooks 7, globals 17) _(83f8534)_
+- **deps** : bump TypeScript 5.9.3 → 6.0.3 (all packages) _(8d26cea)_
+- **deps** : bump @types/node 22.19.21 → 24.13.2 (api + e2e) _(ee1bd13)_
+- **deps** : bump @zxcvbn-ts/core + language-common 3.0.4 → 4.1.2 _(b147cf9)_
+- **deps** : bump react-datepicker 8.10.0 → 9.1.0 _(32c8a12)_
+- **deps** : bump puppeteer 24.43.1 → 25.1.0 _(cc63e81)_
+- **deps** : bump @hono/node-server 1.19.14 → 2.0.5 _(cd4338b)_
+- **deps** : bump vitest + @vitest/coverage-v8 4.1.8 → 4.1.9 _(a123fa7)_
+- **deps** : bump @playwright/test 1.60.0 → 1.61.0 _(4661fb2)_
+- **deps** : bump @tanstack/react-virtual 3.14.2 → 3.14.3 _(b3ad77b)_
+- **deps** : bump react-router-dom 7.17.0 → 7.18.0 _(d09f414)_
+- **deps** : bump node-cron 4.2.1 → 4.4.1 _(89808d4)_
+- **deps** : bump @sentry/node + @sentry/react 10.58 → 10.59.0 _(f5cb844)_
+- **deps** : bump hono 4.12.25 → 4.12.26 _(78a4e3b)_
+
+</details>
+
 ## v2.12.0 — 2026-06-19
 
 ### Nouveautés
