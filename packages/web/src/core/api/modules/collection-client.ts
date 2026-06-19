@@ -94,7 +94,20 @@ async function request<T = unknown>(
   };
   const res = await fetch(`${apiBase()}${path}`, init);
   const text = await res.text();
-  const payload: unknown = text ? JSON.parse(text) : null;
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      // A non-JSON body means an upstream/proxy error page or a corrupted
+      // response — surface a typed error instead of letting a raw
+      // SyntaxError escape to the global handler.
+      throw Object.assign(
+        new Error(`${method} ${path} -> non-JSON response (${res.status})`),
+        { status: res.status },
+      );
+    }
+  }
   if (!res.ok) {
     throw Object.assign(new Error(`${method} ${path} -> ${res.status}`), {
       status: res.status,

@@ -98,8 +98,12 @@ function enqueuePrefsWrite(task: () => Promise<void>): Promise<void> {
   // PUT must not wedge the queue forever).
   const run = prefsWriteChain.then(task, task);
   // Keep the chain tail un-rejected so a thrown task doesn't surface as
-  // an unhandled rejection nor poison the next link.
-  prefsWriteChain = run.catch(() => undefined);
+  // an unhandled rejection nor poison the next link. A failed PUT is a
+  // real (if non-fatal) event — surface it in dev rather than swallow it
+  // silently, so a wedged sync isn't invisible during development.
+  prefsWriteChain = run.catch((err: unknown) => {
+    if (import.meta.env.DEV) console.warn('[prefs] write failed', err);
+  });
   return run;
 }
 

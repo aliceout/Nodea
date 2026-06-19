@@ -30,12 +30,11 @@ import type { HmacMainKey } from '@nodea/shared/crypto-types';
 import { hmacSha256 } from './hmac.ts';
 
 function bytesToHex(bytes: Uint8Array): string {
-  let out = '';
-  for (let i = 0; i < bytes.length; i += 1) {
-    const byte = bytes[i] ?? 0;
-    out += byte.toString(16).padStart(2, '0');
-  }
-  return out;
+  // `Array.from` over the typed array yields each byte as a `number`, so
+  // there's no `noUncheckedIndexedAccess` `undefined` to paper over with
+  // `?? 0` — that fallback would silently emit a 00 byte and corrupt the
+  // guard if the loop bound ever drifted.
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
