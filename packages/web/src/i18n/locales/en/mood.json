@@ -13,7 +13,9 @@
     "empty": "No entry for this period.",
     "emptySearch": "No entry matches this search.",
     "clearDayFilterTitle": "Show every entry",
-    "clearDayFilterAria": "Clear day filter"
+    "clearDayFilterAria": "Clear day filter",
+    "clearScoreFilterTitle": "Show every score",
+    "clearScoreFilterAria": "Clear score filter"
   },
   "row": {
     "editAria": "Edit entry",

@@ -2,7 +2,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import { getMonthNames, intlLocale, parseLocalDate } from '@/core/i18n/date-format';
+import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
@@ -33,27 +33,16 @@ export default function PrimaryColumn() {
   const { entries, load } = useMoodData();
   const {
     year,
-    month,
     chartCollapsed,
     searchQuery,
     dayFilter,
+    scoreFilter,
     filtered,
     toggleChart,
     setDayFilter,
+    setScoreFilter,
   } = useMoodFilters();
   const { formOpen, editingEntry, closeForm } = useMoodActions();
-  const monthNamesLong = useMemo(
-    () => getMonthNames(language, 'long'),
-    [language],
-  );
-
-  // Section heading describes the selected range plain-language so
-  // a screen reader (and a glance) reads cleanly : « Entrées · En
-  // cours », « Entrées · 2025 · mars », etc. Month is suppressed
-  // for the rolling selection because the rolling window straddles
-  // months by design.
-  const yearLabel = year === null ? t('mood.primary.yearRolling') : String(year);
-  const showMonth = year !== null && month !== null;
   const chartToggleLabel = chartCollapsed
     ? t('mood.primary.showChart')
     : t('mood.primary.hideChart');
@@ -139,10 +128,6 @@ export default function PrimaryColumn() {
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[12px] font-semibold tracking-[0.02em] text-muted">
-              {t('mood.primary.entriesHeading')} · {yearLabel}
-              {showMonth ? ` · ${monthNamesLong[month]}` : ''}
-            </h2>
             {/* Active day-filter chip — surfaces the date the user
                 picked on the heatmap and offers an explicit clear
                 via the cross. Without this, the only way to undo
@@ -157,6 +142,21 @@ export default function PrimaryColumn() {
                 className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-hair bg-bg-2 px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <span>{dayFilterLabel}</span>
+                <XMarkIcon className="h-3 w-3" aria-hidden="true" />
+              </button>
+            ) : null}
+            {/* Active score-filter chip — set by clicking a segment of
+                the Répartition donut. Same dismissible shape as the
+                day-filter chip. */}
+            {scoreFilter !== null ? (
+              <button
+                type="button"
+                onClick={() => setScoreFilter(null)}
+                title={t('mood.primary.clearScoreFilterTitle')}
+                aria-label={t('mood.primary.clearScoreFilterAria')}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-hair bg-bg-2 px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <span>{t(`mood.scoreLabels.${scoreFilter}`)}</span>
                 <XMarkIcon className="h-3 w-3" aria-hidden="true" />
               </button>
             ) : null}
