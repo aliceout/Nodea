@@ -368,7 +368,7 @@ Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour
 | `users` | `register_state` | État dans la machine d'inscription multi-étapes | Permet de reprendre l'inscription si l'user ferme l'onglet (pre_register → email_verified → password_set → recovery_set → complete) |
 | `users` | `email_verified_at` | Timestamp d'activation | Le login refuse `403 account_not_activated` si NULL |
 | `users` | `email_changed_at` | Timestamp du dernier change-email | Anchor du cooldown 7 jours entre deux change-email |
-| `users` | `recovery_acknowledged_at` | Timestamp de validation du code de récup | Set quand l'user a coché « j'ai noté mes 12 mots » ; gate la transition `recovery_set` |
+| `users` | `recovery_acknowledged_at` | Timestamp de validation du code de récup | Set au succès du quiz de confirmation (ressaisir 3 mots tirés au hasard, mots masqués) ; gate la transition `recovery_set` |
 | `users` | `onboarding_status`, `onboarding_version` | État de l'onboarding | Drive le modal de premier login + permet de re-trigger après update du flow |
 | `users` | `created_at`, `updated_at` | Timestamps standard | Audit / debug |
 | `opaque_records` | `user_id` | FK | Lie l'envelope OPAQUE au user |

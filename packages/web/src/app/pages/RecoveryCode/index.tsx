@@ -27,10 +27,10 @@ import FormPanel from './FormPanel';
  * `useSession.setupRecoveryCode` for the orchestration.
  *
  * The mnemonic is shown ONCE in a 4×3 grid with copy / download
- * buttons via the shared `RecoveryCodeDisplay` (also used by
- * `Recover.tsx`'s post-recovery rotation) ; the user must check
- * « j'ai noté ce code » before the « Terminé » button enables.
- * After confirmation we navigate to `/flow` — the sidebar
+ * buttons via the shared `RecoveryCodeDisplay` ; the user must then
+ * re-type 3 randomly-chosen words (quiz, words hidden) before the
+ * « Terminé » button fires — a real transcription check, not a
+ * checkbox. After confirmation we navigate to `/flow` — the sidebar
  * warning disappears as soon as `/me` surfaces
  * `recoveryCodeSet: true`.
  */
@@ -49,7 +49,6 @@ export default function RecoveryCodePage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [acknowledged, setAcknowledged] = useState(false);
 
   const isRegenerate = user?.recoveryCodeSet === true;
 
@@ -117,8 +116,6 @@ export default function RecoveryCodePage() {
               : t('auth.recoveryCode.display.title')
           }
           mnemonic={stage.mnemonic}
-          acknowledged={acknowledged}
-          setAcknowledged={setAcknowledged}
           doneLabel={t('auth.recoveryCode.display.doneLabel')}
           onDone={handleDone}
         />
