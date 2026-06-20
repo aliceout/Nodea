@@ -13,8 +13,9 @@ export interface NavItem {
 /**
  * Flat projection of MODULES used by Layout / Header / Sidebar.
  * The `element` field is the lazy-wrapped module component from
- * modules_list.tsx — rendered directly by Layout when its module
- * matches the current `:moduleId` URL segment.
+ * modules-registry.tsx — rendered by Layout when its id matches the
+ * active module in the Zustand `flow` slice (never a URL segment: the
+ * `/flow` privacy invariant keeps the module out of the URL).
  */
 export const nav: NavItem[] = MODULES.map((m) => ({
   id: m.id,

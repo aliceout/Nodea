@@ -1,7 +1,7 @@
 /**
  * Nodea's single application store (Zustand).
  *
- * One `create()` call, nine slice creators spread across
+ * One `create()` call, eight slice creators spread across
  * `./slices/*.ts`. The slice pattern keeps the file ceiling honest
  * (factor-early rule) without giving up the atomicity guarantees
  * documented in ADR-0006 — every slice still shares the same `set`
