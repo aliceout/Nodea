@@ -82,12 +82,14 @@ export function recoveryMnemonicToEntropy(
 }
 
 /**
- * Normalise user input: collapse whitespace, lowercase. The
- * BIP39 wordlist is lowercase ASCII so case differences are pure
- * noise (typos pasted from a screenshot, etc.).
+ * Normalise user input: lowercase, and collapse any run of whitespace
+ * OR hyphens into single spaces. BIP39 English words are lowercase ASCII
+ * with no internal hyphen, so a hyphen can only be a separator — accept
+ * « word-word-word » as readily as spaces (some people transcribe a
+ * mnemonic with dashes). Case differences are pure noise.
  */
 export function normaliseMnemonic(raw: string): string {
-  return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+  return raw.toLowerCase().replace(/[\s-]+/g, ' ').trim();
 }
 
 /**

@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
 import { openBackup } from '@/core/crypto/backup-crypto';
+import { normaliseMnemonic } from '@/core/crypto/bip39';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
-import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import Textarea from '@/ui/atoms/dirk/Textarea';
 
 import { restoreEnvelope } from './restore-envelope';
 import { unpackBackup } from './backup-pack';
@@ -21,8 +22,9 @@ const AGE_MAGIC = 'age-encryption.org/v1';
  *   - the versioned JSON envelope produced by `ExportPanel` (one bucket
  *     per module),
  *   - a legacy NDJSON / array that pre-dates the unified format (Mood only),
- *   - an encrypted backup (`.age`, from `BackupExportPanel`) — detected by
- *     the age magic header, then decrypted in-browser with a passphrase.
+ *   - an encrypted backup (`.age`, from the encrypted-backup export at
+ *     `/backup`) — detected by the age magic header, then decrypted
+ *     in-browser with the 12-word backup phrase.
  *
  * All three converge on `restoreEnvelope`, so per-record idempotency
  * (each plugin's `getNaturalKey`) makes a re-import a no-op rather than a
@@ -32,20 +34,14 @@ export default function ImportPanel() {
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const passInputRef = useRef<HTMLInputElement | null>(null);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  // Bytes of a picked `.age` file held while we prompt for its passphrase.
+  // Bytes of a picked `.age` file held while we prompt for its phrase.
   const [pendingBackup, setPendingBackup] = useState<Uint8Array | null>(null);
-  const [backupPass, setBackupPass] = useState('');
-
-  // When a backup is detected the trigger button goes disabled, so move
-  // focus to the freshly revealed passphrase field — keyboard / screen
-  // reader users would otherwise be stranded on a dead control.
-  useEffect(() => {
-    if (pendingBackup !== null) passInputRef.current?.focus();
-  }, [pendingBackup]);
+  // The 12-word backup phrase, as one free-text field (password-manager
+  // friendly — a single value to paste).
+  const [backupPhrase, setBackupPhrase] = useState('');
 
   function reportResult(count: number, parts: string[]): void {
     setSuccess(
@@ -103,7 +99,9 @@ export default function ImportPanel() {
       if (!mainKey) throw new Error(t('account.data.import.noKey'));
       let files;
       try {
-        files = await openBackup(pendingBackup, backupPass);
+        // The seal phrase is the 12 BIP39 words (lowercase, space-joined);
+        // normalise the typed text the same way (spaces or hyphens) first.
+        files = await openBackup(pendingBackup, normaliseMnemonic(backupPhrase));
       } catch {
         // Wrong passphrase or tampered file — keep the prompt so the user
         // can retry without re-picking the file.
@@ -126,7 +124,7 @@ export default function ImportPanel() {
         );
       }
       setPendingBackup(null);
-      setBackupPass('');
+      setBackupPhrase('');
     } catch (err) {
       setError(t('account.data.import.errorPrefix') + ((err as Error)?.message ?? ''));
     } finally {
@@ -136,7 +134,7 @@ export default function ImportPanel() {
 
   function cancelBackup(): void {
     setPendingBackup(null);
-    setBackupPass('');
+    setBackupPhrase('');
     setError('');
   }
 
@@ -167,24 +165,39 @@ export default function ImportPanel() {
       </div>
 
       {pendingBackup !== null ? (
-        <div className="mt-3 max-w-[420px] rounded-[var(--radius-control)] border border-hair bg-bg-2/40 p-3">
+        <div className="mt-3 rounded-[var(--radius-control)] border border-hair bg-bg-2/40 p-4">
           <p role="status" className="mb-2 text-[12px] leading-[1.5] text-ink-soft">
             {t('account.data.import.backupDetected')}
           </p>
-          <Field
-            ref={passInputRef}
-            label={t('account.data.import.backupPassphrase')}
-            type="password"
+          <label
+            htmlFor="backup-phrase"
+            className="block text-[12px] font-medium text-muted"
+          >
+            {t('account.data.import.backupPassphrase')}
+          </label>
+          <p id="backup-phrase-hint" className="mb-1.5 text-[11.5px] text-muted">
+            {t('account.data.import.backupPhraseHint')}
+          </p>
+          <Textarea
+            id="backup-phrase"
+            aria-describedby="backup-phrase-hint"
+            value={backupPhrase}
+            onChange={(e) => setBackupPhrase(e.target.value)}
+            placeholder={t('account.data.import.backupPhrasePlaceholder')}
+            autoFocus
             autoComplete="off"
-            value={backupPass}
-            onChange={(e) => setBackupPass(e.target.value)}
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={loading}
+            minHeightPx={64}
+            className="mb-3"
           />
           <div className="flex gap-2">
             <Button
               variant="primary"
               size="sm"
               onClick={handleRestoreBackup}
-              disabled={loading || backupPass.length === 0}
+              disabled={loading || backupPhrase.trim() === ''}
             >
               {loading
                 ? t('account.data.import.backupRestoreLoading')

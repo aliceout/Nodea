@@ -130,11 +130,15 @@
       "ctaLoading": "Preparing…",
       "passwordLabel": "Current password",
       "confirmCta": "Confirm export",
-      "description": "Decrypted JSON, generated locally. Never leaves your browser.",
+      "description": "Two formats: an encrypted backup (.age, recommended) or a plain export (.json, GDPR). Everything is generated in your browser, nothing goes to the server.",
       "noKey": "Encryption key unavailable",
       "empty": "No data to export",
       "success": "Export complete",
-      "partial": "Partial export — these modules could not be exported and are missing from the file: {modules}. Try again for a complete backup."
+      "partial": "Partial export — these modules could not be exported and are missing from the file: {modules}. Try again for a complete backup.",
+      "encryptedOption": "Encrypted backup (.age)",
+      "encryptedHint": "Recommended — survives losing your account.",
+      "plainOption": "Plain export (.json)",
+      "plainHint": "GDPR portability — not encrypted."
     },
     "import": {
       "title": "Import",
@@ -158,11 +162,11 @@
       "backupRestoreLoading": "Decrypting…",
       "backupCancel": "Cancel",
       "backupWrongPassphrase": "Wrong passphrase, or the backup file was altered.",
-      "partialBackupWarning": "Modules not imported (corrupted files): {modules}"
+      "partialBackupWarning": "Modules not imported (corrupted files): {modules}",
+      "backupPhraseHint": "Separate the words with spaces or hyphens; case doesn't matter.",
+      "backupPhrasePlaceholder": "Paste or type your 12 words here."
     },
     "backup": {
-      "title": "Encrypted backup",
-      "description": "A portable backup protected by a generated 12-word phrase: independent of your account, re-importable into a fresh account. Standard .age file (decryptable outside Nodea with the age tool).",
       "cta": "Create encrypted backup",
       "noKey": "Encryption key unavailable.",
       "empty": "No data to back up.",

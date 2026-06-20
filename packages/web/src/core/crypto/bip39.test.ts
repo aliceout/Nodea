@@ -80,6 +80,10 @@ describe('normaliseMnemonic', () => {
   it('collapses whitespace runs to single spaces and lowercases', () => {
     expect(normaliseMnemonic('  Foo   Bar\nBaz  ')).toBe('foo bar baz');
   });
+  it('treats hyphens as separators (and trims leading/trailing ones)', () => {
+    expect(normaliseMnemonic('Word1-Word2 - word3')).toBe('word1 word2 word3');
+    expect(normaliseMnemonic('-abandon-ability-')).toBe('abandon ability');
+  });
 });
 
 describe('splitMnemonicForDisplay', () => {

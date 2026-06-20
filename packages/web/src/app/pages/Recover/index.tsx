@@ -14,7 +14,7 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
-import { recoveryMnemonicToEntropy, sha256Hex } from '@/core/crypto/bip39';
+import { normaliseMnemonic, recoveryMnemonicToEntropy, sha256Hex } from '@/core/crypto/bip39';
 
 import PasswordPanel from './PasswordPanel';
 import VerifyPanel from './VerifyPanel';
@@ -60,7 +60,9 @@ export default function RecoverPage() {
 
   // ---- Verify step derived state ----
 
-  const wordCount = mnemonic.trim().split(/\s+/).filter(Boolean).length;
+  // Count via the shared normaliser so the gate accepts the same
+  // separators the decrypt does — spaces OR hyphens.
+  const wordCount = normaliseMnemonic(mnemonic).split(' ').filter(Boolean).length;
   const emailLooksValid = /\S+@\S+\.\S+/.test(email);
   const canVerify =
     !submitting && emailLooksValid && wordCount === 12;

@@ -1,7 +1,7 @@
 /**
  * Walk every registered module and pull its decrypted entries — the single
- * gather step shared by the plaintext export (`ExportPanel`) and the
- * encrypted backup (`BackupExportPanel`).
+ * gather step shared by the plaintext export (`/export`) and the encrypted
+ * backup (`/backup`), both launched from the Données tab's export menu.
  *
  * Runs entirely client-side: each plugin's `exportQuery` decrypts with the
  * in-memory main key, so nothing round-trips the server in clear. A single

@@ -82,7 +82,9 @@ points above:
 
 - the **zxcvbn ≥ 3 block is gone** — a 128-bit derived phrase is strong by
   construction, so there's no weak passphrase to reject (the crypto layer
-  stays opinion-free);
+  stays opinion-free). The former `BackupExportPanel` launcher mentioned
+  above is also gone: export is now one split-button in the Données tab
+  (encrypted `.age` → `/backup`, plain `.json` → `/export`);
 - the requirement that the phrase **"derives nothing from the account"** is
   dropped. It now derives from the main key — but the property that
   mattered (portability) is preserved differently: the user still

@@ -130,11 +130,15 @@
       "ctaLoading": "Préparation…",
       "passwordLabel": "Mot de passe actuel",
       "confirmCta": "Confirmer l’export",
-      "description": "JSON déchiffré, généré chez toi. Ne quitte jamais ton navigateur.",
+      "description": "Deux formats : sauvegarde chiffrée (.age, recommandée) ou export en clair (.json, RGPD). Tout est généré dans ton navigateur, rien ne part au serveur.",
       "noKey": "Clé de chiffrement absente",
       "empty": "Aucune donnée à exporter",
       "success": "Export terminé",
-      "partial": "Export partiel — ces modules n’ont pas pu être exportés et manquent du fichier : {modules}. Réessaie pour obtenir une sauvegarde complète."
+      "partial": "Export partiel — ces modules n’ont pas pu être exportés et manquent du fichier : {modules}. Réessaie pour obtenir une sauvegarde complète.",
+      "encryptedOption": "Sauvegarde chiffrée (.age)",
+      "encryptedHint": "Recommandée — survit à la perte du compte.",
+      "plainOption": "Export en clair (.json)",
+      "plainHint": "Portabilité RGPD — non chiffré."
     },
     "import": {
       "title": "Importer",
@@ -158,11 +162,11 @@
       "backupRestoreLoading": "Déchiffrement…",
       "backupCancel": "Annuler",
       "backupWrongPassphrase": "Phrase secrète incorrecte, ou fichier de sauvegarde altéré.",
-      "partialBackupWarning": "Modules non importés (fichiers corrompus) : {modules}"
+      "partialBackupWarning": "Modules non importés (fichiers corrompus) : {modules}",
+      "backupPhraseHint": "Sépare les mots par des espaces ou des tirets ; la casse n’a pas d’importance.",
+      "backupPhrasePlaceholder": "Colle ou saisis tes 12 mots ici."
     },
     "backup": {
-      "title": "Sauvegarde chiffrée",
-      "description": "Une sauvegarde portable protégée par une phrase de 12 mots générée : indépendante de ton compte, réimportable dans un nouveau compte. Fichier .age standard (déchiffrable hors Nodea avec l’outil age).",
       "cta": "Créer la sauvegarde chiffrée",
       "noKey": "Clé de chiffrement absente.",
       "empty": "Aucune donnée à sauvegarder.",

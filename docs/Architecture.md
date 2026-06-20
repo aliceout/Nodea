@@ -675,12 +675,16 @@ the server never sees cleartext or the passphrase.
   `library` keys alias onto their split variants). `library_covers`
   is intentionally excluded — re-fetchable artwork.
 
-**Encrypted backup** (`.age`) — a portable, **account-independent**
-backup sealed under a user passphrase (see ADR-0016 and the security
-tech doc). It is an opaque `age` blob wrapping a ZIP of `manifest.json`
-+ one `modules/<key>.json` per module. The import auto-detects it (the
-`age` magic header), prompts for the passphrase, decrypts in-browser,
-and converges on the **same** restore path as the plaintext import.
+**Encrypted backup** (`.age`) — a portable backup sealed under a 12-word
+BIP39 phrase **derived** from the main key (versioned, rotatable — see
+ADR-0016 and the security tech doc). The phrase is shown once and noted
+by the user, so the `.age` still re-imports into a brand-new account
+(portable via the noted+typed phrase, not via account-independence). It
+is an opaque `age` blob wrapping a ZIP of `manifest.json` + one
+`modules/<key>.json` per module. The import auto-detects it (the `age`
+magic header), prompts for the 12-word phrase (spaces or hyphens),
+decrypts in-browser, and converges on the **same** restore path as the
+plaintext import.
 Same-account restore is byte-faithful. Cross-account restore re-links
 by content for most modules, but `habits_logs` / `library_reviews`
 reference their parent item by **server id**, so on a *different*
