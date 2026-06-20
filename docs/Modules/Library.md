@@ -57,9 +57,9 @@ deterministic HMAC `guard`, two-phase creation).
   ],
   "year": 1862,
   "language": "fr",                  // language of the read edition
-  "original_language": "fr",
-  "page_count": 1463,
+  "originalLanguage": "fr",
   "publisher": "Folio classique",
+  "collection": "Folio classique",   // collection éditoriale, optional
   "summary": "Short text, optional",
   "series": {                        // optional
     "name": "Les Misérables",
@@ -69,17 +69,16 @@ deterministic HMAC `guard`, two-phase creation).
 
   // Cover stored as an encrypted blob in `library_covers_entries`
   // (cf. §6). Only a logical pointer is kept here.
-  "cover_rid": "rec_cov_xyz",        // null if no cover
+  "coverRid": "rec_cov_xyz",         // null if no cover
 
   // State and personal experience.
   "status": "in_progress",           // planned | in_progress | finished | abandoned
   "format": "paper",                 // paper | ebook | audio | unknown
-  "started_at": "2024-11-03",        // optional
-  "finished_at": null,               // null until finished
-  "current_page": 318,               // useful when status === in_progress
+  "startedAt": "2024-11-03",         // optional
+  "finishedAt": null,                // null until finished
   "rating": 4,                       // 0..5, optional
   "tags": ["classic", "to gift"],    // free, user-specific
-  "is_favorite": false
+  "isFavorite": false
 }
 ```
 
@@ -95,7 +94,7 @@ user likes, mid-reading thoughts, or the wrap-up notes live.
 
 ```jsonc
 {
-  "item_rid": "rec_abc123",          // required — id of the related work
+  "itemRid": "rec_abc123",           // required — id of the related work
   "date": "2025-01-08T19:42:00.000Z",
   "kind": "quote",                   // quote | note
   "title": "Chapter 12 — Cosette",   // optional
@@ -117,11 +116,11 @@ normal prose for notes) without forking the model.
 
 ```jsonc
 {
-  "item_rid": "rec_abc123",          // required — join key
+  "itemRid": "rec_abc123",           // required — join key
   "mime": "image/jpeg",
-  "blob_b64": "/9j/4AAQSkZJRgABAQ…", // reasonable size (≤80 KB)
-  "fetched_from": "openlibrary",     // info, can be null
-  "fetched_at": "2026-04-26T12:00:00Z"
+  "blobB64": "/9j/4AAQSkZJRgABAQ…",  // reasonable size (≤80 KB)
+  "fetchedFrom": "openlibrary",      // info, can be null
+  "fetchedAt": "2026-04-26T12:00:00Z"
 }
 ```
 
@@ -243,7 +242,7 @@ provider-specific parser (Goodreads / Babelio / …)
    │  → normalise to `library_items_entries`
    ▼
 (optional) metadata enrichment via /library/lookup
-   │  → known ISBN → fetch missing cover + page_count
+   │  → known ISBN → fetch missing cover
    ▼
 local encryption + upload (POST guard:"init" → PATCH promote)
    │
@@ -324,7 +323,7 @@ without breaking the existing format.
 | Q2 | Metadata fetch | **Server proxy** with API key shared per Nodea instance. Preferences toggle to disable. |
 | Q3 | Covers | **Encrypted blob** in dedicated `library_covers_entries` table. |
 | Q4 | Priority imports | **Babelio** (format confirmed, cf. §5.1), **Inventaire.io**, then **Goodreads** / **StoryGraph** / generic CSV. |
-| Q6 | Multi-reads | **No `reads[]` array** — flat `started_at` / `finished_at`. |
+| Q6 | Multi-reads | **No `reads[]` array** — flat `startedAt` / `finishedAt`. |
 | Q7 | Review distinction | **Two kinds**: `quote` (passages / quotes) and `note` (everything else). |
 | Q8 | Tags | **Free-form** at MVP, no pre-defined taxonomy. |
 
@@ -338,7 +337,7 @@ without breaking the existing format.
   `LibraryReviewPayload`, `LibraryCoverPayload`).
 - ✅ Drizzle tables: `library_items_entries`,
   `library_reviews_entries`, `library_covers_entries`.
-- ✅ Backend routes via `collection-factory`.
+- ✅ Backend routes via the unified `/records` factory (`routes/records.ts`).
 - ✅ K-page module with catalog and three URL-driven sub-views
   (`?subview=livres|extraits|notes`):
   - **`livres`**: grouped catalog, four display modes
@@ -352,8 +351,8 @@ without breaking the existing format.
 - ✅ Five grouping axes: `status` (default), `author`, `tag`,
   `publisher`, `collection`. The `tag` axis lets a book appear in
   several groups (intentional).
-- ✅ Composer add / edit of items and reviews via the global
-  `ComposerModal`.
+- ✅ Composer add / edit of items and reviews via the per-module
+  inline composer (Markdown editor, `packages/web/src/ui/dirk/forms/`).
 - ✅ `BookPickerModal` for the "+ New quote / New note" flow:
   pick the parent book first, then the composer opens pre-filled.
 
@@ -362,7 +361,7 @@ without breaking the existing format.
 - ✅ `POST /library/lookup/by-isbn` and
   `POST /library/lookup/by-query` endpoints.
 - ✅ In-memory server-side cache
-  (`packages/api/src/lookup/cache.ts`).
+  (`packages/api/src/services/library-lookup/cache.ts`).
 - ✅ Six adapters: Open Library, Google Books, BNF, BNE, Wikidata
   (via SPARQL), Amazon headless scraping (cf. §4.1). One more than
   the three originally planned.
@@ -373,7 +372,7 @@ without breaking the existing format.
 ### Phase 3 — Covers · **partial**
 
 - ✅ Storage: encrypted `library_covers_entries` table, bulk
-  decryption at mount, mapped front-side by `cover_rid` (`<img src>`
+  decryption at mount, mapped front-side by `coverRid` (`<img src>`
   as a `data:<mime>;base64,…` URL).
 - ⚠️ **TODO**: `/library/cover/proxy` endpoint for server-side
   download of remote URLs (avoids mixed-content + client-side IP
@@ -406,10 +405,10 @@ unmaintainable.
 
 ## 11. References
 
-- Reused composer / Markdown editor: `packages/web/src/ui/dirk/ComposerModal.tsx`
+- Reused composer / Markdown editor: `packages/web/src/ui/dirk/forms/MarkdownEditor.tsx`
 - K-page model: `packages/web/src/app/flow/Journal/index.tsx`
   (grouped list + Markdown viewer)
 - `collection-client` pattern: `packages/web/src/core/api/modules/collection-client.ts`
-- Backend routes factory: `packages/api/src/routes/collection-factory.ts`
+- Backend routes factory: `packages/api/src/routes/records.ts`
 - Modular split pattern (to mirror in the refactor):
   `packages/web/src/app/flow/Habits/` and `packages/web/src/app/flow/Review/`

@@ -1,3 +1,17 @@
+/**
+ * Unified `/records` CRUD endpoint for every encrypted module table.
+ *
+ * Where: api route layer, mounted at `/` (app.ts) and built from the
+ * single `COLLECTIONS` array — one factory, no per-module route files,
+ * so a new collection can't forget its guard. The target table travels
+ * in the `X-Collection` header (issue #67), never the URL.
+ *
+ * Invariants: every mutation runs requireUser + requireCollection +
+ * requireGuard; the HMAC `guard` is verified per write and never
+ * serialized back (`toView` omits it); creation sends `guard:"init"`
+ * then promotes to the real `g_<hex>` in a second PATCH. Rows carry no
+ * user FK — access is scoped by `module_user_id` + `guard` only.
+ */
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {

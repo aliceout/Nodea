@@ -4,6 +4,10 @@
   "version": "2.14.1",
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
   "scripts": {
     "dev:web": "pnpm --filter @nodea/web dev",
     "dev:api": "pnpm --filter @nodea/api dev",
@@ -13,6 +17,7 @@
     "test": "pnpm -r --workspace-concurrency=1 test",
     "test:coverage": "pnpm -r --parallel exec vitest run --coverage",
     "typecheck": "pnpm -r typecheck",
+    "check:docs": "node scripts/check-docs.mjs",
     "changelog": "tsx scripts/generate-changelog.ts",
     "prepare": "husky"
   },

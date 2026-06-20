@@ -1,5 +1,14 @@
 # Habits module (habit tracking)
 
+> **Status: DORMANT.** The module is hidden in the UI —
+> `to_toggle: false` / `display: false` in
+> `packages/web/src/app/modules-registry.tsx` (issue #98). Its **data
+> layer stays intact**: the `habits-items` / `habits-logs` collections,
+> the Zod schemas (`packages/shared/src/schemas/modules/habits.ts`), and
+> the `flow/Habits/` directory still ship via import/export, so the
+> invariants below must be preserved on any shared path. This doc
+> describes the dormant-but-live shape, not a removed feature.
+
 ## Layout
 
 Two tables, like Library:
@@ -26,11 +35,11 @@ HMAC guard, two-phase creation, `requireGuard` validation).
 ```json
 {
   "title": "string",           // e.g. "Tennis"
-  "category": "sport|health|creativity|relationship|other",
+  "category": "sport|santé|créativité|relation|autre",
   "frequency": "daily|weekly|monthly|custom",
   "target": "number|optional", // count/day or count/week if applicable
   "duration": "P6M|optional",  // expected period, ISO 8601 format
-  "started_at": "YYYY-MM-DD",
+  "startedAt": "YYYY-MM-DD",
   "archived": "boolean|optional"
 }
 ```
@@ -40,7 +49,9 @@ HMAC guard, two-phase creation, `requireGuard` validation).
 ```json
 {
   "date": "YYYY-MM-DD",
-  "item_rid": "string",  // UUID of the related habit (server-side id)
+  "itemRid": "string",   // references the parent habits_items record by
+                         // its **server id** (cf. Architecture §7.3 —
+                         // cross-account restore can't yet remap these)
   "done": true
 }
 ```
@@ -62,12 +73,12 @@ Cleartext export format (same shape as Mood / Goals / Library):
         "frequency": "weekly",
         "target": 1,
         "duration": "P6M",
-        "started_at": "2025-08-01"
+        "startedAt": "2025-08-01"
       }
     ],
     "habits_logs": [
-      { "date": "2025-08-05", "item_rid": "rec_abc123", "done": true },
-      { "date": "2025-08-12", "item_rid": "rec_abc123", "done": true }
+      { "date": "2025-08-05", "itemRid": "rec_abc123", "done": true },
+      { "date": "2025-08-12", "itemRid": "rec_abc123", "done": true }
     ]
   }
 }

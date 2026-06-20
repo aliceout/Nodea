@@ -108,9 +108,12 @@ Client                                Server
    │         verified) before finalize  │
    │                                     │
    │  If mode = password_or_passkey:     │
-   │     POST /auth/mfa/finalize         │
+   │     done — /finish already returned │
+   │     a full session                  │
    │  If mode = always_2fa/maximum:     │
-   │     ... TOTP, plus password if max ...│
+   │     ... TOTP, plus password if max; │
+   │     the last factor-verify finalizes│
+   │     inline (no /auth/mfa/finalize) ...│
 ```
 
 **PRF input**: a fixed input `"nodea:prf-v1"` (32 bytes, zero-padded)
@@ -119,9 +122,13 @@ credential, independent of the WebAuthn challenge (which changes on
 every login).
 
 **Non-PRF passkey on `password_or_passkey`** (`core/auth/session/passkeys.ts`):
-in this mode a passkey assertion is a *complete* login, so `/finish`
-returns a **full** session — but a non-PRF credential can't unwrap the
-main key. We do **not** keep that session: an authenticated-but-keyless
+this handling is **entirely client-side** — the server has no
+`prfSupported` gate and issues whatever session the mode warrants
+on a valid assertion; the client detects `!prfSupported` locally and
+reacts. In this mode a passkey assertion is a *complete* login, so
+`/finish` returns a **full** session — but a non-PRF credential can't
+unwrap the main key. We do **not** keep that session: an
+authenticated-but-keyless
 client would be bounced straight back out by the Layout's key-missing
 guard the moment it reached `/flow` (the "passkey lets me in, then
 kicks me to /login" bug). Instead the client drops the session
@@ -142,24 +149,29 @@ the pending session has `mfa_passkey_verified=true` but lacks
 endpoints** again to complete:
 
 - To add a password verification: `POST /auth/login/start` then
-  `/auth/login/finish` with the `__Host-nodea_mfa` cookie active.
-  The server detects the pending session (instead of creating a
-  new one) and bumps `mfa_password_verified=true`.
-- To add a passkey verification: `POST /auth/passkeys/login/start`
-  then `/finish`. Bumps `mfa_passkey_verified=true`.
+  `/auth/login/finish` with the `mfa_pending` `nodea_session`
+  cookie active. The server detects the pending session (instead of
+  creating a new one) and bumps `mfa_password_verified=true`.
+- To add a passkey verification: `POST /auth/mfa/passkey/start`
+  then `/auth/mfa/passkey/finish` (the stepped-MFA passkey pair,
+  not a single `/auth/mfa/passkey`). Bumps
+  `mfa_passkey_verified=true`.
 - To add a TOTP verification: `POST /auth/mfa/totp/verify`. Bumps
   `mfa_totp_verified=true`.
 
-No new cookie is issued during these steps; we operate on the same
-`mfa_pending` until `/auth/mfa/finalize`.
+No new cookie is issued during these steps; the same `nodea_session`
+cookie carries the `mfa_pending` session until finalisation.
 
-### Finalisation
+### Finalisation — inline, no dedicated route
 
-`POST /auth/mfa/finalize`
+**There is no `POST /auth/mfa/finalize` route.** Finalisation
+happens *inside* the last factor-verify call. Each factor-verify
+route (`/auth/mfa/totp/verify`, `/auth/mfa/passkey/finish`, and the
+password path via `/auth/login/finish`) recomputes the missing
+factors after marking its own `mfa_*_verified` column and, if none
+remain:
 
-**Server**:
-1. Load the cookie's `mfa_pending` session.
-2. Compute the required factors from `users.security_mode` + entry
+1. Computes the required factors from `users.security_mode` + entry
    path:
 
    | mode | password-first | passkey-first |
@@ -171,17 +183,18 @@ No new cookie is issued during these steps; we operate on the same
    Issue #72 — in `always_2fa` password-first, the 2nd factor is
    an OR set : the client can verify TOTP **or** assert any
    enrolled passkey (PRF or non-PRF). Either satisfies the
-   policy ; `/auth/mfa/finalize` does not gate on which path was
-   taken. Passkey-first stays TOTP-only (a second passkey
-   assertion on the same login would be redundant).
+   policy ; finalisation does not gate on which path was taken.
+   Passkey-first stays TOTP-only (a second passkey assertion on the
+   same login would be redundant).
 
-3. Verify every required column in `mfa_*_verified`. If one is
-   missing → 400 `{ missing: [...] }`.
-4. Transaction:
-   - DELETE the `mfa_pending` session.
-   - INSERT a full session, populate `reauth_password_at` /
+2. If a required `mfa_*_verified` column is still missing, the
+   verify route returns `200 { finalized: false, missing: [...] }`
+   and the client drives the next factor.
+3. If none are missing, the same route, in a transaction:
+   - DELETEs the `mfa_pending` session.
+   - INSERTs a full session, populating `reauth_password_at` /
      `reauth_passkey_at` according to what was done during the
      pending phase.
-   - Issue `__Host-nodea_session`.
-5. Response `200 { user, ...some public info }`.
+   - Swaps the `nodea_session` cookie for the full session.
+   - Returns `200 { finalized: true }`.
 

@@ -217,7 +217,7 @@ export default function OpaqueFlowDiagram() {
           y={350}
           direction="left"
           label="200 OK + Set-Cookie nodea_session=…"
-          body="{ wrappedMainKey, wrappedKekPassword, … }"
+          body="{ needsMfa: false, id }"
         />
 
         {/* Step 7 — client unwraps locally */}
@@ -225,8 +225,8 @@ export default function OpaqueFlowDiagram() {
           side="client"
           yTop={390}
           height={70}
-          label="HKDF(exportKey, &quot;nodea:wrap-kek&quot;)"
-          sub="→ AES-GCM-decrypt → KEK → main_key → AES + HMAC sub-keys"
+          label="GET /auth/me/crypto → HKDF(exportKey, &quot;nodea:wrap-kek&quot;)"
+          sub="→ wrap blobs → AES-GCM-decrypt → KEK → main_key → AES + HMAC sub-keys"
         />
 
         {/* Footer note */}

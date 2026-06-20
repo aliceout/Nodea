@@ -1,3 +1,13 @@
+/**
+ * Auth / MFA tables (Drizzle DDL, split by domain, re-exported by
+ * `db/schema.ts`). Holds: `opaque_records`, `auth_factors`, `mfa_totp`,
+ * `mfa_totp_recovery_codes`, `mfa_bypass_requests`, `email_verifications`,
+ * `password_reset_tokens`.
+ *
+ * Where: api db layer. Every table FK-references `users` with ON DELETE
+ * CASCADE. Per-table specifics (PKs, AAD-bound blobs, the partial unique
+ * index on active bypass requests) are documented on each export below.
+ */
 import { sql } from 'drizzle-orm';
 import {
   bigint,

@@ -1,3 +1,11 @@
+/**
+ * Zod DTOs for the OPAQUE handshake (register + login start/finish) and
+ * the wrapped-key blobs returned after auth.
+ *
+ * Where: packages/shared — single source of truth for both the api auth
+ * routes and the web session client. OPAQUE wire blobs are base64url with
+ * a loose size ceiling (DoS guard, not correctness).
+ */
 import { z } from 'zod';
 import { UsernameField } from './auth.ts';
 

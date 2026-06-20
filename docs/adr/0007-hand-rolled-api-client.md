@@ -30,6 +30,15 @@ why didn't we adopt it?
 **Keep the hand-rolled dedicated functions, don't adopt
 `hc<AppType>`.**
 
+## Update (2026-06) — the client grew, the decision stands
+
+The "14" in the title is historical. The client is now **15 files** in
+`core/api/` exposing **~71 `api*` functions** (`auth.ts` alone holds
+~28). The decision is unchanged: wrappers stay hand-rolled over a
+shared `request<T>()`, typed against `@nodea/shared` schemas rather
+than `hc<AppType>`. Read "14" as "one `request<T>()` wrapper + one
+dedicated function per endpoint".
+
 ## Consequences
 
 **Positive:**

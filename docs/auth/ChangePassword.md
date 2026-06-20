@@ -15,30 +15,30 @@ locally. Hence the 2-step pattern, mirrored from register / login.
 
 ### `POST /auth/change-password/start`
 
-**Body**:
+**Body** (`ChangePasswordStartBodySchema`):
 ```json
 {
-  "proofLoginToken": "...",
-  "proofFinishLoginRequest": "...",
   "registrationRequest": "..."
 }
 ```
 
-The client has already run a `/auth/login/start` round-trip with
-the current password to produce the proof (cf. §13.X
-`OpaquePasswordProofSchema`). `registrationRequest` comes from
-`client.startRegistration(newPassword)`.
+There is **no** `proofLoginToken` / `proofFinishLoginRequest` in
+this body. Re-auth of the current password is handled **out of
+band**: the route is gated by `requireFreshPasswordOrPasskey`, and
+the client proves the current factor via a separate
+`/auth/reauth/password/{start,finish}` round-trip *before* calling
+`/change-password/start`. (Re-auth: see Auth-Spec §6, row *Change
+password* — password **OR** passkey.) `registrationRequest` comes
+from `client.startRegistration(newPassword)`.
 
 **Server**:
-1. Precondition `requireUser` (valid session).
-2. `verifyPasswordProof(user, body)`: consume the `loginToken`,
-   require `userIdentifier === user.email`, run `server.finishLogin`.
-   Failure → 401 `invalid_credentials`.
-3. `server.createRegistrationResponse({ userIdentifier: user.email,
+1. Preconditions `requireUser` + `requireFreshPasswordOrPasskey`
+   (valid session + fresh re-auth).
+2. `server.createRegistrationResponse({ userIdentifier: user.email,
    registrationRequest })` → `registrationResponse`.
-4. Stores a single-use `changePasswordToken` (TTL 5 min, in-memory
+3. Stores a single-use `changePasswordToken` (TTL 5 min, in-memory
    `auth/opaque-pending-state.ts`) bound to `users.id`.
-5. Response `200 { registrationResponse, changePasswordToken }`.
+4. Response `200 { registrationResponse, changePasswordToken }`.
 
 ### `POST /auth/change-password/finish`
 
@@ -66,8 +66,8 @@ pre-rotation ciphertext stays readable.
 4. **Session ID rotation**: DELETE every session for this user
    (including the current one). INSERT a new
    `kind = 'full'` session with `reauth_password_at = now()`.
-5. Issue a fresh signed `__Host-nodea_session` cookie. The old one
-   is explicitly cleared via `Set-Cookie` with a past date.
+5. Issue a fresh signed `nodea_session` cookie. The old one is
+   explicitly cleared via `Set-Cookie` with a past date.
 6. Response `200`.
 
 ### Front-end UX

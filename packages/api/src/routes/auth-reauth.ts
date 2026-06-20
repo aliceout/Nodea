@@ -1,3 +1,15 @@
+/**
+ * Step-up re-auth routes: `POST /auth/reauth/password/start` + `/finish`,
+ * `POST /auth/reauth/passkey/start` + `/finish`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), behind requireUser.
+ *
+ * Non-obvious: re-auth is a real OPAQUE / WebAuthn round-trip (hence the
+ * `/start`+`/finish` pair), not a single call. On success it stamps
+ * `sessions.reauth_password_at` / `reauth_passkey_at`, which
+ * `requireFreshPassword(OrPasskey)` reads to gate sensitive mutations
+ * within a 5-min window. Shared `reauth` rate-limit (10/15min).
+ */
 import { eq } from 'drizzle-orm';
 import {
   generateAuthenticationOptions,

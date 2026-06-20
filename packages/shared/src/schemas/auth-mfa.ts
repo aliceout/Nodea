@@ -1,3 +1,10 @@
+/**
+ * Zod DTOs for stepped-MFA verification (TOTP + passkey second factor).
+ *
+ * Where: packages/shared — shared by the api `/auth/mfa/*` routes and the
+ * web MFA flow. The TOTP `code` field accepts either a 6-digit code or a
+ * backup code (format-disambiguated server-side).
+ */
 import { z } from 'zod';
 
 /**

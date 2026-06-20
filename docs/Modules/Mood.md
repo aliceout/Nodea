@@ -12,8 +12,8 @@ Daily module for tracking mood and recording three positive things.
 ```json
 {
   "date": "YYYY-MM-DD",
-  "mood_score": "<-2..+2|string|number>",
-  "mood_emoji": "🙂",
+  "moodScore": "<-2..+2|string>",
+  "moodEmoji": "🙂",
   "positive1": "string",
   "positive2": "string",
   "positive3": "string",
@@ -23,6 +23,12 @@ Daily module for tracking mood and recording three positive things.
 }
 ```
 
+`moodScore` is always a **string** (one of `-2 -1 0 1 2`) — never a
+number, even though the value is numeric. Stored as a string for
+forwards-compat with legacy entries.
+`moodEmoji` is **legacy / optional** (`default('')` in the schema):
+pre-Direction-K entries carried an emoji, the Sauge redesign drops it
+from the form but old payloads still decode.
 The `positive1..3` fields are required (the "gratitude" goal).
 `question` / `answer` feed downstream analysis modules.
 
@@ -55,8 +61,8 @@ Mood follows the rules shared by every module — see
     "mood": [
       {
         "date": "2025-08-20",
-        "mood_score": 1,
-        "mood_emoji": "😊",
+        "moodScore": "1",
+        "moodEmoji": "😊",
         "positive1": "Walk with Eva",
         "positive2": "Made progress on Nodea",
         "positive3": "Good meal",

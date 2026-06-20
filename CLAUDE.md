@@ -32,7 +32,7 @@ Modules **Mood · Goals · Journal · Library · Review · HRT** are shipping. *
 
 - **Backend**: Node 24 · Hono · Drizzle ORM · PostgreSQL 16 · Zod · session cookies (not JWT)
 - **Frontend**: React 19 · Vite · Tailwind · React Router v7 · **TypeScript strict** · Zustand · React Hook Form + Zod
-- **Monorepo**: pnpm workspaces (`packages/api`, `packages/web`, `packages/shared`)
+- **Monorepo**: pnpm workspaces (`packages/api`, `packages/web`, `packages/shared`, `packages/e2e`)
 - **Crypto**: WebCrypto (AES-GCM + HMAC-SHA-256) + OPAQUE (`@serenity-kit/opaque`) + WebAuthn (`@simplewebauthn/{server,browser}`)
 - **Deployment**: docker-compose (postgres + api + web); Drizzle migrations run on api boot (non-destructive). Postgres data is a bind mount under `$HOME/data/nodea/postgres/`, so **`docker compose down -v` / `docker volume prune` are no-ops on data — but never run them on a Nodea host anyway.**
 - **Tests**: Vitest + Playwright (e2e)

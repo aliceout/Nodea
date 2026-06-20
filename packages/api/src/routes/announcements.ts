@@ -1,3 +1,14 @@
+/**
+ * Public announcement feed: `GET /announcements` — active banners for the
+ * signed-in user.
+ *
+ * Where: api route layer, mounted at `/announcements` (requireUser, read-
+ * only; authoring is admin-only via `/admin/announcements`).
+ *
+ * Non-obvious: "active" is a time-window filter (publish/expiry bounds)
+ * computed in the query; serialization is shared via
+ * `announcements-serialize.ts`.
+ */
 import { and, desc, eq, isNull, or, lte, gte } from 'drizzle-orm';
 import { AnnouncementListResponseSchema } from '@nodea/shared';
 import { db } from '../db/client.ts';

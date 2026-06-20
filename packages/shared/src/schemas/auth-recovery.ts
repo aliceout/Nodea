@@ -1,3 +1,11 @@
+/**
+ * Zod DTOs for KEK recovery: recover-kek start/verify/finish and
+ * recovery-code setup/regenerate.
+ *
+ * Where: packages/shared — shared by the api recovery routes and the web
+ * recovery flow. `finish` carries the rewrapped password KEK; the old
+ * recovery blobs are nulled server-side, not re-supplied.
+ */
 import { z } from 'zod';
 
 /**

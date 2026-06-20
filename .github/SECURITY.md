@@ -32,7 +32,7 @@ When reporting, please include:
 - The official server code (`packages/api/`, including OPAQUE / WebAuthn / TOTP / session flows).
 - The web bundle served by the official instance (`packages/web/`, crypto helpers, response handling, key-material lifecycle).
 - The shared schemas (`packages/shared/`) when they affect server-side validation.
-- The deployment manifests in `infra/` (docker-compose, nginx config) when they introduce attack surface.
+- The deployment manifests — the root `docker-compose.yml` and the web container's nginx config — when they introduce attack surface.
 - Cryptographic invariants documented at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech) — e.g. main key never leaves WebCrypto, HMAC guards never persisted, HKDF domain separation.
 
 **Out of scope:**

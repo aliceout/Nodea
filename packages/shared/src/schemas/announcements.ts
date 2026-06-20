@@ -1,3 +1,9 @@
+/**
+ * Zod DTOs for admin announcements (create/update bodies + list response).
+ *
+ * Where: packages/shared — shared by the api `/admin/announcements` (write)
+ * and `/announcements` (public read) routes and the web admin + banner UI.
+ */
 import { z } from 'zod';
 
 /**

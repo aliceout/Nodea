@@ -38,14 +38,16 @@ Docker-compose deployment bundle.
 ### Runtime
 
 - **Hono** on `@hono/node-server`, Node 24 ESM.
-- **Drizzle ORM** against **PostgreSQL 16**. Schema:
-  [`packages/api/src/db/schema.ts`](../packages/api/src/db/schema.ts).
+- **Drizzle ORM** against **PostgreSQL 16**. Table DDL lives under
+  [`packages/api/src/db/schema/`](../packages/api/src/db/schema/) (split
+  by domain: `users`, `auth`, `admin`, `entries`, `modules`, `enums`),
+  re-exported through `db/schema.ts`.
   Migrations in [`packages/api/drizzle/`](../packages/api/drizzle/). Run
   `pnpm --filter @nodea/api db:generate` then `db:migrate` to create
   and apply.
 - **Zod** at every request boundary, sharing schemas with the web
   package via `@nodea/shared`.
-- **Session cookies** (HttpOnly, Signed, `SameSite=Lax`, `Secure` in
+- **Session cookies** (HttpOnly, Signed, `SameSite=Strict`, `Secure` in
   prod). Backing `sessions` table; revoking a row kills the session
   immediately.
 - **Argon2id** password hashing via `@node-rs/argon2`, server-side.
@@ -61,19 +63,21 @@ Docker-compose deployment bundle.
 /announcements     → routes/announcements.ts  (requireUser, public read)
 /modules-config    → routes/modules-config.ts (1:1 per user, encrypted blob)
 /user-preferences  → routes/user-preferences.ts (1:1 per user, encrypted blob)
-/{collection}      → routes/collection-factory.ts  (one per entry table)
+/records           → routes/records.ts             (unified, all entry tables)
 ```
 
-`/{collection}` is driven by `src/collections/registry.ts` — adding a
-new module = adding an entry in that array, which is the single source
-the factory loops over. There is nowhere to forget a guard.
+`/records` is driven by the `COLLECTIONS` array in `src/collections.ts`
+— adding a new module = adding an entry in that array, which is the
+single source `createRecordsRoutes` loops over. The target collection
+travels in the `X-Collection` header (issue #67), never in the URL.
+There is nowhere to forget a guard.
 
 ### Middleware
 
 - `requireUser` — resolves the session cookie to a row on the `users`
   table and `c.set('user', …)`.
 - `requireAdmin` — stacks on `requireUser` and 403s non-admin roles.
-- `requireGuard` — inside `collection-factory`, validates the
+- `requireGuard` — inside `records.ts`, validates the
   `(moduleUserId, guard)` headers on update/delete
   operations. **No `user_id` involvement** : entry rows carry no FK
   to `users`, the server cannot link a row to a specific user. The
@@ -318,7 +322,7 @@ the factory loops over. There is nowhere to forget a guard.
     sessions — the client unwraps the KEK + main key locally
     while the session is still pending (Auth-Spec §7.2.bis: no
     leak because no full cookie = no data routes accessible).
-  - Helpers: `auth/totp.ts` wraps `otplib@13.4.0` with the spec
+  - Helpers: `auth/totp.ts` wraps `otplib@13.4.1` with the spec
     params (SHA-1 / 6 / 30s, ±1 window skew, returns matched
     window for anti-replay). `auth/totp-backup-codes.ts` generates
     10 × 120-bit base32 codes with 4-4-4-4-4-4 hyphenation,
@@ -406,8 +410,8 @@ sequential to avoid row-level interference. Setup under
 [`packages/api/src/test/setup.ts`](../packages/api/src/test/setup.ts)
 runs `TRUNCATE … CASCADE` before each test, and forces
 `EMAIL_SERVICE_IMPL=recording` (cf. `vitest.config.ts`) so suites can
-assert on outgoing mail without spinning up Mailpit. 383 integration
-tests at the time of writing, covering register / login / activation
+assert on outgoing mail without spinning up Mailpit. Several hundred
+integration tests cover register / login / activation
 gates, OPAQUE round-trips, OPAQUE re-auth, change-password / reset /
 change-email / delete-self, recovery-code KEK, passkey enroll +
 login + PRF unwrap, TOTP enroll + verify, stepped MFA (TOTP +
@@ -435,9 +439,9 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   covers only the i18n provider.
 - **Zustand** is the single application store, see
   [`src/core/store/nodea-store.ts`](../packages/web/src/core/store/nodea-store.ts).
-  Slices: `auth`, `crypto`, `modules`, `preferences`, `notifications`,
-  `mobileMenuOpen`, `flow`. There is **no** parallel singleton or Context
-  reducer.
+  Slices (8): `auth`, `crypto`, `modules`, `preferences`,
+  `notifications`, `ui`, `flow`, `versions`. There is **no** parallel
+  singleton or Context reducer.
 - **React Hook Form + Zod** for every form that ships to the server —
   resolver built from the shared schema.
 - **Routing**: URL stays at `/flow` regardless of the active module.
@@ -496,9 +500,10 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 - **Branded types** (`AesMainKey`, `HmacMainKey`, `Base64`, `CipherIV`,
   `EncryptedBlob`) from `@nodea/shared/crypto-types` prevent mixing
   domains at compile time.
-- **Guard derivation** (`guard-derivation.ts`): deterministic
-  HMAC-SHA-256 over `moduleUserId || ':' || recordId` with the HMAC
-  sub-key. No network round-trip.
+- **Guard derivation** (`guard-derivation.ts`): deterministic, two
+  HMAC-SHA-256 passes with the HMAC sub-key — first a key scoped per
+  module (`HMAC(hmacKey, "guard:" + moduleUserId)`), then the tag over
+  `recordId`. No network round-trip.
 - **Two-layer wrap** (`factor-wrap.ts`): the main key is wrapped
   under a random KEK (label `nodea:wrap-main`), the KEK is wrapped
   under an HKDF sub-key of the OPAQUE `exportKey` (label
@@ -541,8 +546,8 @@ stays a Tailwind class (universal CSS, no token needed).
 
 Vitest + jsdom. Crypto round-trips (AES, HKDF, factor-wrap, guard
 derivation, passkey-PRF unwrap), base64 encoders, the typed HTTP
-client (mocked fetch), and the Zustand store. 489 unit tests at the
-time of writing.
+client (mocked fetch), and the Zustand store — several hundred unit
+tests.
 
 ---
 
@@ -605,8 +610,9 @@ knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
 The seven modules (Mood, Goals, Journal, Habits, Library, Review,
 HRT) all build on the same encrypted technical base: one `*_entries`
 table per module (HRT spreads across four : `hrt_admin_logs_entries`,
-`hrt_lab_results_entries`, `hrt_suppliers_entries`,
-`hrt_schedules_entries`), two-phase creation with HMAC validation,
+`hrt_lab_results_entries`, `hrt_suppliers_entries` (whose payload and
+export plugin are named `hrt_products` — renamed at the payload layer
+only), `hrt_schedules_entries`), two-phase creation with HMAC validation,
 server-unreadable data. See [`docs/Modules/<Module>.md`](./Modules/)
 for each module's cleartext payload and module-specific rules.
 

@@ -110,9 +110,10 @@ wrap layers (cf. §3.2):
 1. **Invited** (`inviteToken` present):
    - `consumeInviteAndCreateUser(token, email, …)`:
      - Lookup `invites` by `code_hash`, under `SELECT … FOR UPDATE`.
-     - Reject if used / expired / unknown → 401 `invalid_token`.
+     - Reject if used / expired / unknown → 401 `register_failed`
+       with `reason: 'invalid_token'`.
      - Reject if `invites.email !== body.email` (strict match) →
-       400 `email_mismatch`.
+       400 `register_failed` with `reason: 'email_mismatch'`.
      - INSERT `users { id: userId, username,
        wrappedMainKey, wrappedMainKeyIv,
        wrappedKekPassword, wrappedKekPasswordIv,
@@ -178,11 +179,14 @@ Server:
 1. `consumeEmailVerification('register', token)` — lookup +
    timing-safe compare + single-use consume.
 2. UPDATE `users { emailVerifiedAt: now() }` WHERE id = verification.userId
-   AND emailVerifiedAt IS NULL. If no match → 401 `already_consumed`.
+   AND emailVerifiedAt IS NULL. If no match → 401 `activation_failed`
+   with `reason: 'already_consumed'`.
 3. Response `200 { ok: true, email }`.
 
-Specific errors: `invalid_token` (401), `already_consumed` (401),
-`expired` (410).
+Specific errors — all returned as `{ error: 'activation_failed',
+reason }` (the `reason` sub-field discriminates, these are **not**
+standalone top-level error codes): `reason: 'invalid_token'` (401),
+`reason: 'already_consumed'` (401), `reason: 'expired'` (410).
 
 ### `GET /auth/register/mode`
 
@@ -197,10 +201,11 @@ token is valid + unconsumed + unexpired; 404 otherwise. Lets the
 frontend pre-fill the email when the user arrives via
 `/register?invite=…`.
 
-### Activation gate on `POST /auth/login`
+### Activation gate on `POST /auth/login/finish`
 
 Once the account is created, login refuses if
-`users.email_verified_at IS NULL`:
+`users.email_verified_at IS NULL` (`account_not_activated` is a
+**login** error, returned here — never on the register routes):
 
 ```ts
 if (user.emailVerifiedAt === null) {

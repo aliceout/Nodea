@@ -71,17 +71,20 @@ Hardening :
 
 ### `POST /auth/recover-kek/start`
 
-Body: `{ email }`. Server:
-1. Loads `users` by email. If not found → opaque response
-   `200 { ok: true, recovery_session_id: <random> }` (no leak of
-   account existence; we still issue a session_id to keep timings
-   indistinguishable).
-2. Stores `recovery_session_id` (32 random bytes, base64url) with a
-   5 min TTL, bound to `users.id` if found, bound to `null`
-   otherwise.
-3. Returns `{ recovery_session_id, wrapped_kek_recovery,
-   wrapped_kek_recovery_iv }` if a user was found, or
-   indistinguishable random blobs otherwise (timing safety).
+Body: `{ email, registrationRequest }` — the new password's OPAQUE
+`registrationRequest` is folded in here so the server can return the
+`registrationResponse` in the same round-trip (no separate OPAQUE
+register pair of routes). Server:
+1. Loads `users` by email. Unknown emails get an indistinguishable
+   response (no leak of account existence) — a `recoverSessionId`
+   is still issued and the blobs are fresh random bytes.
+2. Stores `recoverSessionId` (single-use, 5 min TTL), bound to
+   `users.id` when found.
+3. Returns `{ recoverSessionId, wrappedKekRecovery,
+   wrappedKekRecoveryIv, userId, registrationResponse }`. For
+   unknown emails `userId` is a fresh random UUID (won't validate
+   any hash) and the wrap blobs are random — timing + body
+   indistinguishable from the known-email branch.
 
 ### Client side (before `/finish`)
 
@@ -98,42 +101,51 @@ Body: `{ email }`. Server:
 6. If unwrap succeeds: main key derived through the standard path
    (KEK → `wrapped_main_key` → main_key).
 7. User types a new password.
-8. Client runs OPAQUE registration (on the current email), derives
-   the new `export_key`, re-wraps the KEK under the new
-   `wk_password`.
-9. Client generates a **new recovery code** (the old one will be
-   invalidated) → new `wrapped_kek_recovery` + new
-   `recovery_code_hash`. Displayed on screen after success, with an
-   acknowledgement checkbox.
+8. Client runs OPAQUE registration (on the current email, using the
+   `registrationResponse` returned by `/start`), derives the new
+   `export_key`, re-wraps the KEK under the new `wk_password`, and
+   posts `registrationRecord` + `wrappedKekPassword{,Iv}` to
+   `/finish`.
+9. The recovery code is **not** regenerated in this flow: `/finish`
+   nulls the old `wrapped_kek_recovery` + `recovery_code_hash`
+   server-side. After success the user is prompted to configure a
+   fresh recovery code at their leisure via
+   `POST /auth/security/recovery-code`.
 
 ### `POST /auth/recover-kek/finish`
 
-Body:
+Body — five camelCase fields:
 ```json
 {
-  "recovery_session_id": "...",
-  "recovery_code_hash": "...",
-  "opaque_register_record_new": "...",
-  "wrapped_kek_password_new": "...",
-  "wrapped_kek_password_new_iv": "...",
-  "wrapped_kek_recovery_new": "...",
-  "wrapped_kek_recovery_new_iv": "...",
-  "recovery_code_hash_new": "..."
+  "recoverSessionId": "...",
+  "recoveryCodeHash": "...",
+  "registrationRecord": "...",
+  "wrappedKekPassword": "...",
+  "wrappedKekPasswordIv": "..."
 }
 ```
 
+No new recovery blobs are supplied: the recovery code is **not
+rotated in this flow**. The server **nulls**
+`users.recovery_code_hash` + `users.wrapped_kek_recovery{,_iv}` on
+success, the notification email tells the user the old code is now
+invalid, and the "configure a recovery code" tip reappears (driven
+by `recoveryCodeSet === false` on `/auth/me`). The user sets a new
+code later via `POST /auth/security/recovery-code`.
+
 Server:
-1. Validates `recovery_session_id` (load, check TTL, consume).
+1. Validates `recoverSessionId` (load, check TTL, consume).
    If bound to `null` → 401 ("non-existent user" path from `/start`).
 2. Loads `users.recovery_code_hash`. **Constant-time comparison**
-   against the supplied `recovery_code_hash`. If mismatch → 401,
-   **no mutation**, logs an `auth.recover.hash_mismatch`.
-3. Validates the new OPAQUE envelope (cryptographic consistency).
+   against the supplied `recoveryCodeHash`. If mismatch → 401,
+   **no mutation**, logs `[auth/recover-kek] hash_mismatch`.
+3. Validates the new OPAQUE `registrationRecord` (cryptographic
+   consistency).
 4. Transaction:
    - UPDATE `opaque_records.envelope` (by `user_id` PK).
-   - UPDATE `users.wrapped_kek_password{,_iv}`.
-   - UPDATE `users.wrapped_kek_recovery{,_iv}` ← new code.
-   - UPDATE `users.recovery_code_hash` ← new hash.
+   - UPDATE `users.wrapped_kek_password{,_iv}` ← from the body.
+   - NULL `users.wrapped_kek_recovery{,_iv}` (old code invalidated).
+   - NULL `users.recovery_code_hash`.
    - DELETE every session of this user.
 5. Issues a full session + cookie.
 6. Notification email "Your password was reset via recovery code.
@@ -153,9 +165,14 @@ Distinct case from the recovery flow: the user is already
 authenticated (full session, KEK already in memory) and just wants
 to rotate the recovery code (lost paper, doubt, hygiene).
 
-`POST /auth/security/recovery-code/regenerate`
+`POST /auth/security/recovery-code` — **first-time setup and
+regenerate share this one route** (no separate `.../regenerate`);
+the server tells them apart by whether a hash already exists and
+returns `{ ok, regenerated }` (`regenerated: true` when it replaced
+an existing code).
 
-Preconditions: `requireFreshPassword` (cf. matrix §6).
+Re-auth: see Auth-Spec §6 (row: *Regenerate KEK recovery code*) —
+gated by `requireFreshPassword`.
 
 Client side (before POST):
 1. Generates a new BIP39 12-word recovery code.
@@ -165,15 +182,16 @@ Client side (before POST):
    `wk_recovery_new = HKDF(..., "nodea:wrap-kek")`.
 4. Wraps the current KEK (in memory):
    `wrapped_kek_recovery_new = AES-GCM(wk_recovery_new, kek,
-   AAD=buildAAD([users.id, "recovery"]))`.
-5. Computes `recovery_code_hash_new = SHA-256(recovery_bytes_new)`.
+   AAD=buildKekAAD(users.id, "recovery"))` —
+   `nodea:v1\x1f<userId>\x1frecovery`.
+5. Computes `recoveryCodeHash = SHA-256(recovery_bytes_new)`.
 
-Body:
+Body (`RecoveryCodeUpsertBodySchema`):
 ```json
 {
-  "wrapped_kek_recovery_new": "...",
-  "wrapped_kek_recovery_new_iv": "...",
-  "recovery_code_hash_new": "..."
+  "wrappedKekRecovery": "...",
+  "wrappedKekRecoveryIv": "...",
+  "recoveryCodeHash": "..."
 }
 ```
 
@@ -181,7 +199,7 @@ Server (transaction):
 1. UPDATE `users.wrapped_kek_recovery{,_iv}`,
    `users.recovery_code_hash`.
 2. Bump `users.updated_at`.
-3. Response `200 { regenerated_at }`.
+3. Response `200 { ok: true, regenerated }`.
 
 The old recovery code becomes invalid immediately (the
 `wrapped_kek_recovery` it could decrypt is no longer stored). The

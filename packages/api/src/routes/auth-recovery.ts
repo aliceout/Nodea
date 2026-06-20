@@ -1,3 +1,17 @@
+/**
+ * KEK recovery routes: `POST /auth/recover-kek/start` · `/verify` ·
+ * `/finish`, and `POST /auth/security/recovery-code` (setup + regenerate).
+ *
+ * Where: api auth route layer (mounted at `/auth`).
+ *
+ * Non-obvious: recovery re-registers the OPAQUE record under a new
+ * password and rewraps the KEK from the recovery code — data is preserved
+ * (unlike a destructive reset). `/finish` nulls the old recovery wrap
+ * blobs server-side (they aren't re-supplied). Hash mismatch logs
+ * `[auth/recover-kek] hash_mismatch` and returns 401 `invalid_credentials`.
+ * Buckets: `recover-kek` 5/1h, `recover-kek-verify` 3/1h,
+ * `recovery-code-setup` 5/1h.
+ */
 import { eq, isNotNull } from 'drizzle-orm';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {

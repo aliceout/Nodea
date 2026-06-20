@@ -7,8 +7,7 @@
  * back to a generic « unexpected error » entry when the code isn't
  * known.
  *
- * Reference : `docs/roadmap/health.md` Tier B.4 +
- * `docs/Internationalisation.md` § « Codes erreur API ».
+ * Reference : `docs/Internationalisation.md` § « Codes erreur API ».
  */
 
 import { isKnownApiErrorCode } from '@nodea/shared';

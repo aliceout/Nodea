@@ -1,3 +1,15 @@
+/**
+ * `/user-preferences` — read/write the per-user encrypted preferences
+ * blob (theme, language, cross-device personalisation).
+ *
+ * Where: api route layer, mounted at `/user-preferences`.
+ *
+ * GUARD-EXEMPT, same rationale as modules-config: PK on `user_id` (1:1),
+ * the user IS the row, so `requireUser` + scoping suffices — no
+ * `requireGuard`. Kept a separate table/route from modules-config so an
+ * auditing admin can't read one while touching the other. Writes
+ * rate-limited (`user-preferences-put`, 60/min).
+ */
 import { eq } from 'drizzle-orm';
 import { UserPreferencesBodySchema } from '@nodea/shared/schemas/preferences';
 import { db } from '../db/client.ts';

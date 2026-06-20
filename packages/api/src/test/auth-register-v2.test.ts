@@ -405,8 +405,8 @@ describe('POST /auth/register/finish — invited path', () => {
   });
 
   /**
-   * Closes Finding 2 of `docs/security-audit.md` — invite atomicity
-   * under concurrent consumption.
+   * Invite atomicity under concurrent consumption (audit finding —
+   * the same invite code must never create two accounts).
    *
    * The implementation in `auth/invites.ts` wraps the consumption in
    * a `db.transaction(...)` with `SELECT … FOR UPDATE` so that two

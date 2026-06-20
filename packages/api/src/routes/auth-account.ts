@@ -1,3 +1,16 @@
+/**
+ * Account routes: `GET /auth/me` + `/me/crypto`, `PATCH /auth/email` +
+ * `/username`, `POST /auth/onboarding/complete`, `DELETE /auth/me`.
+ *
+ * Where: api auth route layer (mounted at `/auth`).
+ *
+ * Non-obvious: `/me` never leaks wrap blobs (those come from the separate
+ * `/me/crypto`); responses never include `guard` or another user's
+ * encrypted key. Sensitive mutations sit behind `requireFreshPassword`;
+ * `PATCH /auth/email` is rate-limited 1/24h (`rl:change-email`,
+ * keyed-user). `DELETE /auth/me` takes an empty body — the UI gates it
+ * (email retype + fresh password + confirm dialog).
+ */
 import { and, count, eq, ne, sql } from 'drizzle-orm';
 import {
   AuthMeCryptoResponseSchema,

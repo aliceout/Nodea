@@ -76,18 +76,25 @@ Trois étages, deux blobs structurels par utilisateur·ice. Aucune clé n'appara
 
 ### AAD (Additional Authenticated Data)
 
-Chaque blob AES-GCM est lié à son contexte par une AAD. Un swap de blob entre utilisateurs ou entre facteurs fait échouer l'auth-tag au déchiffrement.
+Chaque blob AES-GCM qui **enveloppe une clé** (KEK, main-key, passkey, label d'appareil) est lié à son contexte par une AAD. Un swap de blob entre utilisateurs ou entre facteurs fait échouer l'auth-tag au déchiffrement. (Les payloads des lignes de module ne portent pas d'AAD — seuls les blobs d'enveloppe en ont ; voir `core/crypto/aes.ts`.)
 
-Construction canonique via `buildAAD(parts: Uint8Array[])` (dans `packages/shared/src/crypto-types.ts`) — chaque part préfixée par sa longueur en u16 big-endian, puis concaténation. Format non ambigu même avec parts de longueur variable (notamment `credential_id` WebAuthn, 16 à 1023 bytes).
+Construction canonique dans `packages/web/src/core/crypto/factor-wrap.ts`, sous forme de **chaîne UTF-8** préfixée par version et jointe par le séparateur `\x1f` (Unit Separator, rare en texte et impossible dans un UUID) :
 
-| Blob | AAD = `buildAAD([...])` |
-|---|---|
-| `wrapped_main_key` | `[users.id]` (UUID, 16 bytes raw) |
-| `wrapped_kek_password` | `[users.id, utf8("password")]` |
-| `wrapped_kek_passkey_<credId>` | `[users.id, utf8("passkey"), credential_id]` |
-| `wrapped_kek_recovery` | `[users.id, utf8("recovery")]` |
+```text
+nodea:v1\x1f<userId>\x1f<tag>
+```
 
-Aucune autre construction n'est autorisée dans le code applicatif — toute exception est un bug à fail-loud.
+Le préfixe `nodea:v1` permet à un futur bump de schéma (v2) de rester volontairement incompatible avec les ciphertexts v1.
+
+| Blob | Builder | AAD |
+|---|---|---|
+| `wrapped_main_key` | `buildMainKeyAAD(userId)` | `nodea:v1\x1f<userId>\x1fmain` |
+| `wrapped_kek_password` | `buildKekAAD(userId, 'password')` | `nodea:v1\x1f<userId>\x1fpassword` |
+| `wrapped_kek_passkey_<credId>` | `buildPasskeyAAD(userId, credIdB64Url)` | `nodea:v1\x1f<userId>\x1fpasskey\x1f<credIdB64Url>` |
+| `wrapped_kek_recovery` | `buildKekAAD(userId, 'recovery')` | `nodea:v1\x1f<userId>\x1frecovery` |
+| label d'appareil (session) | `buildSessionDeviceLabelAAD(userId)` | `nodea:v1\x1f<userId>\x1fsession-device-label` |
+
+`credIdB64Url` est le base64url canonique des bytes bruts du `credential_id` (même encodage que `auth_factors.credential_id` côté serveur). Aucune autre construction n'est autorisée dans le code applicatif — toute exception est un bug à fail-loud.
 
 ## Authentification
 
@@ -106,7 +113,7 @@ Cinq routes peuvent être abusées pour énumérer les comptes ; toutes répond
 - `/auth/register/finish` — sur invite-bound, l'invite est consommée ou refusée selon que l'email matche le token, jamais selon que le compte existe déjà ailleurs.
 - `/auth/login/start` — un email inconnu reçoit une réponse OPAQUE syntaxiquement valide mais cryptographiquement morte (`finishLogin` côté client retourne `undefined`).
 - `/auth/recover-kek/start` — emails inconnus (ou emails connus sans recovery code) reçoivent des `wrappedKekRecovery` aléatoires de la bonne taille (48 bytes ciphertext + 12 bytes IV) ; le client échoue silencieusement à les unwrap.
-- `/auth/mfa-bypass/request` — pendant un `mfa_pending`, la requête de bypass renvoie toujours 200, qu'un `mfa_bypass_request` soit créé en DB ou non.
+- `/auth/mfa/bypass/request` — pendant un `mfa_pending`, la requête de bypass renvoie toujours 200, qu'un `mfa_bypass_request` soit créé en DB ou non.
 - `/auth/request-reset` — toujours 200, qu'un email matche ou non.
 
 ## Cycle de vie d'un compte
@@ -179,7 +186,7 @@ Signature counter `signCount` vérifié strict côté serveur — un counter qui
 
 ### Bypass MFA par email
 
-Auth-Spec §7.8. Quand l'utilisateur·ice perd son TOTP (téléphone perdu, app effacée…) et n'a pas de backup code sous la main, il/elle peut demander un bypass via `/auth/mfa-bypass/request`. Le serveur envoie un email avec un lien `/auth/bypass/confirm?t=<token>` ; cliquer démarre un délai de **7 jours** pendant lesquels la requête peut être annulée par n'importe quelle connexion réussie. Après 7 jours, la prochaine connexion consomme le bypass : le facteur perdu est nettoyé (TOTP désactivé + backup codes purgés, ou toutes les passkeys supprimées) et le mode rétrogradé si nécessaire.
+Auth-Spec §7.8. Quand l'utilisateur·ice perd son TOTP (téléphone perdu, app effacée…) et n'a pas de backup code sous la main, il/elle peut demander un bypass via `/auth/mfa/bypass/request`. Le serveur envoie un email avec un lien `/auth/mfa/bypass/confirm?t=<token>` ; cliquer démarre un délai de **7 jours** pendant lesquels la requête peut être annulée par n'importe quelle connexion réussie. Après 7 jours, la prochaine connexion consomme le bypass : le facteur perdu est nettoyé (TOTP désactivé + backup codes purgés, ou toutes les passkeys supprimées) et le mode rétrogradé si nécessaire.
 
 Eligibility gate §6.2 : en mode `maximum`, un bypass d'un facteur exige que l'autre facteur soit prouvé dans la session `mfa_pending` avant d'émettre la requête. Sans ça, on perdrait deux facteurs d'un coup → reset destructif.
 
@@ -222,12 +229,13 @@ Toutes les requêtes DB passent par Drizzle (`eq(users.email, value)`, etc.). **
 
 ### Guards HMAC obligatoires sur les mutations
 
-Toute table d'entrée chiffrée (`mood_entries`, `goals_entries`, etc.) requiert un guard HMAC pour UPDATE et DELETE. Le middleware `requireGuard(table)` valide le tuple `(user, sid, guard)` dans une seule passe centralisée. La liste des collections est dans `packages/api/src/collections/registry.ts` — le route factory itère cette liste pour monter les routes ; impossible d'enregistrer une collection sans validation.
+Toute table d'entrée chiffrée (`mood_entries`, `goals_entries`, etc.) requiert un guard HMAC pour UPDATE et DELETE. Le middleware `requireGuard` valide le tuple `(user, sid, guard)` dans une seule passe centralisée. La liste des collections est le tableau `COLLECTIONS` dans `packages/api/src/collections.ts` — `createRecordsRoutes` itère cette liste pour monter les routes ; impossible d'enregistrer une collection sans validation.
 
-**Formule du guard.** Déterministe, calculé côté client :
+**Formule du guard.** Déterministe, calculée côté client en **deux passes HMAC-SHA-256** (`core/crypto/guard-derivation.ts`) — une sous-clé scopée au module, puis le tag sur l'`id` de la ligne :
 
 ```text
-guard = "g_" + hex( HMAC(hmacKey, `${module_user_id}:${record_id}`) )
+scopedKey = HMAC(hmacKey, "guard:" + module_user_id)
+guard     = "g_" + hex( HMAC(scopedKey, record_id) )
 ```
 
 **Création en deux temps.** À la création, le client n'a pas encore l'`id` de la ligne (généré côté serveur). Il envoie donc `guard: "init"` au `POST`, reçoit l'`id` retourné, recalcule le vrai `guard`, puis fait immédiatement un `PATCH` avec les en-têtes `X-Sid: <sid>`, `X-Guard: init` et le vrai guard dans le body. Le serveur promeut `"init"` → vrai guard atomiquement.
@@ -238,53 +246,74 @@ Tables 1:1 (`modules_config`, `user_preferences`) — pas de guard : le user *e
 
 ### Rate-limit catalog
 
-22 limiters actifs au total. Format : `max / fenêtre`. Tous keyed-IP (premier hop `x-forwarded-for`, fallback `x-real-ip` puis `unknown`) et indépendants — un même IP peut consommer chaque bucket séparément. Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`). Single-instance ; scaling out = swap vers Redis.
+35 limiters au total. Format : `max / fenêtre`. Tous keyed-IP (premier hop `x-forwarded-for`, fallback `x-real-ip` puis `unknown`), sauf le stepped-MFA (keyed-session) et `change-email` (keyed-user) ; chaque bucket est indépendant. Implémenté en mémoire process (`packages/api/src/middleware/rate-limit.ts`). Single-instance ; scaling out = swap vers Redis. Catalogue exhaustif — tout nouveau `rateLimit({…})` s'ajoute ici dans le même commit.
 
-#### Pré-auth (`/auth/*` accessibles sans cookie de session)
+#### Authentification & récupération (sans cookie, ou login en cours)
 
-| Route | Limite | `keyPrefix` | Justification |
-|---|---|---|---|
-| `POST /auth/register/start` | 10 / 1h | `register-start` | OPAQUE start, accepte 10 essais/heure pour permettre la correction d'erreurs sans ouvrir un boulevard à l'enrôlement automatisé |
-| `POST /auth/register/finish` | 5 / 1h | `register-finish` | Étape coûteuse (création user + opaque_record + invite consumption en transaction) |
-| `POST /auth/register/activate` | 20 / 1h | `register-activate` | Click sur le magic-link — tolérant à un user qui clique plusieurs fois |
-| `GET  /auth/register/invite-info` | 30 / 1h | `register-invite-info` | Pré-rendu de l'écran de register (peeks au token sans le consommer) |
-| `POST /auth/login` (legacy hashed) | 10 / 1min | `login` | Court-fenêtré pour limiter le brute-force, tolérant à un user qui se trompe |
-| `POST /auth/login/start` + `/finish` | — | — | Pas de limiter dédié : OPAQUE est déjà coûteux côté serveur et `client.finishLogin` retourne `undefined` avant tout aller-retour réseau pour un mot de passe faux |
-| `POST /auth/request-reset` | 5 / 1h | `request-reset` | Anti-spam mailer, 5 demandes par IP par heure suffisent à un user honnête |
-| `POST /auth/reset` | 10 / 1min | `reset` | Mild cap pour ralentir un brute-force sur un token volé |
-| `POST /auth/recover-kek/start` | 5 / 1h | `recover-kek` | Anti-énumération : 5 emails testés par heure max |
-| `POST /auth/recover-kek/finish` | 5 / 1h | `recover-kek` | Partage le bucket avec `/start` |
-| `POST /auth/mfa-bypass/confirm` | 20 / 1h | `mfa-bypass-link` | Click sur le magic-link de confirmation |
+| Route | Limite | `keyPrefix` |
+|---|---|---|
+| `POST /auth/register/start` | 10 / 1h | `register-start` |
+| `POST /auth/register/finish` | 5 / 1h | `register-finish` |
+| `POST /auth/register/activate` | 20 / 1h | `register-activate` |
+| `GET  /auth/register/invite-info` | 30 / 1h | `register-invite-info` |
+| `POST /auth/login/start` + `/finish` | 10 / 1min | `login` |
+| `POST /auth/passkeys/login/start` + `/finish` | 20 / 15min | `passkey-login` |
+| `POST /auth/request-reset` | 5 / 1h | `request-reset` |
+| `POST /auth/reset/start` + `/finish` | 10 / 1min | `reset` |
+| `POST /auth/recover-kek/start` + `/finish` | 5 / 1h | `recover-kek` |
+| `POST /auth/recover-kek/verify` | 3 / 1h | `recover-kek-verify` |
 
-#### Authentifié (cookie de session requis)
+#### MFA en cours de login (cookie `mfa_pending`)
 
-| Route | Limite | `keyPrefix` | Justification |
-|---|---|---|---|
-| `POST /auth/reauth/password/{start,finish}` | 10 / 15min | `reauth` | Re-prove password gate — assez large pour les ré-auths légitimes, assez serré pour ne pas devenir un canal de devinette du mot de passe |
-| `POST /auth/security-mode/change` | 10 / 15min | `security-mode-change` | Mutation sensible mais déjà gardée par re-auth |
-| `POST /auth/mfa/totp` | 10 / 5min | `mfa-totp-verify` | Stepped-MFA après login : 10 tentatives/5min coupent le brute-force d'un code à 6 chiffres |
-| `POST /auth/mfa/passkey/{options,verify}` | 10 / 5min | `mfa-passkey` | Stepped-MFA passkey : challenge à usage unique côté serveur |
-| `POST /auth/mfa-bypass/request` | 3 / 1h | `mfa-bypass-request` | Anti-spam : trois mails maximum par heure pour le bypass MFA |
-| `POST /auth/totp/enroll/{start,verify}` | 10 / 15min | `totp-enroll` | Setup d'un nouveau secret — utilisé une fois en pratique |
-| `POST /auth/totp/{disable,…}` | 30 / 15min | `totp-manage` | Lecture/écriture régulière depuis Settings, plafond confortable |
-| `POST /auth/security/recovery-code` | 5 / 1h | `recovery-code-setup` | Setup ou regenerate du code de récupération — opération rare |
-| `POST /auth/passkeys/enroll/{options,finish}` | 10 / 15min | `passkey-enroll` | Setup d'un nouveau passkey, idem TOTP |
-| `POST /auth/passkeys/{login-options,login-finish}` | 20 / 15min | `passkey-login` | Login passkey-first : tolérant aux annulations utilisateur sur le prompt OS |
-| `*    /auth/passkeys/:id/...` (rename, remove) | 30 / 15min | `passkey-manage` | Lecture/écriture Settings |
+| Route | Limite | `keyPrefix` |
+|---|---|---|
+| `POST /auth/mfa/totp/verify` | 10 / 5min | `mfa-totp-verify` (keyed-session) |
+| `POST /auth/mfa/passkey/start` + `/finish` | 10 / 5min | `mfa-passkey` (keyed-session) |
+| `POST /auth/mfa/bypass/request` | 3 / 1h | `mfa-bypass-request` |
+| `GET  /auth/mfa/bypass/confirm` | 20 / 1h | `mfa-bypass-link` |
 
-#### Non-auth (lookup externes)
+#### Gestion du compte (cookie de session `full`)
 
-| Route | Limite | `keyPrefix` | Justification |
-|---|---|---|---|
-| `GET /library/lookup/isbn/:isbn` | 30 / 1min | `library-lookup-isbn` | Proxy ISBN — protège l'API tierce |
-| `GET /library/lookup/query` | 30 / 1min | `library-lookup-query` | Recherche fuzzy |
-| `GET /library/lookup/cover/:hash` | 60 / 1min | `library-lookup-cover` | Couvertures d'images, ratio plus haut car appelé en batch sur une page de résultats |
+| Route | Limite | `keyPrefix` |
+|---|---|---|
+| `POST /auth/reauth/{password,passkey}/{start,finish}` | 10 / 15min | `reauth` |
+| `POST /auth/change-password/start` + `/finish` | 5 / 1h | `change-password` |
+| `PATCH /auth/email` | 1 / 24h | `rl:change-email` (keyed-user) |
+| `POST /auth/security-mode/change` | 10 / 15min | `security-mode-change` |
+| `POST /auth/totp/enroll/{start,verify}` | 10 / 15min | `totp-enroll` |
+| `POST /auth/totp/{disable,backup-codes/regenerate}` | 30 / 15min | `totp-manage` |
+| `POST /auth/security/recovery-code` | 5 / 1h | `recovery-code-setup` |
+| `POST /auth/passkeys/enroll/{start,finish}` | 10 / 15min | `passkey-enroll` |
+| `PATCH /auth/passkeys/{id}/label`, `POST …/remove` | 30 / 15min | `passkey-manage` |
+| `PUT /modules-config` | 30 / 1min | `modules-config-put` |
+| `PUT /user-preferences` | 60 / 1min | `user-preferences-put` |
 
-**Politique implicite — trois familles de durée :**
+#### Mutations de données chiffrées (`/records*`, cookie + guard)
 
-- **5 minutes** pour les codes courts (TOTP, passkey en stepped-MFA) — borne le brute-force d'un secret 6 chiffres.
-- **15 minutes** pour la gestion sensible (re-auth, security-mode, enroll d'un facteur).
-- **1 heure** pour les actions à coût mailer ou serveur élevé (register, reset, recovery, bypass).
+| Route | Limite | `keyPrefix` |
+|---|---|---|
+| `POST /records` | 600 / 1min | `records-create` |
+| `PATCH /records/{id}` | 600 / 1min | `records-update` |
+| `DELETE /records/{id}` | 600 / 1min | `records-delete` |
+| `GET /records` | 300 / 1min | `records-list` |
+| `POST /records/bulk` | 60 / 1min | `records-bulk-create` |
+| `POST /records/promote-guards` | 60 / 1min | `records-bulk-promote` |
+| `POST /records/wipe` | 10 / 1min | `records-wipe` |
+
+#### Lookups externes (`/library/lookup/*`)
+
+| Route | Limite | `keyPrefix` |
+|---|---|---|
+| `POST /library/lookup/by-isbn` | 30 / 1min | `library-lookup-isbn` |
+| `POST /library/lookup/by-query/stream` | 30 / 1min | `library-lookup-query` |
+| `GET  /library/lookup/cover-fetch` | 60 / 1min | `library-lookup-cover` |
+
+**Politique implicite — familles de durée :**
+
+- **1 minute** pour les endpoints à fort débit légitime (login, reset, mutations `/records`, lookups, `modules-config`/`user-preferences`).
+- **5 minutes** pour les codes courts (TOTP, passkey en stepped-MFA) — borne le brute-force d'un secret à 6 chiffres.
+- **15 minutes** pour la gestion sensible (re-auth, security-mode, enroll d'un facteur, gestion des passkeys).
+- **1 heure** (24 h pour le change-email) pour les actions à coût mailer/serveur élevé (register, request-reset, recovery, bypass, change-password).
 
 Si tu ajoutes une nouvelle route `/auth/*`, choisis la fenêtre selon ces familles plutôt que d'inventer une nouvelle valeur ; les exceptions doivent être justifiées en commentaire au-dessus du `rateLimit({…})`.
 
@@ -299,7 +328,7 @@ Liste prescriptive utilisée à la revue de PR. La version exhaustive (avec rati
 **À faire :**
 
 - Générer un IV frais par chiffrement AES-GCM (`crypto.getRandomValues`).
-- Construire toute AAD via `buildAAD(parts: Uint8Array[])` (dans `packages/shared/src/crypto-types.ts`) — jamais à la main.
+- Construire toute AAD via les builders de `core/crypto/factor-wrap.ts` (`buildMainKeyAAD`, `buildKekAAD`, `buildPasskeyAAD`, `buildSessionDeviceLabelAAD`) — jamais à la main.
 - Dériver les sous-clés AES et HMAC via HKDF avec labels distincts (`"nodea:aes"`, `"nodea:hmac"`).
 - Utiliser les branded types (`AesMainKey`, `HmacMainKey`, `Base64`, `CipherIV`…) — mélanger les primitives doit échouer à la compilation.
 - Pour un nouveau module : réutiliser `createCollectionClient`, ne pas réimplémenter le POST/PATCH dance.
@@ -564,7 +593,7 @@ Les lignes suivantes accumulent dans le temps et sont gardées pour audit :
 - `password_reset_tokens` après `consumed_at`
 - `email_verifications` autres que `register`
 
-Pour une rétention plus serrée, étendre `packages/api/src/cron/index.ts` avec des delete-where passé une fenêtre d'audit choisie (ex. 90 jours). Choix laissé à l'opérateur — la valeur d'audit de ces lignes n'est pas nulle, et les volumes restent minuscules en V1.
+Pour une rétention plus serrée, étendre `packages/api/src/cron.ts` avec des delete-where passé une fenêtre d'audit choisie (ex. 90 jours). Choix laissé à l'opérateur — la valeur d'audit de ces lignes n'est pas nulle, et les volumes restent minuscules en V1.
 
 ## Audit & divulgation
 
