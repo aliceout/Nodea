@@ -1,3 +1,17 @@
+/**
+ * MFA-bypass (lost-factor recovery) routes: `POST /auth/mfa/bypass/request`
+ * and `GET /auth/mfa/bypass/confirm`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), for a user locked out
+ * of their second factor.
+ *
+ * Non-obvious: `request` always returns 200 whether or not a bypass row is
+ * created (anti-enumeration). Confirming the emailed magic-link starts a
+ * 7-day delay during which any successful login cancels the pending
+ * bypass; after the delay the next login consumes it (lost factor purged,
+ * mode downgraded). Buckets: `mfa-bypass-request` 3/1h, `mfa-bypass-link`
+ * 20/1h.
+ */
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {

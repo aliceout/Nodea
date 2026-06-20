@@ -1,3 +1,12 @@
+/**
+ * Shared passkey route helpers: the `prf`-widened WebAuthn extension type
+ * and the enroll/login/manage rate limiters.
+ *
+ * Where: api auth route layer — imported by the three `auth-passkey-*`
+ * route files so the limiter buckets (`passkey-enroll` 10/15min,
+ * `passkey-login` 20/15min, `passkey-manage` 30/15min) have a single
+ * definition site.
+ */
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 
 import { rateLimit } from '../middleware/rate-limit.ts';

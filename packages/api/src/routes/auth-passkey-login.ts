@@ -1,3 +1,15 @@
+/**
+ * Passkey-first login routes: `POST /auth/passkeys/login/start` + `/finish`.
+ *
+ * Where: api auth route layer (combined into `auth-passkey.ts`, mounted at
+ * `/auth`), pre-auth.
+ *
+ * Non-obvious: the server issues a session on a successful assertion; the
+ * NON-PRF block is client-side (the client tears the session down when the
+ * authenticator lacks PRF — there is no server-side prf gate). UV failure
+ * collapses to 401 `invalid_credentials` (anti-enumeration). Uses the
+ * `passkey-login` bucket (20/15min).
+ */
 import { eq } from 'drizzle-orm';
 import {
   generateAuthenticationOptions,

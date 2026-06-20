@@ -1,3 +1,17 @@
+/**
+ * OPAQUE login routes: `POST /auth/login/start` + `/login/finish`, and
+ * `POST /auth/logout`.
+ *
+ * Where: api auth route layer (mounted at `/auth`). Wraps the OPAQUE
+ * handshake (`auth/opaque.ts`) and MFA policy (`auth/mfa-policy.ts`).
+ *
+ * Non-obvious: `/finish` mints either a `full` session or, when the
+ * security mode requires a second factor, an `mfa_pending` one
+ * (`{ needsMfa: true }`). Wrap blobs are NOT inlined on the full path —
+ * the client fetches them from `GET /auth/me/crypto`. Unknown emails get
+ * a constant-shape dead response (anti-enumeration). Rate-limited via
+ * the shared `login` bucket (10/min/IP).
+ */
 import { eq } from 'drizzle-orm';
 import {
   OpaqueLoginFinishBodySchema,

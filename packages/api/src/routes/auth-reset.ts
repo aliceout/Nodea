@@ -1,3 +1,15 @@
+/**
+ * Password-reset routes: `POST /auth/request-reset`, `POST /auth/reset/start`
+ * + `/reset/finish`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), pre-auth (token-gated).
+ *
+ * Non-obvious: a forgotten-password reset DESTROYS the old main key, so
+ * `/reset/finish` is a full OPAQUE re-register that ships a fresh
+ * `wrappedMainKey` — all prior encrypted data becomes unreadable (the
+ * destructive door, distinct from recover-kek). `request-reset` always
+ * 200s (anti-enumeration). Buckets: `request-reset` 5/1h, `reset` 10/1min.
+ */
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import {
   RequestResetBodySchema,

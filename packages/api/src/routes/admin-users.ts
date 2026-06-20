@@ -1,3 +1,12 @@
+/**
+ * Admin user management: `GET /admin/users`, `DELETE /admin/users/{id}`.
+ *
+ * Where: api admin route layer (mounted at `/admin`, behind requireAdmin).
+ *
+ * Non-obvious: deleting a user cascades to their auth rows + 1:1 tables
+ * (sessions, modules_config, …) via FK ON DELETE CASCADE; entry rows carry
+ * no user FK and are purged separately. The admin never sees plaintext.
+ */
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { users } from '../db/schema.ts';

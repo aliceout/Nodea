@@ -1,3 +1,14 @@
+/**
+ * Active-session management: `GET /auth/sessions`, `DELETE /auth/sessions/:id`,
+ * `POST /auth/logout-all`, `PATCH /auth/sessions/current/device-label`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), behind requireUser.
+ *
+ * Non-obvious: the device label shown in the UI is an encrypted blob the
+ * client PATCHes (AAD-bound to the user) — the server never reads the raw
+ * user-agent (`ip_hash`/`user_agent` are deprecated). `logout-all` revokes
+ * every session row, killing them immediately.
+ */
 import { and, desc, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import {

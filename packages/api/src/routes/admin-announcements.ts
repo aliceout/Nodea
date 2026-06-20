@@ -1,3 +1,10 @@
+/**
+ * Admin announcement CRUD: `GET`/`POST /admin/announcements`,
+ * `PATCH`/`DELETE /admin/announcements/{id}`.
+ *
+ * Where: api admin route layer (mounted at `/admin`, behind requireAdmin).
+ * Authors the banners users read via the public `/announcements` feed.
+ */
 import { desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {
