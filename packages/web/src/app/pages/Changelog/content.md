@@ -5,6 +5,27 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.14.1 — 2026-06-20
+
+### Corrections
+
+- **auth** : block non-PRF passkey login instead of leaving a keyless session _(734c3fc)_
+
+### Refactor
+
+- **auth** : move CGU + Changelog into the shared auth footer _(719f835)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.14.0 _(f19e832)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.14.1 _(4ec4524)_
+
+</details>
+
 ## v2.14.0 — 2026-06-20
 
 ### Nouveautés
