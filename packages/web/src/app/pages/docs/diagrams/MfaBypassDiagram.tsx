@@ -148,7 +148,7 @@ export default function MfaBypassDiagram() {
           width={150}
           height={hMain}
           label="Demande"
-          sub="POST /mfa-bypass/request"
+          sub="POST /auth/mfa/bypass/request"
         />
 
         {/* Arrow 1→2 */}

@@ -217,7 +217,7 @@ export default function SteppedMfaDiagram() {
         <Label
           x={570}
           y={321}
-          text="POST /auth/mfa/totp · /auth/mfa/passkey"
+          text="POST /auth/mfa/totp/verify · /auth/mfa/passkey/{start,finish}"
         />
 
         {/* Pending after factor verifies — flags ticked */}
