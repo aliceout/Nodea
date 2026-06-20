@@ -31,6 +31,26 @@ interface RecoveryCodeDisplayProps {
    *  from settings, « Aller à l'accueil » after recovery. */
   doneLabel: string;
   onDone: () => void;
+  /** Danger-banner title/body. Default to the recovery-code wording;
+   *  the encrypted-backup flow passes its own (« ces 12 mots
+   *  déchiffrent ta sauvegarde »). */
+  warningTitle?: ReactNode;
+  warningBody?: ReactNode;
+  /** Filename for the « download .txt » fallback. Defaults to the
+   *  recovery-code name. */
+  downloadFilename?: string;
+  /** Skip the REVEAL step and go straight to the quiz. Used by the
+   *  encrypted-backup export on repeat runs: the phrase is derived +
+   *  stable, the user already noted it, so we don't re-show the words —
+   *  we just confirm they still have them. */
+  verifyOnly?: boolean;
+  /** Message shown above the quiz in `verifyOnly` mode (the words are
+   *  never displayed in this mode, so this explains what's happening). */
+  verifyOnlyMessage?: ReactNode;
+  /** When provided, a « régénérer » affordance is shown under the quiz.
+   *  The backup flow uses it to rotate the derived phrase. */
+  onRegenerate?: () => void;
+  regenerateLabel?: string;
 }
 
 /**
@@ -59,14 +79,36 @@ export default function RecoveryCodeDisplay({
   mnemonic,
   doneLabel,
   onDone,
+  warningTitle,
+  warningBody,
+  downloadFilename,
+  verifyOnly = false,
+  verifyOnlyMessage,
+  onRegenerate,
+  regenerateLabel,
 }: RecoveryCodeDisplayProps) {
   const { t } = useI18n();
   const rows = splitMnemonicForDisplay(mnemonic);
   const words = mnemonic.split(' ');
+  const resolvedWarningTitle =
+    warningTitle ?? t('auth.recoveryDisplay.warningTitle');
+  const resolvedWarningBody =
+    warningBody ?? t('auth.recoveryDisplay.warningBody');
+  const resolvedDownloadName = downloadFilename ?? 'nodea-recovery-code.txt';
 
-  const [phase, setPhase] = useState<'reveal' | 'verify'>('reveal');
-  const [positions, setPositions] = useState<number[]>([]);
-  const [answers, setAnswers] = useState<string[]>([]);
+  // In `verifyOnly` mode we open directly on the quiz (no reveal), so the
+  // positions must exist from the first render — lazy-init them.
+  const [phase, setPhase] = useState<'reveal' | 'verify'>(
+    verifyOnly ? 'verify' : 'reveal',
+  );
+  const [positions, setPositions] = useState<number[]>(() =>
+    verifyOnly ? pickQuizPositions(words.length, QUIZ_WORD_COUNT) : [],
+  );
+  const [answers, setAnswers] = useState<string[]>(() =>
+    verifyOnly
+      ? Array.from({ length: Math.min(QUIZ_WORD_COUNT, words.length) }, () => '')
+      : [],
+  );
   const [failed, setFailed] = useState(false);
 
   function startVerify(): void {
@@ -108,7 +150,7 @@ export default function RecoveryCodeDisplay({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'nodea-recovery-code.txt';
+    a.download = resolvedDownloadName;
     a.click();
     // Defer the revoke one tick : a synchronous revoke after click()
     // can abort the download before it commits in some browsers
@@ -127,12 +169,8 @@ export default function RecoveryCodeDisplay({
       {phase === 'reveal' ? (
         <>
           <InlineAlert className="mb-4">
-            <p className="font-semibold">
-              {t('auth.recoveryDisplay.warningTitle')}
-            </p>
-            <p className="mt-1 text-ink-soft">
-              {t('auth.recoveryDisplay.warningBody')}
-            </p>
+            <p className="font-semibold">{resolvedWarningTitle}</p>
+            <p className="mt-1 text-ink-soft">{resolvedWarningBody}</p>
           </InlineAlert>
 
           <RowCard as="div" className="mb-4">
@@ -180,7 +218,7 @@ export default function RecoveryCodeDisplay({
       ) : (
         <>
           <p className="mb-4 text-[13px] leading-[1.5] text-ink-soft">
-            {t('auth.recoveryDisplay.verifyIntro')}
+            {verifyOnly ? verifyOnlyMessage : t('auth.recoveryDisplay.verifyIntro')}
           </p>
 
           {positions.map((pos, i) => (
@@ -220,14 +258,25 @@ export default function RecoveryCodeDisplay({
             {doneLabel}
           </Button>
 
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={backToReveal}
-              className="cursor-pointer text-[12.5px] text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {t('auth.recoveryDisplay.reReveal')}
-            </button>
+          <div className="mt-4 flex flex-col items-center gap-2 text-[12.5px]">
+            {!verifyOnly ? (
+              <button
+                type="button"
+                onClick={backToReveal}
+                className="cursor-pointer text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {t('auth.recoveryDisplay.reReveal')}
+              </button>
+            ) : null}
+            {onRegenerate ? (
+              <button
+                type="button"
+                onClick={onRegenerate}
+                className="cursor-pointer text-muted transition-colors hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {regenerateLabel}
+              </button>
+            ) : null}
           </div>
         </>
       )}

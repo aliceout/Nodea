@@ -70,6 +70,37 @@ nodea-backup-YYYY-MM-DD.age           # one binary age file, passphrase-sealed
 
 The plaintext export is **kept unchanged**; the backup is purely additive.
 
+## Update (2026-06) — the phrase is a derived, versioned BIP39 phrase
+
+The seal passphrase is no longer **chosen** by the user, nor generated
+fresh per export. Nodea **derives** a 12-word BIP39 phrase from the
+account's HMAC sub-key over a version-tagged label
+(`core/crypto/backup-phrase.ts`), shows it once, and confirms it via a
+transcription quiz (re-type 3 random words, words hidden) — the same
+`MnemonicReveal` flow as the account recovery code. This supersedes two
+points above:
+
+- the **zxcvbn ≥ 3 block is gone** — a 128-bit derived phrase is strong by
+  construction, so there's no weak passphrase to reject (the crypto layer
+  stays opinion-free);
+- the requirement that the phrase **"derives nothing from the account"** is
+  dropped. It now derives from the main key — but the property that
+  mattered (portability) is preserved differently: the user still
+  transcribes the words (quiz-confirmed) and types them at restore, so the
+  `.age` still opens in a brand-new account. Deriving only removes the need
+  to **store** the phrase, never the need to **keep** it. No extra
+  exposure: anyone able to derive it already holds the main key (hence the
+  plaintext data).
+
+**Stable + rotatable.** Being deterministic in `(main key, version)`,
+every `.age` made at the same version opens with the **same** 12 words —
+the user notes them once and never faces "which phrase opens which file".
+`version` is a non-secret counter in the encrypted preferences
+(`backupPhraseVersion`, absent ⇒ 1); a future "rotate my backup phrase"
+action (e.g. on suspected exposure) bumps it, deriving a fresh phrase for
+**future** exports while existing files keep the phrase of the version
+they were sealed under. Still `age` passphrase mode throughout.
+
 ## Consequences
 
 **Positive:**

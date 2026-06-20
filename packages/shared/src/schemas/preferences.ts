@@ -108,5 +108,13 @@ export const UserPreferencesPayloadSchema = z.looseObject({
   libraryViewMode: LibraryViewModeSchema.optional(),
   goalsViewMode: GoalsViewModeSchema.optional(),
   dismissedAnnouncements: DismissedAnnouncementsSchema.optional(),
+  /**
+   * Rotation counter for the derived encrypted-backup phrase. NOT a
+   * secret — just a version mixed into the HMAC that derives the .age
+   * seal phrase (see `core/crypto/backup-phrase.ts`). Absent ⇒ 1.
+   * Bumping it yields a fresh phrase for FUTURE exports; existing .age
+   * files keep the phrase from the version they were sealed under.
+   */
+  backupPhraseVersion: z.number().int().positive().optional(),
 });
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;
