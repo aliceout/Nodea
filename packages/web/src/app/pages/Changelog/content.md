@@ -5,6 +5,29 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.14.0 — 2026-06-20
+
+### Nouveautés
+
+- **changelog** : collapsible versions + Patch/Minor/Major granularity slider _(25ae226)_
+- **account** : encrypted backup uses a derived, versioned BIP39 phrase _(38d607f)_
+- **auth** : confirm the recovery code with a 3-word quiz, not a checkbox _(ccfed24)_
+
+### Refactor
+
+- **account** : unify export into one split-button + textarea .age restore _(8788194)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.13.0 _(00172a7)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.14.0 _(f6396a2)_
+
+</details>
+
 ## v2.13.0 — 2026-06-19
 
 ### Nouveautés
