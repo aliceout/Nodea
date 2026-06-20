@@ -27,7 +27,7 @@ pass by the `collection-factory`.
 | ---------------- | ------------- | -------- | ---------------------------------------------- |
 | `id`             | `text` PK     | yes      | UUID generated server-side, handle for `/records/:id` |
 | `module_user_id` | `text`        | yes      | Opaque sid — **the only access key** (the user → sid mapping lives encrypted in `modules_config`) |
-| `payload`        | `text`        | yes      | Base64 of an AES-GCM blob (encrypted content, **+ application-level `updated_at`** for the "modified on" sort) |
+| `payload`        | `text`        | yes      | Base64 of an AES-GCM blob (encrypted content, **+ application-level `updatedAt`** for the "modified on" sort) |
 | `cipher_iv`      | `text`        | yes      | AES-GCM IV (12 bytes, base64)                  |
 | `guard`          | `text`        | yes      | Stored HMAC, never returned on read            |
 
@@ -44,11 +44,23 @@ a `z.looseObject(...)` — adding or removing a field doesn't break
 validation, but the wizard and the reader only render what's listed
 here.
 
+> **Envelope vs. content.** Only the **top-level envelope** is
+> constrained by the schema: `year` (number), `lastYear` / `nextYear`
+> / `closing` (each an optional `record(string, unknown)`), and
+> `updatedAt` (the ISO write timestamp the List view reads for the
+> « modifié le … » label, defaults to `""`). Note `closing` is a
+> **top-level** key alongside `lastYear` / `nextYear` — not nested
+> under `lastYear`. Everything **inside** those records is
+> `z.unknown()` : the wizard builds it step by step (`config/steps.ts`
+> + `config/step-fields.ts`), so the deep structure below is
+> **illustrative**, not enforced.
+
 ```json
 {
   "year": 2026,
+  "updatedAt": "2026-01-15T20:00:00.000Z",
 
-  "last_year": {
+  "lastYear": {
     // Page 4 — Review your calendar
     "agenda_review": ["string"],
 
@@ -103,22 +115,23 @@ here.
     "forgiveness": "string",
 
     // Page 11 — Letting go (free text, replaces the drawing)
-    "letting_go": "string",
-
-    // Page 12 — Closing the past year
-    "closing": {
-      "three_words": ["string"], // The past year in three words
-      "book_title":  "string",   // The book / film of my past year
-      "farewell":    "string"    // Say goodbye to your past year
-    }
+    "letting_go": "string"
   },
 
-  "next_year": {
+  // Page 12 — Closing the past year.
+  // TOP-LEVEL key (per schema), not nested under `lastYear`.
+  "closing": {
+    "three_words": ["string"], // The past year in three words
+    "book_title":  "string",   // The book / film of my past year
+    "farewell":    "string"    // Say goodbye to your past year
+  },
+
+  "nextYear": {
     // Page 14 — Dare to dream big!
     "dream_big": "string",
 
     // Page 15 — This new year will look like this for me
-    // (same eight life areas as last_year)
+    // (same eight life areas as lastYear)
     "life_areas": {
       "personal_family":   ["string"],
       "career_studies":    ["string"],
@@ -198,7 +211,8 @@ here.
     "review": [
       {
         "year": 2026,
-        "last_year": {
+        "updatedAt": "2026-01-15T20:00:00.000Z",
+        "lastYear": {
           "agenda_review": ["trip to Tana", "leaving the mission"],
           "life_areas": {
             "personal_family":    ["closer to my sister"],
@@ -220,14 +234,14 @@ here.
             "challenges_how":   "my sister pulled me back up"
           },
           "forgiveness": "I forgive…",
-          "letting_go":  "I let go of…",
-          "closing": {
-            "three_words": ["tired", "learning", "love"],
-            "book_title":  "A long road",
-            "farewell":    "Goodbye 2025, thanks for everything."
-          }
+          "letting_go":  "I let go of…"
         },
-        "next_year": {
+        "closing": {
+          "three_words": ["tired", "learning", "love"],
+          "book_title":  "A long road",
+          "farewell":    "Goodbye 2025, thanks for everything."
+        },
+        "nextYear": {
           "dream_big": "see myself in a job that fits",
           "life_areas": { "...": "..." },
           "triplets":   { "self_love": ["my hands"], "...": "..." },

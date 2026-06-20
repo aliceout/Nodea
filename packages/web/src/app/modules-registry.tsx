@@ -148,11 +148,13 @@ export const MODULES: readonly ModuleDef[] = [
     display: true,
   },
   {
-    /** Hormone replacement therapy tracking. Two encrypted
+    /** Hormone replacement therapy tracking. Four encrypted
      *  collections : `hrt_admin_logs_entries` (the dose/injection
-     *  log) and `hrt_lab_results_entries` (lab markers + chart).
+     *  log), `hrt_lab_results_entries` (lab markers + chart),
+     *  `hrt_suppliers_entries` (the product catalog) and
+     *  `hrt_schedules_entries` (recurring dose schedules).
      *  `collection` here names the primary one for nav metadata —
-     *  the module owns both. Two sub-views, à la Library. */
+     *  the module owns all four. Two sub-views, à la Library. */
     id: 'hrt',
     label: 'modules.hrt.label',
     collection: 'hrt_admin_logs_entries',

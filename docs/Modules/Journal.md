@@ -20,7 +20,7 @@ thematic threads.
 
 ```jsonc
 {
-  "type": "passage.entry",
+  "type": "journal.entry",
   "date": "YYYY-MM-DD",
   "thread": "string",                       // free thematic thread, optional
   "title": "string|null",                   // title, optional
@@ -49,7 +49,7 @@ Journal follows the rules shared by every module — see
 
 ## Export / Import
 
-- Cleartext export: `modules.passage[]` array in `export.json`.
+- Cleartext export: `modules.journal[]` array in `export.json`.
 - Import: re-encrypts locally, then replays the POST init → PATCH
   promotion flow.
 - Read pagination: 200 entries per request.
