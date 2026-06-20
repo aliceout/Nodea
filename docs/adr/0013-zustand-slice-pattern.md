@@ -81,6 +81,16 @@ The `resetAll` action stays in the assembly file, not in a slice:
 it touches every slice at once and that's precisely where
 ADR-0006's atomicity guarantee lives.
 
+## Update (2026-06) — the `composer` slice was removed
+
+The store now has **8 slices**, not nine: `composer.ts` was dropped
+when the message-composer state moved into the form components
+(`ui/dirk/forms/*`). Current slices on disk: `auth`, `crypto`,
+`modules`, `preferences`, `notifications`, `ui`, `flow`, `versions`.
+This ADR is the system-of-record for the slice inventory; the passing
+`composer` mentions in ADR-0002/0006 predate the removal. The slice
+pattern and every other point of this ADR are unchanged.
+
 ## Consequences
 
 **Positive:**
