@@ -1,3 +1,10 @@
+/**
+ * Zod DTOs for TOTP enrollment + management (enroll start/verify, disable,
+ * backup-code regenerate).
+ *
+ * Where: packages/shared — shared by the api `/auth/totp/*` routes and the
+ * web TOTP settings flow.
+ */
 import { z } from 'zod';
 
 /**

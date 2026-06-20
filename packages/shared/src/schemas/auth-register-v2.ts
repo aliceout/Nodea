@@ -1,3 +1,9 @@
+/**
+ * Zod DTOs for OPAQUE registration (invite-info, start, finish, activate).
+ *
+ * Where: packages/shared — shared by the api `/auth/register/*` routes and
+ * the web register flow. Email is invite-bound; activation gates first login.
+ */
 import { z } from 'zod';
 
 /**

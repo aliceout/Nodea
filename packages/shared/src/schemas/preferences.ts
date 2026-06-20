@@ -1,3 +1,11 @@
+/**
+ * Zod schema for the per-user preferences payload (theme, language, other
+ * cross-device personalisation) carried inside the encrypted blob.
+ *
+ * Where: packages/shared — shared by the api `/user-preferences` route and
+ * the web preferences store. Cleartext shape; the server only ever sees the
+ * ciphertext.
+ */
 import { z } from 'zod';
 
 /**

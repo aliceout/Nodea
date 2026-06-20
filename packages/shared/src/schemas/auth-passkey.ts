@@ -1,3 +1,11 @@
+/**
+ * Zod DTOs for WebAuthn / passkey flows: enroll, login, list, rename,
+ * remove, plus the PRF-derived KEK-wrap payloads.
+ *
+ * Where: packages/shared — shared by the api `auth-passkey-*` routes and
+ * the web passkey client. Credential ids are base64url; the wrap blob is
+ * AAD-bound to the credential id server-side.
+ */
 import { z } from 'zod';
 
 /**
