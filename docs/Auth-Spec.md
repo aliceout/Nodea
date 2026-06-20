@@ -197,8 +197,11 @@ re-opening the spec:
 
 The detail of primitives, key hierarchy (KEK / main key / wraps),
 frozen HKDF labels (`nodea:wrap-kek`, `nodea:wrap-main`,
-`nodea:aes`, `nodea:hmac`), and AAD construction via `buildAAD()`
-lives in the "Modèle cryptographique" doc in
+`nodea:aes`, `nodea:hmac`), and AAD construction via the
+`buildKekAAD` / `buildMainKeyAAD` / `buildPasskeyAAD` builders in
+`core/crypto/factor-wrap.ts` (format
+`nodea:v1\x1f<userId>\x1f<tag>`) lives in the "Modèle
+cryptographique" doc in
 [`tech.md`](../packages/web/src/app/pages/docs/content/tech.md)
 (rendered at [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)).
 That doc is the source of truth; any evolution happens there, not
@@ -235,8 +238,15 @@ All other tables (auth + MFA + sessions) are defined in §4.1.
 
 ### 4.1 Tables (Drizzle PostgreSQL)
 
+The auth schema is split across three files: `schema/enums.ts`
+(all `pgEnum`s), `schema/users.ts` (the `users` and `sessions`
+tables), and `schema/auth.ts` (everything else — `opaque_records`,
+`auth_factors`, the MFA tables, `email_verifications`,
+`password_reset_tokens`). The blocks below group fields by table;
+the file-path comments point at where each table actually lives.
+
 ```ts
-// packages/api/src/db/schema/users.ts
+// packages/api/src/db/schema/enums.ts
 
 export const securityMode = pgEnum('security_mode', [
   'password_or_passkey', // default: one factor unlocks
@@ -251,6 +261,8 @@ export const registerState = pgEnum('register_state', [
   'recovery_set',     // KEK recovery code shown and acknowledged
   'complete',         // optionals (TOTP, passkey) handled, full session emitted
 ]);
+
+// packages/api/src/db/schema/users.ts
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -282,7 +294,7 @@ export const users = pgTable('users', {
 ```
 
 ```ts
-// packages/api/src/db/schema/opaque.ts
+// packages/api/src/db/schema/auth.ts
 
 // 1:1 with users. No separate PK — keyed on user_id.
 // The table exists to decouple OPAQUE rotation from other fields.
@@ -300,7 +312,7 @@ export const opaqueRecords = pgTable('opaque_records', {
 ```
 
 ```ts
-// packages/api/src/db/schema/auth-factors.ts
+// packages/api/src/db/schema/auth.ts (enum in schema/enums.ts)
 
 export const authFactorKind = pgEnum('auth_factor_kind', ['passkey']);
 
@@ -331,7 +343,7 @@ export const authFactors = pgTable('auth_factors', {
 ```
 
 ```ts
-// packages/api/src/db/schema/mfa.ts
+// packages/api/src/db/schema/auth.ts (mfa_factor enum in schema/enums.ts)
 
 export const mfaTotp = pgTable('mfa_totp', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
@@ -376,7 +388,7 @@ export const mfaBypassRequests = pgTable('mfa_bypass_requests', {
 ```
 
 ```ts
-// packages/api/src/db/schema/email-verifications.ts
+// packages/api/src/db/schema/auth.ts (enum in schema/enums.ts)
 
 export const emailVerificationKind = pgEnum('email_verification_kind', [
   'register',     // step 2 of multi-step register
@@ -399,7 +411,7 @@ export const emailVerifications = pgTable('email_verifications', {
 ```
 
 ```ts
-// packages/api/src/db/schema/sessions.ts
+// packages/api/src/db/schema/users.ts (session_kind enum in schema/enums.ts)
 
 export const sessionKind = pgEnum('session_kind', [
   'full',         // fully authenticated session
@@ -500,49 +512,50 @@ The whole sequence in **one transaction**.
 
 ### 5.1 Cookies
 
-| Cookie | Lifetime | Routes accepted (middleware) | Issued when | Promoted to |
-|---|---|---|---|---|
-| `__Host-nodea_register` ✅ | 24h | `/auth/register/*` | After successful email verification (wizard step 2) | Cleared at the end of register |
-| `__Host-nodea_mfa` ✅ | 5 min | `/auth/mfa/*` | After OPAQUE/passkey login finish | `__Host-nodea_session` once MFA completes |
-| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | No longer issued — no code path mints it since the Argon2id model was removed | `__Host-nodea_session` after crypto migration |
-| `nodea_session` ✅ | 7 days (fixed, **no** slide) | everything else | Full login | Forced re-login after 7 days or revocation |
+There is a **single** session cookie, `nodea_session`
+(`auth/cookies.ts`). It is not segmented per phase: the same
+cookie carries the register, `mfa_pending`, and full sessions; the
+DB `kind` column (§5.2) discriminates server-side which phase the
+session is in. The cookie's lifetime tracks the session row's
+`expires_at` (5 min for `mfa_pending`, 24 h for `register`, 7 days
+fixed — **no** slide — for `full`).
 
-Every cookie:
+The cookie:
 - `HttpOnly`
-- `Secure` in prod (and every non-localhost environment)
-- `SameSite=Lax`
+- `Secure` in prod (and every non-localhost environment, driven by
+  `COOKIE_SECURE`)
+- `SameSite=Strict` (SEC-08) — refuses to ride any cross-site
+  navigation. Email magic links (activation / reset / MFA-bypass
+  confirm) still work because they **set** a cookie on the response
+  rather than **read** one on the request, and once landed the SPA
+  stays same-origin.
 - Signed (`COOKIE_SECRET`, min 32 chars)
-- `__Host-` prefix (locks to the domain, **forces** `Path=/` on
-  the browser side, and requires `Secure`).
+- `Path=/`
 
-**Important note on scoping**: the `__Host-` prefix forces
-`Path=/`, so every cookie travels with **every** request to the
-domain. The "Routes accepted" column above is **not** a cookie
-attribute: it's what the `loadSession` middleware checks. The
-`requireUser`, `requireRegisterSession`, `requireMfaPending`,
-`requireMigrate` middlewares only read **their** expected cookie
-and refuse the others. If multiple cookies are present, each is
-valid only on its own route set.
-
-This choice sacrifices a bit of "least-privilege" on the browser
-side in favor of `__Host-`'s anti-subdomain property (no cookie
-poisoned by a compromised subdomain). Trade-off accepted.
+**No `__Host-` prefix.** Earlier drafts of this spec described four
+`__Host-`-prefixed cookies (`__Host-nodea_register`,
+`__Host-nodea_mfa`, `__Host-nodea_migrate`, `__Host-nodea_session`)
+gated by route; the implementation collapsed them into the one
+`nodea_session` cookie above. `SameSite=Strict` carries the
+anti-cross-site weight; the per-phase scoping that the prefix model
+provided is now done by the `kind` column instead.
 
 ### 5.2 Unified session model
 
-The four kinds live in `sessions` with a `kind` column. The
-`loadSession` middleware:
+All session kinds live in the `sessions` table with a `kind` column
+(`session_kind` enum: `full` / `mfa_pending` / `register` /
+`migrate`, the last vestigial). There is no `loadSession`
+middleware: each phase-specific middleware reads the one
+`nodea_session` cookie, loads the row, and asserts its expected
+`kind`:
 
-1. Reads the cookie matching the route:
-   - `/auth/register/*` → `__Host-nodea_register` → `kind = 'register'`
-   - `/auth/mfa/*` → `__Host-nodea_mfa` → `kind = 'mfa_pending'`
-   - `/auth/migrate/*` → `__Host-nodea_migrate` → `kind = 'migrate'`
-   - otherwise → `__Host-nodea_session` → `kind = 'full'`
-2. Loads the row, checks correct `kind` + `expires_at > now()`.
-3. Silently refuses (cookie ignored) if the `kind` doesn't match
-   the route.
-4. Updates `last_seen_at` (atomic, debounced to 1 min to avoid
-   spamming the DB).
+- `requireUser` → `kind = 'full'`.
+- `requireMfaPending` → `kind = 'mfa_pending'`.
+- the register routes resolve their own `register` session inline.
+
+Each loads the row, checks the expected `kind` + `expires_at >
+now()`, and refuses (401) on a mismatch — so a `mfa_pending` cookie
+can't be replayed against a `full`-only route and vice versa.
 
 ### 5.3 Re-auth fresh
 
@@ -559,10 +572,12 @@ The matrix (§6) requires "fresh re-auth < 5 min". Implementation:
   `session.reauth_password_at >= now() - 5min`. Otherwise 401 with
   `reauth_required: 'password'`.
 - `requireFreshPasswordOrPasskey`: checks one OR the other.
-- Dedicated re-auth routes:
-  - `POST /auth/reauth/password` → OPAQUE login lite, updates
-    `reauth_password_at` on the current session.
-  - `POST /auth/reauth/passkey` → WebAuthn assertion, updates
+- Dedicated re-auth routes (each is a 2-step handshake, like login):
+  - `POST /auth/reauth/password/start` → OPAQUE login start;
+    `POST /auth/reauth/password/finish` → OPAQUE login finish,
+    updates `reauth_password_at` on the current session.
+  - `POST /auth/reauth/passkey/start` → WebAuthn assertion options;
+    `POST /auth/reauth/passkey/finish` → assertion verify, updates
     `reauth_passkey_at`.
 - `reauth_*_at` expires at logout, change-password, security-mode
   change.
@@ -600,7 +615,7 @@ The matrix (§6) requires "fresh re-auth < 5 min". Implementation:
 | Regenerate KEK recovery code | password | Invalidates the previous `wrapped_kek_recovery` |
 | Change password | password **OR** passkey | Password is the only factor changeable via an alternative factor |
 | Change email | password | Triggers OPAQUE re-register + email re-verification |
-| Delete account | password **AND** (passkey if enabled) **AND** (TOTP if enabled) | Confirmation by typed phrase |
+| Delete account | password (fresh, via `requireFreshPassword`) | `DELETE /auth/me`, empty body. The UI gates on email retype + fresh password + a confirm dialog |
 | Reveal recovery code | **N/A**: not supported in V1 | Code generated once at signup, never re-shown |
 | Start a TOTP bypass | password (not fresh — direct OPAQUE login) | This is the "I lost my TOTP" screen on `mfa_pending` |
 | Current logout | none | |
@@ -750,30 +765,32 @@ Server:
 
 `POST /auth/mfa/totp/verify`
 
-Body: `{ code: "123456" }`.
+Body: `{ code }`. The **same** field carries either a 6-digit TOTP
+code **or** a backup code; the server disambiguates by format
+(6 digits → TOTP, 24–64 chars → backup). There is no separate
+`verify-backup` route.
 
 Server:
-1. Loads `mfa_totp` (refuses if `enabled_at IS NULL`).
-2. Computes TOTP for windows `[current-1, current, current+1]`.
-3. Compares constant-time.
-4. On match:
-   - `last_window = matched_window` (anti-replay).
+1. Loads `mfa_totp` (refuses 400 `totp_not_enabled` if
+   `enabled_at IS NULL`).
+2. If `code` matches `/^\d{6}$/` → **TOTP path**:
+   - Computes TOTP for windows `[current-1, current, current+1]`,
+     compares constant-time.
+   - On match: `last_window = matched_window` (anti-replay — refuse
+     if the matched window isn't strictly after the stored one).
    - `mfaTotpVerified = true` on the pending session.
-5. Otherwise: try the backup codes.
-
-`POST /auth/mfa/totp/verify-backup`
-
-Body: `{ code: "xxxx-xxxx-xx" }` (the user can enter a backup
-code in the same field — UI distinguishes by format).
-
-Server:
-1. SHA-256 hash.
-2. SELECT FROM `mfa_totp_recovery_codes WHERE user_id = $1 AND
-   code_hash = $2 AND used_at IS NULL`.
-3. If found: `used_at = now()` (single-use).
-4. `mfaTotpVerified = true`.
-5. If every backup code is used: email "You used your last backup
-   code. Regenerate new ones in Settings."
+3. Otherwise → **backup-code path**:
+   - Normalise (strip hyphens, uppercase), SHA-256 hash.
+   - `UPDATE mfa_totp_recovery_codes SET used_at = now() WHERE
+     user_id = $1 AND code_hash = $2 AND used_at IS NULL` (single
+     statement so a concurrent racer can't double-spend).
+   - No row updated → 401 `invalid_code`.
+   - `mfaTotpVerified = true`.
+4. After verification, the route **finalizes inline** if no factor
+   remains (cf. §7.4): it returns `{ finalized: true }` and swaps
+   the cookie, or `{ finalized: false, missing: [...] }` otherwise.
+5. If every backup code is now used: email "You used your last
+   backup code. Regenerate new ones in Settings."
 
 ### 8.4 Disable
 
@@ -796,7 +813,7 @@ in cleartext (shown only once).
 ## 9. Passkey — details
 
 > Code: routes `packages/api/src/routes/auth-passkey.ts`, client
-> orchestrator `packages/web/src/core/auth/passkey-flow.ts`,
+> orchestrator `packages/web/src/core/auth/passkey/` (enroll/login),
 > dedicated Settings page `/passkeys` (and the "Passkey"
 > SecuritySection in Account → Security). Dismissable amber
 > sidebar tip prompts enrollment when `passkeysCount === 0`
@@ -845,7 +862,8 @@ Client:
    "nodea:wrap-kek")`, wraps the existing KEK (which the client
    has in memory after a recent login or in-progress register):
    `wrapped_kek = AES-GCM(wk_passkey, kek,
-   AAD=users.id||"passkey"||credential_id)`.
+   AAD=buildPasskeyAAD(users.id, credentialId))` —
+   `nodea:v1\x1f<userId>\x1fpasskey\x1f<credentialIdB64Url>`.
 4. POST `/auth/passkeys/enroll/finish` with:
    - WebAuthn attestation response
    - `prf_supported: bool`
@@ -872,8 +890,12 @@ the model.
 
 **V1 decision**: `userVerification: 'required'` for both
 enrollment and authentication. The server validates
-`authData.flags.uv === true` on every assertion. 400 refusal
-otherwise.
+`authData.flags.uv === true` on every assertion. The failure code
+differs by context: at **enrollment** a UV miss returns a distinct
+`400 user_verification_required` (the user can act on it); at
+**login / MFA** it collapses into the uniform
+`401 invalid_credentials` so a UV-less assertion is indistinguishable
+from any other failed assertion (anti-enumeration).
 
 At enrollment time, the browser itself refuses authenticators
 that don't support UV (or don't have it configured — for a
@@ -908,20 +930,27 @@ Cf. §7.3.
 - The UI must guide clearly: "This passkey validates your identity
   but can't alone decrypt your data. Type your password to
   continue."
+**The non-PRF handling is entirely client-side.** The server has no
+`prfSupported` gate: it issues whatever session the mode warrants
+(full or `mfa_pending`) on a valid assertion. The client detects
+`!prfSupported` locally and reacts — there is no server round-trip
+that says "this passkey can't decrypt, retry".
+
 - **Session handling depends on the mode** (`core/auth/session/passkeys.ts`):
   - `password_or_passkey` — a passkey assertion is a *complete*
     login, so `/finish` returns a **full** session. A non-PRF
     credential would leave that session authenticated-but-keyless,
     which the Layout's key-missing guard bounces out of on the first
-    `/flow` hop. So the client **drops** the session (`/auth/logout`)
-    and resets its store before showing the prompt; the password
-    form then runs a normal full login that derives the key. The
-    passkey is rejected as a standalone login rather than half-
-    accepted.
+    `/flow` hop. So the client **detects `!prfSupported` and tears
+    the session down** (`/auth/logout`), resets its store before
+    showing the prompt; the password form then runs a normal full
+    login that derives the key. The passkey is rejected as a
+    standalone login rather than half-accepted.
   - `always_2fa` / `maximum` — the passkey was never a complete
     login, so `/finish` returns `mfa_pending`. That session is
     **kept** and the password is added as a second factor
-    (`mfa_password_verified`) before `/auth/mfa/finalize`.
+    (`mfa_password_verified`); the last factor-verify finalizes
+    inline (cf. §7.4 — no `/auth/mfa/finalize` route).
 
 ### 9.5 Fixed PRF input
 
@@ -959,6 +988,10 @@ stays there).
 
 `GET /auth/passkeys/list`: list of credentials with `label`,
 `created_at`, `last_used_at`, `prf_supported`, `transports`.
+
+`PATCH /auth/passkeys/{id}/label`: `requireFreshPassword`. Renames a
+single credential (updates `auth_factors.label` for the row owned by
+the caller). 404 if the id doesn't belong to this user.
 
 The Settings UI must **visually distinguish** PRF-capable
 passkeys (badge "decrypts your data") from login-only ones
@@ -1049,15 +1082,18 @@ Per-email rate-limits (default, env-tunable):
 
 | Name | Checks | Failure output |
 |---|---|---|
-| `loadSession` | Cookie + sessions row | 401 |
-| `requireUser` | `loadSession` + `kind = 'full'` | 401 |
-| `requireRegisterSession` | `kind = 'register'` | 401 |
-| `requireMfaPending` | `kind = 'mfa_pending'` | 401 |
-| `requireMigrate` | `kind = 'migrate'` | 401 |
+| `requireUser` | `nodea_session` cookie + sessions row, `kind = 'full'` | 401 |
+| `requireMfaPending` | `nodea_session` cookie + sessions row, `kind = 'mfa_pending'` | 401 |
 | `requireFreshPassword` | `reauth_password_at > now-5min` | 401 `{ reauth_required: 'password' }` |
 | `requireFreshPasswordOrPasskey` | one OR the other | 401 `{ reauth_required: 'password_or_passkey' }` |
 | `requireAdmin` | `requireUser` + `users.is_admin` | 403 |
-| `rateLimit(opts)` | Per-IP/email rate-limit | 429 |
+| `requireGuard` | per-collection HMAC guard match on a record mutation | 4xx |
+| `rateLimit(opts)` | Per-IP (or keyed) rate-limit | 429 |
+
+There is no `loadSession`, `requireRegisterSession`, or
+`requireMigrate` middleware: each session-kind check loads the one
+`nodea_session` cookie and asserts the expected `kind` inline (§5.2);
+the register routes resolve their own `register` session in-handler.
 
 ### 11.2 Composition
 
@@ -1077,9 +1113,11 @@ const route = createRoute({
 
 When a middleware refuses for missing re-auth, the front intercepts
 the `reauth_required` and shows a modal:
-- `password` → single password field → POST `/auth/reauth/password`.
+- `password` → single password field → `POST /auth/reauth/password/start`
+  then `/auth/reauth/password/finish`.
 - `password_or_passkey` → "Re-auth password" / "Re-auth passkey"
-  buttons.
+  buttons (the passkey path is `POST /auth/reauth/passkey/start`
+  then `/auth/reauth/passkey/finish`).
 
 After success, the original request is automatically retried.
 
@@ -1133,11 +1171,29 @@ PR + this section's revision + a rotation plan.)
 | TOTP bypass | request TTL | 7 days |
 | Password policy | zxcvbn min score | 3 |
 | Password policy | min length | 8 |
-| Rate limits | `/auth/register/*` | 5/h IP, 3/h email |
-| Rate limits | `/auth/login/*` | 10/min IP, 20/h email |
-| Rate limits | `/auth/migrate/*` | 10/min IP, 20/h email (aligned with login) |
-| Rate limits | `/auth/recover-kek/*` | 5/h IP, 3/h email (130 bits BIP39 already protect from brute-force) |
-| Rate limits | `/auth/mfa/*` | 5/min session |
+| Rate limits | register start | 10/h IP |
+| Rate limits | register finish | 5/h IP |
+| Rate limits | register activate | 20/h IP |
+| Rate limits | register invite-info | 30/h IP |
+| Rate limits | login (start + finish) | 10/min IP |
+| Rate limits | passkey login (start + finish) | 20/15min IP |
+| Rate limits | request-reset | 5/h IP |
+| Rate limits | reset (start + finish) | 10/min IP |
+| Rate limits | recover-kek (start + finish) | 5/h IP (130 bits BIP39 already protect from brute-force) |
+| Rate limits | recover-kek verify | 3/h IP |
+| Rate limits | recovery-code setup | 5/h IP |
+| Rate limits | MFA TOTP verify | 10/5min (keyed on pending session's user) |
+| Rate limits | MFA passkey (start + finish) | 10/5min (keyed on pending session's user) |
+| Rate limits | MFA bypass request | 3/h IP |
+| Rate limits | MFA bypass confirm link | 20/h IP |
+| Rate limits | reauth (password + passkey) | 10/15min IP |
+| Rate limits | change-password | 5/h IP |
+| Rate limits | change-email | 1/24h (keyed on user) |
+| Rate limits | security-mode change | 10/15min IP |
+| Rate limits | TOTP enroll | 10/15min IP |
+| Rate limits | TOTP manage | 30/15min IP |
+| Rate limits | passkey enroll | 10/15min IP |
+| Rate limits | passkey manage | 30/15min IP |
 | Cooldown | change-email (between changes) | 7 days |
 
 ### 13.1 Environment variables
@@ -1179,7 +1235,7 @@ The repo never contains credentials, nor a committed `.env` file.
 
 A single job: `cleanup-unactivated-accounts`, scheduled via
 `node-cron` at **03:00 every Monday (UTC, container TZ)**, in the
-API process. Cf. `packages/api/src/cron/index.ts` —
+API process. Cf. `packages/api/src/cron.ts` —
 `startCronScheduler()` is called from `index.ts` at startup.
 
 | Target | Purge condition | Why |
@@ -1281,9 +1337,11 @@ To copy into PR checks or custom linters:
     with a `[REDACTED]` censor. This second layer protects even
     when a route forgets its Layer A blacklist, or when application
     code logs sensitive objects from elsewhere.
-19. **NEVER** build an AES-GCM AAD other than via `buildAAD()`
-    from `@nodea/shared/crypto-types`. The linter / tests must
-    fail loudly on any other usage.
+19. **NEVER** build an AES-GCM AAD other than via the dedicated
+    builders in `core/crypto/factor-wrap.ts` (`buildKekAAD`,
+    `buildMainKeyAAD`, `buildPasskeyAAD`,
+    `buildSessionDeviceLabelAAD`). The linter / tests must fail
+    loudly on any other usage.
 
 ---
 
@@ -1291,11 +1349,13 @@ To copy into PR checks or custom linters:
 
 Mandatory tests **before** merging each phase. Locations:
 
-- Vitest unit: `packages/api/test/auth/**` and
-  `packages/web/test/auth/**`.
-- Vitest integration: `packages/api/test/integration/auth.test.ts`
-  (with `testcontainers` PostgreSQL).
-- Playwright: `packages/web/e2e/auth.spec.ts`.
+- Vitest unit: colocated `*.test.ts` (e.g.
+  `packages/shared/src/schemas/auth.test.ts`,
+  `packages/web/src/core/crypto/*.test.ts`).
+- Vitest integration: `packages/api/src/test/auth*.test.ts`
+  (real Postgres; CI spins up a `postgres:16` service).
+- Playwright: `packages/e2e/tests/*.spec.ts` (e.g.
+  `packages/e2e/tests/01-register-activate-login.spec.ts`).
 
 ### 15.1 Crypto unit tests
 
@@ -1303,10 +1363,10 @@ Mandatory tests **before** merging each phase. Locations:
 |---|---|
 | AES-GCM round-trip with AAD | unit |
 | Distinct HKDF labels produce different keys | unit |
-| `buildAAD([users.id, "password"])` is deterministic | unit |
-| `buildAAD([a, b])` ≠ `buildAAD([a+b])` (length-prefix prevents collisions) | unit |
-| `buildAAD([])` returns 0 bytes (degenerate case) | unit |
-| `buildAAD` refuses a part > 65535 bytes (u16 limit) | unit |
+| `buildKekAAD(userId, "password")` is deterministic | unit |
+| `buildKekAAD` differs per tag (`password` ≠ `recovery`) and per userId | unit |
+| `buildPasskeyAAD` binds the credential id (two creds → distinct AAD) | unit |
+| `buildMainKeyAAD(userId)` ≠ `buildKekAAD(userId, …)` (domain separation) | unit |
 | KEK wrap/unwrap under wk_password (fixed export_key) | unit |
 | KEK wrap/unwrap under wk_passkey (fixed prf_output) | unit |
 | KEK wrap/unwrap under wk_recovery (fixed recovery_code) | unit |
@@ -1389,7 +1449,7 @@ Mandatory tests **before** merging each phase. Locations:
 | Valid recovery code → KEK unwrap + new password OK + recovery code regenerated | integration |
 | Recovery code with invalid BIP39 checksum → client-side rejection (no server hit) | integration |
 | `recovery_code_hash` mismatch on the server → 401, **no** mutation applied | integration |
-| `recovery_code_hash` mismatch logged as `auth.recover.hash_mismatch` | integration |
+| `recovery_code_hash` mismatch logged as `[auth/recover-kek] hash_mismatch` | integration |
 | Regeneration in Settings → old `wrapped_kek_recovery` + old `recovery_code_hash` invalidated simultaneously | integration |
 | Destructive reset → `wrapped_kek_recovery` + `recovery_code_hash` NULL | integration |
 | `recovery_session_id` consumed only once | integration |

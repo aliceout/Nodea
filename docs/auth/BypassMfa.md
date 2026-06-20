@@ -102,7 +102,8 @@ when the remainder drops below 24h).
 **No cancellation email link.** A pending request is auto-cancelled
 at the next promotion to a `full` session
 (`cancelPendingBypassesForUser` wired into `/auth/login/finish`,
-`/auth/passkeys/login/finish`, `/auth/mfa/{totp,passkey}/finish`,
+`/auth/passkeys/login/finish`, `/auth/mfa/totp/verify`,
+`/auth/mfa/passkey/finish`,
 and the recovery code reset). A successful complete login proves
 the user still controls the allegedly-lost factor — the request is
 moot and gets cancelled. The legitimate owner of a compromised
