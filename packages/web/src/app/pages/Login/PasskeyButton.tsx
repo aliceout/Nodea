@@ -22,10 +22,10 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
  *     factor.
  *   - **Fully unlocked** (PRF surfaced + KEK unwrapped) : navigate
  *     to `/flow`.
- *   - **Login-only** (no PRF) : the cookie is set but the KEK is
- *     unreachable from this credential alone. We surface a notice
- *     so the user finishes the unlock by typing their password
- *     into the main form.
+ *   - **No PRF** : the credential can't unwrap the main key. The
+ *     just-created session is dropped server-side (so the user isn't
+ *     left authenticated-but-keyless) and we surface a notice asking
+ *     them to finish by typing their password into the main form.
  *
  * `onBusyChange` lets the parent disable the password form while
  * the OS prompt is up — pressing both at the same time would race.

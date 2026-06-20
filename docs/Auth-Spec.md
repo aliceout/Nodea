@@ -908,6 +908,20 @@ Cf. §7.3.
 - The UI must guide clearly: "This passkey validates your identity
   but can't alone decrypt your data. Type your password to
   continue."
+- **Session handling depends on the mode** (`core/auth/session/passkeys.ts`):
+  - `password_or_passkey` — a passkey assertion is a *complete*
+    login, so `/finish` returns a **full** session. A non-PRF
+    credential would leave that session authenticated-but-keyless,
+    which the Layout's key-missing guard bounces out of on the first
+    `/flow` hop. So the client **drops** the session (`/auth/logout`)
+    and resets its store before showing the prompt; the password
+    form then runs a normal full login that derives the key. The
+    passkey is rejected as a standalone login rather than half-
+    accepted.
+  - `always_2fa` / `maximum` — the passkey was never a complete
+    login, so `/finish` returns `mfa_pending`. That session is
+    **kept** and the password is added as a second factor
+    (`mfa_password_verified`) before `/auth/mfa/finalize`.
 
 ### 9.5 Fixed PRF input
 

@@ -1,6 +1,7 @@
 import type { Base64 } from '@nodea/shared';
 
 import {
+  apiLogout,
   apiMe,
   apiMeCrypto,
   apiPasskeyRemove,
@@ -112,11 +113,18 @@ export async function removePasskey(
  *     authenticator surfaced the PRF output. We unwrap the KEK,
  *     unwrap the main key, derive sub-keys, and the user lands
  *     fully signed in.
- *   - **Login-only**  : the credential is registered but not
- *     PRF-capable, OR the authenticator didn't surface the PRF
- *     output. The session cookie is set (the user IS authed) but
- *     the main key is unreachable from this credential alone — the
- *     UI must prompt for the password to finish unlocking.
+ *   - **Rejected (non-PRF, mode `password_or_passkey`)** : the
+ *     credential authenticates but yields no PRF output, so the main
+ *     key is unreachable. Rather than leave the user
+ *     authenticated-but-keyless (a state every /flow hop bounces out
+ *     of), we drop the just-created session and reset the store, then
+ *     return `fullyUnlocked: false`. The caller surfaces « Saisis ton
+ *     mot de passe pour finaliser » and the user signs in with their
+ *     password (a full re-auth that derives the key).
+ *   - **Stepped MFA (non-PRF, mode `always_2fa`/`maximum`)** : the
+ *     server emits `mfa_pending`; the password is collected as a
+ *     second factor on that pending session (see the `needsMfa`
+ *     branch), so the session is kept, not dropped.
  *
  * Throws on a missing assertion (user cancelled, no credential
  * matched, server rejected) — same as the password flow.
@@ -125,11 +133,12 @@ export async function passkeyLogin(
   deps: PasskeyDeps,
   input: { email?: string },
 ): Promise<{
-  /** False when the credential is non-PRF or PRF deferred — the
-   *  caller should prompt for the password and call `login(...)`
-   *  to finish the unwrap. The session cookie is already set by
-   *  this point, so a refresh would still drop the user on a
-   *  signed-in shell. */
+  /** False when the credential is non-PRF or PRF deferred. On the
+   *  `password_or_passkey` path the session has already been dropped
+   *  and the store reset by this point, so the caller just shows the
+   *  « finish with your password » prompt — there is no lingering
+   *  signed-in shell to refresh into. On the stepped-MFA path the
+   *  session is kept (pending) and the password is the next factor. */
   fullyUnlocked: boolean;
   /** Phase 5C — true when the server emitted `mfa_pending` because
    *  the user's `security_mode` requires factors beyond passkey.
@@ -160,6 +169,11 @@ export async function passkeyLogin(
       result.wrappedKek === null ||
       result.wrappedKekIv === null
     ) {
+      // prfOutput can be non-null here even when wrappedKek is (the
+      // authenticator surfaced a PRF output but the server has no KEK
+      // wrap for this credential). Zero those ephemeral bytes rather
+      // than leave them for GC (CLAUDE.md crypto rule 7).
+      if (result.prfOutput) result.prfOutput.fill(0);
       deps.markKeyMissing();
       return {
         fullyUnlocked: false,
@@ -209,7 +223,49 @@ export async function passkeyLogin(
     };
   }
 
-  // Original full-session path — pre-Phase-5C behaviour.
+  // Original full-session path — pre-Phase-5C behaviour (mode
+  // `password_or_passkey`, where a passkey assertion is a complete
+  // login on its own).
+  //
+  // Gate on PRF FIRST, before hydrating /me or touching the auth
+  // slice. A non-PRF passkey authenticates (the server already set a
+  // full-session cookie) but can't unwrap the main key. Accepting it
+  // would leave the user authenticated-but-keyless — every later hop
+  // to /flow then bounces straight back out via the Layout's
+  // key-missing guard (the "passkey lets me in, then kicks me to
+  // /login" bug). So reject it at the source: drop the session the
+  // server just created and tell the caller to fall back to the
+  // password form (« Saisis ton mot de passe pour finaliser »), which
+  // is a full re-auth that derives the key cleanly. Stepped-MFA modes
+  // keep their own non-PRF handling above — there the password is a
+  // second factor on the still-pending session, not a fresh login.
+  if (
+    !result.prfSupported ||
+    result.prfOutput === null ||
+    result.wrappedKek === null ||
+    result.wrappedKekIv === null
+  ) {
+    // Zero any ephemeral PRF bytes the authenticator surfaced before
+    // we bail (CLAUDE.md crypto rule 7) — reachable when wrappedKek is
+    // the null clause that tripped this gate.
+    if (result.prfOutput) result.prfOutput.fill(0);
+    try {
+      await apiLogout();
+    } catch {
+      // Best-effort — even if the server-side logout call fails, we
+      // still reset the client below so the SPA never carries a
+      // keyless authenticated session into /flow.
+    }
+    deps.setAuth(null);
+    deps.setMainKey(null);
+    return {
+      fullyUnlocked: false,
+      needsMfa: false,
+      factorsNeeded: [],
+      secondFactorChoice: false,
+    };
+  }
+
   const me = await apiMe();
   if (!me) {
     throw new Error('passkey-login: server accepted assertion but /me returned null');
@@ -225,27 +281,6 @@ export async function passkeyLogin(
     crypto.wrappedMainKeyIv === null
   ) {
     throw new Error('passkey-login: user row missing OPAQUE wrap blobs');
-  }
-
-  // Login-only path: no PRF output → the KEK can't be unwrapped
-  // from this credential. The UI prompts for the password next.
-  if (
-    !result.prfSupported ||
-    result.prfOutput === null ||
-    result.wrappedKek === null ||
-    result.wrappedKekIv === null
-  ) {
-    // We DON'T mark key missing here — the caller may chain a
-    // password login immediately. If they don't, the
-    // ProtectedRoute layer will catch the missing main key and
-    // surface the prompt. Same UX as a cold reload.
-    deps.markKeyMissing();
-    return {
-      fullyUnlocked: false,
-      needsMfa: false,
-      factorsNeeded: [],
-      secondFactorChoice: false,
-    };
   }
 
   const prfOutput = result.prfOutput;

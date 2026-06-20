@@ -90,15 +90,22 @@ Client                                Server
    │     unwrap main_key                 │
    │                                     │
    │  client: if non-PRF                 │
-   │     KEK unwrap FAILS                │
+   │     KEK unwrap is impossible        │
    │     ─▶ screen "This passkey can't  │
    │         decrypt your data. Type    │
    │         your password to finish."  │
-   │     ─▶ fallback /auth/login/start  │
-   │         (the session stays         │
-   │          mfa_pending, the password │
-   │          re-auth adds              │
-   │          mfa_password_verified)    │
+   │     ─▶ mode password_or_passkey :  │
+   │         the /finish session is     │
+   │         FULL but keyless, so the   │
+   │         client drops it (logout)   │
+   │         and the user re-auths with │
+   │         a full /auth/login         │
+   │     ─▶ mode always_2fa/maximum :   │
+   │         the session is mfa_pending,│
+   │         so it is KEPT and the      │
+   │         password is added as a 2nd │
+   │         factor (mfa_password_      │
+   │         verified) before finalize  │
    │                                     │
    │  If mode = password_or_passkey:     │
    │     POST /auth/mfa/finalize         │
@@ -110,6 +117,19 @@ Client                                Server
 is used client-side so that `prf_output` is deterministic for a given
 credential, independent of the WebAuthn challenge (which changes on
 every login).
+
+**Non-PRF passkey on `password_or_passkey`** (`core/auth/session/passkeys.ts`):
+in this mode a passkey assertion is a *complete* login, so `/finish`
+returns a **full** session — but a non-PRF credential can't unwrap the
+main key. We do **not** keep that session: an authenticated-but-keyless
+client would be bounced straight back out by the Layout's key-missing
+guard the moment it reached `/flow` (the "passkey lets me in, then
+kicks me to /login" bug). Instead the client drops the session
+(`/auth/logout`), resets its store, and shows the « finish with your
+password » prompt; the password form then performs a normal full login
+that derives the key. The `mfa_pending` "keep the session, add the
+password as a factor" path applies **only** to `always_2fa`/`maximum`,
+where the passkey was never a complete login on its own.
 
 ## 7.4 Stepped MFA — finalisation
 

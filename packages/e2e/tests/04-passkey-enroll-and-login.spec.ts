@@ -8,10 +8,14 @@ import { attachVirtualAuthenticator } from '../helpers/webauthn.ts';
  * Passkey enroll + login (non-PRF branch) — Auth-Roadmap §7.3.
  *
  * Chromium's CDP virtual authenticator does NOT support the PRF
- * extension. So this spec exercises the **login-only path**: a
- * passkey is registered, the user logs in by ceremony, but the KEK
- * stays unreachable from the credential alone — the UI prompts for
- * the password to finish unlocking. The PRF unwrap path itself is
+ * extension. So this spec exercises the **non-PRF path**: a passkey
+ * is registered, the assertion authenticates, but the KEK stays
+ * unreachable from the credential alone. In the default
+ * `password_or_passkey` mode the assertion is a complete login, so
+ * the client *drops* the just-created session (it would otherwise be
+ * authenticated-but-keyless) and the user stays logged out on /login
+ * with the « finish with your password » alert; typing the password
+ * then performs a normal full login. The PRF unwrap path itself is
  * unit-tested in `packages/web/src/core/crypto/passkey-prf.test.ts`.
  *
  * Sequence :
@@ -94,17 +98,17 @@ test('passkey — enroll + login (non-PRF, password finishes unlock)', async ({
       })
       .click();
 
-    // The virtual authenticator auto-approves. The session cookie
-    // is set ; the SPA either lands on /flow (if PRF surfaced) or
-    // shows a « finish unlock » prompt (the case we hit here, no
-    // PRF). Both endpoints accept — the test only fails if neither
-    // shows up within the timeout.
+    // The virtual authenticator auto-approves. The SPA either lands
+    // on /flow (if PRF surfaced) or — the case we hit here, no PRF —
+    // drops the keyless session and leaves the user on /login with the
+    // passkeyNoDecrypt alert. Both are accepted ; the test only fails
+    // if neither shows up within the timeout.
     await page.waitForURL(/\/flow|\/login/, { timeout: 15_000 });
 
     /* -------- 6. If we're not yet on /flow, finish with password -------- */
     const finalUrl = page.url();
     if (!finalUrl.includes('/flow')) {
-      // Type password to finish KEK unwrap.
+      // Type password → a normal full login derives the key and lands /flow.
       await page
         .getByLabel(/^Mot de passe$|^Password$/i)
         .fill(user.password);
