@@ -127,7 +127,8 @@ function AppWithKeyModal() {
       <Route path="/docs/:section/:tier" element={lazyPage(<Docs />)} />
       {/* Public legal page. CGU brouillon — la V1 juridique remplacera
           le source dans `pages/Terms/content.md`. Lien depuis le footer
-          de Login. */}
+          du panneau marketing partagé (AuthMarketingPanel, toutes les
+          pages d'auth, desktop). */}
       <Route path="/terms" element={lazyPage(<Terms />)} />
       {/* Auto-generated release notes (issue #91). Public route ;
           content lives in `pages/Changelog/content.md`, regenerated

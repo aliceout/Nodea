@@ -114,26 +114,6 @@ export default function LoginPage() {
           {t('auth.login.createAccount')}
         </Link>
       </div>
-
-      {/* Footer-style legal / context links — typographie plus
-          discrète que les deux liens d'action ci-dessus parce que
-          c'est de la mention légale + un coup d'œil aux nouveautés,
-          pas un call-to-action. */}
-      <div className="mt-4 flex items-center justify-center gap-3 text-[11.5px] text-muted">
-        <Link
-          to="/terms"
-          className="cursor-pointer transition-colors hover:text-ink hover:underline"
-        >
-          {t('auth.login.termsLink')}
-        </Link>
-        <span aria-hidden="true">·</span>
-        <Link
-          to="/changelog"
-          className="cursor-pointer transition-colors hover:text-ink hover:underline"
-        >
-          {t('auth.login.changelogLink')}
-        </Link>
-      </div>
     </AuthLayout>
   );
 }

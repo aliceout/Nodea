@@ -57,6 +57,8 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12px] text-muted">
         <span>{t('layout.marketing.clientEncrypted')}</span>
         <span>·</span>
+        <span>{t('layout.marketing.selfHostable')}</span>
+        <span>·</span>
         {/* « Open-source » is a claim, so link it to the actual code
             — readers shouldn't have to take our word for it. Styled
             as an explicit external link (accent color + underline +
@@ -69,7 +71,7 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
           href="https://github.com/aliceout/Nodea"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex cursor-pointer items-center gap-1 text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {t('layout.marketing.openSource')}
           <ArrowTopRightOnSquareIcon
@@ -78,8 +80,6 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
           />
         </a>
         <span>·</span>
-        <span>{t('layout.marketing.selfHostable')}</span>
-        <span>·</span>
         {/* Public docs entry — short label matching the register
             of the surrounding items. The verbose "Voir comment
             Nodea protège mes données" entry lives in the marketing
@@ -87,9 +87,27 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
             always-reachable equivalent for skimmers. */}
         <Link
           to="/docs/newbie"
-          className="cursor-pointer text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline"
+          className="cursor-pointer rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {t('layout.marketing.security')}
+        </Link>
+        <span>·</span>
+        {/* Legal + changelog — accent-styled like « Open-source » /
+            « Sécurité » so every clickable item in the row reads the same.
+            Relocated here from the Login form panel so every auth page
+            shares one footer (desktop-only, like the rest of the panel). */}
+        <Link
+          to="/terms"
+          className="cursor-pointer rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {t('layout.marketing.terms')}
+        </Link>
+        <span>·</span>
+        <Link
+          to="/changelog"
+          className="cursor-pointer rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {t('layout.marketing.changelog')}
         </Link>
       </div>
     </aside>

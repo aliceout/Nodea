@@ -16,9 +16,10 @@ import source from './content.md?raw';
  * la CGU est courte, on scrolle.
  *
  * Route publique (`/terms`) — pas derrière `ProtectedRoute`. Lien
- * depuis le footer de la page Login (et register le jour où on
- * voudra exiger l'accept à la création de compte ; pas le cas en V1
- * brouillon).
+ * depuis le footer du panneau marketing partagé (`AuthMarketingPanel`,
+ * affiché sur toutes les pages d'auth, desktop seulement) — et
+ * register le jour où on voudra exiger l'accept à la création de
+ * compte ; pas le cas en V1 brouillon.
  */
 export default function TermsPage() {
   useDocumentTitle("Conditions générales d'utilisation");
