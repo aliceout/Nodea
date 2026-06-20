@@ -73,13 +73,13 @@ docker compose up -d postgres   # Postgres en container, le reste via pnpm
 pnpm install
 pnpm --filter @nodea/api db:migrate
 pnpm dev:api    # port 3000
-pnpm dev:web    # port 5173
+pnpm dev:web    # port 8089
 ```
 
 Tests :
 
 ```sh
-pnpm -r test    # 383 tests d'intégration api + 489 tests unitaires web
+pnpm -r test    # plusieurs centaines de tests : intégration api + unitaires web
 ```
 
 Trois bases Postgres coexistent sur la même instance, jamais

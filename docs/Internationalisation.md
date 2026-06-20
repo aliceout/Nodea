@@ -28,12 +28,15 @@ packages/web/src/i18n/
     │   ├── common.json
     │   ├── errors.json
     │   ├── goals.json
+    │   ├── habits.json
     │   ├── home.json
+    │   ├── hrt.json
+    │   ├── journal.json
     │   ├── layout.json
+    │   ├── library.json
     │   ├── modals.json
     │   ├── modules.json
     │   ├── mood.json
-    │   ├── journal.json
     │   ├── review.json
     │   └── settings.json
     └── en/
@@ -136,7 +139,7 @@ Review module are in `review.json` and go through `t()`.
 
 Two tools keep the locales aligned:
 
-1. **Vitest test** (`parity.test.ts`) — iterates over the 14
+1. **Vitest test** (`parity.test.ts`) — iterates over the 17
    namespaces and `expect(... onlyFr / onlyEn)` to be `[]`. Runs
    automatically in CI via `pnpm test`.
 2. **CLI script**: `pnpm --filter @nodea/web i18n:diff` prints a
