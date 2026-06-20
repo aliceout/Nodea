@@ -59,7 +59,7 @@ of the manual cleanup needed.
 - **Strong backup dependency.** If the operator hasn't configured
   the backup procedure (OPS-05), a broken migration = a
   potentially long outage. This dependency must be visible in the
-  runbook (`docs/Operations.md` §5 already mentions it).
+  runbook (the self-host operations notes cover this).
 - **No "quick undo" for a controversial migration.** If a
   migration lands and we realise the next day that it caused
   trouble (e.g. it subtly changed an index's semantics), there's

@@ -593,7 +593,7 @@ Les lignes suivantes accumulent dans le temps et sont gardées pour audit :
 - `password_reset_tokens` après `consumed_at`
 - `email_verifications` autres que `register`
 
-Pour une rétention plus serrée, étendre `packages/api/src/cron/index.ts` avec des delete-where passé une fenêtre d'audit choisie (ex. 90 jours). Choix laissé à l'opérateur — la valeur d'audit de ces lignes n'est pas nulle, et les volumes restent minuscules en V1.
+Pour une rétention plus serrée, étendre `packages/api/src/cron.ts` avec des delete-where passé une fenêtre d'audit choisie (ex. 90 jours). Choix laissé à l'opérateur — la valeur d'audit de ces lignes n'est pas nulle, et les volumes restent minuscules en V1.
 
 ## Audit & divulgation
 
