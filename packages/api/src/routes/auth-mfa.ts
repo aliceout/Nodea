@@ -14,10 +14,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
-import type {
-  AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
-} from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { defaultInvalidBodyHook, createRoute, errorContent, jsonContent  } from '../openapi/index.ts';
 import { db } from '../db/client.ts';
@@ -42,6 +39,7 @@ import {
   requireMfaPending,
   type MfaPendingVariables,
 } from '../middleware/require-mfa-pending.ts';
+import { base64UrlToBytes, parseTransports } from './passkey-helpers.ts';
 
 
 /**
@@ -416,24 +414,3 @@ authMfaRoutes.openapi(passkeyFinishRoute, async (c) => {
   };
   return c.json(response, 200);
 });
-
-/* ============================================================================
- * Local helpers
- * ========================================================================== */
-
-function parseTransports(
-  csv: string | null,
-): AuthenticatorTransportFuture[] | undefined {
-  if (!csv) return undefined;
-  const parts = csv.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
-  if (parts.length === 0) return undefined;
-  return parts as AuthenticatorTransportFuture[];
-}
-
-function base64UrlToBytes(value: string) {
-  const src = Buffer.from(value, 'base64url');
-  const buf = new ArrayBuffer(src.byteLength);
-  const out = new Uint8Array(buf);
-  out.set(src);
-  return out;
-}

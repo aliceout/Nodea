@@ -3,10 +3,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
-import type {
-  AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
-} from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import {
   ReauthPasskeyFinishBodySchema,
   ReauthPasskeyStartBodySchema,
@@ -30,6 +27,7 @@ import {
   storeLoginState,
 } from '../auth/opaque-login-state.ts';
 import { bumpSessionReauth } from '../auth/session.ts';
+import { base64UrlToBytes, parseTransports } from './passkey-helpers.ts';
 import { getConfig } from '../config.ts';
 import { rateLimit } from '../middleware/rate-limit.ts';
 import { requireUser } from '../middleware/require-user.ts';
@@ -345,24 +343,3 @@ authReauthRoutes.openapi(reauthPasskeyFinishRoute, async (c) => {
   const response: ReauthOkResponse = { ok: true };
   return c.json(response, 200);
 });
-
-/* ============================================================================
- * Local helpers (mirrors of `auth-mfa.ts` — small, kept inline)
- * ========================================================================== */
-
-function parseTransports(
-  csv: string | null,
-): AuthenticatorTransportFuture[] | undefined {
-  if (!csv) return undefined;
-  const parts = csv.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
-  if (parts.length === 0) return undefined;
-  return parts as AuthenticatorTransportFuture[];
-}
-
-function base64UrlToBytes(value: string) {
-  const src = Buffer.from(value, 'base64url');
-  const buf = new ArrayBuffer(src.byteLength);
-  const out = new Uint8Array(buf);
-  out.set(src);
-  return out;
-}
