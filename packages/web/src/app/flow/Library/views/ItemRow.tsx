@@ -1,11 +1,11 @@
 import { memo } from 'react';
-import { StarIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 import DirkButton from '@/ui/atoms/dirk/Button';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 
+import FavoriteToggle from '../components/FavoriteToggle';
 import { useLibraryActions, useLibraryData } from '../context';
 import { authorsLabel, languageLabel } from '../lib/labels';
 import type { LibraryItem } from '../lib/types';
@@ -162,32 +162,11 @@ function ItemRowImpl({ item, showCover }: ItemRowProps) {
         )}
 
         <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => toggleFavorite(item)}
-            aria-label={
-              item.isFavorite
-                ? t('library.row.favoriteRemove')
-                : t('library.row.favoriteAdd')
-            }
-            title={
-              item.isFavorite
-                ? t('library.row.favoriteRemove')
-                : t('library.row.favoriteAdd')
-            }
-            className={cn(
-              'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm transition-colors',
-              item.isFavorite
-                ? 'text-accent hover:bg-accent-soft'
-                : 'text-muted opacity-0 hover:bg-bg-2 hover:text-ink group-hover:opacity-100 group-focus-within:opacity-100',
-            )}
-          >
-            {item.isFavorite ? (
-              <StarSolidIcon className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <StarIcon className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-          </button>
+          <FavoriteToggle
+            isFavorite={item.isFavorite}
+            onToggle={() => toggleFavorite(item)}
+            size="md"
+          />
           <DirkButton
             variant="danger-ghost"
             size="sm"

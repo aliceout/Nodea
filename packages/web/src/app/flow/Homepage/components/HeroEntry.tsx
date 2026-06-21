@@ -1,10 +1,10 @@
-import { useNodeaStore } from '@/core/store/nodea-store';
 import { formatLongDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { LiteMarkdown } from '@/lib/lite-markdown';
 
 import { useHomepageData } from '../context';
 import HomeCard from './HomeCard';
+import HomeModuleLink from './HomeModuleLink';
 
 const SNIPPET_WORDS = 28;
 const MAX_ENTRIES = 3;
@@ -24,7 +24,6 @@ const MAX_ENTRIES = 3;
 export default function HeroEntry() {
   const { t, language } = useI18n();
   const { journal } = useHomepageData();
-  const setModule = useNodeaStore((s) => s.setModule);
 
   const entries = journal.slice(0, MAX_ENTRIES);
   if (entries.length === 0) return null;
@@ -34,15 +33,7 @@ export default function HeroEntry() {
   return (
     <HomeCard
       title={eyebrow}
-      cta={
-        <button
-          type="button"
-          onClick={() => setModule('journal')}
-          className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
-        >
-          {t('home.hero.cta')} →
-        </button>
-      }
+      cta={<HomeModuleLink module="journal" label={t('home.hero.cta')} />}
     >
       <ul className="divide-y divide-hair">
         {entries.map((entry) => {

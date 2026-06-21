@@ -9,6 +9,7 @@ import { useHomepageData } from '../context';
 import { HOME_GOAL_LIMIT, STATUS_TONE } from '../lib/constants';
 import { pickHomeGoals } from '../lib/intentions';
 import HomeCard from './HomeCard';
+import HomeModuleLink from './HomeModuleLink';
 
 /**
  * Goals section on the Homepage — a single « EN COURS » list of
@@ -27,6 +28,7 @@ export default function GoalsCard() {
   const { t } = useI18n();
   const { goals } = useHomepageData();
   const setModule = useNodeaStore((s) => s.setModule);
+  // The per-goal rows below are also click-through-to-Goals shortcuts.
   const goToGoals = () => setModule('goals');
 
   const inProgress = useMemo(() => pickHomeGoals(goals), [goals]);
@@ -34,15 +36,7 @@ export default function GoalsCard() {
   return (
     <HomeCard
       title={t('home.goals.eyebrow', { values: { count: inProgress.length } })}
-      cta={
-        <button
-          type="button"
-          onClick={goToGoals}
-          className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
-        >
-          {t('home.viewAll')} →
-        </button>
-      }
+      cta={<HomeModuleLink module="goals" label={t('home.viewAll')} />}
     >
       {inProgress.length === 0 ? (
         <p className="text-[12.5px] italic text-muted">{t('home.goals.empty')}</p>

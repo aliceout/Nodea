@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 
 import { formatLongDate } from '@/core/i18n/date-format';
-import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useMediaQuery } from '@/lib/use-media-query';
 import Heatmap, {
@@ -18,6 +17,7 @@ import { isoDay } from '@/app/flow/Journal/lib/stats';
 
 import { useHomepageData } from '../context';
 import HomeCard from './HomeCard';
+import HomeModuleLink from './HomeModuleLink';
 
 // 6 months (26 weeks) on desktop ; 4 months (17 weeks) below `lg`,
 // where 26 columns of 1fr squares get too small to read / tap.
@@ -40,7 +40,6 @@ const DAYS_PER_WEEK = 7;
 export default function JournalHeatmap() {
   const { t, tn, language } = useI18n();
   const { journal } = useHomepageData();
-  const setModule = useNodeaStore((s) => s.setModule);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const weeks = isDesktop ? WEEKS_DESKTOP : WEEKS_MOBILE;
   const months = isDesktop ? 6 : 4;
@@ -121,15 +120,7 @@ export default function JournalHeatmap() {
           })}
         </span>
       }
-      cta={
-        <button
-          type="button"
-          onClick={() => setModule('journal')}
-          className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
-        >
-          {t('home.viewAll')} →
-        </button>
-      }
+      cta={<HomeModuleLink module="journal" label={t('home.viewAll')} />}
     >
       <Heatmap
         weeks={weeks}

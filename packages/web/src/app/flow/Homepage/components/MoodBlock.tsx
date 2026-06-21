@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useMediaQuery } from '@/lib/use-media-query';
 import Heatmap, { type HeatmapCellInput } from '@/ui/dirk/Heatmap';
@@ -16,6 +15,7 @@ import { useHomepageData } from '../context';
 import { MOOD_BLOCK_FILL } from '../lib/constants';
 import { formatMoodAvg } from '../lib/format';
 import HomeCard from './HomeCard';
+import HomeModuleLink from './HomeModuleLink';
 
 /**
  * Mood section on the Homepage — 52-week GitHub-style frise over
@@ -31,7 +31,6 @@ import HomeCard from './HomeCard';
 export default function MoodBlock() {
   const { t } = useI18n();
   const { mood } = useHomepageData();
-  const setModule = useNodeaStore((s) => s.setModule);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const weeks = isDesktop ? WEEKS_DESKTOP : WEEKS_MOBILE;
   const months = isDesktop ? 6 : 4;
@@ -88,15 +87,7 @@ export default function MoodBlock() {
           <span className="italic">{t('home.mood.empty')}</span>
         )
       }
-      cta={
-        <button
-          type="button"
-          onClick={() => setModule('mood')}
-          className="cursor-pointer underline-offset-2 transition-colors hover:text-accent hover:underline"
-        >
-          {t('home.viewAll')} →
-        </button>
-      }
+      cta={<HomeModuleLink module="mood" label={t('home.viewAll')} />}
     >
       <Heatmap
         weeks={weeks}
