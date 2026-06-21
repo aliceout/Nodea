@@ -220,7 +220,26 @@ export async function applyConsumableBypass(
   if (request.expiresAt < now) return null;
 
   let downgraded = false;
-  await db.transaction(async (tx) => {
+  const claimed = await db.transaction(async (tx) => {
+    // Claim the request atomically BEFORE any side-effect: the consuming
+    // UPDATE is gated on `consumed_at IS NULL` (and `cancelled_at IS
+    // NULL`), so if two concurrent login-finish calls both passed the
+    // pre-transaction read above, only one wins the claim. 0 rows →
+    // already consumed or cancelled in the race; bail without re-running
+    // the destructive disable / delete / downgrade / session-revoke.
+    const claim = await tx
+      .update(mfaBypassRequests)
+      .set({ consumedAt: now })
+      .where(
+        and(
+          eq(mfaBypassRequests.id, request.id),
+          isNull(mfaBypassRequests.consumedAt),
+          isNull(mfaBypassRequests.cancelledAt),
+        ),
+      )
+      .returning({ id: mfaBypassRequests.id });
+    if (claim.length === 0) return false;
+
     if (factor === 'totp') {
       await tx
         .update(mfaTotp)
@@ -288,11 +307,6 @@ export async function applyConsumableBypass(
       }
     }
 
-    await tx
-      .update(mfaBypassRequests)
-      .set({ consumedAt: now })
-      .where(eq(mfaBypassRequests.id, request.id));
-
     // Revoke every other session of the user — Auth-Spec §7.8.
     // The current pending session (if any) is excluded so the
     // caller can promote it to full afterwards. If the caller
@@ -312,8 +326,11 @@ export async function applyConsumableBypass(
           ),
         );
     }
+
+    return true;
   });
 
+  if (!claimed) return null;
   return { factor, downgraded };
 }
 
