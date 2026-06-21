@@ -113,17 +113,23 @@ export function useLibraryData(
     if (!ctx || !coversNeeded) return undefined;
     if (coversFetchedForVersion.current === itemsVersion) return undefined;
     let cancelled = false;
-    coversFetchedForVersion.current = itemsVersion;
     libraryCoversClient
       .list(ctx.moduleUserId, ctx.mainKey)
       .then((coverRecords) => {
         if (cancelled) return;
         setCovers(buildCoverMap(coverRecords));
+        // Latch the version ONLY once the covers are actually applied.
+        // Setting it before the fetch resolved meant a cancelled
+        // in-flight request (view toggled away mid-load, or `ctx`
+        // changing on a re-auth) left the latch marking this version
+        // "done" with no covers — so toggling back skipped the refetch
+        // and covers never appeared until the next version bump.
+        coversFetchedForVersion.current = itemsVersion;
       })
       .catch(() => {
-        if (cancelled) return;
-        // Allow a retry on the next trigger — don't poison the latch.
-        coversFetchedForVersion.current = null;
+        // Swallowed (decorative): the latch stays unset so the next
+        // trigger retries. A missing thumbnail degrades to the
+        // placeholder ItemRow already renders.
       });
     return () => {
       cancelled = true;
