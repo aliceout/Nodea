@@ -500,44 +500,43 @@ The whole sequence in **one transaction**.
 
 ### 5.1 Cookies
 
-| Cookie | Lifetime | Routes accepted (middleware) | Issued when | Promoted to |
-|---|---|---|---|---|
-| `__Host-nodea_register` ✅ | 24h | `/auth/register/*` | After successful email verification (wizard step 2) | Cleared at the end of register |
-| `__Host-nodea_mfa` ✅ | 5 min | `/auth/mfa/*` | After OPAQUE/passkey login finish | `__Host-nodea_session` once MFA completes |
-| `__Host-nodea_migrate` (vestigial) | 30 min | `/auth/migrate/*` | No longer issued — no code path mints it since the Argon2id model was removed | `__Host-nodea_session` after crypto migration |
-| `nodea_session` ✅ | 7 days (fixed, **no** slide) | everything else | Full login | Forced re-login after 7 days or revocation |
+**One signed session cookie carries every session kind**; the kind is a
+column on the `sessions` row, not a separate cookie. (An earlier design
+envisioned one `__Host-` cookie per kind — register / mfa / migrate /
+full — but the implementation settled on a single cookie + a `kind`
+discriminator that `loadSession` validates per route.)
 
-Every cookie:
-- `HttpOnly`
-- `Secure` in prod (and every non-localhost environment)
-- `SameSite=Lax`
-- Signed (`COOKIE_SECRET`, min 32 chars)
-- `__Host-` prefix (locks to the domain, **forces** `Path=/` on
-  the browser side, and requires `Secure`).
+| Kind (`sessions.kind`) | Lifetime | Issued when |
+|---|---|---|
+| `register` | 24h | after email verification (wizard step 2); cleared at end of register |
+| `mfa_pending` | 5 min | after OPAQUE/passkey login finish when the mode needs more factors; promoted to `full` once MFA completes |
+| `migrate` (vestigial) | 30 min | no longer issued — no code path mints it since the Argon2id model was removed |
+| `full` | 7 days (fixed, **no** slide) | full login / MFA finalize; forced re-login after 7 days or revocation |
 
-**Important note on scoping**: the `__Host-` prefix forces
-`Path=/`, so every cookie travels with **every** request to the
-domain. The "Routes accepted" column above is **not** a cookie
-attribute: it's what the `loadSession` middleware checks. The
-`requireUser`, `requireRegisterSession`, `requireMfaPending`,
-`requireMigrate` middlewares only read **their** expected cookie
-and refuse the others. If multiple cookies are present, each is
-valid only on its own route set.
-
-This choice sacrifices a bit of "least-privilege" on the browser
-side in favor of `__Host-`'s anti-subdomain property (no cookie
-poisoned by a compromised subdomain). Trade-off accepted.
+Cookie name + attributes (`auth/cookies.ts`):
+- **Name**: `__Host-nodea_session` when the cookie is `Secure`
+  (prod / any non-localhost env), falling back to `nodea_session` on a
+  plain-http dev origin (`COOKIE_SECURE=false`) — the `__Host-` prefix
+  *requires* `Secure`, so a prefixed cookie would be silently dropped
+  over http.
+- `HttpOnly`, `Secure` (prod), `SameSite=Strict` (SEC-08), `Path=/`,
+  no `Domain`, Signed (`COOKIE_SECRET`, min 32 chars).
+- The `__Host-` prefix gives the anti-subdomain property (no session
+  cookie injected or shadowed by a compromised subdomain); it forces
+  `Path=/` + no `Domain` + `Secure`, all already set. The prod cutover
+  renames the cookie once, dropping live sessions (a single forced
+  re-login). Trade-off accepted.
 
 ### 5.2 Unified session model
 
 The four kinds live in `sessions` with a `kind` column. The
 `loadSession` middleware:
 
-1. Reads the cookie matching the route:
-   - `/auth/register/*` → `__Host-nodea_register` → `kind = 'register'`
-   - `/auth/mfa/*` → `__Host-nodea_mfa` → `kind = 'mfa_pending'`
-   - `/auth/migrate/*` → `__Host-nodea_migrate` → `kind = 'migrate'`
-   - otherwise → `__Host-nodea_session` → `kind = 'full'`
+1. Reads the single session cookie and gates by the kind the route
+   expects:
+   - `/auth/mfa/*` (`requireMfaPending`) → `kind = 'mfa_pending'`
+   - `/auth/register/*` (`requireRegisterSession`) → `kind = 'register'`
+   - everything else (`requireUser`) → `kind = 'full'`
 2. Loads the row, checks correct `kind` + `expires_at > now()`.
 3. Silently refuses (cookie ignored) if the `kind` doesn't match
    the route.
