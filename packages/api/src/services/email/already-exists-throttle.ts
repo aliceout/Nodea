@@ -49,6 +49,23 @@ const lastSentAt = globalSingleton(
   () => new Map<string, number>(),
 );
 
+/** Prune entries past the throttle window — once `now - ts >=
+ *  THROTTLE_MS` an entry can no longer suppress a notice, so it's dead
+ *  weight. Without this the map grows one entry per distinct email ever
+ *  submitted (attacker-supplied included) for the lifetime of the
+ *  process — a slow leak on the long-lived single-process deployment
+ *  this app targets. Throttled to once a minute like the rate-limiter's
+ *  own sweep so a burst of registrations doesn't trigger an O(n) scan
+ *  per call. */
+let lastSweep = 0;
+function sweep(now: number): void {
+  if (now - lastSweep < 60_000) return;
+  for (const [email, ts] of lastSentAt) {
+    if (now - ts >= THROTTLE_MS) lastSentAt.delete(email);
+  }
+  lastSweep = now;
+}
+
 /** Send the « already exists » notice unless this email has
  *  already received one within the throttle window. Always
  *  resolves successfully — mailer hiccups are logged in dev and
@@ -59,6 +76,7 @@ export async function maybeSendAlreadyExistsNotice(
   email: string,
 ): Promise<void> {
   const now = Date.now();
+  sweep(now);
   const last = lastSentAt.get(email);
   if (last !== undefined && now - last < THROTTLE_MS) return;
   lastSentAt.set(email, now);
