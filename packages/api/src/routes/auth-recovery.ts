@@ -1,4 +1,4 @@
-import { eq, isNotNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   RecoverKekFinishBodySchema,
@@ -498,7 +498,3 @@ authRecoveryRoutes.openapi(recoverFinishRoute, async (c) => {
 
   return c.json({ ok: true as const }, 200);
 });
-
-// `isNotNull` is imported for upcoming queries; reference it once
-// to keep eslint quiet until we wire the related route.
-void isNotNull;

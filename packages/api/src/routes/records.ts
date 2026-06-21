@@ -42,11 +42,12 @@ import {
  * don't record custom headers, so the server-side activity log no
  * longer reveals which module a given request targeted.
  *
- * The DB schema is unchanged : the 9 collection tables stay
- * separate. The `requireCollection` middleware resolves the header
- * value into the corresponding `EntryTable` and stores it on the
- * request context ; downstream handlers and `requireGuard` use that
- * resolved table.
+ * The DB schema is unchanged : one separate table per registered
+ * collection (13 today — see `COLLECTION_NAMES` in
+ * `@nodea/shared`). The `requireCollection` middleware resolves the
+ * header value into the corresponding `EntryTable` and stores it on
+ * the request context ; downstream handlers and `requireGuard` use
+ * that resolved table.
  *
  * Public view of an entry — minimum-readable-surface :
  *   - `id`             server-generated UUID handle

@@ -18,7 +18,6 @@ import {
 } from '../db/schema.ts';
 import {
   buildTotpUri,
-  currentWindow,
   generateTotpSecret,
   verifyTotpCode,
 } from '../auth/totp.ts';
@@ -26,7 +25,6 @@ import {
   generateBackupCodes,
   hashBackupCode,
   normaliseBackupCode,
-  BACKUP_CODES_PER_USER,
 } from '../auth/totp-backup-codes.ts';
 import { getEmailService } from '../services/email/index.ts';
 import { renderSecurityModeDowngradedEmail } from '../services/email/templates/security-mode-downgraded.ts';
@@ -409,9 +407,3 @@ authTotpRoutes.openapi(regenerateRoute, async (c) => {
   const response: TotpRegenerateBackupCodesResponse = { backupCodes };
   return c.json(response, 200);
 });
-
-// `currentWindow` + `BACKUP_CODES_PER_USER` are imported because
-// future Phase 5C consumers will lean on them; reference once to
-// keep eslint quiet until that lands.
-void currentWindow;
-void BACKUP_CODES_PER_USER;

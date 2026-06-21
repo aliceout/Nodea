@@ -51,6 +51,32 @@ import {
 
 import { loginLimiter } from './auth-shared.ts';
 
+/**
+ * Password-first login + logout routes (Auth-Spec §7.2, §7.4 stepped MFA).
+ *
+ * What: the OPAQUE login ceremony in two steps — `/login/start` (KE1→KE2,
+ * anti-enum) and `/login/finish` (KE3 verify → session) — plus `/logout`.
+ * On finish it consults `mfa-policy` to decide whether the security mode is
+ * satisfied by the password alone (mint a `full` session) or needs more
+ * factors (mint `mfa_pending`, surfacing the missing ones), and lazily
+ * applies a consumable MFA-bypass (`applyConsumableBypass`) when one is
+ * pending for the user.
+ *
+ * Where: the auth route layer, mounted by `auth.ts`. Rate-limited by
+ * `loginLimiter` (both steps). Sibling of auth-passkey-login / auth-mfa /
+ * auth-totp / auth-recovery, which own the other entry paths + factors.
+ *
+ * Non-obvious assumptions:
+ *  - Anti-enum: `/start` returns a well-formed KE2 even for an unknown
+ *    email (fake record), so an attacker can't distinguish "no account"
+ *    from "wrong password" by the response shape or timing.
+ *  - The user identifier is pinned into the login state at `/start` and
+ *    read back from it at `/finish` — `/finish` can never be steered to a
+ *    different identity by its body.
+ *  - `/login/finish` always mints a fresh session; it does NOT detect or
+ *    promote an existing `mfa_pending` cookie (see Login.md §7.4 — the
+ *    password-as-second-factor finalize path is a known gap, audit 2026-06).
+ */
 export const authLoginRoutes = makeAuthedRouter();
 
 const loginStartRoute = createRoute({

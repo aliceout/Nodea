@@ -445,10 +445,20 @@ authAccountRoutes.openapi(onboardingCompleteRoute, async (c) => {
  * Self-delete the authenticated user — re-auth gated by the
  * `requireFreshPassword` middleware (Phase 7B).
  *
- * Every row owned by this user is removed by the FK
- * `ON DELETE CASCADE` chain : sessions, modules_config,
- * opaque_records, and every *_entries. Invites the user
- * created keep their row with `created_by` set to NULL.
+ * The user's auth / session / profile rows are removed by the FK
+ * `ON DELETE CASCADE` chain : sessions, opaque_records, auth factors
+ * (TOTP, backup codes, passkeys, bypass requests), modules_config and
+ * user_preferences. Invites the user created keep their row with
+ * `created_by` set to NULL.
+ *
+ * The `*_entries` tables do **NOT** cascade : since migration 0012
+ * they carry no `user_id` column and no FK to `users` (see
+ * `db/schema/entries.ts` + Architecture.md §7.4), so the server has no
+ * link to delete them and cannot — the encrypted entries are wiped
+ * client-side (enumerated from modules_config) *before* this call.
+ * Orphaned ciphertext is undecryptable without the main key (accepted
+ * by design), but a server-side erasure feature must not assume this
+ * route clears module data.
  *
  * After the delete the session row is gone ; the cookie is
  * also explicitly cleared in the response so the browser
