@@ -73,9 +73,11 @@ import { loginLimiter } from './auth-shared.ts';
  *  - The user identifier is pinned into the login state at `/start` and
  *    read back from it at `/finish` — `/finish` can never be steered to a
  *    different identity by its body.
- *  - `/login/finish` always mints a fresh session; it does NOT detect or
- *    promote an existing `mfa_pending` cookie (see Login.md §7.4 — the
- *    password-as-second-factor finalize path is a known gap, audit 2026-06).
+ *  - `/login/finish` always mints a fresh session; it does NOT promote
+ *    an existing `mfa_pending` cookie. Adding the password factor to a
+ *    pending session (mode `maximum` entered passkey-first) is its own
+ *    route — `POST /auth/mfa/password/{start,finish}` (auth-mfa.ts) —
+ *    not an overload of this primary-login endpoint.
  */
 export const authLoginRoutes = makeAuthedRouter();
 

@@ -920,8 +920,11 @@ Cf. §7.3.
     accepted.
   - `always_2fa` / `maximum` — the passkey was never a complete
     login, so `/finish` returns `mfa_pending`. That session is
-    **kept** and the password is added as a second factor
-    (`mfa_password_verified`) before `/auth/mfa/finalize`.
+    **kept** and the password is added as a second factor via
+    `POST /auth/mfa/password/{start,finish}` (OPAQUE on the pending
+    session, `mfa_password_verified=true`), which promotes the row
+    inline once every required factor is met. There is no separate
+    `/auth/mfa/finalize` endpoint.
 
 ### 9.5 Fixed PRF input
 

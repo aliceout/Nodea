@@ -393,6 +393,161 @@ describe('POST /auth/mfa/totp/verify', () => {
 });
 
 /* ============================================================================
+ * POST /auth/mfa/password/{start,finish} — password-as-second-factor
+ *
+ * Reproduces the maximum-mode passkey-first path (remaining factors =
+ * password + totp) without a virtual authenticator: mint a normal
+ * always_2fa pending session, then mutate the row to look like
+ * "entered passkey-first, totp already done, only password missing".
+ * The new route must let that session finalize — before it existed the
+ * user was locked out at this step.
+ * ========================================================================== */
+
+describe('POST /auth/mfa/password/{start,finish}', () => {
+  async function setupPendingPasswordOnly(email: string): Promise<{
+    pendingCookie: string;
+  }> {
+    const u = await seedUser(email);
+    const fullCookie = (await rawLogin(email, TEST_PASSWORD)).cookie!;
+    await enrollTotpFor(email, TEST_PASSWORD, fullCookie);
+    await db
+      .update(users)
+      .set({ securityMode: 'always_2fa' })
+      .where(eq(users.id, u.id));
+    const pending = await rawLogin(email, TEST_PASSWORD);
+    expect(pending.body.needsMfa).toBe(true);
+
+    // Recast the pending row as "maximum, passkey-first, totp done,
+    // only password left" so missingFactors() returns exactly
+    // ['password'].
+    await db
+      .update(users)
+      .set({ securityMode: 'maximum' })
+      .where(eq(users.id, u.id));
+    const pendingId = pending.cookie!.split('=')[1]!.split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({
+        mfaPasswordVerified: false,
+        mfaPasskeyVerified: true,
+        mfaTotpVerified: true,
+      })
+      .where(eq(sessions.id, pendingId));
+    return { pendingCookie: pending.cookie! };
+  }
+
+  /** Drive the OPAQUE start+finish against the mfa/password routes. */
+  async function mfaPasswordVerify(
+    password: string,
+    pendingCookie: string,
+  ): Promise<Response> {
+    await ready;
+    const { clientLoginState, startLoginRequest } = client.startLogin({
+      password,
+    });
+    const startRes = await app.request('/auth/mfa/password/start', {
+      ...jsonPost({ startLoginRequest }),
+      headers: { 'content-type': 'application/json', cookie: pendingCookie },
+    });
+    if (startRes.status !== 200) return startRes;
+    const { loginResponse, loginToken } = (await startRes.json()) as {
+      loginResponse: string;
+      loginToken: string;
+    };
+    const finished = client.finishLogin({
+      password,
+      clientLoginState,
+      loginResponse,
+    });
+    if (!finished) {
+      throw new Error('mfaPasswordVerify: client.finishLogin returned undefined');
+    }
+    return app.request('/auth/mfa/password/finish', {
+      ...jsonPost({ loginToken, finishLoginRequest: finished.finishLoginRequest }),
+      headers: { 'content-type': 'application/json', cookie: pendingCookie },
+    });
+  }
+
+  it('401 unauthenticated when no mfa_pending cookie', async () => {
+    const res = await app.request(
+      '/auth/mfa/password/start',
+      jsonPost({ startLoginRequest: 'x' }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('finalizes + swaps the cookie with the correct password', async () => {
+    const { pendingCookie } = await setupPendingPasswordOnly(
+      'mfa-password-ok@example.com',
+    );
+    const res = await mfaPasswordVerify(TEST_PASSWORD, pendingCookie);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      finalized: boolean;
+      userId?: string;
+      wrappedKekPassword?: string;
+      wrappedMainKey?: string;
+    };
+    expect(body.finalized).toBe(true);
+    // Wrap blobs are inlined so the client can derive the main key from
+    // the password exportKey here, whatever the factor order (a non-PRF
+    // passkey entry leaves the key underived at the passkey step).
+    expect(typeof body.userId).toBe('string');
+    expect(typeof body.wrappedKekPassword).toBe('string');
+    expect(typeof body.wrappedMainKey).toBe('string');
+
+    const newCookie = extractCookie(res);
+    expect(newCookie).not.toBeNull();
+    expect(newCookie).not.toBe(pendingCookie);
+
+    // Old pending row gone (DELETE pending + INSERT full in a tx).
+    const oldId = pendingCookie.split('=')[1]!.split('.')[0]!;
+    const oldRows = await db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, oldId));
+    expect(oldRows).toHaveLength(0);
+  });
+
+  it('401 at finish on a bogus loginToken', async () => {
+    const { pendingCookie } = await setupPendingPasswordOnly(
+      'mfa-password-bad-token@example.com',
+    );
+    const res = await app.request('/auth/mfa/password/finish', {
+      ...jsonPost({ loginToken: 'not-a-real-token', finishLoginRequest: 'x' }),
+      headers: { 'content-type': 'application/json', cookie: pendingCookie },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('401 at finish on a valid token but an invalid OPAQUE proof', async () => {
+    // The wrong-password path: a real /start yields a valid loginToken,
+    // but a garbage finishLoginRequest makes the server's
+    // opaqueFinishLogin throw → 401 (a cooperating client can't even
+    // produce a KE3 for the wrong password, so we feed garbage directly).
+    const { pendingCookie } = await setupPendingPasswordOnly(
+      'mfa-password-bad-proof@example.com',
+    );
+    await ready;
+    const { startLoginRequest } = client.startLogin({ password: TEST_PASSWORD });
+    const startRes = await app.request('/auth/mfa/password/start', {
+      ...jsonPost({ startLoginRequest }),
+      headers: { 'content-type': 'application/json', cookie: pendingCookie },
+    });
+    expect(startRes.status).toBe(200);
+    const { loginToken } = (await startRes.json()) as { loginToken: string };
+    const res = await app.request('/auth/mfa/password/finish', {
+      ...jsonPost({
+        loginToken,
+        finishLoginRequest: 'not-a-valid-opaque-blob',
+      }),
+      headers: { 'content-type': 'application/json', cookie: pendingCookie },
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
+/* ============================================================================
  * /auth/me sanity check — refuses mfa_pending cookies
  * ========================================================================== */
 

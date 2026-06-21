@@ -121,3 +121,77 @@ export const MfaPasskeyFinishResponseSchema = z.discriminatedUnion(
 export type MfaPasskeyFinishResponse = z.infer<
   typeof MfaPasskeyFinishResponseSchema
 >;
+
+/* ============================================================================
+ * Password-as-second-factor (Auth-Spec §7.4 — mode `maximum`, passkey-first)
+ * ========================================================================== */
+
+/**
+ * `POST /auth/mfa/password/{start,finish}` — proves the OPAQUE password
+ * on a `mfa_pending` session, the same two-step handshake as a normal
+ * login but bound to the pending session's user (identifier read from
+ * the session, never the body). Needed because mode `maximum` entered
+ * passkey-first requires `password` + `totp` as remaining factors, and
+ * the other `/auth/mfa/*` routes only cover totp + passkey — without
+ * this the pending session could never satisfy `password` and the user
+ * was locked out of that documented entry path.
+ */
+export const MfaPasswordStartBodySchema = z.object({
+  startLoginRequest: z.string().min(1),
+});
+export type MfaPasswordStartBody = z.infer<typeof MfaPasswordStartBodySchema>;
+
+export const MfaPasswordStartResponseSchema = z.object({
+  loginResponse: z.string(),
+  loginToken: z.string(),
+});
+export type MfaPasswordStartResponse = z.infer<
+  typeof MfaPasswordStartResponseSchema
+>;
+
+export const MfaPasswordFinishBodySchema = z.object({
+  loginToken: z.string().min(1),
+  finishLoginRequest: z.string().min(1),
+});
+export type MfaPasswordFinishBody = z.infer<
+  typeof MfaPasswordFinishBodySchema
+>;
+
+/**
+ * Like the TOTP / passkey verify responses, but it ALSO inlines the
+ * wrap blobs + the user id — on BOTH the finalized and not-yet-final
+ * branches. The password step is the place the main key gets derived
+ * for a non-PRF passkey entry (nothing unwrapped it at the passkey
+ * step), so the client must be able to unwrap it from the password
+ * `exportKey` regardless of whether this step is the one that finalizes
+ * the session. Delivering the blobs here (rather than via
+ * `/auth/me/crypto`, which refuses pending sessions) makes the
+ * derivation independent of factor ordering. No new exposure: same
+ * blobs the primary pending login already returns, to the same
+ * authenticated user. */
+const MfaWrapBlob = z.string().min(1).max(8192);
+const MfaPasswordWrap = {
+  userId: z.string(),
+  wrappedMainKey: MfaWrapBlob,
+  wrappedMainKeyIv: MfaWrapBlob,
+  wrappedKekPassword: MfaWrapBlob,
+  wrappedKekPasswordIv: MfaWrapBlob,
+} as const;
+
+export const MfaPasswordFinishResponseSchema = z.discriminatedUnion(
+  'finalized',
+  [
+    z.object({
+      finalized: z.literal(true),
+      ...MfaPasswordWrap,
+    }),
+    z.object({
+      finalized: z.literal(false),
+      missing: z.array(MfaFactorSchema).min(1),
+      ...MfaPasswordWrap,
+    }),
+  ],
+);
+export type MfaPasswordFinishResponse = z.infer<
+  typeof MfaPasswordFinishResponseSchema
+>;

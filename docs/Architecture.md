@@ -362,8 +362,8 @@ the factory loops over. There is nowhere to forget a guard.
     (`cancelPendingBypassesForUser`) flips `cancelled_at` on every
     pending request whenever the user lands a full session — at
     `/auth/login/finish`, `/auth/passkeys/login/finish`,
-    `/auth/mfa/{totp,passkey}/finish`, and after a recovery-code
-    reset. Rationale: a successful login proves the user still
+    `/auth/mfa/{totp,passkey,password}/finish`, and after a
+    recovery-code reset. Rationale: a successful login proves the user still
     controls the factor they claimed to have lost (and defangs an
     attacker who triggered a bypass against them).
   - Tokens: 32 bytes random base64url, SHA-256 hashed in

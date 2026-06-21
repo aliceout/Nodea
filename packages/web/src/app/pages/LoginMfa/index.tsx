@@ -14,6 +14,7 @@ import {
 } from './lib/validation';
 import { type LostState } from './LostFlow';
 import PasskeyStep from './PasskeyStep';
+import PasswordStep from './PasswordStep';
 import TotpStep from './TotpStep';
 
 type Factor = 'totp' | 'passkey' | 'password';
@@ -57,7 +58,7 @@ type Factor = 'totp' | 'passkey' | 'password';
  * (with tests).
  */
 interface LoginMfaLocationState {
-  factorsNeeded?: ReadonlyArray<'totp' | 'passkey'>;
+  factorsNeeded?: ReadonlyArray<'totp' | 'passkey' | 'password'>;
   /**
    * Issue #72 discriminator forwarded from `/login` and
    * `/passkeys/login`. True when the listed factors are
@@ -80,14 +81,16 @@ export default function LoginMfaPage() {
   // `secondFactorChoice` AND the wire still lists both
   // alternatives. Reload → navState is null → fall back to
   // TOTP (still a valid path : the server accepts either).
-  const initialStep: 'picker' | 'totp' | 'passkey' =
+  const initialStep: 'picker' | 'totp' | 'passkey' | 'password' =
     navState?.secondFactorChoice === true &&
     factorsNeeded !== undefined &&
     factorsNeeded.includes('totp') &&
     factorsNeeded.includes('passkey')
       ? 'picker'
       : 'totp';
-  const [step, setStep] = useState<'picker' | 'totp' | 'passkey'>(initialStep);
+  const [step, setStep] = useState<'picker' | 'totp' | 'passkey' | 'password'>(
+    initialStep,
+  );
   // Sub-mode of the TOTP step : enter the live 6-digit code, or
   // a 24-char single-use backup code (when the user lost the
   // authenticator app). Switching modes resets the input so a
@@ -95,6 +98,8 @@ export default function LoginMfaPage() {
   // under the other's regex.
   const [totpMode, setTotpMode] = useState<'code' | 'backup'>('code');
   const [code, setCode] = useState('');
+  // Password-as-second-factor input (mode `maximum`, passkey-first).
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lost, setLost] = useState<LostState>({ kind: 'idle' });
@@ -105,6 +110,7 @@ export default function LoginMfaPage() {
   const canSubmitTotp =
     !submitting &&
     (totpMode === 'code' ? isValidTotpCode(code) : isValidBackupCode(code));
+  const canSubmitPassword = !submitting && password.length > 0;
 
   function startLost(factor: 'totp' | 'passkey'): void {
     setError(null);
@@ -149,14 +155,18 @@ export default function LoginMfaPage() {
       setStep('passkey');
       return;
     }
+    if (missing.includes('password') && step !== 'password') {
+      setStep('password');
+      return;
+    }
     if (missing.includes('totp') && step !== 'totp') {
       setStep('totp');
       return;
     }
-    // Edge case : server reports something we don't have a UI
-    // for (e.g. password-as-second-factor in passkey-first
-    // maximum). Surface a generic message — the auth routes
-    // never return only `password` in practice today.
+    // Fallback : the server reported a factor we have no UI for. With
+    // password (mode `maximum` passkey-first), totp and passkey all
+    // handled, this should be unreachable — surface a generic message
+    // rather than strand the user silently.
     setError(
       t('auth.mfa.errors.incompleteFactors', {
         values: { factors: missing.join(', ') },
@@ -225,6 +235,25 @@ export default function LoginMfaPage() {
     }
   }
 
+  async function onSubmitPassword(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
+    setError(null);
+    if (!canSubmitPassword) return;
+    setSubmitting(true);
+    try {
+      const result = await session.verifyMfaPassword(password);
+      if (result.finalized) {
+        navigate('/flow', { replace: true });
+      } else {
+        applyMissing(result.missing);
+      }
+    } catch (err) {
+      handleApiError(err, t('auth.mfa.errors.wrongPassword'));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function onSwitchToBackup(): void {
     setError(null);
     setCode('');
@@ -280,6 +309,18 @@ export default function LoginMfaPage() {
           onStartLost={() => startLost('passkey')}
           onCancelLost={() => setLost({ kind: 'idle' })}
           onConfirmLost={() => void confirmLost()}
+          onRestartLogin={() => navigate('/login', { replace: true })}
+        />
+      ) : null}
+
+      {step === 'password' ? (
+        <PasswordStep
+          password={password}
+          submitting={submitting}
+          canSubmit={canSubmitPassword}
+          error={error}
+          onPasswordChange={setPassword}
+          onSubmit={(e) => void onSubmitPassword(e)}
           onRestartLogin={() => navigate('/login', { replace: true })}
         />
       ) : null}

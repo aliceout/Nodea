@@ -8,6 +8,8 @@ import {
   apiMeCrypto,
   apiMfaPasskeyFinish,
   apiMfaPasskeyStart,
+  apiMfaPasswordFinish,
+  apiMfaPasswordStart,
   apiMfaTotpVerify,
 } from '../../api/client.ts';
 import {
@@ -272,4 +274,97 @@ export async function verifyMfaPasskey(
     return { finalized: true };
   }
   return { finalized: false, missing: finishRes.missing };
+}
+
+/**
+ * Verify the password-as-second-factor on a `mfa_pending` session
+ * (mode `maximum` entered passkey-first, whose remaining factors are
+ * password + totp). Runs the OPAQUE handshake against
+ * `/auth/mfa/password/{start,finish}`.
+ *
+ * On finalize this is also where the main key is (re)derived from the
+ * password's `exportKey`: when the passkey used to enter was non-PRF,
+ * nothing unwrapped the key at the passkey step (it was marked
+ * missing), so the password step is the only place that can. When a
+ * PRF passkey already set it, re-deriving yields the same key —
+ * harmless. Same unwrap path as the full-session login branch above.
+ *
+ * Throws `{ status: 401, error: 'invalid_credentials' }` on a wrong
+ * password (client-side `finishLogin` returns undefined).
+ */
+export async function verifyMfaPassword(
+  deps: { setAuth: SetAuth; setMainKey: SetMainKey },
+  password: string,
+): Promise<
+  | { finalized: true }
+  | { finalized: false; missing: ReadonlyArray<'totp' | 'passkey' | 'password'> }
+> {
+  await opaqueReady;
+
+  const { clientLoginState, startLoginRequest } = clientLoginStart(password);
+  const startRes = await apiMfaPasswordStart({ startLoginRequest });
+  const finished = clientLoginFinish({
+    password,
+    clientLoginState,
+    loginResponse: startRes.loginResponse,
+  });
+  if (!finished) {
+    throw { status: 401, error: 'invalid_credentials' };
+  }
+
+  const finishRes = await apiMfaPasswordFinish({
+    loginToken: startRes.loginToken,
+    finishLoginRequest: finished.finishLoginRequest,
+  });
+
+  // Derive the main key from the password exportKey + the wrap blobs
+  // the response inlines — UNCONDITIONALLY, whether or not this step
+  // finalized the session. For a non-PRF passkey entry nothing
+  // unwrapped the key at the passkey step, and the password step isn't
+  // guaranteed to be the last factor; deriving here every time keeps
+  // the user from landing on /flow keyless whatever the factor order.
+  // When a PRF passkey already set the key this re-derives the same one
+  // (harmless). The blobs ride the response because /auth/me/crypto
+  // refuses pending sessions. AAD binds to the user id (`finishRes.userId`),
+  // matching the wrap at registration — same as the full-login branch.
+  const kekBytes = await unwrapKekUnderFactor(
+    {
+      wrappedKek: finishRes.wrappedKekPassword as unknown as Base64,
+      wrappedKekIv: finishRes.wrappedKekPasswordIv as unknown as Base64,
+    },
+    finished.exportKey,
+    buildKekAAD(finishRes.userId, 'password'),
+  );
+  let rawBytes: Uint8Array;
+  try {
+    rawBytes = await unwrapMainKeyUnderKek(
+      {
+        wrappedMainKey: finishRes.wrappedMainKey as unknown as Base64,
+        wrappedMainKeyIv: finishRes.wrappedMainKeyIv as unknown as Base64,
+      },
+      kekBytes,
+      buildMainKeyAAD(finishRes.userId),
+    );
+  } finally {
+    kekBytes.fill(0);
+  }
+  try {
+    const material = await deriveMainKeys(rawBytes);
+    deps.setMainKey(material);
+  } finally {
+    rawBytes.fill(0);
+  }
+
+  if (!finishRes.finalized) {
+    return { finalized: false, missing: finishRes.missing };
+  }
+
+  // Finalized → the session is now `full`; hydrate the user shape so
+  // the auth slice flips to authenticated.
+  const me = await apiMe();
+  if (!me) {
+    throw new Error('mfa-password verify finalized but /auth/me returned null');
+  }
+  deps.setAuth(me);
+  return { finalized: true };
 }

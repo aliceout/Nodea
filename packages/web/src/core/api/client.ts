@@ -66,6 +66,8 @@ export {
   apiMfaBypassRequest,
   apiMfaPasskeyFinish,
   apiMfaPasskeyStart,
+  apiMfaPasswordFinish,
+  apiMfaPasswordStart,
   apiMfaTotpVerify,
 } from './mfa.ts';
 

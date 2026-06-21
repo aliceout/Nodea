@@ -4,10 +4,16 @@ import {
   MfaPasskeyFinishResponseSchema,
   MfaPasskeyStartBodySchema,
   MfaPasskeyStartResponseSchema,
+  MfaPasswordFinishBodySchema,
+  MfaPasswordFinishResponseSchema,
+  MfaPasswordStartBodySchema,
+  MfaPasswordStartResponseSchema,
   MfaTotpVerifyBodySchema,
   MfaTotpVerifyResponseSchema,
   type MfaPasskeyFinishResponse,
   type MfaPasskeyStartResponse,
+  type MfaPasswordFinishResponse,
+  type MfaPasswordStartResponse,
   type MfaTotpVerifyResponse,
 } from '@nodea/shared';
 import {
@@ -22,6 +28,7 @@ import {
   authFactors,
   mfaTotp,
   mfaTotpRecoveryCodes,
+  opaqueRecords,
   sessions,
 } from '../db/schema.ts';
 import { verifyTotpCode } from '../auth/totp.ts';
@@ -29,6 +36,15 @@ import {
   hashBackupCode,
   normaliseBackupCode,
 } from '../auth/totp-backup-codes.ts';
+import {
+  finishLogin as opaqueFinishLogin,
+  opaqueReady,
+  startLogin as opaqueStartLogin,
+} from '../auth/opaque.ts';
+import {
+  consumeLoginState,
+  storeLoginState,
+} from '../auth/opaque-login-state.ts';
 import { finalizeMfaSession } from '../auth/session.ts';
 import { setSessionCookie } from '../auth/cookies.ts';
 import { missingFactors } from '../auth/mfa-policy.ts';
@@ -43,22 +59,25 @@ import { base64UrlToBytes, parseTransports } from './passkey-helpers.ts';
 
 
 /**
- * Stepped MFA routes (Auth-Roadmap Phase 5C, Auth-Spec §7.4).
+ * Stepped MFA routes (Auth-Roadmap Phase 5C/5D, Auth-Spec §7.4).
  *
- * One route currently:
+ * Every route here operates on a `mfa_pending` session (gated by
+ * `requireMfaPending`), verifies one remaining factor, sets the
+ * matching `mfa_*_verified` flag, and — if the row now satisfies
+ * `users.security_mode` — promotes it to a `full` session in one
+ * transaction (`finalizeMfaSession`). Otherwise it reports the
+ * still-`missing` factors so the client drives the next step.
  *
- *   - `POST /auth/mfa/totp/verify` (mfa_pending) — accepts a 6-digit
- *     TOTP code OR a 24-char backup code in the same `code` field.
- *     Verifies, sets `mfa_totp_verified=true` on the pending row,
- *     and if the row now satisfies `users.security_mode`, promotes
- *     to a full session in the same transaction.
- *
- * Phase 5D adds the passkey-as-second-factor route for mode
- * `maximum`. The `missing` array in this route's response tells the
- * client whether to drive that next or stop.
- *
- * Backup codes are single-use (Auth-Spec §8.3): each consumed code
- * flips `used_at` and the row stays for audit.
+ *   - `POST /auth/mfa/totp/verify` — 6-digit TOTP OR a 24-char backup
+ *     code in the same `code` field (single-use, Auth-Spec §8.3).
+ *   - `POST /auth/mfa/passkey/{start,finish}` — passkey-as-second-factor
+ *     (mode `maximum` after password-first).
+ *   - `POST /auth/mfa/password/{start,finish}` — password-as-second-factor
+ *     via the OPAQUE handshake (mode `maximum` after passkey-first).
+ *     Without it that documented entry path could never satisfy its
+ *     `password` requirement — the user was locked out at the MFA step.
+ *     The OPAQUE identifier is taken from the pending session's user,
+ *     never the body (anti-confused-deputy).
  */
 export const authMfaRoutes = new OpenAPIHono<{ Variables: MfaPendingVariables }>({
   defaultHook: defaultInvalidBodyHook,
@@ -83,6 +102,20 @@ const passkeyMfaLimiter = rateLimit({
   max: 10,
   windowMs: 5 * 60_000,
   keyPrefix: 'mfa-passkey',
+});
+
+// Keyed on the pending session's USER (like the TOTP verify limiter) so
+// an attacker holding the mfa_pending cookie can't multiply password
+// guesses by rotating IPs. The OPAQUE handshake is expensive, so the
+// cap also protects CPU. IP stays the fallback if the variable is absent.
+const passwordMfaLimiter = rateLimit({
+  max: 10,
+  windowMs: 5 * 60_000,
+  keyPrefix: 'mfa-password',
+  keyFn: (c) => {
+    const user = c.get('user') as { id?: string } | undefined;
+    return user?.id ?? null;
+  },
 });
 
 const totpVerifyRoute = createRoute({
@@ -138,6 +171,44 @@ const passkeyFinishRoute = createRoute({
     200: jsonContent(MfaPasskeyFinishResponseSchema, 'Finalized or missing factors'),
     400: errorContent('Invalid body, no pending challenge, or expired'),
     401: errorContent('Invalid credentials'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const passwordStartRoute = createRoute({
+  method: 'post',
+  path: '/mfa/password/start',
+  tags: ['auth-mfa'],
+  summary: 'Start password-as-second-factor (OPAQUE) on a `mfa_pending` session',
+  middleware: [requireMfaPending, passwordMfaLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: MfaPasswordStartBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(MfaPasswordStartResponseSchema, 'OPAQUE login response + token'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Pending session missing or expired'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const passwordFinishRoute = createRoute({
+  method: 'post',
+  path: '/mfa/password/finish',
+  tags: ['auth-mfa'],
+  summary: 'Finish password-as-second-factor on a `mfa_pending` session',
+  middleware: [requireMfaPending, passwordMfaLimiter] as const,
+  request: {
+    body: {
+      content: { 'application/json': { schema: MfaPasswordFinishBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonContent(MfaPasswordFinishResponseSchema, 'Finalized or missing factors'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Invalid credentials or pending session'),
     429: errorContent('Rate limit exceeded'),
   },
 });
@@ -411,6 +482,130 @@ authMfaRoutes.openapi(passkeyFinishRoute, async (c) => {
   const response: MfaPasskeyFinishResponse = {
     finalized: false,
     missing: missing as ('totp' | 'passkey' | 'password')[],
+  };
+  return c.json(response, 200);
+});
+
+/* ============================================================================
+ * POST /auth/mfa/password/start — OPAQUE step 1 on a pending session
+ * ========================================================================== */
+
+authMfaRoutes.openapi(passwordStartRoute, async (c) => {
+  await opaqueReady;
+  const raw = await c.req.json().catch(() => null);
+  const parsed = MfaPasswordStartBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
+
+  // The OPAQUE identifier comes from the pending session's user, never
+  // the body — an attacker holding A's mfa_pending cookie can't prove
+  // B's password (anti-confused-deputy, same discipline as /reauth).
+  const [record] = await db
+    .select({
+      envelope: opaqueRecords.envelope,
+      opaqueIdentifier: opaqueRecords.userIdentifier,
+    })
+    .from(opaqueRecords)
+    .where(eq(opaqueRecords.userId, user.id))
+    .limit(1);
+
+  // OPAQUE needs the registration-time identifier (diverges from the
+  // current email after a change-email); the in-memory state still
+  // binds on the CURRENT email so /finish can re-check it.
+  const opaqueIdentifier = record?.opaqueIdentifier ?? user.email.toLowerCase();
+
+  let serverLoginState: string;
+  let loginResponse: string;
+  try {
+    const result = opaqueStartLogin({
+      userIdentifier: opaqueIdentifier,
+      registrationRecord: record?.envelope ?? null,
+      startLoginRequest: parsed.data.startLoginRequest,
+    });
+    serverLoginState = result.serverLoginState;
+    loginResponse = result.loginResponse;
+  } catch {
+    return c.json({ error: 'invalid_body' }, 400);
+  }
+
+  const loginToken = storeLoginState(serverLoginState, user.email.toLowerCase());
+  const response: MfaPasswordStartResponse = { loginResponse, loginToken };
+  return c.json(response, 200);
+});
+
+/* ============================================================================
+ * POST /auth/mfa/password/finish — verify OPAQUE proof + maybe finalize
+ * ========================================================================== */
+
+authMfaRoutes.openapi(passwordFinishRoute, async (c) => {
+  await opaqueReady;
+  const raw = await c.req.json().catch(() => null);
+  const parsed = MfaPasswordFinishBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const user = c.get('user');
+  const sessionId = c.get('sessionId');
+  const pendingSession = c.get('pendingSession');
+
+  const pending = consumeLoginState(parsed.data.loginToken);
+  if (!pending) return c.json({ error: 'invalid_credentials' }, 401);
+  // Same-identifier guard — /start stamped the user's email into the
+  // OPAQUE state; reject if it doesn't match the calling pending session.
+  if (pending.userIdentifier !== user.email.toLowerCase()) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+  try {
+    opaqueFinishLogin({
+      serverLoginState: pending.state,
+      finishLoginRequest: parsed.data.finishLoginRequest,
+    });
+  } catch {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  // Inline the wrap blobs so the client can derive the main key from
+  // the password exportKey here — whether or not this step finalizes
+  // the session — covering the non-PRF passkey entry where nothing
+  // unwrapped the key at the passkey step. Same blobs the primary
+  // pending login returns. A real maximum-mode user always has them;
+  // null would be an impossible state, so fail loud rather than ship a
+  // keyless finalize.
+  if (
+    user.wrappedMainKey === null ||
+    user.wrappedMainKeyIv === null ||
+    user.wrappedKekPassword === null ||
+    user.wrappedKekPasswordIv === null
+  ) {
+    throw new Error('mfa-password: user row missing OPAQUE wrap blobs');
+  }
+  const wrap = {
+    userId: user.id,
+    wrappedMainKey: user.wrappedMainKey,
+    wrappedMainKeyIv: user.wrappedMainKeyIv,
+    wrappedKekPassword: user.wrappedKekPassword,
+    wrappedKekPasswordIv: user.wrappedKekPasswordIv,
+  };
+
+  // Mark password verified on the pending row.
+  await db
+    .update(sessions)
+    .set({ mfaPasswordVerified: true })
+    .where(eq(sessions.id, sessionId));
+
+  const updatedPending = { ...pendingSession, mfaPasswordVerified: true };
+  const missing = missingFactors(user, updatedPending);
+
+  if (missing.length === 0) {
+    await cancelPendingBypassesForUser(user.id);
+    const fullSession = await finalizeMfaSession(sessionId);
+    await setSessionCookie(c, fullSession.id, fullSession.expiresAt);
+    const response: MfaPasswordFinishResponse = { finalized: true, ...wrap };
+    return c.json(response, 200);
+  }
+
+  const response: MfaPasswordFinishResponse = {
+    finalized: false,
+    missing: missing as ('totp' | 'passkey' | 'password')[],
+    ...wrap,
   };
   return c.json(response, 200);
 });

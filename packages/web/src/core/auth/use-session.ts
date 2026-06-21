@@ -42,6 +42,7 @@ import { changePassword as changePasswordAction } from './session/change-passwor
 import {
   login as loginAction,
   verifyMfaPasskey as verifyMfaPasskeyAction,
+  verifyMfaPassword as verifyMfaPasswordAction,
   verifyMfaTotp as verifyMfaTotpAction,
 } from './session/login.ts';
 import {
@@ -168,6 +169,8 @@ export function useSession() {
       regenerateTotpBackupCodesAction({ user, setAuth }, currentPassword),
     verifyMfaTotp: (code: string) => verifyMfaTotpAction({ setAuth }, code),
     verifyMfaPasskey: () => verifyMfaPasskeyAction({ setAuth }),
+    verifyMfaPassword: (password: string) =>
+      verifyMfaPasswordAction({ setAuth, setMainKey }, password),
     changeSecurityMode: (
       mode: Parameters<typeof changeSecurityModeAction>[1],
       currentPassword: string,

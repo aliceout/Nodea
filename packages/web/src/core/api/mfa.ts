@@ -2,6 +2,8 @@ import {
   MfaBypassRequestResponseSchema,
   MfaPasskeyFinishResponseSchema,
   MfaPasskeyStartResponseSchema,
+  MfaPasswordFinishResponseSchema,
+  MfaPasswordStartResponseSchema,
   MfaTotpVerifyResponseSchema,
   type MfaBypassConfirmResponse,
   type MfaBypassRequestBody,
@@ -10,6 +12,10 @@ import {
   type MfaPasskeyFinishResponse,
   type MfaPasskeyStartBody,
   type MfaPasskeyStartResponse,
+  type MfaPasswordFinishBody,
+  type MfaPasswordFinishResponse,
+  type MfaPasswordStartBody,
+  type MfaPasswordStartResponse,
   type MfaTotpVerifyBody,
   type MfaTotpVerifyResponse,
 } from '@nodea/shared';
@@ -66,6 +72,33 @@ export async function apiMfaPasskeyFinish(
     '/auth/mfa/passkey/finish',
     body,
     MfaPasskeyFinishResponseSchema,
+  );
+}
+
+/** Password-as-second-factor — used for mode `maximum` entered
+ *  passkey-first, whose remaining factors are password + totp. The
+ *  OPAQUE handshake runs against the `mfa_pending` session (identifier
+ *  taken from the session, never sent in the body). On finalize the
+ *  server promotes the row to `full` and swaps the cookie. */
+export async function apiMfaPasswordStart(
+  body: MfaPasswordStartBody,
+): Promise<MfaPasswordStartResponse> {
+  return request(
+    'POST',
+    '/auth/mfa/password/start',
+    body,
+    MfaPasswordStartResponseSchema,
+  );
+}
+
+export async function apiMfaPasswordFinish(
+  body: MfaPasswordFinishBody,
+): Promise<MfaPasswordFinishResponse> {
+  return request(
+    'POST',
+    '/auth/mfa/password/finish',
+    body,
+    MfaPasswordFinishResponseSchema,
   );
 }
 
