@@ -1,10 +1,9 @@
-import { XMarkIcon } from '@heroicons/react/24/outline';
-
 import { useEffect, useMemo, useRef } from 'react';
 
 import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import ActiveFilterChip from '@/ui/dirk/module/ActiveFilterChip';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
@@ -128,37 +127,26 @@ export default function PrimaryColumn() {
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Active day-filter chip — surfaces the date the user
-                picked on the heatmap and offers an explicit clear
-                via the cross. Without this, the only way to undo
-                the filter is to re-click the same cell (not
-                discoverable). */}
+            {/* Active day-filter chip — surfaces the date picked on the
+                heatmap with an explicit clear (otherwise the only undo
+                is re-clicking the same cell, not discoverable). */}
             {dayFilter ? (
-              <button
-                type="button"
-                onClick={() => setDayFilter(null)}
+              <ActiveFilterChip
+                label={dayFilterLabel}
+                onClear={() => setDayFilter(null)}
                 title={t('mood.primary.clearDayFilterTitle')}
-                aria-label={t('mood.primary.clearDayFilterAria')}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-hair bg-bg-2 px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <span>{dayFilterLabel}</span>
-                <XMarkIcon className="h-3 w-3" aria-hidden="true" />
-              </button>
+                ariaLabel={t('mood.primary.clearDayFilterAria')}
+              />
             ) : null}
             {/* Active score-filter chip — set by clicking a segment of
-                the Répartition donut. Same dismissible shape as the
-                day-filter chip. */}
+                the Répartition donut. */}
             {scoreFilter !== null ? (
-              <button
-                type="button"
-                onClick={() => setScoreFilter(null)}
+              <ActiveFilterChip
+                label={t(`mood.scoreLabels.${scoreFilter}`)}
+                onClear={() => setScoreFilter(null)}
                 title={t('mood.primary.clearScoreFilterTitle')}
-                aria-label={t('mood.primary.clearScoreFilterAria')}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-hair bg-bg-2 px-2 py-0.5 text-[11px] text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <span>{t(`mood.scoreLabels.${scoreFilter}`)}</span>
-                <XMarkIcon className="h-3 w-3" aria-hidden="true" />
-              </button>
+                ariaLabel={t('mood.primary.clearScoreFilterAria')}
+              />
             ) : null}
           </div>
           <div className="flex items-center gap-2">

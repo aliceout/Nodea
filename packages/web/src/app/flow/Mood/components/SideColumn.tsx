@@ -1,66 +1,23 @@
-import { useCallback, useMemo, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
-import { useMoodData } from '../context';
-import {
-  computeAverage30d,
-  computePatterns,
-  formatMoodAvg,
-  type StatsTranslate,
-} from '../lib/stats';
+import PatternsList from './PatternsList';
 import ScoreDonut from './ScoreDonut';
 
 /**
  * Mood sidebar — score distribution donut on top, observations
- * (« Patterns ») below.
+ * (« Patterns ») below. Pure layout: each section's content is its own
+ * component (`ScoreDonut`, `PatternsList`), both reading the *full*
+ * entry list so the year / month filters don't change what's shown
+ * here — the sidebar is a lifetime view by design.
  *
- * Patterns are computed over `{date, score}` only — no external
- * signals (sleep, calendar, weather…) because the app doesn't
- * capture them ; surfacing fake correlations would undermine
- * trust.
- *
- * Three signals, each surfaced only when the data supports it :
- *  - best / worst day of the week (mean score per weekday vs the
- *    overall mean, requires ≥ 3 entries on the day to dampen
- *    one-shot noise).
- *  - longest non-negative streak — counts consecutive entries
- *    (not calendar days), so a missed day doesn't break the
- *    streak.
- *  - 30-day rolling mean vs 90-day rolling mean, only shown when
- *    the gap is meaningful (≥ 0.2 on the −2..+2 scale).
- *
- * The donut + Patterns block both read the *full* entry list, so
- * the year / month filters do not change what's shown here — the
- * sidebar is a lifetime view by design.
- *
- * Below `lg` the whole column is hidden : the stats are
- * nice-to-have, not load-bearing, and stacking ~200 px of
- * lifetime aggregates under the entries list on a phone is more
- * noise than insight. Users who want them switch to tablet /
- * desktop.
+ * Below `lg` the whole column is hidden : the stats are nice-to-have,
+ * not load-bearing, and stacking ~200 px of lifetime aggregates under
+ * the entries list on a phone is more noise than insight.
  */
 export default function SideColumn() {
-  const { t, language } = useI18n();
-  const { entries, today } = useMoodData();
-  // Adapter from the provider's `t(key, { values })` shape to the
-  // pure lib's `(key, values)` contract — `lib/stats` stays
-  // React-free and the i18n resolution happens here.
-  const statsT = useCallback<StatsTranslate>(
-    (key, values) => (values ? t(key, { values }) : t(key)),
-    [t],
-  );
-  const patterns = useMemo(
-    () => computePatterns(entries, statsT, today, language),
-    [entries, statsT, today, language],
-  );
-  // 30-day rolling mean — used to be displayed in the page
-  // subtitle ; now lives in the Patterns block as a permanent
-  // first row so the header surface stays uncluttered.
-  const avg30d = useMemo(
-    () => computeAverage30d(entries, today),
-    [entries, today],
-  );
+  const { t } = useI18n();
 
   return (
     <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
@@ -71,32 +28,7 @@ export default function SideColumn() {
 
       <section>
         <SectionLabel>{t('mood.side.patterns')}</SectionLabel>
-        <ul>
-          <li className="border-b border-hair py-2.5">
-            <div className="text-[13px] font-medium text-ink">
-              {t('mood.side.rollingAvg')}{' '}
-              <span className="tabular-nums">{formatMoodAvg(avg30d)}</span>
-            </div>
-            <div className="mt-0.5 text-[11px] text-muted">
-              {t('mood.side.rollingAvgScale')}
-            </div>
-          </li>
-          {patterns.length === 0 ? (
-            <li className="border-b border-hair py-2.5 last:border-b-0 text-[12px] italic text-muted">
-              {t('mood.side.noPatterns')}
-            </li>
-          ) : (
-            patterns.map((p) => (
-              <li
-                key={p.label}
-                className="border-b border-hair py-2.5 last:border-b-0"
-              >
-                <div className="text-[13px] font-medium text-ink">{p.label}</div>
-                <div className="mt-0.5 text-[11px] text-muted">{p.delta}</div>
-              </li>
-            ))
-          )}
-        </ul>
+        <PatternsList />
       </section>
     </aside>
   );
