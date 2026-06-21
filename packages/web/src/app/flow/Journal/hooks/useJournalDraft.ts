@@ -30,6 +30,9 @@ const STORAGE_KEY = 'nodea:journal:draft:new';
 
 export interface JournalDraftPayload {
   thread: string;
+  /** Optional entry title. Older drafts predate this field, so it
+   *  decodes as `undefined` — callers coalesce to `''`. */
+  title?: string;
   content: string;
   attachments: JournalAttachment[];
 }
@@ -126,6 +129,7 @@ export function useJournalDraft(): JournalDraftControls {
     // restored).
     if (
       payload.thread.trim() === '' &&
+      (payload.title ?? '').trim() === '' &&
       payload.content.trim() === '' &&
       payload.attachments.length === 0
     ) {

@@ -84,6 +84,8 @@
   "composer": {
     "submittingUpdate": "Mise à jour…",
     "dateLabel": "Date",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "Titre (facultatif)",
     "draftRestored": "Brouillon en cours repris.",
     "resetDraft": "Repartir à zéro",
     "removeImageAria": "Retirer l’image",

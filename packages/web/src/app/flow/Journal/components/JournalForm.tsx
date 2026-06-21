@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { toIsoDate } from '@/core/i18n/date-format';
 import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
+import Input from '@/ui/atoms/dirk/Input';
 
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import FormError from '@/ui/dirk/forms/FormError';
@@ -87,6 +88,10 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     initial ? initial.dateIso.slice(0, 10) : toIsoDate(new Date()),
   );
   const [thread, setThread] = useState(initial?.thread ?? '');
+  // Optional title — surfaced everywhere downstream already (list,
+  // reader, on-this-day, search); the composer was the only place
+  // that never let you set it (it hardcoded `null`).
+  const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [attachments, setAttachments] = useState<JournalAttachment[]>(
     initial?.attachments ?? [],
@@ -118,12 +123,14 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     if (!draftHydrated) return;
     if (
       thread.trim() !== '' ||
+      title.trim() !== '' ||
       content.trim() !== '' ||
       attachments.length > 0
     ) {
       return;
     }
     setThread(draftHydrated.thread);
+    setTitle(draftHydrated.title ?? '');
     setContent(draftHydrated.content);
     setAttachments(draftHydrated.attachments ?? []);
     setDraftRestored(true);
@@ -133,6 +140,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     draftHydrated,
     draftRestored,
     thread,
+    title,
     content,
     attachments,
   ]);
@@ -142,8 +150,8 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
   // server record.
   useEffect(() => {
     if (isEdit) return;
-    saveDraft({ thread, content, attachments });
-  }, [thread, content, attachments, isEdit, saveDraft]);
+    saveDraft({ thread, title, content, attachments });
+  }, [thread, title, content, attachments, isEdit, saveDraft]);
 
   function randomAttachmentId(): string {
     // Central randomness only (CLAUDE.md crypto rule 3) — the id is
@@ -205,11 +213,12 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
     setSubmitting(true);
     try {
       const dateIso = date || toIsoDate(new Date());
+      const trimmedTitle = title.trim();
       const payload = {
         type: 'journal.entry' as const,
         date: dateIso,
         thread: trimmedThread,
-        title: null,
+        title: trimmedTitle || null,
         content: trimmedContent,
         attachments,
       };
@@ -254,6 +263,7 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
               type="button"
               onClick={() => {
                 setThread('');
+                setTitle('');
                 setContent('');
                 // Without this, the restored images stayed visible
                 // AND the 800 ms auto-save flush re-wrote the slot
@@ -297,6 +307,16 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
             />
           </div>
         </div>
+
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={t('journal.composer.titlePlaceholder')}
+          aria-label={t('journal.composer.titleLabel')}
+          disabled={submitting}
+          className="font-medium"
+          {...(error ? { 'aria-describedby': 'journal-form-error' } : {})}
+        />
 
         <MarkdownEditor
           value={content}

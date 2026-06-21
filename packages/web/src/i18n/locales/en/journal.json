@@ -84,6 +84,8 @@
   "composer": {
     "submittingUpdate": "Updating…",
     "dateLabel": "Date",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Title (optional)",
     "draftRestored": "Restored an in-progress draft.",
     "resetDraft": "Start over",
     "removeImageAria": "Remove image",
