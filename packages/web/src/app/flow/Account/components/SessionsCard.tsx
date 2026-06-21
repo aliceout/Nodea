@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ComputerDesktopIcon,
-  DevicePhoneMobileIcon,
-  DeviceTabletIcon,
-} from '@heroicons/react/24/outline';
 import type { Base64, CipherIV, EncryptedBlob } from '@nodea/shared/crypto-types';
 import type { ActiveSession } from '@nodea/shared';
 
@@ -30,6 +25,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import { Modal } from '@/ui/atoms/layout/Modal';
 
 import Field from './Field';
+import SessionRow from './SessionRow';
 
 /**
  * « Sessions actives » block in Account → Sécurité (issue #47).
@@ -52,7 +48,7 @@ import Field from './Field';
  *   just decrypt the stored cipher.
  */
 export default function SessionsCard() {
-  const { t, tn, language } = useI18n();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const session = useSession();
   const user = useNodeaStore(selectUser);
@@ -259,47 +255,6 @@ export default function SessionsCard() {
     }
   }
 
-  // ---- Last-seen formatter (locale-aware) ----
-  const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
-        dateStyle: 'medium',
-      }),
-    [language],
-  );
-
-  function formatLastSeen(s: ActiveSession): string {
-    if (!s.lastSeenAt) return t('account.security.sessions.neverSeen');
-    const seen = new Date(s.lastSeenAt).getTime();
-    const now = Date.now();
-    const seconds = Math.max(0, Math.floor((now - seen) / 1000));
-    let when: string;
-    if (seconds < 60) {
-      when = t('account.security.sessions.lastSeenJustNow');
-    } else if (seconds < 3600) {
-      const minutes = Math.floor(seconds / 60);
-      when = tn('account.security.sessions.lastSeenMinutes', minutes);
-    } else if (seconds < 86_400) {
-      const hours = Math.floor(seconds / 3600);
-      when = tn('account.security.sessions.lastSeenHours', hours);
-    } else {
-      const days = Math.floor(seconds / 86_400);
-      when = tn('account.security.sessions.lastSeenDays', days);
-    }
-    return t('account.security.sessions.lastSeenAt', { values: { when } });
-  }
-
-  function deviceIcon(label: string | undefined): React.ReactElement {
-    // Heuristic on the decrypted label — we don't carry the kind
-    // through the wire to keep the cipher payload short. The
-    // strings below match `parseDeviceLabel`'s outputs.
-    if (label === 'iPhone' || label?.toLowerCase().includes('téléphone'))
-      return <DevicePhoneMobileIcon className="h-5 w-5 text-muted" aria-hidden="true" />;
-    if (label === 'iPad' || label?.toLowerCase().includes('tablette'))
-      return <DeviceTabletIcon className="h-5 w-5 text-muted" aria-hidden="true" />;
-    return <ComputerDesktopIcon className="h-5 w-5 text-muted" aria-hidden="true" />;
-  }
-
   return (
     <section className="py-[24px] first:pt-0 last:pb-0">
       <h3 className="mb-2 text-[16px] font-semibold text-ink">
@@ -319,41 +274,14 @@ export default function SessionsCard() {
         </p>
       ) : (
         <ul className="divide-y divide-hair rounded border border-hair">
-          {sessions.map((s) => {
-            const label = labels.get(s.id) ?? t('account.security.sessions.unknownDevice');
-            return (
-              <li key={s.id} className="flex items-center gap-3 px-3 py-3">
-                {deviceIcon(label)}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[14px] font-medium text-ink">
-                      {label}
-                    </span>
-                    {s.isCurrent ? (
-                      <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent-deep">
-                        {t('account.security.sessions.currentBadge')}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="text-[12px] text-muted">
-                    {formatLastSeen(s)} · {t('account.security.sessions.createdAt', {
-                      values: { date: dateFormatter.format(new Date(s.createdAt)) },
-                    })}
-                  </div>
-                </div>
-                {!s.isCurrent ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRevoke(s.id)}
-                    aria-label={t('account.security.sessions.revokeAria')}
-                  >
-                    {t('account.security.sessions.revokeCta')}
-                  </Button>
-                ) : null}
-              </li>
-            );
-          })}
+          {sessions.map((s) => (
+            <SessionRow
+              key={s.id}
+              session={s}
+              label={labels.get(s.id) ?? t('account.security.sessions.unknownDevice')}
+              onRevoke={handleRevoke}
+            />
+          ))}
         </ul>
       )}
 
