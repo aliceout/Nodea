@@ -20,6 +20,7 @@ import {
   selectModules,
   type ModuleRuntimeEntry,
   type ModulesRuntime,
+  type NodeaState,
 } from '@/core/store/nodea-store';
 import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
@@ -53,16 +54,22 @@ import EmptyHint from '@/ui/dirk/module/EmptyHint';
  * onboarding is a deliberation surface (breathing).
  */
 
-/** Map module id → store version bumps to fire after a successful
+/** Map module id → the store version bumps to fire after a successful
  *  wipe, so any mounted consumer refetches instead of showing stale
- *  rows. Modules absent here (habits / review / hrt) have no store
- *  version — their hooks refetch on every page mount, which is
- *  enough since Settings is a different surface. */
-const WIPE_VERSION_BUMPS: Record<string, ReadonlyArray<string>> = {
-  mood: ['bumpMoodVersion'],
-  journal: ['bumpJournalVersion'],
-  goals: ['bumpGoalsVersion'],
-  library: ['bumpLibraryItemsVersion', 'bumpLibraryReviewsVersion'],
+ *  rows. Typed (each value calls the real store actions) so a renamed
+ *  bump action fails to compile rather than silently no-op'ing the
+ *  refetch — the failure mode would be a stale UI after a destructive
+ *  action. Modules absent here (habits / review / hrt) have no store
+ *  version — their hooks refetch on every page mount, which is enough
+ *  since Settings is a different surface. */
+const WIPE_VERSION_BUMPS: Record<string, (s: NodeaState) => void> = {
+  mood: (s) => s.bumpMoodVersion(),
+  journal: (s) => s.bumpJournalVersion(),
+  goals: (s) => s.bumpGoalsVersion(),
+  library: (s) => {
+    s.bumpLibraryItemsVersion();
+    s.bumpLibraryReviewsVersion();
+  },
 };
 
 /** Inline destructive confirmation expanded under a module row.
@@ -101,14 +108,7 @@ function WipePanel({
       const result = await wipeModule(moduleId, sid);
       setDeletedCount(result.deleted);
       // Refetch trigger for mounted consumers of this module's data.
-      const state = useNodeaStore.getState() as unknown as Record<
-        string,
-        unknown
-      >;
-      for (const bump of WIPE_VERSION_BUMPS[moduleId] ?? []) {
-        const fn = state[bump];
-        if (typeof fn === 'function') (fn as () => void)();
-      }
+      WIPE_VERSION_BUMPS[moduleId]?.(useNodeaStore.getState());
       setPhase('done');
     } catch (err) {
       setPhase('idle');
