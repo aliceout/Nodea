@@ -5,6 +5,7 @@ import {
 } from '@nodea/shared';
 import { libraryReviewsClient } from '@/core/api/modules/library';
 import { makeBulkImportHandler, normalizeKeyPart, contentFingerprint } from './utils';
+import { stripParentRefKey } from './relink.ts';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -16,6 +17,9 @@ export const meta: ImportExportPluginMeta = {
   version: 1,
   runtimeKey: 'library-reviews',
   collection: 'library_reviews_entries',
+  // A review references its parent book by server id; remap it on a
+  // cross-host restore (issue #155).
+  parentRef: { field: 'itemRid', parentPlugin: 'library_items' },
 };
 
 const KIND_SET: ReadonlySet<string> = new Set(LIBRARY_REVIEW_KIND_VALUES);
@@ -34,7 +38,7 @@ function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is I
  * default) ; the page number, when present, gets carried through.
  */
 function normalizePayload(input: unknown): LibraryReviewPayload {
-  const p = (input ?? {}) as Record<string, unknown>;
+  const p = stripParentRefKey((input ?? {}) as Record<string, unknown>);
   const content =
     typeof p.content === 'string' && p.content
       ? p.content

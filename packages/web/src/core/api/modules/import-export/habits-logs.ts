@@ -4,6 +4,7 @@ import {
 } from '@nodea/shared';
 import { habitsLogsClient } from '@/core/api/modules/habits';
 import { makeBulkImportHandler, normalizeKeyPart } from './utils';
+import { stripParentRefKey } from './relink.ts';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -15,6 +16,9 @@ export const meta: ImportExportPluginMeta = {
   version: 1,
   runtimeKey: 'habits-logs',
   collection: 'habits_logs_entries',
+  // A log references its parent habit by server id; remap it on a
+  // cross-host restore (issue #155).
+  parentRef: { field: 'itemRid', parentPlugin: 'habits_items' },
 };
 
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
@@ -23,7 +27,7 @@ function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is I
 }
 
 function normalizePayload(input: unknown): HabitsLogPayload {
-  const p = (input ?? {}) as Record<string, unknown>;
+  const p = stripParentRefKey((input ?? {}) as Record<string, unknown>);
   return HabitsLogPayloadSchema.parse({
     ...p,
     date: String(p.date ?? ''),

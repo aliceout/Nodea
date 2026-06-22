@@ -132,6 +132,25 @@ export async function listExistingKeys({
   return keys;
 }
 
+/** Natural-key → server-id index for the relational remap (#155):
+ *  library reviews resolve their `itemRid` against this. */
+export async function listKeyIndex({
+  sid,
+  mainKey,
+}: {
+  sid: string;
+  mainKey: ImportExportPluginCtx['mainKey'];
+}): Promise<Array<{ id: string; key: string }>> {
+  if (!sid || !mainKey) return [];
+  const out: Array<{ id: string; key: string }> = [];
+  const list = await libraryItemsClient.list(sid, mainKey);
+  for (const rec of list) {
+    const k = getNaturalKey(rec.payload);
+    if (k) out.push({ id: rec.id, key: k });
+  }
+  return out;
+}
+
 const LibraryItemsImportExport: ImportExportPlugin = {
   meta,
   importHandler,
@@ -140,6 +159,7 @@ const LibraryItemsImportExport: ImportExportPlugin = {
   exportSerialize,
   getNaturalKey,
   listExistingKeys,
+  listKeyIndex,
 };
 
 export default LibraryItemsImportExport;

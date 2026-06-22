@@ -154,6 +154,7 @@
       "moduleSkippedDisabled": "{key}: ignoré (non activé)",
       "moduleResult": "{key}: {created} ajouté(s), {skipped} doublon(s)",
       "moduleFailed": "{key}: échec — interrompu, relance pour terminer",
+      "orphanedRefs": "{count} élément(s) restauré(s) sans leur lien parent (parent absent de la sauvegarde)",
       "moodResult": "mood: {count} ajouté(s)",
       "successPrefix": "Import terminé · {count} entrée(s) — {parts}",
       "backupDetected": "Sauvegarde chiffrée détectée. Saisis les 12 mots pour la restaurer.",

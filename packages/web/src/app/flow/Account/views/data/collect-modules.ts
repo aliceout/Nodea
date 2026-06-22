@@ -17,6 +17,10 @@ import {
   getDataPlugin,
   knownModules,
 } from '@/core/api/modules/import-export/registry.data.ts';
+import {
+  indexById,
+  stampParentKeys,
+} from '@/core/api/modules/import-export/relink.ts';
 
 /** Minimal structural view of the Zustand modules slice this needs.
  *  `| undefined` on the field keeps the zod-derived store entry
@@ -61,5 +65,36 @@ export async function collectModules(
       onModuleError?.(moduleKey, err);
     }
   }
+
+  // Relational pass (#155): stamp each child record with its parent's
+  // stable content key, so a cross-host import can remap the server-id
+  // reference (review→book, log→habit, dose→schedule). Runs after the
+  // gather so every parent collection is available; a failure here is
+  // non-fatal — the export still restores same-host, exactly as before.
+  for (const childKey of Object.keys(out)) {
+    const children = out[childKey];
+    if (!children) continue;
+    try {
+      const childPlugin = await getDataPlugin(childKey);
+      const ref = childPlugin.meta.parentRef;
+      if (!ref) continue;
+      const parentPlugin = await getDataPlugin(ref.parentPlugin);
+      if (!parentPlugin.listKeyIndex) continue;
+      const parentRuntimeKey =
+        parentPlugin.meta.runtimeKey ?? parentPlugin.meta.id;
+      const parentSid = modules?.[parentRuntimeKey]?.moduleUserId;
+      if (!parentSid) continue;
+      const index = await parentPlugin.listKeyIndex({
+        sid: parentSid,
+        mainKey,
+      });
+      out[childKey] = stampParentKeys(children, ref, indexById(index));
+    } catch (err) {
+      // Non-fatal: an un-stamped child just falls back to same-host
+      // behaviour on restore (the pre-#155 status quo).
+      onModuleError?.(childKey, err);
+    }
+  }
+
   return { out, failed };
 }

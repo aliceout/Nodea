@@ -148,25 +148,30 @@ they were sealed under. Still `age` passphrase mode throughout.
   after decryption). The per-module ZIP *inside* the opaque blob gives that
   without exposing structure outside.
 
-## Known limitation — cross-account reference remap (follow-up)
+## Cross-host reference remap — resolved in #155
 
-The "re-importable into a brand new account" guarantee (requirement #1) is
-**faithful for 10 of the 12 collections**, and fully faithful for a
-same-account restore (ids are stable). The two exceptions are
-`habits_logs.itemRid` and `library_reviews.itemRid`, which reference their
-parent (a habit item / a book) by the parent's **server id**. On a restore
-into a *different* account the parents are re-created with fresh ids, so
-those two child collections import successfully but their links dangle
-(habit heatmaps empty, reviews not attached to their book). The data itself
-is not lost. HRT cross-references survive because they join by product
-*name*, not id.
+> **Status update (issue #155).** The limitation below is **fixed**. Kept
+> here for the decision trail; see `Architecture.md` §7.3 and
+> `import-export/relink.ts` for the implementation.
 
-Fixing this requires threading each record's server id through the export so
-the restore can build an old-id → new-id map and rewrite the child
-`itemRid` (restoring parents before children). That changes the export
-record shape and is scoped as a **dedicated follow-up PR** (with its own
-review) rather than bundled here. Until then the limitation is documented in
-`Architecture.md` §7.3 and accepted for v1.
+The original limitation: the "re-importable into a brand new account"
+guarantee was faithful for a same-account restore (ids are stable) but the
+relations that reference a parent by **server id** dangled on a restore into
+a *different* account / host, where parents are re-created with fresh ids —
+`library_reviews.itemRid` → book, `habits_logs.itemRid` → habit, and (also
+an id ref, contrary to the original note) `hrt_admin_logs.scheduleId` →
+schedule. Children imported but their links pointed nowhere.
+
+The fix avoids changing the stored record shape: on export each child is
+stamped with its parent's **stable content key** (the parent's existing
+`getNaturalKey`, carried in the export-only `__parentKey` field); on import
+parents are recreated first, a `naturalKey → newServerId` index is built per
+referenced parent (covering pre-existing *and* freshly imported parents),
+and each child's reference is rewritten — unless it already points at a live
+parent on this host (same-host idempotency). A child is never dropped: an
+unresolved required link stays a recoverable orphan, an unresolved optional
+link (`scheduleId`) is cleared. No schema change, no backfill; old exports
+without `__parentKey` fall back to same-host behaviour.
 
 ## When to revisit
 

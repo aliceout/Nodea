@@ -4,6 +4,7 @@ import {
 } from '@nodea/shared';
 import { hrtAdminLogsClient } from '@/core/api/modules/hrt';
 import { makeBulkImportHandler, normalizeKeyPart } from './utils';
+import { stripParentRefKey } from './relink.ts';
 import type {
   ImportExportPlugin,
   ImportExportPluginCtx,
@@ -15,6 +16,11 @@ export const meta: ImportExportPluginMeta = {
   version: 1,
   runtimeKey: 'hrt-admin-logs',
   collection: 'hrt_admin_logs_entries',
+  // A materialised dose carries an OPTIONAL `scheduleId` (server id) for
+  // its source recurring schedule. The dose's main join is `product` by
+  // name (already portable); this remaps the provenance link, and clears
+  // it on a cross-host restore if the schedule can't be resolved (#155).
+  parentRef: { field: 'scheduleId', parentPlugin: 'hrt_schedules', optional: true },
 };
 
 function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is ImportExportPluginCtx {
@@ -23,7 +29,7 @@ function ensureContext(ctx: ImportExportPluginCtx | undefined): asserts ctx is I
 }
 
 function normalizePayload(input: unknown): HrtAdminLogPayload {
-  const p = (input ?? {}) as Record<string, unknown>;
+  const p = stripParentRefKey((input ?? {}) as Record<string, unknown>);
   return HrtAdminLogPayloadSchema.parse({
     ...p,
     date: String(p.date ?? ''),

@@ -39,6 +39,28 @@ export interface ImportExportPluginMeta {
   /** Underlying DB collection name — kept for reference only,
    *  the runtime no longer reads it. */
   collection?: string;
+  /** Declares that this collection's records reference a parent
+   *  record in another collection by the parent's SERVER id (issue
+   *  #155). Drives the cross-host relational remap: on export each
+   *  child is stamped with the parent's stable content key; on import
+   *  the parent is recreated first and the child's `field` is
+   *  rewritten to the parent's new server id. Absent on parent /
+   *  standalone collections. */
+  parentRef?: ParentRef;
+}
+
+/** A child→parent foreign-key reference carried by server id. */
+export interface ParentRef {
+  /** Field on THIS payload holding the parent's server id. */
+  field: string;
+  /** `meta.id` of the parent plugin. */
+  parentPlugin: string;
+  /** When true, a record whose carried parent key can't be resolved
+   *  on the target host has its reference CLEARED rather than left
+   *  dangling — for optional links like HRT's `scheduleId`. Required
+   *  links keep their original id (orphan, never dropped — losing a
+   *  record is the worst outcome for a backup). */
+  optional?: boolean;
 }
 
 /**
@@ -59,6 +81,15 @@ export interface ImportExportPlugin {
     sid: string;
     mainKey: MainKeyMaterial;
   }): Promise<Set<string>>;
+  /** List existing records as `{ server id, natural key }` pairs — the
+   *  relational remap (#155) uses it to resolve a child's parent
+   *  reference to the parent's current server id on this host (at
+   *  export, to stamp the stable key; at import, to rewrite it). Only
+   *  implemented by plugins that are referenced as a parent. */
+  listKeyIndex?(args: {
+    sid: string;
+    mainKey: MainKeyMaterial;
+  }): Promise<Array<{ id: string; key: string }>>;
   /** Insert a single record. Returns the action taken (always
    *  `created` today — `updated` / `skipped` reserved). */
   importHandler(args: {

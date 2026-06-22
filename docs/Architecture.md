@@ -685,10 +685,23 @@ is an opaque `age` blob wrapping a ZIP of `manifest.json` + one
 magic header), prompts for the 12-word phrase (spaces or hyphens),
 decrypts in-browser, and converges on the **same** restore path as the
 plaintext import.
-Same-account restore is byte-faithful. Cross-account restore re-links
-by content for most modules, but `habits_logs` / `library_reviews`
-reference their parent item by **server id**, so on a *different*
-account those links are not yet remapped — tracked as a follow-up.
+Same-account restore is byte-faithful. Cross-account / cross-host
+restore re-links by content (issue #155): the three relations that
+point at a parent by **server id** — `library_reviews.itemRid` →
+`library_items`, `habits_logs.itemRid` → `habits_items`,
+`hrt_admin_logs.scheduleId` → `hrt_schedules` — are remapped. On export
+each child is stamped with its parent's stable content key (the parent's
+`getNaturalKey`, carried in the export-only `__parentKey` field); on
+import the parents are recreated first, a `naturalKey → newServerId`
+index is built per referenced parent (covering pre-existing *and*
+freshly imported parents), and each child's reference is rewritten, then
+the carried key stripped. Pure remap logic lives in
+`import-export/relink.ts`; the two orchestrators are `collect-modules.ts`
+(stamp) and `restore-envelope.ts` (rewrite, in two phases: parents →
+index → children). A child is never dropped — an unresolved required
+link stays an orphan (recoverable), an unresolved optional link
+(`scheduleId`) is cleared. Old exports without `__parentKey` fall back
+to same-host behaviour (no regression).
 
 - Accepted import formats: encrypted `.age` backup, Nodea v1 JSON
   export, NDJSON (one line per payload), raw array for Mood

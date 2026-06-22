@@ -154,6 +154,7 @@
       "moduleSkippedDisabled": "{key}: skipped (disabled)",
       "moduleResult": "{key}: {created} added, {skipped} duplicate(s)",
       "moduleFailed": "{key}: failed — interrupted, run again to finish",
+      "orphanedRefs": "{count} item(s) restored without their parent link (parent missing from the backup)",
       "moodResult": "mood: {count} added",
       "successPrefix": "Import complete · {count} entry/entries — {parts}",
       "backupDetected": "Encrypted backup detected. Enter the 12 words to restore it.",
