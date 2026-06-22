@@ -27,6 +27,8 @@ import DateField from '@/ui/atoms/dirk/DateField';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 import { FORM_CARD } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
+import FormFooter from '@/ui/dirk/forms/FormFooter';
 
 import { categoryLabel, todayIso } from '../lib/labels';
 import type { ScheduleEntry } from '../hooks/use-schedules';
@@ -205,20 +207,14 @@ export default function ScheduleForm({
         <Textarea id="hrt-sched-notes" minHeightPx={56} {...register('notes')} />
       </FieldRow>
 
-      {serverError ? (
-        <p role="alert" className="mb-3 text-[12px] text-danger">
-          {serverError}
-        </p>
-      ) : null}
+      <FormError id="hrt-schedule-error">{serverError}</FormError>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
-          {t('common.actions.cancel')}
-        </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-          {initial ? t('common.actions.save') : t('hrt.schedule.start')}
-        </Button>
-      </div>
+      <FormFooter
+        submitLabel={initial ? t('common.actions.save') : t('hrt.schedule.start')}
+        onCancel={onClose}
+        submitting={isSubmitting}
+        className="flex justify-end gap-2"
+      />
     </form>
   );
 }

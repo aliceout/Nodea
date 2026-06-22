@@ -26,6 +26,8 @@ import Input from '@/ui/atoms/dirk/Input';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 import { FORM_CARD } from '@/ui/dirk/forms/constants';
+import FormError from '@/ui/dirk/forms/FormError';
+import FormFooter from '@/ui/dirk/forms/FormFooter';
 
 import { categoryLabel, routeLabel } from '../lib/labels';
 import type { ProductEntry } from '../hooks/use-products';
@@ -214,20 +216,14 @@ export default function ProductForm({ initial, onSubmit, onClose }: ProductFormP
         <Textarea id="hrt-p-notes" minHeightPx={56} {...register('notes')} />
       </FieldRow>
 
-      {serverError ? (
-        <p role="alert" className="mb-3 text-[12px] text-danger">
-          {serverError}
-        </p>
-      ) : null}
+      <FormError id="hrt-product-error">{serverError}</FormError>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={isSubmitting}>
-          {t('common.actions.cancel')}
-        </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-          {initial ? t('common.actions.save') : t('common.actions.add')}
-        </Button>
-      </div>
+      <FormFooter
+        submitLabel={initial ? t('common.actions.save') : t('common.actions.add')}
+        onCancel={onClose}
+        submitting={isSubmitting}
+        className="flex justify-end gap-2"
+      />
     </form>
   );
 }

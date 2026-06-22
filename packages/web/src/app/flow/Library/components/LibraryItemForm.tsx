@@ -7,9 +7,9 @@ import {
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import Button from '@/ui/atoms/dirk/Button';
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import FormError from '@/ui/dirk/forms/FormError';
+import FormFooter from '@/ui/dirk/forms/FormFooter';
 
 import { useLibraryData } from '../context';
 import { makeApplyResult } from './item-form/apply-result';
@@ -246,26 +246,19 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
 
       <FormError id="library-item-form-error">{error}</FormError>
 
-      <div className="mt-4 flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          onClick={onClose}
-          disabled={submitting}
-        >
-          {t('common.actions.cancel')}
-        </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={submitting}>
-          {submitting
+      <FormFooter
+        onCancel={onClose}
+        submitting={submitting}
+        submitLabel={
+          submitting
             ? isEdit
               ? t('common.states.updating')
               : t('common.states.saving')
             : isEdit
               ? t('common.actions.update')
-              : t('library.form.submitCreate')}
-        </Button>
-      </div>
+              : t('library.form.submitCreate')
+        }
+      />
     </form>
   );
 }

@@ -17,12 +17,12 @@ import { useModuleClient } from '@/core/modules/use-module-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import { toIsoDate } from '@/core/i18n/date-format';
-import Button from '@/ui/atoms/dirk/Button';
 import DateField from '@/ui/atoms/dirk/DateField';
 import Input from '@/ui/atoms/dirk/Input';
 
 import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import FormError from '@/ui/dirk/forms/FormError';
+import FormFooter from '@/ui/dirk/forms/FormFooter';
 import MarkdownEditor from '@/ui/dirk/forms/MarkdownEditor';
 import ThreadSuggestInput from '@/ui/dirk/forms/ThreadSuggestInput';
 
@@ -387,31 +387,20 @@ export default function JournalForm({ initial, onClose }: JournalFormProps) {
           {/* Cancel / save share the attachments row, pushed right.
               `flex-wrap` on the parent lets them drop below on narrow
               widths instead of crushing the image thumbnails. */}
-          <div className="ml-auto flex gap-2">
-            <Button
-              type="button"
-              variant="neutral"
-              size="sm"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              {t('common.actions.cancel', { defaultValue: 'Annuler' })}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={submitting}
-            >
-              {submitting
+          <FormFooter
+            onCancel={onClose}
+            submitting={submitting}
+            className="ml-auto flex gap-2"
+            submitLabel={
+              submitting
                 ? isEdit
                   ? t('journal.composer.submittingUpdate')
                   : t('common.states.saving')
                 : isEdit
                   ? t('common.actions.update')
-                  : t('common.actions.save')}
-            </Button>
-          </div>
+                  : t('common.actions.save')
+            }
+          />
         </div>
       </div>
 

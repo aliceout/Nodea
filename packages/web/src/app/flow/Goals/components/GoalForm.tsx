@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import { useModuleClient } from '@/core/modules/use-module-client';
-import Button from '@/ui/atoms/dirk/Button';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import {
@@ -11,6 +10,7 @@ import {
   type GoalStatus,
 } from '@/ui/dirk/forms/constants';
 import FormError from '@/ui/dirk/forms/FormError';
+import FormFooter from '@/ui/dirk/forms/FormFooter';
 import { isCanonicalGoalStatus } from '@/ui/dirk/forms/guards';
 
 import GoalFormFields from './form/form-fields';
@@ -238,31 +238,19 @@ export default function GoalForm({ initial, onClose }: GoalFormProps) {
 
       <FormError id="goal-form-error">{error}</FormError>
 
-      <div className="mt-4 flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          onClick={onClose}
-          disabled={submitting}
-        >
-          {t('common.actions.cancel', { defaultValue: 'Annuler' })}
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          size="sm"
-          disabled={submitting}
-        >
-          {submitting
+      <FormFooter
+        onCancel={onClose}
+        submitting={submitting}
+        submitLabel={
+          submitting
             ? isEdit
               ? t('goals.composer.submittingUpdate')
               : t('common.states.saving')
             : isEdit
               ? t('common.actions.update')
-              : t('common.actions.save')}
-        </Button>
-      </div>
+              : t('common.actions.save')
+        }
+      />
     </form>
   );
 }
