@@ -5,9 +5,9 @@ interface SectionLabelProps {
   children: ReactNode;
   className?: string;
   /**
-   * `eyebrow` (default) — 11 px uppercase, used by the module inline
-   * forms + Goals filters. `section` — 12 px, not uppercased, a touch
-   * more bottom margin: the SideColumn section headers (Mood / Journal /
+   * `eyebrow` (default) — 11 px uppercase, used by the Mood composer's
+   * inline form sections. `section` — 12 px, not uppercased, a touch
+   * more bottom margin: the SideColumn filter headers (Mood / Journal /
    * Goals / Library), factored from four byte-identical local copies.
    */
   variant?: 'eyebrow' | 'section';
