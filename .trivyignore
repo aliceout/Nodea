@@ -35,42 +35,21 @@
 CVE-2026-33671
 
 # ---------------------------------------------------------------------
-# libxml2 CVE-2026-6732 inside the nginx:alpine base image
+# libexpat CVE-2026-45186 inside the nginx:alpine base image
 # ---------------------------------------------------------------------
 # `packages/web/Dockerfile` uses `nginx:alpine` as the runtime base.
-# Alpine's libxml2 package shipped 2.13.9-r1 with the fix ; the
-# nginx:alpine snapshot we pull still carries r0. Next nginx:alpine
-# rebuild picks it up — until then Trivy flags it.
+# Alpine shipped the fix in libexpat 2.8.1-r0 ; the nginx:alpine
+# snapshot we pull still carries 2.7.5-r0. The next nginx:alpine
+# rebuild picks it up — the libxml2 / openssl entries that used to sit
+# here went through exactly this and were dropped once the image caught
+# up (libxml2 2.13.9-r1, libcrypto3/libssl3 3.5.7-r0 now ship in base).
 #
-# Blast radius : libxml2 lives in the nginx image because nginx links
-# against it for XSLT / SSI / xpath modules. Nodea's vhost
-# (`packages/web/nginx.conf`) only serves static assets + proxies
-# `/api` to the api container — no `xslt_stylesheet`, no `ssi on`,
-# no XML body parsing. The vuln (DoS via crafted XML input) needs
-# attacker-controlled XML reaching the parser, which nothing in our
-# config routes there.
+# Blast radius : libexpat is the Expat XML parser linked by nginx. Our
+# vhost (`packages/web/nginx.conf`) only serves static assets + proxies
+# `/api` — no XML body parsing reaches the parser, so the DoS-via-XML
+# vuln is unreachable through our surface.
 #
-# Drop criterion : when `nginx:alpine` ships with libxml2 ≥ 2.13.9-r1
+# Drop criterion : when `nginx:alpine` ships libexpat ≥ 2.8.1-r0
 # (verify with `docker pull nginx:alpine && docker run --rm
-# nginx:alpine apk info libxml2`).
-CVE-2026-6732
-
-# ---------------------------------------------------------------------
-# openssl CVE-2026-45447 (libcrypto3 / libssl3) inside the alpine base
-# ---------------------------------------------------------------------
-# Both images are Alpine-based (`node:24-alpine` for the api,
-# `nginx:alpine` for the web). Alpine shipped the fix in
-# libcrypto3/libssl3 3.5.7-r0 ; the base-image snapshots we pin still
-# carry 3.5.6-r0. The next base-image rebuild picks it up — same
-# situation as the libxml2 entry above.
-#
-# Blast radius : the CVE is a heap use-after-free in OpenSSL's
-# `PKCS7_verify()` (S/MIME / PKCS#7 signature verification). Nothing in
-# Nodea verifies PKCS#7 / S/MIME : the api never calls PKCS7_verify on
-# attacker-controlled input, and nginx serves static assets + proxies
-# `/api`. The vulnerable path is unreachable through our surface.
-#
-# Drop criterion : when `node:24-alpine` AND `nginx:alpine` ship
-# libcrypto3/libssl3 ≥ 3.5.7-r0 (verify with `docker run --rm
-# node:24-alpine apk info libcrypto3`).
-CVE-2026-45447
+# nginx:alpine apk info libexpat`).
+CVE-2026-45186
