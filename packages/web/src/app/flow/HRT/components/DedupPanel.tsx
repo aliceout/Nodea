@@ -32,69 +32,14 @@
 import { useState } from 'react';
 import { TrashIcon } from '@heroicons/react/24/outline';
 
-import type { HrtAdminLogPayload } from '@nodea/shared';
 import { hrtAdminLogsClient } from '@/core/api/modules/hrt';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
-interface AdminEntry {
-  id: string;
-  payload: HrtAdminLogPayload;
-}
+import { analyse, type AnalysisResult } from '../lib/dedup';
 
 type Phase = 'idle' | 'analyzing' | 'preview' | 'confirming' | 'deleting' | 'done';
-
-interface AnalysisResult {
-  /** Total number of duplicate groups (= number of distinct doses
-   *  that got materialised more than once). */
-  groupCount: number;
-  /** Total rows that would be deleted (= sum of group sizes - 1). */
-  duplicateCount: number;
-  /** IDs to delete. The kept row of each group is implicit. */
-  toDelete: string[];
-}
-
-/** Build the dedup key from a payload. Only materialised entries
- *  participate ; everything else returns null. */
-function dedupKey(payload: HrtAdminLogPayload): string | null {
-  if (!payload.scheduleId) return null;
-  return [
-    payload.scheduleId,
-    String(payload.date).slice(0, 10),
-    payload.time ?? '',
-    payload.product ?? '',
-    String(payload.dose ?? ''),
-  ].join('::');
-}
-
-/** Group entries by dedup key, return groups of size > 1 (the
- *  duplicates) plus the deletion plan. The oldest entry in each
- *  group (lowest `payload.updatedAt`) is kept ; the rest get queued
- *  for deletion. */
-function analyse(entries: ReadonlyArray<AdminEntry>): AnalysisResult {
-  const groups = new Map<string, AdminEntry[]>();
-  for (const e of entries) {
-    const key = dedupKey(e.payload);
-    if (!key) continue;
-    const bucket = groups.get(key) ?? [];
-    bucket.push(e);
-    groups.set(key, bucket);
-  }
-  let groupCount = 0;
-  const toDelete: string[] = [];
-  for (const bucket of groups.values()) {
-    if (bucket.length <= 1) continue;
-    groupCount += 1;
-    const sorted = [...bucket].sort((a, b) =>
-      (a.payload.updatedAt ?? '').localeCompare(b.payload.updatedAt ?? ''),
-    );
-    for (let i = 1; i < sorted.length; i += 1) {
-      toDelete.push(sorted[i]!.id);
-    }
-  }
-  return { groupCount, duplicateCount: toDelete.length, toDelete };
-}
 
 const POOL = 8;
 
