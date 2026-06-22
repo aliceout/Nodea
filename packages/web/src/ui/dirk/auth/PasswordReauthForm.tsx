@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
@@ -48,8 +48,11 @@ interface PasswordReauthFormProps {
   /** Confirm button tone — `danger` for destructive actions. */
   tone?: 'primary' | 'danger';
   submitting?: boolean;
-  /** Autofocus the password field. Pass `false` when an extra field
-   *  above should take focus first. */
+  /** Focus the password field on mount. Pass `false` when an extra
+   *  field above should take focus first. Works inside a Headless UI
+   *  `<Modal>` too: focus is set via a ref one frame after mount,
+   *  because the Dialog focus trap claims initial focus and ignores the
+   *  native `autofocus` attribute (it only honours `[data-autofocus]`). */
   autoFocus?: boolean;
   /** `'sm'` (default) for compact inline use ; `'lg'` for a full-width
    *  prominent button on a dedicated auth-panel page (the tunnels). */
@@ -77,6 +80,20 @@ export default function PasswordReauthForm({
   const allowed = !submitting && password.length > 0 && canConfirm;
   const large = size === 'lg';
 
+  // Focus the field via a ref + rAF rather than the native `autoFocus`
+  // attribute. When this form is mounted inside a Headless UI `<Modal>`
+  // (the SessionsCard re-auth gate) the Dialog focus trap grabs initial
+  // focus and only honours `[data-autofocus]`, so native autofocus is
+  // silently dropped. Deferring one frame runs after the trap and after
+  // the panel's enter transition, landing focus on the password field in
+  // both the modal and the inline auth-panel tunnels.
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!autoFocus) return undefined;
+    const raf = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(raf);
+  }, [autoFocus]);
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     if (!allowed) return;
@@ -89,12 +106,12 @@ export default function PasswordReauthForm({
       {prompt ? <p className="mb-2 text-[12.5px] text-ink-soft">{prompt}</p> : null}
       {children}
       <Field
+        ref={inputRef}
         label={passwordLabel}
         type="password"
         autoComplete="current-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        autoFocus={autoFocus}
         error={error}
       />
       <div className={large ? 'flex flex-col gap-2' : 'flex gap-2'}>

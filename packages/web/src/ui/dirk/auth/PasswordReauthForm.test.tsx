@@ -74,4 +74,18 @@ describe('PasswordReauthForm', () => {
     expect(button.disabled).toBe(true);
     expect(onConfirm).not.toHaveBeenCalled();
   });
+
+  // Focus is driven by a ref + rAF (not the native autoFocus attribute)
+  // so it survives the Headless UI modal focus trap — see the component's
+  // autoFocus doc. These guard that the field actually receives focus.
+  it('focuses the password field on mount when autoFocus (default)', async () => {
+    const { input } = renderForm();
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it('does not focus the password field when autoFocus is false', async () => {
+    const { input } = renderForm({ autoFocus: false });
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    expect(document.activeElement).not.toBe(input);
+  });
 });
