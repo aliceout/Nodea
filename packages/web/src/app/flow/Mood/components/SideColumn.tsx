@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
-
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import PatternsList from './PatternsList';
 import ScoreDonut from './ScoreDonut';
@@ -22,22 +21,14 @@ export default function SideColumn() {
   return (
     <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
       <section>
-        <SectionLabel>{t('mood.side.distribution')}</SectionLabel>
+        <SectionLabel variant="section">{t('mood.side.distribution')}</SectionLabel>
         <ScoreDonut />
       </section>
 
       <section>
-        <SectionLabel>{t('mood.side.patterns')}</SectionLabel>
+        <SectionLabel variant="section">{t('mood.side.patterns')}</SectionLabel>
         <PatternsList />
       </section>
     </aside>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
-      {children}
-    </div>
   );
 }

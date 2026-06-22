@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Input from '@/ui/atoms/dirk/Input';
 import FilterChip from '@/ui/dirk/module/FilterChip';
+import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import { useGoalsActions, useGoalsData, useGoalsFilters } from '../context';
 import { CANONICAL_STATUSES } from '../lib/constants';
@@ -66,7 +66,7 @@ export function FiltersContent() {
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <section>
-        <SectionLabel>{t('goals.side.search')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.search')}</SectionLabel>
         <Input
           type="search"
           value={search}
@@ -77,7 +77,7 @@ export function FiltersContent() {
       </section>
 
       <section>
-        <SectionLabel>{t('goals.side.statusHeading')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.statusHeading')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={statusFilter === null}
@@ -98,7 +98,7 @@ export function FiltersContent() {
       </section>
 
       <section>
-        <SectionLabel>{t('goals.side.groupBy')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.groupBy')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={groupBy === 'thread'}
@@ -120,7 +120,7 @@ export function FiltersContent() {
           choice. They're independent : you can group by year AND
           want to scope to a single theme. */}
       <section>
-        <SectionLabel>{t('goals.side.threads')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.threads')}</SectionLabel>
         {threads.length === 0 ? (
           <p className="text-[12px] italic text-muted">
             {t('goals.side.threadsEmpty')}
@@ -146,7 +146,7 @@ export function FiltersContent() {
       </section>
 
       <section>
-        <SectionLabel>{t('goals.side.sortBy')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.sortBy')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           {SORT_VALUES.map((s) => (
             <FilterChip
@@ -160,14 +160,14 @@ export function FiltersContent() {
       </section>
 
       <section>
-        <SectionLabel>
+        <SectionLabel variant="section">
           {t('goals.side.view', { defaultValue: 'Vue' })}
         </SectionLabel>
         <ViewModeToggle />
       </section>
 
       <section>
-        <SectionLabel>{t('goals.side.display')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.display')}</SectionLabel>
         <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink-soft">
           <input
             type="checkbox"
@@ -180,7 +180,7 @@ export function FiltersContent() {
       </section>
 
       <section>
-        <SectionLabel>{t('goals.side.actions')}</SectionLabel>
+        <SectionLabel variant="section">{t('goals.side.actions')}</SectionLabel>
         <Button
           variant="neutral"
           size="sm"
@@ -191,14 +191,6 @@ export function FiltersContent() {
           {t('goals.side.carryOverCta')}
         </Button>
       </section>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
-      {children}
     </div>
   );
 }

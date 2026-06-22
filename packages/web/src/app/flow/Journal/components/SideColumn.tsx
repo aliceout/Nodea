@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
+import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import { useJournalData, useJournalFilters } from '../context';
 import ThreadsManagerModal from './ThreadsManagerModal';
@@ -60,7 +61,7 @@ export function FiltersContent() {
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <section>
-        <SectionLabel>{t('journal.side.view')}</SectionLabel>
+        <SectionLabel variant="section">{t('journal.side.view')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={groupBy === 'thread'}
@@ -76,7 +77,7 @@ export function FiltersContent() {
       </section>
 
       <section>
-          <SectionLabel>{t('journal.side.threads')}</SectionLabel>
+          <SectionLabel variant="section">{t('journal.side.threads')}</SectionLabel>
           {threads.length === 0 ? (
             <p className="text-[12px] italic text-muted">
               {t('journal.side.threadsEmpty')}
@@ -114,14 +115,6 @@ export function FiltersContent() {
         open={threadsManagerOpen}
         onClose={() => setThreadsManagerOpen(false)}
       />
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
-      {children}
     </div>
   );
 }

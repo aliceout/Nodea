@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { LIBRARY_STATUS_VALUES } from '@nodea/shared';
 
 import {
@@ -7,6 +7,7 @@ import {
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
+import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import { useLibraryData, useLibraryFilters } from '../context';
 import { LIBRARY_GROUP_BY_VALUES } from '../lib/grouping';
@@ -85,12 +86,12 @@ export function FiltersContent() {
       {showGroupBy ? (
         <>
           <section>
-            <SectionLabel>{t('library.side.view')}</SectionLabel>
+            <SectionLabel variant="section">{t('library.side.view')}</SectionLabel>
             <ViewModeToggle />
           </section>
 
           <section>
-            <SectionLabel>{t('library.side.groupBy')}</SectionLabel>
+            <SectionLabel variant="section">{t('library.side.groupBy')}</SectionLabel>
             <div className="flex flex-wrap gap-1">
               {LIBRARY_GROUP_BY_VALUES.map((value) => (
                 <FilterChip
@@ -106,7 +107,7 @@ export function FiltersContent() {
       ) : null}
 
       <section>
-        <SectionLabel>{t('library.side.status')}</SectionLabel>
+        <SectionLabel variant="section">{t('library.side.status')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
             active={statusFilter === 'all'}
@@ -134,7 +135,7 @@ export function FiltersContent() {
 
       {allTags.length > 0 ? (
         <section>
-          <SectionLabel>{t('library.side.tags')}</SectionLabel>
+          <SectionLabel variant="section">{t('library.side.tags')}</SectionLabel>
           <div className="flex flex-wrap gap-1">
             <FilterChip
               active={tagFilter === null}
@@ -152,14 +153,6 @@ export function FiltersContent() {
           </div>
         </section>
       ) : null}
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-2.5 text-[12px] font-semibold tracking-[0.02em] text-muted">
-      {children}
     </div>
   );
 }
