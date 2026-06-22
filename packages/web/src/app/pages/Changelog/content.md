@@ -5,6 +5,50 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.15.0 — 2026-06-22
+
+### Nouveautés
+
+- **journal** : let the composer set an entry title _(7748bcd)_
+
+### Corrections
+
+- **auth** : keep the re-auth password field focused inside the modal _(1355a05)_
+- **api** : close the TOCTOU on MFA bypass consumption _(18ec813)_
+- **api** : prefix the session cookie with __Host- in production _(37f77f2)_
+- **auth** : let maximum-mode passkey-first logins finalize (password 2nd factor) _(2b503b8)_
+- **api** : prune the already-exists notice throttle map _(42ba2e0)_
+- **web** : latch Library covers only after they load _(28f36f9)_
+- **api** : drain in-flight requests on graceful shutdown _(590d4b9)_
+
+### Refactor
+
+- **account** : SessionsCard re-auth gate reuses PasswordReauthForm _(20bae34)_
+- **ui** : factor CollapsibleFiltersToggle from the 3 MobileFilters _(199515b)_
+- **ui** : dedup the SideColumn SectionLabel into the shared one _(076c7a8)_
+- **forms** : factor a shared FormFooter + reuse FormError in HRT _(e12fc83)_
+- **home** : split AnnouncementsCard rows into TipRow + AnnouncementRow _(f3cf270)_
+- **hrt** : extract LabChartPlot + dedup analysis into own files _(398e72e)_
+- **library,home** : extract FavoriteToggle + HomeModuleLink dups _(d3d39ce)_
+- **account** : extract WipePanel/ModuleToggle/SessionRow into own files _(54d5881)_
+- **journal** : split context into state hooks _(8c7e68d)_
+- **mood** : split context into state hooks + extract view components _(f942157)_
+- **web** : type the ModulesManager post-wipe store refresh _(31ac160)_
+- **api** : dedup parseTransports + base64UrlToBytes into passkey-helpers _(35b76c9)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.14.1 _(c164bd9)_
+
+<details>
+<summary>Maintenance — 3 commits</summary>
+
+- **release** : bump version to 2.15.0 _(f936407)_
+- **ui** : post-factorization tidy — JSDoc accuracy + EOF newlines _(bcdafbe)_
+- **api** : correct stale comments + drop dead speculative imports _(449b3da)_
+
+</details>
+
 ## v2.14.1 — 2026-06-20
 
 ### Corrections
