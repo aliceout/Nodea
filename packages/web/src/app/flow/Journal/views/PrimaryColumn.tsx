@@ -103,8 +103,11 @@ export default function PrimaryColumn() {
           while scrolling the entries list. Same `-mt-7 pt-7 top-13`
           pattern as Mood's sticky header. */}
       <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-          {/* lg+ only — on mobile the topbar carries the module name. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          {/* lg+ only — on mobile the topbar carries the module name.
+              `items-start` top-aligns the year selector with the
+              sidebar's first heading (« Vue ») across the two columns,
+              instead of baseline-pushing it below. */}
           <PageHeading className="mb-0 hidden lg:block">{t('journal.title')}</PageHeading>
           <YearSelector />
         </div>
