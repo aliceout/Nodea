@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { LIBRARY_STATUS_VALUES } from '@nodea/shared';
 
 import {
@@ -7,9 +7,11 @@ import {
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
+import ManageLink from '@/ui/dirk/module/ManageLink';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
+import ThreadManagerModal from '@/ui/dirk/module/ThreadManagerModal';
 
-import { useLibraryData, useLibraryFilters } from '../context';
+import { useLibraryActions, useLibraryData, useLibraryFilters } from '../context';
 import { LIBRARY_GROUP_BY_VALUES } from '../lib/grouping';
 import ViewModeToggle from './ViewModeToggle';
 
@@ -62,6 +64,8 @@ export function FiltersContent() {
     setTagFilter,
     setGroupBy,
   } = useLibraryFilters();
+  const { renameTag, deleteTag } = useLibraryActions();
+  const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
 
   // Per-status counts shown next to the chips. Cheap to recompute
   // (six full passes over `items`) but memoised because `items` is
@@ -135,24 +139,42 @@ export function FiltersContent() {
 
       {allTags.length > 0 ? (
         <section>
-          <SectionLabel variant="section">{t('library.side.tags')}</SectionLabel>
+          <SectionLabel
+            variant="section"
+            action={
+              <ManageLink onClick={() => setTagsManagerOpen(true)}>
+                {t('library.side.tagsManageCta')}
+              </ManageLink>
+            }
+          >
+            {t('library.side.tags')}
+          </SectionLabel>
           <div className="flex flex-wrap gap-1">
             <FilterChip
               active={tagFilter === null}
               onClick={() => setTagFilter(null)}
               label={t('library.side.all')}
             />
-            {allTags.map((t) => (
+            {allTags.map((tag) => (
               <FilterChip
-                key={t}
-                active={tagFilter === t}
-                onClick={() => setTagFilter(t)}
-                label={t}
+                key={tag}
+                active={tagFilter === tag}
+                onClick={() => setTagFilter(tag)}
+                label={tag}
               />
             ))}
           </div>
         </section>
       ) : null}
+
+      <ThreadManagerModal
+        open={tagsManagerOpen}
+        onClose={() => setTagsManagerOpen(false)}
+        names={allTags}
+        onRename={renameTag}
+        onDelete={deleteTag}
+        i18nPrefix="library.tagsManager"
+      />
     </div>
   );
 }

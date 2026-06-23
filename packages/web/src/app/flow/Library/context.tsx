@@ -5,6 +5,7 @@ import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
+import type { ThreadMutationResult } from '@/lib/threads-mutate';
 
 import { type CellFilter } from './lib/cell-filter';
 import { type LibraryGroupBy } from './lib/grouping';
@@ -119,6 +120,8 @@ interface LibraryActionsValue {
   pickBookForReview: (itemId: string, kind: 'quote' | 'note') => void;
   closeItemForm: () => void;
   closeReviewForm: () => void;
+  renameTag: (from: string, to: string) => Promise<ThreadMutationResult>;
+  deleteTag: (target: string) => Promise<ThreadMutationResult>;
 }
 
 const {
@@ -237,6 +240,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       pickBookForReview: actions.pickBookForReview,
       closeItemForm: actions.closeItemForm,
       closeReviewForm: actions.closeReviewForm,
+      renameTag: actions.renameTag,
+      deleteTag: actions.deleteTag,
     }),
     [
       actions.reviewPicker,
@@ -254,6 +259,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       actions.pickBookForReview,
       actions.closeItemForm,
       actions.closeReviewForm,
+      actions.renameTag,
+      actions.deleteTag,
     ],
   );
 

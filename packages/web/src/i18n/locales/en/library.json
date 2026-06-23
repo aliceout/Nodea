@@ -41,9 +41,21 @@
     "groupBy": "Group by",
     "status": "Status",
     "tags": "Tags",
+    "tagsManageCta": "Manage tags",
     "all": "All",
     "favorites": "★ Favorites",
     "filtersToggle": "Filters"
+  },
+  "tagsManager": {
+    "title": "Manage tags",
+    "subtitle": "{count} tags",
+    "empty": "No tags yet. Add tags to a book to create them.",
+    "renameAria": "Rename tag {name}",
+    "deleteAria": "Delete tag {name}",
+    "confirmDelete": "Drop the tag \"{name}\" from every book that carries it?",
+    "opRename": "Rename",
+    "opDelete": "Delete",
+    "opResult": "{ok} updated, {failed} failed"
   },
   "viewMode": {
     "list-plain": "Compact",

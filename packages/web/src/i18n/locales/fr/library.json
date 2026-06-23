@@ -41,9 +41,21 @@
     "groupBy": "Grouper par",
     "status": "Statut",
     "tags": "Tags",
+    "tagsManageCta": "Gérer les tags",
     "all": "Tous",
     "favorites": "★ Favoris",
     "filtersToggle": "Filtres"
+  },
+  "tagsManager": {
+    "title": "Gérer les tags",
+    "subtitle": "{count} tags",
+    "empty": "Aucun tag pour l’instant. Ajoute des tags à un livre pour en créer.",
+    "renameAria": "Renommer le tag {name}",
+    "deleteAria": "Supprimer le tag {name}",
+    "confirmDelete": "Supprimer le tag « {name} » de tous les livres concernés ?",
+    "opRename": "Renommage",
+    "opDelete": "Suppression",
+    "opResult": "{ok} mis à jour, {failed} échecs"
   },
   "viewMode": {
     "list-plain": "Compacte",

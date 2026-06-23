@@ -31,6 +31,7 @@ import {
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import type { ThreadMutationResult } from '@/lib/threads-mutate';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import type { LibraryItem, LibraryReview } from '../lib/types';
@@ -79,6 +80,11 @@ export interface LibraryActionsState {
   pickBookForReview: (itemId: string, kind: ReviewKind) => void;
   closeItemForm: () => void;
   closeReviewForm: () => void;
+  /** Rename a tag across every book that carries it (renaming into an
+   *  existing tag merges them). Optimistic + per-item rollback. */
+  renameTag: (from: string, to: string) => Promise<ThreadMutationResult>;
+  /** Remove a tag from every book that carries it. */
+  deleteTag: (target: string) => Promise<ThreadMutationResult>;
 }
 
 interface LibraryActionsDeps {
@@ -278,6 +284,87 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     [],
   );
 
+  // Bulk tag mutation engine — rename / delete a tag across every book
+  // that carries it. Tags are a `string[]` (not a comma-joined string
+  // like Journal/Goals threads), so the transform works on the array ;
+  // it returns the SAME reference when nothing changes so unaffected
+  // books are skipped. Optimistic update + per-item rollback ; drives
+  // the shared ThreadManagerModal (« Gérer les tags »).
+  const applyTagTransform = useCallback(
+    async (
+      transform: (tags: string[]) => string[],
+    ): Promise<ThreadMutationResult> => {
+      if (!ctx) return { updatedIds: [], failedIds: [] };
+      const affected: Array<{ item: LibraryItem; nextTags: string[] }> = [];
+      for (const item of itemsRef.current) {
+        const cur = item.tags ?? [];
+        const next = transform(cur);
+        if (next !== cur) affected.push({ item, nextTags: next });
+      }
+      if (affected.length === 0) return { updatedIds: [], failedIds: [] };
+
+      const snapshot = new Map(
+        affected.map(({ item }) => [item.id, item.tags ?? []]),
+      );
+      setItems((prev) =>
+        prev.map((i) => {
+          const change = affected.find((a) => a.item.id === i.id);
+          return change ? { ...i, tags: change.nextTags } : i;
+        }),
+      );
+
+      const updatedIds: string[] = [];
+      const failedIds: string[] = [];
+      await Promise.all(
+        affected.map(async ({ item, nextTags }) => {
+          try {
+            // Strip the row id before persisting (same as toggleFavorite)
+            // — the loose payload schema would otherwise store the stray
+            // `id` field inside the encrypted blob.
+            const { id: _rowId, ...payload } = item;
+            await libraryItemsClient.update(ctx.moduleUserId, ctx.mainKey, item.id, {
+              ...(payload as LibraryItemPayload),
+              tags: nextTags,
+            });
+            updatedIds.push(item.id);
+          } catch (err) {
+            failedIds.push(item.id);
+            const previous = snapshot.get(item.id);
+            if (previous !== undefined) {
+              setItems((prev) =>
+                prev.map((i) => (i.id === item.id ? { ...i, tags: previous } : i)),
+              );
+            }
+            if (import.meta.env.DEV)
+              console.warn('library: tag mutation failed', err);
+          }
+        }),
+      );
+
+      if (updatedIds.length > 0) bumpItemsVersion();
+      return { updatedIds, failedIds };
+    },
+    [ctx, bumpItemsVersion, setItems],
+  );
+
+  const renameTag = useCallback(
+    (from: string, to: string) =>
+      applyTagTransform((tags) =>
+        tags.includes(from)
+          ? Array.from(new Set(tags.map((tag) => (tag === from ? to : tag))))
+          : tags,
+      ),
+    [applyTagTransform],
+  );
+
+  const deleteTag = useCallback(
+    (target: string) =>
+      applyTagTransform((tags) =>
+        tags.includes(target) ? tags.filter((tag) => tag !== target) : tags,
+      ),
+    [applyTagTransform],
+  );
+
   return {
     reviewPicker,
     itemForm,
@@ -294,5 +381,7 @@ export function useLibraryActions(deps: LibraryActionsDeps): LibraryActionsState
     pickBookForReview,
     closeItemForm,
     closeReviewForm,
+    renameTag,
+    deleteTag,
   };
 }
