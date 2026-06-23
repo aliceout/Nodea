@@ -17,6 +17,7 @@
  * `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { HrtProductPayload } from '@nodea/shared';
 import { useNodeaStore } from '@/core/store/nodea-store';
@@ -47,12 +48,16 @@ interface SummaryViewProps {
   adminLogs: UseHrtAdminLogs;
   products: UseHrtProducts;
   labResults: UseHrtLabResults;
+  /** Topbar actions slot (owned by `HrtPage`) — the product CTA portals
+   *  here so it sits in the topbar instead of the catalog card header. */
+  topbarSlot?: HTMLElement | null;
 }
 
 export default function SummaryView({
   adminLogs,
   products: productsHook,
   labResults,
+  topbarSlot,
 }: SummaryViewProps) {
   const { t } = useI18n();
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
@@ -158,18 +163,25 @@ export default function SummaryView({
                 </option>
               </Select>
             ) : null}
-            {!productFormOpen && productView === 'active' ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setAddingProduct(true)}
-                disabled={!ready}
-                className="hidden lg:inline-flex"
-              >
-                {t('hrt.summary.products.new')}
-              </Button>
-            ) : null}
           </div>
+
+          {/* Desktop CTA lives in the topbar (portalled) — only on the
+              actives lens, hidden while the form is open ; mobile uses
+              the SpeedDial below. */}
+          {topbarSlot && !productFormOpen && productView === 'active'
+            ? createPortal(
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setAddingProduct(true)}
+                  disabled={!ready}
+                  className="hidden lg:inline-flex"
+                >
+                  {t('hrt.summary.products.new')}
+                </Button>,
+                topbarSlot,
+              )
+            : null}
 
           {/* Mobile speed-dial — « ajouter un produit ». Only on the
               actives view (no add on the archive lens), hidden while the

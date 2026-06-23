@@ -29,7 +29,7 @@
  * `key={dataVersion}` after materialisation. One shared instance +
  * a targeted reload replaces all of that. See `docs/Modules/HRT.md`.
  */
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { useNodeaStore, selectHrtSubview } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -50,6 +50,14 @@ export default function HrtPage() {
   const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const subview = useNodeaStore(selectHrtSubview);
+
+  // Topbar actions slot — each sub-view portals its desktop CTA(s) here
+  // (issue: HRT CTAs belonged in the page, not the topbar). A portal
+  // keeps every view's form state + handlers intact (the buttons stay in
+  // the view's React tree, only their DOM home is the topbar), which
+  // matters on this sensitive module. `display:contents` lets the
+  // portalled buttons sit as direct flex items of the topbar row.
+  const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null);
 
   // Single shared instances — schedules drive the materialisation
   // engine, admin logs feed every lens. Products + lab results are
@@ -72,7 +80,9 @@ export default function HrtPage() {
   return (
     <ModuleShell
       topbar={
-        <Topbar label={t(`hrt.topbar.${subview}`)} onOpenMenu={() => setMobileMenuOpen(true)} />
+        <Topbar label={t(`hrt.topbar.${subview}`)} onOpenMenu={() => setMobileMenuOpen(true)}>
+          <span ref={setTopbarSlot} className="contents" />
+        </Topbar>
       }
     >
       {subview === 'administration' ? (
@@ -80,9 +90,10 @@ export default function HrtPage() {
           schedules={schedules}
           adminLogs={adminLogs}
           products={products}
+          topbarSlot={topbarSlot}
         />
       ) : subview === 'labs' ? (
-        <LabsView labResults={labResults} />
+        <LabsView labResults={labResults} topbarSlot={topbarSlot} />
       ) : subview === 'export' ? (
         <ExportView
           adminLogs={adminLogs}
@@ -95,6 +106,7 @@ export default function HrtPage() {
           adminLogs={adminLogs}
           products={products}
           labResults={labResults}
+          topbarSlot={topbarSlot}
         />
       )}
     </ModuleShell>

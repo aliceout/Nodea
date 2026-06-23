@@ -10,6 +10,7 @@
  * `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { type HrtGoal, type HrtLabResultPayload } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -40,9 +41,12 @@ interface LabsViewProps {
   /** Shared lab-results instance — owned by `HrtPage` (audit 2026-06
    *  passe 2 : hoisted so switching sub-views doesn't re-LIST it). */
   labResults: UseHrtLabResults;
+  /** Topbar actions slot (owned by `HrtPage`) — the desktop CTA portals
+   *  here so it sits in the topbar instead of the page body. */
+  topbarSlot?: HTMLElement | null;
 }
 
-export default function LabsView({ labResults }: LabsViewProps) {
+export default function LabsView({ labResults, topbarSlot }: LabsViewProps) {
   const { t, language } = useI18n();
   const confirm = useConfirm();
   const { entries, load, ready, create, update, remove } = labResults;
@@ -135,18 +139,24 @@ export default function LabsView({ labResults }: LabsViewProps) {
     <section className="min-w-0">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-[14px] font-medium text-ink">{t('hrt.labs.title')}</h2>
-        {!formOpen ? (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setAdding(true)}
-            disabled={!ready}
-            className="hidden lg:inline-flex"
-          >
-            {t('hrt.labs.new')}
-          </Button>
-        ) : null}
       </div>
+
+      {/* Desktop CTA lives in the topbar (portalled); mobile uses the
+          SpeedDial below. */}
+      {topbarSlot && !formOpen
+        ? createPortal(
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setAdding(true)}
+              disabled={!ready}
+              className="hidden lg:inline-flex"
+            >
+              {t('hrt.labs.new')}
+            </Button>,
+            topbarSlot,
+          )
+        : null}
 
       {/* Mobile speed-dial — mirrors the desktop « ajouter un résultat » CTA. */}
       <SpeedDial

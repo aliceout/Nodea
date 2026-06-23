@@ -9,6 +9,7 @@
  * every dose references a product by name. See `docs/Modules/HRT.md`.
  */
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import type {
   HrtAdminLogPayload,
@@ -40,12 +41,16 @@ interface AdministrationViewProps {
   /** Shared products instance — owned by `HrtPage` (audit 2026-06
    *  passe 2 : hoisted so switching sub-views doesn't re-LIST it). */
   products: UseHrtProducts;
+  /** Topbar actions slot (owned by `HrtPage`) — the desktop CTAs portal
+   *  here so they sit in the topbar instead of the page body. */
+  topbarSlot?: HTMLElement | null;
 }
 
 export default function AdministrationView({
   schedules,
   adminLogs,
   products,
+  topbarSlot,
 }: AdministrationViewProps) {
   const { t, language } = useI18n();
   const confirm = useConfirm();
@@ -122,35 +127,41 @@ export default function AdministrationView({
     <section className="min-w-0">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-[14px] font-medium text-ink">{t('hrt.administration.title')}</h2>
-        {!formOpen ? (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!ready}
-              onClick={() => {
-                setEditingSchedule(null);
-                setMode('schedule');
-              }}
-              className="hidden lg:inline-flex"
-            >
-              {t('hrt.administration.newSchedule')}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={!ready}
-              onClick={() => {
-                setEditing(null);
-                setMode('manual');
-              }}
-              className="hidden lg:inline-flex"
-            >
-              {t('hrt.administration.newManual')}
-            </Button>
-          </div>
-        ) : null}
       </div>
+
+      {/* Desktop CTAs live in the topbar (portalled). Hidden while a form
+          is open; on mobile the SpeedDial below takes over. */}
+      {topbarSlot && !formOpen
+        ? createPortal(
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!ready}
+                onClick={() => {
+                  setEditingSchedule(null);
+                  setMode('schedule');
+                }}
+                className="hidden lg:inline-flex"
+              >
+                {t('hrt.administration.newSchedule')}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!ready}
+                onClick={() => {
+                  setEditing(null);
+                  setMode('manual');
+                }}
+                className="hidden lg:inline-flex"
+              >
+                {t('hrt.administration.newManual')}
+              </Button>
+            </>,
+            topbarSlot,
+          )
+        : null}
 
       {/* Mobile speed-dial — one bubble fanning out to both header
           actions (primary « prise manuelle » nearest the thumb). The
