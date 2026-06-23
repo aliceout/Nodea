@@ -4,8 +4,8 @@ import FilterChip from '@/ui/dirk/module/FilterChip';
 import { useGoalsFilters, type GoalsViewMode } from '../context';
 
 const VIEW_MODES: ReadonlyArray<{ id: GoalsViewMode; labelKey: string; defaultLabel: string }> = [
-  { id: 'list', labelKey: 'goals.viewMode.list', defaultLabel: 'Liste' },
   { id: 'cards', labelKey: 'goals.viewMode.cards', defaultLabel: 'Cartes' },
+  { id: 'list', labelKey: 'goals.viewMode.list', defaultLabel: 'Liste' },
 ];
 
 /**

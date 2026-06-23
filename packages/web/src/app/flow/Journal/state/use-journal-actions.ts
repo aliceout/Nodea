@@ -18,24 +18,19 @@ import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { journalClient } from '@/core/api/modules/journal';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
-
-import { recordToEntry } from '../lib/mappers';
 import {
   removeThreadFromString,
   renameThreadInString,
-} from '../lib/threads-mutate';
+  type ThreadMutationResult,
+} from '@/lib/threads-mutate';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
+
+import { recordToEntry } from '../lib/mappers';
 import type { JournalEntry } from '../lib/types';
 
-/**
- * Result of a bulk thread mutation (rename / merge / delete). The action
- * runs PATCHes in parallel ; this shape lets the caller surface a
- * precise « N réussis, M échoués » report without re-reading entries.
- */
-export interface ThreadMutationResult {
-  updatedIds: ReadonlyArray<string>;
-  failedIds: ReadonlyArray<string>;
-}
+// Re-exported so the context can keep republishing the result type to
+// consumers (the type itself now lives with the shared mutation helpers).
+export type { ThreadMutationResult };
 
 export interface JournalActionsDeps {
   ctx: ModuleClient | null;

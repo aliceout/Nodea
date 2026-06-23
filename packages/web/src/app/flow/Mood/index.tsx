@@ -63,19 +63,28 @@ function MoodView() {
   // before but carried little value, and on mobile the name doubles as
   // the page title (the big in-content heading is `lg:`-only now).
   const topbarLabel = t('mood.title');
+  const searchProps = {
+    value: searchQuery,
+    onChange: setSearchQuery,
+    placeholder: t('mood.topbar.searchPlaceholder'),
+    clearLabel: t('common.search.clearAria'),
+  };
 
   return (
     <ModuleShell
       topbar={
-        <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
-          <TopbarSearch
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder={t('mood.topbar.searchPlaceholder')}
-            clearLabel={t('common.search.clearAria')}
-            openLabel={t('common.search.openAria')}
-            closeLabel={t('common.search.closeAria')}
-          />
+        <Topbar
+          label={topbarLabel}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+          search={
+            <TopbarSearch
+              {...searchProps}
+              openLabel={t('common.search.openAria')}
+              closeLabel={t('common.search.closeAria')}
+              className="max-w-[35rem]"
+            />
+          }
+        >
           {/* Hide the « + Nouvelle entrée » button while the inline
               form is already open — same affordance as HRT
               `AdministrationView` (`{!formOpen ? <Button…/> : null}`).

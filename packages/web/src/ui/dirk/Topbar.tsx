@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { cn } from '@/lib/utils';
 import Button from '@/ui/atoms/dirk/Button';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
 
@@ -20,28 +21,41 @@ import NodeaSymbol from '@/ui/branding/NodeaSymbol';
  * across modules.
  *
  * `children` renders on the right side and is the open slot for
- * per-page actions (CTA buttons, search triggers, etc.). Pages
- * that only need a breadcrumb (Account, Admin) leave it empty
+ * per-page actions (CTA buttons, the mobile search toggle, etc.).
+ * Pages that only need a breadcrumb (Account, Admin) leave it empty
  * and the row collapses to label-only.
+ *
+ * `search` is a desktop-only left slot (≥ lg) for the inline search
+ * field. On mobile it stays empty and the module `label` shows there
+ * instead; the mobile search magnifier lives in `children` on the
+ * right. So desktop reads « [search …] … [actions] » while mobile
+ * reads « [module name] … [🔍][burger] » (the sidebar already shows
+ * the active module on desktop, so the name is redundant there).
  */
 interface TopbarProps {
-  /** Muted breadcrumb-style label on the left, visible at every
-   *  breakpoint (it carries the module name on mobile, where the big
-   *  in-content heading is the only other cue). Truncates rather than
-   *  wraps. Strings work; ReactNode is allowed for the rare case where
-   *  the label needs inline emphasis. */
+  /** Muted breadcrumb-style label carrying the module name. Always
+   *  shown on mobile (the collapsed sidebar can't, and the big
+   *  in-content heading is `lg`-only). On desktop it shows too —
+   *  EXCEPT when a `search` slot is present, which takes this spot
+   *  (the desktop sidebar already highlights the active module).
+   *  Truncates rather than wraps. */
   label: ReactNode;
   /** Opens the mobile sidebar drawer. Wired through to the page
    *  parent because the drawer state lives on the global Zustand
    *  store. */
   onOpenMenu: () => void;
+  /** Left search slot — a single `<TopbarSearch>`. On desktop it's the
+   *  inline field (grows up to its own `max-w`, taking the label's
+   *  spot); on mobile it collapses to a magnifier pinned right. Omit on
+   *  pages without search. */
+  search?: ReactNode;
   /** Right-hand content. Typically `<Button variant="primary"
-   *  size="sm">+ Nouvelle entrée</Button>` for module pages; can
-   *  also pack a search trigger or several siblings. */
+   *  size="sm">+ Nouvelle entrée</Button>` plus the mobile search
+   *  magnifier; can pack several siblings. */
   children?: ReactNode;
 }
 
-export default function Topbar({ label, onOpenMenu, children }: TopbarProps) {
+export default function Topbar({ label, onOpenMenu, search, children }: TopbarProps) {
   const { t } = useI18n();
   return (
     <div className="sticky top-0 z-20 flex h-[52px] items-center gap-2 border-b border-hair bg-bg px-6 sm:px-9">
@@ -49,9 +63,21 @@ export default function Topbar({ label, onOpenMenu, children }: TopbarProps) {
           logo in the persistent sidebar. Decorative (the label is the
           accessible name). */}
       <NodeaSymbol className="h-5 w-5 shrink-0 text-accent lg:hidden" />
-      <span className="block min-w-0 truncate text-[13px] font-semibold tracking-[0.02em] text-ink">
+      {/* Module name. Hidden on desktop only when a search field takes
+          this slot; otherwise it shows at every breakpoint. */}
+      <span
+        className={cn(
+          'block min-w-0 truncate text-[13px] font-semibold tracking-[0.02em] text-ink',
+          search ? 'lg:hidden' : '',
+        )}
+      >
         {label}
       </span>
+      {/* Search slot — grows to fill the row. Holds the single
+          <TopbarSearch> (desktop field / mobile magnifier-pinned-right). */}
+      {search ? (
+        <div className="flex min-w-0 flex-1 items-center">{search}</div>
+      ) : null}
       <div className="ml-auto flex items-center gap-1.5">
         {children}
         <Button

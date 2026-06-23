@@ -1,20 +1,33 @@
 /**
- * Pure helpers for thread mutation operations (issue #57 — thread
- * manager). The journal's `thread` field is a single
- * comma-separated string ; @nodea/shared's `splitThreads` parses
- * it for grouping / filtering. These helpers do the reverse :
- * given the raw thread string, they produce a NEW raw string
- * after applying a rename, merge, or delete operation.
+ * Pure helpers for thread / theme mutation operations (issue #57 —
+ * thread manager). A module's `thread` field is a single
+ * comma-separated string ; @nodea/shared's `splitThreads` parses it
+ * for grouping / filtering. These helpers do the reverse : given the
+ * raw thread string, they produce a NEW raw string after applying a
+ * rename, merge, or delete operation.
+ *
+ * Shared (web `lib/`) because both Journal (« fils ») and Goals
+ * (« thèmes ») drive the same manager off the same `thread` field —
+ * see `ui/dirk/module/ThreadManagerModal`.
  *
  * All helpers preserve token order (within the limits of the dedup
- * inherent to `splitThreads`) and re-emit a clean
- * `<token>, <token>` join. They never mutate the input.
- *
- * Kept dep-free + pure so the action callbacks in
- * `context.tsx` can compose them inside a transaction without
- * worrying about side effects.
+ * inherent to `splitThreads`) and re-emit a clean `<token>, <token>`
+ * join. They never mutate the input. Kept dep-free + pure so the
+ * action callbacks can compose them without worrying about side
+ * effects.
  */
 import { splitThreads } from '@nodea/shared';
+
+/**
+ * Outcome of a bulk thread/theme mutation (rename / merge / delete):
+ * which entry ids were PATCHed successfully and which failed. Lets the
+ * manager surface a precise « N réussis, M échoués » report without
+ * re-reading entries.
+ */
+export interface ThreadMutationResult {
+  updatedIds: ReadonlyArray<string>;
+  failedIds: ReadonlyArray<string>;
+}
 
 /** Re-emit a token list as the canonical raw `thread` string. */
 function join(tokens: readonly string[]): string {

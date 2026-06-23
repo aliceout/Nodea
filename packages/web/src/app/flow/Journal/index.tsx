@@ -68,19 +68,28 @@ function JournalView() {
 
   // Just the bold module name (no count) — see Mood for the rationale.
   const topbarLabel = t('journal.title');
+  const searchProps = {
+    value: search,
+    onChange: setSearch,
+    placeholder: t('journal.topbar.searchPlaceholder'),
+    clearLabel: t('common.search.clearAria'),
+  };
 
   return (
     <ModuleShell
       topbar={
-        <Topbar label={topbarLabel} onOpenMenu={() => setMobileMenuOpen(true)}>
-          <TopbarSearch
-            value={search}
-            onChange={setSearch}
-            placeholder={t('journal.topbar.searchPlaceholder')}
-            clearLabel={t('common.search.clearAria')}
-            openLabel={t('common.search.openAria')}
-            closeLabel={t('common.search.closeAria')}
-          />
+        <Topbar
+          label={topbarLabel}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+          search={
+            <TopbarSearch
+              {...searchProps}
+              openLabel={t('common.search.openAria')}
+              closeLabel={t('common.search.closeAria')}
+              className="max-w-[35rem]"
+            />
+          }
+        >
           {/* Hide the « + Nouvelle entrée » button while the inline
               form is already open — same posture as Mood / Goals /
               HRT : clicking again would reopen a fresh create form

@@ -1,10 +1,20 @@
 import type { KeyboardEvent } from 'react';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
-import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
-interface ThreadRowProps {
+/**
+ * Single row of the generic thread/theme manager modal — the name (or
+ * inline input when editing) plus per-row rename / delete actions. The
+ * parent modal owns the `editingName` state so only one row edits at a
+ * time. aria labels are passed in (already resolved) so the row stays
+ * module-agnostic — Journal feeds « fil » wording, Goals « thème ».
+ *
+ * Merge UX intentionally drops the multi-select checkbox flow: renaming
+ * a name into one that already exists is a de facto merge (the
+ * underlying `renameThreadInString` dedups on collision).
+ */
+interface ThreadManagerRowProps {
   name: string;
   isEditing: boolean;
   working: boolean;
@@ -14,21 +24,13 @@ interface ThreadRowProps {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onDelete: () => void;
+  /** Already-resolved aria-label for the rename button (e.g. with the
+   *  name interpolated). */
+  renameAria: string;
+  deleteAria: string;
 }
 
-/**
- * Single row of the threads manager modal — the thread name (or
- * inline input when editing) and the per-row rename / delete
- * actions. The parent modal owns the `editingName` state so only
- * one row can be in rename mode at a time.
- *
- * Merge UX intentionally drops the multi-select checkbox flow :
- * renaming a thread into a name that already exists is a de facto
- * merge (the underlying `renameThreadInString` dedups on
- * collision). Two renames to chain merges feel cheaper than a
- * dedicated multi-select bar for what's a rare operation.
- */
-export default function ThreadRow({
+export default function ThreadManagerRow({
   name,
   isEditing,
   working,
@@ -38,9 +40,9 @@ export default function ThreadRow({
   onCommitRename,
   onCancelRename,
   onDelete,
-}: ThreadRowProps) {
-  const { t } = useI18n();
-
+  renameAria,
+  deleteAria,
+}: ThreadManagerRowProps) {
   function onRenameKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -76,9 +78,7 @@ export default function ThreadRow({
           iconOnly
           onClick={onStartRename}
           disabled={working}
-          aria-label={t('journal.threadsManager.renameAria', {
-            values: { name },
-          })}
+          aria-label={renameAria}
         >
           <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
@@ -88,9 +88,7 @@ export default function ThreadRow({
           iconOnly
           onClick={onDelete}
           disabled={working}
-          aria-label={t('journal.threadsManager.deleteAria', {
-            values: { name },
-          })}
+          aria-label={deleteAria}
         >
           <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>

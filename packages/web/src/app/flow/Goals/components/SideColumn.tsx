@@ -1,10 +1,10 @@
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import Button from '@/ui/atoms/dirk/Button';
-import Input from '@/ui/atoms/dirk/Input';
 import FilterChip from '@/ui/dirk/module/FilterChip';
+import ManageLink from '@/ui/dirk/module/ManageLink';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
+import ThreadManagerModal from '@/ui/dirk/module/ThreadManagerModal';
 
 import { useGoalsActions, useGoalsData, useGoalsFilters } from '../context';
 import { CANONICAL_STATUSES } from '../lib/constants';
@@ -14,19 +14,19 @@ import ViewModeToggle from './ViewModeToggle';
 const SORT_VALUES: ReadonlyArray<SortBy> = ['date', 'updated', 'alpha'];
 
 /**
- * Filter sidebar for the Goals catalogue. Sections : recherche
- * texte, statut (chips with counts), groupement (thread / année),
- * tri (date / récent / alpha), affichage (toggle masquer terminés),
- * actions (bouton report d'année).
+ * Filter sidebar for the Goals catalogue. Sections : statut (chips with
+ * counts), groupement (année / thème), thèmes (chips + « Gérer les
+ * thèmes » manager), tri (date / récent / alpha), affichage (view-mode
+ * toggle). The text search moved to the topbar (same posture as Mood /
+ * Journal / Library).
  *
- * Reads all state and setters from the three Goals contexts ; no
- * props.
+ * Reads all state and setters from the three Goals contexts ; no props.
  *
- * Below `lg` the desktop aside is hidden ; the same
- * `<FiltersContent>` is mounted by `<MobileFilters>` near the top
- * of the page, folded by default. Filters are functional
- * (search + status + grouping + sort + hide-done + carry-over) so
- * we can't drop them on mobile the way Mood's stats sidebar does.
+ * Below `lg` the desktop aside is hidden ; the same `<FiltersContent>`
+ * is mounted by `<MobileFilters>` near the top of the page, folded by
+ * default. Filters are functional (status + grouping + theme + sort +
+ * view) so we can't drop them on mobile the way Mood's stats sidebar
+ * does.
  */
 export default function SideColumn() {
   return (
@@ -47,33 +47,42 @@ export function FiltersContent() {
   const { t } = useI18n();
   const { entries, stats } = useGoalsData();
   const {
-    search,
     statusFilter,
     groupBy,
     sortBy,
-    hideDone,
     threadFilter,
     threads,
-    setSearch,
     setStatusFilter,
     setGroupBy,
     setSortBy,
-    setHideDone,
     setThreadFilter,
   } = useGoalsFilters();
-  const { openCarryOver } = useGoalsActions();
+  const { renameThread, deleteThread } = useGoalsActions();
+  const [themesManagerOpen, setThemesManagerOpen] = useState(false);
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <section>
-        <SectionLabel variant="section">{t('goals.side.search')}</SectionLabel>
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('goals.side.searchPlaceholder')}
-          aria-label={t('goals.side.searchAria')}
-        />
+        <SectionLabel variant="section">
+          {t('goals.side.view', { defaultValue: 'Vue' })}
+        </SectionLabel>
+        <ViewModeToggle />
+      </section>
+
+      <section>
+        <SectionLabel variant="section">{t('goals.side.groupBy')}</SectionLabel>
+        <div className="flex flex-wrap gap-1">
+          <FilterChip
+            active={groupBy === 'year'}
+            onClick={() => setGroupBy('year')}
+            label={t('goals.side.groupByYear')}
+          />
+          <FilterChip
+            active={groupBy === 'thread'}
+            onClick={() => setGroupBy('thread')}
+            label={t('goals.side.groupByThread')}
+          />
+        </div>
       </section>
 
       <section>
@@ -97,22 +106,6 @@ export function FiltersContent() {
         </div>
       </section>
 
-      <section>
-        <SectionLabel variant="section">{t('goals.side.groupBy')}</SectionLabel>
-        <div className="flex flex-wrap gap-1">
-          <FilterChip
-            active={groupBy === 'thread'}
-            onClick={() => setGroupBy('thread')}
-            label={t('goals.side.groupByThread')}
-          />
-          <FilterChip
-            active={groupBy === 'year'}
-            onClick={() => setGroupBy('year')}
-            label={t('goals.side.groupByYear')}
-          />
-        </div>
-      </section>
-
       {/* Thèmes filter — always visible regardless of `groupBy`. The
           old conditional (`groupBy === 'thread' ? ...`) hid the
           chips whenever the user switched to « grouper par année »,
@@ -120,7 +113,18 @@ export function FiltersContent() {
           choice. They're independent : you can group by year AND
           want to scope to a single theme. */}
       <section>
-        <SectionLabel variant="section">{t('goals.side.threads')}</SectionLabel>
+        <SectionLabel
+          variant="section"
+          action={
+            threads.length > 0 ? (
+              <ManageLink onClick={() => setThemesManagerOpen(true)}>
+                {t('goals.side.themesManageCta')}
+              </ManageLink>
+            ) : undefined
+          }
+        >
+          {t('goals.side.threads')}
+        </SectionLabel>
         {threads.length === 0 ? (
           <p className="text-[12px] italic text-muted">
             {t('goals.side.threadsEmpty')}
@@ -159,38 +163,14 @@ export function FiltersContent() {
         </div>
       </section>
 
-      <section>
-        <SectionLabel variant="section">
-          {t('goals.side.view', { defaultValue: 'Vue' })}
-        </SectionLabel>
-        <ViewModeToggle />
-      </section>
-
-      <section>
-        <SectionLabel variant="section">{t('goals.side.display')}</SectionLabel>
-        <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink-soft">
-          <input
-            type="checkbox"
-            checked={hideDone}
-            onChange={(e) => setHideDone(e.target.checked)}
-            className="h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
-          />
-          <span>{t('goals.side.hideDone', { values: { count: stats.done } })}</span>
-        </label>
-      </section>
-
-      <section>
-        <SectionLabel variant="section">{t('goals.side.actions')}</SectionLabel>
-        <Button
-          variant="neutral"
-          size="sm"
-          onClick={openCarryOver}
-          className="w-full justify-center"
-        >
-          <ArrowPathIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          {t('goals.side.carryOverCta')}
-        </Button>
-      </section>
+      <ThreadManagerModal
+        open={themesManagerOpen}
+        onClose={() => setThemesManagerOpen(false)}
+        names={threads}
+        onRename={renameThread}
+        onDelete={deleteThread}
+        i18nPrefix="goals.themesManager"
+      />
     </div>
   );
 }

@@ -1,59 +1,49 @@
-import { useMemo, useState } from 'react';
-import { splitThreads } from '@nodea/shared';
+import { useState } from 'react';
 
+import type { ThreadMutationResult } from '@/lib/threads-mutate';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import Button from '@/ui/atoms/dirk/Button';
 import { Modal } from '@/ui/atoms/layout/Modal';
-
-import {
-  useJournalActions,
-  useJournalData,
-  type ThreadMutationResult,
-} from '../context';
-import ThreadRow from './ThreadRow';
-
-interface ThreadsManagerModalProps {
-  open: boolean;
-  onClose: () => void;
-}
+import ThreadManagerRow from '@/ui/dirk/module/ThreadManagerRow';
 
 /**
- * Thread management surface for Journal (issue #57). Opened from
- * the Journal side column ; lists every thread and lets the user
- * rename or delete each one inline. Renaming into an existing
- * thread name is a de facto merge (the underlying mutation helper
- * dedups on collision) — that pattern replaces the original
- * multi-select merge bar after the audit pass.
+ * Generic thread / theme management modal (issue #57, generalised for
+ * #155-era reuse). Lists every name and lets the user rename or delete
+ * each one inline. Renaming into an existing name is a de facto merge
+ * (the caller's mutation helper dedups on collision). Each op runs an
+ * optimistic update + parallel PATCHes via the injected handlers ; a
+ * status banner surfaces the « N réussis, M échoués » result.
  *
- * Each operation runs an optimistic local update + parallel PATCHes
- * via the context actions ; a status banner surfaces the result
- * (« 12 réussis, 0 échec »).
- *
- * Lives in-module rather than in Settings — the architectural
- * choice from the audit thread : data lives where users use it, so
- * does the management. Settings stays a thin identity / security
- * surface.
+ * Module-agnostic: the caller passes the deduped `names`, the
+ * rename/delete handlers (which own the optimistic update + rollback),
+ * and an `i18nPrefix` (e.g. `journal.threadsManager` /
+ * `goals.themesManager`) whose sub-keys — `title`, `subtitle`, `empty`,
+ * `confirmDelete`, `opRename`, `opDelete`, `opResult`, `renameAria`,
+ * `deleteAria` — are identical across modules. Lives in `ui/dirk/module`
+ * so Journal (« fils ») and Goals (« thèmes ») share one component.
  */
-export default function ThreadsManagerModal({
+interface ThreadManagerModalProps {
+  open: boolean;
+  onClose: () => void;
+  /** Deduped, sorted list of names to manage. */
+  names: ReadonlyArray<string>;
+  onRename: (from: string, to: string) => Promise<ThreadMutationResult>;
+  onDelete: (name: string) => Promise<ThreadMutationResult>;
+  /** i18n key namespace, e.g. `journal.threadsManager`. */
+  i18nPrefix: string;
+}
+
+export default function ThreadManagerModal({
   open,
   onClose,
-}: ThreadsManagerModalProps) {
+  names,
+  onRename,
+  onDelete,
+  i18nPrefix,
+}: ThreadManagerModalProps) {
   const { t } = useI18n();
   const confirm = useConfirm();
-  const { entries } = useJournalData();
-  const { renameThread, deleteThread } = useJournalActions();
-
-  // Alphabetised list of every thread that appears in at least one
-  // entry. Recomputed only when entries change, which is rare (the
-  // manager is opened on demand, not on every render of the page).
-  const threadNames = useMemo<ReadonlyArray<string>>(() => {
-    const set = new Set<string>();
-    for (const entry of entries) {
-      for (const name of splitThreads(entry.thread)) set.add(name);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [entries]);
 
   const [editingName, setEditingName] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -82,8 +72,8 @@ export default function ThreadsManagerModal({
     }
     setWorking(true);
     try {
-      const res = await renameThread(editingName, trimmed);
-      setLastResult({ ...res, label: t('journal.threadsManager.opRename') });
+      const res = await onRename(editingName, trimmed);
+      setLastResult({ ...res, label: t(`${i18nPrefix}.opRename`) });
     } finally {
       setWorking(false);
       cancelRename();
@@ -92,15 +82,15 @@ export default function ThreadsManagerModal({
 
   async function handleDelete(name: string) {
     const ok = await confirm({
-      message: t('journal.threadsManager.confirmDelete', { values: { name } }),
+      message: t(`${i18nPrefix}.confirmDelete`, { values: { name } }),
       tone: 'danger',
     });
     if (!ok) return;
     setLastResult(null);
     setWorking(true);
     try {
-      const res = await deleteThread(name);
-      setLastResult({ ...res, label: t('journal.threadsManager.opDelete') });
+      const res = await onDelete(name);
+      setLastResult({ ...res, label: t(`${i18nPrefix}.opDelete`) });
     } finally {
       setWorking(false);
     }
@@ -111,12 +101,10 @@ export default function ThreadsManagerModal({
       <div className="flex max-h-[calc(100vh-160px)] flex-col">
         <header className="flex items-baseline justify-between gap-3 border-b border-hair px-5 py-4">
           <h2 className="text-[16px] font-semibold text-ink">
-            {t('journal.threadsManager.title')}
+            {t(`${i18nPrefix}.title`)}
           </h2>
           <p className="text-[12px] text-muted">
-            {t('journal.threadsManager.subtitle', {
-              values: { count: threadNames.length },
-            })}
+            {t(`${i18nPrefix}.subtitle`, { values: { count: names.length } })}
           </p>
         </header>
 
@@ -126,7 +114,7 @@ export default function ThreadsManagerModal({
             className="border-b border-hair px-5 py-2.5 text-[12px] text-ink-soft"
           >
             {lastResult.label} ·{' '}
-            {t('journal.threadsManager.opResult', {
+            {t(`${i18nPrefix}.opResult`, {
               values: {
                 ok: lastResult.updatedIds.length,
                 failed: lastResult.failedIds.length,
@@ -136,14 +124,14 @@ export default function ThreadsManagerModal({
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
-          {threadNames.length === 0 ? (
+          {names.length === 0 ? (
             <p className="py-8 text-center text-[13px] italic text-muted">
-              {t('journal.threadsManager.empty')}
+              {t(`${i18nPrefix}.empty`)}
             </p>
           ) : (
             <ul className="divide-y divide-hair">
-              {threadNames.map((name) => (
-                <ThreadRow
+              {names.map((name) => (
+                <ThreadManagerRow
                   key={name}
                   name={name}
                   isEditing={editingName === name}
@@ -154,6 +142,8 @@ export default function ThreadsManagerModal({
                   onCommitRename={() => void commitRename()}
                   onCancelRename={cancelRename}
                   onDelete={() => void handleDelete(name)}
+                  renameAria={t(`${i18nPrefix}.renameAria`, { values: { name } })}
+                  deleteAria={t(`${i18nPrefix}.deleteAria`, { values: { name } })}
                 />
               ))}
             </ul>
@@ -161,12 +151,7 @@ export default function ThreadsManagerModal({
         </div>
 
         <footer className="flex items-center justify-end gap-2 border-t border-hair px-5 py-3">
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={onClose}
-            disabled={working}
-          >
+          <Button variant="neutral" size="sm" onClick={onClose} disabled={working}>
             {t('common.actions.close')}
           </Button>
         </footer>

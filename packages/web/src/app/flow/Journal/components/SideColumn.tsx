@@ -2,10 +2,11 @@ import { useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
+import ManageLink from '@/ui/dirk/module/ManageLink';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
+import ThreadManagerModal from '@/ui/dirk/module/ThreadManagerModal';
 
-import { useJournalData, useJournalFilters } from '../context';
-import ThreadsManagerModal from './ThreadsManagerModal';
+import { useJournalActions, useJournalData, useJournalFilters } from '../context';
 
 /**
  * Filter sidebar for the Journal. Sections : vue (par fil / par
@@ -56,6 +57,7 @@ export function FiltersContent() {
     setGroupBy,
     setThreadFilter,
   } = useJournalFilters();
+  const { renameThread, deleteThread } = useJournalActions();
   const [threadsManagerOpen, setThreadsManagerOpen] = useState(false);
 
   return (
@@ -64,20 +66,31 @@ export function FiltersContent() {
         <SectionLabel variant="section">{t('journal.side.view')}</SectionLabel>
         <div className="flex flex-wrap gap-1">
           <FilterChip
-            active={groupBy === 'thread'}
-            onClick={() => setGroupBy('thread')}
-            label={t('journal.side.viewByThread')}
-          />
-          <FilterChip
             active={groupBy === 'month'}
             onClick={() => setGroupBy('month')}
             label={t('journal.side.viewByMonth')}
+          />
+          <FilterChip
+            active={groupBy === 'thread'}
+            onClick={() => setGroupBy('thread')}
+            label={t('journal.side.viewByThread')}
           />
         </div>
       </section>
 
       <section>
-          <SectionLabel variant="section">{t('journal.side.threads')}</SectionLabel>
+          <SectionLabel
+            variant="section"
+            action={
+              threads.length > 0 ? (
+                <ManageLink onClick={() => setThreadsManagerOpen(true)}>
+                  {t('journal.side.threadsManageCta')}
+                </ManageLink>
+              ) : undefined
+            }
+          >
+            {t('journal.side.threads')}
+          </SectionLabel>
           {threads.length === 0 ? (
             <p className="text-[12px] italic text-muted">
               {t('journal.side.threadsEmpty')}
@@ -100,20 +113,15 @@ export function FiltersContent() {
               ))}
             </div>
           )}
-          {threads.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setThreadsManagerOpen(true)}
-              className="mt-2 cursor-pointer text-[11.5px] text-muted underline-offset-2 transition-colors hover:text-ink hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              {t('journal.side.threadsManageCta')}
-            </button>
-          ) : null}
       </section>
 
-      <ThreadsManagerModal
+      <ThreadManagerModal
         open={threadsManagerOpen}
         onClose={() => setThreadsManagerOpen(false)}
+        names={threads}
+        onRename={renameThread}
+        onDelete={deleteThread}
+        i18nPrefix="journal.threadsManager"
       />
     </div>
   );

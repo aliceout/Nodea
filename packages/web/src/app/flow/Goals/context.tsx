@@ -6,6 +6,7 @@ import { createModuleContexts } from '@/core/contexts/module-contexts';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import type { LoadState } from '@/core/types/load-state';
+import type { ThreadMutationResult } from '@/lib/threads-mutate';
 
 import type { CanonicalStatus, GoalEntry, SortBy } from './lib/types';
 // State hooks — aliased to `…State` so they don't clash with the
@@ -33,11 +34,12 @@ export type { GoalsViewMode };
  *     array (not the filtered slice) so the « Masquer terminés (N) »
  *     count keeps showing the global done count.
  *   - `GoalsFiltersContext` — raw filter state (`statusFilter` /
- *     `groupBy` / `search` / `sortBy` / `hideDone`), the derived
- *     `filtered` and `groups`, and the matching setters.
+ *     `groupBy` / `search` / `sortBy`), the derived `filtered` /
+ *     `groups` / `threads`, and the matching setters.
  *   - `GoalsActionsContext` — handlers (`cycleStatus`, `editEntry`,
- *     `deleteEntry`, `carryOver`) plus the carry-over dialog UI
- *     state. Callbacks are `useCallback` and read live data via
+ *     `deleteEntry`, `upsertRecord`) plus the theme-mutation engine
+ *     (`renameThread` / `deleteThread`). Callbacks are `useCallback`
+ *     and read live data via
  *     refs so their identity stays stable across data fetches —
  *     consumers that only need actions don't re-render when
  *     entries change.
@@ -61,7 +63,6 @@ interface GoalsFiltersValue {
   viewMode: GoalsViewMode;
   search: string;
   sortBy: SortBy;
-  hideDone: boolean;
   threadFilter: string | null;
 
   filtered: ReadonlyArray<GoalEntry>;
@@ -73,12 +74,10 @@ interface GoalsFiltersValue {
   setViewMode: (next: GoalsViewMode) => void;
   setSearch: (next: string) => void;
   setSortBy: (next: SortBy) => void;
-  setHideDone: (next: boolean) => void;
   setThreadFilter: (next: string | null) => void;
 }
 
 interface GoalsActionsValue {
-  carryOverOpen: boolean;
   readingId: string | null;
   /** Inline composer state. `formOpen` toggles the form's visibility
    *  in `PrimaryColumn` ; `editingEntry` is the entry being edited
@@ -96,13 +95,8 @@ interface GoalsActionsValue {
   upsertRecord: (record: DecryptedRecord<GoalsPayload>) => void;
   openReader: (id: string) => void;
   closeReader: () => void;
-  openCarryOver: () => void;
-  closeCarryOver: () => void;
-  carryOver: (
-    from: number,
-    to: number,
-    affected: GoalEntry[],
-  ) => Promise<void>;
+  renameThread: (from: string, to: string) => Promise<ThreadMutationResult>;
+  deleteThread: (target: string) => Promise<ThreadMutationResult>;
 }
 
 const {
@@ -147,7 +141,6 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       viewMode: filters.viewMode,
       search: filters.search,
       sortBy: filters.sortBy,
-      hideDone: filters.hideDone,
       threadFilter: filters.threadFilter,
       filtered: filters.filtered,
       groups: filters.groups,
@@ -157,7 +150,6 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       setViewMode: filters.setViewMode,
       setSearch: filters.setSearch,
       setSortBy: filters.setSortBy,
-      setHideDone: filters.setHideDone,
       setThreadFilter: filters.setThreadFilter,
     }),
     // Field-by-field deps (audit 2026-06) : the state hook returns a
@@ -170,7 +162,6 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       filters.viewMode,
       filters.search,
       filters.sortBy,
-      filters.hideDone,
       filters.threadFilter,
       filters.filtered,
       filters.groups,
@@ -180,14 +171,12 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       filters.setViewMode,
       filters.setSearch,
       filters.setSortBy,
-      filters.setHideDone,
       filters.setThreadFilter,
     ],
   );
 
   const actionsValue = useMemo<GoalsActionsValue>(
     () => ({
-      carryOverOpen: actions.carryOverOpen,
       readingId: actions.readingId,
       formOpen: actions.formOpen,
       editingEntry: actions.editingEntry,
@@ -201,12 +190,10 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       upsertRecord: actions.upsertRecord,
       openReader: actions.openReader,
       closeReader: actions.closeReader,
-      openCarryOver: actions.openCarryOver,
-      closeCarryOver: actions.closeCarryOver,
-      carryOver: actions.carryOver,
+      renameThread: actions.renameThread,
+      deleteThread: actions.deleteThread,
     }),
     [
-      actions.carryOverOpen,
       actions.readingId,
       actions.formOpen,
       actions.editingEntry,
@@ -220,9 +207,8 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       actions.upsertRecord,
       actions.openReader,
       actions.closeReader,
-      actions.openCarryOver,
-      actions.closeCarryOver,
-      actions.carryOver,
+      actions.renameThread,
+      actions.deleteThread,
     ],
   );
 

@@ -2,7 +2,9 @@
  * Goals actions hook (REFACTO-08).
  *
  * Owns the action callbacks (cycleStatus, editEntry, deleteEntry,
- * carryOver) plus the carry-over dialog UI state.
+ * upsertRecord) plus the bulk theme-mutation engine (rename / delete a
+ * « thème » across every goal that carries it — the shared
+ * `ThreadManagerModal`, same engine as Journal's « fils »).
  *
  * Same ref-pattern as `useLibraryActions` : the callbacks need to
  * read the freshest entries for optimistic-update rollbacks, but
@@ -25,8 +27,12 @@ import { goalsClient } from '@/core/api/modules/goals';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { createMutationTracker } from '@/core/state/mutation-tracker';
-import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import {
+  removeThreadFromString,
+  renameThreadInString,
+  type ThreadMutationResult,
+} from '@/lib/threads-mutate';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import { recordToEntry } from '../lib/mappers';
@@ -35,7 +41,6 @@ import { nextStatus } from '../lib/status';
 import type { GoalEntry } from '../lib/types';
 
 export interface GoalsActionsState {
-  carryOverOpen: boolean;
   /** Reader-mode focus (issue #64). `null` when the regular list is
    *  shown ; otherwise the id of the goal being read full-screen.
    *  Auto-clears if the underlying entry disappears (delete / filter
@@ -75,18 +80,12 @@ export interface GoalsActionsState {
   openReader: (id: string) => void;
   /** Close the focus reader and return to the regular list. */
   closeReader: () => void;
-  openCarryOver: () => void;
-  closeCarryOver: () => void;
-  /** Bulk-bump every unfinished goal whose date year matches `from`
-   *  up to `to`. Status preserved (only open / wip ; done goals
-   *  are filtered out before reaching this handler). Date format
-   *  preserved (YYYY-MM stays YYYY-MM with the year swapped, bare
-   *  YYYY stays bare). */
-  carryOver: (
-    from: number,
-    to: number,
-    affected: GoalEntry[],
-  ) => Promise<void>;
+  /** Rename a theme (« thread ») across every goal that carries it.
+   *  Renaming into an existing theme is a de facto merge. Optimistic
+   *  update + per-entry rollback ; reports a success/failure tally. */
+  renameThread: (from: string, to: string) => Promise<ThreadMutationResult>;
+  /** Delete a theme from every goal that carries it. */
+  deleteThread: (target: string) => Promise<ThreadMutationResult>;
 }
 
 interface GoalsActionsDeps {
@@ -98,11 +97,9 @@ interface GoalsActionsDeps {
 
 export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
   const { ctx, entries, setEntries, bumpGoalsVersion } = deps;
-  const { t, tn } = useI18n();
+  const { t } = useI18n();
   const confirm = useConfirm();
-  const pushToast = useNodeaStore((s) => s.pushToast);
 
-  const [carryOverOpen, setCarryOverOpen] = useState(false);
   const [readingId, setReadingId] = useState<string | null>(null);
   // Inline-form state (replaces the legacy global Zustand composer
   // slice). Independent of the reader (`readingId`) so closing the
@@ -305,121 +302,94 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     [setEntries],
   );
 
-  const openCarryOver = useCallback(() => setCarryOverOpen(true), []);
-  const closeCarryOver = useCallback(() => setCarryOverOpen(false), []);
-
   const openReader = useCallback((id: string) => setReadingId(id), []);
   const closeReader = useCallback(() => setReadingId(null), []);
 
-  const carryOver = useCallback(
-    async (from: number, to: number, affected: GoalEntry[]) => {
-      if (!ctx) return;
-      if (affected.length === 0) {
-        setCarryOverOpen(false);
-        return;
+  // Bulk theme (« thread ») mutation engine — rename / delete a theme
+  // across every goal that carries it. Optimistic local update +
+  // parallel PATCHes ; each failed PATCH reverts ITS goal's thread to
+  // the pre-update value (no cross-talk between concurrent mutations).
+  // Same shape as Journal's « fils » engine — both drive the shared
+  // ThreadManagerModal.
+  const applyThreadTransform = useCallback(
+    async (
+      transform: (raw: string) => string,
+    ): Promise<ThreadMutationResult> => {
+      if (!ctx) return { updatedIds: [], failedIds: [] };
+      const affected: Array<{ entry: GoalEntry; nextThread: string }> = [];
+      for (const entry of entriesRef.current) {
+        const next = transform(entry.thread);
+        if (next !== entry.thread) affected.push({ entry, nextThread: next });
       }
-      const renumbered = new Map<string, string>();
-      const previousDates = new Map<string, string>();
-      const tokens = new Map<string, string>();
-      for (const e of affected) {
-        const newDate = e.date
-          ? e.date.replace(/^\d{4}/, String(to))
-          : String(to);
-        renumbered.set(e.id, newDate);
-        previousDates.set(e.id, e.date);
-        tokens.set(e.id, trackerRef.current.begin(e.id));
-      }
-      setEntries((prev) =>
-        prev.map((e) =>
-          renumbered.has(e.id) ? { ...e, date: renumbered.get(e.id)! } : e,
-        ),
+      if (affected.length === 0) return { updatedIds: [], failedIds: [] };
+
+      // Snapshot pre-update threads so each failed PATCH reverts its own
+      // entry only.
+      const snapshot = new Map(
+        affected.map(({ entry }) => [entry.id, entry.thread]),
       );
-      setCarryOverOpen(false);
 
-      // Per-entry try / catch so a mid-batch failure doesn't roll back
-      // the entries that already landed server-side (audit v2.8.0
-      // high). Before this, the for-loop's outer try caught the first
-      // rejection and the catch rolled back EVERY affected entry,
-      // including the ones whose server update had already succeeded
-      // ; the UI then lied (« nothing moved ») while the DB carried
-      // the move ; a second carry-over click then double-moved the
-      // already-shifted goals or hit unique-key collisions.
-      //
-      // Carry-over is a bulk UPDATE, not a bulk CREATE — the bulk
-      // endpoint added in #127 only collapses the imports' POST +
-      // promote-guard round-trip. A `PATCH /records/bulk` would
-      // need per-row guard verification + per-row guard headers,
-      // which is meaningfully more complex than the current
-      // CREATE-only contract ; deferred to a follow-up. Practical
-      // impact stays small : carry-over touches ~5-50 unfinished
-      // goals per user once a year.
-      const failedIds = new Set<string>();
+      // Optimistic local update — flip every affected goal at once.
+      setEntries((prev) =>
+        prev.map((e) => {
+          const change = affected.find((a) => a.entry.id === e.id);
+          return change ? { ...e, thread: change.nextThread } : e;
+        }),
+      );
+
+      const updatedIds: string[] = [];
+      const failedIds: string[] = [];
       const now = new Date().toISOString();
-      for (const e of affected) {
-        const newDate = renumbered.get(e.id)!;
-        try {
-          await goalsClient.update(ctx.moduleUserId, ctx.mainKey, e.id, {
-            date: newDate,
-            title: e.title,
-            note: e.note,
-            status: e.status,
-            thread: e.thread,
-            completedAt: e.completedAt,
-            updatedAt: now,
-          });
-        } catch (err) {
-          failedIds.add(e.id);
-          if (import.meta.env.DEV) {
-            console.warn('goals: carry-over update failed for', e.id, err);
+      await Promise.all(
+        affected.map(async ({ entry, nextThread }) => {
+          try {
+            await goalsClient.update(ctx.moduleUserId, ctx.mainKey, entry.id, {
+              date: entry.date,
+              title: entry.title,
+              note: entry.note,
+              status: entry.status,
+              thread: nextThread,
+              completedAt: entry.completedAt,
+              updatedAt: now,
+            });
+            updatedIds.push(entry.id);
+          } catch (err) {
+            failedIds.push(entry.id);
+            const previous = snapshot.get(entry.id);
+            if (previous !== undefined) {
+              setEntries((prev) =>
+                prev.map((e) =>
+                  e.id === entry.id ? { ...e, thread: previous } : e,
+                ),
+              );
+            }
+            if (import.meta.env.DEV)
+              console.warn('goals: theme mutation failed', err);
           }
-        }
-      }
+        }),
+      );
 
-      if (failedIds.size > 0) {
-        // Targeted rollback : restore the date only for the entries
-        // that actually failed server-side, and only if our carry-
-        // over token is still the latest for that entry. Succeeded
-        // entries stay on the new year ; concurrently-mutated
-        // entries (token no longer latest) keep their newer state.
-        setEntries((prev) =>
-          prev.map((e) => {
-            if (!failedIds.has(e.id)) return e;
-            const token = tokens.get(e.id);
-            if (token === undefined) return e;
-            if (!trackerRef.current.isLatest(e.id, token)) return e;
-            const original = previousDates.get(e.id);
-            return original !== undefined ? { ...e, date: original } : e;
-          }),
-        );
-        const movedCount = affected.length - failedIds.size;
-        pushToast({
-          kind: 'warning',
-          message:
-            movedCount > 0
-              ? tn('goals.carryOver.partialFailure', movedCount, {
-                  values: { year: to, failed: failedIds.size },
-                })
-              : t('goals.carryOver.allFailed', { values: { year: to } }),
-        });
-      }
-
-      // Always bump so the next refetch reconciles the local list to
-      // whatever actually landed server-side — even when every update
-      // succeeded (the optimistic state matches but a fresh fetch is
-      // cheap), and especially when some failed (the rollback restored
-      // the local date, but the source of truth is the server).
-      bumpGoalsVersion();
-
-      // `from` is unused at runtime — used by the call site to
-      // scope `affected`. Keep it in the signature so the contract
-      // stays explicit.
-      void from;
+      // Reconcile the local list to whatever landed server-side on the
+      // next fetch (matches Journal's posture).
+      if (updatedIds.length > 0) bumpGoalsVersion();
+      return { updatedIds, failedIds };
     },
-    [ctx, bumpGoalsVersion, setEntries, pushToast, t, tn],
+    [ctx, bumpGoalsVersion, setEntries],
+  );
+
+  const renameThread = useCallback(
+    (from: string, to: string) =>
+      applyThreadTransform((raw) => renameThreadInString(raw, from, to)),
+    [applyThreadTransform],
+  );
+
+  const deleteThread = useCallback(
+    (target: string) =>
+      applyThreadTransform((raw) => removeThreadFromString(raw, target)),
+    [applyThreadTransform],
   );
 
   return {
-    carryOverOpen,
     readingId,
     formOpen,
     editingEntry,
@@ -433,8 +403,7 @@ export function useGoalsActions(deps: GoalsActionsDeps): GoalsActionsState {
     upsertRecord,
     openReader,
     closeReader,
-    openCarryOver,
-    closeCarryOver,
-    carryOver,
+    renameThread,
+    deleteThread,
   };
 }

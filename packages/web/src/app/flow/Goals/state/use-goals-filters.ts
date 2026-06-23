@@ -1,9 +1,9 @@
 /**
  * Goals filters hook (REFACTO-08).
  *
- * Owns the raw filter state (statusFilter / groupBy / search / sortBy
- * / hideDone), derives `filtered` and `groups` from the entries the
- * provider passes in.
+ * Owns the raw filter state (statusFilter / groupBy / search / sortBy /
+ * threadFilter), derives `filtered` / `groups` / `threads` from the
+ * entries the provider passes in.
  *
  * Not a React context — the provider in `../context.tsx` consumes
  * this hook and republishes via `GoalsFiltersValue`.
@@ -36,7 +36,6 @@ export interface GoalsFiltersState {
   viewMode: GoalsViewMode;
   search: string;
   sortBy: SortBy;
-  hideDone: boolean;
   /** Active thread filter ; `null` means all threads. Mirrors the
    *  Journal SideColumn UX — the chip list is rendered next to the
    *  groupBy toggle when `groupBy === 'thread'`. Composes with
@@ -54,7 +53,6 @@ export interface GoalsFiltersState {
   setViewMode: (next: GoalsViewMode) => void;
   setSearch: (next: string) => void;
   setSortBy: (next: SortBy) => void;
-  setHideDone: (next: boolean) => void;
   setThreadFilter: (next: string | null) => void;
 }
 
@@ -66,7 +64,6 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const [groupBy, setGroupBy] = useState<GoalsGroupBy>('year');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
-  const [hideDone, setHideDone] = useState(false);
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
 
   // viewMode persistence (encrypted preferences blob — same posture
@@ -114,12 +111,6 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const filtered = useMemo<ReadonlyArray<GoalEntry>>(() => {
     const query = deferredSearch.trim();
     const out = entries.filter((e) => {
-      // « Masquer les terminés » overrides nothing — when an
-      // explicit status filter is `done`, the user clearly wants
-      // to see them, so the hide toggle yields.
-      if (hideDone && statusFilter !== 'done' && e.status === 'done') {
-        return false;
-      }
       if (statusFilter && e.status !== statusFilter) return false;
       if (threadFilter && !splitThreads(e.thread).includes(threadFilter)) {
         return false;
@@ -148,7 +139,7 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
       return byDateDesc(a, b);
     });
     return out;
-  }, [entries, statusFilter, threadFilter, deferredSearch, sortBy, hideDone]);
+  }, [entries, statusFilter, threadFilter, deferredSearch, sortBy]);
 
   const groups = useMemo<ReadonlyArray<readonly [string, GoalEntry[]]>>(() => {
     const map = new Map<string, GoalEntry[]>();
@@ -180,7 +171,6 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     viewMode,
     search,
     sortBy,
-    hideDone,
     threadFilter,
     filtered,
     groups,
@@ -190,7 +180,6 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
     setViewMode,
     setSearch,
     setSortBy,
-    setHideDone,
     setThreadFilter,
   };
 }

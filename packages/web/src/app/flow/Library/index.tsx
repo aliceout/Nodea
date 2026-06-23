@@ -76,6 +76,13 @@ function LibraryView() {
   // renders at a time (subview branch), so they share the ref.
   const newCtaRef = useRefocusTrigger(itemForm !== null || reviewForm !== null);
 
+  const searchProps = {
+    value: searchQuery,
+    onChange: setSearchQuery,
+    placeholder: t('library.topbar.searchPlaceholder'),
+    clearLabel: t('common.search.clearAria'),
+  };
+
   return (
     <>
       <ModuleShell
@@ -83,17 +90,19 @@ function LibraryView() {
           <Topbar
             label={t('library.title')}
             onOpenMenu={() => setMobileMenuOpen(true)}
+            search={
+              subview === 'livres' ? (
+                <TopbarSearch
+                  {...searchProps}
+                  openLabel={t('common.search.openAria')}
+                  closeLabel={t('common.search.closeAria')}
+                  className="max-w-[35rem]"
+                />
+              ) : undefined
+            }
           >
             {subview === 'livres' ? (
               <>
-                <TopbarSearch
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  placeholder={t('library.topbar.searchPlaceholder')}
-                  clearLabel={t('common.search.clearAria')}
-                  openLabel={t('common.search.openAria')}
-                  closeLabel={t('common.search.closeAria')}
-                />
                 <DirkButton
                   ref={newCtaRef}
                   variant="primary"
