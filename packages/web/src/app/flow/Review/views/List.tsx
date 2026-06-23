@@ -122,13 +122,39 @@ export default function ReviewListView({
     setDrafts(listReviewDrafts());
   }
 
+  // Topbar « + Nouveau bilan » — quick-start the CURRENT year. Mirrors
+  // the in-page section's guard so it never creates a duplicate: edit an
+  // existing finalized review, resume an in-progress draft, else start
+  // fresh. The page section stays for picking a different year.
+  function startCurrentYear(): void {
+    const finalized = entries.find((e) => e.payload.year === currentYear);
+    if (finalized) {
+      onEdit(finalized);
+      return;
+    }
+    if (activeDrafts.some((d) => d.year === currentYear)) {
+      onResume(currentYear);
+      return;
+    }
+    onStartNew(currentYear);
+  }
+
   return (
     <ModuleShell
       topbar={
         <Topbar
           label={t('review.title')}
           onOpenMenu={() => setMobileMenuOpen(true)}
-        />
+        >
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={startCurrentYear}
+            className="hidden lg:inline-flex"
+          >
+            {t('review.topbar.newCta')}
+          </Button>
+        </Topbar>
       }
     >
       <PageHeading>{t('review.list.heading')}</PageHeading>

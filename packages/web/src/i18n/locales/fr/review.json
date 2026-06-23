@@ -1,6 +1,7 @@
 {
   "title": "Review",
   "topbar": {
+    "newCta": "+ Nouveau bilan",
     "label": {
       "one": "Review · {count} bilan",
       "other": "Review · {count} bilans"
