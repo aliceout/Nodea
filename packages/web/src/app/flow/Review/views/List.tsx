@@ -6,14 +6,12 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import Button from '@/ui/atoms/dirk/Button';
-import Input from '@/ui/atoms/dirk/Input';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import HoverActions from '@/ui/dirk/module/HoverActions';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import Topbar from '@/ui/dirk/Topbar';
-import { QUESTION_STEPS } from '../config/steps';
 import {
   clearReviewDraft,
   listReviewDrafts,
@@ -27,17 +25,6 @@ interface ListProps {
   onOpen(record: ReviewRecord): void;
   onEdit(record: ReviewRecord): void;
 }
-
-/** « 12 mars 14:30 » — used for the « Brouillons » timestamp.
- *  Specific to this surface (no other module surfaces a date with
- *  hour / minute on the same line), so it stays local instead of
- *  going to `core/i18n/date-fr.ts`. */
-/** Sane bounds for the « bilan » year — a review is a yearly
- *  retrospective, not an arbitrary integer. Matches the number input's
- *  min/max ; enforced on blur so a stray « 2 » can't create a year-2
- *  review. */
-const YEAR_MIN = 1900;
-const YEAR_MAX = 2200;
 
 const DRAFT_DATETIME_FMT = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
@@ -57,7 +44,6 @@ export default function ReviewListView({
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { loading, error, entries, deleteReview } = useReview();
   const currentYear = new Date().getFullYear();
-  const [draftYear, setDraftYear] = useState<number>(currentYear);
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
 
   // Load draft summaries from localStorage on mount and whenever
@@ -92,15 +78,6 @@ export default function ReviewListView({
   const activeDrafts = useMemo(
     () => drafts.filter((d) => !finalizedYears.has(d.year)),
     [drafts, finalizedYears],
-  );
-
-  // A « bilan annuel » is unique per year. If the chosen year already
-  // has a finalized entry, « Commencer » would silently create a
-  // second one (audit 2026-06 passe 2, 3.7). Detect it and steer the
-  // user to EDIT the existing review instead.
-  const existingForYear = useMemo(
-    () => entries.find((e) => e.payload.year === draftYear) ?? null,
-    [entries, draftYear],
   );
 
   async function handleDelete(record: ReviewRecord): Promise<void> {
@@ -165,71 +142,6 @@ export default function ReviewListView({
       </div>
 
       {error ? <InlineAlert className="mb-4">{error}</InlineAlert> : null}
-
-      <section className="mb-9">
-        <h2 className="mb-2 border-b border-hair pb-1.5 text-[15px] font-semibold tracking-[-0.005em] text-ink">
-          {t('review.list.newHeading')}
-        </h2>
-        <p className="mb-4 text-[13px] leading-[1.55] text-ink-soft">
-          {t('review.list.newSubtitle', { values: { count: QUESTION_STEPS.length } })}
-        </p>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="block">
-            <span className="mb-1 block text-[12px] font-medium text-muted">
-              {t('review.list.yearLabel')}
-            </span>
-            <Input
-              type="number"
-              min={YEAR_MIN}
-              max={YEAR_MAX}
-              value={draftYear}
-              align="center"
-              onChange={(e) =>
-                setDraftYear(Number(e.target.value) || currentYear)
-              }
-              // Clamp on blur, not on every keystroke : clamping live
-              // would block typing « 2026 » (it'd snap « 2 » to 1900
-              // mid-entry). On blur we correct an out-of-range value to
-              // the nearest bound — so « 2 » can never create a « year 2 »
-              // review (audit 2026-06 passe 2, Priorité 4).
-              onBlur={(e) => {
-                const n = Number(e.target.value);
-                if (!Number.isFinite(n) || n === 0) {
-                  setDraftYear(currentYear);
-                  return;
-                }
-                setDraftYear(Math.min(YEAR_MAX, Math.max(YEAR_MIN, Math.trunc(n))));
-              }}
-              className="w-28"
-            />
-          </label>
-          {existingForYear ? (
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => onEdit(existingForYear)}
-            >
-              {t('review.list.editExistingCta', { values: { year: draftYear } })}
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => onStartNew(draftYear)}
-            >
-              {t('review.list.startCta')}
-            </Button>
-          )}
-        </div>
-        {existingForYear ? (
-          <p
-            role="status"
-            className="mt-3 text-[12px] leading-[1.5] text-muted"
-          >
-            {t('review.list.yearTakenHint', { values: { year: draftYear } })}
-          </p>
-        ) : null}
-      </section>
 
       {activeDrafts.length > 0 ? (
         <GroupBlock
