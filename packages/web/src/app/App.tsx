@@ -4,6 +4,7 @@ import Layout from '@/ui/layout/Layout';
 import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
 import { ConfirmProvider } from '@/ui/dirk/confirm/ConfirmProvider';
+import ToastHost from '@/ui/dirk/ToastHost';
 import { useNodeaStore, isModuleId } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import NotFound from './pages/NotFound';
@@ -158,6 +159,7 @@ export default function App() {
     <BrowserRouter>
       <ConfirmProvider>
         <AppWithKeyModal />
+        <ToastHost />
       </ConfirmProvider>
     </BrowserRouter>
   );
