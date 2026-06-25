@@ -5,6 +5,40 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.16.0 — 2026-06-25
+
+### Nouveautés
+
+- **hrt** : move the sub-view CTAs into the topbar _(ef66894)_
+- **review** : add a « + Nouveau bilan » topbar CTA on the list view _(c7a758b)_
+- **library** : « Gérer les tags » manager, reusing the shared ThreadManagerModal _(ffcf0ee)_
+
+### Corrections
+
+- **ui** : reader scroll + list edit-hide, tablet sidebar, shared sidebar shell _(0f449cf)_
+- **deps** : bump dompurify to 3.4.11 (GHSA-cmwh-pvxp-8882) _(6d8b580)_
+- **ui** : render toasts — mount the missing ToastHost (#145) _(8f87aef)_
+- **ui** : top-align the Mood/Journal year selector with the sidebar heading _(d32987e)_
+- **review** : drop the in-page « Commencer un nouveau bilan » section _(67d8196)_
+- **import-export** : remap relational links on cross-host restore _(f7159bb)_
+
+### Refactor
+
+- **ui** : unify topbar search + share the thread/theme manager; Goals & sidebar tidy _(d57aae9)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.15.0 _(25af85d)_
+
+<details>
+<summary>Maintenance — 3 commits</summary>
+
+- **release** : bump version to 2.16.0 _(56904b5)_
+- remove the dormant Habits module entirely _(82f0f0f)_
+- **ci** : swap Trivy ignore to libexpat CVE-2026-45186, drop 2 stale entries _(4ad21d3)_
+
+</details>
+
 ## v2.15.0 — 2026-06-22
 
 ### Nouveautés
