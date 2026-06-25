@@ -29,6 +29,10 @@ interface EntryReaderProps {
    *  so the user sees the boundary. */
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
+  /** Optional control rendered above the prev/next row — lets a module
+   *  expose what sequence the arrows walk (e.g. Journal's per-thread
+   *  picker when an entry carries several threads). */
+  navScope?: ReactNode;
   position: number;
   total: number;
   /** Small uppercase tag in the top-left of the header — `thread`
@@ -86,6 +90,7 @@ export default function EntryReader({
   onClose,
   onPrev,
   onNext,
+  navScope,
   position,
   total,
   eyebrow,
@@ -121,6 +126,15 @@ export default function EntryReader({
     window.addEventListener('keydown', handle);
     return () => window.removeEventListener('keydown', handle);
   }, [onClose, onPrev, onNext]);
+
+  // Each entry opens at its top. The reader replaces a (possibly far-
+  // scrolled) list while sharing the window scroll, so without this the
+  // window keeps the list's offset and drops the user mid-article.
+  // Re-runs on prev/next (the `position` counter changes) so stepping
+  // to a neighbour also starts at the top of that entry.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [position]);
 
   return (
     <ModuleShell
@@ -172,28 +186,35 @@ export default function EntryReader({
 
         {children}
 
-        <footer className="mt-12 flex items-center justify-between gap-3 border-t border-hair pt-5">
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={onPrev ?? (() => undefined)}
-            disabled={onPrev === null}
-          >
-            <ArrowLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            {prevLabel}
-          </Button>
-          <span className="text-[11px] tabular-nums text-muted">
-            {position} / {total}
-          </span>
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={onNext ?? (() => undefined)}
-            disabled={onNext === null}
-          >
-            {nextLabel}
-            <ArrowRightIcon className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
+        <footer className="mt-12 border-t border-hair pt-5">
+          {navScope ? (
+            <div className="mb-3 flex flex-wrap items-center justify-center gap-1.5">
+              {navScope}
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="neutral"
+              size="sm"
+              onClick={onPrev ?? (() => undefined)}
+              disabled={onPrev === null}
+            >
+              <ArrowLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              {prevLabel}
+            </Button>
+            <span className="text-[11px] tabular-nums text-muted">
+              {position} / {total}
+            </span>
+            <Button
+              variant="neutral"
+              size="sm"
+              onClick={onNext ?? (() => undefined)}
+              disabled={onNext === null}
+            >
+              {nextLabel}
+              <ArrowRightIcon className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          </div>
         </footer>
       </article>
     </ModuleShell>

@@ -8,6 +8,7 @@ import {
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
 import ManageLink from '@/ui/dirk/module/ManageLink';
+import ModuleSidebar from '@/ui/dirk/module/ModuleSidebar';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 import ThreadManagerModal from '@/ui/dirk/module/ThreadManagerModal';
 
@@ -35,9 +36,9 @@ import ViewModeToggle from './ViewModeToggle';
  */
 export default function SideColumn() {
   return (
-    <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
+    <ModuleSidebar>
       <FiltersContent />
-    </aside>
+    </ModuleSidebar>
   );
 }
 

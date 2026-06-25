@@ -14,7 +14,7 @@ export default function MobileFilters() {
   return (
     <CollapsibleFiltersToggle
       label={t('library.side.filtersToggle')}
-      className="-mt-3.5 mb-[18px] lg:hidden"
+      className="-mt-3.5 mb-[18px] lg:landscape:hidden"
     >
       <FiltersContent />
     </CollapsibleFiltersToggle>

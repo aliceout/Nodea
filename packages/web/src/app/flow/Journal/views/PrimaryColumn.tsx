@@ -67,6 +67,18 @@ export default function PrimaryColumn() {
     }).format(d);
   }, [dayFilter, language]);
 
+  // While an existing entry is being edited it already shows in the
+  // inline form above ; keep it out of the list below so the user
+  // isn't looking at the same entry twice (which reads as a duplicate).
+  // A group left empty by the removal is dropped so no stray header
+  // lingers. Create flows (`editingEntry === null`) pass through.
+  const visibleGroups = useMemo(() => {
+    if (!editingEntry) return groups;
+    return groups
+      .map(([label, items]) => [label, items.filter((e) => e.id !== editingEntry.id)] as const)
+      .filter(([, items]) => items.length > 0);
+  }, [groups, editingEntry]);
+
   // Fold the heatmap away on the first downward scroll (same posture
   // as Mood) — it opens on landing, then gets out of the way once the
   // user starts reading the entries. Only armed while open ; the
@@ -118,7 +130,7 @@ export default function PrimaryColumn() {
             this row on mobile (passed as `trailing`). Renders nothing
             at `lg+`, where the sidebar (`SideColumn`) + the desktop
             heading row below take over. */}
-        <div className="mt-3 lg:hidden">
+        <div className="mt-3 lg:landscape:hidden">
           <MobileFilters trailing={chartToggleButton} />
         </div>
 
@@ -143,7 +155,7 @@ export default function PrimaryColumn() {
             Hidden on mobile : there the toggle rides the filters row
             above and the heading is redundant with the topbar name.
             The day-filter chip lives here (desktop-only for now). */}
-        <div className="mt-3 hidden flex-wrap items-center justify-between gap-x-4 gap-y-2 lg:flex">
+        <div className="mt-3 hidden flex-wrap items-center justify-between gap-x-4 gap-y-2 lg:landscape:flex">
           <div className="flex flex-wrap items-center gap-2">
             {/* Active day-filter chip — explicit clear affordance
                 for the heatmap-driven date narrowing. Same shape as
@@ -196,7 +208,7 @@ export default function PrimaryColumn() {
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
           <EmptyHint>{t('journal.list.loading')}</EmptyHint>
-        ) : groups.length === 0 ? (
+        ) : visibleGroups.length === 0 ? (
           <EmptyHint>{t('journal.list.empty')}</EmptyHint>
         ) : (
           // Single flattened virtualized list across all groups
@@ -204,7 +216,7 @@ export default function PrimaryColumn() {
           // VirtualWindowList never crossed its threshold inside any
           // one thread, so nothing was virtualized at scale.
           <GroupedVirtualList
-            groups={groups}
+            groups={visibleGroups}
             getItemKey={(e) => e.id}
             renderItem={(entry, isLast) => (
             <EntryRow

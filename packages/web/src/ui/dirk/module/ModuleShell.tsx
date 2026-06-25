@@ -57,9 +57,15 @@ export default function ModuleShell({
       {side ? (
         <div
           className={
+            // Two columns only when there's real horizontal room : `lg`
+            // AND landscape. Tablets in portrait (e.g. Galaxy Tab S8+)
+            // report ≥ lg CSS width but can't fit nav + content + side,
+            // so they collapse to one column and the module's
+            // MobileFilters takes over (see SideColumn / MobileFilters,
+            // both gated `lg:landscape:`).
             layout === 'split'
-              ? 'grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-2'
-              : 'grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:grid-cols-[1fr_280px]'
+              ? 'grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:landscape:grid-cols-2'
+              : 'grid grid-cols-1 gap-9 px-6 py-7 sm:px-9 lg:landscape:grid-cols-[1fr_280px]'
           }
         >
           {children}

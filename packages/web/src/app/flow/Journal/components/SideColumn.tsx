@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import FilterChip from '@/ui/dirk/module/FilterChip';
 import ManageLink from '@/ui/dirk/module/ManageLink';
+import ModuleSidebar from '@/ui/dirk/module/ModuleSidebar';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 import ThreadManagerModal from '@/ui/dirk/module/ThreadManagerModal';
 
@@ -22,17 +23,18 @@ import { useJournalActions, useJournalData, useJournalFilters } from '../context
  * were removed from the sidebar per the audit pass — the heatmap
  * already conveys « how active have I been » at a glance.
  *
- * Below `lg` the desktop aside is hidden ; the same `<FiltersContent>`
- * is mounted by `<MobileFilters>` inside `PrimaryColumn`, folded by
- * default. Filters are functional (chip selection + thread manager
- * modal trigger) so we can't just drop them on mobile the way Mood's
- * stats sidebar does.
+ * Wrapped in the shared `<ModuleSidebar>` shell (visible only at `lg`
+ * AND landscape). In portrait / below `lg` the same `<FiltersContent>`
+ * is mounted instead by `<MobileFilters>` in `PrimaryColumn` (same
+ * gate, folded by default) — the filters are functional (chip
+ * selection + thread manager) so we can't just drop them the way
+ * Mood's stats sidebar does.
  */
 export default function SideColumn() {
   return (
-    <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:flex">
+    <ModuleSidebar>
       <FiltersContent />
-    </aside>
+    </ModuleSidebar>
   );
 }
 

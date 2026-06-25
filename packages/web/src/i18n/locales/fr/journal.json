@@ -53,6 +53,7 @@
   },
   "reader": {
     "noThreadEyebrow": "— sans fil —",
+    "navThreadLabel": "Naviguer dans :",
     "edit": "Modifier",
     "close": "Fermer",
     "prev": "Précédent",

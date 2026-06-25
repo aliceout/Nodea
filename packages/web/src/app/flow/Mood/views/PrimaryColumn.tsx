@@ -61,6 +61,15 @@ export default function PrimaryColumn() {
     }).format(d);
   }, [dayFilter, language]);
 
+  // While an existing entry is being edited it already shows in the
+  // inline form above ; keep it out of the list below so the user
+  // isn't looking at the same entry twice (reads as a duplicate).
+  // Create flows (`editingEntry === null`) pass through unchanged.
+  const visibleEntries = useMemo(
+    () => (editingEntry ? filtered.filter((e) => e.id !== editingEntry.id) : filtered),
+    [filtered, editingEntry],
+  );
+
   // Auto-collapse the frise when the user scrolls DOWN past a small
   // threshold — the heatmap is the heaviest visual element in the
   // sticky header, so folding it as the entries-list comes into view
@@ -191,7 +200,7 @@ export default function PrimaryColumn() {
       <div>
         {load.status === 'loading' && entries.length === 0 ? (
           <EmptyHint>{t('mood.primary.loading')}</EmptyHint>
-        ) : filtered.length === 0 ? (
+        ) : visibleEntries.length === 0 ? (
           <EmptyHint>
             {searchQuery.trim().length > 0
               ? t('mood.primary.emptySearch')
@@ -199,7 +208,7 @@ export default function PrimaryColumn() {
           </EmptyHint>
         ) : (
           <VirtualWindowList
-            items={filtered}
+            items={visibleEntries}
             estimateRowHeight={75}
             getKey={(e) => e.id}
             renderItem={(e) => <EntryRow entry={e} />}

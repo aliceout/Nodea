@@ -1,3 +1,5 @@
+import { useEffect, useLayoutEffect, useRef } from 'react';
+
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useRefocusTrigger } from '@/lib/use-refocus-trigger';
@@ -61,6 +63,37 @@ function JournalView() {
   // Focus restore (audit 2026-06, lot G) — must run before the
   // reader early-return so the hook order stays stable.
   const newEntryRef = useRefocusTrigger(formOpen);
+
+  // Reader scroll choreography. Opening an entry from far down the list
+  // used to leave the window scrolled past the (shorter) reader article ;
+  // EntryReader now jumps each entry to the top, and here we remember the
+  // list's scroll so closing the reader lands the user exactly where they
+  // were — open at the start, close at the same spot.
+  //
+  // The list position is captured via a LIVE listener rather than read
+  // after the fact: swapping the tall list for the short reader clamps
+  // `window.scrollY` before an effect could observe it, so the value has
+  // to be banked while the list is still on screen. The hooks sit before
+  // the `readingId` early-return to keep the hook order stable.
+  const listScrollRef = useRef(0);
+  const prevReadingRef = useRef<string | null>(readingId);
+  useEffect(() => {
+    if (readingId !== null) return undefined;
+    listScrollRef.current = window.scrollY;
+    const onScroll = () => {
+      listScrollRef.current = window.scrollY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [readingId]);
+  useLayoutEffect(() => {
+    const was = prevReadingRef.current;
+    prevReadingRef.current = readingId;
+    // Closing the reader (an entry → list) : restore the banked offset.
+    if (was !== null && readingId === null) {
+      window.scrollTo(0, listScrollRef.current);
+    }
+  }, [readingId]);
 
   if (readingId !== null) {
     return <ReaderShell />;
