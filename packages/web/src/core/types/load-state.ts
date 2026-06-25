@@ -6,8 +6,8 @@
  * separate slice so the data context's array stays the single source
  * of truth.
  *
- * Centralised here (REFACTO-01) so any new module page (Habits,
- * Review v2…) can `import type { LoadState } from '@/core/types/load-state'`
+ * Centralised here (REFACTO-01) so any new module page
+ * can `import type { LoadState } from '@/core/types/load-state'`
  * instead of re-declaring the same four-variant union locally.
  */
 export type LoadState =

@@ -162,6 +162,13 @@
       "when": 1781084955821,
       "tag": "0022_email_verifications_code_hash_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1782371251452,
+      "tag": "0023_drop_habits_tables",
+      "breakpoints": true
     }
   ]
 }

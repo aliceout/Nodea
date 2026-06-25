@@ -9,7 +9,7 @@
  *
  * Each module wraps this with a Zod payload schema for its own types.
  * The generic here does not know the payload shape; that's the point —
- * new modules (Habits, Library, Review) will reuse this verbatim.
+ * new modules (Library, Review) will reuse this verbatim.
  */
 import type { z } from 'zod';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';

@@ -15,10 +15,6 @@
     "label": "Goals",
     "description": "Suivez vos objectifs annuels."
   },
-  "habits": {
-    "label": "Habits",
-    "description": "Suivez vos habitudes quotidiennes avec une heatmap annuelle et un taux de régularité."
-  },
   "library": {
     "label": "Library",
     "description": "Votre bibliothèque personnelle de livres — statuts, notes, extraits, imports Babelio / Goodreads."

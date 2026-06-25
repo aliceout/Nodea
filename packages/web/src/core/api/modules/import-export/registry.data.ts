@@ -8,10 +8,9 @@
  * doesn't pay for parsing every module's plugin).
  *
  * `aliases` keeps backward compat with old export envelopes
- * that used the pre-split keys « habits » / « library » (when
- * Habits hadn't been split into items + logs and Library
- * hadn't been split into items + reviews). Those collapse
- * onto the « items » variant by default.
+ * that used the pre-split key « library » (before Library was
+ * split into items + reviews). It collapses onto the « items »
+ * variant by default.
  */
 
 import type { ImportExportPlugin } from './types.ts';
@@ -20,8 +19,6 @@ type ModuleKey =
   | 'mood'
   | 'goals'
   | 'journal'
-  | 'habits_items'
-  | 'habits_logs'
   | 'library_items'
   | 'library_reviews'
   | 'review'
@@ -40,8 +37,6 @@ const loaders: Record<ModuleKey, PluginLoader> = {
   mood: () => import('./mood.ts'),
   goals: () => import('./goals.ts'),
   journal: () => import('./journal.ts'),
-  habits_items: () => import('./habits-items.ts'),
-  habits_logs: () => import('./habits-logs.ts'),
   library_items: () => import('./library-items.ts'),
   library_reviews: () => import('./library-reviews.ts'),
   review: () => import('./review.ts'),
@@ -52,7 +47,6 @@ const loaders: Record<ModuleKey, PluginLoader> = {
 };
 
 const aliases: Readonly<Record<string, ModuleKey>> = {
-  habits: 'habits_items',
   library: 'library_items',
 };
 
@@ -63,8 +57,8 @@ function isKnownKey(key: string): key is ModuleKey {
 }
 
 /**
- * Resolve a plugin by module key. Aliases (`habits`, `library`)
- * collapse onto their canonical variant. Throws on unknown keys ;
+ * Resolve a plugin by module key. The `library` alias collapses
+ * onto its canonical variant. Throws on unknown keys ;
  * memoises so repeat calls return the same module instance.
  */
 export async function getDataPlugin(

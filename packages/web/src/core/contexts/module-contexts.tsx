@@ -7,8 +7,8 @@ import {
 
 /**
  * Factory that builds the «&nbsp;3 contextes&nbsp;» pattern shared by every
- * `flow/<Module>/context.tsx` (Library / Goals / Journal / Mood, soon
- * Habits / Review). Each module page splits its local state across
+ * `flow/<Module>/context.tsx` (Library / Goals / Journal / Mood /
+ * Review). Each module page splits its local state across
  * three contexts so consumers re-render only on the slice they
  * actually read :
  *

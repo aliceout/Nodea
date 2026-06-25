@@ -23,7 +23,7 @@ interface ModuleShellProps {
    *   - `'split'` : `1fr / 1fr` — equal halves. Used by the
    *     Homepage where both columns aggregate independent
    *     surfaces (à voir + journal récent on one side, Mood /
-   *     Habits / Goals overviews on the other). */
+   *     Goals overviews on the other). */
   layout?: 'aside' | 'split';
 }
 

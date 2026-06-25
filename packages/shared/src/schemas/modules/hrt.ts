@@ -73,7 +73,7 @@ export const HrtAdminLogPayloadSchema = z.looseObject({
   dose: z.number().nonnegative(),
   notes: z.string().default(''),
   /** When set, this dose was materialised from a recurring `HrtSchedule`
-   *  (the schedule's server entry `id`, à la Habits `itemRid → item.id`).
+   *  (the schedule's server entry `id`).
    *  Absent on manual doses ; drives the « récurrente » badge and lets
    *  the generator skip already-materialised dates. */
   scheduleId: z.string().optional(),

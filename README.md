@@ -3,7 +3,7 @@
 **Suivi personnel chiffré de bout en bout, auto-hébergeable.**
 
 Une app web pour tenir un journal, suivre ses humeurs, ses objectifs,
-ses habitudes, ses lectures, faire son bilan annuel. Tout ce que tu
+ses lectures, faire son bilan annuel. Tout ce que tu
 écris est chiffré dans ton navigateur **avant** d'arriver au serveur —
 personne d'autre que toi, pas même l'admin de l'instance, ne peut le
 lire.
@@ -21,7 +21,6 @@ lire.
 | **Mood** | Humeur quotidienne (score, emoji, 3 positives, commentaire) |
 | **Journal** | Entrées libres datées, threads, attachments inline |
 | **Goals** | Objectifs (open / wip / done, threads, date de complétion) |
-| **Habits** | Habitudes + logs datés (heatmap, taux de régularité) |
 | **Library** | Bibliothèque (livres, fiches de lecture, vignettes chiffrées) |
 | **Review** | Bilan annuel guidé (parcours YearCompass, 15 sections) |
 | **HRT** | Traitement hormonal — doses, biomarqueurs labo, fournisseurs, schémas récurrents |

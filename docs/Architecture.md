@@ -555,8 +555,7 @@ Zod schemas live under `src/schemas/`:
   + `/auth/me/crypto` (API-14 split) response shapes.
 - `entries.ts` — the generic 1:1 `modules_config` body wrapper.
 - `modules.ts` — decrypted payload schemas for each module (Mood,
-  Goals, Journal, Habits items + logs, Library items + reviews,
-  Review).
+  Goals, Journal, Library items + reviews, Review).
 - `announcements.ts` — create / update / response for the admin feed.
 - `preferences.ts` — `UserPreferencesBodySchema` wrapper +
   `UserPreferencesPayloadSchema` (decrypted: theme, language, …).
@@ -602,7 +601,7 @@ knob (Postgres, cookie secret, SMTP, `WEB_BASE_URL`, web port).
 
 ## 7. Common modules schema
 
-The seven modules (Mood, Goals, Journal, Habits, Library, Review,
+The six modules (Mood, Goals, Journal, Library, Review,
 HRT) all build on the same encrypted technical base: one `*_entries`
 table per module (HRT spreads across four : `hrt_admin_logs_entries`,
 `hrt_lab_results_entries`, `hrt_suppliers_entries`,
@@ -669,10 +668,10 @@ the server never sees cleartext or the passphrase.
   via each module's natural key (`getNaturalKey` — implemented by
   **every** plugin, not just a subset).
 - The export/backup walk is driven by the `registry.data.ts` plugin
-  list: `mood, goals, journal, habits_items, habits_logs,
+  list: `mood, goals, journal,
   library_items, library_reviews, review, hrt_products,
-  hrt_admin_logs, hrt_lab_results, hrt_schedules` (legacy `habits` /
-  `library` keys alias onto their split variants). `library_covers`
+  hrt_admin_logs, hrt_lab_results, hrt_schedules` (legacy `library`
+  key aliases onto its split variants). `library_covers`
   is intentionally excluded — re-fetchable artwork.
 
 **Encrypted backup** (`.age`) — a portable backup sealed under a 12-word
@@ -686,10 +685,10 @@ magic header), prompts for the 12-word phrase (spaces or hyphens),
 decrypts in-browser, and converges on the **same** restore path as the
 plaintext import.
 Same-account restore is byte-faithful. Cross-account / cross-host
-restore re-links by content (issue #155): the three relations that
+restore re-links by content (issue #155): the two relations that
 point at a parent by **server id** — `library_reviews.itemRid` →
-`library_items`, `habits_logs.itemRid` → `habits_items`,
-`hrt_admin_logs.scheduleId` → `hrt_schedules` — are remapped. On export
+`library_items`, `hrt_admin_logs.scheduleId` → `hrt_schedules` — are
+remapped. On export
 each child is stamped with its parent's stable content key (the parent's
 `getNaturalKey`, carried in the export-only `__parentKey` field); on
 import the parents are recreated first, a `naturalKey → newServerId`

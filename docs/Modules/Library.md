@@ -398,7 +398,7 @@ Parsers to implement (descending priority, cf. §5):
 carries 11 distinct responsibilities (orchestrator + 5 views +
 2 modals + 3 logic modules). A split toward the
 `flow/<Module>/{components,views,hooks,lib}/` pattern (already
-applied in `Habits/` and `Review/`) is required before adding an
+applied in `Review/`) is required before adding an
 import UI and an enriched composer — otherwise the file becomes
 unmaintainable.
 
@@ -412,4 +412,4 @@ unmaintainable.
 - `collection-client` pattern: `packages/web/src/core/api/modules/collection-client.ts`
 - Backend routes factory: `packages/api/src/routes/collection-factory.ts`
 - Modular split pattern (to mirror in the refactor):
-  `packages/web/src/app/flow/Habits/` and `packages/web/src/app/flow/Review/`
+  `packages/web/src/app/flow/Review/`

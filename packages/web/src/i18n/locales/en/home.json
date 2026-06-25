@@ -81,10 +81,5 @@
       "wip": "in progress",
       "done": "done"
     }
-  },
-  "habits": {
-    "title": "Habits",
-    "thisMonth": "{percent}% this month",
-    "delta": "{delta}% vs {month}"
   }
 }

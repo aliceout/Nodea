@@ -8,7 +8,7 @@ import { z } from 'zod';
  *   A 64-char cap is paranoid (4× the theoretical max) and rejects
  *   any client trying to smuggle bytes through the IV field.
  * - **payload** is the encrypted JSON. Real-world ceiling :
- *     · Mood / Goals / Habits entries are ≤ 2-5 KB each ;
+ *     · Mood / Goals entries are ≤ 2-5 KB each ;
  *     · Journal entries with inline image attachments can reach
  *       ~500 KB if multiple photos are bundled ;
  *     · Library covers : the cover-fetch proxy in `library-lookup.ts`
@@ -204,8 +204,6 @@ export const COLLECTION_NAMES = [
   'mood',
   'goals',
   'journal',
-  'habits-items',
-  'habits-logs',
   'library-items',
   'library-reviews',
   'library-covers',

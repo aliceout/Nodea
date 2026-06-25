@@ -34,7 +34,7 @@ FRONT-13 + sweep i18n, branche `refacto-design-v2`.
 | ui kit            | 38.5 KB    | 111.3 KB    | 1     | `@headlessui/react` — Modal, Disclosure, Dialog. |
 | react             | 22.2 KB    | 65.9 KB     | 1     | `react-vendor` chunk. Minimal pour React 19. |
 | app               | 343.5 KB   | 1336.6 KB   | 23    | Bundle principal + lazy chunks par page. Le plus gros single est `index-CCvSA10S.js` à 226 KB gzip — c'est le main app entry, probablement consolidable. |
-| modules           | 5.2 KB     | 13.5 KB     | 9     | Lazy chunks par module (Mood, Goals, Habits, …). Très bien splitté. |
+| modules           | 5.2 KB     | 13.5 KB     | 9     | Lazy chunks par module (Mood, Goals, …). Très bien splitté. |
 | other             | 25.1 KB    | 58.0 KB     | 28    | Petits chunks utilitaires. |
 | **Total**         | **972.1 KB** | **2994.6 KB** | **66** | Budget actuel : 1500 KB gzip. **528 KB de marge**. |
 

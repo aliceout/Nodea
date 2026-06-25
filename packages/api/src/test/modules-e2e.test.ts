@@ -12,8 +12,6 @@ import type {
   MoodPayload,
   GoalsPayload,
   JournalPayload,
-  HabitsItemPayload,
-  HabitsLogPayload,
   LibraryItemPayload,
   LibraryReviewPayload,
   ReviewPayload,
@@ -226,45 +224,8 @@ describe('Journal module — full encrypted round-trip', () => {
 });
 
 // ---------------------------------------------------------------------
-// Phase 7 — Habits / Library / Review
+// Phase 7 — Library / Review
 // ---------------------------------------------------------------------
-
-describe('Habits — items and logs encrypted round-trip', () => {
-  it('creates an item, logs two occurrences, lists them decrypted', async () => {
-    const cookie = await authCookie('habits@example.com');
-    const keys = await freshMainKeys();
-    const itemSid = 'sid-habits-items';
-    const logSid = 'sid-habits-logs';
-
-    const itemPayload: HabitsItemPayload = {
-      title: 'Tennis',
-      category: 'sport',
-      frequency: 'weekly',
-      target: 1,
-      startedAt: '2025-08-01',
-      archived: false,
-    };
-    const item = await createPromoted(cookie, 'habits-items', keys, itemSid, itemPayload);
-
-    const log1: HabitsLogPayload = { date: '2025-08-05', itemRid: item.id, done: true };
-    const log2: HabitsLogPayload = { date: '2025-08-12', itemRid: item.id, done: true };
-    await createPromoted(cookie, 'habits-logs', keys, logSid, log1);
-    await createPromoted(cookie, 'habits-logs', keys, logSid, log2);
-
-    const listRes = await app.request('/records', { headers: { cookie, 'x-sid': logSid, 'x-collection': 'habits-logs' } });
-    const list = (await listRes.json()) as { data: RawRecord[]; meta: Record<string, unknown> };
-    expect(list.data).toHaveLength(2);
-
-    const decrypted = await Promise.all(
-      list.data.map((r) =>
-        simDecryptPayload<HabitsLogPayload>(keys.aesKey, r.cipherIv, r.payload),
-      ),
-    );
-    const dates = decrypted.map((d) => d.date).sort();
-    expect(dates).toEqual(['2025-08-05', '2025-08-12']);
-    expect(decrypted.every((d) => d.itemRid === item.id)).toBe(true);
-  });
-});
 
 describe('Library — items and reviews encrypted round-trip', () => {
   it('creates a book + two reading notes, lists them decrypted', async () => {

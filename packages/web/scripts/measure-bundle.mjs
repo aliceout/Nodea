@@ -42,7 +42,7 @@ const BUCKET_PATTERNS = [
   { name: 'ui kit',     pattern: /headlessui|heroicons/ },
   { name: 'sentry',     pattern: /sentry|index\.esm/ },
   { name: 'app',        pattern: /index-/ },
-  { name: 'modules',    pattern: /^(mood|goals|journal|habits|library|review)/ },
+  { name: 'modules',    pattern: /^(mood|goals|journal|library|review)/ },
 ];
 
 /* ========================================================================== */

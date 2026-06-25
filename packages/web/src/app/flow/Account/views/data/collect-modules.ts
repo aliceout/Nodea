@@ -68,7 +68,7 @@ export async function collectModules(
 
   // Relational pass (#155): stamp each child record with its parent's
   // stable content key, so a cross-host import can remap the server-id
-  // reference (review→book, log→habit, dose→schedule). Runs after the
+  // reference (review→book, dose→schedule). Runs after the
   // gather so every parent collection is available; a failure here is
   // non-fatal — the export still restores same-host, exactly as before.
   for (const childKey of Object.keys(out)) {

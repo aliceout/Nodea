@@ -39,7 +39,6 @@ export const MODULE_COLLECTIONS: Record<string, ReadonlyArray<CollectionName>> =
   mood: ['mood'],
   journal: ['journal'],
   goals: ['goals'],
-  habits: ['habits-items', 'habits-logs'],
   library: ['library-items', 'library-reviews', 'library-covers'],
   review: ['review'],
   hrt: ['hrt-admin-logs', 'hrt-lab-results', 'hrt-suppliers', 'hrt-schedules'],

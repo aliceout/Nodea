@@ -8,7 +8,7 @@ Read automatically at the start of every session. The rules of the road; detaile
 
 **Nodea** is a self-hosted, **end-to-end encrypted** journaling / life-tracking web app. Data is encrypted in the browser with a user-derived main key — the server stores only ciphertext + HMAC guards, never plaintext, never keys.
 
-Modules **Mood · Goals · Journal · Library · Review · HRT** are shipping. **Habits** is **dormant** — its data layer exists but the module is hidden (`to_toggle: false`, `display: false` in `modules-registry.tsx`, issue #98); its code still lives via import/export, so keep its data-layer invariants intact on shared paths.
+Modules **Mood · Goals · Journal · Library · Review · HRT** are shipping.
 
 ---
 

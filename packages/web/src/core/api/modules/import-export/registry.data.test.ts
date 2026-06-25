@@ -7,8 +7,6 @@ const REQUIRED_KEYS = [
   'mood',
   'goals',
   'journal',
-  'habits_items',
-  'habits_logs',
   'library_items',
   'library_reviews',
   'review',

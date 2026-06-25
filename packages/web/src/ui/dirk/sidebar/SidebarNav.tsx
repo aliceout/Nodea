@@ -37,10 +37,6 @@ const MAIN_ITEMS: NavItem[] = [
   { id: 'mood', labelKey: 'layout.nav.mood', icon: HeartIcon },
   { id: 'journal', labelKey: 'layout.nav.journal', icon: DocumentTextIcon },
   { id: 'goals', labelKey: 'layout.nav.goals', icon: CheckCircleIcon },
-  // Habits temporairement retiré — module dormant (cf. commentaire
-  // dans `modules-registry.tsx` et issue #98). Le code reste en
-  // place, juste pas exposé dans la nav le temps que l'expérience
-  // produit soit tranchée.
   { id: 'library', labelKey: 'layout.nav.library', icon: BookOpenIcon },
   { id: 'review', labelKey: 'layout.nav.review', icon: CalendarIcon },
   { id: 'hrt', labelKey: 'layout.nav.hrt', icon: BeakerIcon },

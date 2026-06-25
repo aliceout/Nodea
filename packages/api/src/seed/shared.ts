@@ -188,7 +188,7 @@ interface ModulesRuntimeMap {
  *
  * Module ids are the canonical {@link DataModuleId} union from
  * `@nodea/shared/module-ids` (`mood`, `goals`, `journal`,
- * `library`, `review`, `habits`) — same set the web's
+ * `library`, `review`) — same set the web's
  * `modules_config` blob keys.
  */
 export async function ensureModuleUserId(

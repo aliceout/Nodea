@@ -262,8 +262,6 @@ rationale.
 | `mood_entries`              | Mood journal (date, score, emoji, positives). |
 | `goals_entries`             | Goals with lifecycle statuses.                |
 | `journal_entries`           | Journal entries grouped by thread.            |
-| `habits_items_entries`      | Habit definitions (frequency, target).        |
-| `habits_logs_entries`       | Per-day occurrences, linked to an item via the encrypted payload. |
 | `library_items_entries`     | Library works (book/movie/tv/doc).            |
 | `library_reviews_entries`   | Reading / viewing notes per work.             |
 | `library_covers_entries`    | Encrypted cover blobs.                        |

@@ -52,7 +52,7 @@ export function buildGoalsFixtures(): GoalFixture[] {
     {
       date: `${yyyy()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
       title: 'Marcher 8 km par jour',
-      note: 'Plutôt fin d’aprem qu’en pleine journée. Tracker via Habits dès qu’il est livré.',
+      note: 'Plutôt fin d’aprem qu’en pleine journée.',
       status: 'wip',
       thread: 'perso',
       completedAt: null,

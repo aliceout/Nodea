@@ -13,7 +13,7 @@ import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
  *  rows. Typed (each value calls the real store actions) so a renamed
  *  bump action fails to compile rather than silently no-op'ing the
  *  refetch — the failure mode would be a stale UI after a destructive
- *  action. Modules absent here (habits / review / hrt) have no store
+ *  action. Modules absent here (review / hrt) have no store
  *  version — their hooks refetch on every page mount, which is enough
  *  since Settings is a different surface. */
 const WIPE_VERSION_BUMPS: Record<string, (s: NodeaState) => void> = {

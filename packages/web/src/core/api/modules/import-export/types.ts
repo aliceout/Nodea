@@ -1,7 +1,7 @@
 /**
  * Shared shape contract for the Import/Export plugin system.
  *
- * Each module (Mood, Goals, Habits, Library, Review) ships a
+ * Each module (Mood, Goals, Library, Review) ships a
  * plugin under this shape ; the registry (`registry.data.ts`)
  * dispatches by module key.
  *
@@ -33,8 +33,8 @@ export interface ImportExportPluginMeta {
    *  this. */
   version: number;
   /** Optional alias for the Zustand modules slice key (when it
-   *  differs from `id`, e.g. `id: 'habits_items'` vs runtime key
-   *  `'habits-items'`). */
+   *  differs from `id`, e.g. `id: 'library_items'` vs runtime key
+   *  `'library-items'`). */
   runtimeKey?: string;
   /** Underlying DB collection name — kept for reference only,
    *  the runtime no longer reads it. */

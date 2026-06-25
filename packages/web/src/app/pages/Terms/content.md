@@ -29,7 +29,7 @@ Quand tu crées un compte, tu nous confies :
 - Une adresse email (pour t'envoyer les liens d'activation /
   récupération).
 - Un identifiant choisi.
-- Le contenu chiffré de tes entrées (journal, habitudes, livres…).
+- Le contenu chiffré de tes entrées (journal, livres…).
   **Le serveur ne voit jamais le contenu en clair.** Le chiffrement
   se fait dans ton navigateur, avec une clé dérivée de ton mot de
   passe — clé que nous n'avons pas, ne pouvons pas obtenir, et ne

@@ -11,7 +11,7 @@
  * with the caller's `t` so the UI stays declarative).
  *
  * Relational remap (#155): some children reference a parent by SERVER id
- * (review→book, log→habit, dose→schedule), which breaks on a new
+ * (review→book, dose→schedule), which breaks on a new
  * account/host where parents get fresh ids. So the loop runs in two
  * phases — parents/standalone first, then children — and between them
  * builds, per referenced parent, a `naturalKey → currentServerId` index

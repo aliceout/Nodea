@@ -7,8 +7,8 @@ import { countWords, isoDay } from './stats';
  * so the calendar view can colour each cell by activity at O(1)
  * lookup time. The picking strategy stays here (not in the
  * Heatmap component) because « intensity » bucketing is a Journal-
- * specific decision : Habits would bucket by log count, Mood by
- * score, Library would bucket differently again.
+ * specific decision : Mood would bucket by score, Library would
+ * bucket differently again.
  */
 export interface DayDensity {
   /** Number of entries written that day. */

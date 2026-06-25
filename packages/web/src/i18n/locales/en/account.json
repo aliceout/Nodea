@@ -144,7 +144,7 @@
       "title": "Import",
       "cta": "Import a file",
       "ctaLoading": "Importing…",
-      "description": "JSON, NDJSON or encrypted .age backup previously exported from Nodea. Duplicates are ignored. Note: links between records (reviews ↔ books, habit logs ↔ habits, HRT intakes ↔ schedules) are not preserved when restoring into a different account.",
+      "description": "JSON, NDJSON or encrypted .age backup previously exported from Nodea. Duplicates are ignored. Note: links between records (reviews ↔ books, HRT intakes ↔ schedules) are not preserved when restoring into a different account.",
       "noKey": "Encryption key unavailable.",
       "errorPrefix": "Import error: ",
       "invalidJson": "Invalid JSON format.",

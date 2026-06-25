@@ -25,7 +25,6 @@ import frErrors from "@/i18n/locales/fr/errors.json";
 import frReview from "@/i18n/locales/fr/review.json";
 import frLibrary from "@/i18n/locales/fr/library.json";
 import frHrt from "@/i18n/locales/fr/hrt.json";
-import frHabits from "@/i18n/locales/fr/habits.json";
 
 import enCommon from "@/i18n/locales/en/common.json";
 import enLayout from "@/i18n/locales/en/layout.json";
@@ -43,7 +42,6 @@ import enErrors from "@/i18n/locales/en/errors.json";
 import enReview from "@/i18n/locales/en/review.json";
 import enLibrary from "@/i18n/locales/en/library.json";
 import enHrt from "@/i18n/locales/en/hrt.json";
-import enHabits from "@/i18n/locales/en/habits.json";
 
 const STORAGE_KEY = "nodea:language";
 const DEFAULT_LANGUAGE = "fr";
@@ -71,7 +69,6 @@ const RESOURCES = {
     review: frReview,
     library: frLibrary,
     hrt: frHrt,
-    habits: frHabits,
   },
   en: {
     common: enCommon,
@@ -90,7 +87,6 @@ const RESOURCES = {
     review: enReview,
     library: enLibrary,
     hrt: enHrt,
-    habits: enHabits,
   },
 };
 

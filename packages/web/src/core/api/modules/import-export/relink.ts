@@ -4,8 +4,8 @@
  *
  * WHAT — some child collections reference a parent record by its
  * SERVER id (`library_reviews.itemRid` → a `library_items` row,
- * `habits_logs.itemRid` → `habits_items`, `hrt_admin_logs.scheduleId`
- * → `hrt_schedules`). On a same-account restore the ids match, but on
+ * `hrt_admin_logs.scheduleId` → `hrt_schedules`). On a same-account
+ * restore the ids match, but on
  * a new account / fresh host the parents are recreated with NEW server
  * ids, so every reference dangles and the restore silently loses the
  * relationship (the review/log survives but points nowhere).

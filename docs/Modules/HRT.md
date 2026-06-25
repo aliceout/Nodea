@@ -57,7 +57,7 @@ regimens equally — it never assumes a single transition direction.
   virtual : a schedule (`product` + `dose` + cadence `daily | every_n_days`
   + `startDate` + `endDate?`) generates a real, individually editable
   `HrtAdminLog` per occurrence, each carrying the schedule's server `id` as
-  `scheduleId` (the « récurrente » badge ; à la Habits `itemRid → item.id`).
+  `scheduleId` (the « récurrente » badge).
   The generator (`hooks/use-schedule-materialization`, run once at module
   mount, idempotent via `materializedThrough`) back-fills the missing days
   up to today, so a date is never created twice. Stopping a series

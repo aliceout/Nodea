@@ -47,7 +47,6 @@ const WHOLESALE_PREFIXES = [
   '/mood/',
   '/goals/',
   '/journal/',
-  '/habits/',
   '/library/',
   '/review/',
 ] as const;

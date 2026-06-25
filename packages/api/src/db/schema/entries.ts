@@ -72,8 +72,6 @@ function createEntryTable(name: string) {
 export const moodEntries = createEntryTable('mood_entries');
 export const goalsEntries = createEntryTable('goals_entries');
 export const journalEntries = createEntryTable('journal_entries');
-export const habitsItemsEntries = createEntryTable('habits_items_entries');
-export const habitsLogsEntries = createEntryTable('habits_logs_entries');
 export const libraryItemsEntries = createEntryTable('library_items_entries');
 export const libraryReviewsEntries = createEntryTable('library_reviews_entries');
 export const libraryCoversEntries = createEntryTable('library_covers_entries');

@@ -229,7 +229,7 @@ Tables that exist independently of the auth chantier:
 | `app_settings` | ✅ V1 — key/value store for app config (V1 stores `open_registration`; future settings: TOTP mode, etc.) | no |
 | `modules_config` | Per-module per-user config, encrypted | yes (DELETE WHERE user_id) |
 | `user_preferences` | Per-user UI prefs, encrypted | yes |
-| `mood_entries`, `goals_entries`, `journal_entries`, `habits_*_entries`, `library_*_entries`, `review_entries`, `hrt_*_entries` | Encrypted module data | **no** (since migration 0012 — no `user_id` on these tables, the server can't identify a user's entries to purge; orphan rows accepted) |
+| `mood_entries`, `goals_entries`, `journal_entries`, `library_*_entries`, `review_entries`, `hrt_*_entries` | Encrypted module data | **no** (since migration 0012 — no `user_id` on these tables, the server can't identify a user's entries to purge; orphan rows accepted) |
 
 All other tables (auth + MFA + sessions) are defined in §4.1.
 

@@ -25,7 +25,7 @@ is a doc bug to fix in the same PR that introduces it.
 | [Auth-Spec.md](./Auth-Spec.md) | OPAQUE, MFA, recovery, bypass, stepped MFA, session re-auth — exhaustive reference, not a quick read |
 | [auth/`<Flow>`.md](./auth/) | Per-flow detail (Register, Login, ChangePassword, ChangeEmail, Recovery, BypassMfa, Lifecycle) |
 | [Database.md](./Database.md) | Postgres schema, integrity constraints, FK cascades, AAD for each encrypted blob |
-| [Modules/`<Module>`.md](./Modules/) | Cleartext payload + module-specific business rules (Goals, Habits, Journal, Library, Mood, Review) |
+| [Modules/`<Module>`.md](./Modules/) | Cleartext payload + module-specific business rules (Goals, Journal, Library, Mood, Review) |
 | [Internationalisation.md](./Internationalisation.md) | i18n system, adding a key, adding a language, FR/EN parity |
 | [Release-Checklist.md](./Release-Checklist.md) | Steps to validate before tagging a release |
 | [adr/](./adr/) | Architectural Decision Records — read the relevant ADR before challenging a pattern |

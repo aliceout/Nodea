@@ -10,7 +10,6 @@
 export * from './mood.ts';
 export * from './goals.ts';
 export * from './journal.ts';
-export * from './habits.ts';
 export * from './library.ts';
 export * from './review.ts';
 export * from './hrt.ts';
