@@ -9,6 +9,7 @@ import { useSession } from '@/core/auth/use-session';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useModulesHydration } from '@/core/modules/useModulesHydration';
 import { useFirstRunSeed } from '@/core/modules/useFirstRunSeed';
+import { useAutoCloudBackup } from '@/app/flow/Account/views/data/useAutoCloudBackup';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Sidebar from '@/ui/dirk/Sidebar';
 
@@ -66,6 +67,11 @@ export default function Layout() {
   usePreferences();
   useModulesHydration();
   useFirstRunSeed();
+  // Auto cloud backup (ADR-0017): on unlock, push a fresh .age if the last is
+  // > 24 h old. No-op unless Dropbox is connected; waits for the modules
+  // config to hydrate so it never overwrites the rolling file with a partial
+  // account.
+  useAutoCloudBackup();
 
   const moduleKnown = useMemo(() => nav.some((t) => t.id === current), [current]);
   const ActiveView = useMemo(() => {

@@ -128,6 +128,9 @@ export const UserPreferencesPayloadSchema = z.looseObject({
     .object({
       provider: z.enum(['dropbox']),
       refreshToken: z.string().min(1),
+      /** Unix ms of the last successful push. Absent ⇒ never backed up.
+       *  Drives the on-unlock auto-trigger's 24 h staleness check (ADR-0017). */
+      lastBackupAt: z.number().optional(),
     })
     .optional(),
 });

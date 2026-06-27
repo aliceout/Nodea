@@ -23,6 +23,7 @@ import { sealBackup } from '@/core/crypto/backup-crypto';
 import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
 import { refreshDropboxAccessToken } from '@/core/cloud-backup/dropbox-oauth';
 import { uploadToDropbox } from '@/core/cloud-backup/dropbox-upload';
+import { saveEncryptedPreferences } from '@/core/api/preferences-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 
 import { collectModules } from './collect-modules';
@@ -82,7 +83,33 @@ export async function pushBackupToCloud(): Promise<void> {
     set(0.85);
     await uploadToDropbox(accessToken, bytes);
     set(1);
+    await stampLastBackupAt();
   } finally {
     set(null);
+  }
+}
+
+/**
+ * Record the successful-push time in the encrypted prefs so the on-unlock
+ * auto-trigger (Phase 3) knows when it last ran. Stamped here so BOTH the
+ * manual button and the auto-trigger update it for free. Direct save (à la
+ * `I18nProvider`'s language persist) since this isn't a React hook; a failed
+ * stamp is swallowed — the backup itself succeeded (the file is in Dropbox),
+ * worst case the auto-trigger fires once more next session.
+ */
+async function stampLastBackupAt(): Promise<void> {
+  const s = useNodeaStore.getState();
+  const cb = s.preferences.cloudBackup;
+  const mainKey = s.crypto.main;
+  if (!cb || !mainKey) return;
+  const next = { ...cb, lastBackupAt: Date.now() };
+  s.updatePreferences({ cloudBackup: next });
+  try {
+    await saveEncryptedPreferences(mainKey.aesKey, {
+      ...useNodeaStore.getState().preferences,
+      cloudBackup: next,
+    });
+  } catch {
+    // non-fatal — see doc above
   }
 }
