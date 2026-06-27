@@ -34,8 +34,11 @@
     "hrtLabs": "Analyses",
     "hrtExport": "Outils"
   },
-  "sync": {
-    "justNow": "Synchronisé · à l’instant"
+  "encryption": {
+    "label": "Chiffré de bout en bout"
+  },
+  "backup": {
+    "running": "Sauvegarde en cours…"
   },
   "errorBoundary": {
     "title": "Une erreur est survenue.",

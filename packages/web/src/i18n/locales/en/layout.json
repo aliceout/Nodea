@@ -34,8 +34,11 @@
     "hrtLabs": "Labs",
     "hrtExport": "Tools"
   },
-  "sync": {
-    "justNow": "Synced · just now"
+  "encryption": {
+    "label": "End-to-end encrypted"
+  },
+  "backup": {
+    "running": "Backing up…"
   },
   "errorBoundary": {
     "title": "Something went wrong.",
