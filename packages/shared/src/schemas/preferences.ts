@@ -113,6 +113,20 @@ export type DismissedAnnouncements = z.infer<typeof DismissedAnnouncementsSchema
  * `lastBackupAt` (unix ms; absent ⇒ never) is common to all and drives the
  * on-unlock 24 h staleness check.
  */
+/**
+ * WebDAV connect-form input. Client-only — the server never sees these (they're
+ * sealed into the encrypted preferences blob like every cloud credential), but
+ * the schema lives here next to `CloudBackupSchema` so the webdav credential
+ * shape has a single home. `baseUrl` is validated as a URL; the provider then
+ * normalises it (strips a trailing slash / a pasted `…/remote.php/…`).
+ */
+export const WebdavCredentialsSchema = z.object({
+  baseUrl: z.string().url(),
+  username: z.string().min(1),
+  appPassword: z.string().min(1),
+});
+export type WebdavCredentials = z.infer<typeof WebdavCredentialsSchema>;
+
 export const CloudBackupSchema = z.discriminatedUnion('provider', [
   z.object({
     provider: z.literal('dropbox'),

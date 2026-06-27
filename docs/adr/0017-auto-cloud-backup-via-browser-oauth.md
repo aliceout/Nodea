@@ -98,6 +98,43 @@ app-folder over the provider's REST API. No server involvement at any step.**
   (~1–4 h); each trigger refreshes first. A revoked/expired refresh token
   surfaces as "reconnecter <provider>", not a silent failure.
 
+## Amendment — what actually shipped (2026-06)
+
+The decision held; the **provider line-up** changed once each candidate was
+probed against live CORS + token behaviour. Recorded here rather than rewritten
+above, so the original reasoning stays legible.
+
+- **Google Drive — dropped.** Google refuses to issue a **refresh token to a
+  public/PKCE browser client**; offline refresh requires a *confidential* client,
+  i.e. a **client secret on a server** — a direct violation of "no shared secret
+  in the bundle or on the Nodea server", and fatal to unattended auto (the access
+  token dies in ~1 h with nothing to refresh it browser-side). The manual upload
+  path is CORS-OK, but the auto side is not. Out.
+- **OneDrive / Microsoft Graph — dropped.** Same shape on the part that matters:
+  no durable browser-only token for real unattended 24 h auto-backup. Out.
+- **Seam extracted, as planned but at pCloud, not Google.** `core/cloud-backup/`
+  now holds a `CloudProvider` interface — `{ id, connectKind, connect, upload,
+  revoke? }` — plus a `registry`. `connectKind` (`'oauth' | 'credentials'`) is
+  the one addition the original `{ connect, refresh, upload }` sketch missed: not
+  every provider connects via a popup.
+- **Providers shipped:** **Dropbox** (OAuth2 PKCE, offline *refresh* token),
+  **pCloud** (OAuth2 *implicit*, a **non-expiring** access token + its API-region
+  host — no refresh dance at all), **WebDAV / Nextcloud** (HTTP **Basic** auth
+  with a Nextcloud **app-password** — no OAuth).
+- **WebDAV breaks one assumption: the destination needs server-side setup.**
+  Dropbox/pCloud ship CORS + a browser token, so the user does nothing on the
+  destination. Vanilla Nextcloud sends **no CORS headers** on `remote.php/dav`, so
+  a cross-origin browser request is blocked at the preflight. The Nextcloud admin
+  must install the community app **webapppassword** (digital-blueprint) and
+  whitelist Nodea's exact origin; it injects a Sabre plugin that answers the
+  OPTIONS preflight (204, pre-auth) and reflects `Allow-Methods`/`Allow-Headers`
+  with `Allow-Credentials: true` + exact-origin ACAO (verified against its
+  source). ⇒ **WebDAV is the self-hoster / advanced option**, not tick-a-box; on a
+  managed/shared Nextcloud the user can't do that setup. The connect step
+  validates with a read-only `PROPFIND` and, because a blocked preflight is
+  browser-**opaque** (a bare `TypeError`, no HTTP status), its error copy
+  enumerates the causes (app not installed / origin not whitelisted / wrong URL).
+
 ## Alternatives considered
 
 - **Server-side scheduled backup.** The obvious "auto" shape — a cron pushing

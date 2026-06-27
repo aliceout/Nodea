@@ -8,9 +8,10 @@
  * persisted.
  *
  * ASSUMPTIONS (baked in)
- *   - Popup, not full-page redirect — a redirect would reload the SPA and drop
- *     the in-memory main key; the popup keeps this window alive so the PKCE
- *     verifier stays in a closure and is NEVER persisted.
+ *   - The consent popup + the same-origin/e.source trust checks live in the
+ *     shared `awaitOAuthCallback` helper; the PKCE verifier stays in this
+ *     closure and is NEVER persisted (popup keeps this window alive, so no
+ *     redirect-reload drops the in-memory main key).
  *   - `token_access_type=offline` is what makes Dropbox return a refresh token.
  *   - App-folder confinement comes from the Dropbox app's "App folder" access
  *     type (registration-time), not a scope; the scope is `files.content.write`.
@@ -21,6 +22,7 @@ import type { CloudBackup } from '@nodea/shared';
 
 import { randomBytes, bytesToBase64Url } from '@/core/crypto/base64';
 
+import { awaitOAuthCallback } from '../oauth-popup';
 import { createPkcePair } from '../pkce';
 import { BACKUP_FILENAME, type CloudProvider } from '../types';
 
@@ -39,71 +41,11 @@ function redirectUri(): string {
   return `${window.location.origin}/oauth/callback`;
 }
 
-/**
- * Open the consent popup and resolve with the auth code it postMessages back
- * (via the `OAuthCallback` leaf page). Rejects on user-deny, a popup closed
- * without authorising, or a blocked popup.
- */
-function awaitAuthCode(url: string, expectedState: string): Promise<string> {
-  const opened = window.open(url, 'dropbox-oauth', 'width=600,height=720');
-  if (!opened) throw new Error('Popup blocked');
-  // Re-bind as non-null: TS widens the guarded `opened` back to `Window | null`
-  // inside the nested listener/interval closures below.
-  const popup: Window = opened;
-
-  return new Promise<string>((resolve, reject) => {
-    const origin = window.location.origin;
-    let settled = false;
-
-    function cleanup(): void {
-      window.removeEventListener('message', onMessage);
-      window.clearInterval(closedTimer);
-    }
-    function onMessage(e: MessageEvent): void {
-      // Trust only our own consent popup: `e.source !== popup` rejects any
-      // other same-origin window/frame that could postMessage us, then the
-      // origin check rejects cross-origin. Defence-in-depth — PKCE already
-      // makes an injected code unusable at the token exchange.
-      if (e.source !== popup) return;
-      if (e.origin !== origin) return;
-      const data = e.data as {
-        type?: unknown;
-        code?: unknown;
-        error?: unknown;
-        state?: unknown;
-      };
-      if (data?.type === 'oauth:code' && typeof data.code === 'string') {
-        // CSRF nonce: ignore a code that didn't originate from THIS attempt.
-        if (data.state !== expectedState) return;
-        settled = true;
-        cleanup();
-        popup.close();
-        resolve(data.code);
-      } else if (data?.type === 'oauth:error') {
-        settled = true;
-        cleanup();
-        popup.close();
-        reject(
-          new Error(typeof data.error === 'string' ? data.error : 'OAuth denied'),
-        );
-      }
-    }
-    const closedTimer = window.setInterval(() => {
-      if (popup.closed && !settled) {
-        cleanup();
-        reject(new Error('Popup closed'));
-      }
-    }, 500);
-
-    window.addEventListener('message', onMessage);
-  });
-}
-
 /** PKCE → popup consent → code exchange → the long-lived refresh token. */
 async function connect(): Promise<CloudBackup> {
   const { verifier, challenge } = await createPkcePair();
-  // Per-attempt CSRF nonce, echoed back through the callback and matched in
-  // awaitAuthCode (defence-in-depth on top of PKCE + the e.source filter).
+  // Per-attempt CSRF nonce, echoed back through the callback and matched by the
+  // popup helper (defence-in-depth on top of PKCE + the e.source filter).
   const state = bytesToBase64Url(randomBytes(16));
   const authParams = new URLSearchParams({
     client_id: clientId(),
@@ -115,10 +57,13 @@ async function connect(): Promise<CloudBackup> {
     scope: 'files.content.write',
     state,
   });
-  const code = await awaitAuthCode(
+  const result = await awaitOAuthCallback(
     `${AUTHORIZE_URL}?${authParams.toString()}`,
-    state,
+    'dropbox-oauth',
+    { expectedState: state },
   );
+  const code = result.get('code');
+  if (!code) throw new Error('Dropbox returned no auth code');
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -203,6 +148,7 @@ async function revoke(cred: CloudBackup): Promise<void> {
 
 export const dropboxProvider: CloudProvider = {
   id: 'dropbox',
+  connectKind: 'oauth',
   connect,
   upload,
   revoke,

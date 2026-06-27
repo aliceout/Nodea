@@ -11,7 +11,7 @@
  * WHY   ADR-0017 anticipated extracting this seam at the SECOND provider, not
  *       the first — so it lands now that pCloud + WebDAV join Dropbox.
  */
-import type { CloudBackup } from '@nodea/shared';
+import type { CloudBackup, WebdavCredentials } from '@nodea/shared';
 
 /** Single rolling backup file name, shared by every provider (ADR-0017: one
  *  file, overwritten each push; no dated history yet). */
@@ -20,9 +20,19 @@ export const BACKUP_FILENAME = 'nodea-backup-latest.age';
 export interface CloudProvider {
   /** Discriminator — matches `CloudBackup['provider']`. */
   readonly id: CloudBackup['provider'];
-  /** Run the connect flow (popup / handshake) and return the credential to
-   *  persist into the encrypted preferences. */
-  connect(): Promise<CloudBackup>;
+  /**
+   * How the user connects — drives whether the UI pops an OAuth window or
+   * renders a credentials form:
+   *   - `'oauth'`       → `connect()` runs a consent popup (Dropbox, pCloud).
+   *   - `'credentials'` → the UI collects a form and passes it to
+   *                       `connect(input)` (WebDAV: server URL + login +
+   *                       app-password).
+   */
+  readonly connectKind: 'oauth' | 'credentials';
+  /** Run the connect flow and return the credential to persist into the
+   *  encrypted preferences. OAuth providers ignore `input`; credential
+   *  providers require it. */
+  connect(input?: WebdavCredentials): Promise<CloudBackup>;
   /** Upload the sealed `.age` bytes, overwriting the rolling backup file. The
    *  registry guarantees `cred.provider === this.id`. */
   upload(cred: CloudBackup, bytes: Uint8Array): Promise<void>;

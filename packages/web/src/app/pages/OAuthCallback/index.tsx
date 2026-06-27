@@ -2,24 +2,24 @@ import { useEffect } from 'react';
 
 /**
  * OAuth redirect landing — a public leaf rendered ONLY inside the consent
- * popup. It reads `?code` / `?error` off the URL, postMessages the result to
- * the opener (same-origin target, never `*`), and closes itself. No auth, no
- * Layout, no main key: it must work in a bare popup that never loaded the app
- * shell. The opener (`connectDropbox`) owns the PKCE verifier and the token
- * exchange — this page only ferries the code across the window boundary.
+ * popup. It merges the redirect's query (`?code=…`, code-flow / Dropbox) AND
+ * fragment (`#access_token=…`, implicit-flow / pCloud) params, postMessages
+ * them to the opener (same-origin target, never `*`), and closes itself. No
+ * auth, no Layout, no main key: it must work in a bare popup that never loaded
+ * the app shell. The opener (`awaitOAuthCallback`) owns the trust checks + the
+ * token exchange — this page only ferries the params across the window boundary.
  */
 export default function OAuthCallback() {
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const error = params.get('error');
-    const state = params.get('state');
+    const params: Record<string, string> = {};
+    for (const [k, v] of new URLSearchParams(window.location.search)) params[k] = v;
+    // Implicit-flow tokens come back in the fragment, not the query.
+    for (const [k, v] of new URLSearchParams(window.location.hash.replace(/^#/, '')))
+      params[k] = v;
+
     const opener = window.opener as Window | null;
     if (opener) {
-      const message = code
-        ? { type: 'oauth:code', code, state }
-        : { type: 'oauth:error', error: error ?? 'unknown' };
-      opener.postMessage(message, window.location.origin);
+      opener.postMessage({ type: 'oauth:result', params }, window.location.origin);
     }
     window.close();
   }, []);

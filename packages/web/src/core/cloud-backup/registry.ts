@@ -10,12 +10,15 @@ import type { CloudBackup } from '@nodea/shared';
 
 import type { CloudProvider } from './types';
 import { dropboxProvider } from './providers/dropbox';
+import { pcloudProvider } from './providers/pcloud';
+import { webdavProvider } from './providers/webdav';
 
 type ProviderId = CloudBackup['provider'];
 
 const PROVIDERS: Partial<Record<ProviderId, CloudProvider>> = {
   dropbox: dropboxProvider,
-  // pcloud + webdav land in the next slices.
+  pcloud: pcloudProvider,
+  webdav: webdavProvider,
 };
 
 /** Provider ids that are wired + connectable today (drives the UI picker). */

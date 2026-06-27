@@ -185,16 +185,31 @@
     },
     "cloudBackup": {
       "title": "Sauvegarde automatique",
-      "description": "Connecte un espace cloud (Dropbox) pour y envoyer automatiquement ta sauvegarde chiffrée. Le fichier .age est chiffré dans ton navigateur — Dropbox ne voit qu’un blob illisible.",
-      "connectedDescription": "Dropbox connecté. Ta sauvegarde chiffrée y sera envoyée automatiquement (au plus une fois par jour).",
-      "connectCta": "Connecter Dropbox",
+      "description": "Connecte un espace cloud (Dropbox, pCloud, ou un serveur WebDAV/Nextcloud) pour y envoyer automatiquement ta sauvegarde chiffrée. Le fichier .age est chiffré dans ton navigateur — le service ne voit qu’un blob illisible.",
+      "connectedDescription": "{provider} connecté. Ta sauvegarde chiffrée y sera envoyée automatiquement (au plus une fois par jour).",
+      "connectCta": "Connecter un service",
       "connecting": "Connexion…",
-      "disconnectCta": "Déconnecter Dropbox",
+      "disconnectCta": "Déconnecter",
       "error": "La connexion a échoué. Réessaie.",
       "backupNowCta": "Sauvegarder maintenant",
       "backingUp": "Sauvegarde…",
-      "backupDone": "Sauvegarde envoyée sur Dropbox.",
-      "backupError": "La sauvegarde a échoué. Réessaie."
+      "backupDone": "Sauvegarde envoyée.",
+      "backupError": "La sauvegarde a échoué. Réessaie.",
+      "webdav": {
+        "serverLabel": "Adresse du serveur",
+        "serverInvalid": "URL invalide (ex. https://cloud.exemple.com).",
+        "usernameLabel": "Nom d’utilisateur·ice",
+        "appPasswordLabel": "Mot de passe d’application",
+        "appPasswordHint": "Nextcloud → Paramètres → Sécurité → Appareils & sessions → « Créer un mot de passe d’application ».",
+        "required": "Champ requis.",
+        "submit": "Connecter",
+        "cancel": "Annuler",
+        "error": {
+          "cors": "Connexion bloquée. Sur Nextcloud, l’app « webapppassword » doit être installée et l’adresse de Nodea autorisée (origines) ; vérifie aussi l’URL du serveur.",
+          "auth": "Identifiants refusés. Vérifie le nom d’utilisateur·ice et le mot de passe d’application (et que son accès aux fichiers est activé).",
+          "path": "Réponse inattendue du serveur. Vérifie l’URL et le nom d’utilisateur·ice."
+        }
+      }
     }
   },
   "danger": {

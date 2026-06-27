@@ -185,16 +185,31 @@
     },
     "cloudBackup": {
       "title": "Automatic backup",
-      "description": "Connect a cloud space (Dropbox) to automatically send your encrypted backup there. The .age file is encrypted in your browser — Dropbox only ever sees an unreadable blob.",
-      "connectedDescription": "Dropbox connected. Your encrypted backup will be sent there automatically (at most once a day).",
-      "connectCta": "Connect Dropbox",
+      "description": "Connect a cloud space (Dropbox, pCloud, or a WebDAV/Nextcloud server) to automatically send your encrypted backup there. The .age file is encrypted in your browser — the service only ever sees an unreadable blob.",
+      "connectedDescription": "{provider} connected. Your encrypted backup will be sent there automatically (at most once a day).",
+      "connectCta": "Connect a service",
       "connecting": "Connecting…",
-      "disconnectCta": "Disconnect Dropbox",
+      "disconnectCta": "Disconnect",
       "error": "Connection failed. Try again.",
       "backupNowCta": "Back up now",
       "backingUp": "Backing up…",
-      "backupDone": "Backup sent to Dropbox.",
-      "backupError": "Backup failed. Try again."
+      "backupDone": "Backup sent.",
+      "backupError": "Backup failed. Try again.",
+      "webdav": {
+        "serverLabel": "Server URL",
+        "serverInvalid": "Invalid URL (e.g. https://cloud.example.com).",
+        "usernameLabel": "Username",
+        "appPasswordLabel": "App password",
+        "appPasswordHint": "Nextcloud → Settings → Security → Devices & sessions → “Create new app password”.",
+        "required": "Required.",
+        "submit": "Connect",
+        "cancel": "Cancel",
+        "error": {
+          "cors": "Connection blocked. On Nextcloud, the “webapppassword” app must be installed and Nodea’s address allowed (origins); also check the server URL.",
+          "auth": "Credentials rejected. Check the username and app password (and that its filesystem access is enabled).",
+          "path": "Unexpected server response. Check the URL and username."
+        }
+      }
     }
   },
   "danger": {

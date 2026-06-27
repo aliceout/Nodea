@@ -1,38 +1,86 @@
 import { useState } from 'react';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
+import { ChevronDownIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
+import { CloudIcon, ServerStackIcon } from '@heroicons/react/24/solid';
+
+import type { CloudBackup } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
-import { getProvider } from '@/core/cloud-backup/registry';
+import { CLOUD_PROVIDERS, getProvider } from '@/core/cloud-backup/registry';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
 import { pushBackupToCloud } from './cloud-push';
+import WebdavConnectForm from './WebdavConnectForm';
+
+type ProviderId = (typeof CLOUD_PROVIDERS)[number];
+
+/** Display names — proper nouns, not translated. */
+const PROVIDER_NAMES: Record<ProviderId, string> = {
+  dropbox: 'Dropbox',
+  pcloud: 'pCloud',
+  webdav: 'WebDAV',
+};
+
+/** Dropbox's official glyph (CC0, simple-icons), in its real brand blue. */
+function DropboxGlyph({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="#0061FF" aria-hidden="true" className={className}>
+      <path d="M6 1.807L0 5.629l6 3.822 6.001-3.822L6 1.807zM18 1.807l-6 3.822 6 3.822 6-3.822-6-3.822zM0 13.274l6 3.822 6.001-3.822L6 9.452l-6 3.822zM18 9.452l-6 3.822 6 3.822 6-3.822-6-3.822zM6 18.371l6.001 3.822 6-3.822-6-3.822L6 18.371z" />
+    </svg>
+  );
+}
+
+/** Per-provider button glyph in the brand colour. Dropbox ships its real mark;
+ *  pCloud has no clean, license-clear official glyph in our icon sets, so it's a
+ *  cyan cloud STAND-IN (drop in pCloud's real SVG to swap it). */
+function ProviderIcon({ id, className }: { id: ProviderId; className: string }) {
+  if (id === 'dropbox') return <DropboxGlyph className={className} />;
+  if (id === 'webdav') return <ServerStackIcon aria-hidden="true" className={className} />;
+  return <CloudIcon aria-hidden="true" className={`${className} text-[#17BED0]`} />;
+}
 
 /**
- * « Sauvegarde automatique » panel (Compte → Données). Connect / disconnect a
- * Dropbox account for auto-backup, and trigger a manual push. The OAuth
- * handshake runs entirely in the browser (popup → code → token); only the
- * refresh token is kept, sealed into the encrypted preferences (`cloudBackup`).
- * The manual push reuses the same seal pipeline as the `/backup` export and
- * uploads the `.age` to the Dropbox app folder. The in-flight progress shows
- * globally in the sidebar card (driven by the `backupProgress` slice); this
- * panel adds the local success/error feedback for the manual button. Mirrors
- * `ExportPanel`'s section/grid layout so the Data tab reads as one stack.
+ * « Sauvegarde automatique » panel (Compte → Données). Pick a cloud provider,
+ * connect it (popup → token sealed into the encrypted prefs), trigger a manual
+ * push, or disconnect. One provider at a time. The connect / upload / revoke
+ * details live behind the provider registry, so this panel is identical for
+ * Dropbox / pCloud / WebDAV. In-flight progress shows in the sidebar card
+ * (`backupProgress` slice); this panel adds the manual button's success/error.
  */
 export default function CloudBackupPanel() {
   const { t } = useI18n();
   const { preferences, setPreferences } = usePreferences();
-  const connected = !!preferences.cloudBackup;
+  const cb = preferences.cloudBackup;
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // WebDAV connects via a credentials form (no OAuth popup); this toggles it.
+  const [webdavOpen, setWebdavOpen] = useState(false);
   const [pushState, setPushState] = useState<'idle' | 'saving' | 'done' | 'error'>(
     'idle',
   );
 
-  async function onConnect(): Promise<void> {
+  /** Dropdown pick: OAuth providers open a popup immediately; credential
+   *  providers (WebDAV) reveal the inline form instead. */
+  function onPick(id: ProviderId): void {
+    setFailed(false);
+    if (getProvider(id).connectKind === 'credentials') {
+      setWebdavOpen(true);
+    } else {
+      void onConnect(id);
+    }
+  }
+
+  async function onWebdavConnected(cred: CloudBackup): Promise<void> {
+    await setPreferences({ cloudBackup: cred });
+    setWebdavOpen(false);
+  }
+
+  async function onConnect(id: ProviderId): Promise<void> {
     setBusy(true);
     setFailed(false);
     try {
-      const cred = await getProvider('dropbox').connect();
+      const cred = await getProvider(id).connect();
       await setPreferences({ cloudBackup: cred });
     } catch {
       // User-deny, closed popup, blocked popup, or a failed exchange — all
@@ -44,16 +92,13 @@ export default function CloudBackupPanel() {
   }
 
   async function onDisconnect(): Promise<void> {
-    // Revoke at Dropbox FIRST so "disconnect" actually severs access — the
-    // offline refresh token is long-lived and does NOT self-expire, so merely
-    // dropping it locally would leave a valid token alive on Dropbox's side.
-    // Best-effort: if the revoke is unreachable, still clear locally.
-    const cb = preferences.cloudBackup;
+    // Best-effort revoke at the provider (Dropbox), then clear locally. pCloud /
+    // WebDAV have no browser revoke, so we just forget the credential.
     if (cb) {
       try {
         await getProvider(cb.provider).revoke?.(cb);
       } catch {
-        // Offline, or nothing to revoke (pCloud/WebDAV) — fall through and clear.
+        // Offline, or nothing to revoke — fall through and clear.
       }
     }
     await setPreferences({ cloudBackup: undefined });
@@ -67,7 +112,7 @@ export default function CloudBackupPanel() {
       setPushState('done');
     } catch {
       // Seal / refresh / upload failure — one "try again" line. The sidebar
-      // pill has already flipped back to idle (pushBackupToCloud's finally).
+      // card has already cleared (pushBackupToCloud's finally).
       setPushState('error');
     }
   }
@@ -79,7 +124,7 @@ export default function CloudBackupPanel() {
       </h3>
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
         <div className="flex flex-col items-start gap-2">
-          {connected ? (
+          {cb ? (
             <>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -107,12 +152,43 @@ export default function CloudBackupPanel() {
                 </p>
               ) : null}
             </>
+          ) : webdavOpen ? (
+            <WebdavConnectForm
+              onConnected={onWebdavConnected}
+              onCancel={() => setWebdavOpen(false)}
+            />
           ) : (
-            <Button variant="primary" size="sm" onClick={onConnect} disabled={busy}>
-              {busy
-                ? t('account.data.cloudBackup.connecting')
-                : t('account.data.cloudBackup.connectCta')}
-            </Button>
+            // Single split-button picker (same HeadlessUI Menu as ExportPanel):
+            // one trigger, one menu item per provider — scales to N services and
+            // sidesteps the unequal-width problem of stacked per-provider buttons.
+            <Menu>
+              <MenuButton as={Button} variant="primary" size="sm" disabled={busy}>
+                <CloudArrowUpIcon className="h-4 w-4" aria-hidden="true" />
+                {busy
+                  ? t('account.data.cloudBackup.connecting')
+                  : t('account.data.cloudBackup.connectCta')}
+                <ChevronDownIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              </MenuButton>
+              <MenuItems
+                anchor="bottom start"
+                className="z-50 mt-1 min-w-[12rem] rounded-md border border-hair bg-bg p-1 shadow-md focus:outline-none"
+              >
+                {CLOUD_PROVIDERS.map((id) => (
+                  <MenuItem key={id}>
+                    <button
+                      type="button"
+                      onClick={() => onPick(id)}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-2 text-left data-[focus]:bg-bg-2"
+                    >
+                      <ProviderIcon id={id} className="h-4 w-4 shrink-0" />
+                      <span className="text-[13px] font-medium text-ink">
+                        {PROVIDER_NAMES[id]}
+                      </span>
+                    </button>
+                  </MenuItem>
+                ))}
+              </MenuItems>
+            </Menu>
           )}
           {failed ? (
             <p role="alert" className="text-[11.5px] text-danger">
@@ -121,8 +197,10 @@ export default function CloudBackupPanel() {
           ) : null}
         </div>
         <p className="text-[12px] leading-[1.55] text-muted">
-          {connected
-            ? t('account.data.cloudBackup.connectedDescription')
+          {cb
+            ? t('account.data.cloudBackup.connectedDescription', {
+                values: { provider: PROVIDER_NAMES[cb.provider] },
+              })
             : t('account.data.cloudBackup.description')}
         </p>
       </div>

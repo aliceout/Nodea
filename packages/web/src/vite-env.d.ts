@@ -19,4 +19,5 @@ declare module '*.jsx' {
  */
 interface ImportMetaEnv {
   readonly VITE_DROPBOX_CLIENT_ID?: string;
+  readonly VITE_PCLOUD_CLIENT_ID?: string;
 }
