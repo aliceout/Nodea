@@ -116,5 +116,19 @@ export const UserPreferencesPayloadSchema = z.looseObject({
    * files keep the phrase from the version they were sealed under.
    */
   backupPhraseVersion: z.number().int().positive().optional(),
+  /**
+   * Cloud-backup connection (ADR-0017). The OAuth refresh token for the
+   * chosen provider, sealed HERE under the main key — never plaintext on the
+   * server. Auto-backup pushes the already-E2E-encrypted `.age` straight from
+   * the browser, so this token is the one new secret and lives only in this
+   * blob. `provider` is an enum (not a bool) so Google/OneDrive slot in later
+   * without a reshape.
+   */
+  cloudBackup: z
+    .object({
+      provider: z.enum(['dropbox']),
+      refreshToken: z.string().min(1),
+    })
+    .optional(),
 });
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;

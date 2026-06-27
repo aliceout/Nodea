@@ -63,6 +63,7 @@ incremented monotonically. No reuse after `Deprecated` — one number
 | [0014](./0014-zod-4-migration.md) | Zod 3 → 4 atomic migration (unblocks `@hono/zod-openapi` 1.x + `@hookform/resolvers` 5.x) | Accepted |
 | [0015](./0015-module-schemas-split-per-module.md) | Split module payload schemas one-file-per-module under `schemas/modules/` | Accepted |
 | [0016](./0016-encrypted-backup-uses-age.md) | Encrypted account backup uses the `age` format (passphrase mode) | Accepted |
+| [0017](./0017-auto-cloud-backup-via-browser-oauth.md) | Auto cloud backup pushes from the browser to an OAuth app-folder | Accepted |
 
 ## When to write a new ADR
 

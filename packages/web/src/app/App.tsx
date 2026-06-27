@@ -30,6 +30,7 @@ const BypassConfirm = lazy(() => import('./pages/BypassConfirm'));
 const Docs = lazy(() => import('./pages/Docs'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Changelog = lazy(() => import('./pages/Changelog'));
+const OAuthCallback = lazy(() => import('./pages/OAuthCallback'));
 
 function lazyPage(node: ReactElement): ReactElement {
   return (
@@ -136,6 +137,11 @@ function AppWithKeyModal() {
           from `git log` between `v*` tags by
           `scripts/generate-changelog.ts`. */}
       <Route path="/changelog" element={lazyPage(<Changelog />)} />
+      {/* OAuth redirect landing — public leaf, opened in a popup by the cloud-
+          backup connector (Compte → Données). It only postMessages the auth
+          code back to the opener and closes ; no auth, no Layout, no main key
+          (the opener still holds it — that's why a popup, not a redirect). */}
+      <Route path="/oauth/callback" element={lazyPage(<OAuthCallback />)} />
       <Route
         path="/flow"
         element={

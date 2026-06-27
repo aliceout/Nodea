@@ -182,6 +182,15 @@
       "regenerateTitle": "Régénérer la phrase de sauvegarde ?",
       "regenerateConfirm": "Tes sauvegardes déjà créées garderont leur ancienne phrase ; seules les prochaines utiliseront la nouvelle. Note bien la nouvelle phrase à l'étape suivante.",
       "regenerateCta": "Régénérer"
+    },
+    "cloudBackup": {
+      "title": "Sauvegarde automatique",
+      "description": "Connecte un espace cloud (Dropbox) pour y envoyer automatiquement ta sauvegarde chiffrée. Le fichier .age est chiffré dans ton navigateur — Dropbox ne voit qu’un blob illisible.",
+      "connectedDescription": "Dropbox connecté. Ta sauvegarde chiffrée y sera envoyée automatiquement (au plus une fois par jour).",
+      "connectCta": "Connecter Dropbox",
+      "connecting": "Connexion…",
+      "disconnectCta": "Déconnecter Dropbox",
+      "error": "La connexion a échoué. Réessaie."
     }
   },
   "danger": {

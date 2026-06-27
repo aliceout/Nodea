@@ -182,6 +182,15 @@
       "regenerateTitle": "Regenerate the backup phrase?",
       "regenerateConfirm": "Backups you've already created will keep their old phrase; only future ones will use the new phrase. Be sure to write down the new phrase on the next screen.",
       "regenerateCta": "Regenerate"
+    },
+    "cloudBackup": {
+      "title": "Automatic backup",
+      "description": "Connect a cloud space (Dropbox) to automatically send your encrypted backup there. The .age file is encrypted in your browser — Dropbox only ever sees an unreadable blob.",
+      "connectedDescription": "Dropbox connected. Your encrypted backup will be sent there automatically (at most once a day).",
+      "connectCta": "Connect Dropbox",
+      "connecting": "Connecting…",
+      "disconnectCta": "Disconnect Dropbox",
+      "error": "Connection failed. Try again."
     }
   },
   "danger": {
