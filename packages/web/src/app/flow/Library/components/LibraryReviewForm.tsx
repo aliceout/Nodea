@@ -162,7 +162,7 @@ export default function LibraryReviewForm({
                   className={cn(
                     'h-8 cursor-pointer rounded-[var(--radius-input)] border text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                     active
-                      ? 'border-accent bg-accent font-semibold text-white'
+                      ? 'border-accent bg-accent-strong font-semibold text-white'
                       : 'border-hair bg-bg text-muted hover:border-ink-soft hover:text-ink',
                   )}
                 >

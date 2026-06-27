@@ -216,7 +216,7 @@ export default function DedupPanel() {
             aria-valuenow={progress}
           >
             <div
-              className="h-full bg-accent transition-[width]"
+              className="h-full bg-accent-strong transition-[width]"
               style={{
                 width: `${analysis.duplicateCount === 0 ? 0 : (progress / analysis.duplicateCount) * 100}%`,
               }}

@@ -57,6 +57,15 @@
      so white text on top of a hovered button stays legible. In
      light mode they happen to coincide; in dark they diverge. */
   --color-k-accent-hover: #3d5641;
+  /* Filled-CTA green (primary `Button`). Kept SEPARATE from
+     `--color-k-accent` because that one doubles as foreground text /
+     icon on the dark paper and is therefore *lightened* in dark mode
+     (#7ea582) — but a filled button carries white text on top, so it
+     needs the opposite: a green that stays rich and dark. In light mode
+     it equals `accent` (no visible change); in dark it leans toward the
+     navbar's deep sage instead of the pale foreground green. */
+  --color-k-accent-strong: #5a7a5e;
+  --color-k-accent-strong-hover: #3d5641;
   --color-k-sync: #7a9a7e;
 
   /* Terracotta — tonalité « basse », pour lectures négatives
@@ -148,6 +157,13 @@
      branches off into a darker sage that gives white-on-button
      enough contrast on hover. */
   --color-k-accent-hover: #688c6c;
+  /* Filled-CTA green — see the light-mode note. Deliberately NOT the
+     lightened `#7ea582` foreground accent : a deep sage that leans
+     toward the navbar active fill (`#36493b`) so the primary button
+     stops reading as « too light » on dark, while keeping enough
+     contrast for the white label (~5.8:1). */
+  --color-k-accent-strong: #4d6c52;
+  --color-k-accent-strong-hover: #3d5641;
   --color-k-sync: #9bbf9f;
 
   /* Terracotta clarifié pour rester lisible sur le papier de nuit */
@@ -219,6 +235,8 @@
   --color-accent-soft: var(--color-k-accent-soft);
   --color-accent-deep: var(--color-k-accent-deep);
   --color-accent-hover: var(--color-k-accent-hover);
+  --color-accent-strong: var(--color-k-accent-strong);
+  --color-accent-strong-hover: var(--color-k-accent-strong-hover);
   --color-sync: var(--color-k-sync);
   --color-low: var(--color-k-low);
   --color-low-soft: var(--color-k-low-soft);

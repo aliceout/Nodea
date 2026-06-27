@@ -36,7 +36,7 @@ export default function SidebarBackupCard() {
         className="h-1 overflow-hidden rounded-full bg-accent-soft"
       >
         <div
-          className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"
+          className="h-full rounded-full bg-accent-strong transition-[width] duration-300 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>

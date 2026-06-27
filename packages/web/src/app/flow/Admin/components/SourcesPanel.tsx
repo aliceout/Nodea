@@ -183,7 +183,7 @@ function StatusBadge({ tone, label }: { tone: StatusInfo['tone']; label: string 
     <span
       className={cn(
         'inline-flex h-6 items-center rounded-md px-2 text-[11px] font-semibold tracking-[0.02em]',
-        tone === 'ok' && 'bg-accent text-white',
+        tone === 'ok' && 'bg-accent-strong text-white',
         tone === 'fail' && 'bg-danger/10 text-danger',
         tone === 'idle' && 'border border-hair bg-bg text-muted',
       )}

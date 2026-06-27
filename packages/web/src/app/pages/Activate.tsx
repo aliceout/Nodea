@@ -112,7 +112,7 @@ function SuccessPanel({ email }: { email: string }) {
     <div className="text-center">
       <div
         aria-hidden="true"
-        className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white"
+        className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent-strong text-white"
       >
         ✓
       </div>
@@ -150,7 +150,7 @@ function ErrorPanel({
       </p>
       <Link
         to={ERROR_CTA_TARGETS[reason]}
-        className="inline-block rounded-md bg-accent px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
+        className="inline-block rounded-md bg-accent-strong px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-strong-hover"
       >
         {t(`auth.activate.errors.${reason}.cta`)}
       </Link>

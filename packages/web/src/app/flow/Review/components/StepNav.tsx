@@ -45,7 +45,7 @@ export default function StepNav({ index, onJump, completed }: StepNavProps) {
               className={cn(
                 'h-1.5 min-w-3 flex-grow rounded-full transition-colors',
                 active
-                  ? 'bg-accent'
+                  ? 'bg-accent-strong'
                   : done
                     ? 'bg-ink-soft hover:bg-ink'
                     : 'bg-bg-2 hover:bg-hair',

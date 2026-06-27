@@ -229,7 +229,7 @@ function OpenRegistrationToggle({
         aria-hidden="true"
         className={cn(
           'absolute inset-0 rounded-full transition-colors duration-150 ease-out',
-          checked ? 'bg-accent' : 'bg-hair',
+          checked ? 'bg-accent-strong' : 'bg-hair',
           busy && 'opacity-60',
         )}
       />

@@ -80,9 +80,9 @@ export default function SearchButton({
             aria-label={t('library.lookup.modeAria')}
             title={t(`library.searchMode.${mode}`)}
             className={cn(
-              'inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-l-none rounded-r-md bg-accent px-2 text-white font-semibold transition-[background-color,color] duration-150',
+              'inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-l-none rounded-r-md bg-accent-strong px-2 text-white font-semibold transition-[background-color,color] duration-150',
               'shadow-[inset_1px_0_0_rgba(255,255,255,0.25)]',
-              'hover:bg-accent-hover focus:outline-none disabled:cursor-not-allowed disabled:opacity-60',
+              'hover:bg-accent-strong-hover focus:outline-none disabled:cursor-not-allowed disabled:opacity-60',
             )}
           >
             <span aria-hidden="true" className="text-[11px] leading-none">

@@ -19,7 +19,7 @@ interface BookGridProps {
  * library accent palette already stays close to sage / hair tones.
  */
 const STATUS_PILL_CLASS: Record<LibraryStatus, string> = {
-  in_progress: 'bg-accent text-white',
+  in_progress: 'bg-accent-strong text-white',
   planned: 'bg-bg/85 text-ink-soft backdrop-blur-sm',
   finished: 'bg-bg/85 text-muted backdrop-blur-sm',
   abandoned: 'bg-bg/85 text-muted-soft backdrop-blur-sm',

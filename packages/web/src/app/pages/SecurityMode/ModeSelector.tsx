@@ -64,7 +64,7 @@ export default function ModeSelector({
                 {opt.label}
               </span>
               {isCurrent ? (
-                <span className="rounded-sm bg-accent px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.04em] text-white">
+                <span className="rounded-sm bg-accent-strong px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.04em] text-white">
                   {t('auth.securityMode.activeBadge')}
                 </span>
               ) : null}

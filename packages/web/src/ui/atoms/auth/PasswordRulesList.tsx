@@ -49,7 +49,7 @@ export default function PasswordRulesList({ rules }: PasswordRulesListProps) {
               aria-hidden="true"
               className={cn(
                 'inline-block h-3 w-3 shrink-0 rounded-full text-center text-[9px] leading-3 transition-colors',
-                ok ? 'bg-accent text-white' : 'border border-hair bg-bg',
+                ok ? 'bg-accent-strong text-white' : 'border border-hair bg-bg',
               )}
             >
               {ok ? '✓' : ''}

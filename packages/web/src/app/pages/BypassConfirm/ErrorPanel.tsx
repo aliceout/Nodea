@@ -28,7 +28,7 @@ export default function ErrorPanel({ reason }: { reason: ErrorReason }) {
       </p>
       <Link
         to="/login"
-        className="inline-block rounded-md bg-accent px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
+        className="inline-block rounded-md bg-accent-strong px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-strong-hover"
       >
         {t('auth.bypass.goToLogin')}
       </Link>

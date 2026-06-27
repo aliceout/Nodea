@@ -165,14 +165,14 @@ export default function ModulesManager() {
               {/* Heroicon — same set as the sidebar nav and the
                   onboarding cards, so the visual identity stays
                   consistent across the app surface. Active state
-                  flips to bg-accent / white so the row carries an
+                  flips to the filled CTA green / white so the row carries an
                   unmistakable cue at a glance, no need to read the
                   toggle widget on the right. */}
               <span
                 aria-hidden="true"
                 className={cn(
                   'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors',
-                  checked ? 'bg-accent text-white' : 'bg-bg-2 text-ink-soft',
+                  checked ? 'bg-accent-strong text-white' : 'bg-bg-2 text-ink-soft',
                 )}
               >
                 <Icon className="h-4 w-4" />

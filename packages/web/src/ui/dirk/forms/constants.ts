@@ -63,7 +63,7 @@ export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
 export const GOAL_STATUS_ACTIVE_TONE: Record<GoalStatus, string> = {
   open: 'border-ink-soft bg-bg-2 font-semibold text-ink',
   wip: 'border-accent-soft bg-accent-soft font-semibold text-accent-deep',
-  done: 'border-accent bg-accent font-semibold text-white',
+  done: 'border-accent bg-accent-strong font-semibold text-white',
 };
 
 /** Languages surfaced in the LookupBar's language `<select>`.
