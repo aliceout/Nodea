@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { usePreferences } from '@/core/auth/use-preferences';
-import { connectDropbox } from '@/core/cloud-backup/dropbox-oauth';
+import { connectDropbox, revokeDropboxAccess } from '@/core/cloud-backup/dropbox-oauth';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
@@ -44,9 +44,18 @@ export default function CloudBackupPanel() {
   }
 
   async function onDisconnect(): Promise<void> {
-    // ponytail: clearing the field disconnects. Dropbox tokens self-expire and
-    // the app-folder confinement makes a stale token harmless, so a server-side
-    // revocation round-trip isn't worth it for v1.
+    // Revoke at Dropbox FIRST so "disconnect" actually severs access — the
+    // offline refresh token is long-lived and does NOT self-expire, so merely
+    // dropping it locally would leave a valid token alive on Dropbox's side.
+    // Best-effort: if the revoke is unreachable, still clear locally.
+    const cb = preferences.cloudBackup;
+    if (cb) {
+      try {
+        await revokeDropboxAccess(cb.refreshToken);
+      } catch {
+        // Offline, or the token is already dead — fall through and clear.
+      }
+    }
     await setPreferences({ cloudBackup: undefined });
     setPushState('idle');
   }

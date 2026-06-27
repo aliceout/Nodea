@@ -13,10 +13,11 @@ export default function OAuthCallback() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     const error = params.get('error');
+    const state = params.get('state');
     const opener = window.opener as Window | null;
     if (opener) {
       const message = code
-        ? { type: 'oauth:code', code }
+        ? { type: 'oauth:code', code, state }
         : { type: 'oauth:error', error: error ?? 'unknown' };
       opener.postMessage(message, window.location.origin);
     }

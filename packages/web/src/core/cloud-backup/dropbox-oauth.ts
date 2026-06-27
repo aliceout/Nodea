@@ -23,10 +23,13 @@
  *     URI is derived from the live origin (`/oauth/callback`), so dev (:8089)
  *     and prod share the code — only the Dropbox console must list both URIs.
  */
+import { randomBytes, bytesToBase64Url } from '@/core/crypto/base64';
+
 import { createPkcePair } from './pkce';
 
 const AUTHORIZE_URL = 'https://www.dropbox.com/oauth2/authorize';
 const TOKEN_URL = 'https://api.dropboxapi.com/oauth2/token';
+const REVOKE_URL = 'https://api.dropboxapi.com/2/auth/token/revoke';
 
 /** Token bundle from the code exchange. `refreshToken` is the only one the
  *  caller keeps; `accessToken`/`expiresInSec` are handed back for a possible
@@ -52,7 +55,7 @@ function redirectUri(): string {
  * (via the `OAuthCallback` leaf page). Rejects on user-deny, a popup the user
  * closed without authorising, or a blocked popup.
  */
-function awaitAuthCode(url: string): Promise<string> {
+function awaitAuthCode(url: string, expectedState: string): Promise<string> {
   const opened = window.open(url, 'dropbox-oauth', 'width=600,height=720');
   if (!opened) throw new Error('Popup blocked');
   // Re-bind as non-null: TS widens the guarded `opened` back to `Window | null`
@@ -68,14 +71,21 @@ function awaitAuthCode(url: string): Promise<string> {
       window.clearInterval(closedTimer);
     }
     function onMessage(e: MessageEvent): void {
-      // Only trust our own callback page, same-origin.
+      // Trust only our own consent popup: `e.source !== popup` rejects any
+      // other same-origin window/frame that could postMessage us, then the
+      // origin check rejects cross-origin. Defence-in-depth — PKCE already
+      // makes an injected code unusable at the token exchange.
+      if (e.source !== popup) return;
       if (e.origin !== origin) return;
       const data = e.data as {
         type?: unknown;
         code?: unknown;
         error?: unknown;
+        state?: unknown;
       };
       if (data?.type === 'oauth:code' && typeof data.code === 'string') {
+        // CSRF nonce: ignore a code that didn't originate from THIS attempt.
+        if (data.state !== expectedState) return;
         settled = true;
         cleanup();
         popup.close();
@@ -103,6 +113,9 @@ function awaitAuthCode(url: string): Promise<string> {
 /** Full connect handshake: PKCE → popup consent → code exchange → tokens. */
 export async function connectDropbox(): Promise<DropboxTokens> {
   const { verifier, challenge } = await createPkcePair();
+  // Per-attempt CSRF nonce, echoed back through the callback and matched in
+  // awaitAuthCode (defence-in-depth on top of PKCE + the e.source filter).
+  const state = bytesToBase64Url(randomBytes(16));
   const authParams = new URLSearchParams({
     client_id: clientId(),
     redirect_uri: redirectUri(),
@@ -111,8 +124,12 @@ export async function connectDropbox(): Promise<DropboxTokens> {
     code_challenge_method: 'S256',
     token_access_type: 'offline',
     scope: 'files.content.write',
+    state,
   });
-  const code = await awaitAuthCode(`${AUTHORIZE_URL}?${authParams.toString()}`);
+  const code = await awaitAuthCode(
+    `${AUTHORIZE_URL}?${authParams.toString()}`,
+    state,
+  );
 
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -169,4 +186,23 @@ export async function refreshDropboxAccessToken(
     throw new Error('Dropbox refresh returned no access token');
   }
   return { accessToken: json.access_token, expiresInSec: json.expires_in ?? 0 };
+}
+
+/**
+ * Revoke the authorization at Dropbox so "disconnect" actually severs access,
+ * not just forgets the token locally. The offline refresh token is long-lived
+ * — it does NOT self-expire — so dropping it locally without this would leave a
+ * fully valid token alive on Dropbox's side. Mints a short-lived access token
+ * from the refresh token, then POSTs it to the revoke endpoint. The caller
+ * treats this best-effort (clears locally even if it throws).
+ */
+export async function revokeDropboxAccess(refreshToken: string): Promise<void> {
+  const { accessToken } = await refreshDropboxAccessToken(refreshToken);
+  const res = await fetch(REVOKE_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Dropbox token revoke failed (${res.status})`);
+  }
 }
