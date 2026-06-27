@@ -42,7 +42,7 @@ export function useAutoCloudBackup(): void {
   useEffect(() => {
     if (firedThisSession) return;
     if (!isAuth || !mainKey) return;
-    if (!cloudBackup?.refreshToken) return; // Dropbox not connected
+    if (!cloudBackup) return; // no provider connected
     if (!modulesReady) return; // wait for the config to hydrate
     const last = cloudBackup.lastBackupAt;
     if (last && Date.now() - last < STALE_MS) return; // backed up recently

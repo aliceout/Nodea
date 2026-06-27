@@ -4,8 +4,9 @@
  *
  * WHERE App-layer glue: it depends on the account-data collectors
  * (`collect-modules`, `backup-pack`, siblings here) AND the core crypto +
- * core Dropbox client. Core must never import the app layer, so the orchestrator
- * lives here — the dependency only ever points app → core.
+ * the core cloud-backup provider registry. Core must never import the app
+ * layer, so the orchestrator lives here — the dependency only ever points
+ * app → core.
  *
  * ASSUMPTIONS (non-obvious)
  *   - **No re-auth.** The `/backup` page re-authenticates only as a UX gate,
@@ -21,8 +22,7 @@
  */
 import { sealBackup } from '@/core/crypto/backup-crypto';
 import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
-import { refreshDropboxAccessToken } from '@/core/cloud-backup/dropbox-oauth';
-import { uploadToDropbox } from '@/core/cloud-backup/dropbox-upload';
+import { getProvider } from '@/core/cloud-backup/registry';
 import { saveEncryptedPreferences } from '@/core/api/preferences-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 
@@ -63,25 +63,26 @@ async function sealFromSession(
  * failure so the caller — the panel today, the on-unlock auto-trigger in
  * Phase 3 — can surface it.
  *
- * Phase budget: refresh 0 → 0.05, collect 0.05 → 0.70 (one step per module —
- * the real, granular part), seal → 0.85, upload → 1. Only collect moves
- * smoothly; the rest are honest jumps at genuine milestones.
+ * Phase budget: collect 0 → 0.70 (one step per module — the real, granular
+ * part), seal → 0.85, then `provider.upload` (which mints/uses its own token
+ * internally) → 1. Only collect moves smoothly; the rest are honest jumps at
+ * genuine milestones. The provider is resolved from `cloudBackup.provider`, so
+ * this orchestrator is identical for Dropbox / pCloud / WebDAV.
  */
 export async function pushBackupToCloud(): Promise<void> {
   const store = useNodeaStore.getState();
   const cb = store.preferences.cloudBackup;
   if (!cb) throw new Error('cloud backup: no provider connected');
+  const provider = getProvider(cb.provider);
 
   const set = store.setBackupProgress;
   set(0);
   try {
-    const { accessToken } = await refreshDropboxAccessToken(cb.refreshToken);
-    set(0.05);
     const bytes = await sealFromSession((done, total) => {
-      set(0.05 + 0.65 * (total > 0 ? done / total : 1));
+      set(0.7 * (total > 0 ? done / total : 1));
     });
     set(0.85);
-    await uploadToDropbox(accessToken, bytes);
+    await provider.upload(cb, bytes);
     set(1);
     await stampLastBackupAt();
   } finally {

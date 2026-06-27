@@ -1,44 +1,33 @@
 /**
- * Dropbox OAuth2 (PKCE public client) — the connect handshake.
+ * Dropbox provider — OAuth2 PKCE (public client) connect + app-folder upload.
  *
- * WHAT  Opens the Dropbox consent popup, catches the auth code it posts back,
- *       and exchanges it (PKCE, no client secret) for tokens. Only the
- *       refresh token outlives this call — the caller seals it into the
- *       encrypted preferences.
- * WHERE `core/cloud-backup`: talks DIRECTLY to Dropbox domains, never the Nodea
- *       api (ADR-0017 — zero new backend; the `.age` is already E2E-encrypted,
- *       so the destination is untrusted by design). A sibling to `core/crypto`,
- *       deliberately NOT under `core/api` (which is for our own server).
- * ASSUMPTIONS (non-obvious, baked in)
- *   - **Popup, not full-page redirect.** A redirect would reload the SPA and
- *     drop the in-memory main key. A popup keeps THIS window (the opener) alive,
- *     so the PKCE verifier stays in a closure here and is NEVER persisted (no
- *     sessionStorage to leak it).
- *   - **`token_access_type=offline`** is what makes Dropbox return a
- *     refresh_token (without it you only get a ~4 h access token).
- *   - **App-folder confinement** comes from the Dropbox app's "App folder"
- *     access type, chosen at registration — not from an OAuth scope. The scope
- *     only needs `files.content.write` (Phase 2 upload writes the blob).
- *   - **`VITE_DROPBOX_CLIENT_ID`** is the public PKCE client id; the redirect
- *     URI is derived from the live origin (`/oauth/callback`), so dev (:8089)
- *     and prod share the code — only the Dropbox console must list both URIs.
+ * Implements the `CloudProvider` seam. Talks DIRECTLY to Dropbox (ADR-0017: no
+ * backend; the `.age` is already E2E-encrypted, the destination untrusted by
+ * design). Auth model: a long-lived OFFLINE refresh token is stored; a
+ * short-lived access token is minted on demand before each upload and never
+ * persisted.
+ *
+ * ASSUMPTIONS (baked in)
+ *   - Popup, not full-page redirect — a redirect would reload the SPA and drop
+ *     the in-memory main key; the popup keeps this window alive so the PKCE
+ *     verifier stays in a closure and is NEVER persisted.
+ *   - `token_access_type=offline` is what makes Dropbox return a refresh token.
+ *   - App-folder confinement comes from the Dropbox app's "App folder" access
+ *     type (registration-time), not a scope; the scope is `files.content.write`.
+ *   - `VITE_DROPBOX_CLIENT_ID` is the public PKCE client id; the redirect URI is
+ *     derived from the live origin (`/oauth/callback`).
  */
+import type { CloudBackup } from '@nodea/shared';
+
 import { randomBytes, bytesToBase64Url } from '@/core/crypto/base64';
 
-import { createPkcePair } from './pkce';
+import { createPkcePair } from '../pkce';
+import { BACKUP_FILENAME, type CloudProvider } from '../types';
 
 const AUTHORIZE_URL = 'https://www.dropbox.com/oauth2/authorize';
 const TOKEN_URL = 'https://api.dropboxapi.com/oauth2/token';
 const REVOKE_URL = 'https://api.dropboxapi.com/2/auth/token/revoke';
-
-/** Token bundle from the code exchange. `refreshToken` is the only one the
- *  caller keeps; `accessToken`/`expiresInSec` are handed back for a possible
- *  immediate use but Phase 1 discards them (a fresh one is minted on demand). */
-export interface DropboxTokens {
-  refreshToken: string;
-  accessToken: string;
-  expiresInSec: number;
-}
+const UPLOAD_URL = 'https://content.dropboxapi.com/2/files/upload';
 
 function clientId(): string {
   const id = import.meta.env.VITE_DROPBOX_CLIENT_ID;
@@ -52,8 +41,8 @@ function redirectUri(): string {
 
 /**
  * Open the consent popup and resolve with the auth code it postMessages back
- * (via the `OAuthCallback` leaf page). Rejects on user-deny, a popup the user
- * closed without authorising, or a blocked popup.
+ * (via the `OAuthCallback` leaf page). Rejects on user-deny, a popup closed
+ * without authorising, or a blocked popup.
  */
 function awaitAuthCode(url: string, expectedState: string): Promise<string> {
   const opened = window.open(url, 'dropbox-oauth', 'width=600,height=720');
@@ -110,8 +99,8 @@ function awaitAuthCode(url: string, expectedState: string): Promise<string> {
   });
 }
 
-/** Full connect handshake: PKCE → popup consent → code exchange → tokens. */
-export async function connectDropbox(): Promise<DropboxTokens> {
+/** PKCE → popup consent → code exchange → the long-lived refresh token. */
+async function connect(): Promise<CloudBackup> {
   const { verifier, challenge } = await createPkcePair();
   // Per-attempt CSRF nonce, echoed back through the callback and matched in
   // awaitAuthCode (defence-in-depth on top of PKCE + the e.source filter).
@@ -145,27 +134,16 @@ export async function connectDropbox(): Promise<DropboxTokens> {
   if (!res.ok) {
     throw new Error(`Dropbox token exchange failed (${res.status})`);
   }
-  const json = (await res.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number;
-  };
-  if (!json.refresh_token || !json.access_token) {
+  const json = (await res.json()) as { refresh_token?: string };
+  if (!json.refresh_token) {
     throw new Error('Dropbox did not return a refresh token');
   }
-  return {
-    refreshToken: json.refresh_token,
-    accessToken: json.access_token,
-    expiresInSec: json.expires_in ?? 0,
-  };
+  return { provider: 'dropbox', refreshToken: json.refresh_token };
 }
 
-/** Exchange the stored refresh token for a fresh short-lived access token.
- *  The access token is never persisted — it's minted on demand before each
- *  upload (Phase 2). */
-export async function refreshDropboxAccessToken(
-  refreshToken: string,
-): Promise<{ accessToken: string; expiresInSec: number }> {
+/** Mint a fresh short-lived access token from the stored refresh token. Never
+ *  persisted — re-derived before each upload/revoke. */
+async function refreshAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -178,26 +156,42 @@ export async function refreshDropboxAccessToken(
   if (!res.ok) {
     throw new Error(`Dropbox token refresh failed (${res.status})`);
   }
-  const json = (await res.json()) as {
-    access_token?: string;
-    expires_in?: number;
-  };
+  const json = (await res.json()) as { access_token?: string };
   if (!json.access_token) {
     throw new Error('Dropbox refresh returned no access token');
   }
-  return { accessToken: json.access_token, expiresInSec: json.expires_in ?? 0 };
+  return json.access_token;
+}
+
+async function upload(cred: CloudBackup, bytes: Uint8Array): Promise<void> {
+  if (cred.provider !== 'dropbox') throw new Error('dropbox.upload: wrong credential');
+  const accessToken = await refreshAccessToken(cred.refreshToken);
+  const res = await fetch(UPLOAD_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({
+        path: `/${BACKUP_FILENAME}`,
+        mode: 'overwrite',
+        mute: true,
+      }),
+    },
+    body: bytes as BodyInit,
+  });
+  if (!res.ok) {
+    throw new Error(`Dropbox upload failed (${res.status})`);
+  }
 }
 
 /**
- * Revoke the authorization at Dropbox so "disconnect" actually severs access,
- * not just forgets the token locally. The offline refresh token is long-lived
- * — it does NOT self-expire — so dropping it locally without this would leave a
- * fully valid token alive on Dropbox's side. Mints a short-lived access token
- * from the refresh token, then POSTs it to the revoke endpoint. The caller
- * treats this best-effort (clears locally even if it throws).
+ * Revoke at Dropbox so "disconnect" actually severs access, not just forgets
+ * the token locally — the offline refresh token is long-lived and does NOT
+ * self-expire. Best-effort (the caller clears the local credential regardless).
  */
-export async function revokeDropboxAccess(refreshToken: string): Promise<void> {
-  const { accessToken } = await refreshDropboxAccessToken(refreshToken);
+async function revoke(cred: CloudBackup): Promise<void> {
+  if (cred.provider !== 'dropbox') return;
+  const accessToken = await refreshAccessToken(cred.refreshToken);
   const res = await fetch(REVOKE_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -206,3 +200,10 @@ export async function revokeDropboxAccess(refreshToken: string): Promise<void> {
     throw new Error(`Dropbox token revoke failed (${res.status})`);
   }
 }
+
+export const dropboxProvider: CloudProvider = {
+  id: 'dropbox',
+  connect,
+  upload,
+  revoke,
+};

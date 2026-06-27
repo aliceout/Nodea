@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { usePreferences } from '@/core/auth/use-preferences';
-import { connectDropbox, revokeDropboxAccess } from '@/core/cloud-backup/dropbox-oauth';
+import { getProvider } from '@/core/cloud-backup/registry';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
@@ -21,7 +21,7 @@ import { pushBackupToCloud } from './cloud-push';
 export default function CloudBackupPanel() {
   const { t } = useI18n();
   const { preferences, setPreferences } = usePreferences();
-  const connected = preferences.cloudBackup?.provider === 'dropbox';
+  const connected = !!preferences.cloudBackup;
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [pushState, setPushState] = useState<'idle' | 'saving' | 'done' | 'error'>(
@@ -32,8 +32,8 @@ export default function CloudBackupPanel() {
     setBusy(true);
     setFailed(false);
     try {
-      const { refreshToken } = await connectDropbox();
-      await setPreferences({ cloudBackup: { provider: 'dropbox', refreshToken } });
+      const cred = await getProvider('dropbox').connect();
+      await setPreferences({ cloudBackup: cred });
     } catch {
       // User-deny, closed popup, blocked popup, or a failed exchange — all
       // surface as one actionable "try again" line; nothing here is secret.
@@ -51,9 +51,9 @@ export default function CloudBackupPanel() {
     const cb = preferences.cloudBackup;
     if (cb) {
       try {
-        await revokeDropboxAccess(cb.refreshToken);
+        await getProvider(cb.provider).revoke?.(cb);
       } catch {
-        // Offline, or the token is already dead — fall through and clear.
+        // Offline, or nothing to revoke (pCloud/WebDAV) — fall through and clear.
       }
     }
     await setPreferences({ cloudBackup: undefined });

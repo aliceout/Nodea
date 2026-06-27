@@ -101,6 +101,40 @@ export type GoalsViewMode = z.infer<typeof GoalsViewModeSchema>;
 export const DismissedAnnouncementsSchema = z.array(z.string().min(1).max(128));
 export type DismissedAnnouncements = z.infer<typeof DismissedAnnouncementsSchema>;
 
+/**
+ * Cloud-backup connection (ADR-0017). The per-user credential for the connected
+ * provider, sealed HERE under the main key — never plaintext on the server.
+ * Auto-backup pushes the already-E2E-encrypted `.age` straight from the browser,
+ * so this credential is the one new secret and lives only in this blob.
+ *
+ * A discriminated union on `provider`, because each cloud has a different auth
+ * shape: Dropbox keeps an OAuth refresh token, pCloud a non-expiring access
+ * token (+ its API region host), WebDAV the server URL + an app-password.
+ * `lastBackupAt` (unix ms; absent ⇒ never) is common to all and drives the
+ * on-unlock 24 h staleness check.
+ */
+export const CloudBackupSchema = z.discriminatedUnion('provider', [
+  z.object({
+    provider: z.literal('dropbox'),
+    refreshToken: z.string().min(1),
+    lastBackupAt: z.number().optional(),
+  }),
+  z.object({
+    provider: z.literal('pcloud'),
+    accessToken: z.string().min(1),
+    apiHost: z.string().min(1),
+    lastBackupAt: z.number().optional(),
+  }),
+  z.object({
+    provider: z.literal('webdav'),
+    baseUrl: z.string().min(1),
+    username: z.string().min(1),
+    appPassword: z.string().min(1),
+    lastBackupAt: z.number().optional(),
+  }),
+]);
+export type CloudBackup = z.infer<typeof CloudBackupSchema>;
+
 export const UserPreferencesPayloadSchema = z.looseObject({
   theme: ThemePreferenceSchema.optional(),
   language: LanguagePreferenceSchema.optional(),
@@ -116,22 +150,8 @@ export const UserPreferencesPayloadSchema = z.looseObject({
    * files keep the phrase from the version they were sealed under.
    */
   backupPhraseVersion: z.number().int().positive().optional(),
-  /**
-   * Cloud-backup connection (ADR-0017). The OAuth refresh token for the
-   * chosen provider, sealed HERE under the main key — never plaintext on the
-   * server. Auto-backup pushes the already-E2E-encrypted `.age` straight from
-   * the browser, so this token is the one new secret and lives only in this
-   * blob. `provider` is an enum (not a bool) so Google/OneDrive slot in later
-   * without a reshape.
-   */
-  cloudBackup: z
-    .object({
-      provider: z.enum(['dropbox']),
-      refreshToken: z.string().min(1),
-      /** Unix ms of the last successful push. Absent ⇒ never backed up.
-       *  Drives the on-unlock auto-trigger's 24 h staleness check (ADR-0017). */
-      lastBackupAt: z.number().optional(),
-    })
-    .optional(),
+  /** Connected cloud-backup provider + its sealed credential (see
+   *  `CloudBackupSchema`). Absent ⇒ no cloud backup configured. */
+  cloudBackup: CloudBackupSchema.optional(),
 });
 export type UserPreferencesPayload = z.infer<typeof UserPreferencesPayloadSchema>;
