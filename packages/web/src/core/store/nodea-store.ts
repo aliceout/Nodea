@@ -36,6 +36,7 @@ import {
 import { createUiSlice, type UiSlice } from './slices/ui.ts';
 import { createFlowSlice, initialFlow, type FlowSlice } from './slices/flow.ts';
 import { createVersionsSlice, type VersionsSlice } from './slices/versions.ts';
+import { createBackupSlice, type BackupSlice } from './slices/backup.ts';
 
 // --- Re-exports : public surface preserved for ~30 consumers ---
 
@@ -76,6 +77,7 @@ export {
   selectCurrentModule,
   selectLibrarySubview,
   selectHrtSubview,
+  selectBackupProgress,
 } from './selectors.ts';
 
 /**
@@ -92,7 +94,8 @@ export interface NodeaState
     NotificationsSlice,
     UiSlice,
     FlowSlice,
-    VersionsSlice {
+    VersionsSlice,
+    BackupSlice {
   /**
    * Atomic logout reset — flips every slice back to its post-login
    * baseline in a single `set()` call. Atomicity matters here :
@@ -115,6 +118,7 @@ export const useNodeaStore = create<NodeaState>()((...a) => {
     ...createUiSlice(...a),
     ...createFlowSlice(...a),
     ...createVersionsSlice(...a),
+    ...createBackupSlice(...a),
 
     resetAll: () =>
       set({
@@ -130,6 +134,7 @@ export const useNodeaStore = create<NodeaState>()((...a) => {
         journalVersion: 0,
         libraryItemsVersion: 0,
         libraryReviewsVersion: 0,
+        backupProgress: null,
       }),
   };
 });

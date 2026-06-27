@@ -190,7 +190,11 @@
       "connectCta": "Connecter Dropbox",
       "connecting": "Connexion…",
       "disconnectCta": "Déconnecter Dropbox",
-      "error": "La connexion a échoué. Réessaie."
+      "error": "La connexion a échoué. Réessaie.",
+      "backupNowCta": "Sauvegarder maintenant",
+      "backingUp": "Sauvegarde…",
+      "backupDone": "Sauvegarde envoyée sur Dropbox.",
+      "backupError": "La sauvegarde a échoué. Réessaie."
     }
   },
   "danger": {

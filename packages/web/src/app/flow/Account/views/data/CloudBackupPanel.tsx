@@ -5,13 +5,18 @@ import { connectDropbox } from '@/core/cloud-backup/dropbox-oauth';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
+import { pushBackupToCloud } from './cloud-push';
+
 /**
- * « Sauvegarde automatique » panel (Compte → Données). Phase 1: connect /
- * disconnect a Dropbox account for auto-backup. The OAuth handshake runs
- * entirely in the browser (popup → code → token); only the refresh token is
- * kept, sealed into the encrypted preferences (`cloudBackup`). No upload here
- * yet — the daily push lands in the next phase. Mirrors `ExportPanel`'s
- * section/grid layout so the Data tab reads as one consistent stack.
+ * « Sauvegarde automatique » panel (Compte → Données). Connect / disconnect a
+ * Dropbox account for auto-backup, and trigger a manual push. The OAuth
+ * handshake runs entirely in the browser (popup → code → token); only the
+ * refresh token is kept, sealed into the encrypted preferences (`cloudBackup`).
+ * The manual push reuses the same seal pipeline as the `/backup` export and
+ * uploads the `.age` to the Dropbox app folder. The in-flight progress shows
+ * globally in the sidebar card (driven by the `backupProgress` slice); this
+ * panel adds the local success/error feedback for the manual button. Mirrors
+ * `ExportPanel`'s section/grid layout so the Data tab reads as one stack.
  */
 export default function CloudBackupPanel() {
   const { t } = useI18n();
@@ -19,6 +24,9 @@ export default function CloudBackupPanel() {
   const connected = preferences.cloudBackup?.provider === 'dropbox';
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [pushState, setPushState] = useState<'idle' | 'saving' | 'done' | 'error'>(
+    'idle',
+  );
 
   async function onConnect(): Promise<void> {
     setBusy(true);
@@ -40,6 +48,19 @@ export default function CloudBackupPanel() {
     // the app-folder confinement makes a stale token harmless, so a server-side
     // revocation round-trip isn't worth it for v1.
     await setPreferences({ cloudBackup: undefined });
+    setPushState('idle');
+  }
+
+  async function onBackupNow(): Promise<void> {
+    setPushState('saving');
+    try {
+      await pushBackupToCloud();
+      setPushState('done');
+    } catch {
+      // Seal / refresh / upload failure — one "try again" line. The sidebar
+      // pill has already flipped back to idle (pushBackupToCloud's finally).
+      setPushState('error');
+    }
   }
 
   return (
@@ -50,9 +71,33 @@ export default function CloudBackupPanel() {
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
         <div className="flex flex-col items-start gap-2">
           {connected ? (
-            <Button variant="neutral" size="sm" onClick={onDisconnect}>
-              {t('account.data.cloudBackup.disconnectCta')}
-            </Button>
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onBackupNow}
+                  disabled={pushState === 'saving'}
+                >
+                  {pushState === 'saving'
+                    ? t('account.data.cloudBackup.backingUp')
+                    : t('account.data.cloudBackup.backupNowCta')}
+                </Button>
+                <Button variant="neutral" size="sm" onClick={onDisconnect}>
+                  {t('account.data.cloudBackup.disconnectCta')}
+                </Button>
+              </div>
+              {pushState === 'done' ? (
+                <p role="status" className="text-[11.5px] text-muted">
+                  {t('account.data.cloudBackup.backupDone')}
+                </p>
+              ) : null}
+              {pushState === 'error' ? (
+                <p role="alert" className="text-[11.5px] text-danger">
+                  {t('account.data.cloudBackup.backupError')}
+                </p>
+              ) : null}
+            </>
           ) : (
             <Button variant="primary" size="sm" onClick={onConnect} disabled={busy}>
               {busy

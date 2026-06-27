@@ -43,10 +43,13 @@ export async function collectModules(
   mainKey: MainKeyMaterial,
   modules: ModulesSlice,
   onModuleError?: (moduleKey: string, err: unknown) => void,
+  onProgress?: (done: number, total: number) => void,
 ): Promise<CollectModulesResult> {
   const out: Record<string, unknown[]> = {};
   const failed: string[] = [];
-  for (const moduleKey of knownModules()) {
+  const known = knownModules();
+  let progressDone = 0;
+  for (const moduleKey of known) {
     try {
       const plugin = await getDataPlugin(moduleKey);
       const runtimeKey = plugin.meta?.runtimeKey ?? moduleKey;
@@ -63,6 +66,10 @@ export async function collectModules(
     } catch (err) {
       failed.push(moduleKey);
       onModuleError?.(moduleKey, err);
+    } finally {
+      // Fire even on the `continue` above (disabled module) so the count
+      // always reaches `known.length` — drives the cloud-push progress bar.
+      onProgress?.((progressDone += 1), known.length);
     }
   }
 

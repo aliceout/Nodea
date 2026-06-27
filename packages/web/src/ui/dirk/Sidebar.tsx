@@ -8,6 +8,7 @@ import {
 
 import SidebarHeader from './sidebar/SidebarHeader';
 import SidebarNav from './sidebar/SidebarNav';
+import SidebarBackupCard from './sidebar/SidebarBackupCard';
 import SidebarFooter from './sidebar/SidebarFooter';
 
 /**
@@ -19,9 +20,10 @@ import SidebarFooter from './sidebar/SidebarFooter';
  * 240 px is too narrow for a finger-driven nav and would feel
  * miscalibrated as a drawer.
  *
- * Pure orchestrator: it stitches together the four pieces
- * (`<SidebarHeader>`, `<SidebarNav>`, tip slot, `<SidebarFooter>`)
- * and handles the mobile-drawer plumbing. Each piece lives in
+ * Pure orchestrator: it stitches together the pieces
+ * (`<SidebarHeader>`, `<SidebarNav>`, the `<SidebarBackupCard>` shown
+ * only mid-backup, and `<SidebarFooter>`) and handles the
+ * mobile-drawer plumbing. Each piece lives in
  * its own file under `./sidebar/` and is independent — adding a
  * new tip or a new footer widget doesn't require touching this
  * file.
@@ -98,6 +100,9 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 px-3 pb-5 pt-4">
         <SidebarNav onNavigate={onNavigate} />
         <div className="flex-1" />
+        {/* Cloud-backup progress card — above the footer's border, visible
+            only while a push runs (renders null otherwise). */}
+        <SidebarBackupCard />
         <SidebarFooter />
       </div>
     </nav>

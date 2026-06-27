@@ -142,3 +142,31 @@ export async function connectDropbox(): Promise<DropboxTokens> {
     expiresInSec: json.expires_in ?? 0,
   };
 }
+
+/** Exchange the stored refresh token for a fresh short-lived access token.
+ *  The access token is never persisted — it's minted on demand before each
+ *  upload (Phase 2). */
+export async function refreshDropboxAccessToken(
+  refreshToken: string,
+): Promise<{ accessToken: string; expiresInSec: number }> {
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: clientId(),
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Dropbox token refresh failed (${res.status})`);
+  }
+  const json = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+  };
+  if (!json.access_token) {
+    throw new Error('Dropbox refresh returned no access token');
+  }
+  return { accessToken: json.access_token, expiresInSec: json.expires_in ?? 0 };
+}

@@ -190,7 +190,11 @@
       "connectCta": "Connect Dropbox",
       "connecting": "Connecting…",
       "disconnectCta": "Disconnect Dropbox",
-      "error": "Connection failed. Try again."
+      "error": "Connection failed. Try again.",
+      "backupNowCta": "Back up now",
+      "backingUp": "Backing up…",
+      "backupDone": "Backup sent to Dropbox.",
+      "backupError": "Backup failed. Try again."
     }
   },
   "danger": {
