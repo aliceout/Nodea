@@ -8,8 +8,11 @@ import { packBackup } from './backup-pack';
 import { restoreFromAgeBytes, tryAutoRestore } from './restore-backup';
 
 // age passphrase mode runs scrypt (logN=18) in pure JS — a seal + several opens
-// is seconds of real work; allow headroom under CI / concurrent load.
-vi.setConfig({ testTimeout: 60_000 });
+// is seconds of real work; allow headroom under CI / concurrent load. The seal +
+// 2× key derivation run in beforeAll, so raise hookTimeout too: it's SEPARATE
+// from testTimeout, and the 10s default was timing the hook out (→ 6 skipped,
+// file failed) under parallel load while passing in isolation.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 // i18n stub: restoreEnvelope formats `parts` lines with `t`; returning the key
 // keeps assertions independent of locale.
