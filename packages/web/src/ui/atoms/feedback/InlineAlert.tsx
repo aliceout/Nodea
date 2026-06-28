@@ -16,6 +16,9 @@ interface InlineAlertProps {
    *  each: errors interrupt, confirmations are polite. Override
    *  when the call site has a more specific intent. */
   role?: 'alert' | 'status';
+  /** Optional id so an input can point `aria-describedby` at the alert
+   *  (wires the error path the way the `Field` atom does). */
+  id?: string;
   className?: string;
   children: ReactNode;
 }
@@ -38,6 +41,7 @@ const TONE_CLASS: Record<InlineAlertTone, string> = {
 export default function InlineAlert({
   tone = 'danger',
   role,
+  id,
   className,
   children,
 }: InlineAlertProps) {
@@ -45,6 +49,7 @@ export default function InlineAlert({
   return (
     <div
       role={resolvedRole}
+      id={id}
       className={cn(
         'border-l-2 px-3 py-2 text-[13px]',
         TONE_CLASS[tone],

@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 
 import { isApiError } from '@/core/api/client';
 import { freshenPasswordReauth } from '@/core/auth/opaque';
+import { usePreferences } from '@/core/auth/use-preferences';
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
+import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import PasswordReauthForm from '@/ui/dirk/auth/PasswordReauthForm';
 
 import { collectModules } from '@/app/flow/Account/views/data/collect-modules';
+import { isBackupPhraseConfirmed } from '@/app/flow/Account/views/data/phrase-gate';
 
 /**
  * Plaintext data-export tunnel (route `/export`).
@@ -25,6 +28,13 @@ import { collectModules } from '@/app/flow/Account/views/data/collect-modules';
  *
  * The encrypted, account-portable backup has its own tunnel (`/backup`)
  * which adds a passphrase step after this same proof.
+ *
+ * GATE: like `ExportPanel`, the export is locked until the backup phrase is
+ * confirmed (`isBackupPhraseConfirmed`). The panel's menu item is disabled, but
+ * this route is reachable by typing the URL — so the gate is enforced HERE too,
+ * else the plaintext `.json` would be a way to sidestep recording the phrase
+ * (the thing ADR-0017 + tech.md promise it can't). `.age`'s tunnel (`/backup`)
+ * self-gates: it IS the confirmation ceremony.
  */
 type Stage = { kind: 'reauth' } | { kind: 'done'; failed: string[] };
 
@@ -35,6 +45,8 @@ export default function DataExportPage() {
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const setModule = useNodeaStore((s) => s.setModule);
+  const { preferences } = usePreferences();
+  const phraseReady = isBackupPhraseConfirmed(preferences);
   const [stage, setStage] = useState<Stage>({ kind: 'reauth' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +124,24 @@ export default function DataExportPage() {
         </>
       }
     >
-      {stage.kind === 'reauth' ? (
+      {!phraseReady ? (
+        // Gate: no password form until the backup phrase is confirmed, so the
+        // plaintext .json can't sidestep it (matches ExportPanel / ADR-0017).
+        <div role="status">
+          <AuthPanelHeader
+            eyebrow={t('auth.dataExport.eyebrow')}
+            title={t('account.data.phraseGate.title')}
+            subtitle={t('account.data.phraseGate.intro')}
+          />
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => navigate('/backup?confirm')}
+          >
+            {t('account.data.phraseGate.setupCta')}
+          </Button>
+        </div>
+      ) : stage.kind === 'reauth' ? (
         <>
           <AuthPanelHeader
             eyebrow={t('auth.dataExport.eyebrow')}

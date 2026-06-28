@@ -155,7 +155,11 @@ export default function CloudRestorePanel() {
           </label>
           <Textarea
             id="cloud-restore-phrase"
-            aria-describedby="cloud-restore-phrase-prompt"
+            aria-describedby={
+              error
+                ? 'cloud-restore-phrase-prompt cloud-restore-error'
+                : 'cloud-restore-phrase-prompt'
+            }
             aria-invalid={error ? true : undefined}
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
@@ -199,7 +203,11 @@ export default function CloudRestorePanel() {
           {done.text}
         </InlineAlert>
       ) : null}
-      {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
+      {error ? (
+        <InlineAlert id="cloud-restore-error" className="mt-3">
+          {error}
+        </InlineAlert>
+      ) : null}
     </section>
   );
 }

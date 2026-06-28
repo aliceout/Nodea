@@ -14,7 +14,9 @@
  *     redirect-reload drops the in-memory main key).
  *   - `token_access_type=offline` is what makes Dropbox return a refresh token.
  *   - App-folder confinement comes from the Dropbox app's "App folder" access
- *     type (registration-time), not a scope; the scope is `files.content.write`.
+ *     type (registration-time), not a scope; the scope is `files.content.write
+ *     files.content.read` (read added so restore can download the blob back —
+ *     both stay app-folder-confined by the access type, not the scope).
  *   - `VITE_DROPBOX_CLIENT_ID` is the public PKCE client id; the redirect URI is
  *     derived from the live origin (`/oauth/callback`).
  */

@@ -38,7 +38,12 @@ export default function ExportPanel() {
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
         <div>
           {locked ? (
-            <Button variant="primary" size="sm" disabled>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled
+              aria-describedby="export-locked-hint"
+            >
               <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
               {t('account.data.export.cta')}
             </Button>
@@ -85,7 +90,11 @@ export default function ExportPanel() {
             </Menu>
           )}
         </div>
-        <p className="text-[12px] leading-[1.55] text-muted">
+        <p
+          id="export-locked-hint"
+          role={locked ? 'status' : undefined}
+          className="text-[12px] leading-[1.55] text-muted"
+        >
           {locked
             ? t('account.data.phraseGate.lockedHint')
             : t('account.data.export.description')}

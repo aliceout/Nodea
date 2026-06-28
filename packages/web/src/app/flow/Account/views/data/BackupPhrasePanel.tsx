@@ -4,6 +4,8 @@ import { usePreferences } from '@/core/auth/use-preferences';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 
+import { isBackupPhraseConfirmed } from './phrase-gate';
+
 /**
  * Backup-phrase gate — top panel of Account → Données.
  *
@@ -26,8 +28,7 @@ export default function BackupPhrasePanel() {
   const navigate = useNavigate();
   const { preferences } = usePreferences();
 
-  const version = preferences.backupPhraseVersion ?? 1;
-  const confirmed = preferences.backupPhraseConfirmedVersion === version;
+  const confirmed = isBackupPhraseConfirmed(preferences);
 
   return (
     <section className="py-[24px] first:pt-0 last:pb-0">

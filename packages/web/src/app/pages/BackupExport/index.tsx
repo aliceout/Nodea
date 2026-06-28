@@ -18,6 +18,7 @@ import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import { collectModules } from '@/app/flow/Account/views/data/collect-modules';
 import { packBackup } from '@/app/flow/Account/views/data/backup-pack';
+import { isBackupPhraseConfirmed } from '@/app/flow/Account/views/data/phrase-gate';
 
 /**
  * Encrypted-backup tunnel (route `/backup`).
@@ -86,8 +87,7 @@ export default function BackupExportPage() {
     try {
       await freshenPasswordReauth(password);
       const version = preferences.backupPhraseVersion ?? 1;
-      const confirmed = preferences.backupPhraseConfirmedVersion === version;
-      await enterPhraseStage(version, confirmed);
+      await enterPhraseStage(version, isBackupPhraseConfirmed(preferences));
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
         setReauthError(t('account.danger.wrongPassword'));
