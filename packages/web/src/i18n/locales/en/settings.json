@@ -18,14 +18,25 @@
     }
   },
   "backgroundShade": {
-    "title": "Background shade",
-    "ariaLabel": "Choose background shade",
+    "title": "Background shade — light",
+    "ariaLabel": "Choose light background shade",
     "options": {
       "cream": "Cream",
       "alabaster": "Alabaster",
       "ivory": "Ivory",
       "pearl": "Pearl",
       "pebble": "Pebble"
+    }
+  },
+  "backgroundShadeDark": {
+    "title": "Background shade — dark",
+    "ariaLabel": "Choose dark background shade",
+    "options": {
+      "graphite": "Graphite",
+      "onyx": "Onyx",
+      "obsidian": "Obsidian",
+      "forest": "Forest",
+      "taupe": "Taupe"
     }
   },
   "modules": {

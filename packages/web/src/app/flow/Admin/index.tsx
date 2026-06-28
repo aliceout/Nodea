@@ -32,7 +32,8 @@ import SourcesPanel from './components/SourcesPanel';
  * Sticky topbar like Mood / Account / Journal, single column at
  * 880px, four tabs: Utilisateur·ice·s · Invitations · Annonces ·
  * Sources. Same tab interaction model as Account: keyed
- * `animate-fade-up` so each switch replays the entrance.
+ * `animate-fade-up` so each switch replays the entrance, and the
+ * `Tabs` strip glides its active pill to the clicked tab.
  *
  * The Invitations tab combines the email-based invite manager
  * (Bitwarden-style send + resend + revoke) with the

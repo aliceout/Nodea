@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
  * « Français · Clair » on the second. No icon chrome, no chip — the
  * footer stays purely typographic, in line with Nodea's paper
  * aesthetic. The « what happens if I click ? » signal is carried by
- * an underline on hover + a `current → next` tooltip.
+ * a hover-fill pill (matching the collapse toggle) + a `current → next`
+ * tooltip.
  *
  * Driven entirely by `useI18n()` — `availableLanguages` is the
  * source of truth so adding a locale just lengthens the cycle.
@@ -38,7 +39,7 @@ export default function LanguageToggle({ className }: LanguageToggleProps) {
       })}
       title={`${current.label} → ${nextLang.label}`}
       className={cn(
-        'cursor-pointer underline-offset-2 transition-colors hover:text-ink hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+        'cursor-pointer rounded px-1.5 py-0.5 transition-colors hover:bg-bg hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
         className,
       )}
     >

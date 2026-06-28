@@ -20,7 +20,11 @@ export default function YearSelector() {
   const { year, setYear } = useMoodFilters();
 
   return (
-    <div role="tablist" aria-label={t('mood.selectors.yearAria')} className="flex flex-wrap gap-1">
+    // `-mt-1` cancels the chips' `py-1` so the tab TEXT lines up with the
+    // sidebar's first SectionLabel (« Répartition ») across the grid: a
+    // plain label carries no vertical padding, these padded chips do, which
+    // otherwise drops their text ~4px lower than the heading.
+    <div role="tablist" aria-label={t('mood.selectors.yearAria')} className="-mt-1 flex flex-wrap gap-1">
       <button
         type="button"
         role="tab"

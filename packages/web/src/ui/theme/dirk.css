@@ -98,10 +98,8 @@
  * falls through to `:root` — defensive in case the preferences
  * blob hasn't loaded yet.
  *
- * Dark mode intentionally keeps its single « papier la nuit »
- * surface — the warm-paper identity is the only acceptable dark
- * background, and giving users five dark variants would dilute
- * that. Bump this scope only if a real need surfaces.
+ * Dark mode has its own independent set (see `data-bg-shade-dark`
+ * below) — the light pick here only paints in light mode.
  */
 :root[data-bg-shade='alabaster'] {
   --color-k-bg: #fbfbf6;
@@ -120,23 +118,53 @@
   --color-k-bg2: #ddd9d0;
 }
 
-/* Dark mode wins over `data-bg-shade` — re-declared inside `.dark`
- * via a higher-specificity rule below so any `data-bg-shade` value
- * set while in dark mode stays inert until the user flips back to
- * light. See note above on the dark-mode policy. */
-.dark[data-bg-shade] {
+/*
+ * Dark-mode background shades — the dark-side mirror of the light
+ * `data-bg-shade` set above, keyed on a SEPARATE `data-bg-shade-dark`
+ * attribute so the light pick and the dark pick are independent
+ * (flipping theme never clobbers the other).
+ *
+ * `:root.dark` carries the default surface AND owns `--color-k-bg(2)`
+ * for dark mode (the `.dark` token block below no longer sets them).
+ * Its specificity (0,2,0) ties the light `:root[data-bg-shade]` rules
+ * and, sitting later in source, wins — so a light shade set while in
+ * dark mode stays inert. The per-shade rules below (0,3,0) outrank the
+ * default by specificity, order-independent. `graphite` matches the
+ * default and is a no-op (no attribute written).
+ */
+:root.dark {
+  /* Papier la nuit, jamais bleuté. Lifted ~+5 in luminance from the
+     original (`#1d1c18 / #262520`) so the surface reads as "deep warm
+     paper" rather than "almost black". */
   --color-k-bg: #272620;
   --color-k-bg2: #312f29;
 }
+:root.dark[data-bg-shade-dark='onyx'] {
+  /* Les couleurs de fond de Claude — neutre, presque noir. */
+  --color-k-bg: #1f1f1e;
+  --color-k-bg2: #1d1d1c;
+}
+:root.dark[data-bg-shade-dark='obsidian'] {
+  /* Le plus profond — proche du noir OLED, barre latérale plus sombre. */
+  --color-k-bg: #161618;
+  --color-k-bg2: #121214;
+}
+:root.dark[data-bg-shade-dark='forest'] {
+  /* Teinté vert, en écho au sauge de l'accent. */
+  --color-k-bg: #1d231f;
+  --color-k-bg2: #181e1a;
+}
+:root.dark[data-bg-shade-dark='taupe'] {
+  /* Brun-gris plus chaud que le défaut. */
+  --color-k-bg: #24211c;
+  --color-k-bg2: #2b2823;
+}
 
 .dark {
-  /* Papier la nuit, jamais bleuté.
-     Lifted ~+5 in luminance from the original (`#1d1c18 / #262520
-     / #34322c`) so the surface reads as "deep warm paper" rather
-     than "almost black". The hair token follows so the new bg
-     still has visible separators. */
-  --color-k-bg: #272620;
-  --color-k-bg2: #312f29;
+  /* Dark tokens (ink / muted / hair / accent…). `--color-k-bg(2)` live
+     in `:root.dark` above so the dark default can outrank a light
+     `data-bg-shade` left on `<html>`. The hair token follows the warm
+     surface so separators stay visible. */
   --color-k-ink: #ece9dc;
   --color-k-ink-soft: #c5c2b3;
   --color-k-muted: #908d80;
@@ -218,6 +246,19 @@
 @keyframes k-streak {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.55; }
+}
+
+/* Accessibility: honour the OS "reduce motion" setting — collapse every
+   keyframe animation to instant so the slide / fade / pulse motion never
+   plays for users who opt out (vestibular safety). Colour transitions are
+   left alone (they're cross-fades, not movement). App-wide on purpose. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 /* Tailwind 4 token registration */

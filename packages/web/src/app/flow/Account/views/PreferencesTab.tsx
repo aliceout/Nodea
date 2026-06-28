@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import {
   useBackgroundShade,
   type BackgroundShade,
+  type BackgroundShadeDark,
 } from '@/core/theme/useBackgroundShade';
 import { useTheme, type ThemePreference } from '@/core/theme/useTheme';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -11,6 +12,7 @@ import Select from '@/ui/atoms/dirk/Select';
 import DescribedSection from '../components/DescribedSection';
 import {
   BACKGROUND_SHADE_OPTIONS,
+  BACKGROUND_SHADE_DARK_OPTIONS,
   THEME_OPTIONS,
 } from '../lib/constants';
 
@@ -23,7 +25,7 @@ import {
 export default function PreferencesTab() {
   const { t, language, setLanguage, availableLanguages } = useI18n();
   const { theme, setTheme } = useTheme();
-  const { shade, setShade } = useBackgroundShade();
+  const { shade, setShade, darkShade, setDarkShade } = useBackgroundShade();
 
   function handleLanguage(event: ChangeEvent<HTMLSelectElement>): void {
     const next = event.target.value;
@@ -41,6 +43,13 @@ export default function PreferencesTab() {
     const next = event.target.value as BackgroundShade;
     if (!BACKGROUND_SHADE_OPTIONS.includes(next) || next === shade) return;
     setShade(next);
+  }
+
+  function handleDarkShade(event: ChangeEvent<HTMLSelectElement>): void {
+    const next = event.target.value as BackgroundShadeDark;
+    if (!BACKGROUND_SHADE_DARK_OPTIONS.includes(next) || next === darkShade)
+      return;
+    setDarkShade(next);
   }
 
   return (
@@ -78,6 +87,25 @@ export default function PreferencesTab() {
           {BACKGROUND_SHADE_OPTIONS.map((id) => (
             <option key={id} value={id}>
               {t(`settings.backgroundShade.options.${id}`)}
+            </option>
+          ))}
+        </Select>
+      </DescribedSection>
+
+      <DescribedSection
+        title={t('settings.backgroundShadeDark.title')}
+        description={t('account.preferences.backgroundShadeDarkDescription')}
+        controlWidth={200}
+        align="center"
+      >
+        <Select
+          aria-label={t('settings.backgroundShadeDark.ariaLabel')}
+          value={darkShade}
+          onChange={handleDarkShade}
+        >
+          {BACKGROUND_SHADE_DARK_OPTIONS.map((id) => (
+            <option key={id} value={id}>
+              {t(`settings.backgroundShadeDark.options.${id}`)}
             </option>
           ))}
         </Select>

@@ -4,7 +4,9 @@
     "defaultUsername": "User"
   },
   "sidebar": {
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu"
   },
   "userMenu": {
     "open": "Open user menu",
@@ -33,9 +35,6 @@
     "hrtAdministration": "Administration",
     "hrtLabs": "Labs",
     "hrtExport": "Tools"
-  },
-  "encryption": {
-    "label": "End-to-end encrypted"
   },
   "backup": {
     "running": "Backing up…"

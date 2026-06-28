@@ -140,7 +140,7 @@ export default function TopbarSearch({
         onChange={onChange}
         placeholder={placeholder}
         clearLabel={resolvedClearLabel}
-        className={cn('hidden w-full lg:inline-flex', className)}
+        className={cn('hidden w-full lg:inline-flex lg:landscape:max-w-none', className)}
       />
 
       {/* Mobile : magnifier pushed to the right of the slot. */}

@@ -18,14 +18,25 @@
     }
   },
   "backgroundShade": {
-    "title": "Nuance de fond",
-    "ariaLabel": "Choisir la nuance de fond",
+    "title": "Nuance de fond — clair",
+    "ariaLabel": "Choisir la nuance de fond clair",
     "options": {
       "cream": "Crème",
       "alabaster": "Albâtre",
       "ivory": "Ivoire",
       "pearl": "Perle",
       "pebble": "Galet"
+    }
+  },
+  "backgroundShadeDark": {
+    "title": "Nuance de fond — sombre",
+    "ariaLabel": "Choisir la nuance de fond sombre",
+    "options": {
+      "graphite": "Graphite",
+      "onyx": "Onyx",
+      "obsidian": "Obsidienne",
+      "forest": "Forêt",
+      "taupe": "Taupe"
     }
   },
   "modules": {

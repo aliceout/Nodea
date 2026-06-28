@@ -115,7 +115,8 @@
   },
   "preferences": {
     "themeDescription": "Light, dark, or follows your system.",
-    "backgroundShadeDescription": "Five warm shades chosen to harmonise with Nodea's sage. Dark mode keeps its single surface.",
+    "backgroundShadeDescription": "Five warm shades chosen to harmonise with Nodea's sage, for light mode.",
+    "backgroundShadeDarkDescription": "Five dark surfaces, from warm night-paper to a neutral near-black.",
     "languageDescription": "Interface in French or English.",
     "languageAriaLabel": "Language"
   },

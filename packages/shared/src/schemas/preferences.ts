@@ -29,10 +29,10 @@ export type LanguagePreference = z.infer<typeof LanguagePreferenceSchema>;
 
 /**
  * Light-mode background shade. Only takes effect when the resolved
- * theme is `light` — dark mode keeps its single warm-paper-at-night
- * surface. Each shade overrides `--color-k-bg` and `--color-k-bg2`
- * via a `data-bg-shade` attribute on `<html>`. See `dirk.css` for
- * the actual colour values.
+ * theme is `light`; the dark-mode counterpart is `backgroundShadeDark`.
+ * Each shade overrides `--color-k-bg` and `--color-k-bg2` via a
+ * `data-bg-shade` attribute on `<html>`. See `dirk.css` for the
+ * actual colour values.
  */
 export const BackgroundShadeSchema = z.enum([
   'cream',
@@ -42,6 +42,23 @@ export const BackgroundShadeSchema = z.enum([
   'pebble',
 ]);
 export type BackgroundShade = z.infer<typeof BackgroundShadeSchema>;
+
+/**
+ * Dark-mode background shade — the dark-side mirror of
+ * `BackgroundShade`. Stored separately so a user's light pick and dark
+ * pick are independent (flipping theme never overwrites the other).
+ * Takes effect only when the resolved theme is `dark`, via a distinct
+ * `data-bg-shade-dark` attribute on `<html>`. `graphite` is the default
+ * warm-paper-at-night surface. See `dirk.css` for the colour values.
+ */
+export const BackgroundShadeDarkSchema = z.enum([
+  'graphite',
+  'onyx',
+  'obsidian',
+  'forest',
+  'taupe',
+]);
+export type BackgroundShadeDark = z.infer<typeof BackgroundShadeDarkSchema>;
 
 /**
  * Library catalogue rendering mode. Moved out of localStorage into
@@ -171,6 +188,7 @@ export const UserPreferencesPayloadSchema = z.looseObject({
   theme: ThemePreferenceSchema.optional(),
   language: LanguagePreferenceSchema.optional(),
   backgroundShade: BackgroundShadeSchema.optional(),
+  backgroundShadeDark: BackgroundShadeDarkSchema.optional(),
   libraryViewMode: LibraryViewModeSchema.optional(),
   goalsViewMode: GoalsViewModeSchema.optional(),
   dismissedAnnouncements: DismissedAnnouncementsSchema.optional(),

@@ -20,10 +20,13 @@ export default function YearSelector() {
   const { year, setYear } = useJournalFilters();
 
   return (
+    // `-mt-1` cancels the chips' `py-1` so the tab TEXT lines up with the
+    // sidebar's first SectionLabel across the grid — a plain label has no
+    // vertical padding, these padded chips do (same fix as Mood's selector).
     <div
       role="tablist"
       aria-label={t('journal.primary.yearAria')}
-      className="flex flex-wrap gap-1"
+      className="-mt-1 flex flex-wrap gap-1"
     >
       <button
         type="button"

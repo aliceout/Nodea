@@ -22,6 +22,8 @@ import SecurityTab from './views/SecurityTab';
  * per-page topbar (« Paramètres · Mon compte »), H1 + 6 tab
  * buttons, then a tab content panel that re-mounts on each switch
  * (keyed on the tab id) so the `animate-fade-up` keyframe replays.
+ * The "slide" affordance lives in the tab strip itself (`Tabs`
+ * glides its active pill), not the content.
  *
  * Architecture :
  *   - `lib/` carries the pure helpers (security-mode label, the

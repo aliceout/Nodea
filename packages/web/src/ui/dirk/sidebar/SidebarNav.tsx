@@ -21,6 +21,7 @@ import {
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
+import { useSlidingIndicator } from '@/ui/dirk/use-sliding-indicator';
 
 interface NavItem {
   id: ModuleId;
@@ -81,9 +82,18 @@ const HRT_SUB_ITEMS: readonly HrtSubItem[] = [
 
 interface SidebarNavProps {
   onNavigate: () => void;
+  /** Desktop shell only: the user's persisted collapse choice (icon rail
+   *  vs full). Forced rail when true; auto-rail on `md`–`lg` otherwise. */
+  collapsed?: boolean;
+  /** True inside the mobile drawer — always full labels, never a rail. */
+  drawer?: boolean;
 }
 
-export default function SidebarNav({ onNavigate }: SidebarNavProps) {
+export default function SidebarNav({
+  onNavigate,
+  collapsed = false,
+  drawer = false,
+}: SidebarNavProps) {
   const current = useNodeaStore(selectCurrentModule);
   const librarySubview = useNodeaStore(selectLibrarySubview);
   const hrtSubview = useNodeaStore(selectHrtSubview);
@@ -100,23 +110,61 @@ export default function SidebarNav({ onNavigate }: SidebarNavProps) {
     (item) => item.id === 'home' || enabledIds.has(item.id),
   );
 
+  // Single highlight that glides to the active module button (the same
+  // sliding affordance as the Account / Admin tab strip, vertical here).
+  // `:scope >` keeps it on the main module buttons — sub-nav lenses are
+  // nested in their own `<ul>` and keep their own static highlight. Only a
+  // module SWITCH animates; the collapse/expand toggle (which reflows row
+  // heights + widths) and resizes snap, so the highlight never trails the
+  // sidebar's width animation.
+  const { ref, state } = useSlidingIndicator(
+    current,
+    `${visible.map((v) => v.id).join(',')}|${collapsed}|${drawer}`,
+    ':scope > button[data-active="true"]',
+  );
+
   return (
-    <div className="flex flex-col gap-0.5">
+    <div ref={ref} className="relative flex flex-col gap-0.5">
+      {state ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            // Only transform animates (rows share a width); duration toggles
+            // between a glide and a snap so collapse/expand never trails.
+            'pointer-events-none absolute left-0 top-0 rounded bg-accent-soft transition-transform ease-[cubic-bezier(0.2,0.7,0.3,1)] motion-reduce:transition-none',
+            state.animate ? 'duration-300' : 'duration-0',
+          )}
+          style={{
+            transform: `translate(${state.rect.left}px, ${state.rect.top}px)`,
+            width: state.rect.width,
+            height: state.rect.height,
+          }}
+        />
+      ) : null}
       {visible.map((item) => (
         <Fragment key={item.id}>
           <SidebarItem
             item={item}
             active={current === item.id}
             onNavigate={onNavigate}
+            collapsed={collapsed}
+            drawer={drawer}
           />
           {item.id === 'library' && current === 'library' ? (
             <LibrarySubNav
               activeSubview={librarySubview}
               onNavigate={onNavigate}
+              collapsed={collapsed}
+              drawer={drawer}
             />
           ) : null}
           {item.id === 'hrt' && current === 'hrt' ? (
-            <HrtSubNav activeSubview={hrtSubview} onNavigate={onNavigate} />
+            <HrtSubNav
+              activeSubview={hrtSubview}
+              onNavigate={onNavigate}
+              collapsed={collapsed}
+              drawer={drawer}
+            />
           ) : null}
         </Fragment>
       ))}
@@ -128,12 +176,25 @@ interface SidebarItemProps {
   item: NavItem;
   active: boolean;
   onNavigate: () => void;
+  collapsed?: boolean;
+  drawer?: boolean;
 }
 
-function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
+function SidebarItem({
+  item,
+  active,
+  onNavigate,
+  collapsed = false,
+  drawer = false,
+}: SidebarItemProps) {
   const { t } = useI18n();
   const setModule = useNodeaStore((s) => s.setModule);
   const Icon = item.icon;
+  const label = t(item.labelKey);
+  // Rail = forced (`collapsed`) or the `md`–`lg` auto-rail (`lg:` variants
+  // when not collapsed); never in the drawer. In the rail the icon is
+  // centered + enlarged and the text label becomes a hover tooltip.
+  const labelHidden = drawer ? '' : collapsed ? 'hidden' : 'hidden lg:inline';
 
   return (
     <button
@@ -144,26 +205,41 @@ function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
       }}
       data-active={active}
       aria-current={active ? 'page' : undefined}
+      // The visible label disappears in the rail, so the accessible name +
+      // hover tooltip come from `aria-label` / `title` (kept always — they
+      // just duplicate the visible text in the full sidebar).
+      aria-label={label}
+      title={label}
       className={cn(
-        'group flex w-full items-center px-2.5 py-[0.4125rem] text-left transition-[background-color,color,transform] duration-200',
+        // `relative z-10` lifts the button above the shared sliding
+        // highlight (rendered behind in `SidebarNav`); the active fill now
+        // comes from that gliding element, so the button itself stays
+        // transparent and only its text / icon colour changes.
+        'group relative z-10 flex w-full items-center rounded px-2.5 py-[0.4125rem] text-left transition-[background-color,color,transform] duration-200',
         'text-[13.5px] text-ink-soft',
+        drawer ? '' : collapsed ? 'justify-center' : 'justify-center lg:justify-start',
         active
-          ? // Soft sage fill + deep-green text (calm, like the Tag /
-            // right-sidebar FilterChip), with the icon kept at full accent
-            // (see below) as a quiet wayfinding anchor. Tag `rounded`,
-            // inset (no edge bleed).
-            'bg-accent-soft font-medium text-accent-deep rounded'
-          : 'rounded hover:translate-x-0.5 hover:bg-bg hover:text-ink',
+          ? // Deep-green text, with the icon kept at full accent (see below)
+            // as a quiet wayfinding anchor. The soft sage fill is the
+            // sliding highlight behind.
+            'font-medium text-accent-deep'
+          : 'hover:translate-x-0.5 hover:bg-bg hover:text-ink',
       )}
     >
       <span className="flex min-w-0 items-center gap-2.5">
         {Icon ? (
           <Icon
-            className={cn('h-4 w-4 shrink-0', active && 'text-accent')}
+            className={cn(
+              'shrink-0',
+              active && 'text-accent',
+              // Bigger glyph in the rail (« grosses icônes »), back to the
+              // compact size in the full sidebar.
+              drawer ? 'h-4 w-4' : collapsed ? 'h-5 w-5' : 'h-5 w-5 lg:h-4 lg:w-4',
+            )}
             aria-hidden="true"
           />
         ) : null}
-        <span className="truncate">{t(item.labelKey)}</span>
+        <span className={cn('truncate', labelHidden)}>{label}</span>
       </span>
     </button>
   );
@@ -172,14 +248,28 @@ function SidebarItem({ item, active, onNavigate }: SidebarItemProps) {
 interface LibrarySubNavProps {
   activeSubview: LibrarySubview;
   onNavigate: () => void;
+  collapsed?: boolean;
+  drawer?: boolean;
 }
 
-function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
+function LibrarySubNav({
+  activeSubview,
+  onNavigate,
+  collapsed = false,
+  drawer = false,
+}: LibrarySubNavProps) {
   const { t } = useI18n();
   const setModule = useNodeaStore((s) => s.setModule);
   const setLibrarySubview = useNodeaStore((s) => s.setLibrarySubview);
   return (
-    <ul className="ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
+    <ul
+      className={cn(
+        'ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2',
+        // Text sub-items can't live in the 68 px rail — hide them there
+        // (the active module icon still shows in the rail above).
+        drawer ? '' : collapsed ? 'hidden' : 'hidden lg:flex',
+      )}
+    >
       {LIBRARY_SUB_ITEMS.map((sub) => {
         const active = activeSubview === sub.subview;
         return (
@@ -217,14 +307,28 @@ function LibrarySubNav({ activeSubview, onNavigate }: LibrarySubNavProps) {
 interface HrtSubNavProps {
   activeSubview: HrtSubview;
   onNavigate: () => void;
+  collapsed?: boolean;
+  drawer?: boolean;
 }
 
-function HrtSubNav({ activeSubview, onNavigate }: HrtSubNavProps) {
+function HrtSubNav({
+  activeSubview,
+  onNavigate,
+  collapsed = false,
+  drawer = false,
+}: HrtSubNavProps) {
   const { t } = useI18n();
   const setModule = useNodeaStore((s) => s.setModule);
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
   return (
-    <ul className="ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
+    <ul
+      className={cn(
+        'ml-7 mt-0.5 mb-0.5 flex flex-col gap-0.5 border-l border-hair pl-2',
+        // Text sub-items can't live in the 68 px rail — hide them there
+        // (the active module icon still shows in the rail above).
+        drawer ? '' : collapsed ? 'hidden' : 'hidden lg:flex',
+      )}
+    >
       {HRT_SUB_ITEMS.map((sub) => {
         const active = activeSubview === sub.subview;
         return (

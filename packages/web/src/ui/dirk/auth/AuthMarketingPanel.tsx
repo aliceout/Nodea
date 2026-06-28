@@ -36,8 +36,8 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
   return (
     <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
       <div className="flex items-center gap-2.5">
-        <NodeaSymbol className="h-5 w-5 text-accent" />
-        <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
+        <NodeaSymbol className="h-8 w-8 text-accent" />
+        <span className="text-[25px] font-semibold tracking-[-0.01em] text-ink">Nodea</span>
       </div>
 
       {/* Headline + body share a 720 px max-width so the body text

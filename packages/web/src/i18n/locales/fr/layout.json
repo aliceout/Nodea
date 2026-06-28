@@ -4,7 +4,9 @@
     "defaultUsername": "Utilisateur·rice"
   },
   "sidebar": {
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "collapse": "Réduire le menu",
+    "expand": "Déplier le menu"
   },
   "userMenu": {
     "open": "Ouvrir le menu utilisateur",
@@ -33,9 +35,6 @@
     "hrtAdministration": "Administration",
     "hrtLabs": "Analyses",
     "hrtExport": "Outils"
-  },
-  "encryption": {
-    "label": "Chiffré de bout en bout"
   },
   "backup": {
     "running": "Sauvegarde en cours…"

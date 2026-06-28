@@ -7,6 +7,7 @@ import ActiveFilterChip from '@/ui/dirk/module/ActiveFilterChip';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import { useEditScrollAnchor } from '@/ui/dirk/module/use-edit-scroll-anchor';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
@@ -42,6 +43,9 @@ export default function PrimaryColumn() {
     setScoreFilter,
   } = useMoodFilters();
   const { formOpen, editingEntry, closeForm } = useMoodActions();
+  // Editing a row far down: jump to the form on open, glide back to the row
+  // on save/cancel. Create flows (editingEntry === null) keep their place.
+  useEditScrollAnchor(editingEntry !== null);
   const chartToggleLabel = chartCollapsed
     ? t('mood.primary.showChart')
     : t('mood.primary.hideChart');
@@ -88,6 +92,13 @@ export default function PrimaryColumn() {
       const delta = currentY - lastScrollYRef.current;
       lastScrollYRef.current = currentY;
       if (delta > 0 && currentY > 80) {
+        // Detach BEFORE toggling. A fast scroll fires several events
+        // before React re-renders and this effect's cleanup detaches us,
+        // and the fold animation itself shifts layout (yet more scroll
+        // events). `toggleChart` flips, so each extra call re-opens then
+        // re-closes the chart — the visible « sursaut ». Removing the
+        // listener here makes the collapse fire exactly once.
+        window.removeEventListener('scroll', handleScroll);
         toggleChart();
       }
     }

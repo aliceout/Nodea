@@ -58,11 +58,21 @@ interface TopbarProps {
 export default function Topbar({ label, onOpenMenu, search, children }: TopbarProps) {
   const { t } = useI18n();
   return (
-    <div className="sticky top-0 z-20 flex h-[52px] items-center gap-2 border-b border-hair bg-bg px-6 sm:px-9">
+    <div
+      className={cn(
+        'sticky top-0 z-20 flex h-[52px] items-center gap-2 border-b border-hair bg-bg px-6 sm:px-9',
+        // When a search field is present (the aside-layout modules), mirror
+        // ModuleShell's `[1fr_280px]` grid on lg+landscape — same padding,
+        // same gap — so the search ends exactly at the content/sidebar
+        // boundary and the actions sit over the 280px sidebar column.
+        search &&
+          'lg:landscape:grid lg:landscape:grid-cols-[1fr_280px] lg:landscape:gap-9',
+      )}
+    >
       {/* Brand mark on the left, mobile-only — desktop carries the
           logo in the persistent sidebar. Decorative (the label is the
           accessible name). */}
-      <NodeaSymbol className="h-5 w-5 shrink-0 text-accent lg:hidden" />
+      <NodeaSymbol className="h-5 w-5 shrink-0 text-accent md:hidden" />
       {/* Module name. Hidden on desktop only when a search field takes
           this slot; otherwise it shows at every breakpoint. */}
       <span
@@ -78,7 +88,7 @@ export default function Topbar({ label, onOpenMenu, search, children }: TopbarPr
       {search ? (
         <div className="flex min-w-0 flex-1 items-center">{search}</div>
       ) : null}
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-1.5 lg:landscape:justify-self-end">
         {children}
         <Button
           variant="neutral"
@@ -86,7 +96,7 @@ export default function Topbar({ label, onOpenMenu, search, children }: TopbarPr
           iconOnly
           onClick={onOpenMenu}
           aria-label={t('layout.header.openMenu')}
-          className="text-ink-soft lg:hidden"
+          className="text-ink-soft md:hidden"
         >
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
         </Button>

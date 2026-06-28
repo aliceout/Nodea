@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
  * the footer reads as a macOS-menu-bar status line :
  * « Synchronisé · à l'instant » on top, « Français · Clair » below.
  *
- * No icon chrome, no chip, no colour — the footer stays purely
- * typographic. Hover gives a subtle underline + `current → next`
- * tooltip so the affordance reads as « click cycles ».
+ * No icon chrome, no chip — the footer stays purely typographic.
+ * Hover gives a fill pill (matching the collapse toggle) + a
+ * `current → next` tooltip so the affordance reads as « click cycles ».
  *
  * **`<ThemeToggle>` vs `<ThemeSwitch>`** : volontairement coexistants.
  * Use this in tight chrome (sidebar). `<ThemeSwitch>` (docs topbar)
@@ -65,7 +65,7 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
       })}
       title={`${currentLabel} → ${nextLabel}`}
       className={cn(
-        'cursor-pointer underline-offset-2 transition-colors hover:text-ink hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+        'cursor-pointer rounded px-1.5 py-0.5 transition-colors hover:bg-bg hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
         className,
       )}
     >

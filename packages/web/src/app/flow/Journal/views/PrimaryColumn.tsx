@@ -8,6 +8,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import { useEditScrollAnchor } from '@/ui/dirk/module/use-edit-scroll-anchor';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
 import JournalForm from '../components/JournalForm';
@@ -44,6 +45,10 @@ export default function PrimaryColumn() {
     setDayFilter,
   } = useJournalFilters();
   const { formOpen, editingEntry, closeForm } = useJournalActions();
+  // Editing a row far down: jump to the form on open, glide back to the row
+  // on save/cancel (Journal previously stayed put, stranding the user at the
+  // off-screen form). Create flows (editingEntry === null) keep their place.
+  useEditScrollAnchor(editingEntry !== null);
   // Group headers match Goals : uppercase « eyebrow » for both the
   // by-month and by-thread groupings (the « par fil » headers used to
   // be the heavier 15px subtitle, out of step with the rest).
@@ -92,6 +97,12 @@ export default function PrimaryColumn() {
       const delta = currentY - lastScrollYRef.current;
       lastScrollYRef.current = currentY;
       if (delta > 0 && currentY > 80) {
+        // Detach BEFORE toggling — see Mood's PrimaryColumn for the full
+        // rationale. A fast scroll (plus the fold's own layout shift)
+        // fires several events before the cleanup detaches us; since
+        // `toggleChart` flips, the extra calls re-open/re-close the chart
+        // (the « sursaut »). Removing the listener here fires it once.
+        window.removeEventListener('scroll', handleScroll);
         toggleChart();
       }
     }

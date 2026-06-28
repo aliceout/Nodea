@@ -15,6 +15,20 @@ export const BACKGROUND_SHADE_VALUES: ReadonlyArray<BackgroundShade> = [
   'pebble',
 ];
 
+export type BackgroundShadeDark =
+  | 'graphite'
+  | 'onyx'
+  | 'obsidian'
+  | 'forest'
+  | 'taupe';
+export const BACKGROUND_SHADE_DARK_VALUES: ReadonlyArray<BackgroundShadeDark> = [
+  'graphite',
+  'onyx',
+  'obsidian',
+  'forest',
+  'taupe',
+];
+
 const COLOR_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 
 function getMediaQuery(): MediaQueryList | null {
@@ -62,6 +76,27 @@ export function applyBackgroundShade(shade: BackgroundShade): BackgroundShade {
     delete root.dataset.bgShade;
   } else {
     root.dataset.bgShade = shade;
+  }
+  return shade;
+}
+
+/**
+ * Dark-mode counterpart of `applyBackgroundShade`. Writes the chosen
+ * dark shade onto `<html>` as `data-bg-shade-dark`, a SEPARATE attribute
+ * from the light `data-bg-shade` so the two picks coexist (only the one
+ * matching the resolved theme paints — see the cascade in `dirk.css`).
+ * The default `graphite` matches `:root.dark`, so removing the attribute
+ * is the right way to reset.
+ */
+export function applyDarkBackgroundShade(
+  shade: BackgroundShadeDark,
+): BackgroundShadeDark {
+  if (typeof document === 'undefined') return shade;
+  const root = document.documentElement;
+  if (shade === 'graphite') {
+    delete root.dataset.bgShadeDark;
+  } else {
+    root.dataset.bgShadeDark = shade;
   }
   return shade;
 }
