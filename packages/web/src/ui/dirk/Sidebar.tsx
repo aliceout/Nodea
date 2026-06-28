@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import SidebarHeader from './sidebar/SidebarHeader';
 import SidebarNav from './sidebar/SidebarNav';
 import SidebarBackupCard from './sidebar/SidebarBackupCard';
+import SidebarDemoCard from './sidebar/SidebarDemoCard';
 import SidebarFooter from './sidebar/SidebarFooter';
 import { useSidebarCollapsed } from './sidebar/use-sidebar-collapsed';
 
@@ -112,6 +113,11 @@ function SidebarBody({
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 px-3 pb-5 pt-4">
         <SidebarNav onNavigate={onNavigate} collapsed={collapsed} drawer={drawer} />
         <div className="flex-1" />
+        {/* Demo-instance banner — full sidebar / drawer only; sits ABOVE the
+            footer separator. Renders null outside dev (`pnpm dev` = demo). */}
+        <div className={cn(drawer ? 'block' : collapsed ? 'hidden' : 'hidden lg:block')}>
+          <SidebarDemoCard />
+        </div>
         {/* Bottom cluster — ONE hairline separates the nav from the toggle +
             status/prefs (full) or the account icon column (rail). The toggle
             and the footer rows share the same row shape so it reads as a

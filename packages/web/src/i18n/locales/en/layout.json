@@ -39,6 +39,9 @@
   "backup": {
     "running": "Backing up…"
   },
+  "demo": {
+    "title": "Demo mode"
+  },
   "errorBoundary": {
     "title": "Something went wrong.",
     "titleScoped": "Something went wrong in {scope}."

@@ -39,6 +39,9 @@
   "backup": {
     "running": "Sauvegarde en cours…"
   },
+  "demo": {
+    "title": "Mode démo"
+  },
   "errorBoundary": {
     "title": "Une erreur est survenue.",
     "titleScoped": "Une erreur est survenue dans {scope}."
