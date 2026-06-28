@@ -1,2 +1,37 @@
 packages:
   - 'packages/*'
+
+# pnpm 11 reads these from pnpm-workspace.yaml, not package.json's `pnpm`
+# field (which it now ignores). Migrated verbatim from there on the pnpm
+# 10 → 11 bump — same values, so the lockfile resolution is unchanged.
+
+# Build scripts: pnpm 11 gates every postinstall (secure by default) and
+# records each allow/deny decision here — the pnpm 10 onlyBuiltDependencies /
+# ignoredBuiltDependencies arrays are gone. esbuild + puppeteer genuinely need
+# their native step (the bundler binary; Chromium for the Library cover
+# lookup). core-js's postinstall is just an ad, and unrs-resolver ships
+# prebuilt napi binaries, so both stay denied (matches the pnpm 10 allowlist).
+allowBuilds:
+  esbuild: true
+  puppeteer: true
+  core-js: false
+  unrs-resolver: false
+
+# Security overrides — force-patch transitive advisories across the tree.
+# The source of truth for npm CVEs (the .trivyignore header points here).
+# Keys + values are quoted because they contain YAML-significant chars
+# (@, <, >, spaces).
+overrides:
+  'esbuild@<0.25': '^0.25.12'
+  'basic-ftp@<5.3.1': '^5.3.1'
+  'ip-address@<10.1.1': '^10.1.1'
+  'picomatch@<4.0.4': '^4.0.4'
+  'uuid@<11.1.1': '^11.1.1'
+  'ws@<8.21.0': '^8.21.0'
+  'esbuild@>=0.17.0 <0.28.1': '>=0.28.1'
+  'esbuild@>=0.27.3 <0.28.1': '>=0.28.1'
+  'js-yaml@<=4.1.1': '>=4.2.0'
+  '@babel/core@<=7.29.0': '>=7.29.6'
+  'dompurify@<3.4.11': '>=3.4.11'
+  '@opentelemetry/core@<2.8.0': '>=2.8.0'
+  'undici@>=7.23.0 <7.28.0': '7.28.0'

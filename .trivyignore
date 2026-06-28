@@ -53,37 +53,3 @@ CVE-2026-33671
 # (verify with `docker pull nginx:alpine && docker run --rm
 # nginx:alpine apk info libexpat`).
 CVE-2026-45186
-
-# ---------------------------------------------------------------------
-# pnpm itself (the pinned `packageManager`) — build/start-time only
-# ---------------------------------------------------------------------
-# `packages/api/Dockerfile` is single-stage node:24-alpine, so the
-# corepack-resolved pnpm (pinned `pnpm@10.33.0` in the root
-# package.json `packageManager`) ships in the runtime image and Trivy
-# flags it via the `package.json` scanner. Every one of these is a
-# "pnpm processes a MALICIOUS package / manifest / lockfile /
-# configDependency" class bug : arbitrary file write-delete, transitive
-# alias path traversal, manifest-identity spoof bypassing allowBuilds,
-# repo-controlled configDependencies, patch-remove file deletion,
-# env-lockfile short-circuit.
-#
-# Blast radius : in our image pnpm runs exactly twice and only over OUR
-# OWN committed inputs — `pnpm install --frozen-lockfile` at build (our
-# lockfile), then `pnpm db:migrate:docker && pnpm start:docker` at
-# container start (no install at all). It never resolves an attacker-
-# controlled package/manifest ; anyone who could inject one already owns
-# the repo. None of these is reachable through the running app's HTTP
-# surface.
-#
-# Drop criterion : bump pnpm to ≥ 11.8.0 (the first line that fixes ALL
-# of these — several, e.g. CVE-2026-55697, have NO 10.x backport) in a
-# dedicated upgrade PR where the lockfile + major bump get tested, then
-# delete this whole block.
-CVE-2026-50015
-CVE-2026-50016
-CVE-2026-55487
-CVE-2026-55697
-CVE-2026-55698
-GHSA-72r4-9c5j-mj57
-GHSA-fr4h-3cph-29xv
-GHSA-qrv3-253h-g69c
