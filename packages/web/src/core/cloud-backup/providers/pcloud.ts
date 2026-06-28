@@ -92,6 +92,32 @@ async function upload(cred: CloudBackup, bytes: Uint8Array): Promise<void> {
   }
 }
 
+async function download(cred: CloudBackup): Promise<Uint8Array | null> {
+  if (cred.provider !== 'pcloud') throw new Error('pcloud.download: wrong credential');
+  // Two steps: resolve a temporary download link (simple GET, CORS-readable
+  // JSON), then fetch the bytes from the returned host. VERIFY-ON-FIRST-DOWNLOAD
+  // that the link host answers CORS for our origin (the upload host does).
+  const linkQuery = new URLSearchParams({
+    access_token: cred.accessToken,
+    path: `/${BACKUP_FILENAME}`,
+  });
+  const linkRes = await fetch(
+    `https://${cred.apiHost}/getfilelink?${linkQuery.toString()}`,
+  );
+  const json = (await linkRes.json().catch(() => null)) as
+    | { result?: number; hosts?: string[]; path?: string }
+    | null;
+  if (json?.result === 2009) return null; // "File not found."
+  if (!json || json.result !== 0 || !json.hosts?.[0] || !json.path) {
+    throw new Error(`pCloud getfilelink failed (${json?.result ?? linkRes.status})`);
+  }
+  const fileRes = await fetch(`https://${json.hosts[0]}${json.path}`);
+  if (!fileRes.ok) {
+    throw new Error(`pCloud download failed (${fileRes.status})`);
+  }
+  return new Uint8Array(await fileRes.arrayBuffer());
+}
+
 // No `revoke`: pCloud has no browser-callable token-revocation endpoint.
 // Disconnect just clears the local token (the caller does that); the user can
 // revoke the app from their pCloud account settings.
@@ -101,4 +127,5 @@ export const pcloudProvider: CloudProvider = {
   connectKind: 'oauth',
   connect,
   upload,
+  download,
 };

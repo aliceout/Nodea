@@ -124,6 +124,17 @@
     "intro2": "Désactive ceux que tu n’utilises pas — ils disparaîtront de la barre latérale et leurs données seront laissées intactes (rien n’est supprimé)."
   },
   "data": {
+    "groups": {
+      "backup": "Sauvegarder",
+      "restore": "Restaurer"
+    },
+    "phraseGate": {
+      "title": "Phrase de sauvegarde",
+      "intro": "Une phrase de 12 mots chiffre toutes tes sauvegardes (manuelle et automatique). Montrée la 1ʳᵉ fois que tu en crées une chiffrée — note-la, sans elle tes fichiers sont définitivement irrécupérables.",
+      "setupCta": "Configurer ma phrase",
+      "confirmedDescription": "Cette phrase chiffre tes sauvegardes manuelles et automatiques. Tu peux la réinitialiser si besoin — les sauvegardes déjà faites garderont leur ancienne phrase.",
+      "resetCta": "Réinitialiser ma phrase"
+    },
     "export": {
       "title": "Exporter",
       "cta": "Exporter mes données",
@@ -144,7 +155,7 @@
       "title": "Importer",
       "cta": "Importer un fichier",
       "ctaLoading": "Import en cours…",
-      "description": "JSON, NDJSON ou sauvegarde chiffrée .age exportés depuis Nodea. Doublons ignorés. Note : les liens entre fiches (notes ↔ livres, prises ↔ plannings HRT) ne sont pas conservés lors d’une restauration dans un autre compte.",
+      "description": "Sauvegarde chiffrée .age (on te demandera les 12 mots), ou export JSON / NDJSON, depuis Nodea. Doublons ignorés. Note : les liens entre fiches (notes ↔ livres, prises ↔ plannings HRT) ne sont pas conservés lors d’une restauration dans un autre compte.",
       "noKey": "Clé de chiffrement absente.",
       "errorPrefix": "Erreur d’import : ",
       "invalidJson": "Format JSON invalide.",
@@ -175,6 +186,9 @@
       "partial": "Sauvegarde partielle — ces modules n’ont pas pu être inclus : {modules}. Réessaie pour une sauvegarde complète.",
       "phraseTitle": "Ta phrase de sauvegarde",
       "phraseSubtitle": "Note ces 12 mots : ils déchiffrent ta sauvegarde. Tu devras en confirmer quelques-uns avant le téléchargement.",
+      "phraseSubtitleConfirm": "Note ces 12 mots : ils déchiffrent tes sauvegardes. Tu devras en confirmer quelques-uns.",
+      "confirmPhraseCta": "Confirmer ma phrase",
+      "phraseConfirmed": "Phrase confirmée.",
       "phraseWarningTitle": "À noter MAINTENANT",
       "phraseWarningBody": "Ces 12 mots déchiffrent ta sauvegarde .age — ils ne te seront pas réaffichés. Sans eux, le fichier est définitivement irrécupérable.",
       "reusedMessage": "Ta phrase de sauvegarde existe déjà — on réutilise la même. Confirme-la ci-dessous par le quiz. Tu peux la régénérer en cas de souci, mais ça ne s'appliquera qu'aux futures sauvegardes (les anciennes gardent leur phrase).",
@@ -184,9 +198,9 @@
       "regenerateCta": "Régénérer"
     },
     "cloudBackup": {
-      "title": "Sauvegarde automatique",
-      "description": "Connecte un espace cloud (Dropbox, pCloud ou Nextcloud) pour y envoyer automatiquement ta sauvegarde chiffrée. Le fichier .age est chiffré dans ton navigateur — le service ne voit qu’un blob illisible.",
-      "connectedDescription": "{provider} connecté. Ta sauvegarde chiffrée y sera envoyée automatiquement (au plus une fois par jour).",
+      "title": "Service cloud",
+      "description": "Connecte Dropbox, pCloud ou Nextcloud : ta sauvegarde chiffrée y part automatiquement (au plus 1×/jour), et tu peux restaurer depuis ce service. Le fichier .age est chiffré dans ton navigateur — le service ne voit qu’un blob illisible.",
+      "connectedDescription": "{provider} connecté. Sauvegarde chiffrée envoyée automatiquement (au plus 1×/jour) ; restauration possible depuis « Restaurer ».",
       "connectCta": "Connecter un service",
       "connecting": "Connexion…",
       "disconnectCta": "Déconnecter",
@@ -195,13 +209,36 @@
       "backingUp": "Sauvegarde…",
       "backupDone": "Sauvegarde envoyée.",
       "backupError": "La sauvegarde a échoué. Réessaie.",
+      "restore": {
+        "title": "Restaurer cette sauvegarde ?",
+        "message": "Une sauvegarde existe déjà à cette destination. La restaurer maintenant ? Tes données actuelles ne seront pas écrasées — on ajoute seulement ce qui manque.",
+        "confirmCta": "Restaurer",
+        "cancelCta": "Ignorer",
+        "manualHint": "Déchiffrement automatique impossible (sauvegarde d'un autre compte ?). Utilise « Restaurer depuis le cloud » avec les 12 mots.",
+        "partialHint": "Restauration incomplète. Relance-la depuis « Restaurer depuis le cloud » pour la terminer avant la prochaine sauvegarde auto.",
+        "uncheckedHint": "Impossible de vérifier la destination. Si une sauvegarde existe, restaure-la depuis « Restaurer depuis le cloud » avant la prochaine sauvegarde auto."
+      },
+      "cloudRestore": {
+        "title": "Depuis le cloud",
+        "cta": "Restaurer depuis {provider}",
+        "loading": "Restauration…",
+        "description": "Récupère et fusionne la sauvegarde présente sur {provider}. Non-destructif : rien n'est écrasé, on ajoute ce qui manque.",
+        "none": "Aucune sauvegarde trouvée à cette destination.",
+        "error": "La restauration a échoué. Réessaie.",
+        "phrasePrompt": "Déchiffrement automatique impossible. Saisis les 12 mots de cette sauvegarde."
+      },
       "webdav": {
         "serverLabel": "Adresse du serveur",
-        "serverInvalid": "URL invalide (ex. https://cloud.exemple.com).",
+        "serverInvalid": "Adresse invalide (ex. cloud.exemple.com).",
+        "serverHint": "Adresse du serveur ou URL WebDAV, avec ou sans « https:// » — tout fonctionne.",
         "usernameLabel": "Nom d’utilisateur·ice",
         "appPasswordLabel": "Mot de passe d’application",
+        "appPasswordWarn": "N’utilise jamais ton mot de passe de compte Nextcloud.",
         "appPasswordHint": "Nextcloud → Paramètres → Sécurité → Appareils & sessions → « Créer un mot de passe d’application ».",
         "appPasswordLink": "Ouvrir cet écran sur ton Nextcloud",
+        "folderLabel": "Dossier de destination",
+        "folderHint": "Optionnel — vide = racine. Le dossier est créé s'il n'existe pas.",
+        "folderPlaceholder": "Sauvegardes/Nodea",
         "required": "Champ requis.",
         "submit": "Connecter",
         "cancel": "Annuler",

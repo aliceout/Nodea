@@ -124,6 +124,17 @@
     "intro2": "Disable the ones you don't use — they'll vanish from the sidebar and their data will be left intact (nothing is deleted)."
   },
   "data": {
+    "groups": {
+      "backup": "Back up",
+      "restore": "Restore"
+    },
+    "phraseGate": {
+      "title": "Backup phrase",
+      "intro": "A 12-word phrase encrypts all your backups (manual and automatic). Shown the first time you create an encrypted one — save it, without it your files are permanently unrecoverable.",
+      "setupCta": "Set up my phrase",
+      "confirmedDescription": "This phrase encrypts your manual and automatic backups. You can reset it if needed — backups already made keep their old phrase.",
+      "resetCta": "Reset my phrase"
+    },
     "export": {
       "title": "Export",
       "cta": "Export my data",
@@ -144,7 +155,7 @@
       "title": "Import",
       "cta": "Import a file",
       "ctaLoading": "Importing…",
-      "description": "JSON, NDJSON or encrypted .age backup previously exported from Nodea. Duplicates are ignored. Note: links between records (reviews ↔ books, HRT intakes ↔ schedules) are not preserved when restoring into a different account.",
+      "description": "Encrypted .age backup (you'll be asked for the 12 words), or a JSON / NDJSON export, from Nodea. Duplicates are ignored. Note: links between records (reviews ↔ books, HRT intakes ↔ schedules) are not preserved when restoring into a different account.",
       "noKey": "Encryption key unavailable.",
       "errorPrefix": "Import error: ",
       "invalidJson": "Invalid JSON format.",
@@ -175,6 +186,9 @@
       "partial": "Partial backup — these modules could not be included: {modules}. Try again for a complete backup.",
       "phraseTitle": "Your backup phrase",
       "phraseSubtitle": "Write down these 12 words: they decrypt your backup. You'll confirm a few before the download.",
+      "phraseSubtitleConfirm": "Write down these 12 words: they decrypt your backups. You'll confirm a few of them.",
+      "confirmPhraseCta": "Confirm my phrase",
+      "phraseConfirmed": "Phrase confirmed.",
       "phraseWarningTitle": "Write this down NOW",
       "phraseWarningBody": "These 12 words decrypt your .age backup — they won't be shown again. Without them, the file is permanently unrecoverable.",
       "reusedMessage": "Your backup phrase already exists — we reuse the same one. Confirm it below with the quiz. You can regenerate it if needed, but that only applies to future backups (existing ones keep their phrase).",
@@ -184,9 +198,9 @@
       "regenerateCta": "Regenerate"
     },
     "cloudBackup": {
-      "title": "Automatic backup",
-      "description": "Connect a cloud space (Dropbox, pCloud or Nextcloud) to automatically send your encrypted backup there. The .age file is encrypted in your browser — the service only ever sees an unreadable blob.",
-      "connectedDescription": "{provider} connected. Your encrypted backup will be sent there automatically (at most once a day).",
+      "title": "Cloud service",
+      "description": "Connect Dropbox, pCloud or Nextcloud: your encrypted backup is sent there automatically (at most once a day), and you can restore from it. The .age file is encrypted in your browser — the service only ever sees an unreadable blob.",
+      "connectedDescription": "{provider} connected. Encrypted backup sent automatically (at most once a day); you can restore from it under “Restore”.",
       "connectCta": "Connect a service",
       "connecting": "Connecting…",
       "disconnectCta": "Disconnect",
@@ -195,13 +209,36 @@
       "backingUp": "Backing up…",
       "backupDone": "Backup sent.",
       "backupError": "Backup failed. Try again.",
+      "restore": {
+        "title": "Restore this backup?",
+        "message": "A backup already exists at this destination. Restore it now? Your current data won't be overwritten — we only add what's missing.",
+        "confirmCta": "Restore",
+        "cancelCta": "Ignore",
+        "manualHint": "Couldn't auto-decrypt (a backup from another account?). Use “Restore from cloud” with the 12 words.",
+        "partialHint": "Restore incomplete. Re-run it from “Restore from cloud” to finish before the next auto-backup.",
+        "uncheckedHint": "Couldn't check the destination. If a backup exists, restore it from “Restore from cloud” before the next auto-backup."
+      },
+      "cloudRestore": {
+        "title": "From the cloud",
+        "cta": "Restore from {provider}",
+        "loading": "Restoring…",
+        "description": "Fetches and merges the backup found on {provider}. Non-destructive: nothing is overwritten, only what's missing is added.",
+        "none": "No backup found at this destination.",
+        "error": "Restore failed. Try again.",
+        "phrasePrompt": "Couldn't auto-decrypt. Enter this backup's 12 words."
+      },
       "webdav": {
         "serverLabel": "Server URL",
-        "serverInvalid": "Invalid URL (e.g. https://cloud.example.com).",
+        "serverInvalid": "Invalid address (e.g. cloud.example.com).",
+        "serverHint": "Server address or WebDAV URL, with or without “https://” — it all works.",
         "usernameLabel": "Username",
         "appPasswordLabel": "App password",
+        "appPasswordWarn": "Never use your Nextcloud account password.",
         "appPasswordHint": "Nextcloud → Settings → Security → Devices & sessions → “Create new app password”.",
         "appPasswordLink": "Open that screen on your Nextcloud",
+        "folderLabel": "Destination folder",
+        "folderHint": "Optional — empty = root. The folder is created if it doesn't exist.",
+        "folderPlaceholder": "Backups/Nodea",
         "required": "Required.",
         "submit": "Connect",
         "cancel": "Cancel",

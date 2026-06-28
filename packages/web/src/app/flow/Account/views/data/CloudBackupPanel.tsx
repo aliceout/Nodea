@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { ChevronDownIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
-import { CloudIcon, ServerStackIcon } from '@heroicons/react/24/solid';
+import { CloudIcon } from '@heroicons/react/24/solid';
 
 import type { CloudBackup } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
 import { CLOUD_PROVIDERS, getProvider } from '@/core/cloud-backup/registry';
+import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import { pushBackupToCloud } from './cloud-push';
+import { restoreFromAgeBytes } from './restore-backup';
 import WebdavConnectForm from './WebdavConnectForm';
 
 type ProviderId = (typeof CLOUD_PROVIDERS)[number];
@@ -33,12 +37,21 @@ function DropboxGlyph({ className }: { className: string }) {
   );
 }
 
-/** Per-provider button glyph in the brand colour. Dropbox ships its real mark;
- *  pCloud has no clean, license-clear official glyph in our icon sets, so it's a
- *  cyan cloud STAND-IN (drop in pCloud's real SVG to swap it). */
+/** Nextcloud's official logo (CC0, simple-icons), in its real brand blue. */
+function NextcloudGlyph({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="#0082C9" aria-hidden="true" className={className}>
+      <path d="M12.018 6.537c-2.5 0-4.6 1.712-5.241 4.015-.56-1.232-1.793-2.105-3.225-2.105A3.569 3.569 0 0 0 0 12a3.569 3.569 0 0 0 3.552 3.553c1.432 0 2.664-.874 3.224-2.106.641 2.304 2.742 4.016 5.242 4.016 2.487 0 4.576-1.693 5.231-3.977.569 1.21 1.783 2.067 3.198 2.067A3.568 3.568 0 0 0 24 12a3.569 3.569 0 0 0-3.553-3.553c-1.416 0-2.63.858-3.199 2.067-.654-2.284-2.743-3.978-5.23-3.977zm0 2.085c1.878 0 3.378 1.5 3.378 3.378 0 1.878-1.5 3.378-3.378 3.378A3.362 3.362 0 0 1 8.641 12c0-1.878 1.5-3.378 3.377-3.378zm-8.466 1.91c.822 0 1.467.645 1.467 1.468s-.644 1.467-1.467 1.468A1.452 1.452 0 0 1 2.085 12c0-.823.644-1.467 1.467-1.467zm16.895 0c.823 0 1.468.645 1.468 1.468s-.645 1.468-1.468 1.468A1.452 1.452 0 0 1 18.98 12c0-.823.644-1.467 1.467-1.467z" />
+    </svg>
+  );
+}
+
+/** Per-provider button glyph in the brand colour. Dropbox + Nextcloud ship their
+ *  real marks; pCloud has no clean, license-clear official glyph in our icon
+ *  sets, so it's a cyan cloud STAND-IN (drop in pCloud's real SVG to swap it). */
 function ProviderIcon({ id, className }: { id: ProviderId; className: string }) {
   if (id === 'dropbox') return <DropboxGlyph className={className} />;
-  if (id === 'webdav') return <ServerStackIcon aria-hidden="true" className={className} />;
+  if (id === 'webdav') return <NextcloudGlyph className={className} />;
   return <CloudIcon aria-hidden="true" className={`${className} text-[#17BED0]`} />;
 }
 
@@ -53,9 +66,17 @@ function ProviderIcon({ id, className }: { id: ProviderId; className: string }) 
 export default function CloudBackupPanel() {
   const { t } = useI18n();
   const { preferences, setPreferences } = usePreferences();
+  const confirm = useConfirm();
   const cb = preferences.cloudBackup;
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Why the user should go restore manually, if at all:
+  //  'manual'    — auto-decrypt failed (a different account/version sealed it),
+  //  'partial'   — restore merged only partially, re-run to finish,
+  //  'unchecked' — couldn't probe the destination, restore manually if needed.
+  const [restoreHint, setRestoreHint] = useState<
+    null | 'manual' | 'partial' | 'unchecked'
+  >(null);
   // WebDAV connects via a credentials form (no OAuth popup); this toggles it.
   const [webdavOpen, setWebdavOpen] = useState(false);
   const [pushState, setPushState] = useState<'idle' | 'saving' | 'done' | 'error'>(
@@ -73,9 +94,76 @@ export default function CloudBackupPanel() {
     }
   }
 
+  /** Auto-restore the COMMON case: re-derive THIS account's phrase and decrypt.
+   *  Returns false if it can't (a different account/version sealed it) so the
+   *  caller can point the user at the manual 12-word restore. */
+  async function tryAutoRestore(
+    bytes: Uint8Array,
+  ): Promise<{ ok: boolean; hadFailures: boolean }> {
+    const state = useNodeaStore.getState();
+    const mainKey = state.crypto.main;
+    if (!mainKey) return { ok: false, hadFailures: false };
+    const version = preferences.backupPhraseVersion ?? 1;
+    try {
+      const phrase = await deriveBackupPhrase(mainKey.hmacKey, version);
+      const { hadFailures } = await restoreFromAgeBytes(
+        bytes,
+        phrase,
+        mainKey,
+        state.modules,
+        t,
+      );
+      return { ok: true, hadFailures };
+    } catch {
+      return { ok: false, hadFailures: false };
+    }
+  }
+
+  /** Shared tail of every connect (OAuth popup OR WebDAV form). BEFORE persisting
+   *  the credential — which would let the on-unlock auto-backup fire and
+   *  overwrite the remote — check the destination for an existing backup and
+   *  offer to restore it. Stamp `lastBackupAt` whenever a restore is wanted, so
+   *  the first auto-backup can't clobber the remote before the user is done. */
+  async function finishConnect(id: ProviderId, cred: CloudBackup): Promise<void> {
+    setRestoreHint(null);
+    // Probe the destination. CRITICAL: a thrown error is NOT "no backup" — the
+    // remote state is UNKNOWN (token/network/CORS/rate-limit), so we must never
+    // let the first auto-backup treat it as empty and overwrite a real backup.
+    // Stamp lastBackupAt to defer the auto-push and point the user at the manual
+    // restore (only a genuine not-found returns null → safe to start fresh).
+    let remote: Uint8Array | null;
+    try {
+      remote = await getProvider(id).download(cred);
+    } catch {
+      await setPreferences({ cloudBackup: { ...cred, lastBackupAt: Date.now() } });
+      setRestoreHint('unchecked');
+      return;
+    }
+    let toSave: CloudBackup = cred;
+    if (remote) {
+      const wantRestore = await confirm({
+        title: t('account.data.cloudBackup.restore.title'),
+        message: t('account.data.cloudBackup.restore.message'),
+        confirmLabel: t('account.data.cloudBackup.restore.confirmCta'),
+        cancelLabel: t('account.data.cloudBackup.restore.cancelCta'),
+      });
+      if (wantRestore) {
+        const { ok, hadFailures } = await tryAutoRestore(remote);
+        // Always stamp when a restore was wanted — defers the auto-push so it
+        // can't overwrite the remote before the user has finished (incl.
+        // re-running after a partial restore).
+        toSave = { ...cred, lastBackupAt: Date.now() };
+        setRestoreHint(!ok ? 'manual' : hadFailures ? 'partial' : null);
+      }
+      // Declined → no stamp: the first auto-backup replaces the remote (the user
+      // chose to ignore it — decision B).
+    }
+    await setPreferences({ cloudBackup: toSave });
+  }
+
   async function onWebdavConnected(cred: CloudBackup): Promise<void> {
-    await setPreferences({ cloudBackup: cred });
     setWebdavOpen(false);
+    await finishConnect('webdav', cred);
   }
 
   async function onConnect(id: ProviderId): Promise<void> {
@@ -83,7 +171,7 @@ export default function CloudBackupPanel() {
     setFailed(false);
     try {
       const cred = await getProvider(id).connect();
-      await setPreferences({ cloudBackup: cred });
+      await finishConnect(id, cred);
     } catch {
       // User-deny, closed popup, blocked popup, or a failed exchange — all
       // surface as one actionable "try again" line; nothing here is secret.
@@ -125,7 +213,11 @@ export default function CloudBackupPanel() {
         {t('account.data.cloudBackup.title')}
       </h3>
       <div className="grid grid-cols-1 items-start gap-y-3 lg:grid-cols-[240px_1fr] lg:gap-x-6">
-        <div className="flex flex-col items-start gap-2">
+        <div
+          className={`flex flex-col items-start gap-2${
+            webdavOpen ? ' lg:col-span-2' : ''
+          }`}
+        >
           {cb ? (
             <>
               <div className="flex flex-wrap gap-2">
@@ -151,6 +243,11 @@ export default function CloudBackupPanel() {
               {pushState === 'error' ? (
                 <p role="alert" className="text-[11.5px] text-danger">
                   {t('account.data.cloudBackup.backupError')}
+                </p>
+              ) : null}
+              {restoreHint ? (
+                <p role="status" className="text-[11.5px] text-muted">
+                  {t(`account.data.cloudBackup.restore.${restoreHint}Hint`)}
                 </p>
               ) : null}
             </>
@@ -198,13 +295,15 @@ export default function CloudBackupPanel() {
             </p>
           ) : null}
         </div>
-        <p className="text-[12px] leading-[1.55] text-muted">
-          {cb
-            ? t('account.data.cloudBackup.connectedDescription', {
-                values: { provider: PROVIDER_NAMES[cb.provider] },
-              })
-            : t('account.data.cloudBackup.description')}
-        </p>
+        {webdavOpen ? null : (
+          <p className="text-[12px] leading-[1.55] text-muted">
+            {cb
+              ? t('account.data.cloudBackup.connectedDescription', {
+                  values: { provider: PROVIDER_NAMES[cb.provider] },
+                })
+              : t('account.data.cloudBackup.description')}
+          </p>
+        )}
       </div>
     </section>
   );

@@ -30,6 +30,7 @@ const AUTHORIZE_URL = 'https://www.dropbox.com/oauth2/authorize';
 const TOKEN_URL = 'https://api.dropboxapi.com/oauth2/token';
 const REVOKE_URL = 'https://api.dropboxapi.com/2/auth/token/revoke';
 const UPLOAD_URL = 'https://content.dropboxapi.com/2/files/upload';
+const DOWNLOAD_URL = 'https://content.dropboxapi.com/2/files/download';
 
 function clientId(): string {
   const id = import.meta.env.VITE_DROPBOX_CLIENT_ID;
@@ -129,6 +130,31 @@ async function upload(cred: CloudBackup, bytes: Uint8Array): Promise<void> {
   }
 }
 
+async function download(cred: CloudBackup): Promise<Uint8Array | null> {
+  if (cred.provider !== 'dropbox') throw new Error('dropbox.download: wrong credential');
+  const accessToken = await refreshAccessToken(cred.refreshToken);
+  const res = await fetch(DOWNLOAD_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Dropbox-API-Arg': JSON.stringify({ path: `/${BACKUP_FILENAME}` }),
+    },
+  });
+  // 409 covers Dropbox's whole `path` LookupError family; only a genuine
+  // not_found means "no backup yet". Any other 409 (restricted_content,
+  // not_file, …) is a real error — never treat it as absence (a false "empty"
+  // would let the first auto-backup overwrite a real remote backup).
+  if (res.status === 409) {
+    const summary = await res.text().catch(() => '');
+    if (summary.includes('path/not_found')) return null;
+    throw new Error(`Dropbox download failed (409 ${summary.slice(0, 80)})`);
+  }
+  if (!res.ok) {
+    throw new Error(`Dropbox download failed (${res.status})`);
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 /**
  * Revoke at Dropbox so "disconnect" actually severs access, not just forgets
  * the token locally — the offline refresh token is long-lived and does NOT
@@ -151,5 +177,6 @@ export const dropboxProvider: CloudProvider = {
   connectKind: 'oauth',
   connect,
   upload,
+  download,
   revoke,
 };

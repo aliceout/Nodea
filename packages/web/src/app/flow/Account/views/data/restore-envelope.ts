@@ -46,6 +46,11 @@ type Translate = (
 export interface RestoreResult {
   count: number;
   parts: string[];
+  /** Module keys whose write failed mid-restore (network/auth blip): the
+   *  restore is PARTIAL. Callers must treat a non-empty list as "not fully
+   *  restored" (e.g. don't let an auto-backup overwrite the remote with an
+   *  incomplete account). Distinct from the corrupted-file `failedModules`. */
+  failed: string[];
 }
 
 interface ResolvedModule {
@@ -62,6 +67,7 @@ export async function restoreEnvelope(
   t: Translate,
 ): Promise<RestoreResult> {
   const parts: string[] = [];
+  const failed: string[] = [];
   let count = 0;
 
   async function pluginFor(moduleKey: string) {
@@ -121,6 +127,7 @@ export async function restoreEnvelope(
     } catch (err) {
       if (import.meta.env.DEV)
         console.warn(`restore: module ${key} failed`, err);
+      failed.push(key);
       parts.push(
         t('account.data.import.moduleFailed', { values: { key } }),
       );
@@ -212,5 +219,5 @@ export async function restoreEnvelope(
     );
   }
 
-  return { count, parts };
+  return { count, parts, failed };
 }

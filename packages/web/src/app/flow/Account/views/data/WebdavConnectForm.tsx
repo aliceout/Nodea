@@ -24,7 +24,7 @@ interface WebdavConnectFormProps {
 /**
  * WebDAV / Nextcloud connect form.
  *
- * WHAT  Three fields (server URL · login · app-password) → React Hook Form +
+ * WHAT  Four fields (server URL · login · app-password · folder) → React Hook Form +
  *       the shared Zod schema (the forms rule: 2+ fields ⇒ RHF). On submit it
  *       validates the credential LIVE through the provider (a read-only
  *       PROPFIND) before handing it back to be sealed.
@@ -49,14 +49,14 @@ export default function WebdavConnectForm({
     formState: { errors, isSubmitting },
   } = useForm<WebdavCredentials>({
     resolver: zodResolver(WebdavCredentialsSchema),
-    defaultValues: { baseUrl: '', username: '', appPassword: '' },
+    defaultValues: { baseUrl: '', username: '', appPassword: '', folder: '' },
   });
 
   // Once a real URL is typed, deep-link straight to the Nextcloud app-password
   // screen so the user doesn't hunt through menus (no OAuth, but less friction).
-  const baseUrl = watch('baseUrl');
-  const securityUrl = /^https?:\/\//i.test(baseUrl?.trim() ?? '')
-    ? `${normalizeBaseUrl(baseUrl)}/index.php/settings/user/security`
+  const trimmedUrl = watch('baseUrl')?.trim() ?? '';
+  const securityUrl = trimmedUrl.includes('.')
+    ? `${normalizeBaseUrl(trimmedUrl)}/index.php/settings/user/security`
     : null;
 
   async function onSubmit(values: WebdavCredentials): Promise<void> {
@@ -74,65 +74,83 @@ export default function WebdavConnectForm({
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="w-full max-w-[18rem]"
+      className="w-full"
     >
-      <Field
-        label={t('account.data.cloudBackup.webdav.serverLabel')}
-        type="url"
-        inputMode="url"
-        autoComplete="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        placeholder="https://cloud.exemple.com"
-        error={
-          errors.baseUrl
-            ? t('account.data.cloudBackup.webdav.serverInvalid')
-            : undefined
-        }
-        {...field('baseUrl')}
-      />
-      <Field
-        label={t('account.data.cloudBackup.webdav.usernameLabel')}
-        type="text"
-        autoComplete="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        error={
-          errors.username
-            ? t('account.data.cloudBackup.webdav.required')
-            : undefined
-        }
-        {...field('username')}
-      />
-      <Field
-        label={t('account.data.cloudBackup.webdav.appPasswordLabel')}
-        type="password"
-        autoComplete="off"
-        legend={
-          <>
-            {t('account.data.cloudBackup.webdav.appPasswordHint')}
-            {securityUrl ? (
-              <>
-                {' '}
+      <div className="grid grid-cols-1 items-start gap-x-6 sm:grid-cols-2">
+        <Field
+          dense
+          label={t('account.data.cloudBackup.webdav.serverLabel')}
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="cloud.exemple.com"
+          legend={t('account.data.cloudBackup.webdav.serverHint')}
+          error={
+            errors.baseUrl
+              ? t('account.data.cloudBackup.webdav.serverInvalid')
+              : undefined
+          }
+          {...field('baseUrl')}
+        />
+        <Field
+          dense
+          label={t('account.data.cloudBackup.webdav.folderLabel')}
+          type="text"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder={t('account.data.cloudBackup.webdav.folderPlaceholder')}
+          legend={t('account.data.cloudBackup.webdav.folderHint')}
+          {...field('folder')}
+        />
+        <Field
+          dense
+          label={t('account.data.cloudBackup.webdav.usernameLabel')}
+          type="text"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          error={
+            errors.username
+              ? t('account.data.cloudBackup.webdav.required')
+              : undefined
+          }
+          {...field('username')}
+        />
+        <Field
+          dense
+          label={t('account.data.cloudBackup.webdav.appPasswordLabel')}
+          type="password"
+          autoComplete="off"
+          legend={
+            <>
+              <span className="text-danger">
+                {t('account.data.cloudBackup.webdav.appPasswordWarn')}
+              </span>{' '}
+              {securityUrl ? (
                 <a
                   href={securityUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-accent hover:underline"
+                  className="mt-0.5 block text-accent hover:underline"
                 >
                   {t('account.data.cloudBackup.webdav.appPasswordLink')}
                 </a>
-              </>
-            ) : null}
-          </>
-        }
-        error={
-          errors.appPassword
-            ? t('account.data.cloudBackup.webdav.required')
-            : undefined
-        }
-        {...field('appPassword')}
-      />
+              ) : (
+                t('account.data.cloudBackup.webdav.appPasswordHint')
+              )}
+            </>
+          }
+          error={
+            errors.appPassword
+              ? t('account.data.cloudBackup.webdav.required')
+              : undefined
+          }
+          {...field('appPassword')}
+        />
+      </div>
       {serverError ? <InlineAlert className="mb-3">{serverError}</InlineAlert> : null}
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>

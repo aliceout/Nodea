@@ -117,13 +117,30 @@ export type DismissedAnnouncements = z.infer<typeof DismissedAnnouncementsSchema
  * WebDAV connect-form input. Client-only — the server never sees these (they're
  * sealed into the encrypted preferences blob like every cloud credential), but
  * the schema lives here next to `CloudBackupSchema` so the webdav credential
- * shape has a single home. `baseUrl` is validated as a URL; the provider then
- * normalises it (strips a trailing slash / a pasted `…/remote.php/…`).
+ * shape has a single home. `baseUrl` accepts a host with or without scheme; the
+ * provider normalises it (adds `https://` if missing, strips a trailing slash or
+ * a pasted `…/remote.php/…` tail).
  */
 export const WebdavCredentialsSchema = z.object({
-  baseUrl: z.string().url(),
+  baseUrl: z
+    .string()
+    .min(1)
+    // Accept "cloud.example.com" or "https://cloud.example.com" — valid as long
+    // as it parses once a scheme is ensured (the provider prepends https://).
+    .refine((s) => {
+      const v = s.trim();
+      try {
+        new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
   username: z.string().min(1),
   appPassword: z.string().min(1),
+  /** Optional destination folder, relative to the user's files root (empty ⇒
+   *  root). The provider creates it on connect if it doesn't exist. */
+  folder: z.string().optional(),
 });
 export type WebdavCredentials = z.infer<typeof WebdavCredentialsSchema>;
 
@@ -144,6 +161,7 @@ export const CloudBackupSchema = z.discriminatedUnion('provider', [
     baseUrl: z.string().min(1),
     username: z.string().min(1),
     appPassword: z.string().min(1),
+    folder: z.string().optional(),
     lastBackupAt: z.number().optional(),
   }),
 ]);
@@ -164,6 +182,15 @@ export const UserPreferencesPayloadSchema = z.looseObject({
    * files keep the phrase from the version they were sealed under.
    */
   backupPhraseVersion: z.number().int().positive().optional(),
+  /**
+   * The `backupPhraseVersion` the user has SEEN + confirmed via the
+   * transcription quiz (the backup-phrase gate, `BackupPhrasePanel`). The
+   * export/backup options on the Data tab unlock only when this equals the
+   * current `backupPhraseVersion`. Absent ⇒ never confirmed. Set by the `/backup`
+   * ceremony and by the gate; rotating the phrase (bumping the version) re-closes
+   * the gate until the new phrase is confirmed.
+   */
+  backupPhraseConfirmedVersion: z.number().int().positive().optional(),
   /** Connected cloud-backup provider + its sealed credential (see
    *  `CloudBackupSchema`). Absent ⇒ no cloud backup configured. */
   cloudBackup: CloudBackupSchema.optional(),

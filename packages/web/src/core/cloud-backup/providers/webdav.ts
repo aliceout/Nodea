@@ -25,8 +25,9 @@
  *   - Auth is the `Authorization` header, NOT cookies → `credentials: 'omit'` so
  *     we never pull a session cookie into the cross-origin request (keeps the
  *     CORS contract simple; the Basic header still travels regardless).
- *   - One rolling file at the dav root — no MKCOL: the user's files root always
- *     exists, so there's no folder to create and no 409 to handle.
+ *   - One rolling file in an optional user-chosen folder (created via MKCOL on
+ *     connect, one segment at a time); empty folder ⇒ the user's files root,
+ *     which always exists.
  */
 import type { CloudBackup, WebdavCredentials } from '@nodea/shared';
 
@@ -54,18 +55,27 @@ export class WebdavError extends Error {
 /** Strip a trailing slash and any pasted `/remote.php/…` tail, so we always
  *  rebuild the dav URL from a clean origin(+subpath) base. Exported for tests. */
 export function normalizeBaseUrl(raw: string): string {
-  return raw
+  const trimmed = raw
     .trim()
     .replace(/\/remote\.php\/.*$/, '')
     .replace(/\/+$/, '');
+  // Scheme is optional in the form — default to https:// when the user omits it.
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 function davRootUrl(cred: WebdavCred): string {
   return `${cred.baseUrl}/remote.php/dav/files/${encodeURIComponent(cred.username)}/`;
 }
 
+/** Encoded destination folder with a trailing slash, or '' for the user's root.
+ *  Exported for tests. */
+export function folderPath(cred: WebdavCred): string {
+  if (!cred.folder) return '';
+  return `${cred.folder.split('/').filter(Boolean).map(encodeURIComponent).join('/')}/`;
+}
+
 function davFileUrl(cred: WebdavCred): string {
-  return `${davRootUrl(cred)}${encodeURIComponent(BACKUP_FILENAME)}`;
+  return `${davRootUrl(cred)}${folderPath(cred)}${encodeURIComponent(BACKUP_FILENAME)}`;
 }
 
 /** `Basic base64(user:appPassword)`. Exported for tests. */
@@ -99,15 +109,36 @@ async function validate(cred: WebdavCred): Promise<void> {
   throw new WebdavError('path', `webdav: unexpected status (${res.status})`);
 }
 
+/** MKCOL the destination folder, one segment at a time so nested paths (e.g.
+ *  `Backups/Nodea`) work. An existing collection answers 405, which is fine. */
+async function ensureFolder(cred: WebdavCred): Promise<void> {
+  const segments = cred.folder?.split('/').filter(Boolean) ?? [];
+  let path = '';
+  for (const seg of segments) {
+    path += `${encodeURIComponent(seg)}/`;
+    const res = await fetch(`${davRootUrl(cred)}${path}`, {
+      method: 'MKCOL',
+      headers: { Authorization: basicAuth(cred) },
+      credentials: 'omit',
+    });
+    if (res.status !== 201 && res.status !== 405) {
+      throw new WebdavError('path', `webdav: cannot create folder (${res.status})`);
+    }
+  }
+}
+
 async function connect(input?: WebdavCredentials): Promise<CloudBackup> {
   if (!input) throw new Error('webdav.connect: credentials required');
+  const folder = input.folder?.trim().replace(/^\/+|\/+$/g, '');
   const cred: WebdavCred = {
     provider: 'webdav',
     baseUrl: normalizeBaseUrl(input.baseUrl),
     username: input.username.trim(),
     appPassword: input.appPassword.trim(),
+    ...(folder ? { folder } : {}),
   };
   await validate(cred);
+  await ensureFolder(cred);
   return cred;
 }
 
@@ -128,6 +159,20 @@ async function upload(cred: CloudBackup, bytes: Uint8Array): Promise<void> {
   }
 }
 
+async function download(cred: CloudBackup): Promise<Uint8Array | null> {
+  if (cred.provider !== 'webdav') throw new Error('webdav.download: wrong credential');
+  const res = await fetch(davFileUrl(cred), {
+    method: 'GET',
+    headers: { Authorization: basicAuth(cred) },
+    credentials: 'omit',
+  });
+  if (res.status === 404) return null; // no backup at the destination yet
+  if (!res.ok) {
+    throw new Error(`webdav download failed (${res.status})`);
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 // No `revoke`: a Nextcloud app-password is revoked from the server (Settings →
 // Security → Devices & sessions); disconnect just clears the local credential.
 
@@ -136,4 +181,5 @@ export const webdavProvider: CloudProvider = {
   connectKind: 'credentials',
   connect,
   upload,
+  download,
 };

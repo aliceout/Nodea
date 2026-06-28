@@ -10,6 +10,9 @@ export interface FieldProps
    *  error path takes priority: when both are set, only the error
    *  shows. */
   legend?: ReactNode;
+  /** Tighter vertical rhythm for compact/settings forms (smaller input padding
+   *  + field spacing). Default keeps the roomier auth-page sizing. */
+  dense?: boolean;
 }
 
 /**
@@ -32,14 +35,14 @@ export interface FieldProps
  * targets gets sensible aria wiring for free.
  */
 const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, error, legend, className, id, name, ...rest },
+  { label, error, legend, dense, className, id, name, ...rest },
   ref,
 ) {
   const inputId =
     id ?? `field-${name ?? label.replace(/\W/g, '-').toLowerCase()}`;
   const legendId = legend && !error ? `${inputId}-legend` : undefined;
   return (
-    <div className="mb-3.5">
+    <div className={dense ? 'mb-2' : 'mb-3.5'}>
       <label
         htmlFor={inputId}
         className="mb-1.25 block text-[12px] font-medium text-muted"
@@ -60,6 +63,7 @@ const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
           'focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-k-accent-soft)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           'read-only:cursor-default read-only:bg-bg-2',
+          dense && 'py-1.5',
           className,
         )}
         {...rest}

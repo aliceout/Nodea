@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { isApiError } from '@/core/api/client';
 import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
@@ -48,6 +48,11 @@ export default function BackupExportPage() {
   const { t } = useI18n();
   useDocumentTitle(t('auth.backup.documentTitle'));
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Reached from the Données phrase-gate as `/backup?confirm`, the tunnel only
+  // CONFIRMS the phrase (records `backupPhraseConfirmedVersion`) — no seal, no
+  // download. Reached normally it produces + downloads the `.age`.
+  const confirmOnly = searchParams.has('confirm');
   const mainKey = useNodeaStore(selectMainKey);
   const modules = useNodeaStore(selectModules);
   const { preferences, setPreferences } = usePreferences();
@@ -107,6 +112,12 @@ export default function BackupExportPage() {
         // export re-shows the words — the seal must still proceed.
         if (import.meta.env.DEV) console.warn('backup confirm-flag write failed', err);
       }
+    }
+    if (confirmOnly) {
+      // Phrase-gate path: confirming the phrase IS the whole job — never seal or
+      // download here (that's the normal `/backup` entry).
+      setStage({ kind: 'done', failed: [] });
+      return;
     }
     await onSeal(stage.phrase);
   }
@@ -210,7 +221,13 @@ export default function BackupExportPage() {
             title={t('account.data.backup.phraseTitle')}
             {...(stage.confirmed
               ? {}
-              : { subtitle: t('account.data.backup.phraseSubtitle') })}
+              : {
+                  subtitle: t(
+                    confirmOnly
+                      ? 'account.data.backup.phraseSubtitleConfirm'
+                      : 'account.data.backup.phraseSubtitle',
+                  ),
+                })}
             mnemonic={stage.phrase}
             warningTitle={t('account.data.backup.phraseWarningTitle')}
             warningBody={t('account.data.backup.phraseWarningBody')}
@@ -219,7 +236,11 @@ export default function BackupExportPage() {
             verifyOnlyMessage={t('account.data.backup.reusedMessage')}
             onRegenerate={() => void handleRegenerate()}
             regenerateLabel={t('account.data.backup.regenerate')}
-            doneLabel={t('account.data.backup.cta')}
+            doneLabel={t(
+              confirmOnly
+                ? 'account.data.backup.confirmPhraseCta'
+                : 'account.data.backup.cta',
+            )}
             onDone={() => void handleDone()}
           />
           {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}
@@ -227,7 +248,14 @@ export default function BackupExportPage() {
       ) : null}
 
       {stage.kind === 'done' ? (
-        stage.failed.length > 0 ? (
+        confirmOnly ? (
+          <div role="status">
+            <AuthPanelHeader
+              eyebrow={t('auth.backup.eyebrow')}
+              title={t('account.data.backup.phraseConfirmed')}
+            />
+          </div>
+        ) : stage.failed.length > 0 ? (
           // Partial run must NOT read as « ✓ réussi » (audit 2026-06).
           <InlineAlert>
             {t('account.data.backup.partial', { values: { modules: stage.failed.join(', ') } })}

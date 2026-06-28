@@ -36,6 +36,9 @@ export interface CloudProvider {
   /** Upload the sealed `.age` bytes, overwriting the rolling backup file. The
    *  registry guarantees `cred.provider === this.id`. */
   upload(cred: CloudBackup, bytes: Uint8Array): Promise<void>;
+  /** Fetch the rolling backup file's bytes, or `null` if none exists yet at the
+   *  destination (so the caller can offer to restore vs. start fresh). */
+  download(cred: CloudBackup): Promise<Uint8Array | null>;
   /** Best-effort: sever access at the provider on disconnect. Optional —
    *  pCloud/WebDAV have nothing to revoke browser-side (the caller just clears
    *  the local credential). */
