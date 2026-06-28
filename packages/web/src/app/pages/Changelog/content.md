@@ -5,6 +5,47 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.17.0 — 2026-06-28
+
+### Nouveautés
+
+- **ui** : dark background shades, sidebar + tabs refactor _(4e46a21)_
+- **account** : cloud backup-restore + Données tab redesign _(1160537)_
+- **account** : cloud backup — name it Nextcloud, deep-link the app-password _(f78aae4)_
+- **account** : cloud backup — pCloud + WebDAV/Nextcloud providers _(dd017c7)_
+- **account** : cloud backup Phase 3 — auto-push on unlock when stale _(2fc2342)_
+- **account** : cloud backup Phase 2 — push to Dropbox + sidebar progress card _(5b23430)_
+- **account** : cloud backup — connect Dropbox via OAuth PKCE (Phase 1) _(d2443c5)_
+
+### Corrections
+
+- **account** : lead with « régénérer » on the phrase-reset path _(7f46a25)_
+- **account** : honest cloud-restore banner + cover pcloud/oauth-popup _(108a88c)_
+- **test** : raise hookTimeout on restore-backup.test.ts _(3066e9a)_
+- **account** : close /export phrase-gate bypass + restore round-trip test _(d1f5b6e)_
+- **account** : cloud-backup branch review — phrase gate, Dropbox restore scope, prefs race _(f53126a)_
+- **account** : honest cloud-restore result banners _(2dd183d)_
+- **ui** : add an accent-strong CTA token so filled buttons aren't too light in dark _(f21f31c)_
+- **security** : cloud backup OAuth hardening — verify message source + state nonce, revoke on disconnect _(fda7488)_
+
+### Refactor
+
+- **ui** : factor a Checkbox atom, migrate the 3 hand-rolled checkboxes _(f80416c)_
+- **account** : extract cloud-backup provider seam _(6d8dc13)_
+- **ui** : sidebar footer — encryption indicator replaces the placeholder sync line _(d20f2db)_
+- **ui** : soft sage fill for the active sidebar nav item _(099fba2)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.16.0 _(d67231f)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : bump version to 2.17.0 _(423fee3)_
+
+</details>
+
 ## v2.16.0 — 2026-06-25
 
 ### Nouveautés
