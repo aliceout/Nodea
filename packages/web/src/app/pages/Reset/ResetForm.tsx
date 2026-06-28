@@ -8,6 +8,7 @@ import { zxcvbn } from '@/core/auth/password-strength';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import Checkbox from '@/ui/atoms/dirk/Checkbox';
 import Field from '@/ui/atoms/dirk/Field';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
@@ -136,11 +137,7 @@ export default function ResetForm({
         />
 
         <label className="mb-3.5 flex items-start gap-2 text-[12.5px] text-ink-soft">
-          <input
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
-            {...register('acknowledged')}
-          />
+          <Checkbox className="mt-0.5" {...register('acknowledged')} />
           <span>{t('auth.reset.form.acknowledge')}</span>
         </label>
 

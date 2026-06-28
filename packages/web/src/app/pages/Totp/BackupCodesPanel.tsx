@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { copyWithExpiry } from '@/lib/clipboard';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import Checkbox from '@/ui/atoms/dirk/Checkbox';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
 import RowCard from '@/ui/dirk/module/RowCard';
@@ -113,11 +114,10 @@ export default function BackupCodesPanel({
       </div>
 
       <label className="mb-4 flex items-start gap-2 text-[12.5px] text-ink-soft">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={acknowledged}
           onChange={(e) => setAcknowledged(e.target.checked)}
-          className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border border-hair accent-accent"
+          className="mt-0.5"
         />
         <span>{ackLabel}</span>
       </label>

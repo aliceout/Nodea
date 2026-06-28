@@ -10,6 +10,7 @@
  * rather than collapsing, so the two-card grid stays stable.
  */
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Checkbox from '@/ui/atoms/dirk/Checkbox';
 
 export interface FilterOption {
   value: string;
@@ -63,9 +64,7 @@ export default function ExportFilterColumn({
           {options.map((o) => (
             <li key={o.value}>
               <label className="flex cursor-pointer items-center gap-2.5 py-2.5 text-[13px] text-ink transition-colors hover:bg-bg-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 shrink-0 cursor-pointer accent-accent"
+                <Checkbox
                   checked={!excluded.has(o.value)}
                   onChange={() => onToggle(o.value)}
                 />
