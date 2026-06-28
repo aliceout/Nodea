@@ -227,6 +227,7 @@
         "description": "Fetches and merges the backup found on {provider}. Non-destructive: nothing is overwritten, only what's missing is added.",
         "none": "No backup found at this destination.",
         "upToDate": "Already up to date — nothing new to restore.",
+        "skipped": "Nothing restored: {count} module(s) aren't enabled here. Enable them, then re-run the restore.",
         "error": "Restore failed. Try again.",
         "phrasePrompt": "Couldn't auto-decrypt. Enter this backup's 12 words."
       },

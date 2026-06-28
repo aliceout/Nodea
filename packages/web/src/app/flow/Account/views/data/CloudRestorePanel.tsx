@@ -40,7 +40,24 @@ export default function CloudRestorePanel() {
   if (!cb) return null;
   const name = PROVIDER_NAMES[cb.provider];
 
-  function reportDone(count: number, parts: string[], hadFailures: boolean): void {
+  function reportDone(
+    count: number,
+    parts: string[],
+    hadFailures: boolean,
+    skippedModules: number,
+  ): void {
+    if (count === 0 && !hadFailures && skippedModules > 0) {
+      // Nothing merged, but modules in the backup were SKIPPED (not enabled here
+      // / unrecognised) — that is NOT "up to date". Amber, and point the user at
+      // enabling them first (e.g. a fresh device that hasn't provisioned yet).
+      setDone({
+        tone: 'warning',
+        text: t('account.data.cloudBackup.cloudRestore.skipped', {
+          values: { count: skippedModules },
+        }),
+      });
+      return;
+    }
     if (count === 0 && !hadFailures) {
       // Phrase was right, but everything was already there (or the backup was
       // empty) — say so plainly instead of "complete · 0 entries".
@@ -68,7 +85,7 @@ export default function CloudRestorePanel() {
         return;
       }
       const version = preferences.backupPhraseVersion ?? 1;
-      const { ok, count, parts, hadFailures } = await tryAutoRestore(
+      const { ok, count, parts, hadFailures, skippedModules } = await tryAutoRestore(
         bytes,
         mainKey,
         version,
@@ -76,7 +93,7 @@ export default function CloudRestorePanel() {
         t,
       );
       if (ok) {
-        reportDone(count, parts, hadFailures);
+        reportDone(count, parts, hadFailures, skippedModules);
       } else {
         // Auto-derived phrase doesn't match (other account/version) → ask for
         // the 12 words of THIS backup.
@@ -94,14 +111,14 @@ export default function CloudRestorePanel() {
     setLoading(true);
     setError('');
     try {
-      const { count, parts, hadFailures } = await restoreFromAgeBytes(
+      const { count, parts, hadFailures, skippedModules } = await restoreFromAgeBytes(
         pending,
         normaliseMnemonic(phrase),
         mainKey,
         modules,
         t,
       );
-      reportDone(count, parts, hadFailures);
+      reportDone(count, parts, hadFailures, skippedModules);
       setPending(null);
       setPhrase('');
     } catch {

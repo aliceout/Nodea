@@ -63,18 +63,24 @@ export async function tryAutoRestore(
   version: number,
   slice: Parameters<typeof restoreFromAgeBytes>[3],
   t: Parameters<typeof restoreFromAgeBytes>[4],
-): Promise<{ ok: boolean; hadFailures: boolean; count: number; parts: string[] }> {
+): Promise<{
+  ok: boolean;
+  hadFailures: boolean;
+  count: number;
+  parts: string[];
+  skippedModules: number;
+}> {
   try {
     const phrase = await deriveBackupPhrase(mainKey.hmacKey, version);
-    const { count, parts, hadFailures } = await restoreFromAgeBytes(
+    const { count, parts, hadFailures, skippedModules } = await restoreFromAgeBytes(
       bytes,
       phrase,
       mainKey,
       slice,
       t,
     );
-    return { ok: true, hadFailures, count, parts };
+    return { ok: true, hadFailures, count, parts, skippedModules };
   } catch {
-    return { ok: false, hadFailures: false, count: 0, parts: [] };
+    return { ok: false, hadFailures: false, count: 0, parts: [], skippedModules: 0 };
   }
 }

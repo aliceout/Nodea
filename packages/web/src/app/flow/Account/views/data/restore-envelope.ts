@@ -51,6 +51,12 @@ export interface RestoreResult {
    *  restored" (e.g. don't let an auto-backup overwrite the remote with an
    *  incomplete account). Distinct from the corrupted-file `failedModules`. */
   failed: string[];
+  /** How many modules present in the backup were SKIPPED — not enabled on this
+   *  account, or an unrecognised key. Distinct from `failed` (a write that
+   *  errored). `count === 0` with `skippedModules > 0` means "nothing restored
+   *  because the modules aren't here", which must NOT read as "already up to
+   *  date" (a fresh device that hasn't enabled its modules yet). */
+  skippedModules: number;
 }
 
 interface ResolvedModule {
@@ -69,6 +75,7 @@ export async function restoreEnvelope(
   const parts: string[] = [];
   const failed: string[] = [];
   let count = 0;
+  let skippedModules = 0;
 
   async function pluginFor(moduleKey: string) {
     const plugin = await getDataPlugin(moduleKey);
@@ -144,10 +151,12 @@ export async function restoreEnvelope(
     try {
       r = await pluginFor(key);
     } catch {
+      skippedModules += 1;
       parts.push(t('account.data.import.moduleSkippedUnknown', { values: { key } }));
       continue;
     }
     if (!r) {
+      skippedModules += 1;
       parts.push(t('account.data.import.moduleSkippedDisabled', { values: { key } }));
       continue;
     }
@@ -219,5 +228,5 @@ export async function restoreEnvelope(
     );
   }
 
-  return { count, parts, failed };
+  return { count, parts, failed, skippedModules };
 }
