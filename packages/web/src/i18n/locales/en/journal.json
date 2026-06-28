@@ -46,8 +46,8 @@
   "primary": {
     "yearRolling": "Current",
     "yearAria": "Writing year",
-    "showChart": "Show writing map",
-    "hideChart": "Hide writing map",
+    "showChart": "Show heatmap",
+    "hideChart": "Hide heatmap",
     "clearDayFilterTitle": "Show every entry",
     "clearDayFilterAria": "Clear day filter"
   },

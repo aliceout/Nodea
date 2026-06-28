@@ -79,6 +79,9 @@ interface JournalFiltersValue {
   setMonth: (next: number | null) => void;
   setDayFilter: (next: string | null) => void;
   toggleChart: () => void;
+  /** Force the heatmap folded/unfolded. Exposed (not just `toggleChart`) so the
+   *  inline « Paramètre du module » panel folds it on open, like the form. */
+  setChartCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface JournalActionsValue {
@@ -171,6 +174,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       setMonth: filters.setMonth,
       setDayFilter: filters.setDayFilter,
       toggleChart: filters.toggleChart,
+      setChartCollapsed: filters.setChartCollapsed,
     }),
     [
       filters.threadFilter,
@@ -190,6 +194,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       filters.setMonth,
       filters.setDayFilter,
       filters.toggleChart,
+      filters.setChartCollapsed,
     ],
   );
 

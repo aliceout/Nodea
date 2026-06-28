@@ -1,6 +1,5 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
-import PageHeading from '@/ui/dirk/module/PageHeading';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 
@@ -20,9 +19,6 @@ export default function GoalsList() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      {/* lg+ only — on mobile the topbar carries the module name. */}
-      <PageHeading className="hidden lg:block">{t('goals.title')}</PageHeading>
-
       {load.status === 'error' ? (
         <InlineAlert className="mb-4">{load.message}</InlineAlert>
       ) : null}

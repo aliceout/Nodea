@@ -5,8 +5,9 @@
  * React context — republished by the provider via `MoodFiltersValue`.
  *
  * `setChartCollapsed` is returned so the provider can wire it into the
- * actions hook (opening the inline form auto-collapses the chart); the
- * filters *context value* only exposes `toggleChart`.
+ * actions hook (opening the inline form auto-collapses the chart) AND expose it
+ * on the filters context value — the inline « Paramètre du module » panel folds
+ * the chart the same way (cf. Mood/views/PrimaryColumn).
  */
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 

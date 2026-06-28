@@ -16,7 +16,7 @@
  * `lib/admin-data` ; rows / chart / form / panel are components. See
  * `docs/Modules/HRT.md`.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { HrtProductPayload } from '@nodea/shared';
@@ -24,6 +24,11 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Select from '@/ui/atoms/dirk/Select';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import ModuleSettingsTrigger from '@/ui/dirk/module/ModuleSettingsTrigger';
+import PageHeading from '@/ui/dirk/module/PageHeading';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import SpeedDial from '@/ui/dirk/SpeedDial';
 
 import AdminLogRow from '../components/AdminLogRow';
@@ -60,6 +65,7 @@ export default function SummaryView({
   topbarSlot,
 }: SummaryViewProps) {
   const { t } = useI18n();
+  const moduleSettings = useModuleSettings();
   const setHrtSubview = useNodeaStore((s) => s.setHrtSubview);
   const { entries: products, ready, create, update } = productsHook;
   const { entries: adminEntries } = adminLogs;
@@ -109,10 +115,22 @@ export default function SummaryView({
   const latestAdmins = adminEntries.slice(0, RECENT); // hook is newest-first
   const latestLabs = useMemo(() => [...labEntries].reverse().slice(0, RECENT), [labEntries]);
 
-  function closeProductForm() {
+  const closeProductForm = useCallback(() => {
     setAddingProduct(false);
     setEditingProduct(null);
-  }
+  }, []);
+
+  // Mutual exclusion — the product form and the « Paramètre du module » panel
+  // both open at the top of this view; the just-opened one wins, never both at
+  // once (mirrors Mood / Journal / Goals / Library).
+  const openPanelsRef = useRef({ form: false, settings: false });
+  useEffect(() => {
+    const settingsOpen = !!moduleSettings?.open;
+    const prev = openPanelsRef.current;
+    if (settingsOpen && !prev.settings && productFormOpen) closeProductForm();
+    else if (productFormOpen && !prev.form && settingsOpen) moduleSettings?.close();
+    openPanelsRef.current = { form: productFormOpen, settings: settingsOpen };
+  }, [productFormOpen, moduleSettings, closeProductForm]);
   async function onSubmitProduct(payload: HrtProductPayload, id?: string): Promise<void> {
     if (id) await update(id, payload);
     else await create(payload);
@@ -123,6 +141,19 @@ export default function SummaryView({
 
   return (
     <section className="flex min-w-0 flex-col lg:h-[calc(100dvh-108px)]">
+      {/* Module title + « Paramètre du module » link on one row — HRT has no
+          sidebar to carry the title or the settings link, so Synthèse holds
+          both (title left, trigger far right), like every other module. The
+          trigger uses `ml-auto` so it stays right even when the title hides on
+          mobile (desktop-only, like Mood / Journal / Goals / Library). */}
+      <div className="mb-4 flex shrink-0 items-center gap-4">
+        <PageHeading className="mb-0 hidden lg:block">{t('hrt.title')}</PageHeading>
+        <ModuleSettingsTrigger className="ml-auto shrink-0" />
+      </div>
+      <InlinePanel open={!!moduleSettings?.open} className="mb-5 shrink-0">
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+      </InlinePanel>
+
       {productFormOpen ? (
         <div className="mb-5 shrink-0">
           <ProductForm

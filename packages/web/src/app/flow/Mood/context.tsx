@@ -68,6 +68,10 @@ interface MoodFiltersValue {
   setScoreFilter: (next: MoodScore | null) => void;
   setDayFilter: (next: string | null) => void;
   toggleChart: () => void;
+  /** Force the heatmap folded/unfolded. Exposed (not just `toggleChart`) so the
+   *  inline panels — the entry form AND « Paramètre du module » — fold it on
+   *  open, the same way. */
+  setChartCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface MoodActionsValue {
@@ -147,6 +151,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       setScoreFilter: filters.setScoreFilter,
       setDayFilter: filters.setDayFilter,
       toggleChart: filters.toggleChart,
+      setChartCollapsed: filters.setChartCollapsed,
     }),
     [
       filters.year,
@@ -162,6 +167,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       filters.setScoreFilter,
       filters.setDayFilter,
       filters.toggleChart,
+      filters.setChartCollapsed,
     ],
   );
 

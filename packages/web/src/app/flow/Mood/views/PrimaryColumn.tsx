@@ -5,7 +5,10 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import ActiveFilterChip from '@/ui/dirk/module/ActiveFilterChip';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import { useEditScrollAnchor } from '@/ui/dirk/module/use-edit-scroll-anchor';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
@@ -39,10 +42,30 @@ export default function PrimaryColumn() {
     scoreFilter,
     filtered,
     toggleChart,
+    setChartCollapsed,
     setDayFilter,
     setScoreFilter,
   } = useMoodFilters();
   const { formOpen, editingEntry, closeForm } = useMoodActions();
+  const moduleSettings = useModuleSettings();
+  // Opening « Paramètre du module » folds the heatmap, exactly like opening the
+  // entry form (use-mood-actions folds it for the form) — so the two inline
+  // panels open identically. Reopen on close, unless the form still holds it
+  // folded (formOpen is a dep so this re-evaluates when the form closes first).
+  useEffect(() => {
+    if (moduleSettings?.open) setChartCollapsed(true);
+    else if (!formOpen) setChartCollapsed(false);
+  }, [moduleSettings?.open, formOpen, setChartCollapsed]);
+  // The entry form and « Paramètre du module » are mutually exclusive — opening
+  // one closes the other so they never stack (the just-opened panel wins).
+  const openPanelsRef = useRef({ form: false, settings: false });
+  useEffect(() => {
+    const settingsOpen = !!moduleSettings?.open;
+    const prev = openPanelsRef.current;
+    if (settingsOpen && !prev.settings && formOpen) closeForm();
+    else if (formOpen && !prev.form && settingsOpen) moduleSettings?.close();
+    openPanelsRef.current = { form: formOpen, settings: settingsOpen };
+  }, [formOpen, moduleSettings, closeForm]);
   // Editing a row far down: jump to the form on open, glide back to the row
   // on save/cancel. Create flows (editingEntry === null) keep their place.
   useEditScrollAnchor(editingEntry !== null);
@@ -174,14 +197,16 @@ export default function PrimaryColumn() {
           </div>
           <div className="flex items-center gap-2">
             {year !== null ? <MonthSelector /> : null}
-            {/* Frise toggle — folds / unfolds the heatmap above. The
-                chevron travels with the sticky pane so it stays
-                accessible while the user scrolls the entries list. */}
-            <CollapseToggle
-              open={!chartCollapsed}
-              onToggle={toggleChart}
-              label={chartToggleLabel}
-            />
+            {/* Frise toggle — folds / unfolds the heatmap above. Hidden while an
+                inline panel (form OR « Paramètre du module ») is open: the
+                heatmap is folded away then, so the toggle would be a no-op. */}
+            {formOpen || moduleSettings?.open ? null : (
+              <CollapseToggle
+                open={!chartCollapsed}
+                onToggle={toggleChart}
+                label={chartToggleLabel}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -194,15 +219,19 @@ export default function PrimaryColumn() {
           « edit row B » without closing in between remounts the
           form with the right initial values rather than
           re-applying defaults to a still-mounted draft. */}
-      {formOpen ? (
-        <div className="mt-4">
-          <MoodForm
-            key={editingEntry?.id ?? 'create'}
-            {...(editingEntry ? { initial: editingEntry } : {})}
-            onClose={closeForm}
-          />
-        </div>
-      ) : null}
+      {/* « Paramètre du module » — same InlinePanel mount + fade-up as the
+          entry form below; only the child + toggle source differ. */}
+      <InlinePanel open={!!moduleSettings?.open}>
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+      </InlinePanel>
+
+      <InlinePanel open={formOpen}>
+        <MoodForm
+          key={editingEntry?.id ?? 'create'}
+          {...(editingEntry ? { initial: editingEntry } : {})}
+          onClose={closeForm}
+        />
+      </InlinePanel>
 
       {load.status === 'error' ? (
         <InlineAlert className="mt-4">{load.message}</InlineAlert>

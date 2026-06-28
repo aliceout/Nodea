@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import ModuleSettingsTrigger from './ModuleSettingsTrigger';
+
 /**
  * Shared right-column shell for module pages (Mood / Journal / Goals /
  * Library).
@@ -20,6 +22,10 @@ import type { ReactNode } from 'react';
 export default function ModuleSidebar({ children }: { children: ReactNode }) {
   return (
     <aside className="sticky top-20 hidden min-w-0 flex-col gap-6 self-start lg:landscape:flex">
+      {/* Per-module mini settings menu — first position in every module's right
+          column. The link itself is shared (`ModuleSettingsTrigger`); HRT + Home,
+          which have no sidebar, drop the same trigger into their content. */}
+      <ModuleSettingsTrigger className="self-start" />
       {children}
     </aside>
   );

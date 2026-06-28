@@ -1,4 +1,6 @@
 {
+  "moduleSettings": "Paramètre du module",
+  "moduleSettingsPlaceholder": "Les réglages du module arriveront ici.",
   "home": {
     "label": "Accueil",
     "description": "Vue d’ensemble, accès rapide à vos modules et infos du jour."

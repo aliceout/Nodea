@@ -1,4 +1,8 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import ModuleSettingsTrigger from '@/ui/dirk/module/ModuleSettingsTrigger';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import AnnouncementsCard from '../components/AnnouncementsCard';
@@ -29,16 +33,27 @@ import { useHomepageData } from '../context';
 export default function PrimaryColumn() {
   const { t } = useI18n();
   const { displayName } = useHomepageData();
+  const moduleSettings = useModuleSettings();
 
   return (
     <section className="flex min-w-0 flex-col">
-      {/* Smaller on mobile — the 30px desktop size dominates a phone
-          screen. */}
-      <PageHeading className="mb-6 text-[22px] lg:text-[30px]">
-        {displayName
-          ? t('home.greeting.named', { values: { name: displayName } })
-          : t('home.greeting.anonymous')}
-      </PageHeading>
+      {/* Greeting + module-settings link on one row — Home has no sidebar to
+          host « Paramètre du module », so it sits far right on the greeting. */}
+      <div className="mb-6 flex items-center justify-between gap-4">
+        {/* Smaller on mobile — the 30px desktop size dominates a phone
+            screen. `mb-0` : the row's `mb-6` owns the spacing, the heading's
+            default `mb-6` would double it. */}
+        <PageHeading className="mb-0 text-[22px] lg:text-[30px]">
+          {displayName
+            ? t('home.greeting.named', { values: { name: displayName } })
+            : t('home.greeting.anonymous')}
+        </PageHeading>
+        <ModuleSettingsTrigger className="shrink-0" label={t('home.settings')} />
+      </div>
+
+      <InlinePanel open={!!moduleSettings?.open} className="mb-6">
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+      </InlinePanel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Admin-pushed announcements span both columns on lg+ so

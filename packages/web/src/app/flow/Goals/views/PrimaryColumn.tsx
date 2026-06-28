@@ -1,3 +1,11 @@
+import { useEffect, useRef } from 'react';
+
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
+import PageHeading from '@/ui/dirk/module/PageHeading';
+
 import GoalForm from '../components/GoalForm';
 import { useGoalsActions, useGoalsFilters } from '../context';
 import GoalCardGrid from './GoalCardGrid';
@@ -19,11 +27,32 @@ import GoalsList from './GoalsList';
  * with the right initial values.
  */
 export default function PrimaryColumn() {
+  const { t } = useI18n();
   const { viewMode } = useGoalsFilters();
   const { formOpen, editingEntry, closeForm } = useGoalsActions();
+  const moduleSettings = useModuleSettings();
+  // The form and « Paramètre du module » are mutually exclusive — opening one
+  // closes the other so they never stack (the just-opened panel wins).
+  const openPanelsRef = useRef({ form: false, settings: false });
+  useEffect(() => {
+    const settingsOpen = !!moduleSettings?.open;
+    const prev = openPanelsRef.current;
+    if (settingsOpen && !prev.settings && formOpen) closeForm();
+    else if (formOpen && !prev.form && settingsOpen) moduleSettings?.close();
+    openPanelsRef.current = { form: formOpen, settings: settingsOpen };
+  }, [formOpen, moduleSettings, closeForm]);
 
   return (
     <div className="min-w-0">
+      {/* lg+ only — on mobile the topbar carries the module name. Lifted here
+          (was in GoalCardGrid / GoalsList) so the title stays ABOVE the inline
+          panel + form, like Mood / Journal. */}
+      <PageHeading className="hidden lg:block">{t('goals.title')}</PageHeading>
+      {/* « Paramètre du module » — inline panel, toggled from the sidebar link;
+          mutually exclusive with the form. */}
+      <InlinePanel open={!!moduleSettings?.open}>
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+      </InlinePanel>
       {formOpen ? (
         <GoalForm
           key={editingEntry?.id ?? 'create'}

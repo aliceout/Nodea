@@ -2,7 +2,6 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
 import GroupBlock from '@/ui/dirk/module/GroupBlock';
-import PageHeading from '@/ui/dirk/module/PageHeading';
 
 import { useGoalsData, useGoalsFilters } from '../context';
 import GoalCard from './GoalCard';
@@ -32,9 +31,6 @@ export default function GoalCardGrid() {
 
   return (
     <section className="flex min-w-0 flex-col">
-      {/* lg+ only — on mobile the topbar carries the module name. */}
-      <PageHeading className="hidden lg:block">{t('goals.title')}</PageHeading>
-
       {load.status === 'error' ? (
         <InlineAlert className="mb-4">{load.message}</InlineAlert>
       ) : null}

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { ModuleSettingsProvider } from './module-settings-context';
+
 interface ModuleShellProps {
   /** Per-page topbar (`<Topbar label=... onOpenMenu=...>`). Always
    *  renders first, sticky to the top of the scroll container. */
@@ -51,6 +53,7 @@ export default function ModuleShell({
   layout = 'aside',
 }: ModuleShellProps) {
   return (
+    <ModuleSettingsProvider>
     <div className="animate-fade-up flex min-w-0 flex-1 flex-col">
       {topbar}
       {fab}
@@ -75,5 +78,6 @@ export default function ModuleShell({
         <div className="px-6 py-7 sm:px-9">{children}</div>
       )}
     </div>
+    </ModuleSettingsProvider>
   );
 }

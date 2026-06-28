@@ -6,6 +6,7 @@
     "named": "Bonjour, {name}.",
     "anonymous": "Bonjour."
   },
+  "settings": "Paramètre de la page d’accueil",
   "tips": {
     "recovery": {
       "title": "Important",

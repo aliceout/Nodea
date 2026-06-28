@@ -5,8 +5,11 @@ import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import { useEditScrollAnchor } from '@/ui/dirk/module/use-edit-scroll-anchor';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
@@ -42,6 +45,7 @@ export default function PrimaryColumn() {
     chartCollapsed,
     dayFilter,
     toggleChart,
+    setChartCollapsed,
     setDayFilter,
   } = useJournalFilters();
   const { formOpen, editingEntry, closeForm } = useJournalActions();
@@ -49,6 +53,26 @@ export default function PrimaryColumn() {
   // on save/cancel (Journal previously stayed put, stranding the user at the
   // off-screen form). Create flows (editingEntry === null) keep their place.
   useEditScrollAnchor(editingEntry !== null);
+  const moduleSettings = useModuleSettings();
+  // Fold the heatmap whenever an inline panel is open, unfold it when none is —
+  // same as Mood, so the fold ANIMATES on every open (Journal used to leave the
+  // chart folded after the form, so a later open had nothing to animate). The
+  // form's open-fold lives in use-journal-actions; this effect adds the unfold
+  // on close (formOpen is a dep, so it also unfolds when the form closes).
+  useEffect(() => {
+    if (moduleSettings?.open) setChartCollapsed(true);
+    else if (!formOpen) setChartCollapsed(false);
+  }, [moduleSettings?.open, formOpen, setChartCollapsed]);
+  // The form and « Paramètre du module » are mutually exclusive — opening one
+  // closes the other so they never stack (the just-opened panel wins).
+  const openPanelsRef = useRef({ form: false, settings: false });
+  useEffect(() => {
+    const settingsOpen = !!moduleSettings?.open;
+    const prev = openPanelsRef.current;
+    if (settingsOpen && !prev.settings && formOpen) closeForm();
+    else if (formOpen && !prev.form && settingsOpen) moduleSettings?.close();
+    openPanelsRef.current = { form: formOpen, settings: settingsOpen };
+  }, [formOpen, moduleSettings, closeForm]);
   // Group headers match Goals : uppercase « eyebrow » for both the
   // by-month and by-thread groupings (the « par fil » headers used to
   // be the heavier 15px subtitle, out of step with the rest).
@@ -114,9 +138,12 @@ export default function PrimaryColumn() {
   // (via MobileFilters' `trailing`) and the desktop entries-heading
   // row. Only one is visible per breakpoint (the other's container is
   // hidden), so there's no duplicate on screen.
-  const chartToggleButton = (
-    <CollapseToggle open={!chartCollapsed} onToggle={toggleChart} label={chartToggleLabel} />
-  );
+  // Hidden while an inline panel (form OR « Paramètre du module ») is open: the
+  // heatmap is folded away then, so the toggle would be a no-op.
+  const chartToggleButton =
+    formOpen || moduleSettings?.open ? null : (
+      <CollapseToggle open={!chartCollapsed} onToggle={toggleChart} label={chartToggleLabel} />
+    );
 
   return (
     <section className="flex min-w-0 flex-col">
@@ -200,6 +227,12 @@ export default function PrimaryColumn() {
           stealing the surrounding chrome. Keyed on the edited entry
           id so switching from edit-A to edit-B remounts the form
           with the right initial values. */}
+      {/* « Paramètre du module » — inline panel like the entry composer,
+          toggled from the sidebar link; mutually exclusive with the form. */}
+      <InlinePanel open={!!moduleSettings?.open}>
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+      </InlinePanel>
+
       {formOpen ? (
         <JournalForm
           key={editingEntry?.id ?? 'create'}

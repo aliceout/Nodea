@@ -6,6 +6,7 @@
     "named": "Hello, {name}.",
     "anonymous": "Hello."
   },
+  "settings": "Home page settings",
   "tips": {
     "recovery": {
       "title": "Important",

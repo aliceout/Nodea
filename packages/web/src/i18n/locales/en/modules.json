@@ -1,4 +1,6 @@
 {
+  "moduleSettings": "Module settings",
+  "moduleSettingsPlaceholder": "Module settings will live here.",
   "home": {
     "label": "Home",
     "description": "Overview, quick access to your modules and highlights of the day."

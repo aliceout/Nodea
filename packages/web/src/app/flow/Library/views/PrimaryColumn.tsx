@@ -1,6 +1,11 @@
+import { useEffect, useRef } from 'react';
+
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
 import EmptyHint from '@/ui/dirk/module/EmptyHint';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
@@ -26,6 +31,18 @@ export default function PrimaryColumn() {
   const { viewMode, cellFilter, filteredItems, groups, setCellFilter } =
     useLibraryFilters();
   const { itemForm, closeItemForm } = useLibraryActions();
+  const moduleSettings = useModuleSettings();
+  // The form and « Paramètre du module » are mutually exclusive — opening one
+  // closes the other so they never stack (the just-opened panel wins).
+  const openPanelsRef = useRef({ form: false, settings: false });
+  useEffect(() => {
+    const formOpen = !!itemForm;
+    const settingsOpen = !!moduleSettings?.open;
+    const prev = openPanelsRef.current;
+    if (settingsOpen && !prev.settings && formOpen) closeItemForm();
+    else if (formOpen && !prev.form && settingsOpen) moduleSettings?.close();
+    openPanelsRef.current = { form: formOpen, settings: settingsOpen };
+  }, [itemForm, moduleSettings, closeItemForm]);
 
   const total = items.length;
   const filteredCount = filteredItems.length;
@@ -42,6 +59,12 @@ export default function PrimaryColumn() {
     <section className="flex min-w-0 flex-col">
       {/* lg+ only — on mobile the topbar carries the module name. */}
       <PageHeading className="hidden lg:block">{t('library.title')}</PageHeading>
+
+      {/* « Paramètre du module » — inline panel, toggled from the sidebar link;
+          mutually exclusive with the form. */}
+      <InlinePanel open={!!moduleSettings?.open}>
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+      </InlinePanel>
 
       {/* Inline book form — surfaced above the catalogue when the
           topbar « + Nouveau livre » CTA (create) or a row's edit
