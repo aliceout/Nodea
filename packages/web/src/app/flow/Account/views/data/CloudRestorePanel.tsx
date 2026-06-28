@@ -35,7 +35,11 @@ export default function CloudRestorePanel() {
   const cb = preferences.cloudBackup;
 
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
+  // The restore outcome banner: green for a real merge, amber for a partial one
+  // (a module failed — re-run to finish), or a plain "already up to date".
+  const [done, setDone] = useState<{ tone: 'success' | 'warning'; text: string } | null>(
+    null,
+  );
   const [error, setError] = useState('');
   // Downloaded bytes held while we ask for the 12 words (auto-decrypt failed).
   const [pending, setPending] = useState<Uint8Array | null>(null);
@@ -44,18 +48,25 @@ export default function CloudRestorePanel() {
   if (!cb) return null;
   const name = PROVIDER_NAMES[cb.provider] ?? cb.provider;
 
-  function reportDone(count: number, parts: string[]): void {
-    setSuccess(
-      t('account.data.import.successPrefix', {
-        values: { count, parts: parts.join(' ; ') },
-      }),
-    );
+  function reportDone(count: number, parts: string[], hadFailures: boolean): void {
+    if (count === 0 && !hadFailures) {
+      // Phrase was right, but everything was already there (or the backup was
+      // empty) — say so plainly instead of "complete · 0 entries".
+      setDone({ tone: 'success', text: t('account.data.cloudBackup.cloudRestore.upToDate') });
+      return;
+    }
+    const summary = t('account.data.import.successPrefix', {
+      values: { count, parts: parts.join(' ; ') },
+    });
+    // A partial restore is amber, not green — it carries a "module failed — run
+    // again" line and the user must re-run before the next auto-backup.
+    setDone({ tone: hadFailures ? 'warning' : 'success', text: summary });
   }
 
   async function onRestore(): Promise<void> {
     if (!cb || !mainKey) return;
     setLoading(true);
-    setSuccess('');
+    setDone(null);
     setError('');
     setPending(null);
     try {
@@ -67,8 +78,14 @@ export default function CloudRestorePanel() {
       const version = preferences.backupPhraseVersion ?? 1;
       const derived = await deriveBackupPhrase(mainKey.hmacKey, version);
       try {
-        const { count, parts } = await restoreFromAgeBytes(bytes, derived, mainKey, modules, t);
-        reportDone(count, parts);
+        const { count, parts, hadFailures } = await restoreFromAgeBytes(
+          bytes,
+          derived,
+          mainKey,
+          modules,
+          t,
+        );
+        reportDone(count, parts, hadFailures);
       } catch {
         // Auto-derived phrase doesn't match (other account/version) → ask the
         // user for the 12 words of THIS backup.
@@ -86,14 +103,14 @@ export default function CloudRestorePanel() {
     setLoading(true);
     setError('');
     try {
-      const { count, parts } = await restoreFromAgeBytes(
+      const { count, parts, hadFailures } = await restoreFromAgeBytes(
         pending,
         normaliseMnemonic(phrase),
         mainKey,
         modules,
         t,
       );
-      reportDone(count, parts);
+      reportDone(count, parts, hadFailures);
       setPending(null);
       setPhrase('');
     } catch {
@@ -180,9 +197,9 @@ export default function CloudRestorePanel() {
         </div>
       ) : null}
 
-      {success ? (
-        <InlineAlert tone="success" className="mt-3">
-          {success}
+      {done ? (
+        <InlineAlert tone={done.tone} className="mt-3">
+          {done.text}
         </InlineAlert>
       ) : null}
       {error ? <InlineAlert className="mt-3">{error}</InlineAlert> : null}

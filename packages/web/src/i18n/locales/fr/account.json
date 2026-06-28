@@ -225,6 +225,7 @@
         "loading": "Restauration…",
         "description": "Récupère et fusionne la sauvegarde présente sur {provider}. Non-destructif : rien n'est écrasé, on ajoute ce qui manque.",
         "none": "Aucune sauvegarde trouvée à cette destination.",
+        "upToDate": "Déjà à jour — rien de nouveau à restaurer.",
         "error": "La restauration a échoué. Réessaie.",
         "phrasePrompt": "Déchiffrement automatique impossible. Saisis les 12 mots de cette sauvegarde."
       },
