@@ -68,7 +68,7 @@ export default function Layout() {
   useModulesHydration();
   useFirstRunSeed();
   // Auto cloud backup (ADR-0017): on unlock, push a fresh .age if the last is
-  // > 24 h old. No-op unless Dropbox is connected; waits for the modules
+  // > 24 h old. No-op unless a cloud provider is connected; waits for the modules
   // config to hydrate so it never overwrites the rolling file with a partial
   // account.
   useAutoCloudBackup();

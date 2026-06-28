@@ -54,10 +54,18 @@ export default function WebdavConnectForm({
 
   // Once a real URL is typed, deep-link straight to the Nextcloud app-password
   // screen so the user doesn't hunt through menus (no OAuth, but less friction).
+  // `.origin` drops any path the user pasted (e.g. a full `…/remote.php/dav`
+  // WebDAV URL) — the security page lives at the NC root, so keeping the path
+  // would 404. Gated on a dot so we don't link a half-typed host.
   const trimmedUrl = watch('baseUrl')?.trim() ?? '';
-  const securityUrl = trimmedUrl.includes('.')
-    ? `${normalizeBaseUrl(trimmedUrl)}/index.php/settings/user/security`
-    : null;
+  const securityUrl = ((): string | null => {
+    if (!trimmedUrl.includes('.')) return null;
+    try {
+      return `${new URL(normalizeBaseUrl(trimmedUrl)).origin}/index.php/settings/user/security`;
+    } catch {
+      return null;
+    }
+  })();
 
   async function onSubmit(values: WebdavCredentials): Promise<void> {
     setServerError(null);

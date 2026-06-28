@@ -55,7 +55,9 @@ async function connect(): Promise<CloudBackup> {
     code_challenge: challenge,
     code_challenge_method: 'S256',
     token_access_type: 'offline',
-    scope: 'files.content.write',
+    // write = upload the backup; read = download it back (restore). Without read,
+    // every /files/download returns 401 and restore-from-Dropbox is broken.
+    scope: 'files.content.write files.content.read',
     state,
   });
   const result = await awaitOAuthCallback(

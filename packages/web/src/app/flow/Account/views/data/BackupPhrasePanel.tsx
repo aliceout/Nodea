@@ -7,11 +7,12 @@ import Button from '@/ui/atoms/dirk/Button';
 /**
  * Backup-phrase gate — top panel of Account → Données.
  *
- * WHAT  Gates every export/backup option (encrypted `.age`, plain `.json`, auto
- *       cloud) behind the 12-word phrase that seals every backup: `DataTab`
- *       unlocks those panels only when `backupPhraseConfirmedVersion ===
- *       backupPhraseVersion`. `ImportPanel` stays outside the gate (restore is
- *       input, not a backup).
+ * WHAT  Launches the phrase ceremony; the GATE it controls lives in the backup
+ *       actions themselves — `ExportPanel` (both `.age` + `.json`), the manual
+ *       cloud push and the auto push (`CloudBackupPanel` / `useAutoCloudBackup`)
+ *       each disable until `backupPhraseConfirmedVersion === backupPhraseVersion`
+ *       (`isBackupPhraseConfirmed`). Restore + cloud CONNECT stay OUTSIDE the
+ *       gate (input, and the phrase is re-derivable from the key).
  * WHERE Renders above `ExportPanel` / `CloudBackupPanel`.
  * WHY   Without the phrase a backup is unrecoverable; gating everything (incl.
  *       the plain JSON export) stops users quietly skipping it.

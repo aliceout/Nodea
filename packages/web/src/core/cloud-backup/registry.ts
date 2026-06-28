@@ -24,6 +24,15 @@ const PROVIDERS: Partial<Record<ProviderId, CloudProvider>> = {
 /** Provider ids that are wired + connectable today (drives the UI picker). */
 export const CLOUD_PROVIDERS = Object.keys(PROVIDERS) as ProviderId[];
 
+/** Display names — proper nouns, not translated. WebDAV surfaces as "Nextcloud"
+ *  (webapppassword makes it Nextcloud-only in practice). Single home so the
+ *  panels don't each keep a divergent copy. */
+export const PROVIDER_NAMES: Record<ProviderId, string> = {
+  dropbox: 'Dropbox',
+  pcloud: 'pCloud',
+  webdav: 'Nextcloud',
+};
+
 export function getProvider(id: ProviderId): CloudProvider {
   const provider = PROVIDERS[id];
   if (!provider) {

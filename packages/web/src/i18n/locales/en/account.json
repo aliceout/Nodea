@@ -134,7 +134,8 @@
       "intro": "A 12-word phrase encrypts all your backups (manual and automatic). Shown the first time you create an encrypted one — save it, without it your files are permanently unrecoverable.",
       "setupCta": "Set up my phrase",
       "confirmedDescription": "This phrase encrypts your manual and automatic backups. You can reset it if needed — backups already made keep their old phrase.",
-      "resetCta": "Reset my phrase"
+      "resetCta": "Reset my phrase",
+      "lockedHint": "Set up your backup phrase first (above) — without it a backup would be undecryptable."
     },
     "export": {
       "title": "Export",

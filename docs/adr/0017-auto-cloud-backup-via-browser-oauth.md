@@ -114,9 +114,10 @@ above, so the original reasoning stays legible.
   no durable browser-only token for real unattended 24 h auto-backup. Out.
 - **Seam extracted, as planned but at pCloud, not Google.** `core/cloud-backup/`
   now holds a `CloudProvider` interface — `{ id, connectKind, connect, upload,
-  revoke? }` — plus a `registry`. `connectKind` (`'oauth' | 'credentials'`) is
-  the one addition the original `{ connect, refresh, upload }` sketch missed: not
-  every provider connects via a popup.
+  download, revoke? }` — plus a `registry`. `connectKind` (`'oauth' |
+  'credentials'`) is the one addition the original `{ connect, refresh, upload }`
+  sketch missed: not every provider connects via a popup. `download` arrived with
+  the restore path (next amendment).
 - **Providers shipped:** **Dropbox** (OAuth2 PKCE, offline *refresh* token),
   **pCloud** (OAuth2 *implicit*, a **non-expiring** access token + its API-region
   host — no refresh dance at all), **WebDAV / Nextcloud** (HTTP **Basic** auth
@@ -148,6 +149,46 @@ above, so the original reasoning stays legible.
   is the only Nextcloud credential that is secret-free **and** CORS-usable (via
   webapppassword) **and** long-lived — hence the typed form. The form deep-links
   to the NC security screen to cut the friction the popup would have saved.
+
+## Amendment — the restore path (2026-06)
+
+The push side above is only half the loop. Restore shipped alongside it, reusing
+the same seam and the same E2E guarantees — recorded here as the original ADR was
+written push-only.
+
+- **`download` on the seam.** `CloudProvider` gained `download(cred): Uint8Array
+  | null` beside `upload`. Restore is then provider-agnostic: `download` →
+  `openBackup` (decrypt with the phrase) → `unpackBackup` → `restoreEnvelope`.
+  Dropbox's OAuth scope widened from write-only to `files.content.write
+  files.content.read` so the same app-folder blob can be read back.
+- **Non-destructive merge, always.** `restoreEnvelope` dedups by each module's
+  natural key and only ADDS what's missing — it never overwrites or deletes a
+  local record. Restoring into a populated account is safe; restoring twice is a
+  no-op. Parent→child links are relinked in a second pass (a child whose parent is
+  absent from the backup is surfaced, not silently dropped).
+- **Two entry points, one pipeline.** (1) *Restore-on-connect*: the first time a
+  provider is connected, connect PROBES the destination; if a backup already lives
+  there, the user is asked whether to merge it before any push happens. (2) An
+  on-demand *« Restaurer depuis le cloud »* panel in the Restaurer group, for
+  later pulls. Both funnel through the same `restoreFromAgeBytes`.
+- **Phrase: silent first, ask on mismatch.** The common case — restoring YOUR own
+  account on a new device — needs no typing: the deterministic per-account phrase
+  (ADR-0016) is re-derived and tried first. Only when that fails (a backup sealed
+  by a *different* account or phrase version) does the UI ask for the 12 words.
+- **Overwrite-safety is load-bearing.** A connect must never let the first
+  auto-push clobber a real remote backup before the user has seen it. So: connect
+  probes BEFORE persisting `cloudBackup`; a download *error* is NOT read as
+  "empty" (only an explicit provider not-found is — Dropbox `path/not_found`, a
+  WebDAV 404, pCloud `2009`); and when the destination can't be probed, or a
+  restore ran only partially, `lastBackupAt` is stamped to DEFER the auto-push
+  until the user has resolved it.
+- **The phrase gate covers backup, not restore.** Manual export (`.age` + plain
+  `.json`), the manual cloud push and the auto push all stay disabled until the
+  seal phrase is confirmed via the `/backup` quiz (`backupPhraseConfirmedVersion
+  === backupPhraseVersion`) — a user can't ship a backup they could never decrypt,
+  and the plain-JSON option can't be used to sidestep that. Restore and the cloud
+  CONNECT are deliberately OUTSIDE the gate (input, and the phrase is re-derivable
+  from the key), so a fresh device can pull its data before re-confirming anything.
 
 ## Alternatives considered
 

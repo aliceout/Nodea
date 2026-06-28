@@ -6,27 +6,22 @@ import { CloudIcon } from '@heroicons/react/24/solid';
 import type { CloudBackup } from '@nodea/shared';
 
 import { usePreferences } from '@/core/auth/use-preferences';
-import { CLOUD_PROVIDERS, getProvider } from '@/core/cloud-backup/registry';
-import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
-import { useNodeaStore } from '@/core/store/nodea-store';
+import {
+  CLOUD_PROVIDERS,
+  getProvider,
+  PROVIDER_NAMES,
+} from '@/core/cloud-backup/registry';
+import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 
 import { pushBackupToCloud } from './cloud-push';
-import { restoreFromAgeBytes } from './restore-backup';
+import { isBackupPhraseConfirmed } from './phrase-gate';
+import { tryAutoRestore } from './restore-backup';
 import WebdavConnectForm from './WebdavConnectForm';
 
 type ProviderId = (typeof CLOUD_PROVIDERS)[number];
-
-/** Display names — proper nouns, not translated. */
-const PROVIDER_NAMES: Record<ProviderId, string> = {
-  dropbox: 'Dropbox',
-  pcloud: 'pCloud',
-  // Protocol is WebDAV, but webapppassword makes it Nextcloud-only in practice —
-  // so we surface the name users actually recognise.
-  webdav: 'Nextcloud',
-};
 
 /** Dropbox's official glyph (CC0, simple-icons), in its real brand blue. */
 function DropboxGlyph({ className }: { className: string }) {
@@ -67,7 +62,11 @@ export default function CloudBackupPanel() {
   const { t } = useI18n();
   const { preferences, setPreferences } = usePreferences();
   const confirm = useConfirm();
+  const mainKey = useNodeaStore(selectMainKey);
+  const modules = useNodeaStore(selectModules);
   const cb = preferences.cloudBackup;
+  // Backup (manual + auto) is gated on the phrase; CONNECT + restore are not.
+  const phraseReady = isBackupPhraseConfirmed(preferences);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   // Why the user should go restore manually, if at all:
@@ -91,31 +90,6 @@ export default function CloudBackupPanel() {
       setWebdavOpen(true);
     } else {
       void onConnect(id);
-    }
-  }
-
-  /** Auto-restore the COMMON case: re-derive THIS account's phrase and decrypt.
-   *  Returns false if it can't (a different account/version sealed it) so the
-   *  caller can point the user at the manual 12-word restore. */
-  async function tryAutoRestore(
-    bytes: Uint8Array,
-  ): Promise<{ ok: boolean; hadFailures: boolean }> {
-    const state = useNodeaStore.getState();
-    const mainKey = state.crypto.main;
-    if (!mainKey) return { ok: false, hadFailures: false };
-    const version = preferences.backupPhraseVersion ?? 1;
-    try {
-      const phrase = await deriveBackupPhrase(mainKey.hmacKey, version);
-      const { hadFailures } = await restoreFromAgeBytes(
-        bytes,
-        phrase,
-        mainKey,
-        state.modules,
-        t,
-      );
-      return { ok: true, hadFailures };
-    } catch {
-      return { ok: false, hadFailures: false };
     }
   }
 
@@ -148,7 +122,10 @@ export default function CloudBackupPanel() {
         cancelLabel: t('account.data.cloudBackup.restore.cancelCta'),
       });
       if (wantRestore) {
-        const { ok, hadFailures } = await tryAutoRestore(remote);
+        const version = preferences.backupPhraseVersion ?? 1;
+        const { ok, hadFailures } = mainKey
+          ? await tryAutoRestore(remote, mainKey, version, modules, t)
+          : { ok: false, hadFailures: false };
         // Always stamp when a restore was wanted — defers the auto-push so it
         // can't overwrite the remote before the user has finished (incl.
         // re-running after a partial restore).
@@ -225,7 +202,7 @@ export default function CloudBackupPanel() {
                   variant="primary"
                   size="sm"
                   onClick={onBackupNow}
-                  disabled={pushState === 'saving'}
+                  disabled={pushState === 'saving' || !phraseReady}
                 >
                   {pushState === 'saving'
                     ? t('account.data.cloudBackup.backingUp')
@@ -235,6 +212,11 @@ export default function CloudBackupPanel() {
                   {t('account.data.cloudBackup.disconnectCta')}
                 </Button>
               </div>
+              {!phraseReady ? (
+                <p role="status" className="text-[11.5px] text-muted">
+                  {t('account.data.phraseGate.lockedHint')}
+                </p>
+              ) : null}
               {pushState === 'done' ? (
                 <p role="status" className="text-[11.5px] text-muted">
                   {t('account.data.cloudBackup.backupDone')}

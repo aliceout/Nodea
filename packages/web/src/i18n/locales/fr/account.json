@@ -134,7 +134,8 @@
       "intro": "Une phrase de 12 mots chiffre toutes tes sauvegardes (manuelle et automatique). Montrée la 1ʳᵉ fois que tu en crées une chiffrée — note-la, sans elle tes fichiers sont définitivement irrécupérables.",
       "setupCta": "Configurer ma phrase",
       "confirmedDescription": "Cette phrase chiffre tes sauvegardes manuelles et automatiques. Tu peux la réinitialiser si besoin — les sauvegardes déjà faites garderont leur ancienne phrase.",
-      "resetCta": "Réinitialiser ma phrase"
+      "resetCta": "Réinitialiser ma phrase",
+      "lockedHint": "Crée d’abord ta phrase de sauvegarde (ci-dessus) — sans elle, une sauvegarde serait indéchiffrable."
     },
     "export": {
       "title": "Exporter",
@@ -192,10 +193,10 @@
       "phraseConfirmed": "Phrase confirmée.",
       "phraseWarningTitle": "À noter MAINTENANT",
       "phraseWarningBody": "Ces 12 mots déchiffrent ta sauvegarde .age — ils ne te seront pas réaffichés. Sans eux, le fichier est définitivement irrécupérable.",
-      "reusedMessage": "Ta phrase de sauvegarde existe déjà — on réutilise la même. Confirme-la ci-dessous par le quiz. Tu peux la régénérer en cas de souci, mais ça ne s'appliquera qu'aux futures sauvegardes (les anciennes gardent leur phrase).",
+      "reusedMessage": "Ta phrase de sauvegarde existe déjà — on réutilise la même. Confirme-la ci-dessous par le quiz. Tu peux la régénérer en cas de souci, mais ça ne s’appliquera qu’aux futures sauvegardes (les anciennes gardent leur phrase).",
       "regenerate": "Régénérer ma phrase",
       "regenerateTitle": "Régénérer la phrase de sauvegarde ?",
-      "regenerateConfirm": "Tes sauvegardes déjà créées garderont leur ancienne phrase ; seules les prochaines utiliseront la nouvelle. Note bien la nouvelle phrase à l'étape suivante.",
+      "regenerateConfirm": "Tes sauvegardes déjà créées garderont leur ancienne phrase ; seules les prochaines utiliseront la nouvelle. Note bien la nouvelle phrase à l’étape suivante.",
       "regenerateCta": "Régénérer"
     },
     "cloudBackup": {
@@ -215,7 +216,7 @@
         "message": "Une sauvegarde existe déjà à cette destination. La restaurer maintenant ? Tes données actuelles ne seront pas écrasées — on ajoute seulement ce qui manque.",
         "confirmCta": "Restaurer",
         "cancelCta": "Ignorer",
-        "manualHint": "Déchiffrement automatique impossible (sauvegarde d'un autre compte ?). Utilise « Restaurer depuis le cloud » avec les 12 mots.",
+        "manualHint": "Déchiffrement automatique impossible (sauvegarde d’un autre compte ?). Utilise « Restaurer depuis le cloud » avec les 12 mots.",
         "partialHint": "Restauration incomplète. Relance-la depuis « Restaurer depuis le cloud » pour la terminer avant la prochaine sauvegarde auto.",
         "uncheckedHint": "Impossible de vérifier la destination. Si une sauvegarde existe, restaure-la depuis « Restaurer depuis le cloud » avant la prochaine sauvegarde auto."
       },
@@ -223,7 +224,7 @@
         "title": "Depuis le cloud",
         "cta": "Restaurer depuis {provider}",
         "loading": "Restauration…",
-        "description": "Récupère et fusionne la sauvegarde présente sur {provider}. Non-destructif : rien n'est écrasé, on ajoute ce qui manque.",
+        "description": "Récupère et fusionne la sauvegarde présente sur {provider}. Non-destructif : rien n’est écrasé, on ajoute ce qui manque.",
         "none": "Aucune sauvegarde trouvée à cette destination.",
         "upToDate": "Déjà à jour — rien de nouveau à restaurer.",
         "error": "La restauration a échoué. Réessaie.",
@@ -239,7 +240,7 @@
         "appPasswordHint": "Nextcloud → Paramètres → Sécurité → Appareils & sessions → « Créer un mot de passe d’application ».",
         "appPasswordLink": "Ouvrir cet écran sur ton Nextcloud",
         "folderLabel": "Dossier de destination",
-        "folderHint": "Optionnel — vide = racine. Le dossier est créé s'il n'existe pas.",
+        "folderHint": "Optionnel — vide = racine. Le dossier est créé s’il n’existe pas.",
         "folderPlaceholder": "Sauvegardes/Nodea",
         "required": "Champ requis.",
         "submit": "Connecter",

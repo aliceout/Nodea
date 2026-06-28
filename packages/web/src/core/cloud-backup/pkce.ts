@@ -5,9 +5,9 @@
  *       (`base64url(SHA-256(verifier))`) — the proof-of-possession pair that
  *       lets a browser app finish an OAuth code exchange with NO client secret.
  * WHERE `core/cloud-backup`, beside the provider clients that consume it
- *       (Dropbox today; Google/OneDrive later reuse the exact same PKCE). Kept
- *       pure + DOM-free on purpose so it unit-tests without a `window` — the
- *       popup plumbing that genuinely needs the DOM lives in `dropbox-oauth.ts`.
+ *       (Dropbox; pCloud reuses the shared popup driver). Kept pure + DOM-free
+ *       on purpose so it unit-tests without a `window` — the popup plumbing that
+ *       genuinely needs the DOM lives in `oauth-popup.ts`.
  * NOTE  Reuses the central base64url + randomBytes helpers (the single source
  *       for both, per the crypto rules) — never a second encoder here.
  */

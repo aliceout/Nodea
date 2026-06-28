@@ -12,6 +12,9 @@
  *   - Gated on the modules config being hydrated: firing on an empty `modules`
  *     slice would collect nothing (or a subset) and overwrite the single
  *     rolling file with an incomplete backup. We wait for the config first.
+ *   - Gated on the backup phrase being confirmed (`isBackupPhraseConfirmed`):
+ *     auto-pushing a backup the user has never recorded the phrase for would be
+ *     worse than none — they couldn't decrypt it. Connect/restore stay ungated.
  *   - Once per session (latch). A failure isn't retried this session — it just
  *     runs next time; nothing surfaces beyond the sidebar card that
  *     `pushBackupToCloud` drives.
@@ -25,6 +28,7 @@ import {
 } from '@/core/store/nodea-store';
 
 import { pushBackupToCloud } from './cloud-push';
+import { isBackupPhraseConfirmed } from './phrase-gate';
 
 /** 24 h staleness window (ADR-0017). */
 const STALE_MS = 24 * 60 * 60 * 1000;
@@ -37,12 +41,14 @@ export function useAutoCloudBackup(): void {
   const isAuth = useNodeaStore(selectIsAuthenticated);
   const mainKey = useNodeaStore(selectMainKey);
   const cloudBackup = useNodeaStore((s) => s.preferences.cloudBackup);
+  const phraseReady = useNodeaStore((s) => isBackupPhraseConfirmed(s.preferences));
   const modulesReady = useNodeaStore((s) => Object.keys(s.modules).length > 0);
 
   useEffect(() => {
     if (firedThisSession) return;
     if (!isAuth || !mainKey) return;
     if (!cloudBackup) return; // no provider connected
+    if (!phraseReady) return; // gate: never auto-push before the phrase is confirmed
     if (!modulesReady) return; // wait for the config to hydrate
     const last = cloudBackup.lastBackupAt;
     if (last && Date.now() - last < STALE_MS) return; // backed up recently
@@ -52,5 +58,5 @@ export function useAutoCloudBackup(): void {
       // Silent for an auto run (no panel to surface it); retried next session.
       if (import.meta.env.DEV) console.warn('[cloud-backup] auto push failed', err);
     });
-  }, [isAuth, mainKey, cloudBackup, modulesReady]);
+  }, [isAuth, mainKey, cloudBackup, phraseReady, modulesReady]);
 }

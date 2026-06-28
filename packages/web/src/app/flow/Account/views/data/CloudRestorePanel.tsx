@@ -1,8 +1,7 @@
 import { useState } from 'react';
 
 import { usePreferences } from '@/core/auth/use-preferences';
-import { getProvider } from '@/core/cloud-backup/registry';
-import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
+import { getProvider, PROVIDER_NAMES } from '@/core/cloud-backup/registry';
 import { normaliseMnemonic } from '@/core/crypto/bip39';
 import { useNodeaStore, selectMainKey, selectModules } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -10,14 +9,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import Textarea from '@/ui/atoms/dirk/Textarea';
 
-import { restoreFromAgeBytes } from './restore-backup';
-
-/** Display names — proper nouns, not translated (mirrors CloudBackupPanel). */
-const PROVIDER_NAMES: Record<string, string> = {
-  dropbox: 'Dropbox',
-  pcloud: 'pCloud',
-  webdav: 'Nextcloud',
-};
+import { restoreFromAgeBytes, tryAutoRestore } from './restore-backup';
 
 /**
  * « Restaurer depuis le cloud » — on-demand restore of the connected provider's
@@ -46,7 +38,7 @@ export default function CloudRestorePanel() {
   const [phrase, setPhrase] = useState('');
 
   if (!cb) return null;
-  const name = PROVIDER_NAMES[cb.provider] ?? cb.provider;
+  const name = PROVIDER_NAMES[cb.provider];
 
   function reportDone(count: number, parts: string[], hadFailures: boolean): void {
     if (count === 0 && !hadFailures) {
@@ -76,19 +68,18 @@ export default function CloudRestorePanel() {
         return;
       }
       const version = preferences.backupPhraseVersion ?? 1;
-      const derived = await deriveBackupPhrase(mainKey.hmacKey, version);
-      try {
-        const { count, parts, hadFailures } = await restoreFromAgeBytes(
-          bytes,
-          derived,
-          mainKey,
-          modules,
-          t,
-        );
+      const { ok, count, parts, hadFailures } = await tryAutoRestore(
+        bytes,
+        mainKey,
+        version,
+        modules,
+        t,
+      );
+      if (ok) {
         reportDone(count, parts, hadFailures);
-      } catch {
-        // Auto-derived phrase doesn't match (other account/version) → ask the
-        // user for the 12 words of THIS backup.
+      } else {
+        // Auto-derived phrase doesn't match (other account/version) → ask for
+        // the 12 words of THIS backup.
         setPending(bytes);
       }
     } catch {
@@ -149,7 +140,11 @@ export default function CloudRestorePanel() {
 
       {pending !== null ? (
         <div className="mt-3 rounded-[var(--radius-control)] border border-hair bg-bg-2/40 p-4">
-          <p role="status" className="mb-2 text-[12px] leading-[1.5] text-ink-soft">
+          <p
+            id="cloud-restore-phrase-prompt"
+            role="status"
+            className="mb-2 text-[12px] leading-[1.5] text-ink-soft"
+          >
             {t('account.data.cloudBackup.cloudRestore.phrasePrompt')}
           </p>
           <label
@@ -160,6 +155,8 @@ export default function CloudRestorePanel() {
           </label>
           <Textarea
             id="cloud-restore-phrase"
+            aria-describedby="cloud-restore-phrase-prompt"
+            aria-invalid={error ? true : undefined}
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
             placeholder={t('account.data.import.backupPhrasePlaceholder')}

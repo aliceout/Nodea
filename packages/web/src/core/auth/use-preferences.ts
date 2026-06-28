@@ -138,6 +138,35 @@ function mergeDirtyOverServer(
   return merged;
 }
 
+/**
+ * Persist a preferences patch from OUTSIDE React — for non-hook callers like the
+ * cloud-backup orchestrator stamping `lastBackupAt`. Merges into the store and
+ * writes through the SAME serialised chain as `setPreferences`, so the stamp
+ * can't reorder past a concurrent settings PUT and clobber it (the whole reason
+ * `prefsWriteChain` exists). Honours the hydration rails: a corrupt OR
+ * transport-failed blob is left unwritten — we won't overwrite a copy whose
+ * server truth we don't yet know (a lost stamp is benign: the auto-backup just
+ * re-fires next session). Read the freshest store INSIDE the chained task so the
+ * last writer always ships the full blob.
+ */
+export async function persistPreferencesPatch(
+  aesKey: Parameters<typeof saveEncryptedPreferences>[0],
+  partial: Partial<UserPreferencesPayload>,
+): Promise<void> {
+  localWriteSeq += 1;
+  for (const k of Object.keys(partial) as Array<keyof UserPreferencesPayload>) {
+    dirtyKeys.add(k);
+  }
+  useNodeaStore.getState().updatePreferences(partial);
+  await waitForHydration();
+  if (hydration === 'corrupt' || hydration === 'failed') return;
+  await enqueuePrefsWrite(async () => {
+    await saveEncryptedPreferences(aesKey, {
+      ...useNodeaStore.getState().preferences,
+    });
+  });
+}
+
 export function usePreferences(): {
   preferences: UserPreferencesPayload;
   setPreferences: (partial: Partial<UserPreferencesPayload>) => Promise<void>;

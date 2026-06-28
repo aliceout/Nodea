@@ -7,6 +7,7 @@
  * key, add only what's missing, never overwrite).
  */
 import { openBackup } from '@/core/crypto/backup-crypto';
+import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
 import type { MainKeyMaterial } from '@/core/crypto/key-material';
 
 import { restoreEnvelope, type RestoreResult } from './restore-envelope';
@@ -47,4 +48,33 @@ export async function restoreFromAgeBytes(
     failedModules,
     hadFailures: failedModules.length > 0 || result.failed.length > 0,
   };
+}
+
+/**
+ * Restore the COMMON case from a cloud blob: re-derive THIS account's phrase for
+ * `version` and merge. NEVER throws — returns `ok:false` when that phrase can't
+ * open the blob (a backup from a different account/version), so the caller falls
+ * back to asking for the 12 words. Shared by the connect-time auto-restore
+ * (`CloudBackupPanel`) and the on-demand cloud restore (`CloudRestorePanel`).
+ */
+export async function tryAutoRestore(
+  bytes: Uint8Array,
+  mainKey: MainKeyMaterial,
+  version: number,
+  slice: Parameters<typeof restoreFromAgeBytes>[3],
+  t: Parameters<typeof restoreFromAgeBytes>[4],
+): Promise<{ ok: boolean; hadFailures: boolean; count: number; parts: string[] }> {
+  try {
+    const phrase = await deriveBackupPhrase(mainKey.hmacKey, version);
+    const { count, parts, hadFailures } = await restoreFromAgeBytes(
+      bytes,
+      phrase,
+      mainKey,
+      slice,
+      t,
+    );
+    return { ok: true, hadFailures, count, parts };
+  } catch {
+    return { ok: false, hadFailures: false, count: 0, parts: [] };
+  }
 }

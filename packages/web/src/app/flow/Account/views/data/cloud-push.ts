@@ -23,7 +23,7 @@
 import { sealBackup } from '@/core/crypto/backup-crypto';
 import { deriveBackupPhrase } from '@/core/crypto/backup-phrase';
 import { getProvider } from '@/core/cloud-backup/registry';
-import { saveEncryptedPreferences } from '@/core/api/preferences-client';
+import { persistPreferencesPatch } from '@/core/auth/use-preferences';
 import { useNodeaStore } from '@/core/store/nodea-store';
 
 import { collectModules } from './collect-modules';
@@ -92,23 +92,21 @@ export async function pushBackupToCloud(): Promise<void> {
 
 /**
  * Record the successful-push time in the encrypted prefs so the on-unlock
- * auto-trigger (Phase 3) knows when it last ran. Stamped here so BOTH the
- * manual button and the auto-trigger update it for free. Direct save (à la
- * `I18nProvider`'s language persist) since this isn't a React hook; a failed
- * stamp is swallowed — the backup itself succeeded (the file is in Dropbox),
- * worst case the auto-trigger fires once more next session.
+ * auto-trigger knows when it last ran. Stamped here so BOTH the manual button
+ * and the auto-trigger update it for free. Routed through `persistPreferencesPatch`
+ * (the SAME serialised write chain as `setPreferences`) so it can't reorder past
+ * a concurrent settings PUT and clobber it. Best-effort: a failed stamp is
+ * swallowed — the `.age` is already uploaded; worst case the auto-trigger fires
+ * once more next session.
  */
 async function stampLastBackupAt(): Promise<void> {
   const s = useNodeaStore.getState();
   const cb = s.preferences.cloudBackup;
   const mainKey = s.crypto.main;
   if (!cb || !mainKey) return;
-  const next = { ...cb, lastBackupAt: Date.now() };
-  s.updatePreferences({ cloudBackup: next });
   try {
-    await saveEncryptedPreferences(mainKey.aesKey, {
-      ...useNodeaStore.getState().preferences,
-      cloudBackup: next,
+    await persistPreferencesPatch(mainKey.aesKey, {
+      cloudBackup: { ...cb, lastBackupAt: Date.now() },
     });
   } catch {
     // non-fatal — see doc above

@@ -38,6 +38,10 @@ coverage
 # transcripts, etc.). Per-machine, never committed.
 .claude/
 
+# Playwright MCP scratch output (screenshots, traces) from local
+# browser-driving sessions. Tool artefacts, never committed.
+.playwright-mcp/
+
 # Secrets — single canonical location at the repo root, written by
 # the Dev Setup VS Code extension from Infisical (see `dev-setup.yaml`).
 .env
