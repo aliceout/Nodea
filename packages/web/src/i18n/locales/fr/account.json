@@ -185,7 +185,7 @@
     },
     "cloudBackup": {
       "title": "Sauvegarde automatique",
-      "description": "Connecte un espace cloud (Dropbox, pCloud, ou un serveur WebDAV/Nextcloud) pour y envoyer automatiquement ta sauvegarde chiffrée. Le fichier .age est chiffré dans ton navigateur — le service ne voit qu’un blob illisible.",
+      "description": "Connecte un espace cloud (Dropbox, pCloud ou Nextcloud) pour y envoyer automatiquement ta sauvegarde chiffrée. Le fichier .age est chiffré dans ton navigateur — le service ne voit qu’un blob illisible.",
       "connectedDescription": "{provider} connecté. Ta sauvegarde chiffrée y sera envoyée automatiquement (au plus une fois par jour).",
       "connectCta": "Connecter un service",
       "connecting": "Connexion…",
@@ -201,6 +201,7 @@
         "usernameLabel": "Nom d’utilisateur·ice",
         "appPasswordLabel": "Mot de passe d’application",
         "appPasswordHint": "Nextcloud → Paramètres → Sécurité → Appareils & sessions → « Créer un mot de passe d’application ».",
+        "appPasswordLink": "Ouvrir cet écran sur ton Nextcloud",
         "required": "Champ requis.",
         "submit": "Connecter",
         "cancel": "Annuler",

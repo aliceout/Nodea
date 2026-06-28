@@ -8,7 +8,7 @@ import {
 } from '@nodea/shared';
 
 import { getProvider } from '@/core/cloud-backup/registry';
-import { WebdavError } from '@/core/cloud-backup/providers/webdav';
+import { WebdavError, normalizeBaseUrl } from '@/core/cloud-backup/providers/webdav';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
@@ -45,11 +45,19 @@ export default function WebdavConnectForm({
   const {
     register: field,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<WebdavCredentials>({
     resolver: zodResolver(WebdavCredentialsSchema),
     defaultValues: { baseUrl: '', username: '', appPassword: '' },
   });
+
+  // Once a real URL is typed, deep-link straight to the Nextcloud app-password
+  // screen so the user doesn't hunt through menus (no OAuth, but less friction).
+  const baseUrl = watch('baseUrl');
+  const securityUrl = /^https?:\/\//i.test(baseUrl?.trim() ?? '')
+    ? `${normalizeBaseUrl(baseUrl)}/index.php/settings/user/security`
+    : null;
 
   async function onSubmit(values: WebdavCredentials): Promise<void> {
     setServerError(null);
@@ -100,7 +108,24 @@ export default function WebdavConnectForm({
         label={t('account.data.cloudBackup.webdav.appPasswordLabel')}
         type="password"
         autoComplete="off"
-        legend={t('account.data.cloudBackup.webdav.appPasswordHint')}
+        legend={
+          <>
+            {t('account.data.cloudBackup.webdav.appPasswordHint')}
+            {securityUrl ? (
+              <>
+                {' '}
+                <a
+                  href={securityUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  {t('account.data.cloudBackup.webdav.appPasswordLink')}
+                </a>
+              </>
+            ) : null}
+          </>
+        }
         error={
           errors.appPassword
             ? t('account.data.cloudBackup.webdav.required')

@@ -134,6 +134,20 @@ above, so the original reasoning stays legible.
   validates with a read-only `PROPFIND` and, because a blocked preflight is
   browser-**opaque** (a bare `TypeError`, no HTTP status), its error copy
   enumerates the causes (app not installed / origin not whitelisted / wrong URL).
+- **Why a typed app-password and not a Dropbox-style OAuth popup for Nextcloud**
+  (verified against live source, 2026-06): every popup/OAuth path fails one of
+  our three rules. Nextcloud's built-in **OAuth2** is confidential-client-only —
+  it needs an admin **`client_secret`** (no PKCE; issue #12881 open since 2018),
+  its token endpoint sends **no CORS** (#34898), and access tokens live 1 h with
+  refresh also requiring the secret → the Google-Drive wall again. A **Bearer**
+  token on `remote.php/dav` is rejected by Nextcloud's `CORSMiddleware`
+  (`"CORS requires basic auth"`, #44365). The webapppassword **popup-mint** flow
+  *is* secret-free and CORS-OK, but mints a **24 h-expiring**, non-refreshable
+  token → fatal to unattended ~daily auto-backup. **Login Flow v2** isn't
+  CORS-reachable from a foreign-origin SPA. A **manually-generated app-password**
+  is the only Nextcloud credential that is secret-free **and** CORS-usable (via
+  webapppassword) **and** long-lived — hence the typed form. The form deep-links
+  to the NC security screen to cut the friction the popup would have saved.
 
 ## Alternatives considered
 

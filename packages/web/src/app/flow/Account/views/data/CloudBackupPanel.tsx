@@ -19,7 +19,9 @@ type ProviderId = (typeof CLOUD_PROVIDERS)[number];
 const PROVIDER_NAMES: Record<ProviderId, string> = {
   dropbox: 'Dropbox',
   pcloud: 'pCloud',
-  webdav: 'WebDAV',
+  // Protocol is WebDAV, but webapppassword makes it Nextcloud-only in practice —
+  // so we surface the name users actually recognise.
+  webdav: 'Nextcloud',
 };
 
 /** Dropbox's official glyph (CC0, simple-icons), in its real brand blue. */

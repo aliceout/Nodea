@@ -185,7 +185,7 @@
     },
     "cloudBackup": {
       "title": "Automatic backup",
-      "description": "Connect a cloud space (Dropbox, pCloud, or a WebDAV/Nextcloud server) to automatically send your encrypted backup there. The .age file is encrypted in your browser — the service only ever sees an unreadable blob.",
+      "description": "Connect a cloud space (Dropbox, pCloud or Nextcloud) to automatically send your encrypted backup there. The .age file is encrypted in your browser — the service only ever sees an unreadable blob.",
       "connectedDescription": "{provider} connected. Your encrypted backup will be sent there automatically (at most once a day).",
       "connectCta": "Connect a service",
       "connecting": "Connecting…",
@@ -201,6 +201,7 @@
         "usernameLabel": "Username",
         "appPasswordLabel": "App password",
         "appPasswordHint": "Nextcloud → Settings → Security → Devices & sessions → “Create new app password”.",
+        "appPasswordLink": "Open that screen on your Nextcloud",
         "required": "Required.",
         "submit": "Connect",
         "cancel": "Cancel",
