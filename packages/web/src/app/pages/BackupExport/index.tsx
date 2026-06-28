@@ -236,6 +236,9 @@ export default function BackupExportPage() {
             verifyOnlyMessage={t('account.data.backup.reusedMessage')}
             onRegenerate={() => void handleRegenerate()}
             regenerateLabel={t('account.data.backup.regenerate')}
+            // Reset path (« Réinitialiser ma phrase » → /backup?confirm on an
+            // already-confirmed phrase): lead with régénérer, not re-confirm.
+            regeneratePrimary={confirmOnly && stage.confirmed}
             doneLabel={t(
               confirmOnly
                 ? 'account.data.backup.confirmPhraseCta'

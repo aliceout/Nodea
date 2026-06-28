@@ -51,6 +51,11 @@ interface RecoveryCodeDisplayProps {
    *  The backup flow uses it to rotate the derived phrase. */
   onRegenerate?: () => void;
   regenerateLabel?: string;
+  /** Swap the primary/secondary actions: make « régénérer » the prominent CTA
+   *  and drop « confirmer » to a secondary link. Used by the reset path
+   *  (`/backup?confirm` on an already-confirmed phrase) where the user came to
+   *  ROTATE the phrase, not re-confirm it. No-op without `onRegenerate`. */
+  regeneratePrimary?: boolean;
 }
 
 /**
@@ -86,6 +91,7 @@ export default function RecoveryCodeDisplay({
   verifyOnlyMessage,
   onRegenerate,
   regenerateLabel,
+  regeneratePrimary = false,
 }: RecoveryCodeDisplayProps) {
   const { t } = useI18n();
   const rows = splitMnemonicForDisplay(mnemonic);
@@ -247,37 +253,67 @@ export default function RecoveryCodeDisplay({
             </InlineAlert>
           ) : null}
 
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            onClick={submitVerify}
-            disabled={answers.some((a) => a.trim() === '')}
-            className="mt-2 w-full"
-          >
-            {doneLabel}
-          </Button>
-
-          <div className="mt-4 flex flex-col items-center gap-2 text-[12.5px]">
-            {!verifyOnly ? (
-              <button
+          {regeneratePrimary && onRegenerate ? (
+            // Reset path: the user came to ROTATE the phrase, so « régénérer » is
+            // the prominent CTA and « confirmer » drops to a secondary link. The
+            // rotation itself is still guarded by a danger-tone confirm dialog.
+            <>
+              <Button
                 type="button"
-                onClick={backToReveal}
-                className="cursor-pointer text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                {t('auth.recoveryDisplay.reReveal')}
-              </button>
-            ) : null}
-            {onRegenerate ? (
-              <button
-                type="button"
+                variant="primary"
+                size="lg"
                 onClick={onRegenerate}
-                className="cursor-pointer text-muted transition-colors hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="mt-2 w-full"
               >
                 {regenerateLabel}
-              </button>
-            ) : null}
-          </div>
+              </Button>
+
+              <div className="mt-4 flex flex-col items-center gap-2 text-[12.5px]">
+                <button
+                  type="button"
+                  onClick={submitVerify}
+                  disabled={answers.some((a) => a.trim() === '')}
+                  className="cursor-pointer text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {doneLabel}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                onClick={submitVerify}
+                disabled={answers.some((a) => a.trim() === '')}
+                className="mt-2 w-full"
+              >
+                {doneLabel}
+              </Button>
+
+              <div className="mt-4 flex flex-col items-center gap-2 text-[12.5px]">
+                {!verifyOnly ? (
+                  <button
+                    type="button"
+                    onClick={backToReveal}
+                    className="cursor-pointer text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {t('auth.recoveryDisplay.reReveal')}
+                  </button>
+                ) : null}
+                {onRegenerate ? (
+                  <button
+                    type="button"
+                    onClick={onRegenerate}
+                    className="cursor-pointer text-muted transition-colors hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {regenerateLabel}
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
         </>
       )}
     </>
