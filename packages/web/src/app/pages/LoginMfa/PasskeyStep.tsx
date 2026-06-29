@@ -70,7 +70,7 @@ export default function PasskeyStep({
             disabled={submitting}
             className="mt-2 w-full"
           >
-            {submitting ? t('common.states.verifying') : t('auth.mfa.picker.pickPasskey')}
+            {submitting ? t('common.states.verifying') : t('auth.mfa.combined.passkeyCta')}
           </Button>
 
           {/* Escalation : direct → email recovery. Same discreet

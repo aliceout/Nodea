@@ -7,7 +7,7 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
-import FactorPicker from './FactorPicker';
+import ChooseFactorStep from './ChooseFactorStep';
 import {
   isValidBackupCode,
   isValidTotpCode,
@@ -29,12 +29,12 @@ type Factor = 'totp' | 'passkey' | 'password';
  * session. The page steps the user through whatever's still
  * missing :
  *
- *   - Picker first when issue #72 applies (mode `always_2fa`
- *     password-first with BOTH TOTP and a passkey enrolled). The
- *     server signals this by listing both `'totp'` and `'passkey'`
+ *   - Combined TOTP-field + passkey-button screen (`ChooseFactorStep`)
+ *     when issue #72 applies (mode `always_2fa` password-first with
+ *     BOTH TOTP and a passkey enrolled — verifying EITHER finalizes).
+ *     The server signals this by listing both `'totp'` and `'passkey'`
  *     in `factorsNeeded` ; the page forwards that hint via the
- *     navigation state from `/login`. After the user picks, we
- *     flip to the chosen sub-step.
+ *     navigation state from `/login`.
  *   - TOTP form by default (mode `always_2fa` TOTP-only, mode
  *     `maximum` after password-first).
  *   - Passkey button when the server reports `passkey` is still
@@ -53,7 +53,7 @@ type Factor = 'totp' | 'passkey' | 'password';
  *
  * Architecture : this orchestrator owns the state and handles
  * the API errors centrally ; the visual surfaces live in
- * `FactorPicker` / `TotpStep` / `PasskeyStep`, the recovery panel
+ * `ChooseFactorStep` / `TotpStep` / `PasskeyStep`, the recovery panel
  * in `LostFlow`, and the input validation in `lib/validation.ts`
  * (with tests).
  */
@@ -100,7 +100,11 @@ export default function LoginMfaPage() {
   const [code, setCode] = useState('');
   // Password-as-second-factor input (mode `maximum`, passkey-first).
   const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  // Which factor's verify is in flight (null = idle). Drives the shared
+  // `submitting` guard AND per-button « Vérification… » feedback on the merged
+  // ChooseFactorStep, so only the factor actually running shows the busy label.
+  const [pendingFactor, setPendingFactor] = useState<Factor | null>(null);
+  const submitting = pendingFactor !== null;
   const [error, setError] = useState<string | null>(null);
   const [lost, setLost] = useState<LostState>({ kind: 'idle' });
 
@@ -203,7 +207,7 @@ export default function LoginMfaPage() {
     e.preventDefault();
     setError(null);
     if (!canSubmitTotp) return;
-    setSubmitting(true);
+    setPendingFactor('totp');
     try {
       const result = await session.verifyMfaTotp(code.trim());
       if (result.finalized) {
@@ -214,13 +218,13 @@ export default function LoginMfaPage() {
     } catch (err) {
       handleApiError(err, t('auth.mfa.errors.wrongTotpCode'));
     } finally {
-      setSubmitting(false);
+      setPendingFactor(null);
     }
   }
 
   async function onPasskeyClick(): Promise<void> {
     setError(null);
-    setSubmitting(true);
+    setPendingFactor('passkey');
     try {
       const result = await session.verifyMfaPasskey();
       if (result.finalized) {
@@ -231,7 +235,7 @@ export default function LoginMfaPage() {
     } catch (err) {
       handleApiError(err, t('auth.mfa.errors.noValidPasskey'));
     } finally {
-      setSubmitting(false);
+      setPendingFactor(null);
     }
   }
 
@@ -239,7 +243,7 @@ export default function LoginMfaPage() {
     e.preventDefault();
     setError(null);
     if (!canSubmitPassword) return;
-    setSubmitting(true);
+    setPendingFactor('password');
     try {
       const result = await session.verifyMfaPassword(password);
       if (result.finalized) {
@@ -250,7 +254,7 @@ export default function LoginMfaPage() {
     } catch (err) {
       handleApiError(err, t('auth.mfa.errors.wrongPassword'));
     } finally {
-      setSubmitting(false);
+      setPendingFactor(null);
     }
   }
 
@@ -275,9 +279,22 @@ export default function LoginMfaPage() {
       }
     >
       {step === 'picker' ? (
-        <FactorPicker
-          onPickTotp={() => setStep('totp')}
-          onPickPasskey={() => setStep('passkey')}
+        <ChooseFactorStep
+          totpMode={totpMode}
+          code={code}
+          submitting={submitting}
+          pendingFactor={pendingFactor}
+          canSubmit={canSubmitTotp}
+          error={error}
+          lost={lost}
+          onCodeChange={setCode}
+          onSwitchToBackup={onSwitchToBackup}
+          onSubmitTotp={(e) => void onSubmitTotp(e)}
+          onPasskey={() => void onPasskeyClick()}
+          onStartLostTotp={() => startLost('totp')}
+          onStartLostPasskey={() => startLost('passkey')}
+          onCancelLost={() => setLost({ kind: 'idle' })}
+          onConfirmLost={() => void confirmLost()}
           onRestartLogin={() => navigate('/login', { replace: true })}
         />
       ) : null}
