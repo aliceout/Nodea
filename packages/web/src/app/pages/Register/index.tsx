@@ -104,6 +104,11 @@ export default function RegisterPage() {
     try {
       const result = await session.finishRegistration(prepared.data.finishBody);
       setSubmittedEmail(result.email ?? prepared.email);
+      // Ceremony done — drop the plaintext mnemonic reference. The success
+      // cards read `submittedEmail`, not `prepared`, so this is side-effect
+      // free; it just stops the only KEK-unwrapping plaintext factor from
+      // living on the heap for the page's lifetime (CLAUDE.md crypto §1/§7).
+      setPrepared(null);
     } catch (err) {
       setFinishError(apiErrorMessage(err, t));
       if (import.meta.env.DEV) console.warn('register finish failed', err);
