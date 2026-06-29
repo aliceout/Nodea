@@ -50,6 +50,7 @@ export {
   apiRecoverKekStart,
   apiRecoverKekVerify,
   apiRecoveryCodeUpsert,
+  apiRecoveryCodeVerify,
   apiRegister,
   apiRegisterActivate,
   apiRegisterFinish,

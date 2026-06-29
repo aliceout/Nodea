@@ -42,6 +42,57 @@ a new OPAQUE envelope without knowing the recovery code.
 Property preserved: *the server doesn't know the recovery code in
 cleartext*, only an uncrackable hash.
 
+### Periodic re-verify (Phase 3B)
+
+Setting a phrase once isn't enough: a backup the user can't actually
+find when they need it is worse than none (false confidence). So we
+periodically ask them to re-prove possession — re-type the 12 words —
+on a lazy **backoff ladder** that lengthens as trust builds:
+
+| Streak (consecutive passes) | Next re-verify due after |
+|---|---|
+| 0 | 6 weeks |
+| 1 | ~3 months (13 wk) |
+| 2 | ~6 months (26 wk) |
+| 3+ | ~1 year (52 wk) |
+
+Two `users` columns drive it (cf. `Database.md`):
+`recovery_verified_at` (last proof) + `recovery_verify_streak`. The
+cadence is computed **server-side** (`computeRecoveryReverifyDue`,
+`packages/api/src/auth/recovery-reverify.ts`) and surfaced as the
+`recoveryReverifyDue` boolean on `/auth/me` — the client only reacts
+to it, never recomputes the policy. `recovery_verified_at` is anchored
+at signup acknowledgement, on every (re)generation, and on each
+successful re-verify; the streak resets to 0 whenever the phrase
+changes (regenerate, or recover-kek consume).
+
+**Soft gate, never a lockout.** When due, a non-dismissable *amber*
+sidebar tip (`local:recovery-reverify`) points to `/recovery-reverify`.
+It never blocks `/flow` — the user can defer (« Plus tard »). The
+first re-verify a user hits also absorbs the "skin-in-the-game" nudge
+(confirming the phrase is real before they've had to rely on it).
+
+#### `POST /auth/security/recovery-code-verify` (authenticated)
+
+Body `{ recoveryCodeHash }` (SHA-256 hex). Middleware
+`[requireUser, rateLimit(10/h)]` — **no** `requireFreshPassword`: it
+reads + advances counters, it never rotates a wrap. The server
+constant-time-compares against the caller's own
+`users.recovery_code_hash`:
+- **match** → `recovery_verified_at = now()`, `recovery_verify_streak
+  += 1`, returns `{ ok: true, streak }`. `recoveryReverifyDue` flips
+  false on the next `/auth/me`, clearing the tip.
+- **miss** (or no code on file) → `401 invalid_credentials`, no
+  mutation.
+
+No anti-enum dummy is needed (unlike `/recover-kek/verify`): the
+comparison is against the caller's OWN hash, so a hit/miss leaks
+nothing about other accounts. On the client a bad BIP39 checksum is
+caught locally (no server hit); both a local miss and a server 401
+surface as a single « code invalide » plus a calm escalation toward
+**« Régénères-en une nouvelle »** (`/recovery-code`) for a phrase the
+user has genuinely lost — never a hard lockout.
+
 ### `POST /auth/recover-kek/verify` (issue #48 pre-step)
 
 Body: `{ email, recoveryCodeHash }`. Server:

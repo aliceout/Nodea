@@ -86,6 +86,7 @@ describe('API client', () => {
       wrappedKekPassword: null,
       wrappedKekPasswordIv: null,
       recoveryCodeSet: false,
+      recoveryReverifyDue: false,
       passkeysCount: 0,
       passkeysPrfCount: 0,
       totpEnabled: false,

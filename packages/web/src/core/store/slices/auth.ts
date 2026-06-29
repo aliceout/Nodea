@@ -33,6 +33,11 @@ export interface SessionUser {
    *  Drives the sidebar warning + the Settings setup vs regenerate
    *  affordance. */
   recoveryCodeSet: boolean;
+  /** True when the user is overdue to re-prove they still hold their
+   *  recovery phrase (Phase 3B). Server-computed backoff (6 wk → 3 mo
+   *  → 6 mo → 1 yr); drives the non-dismissable re-verify tip. Always
+   *  false when no code is set. */
+  recoveryReverifyDue: boolean;
   /** Total passkeys enrolled (Phase 4). Drives the sidebar tip
    *  inviting enrollment when 0. */
   passkeysCount: number;

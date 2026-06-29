@@ -347,6 +347,9 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
             wrappedKekRecoveryIv: body.wrappedKekRecoveryIv,
             recoveryCodeHash: body.recoveryCodeHash,
             recoveryAcknowledgedAt: new Date(),
+            // Signup quiz is the first proof of holding the phrase →
+            // anchor the re-verify ladder here (Phase 3B, streak 0).
+            recoveryVerifiedAt: new Date(),
             registerState: 'complete',
             // Click on the invite link == proof of email control,
             // so the account is activated immediately.
@@ -435,6 +438,9 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
         wrappedKekRecoveryIv: body.wrappedKekRecoveryIv,
         recoveryCodeHash: body.recoveryCodeHash,
         recoveryAcknowledgedAt: new Date(),
+        // Signup quiz is the first proof of holding the phrase →
+        // anchor the re-verify ladder here (Phase 3B, streak 0).
+        recoveryVerifiedAt: new Date(),
         registerState: 'complete',
       });
       await tx.insert(opaqueRecords).values({

@@ -273,6 +273,12 @@ export const users = pgTable('users', {
   // (130 bits → uncrackable offline). Cf. §7.7.
   recoveryCodeHash: text('recovery_code_hash'),
   recoveryAcknowledgedAt: timestamp('recovery_acknowledged_at', { withTimezone: true }),
+  // Periodic re-verify backoff (§7.7, Phase 3B). `verified_at` = last proof of
+  // possession (signup ack / regenerate / recover-code-verify); `streak` = how
+  // many in a row → lengthens the window (6 wk → 3 mo → 6 mo → 1 yr). Drives
+  // `recoveryReverifyDue` on /auth/me. Streak resets to 0 when the phrase changes.
+  recoveryVerifiedAt: timestamp('recovery_verified_at', { withTimezone: true }),
+  recoveryVerifyStreak: integer('recovery_verify_streak').notNull().default(0),
   // Change-email cooldown (cf. §7.6): 7 days between two changes
   emailChangedAt: timestamp('email_changed_at', { withTimezone: true }),
   onboardingStatus: text('onboarding_status').notNull().default('pending'),

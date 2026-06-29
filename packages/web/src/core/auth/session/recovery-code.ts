@@ -6,6 +6,7 @@ import {
   apiRecoverKekFinish,
   apiRecoverKekStart,
   apiRecoveryCodeUpsert,
+  apiRecoveryCodeVerify,
 } from '../../api/client.ts';
 import {
   generateRecoveryMnemonic,
@@ -124,6 +125,40 @@ export async function setupRecoveryCode(
   } finally {
     entropy.fill(0);
     kekBytes.fill(0);
+  }
+}
+
+/**
+ * Phase 3B periodic re-verify : the authenticated user re-types their
+ * EXISTING phrase to prove they still hold it. Deliberately the lightest
+ * recovery action — no KEK unwrap, no password, no wrap rotation, just a
+ * hash check. On success the server stamps the verify anchor + bumps the
+ * streak (lengthening the next backoff), so we re-hydrate `/me` to clear
+ * `recoveryReverifyDue` and the sidebar tip with it.
+ *
+ * Throws (same surface as `recoverWithCode`, the page unifies both into a
+ * single « code invalide » + calm « regenerate » escalation) :
+ *   - bad mnemonic shape (word count / unknown word / checksum) →
+ *     `Error('invalid_recovery_code')` ;
+ *   - server hash mismatch → ApiError 401 `invalid_credentials`.
+ */
+export async function reverifyRecoveryCode(
+  deps: { setAuth: SetAuth },
+  mnemonic: string,
+): Promise<void> {
+  const entropy = recoveryMnemonicToEntropy(mnemonic);
+  if (!entropy) throw new Error('invalid_recovery_code');
+
+  try {
+    const { sha256Hex } = await import('../../crypto/bip39.ts');
+    const recoveryCodeHash = await sha256Hex(entropy);
+    await apiRecoveryCodeVerify({ recoveryCodeHash });
+    // Success → server advanced the streak + cleared the due flag.
+    // Re-hydrate so the store (and the non-dismissable tip) follows.
+    const me = await apiMe();
+    if (me) deps.setAuth(me);
+  } finally {
+    entropy.fill(0);
   }
 }
 

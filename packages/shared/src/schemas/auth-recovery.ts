@@ -58,6 +58,36 @@ export const RecoveryCodeUpsertBodySchema = z.object({
 });
 export type RecoveryCodeUpsertBody = z.infer<typeof RecoveryCodeUpsertBodySchema>;
 
+/**
+ * `POST /auth/security/recovery-code-verify` — periodic re-verify
+ * (Auth-Roadmap Phase 3B, Auth-Spec §7.7). The authenticated user
+ * re-types their existing 12-word phrase; the client validates the
+ * BIP39 checksum locally, derives `SHA-256(entropy)`, and ships only
+ * the hash. The server constant-time-compares it against the stored
+ * `recovery_code_hash` — on a match it stamps `recovery_verified_at`
+ * and bumps `recovery_verify_streak`, which lengthens the next
+ * backoff window.
+ *
+ * Unlike `/recover-kek/verify` (anonymous, anti-enum), this is gated
+ * by the session: the user is comparing the hash against THEIR OWN
+ * stored value, so there's no account-existence to leak. No password
+ * re-auth — it reads + advances counters, it doesn't rotate any wrap.
+ */
+export const RecoveryCodeVerifyBodySchema = z.object({
+  recoveryCodeHash: Sha256Hex,
+});
+export type RecoveryCodeVerifyBody = z.infer<typeof RecoveryCodeVerifyBodySchema>;
+
+export const RecoveryCodeVerifyResponseSchema = z.object({
+  ok: z.literal(true),
+  /** New streak after this successful verification — lets the UI show
+   *  "next check in N" without a second round-trip if ever wanted. */
+  streak: z.number().int().nonnegative(),
+});
+export type RecoveryCodeVerifyResponse = z.infer<
+  typeof RecoveryCodeVerifyResponseSchema
+>;
+
 /* ============================================================================
  * Recover flow (anonymous, 2-step OPAQUE folded with the recovery handshake)
  * ========================================================================== */

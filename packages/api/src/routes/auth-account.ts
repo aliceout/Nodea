@@ -11,6 +11,7 @@ import {
 
 import { clearSessionCookie } from '../auth/cookies.ts';
 import { sendMail } from '../auth/mailer.ts';
+import { computeRecoveryReverifyDue } from '../auth/recovery-reverify.ts';
 import { db } from '../db/client.ts';
 import {
   authFactors,
@@ -244,6 +245,16 @@ authAccountRoutes.openapi(meRoute, async (c) => {
     onboardingStatus: user.onboardingStatus,
     onboardingVersion: user.onboardingVersion,
     recoveryCodeSet: user.recoveryCodeHash !== null,
+    // Only meaningful when a code is set — a missing code is the
+    // recoveryCodeSet warning's concern. Computed lazily from the
+    // verify anchor + streak (Auth-Spec §7.7, Phase 3B).
+    recoveryReverifyDue:
+      user.recoveryCodeHash !== null &&
+      computeRecoveryReverifyDue(
+        user.recoveryVerifiedAt,
+        user.recoveryVerifyStreak,
+        new Date(),
+      ),
     passkeysCount: totalRow?.value ?? 0,
     passkeysPrfCount: prfRow?.value ?? 0,
     totpEnabled,

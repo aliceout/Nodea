@@ -268,6 +268,7 @@ Tables 1:1 (`modules_config`, `user_preferences`) — pas de guard : le user *e
 | `POST /auth/totp/enroll/{start,verify}` | 10 / 15min | `totp-enroll` | Setup d'un nouveau secret — utilisé une fois en pratique |
 | `POST /auth/totp/{disable,…}` | 30 / 15min | `totp-manage` | Lecture/écriture régulière depuis Settings, plafond confortable |
 | `POST /auth/security/recovery-code` | 5 / 1h | `recovery-code-setup` | Setup ou regenerate du code de récupération — opération rare |
+| `POST /auth/security/recovery-code-verify` | 10 / 1h | `recovery-code-verify-streak` | Re-vérification périodique de la phrase (Phase 3B) — plafond confortable pour quelqu'un qui retape ses 12 mots |
 | `POST /auth/passkeys/enroll/{options,finish}` | 10 / 15min | `passkey-enroll` | Setup d'un nouveau passkey, idem TOTP |
 | `POST /auth/passkeys/{login-options,login-finish}` | 20 / 15min | `passkey-login` | Login passkey-first : tolérant aux annulations utilisateur sur le prompt OS |
 | `*    /auth/passkeys/:id/...` (rename, remove) | 30 / 15min | `passkey-manage` | Lecture/écriture Settings |
@@ -369,6 +370,7 @@ Pour chaque champ lisible avec un simple `SELECT` : sa nature et la raison pour
 | `users` | `email_verified_at` | Timestamp d'activation | Le login refuse `403 account_not_activated` si NULL |
 | `users` | `email_changed_at` | Timestamp du dernier change-email | Anchor du cooldown 7 jours entre deux change-email |
 | `users` | `recovery_acknowledged_at` | Timestamp de validation du code de récup | Set au succès du quiz de confirmation (ressaisir 3 mots tirés au hasard, mots masqués) ; gate la transition `recovery_set` |
+| `users` | `recovery_verified_at`, `recovery_verify_streak` | Ancre + compteur de la re-vérification périodique (Phase 3B) | Backoff calculé serveur (6 sem → 3 mois → 6 mois → 1 an) qui pilote le booléen `recoveryReverifyDue` sur `/auth/me` ; le streak repart à 0 quand la phrase change |
 | `users` | `onboarding_status`, `onboarding_version` | État de l'onboarding | Drive le modal de premier login + permet de re-trigger après update du flow |
 | `users` | `created_at`, `updated_at` | Timestamps standard | Audit / debug |
 | `opaque_records` | `user_id` | FK | Lie l'envelope OPAQUE au user |

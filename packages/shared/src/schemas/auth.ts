@@ -244,6 +244,13 @@ export const AuthMeResponseSchema = z.object({
    *  leaves the server; we just flag presence so the UI can show
    *  the "set me up" warning vs the "regenerate" button. */
   recoveryCodeSet: z.boolean(),
+  /** True when the user is overdue to re-prove they still hold their
+   *  recovery phrase (Auth-Roadmap Phase 3B, Auth-Spec §7.7). Computed
+   *  server-side from `recovery_verified_at` + `recovery_verify_streak`
+   *  via a lazy backoff ladder (6 wk → 3 mo → 6 mo → 1 yr); the client
+   *  only reacts to the boolean. Always `false` when no code is set —
+   *  that case is the `recoveryCodeSet` warning's job instead. */
+  recoveryReverifyDue: z.boolean(),
   /** Total number of passkeys enrolled (`auth_factors WHERE
    *  kind='passkey'`). Drives the sidebar "configure a passkey" tip
    *  (visible at 0) and the Settings UI affordance. */

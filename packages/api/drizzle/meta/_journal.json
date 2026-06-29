@@ -169,6 +169,13 @@
       "when": 1782371251452,
       "tag": "0023_drop_habits_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782736080498,
+      "tag": "0024_smart_crystal",
+      "breakpoints": true
     }
   ]
 }

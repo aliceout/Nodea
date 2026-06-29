@@ -19,6 +19,7 @@ const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const RequestReset = lazy(() => import('./pages/RequestReset'));
 const Reset = lazy(() => import('./pages/Reset'));
 const RecoveryCode = lazy(() => import('./pages/RecoveryCode'));
+const RecoveryReverify = lazy(() => import('./pages/RecoveryReverify'));
 const Recover = lazy(() => import('./pages/Recover'));
 const Passkeys = lazy(() => import('./pages/Passkeys'));
 const Totp = lazy(() => import('./pages/Totp'));
@@ -97,6 +98,7 @@ function AppWithKeyModal() {
       <Route path="/request-reset" element={lazyPage(<RequestReset />)} />
       <Route path="/reset" element={lazyPage(<Reset />)} />
       <Route path="/recovery-code" element={lazyPage(<RecoveryCode />)} />
+      <Route path="/recovery-reverify" element={lazyPage(<RecoveryReverify />)} />
       <Route path="/recover" element={lazyPage(<Recover />)} />
       <Route path="/passkeys" element={lazyPage(<Passkeys />)} />
       <Route path="/totp" element={lazyPage(<Totp />)} />

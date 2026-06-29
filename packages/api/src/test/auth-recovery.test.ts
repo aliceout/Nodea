@@ -190,6 +190,93 @@ describe('POST /auth/security/recovery-code', () => {
 });
 
 /* ============================================================================
+ * POST /auth/security/recovery-code-verify (Phase 3B periodic re-verify)
+ * ========================================================================== */
+
+describe('POST /auth/security/recovery-code-verify', () => {
+  // Set up a code via the real route (which now also anchors the
+  // re-verify ladder at streak 0) and hand back its entropy.
+  async function setupCode(email: string, cookie: string): Promise<Uint8Array> {
+    const proof = await passwordProofFor(app, email, TEST_PASSWORD);
+    const { entropy, body } = fakeRecoverySetupPayload(proof);
+    await app.request('/auth/security/recovery-code', {
+      ...jsonPost(body),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    return entropy;
+  }
+
+  it('matching hash advances the streak + stamps the anchor', async () => {
+    const u = await seedUser('rev-ok@example.com');
+    const cookie = await loginAs(app, 'rev-ok@example.com', TEST_PASSWORD);
+    const entropy = await setupCode('rev-ok@example.com', cookie);
+
+    const res = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: sha256Hex(entropy) }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, streak: 1 });
+
+    const [row] = await db.select().from(users).where(eq(users.id, u.id));
+    expect(row!.recoveryVerifyStreak).toBe(1);
+    expect(row!.recoveryVerifiedAt).not.toBeNull();
+
+    // A second successful verify keeps climbing the ladder.
+    const res2 = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: sha256Hex(entropy) }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(await res2.json()).toEqual({ ok: true, streak: 2 });
+  });
+
+  it('mismatch returns 401 and does not mutate the streak', async () => {
+    const u = await seedUser('rev-miss@example.com');
+    const cookie = await loginAs(app, 'rev-miss@example.com', TEST_PASSWORD);
+    await setupCode('rev-miss@example.com', cookie);
+
+    const res = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: sha256Hex(randomBytes(16)) }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: 'invalid_credentials' });
+
+    // Setup anchored the streak at 0; the failed attempt left it there.
+    const [row] = await db.select().from(users).where(eq(users.id, u.id));
+    expect(row!.recoveryVerifyStreak).toBe(0);
+  });
+
+  it('rejects 401 for a user with no recovery code set', async () => {
+    await seedUser('rev-nocode@example.com');
+    const cookie = await loginAs(app, 'rev-nocode@example.com', TEST_PASSWORD);
+    const res = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: sha256Hex(randomBytes(16)) }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects 401 without a session cookie', async () => {
+    const res = await app.request(
+      '/auth/security/recovery-code-verify',
+      jsonPost({ recoveryCodeHash: sha256Hex(randomBytes(16)) }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects 400 on a malformed hash', async () => {
+    await seedUser('rev-bad@example.com');
+    const cookie = await loginAs(app, 'rev-bad@example.com', TEST_PASSWORD);
+    const res = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: 'not-hex' }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+/* ============================================================================
  * POST /auth/recover-kek/start  +  /finish
  * ========================================================================== */
 

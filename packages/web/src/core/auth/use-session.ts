@@ -53,6 +53,7 @@ import {
 } from './session/passkeys.ts';
 import {
   recoverWithCode as recoverWithCodeAction,
+  reverifyRecoveryCode as reverifyRecoveryCodeAction,
   setupRecoveryCode as setupRecoveryCodeAction,
 } from './session/recovery-code.ts';
 import {
@@ -155,6 +156,8 @@ export function useSession() {
       setupRecoveryCodeAction({ user, setAuth, setMainKey }, currentPassword),
     recoverWithCode: (input: Parameters<typeof recoverWithCodeAction>[1]) =>
       recoverWithCodeAction({ setAuth, setMainKey }, input),
+    reverifyRecoveryCode: (mnemonic: string) =>
+      reverifyRecoveryCodeAction({ setAuth }, mnemonic),
     enrollPasskey: (currentPassword: string, label: string) =>
       enrollPasskeyAction({ user, setAuth }, currentPassword, label),
     renamePasskey: (id: string, currentPassword: string, label: string) =>

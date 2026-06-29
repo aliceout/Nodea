@@ -44,6 +44,8 @@ Central identity row.
 | `wrapped_kek_recovery{,_iv}` | `text?` | AES-GCM(KEK) under HKDF sub-key of BIP39 entropy. NULL until the user sets up a recovery code. AAD = `nodea:v1\x1f<id>\x1frecovery`. |
 | `recovery_code_hash` | `text?` | SHA-256 hex of the 16-byte BIP39 entropy. Anti-DoS gate at `/auth/recover-kek/finish` — the server never sees the entropy itself. |
 | `recovery_acknowledged_at` | `ts+tz?` | Set on first-time setup AND every regenerate (`/auth/security/recovery-code`) AND every recover-kek/finish. UI uses it to show "code régénéré le …". |
+| `recovery_verified_at` | `ts+tz?` | Anchor for the periodic re-verify backoff (Phase 3B). Stamped `now()` each time the user proves they still hold the CURRENT phrase — at signup acknowledgement, on (re)generation, and on each `/auth/security/recovery-code-verify`. NULL only when no code is set. Backfilled to `recovery_acknowledged_at` for pre-3B rows (migration 0024). |
+| `recovery_verify_streak` | `integer` | Consecutive successful re-verifications of the current phrase. NOT NULL, default 0. Lengthens the backoff window (6 wk → 3 mo → 6 mo → 1 yr). Reset to 0 whenever the phrase changes (regenerate / recover-kek consume). Drives `recoveryReverifyDue` on `/auth/me`. |
 | `onboarding_status`   | `enum`    | `'pending' \| 'complete'`. Reset to `'pending'` on password reset.           |
 | `onboarding_version`  | `text`    | Integer-as-text, lets us re-trigger the modal on a new onboarding schema.    |
 | `created_at`          | `ts+tz`   | `defaultNow()`.                                                              |

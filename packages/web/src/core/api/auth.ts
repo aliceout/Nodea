@@ -10,6 +10,7 @@ import {
   ReauthPasswordStartResponseSchema,
   RecoverKekStartResponseSchema,
   RecoverKekVerifyResponseSchema,
+  RecoveryCodeVerifyResponseSchema,
   ResetPasswordStartResponseSchema,
   type AuthMeCryptoResponse,
   type AuthMeResponse,
@@ -39,6 +40,8 @@ import {
   type RecoverKekVerifyBody,
   type RecoverKekVerifyResponse,
   type RecoveryCodeUpsertBody,
+  type RecoveryCodeVerifyBody,
+  type RecoveryCodeVerifyResponse,
   type RegisterBody,
   type RequestResetBody,
   type ResetPasswordFinishBody,
@@ -336,6 +339,21 @@ export async function apiRecoveryCodeUpsert(
     'POST',
     '/auth/security/recovery-code',
     body,
+  );
+}
+
+/** Phase 3B periodic re-verify : the authenticated user re-proves they
+ *  still hold their phrase. Throws on 401 (`invalid_credentials`) for a
+ *  hash mismatch, mirroring the `/recover-kek/verify` shape so the SPA
+ *  can surface a unified « code invalide » message + offer regenerate. */
+export async function apiRecoveryCodeVerify(
+  body: RecoveryCodeVerifyBody,
+): Promise<RecoveryCodeVerifyResponse> {
+  return request(
+    'POST',
+    '/auth/security/recovery-code-verify',
+    body,
+    RecoveryCodeVerifyResponseSchema,
   );
 }
 

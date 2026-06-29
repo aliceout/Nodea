@@ -21,6 +21,11 @@
       "body": "No recovery code configured. Without it, forgetting your password = losing all your data.",
       "action": "Set up"
     },
+    "recoveryReverify": {
+      "title": "Quick check",
+      "body": "It's been a while — confirm you still have your recovery phrase to hand.",
+      "action": "Verify"
+    },
     "totp": {
       "title": "Suggestion",
       "body": "Enable 2FA (TOTP) to add a layer to your login.",

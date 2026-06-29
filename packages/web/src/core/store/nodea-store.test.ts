@@ -9,6 +9,7 @@ const sampleUser: SessionUser = {
   onboardingStatus: 'complete',
   onboardingVersion: '1',
   recoveryCodeSet: false,
+  recoveryReverifyDue: false,
   passkeysCount: 0,
   passkeysPrfCount: 0,
   totpEnabled: false,

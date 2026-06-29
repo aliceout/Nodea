@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -97,6 +98,26 @@ export const users = pgTable(
     recoveryAcknowledgedAt: timestamp('recovery_acknowledged_at', {
       withTimezone: true,
     }),
+
+    /** Anchor for the periodic re-verify backoff (Auth-Roadmap
+     *  Phase 3B). Stamped `now()` every time the user proves they
+     *  still hold the current recovery phrase — at signup
+     *  acknowledgement, on (re)generation, and on each successful
+     *  `POST /auth/security/recovery-code-verify`. NULL only for
+     *  users with no code (recover-kek consumed it, or never set).
+     *  Combined with `recovery_verify_streak`, drives
+     *  `recoveryReverifyDue` on `/auth/me`. Backfilled to
+     *  `recovery_acknowledged_at` for pre-Phase-3B rows. */
+    recoveryVerifiedAt: timestamp('recovery_verified_at', {
+      withTimezone: true,
+    }),
+
+    /** Consecutive successful re-verifications of the CURRENT phrase.
+     *  Lengthens the backoff window (6 wk → 3 mo → 6 mo → 1 yr) as
+     *  trust builds. Reset to 0 whenever the phrase changes
+     *  (regenerate / recover-kek consume) so a new phrase starts the
+     *  ladder over. NOT NULL, defaults 0. */
+    recoveryVerifyStreak: integer('recovery_verify_streak').notNull().default(0),
 
     // --- Existing onboarding fields (preserved as-is) -----
     role: text('role', { enum: ['user', 'admin'] })

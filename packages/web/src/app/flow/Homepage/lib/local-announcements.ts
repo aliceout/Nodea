@@ -58,6 +58,20 @@ export function useLocalAnnouncements(): LocalTip[] {
       to: '/recovery-code',
       dismissable: false,
     });
+  } else if (user.recoveryReverifyDue) {
+    // Has a code but it's been a while — calm periodic nudge to confirm
+    // they still hold the phrase (Phase 3B). Amber, not red: nothing is
+    // broken yet. Non-dismissable so it stays until they re-verify (or
+    // regenerate), at which point the server clears the flag.
+    tips.push({
+      id: 'local:recovery-reverify',
+      kind: 'warning',
+      titleKey: 'home.tips.recoveryReverify.title',
+      bodyKey: 'home.tips.recoveryReverify.body',
+      actionKey: 'home.tips.recoveryReverify.action',
+      to: '/recovery-reverify',
+      dismissable: false,
+    });
   }
 
   // Opt-in security upgrade — dismissable.

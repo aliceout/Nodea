@@ -7,6 +7,8 @@ import {
   RecoverKekVerifyBodySchema,
   RecoverKekVerifyResponseSchema,
   RecoveryCodeUpsertBodySchema,
+  RecoveryCodeVerifyBodySchema,
+  RecoveryCodeVerifyResponseSchema,
   type RecoverKekStartResponse,
 } from '@nodea/shared';
 import { getConfig } from '../config.ts';
@@ -92,6 +94,16 @@ const recoverySetupLimiter = rateLimit({
   keyPrefix: 'recovery-code-setup',
 });
 
+// Periodic re-verify (Phase 3B). Authenticated user checking their OWN
+// hash, so there's no enum/oracle value in a hit — the cap just keeps a
+// fumbling user (or a runaway client) from hammering the row. 10/h is
+// generous for someone mistyping 12 words a few times.
+const recoveryReverifyLimiter = rateLimit({
+  max: 10,
+  windowMs: 60 * 60_000,
+  keyPrefix: 'recovery-code-verify-streak',
+});
+
 const RecoverySetupResponseSchema = z.object({
   ok: z.literal(true),
   regenerated: z.boolean(),
@@ -110,6 +122,23 @@ const setupRoute = createRoute({
     200: jsonContent(RecoverySetupResponseSchema, 'Recovery code stored'),
     400: errorContent('Invalid body'),
     401: errorContent('Unauthenticated or stale re-auth'),
+    429: errorContent('Rate limit exceeded'),
+  },
+});
+
+const reverifyRoute = createRoute({
+  method: 'post',
+  path: '/security/recovery-code-verify',
+  tags: ['auth-recovery'],
+  summary: 'Periodic re-verify of the recovery phrase (authenticated)',
+  middleware: [requireUser, recoveryReverifyLimiter] as const,
+  request: {
+    body: { content: { 'application/json': { schema: RecoveryCodeVerifyBodySchema } } },
+  },
+  responses: {
+    200: jsonContent(RecoveryCodeVerifyResponseSchema, 'Phrase re-verified, streak advanced'),
+    400: errorContent('Invalid body'),
+    401: errorContent('Unauthenticated or hash mismatch'),
     429: errorContent('Rate limit exceeded'),
   },
 });
@@ -203,11 +232,62 @@ authRecoveryRoutes.openapi(setupRoute, async (c) => {
       wrappedKekRecoveryIv: body.wrappedKekRecoveryIv,
       recoveryCodeHash: body.recoveryCodeHash,
       recoveryAcknowledgedAt: new Date(),
+      // New phrase = fresh re-verify anchor, ladder restarts at 0
+      // (Phase 3B). The acknowledgement modal IS the first proof.
+      recoveryVerifiedAt: new Date(),
+      recoveryVerifyStreak: 0,
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id));
 
   return c.json({ ok: true as const, regenerated: isRegenerate }, 200);
+});
+
+/* ============================================================================
+ * POST /auth/security/recovery-code-verify
+ * Periodic re-verify (Phase 3B, Auth-Spec §7.7). The authenticated user
+ * re-types their existing phrase; the client ships only SHA-256(entropy).
+ * On a match we stamp the verify anchor + bump the streak, which lengthens
+ * the next backoff window (6 wk → 3 mo → 6 mo → 1 yr).
+ *
+ * No re-auth gate: this reads + advances counters, it never rotates a wrap.
+ * No anti-enum dummy: the comparison is against the caller's OWN hash, so a
+ * hit/miss leaks nothing about other accounts. Failure is a calm client-side
+ * escalation toward « regenerate your phrase » — the server just says 401.
+ * ========================================================================== */
+
+authRecoveryRoutes.openapi(reverifyRoute, async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = RecoveryCodeVerifyBodySchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
+  const user = c.get('user');
+
+  // No code on file (never set, or consumed by a recover-kek finish) →
+  // nothing to verify against. Same 401 shape as a mismatch.
+  if (user.recoveryCodeHash === null) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  // Constant-time even though it's the user's own hash — don't leak how
+  // many leading hex chars matched. Mismatch logged as an aggregated
+  // counter only (no per-user id in stdout — SEC-06).
+  if (!constantTimeEqualHex(user.recoveryCodeHash, body.recoveryCodeHash)) {
+    console.warn('[auth/recovery-code-verify] hash_mismatch');
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
+
+  const nextStreak = user.recoveryVerifyStreak + 1;
+  await db
+    .update(users)
+    .set({
+      recoveryVerifiedAt: new Date(),
+      recoveryVerifyStreak: nextStreak,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  return c.json({ ok: true as const, streak: nextStreak }, 200);
 });
 
 /* ============================================================================
@@ -460,6 +540,10 @@ authRecoveryRoutes.openapi(recoverFinishRoute, async (c) => {
         wrappedKekRecoveryIv: null,
         recoveryCodeHash: null,
         recoveryAcknowledgedAt: null,
+        // Code consumed → no phrase to re-verify; clear the anchor so
+        // recoveryReverifyDue reads false until a new code is set.
+        recoveryVerifiedAt: null,
+        recoveryVerifyStreak: 0,
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
