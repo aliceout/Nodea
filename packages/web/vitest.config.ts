@@ -1,10 +1,21 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+// Mirror `vite.config.js`'s build-time `define`: the auth footer renders
+// `__APP_VERSION__`, so any test that mounts an auth page needs the global
+// to exist under vitest too (vitest doesn't read vite.config.js's define).
+const APP_VERSION: string = JSON.parse(
+  readFileSync(path.resolve(here, '../../package.json'), 'utf8'),
+).version;
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   resolve: {
     // Mirror `vite.config.js` aliases so source files importing
     // `@/core/...` etc. resolve under vitest. Vitest doesn't pick
