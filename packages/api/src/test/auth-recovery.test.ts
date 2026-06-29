@@ -274,6 +274,123 @@ describe('POST /auth/security/recovery-code-verify', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  // --- rate limiter (10/h, keyed on user id — commit 2043033) -------------
+  it('rate-limits at 10/h per user — the 11th call returns 429', async () => {
+    await seedUser('rev-rl@example.com');
+    const cookie = await loginAs(app, 'rev-rl@example.com', TEST_PASSWORD);
+    await setupCode('rev-rl@example.com', cookie);
+    const wrong = sha256Hex(randomBytes(16));
+    // 10 calls pass the limiter (each a cheap 401 mismatch).
+    for (let i = 0; i < 10; i++) {
+      const r = await app.request('/auth/security/recovery-code-verify', {
+        ...jsonPost({ recoveryCodeHash: wrong }),
+        headers: { 'content-type': 'application/json', cookie },
+      });
+      expect(r.status).toBe(401);
+    }
+    const blocked = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: wrong }),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+    expect(blocked.status).toBe(429);
+  });
+
+  it('keys the limiter per user — one user exhausting does not throttle another', async () => {
+    await seedUser('rev-rl-a@example.com');
+    const cookieA = await loginAs(app, 'rev-rl-a@example.com', TEST_PASSWORD);
+    await setupCode('rev-rl-a@example.com', cookieA);
+    await seedUser('rev-rl-b@example.com');
+    const cookieB = await loginAs(app, 'rev-rl-b@example.com', TEST_PASSWORD);
+    await setupCode('rev-rl-b@example.com', cookieB);
+
+    const wrong = sha256Hex(randomBytes(16));
+    // Exhaust user A's bucket (11 calls → the last 429s).
+    for (let i = 0; i < 11; i++) {
+      await app.request('/auth/security/recovery-code-verify', {
+        ...jsonPost({ recoveryCodeHash: wrong }),
+        headers: { 'content-type': 'application/json', cookie: cookieA },
+      });
+    }
+    // User B (different id) is on a fresh bucket — NOT 429. This is the
+    // exact regression the IP→user-id key fix (2043033) guards against.
+    const resB = await app.request('/auth/security/recovery-code-verify', {
+      ...jsonPost({ recoveryCodeHash: wrong }),
+      headers: { 'content-type': 'application/json', cookie: cookieB },
+    });
+    expect(resB.status).toBe(401);
+  });
+
+  // --- streak/anchor reset when the phrase changes ------------------------
+  it('regenerating the code resets the streak to 0 and re-anchors verified_at', async () => {
+    const u = await seedUser('rev-regen-reset@example.com');
+    const cookie = await loginAs(app, 'rev-regen-reset@example.com', TEST_PASSWORD);
+    const entropy = await setupCode('rev-regen-reset@example.com', cookie);
+
+    // Climb to streak 2.
+    for (let i = 0; i < 2; i++) {
+      await app.request('/auth/security/recovery-code-verify', {
+        ...jsonPost({ recoveryCodeHash: sha256Hex(entropy) }),
+        headers: { 'content-type': 'application/json', cookie },
+      });
+    }
+    let [row] = await db.select().from(users).where(eq(users.id, u.id));
+    expect(row!.recoveryVerifyStreak).toBe(2);
+
+    // Regenerate (fresh proof — proof tokens are single-use).
+    const proof = await passwordProofFor(app, 'rev-regen-reset@example.com', TEST_PASSWORD);
+    const regen = fakeRecoverySetupPayload(proof);
+    await app.request('/auth/security/recovery-code', {
+      ...jsonPost(regen.body),
+      headers: { 'content-type': 'application/json', cookie },
+    });
+
+    [row] = await db.select().from(users).where(eq(users.id, u.id));
+    expect(row!.recoveryVerifyStreak).toBe(0);
+    expect(row!.recoveryVerifiedAt).not.toBeNull();
+  });
+
+  // --- /auth/me surfaces the boolean the whole web UI reacts to -----------
+  it('/auth/me recoveryReverifyDue is false when no code is set (the hash gate wins over null anchor)', async () => {
+    await seedUser('me-nocode@example.com');
+    const cookie = await loginAs(app, 'me-nocode@example.com', TEST_PASSWORD);
+    const res = await app.request('/auth/me', { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { recoveryReverifyDue: boolean };
+    expect(body.recoveryReverifyDue).toBe(false);
+  });
+
+  it('/auth/me recoveryReverifyDue is false right after setting up a code', async () => {
+    await seedUser('me-fresh@example.com');
+    const cookie = await loginAs(app, 'me-fresh@example.com', TEST_PASSWORD);
+    await setupCode('me-fresh@example.com', cookie);
+    const res = await app.request('/auth/me', { headers: { cookie } });
+    const body = (await res.json()) as { recoveryReverifyDue: boolean };
+    expect(body.recoveryReverifyDue).toBe(false);
+  });
+
+  it('/auth/me recoveryReverifyDue is true when the anchor is older than the 6-week (streak 0) window', async () => {
+    const u = await seedUser('me-due@example.com');
+    const cookie = await loginAs(app, 'me-due@example.com', TEST_PASSWORD);
+    await setupCode('me-due@example.com', cookie);
+    await db
+      .update(users)
+      .set({ recoveryVerifiedAt: new Date(Date.now() - 8 * 7 * 24 * 60 * 60 * 1000) })
+      .where(eq(users.id, u.id));
+    const res = await app.request('/auth/me', { headers: { cookie } });
+    const body = (await res.json()) as { recoveryReverifyDue: boolean };
+    expect(body.recoveryReverifyDue).toBe(true);
+  });
+
+  it('/auth/me recoveryReverifyDue is true when a code is set but the anchor is null (route self-heal)', async () => {
+    const u = await seedUser('me-anchorless@example.com');
+    const cookie = await loginAs(app, 'me-anchorless@example.com', TEST_PASSWORD);
+    await setupCode('me-anchorless@example.com', cookie);
+    await db.update(users).set({ recoveryVerifiedAt: null }).where(eq(users.id, u.id));
+    const res = await app.request('/auth/me', { headers: { cookie } });
+    const body = (await res.json()) as { recoveryReverifyDue: boolean };
+    expect(body.recoveryReverifyDue).toBe(true);
+  });
 });
 
 /* ============================================================================

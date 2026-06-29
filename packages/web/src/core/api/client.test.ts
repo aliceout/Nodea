@@ -12,6 +12,7 @@ import {
   apiLoginStart,
   apiLogout,
   apiMe,
+  apiRecoveryCodeVerify,
   isApiError,
 } from './client.ts';
 
@@ -111,6 +112,36 @@ describe('API client', () => {
       email: 'a@b.co',
       startLoginRequest: 'opaque-ke1',
     }).catch((e: unknown) => e);
+    expect(isApiError(err)).toBe(true);
+    if (isApiError(err)) {
+      expect(err.status).toBe(401);
+      expect(err.error).toBe('invalid_credentials');
+    }
+  });
+
+  it('apiRecoveryCodeVerify POSTs the hash and returns the parsed {ok, streak}', async () => {
+    const spy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, streak: 3 }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', spy);
+
+    const hash = 'a'.repeat(64);
+    const result = await apiRecoveryCodeVerify({ recoveryCodeHash: hash });
+    expect(result).toEqual({ ok: true, streak: 3 });
+
+    const [url, init] = spy.mock.calls[0]!;
+    expect(url).toBe('http://test.local/auth/security/recovery-code-verify');
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('include');
+    expect(JSON.parse(init.body)).toEqual({ recoveryCodeHash: hash });
+  });
+
+  it('apiRecoveryCodeVerify throws a typed ApiError on 401 (NOT null-mapped like /me) so the page can branch', async () => {
+    mockFetchOnce({ error: 'invalid_credentials' }, { status: 401 });
+
+    const err = await apiRecoveryCodeVerify({ recoveryCodeHash: 'b'.repeat(64) }).catch(
+      (e: unknown) => e,
+    );
     expect(isApiError(err)).toBe(true);
     if (isApiError(err)) {
       expect(err.status).toBe(401);
