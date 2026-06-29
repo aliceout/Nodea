@@ -98,10 +98,20 @@ const recoverySetupLimiter = rateLimit({
 // hash, so there's no enum/oracle value in a hit — the cap just keeps a
 // fumbling user (or a runaway client) from hammering the row. 10/h is
 // generous for someone mistyping 12 words a few times.
+//
+// Keyed on the authenticated user id (the route mounts it AFTER
+// `requireUser`), NOT the IP — same convention as `changeEmailLimiter`
+// (audit 2026-06): an IP bucket would make several users behind one NAT
+// share the budget and let a fumbling user 429 their neighbours, while
+// not actually throttling one specific account.
 const recoveryReverifyLimiter = rateLimit({
   max: 10,
   windowMs: 60 * 60_000,
   keyPrefix: 'recovery-code-verify-streak',
+  keyFn: (c) => {
+    const user = c.get('user') as { id?: string } | undefined;
+    return user?.id ?? null;
+  },
 });
 
 const RecoverySetupResponseSchema = z.object({
