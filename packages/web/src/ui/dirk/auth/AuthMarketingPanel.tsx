@@ -1,9 +1,29 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
+import { fetchPublicConfig } from '@/core/api/public-config';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import NodeaSymbol from '@/ui/branding/NodeaSymbol';
+
+/**
+ * The optional helpdesk/support URL for this instance, fetched once from the
+ * API's public `GET /config`. Returns `null` until it resolves (or when the
+ * operator left it unset) — the footer then renders no helpdesk link.
+ */
+function useHelpdeskUrl(): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void fetchPublicConfig().then((cfg) => {
+      if (alive) setUrl(cfg.helpdeskUrl);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return url;
+}
 
 /**
  * Shared marketing aside used by every auth page (Login, Register,
@@ -33,6 +53,7 @@ interface AuthMarketingPanelProps {
 
 export default function AuthMarketingPanel({ headline, children }: AuthMarketingPanelProps) {
   const { t } = useI18n();
+  const helpdeskUrl = useHelpdeskUrl();
   return (
     <aside className="hidden flex-col justify-between border-r border-hair bg-bg-2 px-[72px] py-16 lg:flex">
       <div className="flex items-center gap-2.5">
@@ -55,8 +76,6 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12px] text-muted">
-        <span>{t('layout.marketing.clientEncrypted')}</span>
-        <span>·</span>
         <span>{t('layout.marketing.selfHostable')}</span>
         <span>·</span>
         {/* « Open-source » is a claim, so link it to the actual code
@@ -92,22 +111,41 @@ export default function AuthMarketingPanel({ headline, children }: AuthMarketing
           {t('layout.marketing.security')}
         </Link>
         <span>·</span>
-        {/* Legal + changelog — accent-styled like « Open-source » /
-            « Sécurité » so every clickable item in the row reads the same.
-            Relocated here from the Login form panel so every auth page
-            shares one footer (desktop-only, like the rest of the panel). */}
+        {/* Legal — accent-styled like « Open-source » / « Sécurité » so
+            every clickable item in the row reads the same. Shared by every
+            auth page through this one footer (desktop-only). */}
         <Link
           to="/terms"
           className="cursor-pointer rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {t('layout.marketing.terms')}
         </Link>
+        {/* Helpdesk / support — per-instance URL from the public /config
+            endpoint (sourced from Infisical). External, so the same
+            outbound treatment as « Open-source ». Hidden when unset. */}
+        {helpdeskUrl ? (
+          <>
+            <span>·</span>
+            <a
+              href={helpdeskUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {t('layout.marketing.helpdesk')}
+              <ArrowTopRightOnSquareIcon className="h-3 w-3" aria-hidden="true" />
+            </a>
+          </>
+        ) : null}
         <span>·</span>
+        {/* Version → changelog. The label is the repo-root package.json
+            version (build-time `__APP_VERSION__`); the link still opens the
+            changelog so the number doubles as "what's in this build". */}
         <Link
           to="/changelog"
           className="cursor-pointer rounded-[2px] text-accent underline-offset-2 transition-colors hover:text-accent-deep hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          {t('layout.marketing.changelog')}
+          v{__APP_VERSION__}
         </Link>
       </div>
     </aside>

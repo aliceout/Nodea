@@ -5,10 +5,22 @@ import tailwindcss from "@tailwindcss/vite";
 import { visualizer } from "rollup-plugin-visualizer";
 import path from "path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// App version comes from the repo-root package.json (the workspace packages
+// stay at 0.0.0) — same number the changelog is tagged with. Injected at
+// build time so the auth footer can show it without a runtime fetch; it's a
+// build fact, identical for every visitor of a given image.
+const APP_VERSION = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../package.json"), "utf8"),
+).version;
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   plugins: [
     react(),
     tailwindcss(),

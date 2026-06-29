@@ -21,3 +21,10 @@ interface ImportMetaEnv {
   readonly VITE_DROPBOX_CLIENT_ID?: string;
   readonly VITE_PCLOUD_CLIENT_ID?: string;
 }
+
+/**
+ * App version, injected at build time by Vite's `define` from the repo-root
+ * package.json (see `vite.config.js`). Shown as the version label in the
+ * auth footer. A literal string in the bundle — no runtime cost.
+ */
+declare const __APP_VERSION__: string;

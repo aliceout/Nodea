@@ -259,6 +259,16 @@ const EnvSchema = z.object({
   SENTRY_DSN: optionalUrl(),
 
   /**
+   * Optional helpdesk / support URL. Surfaced as a link in the auth
+   * (login) page footer via the public `GET /config` endpoint, so it's
+   * readable pre-auth. Per-instance config — each operator points it at
+   * their own support channel (or leaves it empty → no link rendered).
+   * Sourced from Infisical (the `web/` folder, key `HELPDESK`; the deploy
+   * flattens every folder into one `.env`, so the api reads it fine).
+   */
+  HELPDESK: optionalUrl(),
+
+  /**
    * Shared secret that gates the `/__test__/*` administrative
    * endpoints (rate-limit reset, user-id lookup, admin promotion,
    * MFA-bypass backdating). Only consumed when `NODE_ENV === 'test'`

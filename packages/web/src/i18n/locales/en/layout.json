@@ -52,12 +52,11 @@
     "showMarkdown": "View Markdown source"
   },
   "marketing": {
-    "clientEncrypted": "Client-side encrypted",
     "openSource": "Open-source",
     "selfHostable": "Self-hostable",
     "security": "Security",
     "terms": "Terms of service",
-    "changelog": "Changelog",
+    "helpdesk": "Help",
     "body": {
       "purpose": "A space to write, take stock, and track your moods, your reading, and what you’re aiming for.",
       "encryption": "All data is encrypted in your browser. Unreadable to anyone else, even the {brand} team — you’re the only person who can access it.",

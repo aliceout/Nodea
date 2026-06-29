@@ -52,12 +52,11 @@
     "showMarkdown": "Voir la source Markdown"
   },
   "marketing": {
-    "clientEncrypted": "Chiffré côté client",
     "openSource": "Open-source",
     "selfHostable": "Auto-hébergeable",
     "security": "Sécurité",
     "terms": "Conditions générales d’utilisation",
-    "changelog": "Changelog",
+    "helpdesk": "Aide",
     "body": {
       "purpose": "Un espace pour écrire, faire le point, suivre tes humeurs, tes lectures, ce que tu vises.",
       "encryption": "Toutes les données sont chiffrées dans ton navigateur. Illisibles pour d’autres, même pour l’équipe de {brand} — tu es la seule personne à y avoir accès.",

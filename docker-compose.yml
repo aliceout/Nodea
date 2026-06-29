@@ -154,6 +154,11 @@ services:
       # `beforeSend` strips bodies, cookies, query strings, and the
       # X-Sid / X-Guard headers — see packages/api/src/sentry.ts.
       SENTRY_DSN: ${SENTRY_DSN_API:-}
+      # Optional helpdesk/support URL shown on the login page. Per-instance;
+      # lives in Infisical's web/ folder (key HELPDESK) but the deploy
+      # flattens every folder into one .env, so ${HELPDESK} resolves here and
+      # the api surfaces it pre-auth via GET /config. Empty ⇒ no link.
+      HELPDESK: ${HELPDESK:-}
     expose:
       - '3000'
     # Honest healthcheck — hits /healthz which itself probes Postgres

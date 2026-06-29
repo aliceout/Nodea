@@ -109,7 +109,7 @@ export function buildApp() {
   app.use('*', async (c, next) => {
     await next();
     const path = c.req.path;
-    if (path === '/healthz' || path === '/version') return;
+    if (path === '/healthz' || path === '/version' || path === '/config') return;
     c.header('Cache-Control', 'no-store, must-revalidate');
     c.header('Pragma', 'no-cache');
   });
@@ -155,6 +155,14 @@ export function buildApp() {
       buildDate: cfg.BUILD_DATE,
       branch: cfg.BUILD_BRANCH,
     });
+  });
+
+  // Public, pre-auth instance config read by the auth pages. Currently
+  // just the optional helpdesk/support link (per-instance, from
+  // Infisical). Non-sensitive + idempotent, so it's left cacheable like
+  // /version (see the Cache-Control middleware above). `null` when unset.
+  app.get('/config', (c) => {
+    return c.json({ helpdeskUrl: getConfig().HELPDESK ?? null });
   });
 
   // Test-only escape hatch — Playwright's global-setup hits this so
