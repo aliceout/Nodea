@@ -101,6 +101,15 @@ export const OpaqueRegisterFinishBodySchema = z.object({
   wrappedMainKeyIv: Base64ish,
   wrappedKekPassword: Base64ish,
   wrappedKekPasswordIv: Base64ish,
+  // Recovery factor — generated + confirmed (transcription quiz) DURING
+  // registration (forced, no skip). The KEK is wrapped under the BIP39 phrase
+  // (same wrap shape as the Settings recovery setup; AAD
+  // `nodea:v1\x1f<userId>\x1frecovery`); `recoveryCodeHash` = SHA-256(entropy),
+  // 64 hex chars — the offline-comparison anti-DoS hash. The recovery code
+  // itself never reaches the server.
+  wrappedKekRecovery: Base64ish,
+  wrappedKekRecoveryIv: Base64ish,
+  recoveryCodeHash: z.string().regex(/^[0-9a-f]{64}$/),
   inviteToken: z.string().min(16).max(256).optional(),
 });
 export type OpaqueRegisterFinishBody = z.infer<

@@ -130,6 +130,11 @@ async function finishRegistration(opts: {
     wrappedMainKeyIv: 'test-iv-main',
     wrappedKekPassword: 'test-wrapped-kek-password',
     wrappedKekPasswordIv: 'test-iv-kek',
+    // Recovery factor is mandatory at register now — placeholders + a valid
+    // 64-hex hash (server stores the wrap blobs opaque).
+    wrappedKekRecovery: 'test-wrapped-kek-recovery',
+    wrappedKekRecoveryIv: 'test-iv-recovery',
+    recoveryCodeHash: 'a'.repeat(64),
   };
   if (opts.inviteToken) body.inviteToken = opts.inviteToken;
 
@@ -339,6 +344,10 @@ describe('POST /auth/register/finish — invited path', () => {
     expect(user!.username).toBe('newcomer');
     expect(user!.wrappedMainKey).toBe('test-wrapped-main-key');
     expect(user!.wrappedKekPassword).toBe('test-wrapped-kek-password');
+    // Recovery factor created at signup (mandatory) — persisted + acknowledged.
+    expect(user!.wrappedKekRecovery).toBe('test-wrapped-kek-recovery');
+    expect(user!.recoveryCodeHash).toBe('a'.repeat(64));
+    expect(user!.recoveryAcknowledgedAt).not.toBeNull();
 
     const [envelope] = await db
       .select()
@@ -654,6 +663,10 @@ describe('POST /auth/register/finish — username field', () => {
         wrappedMainKeyIv: 'x',
         wrappedKekPassword: 'x',
         wrappedKekPasswordIv: 'x',
+        // Recovery blobs present so the ONLY missing field is `username`.
+        wrappedKekRecovery: 'x',
+        wrappedKekRecoveryIv: 'x',
+        recoveryCodeHash: 'a'.repeat(64),
         inviteToken: invite.token,
       }),
     );
@@ -712,6 +725,88 @@ describe('POST /auth/register/finish — username field', () => {
       .from(users)
       .where(eq(users.username, 'OpenName'));
     expect(dupes).toHaveLength(2);
+  });
+});
+
+/* ============================================================================
+ * POST /auth/register/finish — recovery factor (mandatory at signup)
+ * ========================================================================== */
+
+describe('POST /auth/register/finish — recovery factor', () => {
+  it('rejects 400 invalid_body when the recovery blobs are missing', async () => {
+    const invite = await seedInvite('no-recovery@example.com');
+    const { started } = await startRegistration({
+      email: 'no-recovery@example.com',
+      inviteToken: invite.token,
+    });
+    expect(started).toBeDefined();
+
+    const { registrationRecord } = client.finishRegistration({
+      password: REG_PASSWORD,
+      clientRegistrationState: started!.clientRegistrationState,
+      registrationResponse: started!.registrationResponse,
+    });
+
+    // Finish body WITHOUT the (now-mandatory) recovery blobs.
+    const res = await app.request(
+      '/auth/register/finish',
+      jsonPost({
+        email: 'no-recovery@example.com',
+        username: 'norecovery',
+        userId: started!.userId,
+        registrationRecord,
+        wrappedMainKey: 'x',
+        wrappedMainKeyIv: 'x',
+        wrappedKekPassword: 'x',
+        wrappedKekPasswordIv: 'x',
+        inviteToken: invite.token,
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'invalid_body' });
+
+    // No account was created — the invite stays unused.
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, 'no-recovery@example.com'));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('rejects 400 invalid_body on a malformed recoveryCodeHash', async () => {
+    const invite = await seedInvite('bad-hash@example.com');
+    const { started } = await startRegistration({
+      email: 'bad-hash@example.com',
+      inviteToken: invite.token,
+    });
+    expect(started).toBeDefined();
+
+    const { registrationRecord } = client.finishRegistration({
+      password: REG_PASSWORD,
+      clientRegistrationState: started!.clientRegistrationState,
+      registrationResponse: started!.registrationResponse,
+    });
+
+    const res = await app.request(
+      '/auth/register/finish',
+      jsonPost({
+        email: 'bad-hash@example.com',
+        username: 'badhash',
+        userId: started!.userId,
+        registrationRecord,
+        wrappedMainKey: 'x',
+        wrappedMainKeyIv: 'x',
+        wrappedKekPassword: 'x',
+        wrappedKekPasswordIv: 'x',
+        wrappedKekRecovery: 'x',
+        wrappedKekRecoveryIv: 'x',
+        // Not 64 lowercase-hex chars → fails the Sha256Hex regex.
+        recoveryCodeHash: 'not-a-valid-hash',
+        inviteToken: invite.token,
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'invalid_body' });
   });
 });
 

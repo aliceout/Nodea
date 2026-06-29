@@ -443,9 +443,11 @@ code:
 1. `users.wrapped_main_key` is NOT NULL **after** transition to
    `register_state >= 'password_set'`. NULL only tolerated before.
 2. `users.wrapped_kek_password` NOT NULL after `password_set`.
-3. `users.wrapped_kek_recovery` NOT NULL after `recovery_set`.
-4. `users.recovery_code_hash` NOT NULL after `recovery_set`
-   (parallel to 3 — always stored alongside the wrap blob).
+3. `users.wrapped_kek_recovery` NOT NULL after register `/finish`
+   (recovery is mandatory at signup — §7.7). Legacy accounts created
+   before this change may be NULL until they configure one.
+4. `users.recovery_code_hash` NOT NULL on the same condition as 3
+   (parallel — always stored alongside the wrap blob).
 5. **`maximum` mode**: `users.security_mode = 'maximum'` implies
    `mfa_totp.enabled_at IS NOT NULL` **AND** at least one
    `auth_factors WHERE kind = 'passkey' AND prf_supported = true`
@@ -1477,7 +1479,7 @@ To keep visible at the top of every phase's PR:
 | **Sub-keys (aes_main, hmac_main)** | Derived via HKDF from main_key, imported non-extractable in WebCrypto. |
 | **AAD** | Additional Authenticated Data. Data authenticated by AES-GCM but not encrypted. Binds a blob to its context. |
 | **HKDF** | HMAC-based Key Derivation Function. RFC 5869. |
-| **KEK recovery code** | High-entropy code (~130 bits) generated when the user configures the recovery code (a strongly recommended post-signup step), shown only once. Derives a wrapping key that wraps the KEK. |
+| **KEK recovery code** | High-entropy code (~130 bits) generated during signup (mandatory — §7.7), shown only once. Derives a wrapping key that wraps the KEK. |
 | **TOTP backup codes** | 10 single-use codes generated at TOTP enrollment, server-hashed, in case the authenticator is lost. |
 | **TOTP bypass** | Recovery mechanism for TOTP + backup-codes loss. Email + 7-day delay. |
 | **Stepped MFA** | Two-phase login: primary factor (OPAQUE password or passkey) → pending cookie → additional factors → full cookie. |

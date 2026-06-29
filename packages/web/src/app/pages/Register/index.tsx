@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { useSession } from '@/core/auth/use-session';
 import {
+  apiErrorMessage,
   apiRegisterInviteInfo,
   apiRegisterMode,
 } from '@/core/api/client';
+import { useSession } from '@/core/auth/use-session';
+import type { PreparedRegistration } from '@/core/auth/session/register';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
+import RecoveryCodeDisplay from '@/ui/atoms/auth/RecoveryCodeDisplay';
 import { PrivacyBody } from '@/ui/dirk/auth/AuthMarketingPanel';
 import AuthLayout from '@/ui/dirk/auth/AuthLayout';
 
@@ -33,8 +37,13 @@ import {
  *                    no form.
  *
  * The mode is determined on mount via `apiRegisterMode()` +
- * `apiRegisterInviteInfo(token)`. While that's resolving we show a
- * neutral loading state; once settled we pick the right panel.
+ * `apiRegisterInviteInfo(token)`.
+ *
+ * Recovery phrase is MANDATORY at signup (Auth-Spec §7.7): the form only
+ * PREPARES the account (`prepareRegistration` — OPAQUE handshake + wrapped
+ * blobs, incl. the recovery factor); the user must then reveal + pass the
+ * transcription quiz on `RecoveryCodeDisplay` before `finishRegistration`
+ * actually creates the account. Abandoning the quiz creates NO account.
  */
 type Mode =
   | { kind: 'loading' }
@@ -49,7 +58,14 @@ export default function RegisterPage() {
   const session = useSession();
   const [params] = useSearchParams();
   const [mode, setMode] = useState<Mode>({ kind: 'loading' });
+  // Prepared-but-not-created account: holds the one-shot mnemonic + the wrapped
+  // finish payload. Set when the form passes, cleared on « recommencer ».
+  const [prepared, setPrepared] = useState<
+    { data: PreparedRegistration; email: string } | null
+  >(null);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
+  const [finishing, setFinishing] = useState(false);
 
   // Resolve mode on mount: if there's a token, validate it; otherwise
   // ask the server whether open registration is allowed.
@@ -80,19 +96,75 @@ export default function RegisterPage() {
     };
   }, [params]);
 
+  // Create the account once the user has passed the recovery-phrase quiz.
+  async function confirmRecovery(): Promise<void> {
+    if (!prepared || finishing) return;
+    setFinishError(null);
+    setFinishing(true);
+    try {
+      const result = await session.finishRegistration(prepared.data.finishBody);
+      setSubmittedEmail(result.email ?? prepared.email);
+    } catch (err) {
+      setFinishError(apiErrorMessage(err, t));
+      if (import.meta.env.DEV) console.warn('register finish failed', err);
+    } finally {
+      setFinishing(false);
+    }
+  }
+
+  const showForm =
+    (mode.kind === 'invited' || mode.kind === 'open') &&
+    prepared === null &&
+    submittedEmail === null;
+
   return (
     <AuthLayout headline={t('auth.register.headline')} marketing={<PrivacyBody />}>
       {mode.kind === 'loading' ? <LoadingPanel /> : null}
       {mode.kind === 'closed' ? <ClosedPanel /> : null}
       {mode.kind === 'invalid_invite' ? <InvalidInvitePanel /> : null}
 
-      {(mode.kind === 'invited' || mode.kind === 'open') &&
-      submittedEmail === null ? (
+      {showForm ? (
         <RegisterForm
-          mode={mode}
-          onSubmitted={setSubmittedEmail}
-          submitRegistration={session.submitRegistration}
+          mode={mode as { kind: 'invited'; email: string; token: string } | { kind: 'open' }}
+          onPrepared={(data, email) => setPrepared({ data, email })}
+          prepareRegistration={session.prepareRegistration}
         />
+      ) : null}
+
+      {/* Mandatory recovery-phrase ceremony — reveal + transcription quiz.
+          `onDone` (correct quiz) creates the account; there is no skip. */}
+      {prepared !== null && submittedEmail === null ? (
+        <>
+          <RecoveryCodeDisplay
+            eyebrow={t('auth.register.eyebrow')}
+            title={t('auth.register.recovery.title')}
+            subtitle={t('auth.register.recovery.subtitle')}
+            mnemonic={prepared.data.mnemonic}
+            doneLabel={
+              finishing
+                ? t('common.states.submitting')
+                : t('auth.register.recovery.done')
+            }
+            onDone={() => void confirmRecovery()}
+          />
+          {finishError ? (
+            <>
+              <InlineAlert className="mt-3">{finishError}</InlineAlert>
+              <div className="mt-4 text-center text-[12.5px] text-muted">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrepared(null);
+                    setFinishError(null);
+                  }}
+                  className="cursor-pointer rounded-sm transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {t('auth.register.recovery.restart')}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </>
       ) : null}
 
       {submittedEmail !== null && mode.kind === 'open' ? (
@@ -104,4 +176,3 @@ export default function RegisterPage() {
     </AuthLayout>
   );
 }
-

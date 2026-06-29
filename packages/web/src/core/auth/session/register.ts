@@ -1,4 +1,5 @@
 import { apiRegisterFinish, apiRegisterStart } from '../../api/client.ts';
+import { generateRecoveryMnemonic, sha256Hex } from '../../crypto/bip39.ts';
 import { randomBytes } from '../../crypto/base64.ts';
 import {
   buildKekAAD,
@@ -10,41 +11,47 @@ import { clientRegisterFinish, clientRegisterStart, opaqueReady } from '../opaqu
 
 import type { SessionRegisterInput, SessionRegisterResult } from './types.ts';
 
+type FinishBody = Parameters<typeof apiRegisterFinish>[0];
+
+export interface PreparedRegistration {
+  /** The fresh 12-word recovery mnemonic — display ONCE (reveal + quiz) before
+   *  the account is created, then drop it. The caller must NOT persist it. */
+  mnemonic: string;
+  /** The fully-wrapped register-finish payload (incl. the recovery blobs).
+   *  Sent verbatim by `finishRegistration` once the user passes the quiz; no
+   *  raw key material remains in it. */
+  finishBody: FinishBody;
+}
+
 /**
- * Submit a new registration (Auth-Roadmap Phase 2B — OPAQUE).
+ * Submit a new registration (Auth-Roadmap Phase 2B — OPAQUE), split in two so
+ * the mandatory recovery-phrase ceremony can run in between (the recovery
+ * factor is now forced at signup — issue, Auth-Spec §7.7).
  *
- * Three layers of crypto run client-side:
+ * `prepareRegistration` does everything that needs the in-memory keys:
  *
- *   1. OPAQUE registration handshake (`/start` + `/finish` round-
- *      trips). The server gets a `registrationRequest` then a
- *      `registrationRecord`; the password itself never leaves the
- *      client. We derive `exportKey` here too — that's the secret
- *      we use to wrap the KEK.
- *   2. A fresh random KEK + main key are generated. The main key
- *      is wrapped under the KEK (label `nodea:wrap-main`, AAD
- *      bound to the userId). This wrap is set ONCE at register
- *      and never re-wrapped — change-password rotates the KEK
- *      envelope, not this one.
- *   3. The KEK is wrapped under an HKDF sub-key of `exportKey`
- *      (label `nodea:wrap-kek`, AAD bound to userId + "password").
+ *   1. OPAQUE register handshake (`/start` + local finish) → `exportKey`.
+ *   2. Fresh random KEK + main key; main key wrapped under the KEK
+ *      (`nodea:wrap-main`, AAD bound to userId).
+ *   3. KEK wrapped under an HKDF sub-key of `exportKey` (`nodea:wrap-kek`,
+ *      AAD `…\x1fpassword`).
+ *   4. Fresh BIP39 mnemonic; KEK ALSO wrapped under `HKDF(entropy)`
+ *      (AAD `…\x1frecovery`) + `recoveryCodeHash = SHA-256(entropy)`.
  *
- * No session cookie is emitted by the server. Per UX decision the
- * user retypes their password on /login?activated=1 once the
- * account is ready — we wipe the in-memory key material here.
+ * The raw bytes (KEK, main key, entropy) are zeroed here; only the wrapped
+ * blobs + the mnemonic-for-display survive. `/finish` is NOT called yet — the
+ * UI reveals the mnemonic + runs the transcription quiz, then calls
+ * `finishRegistration` so abandoning at the quiz leaves NO account behind.
  */
-export async function submitRegistration(
+export async function prepareRegistration(
   input: SessionRegisterInput,
-): Promise<SessionRegisterResult> {
+): Promise<PreparedRegistration> {
   await opaqueReady;
 
-  // OPAQUE step 1: produce the registrationRequest. We hold onto
-  // `clientRegistrationState` until the server responds.
   const { clientRegistrationState, registrationRequest } = clientRegisterStart(
     input.password,
   );
 
-  // /start round-trip: server returns its OPAQUE response + a
-  // fresh userId we use as the AAD anchor for the wrapped blobs.
   const startBody: Parameters<typeof apiRegisterStart>[0] = {
     email: input.email,
     registrationRequest,
@@ -53,17 +60,15 @@ export async function submitRegistration(
   const startRes = await apiRegisterStart(startBody);
   const userId = startRes.userId;
 
-  // OPAQUE step 2: combine the response with our state to derive
-  // the persisted registrationRecord + the local exportKey.
   const finished = clientRegisterFinish({
     password: input.password,
     clientRegistrationState,
     registrationResponse: startRes.registrationResponse,
   });
 
-  // KEK + main key generation + wrapping.
   const kek = randomBytes(32);
   const rawMainKey = randomBytes(32);
+  const { mnemonic, entropy } = generateRecoveryMnemonic();
   try {
     const mainKeyWrap = await wrapMainKeyUnderKek(
       rawMainKey,
@@ -75,8 +80,14 @@ export async function submitRegistration(
       finished.exportKey,
       buildKekAAD(userId, 'password'),
     );
+    const recoveryWrap = await wrapKekUnderFactor(
+      kek,
+      entropy,
+      buildKekAAD(userId, 'recovery'),
+    );
+    const recoveryCodeHash = await sha256Hex(entropy);
 
-    const finishBody: Parameters<typeof apiRegisterFinish>[0] = {
+    const finishBody: FinishBody = {
       email: input.email,
       username: input.username,
       userId,
@@ -85,15 +96,29 @@ export async function submitRegistration(
       wrappedMainKeyIv: mainKeyWrap.wrappedMainKeyIv,
       wrappedKekPassword: kekWrap.wrappedKek,
       wrappedKekPasswordIv: kekWrap.wrappedKekIv,
+      wrappedKekRecovery: recoveryWrap.wrappedKek,
+      wrappedKekRecoveryIv: recoveryWrap.wrappedKekIv,
+      recoveryCodeHash,
     };
     if (input.inviteToken) finishBody.inviteToken = input.inviteToken;
-    const finishRes = await apiRegisterFinish(finishBody);
-
-    const result: SessionRegisterResult = { activated: finishRes.activated };
-    if (finishRes.email !== undefined) result.email = finishRes.email;
-    return result;
+    return { mnemonic, finishBody };
   } finally {
     kek.fill(0);
     rawMainKey.fill(0);
+    entropy.fill(0);
   }
+}
+
+/**
+ * Create the account: POST the prepared finish payload. Called once the user
+ * has passed the recovery-phrase quiz. No session cookie is emitted — the user
+ * retypes their password on `/login?activated=1`.
+ */
+export async function finishRegistration(
+  finishBody: FinishBody,
+): Promise<SessionRegisterResult> {
+  const finishRes = await apiRegisterFinish(finishBody);
+  const result: SessionRegisterResult = { activated: finishRes.activated };
+  if (finishRes.email !== undefined) result.email = finishRes.email;
+  return result;
 }

@@ -82,6 +82,9 @@ BEFORE posting `/finish`.
   "wrappedMainKeyIv": "<base64 IV>",
   "wrappedKekPassword": "<base64 AES-GCM>",
   "wrappedKekPasswordIv": "<base64 IV>",
+  "wrappedKekRecovery": "<base64 AES-GCM>",
+  "wrappedKekRecoveryIv": "<base64 IV>",
+  "recoveryCodeHash": "<64 hex chars — SHA-256(entropy)>",
   "inviteToken": "<base64url, optional>"
 }
 ```
@@ -97,13 +100,21 @@ by `client.finishRegistration()`. The server persists it in
 `opaque_records.envelope` — it **cannot** be used to recover the
 password (that's the whole point of OPAQUE).
 
-`wrappedMainKey` / `wrappedKekPassword` are the two client-side
-wrap layers (cf. §3.2):
+`wrappedMainKey` / `wrappedKekPassword` / `wrappedKekRecovery` are the
+client-side wrap layers (cf. §3.2):
 - **Main key** (32 random bytes) wrapped under KEK via HKDF label
   `nodea:wrap-main`, AAD = `nodea:v1\x1f<userId>\x1fmain`.
 - **KEK** (32 random bytes) wrapped under an HKDF-derived key from
   the OPAQUE `exportKey` via label `nodea:wrap-kek`, AAD =
   `nodea:v1\x1f<userId>\x1fpassword`.
+- **KEK again** wrapped under `HKDF(entropy, "nodea:wrap-kek")` from a
+  fresh BIP39 12-word recovery phrase, AAD =
+  `nodea:v1\x1f<userId>\x1frecovery`, plus `recoveryCodeHash =
+  SHA-256(entropy)`. The recovery factor is **mandatory at signup**
+  (§7.7): the client generates the phrase in `prepareRegistration`,
+  reveals it + runs the transcription quiz, and only THEN posts
+  `/finish` — abandoning the quiz creates no account. The recovery
+  code itself never reaches the server (only its hash).
 
 **Server branches** on `/finish`:
 
@@ -116,6 +127,8 @@ wrap layers (cf. §3.2):
      - INSERT `users { id: userId, username,
        wrappedMainKey, wrappedMainKeyIv,
        wrappedKekPassword, wrappedKekPasswordIv,
+       wrappedKekRecovery, wrappedKekRecoveryIv, recoveryCodeHash,
+       recoveryAcknowledgedAt: now(),
        emailVerifiedAt: now(), registerState: 'complete' }`.
      - INSERT `opaque_records { user_id: userId, envelope:
        registrationRecord }`.

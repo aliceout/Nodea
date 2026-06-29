@@ -341,6 +341,12 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
             wrappedMainKeyIv: body.wrappedMainKeyIv,
             wrappedKekPassword: body.wrappedKekPassword,
             wrappedKekPasswordIv: body.wrappedKekPasswordIv,
+            // Recovery factor — mandatory at signup now (forced step +
+            // transcription quiz client-side); server keeps only the hash.
+            wrappedKekRecovery: body.wrappedKekRecovery,
+            wrappedKekRecoveryIv: body.wrappedKekRecoveryIv,
+            recoveryCodeHash: body.recoveryCodeHash,
+            recoveryAcknowledgedAt: new Date(),
             registerState: 'complete',
             // Click on the invite link == proof of email control,
             // so the account is activated immediately.
@@ -425,6 +431,10 @@ authRegisterV2Routes.openapi(finishRoute, async (c) => {
         wrappedMainKeyIv: body.wrappedMainKeyIv,
         wrappedKekPassword: body.wrappedKekPassword,
         wrappedKekPasswordIv: body.wrappedKekPasswordIv,
+        wrappedKekRecovery: body.wrappedKekRecovery,
+        wrappedKekRecoveryIv: body.wrappedKekRecoveryIv,
+        recoveryCodeHash: body.recoveryCodeHash,
+        recoveryAcknowledgedAt: new Date(),
         registerState: 'complete',
       });
       await tx.insert(opaqueRecords).values({

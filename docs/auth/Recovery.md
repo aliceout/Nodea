@@ -8,10 +8,15 @@
 
 ## 7.7 Recovery via KEK code
 
-> Opt-in setup from Settings → Security (the user doesn't see the
-> flow at signup). Non-dismissable red sidebar warning until
-> configured. Recovery flow reachable via `/recover` or via the
-> "Got a code?" link on `/request-reset`.
+> Generated + confirmed (transcription quiz) DURING signup —
+> **mandatory, no skip**: the register `/finish` body carries the
+> recovery blobs (`wrappedKekRecovery{,Iv}` + `recoveryCodeHash`) and
+> the account isn't created until the user passes the quiz. From
+> Settings → Security the user can only **regenerate** it afterwards.
+> Legacy accounts created before this change have no code yet → a
+> non-dismissable red sidebar warning nags until they configure one.
+> Recovery flow reachable via `/recover` or via the "Got a code?"
+> link on `/request-reset`.
 >
 > Source of truth: code in
 > `packages/api/src/routes/auth-recovery.ts`. This section describes
@@ -22,7 +27,8 @@
 ### Authorisation model
 
 The server stores `users.recovery_code_hash = SHA-256(recovery_bytes)`,
-computed and sent by the client at signup time (cf. §7.1 step 4).
+computed and sent by the client at signup time (in the register
+`/finish` body — see `Register.md`).
 With BIP39's 128 bits of entropy (the remaining 4 bits are a
 checksum, not entropy), this hash is non-crackable offline even if
 the DB is compromised.

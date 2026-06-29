@@ -55,7 +55,10 @@ import {
   recoverWithCode as recoverWithCodeAction,
   setupRecoveryCode as setupRecoveryCodeAction,
 } from './session/recovery-code.ts';
-import { submitRegistration as submitRegistrationAction } from './session/register.ts';
+import {
+  finishRegistration as finishRegistrationAction,
+  prepareRegistration as prepareRegistrationAction,
+} from './session/register.ts';
 import {
   changeSecurityMode as changeSecurityModeAction,
   requestMfaBypass as requestMfaBypassAction,
@@ -118,7 +121,8 @@ export function useSession() {
     user,
     login: (body: Parameters<typeof loginAction>[1]) =>
       loginAction({ setAuth, setMainKey }, body),
-    submitRegistration: submitRegistrationAction,
+    prepareRegistration: prepareRegistrationAction,
+    finishRegistration: finishRegistrationAction,
     logout: async (redirectTo: string = '/login'): Promise<void> => {
       try {
         await apiLogout();

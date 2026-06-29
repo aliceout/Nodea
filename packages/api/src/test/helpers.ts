@@ -358,6 +358,12 @@ export async function finishRegistration(
     wrappedMainKeyIv: 'test-iv-main',
     wrappedKekPassword: 'test-wrapped-kek-password',
     wrappedKekPasswordIv: 'test-iv-kek',
+    // Recovery factor is mandatory at register now (forced phrase + quiz on
+    // the client). Deterministic placeholders — the server stores the wrap
+    // blobs opaque; recoveryCodeHash just needs to be valid 64-hex.
+    wrappedKekRecovery: 'test-wrapped-kek-recovery',
+    wrappedKekRecoveryIv: 'test-iv-recovery',
+    recoveryCodeHash: 'a'.repeat(64),
   };
   if (opts.inviteToken) body.inviteToken = opts.inviteToken;
 

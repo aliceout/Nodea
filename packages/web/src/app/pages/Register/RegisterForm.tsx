@@ -20,6 +20,7 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import PasswordRulesList from '@/ui/atoms/auth/PasswordRulesList';
 import StrengthBar from '@/ui/atoms/auth/StrengthBar';
 import AuthPanelHeader from '@/ui/dirk/auth/AuthPanelHeader';
+import type { PreparedRegistration } from '@/core/auth/session/register';
 
 const RegisterFormSchema = z
   .object({
@@ -37,13 +38,17 @@ type RegisterForm = z.infer<typeof RegisterFormSchema>;
 
 interface RegisterFormProps {
   mode: { kind: 'invited'; email: string; token: string } | { kind: 'open' };
-  onSubmitted: (email: string) => void;
-  submitRegistration: (input: {
+  /** Fired once the form passes + the recovery blobs are prepared. The parent
+   *  then runs the mandatory recovery-phrase ceremony before actually creating
+   *  the account (`finishRegistration`), so abandoning the quiz leaves no
+   *  account behind. */
+  onPrepared: (prepared: PreparedRegistration, email: string) => void;
+  prepareRegistration: (input: {
     email: string;
     username: string;
     password: string;
     inviteToken?: string;
-  }) => Promise<{ activated: boolean; email?: string }>;
+  }) => Promise<PreparedRegistration>;
 }
 
 /**
@@ -63,8 +68,8 @@ interface RegisterFormProps {
  */
 export default function RegisterFormView({
   mode,
-  onSubmitted,
-  submitRegistration,
+  onPrepared,
+  prepareRegistration,
 }: RegisterFormProps) {
   const { t } = useI18n();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -117,8 +122,8 @@ export default function RegisterFormView({
         password: values.password,
       };
       if (mode.kind === 'invited') input.inviteToken = mode.token;
-      const result = await submitRegistration(input);
-      onSubmitted(result.email ?? emailInput);
+      const prepared = await prepareRegistration(input);
+      onPrepared(prepared, emailInput);
     } catch (err) {
       // Page-specific override : the api ships
       // `{ error: 'register_failed', reason: 'email_mismatch' }`
