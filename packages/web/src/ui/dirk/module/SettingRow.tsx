@@ -39,7 +39,10 @@ function SettingRow({
   control: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-hair py-2.5 last:border-b-0">
+    // No row divider: in the 2-col grid `:last-child` is only the last DOM
+    // item, so a `border-b` left a half-width line under the left column.
+    // Column gap + vertical padding separate the rows on their own.
+    <div className="flex items-center justify-between gap-4 py-2.5">
       <div className="min-w-0">
         <label htmlFor={id} className="block text-[13px] font-medium text-ink">
           {label}

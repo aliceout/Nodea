@@ -16,9 +16,10 @@ import { getMonthNames } from '@/core/i18n/date-format';
 
 /** Card chrome shared by every inline module composer (Mood / Goals /
  *  Journal / Library / HRT) AND the « Paramètre du module » panel — a
- *  raised (slightly lighter) `bg-raised` panel with a soft sage border
- *  (`accent-soft`, the tag green) so the inline surface lifts off the page
- *  without shouting. Not `Surface`:
+ *  recessed `bg-sunken` panel — a tone DARKER than the main surface — with a
+ *  soft sage border (`accent-soft`, the tag green). A lighter / transparent
+ *  fill read wrong (washed-out in dark, blending in light), so the card sinks
+ *  a notch below the page instead. Not `Surface`:
  *  that primitive rides a different token axis (`--surface-*` / injected flex
  *  gap) and would shift the look + add gaps these grids don't want. Factored
  *  per the « third copy » rule (nine call sites before this).
@@ -29,13 +30,13 @@ import { getMonthNames } from '@/core/i18n/date-format';
  *  effect of their heatmap collapsing above the form. `motion-reduce:animate-none`
  *  + the app-wide reduced-motion media query keep it off for users who opt out. */
 export const FORM_CARD =
-  'animate-fade-up motion-reduce:animate-none rounded-md border border-accent-soft bg-raised p-4';
+  'animate-fade-up motion-reduce:animate-none rounded-md border border-accent-soft bg-sunken p-4';
 
-/** Was `FORM_CARD` + a `mb-5` bottom margin; the margin was dropped on request
- *  so the composer / settings panel sits flush with the content below. Kept as
- *  a named seam (and so the many call sites don't churn) — re-add uniform
- *  spacing here if it's ever wanted back. */
-export const MODULE_FORM_CARD = FORM_CARD;
+/** `FORM_CARD` plus a bottom margin so the composer / settings panel doesn't
+ *  sit flush against the content below it (the reader-shell composers + every
+ *  module's « Paramètre du module » panel). The HRT entry forms use `FORM_CARD`
+ *  directly — they sit flush in their own flex column. */
+export const MODULE_FORM_CARD = `mb-6 ${FORM_CARD}`;
 
 /** Two-digit month codes + locale-aware long labels for the
  *  « date » selector shared by Goal / Library bodies. Built

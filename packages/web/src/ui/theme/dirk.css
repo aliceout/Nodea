@@ -22,12 +22,12 @@
      profondeur entre eux. */
   --color-k-bg: #f9f8f3;
   --color-k-bg2: #f5f4f0;
-  /* Raised surface for inline cards (the module composer + « Paramètre du
-     module » panel). Derived from `bg2` toward white so it reads a touch
-     lighter than its surroundings — and, being a `color-mix` on the live
-     `--color-k-bg2`, it adapts to dark mode AND every background shade with
-     no per-variant value to maintain. */
-  --color-k-raised: color-mix(in srgb, var(--color-k-bg2) 80%, #ffffff);
+  /* Sunken surface for inline cards (module composer + « Paramètre du module »
+     panel) — a tone DARKER than the main `bg`, so the card reads as recessed.
+     `color-mix` toward black on the live `--color-k-bg`, so it tracks every
+     LIGHT background shade for free. Dark mode needs a bigger black ratio to
+     register against an already-dark base — see the `:root.dark` override. */
+  --color-k-sunken: color-mix(in srgb, var(--color-k-bg) 94%, #000000);
 
   /* Heatmap intensity ramp — 5 buckets (issue #56). Used by
      `ui/dirk/Heatmap.tsx` ; consumers reference `var(--heatmap-
@@ -144,6 +144,11 @@
      paper" rather than "almost black". */
   --color-k-bg: #272620;
   --color-k-bg2: #312f29;
+  /* Darker recess for inline cards (see the light `--color-k-sunken` above).
+     ~22% black on the dark `bg` so the card sinks clearly below it without
+     going near-black. Reads the cascaded `bg`, so each dark shade recesses
+     from its own surface. */
+  --color-k-sunken: color-mix(in srgb, var(--color-k-bg) 78%, #000000);
 }
 :root.dark[data-bg-shade-dark='onyx'] {
   /* Les couleurs de fond de Claude — neutre, presque noir. */
@@ -273,7 +278,6 @@
      `text-accent`, `bg-accent-soft`, `text-danger` etc. */
   --color-bg: var(--color-k-bg);
   --color-bg-2: var(--color-k-bg2);
-  --color-raised: var(--color-k-raised);
   --color-ink: var(--color-k-ink);
   --color-ink-soft: var(--color-k-ink-soft);
   --color-muted: var(--color-k-muted);
