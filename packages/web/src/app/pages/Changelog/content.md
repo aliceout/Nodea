@@ -5,6 +5,39 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.18.0 — 2026-06-29
+
+### Nouveautés
+
+- **auth** : configurable helpdesk link + app version in the auth footer _(88a937f)_
+- **auth** : put the passkey above TOTP on the 2FA picker _(1176453)_
+- **library** : default-view setting + outer cell padding in the table _(63f345e)_
+- **auth** : re-vérification périodique de la phrase de récupération _(d4a2056)_
+- **auth** : phrase de récupération obligatoire à l'inscription _(a69f2d3)_
+- **ui** : fusion de l'écran de choix du 2ᵉ facteur _(c4f8161)_
+- **ui** : surface « raised » + bordure accent pour les cartes inline _(a5494c5)_
+- **ui** : per-module settings (encrypted prefs) _(be299be)_
+- **ui** : fade-up entrance for inline forms & panels _(4c0e649)_
+- **ui** : « mode démo » banner in the sidebar _(2c13ff1)_
+- **ui** : per-module settings menu (« Paramètre du module ») _(38f0371)_
+
+### Corrections
+
+- **ui** : recess the inline-card surface, restore its margin, drop the row divider _(4191a72)_
+- **auth** : wipe la réf. mnémonique après finish + corrige le commentaire 0024 _(99b7663)_
+- **auth** : clé le limiteur de re-vérification sur l'user id, pas l'IP _(2043033)_
+
+<details>
+<summary>Maintenance — 5 commits</summary>
+
+- **release** : v2.18.0 _(05024fc)_
+- **web** : define __APP_VERSION__ for vitest _(f5bd48d)_
+- **auth** : couvre l'orchestrateur LoginMfa (sélection d'étape, verify, erreurs) _(1d29877)_
+- **auth** : couvre Phase A/B recovery + écran 2FA fusionné _(b629a59)_
+- **deps** : bump pnpm 10.33.0 -> 11.9.0 (clears the build-tool CVEs) _(aeb933c)_
+
+</details>
+
 ## v2.17.0 — 2026-06-28
 
 ### Nouveautés
@@ -37,11 +70,13 @@ pliés pour ne pas noyer l'essentiel.
 
 ### Documentation
 
+- **changelog** : regenerate for v2.17.0 _(e0320a2)_
 - **changelog** : regenerate for v2.16.0 _(d67231f)_
 
 <details>
-<summary>Maintenance — 1 commit</summary>
+<summary>Maintenance — 2 commits</summary>
 
+- **trivy** : ignore the unreachable pnpm build-tool CVEs _(dc1a950)_
 - **release** : bump version to 2.17.0 _(423fee3)_
 
 </details>
