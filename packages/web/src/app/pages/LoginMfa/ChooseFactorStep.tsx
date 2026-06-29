@@ -47,9 +47,9 @@ interface ChooseFactorStepProps {
  * login (issue #72, Auth-Spec §7.4). Replaces the old two-button picker + its
  * separate TOTP / passkey sub-screens: the TOTP field is right here, and
  * « Confirmer avec ma passkey » triggers WebAuthn on the same screen — one fewer
- * click for the common (TOTP) path. (It used to be a dedicated picker to keep the
- * TOTP form above the fold; the primary field + Vérifier still sit at the top
- * here, the passkey alternative + recovery links stack below.)
+ * click than the old dedicated picker. Order: the passkey button sits at the top,
+ * then the « ou » divider, then the TOTP field + Vérifier; recovery links stack
+ * under each factor and « Recommencer » closes the panel.
  *
  * Scope: ONLY the alternatives case. The stepped `maximum` flow (TOTP THEN
  * passkey, both mandatory in turn) still uses the separate `TotpStep` /
@@ -98,7 +98,49 @@ export default function ChooseFactorStep({
 
           {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
-          <form onSubmit={onSubmitTotp} noValidate>
+          {/* Passkey alternative first (verifying it also finalizes the
+              login — « l'un des deux suffit »). */}
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={onPasskey}
+            disabled={submitting}
+            className="w-full gap-2"
+          >
+            {pendingFactor === 'passkey' ? (
+              t('common.states.verifying')
+            ) : (
+              <>
+                <FingerPrintIcon className="h-4 w-4" aria-hidden="true" />
+                {t('auth.mfa.combined.passkeyCta')}
+              </>
+            )}
+          </Button>
+
+          <div className="mt-3 text-center text-[12px] text-muted">
+            <button
+              type="button"
+              onClick={onStartLostPasskey}
+              disabled={submitting}
+              className={LINK_CLASS}
+            >
+              {t('auth.mfa.passkey.lostPasskey')}
+            </button>
+          </div>
+
+          {/* — ou — the TOTP path. Whole separator hidden from AT: the subtitle
+              already says « l'un des deux suffit », so the lone « ou » would
+              just be an orphan word for screen readers. */}
+          <div
+            className="mt-6 flex items-center gap-3 text-[12px] text-muted"
+            aria-hidden="true"
+          >
+            <span className="h-px flex-1 bg-hair" />
+            {t('auth.mfa.combined.or')}
+            <span className="h-px flex-1 bg-hair" />
+          </div>
+
+          <form onSubmit={onSubmitTotp} noValidate className="mt-4">
             {totpMode === 'code' ? (
               <Field
                 key="totp-code"
@@ -163,46 +205,6 @@ export default function ChooseFactorStep({
               {t('auth.mfa.requestEmailRecovery')}
             </Button>
           )}
-
-          {/* — ou — the passkey alternative. Whole separator hidden from AT: the
-              subtitle already says « l'un des deux suffit », so the lone « ou »
-              would just be an orphan word for screen readers. */}
-          <div
-            className="mt-6 flex items-center gap-3 text-[12px] text-muted"
-            aria-hidden="true"
-          >
-            <span className="h-px flex-1 bg-hair" />
-            {t('auth.mfa.combined.or')}
-            <span className="h-px flex-1 bg-hair" />
-          </div>
-
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={onPasskey}
-            disabled={submitting}
-            className="mt-4 w-full gap-2"
-          >
-            {pendingFactor === 'passkey' ? (
-              t('common.states.verifying')
-            ) : (
-              <>
-                <FingerPrintIcon className="h-4 w-4" aria-hidden="true" />
-                {t('auth.mfa.combined.passkeyCta')}
-              </>
-            )}
-          </Button>
-
-          <div className="mt-3 text-center text-[12px] text-muted">
-            <button
-              type="button"
-              onClick={onStartLostPasskey}
-              disabled={submitting}
-              className={LINK_CLASS}
-            >
-              {t('auth.mfa.passkey.lostPasskey')}
-            </button>
-          </div>
 
           <div className="mt-4.5 text-center text-[12.5px] text-muted">
             <button
