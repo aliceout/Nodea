@@ -49,6 +49,11 @@
     "fromAria": "Du",
     "toAria": "Au"
   },
+  "settings": {
+    "defaultMoleculeLabel": "Produit / molécule par défaut du graphique Synthèse",
+    "defaultTargetGoalLabel": "Plages cibles par défaut (Analyses)",
+    "defaultDateRangeLabel": "Période par défaut des listes"
+  },
   "chart": {
     "noData": "Pas encore de données pour {label}.",
     "ariaLabel": "Évolution en {unit}",

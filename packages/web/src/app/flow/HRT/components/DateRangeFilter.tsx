@@ -7,16 +7,19 @@
  * resolved `{ from, to }` (ISO `YYYY-MM-DD`, empty string = unbounded)
  * via `onChange`. The caller filters its entries with plain string
  * comparison (ISO dates sort lexicographically). Preset cutoffs are
- * computed from « today » at click time. Emits only on user action, so
- * the caller's initial range must be the unbounded `{ from:'', to:'' }`.
+ * computed from « today » at click time. Without `initialPreset` it emits
+ * only on user action, so the caller's initial range must be the unbounded
+ * `{ from:'', to:'' }`. With `initialPreset` (the `hrtDefaultDateRange` pref)
+ * it seeds that preset AND emits its resolved range once on mount, so the
+ * lists open already narrowed to the user's default window.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import DateField from '@/ui/atoms/dirk/DateField';
 import Select from '@/ui/atoms/dirk/Select';
 
-import { EMPTY_RANGE, type DateRange } from '../lib/date-range';
+import { EMPTY_RANGE, type DateRange, type DateRangePreset } from '../lib/date-range';
 
 interface Preset {
   key: string;
@@ -44,15 +47,40 @@ function cutoffIso(preset: Preset): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-interface DateRangeFilterProps {
-  onChange: (range: DateRange) => void;
+/** Resolve a preset key to its `{ from, to }` range (custom excluded — that
+ *  path needs the live custom inputs). Shared by the user-action handler and
+ *  the `initialPreset` mount seed so both resolve identically. */
+function resolvePreset(key: string): DateRange {
+  const preset = PRESETS.find((p) => p.key === key);
+  return preset && (preset.days || preset.months)
+    ? { from: cutoffIso(preset), to: '' }
+    : EMPTY_RANGE;
 }
 
-export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
+interface DateRangeFilterProps {
+  onChange: (range: DateRange) => void;
+  /** Preset to open on (the `hrtDefaultDateRange` pref). Seeds the Select AND
+   *  emits the resolved range once on mount. Absent ⇒ 'all', no mount emit. */
+  initialPreset?: DateRangePreset;
+}
+
+export default function DateRangeFilter({ onChange, initialPreset }: DateRangeFilterProps) {
   const { t } = useI18n();
-  const [presetKey, setPresetKey] = useState('all');
+  // Widened to `string`: the internal Select also offers 'custom', which is
+  // deliberately NOT part of the `hrtDefaultDateRange` pref enum (`initialPreset`).
+  const [presetKey, setPresetKey] = useState<string>(initialPreset ?? 'all');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+
+  // Emit the seeded preset's range once on mount so the caller opens already
+  // narrowed (the component otherwise emits only on user action). Only fires
+  // for a non-'all' seed — 'all' is the unbounded default the caller already
+  // holds. Empty dep array : a one-shot mount emit, not a reaction to prop
+  // changes (the pref is a landing default, the Select takes over after).
+  useEffect(() => {
+    if (initialPreset && initialPreset !== 'all') onChange(resolvePreset(initialPreset));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function onPreset(key: string): void {
     setPresetKey(key);
@@ -60,8 +88,7 @@ export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       onChange({ from, to });
       return;
     }
-    const preset = PRESETS.find((p) => p.key === key);
-    onChange(preset && (preset.days || preset.months) ? { from: cutoffIso(preset), to: '' } : EMPTY_RANGE);
+    onChange(resolvePreset(key));
   }
 
   function onCustom(next: DateRange): void {

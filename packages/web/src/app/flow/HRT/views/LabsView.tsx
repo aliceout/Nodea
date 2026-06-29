@@ -13,6 +13,8 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { type HrtGoal, type HrtLabResultPayload } from '@nodea/shared';
+import { usePreferences } from '@/core/auth/use-preferences';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useConfirm } from '@/ui/dirk/confirm/confirm-context';
 import { cn } from '@/lib/utils';
@@ -34,7 +36,12 @@ import {
   distinctMarkers,
   unitsForMarker,
 } from '../lib/chart-data';
-import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
+import {
+  clampDateRangePreset,
+  EMPTY_RANGE,
+  inDateRange,
+  type DateRange,
+} from '../lib/date-range';
 import { formatLogDate, markerLabel, todayIso } from '../lib/labels';
 
 interface LabsViewProps {
@@ -49,14 +56,25 @@ interface LabsViewProps {
 export default function LabsView({ labResults, topbarSlot }: LabsViewProps) {
   const { t, language } = useI18n();
   const confirm = useConfirm();
+  const { preferences, setPreferences } = usePreferences();
   const { entries, load, ready, create, update, remove } = labResults;
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<LabResultEntry | null>(null);
   const [markerSel, setMarkerSel] = useState<string | null>(null);
   const [unitSel, setUnitSel] = useState<string | null>(null);
-  // Target bands are off by default — opting in picks a goal.
-  const [goal, setGoal] = useState<HrtGoal | null>(null);
+  // Target bands are off by default. Seeded from the encrypted
+  // `hrtDefaultTargetGoal` pref (read once at mount, clamped) — absent ⇒ null
+  // (bands off, the opt-in-only default). The goal Select still overrides per
+  // session ; the pref is only the landing default (« seed, never lock »).
+  const [goal, setGoal] = useState<HrtGoal | null>(() => {
+    const p = useNodeaStore.getState().preferences.hrtDefaultTargetGoal;
+    return p === 'feminizing' || p === 'masculinizing' ? p : null;
+  });
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_RANGE);
+  // Default time window — seeded from `hrtDefaultDateRange` (read once, clamped).
+  const [initialPreset] = useState(() =>
+    clampDateRangePreset(useNodeaStore.getState().preferences.hrtDefaultDateRange),
+  );
   const [chartOpen, setChartOpen] = useState(true);
 
   const formOpen = adding || editing !== null;
@@ -74,12 +92,24 @@ export default function LabsView({ labResults, topbarSlot }: LabsViewProps) {
     () => (chartMarker ? unitsForMarker(entries, chartMarker) : []),
     [entries, chartMarker],
   );
+  // Display unit resolution, in priority order :
+  //   1. the user's live per-session pick (`unitSel`),
+  //   2. the STICKY per-marker preference (`hrtUnitByMarker[marker]`) — the
+  //      unit this user last chose for this marker, persisted across sessions /
+  //      devices (health-sensitive ⇒ encrypted blob only),
+  //   3. the marker's canonical / most-logged unit (current default).
+  // Each fallback is guarded by `units.includes(...)` so a stale stored unit
+  // (no longer present for this marker) degrades to the default — no regression.
+  const stickyUnit =
+    chartMarker == null ? undefined : preferences.hrtUnitByMarker?.[chartMarker];
   const unit =
     chartMarker == null
       ? ''
       : unitSel && units.includes(unitSel)
         ? unitSel
-        : defaultUnitForMarker(entries, chartMarker);
+        : stickyUnit && units.includes(stickyUnit)
+          ? stickyUnit
+          : defaultUnitForMarker(entries, chartMarker);
 
   // Date range narrows the list + chart (options stay from all entries).
   const dateFiltered = useMemo(
@@ -202,7 +232,16 @@ export default function LabsView({ labResults, topbarSlot }: LabsViewProps) {
               chartMarker={chartMarker}
               units={units}
               unit={unit}
-              onUnitChange={setUnitSel}
+              onUnitChange={(u) => {
+                setUnitSel(u);
+                // Sticky : remember this unit for THIS marker across sessions.
+                if (chartMarker) {
+                  const prev = useNodeaStore.getState().preferences.hrtUnitByMarker;
+                  if (prev?.[chartMarker] !== u) {
+                    void setPreferences({ hrtUnitByMarker: { ...prev, [chartMarker]: u } });
+                  }
+                }
+              }}
               goal={goal}
               onGoalChange={setGoal}
               endSlot={
@@ -215,7 +254,7 @@ export default function LabsView({ labResults, topbarSlot }: LabsViewProps) {
                 ) : undefined
               }
             >
-              <DateRangeFilter onChange={setDateRange} />
+              <DateRangeFilter onChange={setDateRange} initialPreset={initialPreset} />
             </LabFilterBar>
             {chartMarker ? (
               <div

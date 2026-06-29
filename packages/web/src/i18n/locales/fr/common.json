@@ -35,6 +35,10 @@
     "enabling": "Activation…",
     "copied": "Copié"
   },
+  "boolean": {
+    "yes": "Oui",
+    "no": "Non"
+  },
   "a11y": {
     "skipToMain": "Passer au contenu principal"
   },

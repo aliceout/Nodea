@@ -52,6 +52,11 @@
     "back": "← Retour",
     "yearTitle": "Bilan {year}"
   },
+  "settings": {
+    "sectionsHeading": "Sections affichées dans le parcours",
+    "keepDraftLabel": "Conserver les brouillons après finalisation",
+    "keepDraftHint": "Choix propre à cet appareil. Sinon, le brouillon chiffré de l’année est effacé une fois le bilan finalisé."
+  },
   "stringList": {
     "removeAria": "Retirer",
     "addPlaceholder": "Ajouter…",

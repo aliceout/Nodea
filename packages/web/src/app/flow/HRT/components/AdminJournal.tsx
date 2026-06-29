@@ -11,13 +11,19 @@
 import { useMemo, useState } from 'react';
 
 import type { HrtProductPayload } from '@nodea/shared';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import Select from '@/ui/atoms/dirk/Select';
 import VirtualWindowList from '@/ui/atoms/layout/VirtualWindowList';
 
 import { buildDoseSeries, distinctMolecules, moleculeOf } from '../lib/admin-data';
-import { EMPTY_RANGE, inDateRange, type DateRange } from '../lib/date-range';
+import {
+  clampDateRangePreset,
+  EMPTY_RANGE,
+  inDateRange,
+  type DateRange,
+} from '../lib/date-range';
 import { todayIso } from '../lib/labels';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import AdminLogRow from './AdminLogRow';
@@ -42,6 +48,12 @@ export default function AdminJournal({
   const [chartSel, setChartSel] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_RANGE);
   const [chartOpen, setChartOpen] = useState(true);
+  // Default time window — seeded from the encrypted `hrtDefaultDateRange` pref
+  // (read once at mount, clamped). DateRangeFilter seeds its Select to this and
+  // emits the resolved range on mount ; the Select still overrides per session.
+  const [initialPreset] = useState(() =>
+    clampDateRangePreset(useNodeaStore.getState().preferences.hrtDefaultDateRange),
+  );
 
   // Molecule options stay computed from all entries (the date filter
   // shouldn't make the picker flicker). A specific molecule narrows the
@@ -102,7 +114,7 @@ export default function AdminJournal({
               ))}
             </Select>
           ) : null}
-          <DateRangeFilter onChange={setDateRange} />
+          <DateRangeFilter onChange={setDateRange} initialPreset={initialPreset} />
           {showChart ? (
             <CollapseToggle
               open={chartOpen}

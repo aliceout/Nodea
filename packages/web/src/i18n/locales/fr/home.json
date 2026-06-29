@@ -7,6 +7,14 @@
     "anonymous": "Bonjour."
   },
   "settings": "Paramètre de la page d’accueil",
+  "settingsPanel": {
+    "cards": {
+      "hero": "Afficher les dernières entrées du Journal",
+      "journalHeatmap": "Afficher la densité d’écriture",
+      "mood": "Afficher l’aperçu Mood",
+      "goals": "Afficher les objectifs en cours"
+    }
+  },
   "tips": {
     "recovery": {
       "title": "Important",

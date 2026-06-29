@@ -11,6 +11,10 @@ import GroupBlock from '@/ui/dirk/module/GroupBlock';
 import HoverActions from '@/ui/dirk/module/HoverActions';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import PageHeading from '@/ui/dirk/module/PageHeading';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import ModuleSettingsTrigger from '@/ui/dirk/module/ModuleSettingsTrigger';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
 import Topbar from '@/ui/dirk/Topbar';
 import {
   clearReviewDraft,
@@ -18,6 +22,7 @@ import {
   type DraftSummary,
 } from '../hooks/useDraft';
 import { useReview, type ReviewRecord } from '../hooks/useReview';
+import ReviewSettings from './ReviewSettings';
 
 interface ListProps {
   onStartNew(year: number): void;
@@ -134,7 +139,15 @@ export default function ReviewListView({
         </Topbar>
       }
     >
-      <PageHeading>{t('review.list.heading')}</PageHeading>
+      {/* Module title + « Paramètre du module » link on one row — Review has no
+          sidebar, so the List landing carries the trigger far right, like
+          HRT / Home. */}
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <PageHeading className="mb-0">{t('review.list.heading')}</PageHeading>
+        <ModuleSettingsTrigger className="shrink-0" />
+      </div>
+
+      <ReviewSettingsPanel />
 
       <div className="mb-9 max-w-2xl space-y-3 text-[14px] leading-[1.55] text-ink-soft">
         <p>{t('review.list.intro1')}</p>
@@ -179,6 +192,26 @@ export default function ReviewListView({
         </GroupBlock>
       )}
     </ModuleShell>
+  );
+}
+
+/**
+ * « Paramètre du module » panel for the List landing. Reads the settings
+ * context ITSELF rather than through `ReviewListView`'s body: `ReviewListView`
+ * is the component that renders `<ModuleShell>` (which provides the context), so
+ * its own body sits ABOVE the provider and would only ever see `null`. As a
+ * child rendered inside the shell, it sees the real context — the same provider
+ * the trigger toggles. (HRT / Home don't need this: their content is a separate
+ * child nested in ModuleShell, not the shell's own renderer.)
+ */
+function ReviewSettingsPanel() {
+  const settings = useModuleSettings();
+  return (
+    <InlinePanel open={!!settings?.open} className="mb-6">
+      <ModuleSettingsPanel onClose={() => settings?.close()}>
+        <ReviewSettings />
+      </ModuleSettingsPanel>
+    </InlinePanel>
   );
 }
 

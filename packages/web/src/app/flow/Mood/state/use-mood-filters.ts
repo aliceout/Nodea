@@ -13,6 +13,7 @@ import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 
 import type { MoodScore } from '@nodea/shared';
 
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { matchesHaystack } from '@/lib/text-search';
 
 import { rangeFor } from '../lib/date-format';
@@ -41,7 +42,13 @@ export function useMoodFilters(
 ): MoodFiltersState {
   const [year, setYearState] = useState<number | null>(null);
   const [month, setMonth] = useState<number | null>(null);
-  const [chartCollapsed, setChartCollapsed] = useState(false);
+  // Seed the frise's start-of-session state from the persisted default
+  // (`moodChartCollapsed`, absent ⇒ false / expanded — current behaviour). Lazy
+  // init so a `getState()` read happens once at mount; the toggle + the inline
+  // panels still override per session.
+  const [chartCollapsed, setChartCollapsed] = useState(
+    () => useNodeaStore.getState().preferences.moodChartCollapsed === true,
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [scoreFilter, setScoreFilter] = useState<MoodScore | null>(null);
   const [dayFilter, setDayFilter] = useState<string | null>(null);

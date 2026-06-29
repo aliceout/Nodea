@@ -10,6 +10,7 @@ import GoalForm from '../components/GoalForm';
 import { useGoalsActions, useGoalsFilters } from '../context';
 import GoalCardGrid from './GoalCardGrid';
 import GoalsList from './GoalsList';
+import GoalsSettings from './GoalsSettings';
 
 /**
  * Top-level Goals rendering surface. Picks between the grouped row
@@ -51,7 +52,9 @@ export default function PrimaryColumn() {
       {/* « Paramètre du module » — inline panel, toggled from the sidebar link;
           mutually exclusive with the form. */}
       <InlinePanel open={!!moduleSettings?.open}>
-        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
+          <GoalsSettings />
+        </ModuleSettingsPanel>
       </InlinePanel>
       {formOpen ? (
         <GoalForm

@@ -7,6 +7,14 @@
     "anonymous": "Hello."
   },
   "settings": "Home page settings",
+  "settingsPanel": {
+    "cards": {
+      "hero": "Show the latest journal entries",
+      "journalHeatmap": "Show the writing density",
+      "mood": "Show the Mood overview",
+      "goals": "Show goals in progress"
+    }
+  },
   "tips": {
     "recovery": {
       "title": "Important",

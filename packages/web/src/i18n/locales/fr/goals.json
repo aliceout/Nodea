@@ -50,6 +50,13 @@
     "list": "Liste",
     "cards": "Cartes"
   },
+  "settings": {
+    "groupByLabel": "Groupement par défaut",
+    "sortByLabel": "Tri par défaut",
+    "defaultStatusLabel": "Statut d’un nouvel objectif",
+    "prefillYearLabel": "Pré-remplir l’année en cours",
+    "prefillYearHint": "À la création, l’année est pré-remplie avec l’année courante."
+  },
   "side": {
     "searchPlaceholder": "Titre, note ou thème…",
     "statusHeading": "Statut",

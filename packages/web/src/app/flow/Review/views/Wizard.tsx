@@ -8,14 +8,14 @@ import InlineAlert from '@/ui/atoms/feedback/InlineAlert';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import {
-  QUESTION_STEPS,
-  STEPS,
   GROUP_LABELS,
+  clampHiddenSections,
   getByPath,
-  questionPosition,
   setByPath,
+  visibleSteps,
   type Step,
 } from '../config/steps';
+import { reviewKeepDraft } from '../lib/keep-draft';
 import { useDraft } from '../hooks/useDraft';
 import { useReview, type ReviewRecord } from '../hooks/useReview';
 import SectionForm from '../components/SectionForm';
@@ -97,7 +97,19 @@ export default function ReviewWizard({
   const [finalError, setFinalError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const step = STEPS[index]!;
+  // Active step list = STEPS minus any optional section the user turned off in
+  // the « Paramètre du module » panel. Seeded once at mount from the encrypted
+  // prefs blob (clamped to the ids this client knows are optional) — flipping a
+  // toggle takes effect on the NEXT wizard open, never mid-parcours, so the
+  // step count + navigation stay stable while editing. Absent ⇒ all shown.
+  const [steps] = useState<Step[]>(() =>
+    visibleSteps(
+      clampHiddenSections(useNodeaStore.getState().preferences.reviewHiddenSections),
+    ),
+  );
+  const questionSteps = useMemo(() => steps.filter((s) => s.kind !== 'intro'), [steps]);
+
+  const step = steps[index]!;
 
   // Offer to resume an encrypted draft, only once on load.
   // The `resume` flag (set when arriving from « Reprendre » on the
@@ -150,7 +162,7 @@ export default function ReviewWizard({
 
   const completed = useMemo(() => {
     const set = new Set<number>();
-    STEPS.forEach((s, i) => {
+    steps.forEach((s, i) => {
       // Intro steps don't persist anything — treat them as always
       // complete so the StepNav rail doesn't paint them as missing.
       if (s.kind === 'intro') {
@@ -167,7 +179,7 @@ export default function ReviewWizard({
       }
     });
     return set;
-  }, [payload]);
+  }, [payload, steps]);
 
   function onChangeValue(next: unknown): void {
     setPayload(
@@ -181,7 +193,7 @@ export default function ReviewWizard({
   }
 
   function goto(nextIdx: number): void {
-    const clamped = Math.max(0, Math.min(STEPS.length - 1, nextIdx));
+    const clamped = Math.max(0, Math.min(steps.length - 1, nextIdx));
     setIndex(clamped);
   }
 
@@ -193,7 +205,9 @@ export default function ReviewWizard({
         await updateReview(existing.id, payload);
       } else {
         await createReview(payload);
-        clearDraft();
+        // Local-only « conserver les brouillons » opt-in: when set, skip the
+        // wipe so this device keeps a working copy. Absent ⇒ false ⇒ clear.
+        if (!reviewKeepDraft()) clearDraft();
       }
       onDone();
     } catch (err) {
@@ -209,8 +223,10 @@ export default function ReviewWizard({
     payload as unknown as Record<string, unknown>,
     step.path,
   );
-  const isLast = index === STEPS.length - 1;
-  const qIndex = questionPosition(step);
+  const isLast = index === steps.length - 1;
+  // Position inside the ACTIVE question steps (hidden sections already dropped),
+  // so the « étape N/total » counter matches the parcours the user actually sees.
+  const qIndex = step.kind === 'intro' ? -1 : questionSteps.findIndex((s) => s.id === step.id);
   const topbarLabel =
     qIndex < 0
       ? t('review.topbar.wizardLabelIntro', { values: { year: payload.year } })
@@ -218,7 +234,7 @@ export default function ReviewWizard({
           values: {
             year: payload.year,
             position: qIndex + 1,
-            total: QUESTION_STEPS.length,
+            total: questionSteps.length,
           },
         });
 
@@ -254,7 +270,13 @@ export default function ReviewWizard({
             </h1>
           </header>
 
-          <StepNav index={index} onJump={goto} completed={completed} />
+          <StepNav
+            index={index}
+            onJump={goto}
+            completed={completed}
+            steps={steps}
+            questionSteps={questionSteps}
+          />
 
           {step.subtitle ? (
             <p className="mt-4 text-[13.5px] leading-[1.5] text-ink-soft">

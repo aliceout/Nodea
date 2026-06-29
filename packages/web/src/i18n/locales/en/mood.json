@@ -94,5 +94,11 @@
       "saveFailed": "Failed to save."
     },
     "submittingUpdate": "Updating…"
+  },
+  "settings": {
+    "chartCollapsedLabel": "Heatmap collapsed on open",
+    "chartCollapsedHint": "When the module opens, the heatmap starts collapsed rather than expanded.",
+    "offerDailyQuestionLabel": "Offer a question of the day",
+    "offerDailyQuestionHint": "On a new entry, a question of the day is drawn for the optional section."
   }
 }

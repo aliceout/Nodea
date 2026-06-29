@@ -94,7 +94,17 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
   // already-decrypted blob (`useExistingCover`).
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverLoadFailed, setCoverLoadFailed] = useState(false);
-  const [status, setStatus] = useState<LibraryStatus>(editingPayload?.status ?? 'planned');
+  // Create defaults the status to the persisted « Paramètre du module »
+  // preference (`libraryDefaultStatus`), clamped to the known statuses ;
+  // absent ⇒ 'planned' (the historical default). Edit keeps the book's own
+  // status. Lazy init so the pref is read once at mount.
+  const [status, setStatus] = useState<LibraryStatus>(() => {
+    if (editingPayload?.status) return editingPayload.status;
+    const seed = useNodeaStore.getState().preferences.libraryDefaultStatus;
+    return seed === 'in_progress' || seed === 'finished' || seed === 'abandoned'
+      ? seed
+      : 'planned';
+  });
   const [format, setFormat] = useState<LibraryFormat>(editingPayload?.format ?? 'unknown');
   const [tagsInput, setTagsInput] = useState((editingPayload?.tags ?? []).join(', '));
   const [submitting, setSubmitting] = useState(false);
@@ -106,7 +116,13 @@ export default function LibraryItemForm({ initial, onClose }: LibraryItemFormPro
   // (overwrite every field) and « couverture seule » (only the cover
   // URL is pulled) — surfaced on the edit path only.
   const lookup = useLibraryLookup();
-  const [searchLang, setSearchLang] = useState<string>(userLang);
+  // Seed the search language from the persisted « Paramètre du module »
+  // preference (`librarySearchLang`) ; absent ⇒ the app UI language (the
+  // historical soft-boost default). Lazy init so the pref is read once per
+  // open ; the form's own `<select>` still overrides per session.
+  const [searchLang, setSearchLang] = useState<string>(
+    () => useNodeaStore.getState().preferences.librarySearchLang ?? userLang,
+  );
   const [searchMode, setSearchMode] = useState<'all' | 'cover-only'>('all');
 
   const isEdit = editing !== null;

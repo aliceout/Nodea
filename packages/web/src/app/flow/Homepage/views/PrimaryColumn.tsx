@@ -1,3 +1,4 @@
+import { usePreferences } from '@/core/auth/use-preferences';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import InlinePanel from '@/ui/dirk/forms/InlinePanel';
 import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
@@ -11,6 +12,7 @@ import HeroEntry from '../components/HeroEntry';
 import JournalHeatmap from '../components/JournalHeatmap';
 import MoodBlock from '../components/MoodBlock';
 import { useHomepageData } from '../context';
+import HomeSettings from './HomeSettings';
 
 /**
  * Homepage primary column — bordered-card grid layout.
@@ -34,6 +36,9 @@ export default function PrimaryColumn() {
   const { t } = useI18n();
   const { displayName } = useHomepageData();
   const moduleSettings = useModuleSettings();
+  const { preferences } = usePreferences();
+  // Inverse of « shown »: absent / empty ⇒ all four personal cards visible.
+  const hidden = preferences.homeHiddenCards ?? [];
 
   return (
     <section className="flex min-w-0 flex-col">
@@ -52,7 +57,9 @@ export default function PrimaryColumn() {
       </div>
 
       <InlinePanel open={!!moduleSettings?.open} className="mb-6">
-        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
+          <HomeSettings />
+        </ModuleSettingsPanel>
       </InlinePanel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -63,10 +70,10 @@ export default function PrimaryColumn() {
             entirely, so no phantom grid cell shows up and the
             personal 2×2 grid stays unchanged. */}
         <AnnouncementsCard />
-        <HeroEntry />
-        <JournalHeatmap />
-        <MoodBlock />
-        <GoalsCard />
+        {!hidden.includes('hero') ? <HeroEntry /> : null}
+        {!hidden.includes('journalHeatmap') ? <JournalHeatmap /> : null}
+        {!hidden.includes('mood') ? <MoodBlock /> : null}
+        {!hidden.includes('goals') ? <GoalsCard /> : null}
       </div>
     </section>
   );

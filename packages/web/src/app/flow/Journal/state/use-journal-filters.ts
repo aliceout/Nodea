@@ -12,6 +12,7 @@ import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 
 import { splitThreads } from '@nodea/shared';
 
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { formatMonthLabel } from '@/core/i18n/date-format';
 import { matchesHaystack } from '@/lib/text-search';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -48,11 +49,23 @@ export function useJournalFilters(
 
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [groupBy, setGroupBy] = useState<GroupBy>('month');
+  // Initial grouping is SEEDED from the encrypted preferences (`journalGroupBy`),
+  // read once at mount via `getState` and clamped to the known tuple. The sidebar
+  // toggle still overrides per session — the pref is the landing default, never a
+  // lock. Absent / unknown ⇒ 'month' (today's behaviour).
+  const [groupBy, setGroupBy] = useState<GroupBy>(() => {
+    const p = useNodeaStore.getState().preferences.journalGroupBy;
+    return p === 'thread' ? 'thread' : 'month';
+  });
   const [year, setYearState] = useState<number | null>(null);
   const [month, setMonth] = useState<number | null>(null);
   const [dayFilter, setDayFilter] = useState<string | null>(null);
-  const [chartCollapsed, setChartCollapsed] = useState(false);
+  // Seed the frise's start-of-session state from the persisted default
+  // (`journalChartCollapsed`, absent ⇒ false / expanded — current behaviour).
+  // Lazy `getState` read at mount; the toggle + inline panels override per session.
+  const [chartCollapsed, setChartCollapsed] = useState(
+    () => useNodeaStore.getState().preferences.journalChartCollapsed === true,
+  );
 
   // Reset the month when the year changes so a stale month filter
   // doesn't silently empty the list in a year with no entries there.

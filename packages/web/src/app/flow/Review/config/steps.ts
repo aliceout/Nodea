@@ -211,17 +211,48 @@ export const GROUP_LABELS: Record<StepGroup, string> = {
 };
 
 /**
- * Question-only step list — drops `intro` welcome screens. The
- * topbar counter, the StepNav rail and the « Un parcours guidé en
- * N étapes » copy on the list view all reference this length so
- * the welcome screen doesn't inflate the count.
+ * Optional, emotionally-heavy / skippable sections the user may turn OFF from
+ * the « Paramètre du module » panel (persisted in `reviewHiddenSections`). The
+ * 8 life-areas and 6 core phrases stay MANDATORY and are intentionally absent
+ * here. Order matches their appearance in STEPS — the panel renders one toggle
+ * per id in this order. Stable ids: they match the `Step.id` keyed on by the
+ * wizard + reader.
  */
-export const QUESTION_STEPS: Step[] = STEPS.filter((s) => s.kind !== 'intro');
+export const OPTIONAL_SECTION_IDS = [
+  'best_moments',
+  'forgiveness',
+  'letting_go',
+  'secret_wish',
+] as const;
+export type OptionalSectionId = (typeof OPTIONAL_SECTION_IDS)[number];
 
-/** Position of `step` in QUESTION_STEPS, or -1 for intro steps. */
-export function questionPosition(step: Step): number {
-  if (step.kind === 'intro') return -1;
-  return QUESTION_STEPS.findIndex((s) => s.id === step.id);
+const OPTIONAL_SECTION_ID_SET = new Set<string>(OPTIONAL_SECTION_IDS);
+
+/** Whether `id` names an optional (hideable) section. */
+export function isOptionalSection(id: string): id is OptionalSectionId {
+  return OPTIONAL_SECTION_ID_SET.has(id);
+}
+
+/**
+ * Clamp an arbitrary stored `reviewHiddenSections` list to the ids this client
+ * actually knows are optional — a future blob carrying an unknown id (or a now-
+ * mandatory one) degrades gracefully rather than hiding something it shouldn't.
+ */
+export function clampHiddenSections(raw: readonly string[] | undefined): OptionalSectionId[] {
+  if (!raw) return [];
+  return OPTIONAL_SECTION_IDS.filter((id) => raw.includes(id));
+}
+
+/**
+ * STEPS minus any section whose id is in `hidden`. Only optional sections can
+ * be dropped (a non-optional id in `hidden` is ignored). Drives the wizard step
+ * list AND the reader so a turned-off section disappears from both. Absent /
+ * empty `hidden` ⇒ the full STEPS array (zero regression).
+ */
+export function visibleSteps(hidden: readonly string[]): Step[] {
+  if (hidden.length === 0) return STEPS;
+  const drop = new Set(hidden.filter((id) => OPTIONAL_SECTION_ID_SET.has(id)));
+  return STEPS.filter((s) => !drop.has(s.id));
 }
 
 /**

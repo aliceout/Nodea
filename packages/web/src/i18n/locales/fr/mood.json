@@ -94,5 +94,11 @@
       "saveFailed": "Erreur lors de l’enregistrement."
     },
     "submittingUpdate": "Mise à jour…"
+  },
+  "settings": {
+    "chartCollapsedLabel": "Frise repliée au démarrage",
+    "chartCollapsedHint": "À l’ouverture du module, la frise (heatmap) est repliée plutôt que déployée.",
+    "offerDailyQuestionLabel": "Proposer une question du jour",
+    "offerDailyQuestionHint": "Sur une nouvelle entrée, une question du jour est tirée pour la section optionnelle."
   }
 }

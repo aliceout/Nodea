@@ -14,6 +14,9 @@ import PageHeading from '@/ui/dirk/module/PageHeading';
 import { useEditScrollAnchor } from '@/ui/dirk/module/use-edit-scroll-anchor';
 import GroupedVirtualList from '@/ui/atoms/layout/GroupedVirtualList';
 
+import { usePreferences } from '@/core/auth/use-preferences';
+import { useNodeaStore } from '@/core/store/nodea-store';
+
 import JournalForm from '../components/JournalForm';
 import MobileFilters from '../components/MobileFilters';
 import MonthSelector from '../components/MonthSelector';
@@ -21,6 +24,7 @@ import YearSelector from '../components/YearSelector';
 import { useJournalActions, useJournalData, useJournalFilters } from '../context';
 import Chart from './Chart';
 import EntryRow from './EntryRow';
+import JournalSettings from './JournalSettings';
 import OnThisDayPanel from './OnThisDayPanel';
 
 /**
@@ -49,6 +53,9 @@ export default function PrimaryColumn() {
     setDayFilter,
   } = useJournalFilters();
   const { formOpen, editingEntry, closeForm } = useJournalActions();
+  const { preferences } = usePreferences();
+  // « Il y a quelques années » memory panel. Absent ⇒ true (shown by default).
+  const showOnThisDay = preferences.journalShowOnThisDay !== false;
   // Editing a row far down: jump to the form on open, glide back to the row
   // on save/cancel (Journal previously stayed put, stranding the user at the
   // off-screen form). Create flows (editingEntry === null) keep their place.
@@ -58,10 +65,15 @@ export default function PrimaryColumn() {
   // same as Mood, so the fold ANIMATES on every open (Journal used to leave the
   // chart folded after the form, so a later open had nothing to animate). The
   // form's open-fold lives in use-journal-actions; this effect adds the unfold
-  // on close (formOpen is a dep, so it also unfolds when the form closes).
+  // on close. « Nothing open » resets to the persisted default
+  // (`journalChartCollapsed`, absent ⇒ expanded) so the start-of-session
+  // preference is honoured once an inline panel closes (mirrors Mood).
   useEffect(() => {
     if (moduleSettings?.open) setChartCollapsed(true);
-    else if (!formOpen) setChartCollapsed(false);
+    else if (!formOpen)
+      setChartCollapsed(
+        useNodeaStore.getState().preferences.journalChartCollapsed === true,
+      );
   }, [moduleSettings?.open, formOpen, setChartCollapsed]);
   // The form and « Paramètre du module » are mutually exclusive — opening one
   // closes the other so they never stack (the just-opened panel wins).
@@ -230,7 +242,9 @@ export default function PrimaryColumn() {
       {/* « Paramètre du module » — inline panel like the entry composer,
           toggled from the sidebar link; mutually exclusive with the form. */}
       <InlinePanel open={!!moduleSettings?.open}>
-        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
+          <JournalSettings />
+        </ModuleSettingsPanel>
       </InlinePanel>
 
       {formOpen ? (
@@ -242,8 +256,9 @@ export default function PrimaryColumn() {
       ) : null}
 
       {/* « Il y a un an » — issue #58. Renders only on days when
-          past-them left a trail ; returns null otherwise. */}
-      <OnThisDayPanel />
+          past-them left a trail ; returns null otherwise. Gated on the
+          `journalShowOnThisDay` pref (absent ⇒ shown). */}
+      {showOnThisDay ? <OnThisDayPanel /> : null}
 
       {load.status === 'error' ? (
         <InlineAlert className="mb-4">{load.message}</InlineAlert>

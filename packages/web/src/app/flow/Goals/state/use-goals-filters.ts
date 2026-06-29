@@ -61,9 +61,19 @@ export function useGoalsFilters(entries: GoalEntry[]): GoalsFiltersState {
   const [statusFilter, setStatusFilter] = useState<CanonicalStatus | null>(
     null,
   );
-  const [groupBy, setGroupBy] = useState<GoalsGroupBy>('year');
+  // Initial grouping + sort are SEEDED from the encrypted preferences
+  // (`goalsGroupBy` / `goalsSortBy`), read once at mount via `getState` and
+  // clamped to the known tuples. The sidebar toggles still override per
+  // session — the pref is the landing default, never a lock.
+  const [groupBy, setGroupBy] = useState<GoalsGroupBy>(() => {
+    const p = useNodeaStore.getState().preferences.goalsGroupBy;
+    return p === 'thread' || p === 'year' ? p : 'year';
+  });
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('date');
+  const [sortBy, setSortBy] = useState<SortBy>(() => {
+    const p = useNodeaStore.getState().preferences.goalsSortBy;
+    return p === 'updated' || p === 'alpha' || p === 'date' ? p : 'date';
+  });
   const [threadFilter, setThreadFilter] = useState<string | null>(null);
 
   // viewMode persistence (encrypted preferences blob — same posture

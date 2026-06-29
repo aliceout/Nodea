@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import { intlLocale, parseLocalDate } from '@/core/i18n/date-format';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import ActiveFilterChip from '@/ui/dirk/module/ActiveFilterChip';
@@ -20,6 +21,7 @@ import YearSelector from '../components/YearSelector';
 import { useMoodActions, useMoodData, useMoodFilters } from '../context';
 import Chart from './Chart';
 import EntryRow from './EntryRow';
+import MoodSettings from './MoodSettings';
 
 /** Primary column for the Mood page : sticky header (H1, year
  *  picker, heatmap, section heading + month picker + frise toggle)
@@ -52,9 +54,13 @@ export default function PrimaryColumn() {
   // entry form (use-mood-actions folds it for the form) — so the two inline
   // panels open identically. Reopen on close, unless the form still holds it
   // folded (formOpen is a dep so this re-evaluates when the form closes first).
+  // « Nothing open » resets to the persisted default (`moodChartCollapsed`,
+  // absent ⇒ expanded) rather than hardcoding expanded, so the user's
+  // start-of-session preference is honoured once an inline panel closes.
   useEffect(() => {
     if (moduleSettings?.open) setChartCollapsed(true);
-    else if (!formOpen) setChartCollapsed(false);
+    else if (!formOpen)
+      setChartCollapsed(useNodeaStore.getState().preferences.moodChartCollapsed === true);
   }, [moduleSettings?.open, formOpen, setChartCollapsed]);
   // The entry form and « Paramètre du module » are mutually exclusive — opening
   // one closes the other so they never stack (the just-opened panel wins).
@@ -222,7 +228,9 @@ export default function PrimaryColumn() {
       {/* « Paramètre du module » — same InlinePanel mount + fade-up as the
           entry form below; only the child + toggle source differ. */}
       <InlinePanel open={!!moduleSettings?.open}>
-        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
+          <MoodSettings />
+        </ModuleSettingsPanel>
       </InlinePanel>
 
       <InlinePanel open={formOpen}>

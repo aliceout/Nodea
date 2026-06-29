@@ -51,6 +51,13 @@
     "clearDayFilterTitle": "Show every entry",
     "clearDayFilterAria": "Clear day filter"
   },
+  "settings": {
+    "groupByLabel": "Default view",
+    "chartCollapsedLabel": "Start with the heatmap folded",
+    "chartCollapsedHint": "On open, the writing heatmap starts collapsed.",
+    "showOnThisDayLabel": "Show \"On this day\"",
+    "showOnThisDayHint": "Surfaces at the top of the journal what you wrote on the same day in past years."
+  },
   "reader": {
     "noThreadEyebrow": "— no thread —",
     "navThreadLabel": "Browse by:",

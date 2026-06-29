@@ -15,6 +15,7 @@ import BookGrid from './BookGrid';
 import BookTable from './BookTable';
 import BookWall from './BookWall';
 import ItemRow from './ItemRow';
+import LibrarySettings from './LibrarySettings';
 
 /**
  * Catalogue rendering surface for the `livres` sub-view. Picks the
@@ -63,7 +64,9 @@ export default function PrimaryColumn() {
       {/* « Paramètre du module » — inline panel, toggled from the sidebar link;
           mutually exclusive with the form. */}
       <InlinePanel open={!!moduleSettings?.open}>
-        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
+          <LibrarySettings />
+        </ModuleSettingsPanel>
       </InlinePanel>
 
       {/* Inline book form — surfaced above the catalogue when the

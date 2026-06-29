@@ -33,6 +33,7 @@ import SpeedDial from '@/ui/dirk/SpeedDial';
 
 import AdminLogRow from '../components/AdminLogRow';
 import DoseChartPanel from '../components/DoseChartPanel';
+import HrtSettings from '../components/HrtSettings';
 import LabResultRow from '../components/LabResultRow';
 import ProductForm from '../components/ProductForm';
 import ProductRow from '../components/ProductRow';
@@ -71,7 +72,13 @@ export default function SummaryView({
   const { entries: adminEntries } = adminLogs;
   const { entries: labEntries } = labResults;
 
-  const [selectedMolecule, setSelectedMolecule] = useState<string | null>(null);
+  // Seeded from the encrypted `hrtDefaultMolecule` pref (read once at mount).
+  // The chart picker still overrides per session — the pref is only the landing
+  // default. A stale value (molecule no longer logged) falls back to the
+  // most-logged molecule via `activeMolecule` below (« seed, never lock »).
+  const [selectedMolecule, setSelectedMolecule] = useState<string | null>(
+    () => useNodeaStore.getState().preferences.hrtDefaultMolecule ?? null,
+  );
   const [addingProduct, setAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductEntry | null>(null);
   const [productView, setProductView] = useState<'active' | 'archived'>('active');
@@ -151,7 +158,13 @@ export default function SummaryView({
         <ModuleSettingsTrigger className="ml-auto shrink-0" />
       </div>
       <InlinePanel open={!!moduleSettings?.open} className="mb-5 shrink-0">
-        <ModuleSettingsPanel onClose={() => moduleSettings?.close()} />
+        <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
+          <HrtSettings
+            molecules={molecules}
+            activeMolecule={activeMolecule}
+            onSelectMolecule={setSelectedMolecule}
+          />
+        </ModuleSettingsPanel>
       </InlinePanel>
 
       {productFormOpen ? (

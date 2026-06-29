@@ -51,6 +51,13 @@
     "clearDayFilterTitle": "Voir toutes les entrées",
     "clearDayFilterAria": "Effacer le filtre du jour"
   },
+  "settings": {
+    "groupByLabel": "Vue par défaut",
+    "chartCollapsedLabel": "Frise repliée au démarrage",
+    "chartCollapsedHint": "À l’ouverture, la frise d’écriture est repliée.",
+    "showOnThisDayLabel": "Afficher « Il y a quelques années »",
+    "showOnThisDayHint": "Rappelle au sommet du journal ce que tu as écrit le même jour, les années passées."
+  },
   "reader": {
     "noThreadEyebrow": "— sans fil —",
     "navThreadLabel": "Naviguer dans :",

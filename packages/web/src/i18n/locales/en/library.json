@@ -85,6 +85,12 @@
     "finished": "Finished",
     "abandoned": "Abandoned"
   },
+  "settings": {
+    "groupByLabel": "Default grouping",
+    "defaultStatusLabel": "Default status for a new book",
+    "searchLangLabel": "Default search language",
+    "searchLangHint": "Used for metadata lookups (BNF, Google Books, OpenLibrary)."
+  },
   "statusGroup": {
     "planned": "To read",
     "in_progress": "Reading",

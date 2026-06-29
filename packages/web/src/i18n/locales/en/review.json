@@ -52,6 +52,11 @@
     "back": "← Back",
     "yearTitle": "Review {year}"
   },
+  "settings": {
+    "sectionsHeading": "Sections shown in the journey",
+    "keepDraftLabel": "Keep drafts after finalizing",
+    "keepDraftHint": "Per-device choice. Otherwise the year's encrypted draft is wiped once the review is finalized."
+  },
   "stringList": {
     "removeAria": "Remove",
     "addPlaceholder": "Add…",

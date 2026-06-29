@@ -5,6 +5,7 @@ import { pickQuestion } from '@/app/flow/Mood/data/questions';
 import { moodClient } from '@/core/api/modules/mood';
 import { toIsoDate } from '@/core/i18n/date-format';
 import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import DateField from '@/ui/atoms/dirk/DateField';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -81,11 +82,16 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
   // used to draw a *different* random question, orphaning the
   // answer already typed under the previous one (audit 2026-06).
   // On edit, the original question stays paired with the saved
-  // answer.
+  // answer. On create the « question du jour » is only drawn when the
+  // persisted `moodOfferDailyQuestion` default is on (absent ⇒ true / current
+  // behaviour); when off, the field stays empty and the optionals section shows
+  // only the free comment.
   const [question] = useState<string>(() => {
     if (initial?.question) return initial.question;
     if (initial) return '';
-    return pickQuestion(language);
+    const offerDailyQuestion =
+      useNodeaStore.getState().preferences.moodOfferDailyQuestion !== false;
+    return offerDailyQuestion ? pickQuestion(language) : '';
   });
 
   function setPositive(idx: 0 | 1 | 2, value: string): void {

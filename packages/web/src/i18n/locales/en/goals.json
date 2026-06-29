@@ -50,6 +50,13 @@
     "list": "List",
     "cards": "Cards"
   },
+  "settings": {
+    "groupByLabel": "Default grouping",
+    "sortByLabel": "Default sort",
+    "defaultStatusLabel": "New-goal status",
+    "prefillYearLabel": "Pre-fill the current year",
+    "prefillYearHint": "On a new goal, the year is pre-filled with the current one."
+  },
   "side": {
     "searchPlaceholder": "Title, note or theme…",
     "statusHeading": "Status",

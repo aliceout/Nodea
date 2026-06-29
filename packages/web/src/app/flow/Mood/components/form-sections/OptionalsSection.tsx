@@ -15,6 +15,11 @@ import { submitOnCmdEnter } from '@/ui/dirk/forms/format';
  * keeps the composer compact for the « quick capture » path
  * (3 positives + score, the most common cadence) without
  * hiding the optionals when an entry actually has them.
+ *
+ * The « question du jour » block is skipped entirely when there's no
+ * question AND no answer typed — this is the `moodOfferDailyQuestion`
+ * pref turned off (the parent draws no question), where the user wants
+ * just the free comment, not an orphan answer field labelled « — ».
  */
 interface OptionalsSectionProps {
   question: string;
@@ -34,27 +39,28 @@ export default function OptionalsSection({
   onSubmit,
 }: OptionalsSectionProps) {
   const { t } = useI18n();
+  const showQuestion = question.length > 0 || answer.length > 0;
   return (
     <div className="space-y-3 pt-1">
-      <div>
-        <p className="mb-1 text-[12px] text-muted">
-          <span className="font-semibold tracking-[0.02em]">
-            {t('mood.composer.questionLabel')}
-          </span>
-          <span className="font-serif italic text-ink-soft">
-            {question || '—'}
-          </span>
-        </p>
-        <DirkTextarea
-          value={answer}
-          onChange={(e) => onAnswerChange(e.target.value)}
-          onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
-          placeholder={t('mood.composer.answerPlaceholder')}
-          rows={2}
-          minHeightPx={56}
-          autoGrow
-        />
-      </div>
+      {showQuestion ? (
+        <div>
+          <p className="mb-1 text-[12px] text-muted">
+            <span className="font-semibold tracking-[0.02em]">
+              {t('mood.composer.questionLabel')}
+            </span>
+            <span className="font-serif italic text-ink-soft">{question || '—'}</span>
+          </p>
+          <DirkTextarea
+            value={answer}
+            onChange={(e) => onAnswerChange(e.target.value)}
+            onKeyDown={(e) => submitOnCmdEnter(e, onSubmit)}
+            placeholder={t('mood.composer.answerPlaceholder')}
+            rows={2}
+            minHeightPx={56}
+            autoGrow
+          />
+        </div>
+      ) : null}
 
       <div>
         <SectionLabel>{t('mood.composer.commentHeading')}</SectionLabel>

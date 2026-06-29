@@ -4,9 +4,10 @@ import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import {
-  STEPS,
   GROUP_LABELS,
+  clampHiddenSections,
   getByPath,
+  visibleSteps,
   type MixedFieldType,
   type Step,
 } from '../config/steps';
@@ -141,8 +142,15 @@ export default function ReviewReader({ record, onBack }: ReaderProps) {
   const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const payload = record.payload as Record<string, unknown> & { year: number };
+  // Honour the same « sections affichées » preference as the wizard: a section
+  // the user turned off is hidden from the reader too. Sections with no stored
+  // answer are already skipped below (renderValue ⇒ null), so this only changes
+  // visibility of empty optional sections — but it keeps the two views in sync.
+  const hidden = clampHiddenSections(
+    useNodeaStore.getState().preferences.reviewHiddenSections,
+  );
   const byGroup = new Map<Step['group'], Step[]>();
-  for (const step of STEPS) {
+  for (const step of visibleSteps(hidden)) {
     if (step.kind === 'intro') continue;
     if (!byGroup.has(step.group)) byGroup.set(step.group, []);
     byGroup.get(step.group)!.push(step);

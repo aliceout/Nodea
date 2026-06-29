@@ -20,7 +20,11 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { matchesHaystack } from '@/lib/text-search';
 
 import { matchesCellFilter, type CellFilter } from '../lib/cell-filter';
-import { buildGroups, type LibraryGroupBy } from '../lib/grouping';
+import {
+  buildGroups,
+  LIBRARY_GROUP_BY_VALUES,
+  type LibraryGroupBy,
+} from '../lib/grouping';
 import type { LibraryGroup, LibraryItem } from '../lib/types';
 
 /** The five catalogue rendering modes. Synced to the encrypted
@@ -90,7 +94,16 @@ export function useLibraryFilters(items: LibraryItem[]): LibraryFiltersState {
   const [statusFilter, setStatusFilter] =
     useState<LibraryStatus | 'all' | 'favorites'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [groupBy, setGroupBy] = useState<LibraryGroupBy>('status');
+  // Seed the grouping axis from the persisted default (« Paramètre du module »
+  // → `libraryDefaultGroupBy`), clamped to the known axes ; absent ⇒ 'status'
+  // (the historical default). Lazy init so it's read once at mount — the
+  // sidebar « Grouper par » chips still override per session.
+  const [groupBy, setGroupBy] = useState<LibraryGroupBy>(() => {
+    const seed = useNodeaStore.getState().preferences.libraryDefaultGroupBy;
+    return seed && (LIBRARY_GROUP_BY_VALUES as readonly string[]).includes(seed)
+      ? (seed as LibraryGroupBy)
+      : 'status';
+  });
   const [cellFilter, setCellFilter] = useState<CellFilter | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 

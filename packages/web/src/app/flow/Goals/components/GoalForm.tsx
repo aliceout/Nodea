@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { goalsClient } from '@/core/api/modules/goals';
 import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
 import {
@@ -65,14 +66,24 @@ export default function GoalForm({ initial, onClose }: GoalFormProps) {
   // `<input type="month">` as plain text, so we use a paired
   // select + numeric input).
   const initialMonth = initial ? (initial.date ?? '').slice(5, 7) : '';
-  const initialYear = initial ? (initial.date ?? '').slice(0, 4) : '';
 
   const [title, setTitle] = useState(initial?.title ?? '');
   const [month, setMonth] = useState(initialMonth);
-  const [year, setYear] = useState(initialYear);
-  const [status, setStatus] = useState<GoalStatus>(
-    isCanonicalGoalStatus(initial?.status) ? initial!.status : 'open',
-  );
+  // On create, year + status are seeded from the encrypted preferences
+  // (`goalsPrefillYear` / `goalsDefaultStatus`); on edit the entry's own
+  // values win. A restored draft (below) overrides either afterwards.
+  const [year, setYear] = useState(() => {
+    if (initial) return (initial.date ?? '').slice(0, 4);
+    return useNodeaStore.getState().preferences.goalsPrefillYear
+      ? String(new Date().getFullYear())
+      : '';
+  });
+  const [status, setStatus] = useState<GoalStatus>(() => {
+    if (isCanonicalGoalStatus(initial?.status)) return initial!.status;
+    return useNodeaStore.getState().preferences.goalsDefaultStatus === 'wip'
+      ? 'wip'
+      : 'open';
+  });
   const [thread, setThread] = useState(initial?.thread ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
   const [noteMode, setNoteMode] = useState<'visual' | 'markdown'>('visual');

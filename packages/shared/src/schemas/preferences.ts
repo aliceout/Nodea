@@ -100,6 +100,70 @@ export const GoalsViewModeSchema = z.enum(['list', 'cards']);
 export type GoalsViewMode = z.infer<typeof GoalsViewModeSchema>;
 
 /**
+ * Goals: the default grouping axis + sort the module opens on, the status
+ * pre-selected for a new goal, and whether to pre-fill the current year on
+ * create. The grouping/sort SEED the initial filter state on open — the sidebar
+ * toggles still override per session (same « seed, never lock » posture as the
+ * view modes). Accept-only; the UI clamps unknown values to its own tuples.
+ */
+export const GoalsGroupByPreferenceSchema = z.enum(['year', 'thread']);
+export type GoalsGroupByPreference = z.infer<typeof GoalsGroupByPreferenceSchema>;
+
+export const GoalsSortByPreferenceSchema = z.enum(['date', 'updated', 'alpha']);
+export type GoalsSortByPreference = z.infer<typeof GoalsSortByPreferenceSchema>;
+
+export const GoalsDefaultStatusSchema = z.enum(['open', 'wip']);
+export type GoalsDefaultStatus = z.infer<typeof GoalsDefaultStatusSchema>;
+
+/**
+ * Journal: default grouping the module opens on (the sidebar toggle still
+ * overrides per session). Absent ⇒ 'month'.
+ */
+export const JournalGroupByPreferenceSchema = z.enum(['month', 'thread']);
+export type JournalGroupByPreference = z.infer<typeof JournalGroupByPreferenceSchema>;
+
+/**
+ * Library: default catalogue grouping axis. Mirrors the web-side
+ * `LIBRARY_GROUP_BY_VALUES` tuple (`Library/lib/grouping.ts`); the UI clamps on
+ * read so an axis added there later degrades gracefully. Absent ⇒ 'status'.
+ */
+export const LibraryGroupByPreferenceSchema = z.enum([
+  'status',
+  'author',
+  'year',
+  'tag',
+  'publisher',
+  'collection',
+]);
+export type LibraryGroupByPreference = z.infer<typeof LibraryGroupByPreferenceSchema>;
+
+/** Library: status pre-selected when adding a new book. Mirrors
+ *  `LIBRARY_STATUS_VALUES`. Absent ⇒ 'planned'. */
+export const LibraryDefaultStatusSchema = z.enum([
+  'planned',
+  'in_progress',
+  'finished',
+  'abandoned',
+]);
+export type LibraryDefaultStatus = z.infer<typeof LibraryDefaultStatusSchema>;
+
+/**
+ * HRT: default Analyses target-band goal (health-sensitive — leaks transition
+ * direction, so encrypted like every pref). Mirrors `HrtGoal`. Absent ⇒ none
+ * (bands off, the current opt-in-only behaviour).
+ */
+export const HrtTargetGoalPreferenceSchema = z.enum(['feminizing', 'masculinizing']);
+export type HrtTargetGoalPreference = z.infer<typeof HrtTargetGoalPreferenceSchema>;
+
+/**
+ * HRT: default time window for the Administration / Analyses lists. Mirrors the
+ * `DateRangeFilter` presets (minus 'custom', which needs explicit dates).
+ * Absent ⇒ 'all'.
+ */
+export const HrtDateRangePreferenceSchema = z.enum(['all', '30d', '3m', '6m', '12m']);
+export type HrtDateRangePreference = z.infer<typeof HrtDateRangePreferenceSchema>;
+
+/**
  * Per-user list of admin-announcement ids the user has dismissed
  * from the Homepage. Stored encrypted alongside the other
  * preferences so the server never sees which announcements a
@@ -191,6 +255,40 @@ export const UserPreferencesPayloadSchema = z.looseObject({
   backgroundShadeDark: BackgroundShadeDarkSchema.optional(),
   libraryViewMode: LibraryViewModeSchema.optional(),
   goalsViewMode: GoalsViewModeSchema.optional(),
+  goalsGroupBy: GoalsGroupByPreferenceSchema.optional(),
+  goalsSortBy: GoalsSortByPreferenceSchema.optional(),
+  goalsDefaultStatus: GoalsDefaultStatusSchema.optional(),
+  /** Goals: pre-fill the current calendar year on a new goal. Absent ⇒ false. */
+  goalsPrefillYear: z.boolean().optional(),
+  /** Mood: open with the frise (heatmap) collapsed. Absent ⇒ false (expanded). */
+  moodChartCollapsed: z.boolean().optional(),
+  /** Mood: offer the « question du jour » prompt on new entries. Absent ⇒ true. */
+  moodOfferDailyQuestion: z.boolean().optional(),
+  journalGroupBy: JournalGroupByPreferenceSchema.optional(),
+  /** Journal: show the « Il y a quelques années » memory panel. Absent ⇒ true. */
+  journalShowOnThisDay: z.boolean().optional(),
+  /** Journal: open with the frise (heatmap) collapsed. Absent ⇒ false (expanded). */
+  journalChartCollapsed: z.boolean().optional(),
+  libraryDefaultGroupBy: LibraryGroupByPreferenceSchema.optional(),
+  libraryDefaultStatus: LibraryDefaultStatusSchema.optional(),
+  /** Library: default lookup search language (BCP-47-ish code, e.g. 'fr').
+   *  Absent ⇒ the app UI language. */
+  librarySearchLang: z.string().min(2).max(8).optional(),
+  /** Review: section ids the user has turned OFF in the wizard + reader.
+   *  Absent / empty ⇒ all sections shown. */
+  reviewHiddenSections: z.array(z.string().min(1).max(64)).optional(),
+  /** HRT: molecule pre-selected in the Synthèse dose chart. Absent ⇒ most-logged. */
+  hrtDefaultMolecule: z.string().min(1).max(128).optional(),
+  hrtDefaultTargetGoal: HrtTargetGoalPreferenceSchema.optional(),
+  /** HRT: preferred display unit per marker key (e.g. `{ estradiol: 'pmol/L' }`).
+   *  Absent keys fall back to each marker's canonical / most-logged unit. */
+  hrtUnitByMarker: z
+    .record(z.string().min(1).max(64), z.string().min(1).max(32))
+    .optional(),
+  hrtDefaultDateRange: HrtDateRangePreferenceSchema.optional(),
+  /** Home: card ids the user has hidden (hero / journalHeatmap / mood / goals).
+   *  Absent / empty ⇒ all four shown. */
+  homeHiddenCards: z.array(z.string().min(1).max(64)).optional(),
   dismissedAnnouncements: DismissedAnnouncementsSchema.optional(),
   /**
    * Rotation counter for the derived encrypted-backup phrase. NOT a

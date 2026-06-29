@@ -35,6 +35,10 @@
     "enabling": "Enabling…",
     "copied": "Copied"
   },
+  "boolean": {
+    "yes": "Yes",
+    "no": "No"
+  },
   "a11y": {
     "skipToMain": "Skip to main content"
   },

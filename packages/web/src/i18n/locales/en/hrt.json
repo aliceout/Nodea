@@ -49,6 +49,11 @@
     "fromAria": "From",
     "toAria": "To"
   },
+  "settings": {
+    "defaultMoleculeLabel": "Default product / molecule for the Overview chart",
+    "defaultTargetGoalLabel": "Default target bands (Lab results)",
+    "defaultDateRangeLabel": "Default period for lists"
+  },
   "chart": {
     "noData": "No data yet for {label}.",
     "ariaLabel": "Trend in {unit}",
