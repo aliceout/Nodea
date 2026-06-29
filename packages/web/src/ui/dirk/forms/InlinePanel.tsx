@@ -8,12 +8,12 @@ import type { ReactNode } from 'react';
  * the panel and the form mount through the EXACT same component.
  *
  * It owns the mount, nothing else — no margin by default (the child card carries
- * its own `MODULE_FORM_CARD` spacing). The card frame stays on the child, so
- * wrapping existing forms is behaviour-neutral (no double border, no new
- * animation). There is deliberately NO open/close
- * animation here: the forms never animated, and the real "open effect" a module
- * may have (e.g. Mood folds its heatmap when a panel opens) is module-specific
- * choreography wired in that module's own hooks — NOT a property of this wrapper.
+ * its own `MODULE_FORM_CARD` spacing) and no animation here either: the rise +
+ * fade entrance lives on the child card itself (`FORM_CARD`'s `animate-fade-up`),
+ * so it plays whether or not a surface is wrapped in this slot. The extra "open
+ * effect" some modules layer on top (e.g. Mood / Journal fold the heatmap above
+ * the form) is choreography wired in that module's own hooks — NOT a property of
+ * this wrapper.
  */
 export default function InlinePanel({
   open,

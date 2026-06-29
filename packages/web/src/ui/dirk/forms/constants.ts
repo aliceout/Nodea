@@ -15,12 +15,19 @@ import { getMonthNames } from '@/core/i18n/date-format';
  */
 
 /** Card chrome shared by every inline module composer (Mood / Goals /
- *  Journal / Library / HRT) — a muted-surface panel with a hairline
- *  border. Not `Surface`: that primitive rides a different token axis
- *  (`--surface-*` / injected flex gap) and would shift the look + add
- *  gaps these grids don't want. Factored per the « third copy » rule
- *  (nine call sites before this). */
-export const FORM_CARD = 'rounded-md border border-hair bg-bg-2 p-4';
+ *  Journal / Library / HRT) AND the « Paramètre du module » panel — a
+ *  muted-surface panel with a hairline border. Not `Surface`: that primitive
+ *  rides a different token axis (`--surface-*` / injected flex gap) and would
+ *  shift the look + add gaps these grids don't want. Factored per the « third
+ *  copy » rule (nine call sites before this).
+ *
+ *  `animate-fade-up` gives every form / panel the same rise + fade entrance on
+ *  open, uniformly across modules: the chartless ones (Goals / Library / HRT /
+ *  Home / Review) had no motion, only Mood / Journal "rose" — and only as a side
+ *  effect of their heatmap collapsing above the form. `motion-reduce:animate-none`
+ *  + the app-wide reduced-motion media query keep it off for users who opt out. */
+export const FORM_CARD =
+  'animate-fade-up motion-reduce:animate-none rounded-md border border-hair bg-bg-2 p-4';
 
 /** `FORM_CARD` plus the bottom margin the reader-shell composers
  *  (Mood / Goals / Journal / Library) want below them. The HRT forms
