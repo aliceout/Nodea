@@ -6,8 +6,9 @@ import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 
 /**
  * Inline « Paramètre du module » panel. Opens in the primary column exactly
- * like the entry composer — same `MODULE_FORM_CARD` chrome + bottom margin — so
- * it reads as the familiar inline-form pattern, not a foreign surface. The
+ * like the entry composer — same `MODULE_FORM_CARD` chrome (sage accent border,
+ * flush) — so it reads as the familiar inline-form pattern, not a foreign
+ * surface. The
  * shell (title + close) is shared; the body is per-module (`children`). Toggled
  * from the sidebar link through `useModuleSettings`.
  */

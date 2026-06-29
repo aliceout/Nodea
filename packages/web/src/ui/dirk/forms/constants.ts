@@ -16,10 +16,12 @@ import { getMonthNames } from '@/core/i18n/date-format';
 
 /** Card chrome shared by every inline module composer (Mood / Goals /
  *  Journal / Library / HRT) AND the « Paramètre du module » panel — a
- *  muted-surface panel with a hairline border. Not `Surface`: that primitive
- *  rides a different token axis (`--surface-*` / injected flex gap) and would
- *  shift the look + add gaps these grids don't want. Factored per the « third
- *  copy » rule (nine call sites before this).
+ *  raised (slightly lighter) `bg-raised` panel with a soft sage border
+ *  (`accent-soft`, the tag green) so the inline surface lifts off the page
+ *  without shouting. Not `Surface`:
+ *  that primitive rides a different token axis (`--surface-*` / injected flex
+ *  gap) and would shift the look + add gaps these grids don't want. Factored
+ *  per the « third copy » rule (nine call sites before this).
  *
  *  `animate-fade-up` gives every form / panel the same rise + fade entrance on
  *  open, uniformly across modules: the chartless ones (Goals / Library / HRT /
@@ -27,12 +29,13 @@ import { getMonthNames } from '@/core/i18n/date-format';
  *  effect of their heatmap collapsing above the form. `motion-reduce:animate-none`
  *  + the app-wide reduced-motion media query keep it off for users who opt out. */
 export const FORM_CARD =
-  'animate-fade-up motion-reduce:animate-none rounded-md border border-hair bg-bg-2 p-4';
+  'animate-fade-up motion-reduce:animate-none rounded-md border border-accent-soft bg-raised p-4';
 
-/** `FORM_CARD` plus the bottom margin the reader-shell composers
- *  (Mood / Goals / Journal / Library) want below them. The HRT forms
- *  sit flush in their own layout and use `FORM_CARD` directly. */
-export const MODULE_FORM_CARD = `mb-5 ${FORM_CARD}`;
+/** Was `FORM_CARD` + a `mb-5` bottom margin; the margin was dropped on request
+ *  so the composer / settings panel sits flush with the content below. Kept as
+ *  a named seam (and so the many call sites don't churn) — re-add uniform
+ *  spacing here if it's ever wanted back. */
+export const MODULE_FORM_CARD = FORM_CARD;
 
 /** Two-digit month codes + locale-aware long labels for the
  *  « date » selector shared by Goal / Library bodies. Built

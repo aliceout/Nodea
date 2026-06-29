@@ -207,7 +207,7 @@ export default function ReviewListView({
 function ReviewSettingsPanel() {
   const settings = useModuleSettings();
   return (
-    <InlinePanel open={!!settings?.open} className="mb-6">
+    <InlinePanel open={!!settings?.open}>
       <ModuleSettingsPanel onClose={() => settings?.close()}>
         <ReviewSettings />
       </ModuleSettingsPanel>

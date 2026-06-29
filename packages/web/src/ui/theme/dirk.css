@@ -22,6 +22,12 @@
      profondeur entre eux. */
   --color-k-bg: #f9f8f3;
   --color-k-bg2: #f5f4f0;
+  /* Raised surface for inline cards (the module composer + « Paramètre du
+     module » panel). Derived from `bg2` toward white so it reads a touch
+     lighter than its surroundings — and, being a `color-mix` on the live
+     `--color-k-bg2`, it adapts to dark mode AND every background shade with
+     no per-variant value to maintain. */
+  --color-k-raised: color-mix(in srgb, var(--color-k-bg2) 80%, #ffffff);
 
   /* Heatmap intensity ramp — 5 buckets (issue #56). Used by
      `ui/dirk/Heatmap.tsx` ; consumers reference `var(--heatmap-
@@ -267,6 +273,7 @@
      `text-accent`, `bg-accent-soft`, `text-danger` etc. */
   --color-bg: var(--color-k-bg);
   --color-bg-2: var(--color-k-bg2);
+  --color-raised: var(--color-k-raised);
   --color-ink: var(--color-k-ink);
   --color-ink-soft: var(--color-k-ink-soft);
   --color-muted: var(--color-k-muted);

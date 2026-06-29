@@ -56,7 +56,7 @@ export default function PrimaryColumn() {
         <ModuleSettingsTrigger className="shrink-0" label={t('home.settings')} />
       </div>
 
-      <InlinePanel open={!!moduleSettings?.open} className="mb-6">
+      <InlinePanel open={!!moduleSettings?.open}>
         <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
           <HomeSettings />
         </ModuleSettingsPanel>

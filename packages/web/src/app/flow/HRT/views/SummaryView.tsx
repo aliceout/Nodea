@@ -157,7 +157,7 @@ export default function SummaryView({
         <PageHeading className="mb-0 hidden lg:block">{t('hrt.title')}</PageHeading>
         <ModuleSettingsTrigger className="ml-auto shrink-0" />
       </div>
-      <InlinePanel open={!!moduleSettings?.open} className="mb-5 shrink-0">
+      <InlinePanel open={!!moduleSettings?.open} className="shrink-0">
         <ModuleSettingsPanel onClose={() => moduleSettings?.close()}>
           <HrtSettings
             molecules={molecules}

@@ -7,9 +7,10 @@ import type { ReactNode } from 'react';
  * surfaces kept re-inlining: the `{open ? <div>…</div> : null}` mount wrapper, so
  * the panel and the form mount through the EXACT same component.
  *
- * It owns the mount, nothing else — no margin by default (the child card carries
- * its own `MODULE_FORM_CARD` spacing) and no animation here either: the rise +
- * fade entrance lives on the child card itself (`FORM_CARD`'s `animate-fade-up`),
+ * It owns the mount, nothing else — no margin by default (the child card sits
+ * flush; its `MODULE_FORM_CARD` chrome no longer carries a bottom margin) and no
+ * animation here either: the rise + fade entrance lives on the child card
+ * itself (`FORM_CARD`'s `animate-fade-up`),
  * so it plays whether or not a surface is wrapped in this slot. The extra "open
  * effect" some modules layer on top (e.g. Mood / Journal fold the heatmap above
  * the form) is choreography wired in that module's own hooks — NOT a property of
@@ -22,8 +23,8 @@ export default function InlinePanel({
 }: {
   open: boolean;
   children: ReactNode;
-  /** Optional wrapper spacing for the call site (e.g. `mb-5` HRT, `mb-6` Home).
-   *  No top margin by default — the form / panel card sits flush. */
+  /** Optional layout hint for the call site (e.g. `shrink-0` in HRT's flex
+   *  column). No margin by default — the form / panel card sits flush. */
   className?: string;
 }) {
   if (!open) return null;
