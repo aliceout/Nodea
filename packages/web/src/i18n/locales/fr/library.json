@@ -87,6 +87,7 @@
   },
   "settings": {
     "groupByLabel": "Regroupement par défaut",
+    "defaultViewLabel": "Vue par défaut",
     "defaultStatusLabel": "Statut par défaut d’un nouveau livre",
     "searchLangLabel": "Langue de recherche par défaut",
     "searchLangHint": "Utilisée pour les recherches de métadonnées (BNF, Google Books, OpenLibrary)."

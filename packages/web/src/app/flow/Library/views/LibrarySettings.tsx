@@ -3,8 +3,9 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { SEARCH_LANGUAGES } from '@/ui/dirk/forms/constants';
 import { SettingSelectRow, SettingsGrid } from '@/ui/dirk/module/SettingRow';
 
-import { useLibraryFilters } from '../context';
+import { LIBRARY_VIEW_MODES, useLibraryFilters } from '../context';
 import { LIBRARY_GROUP_BY_VALUES, type LibraryGroupBy } from '../lib/grouping';
+import type { LibraryViewMode } from '../state/use-library-filters';
 
 /**
  * Library « Paramètre du module » panel body.
@@ -25,7 +26,7 @@ import { LIBRARY_GROUP_BY_VALUES, type LibraryGroupBy } from '../lib/grouping';
 export default function LibrarySettings() {
   const { t, language } = useI18n();
   const { preferences, setPreferences } = usePreferences();
-  const { groupBy, setGroupBy } = useLibraryFilters();
+  const { groupBy, setGroupBy, viewMode, setViewMode } = useLibraryFilters();
 
   // Default add-book status — absent ⇒ 'planned' (the form's current default).
   const defaultStatus =
@@ -63,6 +64,20 @@ export default function LibrarySettings() {
         options={LIBRARY_GROUP_BY_VALUES.map((value) => ({
           value,
           label: t(`library.groupByOptions.${value}`),
+        }))}
+      />
+      <SettingSelectRow
+        id="library-setting-view"
+        label={t('library.settings.defaultViewLabel')}
+        value={viewMode}
+        onChange={(v) => {
+          if ((LIBRARY_VIEW_MODES as readonly string[]).includes(v)) {
+            setViewMode(v as LibraryViewMode);
+          }
+        }}
+        options={LIBRARY_VIEW_MODES.map((value) => ({
+          value,
+          label: t(`library.viewMode.${value}`),
         }))}
       />
       <SettingSelectRow

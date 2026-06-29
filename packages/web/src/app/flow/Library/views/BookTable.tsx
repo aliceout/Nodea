@@ -24,7 +24,7 @@ const TABLE_COLUMNS: ReadonlyArray<{
   labelKey: string;
   className: string;
 }> = [
-  { id: 'title', labelKey: 'library.table.title', className: 'py-2 pr-3' },
+  { id: 'title', labelKey: 'library.table.title', className: 'px-3 py-2' },
   { id: 'author', labelKey: 'library.fields.author', className: 'px-3 py-2' },
   { id: 'publisher', labelKey: 'library.fields.publisher', className: 'px-3 py-2' },
   { id: 'language', labelKey: 'library.fields.language', className: 'px-3 py-2' },
@@ -177,7 +177,7 @@ export default function BookTable({ items }: BookTableProps) {
                 key={it.id}
                 className="border-b border-hair last:border-b-0 transition-colors hover:bg-bg-2"
               >
-                <td className="py-2 pr-3">
+                <td className="px-3 py-2">
                   <button
                     type="button"
                     onClick={() => editItem(it)}
