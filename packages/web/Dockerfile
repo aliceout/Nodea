@@ -10,10 +10,13 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 RUN corepack enable
 
-# Force the install to include devDeps (vite, @vitejs/plugin-react, etc.).
-# Docker builds occasionally ship with NODE_ENV=production in the image env
-# or CI wrappers; the `--prod=false` flag is the safe belt-and-braces.
-ENV NODE_ENV=development
+# devDeps (vite, @vitejs/plugin-react, …) are forced by `--prod=false` on the
+# install below, regardless of NODE_ENV — so we DON'T need NODE_ENV=development
+# here. Keep it `production`: Vite derives `import.meta.env.DEV` from NODE_ENV,
+# and a `development` value would leak into the later `vite build` → DEV=true
+# in the shipped bundle → the « Mode démo » banner would show on prod. Build =
+# never demo; only `pnpm dev` (DEV=true) is the demo.
+ENV NODE_ENV=production
 
 # The front is built with VITE_API_URL=/api so same-origin calls flow through
 # the nginx reverse-proxy in the runtime stage. Override at build time if the
