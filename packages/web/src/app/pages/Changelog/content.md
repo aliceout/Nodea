@@ -5,6 +5,19 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.18.1 — 2026-06-30
+
+### Corrections
+
+- **docker** : build web with NODE_ENV=production (no « Mode démo » on prod) _(90ed47f)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : v2.18.1 _(dd7ed29)_
+
+</details>
+
 ## v2.18.0 — 2026-06-29
 
 ### Nouveautés
@@ -26,6 +39,10 @@ pliés pour ne pas noyer l'essentiel.
 - **ui** : recess the inline-card surface, restore its margin, drop the row divider _(4191a72)_
 - **auth** : wipe la réf. mnémonique après finish + corrige le commentaire 0024 _(99b7663)_
 - **auth** : clé le limiteur de re-vérification sur l'user id, pas l'IP _(2043033)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.18.0 _(95b3b4d)_
 
 <details>
 <summary>Maintenance — 5 commits</summary>
