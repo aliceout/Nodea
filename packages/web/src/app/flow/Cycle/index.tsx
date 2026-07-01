@@ -41,6 +41,8 @@ export default function CyclePage() {
   const [records, setRecords] = useState<Rec[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [year, setYear] = useState<number | null>(null);
+  const [month, setMonth] = useState<number | null>(null);
 
   const reload = useCallback(() => {
     if (!ctx) return;
@@ -79,6 +81,17 @@ export default function CyclePage() {
     for (const r of records) if (r.payload.flow) m.set(r.payload.date, r.payload.flow);
     return m;
   }, [records]);
+  const availableYears = useMemo(() => {
+    const set = new Set<number>();
+    for (const r of records) set.add(Number(r.payload.date.slice(0, 4)));
+    return Array.from(set).sort((a, b) => b - a);
+  }, [records]);
+  // Jumping years drops a stale month so the entries list can't silently
+  // empty (same guard as Mood).
+  const changeYear = useCallback((y: number | null) => {
+    setYear(y);
+    setMonth(null);
+  }, []);
 
   return (
     <ModuleShell
@@ -108,6 +121,11 @@ export default function CyclePage() {
             selected={selected}
             onSelectDay={setSelected}
             formOpen={selected !== null}
+            year={year}
+            month={month}
+            availableYears={availableYears}
+            onYearChange={changeYear}
+            onMonthChange={setMonth}
           />
           <InlinePanel open={selected !== null}>
             {selected ? (
@@ -126,7 +144,12 @@ export default function CyclePage() {
               />
             ) : null}
           </InlinePanel>
-          <CycleEntriesList records={records} onSelect={setSelected} />
+          <CycleEntriesList
+            records={records}
+            year={year}
+            month={month}
+            onSelect={setSelected}
+          />
         </section>
       )}
     </ModuleShell>

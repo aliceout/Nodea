@@ -37,17 +37,22 @@ export function buildCycleHeatmap(
   todayIso: string,
   language: string,
   weeks: number = CYCLE_HEATMAP_WEEKS,
+  /** `null` = rolling window ending today ; a year = that calendar
+   *  year (Jan → Dec, capped at today for the current year). */
+  year: number | null = null,
 ): { cells: Array<CycleHeatCell | null>; monthLabels: CycleMonthLabel[] } {
   const todayMs = toMs(todayIso);
-  const todayDow = (new Date(todayMs).getUTCDay() + 6) % 7; // Monday = 0
-  const lastMondayMs = todayMs - todayDow * DAY_MS;
+  const endMs = year == null ? todayMs : Math.min(Date.UTC(year, 11, 31, 12), todayMs);
+  const startMs = year == null ? Number.NEGATIVE_INFINITY : Date.UTC(year, 0, 1, 12);
+  const endDow = (new Date(endMs).getUTCDay() + 6) % 7; // Monday = 0
+  const lastMondayMs = endMs - endDow * DAY_MS;
   const oldestMondayMs = lastMondayMs - (weeks - 1) * 7 * DAY_MS;
 
   const cells: Array<CycleHeatCell | null> = [];
   for (let i = 0; i < weeks * 7; i += 1) {
     const ms = oldestMondayMs + i * DAY_MS;
-    if (ms > todayMs) {
-      cells.push(null); // future days in the current week
+    if (ms > endMs || ms < startMs) {
+      cells.push(null); // outside the visible window
       continue;
     }
     const iso = toIso(ms);

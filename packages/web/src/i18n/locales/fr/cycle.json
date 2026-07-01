@@ -3,6 +3,12 @@
   "logToday": "Noter aujourd’hui",
   "showChart": "Afficher le graphique",
   "hideChart": "Masquer le graphique",
+  "selectors": {
+    "yearAria": "Choisir l’année",
+    "yearRolling": "En cours",
+    "monthAria": "Choisir le mois",
+    "monthAll": "Tous"
+  },
   "notReady": "Active le module Cycle depuis Mon compte → Modules pour commencer.",
   "disclaimer": "Estimation informative — ni un moyen de contraception, ni un diagnostic. En cas de doute, parles-en à un·e soignant·e.",
   "estimate": {

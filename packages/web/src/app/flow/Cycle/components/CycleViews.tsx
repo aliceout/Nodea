@@ -13,12 +13,15 @@ import type { CycleFlow } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
+import PageHeading from '@/ui/dirk/module/PageHeading';
 import Tabs from '@/ui/dirk/Tabs';
 import type { CycleStats } from '../lib/cycle-model';
 import CycleCalendar from './CycleCalendar';
 import CycleHeatmap from './CycleHeatmap';
+import CycleMonthSelector from './CycleMonthSelector';
 import CycleRing from './CycleRing';
 import CycleStacked from './CycleStacked';
+import CycleYearSelector from './CycleYearSelector';
 
 type CycleView = 'calendar' | 'ring' | 'stacked' | 'heatmap';
 const VIEWS: readonly CycleView[] = ['calendar', 'ring', 'stacked', 'heatmap'];
@@ -31,6 +34,11 @@ interface Props {
   onSelectDay: (iso: string) => void;
   /** Composer open : fold the graph + hide the toggle (Mood parity). */
   formOpen: boolean;
+  year: number | null;
+  month: number | null;
+  availableYears: readonly number[];
+  onYearChange: (year: number | null) => void;
+  onMonthChange: (month: number | null) => void;
 }
 
 export default function CycleViews({
@@ -40,6 +48,11 @@ export default function CycleViews({
   selected,
   onSelectDay,
   formOpen,
+  year,
+  month,
+  availableYears,
+  onYearChange,
+  onMonthChange,
 }: Props) {
   const { t, language } = useI18n();
   const [view, setView] = useState<CycleView>('calendar');
@@ -69,7 +82,16 @@ export default function CycleViews({
 
   return (
     <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <PageHeading className="mb-0 hidden lg:block">{t('cycle.title')}</PageHeading>
+        <CycleYearSelector
+          year={year}
+          availableYears={availableYears}
+          onChange={onYearChange}
+        />
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <Tabs
           tabs={VIEWS.map((v) => ({ id: v, label: t(`cycle.view.${v}`) }))}
           value={view}
@@ -136,11 +158,24 @@ export default function CycleViews({
             ) : null}
 
             {view === 'heatmap' ? (
-              <CycleHeatmap flowByDate={flowByDate} today={today} onSelectDay={onSelectDay} />
+              <CycleHeatmap
+                flowByDate={flowByDate}
+                today={today}
+                onSelectDay={onSelectDay}
+                year={year}
+              />
             ) : null}
           </div>
         </div>
       </div>
+
+      {/* Month strip — only when a specific year is selected (the
+          rolling window straddles months). Filters the entries list. */}
+      {year !== null ? (
+        <div className="mt-3">
+          <CycleMonthSelector month={month} onChange={onMonthChange} />
+        </div>
+      ) : null}
     </div>
   );
 }

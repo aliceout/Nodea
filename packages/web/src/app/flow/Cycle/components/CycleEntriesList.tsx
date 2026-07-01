@@ -10,16 +10,26 @@ import FlowMark from './FlowMark';
 
 interface Props {
   records: ReadonlyArray<DecryptedRecord<CyclePayload>>;
+  /** `null` = all years (rolling) ; a year scopes the list. */
+  year: number | null;
+  /** 0-based month ; only applies when a year is selected. */
+  month: number | null;
   onSelect: (iso: string) => void;
 }
 
-export default function CycleEntriesList({ records, onSelect }: Props) {
+export default function CycleEntriesList({ records, year, month, onSelect }: Props) {
   const { t, language } = useI18n();
 
-  const sorted = useMemo(
-    () => [...records].sort((a, b) => b.payload.date.localeCompare(a.payload.date)),
-    [records],
-  );
+  const sorted = useMemo(() => {
+    let list = records;
+    if (year !== null) {
+      list = list.filter((r) => Number(r.payload.date.slice(0, 4)) === year);
+      if (month !== null) {
+        list = list.filter((r) => Number(r.payload.date.slice(5, 7)) === month + 1);
+      }
+    }
+    return [...list].sort((a, b) => b.payload.date.localeCompare(a.payload.date));
+  }, [records, year, month]);
 
   return (
     <section className="mt-8">

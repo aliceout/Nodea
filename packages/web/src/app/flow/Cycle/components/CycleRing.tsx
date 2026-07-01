@@ -72,8 +72,8 @@ export default function CycleRing({
 
   return (
     <div className="flex flex-col items-center gap-6 py-2 sm:flex-row sm:justify-center sm:gap-12">
-      {/* Recap — left of the ring on sm+ so it doesn't add height. */}
-      <div className="order-2 space-y-1.5 text-center text-[13px] text-muted sm:order-1 sm:max-w-[170px] sm:text-right">
+      {/* Recap — right of the ring on sm+ so it doesn't add height. */}
+      <div className="order-2 space-y-1.5 text-center text-[13px] text-muted sm:order-2 sm:max-w-[170px] sm:text-left">
         <p>
           <span className="font-medium text-low">{t('cycle.legend.period')}</span> ·{' '}
           {t('cycle.stacked.unit', { values: { count: periodLength } })}
@@ -89,7 +89,7 @@ export default function CycleRing({
       </div>
 
       <div
-        className="relative order-1 shrink-0 sm:order-2"
+        className="relative order-1 shrink-0 sm:order-1"
         style={{ width: SIZE, height: SIZE }}
       >
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full">

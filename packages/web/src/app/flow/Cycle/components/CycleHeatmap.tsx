@@ -29,18 +29,20 @@ interface Props {
   flowByDate: ReadonlyMap<string, CycleFlow>;
   today: string;
   onSelectDay: (iso: string) => void;
+  /** `null` = rolling year ; a year scopes the frise to that year. */
+  year: number | null;
 }
 
-export default function CycleHeatmap({ flowByDate, today, onSelectDay }: Props) {
+export default function CycleHeatmap({ flowByDate, today, onSelectDay, year }: Props) {
   const { t, language } = useI18n();
 
   const full = useMemo(
-    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_WEEKS),
-    [flowByDate, today, language],
+    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_WEEKS, year),
+    [flowByDate, today, language, year],
   );
   const compact = useMemo(
-    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_COMPACT_WEEKS),
-    [flowByDate, today, language],
+    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_COMPACT_WEEKS, year),
+    [flowByDate, today, language, year],
   );
 
   const toCells = (cells: ReadonlyArray<CycleHeatCell | null>): Array<HeatmapCellInput | null> =>
