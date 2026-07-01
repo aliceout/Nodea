@@ -154,10 +154,12 @@ per-module-lock note in §1.
 
 ## 9. Roadmap
 
-- **P1** — schema + Drizzle table + collection registration + web
+- **P1** ✅ — schema + Drizzle table + collection registration + web
   client ; daily composer (date, flow, free symptoms, notes) ; calendar
-  view ; next-period estimate (labelled, with the irregular-cycle rule).
-- **P2** — symptom presets ; ring widget ; stacked-cycles chart.
+  view ; next-period estimate (labelled, with the irregular-cycle rule) ;
+  account backup plugin.
+- **P2** — ring widget ✅ + stacked-cycles chart ✅ + view switcher ✅ ;
+  symptom presets ⏳.
 - **P3** — opt-in « conscience de fertilité » : BBT / mucus / LH fields
   + fertile-window estimate behind the disclaimer.
 - **P4** — Mood × cycle cross-reference (client-side, by date).
