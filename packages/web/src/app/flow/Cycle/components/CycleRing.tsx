@@ -25,8 +25,6 @@ interface Props {
   stacked?: boolean;
 }
 
-const FERTILE_BEFORE = 5;
-const FERTILE_AFTER = 1;
 const WEEK_MARKS = [7, 14, 21, 28, 35, 42] as const;
 
 export default function CycleRing({
@@ -71,11 +69,6 @@ export default function CycleRing({
         : next
           ? t('cycle.ring.periodsToday')
           : t('cycle.ring.day', { values: { count: day } });
-
-  const inFertile =
-    ovulation &&
-    day >= ovulation.day - FERTILE_BEFORE &&
-    day <= ovulation.day + FERTILE_AFTER;
 
   const big = size >= 260;
   const padX = Math.round(size * 0.12);
@@ -201,17 +194,10 @@ export default function CycleRing({
           {t('cycle.stacked.unit', { values: { count: periodLength } })}
         </p>
         {ovulation ? (
-          inFertile ? (
-            <p>
-              <span className="font-medium text-accent">{t('cycle.ring.fertile')}</span> ·{' '}
-              {fmtDate(ovulation.date)}
-            </p>
-          ) : (
-            <p>
-              <span className="font-medium text-accent">{t('cycle.stacked.ovulation')}</span> ·{' '}
-              ~J{ovulation.day} · {fmtDate(ovulation.date)}
-            </p>
-          )
+          <p>
+            <span className="font-medium text-accent">{t('cycle.ring.ovulationDay')}</span> ·{' '}
+            ~J{ovulation.day} · {fmtDate(ovulation.date)}
+          </p>
         ) : null}
         <p className="text-[11px] text-muted-soft">{t('cycle.ring.j1hint')}</p>
       </div>

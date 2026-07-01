@@ -37,8 +37,7 @@
     "periodDay": "Jour {count} des règles",
     "periodsIn": "Règles dans {count} j",
     "periodsToday": "Règles aujourd’hui",
-    "fertile": "Jour fertile probable",
-    "ovOn": "Ovulation ~{date}"
+    "ovulationDay": "Jour d’ovulation estimé"
   },
   "entries": {
     "title": "Entrées",

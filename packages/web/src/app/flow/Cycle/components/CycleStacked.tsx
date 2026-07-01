@@ -18,7 +18,7 @@ interface Props {
 }
 
 const LUTEAL = 14; // days from ovulation to the next period (estimate).
-const MAX_ROWS = 4; // the 4 most recent completed cycles (fits 300px, no scroll).
+const MAX_ROWS = 5; // the 5 most recent completed cycles (fits 300px, no scroll).
 const DAY_MS = 86_400_000;
 
 /** A cycle runs from its start (J1) to the day before the next period. */

@@ -64,6 +64,7 @@ function MonthGrid({
           const day = i + 1;
           const iso = isoOf(y, m, day);
           const flow = flowByDate.get(iso);
+          const isPeriod = flow !== undefined;
           const isPredicted = !flow && predictedDays.has(iso);
           const isToday = iso === today;
           const isSelected = iso === selected;
@@ -81,10 +82,17 @@ function MonthGrid({
                 isSelected && 'ring-2 ring-accent',
               )}
             >
+              {/* Period days get a light-red disc on the number (like
+                  today's accent pill) ; predictions keep a hollow droplet. */}
               <span
                 className={cn(
                   'flex h-6 w-6 items-center justify-center rounded-full',
-                  isToday ? 'bg-accent-soft font-semibold text-accent-deep' : 'text-ink',
+                  isPeriod
+                    ? 'bg-low-soft font-medium text-low-deep'
+                    : isToday
+                      ? 'bg-accent-soft font-semibold text-accent-deep'
+                      : 'text-ink',
+                  isPeriod && isToday && 'ring-1 ring-accent',
                 )}
               >
                 {day}
@@ -115,7 +123,7 @@ export default function CycleCalendar(props: Props) {
     // can't hold it, never wrapped ; the current month (rightmost) always
     // shows, past months appear to its left as width allows.
     <div className="@container">
-      <div className="flex flex-nowrap justify-center gap-x-8">
+      <div className="flex flex-nowrap justify-evenly">
         <div className="hidden shrink-0 @min-[1000px]:block">
           <MonthGrid {...props} y={months[0]!.y} m={months[0]!.m} />
         </div>

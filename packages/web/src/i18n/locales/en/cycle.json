@@ -37,8 +37,7 @@
     "periodDay": "Day {count} of your period",
     "periodsIn": "Period in {count} d",
     "periodsToday": "Period due today",
-    "fertile": "Likely fertile day",
-    "ovOn": "Ovulation ~{date}"
+    "ovulationDay": "Est. ovulation day"
   },
   "entries": {
     "title": "Entries",
