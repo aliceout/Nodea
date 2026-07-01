@@ -31,7 +31,8 @@ function pointAt(frac: number): { x: number; y: number } {
 export default function CycleRing({ day, length, periodLength, ovulation }: Props) {
   const { t, language } = useI18n();
   const periodFrac = length ? Math.min(periodLength / length, 1) : 0;
-  const today = length ? pointAt(Math.min(day / length, 1)) : null;
+  const elapsedFrac = length ? Math.min(day / length, 1) : 0;
+  const today = length ? pointAt(elapsedFrac) : null;
   const ovPoint = length && ovulation ? pointAt(ovulation.day / length) : null;
   const ovDateLabel =
     ovulation &&
@@ -45,6 +46,7 @@ export default function CycleRing({ day, length, periodLength, ovulation }: Prop
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full">
           <g transform={`rotate(-90 ${CENTER} ${CENTER})`}>
             <circle cx={CENTER} cy={CENTER} r={R} fill="none" strokeWidth={STROKE} className="stroke-bg-2" />
+            {/* Elapsed since day 1 → today : the cycle « fills up ». */}
             {length ? (
               <circle
                 cx={CENTER}
@@ -52,7 +54,18 @@ export default function CycleRing({ day, length, periodLength, ovulation }: Prop
                 r={R}
                 fill="none"
                 strokeWidth={STROKE}
-                strokeLinecap="round"
+                strokeDasharray={`${elapsedFrac * C} ${C}`}
+                className="stroke-accent-soft"
+              />
+            ) : null}
+            {/* Menstruation, drawn on top of the elapsed arc at the start. */}
+            {length ? (
+              <circle
+                cx={CENTER}
+                cy={CENTER}
+                r={R}
+                fill="none"
+                strokeWidth={STROKE}
                 strokeDasharray={`${periodFrac * C} ${C}`}
                 className="stroke-low"
               />

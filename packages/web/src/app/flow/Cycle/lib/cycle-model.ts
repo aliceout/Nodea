@@ -125,7 +125,9 @@ export function computeCycle(
       averageCycle && averageCycle > LUTEAL_DAYS
         ? {
             day: averageCycle - LUTEAL_DAYS,
-            date: addDays(lastStart, averageCycle - LUTEAL_DAYS),
+            // Cycle day N ↔ lastStart + (N − 1) — same convention as
+            // `current.day`, so the « ~J14 · <date> » caption agrees.
+            date: addDays(lastStart, averageCycle - LUTEAL_DAYS - 1),
           }
         : null;
     current = { day: diffDays(today, lastStart) + 1, length: averageCycle, ovulation };
