@@ -21,14 +21,32 @@ const W = 340;
 const H = 100;
 const PAD = 6;
 
+/** Smooth path through points via Catmull-Rom → cubic béziers. */
+function smooth(pts: ReadonlyArray<{ x: number; y: number }>): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0]!.x.toFixed(1)} ${pts[0]!.y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const p0 = pts[i - 1] ?? pts[i]!;
+    const p1 = pts[i]!;
+    const p2 = pts[i + 1]!;
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 export default function CycleHormones({ length, day }: Props) {
   const { t } = useI18n();
   const { points, ovulation } = useMemo(() => sampleHormones(length), [length]);
 
   const x = (d: number) => ((d - 1) / Math.max(1, length - 1)) * W;
   const y = (v: number) => H - PAD - v * (H - 2 * PAD);
-  const path = (key: 'e' | 'p' | 'l') =>
-    points.map((p) => `${x(p.d).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
+  const curve = (key: 'e' | 'p' | 'l') =>
+    smooth(points.map((p) => ({ x: x(p.d), y: y(p[key]) })));
 
   const legend: ReadonlyArray<[string, string]> = [
     ['stroke-accent', t('cycle.hormones.estrogen')],
@@ -59,9 +77,9 @@ export default function CycleHormones({ length, day }: Props) {
           preserveAspectRatio="none"
         >
           <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <polyline points={path('e')} fill="none" className="stroke-accent" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          <polyline points={path('p')} fill="none" className="stroke-ink-soft" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          <polyline points={path('l')} fill="none" className="stroke-low" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <path d={curve('e')} fill="none" className="stroke-accent" strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
+          <path d={curve('p')} fill="none" className="stroke-ink-soft" strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
+          <path d={curve('l')} fill="none" className="stroke-low" strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
           {day !== null && day >= 1 && day <= length ? (
             <line
               x1={x(day)}
