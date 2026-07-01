@@ -1,10 +1,11 @@
 /**
  * Stacked-cycles view (spec §6) — the honest picture over time. One bar
  * per completed cycle (max 6, most recent), aligned at day 1 against a
- * shared day axis (gridlines at 7/14/21/28…) so the red menstruation
- * block reads « ≈ N days » at a glance. The sage diamond is the
- * estimated ovulation (≈ next period − 14). Pure CSS widths — no chart
- * lib. Only completed cycles show (the ongoing one has no length yet).
+ * shared day axis (per-day ticks, week numbers 7 / 14 / 21…) so the red
+ * menstruation block reads « ≈ N days » at a glance. Each bar is
+ * captioned with its own start → end dates (a cycle doesn't align to a
+ * month) on the line above it. The sage diamond is the estimated
+ * ovulation (≈ next period − 14). Pure CSS widths — no chart lib.
  */
 import type { CycleSpan } from '../lib/cycle-model';
 
@@ -15,7 +16,6 @@ interface Props {
   unit: (days: number) => string;
   periodLabel: string;
   ovulationLabel: string;
-  daysLabel: string;
 }
 
 const LUTEAL = 14; // days from ovulation to the next period (estimate).
@@ -37,7 +37,6 @@ export default function CycleStacked({
   unit,
   periodLabel,
   ovulationLabel,
-  daysLabel,
 }: Props) {
   const completed = cycles.filter((c) => c.length != null).slice(-MAX_ROWS).reverse();
   if (completed.length === 0) {
@@ -55,10 +54,8 @@ export default function CycleStacked({
   return (
     <div className="px-1 py-2">
       {/* Day axis — a per-day ruler ; every day is a tick, taller +
-          labelled at each week (7 / 14 / 21…) so the red block reads
-          « ≈ N days » at a glance. */}
+          numbered at each week (7 / 14 / 21…). */}
       <div className="mb-2 flex items-end gap-3">
-        <span className="w-20 shrink-0 text-[10px] text-muted-soft">{daysLabel}</span>
         <div className="relative h-5 flex-1">
           {Array.from({ length: scale }, (_, i) => i + 1).map((d) => (
             <span
@@ -82,48 +79,49 @@ export default function CycleStacked({
         <span className="w-16 shrink-0" />
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {completed.map((c) => {
           const ovulation = c.length! - LUTEAL;
           return (
-            <div key={c.start} className="flex items-center gap-3 text-[12px]">
-              {/* A cycle doesn't align to a month — show its own span dates. */}
-              <span className="w-20 shrink-0 text-[10px] leading-tight text-muted">
-                {fmt(c.start)}
-                <span className="block text-muted-soft">→ {fmt(endIso(c.start, c.length!))}</span>
-              </span>
-              <div className="relative h-5 flex-1">
-                {/* gridlines span the bar so each cycle reads against the ruler */}
-                {ticks.map((tck) => (
-                  <span
-                    key={tck}
-                    className="absolute inset-y-0 w-px bg-hair"
-                    style={{ left: pct(tck) }}
-                  />
-                ))}
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-bg-2"
-                  style={{ width: pct(c.length!) }}
-                />
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-low"
-                  style={{ width: pct(Math.min(c.periodLength, c.length!)) }}
-                />
-                {ovulation > c.periodLength ? (
-                  <span
-                    className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] bg-accent ring-2 ring-bg"
-                    style={{ left: pct(ovulation) }}
-                    title={`${ovulationLabel} · J${ovulation}`}
-                  />
-                ) : null}
+            <div key={c.start}>
+              {/* A cycle doesn't align to a month — caption it with its
+                  own span dates, on the line above the bar. */}
+              <div className="mb-1 text-[10px] text-muted">
+                {fmt(c.start)} → {fmt(endIso(c.start, c.length!))}
               </div>
-              <span
-                className="w-16 shrink-0 text-right text-[11px] tabular-nums"
-                title={`${periodLabel} ${c.periodLength} · ${unit(c.length!)}`}
-              >
-                <span className="font-semibold text-low">{c.periodLength}</span>
-                <span className="text-muted-soft"> / {unit(c.length!)}</span>
-              </span>
+              <div className="flex items-center gap-3 text-[12px]">
+                <div className="relative h-5 flex-1">
+                  {ticks.map((tck) => (
+                    <span
+                      key={tck}
+                      className="absolute inset-y-0 w-px bg-hair"
+                      style={{ left: pct(tck) }}
+                    />
+                  ))}
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-bg-2"
+                    style={{ width: pct(c.length!) }}
+                  />
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-low"
+                    style={{ width: pct(Math.min(c.periodLength, c.length!)) }}
+                  />
+                  {ovulation > c.periodLength ? (
+                    <span
+                      className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] bg-accent ring-2 ring-bg"
+                      style={{ left: pct(ovulation) }}
+                      title={`${ovulationLabel} · J${ovulation}`}
+                    />
+                  ) : null}
+                </div>
+                <span
+                  className="w-16 shrink-0 text-right text-[11px] tabular-nums"
+                  title={`${periodLabel} ${c.periodLength} · ${unit(c.length!)}`}
+                >
+                  <span className="font-semibold text-low">{c.periodLength}</span>
+                  <span className="text-muted-soft"> / {unit(c.length!)}</span>
+                </span>
+              </div>
             </div>
           );
         })}

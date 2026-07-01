@@ -137,7 +137,6 @@ export default function CycleViews({
                 unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
                 periodLabel={t('cycle.legend.period')}
                 ovulationLabel={t('cycle.stacked.ovulation')}
-                daysLabel={t('cycle.stacked.days')}
               />
             ) : null}
 

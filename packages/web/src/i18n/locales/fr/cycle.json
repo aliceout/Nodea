@@ -53,8 +53,7 @@
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",
     "unit": "{count} j",
-    "ovulation": "Ovulation estimée",
-    "days": "jours"
+    "ovulation": "Ovulation estimée"
   },
   "loadFailed": "Chargement impossible.",
   "form": {

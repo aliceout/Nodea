@@ -53,8 +53,7 @@
   "stacked": {
     "empty": "No completed cycle to compare yet.",
     "unit": "{count} d",
-    "ovulation": "Est. ovulation",
-    "days": "days"
+    "ovulation": "Est. ovulation"
   },
   "loadFailed": "Could not load.",
   "form": {
