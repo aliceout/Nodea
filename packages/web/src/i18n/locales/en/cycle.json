@@ -1,0 +1,36 @@
+{
+  "title": "Cycle",
+  "logToday": "Log today",
+  "notReady": "Enable the Cycle module from My account → Modules to get started.",
+  "disclaimer": "Informational estimate — not contraception and not a diagnosis. If in doubt, talk to a clinician.",
+  "estimate": {
+    "title": "Next period",
+    "inDays": "in {count} d",
+    "avg": "avg cycle ~{days} d",
+    "notEnough": "Not enough regularity to estimate yet.",
+    "irregular": "Cycles too irregular for a reliable estimate."
+  },
+  "legend": {
+    "period": "Period",
+    "predicted": "Predicted",
+    "today": "Today"
+  },
+  "form": {
+    "flow": {
+      "label": "Flow",
+      "none": "None",
+      "spotting": "Spotting",
+      "light": "Light",
+      "medium": "Medium",
+      "heavy": "Heavy"
+    },
+    "symptoms": {
+      "label": "Symptoms",
+      "placeholder": "cramps, fatigue, headache…"
+    },
+    "notes": {
+      "label": "Notes"
+    },
+    "saveFailed": "Could not save."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "title": "Cycle",
+  "logToday": "Noter aujourd’hui",
+  "notReady": "Active le module Cycle depuis Mon compte → Modules pour commencer.",
+  "disclaimer": "Estimation informative — ni un moyen de contraception, ni un diagnostic. En cas de doute, parles-en à un·e soignant·e.",
+  "estimate": {
+    "title": "Prochaines règles",
+    "inDays": "dans {count} j",
+    "avg": "cycle moyen ~{days} j",
+    "notEnough": "Pas encore assez de régularité pour estimer.",
+    "irregular": "Cycles trop irréguliers pour une estimation fiable."
+  },
+  "legend": {
+    "period": "Règles",
+    "predicted": "Prédiction",
+    "today": "Aujourd’hui"
+  },
+  "form": {
+    "flow": {
+      "label": "Flux",
+      "none": "Aucun",
+      "spotting": "Traces",
+      "light": "Léger",
+      "medium": "Moyen",
+      "heavy": "Abondant"
+    },
+    "symptoms": {
+      "label": "Symptômes",
+      "placeholder": "crampes, fatigue, maux de tête…"
+    },
+    "notes": {
+      "label": "Notes"
+    },
+    "saveFailed": "Enregistrement impossible."
+  }
+}

@@ -29,6 +29,10 @@
     "label": "HRT",
     "description": "Suivez l’administration de votre hormonothérapie et vos résultats d’analyses dans le temps."
   },
+  "cycle": {
+    "label": "Cycle",
+    "description": "Suivez vos règles, vos symptômes et vos cycles — chiffré de bout en bout, serveur aveugle."
+  },
   "account": {
     "label": "Mon compte",
     "description": "Gérez vos informations personnelles, sécurité et préférences du compte."
