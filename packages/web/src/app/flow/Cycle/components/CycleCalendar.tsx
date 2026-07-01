@@ -114,9 +114,10 @@ export default function CycleCalendar(props: Props) {
       return { y: next.getFullYear(), m: next.getMonth() };
     });
 
-  // Three consecutive months from the anchor ; the 2nd/3rd only show at
-  // md/lg via `hidden`, so a narrow column keeps a single month.
-  const months = [0, 1, 2].map((i) => {
+  // Three consecutive months ENDING on the anchor : the anchor (current
+  // month by default) sits rightmost so the past reads to its left. The
+  // extra past months only appear when the width can hold them.
+  const months = [-2, -1, 0].map((i) => {
     const d = new Date(anchor.y, anchor.m + i, 1);
     return { y: d.getFullYear(), m: d.getMonth() };
   });
@@ -131,12 +132,19 @@ export default function CycleCalendar(props: Props) {
           <ChevronRightIcon className="h-4 w-4" />
         </Button>
       </div>
-      <div className="flex flex-wrap justify-center gap-x-10 gap-y-6">
-        <MonthGrid {...props} y={months[0]!.y} m={months[0]!.m} />
-        <div className="hidden md:block">
-          <MonthGrid {...props} y={months[1]!.y} m={months[1]!.m} />
-        </div>
-        <div className="hidden lg:block">
+      {/* Container query, not viewport : drop a whole month when the
+          available width can't hold it, rather than wrapping it onto a
+          new line. `flex-nowrap` keeps the visible months on one row. */}
+      <div className="@container">
+        <div className="flex flex-nowrap justify-center gap-x-10">
+          {/* Oldest → newest ; the current month (rightmost) always
+              shows, past months appear to its left as width allows. */}
+          <div className="hidden shrink-0 @min-[1080px]:block">
+            <MonthGrid {...props} y={months[0]!.y} m={months[0]!.m} />
+          </div>
+          <div className="hidden shrink-0 @min-[720px]:block">
+            <MonthGrid {...props} y={months[1]!.y} m={months[1]!.m} />
+          </div>
           <MonthGrid {...props} y={months[2]!.y} m={months[2]!.m} />
         </div>
       </div>
