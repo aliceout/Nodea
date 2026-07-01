@@ -58,10 +58,10 @@ export default function CycleHormones({ length, day }: Props) {
           className="absolute inset-0 h-full w-full"
           preserveAspectRatio="none"
         >
-          <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} />
-          <polyline points={path('e')} fill="none" className="stroke-accent" strokeWidth={2} strokeLinejoin="round" />
-          <polyline points={path('p')} fill="none" className="stroke-ink-soft" strokeWidth={2} strokeLinejoin="round" />
-          <polyline points={path('l')} fill="none" className="stroke-low" strokeWidth={2} strokeLinejoin="round" />
+          <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <polyline points={path('e')} fill="none" className="stroke-accent" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <polyline points={path('p')} fill="none" className="stroke-ink-soft" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <polyline points={path('l')} fill="none" className="stroke-low" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           {day !== null && day >= 1 && day <= length ? (
             <line
               x1={x(day)}
@@ -69,8 +69,9 @@ export default function CycleHormones({ length, day }: Props) {
               x2={x(day)}
               y2={H}
               className="stroke-ink"
-              strokeWidth={1.5}
+              strokeWidth={1}
               strokeDasharray="3 2"
+              vectorEffect="non-scaling-stroke"
             />
           ) : null}
         </svg>
