@@ -42,14 +42,25 @@ export default function CycleStacked({
 
   return (
     <div className="px-1 py-2">
-      {/* Day axis — the temporal ruler the bars read against. */}
+      {/* Day axis — a per-day ruler ; every day is a tick, taller +
+          labelled at each week (7 / 14 / 21…) so the red block reads
+          « ≈ N days » at a glance. */}
       <div className="mb-2 flex items-end gap-3">
         <span className="w-14 shrink-0 text-[10px] text-muted-soft">{daysLabel}</span>
-        <div className="relative h-3 flex-1">
+        <div className="relative h-5 flex-1">
+          {Array.from({ length: scale }, (_, i) => i + 1).map((d) => (
+            <span
+              key={d}
+              className={`absolute bottom-0 w-px ${
+                d % 7 === 0 ? 'h-2.5 bg-hair' : 'h-1.5 bg-hair/50'
+              }`}
+              style={{ left: pct(d) }}
+            />
+          ))}
           {ticks.map((tck) => (
             <span
               key={tck}
-              className="absolute -translate-x-1/2 text-[10px] tabular-nums text-muted"
+              className="absolute top-0 -translate-x-1/2 text-[10px] tabular-nums text-muted"
               style={{ left: pct(tck) }}
             >
               {tck}

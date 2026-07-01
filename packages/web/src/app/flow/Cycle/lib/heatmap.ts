@@ -2,12 +2,16 @@
  * Cycle heatmap builder — projects logged flow days onto a
  * GitHub-contributions grid (`weeks × 7`, column-major, Monday-first),
  * ending on the week that holds today. Pure : feeds the shared
- * `ui/dirk/Heatmap` the same way Mood's `buildHeatmap` does. « max
- * 6 months » → 26 weeks. Date math in UTC-noon to sidestep DST.
+ * `ui/dirk/Heatmap` the same way Mood's `buildHeatmap` does. Full
+ * rolling year (52 weeks), like the Mood / Journal frise, with a 17-week
+ * compact fallback for mobile. Date math in UTC-noon to sidestep DST.
  */
 import type { CycleFlow } from '@nodea/shared';
 
-export const CYCLE_HEATMAP_WEEKS = 26; // ≈ 6 months.
+/** Full year, same as Mood/Journal (52 × 7 = 364 cells). */
+export const CYCLE_HEATMAP_WEEKS = 52;
+/** Mobile fallback (≈ 4 months) — matches Mood's compact width. */
+export const CYCLE_HEATMAP_COMPACT_WEEKS = 17;
 const DAY_MS = 86_400_000;
 
 export interface CycleHeatCell {

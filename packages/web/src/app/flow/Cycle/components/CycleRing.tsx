@@ -27,9 +27,9 @@ const CENTER = SIZE / 2;
 const FERTILE_BEFORE = 5;
 const FERTILE_AFTER = 1;
 
-function pointAt(frac: number): { x: number; y: number } {
+function pointAt(frac: number, r: number = R): { x: number; y: number } {
   const a = frac * 2 * Math.PI - Math.PI / 2;
-  return { x: CENTER + R * Math.cos(a), y: CENTER + R * Math.sin(a) };
+  return { x: CENTER + r * Math.cos(a), y: CENTER + r * Math.sin(a) };
 }
 
 export default function CycleRing({
@@ -103,6 +103,26 @@ export default function CycleRing({
               />
             ) : null}
           </g>
+          {/* One tick per cycle day just inside the band ; longer +
+              darker at each week so every day is materialised. */}
+          {length
+            ? Array.from({ length }, (_, d) => {
+                const major = d % 7 === 0;
+                const outer = pointAt(d / length, R - STROKE / 2);
+                const inner = pointAt(d / length, R - STROKE / 2 - (major ? 6 : 3));
+                return (
+                  <line
+                    key={d}
+                    x1={inner.x}
+                    y1={inner.y}
+                    x2={outer.x}
+                    y2={outer.y}
+                    className={major ? 'stroke-muted' : 'stroke-muted-soft'}
+                    strokeWidth={major ? 1 : 0.75}
+                  />
+                );
+              })
+            : null}
           {ovPoint ? (
             <rect
               x={ovPoint.x - 4}

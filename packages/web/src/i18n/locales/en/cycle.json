@@ -13,6 +13,7 @@
     "irregular": "Cycles too irregular for a reliable estimate."
   },
   "legend": {
+    "title": "Legend",
     "period": "Period",
     "predicted": "Predicted",
     "today": "Today"

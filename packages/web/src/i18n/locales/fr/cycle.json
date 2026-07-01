@@ -13,6 +13,7 @@
     "irregular": "Cycles trop irréguliers pour une estimation fiable."
   },
   "legend": {
+    "title": "Légende",
     "period": "Règles",
     "predicted": "Prédiction",
     "today": "Aujourd’hui"

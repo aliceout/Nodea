@@ -22,6 +22,7 @@ import Topbar from '@/ui/dirk/Topbar';
 import CycleDayForm from './components/CycleDayForm';
 import CycleEntriesList from './components/CycleEntriesList';
 import CycleViews from './components/CycleViews';
+import SideColumn from './components/SideColumn';
 import { computeCycle } from './lib/cycle-model';
 
 type Rec = DecryptedRecord<CyclePayload>;
@@ -32,17 +33,8 @@ function todayIso(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-function LegendRow({ swatch, label }: { swatch: string; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`inline-block h-3.5 w-3.5 rounded-full ${swatch}`} />
-      <span>{label}</span>
-    </div>
-  );
-}
-
 export default function CyclePage() {
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const ctx = useModuleClient('cycle');
   const today = useMemo(todayIso, []);
@@ -88,52 +80,6 @@ export default function CyclePage() {
     return m;
   }, [records]);
 
-  const nextLabel =
-    stats.next &&
-    new Intl.DateTimeFormat(language, { day: 'numeric', month: 'long' }).format(
-      new Date(`${stats.next.date}T12:00:00`),
-    );
-
-  const side = (
-      <div className="flex flex-col gap-4">
-        <div className="rounded-[var(--radius-md)] border border-hair bg-bg p-4">
-          <div className="text-[12px] font-medium text-muted">
-            {t('cycle.estimate.title')}
-          </div>
-          {stats.status === 'ok' && stats.next ? (
-            <>
-              <div className="mt-1 text-lg font-semibold capitalize text-ink">
-                {nextLabel}
-              </div>
-              <div className="text-[12px] text-muted">
-                {t('cycle.estimate.inDays', { values: { count: stats.next.daysUntil } })} ·{' '}
-                {t('cycle.estimate.avg', { values: { days: stats.averageCycle ?? 0 } })}
-              </div>
-            </>
-          ) : (
-            <div className="mt-1 text-[13px] text-muted">
-              {t(
-                stats.status === 'irregular'
-                  ? 'cycle.estimate.irregular'
-                  : 'cycle.estimate.notEnough',
-              )}
-            </div>
-          )}
-          <p className="mt-3 text-[11px] leading-snug text-muted-soft">
-            {t('cycle.disclaimer')}
-          </p>
-        </div>
-        <div className="flex flex-col gap-1.5 text-[12px] text-muted">
-          <LegendRow swatch="bg-low" label={t('cycle.legend.period')} />
-          <LegendRow
-            swatch="border border-dashed border-low-soft"
-            label={t('cycle.legend.predicted')}
-          />
-          <LegendRow swatch="bg-accent-soft" label={t('cycle.legend.today')} />
-        </div>
-      </div>
-    );
-
   return (
     <ModuleShell
       topbar={
@@ -145,7 +91,7 @@ export default function CyclePage() {
           ) : null}
         </Topbar>
       }
-      side={side}
+      side={<SideColumn stats={stats} />}
     >
       {!ctx ? (
         <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>
