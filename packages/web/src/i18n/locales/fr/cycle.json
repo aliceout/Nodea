@@ -24,12 +24,56 @@
     "predicted": "Prédiction",
     "today": "Aujourd’hui"
   },
+  "averages": {
+    "title": "Tes moyennes",
+    "days": {
+      "one": "{count} jour",
+      "other": "{count} jours"
+    },
+    "cycleSentence": "Ton cycle dure en moyenne {days}.",
+    "periodSentence": "Tes règles durent en moyenne {days}.",
+    "window": "Sur les 12 derniers mois",
+    "notEnough": "Pas encore assez de cycles complets pour une moyenne.",
+    "inYear": "En {year}",
+    "yearCycleSentence": "Ton cycle durait en moyenne {days}.",
+    "yearPeriodSentence": "Tes règles duraient {days}.",
+    "notEnoughYear": "Pas de cycle complet enregistré cette année-là."
+  },
+  "calendar": {
+    "prevMonth": "Mois précédents",
+    "nextMonth": "Mois suivants"
+  },
   "phase": {
     "menstrual": "Menstruelle",
     "follicular": "Folliculaire",
     "fertile": "Fertile",
     "ovulation": "Ovulation",
     "luteal": "Lutéale"
+  },
+  "import": {
+    "trigger": "Importer des données",
+    "title": "Importer depuis Clue",
+    "help": "Exporte tes données depuis Clue (menu → Réglages → « Télécharger mes données »), puis choisis ici le .zip reçu — ou le fichier measurements.json si tu l’as déjà extrait. Si le zip est protégé, le mot de passe te sera demandé.",
+    "choose": "Choisir un fichier…",
+    "passwordLabel": "Mot de passe du zip Clue",
+    "unlock": "Déverrouiller",
+    "summary": "{days} jours trouvés · {withFlow} avec règles",
+    "range": "du {from} au {to}",
+    "newDays": "{count} nouveaux jours à importer",
+    "skipped": "{count} déjà présents (ignorés)",
+    "cta": "Importer {count} jours",
+    "importing": "Import…",
+    "done": "{count} jours importés.",
+    "close": "Fermer",
+    "errors": {
+      "invalid_json": "Fichier illisible (JSON invalide).",
+      "unrecognized_clue_format": "Format Clue non reconnu — choisis le .zip ou le fichier measurements.json.",
+      "empty": "Aucune donnée exploitable dans ce fichier.",
+      "wrong_password": "Mot de passe incorrect.",
+      "no_measurements": "measurements.json introuvable dans le zip.",
+      "read_failed": "Lecture du fichier impossible.",
+      "failed": "Échec de l’import."
+    }
   },
   "view": {
     "calendar": "Calendrier",

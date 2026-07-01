@@ -90,6 +90,16 @@ export interface CycleStats {
   cycles: readonly CycleSpan[];
   /** Median of the last ≤6 cycle lengths, or null when none. */
   averageCycle: number | null;
+  /** Display averages over the last 12 months (MEDIAN — outlier-robust, same
+   *  statistic the prediction uses) : « ton cycle dure en moyenne X jours ».
+   *  Each value is null when the window holds no data ; `*Count` is the
+   *  sample size. */
+  avg: {
+    cycle: number | null;
+    period: number | null;
+    cycleCount: number;
+    periodCount: number;
+  };
   /** Phase of each calendar day across the logged + projected cycles — drives
    *  the calendar tinting. Ongoing-cycle days after `today` carry
    *  `predicted: true`. */
@@ -145,6 +155,40 @@ function stdev(xs: readonly number[]): number {
   return Math.sqrt(v);
 }
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+/** The ISO day `n` calendar months before `iso` (UTC-noon, DST-safe). */
+function monthsAgo(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return toIso(Date.UTC(y!, m! - 1 - n, d!, 12));
+}
+
+/** Median cycle + period length over a set of cycles. The MEDIAN (not the
+ *  arithmetic mean) on purpose : cycle data is outlier-prone (a missed period
+ *  log merges two cycles into a ~55-day phantom), and the median ignores that
+ *  where the mean would run high — same statistic the prediction uses, so the
+ *  displayed « moyenne » and the forecast never disagree. Cycle length uses
+ *  completed cycles only ; period length uses every cycle in the set (the
+ *  ongoing one has a known bleeding length too). */
+function averagesOf(cycles: readonly CycleSpan[]): CycleStats['avg'] {
+  const cycleLens = cycles
+    .map((c) => c.length)
+    .filter((l): l is number => l !== null);
+  const periodLens = cycles.map((c) => c.periodLength).filter((p) => p > 0);
+  return {
+    cycle: cycleLens.length ? median(cycleLens) : null,
+    period: periodLens.length ? median(periodLens) : null,
+    cycleCount: cycleLens.length,
+    periodCount: periodLens.length,
+  };
+}
+
+/** Averages over the cycles that STARTED in `year` — for the sidebar's
+ *  per-year block when a specific year is selected. */
+export function averagesForYear(
+  cycles: readonly CycleSpan[],
+  year: number,
+): CycleStats['avg'] {
+  return averagesOf(cycles.filter((c) => Number(c.start.slice(0, 4)) === year));
+}
 
 /** Estimated ovulation cycle-day (1-indexed) for a cycle of length `length`,
  *  or null when the cycle is too short to place one. `approximate` when the
@@ -309,12 +353,16 @@ export function computeCycle(
   const approximate =
     status === 'ok' && (ovulationApproximate || recent.length < 3);
 
+  // Display averages over the cycles that started in the last 12 months.
+  const avg = averagesOf(cycles.filter((c) => c.start >= monthsAgo(today, 12)));
+
   return {
     periodDays,
     periodStarts,
     cycleLengths,
     cycles,
     averageCycle,
+    avg,
     phaseByDate,
     current,
     status,

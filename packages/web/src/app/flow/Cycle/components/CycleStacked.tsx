@@ -7,29 +7,31 @@
  * luteal. Phase boundaries come straight from the model (`ovulationDay`, with
  * O = length − 14). Pure CSS widths — no chart lib.
  */
-import type { CyclePhase, CycleSpan } from '../lib/cycle-model';
+import type { CycleSpan } from '../lib/cycle-model';
 import { phaseSegments } from '../lib/cycle-model';
 
 interface Props {
   cycles: readonly CycleSpan[];
+  /** Anchor month (from the header selectors) : show the cycle active at that
+   *  month + the four before it. */
+  anchorY: number;
+  anchorM: number; // 0-indexed
   language: string;
   emptyLabel: string;
   unit: (days: number) => string;
   periodLabel: string;
-  follicularLabel: string;
   fertileLabel: string;
   ovulationLabel: string;
-  lutealLabel: string;
 }
 
-const MAX_ROWS = 5; // the 5 most recent completed cycles (fits 300px, no scroll).
+const MAX_ROWS = 5; // the anchor cycle + the four before it (fits 300px, no scroll).
 const DAY_MS = 86_400_000;
 
-const PHASE_BG: Record<Exclude<CyclePhase, 'ovulation'>, string> = {
+// Only the decision-carrying phases get a fill : period + the fertile window.
+// Follicular + luteal are left as the bare track (little comparative signal).
+const PHASE_BG: Record<'menstrual' | 'fertile', string> = {
   menstrual: 'bg-low',
-  follicular: 'bg-phase-follicular',
   fertile: 'bg-accent-soft',
-  luteal: 'bg-phase-luteal',
 };
 
 /** A cycle runs from its start (J1) to the day before the next period. */
@@ -41,16 +43,27 @@ function endIso(startIso: string, length: number): string {
 
 export default function CycleStacked({
   cycles,
+  anchorY,
+  anchorM,
   language,
   emptyLabel,
   unit,
   periodLabel,
-  follicularLabel,
   fertileLabel,
   ovulationLabel,
-  lutealLabel,
 }: Props) {
-  const completed = cycles.filter((c) => c.length != null).slice(-MAX_ROWS).reverse();
+  // Show the cycle active at the anchor month + the four before it : keep the
+  // completed cycles that started on or before the anchor month, most recent 5.
+  const anchorKey = anchorY * 12 + anchorM;
+  const completed = cycles
+    .filter((c) => c.length != null)
+    .filter((c) => {
+      const cy = Number(c.start.slice(0, 4));
+      const cm = Number(c.start.slice(5, 7)) - 1;
+      return cy * 12 + cm <= anchorKey;
+    })
+    .slice(-MAX_ROWS)
+    .reverse();
   if (completed.length === 0) {
     return <p className="py-8 text-center text-sm text-muted">{emptyLabel}</p>;
   }
@@ -92,13 +105,18 @@ export default function CycleStacked({
                   ))}
                 </div>
                 <div className="relative h-3 overflow-hidden rounded-full bg-bg-2">
-                  {segs.map((s) => (
-                    <div
-                      key={s.phase}
-                      className={`absolute inset-y-0 ${PHASE_BG[s.phase]}`}
-                      style={{ left: pct(s.from - 1), width: pct(s.to - s.from + 1) }}
-                    />
-                  ))}
+                  {segs
+                    .filter(
+                      (s): s is { phase: 'menstrual' | 'fertile'; from: number; to: number } =>
+                        s.phase === 'menstrual' || s.phase === 'fertile',
+                    )
+                    .map((s) => (
+                      <div
+                        key={s.phase}
+                        className={`absolute inset-y-0 ${PHASE_BG[s.phase]}`}
+                        style={{ left: pct(s.from - 1), width: pct(s.to - s.from + 1) }}
+                      />
+                    ))}
                   {c.ovulationDay != null && c.ovulationDay > c.periodLength ? (
                     <span
                       className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-accent bg-bg"
@@ -122,10 +140,8 @@ export default function CycleStacked({
 
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-hair pt-2 text-[11px] text-muted">
         <LegendSwatch swatch="bg-low" label={periodLabel} />
-        <LegendSwatch swatch="bg-phase-follicular" label={follicularLabel} />
         <LegendSwatch swatch="bg-accent-soft" label={fertileLabel} />
         <LegendSwatch swatch="rounded-full border-[1.5px] border-accent" label={ovulationLabel} />
-        <LegendSwatch swatch="bg-phase-luteal" label={lutealLabel} />
       </div>
     </div>
   );

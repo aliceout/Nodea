@@ -21,18 +21,18 @@ interface Props {
   phaseByDate: ReadonlyMap<string, DayPhase>;
   predictedDays: ReadonlySet<string>;
   today: string;
+  /** Anchor (rightmost) month — the grid shows this month + the two before. */
+  anchorY: number;
+  anchorM: number; // 0-indexed
   selected: string | null;
   onSelectDay: (iso: string) => void;
   language: string;
 }
 
-// Dot colour per phase (menstrual = the flow droplet ; ovulation = a diamond).
-const PHASE_DOT: Record<'follicular' | 'fertile' | 'luteal', string> = {
-  follicular: 'bg-phase-follicular',
-  fertile: 'bg-accent-soft',
-  luteal: 'bg-phase-luteal',
-};
-
+// On the calendar we surface only the days that carry a decision : period
+// (flow droplet), fertile window (sage dot) and ovulation (ring). The
+// follicular + luteal stretches carry little day-to-day signal, so they get no
+// mark (they're still named on the hormone graph's phase band).
 const pad = (n: number) => String(n).padStart(2, '0');
 const isoOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
@@ -63,10 +63,10 @@ function DayMark({
       />
     );
   }
-  if (phase && phase !== 'menstrual') {
+  if (phase === 'fertile') {
     return (
       <span
-        className={cn('h-2 w-2 rounded-full', PHASE_DOT[phase], predicted && 'opacity-60')}
+        className={cn('h-2 w-2 rounded-full bg-accent-soft', predicted && 'opacity-60')}
         aria-hidden="true"
       />
     );
@@ -101,7 +101,9 @@ function MonthGrid({
 
   return (
     <div className="w-[20rem] max-w-full">
-      <div className="mb-2 text-center text-[13px] font-medium capitalize text-ink">{monthLabel}</div>
+      <div className="mb-2 truncate whitespace-nowrap text-center text-[13px] font-medium capitalize text-ink">
+        {monthLabel}
+      </div>
       <div className="grid grid-cols-7 gap-1">
         {weekdayNames.map((w) => (
           <div key={w} className="pb-1 text-center text-[11px] font-medium capitalize text-muted">
@@ -141,7 +143,7 @@ function MonthGrid({
                       : '')
               }
               className={cn(
-                'flex h-11 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-input)]',
+                'flex h-9 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-input)]',
                 'text-[12px] tabular-nums hover:bg-bg-2',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 isSelected && 'ring-2 ring-accent',
@@ -177,11 +179,11 @@ function MonthGrid({
 }
 
 export default function CycleCalendar(props: Props) {
-  const [ty, tm] = props.today.split('-').map(Number);
-  // Three consecutive months ending on the current month (rightmost, so the
-  // past reads to its left). No nav here — the header selectors drive the window.
+  // Three consecutive months ending on the anchor (rightmost, so the past
+  // reads to its left). The anchor is computed by CycleViews from the header
+  // year / month selectors.
   const months = [-2, -1, 0].map((i) => {
-    const d = new Date(ty!, tm! - 1 + i, 1);
+    const d = new Date(props.anchorY, props.anchorM + i, 1);
     return { y: d.getFullYear(), m: d.getMonth() };
   });
 

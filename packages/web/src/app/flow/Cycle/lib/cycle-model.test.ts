@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCycle } from './cycle-model';
+import { averagesForYear, computeCycle } from './cycle-model';
 
 const period = (date: string) => ({ date, flow: 'medium' as const });
 
@@ -57,6 +57,32 @@ describe('computeCycle', () => {
     );
     expect(s.status).toBe('ok');
     expect(s.approximate).toBe(true);
+  });
+
+  it('computes 12-month median averages for cycle + period length', () => {
+    const starts = ['2026-01-01', '2026-01-29', '2026-02-26', '2026-03-26'];
+    const s = computeCycle(starts.map(period), '2026-04-01');
+    expect(s.avg.cycle).toBe(28); // median of the three completed 28-day cycles
+    expect(s.avg.cycleCount).toBe(3);
+    expect(s.avg.period).toBe(1); // single-day logged periods in these fixtures
+    expect(s.avg.periodCount).toBe(4);
+  });
+
+  it('excludes cycles older than 12 months from the averages', () => {
+    // The 2023 cycles (incl. a huge 3-year gap) sit outside the window and must
+    // not enter the median — only the two 2026 cycles count.
+    const starts = ['2023-01-01', '2023-02-10', '2026-01-01', '2026-01-29', '2026-02-26'];
+    const s = computeCycle(starts.map(period), '2026-03-01');
+    expect(s.avg.cycle).toBe(28);
+    expect(s.avg.cycleCount).toBe(2);
+  });
+
+  it('averagesForYear medians only that year’s cycles', () => {
+    const starts = ['2025-01-01', '2025-01-29', '2025-02-26', '2025-03-26'];
+    const s = computeCycle(starts.map(period), '2025-04-05');
+    // 2025: three completed 28-day cycles (+ one ongoing).
+    expect(averagesForYear(s.cycles, 2025)).toMatchObject({ cycle: 28, cycleCount: 3 });
+    expect(averagesForYear(s.cycles, 2020)).toMatchObject({ cycle: null, cycleCount: 0 });
   });
 
   it('gives no ovulation estimate for a cycle too short to place one', () => {

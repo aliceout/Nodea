@@ -43,6 +43,7 @@ export default function CycleEntriesList({ records, year, month, onSelect }: Pro
               weekday: 'short',
               day: 'numeric',
               month: 'short',
+              year: '2-digit',
             }).format(new Date(`${p.date}T12:00:00`));
             const meta = [p.symptoms.join(', '), p.notes].filter(Boolean).join(' · ');
             return (
@@ -52,7 +53,7 @@ export default function CycleEntriesList({ records, year, month, onSelect }: Pro
                   onClick={() => onSelect(p.date)}
                   className="flex w-full items-center gap-3 py-2 text-left text-[13px] hover:bg-bg-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  <span className="w-28 shrink-0 capitalize text-ink">{dateLabel}</span>
+                  <span className="w-32 shrink-0 whitespace-nowrap capitalize text-ink">{dateLabel}</span>
                   <span className="flex w-24 shrink-0 items-center gap-1.5 text-muted">
                     {p.flow ? (
                       <>

@@ -85,6 +85,8 @@ export default function CyclePage() {
     for (const r of records) if (r.payload.flow) m.set(r.payload.date, r.payload.flow);
     return m;
   }, [records]);
+  // Dates already logged — the Clue import dedupes against these.
+  const existingDates = useMemo(() => new Set(byDate.keys()), [byDate]);
   const availableYears = useMemo(() => {
     const set = new Set<number>();
     for (const r of records) set.add(Number(r.payload.date.slice(0, 4)));
@@ -95,6 +97,11 @@ export default function CyclePage() {
   const changeYear = useCallback((y: number | null) => {
     setYear(y);
     setMonth(null);
+  }, []);
+  // Calendar arrows move the anchor and keep both selectors in sync.
+  const setAnchor = useCallback((y: number, m: number) => {
+    setYear(y);
+    setMonth(m);
   }, []);
 
   return (
@@ -108,7 +115,16 @@ export default function CyclePage() {
           ) : null}
         </Topbar>
       }
-      side={<SideColumn stats={stats} today={today} />}
+      side={
+        <SideColumn
+          stats={stats}
+          today={today}
+          year={year}
+          ctx={ctx}
+          existingDates={existingDates}
+          onImported={reload}
+        />
+      }
     >
       {!ctx ? (
         <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>
@@ -130,6 +146,7 @@ export default function CyclePage() {
             availableYears={availableYears}
             onYearChange={changeYear}
             onMonthChange={setMonth}
+            onAnchorChange={setAnchor}
             hormoneProfile={hormoneProfile}
           />
           <CycleSettingsPanel />

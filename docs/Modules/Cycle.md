@@ -168,6 +168,29 @@ inside the module.
   `core/api/modules/import-export/registry.data.ts` so the account-level
   `.age` backup covers Cycle (don't repeat the HRT omission).
 
+### 7.1 Clue importer (third-party migration)
+
+« Importer des données » (sidebar, under « Paramètre du module ») ingests a
+**Clue** export. Clue ships a **password-protected `.zip`** (helloclue → « Télécharger
+mes données ») whose data file is **`measurements.json`** — a flat array of
+`{ date, type, value }` datapoints (`type:"period"` light/medium/heavy/very_heavy,
+plus a separate `type:"spotting"`; multi-tag `pain`/`feelings`/… as `value[]`).
+The legacy `.cluedata` shape (`{ data:[{ day, period, … }] }`) is handled too.
+
+- **Parsing** is pure + tested : `lib/import-clue.ts` (`parseClueExport`) maps onto
+  `CyclePayload` (date + flow + free `symptoms`, opt-in `bbt`/`mucus`); unknown /
+  meta categories are dropped, common options get a FR label.
+- **File reading** : `lib/read-clue-file.ts` accepts the raw `.zip` OR an
+  already-extracted `measurements.json`. Decrypting a password-protected zip in the
+  browser needs **`@zip.js/zip.js`** (pinned) — `fflate` (already a dep) cannot
+  decrypt encrypted entries. An encrypted zip with no password prompts for it; a
+  wrong password is reported. Runs worker-less (`configure({ useWebWorkers:false })`).
+- **Write path** : `cycleClient.createMany` (bulk create + guard-promote), deduped
+  against already-logged dates — an existing day is never clobbered. No re-auth
+  gate : it's a normal entry create, not a destructive action.
+- Clue exports **no cycle boundaries** — Nodea derives those itself (§4/§5), so the
+  importer only needs the daily datapoints.
+
 ## 8. Security
 
 Standard entry model — `docs/Architecture.md` §7. Server stores only

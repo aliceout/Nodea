@@ -24,12 +24,56 @@
     "predicted": "Predicted",
     "today": "Today"
   },
+  "averages": {
+    "title": "Your averages",
+    "days": {
+      "one": "{count} day",
+      "other": "{count} days"
+    },
+    "cycleSentence": "Your cycle lasts {days} on average.",
+    "periodSentence": "Your period lasts {days} on average.",
+    "window": "Over the last 12 months",
+    "notEnough": "Not enough complete cycles for an average yet.",
+    "inYear": "In {year}",
+    "yearCycleSentence": "Your cycle lasted {days} on average.",
+    "yearPeriodSentence": "Your period lasted {days}.",
+    "notEnoughYear": "No complete cycle recorded that year."
+  },
+  "calendar": {
+    "prevMonth": "Previous months",
+    "nextMonth": "Next months"
+  },
   "phase": {
     "menstrual": "Menstrual",
     "follicular": "Follicular",
     "fertile": "Fertile",
     "ovulation": "Ovulation",
     "luteal": "Luteal"
+  },
+  "import": {
+    "trigger": "Import data",
+    "title": "Import from Clue",
+    "help": "Export your data from Clue (menu → Settings → “Download my data”), then pick the .zip you received here — or the measurements.json file if you already extracted it. If the zip is protected, you'll be asked for the password.",
+    "choose": "Choose a file…",
+    "passwordLabel": "Clue zip password",
+    "unlock": "Unlock",
+    "summary": "{days} days found · {withFlow} with a period",
+    "range": "from {from} to {to}",
+    "newDays": "{count} new days to import",
+    "skipped": "{count} already present (skipped)",
+    "cta": "Import {count} days",
+    "importing": "Importing…",
+    "done": "{count} days imported.",
+    "close": "Close",
+    "errors": {
+      "invalid_json": "Unreadable file (invalid JSON).",
+      "unrecognized_clue_format": "Unrecognised Clue format — pick the .zip or the measurements.json file.",
+      "empty": "No usable data in this file.",
+      "wrong_password": "Wrong password.",
+      "no_measurements": "measurements.json not found in the zip.",
+      "read_failed": "Could not read the file.",
+      "failed": "Import failed."
+    }
   },
   "view": {
     "calendar": "Calendar",

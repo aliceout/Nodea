@@ -27,6 +27,7 @@
     "@simplewebauthn/browser": "13.3.0",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/react-virtual": "3.14.3",
+    "@zip.js/zip.js": "2.8.26",
     "@zxcvbn-ts/core": "4.1.2",
     "@zxcvbn-ts/language-common": "4.1.2",
     "age-encryption": "0.3.0",

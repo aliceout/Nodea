@@ -1,33 +1,45 @@
 /**
  * Cycle sidebar — the « où j'en suis » ring on top (a compact, stacked
- * variant that carries the next-period read in its centre, so it
- * replaces the plain estimate card), then the colour legend. Wrapped in
- * the shared `ModuleSidebar` shell with `SectionLabel` headings, like
- * Mood / Goals. Hidden on mobile / portrait by the shell (responsive
- * fallback handled separately).
+ * variant that carries the next-period read in its centre, so it replaces
+ * the plain estimate card), then the 12-month averages (cycle + period
+ * length). Wrapped in the shared `ModuleSidebar` shell with `SectionLabel`
+ * headings, like Mood / Goals. Hidden on mobile / portrait by the shell
+ * (responsive fallback handled separately).
  */
+import type { ModuleClient } from '@/core/modules/use-module-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import ModuleSidebar from '@/ui/dirk/module/ModuleSidebar';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
-import type { CycleStats } from '../lib/cycle-model';
+import { averagesForYear, type CycleStats } from '../lib/cycle-model';
+import CycleImport from './CycleImport';
 import CycleRing from './CycleRing';
 
-function LegendRow({ swatch, label }: { swatch: string; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`inline-block h-3.5 w-3.5 ${swatch.includes('rounded') ? '' : 'rounded-full'} ${swatch}`}
-      />
-      <span>{label}</span>
-    </div>
-  );
-}
-
-export default function SideColumn({ stats, today }: { stats: CycleStats; today: string }) {
-  const { t } = useI18n();
+export default function SideColumn({
+  stats,
+  today,
+  year,
+  ctx,
+  existingDates,
+  onImported,
+}: {
+  stats: CycleStats;
+  today: string;
+  /** Selected year (null = rolling) — adds a per-year averages block. */
+  year: number | null;
+  ctx: ModuleClient | null;
+  existingDates: ReadonlySet<string>;
+  onImported: () => void;
+}) {
+  const { t, tn } = useI18n();
+  const yearAvg = year !== null ? averagesForYear(stats.cycles, year) : null;
+  /** « 27 jours » / « 1 jour » — plural-aware day count. */
+  const days = (n: number) => tn('cycle.averages.days', n);
 
   return (
     <ModuleSidebar>
+      {/* « Importer des données » — sits right under « Paramètre du module »
+          (the shared trigger the shell renders first). */}
+      <CycleImport ctx={ctx} existingDates={existingDates} onImported={onImported} />
       <section>
         <SectionLabel variant="section">{t('cycle.side.current')}</SectionLabel>
         {stats.current ? (
@@ -57,18 +69,41 @@ export default function SideColumn({ stats, today }: { stats: CycleStats; today:
       </section>
 
       <section>
-        <SectionLabel variant="section">{t('cycle.legend.title')}</SectionLabel>
-        <div className="flex flex-col gap-1.5 text-[12px] text-muted">
-          <LegendRow swatch="bg-low" label={t('cycle.phase.menstrual')} />
-          <LegendRow swatch="bg-phase-follicular" label={t('cycle.phase.follicular')} />
-          <LegendRow swatch="bg-accent-soft" label={t('cycle.phase.fertile')} />
-          <LegendRow swatch="rounded-full border-[1.5px] border-accent" label={t('cycle.phase.ovulation')} />
-          <LegendRow swatch="bg-phase-luteal" label={t('cycle.phase.luteal')} />
-          <LegendRow
-            swatch="border border-dashed border-low-soft"
-            label={t('cycle.legend.predicted')}
-          />
-        </div>
+        <SectionLabel variant="section">{t('cycle.averages.title')}</SectionLabel>
+        {stats.avg.cycle !== null || stats.avg.period !== null ? (
+          <div className="flex flex-col gap-1.5 text-[13px] leading-snug text-ink-soft">
+            {stats.avg.cycle !== null ? (
+              <p>{t('cycle.averages.cycleSentence', { values: { days: days(stats.avg.cycle) } })}</p>
+            ) : null}
+            {stats.avg.period !== null ? (
+              <p>{t('cycle.averages.periodSentence', { values: { days: days(stats.avg.period) } })}</p>
+            ) : null}
+            <p className="mt-0.5 text-[11px] text-muted-soft">{t('cycle.averages.window')}</p>
+          </div>
+        ) : (
+          <p className="text-[13px] text-muted">{t('cycle.averages.notEnough')}</p>
+        )}
+
+        {/* Per-year block — appears when a specific year is selected. */}
+        {yearAvg ? (
+          <div className="mt-3 border-t border-hair pt-2.5">
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+              {t('cycle.averages.inYear', { values: { year } })}
+            </p>
+            {yearAvg.cycle !== null || yearAvg.period !== null ? (
+              <div className="flex flex-col gap-1.5 text-[13px] leading-snug text-ink-soft">
+                {yearAvg.cycle !== null ? (
+                  <p>{t('cycle.averages.yearCycleSentence', { values: { days: days(yearAvg.cycle) } })}</p>
+                ) : null}
+                {yearAvg.period !== null ? (
+                  <p>{t('cycle.averages.yearPeriodSentence', { values: { days: days(yearAvg.period) } })}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-[13px] text-muted">{t('cycle.averages.notEnoughYear')}</p>
+            )}
+          </div>
+        ) : null}
       </section>
     </ModuleSidebar>
   );
