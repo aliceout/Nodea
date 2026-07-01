@@ -25,7 +25,7 @@
     "today": "Aujourd’hui"
   },
   "averages": {
-    "title": "Tes moyennes",
+    "title": "Moyennes sur les 12 derniers mois",
     "days": {
       "one": "{count} jour",
       "other": "{count} jours"
@@ -114,7 +114,12 @@
       "off": "Désactivée",
       "natal": "Cycle menstruel",
       "masc": "HRT masculinisant"
-    }
+    },
+    "moodNoteLabel": "Note d’humeur du jour",
+    "moodNoteHint": "Affiche la note Mood du même jour au bout de chaque entrée."
+  },
+  "moodNote": {
+    "title": "Note Mood du jour"
   },
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",

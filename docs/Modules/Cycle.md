@@ -78,9 +78,13 @@ Defined in `packages/shared/src/schemas/modules/cycle.ts`.
 ```
 
 - **No mood field.** Mood × cycle is served by **cross-referencing the
-  existing Mood module by date**, client-side *(P4)* — no duplicate
-  entry, no duplicated data. This is the module's headline
-  cross-module value.
+  existing Mood module by date**, client-side — no duplicate entry, no
+  duplicated data. This is the module's headline cross-module value.
+  **Shipped**: the same-day Mood score renders as a `NoteBadge` at the end
+  of each entry row (reusing Mood's `NoteBadge` + `SCORE_TONE`). Loaded
+  best-effort from the `mood` collection ; a Mood-disabled or failed load
+  just hides the notes. Toggled by the `cycleShowMoodNote` preference
+  (absent ⇒ on) in « Paramètre du module ».
 - Symptom vocabulary lives in
   `packages/shared/src/cycle-presets.ts` (suggestions only, à la
   `hrt-presets.ts`). `symptoms` stays a free string array so an
@@ -211,7 +215,8 @@ per-module-lock note in §1.
 - **P3** — opt-in « conscience de fertilité » : BBT / mucus / LH fields
   refining the per-person luteal length (the calendar estimate ships
   today; biomarkers would tighten it), behind the disclaimer.
-- **P4** — Mood × cycle cross-reference (client-side, by date).
+- **P4** ✅ — Mood × cycle cross-reference (client-side, by date) : same-day
+  Mood score on each entry row, toggle in Settings (`cycleShowMoodNote`).
 - **Later / opt-in** — sensitive fields (intimacy, pregnancy tests,
   contraception log), gated behind the per-module lock.
 

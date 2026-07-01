@@ -8,7 +8,11 @@
 import type { CycleHormoneProfile } from '@nodea/shared';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { SettingsGrid, SettingSelectRow } from '@/ui/dirk/module/SettingRow';
+import {
+  SettingsGrid,
+  SettingSelectRow,
+  SettingToggleRow,
+} from '@/ui/dirk/module/SettingRow';
 
 const PROFILES: ReadonlyArray<CycleHormoneProfile> = ['off', 'natal', 'masc'];
 
@@ -16,6 +20,7 @@ export default function CycleSettings() {
   const { t } = useI18n();
   const { preferences, setPreferences } = usePreferences();
   const profile = preferences.cycleHormoneProfile ?? 'natal';
+  const showMoodNote = preferences.cycleShowMoodNote ?? true;
 
   return (
     <SettingsGrid>
@@ -28,6 +33,15 @@ export default function CycleSettings() {
           if (v !== profile) void setPreferences({ cycleHormoneProfile: v as CycleHormoneProfile });
         }}
         options={PROFILES.map((p) => ({ value: p, label: t(`cycle.settings.profile.${p}`) }))}
+      />
+      <SettingToggleRow
+        id="cycle-setting-mood-note"
+        label={t('cycle.settings.moodNoteLabel')}
+        hint={t('cycle.settings.moodNoteHint')}
+        checked={showMoodNote}
+        onChange={(next) => {
+          if (next !== showMoodNote) void setPreferences({ cycleShowMoodNote: next });
+        }}
       />
     </SettingsGrid>
   );

@@ -2,13 +2,11 @@
  * Stacked-cycles view (spec §6) — the honest picture over time. One bar per
  * completed cycle (max 5, most recent). Each bar is captioned with its own
  * start date (left) and end date (right) — a cycle doesn't align to a month —
- * topped by a per-day tick ruler, and segmented by CYCLE PHASE : menstrual
- * (terracotta) · follicular · fertile (pale sage) · ovulation (sage diamond) ·
- * luteal. Phase boundaries come straight from the model (`ovulationDay`, with
- * O = length − 14). Pure CSS widths — no chart lib.
+ * topped by a per-day tick ruler ; the terracotta block is the period and a
+ * hollow ring marks the estimated ovulation (`ovulationDay`, O = length − 14).
+ * The rest of the bar is bare track. Pure CSS widths — no chart lib.
  */
 import type { CycleSpan } from '../lib/cycle-model';
-import { phaseSegments } from '../lib/cycle-model';
 
 interface Props {
   cycles: readonly CycleSpan[];
@@ -20,19 +18,11 @@ interface Props {
   emptyLabel: string;
   unit: (days: number) => string;
   periodLabel: string;
-  fertileLabel: string;
   ovulationLabel: string;
 }
 
 const MAX_ROWS = 5; // the anchor cycle + the four before it (fits 300px, no scroll).
 const DAY_MS = 86_400_000;
-
-// Only the decision-carrying phases get a fill : period + the fertile window.
-// Follicular + luteal are left as the bare track (little comparative signal).
-const PHASE_BG: Record<'menstrual' | 'fertile', string> = {
-  menstrual: 'bg-low',
-  fertile: 'bg-accent-soft',
-};
 
 /** A cycle runs from its start (J1) to the day before the next period. */
 function endIso(startIso: string, length: number): string {
@@ -49,7 +39,6 @@ export default function CycleStacked({
   emptyLabel,
   unit,
   periodLabel,
-  fertileLabel,
   ovulationLabel,
 }: Props) {
   // Show the cycle active at the anchor month + the four before it : keep the
@@ -78,7 +67,6 @@ export default function CycleStacked({
     <div className="flex h-full flex-col px-1 py-2">
       <div className="flex flex-col gap-2.5">
         {completed.map((c) => {
-          const segs = phaseSegments(c.length!, c.periodLength, c.ovulationDay);
           return (
             <div key={c.start} className="flex items-center gap-3 text-[12px]">
               <div className="flex-1">
@@ -105,18 +93,10 @@ export default function CycleStacked({
                   ))}
                 </div>
                 <div className="relative h-3 overflow-hidden rounded-full bg-bg-2">
-                  {segs
-                    .filter(
-                      (s): s is { phase: 'menstrual' | 'fertile'; from: number; to: number } =>
-                        s.phase === 'menstrual' || s.phase === 'fertile',
-                    )
-                    .map((s) => (
-                      <div
-                        key={s.phase}
-                        className={`absolute inset-y-0 ${PHASE_BG[s.phase]}`}
-                        style={{ left: pct(s.from - 1), width: pct(s.to - s.from + 1) }}
-                      />
-                    ))}
+                  <div
+                    className="absolute inset-y-0 left-0 bg-low"
+                    style={{ width: pct(Math.min(c.periodLength, c.length!)) }}
+                  />
                   {c.ovulationDay != null && c.ovulationDay > c.periodLength ? (
                     <span
                       className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-accent bg-bg"
@@ -140,7 +120,6 @@ export default function CycleStacked({
 
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-hair pt-2 text-[11px] text-muted">
         <LegendSwatch swatch="bg-low" label={periodLabel} />
-        <LegendSwatch swatch="bg-accent-soft" label={fertileLabel} />
         <LegendSwatch swatch="rounded-full border-[1.5px] border-accent" label={ovulationLabel} />
       </div>
     </div>

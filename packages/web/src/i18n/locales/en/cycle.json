@@ -25,7 +25,7 @@
     "today": "Today"
   },
   "averages": {
-    "title": "Your averages",
+    "title": "Averages over the last 12 months",
     "days": {
       "one": "{count} day",
       "other": "{count} days"
@@ -114,7 +114,12 @@
       "off": "Off",
       "natal": "Menstrual cycle",
       "masc": "Masculinising HRT"
-    }
+    },
+    "moodNoteLabel": "Same-day mood score",
+    "moodNoteHint": "Show the Mood score of the same day at the end of each entry."
+  },
+  "moodNote": {
+    "title": "Mood score for the day"
   },
   "stacked": {
     "empty": "No completed cycle to compare yet.",

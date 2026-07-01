@@ -78,7 +78,6 @@ export default function SideColumn({
             {stats.avg.period !== null ? (
               <p>{t('cycle.averages.periodSentence', { values: { days: days(stats.avg.period) } })}</p>
             ) : null}
-            <p className="mt-0.5 text-[11px] text-muted-soft">{t('cycle.averages.window')}</p>
           </div>
         ) : (
           <p className="text-[13px] text-muted">{t('cycle.averages.notEnough')}</p>

@@ -9,9 +9,10 @@
  * and Tabs, same posture as Mood / Goals. Opt-in fertility block is P3.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CycleFlow, CyclePayload } from '@nodea/shared';
+import type { CycleFlow, CyclePayload, MOOD_SCORE_VALUES, type MoodScore  } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cycleClient } from '@/core/api/modules/cycle';
+import { moodClient } from '@/core/api/modules/mood';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
@@ -63,6 +64,39 @@ export default function CyclePage() {
       });
   }, [ctx, t]);
   useEffect(reload, [reload]);
+
+  // Cross-reference Mood by date : the same-day score at the end of each entry
+  // row (opt-in, default on). A best-effort annotation — if Mood is disabled or
+  // its load fails, the notes just don't show. Never blocks the cycle list.
+  const moodCtx = useModuleClient('mood');
+  const showMoodNote = preferences.cycleShowMoodNote ?? true;
+  const [moodByDate, setMoodByDate] = useState<ReadonlyMap<string, MoodScore>>(new Map());
+  useEffect(() => {
+    if (!moodCtx || !showMoodNote) {
+      setMoodByDate(new Map());
+      return undefined;
+    }
+    let cancelled = false;
+    moodClient
+      .list(moodCtx.moduleUserId, moodCtx.mainKey)
+      .then((recs) => {
+        if (cancelled) return;
+        const m = new Map<string, MoodScore>();
+        for (const r of recs) {
+          const s = r.payload.moodScore;
+          if ((MOOD_SCORE_VALUES as readonly string[]).includes(s)) {
+            m.set(r.payload.date, s as MoodScore);
+          }
+        }
+        setMoodByDate(m);
+      })
+      .catch(() => {
+        if (!cancelled) setMoodByDate(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [moodCtx, showMoodNote]);
 
   const stats = useMemo(
     () =>
@@ -171,6 +205,7 @@ export default function CyclePage() {
             records={records}
             year={year}
             month={month}
+            moodByDate={moodByDate}
             onSelect={setSelected}
           />
         </section>

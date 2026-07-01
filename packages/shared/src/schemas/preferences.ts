@@ -275,6 +275,9 @@ export const UserPreferencesPayloadSchema = z.looseObject({
    *  `.catch` degrades a legacy value dropped from the enum (e.g. the removed
    *  'fem') to the default rather than failing the whole prefs parse. */
   cycleHormoneProfile: CycleHormoneProfileSchema.optional().catch(undefined),
+  /** Cycle: show the same-day Mood score at the end of each entry row
+   *  (cross-reference Mood by date). Absent ⇒ true (shown). */
+  cycleShowMoodNote: z.boolean().optional(),
   journalGroupBy: JournalGroupByPreferenceSchema.optional(),
   /** Journal: show the « Il y a quelques années » memory panel. Absent ⇒ true. */
   journalShowOnThisDay: z.boolean().optional(),

@@ -29,10 +29,9 @@ interface Props {
   language: string;
 }
 
-// On the calendar we surface only the days that carry a decision : period
-// (flow droplet), fertile window (sage dot) and ovulation (ring). The
-// follicular + luteal stretches carry little day-to-day signal, so they get no
-// mark (they're still named on the hormone graph's phase band).
+// On the calendar we surface only period (flow droplet) and the estimated
+// ovulation (a ring). The follicular / fertile / luteal stretches get no mark
+// (they're still named on the hormone graph's phase band).
 const pad = (n: number) => String(n).padStart(2, '0');
 const isoOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
@@ -59,14 +58,6 @@ function DayMark({
           'h-2.5 w-2.5 rounded-full border-[1.5px] border-accent',
           predicted && 'opacity-60',
         )}
-        aria-hidden="true"
-      />
-    );
-  }
-  if (phase === 'fertile') {
-    return (
-      <span
-        className={cn('h-2 w-2 rounded-full bg-accent-soft', predicted && 'opacity-60')}
         aria-hidden="true"
       />
     );

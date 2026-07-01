@@ -206,7 +206,6 @@ export default function CycleViews({
                 emptyLabel={t('cycle.stacked.empty')}
                 unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
                 periodLabel={t('cycle.phase.menstrual')}
-                fertileLabel={t('cycle.phase.fertile')}
                 ovulationLabel={t('cycle.phase.ovulation')}
               />
             ) : null}

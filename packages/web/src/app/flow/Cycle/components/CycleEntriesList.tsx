@@ -3,9 +3,10 @@
  * entry list). Newest first ; each row opens the day form for editing.
  */
 import { useMemo } from 'react';
-import type { CyclePayload } from '@nodea/shared';
+import type { CyclePayload, MoodScore } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import NoteBadge from '@/app/flow/Mood/components/NoteBadge';
 import FlowMark from './FlowMark';
 
 interface Props {
@@ -14,10 +15,18 @@ interface Props {
   year: number | null;
   /** 0-based month ; only applies when a year is selected. */
   month: number | null;
+  /** Same-day Mood score per date (cross-reference) ; empty when off/absent. */
+  moodByDate: ReadonlyMap<string, MoodScore>;
   onSelect: (iso: string) => void;
 }
 
-export default function CycleEntriesList({ records, year, month, onSelect }: Props) {
+export default function CycleEntriesList({
+  records,
+  year,
+  month,
+  moodByDate,
+  onSelect,
+}: Props) {
   const { t, language } = useI18n();
 
   const sorted = useMemo(() => {
@@ -46,6 +55,7 @@ export default function CycleEntriesList({ records, year, month, onSelect }: Pro
               year: '2-digit',
             }).format(new Date(`${p.date}T12:00:00`));
             const meta = [p.symptoms.join(', '), p.notes].filter(Boolean).join(' · ');
+            const mood = moodByDate.get(p.date);
             return (
               <li key={r.id}>
                 <button
@@ -65,6 +75,12 @@ export default function CycleEntriesList({ records, year, month, onSelect }: Pro
                     )}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-muted">{meta}</span>
+                  {/* Same-day Mood score (cross-reference), at the row's end. */}
+                  {mood ? (
+                    <span className="shrink-0" title={t('cycle.moodNote.title')}>
+                      <NoteBadge score={mood} />
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );
