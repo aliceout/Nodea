@@ -19,6 +19,7 @@ import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import CycleDayForm from './components/CycleDayForm';
+import CycleEntriesList from './components/CycleEntriesList';
 import CycleViews from './components/CycleViews';
 import { computeCycle } from './lib/cycle-model';
 
@@ -164,13 +165,16 @@ export default function CyclePage() {
           {loadError}
         </p>
       ) : (
-        <CycleViews
-          stats={stats}
-          flowByDate={flowByDate}
-          today={today}
-          selected={selected}
-          onSelectDay={setSelected}
-        />
+        <>
+          <CycleViews
+            stats={stats}
+            flowByDate={flowByDate}
+            today={today}
+            selected={selected}
+            onSelectDay={setSelected}
+          />
+          <CycleEntriesList records={records} onSelect={setSelected} />
+        </>
       )}
     </ModuleShell>
   );

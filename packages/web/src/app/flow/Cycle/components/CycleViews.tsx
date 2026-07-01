@@ -72,6 +72,8 @@ export default function CycleViews({
               length={stats.current.length}
               periodLength={stats.cycles.at(-1)?.periodLength ?? 0}
               ovulation={stats.current.ovulation}
+              next={stats.next}
+              todayIso={today}
             />
           </div>
         ) : (

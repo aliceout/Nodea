@@ -22,10 +22,19 @@
   },
   "ring": {
     "day": "Day {count}",
-    "of": "of ~{length} d",
-    "ovulation": "~D{day} · {date}",
     "j1hint": "D1 = first day of the period",
-    "noData": "Start logging your periods to see where you are."
+    "noData": "Start logging your periods to see where you are.",
+    "dayBadge": "D{count}",
+    "todayLabel": "Today · {date}",
+    "periodDay": "Day {count} of your period",
+    "periodsIn": "Period in {count} d",
+    "periodsToday": "Period due today",
+    "fertile": "Likely fertile day",
+    "ovOn": "Ovulation ~{date}"
+  },
+  "entries": {
+    "title": "Entries",
+    "empty": "No entries yet."
   },
   "stacked": {
     "empty": "No completed cycle to compare yet.",
