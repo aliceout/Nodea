@@ -56,6 +56,20 @@ const SecurityModeChangeResponseSchema = z.object({
   mode: SecurityModeSchema,
 });
 
+/** Aborts the activation transaction carrying the wire error code to return.
+ *  Caught just outside the tx so a failed gate rolls back with no partial
+ *  write (audit 2026-07 — the gate + write used to run un-transactioned). */
+class GateError extends Error {
+  constructor(
+    readonly code:
+      | 'second_factor_required'
+      | 'totp_required'
+      | 'passkey_required',
+  ) {
+    super(code);
+  }
+}
+
 const changeRoute = createRoute({
   method: 'post',
   path: '/security-mode/change',
@@ -90,57 +104,70 @@ authSecurityModeRoutes.openapi(changeRoute, async (c) => {
   // accepted both at login, so accept both at activation too);
   // `maximum` keeps the strict requirement of TOTP enabled AND
   // at least one PRF-capable passkey.
-  if (mode === 'always_2fa') {
-    const [totp] = await db
-      .select({ enabledAt: mfaTotp.enabledAt })
-      .from(mfaTotp)
-      .where(eq(mfaTotp.userId, user.id))
-      .limit(1);
-    const hasTotp = !!totp && totp.enabledAt !== null;
-    if (!hasTotp) {
-      const [anyPasskey] = await db
-        .select({ id: authFactors.id })
-        .from(authFactors)
-        .where(
-          and(
-            eq(authFactors.userId, user.id),
-            eq(authFactors.kind, 'passkey'),
-          ),
-        )
-        .limit(1);
-      if (!anyPasskey) {
-        return c.json({ error: 'second_factor_required' }, 400);
-      }
-    }
-  }
-  if (mode === 'maximum') {
-    const [totp] = await db
-      .select({ enabledAt: mfaTotp.enabledAt })
-      .from(mfaTotp)
-      .where(eq(mfaTotp.userId, user.id))
-      .limit(1);
-    if (!totp || totp.enabledAt === null) {
-      return c.json({ error: 'totp_required' }, 400);
-    }
-    const [prf] = await db
-      .select({ id: authFactors.id })
-      .from(authFactors)
-      .where(
-        and(
-          eq(authFactors.userId, user.id),
-          eq(authFactors.prfSupported, true),
-        ),
-      )
-      .limit(1);
-    if (!prf) {
-      return c.json({ error: 'passkey_required' }, 400);
-    }
-  }
+  // Activation gate + mode write in ONE transaction, behind a row lock on the
+  // user, so a concurrent factor-removal + §6.1 downgrade (e.g. /auth/totp/
+  // disable on another tab) can't slip between the gate reads and the write
+  // and persist a stricter-than-satisfiable mode (audit 2026-07). The lock
+  // serialises against the downgrade's `UPDATE users`, so the gate reads
+  // observe the same factor set the write commits under.
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .for('update');
 
-  await db
-    .update(users)
-    .set({ securityMode: mode, updatedAt: new Date() })
-    .where(eq(users.id, user.id));
+      if (mode === 'always_2fa') {
+        const [totp] = await tx
+          .select({ enabledAt: mfaTotp.enabledAt })
+          .from(mfaTotp)
+          .where(eq(mfaTotp.userId, user.id))
+          .limit(1);
+        const hasTotp = !!totp && totp.enabledAt !== null;
+        if (!hasTotp) {
+          const [anyPasskey] = await tx
+            .select({ id: authFactors.id })
+            .from(authFactors)
+            .where(
+              and(
+                eq(authFactors.userId, user.id),
+                eq(authFactors.kind, 'passkey'),
+              ),
+            )
+            .limit(1);
+          if (!anyPasskey) throw new GateError('second_factor_required');
+        }
+      }
+      if (mode === 'maximum') {
+        const [totp] = await tx
+          .select({ enabledAt: mfaTotp.enabledAt })
+          .from(mfaTotp)
+          .where(eq(mfaTotp.userId, user.id))
+          .limit(1);
+        if (!totp || totp.enabledAt === null) throw new GateError('totp_required');
+        const [prf] = await tx
+          .select({ id: authFactors.id })
+          .from(authFactors)
+          .where(
+            and(
+              eq(authFactors.userId, user.id),
+              eq(authFactors.prfSupported, true),
+            ),
+          )
+          .limit(1);
+        if (!prf) throw new GateError('passkey_required');
+      }
+
+      await tx
+        .update(users)
+        .set({ securityMode: mode, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+    });
+  } catch (e) {
+    if (e instanceof GateError) return c.json({ error: e.code }, 400);
+    throw e;
+  }
 
   // Auth-Spec §5.4 — every security-mode change rotates sessions
   // (same policy as change-password). Revoking & re-minting here
