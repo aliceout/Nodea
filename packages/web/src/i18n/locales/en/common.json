@@ -56,5 +56,9 @@
     "clearAria": "Clear search",
     "openAria": "Open search",
     "closeAria": "Close search"
+  },
+  "selectors": {
+    "earlier": "Earlier…",
+    "earlierYears": "Earlier years"
   }
 }

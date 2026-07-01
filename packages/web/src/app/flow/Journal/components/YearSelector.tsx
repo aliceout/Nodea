@@ -1,67 +1,26 @@
+/**
+ * Journal year strip — reads the filters + data contexts and renders the
+ * shared `YearSelector` (recent-years chips + an « earlier » dropdown). The
+ * `-mt-1` lines the chip TEXT up with the sidebar's first SectionLabel across
+ * the grid (same fix as Mood's selector).
+ */
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import SharedYearSelector from '@/ui/dirk/module/YearSelector';
 
 import { useJournalData, useJournalFilters } from '../context';
 
-/**
- * Year tab strip for Journal — leftmost is « En cours » (rolling
- * 52 weeks ending today), followed by every year present in the
- * dataset (descending). Same surface as Mood's `YearSelector`.
- *
- * Reads the current selection from the filters context and the
- * available year list from the data context. The selection both
- * narrows the entries list AND retargets the heatmap range : null
- * keeps the rolling-year view, a year jumps to its January-to-
- * December slice.
- */
 export default function YearSelector() {
   const { t } = useI18n();
   const { availableYears } = useJournalData();
   const { year, setYear } = useJournalFilters();
-
   return (
-    // `-mt-1` cancels the chips' `py-1` so the tab TEXT lines up with the
-    // sidebar's first SectionLabel across the grid — a plain label has no
-    // vertical padding, these padded chips do (same fix as Mood's selector).
-    <div
-      role="tablist"
-      aria-label={t('journal.primary.yearAria')}
-      className="-mt-1 flex flex-wrap gap-1"
-    >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={year === null}
-        onClick={() => setYear(null)}
-        className={cn(
-          'cursor-pointer rounded px-2.5 py-1 text-[12px] transition-colors',
-          year === null
-            ? 'bg-accent-soft font-semibold text-accent-deep'
-            : 'text-muted hover:bg-bg-2 hover:text-ink',
-        )}
-      >
-        {t('journal.primary.yearRolling')}
-      </button>
-      {availableYears.map((y) => {
-        const active = y === year;
-        return (
-          <button
-            key={y}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => setYear(y)}
-            className={cn(
-              'cursor-pointer rounded px-2.5 py-1 text-[12px] tabular-nums transition-colors',
-              active
-                ? 'bg-accent-soft font-semibold text-accent-deep'
-                : 'text-muted hover:bg-bg-2 hover:text-ink',
-            )}
-          >
-            {y}
-          </button>
-        );
-      })}
-    </div>
+    <SharedYearSelector
+      year={year}
+      availableYears={availableYears}
+      onChange={setYear}
+      rollingLabel={t('journal.primary.yearRolling')}
+      ariaLabel={t('journal.primary.yearAria')}
+      className="-mt-1"
+    />
   );
 }
