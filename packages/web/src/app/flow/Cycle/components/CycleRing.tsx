@@ -1,12 +1,14 @@
 /**
  * Cycle ring (spec §6) — « où j'en suis », Clue-inspired. A large donut
- * that fills the graph frame's height : the menstruation arc at the
- * start (« low » = period), an elapsed arc (pale sage, day 1 → today),
- * a per-day tick ruler, an ovulation diamond (sage), and the current
- * day as a pill on the ring. The centre carries the useful read (date,
- * next-period line, fertility hint) ; the recap (period length, est.
- * ovulation, « J1 = … ») sits to the LEFT so it doesn't eat vertical
- * space. Hand-rolled SVG, like `LabChart` — no chart lib.
+ * that fills the graph frame : the menstruation arc at the start
+ * (« low » = period), an elapsed arc (pale sage, day 1 → today), a
+ * per-day tick ruler with week labels (7 / 14 / 21…), an ovulation
+ * diamond (sage), and the current day as a pill on the ring. The scale
+ * ADAPTS : if today runs past the estimated length (e.g. day 30 of an
+ * ~28-day cycle, no period logged yet) the ring extends to today. The
+ * centre shows the date + next-period read ; the recap (period length,
+ * ovulation / fertile day, « J1 = … ») sits to the RIGHT. Hand-rolled
+ * SVG, like `LabChart` — no chart lib.
  */
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 
@@ -26,6 +28,7 @@ const C = 2 * Math.PI * R;
 const CENTER = SIZE / 2;
 const FERTILE_BEFORE = 5;
 const FERTILE_AFTER = 1;
+const WEEK_MARKS = [7, 14, 21, 28, 35, 42] as const;
 
 function pointAt(frac: number, r: number = R): { x: number; y: number } {
   const a = frac * 2 * Math.PI - Math.PI / 2;
@@ -41,10 +44,13 @@ export default function CycleRing({
   todayIso,
 }: Props) {
   const { t, language } = useI18n();
-  const periodFrac = length ? Math.min(periodLength / length, 1) : 0;
-  const elapsedFrac = length ? Math.min(day / length, 1) : 0;
-  const today = length ? pointAt(elapsedFrac) : null;
-  const ovPoint = length && ovulation ? pointAt(ovulation.day / length) : null;
+  // Ring total ADAPTS : never shorter than today, so an overdue cycle
+  // extends instead of pinning the marker at the top.
+  const total = length ? Math.max(length, day) : null;
+  const periodFrac = total ? Math.min(periodLength / total, 1) : 0;
+  const elapsedFrac = total ? Math.min(day / total, 1) : 0;
+  const today = total ? pointAt(elapsedFrac) : null;
+  const ovPoint = total && ovulation ? pointAt(ovulation.day / total) : null;
 
   const fmtDate = (iso: string) =>
     new Intl.DateTimeFormat(language, { day: 'numeric', month: 'short' }).format(
@@ -64,38 +70,17 @@ export default function CycleRing({
     ovulation &&
     day >= ovulation.day - FERTILE_BEFORE &&
     day <= ovulation.day + FERTILE_AFTER;
-  const fertileHint = inFertile
-    ? t('cycle.ring.fertile')
-    : ovulation && day < ovulation.day
-      ? t('cycle.ring.ovOn', { values: { date: fmtDate(ovulation.date) } })
-      : null;
 
   return (
     <div className="flex flex-col items-center gap-6 py-2 sm:flex-row sm:justify-center sm:gap-12">
-      {/* Recap — right of the ring on sm+ so it doesn't add height. */}
-      <div className="order-2 space-y-1.5 text-center text-[13px] text-muted sm:order-2 sm:max-w-[170px] sm:text-left">
-        <p>
-          <span className="font-medium text-low">{t('cycle.legend.period')}</span> ·{' '}
-          {t('cycle.stacked.unit', { values: { count: periodLength } })}
-        </p>
-        {ovulation ? (
-          <p>
-            <span className="font-medium text-accent">{t('cycle.stacked.ovulation')}</span> ·
-            {' ~J'}
-            {ovulation.day} · {fmtDate(ovulation.date)}
-          </p>
-        ) : null}
-        <p className="text-[11px] text-muted-soft">{t('cycle.ring.j1hint')}</p>
-      </div>
-
       <div
-        className="relative order-1 shrink-0 sm:order-1"
+        className="relative order-1 shrink-0"
         style={{ width: SIZE, height: SIZE }}
       >
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full">
           <g transform={`rotate(-90 ${CENTER} ${CENTER})`}>
             <circle cx={CENTER} cy={CENTER} r={R} fill="none" strokeWidth={STROKE} className="stroke-bg-2" />
-            {length ? (
+            {total ? (
               <circle
                 cx={CENTER}
                 cy={CENTER}
@@ -106,7 +91,7 @@ export default function CycleRing({
                 className="stroke-accent-soft"
               />
             ) : null}
-            {length ? (
+            {total ? (
               <circle
                 cx={CENTER}
                 cy={CENTER}
@@ -118,13 +103,13 @@ export default function CycleRing({
               />
             ) : null}
           </g>
-          {/* One tick per cycle day just inside the band ; longer +
-              darker at each week so every day is materialised. */}
-          {length
-            ? Array.from({ length }, (_, d) => {
+          {/* One tick per cycle day just inside the band ; longer at each
+              week, which also carries a 7 / 14 / 21… label. */}
+          {total
+            ? Array.from({ length: total }, (_, d) => {
                 const major = d % 7 === 0;
-                const outer = pointAt(d / length, R - STROKE / 2);
-                const inner = pointAt(d / length, R - STROKE / 2 - (major ? 7 : 4));
+                const outer = pointAt(d / total, R - STROKE / 2);
+                const inner = pointAt(d / total, R - STROKE / 2 - (major ? 7 : 4));
                 return (
                   <line
                     key={d}
@@ -135,6 +120,24 @@ export default function CycleRing({
                     className={major ? 'stroke-muted' : 'stroke-muted-soft'}
                     strokeWidth={major ? 1.25 : 0.75}
                   />
+                );
+              })
+            : null}
+          {total
+            ? WEEK_MARKS.filter((w) => w < total).map((w) => {
+                const p = pointAt(w / total, R - STROKE / 2 - 15);
+                return (
+                  <text
+                    key={w}
+                    x={p.x}
+                    y={p.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    className="fill-muted"
+                    fontSize={10}
+                  >
+                    {w}
+                  </text>
                 );
               })
             : null}
@@ -160,17 +163,36 @@ export default function CycleRing({
           </span>
         ) : null}
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-12 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-16 text-center">
           <span className="text-[12px] text-muted">
             {t('cycle.ring.todayLabel', { values: { date: fmtDate(todayIso) } })}
           </span>
           <span className="mt-0.5 text-[18px] font-semibold leading-tight text-ink">
             {primary}
           </span>
-          {fertileHint ? (
-            <span className="mt-1 text-[12px] text-accent">{fertileHint}</span>
-          ) : null}
         </div>
+      </div>
+
+      {/* Recap — right of the ring on sm+ so it doesn't add height. */}
+      <div className="order-2 space-y-1.5 text-center text-[13px] text-muted sm:text-left">
+        <p>
+          <span className="font-medium text-low">{t('cycle.legend.period')}</span> ·{' '}
+          {t('cycle.stacked.unit', { values: { count: periodLength } })}
+        </p>
+        {ovulation ? (
+          inFertile ? (
+            <p>
+              <span className="font-medium text-accent">{t('cycle.ring.fertile')}</span> ·{' '}
+              {fmtDate(ovulation.date)}
+            </p>
+          ) : (
+            <p>
+              <span className="font-medium text-accent">{t('cycle.stacked.ovulation')}</span> ·{' '}
+              ~J{ovulation.day} · {fmtDate(ovulation.date)}
+            </p>
+          )
+        ) : null}
+        <p className="text-[11px] text-muted-soft">{t('cycle.ring.j1hint')}</p>
       </div>
     </div>
   );
