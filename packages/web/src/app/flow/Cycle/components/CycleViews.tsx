@@ -98,7 +98,11 @@ export default function CycleViews({
 
   return (
     <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+      {/* `items-start` top-aligns the year selector with the sidebar's
+          first heading (« Paramètre du module ») across the two columns,
+          instead of `items-center` centering it against the tall H1 and
+          pushing it below the sidebar's top (Mood parity). */}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <PageHeading className="mb-0 hidden lg:block">{t('cycle.title')}</PageHeading>
         <CycleYearSelector
           year={year}

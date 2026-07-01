@@ -9,12 +9,13 @@
  *  - `masc`   : masculinising HRT (testosterone) — T high & steady,
  *               estrogen suppressed ; no cyclic LH surge (typical
  *               amenorrhea).
- *  - `fem`    : feminising HRT — estrogen raised & steady, testosterone
- *               suppressed.
+ *
+ * No feminising profile : a transfeminine body has no menstrual cycle, so
+ * it has no place in a cycle-tracking module.
  *
  * Pure — feeds the SVG in `CycleHormones`.
  */
-export type HormoneProfile = 'natal' | 'masc' | 'fem';
+export type HormoneProfile = 'natal' | 'masc';
 export type HormoneId = 'estrogen' | 'progesterone' | 'lh' | 'testosterone';
 
 export interface HormoneSeries {
@@ -51,21 +52,11 @@ export function sampleHormones(
     };
   }
 
-  if (profile === 'masc') {
-    return {
-      series: [
-        { id: 'testosterone', y: days.map(() => 0.82) },
-        { id: 'estrogen', y: days.map(() => 0.12) },
-      ],
-      ovulation: null,
-    };
-  }
-
-  // fem
+  // masc
   return {
     series: [
-      { id: 'estrogen', y: days.map(() => 0.62) },
-      { id: 'testosterone', y: days.map(() => 0.1) },
+      { id: 'testosterone', y: days.map(() => 0.82) },
+      { id: 'estrogen', y: days.map(() => 0.12) },
     ],
     ovulation: null,
   };

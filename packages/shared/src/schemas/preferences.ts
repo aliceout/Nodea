@@ -116,8 +116,9 @@ export const GoalsDefaultStatusSchema = z.enum(['open', 'wip']);
 
 /** Cycle: hormone-curve reference profile. `off` hides the tab ; the
  *  others pick which textbook pattern to draw (natal cycle / masculinising
- *  or feminising HRT). */
-export const CycleHormoneProfileSchema = z.enum(['off', 'natal', 'masc', 'fem']);
+ *  HRT). No feminising profile — a transfeminine body has no menstrual
+ *  cycle, so it has no place in a cycle-tracking module. */
+export const CycleHormoneProfileSchema = z.enum(['off', 'natal', 'masc']);
 export type CycleHormoneProfile = z.infer<typeof CycleHormoneProfileSchema>;
 export type GoalsDefaultStatus = z.infer<typeof GoalsDefaultStatusSchema>;
 
@@ -270,8 +271,10 @@ export const UserPreferencesPayloadSchema = z.looseObject({
   moodChartCollapsed: z.boolean().optional(),
   /** Mood: offer the « question du jour » prompt on new entries. Absent ⇒ true. */
   moodOfferDailyQuestion: z.boolean().optional(),
-  /** Cycle: hormone-curve reference profile (or « off » to hide the tab). Absent ⇒ 'natal'. */
-  cycleHormoneProfile: CycleHormoneProfileSchema.optional(),
+  /** Cycle: hormone-curve reference profile (or « off » to hide the tab). Absent ⇒ 'natal'.
+   *  `.catch` degrades a legacy value dropped from the enum (e.g. the removed
+   *  'fem') to the default rather than failing the whole prefs parse. */
+  cycleHormoneProfile: CycleHormoneProfileSchema.optional().catch(undefined),
   journalGroupBy: JournalGroupByPreferenceSchema.optional(),
   /** Journal: show the « Il y a quelques années » memory panel. Absent ⇒ true. */
   journalShowOnThisDay: z.boolean().optional(),

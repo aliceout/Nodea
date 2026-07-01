@@ -50,16 +50,19 @@
     "progesterone": "Progestérone",
     "lh": "LH",
     "testosterone": "Testostérone",
+    "axis": {
+      "high": "Élevé",
+      "low": "Faible"
+    },
     "disclaimer": "Courbes moyennes indicatives — pas tes valeurs. Pour tes taux réels, parles-en à un·e soignant·e (analyses)."
   },
   "settings": {
     "hormoneProfileLabel": "Courbe hormonale de référence",
-    "hormoneProfileHint": "Le schéma type à afficher (indicatif). Masculin/féminin = sous HRT.",
+    "hormoneProfileHint": "Le schéma type à afficher (indicatif). Masculinisant = sous HRT.",
     "profile": {
       "off": "Désactivée",
       "natal": "Cycle menstruel",
-      "masc": "HRT masculinisant",
-      "fem": "HRT féminisant"
+      "masc": "HRT masculinisant"
     }
   },
   "stacked": {

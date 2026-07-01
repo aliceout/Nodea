@@ -1,10 +1,12 @@
 /**
  * Standard hormone view (3rd graph) — a full-width linear chart of the
  * TEXTBOOK hormone curves for the chosen reference profile (natal cycle /
- * masculinising HRT / feminising HRT), with a « you are here » marker at
- * today's cycle day. INDICATIVE average shapes, NOT the user's measured
- * levels (that would be lab data → HRT). Profile + on/off live in the
- * module settings. Hand-rolled SVG — no chart lib.
+ * masculinising HRT), with a « you are here » marker at today's cycle day
+ * and a cycle-day axis underneath (so a flat masc profile still reads as
+ * « steady across the whole cycle » rather than empty lines). INDICATIVE
+ * average shapes, NOT the user's measured levels (that would be lab data →
+ * HRT). Profile + on/off live in the module settings. Hand-rolled SVG — no
+ * chart lib.
  */
 import { useMemo } from 'react';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -62,6 +64,12 @@ export default function CycleHormones({ length, day, profile }: Props) {
   const curve = (s: HormoneSeries) =>
     smooth(s.y.map((v, i) => ({ x: x(i + 1), y: y(v) })));
 
+  // Day-axis ticks : day 1, each week that clears the end by ≥ 3 days, and
+  // the last day. Skipping near-end weeks avoids « J28 J30 » collisions on
+  // longer cycles. ponytail: fixed week grid, fine for any realistic length.
+  const pctX = (d: number) => ((d - 1) / Math.max(1, length - 1)) * 100;
+  const ticks = [1, ...[7, 14, 21, 28, 35].filter((d) => d < length - 2), length];
+
   return (
     <div className="flex h-full flex-col px-1 py-1">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -78,41 +86,70 @@ export default function CycleHormones({ length, day, profile }: Props) {
         </ul>
       </div>
 
-      <div className="relative flex-1">
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="absolute inset-0 h-full w-full"
-          preserveAspectRatio="none"
-        >
-          {ovulation !== null ? (
-            <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          ) : null}
-          {series.map((s) => (
-            <path
-              key={s.id}
-              d={curve(s)}
-              fill="none"
-              className={HORMONE_COLOR[s.id]}
-              strokeWidth={1.25}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          {day !== null && day >= 1 && day <= length ? (
-            <line
-              x1={x(day)}
-              y1={0}
-              x2={x(day)}
-              y2={H}
-              className="stroke-ink"
-              strokeWidth={1}
-              strokeDasharray="3 2"
-              vectorEffect="non-scaling-stroke"
-            />
-          ) : null}
-        </svg>
+      <div className="flex min-h-0 flex-1">
+        {/* Y-axis legend — the vertical is an INDICATIVE relative level, not
+            measured values : « élevé » at the top, « faible » at the baseline.
+            Kept a sibling of the plot so the x-day ticks below stay aligned
+            under the curves only, not this gutter. */}
+        <div className="flex shrink-0 flex-col justify-between py-0.5 pr-1.5 text-right text-[9.5px] leading-none text-muted-soft">
+          <span>{t('cycle.hormones.axis.high')}</span>
+          <span>{t('cycle.hormones.axis.low')}</span>
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="relative flex-1">
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              className="absolute inset-0 h-full w-full"
+              preserveAspectRatio="none"
+            >
+              {ovulation !== null ? (
+                <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+              ) : null}
+              {series.map((s) => (
+                <path
+                  key={s.id}
+                  d={curve(s)}
+                  fill="none"
+                  className={HORMONE_COLOR[s.id]}
+                  strokeWidth={1.25}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+              {day !== null && day >= 1 && day <= length ? (
+                <line
+                  x1={x(day)}
+                  y1={0}
+                  x2={x(day)}
+                  y2={H}
+                  className="stroke-ink"
+                  strokeWidth={1}
+                  strokeDasharray="3 2"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null}
+            </svg>
+          </div>
+
+          {/* Cycle-day axis — anchored to the same x-scale as the curves.
+              First tick flush-left, last flush-right, the rest centred. */}
+          <div className="relative mt-1 h-3.5">
+            {ticks.map((d, i) => (
+              <span
+                key={d}
+                className={`absolute top-0 text-[9.5px] tabular-nums text-muted-soft ${
+                  i === 0 ? '' : i === ticks.length - 1 ? '-translate-x-full' : '-translate-x-1/2'
+                }`}
+                style={{ left: `${pctX(d)}%` }}
+              >
+                {t('cycle.ring.dayBadge', { values: { count: d } })}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <p className="mt-2 text-[11px] leading-snug text-muted-soft">
+      <p className="mt-1 text-[11px] leading-snug text-muted-soft">
         {t('cycle.hormones.disclaimer')}
       </p>
     </div>

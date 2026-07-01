@@ -24,12 +24,4 @@ describe('sampleHormones', () => {
     expect(t.y[0]).toBeGreaterThan(e.y[0]!);
     expect(new Set(t.y).size).toBe(1); // flat
   });
-
-  it('fem: estrogen raised, testosterone suppressed, no ovulation', () => {
-    const { series, ovulation } = sampleHormones(28, 'fem');
-    expect(ovulation).toBeNull();
-    const e = series.find((s) => s.id === 'estrogen')!;
-    const t = series.find((s) => s.id === 'testosterone')!;
-    expect(e.y[0]).toBeGreaterThan(t.y[0]!);
-  });
 });
