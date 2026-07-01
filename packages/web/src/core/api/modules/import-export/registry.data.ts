@@ -25,7 +25,8 @@ type ModuleKey =
   | 'hrt_products'
   | 'hrt_admin_logs'
   | 'hrt_lab_results'
-  | 'hrt_schedules';
+  | 'hrt_schedules'
+  | 'cycle';
 
 type PluginLoader = () => Promise<{ default: ImportExportPlugin }>;
 
@@ -44,6 +45,7 @@ const loaders: Record<ModuleKey, PluginLoader> = {
   hrt_admin_logs: () => import('./hrt-admin-logs.ts'),
   hrt_lab_results: () => import('./hrt-lab-results.ts'),
   hrt_schedules: () => import('./hrt-schedules.ts'),
+  cycle: () => import('./cycle.ts'),
 };
 
 const aliases: Readonly<Record<string, ModuleKey>> = {
