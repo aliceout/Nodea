@@ -9,7 +9,7 @@
  * threshold, so no context/hooks scaffolding (YAGNI until it grows).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CyclePayload } from '@nodea/shared';
+import type { CycleFlow, CyclePayload } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cycleClient } from '@/core/api/modules/cycle';
 import { useModuleClient } from '@/core/modules/use-module-client';
@@ -46,14 +46,22 @@ export default function CyclePage() {
   const today = useMemo(todayIso, []);
   const [records, setRecords] = useState<Rec[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!ctx) return;
     cycleClient
       .list(ctx.moduleUserId, ctx.mainKey)
-      .then(setRecords)
-      .catch(() => setRecords([]));
-  }, [ctx]);
+      .then((r) => {
+        setRecords(r);
+        setLoadError(null);
+      })
+      // Never swallow silently — an empty module and a broken fetch must
+      // not look the same (a missing table 500 read as « no data »).
+      .catch((e: unknown) => {
+        setLoadError(e instanceof Error ? e.message : t('cycle.loadFailed'));
+      });
+  }, [ctx, t]);
   useEffect(reload, [reload]);
 
   const stats = useMemo(
@@ -70,6 +78,11 @@ export default function CyclePage() {
   const byDate = useMemo(() => {
     const m = new Map<string, Rec>();
     for (const r of records) m.set(r.payload.date, r);
+    return m;
+  }, [records]);
+  const flowByDate = useMemo(() => {
+    const m = new Map<string, CycleFlow>();
+    for (const r of records) if (r.payload.flow) m.set(r.payload.date, r.payload.flow);
     return m;
   }, [records]);
 
@@ -121,12 +134,12 @@ export default function CyclePage() {
           </p>
         </div>
         <div className="flex flex-col gap-1.5 text-[12px] text-muted">
-          <LegendRow swatch="bg-accent-strong" label={t('cycle.legend.period')} />
+          <LegendRow swatch="bg-low" label={t('cycle.legend.period')} />
           <LegendRow
-            swatch="border border-dashed border-accent"
+            swatch="border border-dashed border-low-soft"
             label={t('cycle.legend.predicted')}
           />
-          <LegendRow swatch="ring-1 ring-accent" label={t('cycle.legend.today')} />
+          <LegendRow swatch="bg-accent-soft" label={t('cycle.legend.today')} />
         </div>
       </div>
     );
@@ -144,15 +157,20 @@ export default function CyclePage() {
       }
       side={side}
     >
-      {ctx ? (
+      {!ctx ? (
+        <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>
+      ) : loadError ? (
+        <p className="p-6 text-center text-sm text-danger" role="alert">
+          {loadError}
+        </p>
+      ) : (
         <CycleViews
           stats={stats}
+          flowByDate={flowByDate}
           today={today}
           selected={selected}
           onSelectDay={setSelected}
         />
-      ) : (
-        <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>
       )}
     </ModuleShell>
   );

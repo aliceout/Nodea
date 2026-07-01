@@ -4,6 +4,7 @@
  * local `view` state — it's pure UI, no reason to lift it to the page.
  */
 import { useState } from 'react';
+import type { CycleFlow } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import type { CycleStats } from '../lib/cycle-model';
@@ -16,12 +17,19 @@ const VIEWS: readonly CycleView[] = ['calendar', 'ring', 'stacked'];
 
 interface Props {
   stats: CycleStats;
+  flowByDate: ReadonlyMap<string, CycleFlow>;
   today: string;
   selected: string | null;
   onSelectDay: (iso: string) => void;
 }
 
-export default function CycleViews({ stats, today, selected, onSelectDay }: Props) {
+export default function CycleViews({
+  stats,
+  flowByDate,
+  today,
+  selected,
+  onSelectDay,
+}: Props) {
   const { t, language } = useI18n();
   const [view, setView] = useState<CycleView>('calendar');
 
@@ -47,7 +55,7 @@ export default function CycleViews({ stats, today, selected, onSelectDay }: Prop
 
       {view === 'calendar' ? (
         <CycleCalendar
-          periodDays={stats.periodDays}
+          flowByDate={flowByDate}
           predictedDays={stats.predictedDays}
           today={today}
           selected={selected}
@@ -82,6 +90,8 @@ export default function CycleViews({ stats, today, selected, onSelectDay }: Prop
           language={language}
           emptyLabel={t('cycle.stacked.empty')}
           unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
+          periodLabel={t('cycle.legend.period')}
+          ovulationLabel={t('cycle.stacked.ovulation')}
         />
       ) : null}
     </div>

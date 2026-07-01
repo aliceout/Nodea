@@ -27,8 +27,10 @@
   },
   "stacked": {
     "empty": "No completed cycle to compare yet.",
-    "unit": "{count} d"
+    "unit": "{count} d",
+    "ovulation": "Est. ovulation"
   },
+  "loadFailed": "Could not load.",
   "form": {
     "flow": {
       "label": "Flow",

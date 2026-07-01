@@ -27,8 +27,10 @@
   },
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",
-    "unit": "{count} j"
+    "unit": "{count} j",
+    "ovulation": "Ovulation estimée"
   },
+  "loadFailed": "Chargement impossible.",
   "form": {
     "flow": {
       "label": "Flux",

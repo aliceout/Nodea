@@ -48,7 +48,7 @@ export default function CycleRing({ day, length, periodLength, dayLabel, ofLabel
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={`${periodFrac * C} ${C}`}
-              className="stroke-accent-strong"
+              className="stroke-low"
             />
           ) : null}
         </g>
