@@ -24,7 +24,6 @@ import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import CycleDayForm from './components/CycleDayForm';
 import CycleEntriesList from './components/CycleEntriesList';
-import CycleHormones from './components/CycleHormones';
 import CycleSettings from './components/CycleSettings';
 import CycleViews from './components/CycleViews';
 import SideColumn from './components/SideColumn';
@@ -134,15 +133,8 @@ export default function CyclePage() {
             availableYears={availableYears}
             onYearChange={changeYear}
             onMonthChange={setMonth}
+            showHormones={showHormones}
           />
-          {showHormones ? (
-            <div className="mt-4">
-              <CycleHormones
-                length={stats.current?.length ?? 28}
-                day={stats.current?.day ?? null}
-              />
-            </div>
-          ) : null}
           <InlinePanel open={!!settings?.open}>
             <ModuleSettingsPanel onClose={() => settings?.close()}>
               <CycleSettings />

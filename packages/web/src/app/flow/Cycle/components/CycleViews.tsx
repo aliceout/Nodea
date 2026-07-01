@@ -17,12 +17,12 @@ import PageHeading from '@/ui/dirk/module/PageHeading';
 import Tabs from '@/ui/dirk/Tabs';
 import type { CycleStats } from '../lib/cycle-model';
 import CycleCalendar from './CycleCalendar';
+import CycleHormones from './CycleHormones';
 import CycleMonthSelector from './CycleMonthSelector';
 import CycleStacked from './CycleStacked';
 import CycleYearSelector from './CycleYearSelector';
 
-type CycleView = 'calendar' | 'stacked';
-const VIEWS: readonly CycleView[] = ['calendar', 'stacked'];
+type CycleView = 'calendar' | 'stacked' | 'hormones';
 
 interface Props {
   stats: CycleStats;
@@ -37,6 +37,8 @@ interface Props {
   availableYears: readonly number[];
   onYearChange: (year: number | null) => void;
   onMonthChange: (month: number | null) => void;
+  /** Show the indicative hormone-curve tab (module setting). */
+  showHormones: boolean;
 }
 
 export default function CycleViews({
@@ -51,10 +53,20 @@ export default function CycleViews({
   availableYears,
   onYearChange,
   onMonthChange,
+  showHormones,
 }: Props) {
   const { t, language } = useI18n();
   const [view, setView] = useState<CycleView>('calendar');
   const [collapsed, setCollapsed] = useState(false);
+
+  const views: CycleView[] = showHormones
+    ? ['calendar', 'stacked', 'hormones']
+    : ['calendar', 'stacked'];
+
+  // Fall back to the calendar if the hormone tab is turned off while open.
+  useEffect(() => {
+    if (!showHormones && view === 'hormones') setView('calendar');
+  }, [showHormones, view]);
 
   // Auto-collapse on scroll-DOWN past a small threshold — same posture
   // as the Mood / Journal frise. Detach before toggling so a fast scroll
@@ -91,7 +103,7 @@ export default function CycleViews({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <Tabs
-          tabs={VIEWS.map((v) => ({ id: v, label: t(`cycle.view.${v}`) }))}
+          tabs={views.map((v) => ({ id: v, label: t(`cycle.view.${v}`) }))}
           value={view}
           onChange={setView}
         />
@@ -136,6 +148,13 @@ export default function CycleViews({
                 unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
                 periodLabel={t('cycle.legend.period')}
                 ovulationLabel={t('cycle.stacked.ovulation')}
+              />
+            ) : null}
+
+            {view === 'hormones' ? (
+              <CycleHormones
+                length={stats.current?.length ?? 28}
+                day={stats.current?.day ?? null}
               />
             ) : null}
           </div>

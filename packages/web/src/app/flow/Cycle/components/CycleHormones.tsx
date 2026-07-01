@@ -1,10 +1,10 @@
 /**
- * Standard hormone band (spec §, option A) — a full-width linear chart
+ * Standard hormone view (spec §, 3rd graph) — a full-width linear chart
  * of the TEXTBOOK estrogen / progesterone / LH curves across the cycle,
  * with a « you are here » marker at today's cycle day, so one can situate
  * oneself on the typical pattern. These are INDICATIVE average shapes,
- * NOT the user's measured levels (that would be lab data → HRT). Hidden
- * via the module settings toggle. Hand-rolled SVG — no chart lib.
+ * NOT the user's measured levels (that would be lab data → HRT). The tab
+ * is toggled off via the module settings. Hand-rolled SVG — no chart lib.
  */
 import { useMemo } from 'react';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
@@ -18,7 +18,7 @@ interface Props {
 }
 
 const W = 340;
-const H = 84;
+const H = 100;
 const PAD = 6;
 
 export default function CycleHormones({ length, day }: Props) {
@@ -37,9 +37,9 @@ export default function CycleHormones({ length, day }: Props) {
   ];
 
   return (
-    <section className="rounded-[var(--radius-md)] border border-hair bg-bg p-3">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h3 className="text-[12px] font-semibold text-ink">{t('cycle.hormones.title')}</h3>
+    <div className="flex h-full flex-col px-1 py-1">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h3 className="text-[13px] font-semibold text-ink">{t('cycle.hormones.title')}</h3>
         <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
           {legend.map(([stroke, label]) => (
             <li key={label} className="flex items-center gap-1.5">
@@ -52,36 +52,33 @@ export default function CycleHormones({ length, day }: Props) {
         </ul>
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-20 w-full" preserveAspectRatio="none">
-        {/* ovulation guide */}
-        <line
-          x1={x(ovulation)}
-          y1={0}
-          x2={x(ovulation)}
-          y2={H}
-          className="stroke-accent-soft"
-          strokeWidth={1}
-        />
-        <polyline points={path('e')} fill="none" className="stroke-accent" strokeWidth={2} strokeLinejoin="round" />
-        <polyline points={path('p')} fill="none" className="stroke-ink-soft" strokeWidth={2} strokeLinejoin="round" />
-        <polyline points={path('l')} fill="none" className="stroke-low" strokeWidth={2} strokeLinejoin="round" />
-        {/* today marker */}
-        {day !== null && day >= 1 && day <= length ? (
-          <line
-            x1={x(day)}
-            y1={0}
-            x2={x(day)}
-            y2={H}
-            className="stroke-ink"
-            strokeWidth={1.5}
-            strokeDasharray="3 2"
-          />
-        ) : null}
-      </svg>
+      <div className="relative flex-1">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="absolute inset-0 h-full w-full"
+          preserveAspectRatio="none"
+        >
+          <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} />
+          <polyline points={path('e')} fill="none" className="stroke-accent" strokeWidth={2} strokeLinejoin="round" />
+          <polyline points={path('p')} fill="none" className="stroke-ink-soft" strokeWidth={2} strokeLinejoin="round" />
+          <polyline points={path('l')} fill="none" className="stroke-low" strokeWidth={2} strokeLinejoin="round" />
+          {day !== null && day >= 1 && day <= length ? (
+            <line
+              x1={x(day)}
+              y1={0}
+              x2={x(day)}
+              y2={H}
+              className="stroke-ink"
+              strokeWidth={1.5}
+              strokeDasharray="3 2"
+            />
+          ) : null}
+        </svg>
+      </div>
 
-      <p className="mt-1 text-[10px] leading-snug text-muted-soft">
+      <p className="mt-2 text-[11px] leading-snug text-muted-soft">
         {t('cycle.hormones.disclaimer')}
       </p>
-    </section>
+    </div>
   );
 }
