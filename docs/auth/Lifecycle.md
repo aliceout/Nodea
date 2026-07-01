@@ -42,18 +42,24 @@ rule 7).
 
 ## 7.11 Account deletion
 
-`POST /auth/account/delete`
+`DELETE /auth/me`
 
-Preconditions: fresh password re-auth + (passkey re-auth if
-`auth_factors.passkey` exists) + (live TOTP code if `mfa_totp.enabled_at`
-is non-null).
+Preconditions (all enforced server-side, in `auth-account.ts`): fresh
+password re-auth (`requireFreshPassword`) + a fresh passkey re-auth if a
+`passkey` row exists in `auth_factors` (bumped out-of-band via
+`/auth/reauth/passkey`, 5-min window) + a live TOTP code if
+`mfa_totp.enabled_at` is non-null. Missing/stale factors 401 with a
+discriminated code (`passkey_reauth_required` / `totp_required`).
 
-Body: `{ confirmation_phrase: "supprimer mon compte" }` (in French,
-exact match — preserved as the literal user-facing confirmation
-phrase).
+Body: `{ totpCode?: string }` — the live TOTP code, mandatory when TOTP is
+enabled, ignored otherwise. The deliberate-confirmation step is an email
+re-type + an in-app confirm dialog in the UI (stronger and
+language-neutral), not a typed French phrase.
 
-Server: §4.3 purge transaction + `DELETE FROM users WHERE id`.
-Cascade DELETE across every FK.
+Server: `DELETE FROM users WHERE id` — every FK cascades (sessions,
+opaque_records, auth_factors, mfa_totp, mfa_totp_recovery_codes,
+mfa_bypass_requests, modules_config, user_preferences). Entry tables carry
+no `user_id` and are wiped client-side beforehand.
 
 Response `200`. Cookie cleared.
 

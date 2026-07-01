@@ -607,7 +607,7 @@ The matrix (§6) requires "fresh re-auth < 5 min". Implementation:
 | Regenerate KEK recovery code | password | Invalidates the previous `wrapped_kek_recovery` |
 | Change password | password **OR** passkey | Password is the only factor changeable via an alternative factor |
 | Change email | password | Triggers OPAQUE re-register + email re-verification |
-| Delete account | password **AND** (passkey if enabled) **AND** (TOTP if enabled) | Confirmation by typed phrase |
+| Delete account | password **AND** (passkey if enabled) **AND** (TOTP if enabled) | Deliberate confirmation via email re-type + in-app dialog (see §7.11) |
 | Reveal recovery code | **N/A**: not supported in V1 | Code generated once at signup, never re-shown |
 | Start a TOTP bypass | password (not fresh — direct OPAQUE login) | This is the "I lost my TOTP" screen on `mfa_pending` |
 | Current logout | none | |

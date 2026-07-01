@@ -264,6 +264,10 @@
     "gateHint": "Re-type your email and current password to enable deletion.",
     "windowConfirm": "This action is irreversible. All your encrypted entries will be deleted. Continue?",
     "wrongPassword": "Current password is incorrect.",
+    "totpLabel": "Authentication code (2FA)",
+    "wrongTotp": "Invalid or expired 2FA code.",
+    "passkeyCancelled": "Passkey verification cancelled.",
+    "passkeyRequired": "Passkey verification required.",
     "error": "Deletion failed.",
     "explanation": "Deletion erases all your encrypted entries, sessions and invites. No recovery possible — consider exporting first."
   }

@@ -12,6 +12,8 @@ import {
 import { clearSessionCookie } from '../auth/cookies.ts';
 import { sendMail } from '../auth/mailer.ts';
 import { computeRecoveryReverifyDue } from '../auth/recovery-reverify.ts';
+import { getSessionReauth } from '../auth/session.ts';
+import { verifyTotpCode } from '../auth/totp.ts';
 import { db } from '../db/client.ts';
 import {
   authFactors,
@@ -454,7 +456,10 @@ authAccountRoutes.openapi(onboardingCompleteRoute, async (c) => {
 
 /**
  * Self-delete the authenticated user — re-auth gated by the
- * `requireFreshPassword` middleware (Phase 7B).
+ * `requireFreshPassword` middleware (Phase 7B) PLUS, per Auth-Spec §6 / §7.11,
+ * a fresh passkey assertion when a passkey is enrolled and a live TOTP code
+ * when TOTP is enabled (both enforced in the handler below). The client also
+ * gates on an email re-type + an in-app confirm dialog.
  *
  * The user's auth / session / profile rows are removed by the FK
  * `ON DELETE CASCADE` chain : sessions, opaque_records, auth factors
@@ -479,7 +484,57 @@ authAccountRoutes.openapi(deleteSelfRoute, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = DeleteSelfBodySchema.safeParse(raw);
   if (!parsed.success) return c.json({ error: 'invalid_body' }, 400);
+  const body = parsed.data;
   const user = c.get('user');
+
+  // §6 / §7.11 — the most destructive, irreversible action must re-prove EVERY
+  // factor the account carries, not just the fresh password the middleware
+  // already checked. Otherwise a stolen fresh-password session could nuke an
+  // always_2fa / maximum account without ever touching its 2nd factor
+  // (audit 2026-07). A passkey needs a fresh assertion (stamped out-of-band by
+  // /auth/reauth/passkey) ; TOTP needs a live code (rides the body).
+  const [passkey] = await db
+    .select({ id: authFactors.id })
+    .from(authFactors)
+    .where(
+      and(eq(authFactors.userId, user.id), eq(authFactors.kind, 'passkey')),
+    )
+    .limit(1);
+  if (passkey) {
+    const sessionId = c.get('sessionId');
+    const reauth = sessionId ? await getSessionReauth(sessionId) : null;
+    // Same 5-min freshness window as the requireFreshPassword middleware.
+    const passkeyFresh =
+      reauth?.passkey != null &&
+      Date.now() - reauth.passkey.getTime() <= 5 * 60 * 1000;
+    if (!passkeyFresh) {
+      return c.json({ error: 'passkey_reauth_required' }, 401);
+    }
+  }
+
+  const [totp] = await db
+    .select({
+      secret: mfaTotp.secret,
+      enabledAt: mfaTotp.enabledAt,
+      lastWindow: mfaTotp.lastWindow,
+    })
+    .from(mfaTotp)
+    .where(eq(mfaTotp.userId, user.id))
+    .limit(1);
+  if (totp && totp.enabledAt !== null) {
+    const code = body.totpCode?.trim() ?? '';
+    if (!code) return c.json({ error: 'totp_required' }, 401);
+    const result = await verifyTotpCode(totp.secret, code);
+    // Anti-replay parity with the login verify path (refuse a window already
+    // consumed). No need to persist lastWindow : the row is about to cascade
+    // away with the user, so this code can't be replayed against it.
+    if (
+      !result.valid ||
+      (totp.lastWindow !== null && result.window <= totp.lastWindow)
+    ) {
+      return c.json({ error: 'totp_required' }, 401);
+    }
+  }
 
   await db.delete(users).where(eq(users.id, user.id));
   clearSessionCookie(c);
