@@ -50,7 +50,7 @@ function MonthGrid({
 
   return (
     <div className="w-[20rem] max-w-full">
-      <div className="mb-2 text-center text-sm font-medium capitalize text-ink">{monthLabel}</div>
+      <div className="mb-2 text-center text-[13px] font-medium capitalize text-ink">{monthLabel}</div>
       <div className="grid grid-cols-7 gap-1">
         {weekdayNames.map((w) => (
           <div key={w} className="pb-1 text-center text-[11px] font-medium capitalize text-muted">
@@ -77,7 +77,7 @@ function MonthGrid({
               aria-label={iso + (flow ? ` · règles (${flow})` : isPredicted ? ' · prédiction' : '')}
               className={cn(
                 'flex h-11 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-input)]',
-                'text-[13px] tabular-nums hover:bg-bg-2',
+                'text-[12px] tabular-nums hover:bg-bg-2',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 isSelected && 'ring-2 ring-accent',
               )}

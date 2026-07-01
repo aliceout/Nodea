@@ -13,6 +13,7 @@ import type { CycleFlow } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import PageHeading from '@/ui/dirk/module/PageHeading';
 import Tabs from '@/ui/dirk/Tabs';
 import type { CycleStats } from '../lib/cycle-model';
@@ -56,6 +57,8 @@ export default function CycleViews({
   showHormones,
 }: Props) {
   const { t, language } = useI18n();
+  const settings = useModuleSettings();
+  const settingsOpen = !!settings?.open;
   const [view, setView] = useState<CycleView>('calendar');
   const [collapsed, setCollapsed] = useState(false);
 
@@ -73,7 +76,7 @@ export default function CycleViews({
   // folds exactly once ; no auto-restore on scroll-up (stays user-driven).
   const lastScrollYRef = useRef(0);
   useEffect(() => {
-    if (collapsed || formOpen) return undefined;
+    if (collapsed || formOpen || settingsOpen) return undefined;
     lastScrollYRef.current = window.scrollY;
     function handleScroll() {
       const y = window.scrollY;
@@ -86,9 +89,10 @@ export default function CycleViews({
     }
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [collapsed, formOpen]);
+  }, [collapsed, formOpen, settingsOpen]);
 
-  const folded = collapsed || formOpen;
+  // Fold the graph while the composer OR the settings panel is open.
+  const folded = collapsed || formOpen || settingsOpen;
 
   return (
     <div className="sticky top-13 z-10 -mt-7 bg-bg pt-7 pb-3">
@@ -107,7 +111,7 @@ export default function CycleViews({
           value={view}
           onChange={setView}
         />
-        {formOpen ? null : (
+        {formOpen || settingsOpen ? null : (
           <CollapseToggle
             open={!collapsed}
             onToggle={() => setCollapsed((c) => !c)}
