@@ -3,7 +3,15 @@ import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { moodEntries, passwordResetTokens, users } from '../db/schema.ts';
+import {
+  authFactors,
+  mfaBypassRequests,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
+  moodEntries,
+  passwordResetTokens,
+  users,
+} from '../db/schema.ts';
 import { TEST_PASSWORD, loginAs, seedUser } from './helpers.ts';
 import { __setMailerInspector, type Mail } from '../auth/mailer.ts';
 
@@ -198,6 +206,74 @@ describe('POST /auth/reset (OPAQUE 2-step)', () => {
     // NEW password works.
     const newCookie = await loginAs(app, email, NEW_PASSWORD);
     expect(newCookie).toBeTruthy();
+  });
+
+  it('purges MFA factors, drops security_mode to baseline, NULLs recovery blobs (§4.3)', async () => {
+    const email = 'reset-purge@example.com';
+    const token = await requestResetFor(email);
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    const uid = user!.id;
+
+    // Arrange a maximum-mode account carrying every factor + recovery blob the
+    // destructive reset must purge (all bound to the about-to-be-discarded key).
+    await db
+      .update(users)
+      .set({
+        securityMode: 'maximum',
+        wrappedKekRecovery: 'old-recovery-wrap',
+        wrappedKekRecoveryIv: 'old-recovery-iv',
+        recoveryCodeHash: 'b'.repeat(64),
+        recoveryAcknowledgedAt: new Date(),
+        recoveryVerifiedAt: new Date(),
+        recoveryVerifyStreak: 3,
+      })
+      .where(eq(users.id, uid));
+    await db
+      .insert(mfaTotp)
+      .values({ userId: uid, secret: 'JBSWY3DPEHPK3PXP', enabledAt: new Date() });
+    await db
+      .insert(mfaTotpRecoveryCodes)
+      .values({ id: 'rc-purge', userId: uid, codeHash: 'c'.repeat(64) });
+    await db.insert(authFactors).values({
+      id: 'pk-purge',
+      userId: uid,
+      kind: 'passkey',
+      credentialId: 'cred-reset-purge',
+      publicKey: 'pk',
+      prfSupported: true,
+    });
+    await db.insert(mfaBypassRequests).values({
+      id: 'bp-purge',
+      userId: uid,
+      factor: 'totp',
+      confirmTokenHash: 'x'.repeat(64),
+      cancelTokenHash: 'y'.repeat(64),
+      expiresAt: new Date(Date.now() + 7 * 86_400_000),
+    });
+
+    const result = await performResetFlow({ token, email, newPassword: NEW_PASSWORD });
+    expect(result.finishStatus).toBe(200);
+
+    // Every MFA factor bound to the discarded key is gone.
+    expect(await db.select().from(mfaTotp).where(eq(mfaTotp.userId, uid))).toHaveLength(0);
+    expect(
+      await db.select().from(mfaTotpRecoveryCodes).where(eq(mfaTotpRecoveryCodes.userId, uid)),
+    ).toHaveLength(0);
+    expect(await db.select().from(authFactors).where(eq(authFactors.userId, uid))).toHaveLength(0);
+    expect(
+      await db.select().from(mfaBypassRequests).where(eq(mfaBypassRequests.userId, uid)),
+    ).toHaveLength(0);
+
+    // Mode dropped to baseline so login never demands a purged factor; recovery
+    // blobs nulled so the stale code can't false-positive /recover.
+    const [after] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    expect(after!.securityMode).toBe('password_or_passkey');
+    expect(after!.wrappedKekRecovery).toBeNull();
+    expect(after!.wrappedKekRecoveryIv).toBeNull();
+    expect(after!.recoveryCodeHash).toBeNull();
+    expect(after!.recoveryAcknowledgedAt).toBeNull();
+    expect(after!.recoveryVerifiedAt).toBeNull();
+    expect(after!.recoveryVerifyStreak).toBe(0);
   });
 
   it('rejects a replayed token (400 invalid_token)', async () => {
