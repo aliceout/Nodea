@@ -1,10 +1,10 @@
 /**
- * Cycle day form — log / edit a single day (spec §3).
- *
- * Inline panel opened from the calendar. Flow select, free symptoms
- * (comma-separated → array), notes. Persists through `cycleClient`
- * (create or update) and deletes an existing day. The opt-in fertility
- * block (BBT / mucus / LH) is out of P1 — added in P3.
+ * Cycle day form — inline composer, same posture as `MoodForm` /
+ * `GoalForm` : the shared `MODULE_FORM_CARD` chrome + `FormError` +
+ * `FormFooter`, mounted through `InlinePanel` above the views. Logs /
+ * edits one day (spec §3) : flow, free symptoms, notes. The date is
+ * pinned by the calendar day the user opened (not an editable field).
+ * The opt-in fertility block (BBT / mucus / LH) is P3.
  */
 import { useState, type FormEvent } from 'react';
 import {
@@ -20,24 +20,31 @@ import Button from '@/ui/atoms/dirk/Button';
 import Field from '@/ui/atoms/dirk/Field';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
+import { MODULE_FORM_CARD } from '@/ui/dirk/forms/constants';
 import FormError from '@/ui/dirk/forms/FormError';
+import FormFooter from '@/ui/dirk/forms/FormFooter';
+
+type Rec = DecryptedRecord<CyclePayload>;
 
 interface Props {
   ctx: ModuleClient;
   date: string;
-  existing: DecryptedRecord<CyclePayload> | null;
-  onSaved: () => void;
+  /** Existing record for this date, when editing. */
+  initial: Rec | null;
+  /** Saved record to splice into the list ; `null` = the day was deleted. */
+  onSaved: (record: Rec | null) => void;
   onCancel: () => void;
 }
 
-export default function CycleDayForm({ ctx, date, existing, onSaved, onCancel }: Props) {
+export default function CycleDayForm({ ctx, date, initial, onSaved, onCancel }: Props) {
   const { t, language } = useI18n();
-  const p = existing?.payload;
+  const p = initial?.payload;
   const [flow, setFlow] = useState<string>(p?.flow ?? '');
   const [symptoms, setSymptoms] = useState<string>((p?.symptoms ?? []).join(', '));
   const [notes, setNotes] = useState<string>(p?.notes ?? '');
-  const [busy, setBusy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEdit = initial !== null;
 
   const dayLabel = new Intl.DateTimeFormat(language, {
     weekday: 'long',
@@ -45,9 +52,9 @@ export default function CycleDayForm({ ctx, date, existing, onSaved, onCancel }:
     month: 'long',
   }).format(new Date(`${date}T12:00:00`));
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+  async function handleSave(): Promise<void> {
+    if (submitting) return;
+    setSubmitting(true);
     setError(null);
     const payload: CyclePayload = {
       date,
@@ -57,33 +64,38 @@ export default function CycleDayForm({ ctx, date, existing, onSaved, onCancel }:
       updatedAt: new Date().toISOString(),
     };
     try {
-      if (existing) {
-        await cycleClient.update(ctx.moduleUserId, ctx.mainKey, existing.id, payload);
-      } else {
-        await cycleClient.create(ctx.moduleUserId, ctx.mainKey, payload);
-      }
-      onSaved();
+      const record = initial
+        ? await cycleClient.update(ctx.moduleUserId, ctx.mainKey, initial.id, payload)
+        : await cycleClient.create(ctx.moduleUserId, ctx.mainKey, payload);
+      onSaved(record);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('cycle.form.saveFailed'));
-      setBusy(false);
+      setSubmitting(false);
     }
   }
 
-  async function remove() {
-    if (!existing) return;
-    setBusy(true);
+  async function handleDelete(): Promise<void> {
+    if (!initial || submitting) return;
+    setSubmitting(true);
     setError(null);
     try {
-      await cycleClient.remove(ctx.moduleUserId, ctx.mainKey, existing.id);
-      onSaved();
+      await cycleClient.remove(ctx.moduleUserId, ctx.mainKey, initial.id);
+      onSaved(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('cycle.form.saveFailed'));
-      setBusy(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="rounded-[var(--radius-md)] border border-hair bg-bg p-4">
+    <form
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+      className={MODULE_FORM_CARD}
+      noValidate
+    >
       <h2 className="mb-3 text-sm font-semibold capitalize text-ink">{dayLabel}</h2>
 
       <label htmlFor="cycle-flow" className="mb-1 block text-[12px] font-medium text-muted">
@@ -124,21 +136,31 @@ export default function CycleDayForm({ ctx, date, existing, onSaved, onCancel }:
 
       <FormError id="cycle-form-error">{error}</FormError>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <Button type="submit" variant="primary" size="sm" disabled={busy}>
-            {t('common.actions.save')}
-          </Button>
-          <Button type="button" variant="neutral" size="sm" onClick={onCancel} disabled={busy}>
-            {t('common.actions.cancel')}
-          </Button>
-        </div>
-        {existing ? (
-          <Button type="button" variant="danger-ghost" size="sm" onClick={remove} disabled={busy}>
+      {isEdit ? (
+        <div className="mt-3">
+          <Button
+            type="button"
+            variant="danger-ghost"
+            size="sm"
+            onClick={() => void handleDelete()}
+            disabled={submitting}
+          >
             {t('common.actions.delete')}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
+
+      <FormFooter
+        onCancel={onCancel}
+        submitting={submitting}
+        submitLabel={
+          submitting
+            ? t('common.states.saving')
+            : isEdit
+              ? t('common.actions.update')
+              : t('common.actions.save')
+        }
+      />
     </form>
   );
 }

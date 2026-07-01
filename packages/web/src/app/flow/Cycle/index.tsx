@@ -1,12 +1,12 @@
 /**
  * Cycle — menstrual-cycle tracking (spec `docs/Modules/Cycle.md`).
  *
- * P1 surface : a month calendar (period days + predicted band) with a
- * click-to-log day form, and a next-period estimate that degrades to an
- * honest « not enough data / irregular » rather than a confident-but-
- * wrong date. Ring + stacked-cycles views and the opt-in fertility
- * block come in P2/P3. Single-file orchestration — well under the split
- * threshold, so no context/hooks scaffolding (YAGNI until it grows).
+ * Orchestrates the page : three switchable views (calendar / ring /
+ * stacked, via CycleViews) with the inline day composer above them
+ * (CycleDayForm mounted through the shared InlinePanel) and an entries
+ * list below, plus a next-period estimate in the side column. Reuses
+ * the shared form chrome (MODULE_FORM_CARD / FormFooter / FormError)
+ * and Tabs, same posture as Mood / Goals. Opt-in fertility block is P3.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CycleFlow, CyclePayload } from '@nodea/shared';
@@ -16,6 +16,7 @@ import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import CycleDayForm from './components/CycleDayForm';
@@ -154,20 +155,23 @@ export default function CyclePage() {
         </p>
       ) : (
         <div className="min-w-0">
-          {selected && ctx ? (
-            <div className="mb-6">
+          <InlinePanel open={selected !== null}>
+            {selected ? (
               <CycleDayForm
                 ctx={ctx}
                 date={selected}
-                existing={byDate.get(selected) ?? null}
-                onSaved={() => {
+                initial={byDate.get(selected) ?? null}
+                onSaved={(rec) => {
+                  setRecords((prev) => {
+                    const without = prev.filter((r) => r.payload.date !== selected);
+                    return rec ? [rec, ...without] : without;
+                  });
                   setSelected(null);
-                  reload();
                 }}
                 onCancel={() => setSelected(null)}
               />
-            </div>
-          ) : null}
+            ) : null}
+          </InlinePanel>
           <CycleViews
             stats={stats}
             flowByDate={flowByDate}

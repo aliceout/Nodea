@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import type { CycleFlow } from '@nodea/shared';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import Tabs from '@/ui/dirk/Tabs';
 import type { CycleStats } from '../lib/cycle-model';
 import CycleCalendar from './CycleCalendar';
 import CycleRing from './CycleRing';
@@ -35,62 +35,55 @@ export default function CycleViews({
 
   return (
     <div>
-      <div className="mb-3 inline-flex rounded-[var(--radius-control)] border border-hair p-0.5 text-[12px]">
-        {VIEWS.map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setView(v)}
-            aria-pressed={view === v}
-            className={cn(
-              'rounded-[var(--radius-input)] px-3 py-1',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-              view === v ? 'bg-accent-strong text-white' : 'text-muted hover:text-ink',
-            )}
-          >
-            {t(`cycle.view.${v}`)}
-          </button>
-        ))}
+      <Tabs
+        className="mb-3"
+        tabs={VIEWS.map((v) => ({ id: v, label: t(`cycle.view.${v}`) }))}
+        value={view}
+        onChange={setView}
+      />
+
+      {/* Fixed min-height so switching views doesn't shove the entries
+          list below up and down (the calendar is the tallest view). */}
+      <div className="min-h-[360px]">
+        {view === 'calendar' ? (
+          <CycleCalendar
+            flowByDate={flowByDate}
+            predictedDays={stats.predictedDays}
+            today={today}
+            selected={selected}
+            onSelectDay={onSelectDay}
+            language={language}
+          />
+        ) : null}
+
+        {view === 'ring' ? (
+          stats.current ? (
+            <div className="py-4">
+              <CycleRing
+                day={stats.current.day}
+                length={stats.current.length}
+                periodLength={stats.cycles.at(-1)?.periodLength ?? 0}
+                ovulation={stats.current.ovulation}
+                next={stats.next}
+                todayIso={today}
+              />
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted">{t('cycle.ring.noData')}</p>
+          )
+        ) : null}
+
+        {view === 'stacked' ? (
+          <CycleStacked
+            cycles={stats.cycles}
+            language={language}
+            emptyLabel={t('cycle.stacked.empty')}
+            unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
+            periodLabel={t('cycle.legend.period')}
+            ovulationLabel={t('cycle.stacked.ovulation')}
+          />
+        ) : null}
       </div>
-
-      {view === 'calendar' ? (
-        <CycleCalendar
-          flowByDate={flowByDate}
-          predictedDays={stats.predictedDays}
-          today={today}
-          selected={selected}
-          onSelectDay={onSelectDay}
-          language={language}
-        />
-      ) : null}
-
-      {view === 'ring' ? (
-        stats.current ? (
-          <div className="py-4">
-            <CycleRing
-              day={stats.current.day}
-              length={stats.current.length}
-              periodLength={stats.cycles.at(-1)?.periodLength ?? 0}
-              ovulation={stats.current.ovulation}
-              next={stats.next}
-              todayIso={today}
-            />
-          </div>
-        ) : (
-          <p className="py-8 text-center text-sm text-muted">{t('cycle.ring.noData')}</p>
-        )
-      ) : null}
-
-      {view === 'stacked' ? (
-        <CycleStacked
-          cycles={stats.cycles}
-          language={language}
-          emptyLabel={t('cycle.stacked.empty')}
-          unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
-          periodLabel={t('cycle.legend.period')}
-          ovulationLabel={t('cycle.stacked.ovulation')}
-        />
-      ) : null}
     </div>
   );
 }
