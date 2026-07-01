@@ -1,8 +1,9 @@
 # Cycle module (`cycle_entries`)
 
-> Status: **spec ratified, code not started.** This document is the
-> source of truth to build against; sections marked *(Pn)* map to the
-> roadmap in §9.
+> Status: **shipped (P1–P2).** Calendar / stacked-cycles / ring views,
+> next-period + ovulation estimate, and the four-phase segmentation are
+> live. Sections marked *(Pn)* map to the roadmap in §9; the biomarker
+> refinement (P3) is not built yet.
 
 Menstrual-cycle tracking. One encrypted collection, a single `/flow`
 module. The cycle itself is **derived client-side** from daily logs —
@@ -99,9 +100,17 @@ Vitest-covered):
   <!-- ponytail: flow≥light = menstruation; if users need a manual
        "period start" override, add a `periodStart: true` flag then. -->
 - **Cycle** = period-start day → day before the next period-start.
-  Yields per-cycle length + period length.
-- **Next-period estimate** = last period start + median of the last
-  *N* (≤6) cycle lengths. Shown as an **estimate**, always labelled.
+  Yields per-cycle length + period length + estimated ovulation day.
+- **Next-period estimate** = last period start + **median** of the last
+  *N* (≤6) cycle lengths (median, not mean — robust to a missed log that
+  merges two cycles). Shown as an **estimate with a ± band**
+  (`± clamp(round(std-dev), 1, 5)` days), never a bare date.
+- **Phases** — each cycle is segmented into `menstrual 1..P` ·
+  `follicular` · `fertile O−5..O` · `ovulation O` · `luteal O+1..L`, with
+  `O = length − 14` (the luteal phase is the stable part; the follicular
+  phase absorbs cycle-length variation). Grounded in ACOG / Wilcox
+  1995-2000 / Clue + Flo methodology. Rendered as soft, labelled *bands* —
+  never clinical facts.
 
 ## 5. Predictions & the irregular-cycle rule
 
@@ -109,27 +118,41 @@ Mainstream trackers fail by showing a **confident, wrong** prediction
 on irregular cycles (SOPK, perimenopause, teens, on T). Nodea must
 degrade gracefully:
 
-- **< 2 completed cycles**, or cycle-length spread too high → show the
-  logged facts, **no numeric estimate** (« pas assez de régularité pour
-  estimer », not a fake date).
-- **Fertile window** *(P3, opt-in)* — only when « conscience de
-  fertilité » is enabled. Baseline: ovulation ≈ next period − 14 (luteal
-  phase), fertile window ≈ ovulation −5..+1 ; refined by BBT
-  shift / egg-white mucus / positive LH when logged. **Always** behind
-  the strong disclaimer (§1) ; never presented as reliable
-  contraception.
+- **< 2 completed cycles**, or **std-dev of recent cycle length ≥ 7 days**
+  (Flo's « irregular » threshold, PMC8504278) → show the logged facts,
+  **no numeric estimate** (« pas assez de régularité pour estimer », not a
+  fake date).
+- **Ovulation** ≈ next period − 14, **clamped** so it never lands before
+  cycle day 5 and never on a cycle shorter than 15 days (no estimate
+  below that). When the estimate is looser than usual (few cycles, or a
+  clamped ovulation) an **`approximate` flag** prefixes the read with
+  « ~ » — cf. the honest-indicators rule.
+- **Fertile window** = the 6-day range `[ovulation − 5, ovulation]`
+  (Wilcox et al.), shown on the calendar as the *fertile* phase band,
+  labelled as an estimate. **Always** behind the strong disclaimer (§1);
+  never presented as reliable contraception, and calendar-only fertility
+  is deliberately fuzzy (period prediction is decent, ovulation is weak).
+- **Biomarker refinement** *(P3, opt-in, not built)* — BBT shift /
+  egg-white mucus / positive LH would tighten the per-person luteal
+  length; until then the constant-14 calendar estimate is what ships.
 
 ## 6. Views
 
-- **Calendar (MVP, P1)** — the home surface. Multi-month, period days
-  marked, predicted days lighter, (opt-in) fertile window shaded.
-  Familiar and degrades cleanly on irregular data.
+- **Calendar (P1)** — the home surface. Up to three months side by side,
+  each day tinted by its **cycle phase** (menstrual / follicular /
+  fertile / ovulation / luteal), a flow droplet for logged bleeding, a
+  sage diamond for estimated ovulation. Projected future days use a paler
+  tint. Degrades cleanly on irregular data.
 - **Ring (P2)** — glanceable « où j'en suis » widget for the regular
-  case. Never the primary view.
-- **Stacked cycles (P2)** — each past cycle as a horizontal bar aligned
-  at day 1, so length variability reads at a glance. The honest view
-  for irregular cycles. Hand-rolled SVG like `LabChart` / `Heatmap` —
-  no chart lib.
+  case (sidebar). Carries the ± / « ~ » honesty in its centre read.
+- **Stacked cycles (P2)** — each past cycle as a horizontal bar,
+  **segmented by phase** (same colours as the calendar), the ovulation
+  day marked. The honest view for length variability. Hand-rolled CSS /
+  SVG — no chart lib.
+
+Phase colours are two dedicated pale tokens (`--color-phase-follicular`
+cool, `--color-phase-luteal` warm) plus terracotta (menstrual) and sage
+(fertile / ovulation), light + dark — see `ui/theme/dirk.css`.
 
 Privacy invariant holds: the active module + sub-view never appear in
 the URL, `document.title` on `/flow` stays generic. No `useDocumentTitle`
@@ -158,10 +181,13 @@ per-module-lock note in §1.
   client ; daily composer (date, flow, free symptoms, notes) ; calendar
   view ; next-period estimate (labelled, with the irregular-cycle rule) ;
   account backup plugin.
-- **P2** — ring widget ✅ + stacked-cycles chart ✅ + view switcher ✅ ;
-  symptom presets ⏳.
+- **P2** — ring widget ✅ + stacked-cycles chart ✅ + view switcher ✅ +
+  four-phase segmentation (calendar + stacked) ✅ + calendar-based
+  fertile-window / ovulation estimate with ± band and « ~ » approximate
+  flag ✅ ; symptom presets ⏳.
 - **P3** — opt-in « conscience de fertilité » : BBT / mucus / LH fields
-  + fertile-window estimate behind the disclaimer.
+  refining the per-person luteal length (the calendar estimate ships
+  today; biomarkers would tighten it), behind the disclaimer.
 - **P4** — Mood × cycle cross-reference (client-side, by date).
 - **Later / opt-in** — sensitive fields (intimacy, pregnancy tests,
   contraception log), gated behind the per-module lock.

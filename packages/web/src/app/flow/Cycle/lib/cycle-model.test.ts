@@ -25,6 +25,48 @@ describe('computeCycle', () => {
     });
   });
 
+  it('segments the cycle into phases and exposes ovulation per cycle', () => {
+    const starts = ['2026-01-01', '2026-01-29', '2026-02-26', '2026-03-26'];
+    const s = computeCycle(starts.map(period), '2026-04-01');
+    // Completed cycle opened 2026-01-01 (len 28, 1-day period, ovulation J14).
+    expect(s.phaseByDate.get('2026-01-01')?.phase).toBe('menstrual');
+    expect(s.phaseByDate.get('2026-01-05')?.phase).toBe('follicular');
+    expect(s.phaseByDate.get('2026-01-09')?.phase).toBe('fertile');
+    expect(s.phaseByDate.get('2026-01-14')?.phase).toBe('ovulation');
+    expect(s.phaseByDate.get('2026-01-15')?.phase).toBe('luteal');
+    // Past days are derived from logs, not projected.
+    expect(s.phaseByDate.get('2026-01-14')?.predicted).toBe(false);
+    // The current cycle's ovulation (2026-04-08) is a future projection.
+    expect(s.phaseByDate.get('2026-04-08')).toEqual({ phase: 'ovulation', predicted: true });
+    expect(s.cycles[0]?.ovulationDay).toBe(14);
+  });
+
+  it('shows the next period as a ± band, exact for steady cycles', () => {
+    const starts = ['2026-01-01', '2026-01-29', '2026-02-26', '2026-03-26'];
+    const s = computeCycle(starts.map(period), '2026-04-01');
+    expect(s.next?.spreadDays).toBe(1); // std-dev 0 → clamped up to 1
+    expect(s.next?.lo).toBe('2026-04-22');
+    expect(s.next?.hi).toBe('2026-04-24');
+    expect(s.approximate).toBe(false); // ≥3 cycles + exact ovulation
+  });
+
+  it('flags the estimate approximate with only two cycles of history', () => {
+    const s = computeCycle(
+      ['2026-01-01', '2026-01-29', '2026-02-26'].map(period),
+      '2026-03-01',
+    );
+    expect(s.status).toBe('ok');
+    expect(s.approximate).toBe(true);
+  });
+
+  it('gives no ovulation estimate for a cycle too short to place one', () => {
+    const starts = ['2026-01-01', '2026-01-13', '2026-01-25', '2026-02-06'];
+    const s = computeCycle(starts.map(period), '2026-02-07');
+    expect(s.averageCycle).toBe(12);
+    expect(s.cycles[0]?.ovulationDay).toBeNull();
+    expect(s.current?.ovulation).toBeNull();
+  });
+
   it('refuses an estimate with fewer than two completed cycles', () => {
     const s = computeCycle([period('2026-01-01'), period('2026-01-29')], '2026-02-01');
     expect(s.status).toBe('not_enough_data');
