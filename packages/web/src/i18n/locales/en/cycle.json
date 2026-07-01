@@ -49,11 +49,18 @@
     "estrogen": "Estrogen",
     "progesterone": "Progesterone",
     "lh": "LH",
+    "testosterone": "Testosterone",
     "disclaimer": "Indicative average curves — not your values. For your actual levels, see a clinician (lab tests)."
   },
   "settings": {
-    "hormonesLabel": "Indicative hormone curve",
-    "hormonesHint": "Show the typical estrogen / progesterone / LH curves to situate yourself in the cycle."
+    "hormoneProfileLabel": "Reference hormone curve",
+    "hormoneProfileHint": "Which typical pattern to show (indicative). Masc/fem = on HRT.",
+    "profile": {
+      "off": "Off",
+      "natal": "Menstrual cycle",
+      "masc": "Masculinising HRT",
+      "fem": "Feminising HRT"
+    }
   },
   "stacked": {
     "empty": "No completed cycle to compare yet.",

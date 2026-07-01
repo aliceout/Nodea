@@ -49,11 +49,18 @@
     "estrogen": "Œstrogènes",
     "progesterone": "Progestérone",
     "lh": "LH",
+    "testosterone": "Testostérone",
     "disclaimer": "Courbes moyennes indicatives — pas tes valeurs. Pour tes taux réels, parles-en à un·e soignant·e (analyses)."
   },
   "settings": {
-    "hormonesLabel": "Courbe hormonale indicative",
-    "hormonesHint": "Affiche les courbes types (œstrogènes / progestérone / LH) pour te situer dans le cycle."
+    "hormoneProfileLabel": "Courbe hormonale de référence",
+    "hormoneProfileHint": "Le schéma type à afficher (indicatif). Masculin/féminin = sous HRT.",
+    "profile": {
+      "off": "Désactivée",
+      "natal": "Cycle menstruel",
+      "masc": "HRT masculinisant",
+      "fem": "HRT féminisant"
+    }
   },
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",

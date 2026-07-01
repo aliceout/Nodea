@@ -1,26 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { sampleHormones, type HormonePoint } from './hormones';
+import { sampleHormones, type HormoneSeries } from './hormones';
 
-const argmax = (points: HormonePoint[], key: 'e' | 'p' | 'l'): number =>
-  points.reduce((best, p) => (p[key] > best.v ? { d: p.d, v: p[key] } : best), {
-    d: 0,
-    v: -1,
-  }).d;
+const argmax = (s: HormoneSeries): number =>
+  s.y.reduce((best, v, i) => (v > s.y[best]! ? i : best), 0) + 1; // 1-based day
 
 describe('sampleHormones', () => {
-  it('samples one point per cycle day, ovulation at length − 14', () => {
-    const { points, ovulation } = sampleHormones(28);
-    expect(points).toHaveLength(28);
+  it('natal: cyclic estrogen / progesterone / LH, ovulation at length − 14', () => {
+    const { series, ovulation } = sampleHormones(28, 'natal');
     expect(ovulation).toBe(14);
-    expect(points.every((p) => p.e <= 1 && p.p <= 1 && p.l <= 1)).toBe(true);
+    expect(series.map((s) => s.id)).toEqual(['estrogen', 'progesterone', 'lh']);
+    expect(series.every((s) => s.y.length === 28)).toBe(true);
+    const lh = series.find((s) => s.id === 'lh')!;
+    const prog = series.find((s) => s.id === 'progesterone')!;
+    expect(Math.abs(argmax(lh) - 14)).toBeLessThanOrEqual(1); // LH surge at ovulation
+    expect(Math.abs(argmax(prog) - 21)).toBeLessThanOrEqual(2); // luteal progesterone
   });
 
-  it('peaks each hormone around its expected phase (28-day cycle)', () => {
-    const { points } = sampleHormones(28);
-    expect(Math.abs(argmax(points, 'l') - 14)).toBeLessThanOrEqual(1); // LH surge at ovulation
-    expect(Math.abs(argmax(points, 'p') - 21)).toBeLessThanOrEqual(2); // luteal progesterone
-    const eStar = argmax(points, 'e');
-    expect(eStar).toBeGreaterThanOrEqual(11); // estrogen peaks just pre-ovulation
-    expect(eStar).toBeLessThanOrEqual(14);
+  it('masc: testosterone high & flat, estrogen suppressed, no ovulation', () => {
+    const { series, ovulation } = sampleHormones(28, 'masc');
+    expect(ovulation).toBeNull();
+    const t = series.find((s) => s.id === 'testosterone')!;
+    const e = series.find((s) => s.id === 'estrogen')!;
+    expect(t.y[0]).toBeGreaterThan(e.y[0]!);
+    expect(new Set(t.y).size).toBe(1); // flat
+  });
+
+  it('fem: estrogen raised, testosterone suppressed, no ovulation', () => {
+    const { series, ovulation } = sampleHormones(28, 'fem');
+    expect(ovulation).toBeNull();
+    const e = series.find((s) => s.id === 'estrogen')!;
+    const t = series.find((s) => s.id === 'testosterone')!;
+    expect(e.y[0]).toBeGreaterThan(t.y[0]!);
   });
 });

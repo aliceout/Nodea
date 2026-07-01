@@ -1,29 +1,33 @@
 /**
- * Cycle « Paramètre du module » panel body — one toggle for the
- * indicative hormone-curve band (`cycleShowHormones`, absent ⇒ shown).
- * Same posture as `MoodSettings` : reads/writes the encrypted
- * preferences blob via `usePreferences`, rendered inside
- * `ModuleSettingsPanel`.
+ * Cycle « Paramètre du module » panel body — the hormone-curve reference
+ * profile (`cycleHormoneProfile`, absent ⇒ 'natal') : off / natal cycle /
+ * masculinising HRT / feminising HRT. Same posture as `MoodSettings` :
+ * reads/writes the encrypted preferences blob via `usePreferences`,
+ * rendered inside `ModuleSettingsPanel`.
  */
+import type { CycleHormoneProfile } from '@nodea/shared';
 import { usePreferences } from '@/core/auth/use-preferences';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { SettingsGrid, SettingToggleRow } from '@/ui/dirk/module/SettingRow';
+import { SettingsGrid, SettingSelectRow } from '@/ui/dirk/module/SettingRow';
+
+const PROFILES: ReadonlyArray<CycleHormoneProfile> = ['off', 'natal', 'masc', 'fem'];
 
 export default function CycleSettings() {
   const { t } = useI18n();
   const { preferences, setPreferences } = usePreferences();
-  const showHormones = preferences.cycleShowHormones !== false;
+  const profile = preferences.cycleHormoneProfile ?? 'natal';
 
   return (
     <SettingsGrid>
-      <SettingToggleRow
-        id="cycle-setting-hormones"
-        label={t('cycle.settings.hormonesLabel')}
-        hint={t('cycle.settings.hormonesHint')}
-        checked={showHormones}
+      <SettingSelectRow
+        id="cycle-setting-hormone-profile"
+        label={t('cycle.settings.hormoneProfileLabel')}
+        hint={t('cycle.settings.hormoneProfileHint')}
+        value={profile}
         onChange={(v) => {
-          if (v !== showHormones) void setPreferences({ cycleShowHormones: v });
+          if (v !== profile) void setPreferences({ cycleHormoneProfile: v as CycleHormoneProfile });
         }}
+        options={PROFILES.map((p) => ({ value: p, label: t(`cycle.settings.profile.${p}`) }))}
       />
     </SettingsGrid>
   );

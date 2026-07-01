@@ -40,7 +40,7 @@ export default function CyclePage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const ctx = useModuleClient('cycle');
   const { preferences } = usePreferences();
-  const showHormones = preferences.cycleShowHormones !== false;
+  const hormoneProfile = preferences.cycleHormoneProfile ?? 'natal';
   const today = useMemo(todayIso, []);
   const [records, setRecords] = useState<Rec[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export default function CyclePage() {
             availableYears={availableYears}
             onYearChange={changeYear}
             onMonthChange={setMonth}
-            showHormones={showHormones}
+            hormoneProfile={hormoneProfile}
           />
           <CycleSettingsPanel />
           <InlinePanel open={selected !== null}>

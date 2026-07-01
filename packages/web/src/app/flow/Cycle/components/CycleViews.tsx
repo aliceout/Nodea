@@ -9,7 +9,8 @@
  * toggle while the day composer is open, exactly like Mood.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { CycleFlow } from '@nodea/shared';
+import type { CycleFlow, CycleHormoneProfile } from '@nodea/shared';
+import type { HormoneProfile } from '../lib/hormones';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
@@ -38,8 +39,8 @@ interface Props {
   availableYears: readonly number[];
   onYearChange: (year: number | null) => void;
   onMonthChange: (month: number | null) => void;
-  /** Show the indicative hormone-curve tab (module setting). */
-  showHormones: boolean;
+  /** Hormone-curve reference profile ; « off » hides the tab. */
+  hormoneProfile: CycleHormoneProfile;
 }
 
 export default function CycleViews({
@@ -54,9 +55,10 @@ export default function CycleViews({
   availableYears,
   onYearChange,
   onMonthChange,
-  showHormones,
+  hormoneProfile,
 }: Props) {
   const { t, language } = useI18n();
+  const showHormones = hormoneProfile !== 'off';
   const settings = useModuleSettings();
   const settingsOpen = !!settings?.open;
   const [view, setView] = useState<CycleView>('calendar');
@@ -159,6 +161,7 @@ export default function CycleViews({
               <CycleHormones
                 length={stats.current?.length ?? 28}
                 day={stats.current?.day ?? null}
+                profile={hormoneProfile as HormoneProfile}
               />
             ) : null}
           </div>
