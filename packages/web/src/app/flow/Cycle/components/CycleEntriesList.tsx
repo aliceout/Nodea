@@ -33,7 +33,6 @@ export default function CycleEntriesList({ records, year, month, onSelect }: Pro
 
   return (
     <section>
-      <h2 className="mb-2 text-[13px] font-semibold text-ink">{t('cycle.entries.title')}</h2>
       {sorted.length === 0 ? (
         <p className="py-4 text-sm text-muted">{t('cycle.entries.empty')}</p>
       ) : (
