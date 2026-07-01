@@ -16,8 +16,13 @@ describe('computeCycle', () => {
     expect(s.cycles).toHaveLength(4);
     expect(s.cycles.at(-1)?.length).toBeNull();
     expect(s.cycles[0]?.length).toBe(28);
-    // Today (04-01) is day 7 of the cycle opened on 03-26.
-    expect(s.current).toEqual({ day: 7, length: 28 });
+    // Today (04-01) is day 7 of the cycle opened on 03-26 ; ovulation
+    // ≈ day 14 (28 − 14), i.e. 03-26 + 14 = 04-09.
+    expect(s.current).toEqual({
+      day: 7,
+      length: 28,
+      ovulation: { day: 14, date: '2026-04-09' },
+    });
   });
 
   it('refuses an estimate with fewer than two completed cycles', () => {

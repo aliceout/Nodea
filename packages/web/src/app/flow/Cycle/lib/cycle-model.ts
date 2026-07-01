@@ -21,6 +21,8 @@ const DAY_MS = 86_400_000;
 const IRREGULAR_RANGE_DAYS = 9;
 /** How many recent cycles feed the median. */
 const HISTORY = 6;
+/** Luteal phase length : ovulation ≈ next period − 14 days (estimate). */
+const LUTEAL_DAYS = 14;
 /** Assumed length of the predicted next period, in days. */
 const PREDICTED_PERIOD_DAYS = 5;
 
@@ -51,8 +53,14 @@ export interface CycleStats {
   /** Median of the last ≤6 cycle lengths, or null when none. */
   averageCycle: number | null;
   /** Where today sits in the current cycle (drives the ring). `length`
-   *  is the reference cycle length, null when not yet estimable. */
-  current: { day: number; length: number | null } | null;
+   *  is the reference cycle length, null when not yet estimable ;
+   *  `ovulation` is the current cycle's estimated ovulation (cycle day
+   *  + calendar date), null when there's no reliable length. */
+  current: {
+    day: number;
+    length: number | null;
+    ovulation: { day: number; date: string } | null;
+  } | null;
   status: CycleStatus;
   /** Estimated next period ; null unless `status === 'ok'`. */
   next: { date: string; daysUntil: number } | null;
@@ -109,12 +117,19 @@ export function computeCycle(
     };
   });
 
-  // Today's position in the current (latest) cycle.
+  // Today's position in the current (latest) cycle + its est. ovulation.
   const lastStart = periodStarts[periodStarts.length - 1];
-  const current =
-    lastStart && diffDays(today, lastStart) >= 0
-      ? { day: diffDays(today, lastStart) + 1, length: averageCycle }
-      : null;
+  let current: CycleStats['current'] = null;
+  if (lastStart && diffDays(today, lastStart) >= 0) {
+    const ovulation =
+      averageCycle && averageCycle > LUTEAL_DAYS
+        ? {
+            day: averageCycle - LUTEAL_DAYS,
+            date: addDays(lastStart, averageCycle - LUTEAL_DAYS),
+          }
+        : null;
+    current = { day: diffDays(today, lastStart) + 1, length: averageCycle, ovulation };
+  }
 
   let status: CycleStatus = 'ok';
   let next: CycleStats['next'] = null;

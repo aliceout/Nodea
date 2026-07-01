@@ -54,7 +54,7 @@ export default function CycleStacked({
             </span>
           ))}
         </div>
-        <span className="w-10 shrink-0" />
+        <span className="w-16 shrink-0" />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -87,12 +87,16 @@ export default function CycleStacked({
                   <span
                     className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] bg-accent"
                     style={{ left: pct(ovulation) }}
-                    title={ovulationLabel}
+                    title={`${ovulationLabel} · J${ovulation}`}
                   />
                 ) : null}
               </div>
-              <span className="w-10 shrink-0 text-right tabular-nums text-muted">
-                {unit(c.length!)}
+              <span
+                className="w-16 shrink-0 text-right text-[11px] tabular-nums"
+                title={`${periodLabel} ${c.periodLength} · ${unit(c.length!)}`}
+              >
+                <span className="font-medium text-low">{c.periodLength}</span>
+                <span className="text-muted-soft"> / {unit(c.length!)}</span>
               </span>
             </div>
           );

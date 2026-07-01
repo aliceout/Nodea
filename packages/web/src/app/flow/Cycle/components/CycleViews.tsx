@@ -71,12 +71,7 @@ export default function CycleViews({
               day={stats.current.day}
               length={stats.current.length}
               periodLength={stats.cycles.at(-1)?.periodLength ?? 0}
-              dayLabel={t('cycle.ring.day', { values: { count: stats.current.day } })}
-              ofLabel={
-                stats.current.length
-                  ? t('cycle.ring.of', { values: { length: stats.current.length } })
-                  : null
-              }
+              ovulation={stats.current.ovulation}
             />
           </div>
         ) : (

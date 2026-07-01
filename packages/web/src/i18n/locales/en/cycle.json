@@ -23,6 +23,8 @@
   "ring": {
     "day": "Day {count}",
     "of": "of ~{length} d",
+    "ovulation": "~D{day} · {date}",
+    "j1hint": "D1 = first day of the period",
     "noData": "Start logging your periods to see where you are."
   },
   "stacked": {
