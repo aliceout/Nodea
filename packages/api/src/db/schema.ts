@@ -65,6 +65,7 @@ export {
 export { announcements, appSettings, invites } from './schema/admin.ts';
 
 export {
+  cycleEntries,
   goalsEntries,
   hrtAdminLogsEntries,
   hrtLabResultsEntries,

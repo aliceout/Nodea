@@ -212,5 +212,6 @@ export const COLLECTION_NAMES = [
   'hrt-lab-results',
   'hrt-suppliers',
   'hrt-schedules',
+  'cycle',
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];

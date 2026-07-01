@@ -176,6 +176,13 @@
       "when": 1782736080498,
       "tag": "0024_smart_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782883614108,
+      "tag": "0025_wandering_freak",
+      "breakpoints": true
     }
   ]
 }

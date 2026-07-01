@@ -11,6 +11,7 @@ import {
   hrtLabResultsEntries,
   hrtSuppliersEntries,
   hrtSchedulesEntries,
+  cycleEntries,
   type EntryTable,
 } from './db/schema.ts';
 
@@ -43,4 +44,5 @@ export const COLLECTIONS: readonly CollectionDef[] = [
   { name: 'hrt-lab-results', table: hrtLabResultsEntries },
   { name: 'hrt-suppliers', table: hrtSuppliersEntries },
   { name: 'hrt-schedules', table: hrtSchedulesEntries },
+  { name: 'cycle', table: cycleEntries },
 ];
