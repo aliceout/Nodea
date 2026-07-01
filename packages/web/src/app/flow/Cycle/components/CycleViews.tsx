@@ -17,18 +17,16 @@ import PageHeading from '@/ui/dirk/module/PageHeading';
 import Tabs from '@/ui/dirk/Tabs';
 import type { CycleStats } from '../lib/cycle-model';
 import CycleCalendar from './CycleCalendar';
-import CycleHeatmap from './CycleHeatmap';
 import CycleMonthSelector from './CycleMonthSelector';
 import CycleStacked from './CycleStacked';
 import CycleYearSelector from './CycleYearSelector';
 
-type CycleView = 'calendar' | 'stacked' | 'heatmap';
-const VIEWS: readonly CycleView[] = ['calendar', 'stacked', 'heatmap'];
+type CycleView = 'calendar' | 'stacked';
+const VIEWS: readonly CycleView[] = ['calendar', 'stacked'];
 
 interface Props {
   stats: CycleStats;
   flowByDate: ReadonlyMap<string, CycleFlow>;
-  loggedDates: ReadonlySet<string>;
   today: string;
   selected: string | null;
   onSelectDay: (iso: string) => void;
@@ -44,7 +42,6 @@ interface Props {
 export default function CycleViews({
   stats,
   flowByDate,
-  loggedDates,
   today,
   selected,
   onSelectDay,
@@ -139,16 +136,6 @@ export default function CycleViews({
                 unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
                 periodLabel={t('cycle.legend.period')}
                 ovulationLabel={t('cycle.stacked.ovulation')}
-              />
-            ) : null}
-
-            {view === 'heatmap' ? (
-              <CycleHeatmap
-                flowByDate={flowByDate}
-                loggedDates={loggedDates}
-                today={today}
-                onSelectDay={onSelectDay}
-                year={year}
               />
             ) : null}
           </div>

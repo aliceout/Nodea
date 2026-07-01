@@ -26,12 +26,10 @@
   },
   "view": {
     "calendar": "Calendrier",
-    "stacked": "Cycles",
-    "heatmap": "Historique"
+    "stacked": "Cycles"
   },
   "ring": {
     "day": "Jour {count}",
-    "j1hint": "J1 = 1er jour des règles",
     "dayBadge": "J{count}",
     "todayLabel": "Aujourd’hui · {date}",
     "periodDay": "Jour {count} des règles",
@@ -42,9 +40,6 @@
   "entries": {
     "title": "Entrées",
     "empty": "Aucune entrée pour l’instant."
-  },
-  "heatmap": {
-    "logged": "Noté"
   },
   "side": {
     "current": "Où j’en suis"

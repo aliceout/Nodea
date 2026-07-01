@@ -48,7 +48,7 @@ export default function CycleStacked({
     );
 
   return (
-    <div className="px-1 py-2">
+    <div className="flex h-full flex-col px-1 py-2">
       <div className="flex flex-col gap-2.5">
         {completed.map((c) => {
           const ovulation = c.length! - LUTEAL;
@@ -107,7 +107,7 @@ export default function CycleStacked({
         })}
       </div>
 
-      <div className="mt-4 flex items-center gap-4 border-t border-hair pt-2 text-[11px] text-muted">
+      <div className="mt-auto flex items-center gap-4 border-t border-hair pt-2 text-[11px] text-muted">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-low" />
           {periodLabel}

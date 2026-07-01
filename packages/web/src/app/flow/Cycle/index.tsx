@@ -81,10 +81,6 @@ export default function CyclePage() {
     for (const r of records) if (r.payload.flow) m.set(r.payload.date, r.payload.flow);
     return m;
   }, [records]);
-  const loggedDates = useMemo(
-    () => new Set(records.map((r) => r.payload.date)),
-    [records],
-  );
   const availableYears = useMemo(() => {
     const set = new Set<number>();
     for (const r of records) set.add(Number(r.payload.date.slice(0, 4)));
@@ -121,7 +117,6 @@ export default function CyclePage() {
           <CycleViews
             stats={stats}
             flowByDate={flowByDate}
-            loggedDates={loggedDates}
             today={today}
             selected={selected}
             onSelectDay={setSelected}

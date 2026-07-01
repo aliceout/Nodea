@@ -199,7 +199,6 @@ export default function CycleRing({
             ~J{ovulation.day} · {fmtDate(ovulation.date)}
           </p>
         ) : null}
-        <p className="text-[11px] text-muted-soft">{t('cycle.ring.j1hint')}</p>
       </div>
     </div>
   );

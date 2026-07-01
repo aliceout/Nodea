@@ -26,12 +26,10 @@
   },
   "view": {
     "calendar": "Calendar",
-    "stacked": "Cycles",
-    "heatmap": "History"
+    "stacked": "Cycles"
   },
   "ring": {
     "day": "Day {count}",
-    "j1hint": "D1 = first day of the period",
     "dayBadge": "D{count}",
     "todayLabel": "Today · {date}",
     "periodDay": "Day {count} of your period",
@@ -42,9 +40,6 @@
   "entries": {
     "title": "Entries",
     "empty": "No entries yet."
-  },
-  "heatmap": {
-    "logged": "Logged"
   },
   "side": {
     "current": "Where I’m at"
