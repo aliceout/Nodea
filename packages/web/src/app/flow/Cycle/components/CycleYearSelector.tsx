@@ -18,7 +18,7 @@ export default function CycleYearSelector({ year, availableYears, onChange }: Pr
     <div
       role="tablist"
       aria-label={t('cycle.selectors.yearAria')}
-      className="-mt-1 flex flex-wrap gap-1"
+      className="flex flex-wrap gap-1"
     >
       <button
         type="button"

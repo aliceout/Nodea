@@ -18,13 +18,11 @@ import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlinePanel from '@/ui/dirk/forms/InlinePanel';
-import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
-import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import CycleDayForm from './components/CycleDayForm';
 import CycleEntriesList from './components/CycleEntriesList';
-import CycleSettings from './components/CycleSettings';
+import CycleSettingsPanel from './components/CycleSettingsPanel';
 import CycleViews from './components/CycleViews';
 import SideColumn from './components/SideColumn';
 import { computeCycle } from './lib/cycle-model';
@@ -42,7 +40,6 @@ export default function CyclePage() {
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const ctx = useModuleClient('cycle');
   const { preferences } = usePreferences();
-  const settings = useModuleSettings();
   const showHormones = preferences.cycleShowHormones !== false;
   const today = useMemo(todayIso, []);
   const [records, setRecords] = useState<Rec[]>([]);
@@ -135,11 +132,7 @@ export default function CyclePage() {
             onMonthChange={setMonth}
             showHormones={showHormones}
           />
-          <InlinePanel open={!!settings?.open}>
-            <ModuleSettingsPanel onClose={() => settings?.close()}>
-              <CycleSettings />
-            </ModuleSettingsPanel>
-          </InlinePanel>
+          <CycleSettingsPanel />
           <InlinePanel open={selected !== null}>
             {selected ? (
               <CycleDayForm
