@@ -12,6 +12,12 @@ describe('computeCycle', () => {
     expect(s.next?.date).toBe('2026-04-23'); // 03-26 + 28
     expect(s.next?.daysUntil).toBe(22);
     expect(s.predictedDays.has('2026-04-23')).toBe(true);
+    // 4 starts → 3 completed cycles (len 28) + 1 ongoing (len null).
+    expect(s.cycles).toHaveLength(4);
+    expect(s.cycles.at(-1)?.length).toBeNull();
+    expect(s.cycles[0]?.length).toBe(28);
+    // Today (04-01) is day 7 of the cycle opened on 03-26.
+    expect(s.current).toEqual({ day: 7, length: 28 });
   });
 
   it('refuses an estimate with fewer than two completed cycles', () => {

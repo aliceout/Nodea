@@ -15,6 +15,20 @@
     "predicted": "Prédiction",
     "today": "Aujourd’hui"
   },
+  "view": {
+    "calendar": "Calendrier",
+    "ring": "Anneau",
+    "stacked": "Cycles"
+  },
+  "ring": {
+    "day": "Jour {count}",
+    "of": "sur ~{length} j",
+    "noData": "Commence à noter tes règles pour voir où tu en es."
+  },
+  "stacked": {
+    "empty": "Pas encore de cycle complet à comparer.",
+    "unit": "{count} j"
+  },
   "form": {
     "flow": {
       "label": "Flux",

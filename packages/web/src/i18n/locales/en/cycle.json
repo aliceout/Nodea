@@ -15,6 +15,20 @@
     "predicted": "Predicted",
     "today": "Today"
   },
+  "view": {
+    "calendar": "Calendar",
+    "ring": "Ring",
+    "stacked": "Cycles"
+  },
+  "ring": {
+    "day": "Day {count}",
+    "of": "of ~{length} d",
+    "noData": "Start logging your periods to see where you are."
+  },
+  "stacked": {
+    "empty": "No completed cycle to compare yet.",
+    "unit": "{count} d"
+  },
   "form": {
     "flow": {
       "label": "Flow",

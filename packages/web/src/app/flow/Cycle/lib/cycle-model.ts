@@ -31,6 +31,14 @@ export interface CycleModelInput {
   flow?: CycleFlow;
 }
 
+/** One detected cycle : a period start, its bleeding length, and the
+ *  gap to the next start (`null` for the ongoing, latest cycle). */
+export interface CycleSpan {
+  start: string;
+  periodLength: number;
+  length: number | null;
+}
+
 export interface CycleStats {
   /** Every logged day that is part of a period (flow ≥ light). */
   periodDays: ReadonlySet<string>;
@@ -38,8 +46,13 @@ export interface CycleStats {
   periodStarts: readonly string[];
   /** Consecutive period-start gaps, in days. */
   cycleLengths: readonly number[];
+  /** One entry per period start, oldest → newest (drives the stacked view). */
+  cycles: readonly CycleSpan[];
   /** Median of the last ≤6 cycle lengths, or null when none. */
   averageCycle: number | null;
+  /** Where today sits in the current cycle (drives the ring). `length`
+   *  is the reference cycle length, null when not yet estimable. */
+  current: { day: number; length: number | null } | null;
   status: CycleStatus;
   /** Estimated next period ; null unless `status === 'ok'`. */
   next: { date: string; daysUntil: number } | null;
@@ -85,6 +98,24 @@ export function computeCycle(
   const recent = cycleLengths.slice(-HISTORY);
   const averageCycle = recent.length ? median(recent) : null;
 
+  // Per-cycle spans : bleeding length + gap to the next start.
+  const cycles: CycleSpan[] = periodStarts.map((start, i) => {
+    let periodLength = 0;
+    while (periodDays.has(addDays(start, periodLength))) periodLength += 1;
+    return {
+      start,
+      periodLength,
+      length: i < periodStarts.length - 1 ? cycleLengths[i]! : null,
+    };
+  });
+
+  // Today's position in the current (latest) cycle.
+  const lastStart = periodStarts[periodStarts.length - 1];
+  const current =
+    lastStart && diffDays(today, lastStart) >= 0
+      ? { day: diffDays(today, lastStart) + 1, length: averageCycle }
+      : null;
+
   let status: CycleStatus = 'ok';
   let next: CycleStats['next'] = null;
   const predictedDays = new Set<string>();
@@ -105,7 +136,9 @@ export function computeCycle(
     periodDays,
     periodStarts,
     cycleLengths,
+    cycles,
     averageCycle,
+    current,
     status,
     next,
     predictedDays,

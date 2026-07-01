@@ -18,8 +18,8 @@ import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
-import CycleCalendar from './components/CycleCalendar';
 import CycleDayForm from './components/CycleDayForm';
+import CycleViews from './components/CycleViews';
 import { computeCycle } from './lib/cycle-model';
 
 type Rec = DecryptedRecord<CyclePayload>;
@@ -145,13 +145,11 @@ export default function CyclePage() {
       side={side}
     >
       {ctx ? (
-        <CycleCalendar
-          periodDays={stats.periodDays}
-          predictedDays={stats.predictedDays}
+        <CycleViews
+          stats={stats}
           today={today}
           selected={selected}
           onSelectDay={setSelected}
-          language={language}
         />
       ) : (
         <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>
