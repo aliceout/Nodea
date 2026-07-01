@@ -99,6 +99,11 @@ export function useSession() {
   const markKeyMissing = useNodeaStore((s) => s.markKeyMissing);
   const resetAll = useNodeaStore((s) => s.resetAll);
 
+  // Fresh (non-reactive) read of key presence — lets the stepped-MFA verify
+  // actions tell an in-flow finalize (key still in memory) from a post-reload
+  // one (key wiped), so only the latter marks the key missing.
+  const hasMainKey = () => useNodeaStore.getState().crypto.main !== null;
+
   // Initial hydration — runs ONCE per app lifetime (module-level
   // `hydrationStarted` latch). The session cookie may be valid; the
   // main key, however, isn't recoverable without the password — we
@@ -174,8 +179,10 @@ export function useSession() {
       disableTotpAction({ user, setAuth }, currentPassword),
     regenerateTotpBackupCodes: (currentPassword: string) =>
       regenerateTotpBackupCodesAction({ user, setAuth }, currentPassword),
-    verifyMfaTotp: (code: string) => verifyMfaTotpAction({ setAuth }, code),
-    verifyMfaPasskey: () => verifyMfaPasskeyAction({ setAuth }),
+    verifyMfaTotp: (code: string) =>
+      verifyMfaTotpAction({ setAuth, markKeyMissing, hasMainKey }, code),
+    verifyMfaPasskey: () =>
+      verifyMfaPasskeyAction({ setAuth, markKeyMissing, hasMainKey }),
     verifyMfaPassword: (password: string) =>
       verifyMfaPasswordAction({ setAuth, setMainKey }, password),
     changeSecurityMode: (

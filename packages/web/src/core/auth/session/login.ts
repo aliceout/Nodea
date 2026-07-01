@@ -25,7 +25,7 @@ import { apiPatchCurrentSessionDeviceLabel } from '../../api/sessions.ts';
 import { parseDeviceLabel } from '../../../lib/device-label.ts';
 import { clientLoginFinish, clientLoginStart, opaqueReady } from '../opaque.ts';
 
-import type { SetAuth, SetMainKey } from './types.ts';
+import type { MarkKeyMissing, SetAuth, SetMainKey } from './types.ts';
 
 /**
  * Fire-and-forget : encrypt a coarse device hint (« MacBook » /
@@ -218,7 +218,7 @@ export async function login(
  * (e.g. mode `maximum` may still need passkey).
  */
 export async function verifyMfaTotp(
-  deps: { setAuth: SetAuth },
+  deps: { setAuth: SetAuth; markKeyMissing: MarkKeyMissing; hasMainKey: () => boolean },
   code: string,
 ): Promise<
   | { finalized: true }
@@ -231,6 +231,14 @@ export async function verifyMfaTotp(
       throw new Error('mfa-totp verify finalized but /auth/me returned null');
     }
     deps.setAuth(me);
+    // A page reload during stepped MFA wipes the in-memory main key, and a
+    // TOTP code carries no material to re-derive it (only the password 2nd-
+    // factor path can). Rather than land in a silently broken keyless /flow,
+    // mark the key missing → the same "authenticated but keyless" state as a
+    // cold reload, which drives the blocking KeyMissingModal (§4.9) to prompt
+    // a re-auth (audit 2026-07). In the normal in-flow finalize the key is
+    // still in memory, so this is a no-op.
+    if (!deps.hasMainKey()) deps.markKeyMissing();
     return { finalized: true };
   }
   return { finalized: false, missing: res.missing };
@@ -247,7 +255,7 @@ export async function verifyMfaTotp(
  * rejects (401 = invalid assertion, 400 = stale challenge).
  */
 export async function verifyMfaPasskey(
-  deps: { setAuth: SetAuth },
+  deps: { setAuth: SetAuth; markKeyMissing: MarkKeyMissing; hasMainKey: () => boolean },
 ): Promise<
   | { finalized: true }
   | { finalized: false; missing: ReadonlyArray<'totp' | 'passkey' | 'password'> }
@@ -271,6 +279,12 @@ export async function verifyMfaPasskey(
       throw new Error('mfa-passkey verify finalized but /auth/me returned null');
     }
     deps.setAuth(me);
+    // Same post-reload keyless guard as verifyMfaTotp : the MFA passkey finish
+    // ships no wrap blobs, so nothing re-derived the main key on this path. If
+    // it's absent (page was reloaded mid-MFA), mark it missing so the
+    // KeyMissingModal (§4.9) prompts a re-auth instead of a broken keyless
+    // /flow (audit 2026-07). No-op when the key is still in memory.
+    if (!deps.hasMainKey()) deps.markKeyMissing();
     return { finalized: true };
   }
   return { finalized: false, missing: finishRes.missing };
