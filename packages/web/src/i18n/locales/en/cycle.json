@@ -1,6 +1,8 @@
 {
   "title": "Cycle",
   "logToday": "Log today",
+  "showChart": "Show chart",
+  "hideChart": "Hide chart",
   "notReady": "Enable the Cycle module from My account → Modules to get started.",
   "disclaimer": "Informational estimate — not contraception and not a diagnosis. If in doubt, talk to a clinician.",
   "estimate": {

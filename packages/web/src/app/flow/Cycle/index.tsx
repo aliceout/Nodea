@@ -154,7 +154,15 @@ export default function CyclePage() {
           {loadError}
         </p>
       ) : (
-        <div className="min-w-0">
+        <section className="flex min-w-0 flex-col">
+          <CycleViews
+            stats={stats}
+            flowByDate={flowByDate}
+            today={today}
+            selected={selected}
+            onSelectDay={setSelected}
+            formOpen={selected !== null}
+          />
           <InlinePanel open={selected !== null}>
             {selected ? (
               <CycleDayForm
@@ -172,15 +180,8 @@ export default function CyclePage() {
               />
             ) : null}
           </InlinePanel>
-          <CycleViews
-            stats={stats}
-            flowByDate={flowByDate}
-            today={today}
-            selected={selected}
-            onSelectDay={setSelected}
-          />
           <CycleEntriesList records={records} onSelect={setSelected} />
-        </div>
+        </section>
       )}
     </ModuleShell>
   );

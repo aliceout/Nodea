@@ -1,6 +1,8 @@
 {
   "title": "Cycle",
   "logToday": "Noter aujourd’hui",
+  "showChart": "Afficher le graphique",
+  "hideChart": "Masquer le graphique",
   "notReady": "Active le module Cycle depuis Mon compte → Modules pour commencer.",
   "disclaimer": "Estimation informative — ni un moyen de contraception, ni un diagnostic. En cas de doute, parles-en à un·e soignant·e.",
   "estimate": {
