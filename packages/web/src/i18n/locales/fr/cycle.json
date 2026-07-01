@@ -44,6 +44,17 @@
   "side": {
     "current": "Où j’en suis"
   },
+  "hormones": {
+    "title": "Taux hormonaux (indicatifs)",
+    "estrogen": "Œstrogènes",
+    "progesterone": "Progestérone",
+    "lh": "LH",
+    "disclaimer": "Courbes moyennes indicatives — pas tes valeurs. Pour tes taux réels, parles-en à un·e soignant·e (analyses)."
+  },
+  "settings": {
+    "hormonesLabel": "Courbe hormonale indicative",
+    "hormonesHint": "Affiche les courbes types (œstrogènes / progestérone / LH) pour te situer dans le cycle."
+  },
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",
     "unit": "{count} j",

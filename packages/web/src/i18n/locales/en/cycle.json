@@ -44,6 +44,17 @@
   "side": {
     "current": "Where I’m at"
   },
+  "hormones": {
+    "title": "Hormone levels (typical)",
+    "estrogen": "Estrogen",
+    "progesterone": "Progesterone",
+    "lh": "LH",
+    "disclaimer": "Indicative average curves — not your values. For your actual levels, see a clinician (lab tests)."
+  },
+  "settings": {
+    "hormonesLabel": "Indicative hormone curve",
+    "hormonesHint": "Show the typical estrogen / progesterone / LH curves to situate yourself in the cycle."
+  },
   "stacked": {
     "empty": "No completed cycle to compare yet.",
     "unit": "{count} d",

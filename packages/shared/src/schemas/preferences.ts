@@ -264,6 +264,8 @@ export const UserPreferencesPayloadSchema = z.looseObject({
   moodChartCollapsed: z.boolean().optional(),
   /** Mood: offer the « question du jour » prompt on new entries. Absent ⇒ true. */
   moodOfferDailyQuestion: z.boolean().optional(),
+  /** Cycle: show the indicative standard-hormone curve band. Absent ⇒ true. */
+  cycleShowHormones: z.boolean().optional(),
   journalGroupBy: JournalGroupByPreferenceSchema.optional(),
   /** Journal: show the « Il y a quelques années » memory panel. Absent ⇒ true. */
   journalShowOnThisDay: z.boolean().optional(),

@@ -12,15 +12,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CycleFlow, CyclePayload } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cycleClient } from '@/core/api/modules/cycle';
+import { usePreferences } from '@/core/auth/use-preferences';
 import { useModuleClient } from '@/core/modules/use-module-client';
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import InlinePanel from '@/ui/dirk/forms/InlinePanel';
+import ModuleSettingsPanel from '@/ui/dirk/module/ModuleSettingsPanel';
+import { useModuleSettings } from '@/ui/dirk/module/module-settings-context';
 import ModuleShell from '@/ui/dirk/module/ModuleShell';
 import Topbar from '@/ui/dirk/Topbar';
 import CycleDayForm from './components/CycleDayForm';
 import CycleEntriesList from './components/CycleEntriesList';
+import CycleHormones from './components/CycleHormones';
+import CycleSettings from './components/CycleSettings';
 import CycleViews from './components/CycleViews';
 import SideColumn from './components/SideColumn';
 import { computeCycle } from './lib/cycle-model';
@@ -37,6 +42,9 @@ export default function CyclePage() {
   const { t } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const ctx = useModuleClient('cycle');
+  const { preferences } = usePreferences();
+  const settings = useModuleSettings();
+  const showHormones = preferences.cycleShowHormones !== false;
   const today = useMemo(todayIso, []);
   const [records, setRecords] = useState<Rec[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -127,6 +135,19 @@ export default function CyclePage() {
             onYearChange={changeYear}
             onMonthChange={setMonth}
           />
+          {showHormones ? (
+            <div className="mt-4">
+              <CycleHormones
+                length={stats.current?.length ?? 28}
+                day={stats.current?.day ?? null}
+              />
+            </div>
+          ) : null}
+          <InlinePanel open={!!settings?.open}>
+            <ModuleSettingsPanel onClose={() => settings?.close()}>
+              <CycleSettings />
+            </ModuleSettingsPanel>
+          </InlinePanel>
           <InlinePanel open={selected !== null}>
             {selected ? (
               <CycleDayForm
