@@ -117,7 +117,9 @@ export default function CycleViews({
         )}
       >
         <div className="overflow-hidden pt-4">
-          <div className="min-h-[360px]">
+          {/* Fixed 300px, no scroll — every view is sized to fit, so the
+              frame height stays stable across view switches. */}
+          <div className="h-[300px] overflow-hidden">
             {view === 'calendar' ? (
               <CycleCalendar
                 flowByDate={flowByDate}

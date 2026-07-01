@@ -18,7 +18,7 @@ interface Props {
 }
 
 const LUTEAL = 14; // days from ovulation to the next period (estimate).
-const MAX_ROWS = 6; // « max 6 mois » — the 6 most recent completed cycles.
+const MAX_ROWS = 4; // the 4 most recent completed cycles (fits 300px, no scroll).
 const DAY_MS = 86_400_000;
 
 /** A cycle runs from its start (J1) to the day before the next period. */
@@ -49,14 +49,14 @@ export default function CycleStacked({
 
   return (
     <div className="px-1 py-2">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2.5">
         {completed.map((c) => {
           const ovulation = c.length! - LUTEAL;
           return (
             <div key={c.start} className="flex items-center gap-3 text-[12px]">
               <div className="flex-1">
                 {/* start date at the bar's start, end date at its end */}
-                <div className="relative mb-1 h-3 text-[10px] text-muted">
+                <div className="relative mb-0.5 h-3 text-[10px] text-muted">
                   <span className="absolute left-0">{fmt(c.start)}</span>
                   <span
                     className="absolute -translate-x-full whitespace-nowrap"
@@ -66,18 +66,18 @@ export default function CycleStacked({
                   </span>
                 </div>
                 {/* per-day ruler above the bar ; taller + darker each week */}
-                <div className="relative mb-1 h-2.5">
+                <div className="relative mb-0.5 h-2">
                   {Array.from({ length: scale }, (_, i) => i + 1).map((d) => (
                     <span
                       key={d}
                       className={`absolute bottom-0 w-px ${
-                        d % 7 === 0 ? 'h-2.5 bg-muted' : 'h-1.5 bg-muted-soft'
+                        d % 7 === 0 ? 'h-2 bg-muted' : 'h-1 bg-muted-soft'
                       }`}
                       style={{ left: pct(d) }}
                     />
                   ))}
                 </div>
-                <div className="relative h-5">
+                <div className="relative h-3">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full bg-bg-2"
                     style={{ width: pct(c.length!) }}
@@ -107,7 +107,7 @@ export default function CycleStacked({
         })}
       </div>
 
-      <div className="mt-6 flex items-center gap-4 border-t border-hair pt-3 text-[11px] text-muted">
+      <div className="mt-4 flex items-center gap-4 border-t border-hair pt-2 text-[11px] text-muted">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-low" />
           {periodLabel}

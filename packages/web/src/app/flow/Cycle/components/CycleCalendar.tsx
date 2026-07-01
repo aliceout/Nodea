@@ -7,10 +7,8 @@
  * today sits in an accent pill. Every day is a focusable button (a11y)
  * that opens the day form. Weekday / month names come from `Intl`.
  */
-import { useMemo, useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useMemo } from 'react';
 import type { CycleFlow } from '@nodea/shared';
-import Button from '@/ui/atoms/dirk/Button';
 import { cn } from '@/lib/utils';
 import FlowMark from './FlowMark';
 
@@ -103,50 +101,28 @@ function MonthGrid({
 }
 
 export default function CycleCalendar(props: Props) {
-  const [anchor, setAnchor] = useState(() => {
-    const [y, m] = props.today.split('-').map(Number);
-    return { y: y!, m: m! - 1 };
-  });
-
-  const shift = (delta: number) =>
-    setAnchor((a) => {
-      const next = new Date(a.y, a.m + delta, 1);
-      return { y: next.getFullYear(), m: next.getMonth() };
-    });
-
-  // Three consecutive months ENDING on the anchor : the anchor (current
-  // month by default) sits rightmost so the past reads to its left. The
-  // extra past months only appear when the width can hold them.
+  const [ty, tm] = props.today.split('-').map(Number);
+  // Three consecutive months ending on the current month (rightmost, so
+  // the past reads to its left). No nav here — the header year/month
+  // selectors will drive the window.
   const months = [-2, -1, 0].map((i) => {
-    const d = new Date(anchor.y, anchor.m + i, 1);
+    const d = new Date(ty!, tm! - 1 + i, 1);
     return { y: d.getFullYear(), m: d.getMonth() };
   });
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-center gap-6">
-        <Button variant="ghost" size="sm" iconOnly onClick={() => shift(-1)} aria-label="←">
-          <ChevronLeftIcon className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="sm" iconOnly onClick={() => shift(1)} aria-label="→">
-          <ChevronRightIcon className="h-4 w-4" />
-        </Button>
-      </div>
-      {/* Container query, not viewport : drop a whole month when the
-          available width can't hold it, rather than wrapping it onto a
-          new line. `flex-nowrap` keeps the visible months on one row. */}
-      <div className="@container">
-        <div className="flex flex-nowrap justify-center gap-x-10">
-          {/* Oldest → newest ; the current month (rightmost) always
-              shows, past months appear to its left as width allows. */}
-          <div className="hidden shrink-0 @min-[1080px]:block">
-            <MonthGrid {...props} y={months[0]!.y} m={months[0]!.m} />
-          </div>
-          <div className="hidden shrink-0 @min-[720px]:block">
-            <MonthGrid {...props} y={months[1]!.y} m={months[1]!.m} />
-          </div>
-          <MonthGrid {...props} y={months[2]!.y} m={months[2]!.m} />
+    // Container query, not viewport : a month is dropped when the width
+    // can't hold it, never wrapped ; the current month (rightmost) always
+    // shows, past months appear to its left as width allows.
+    <div className="@container">
+      <div className="flex flex-nowrap justify-center gap-x-8">
+        <div className="hidden shrink-0 @min-[1000px]:block">
+          <MonthGrid {...props} y={months[0]!.y} m={months[0]!.m} />
         </div>
+        <div className="hidden shrink-0 @min-[680px]:block">
+          <MonthGrid {...props} y={months[1]!.y} m={months[1]!.m} />
+        </div>
+        <MonthGrid {...props} y={months[2]!.y} m={months[2]!.m} />
       </div>
     </div>
   );
