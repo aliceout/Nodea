@@ -1,9 +1,8 @@
 /**
  * Stacked-cycles view (spec §6) — the honest picture over time. One bar
- * per completed cycle, all aligned at day 1 and drawn against a shared
- * day axis (gridlines at 7/14/21/28…), so you can read *where* things
- * sit and how they drift : the « low »-coloured block is menstruation,
- * the track is the rest of the cycle, and the sage diamond is the
+ * per completed cycle (max 6, most recent), aligned at day 1 against a
+ * shared day axis (gridlines at 7/14/21/28…) so the red menstruation
+ * block reads « ≈ N days » at a glance. The sage diamond is the
  * estimated ovulation (≈ next period − 14). Pure CSS widths — no chart
  * lib. Only completed cycles show (the ongoing one has no length yet).
  */
@@ -16,10 +15,12 @@ interface Props {
   unit: (days: number) => string;
   periodLabel: string;
   ovulationLabel: string;
+  daysLabel: string;
 }
 
 const LUTEAL = 14; // days from ovulation to the next period (estimate).
 const TICKS = [7, 14, 21, 28, 35] as const;
+const MAX_ROWS = 6; // « max 6 mois » — the 6 most recent completed cycles.
 
 export default function CycleStacked({
   cycles,
@@ -28,8 +29,9 @@ export default function CycleStacked({
   unit,
   periodLabel,
   ovulationLabel,
+  daysLabel,
 }: Props) {
-  const completed = cycles.filter((c) => c.length != null).slice().reverse();
+  const completed = cycles.filter((c) => c.length != null).slice(-MAX_ROWS).reverse();
   if (completed.length === 0) {
     return <p className="py-8 text-center text-sm text-muted">{emptyLabel}</p>;
   }
@@ -39,15 +41,15 @@ export default function CycleStacked({
   const pct = (days: number) => `${(days / scale) * 100}%`;
 
   return (
-    <div>
-      {/* Day axis */}
-      <div className="mb-1 flex items-center gap-2">
-        <span className="w-14 shrink-0" />
+    <div className="px-1 py-2">
+      {/* Day axis — the temporal ruler the bars read against. */}
+      <div className="mb-2 flex items-end gap-3">
+        <span className="w-14 shrink-0 text-[10px] text-muted-soft">{daysLabel}</span>
         <div className="relative h-3 flex-1">
           {ticks.map((tck) => (
             <span
               key={tck}
-              className="absolute -translate-x-1/2 text-[10px] tabular-nums text-muted-soft"
+              className="absolute -translate-x-1/2 text-[10px] tabular-nums text-muted"
               style={{ left: pct(tck) }}
             >
               {tck}
@@ -57,7 +59,7 @@ export default function CycleStacked({
         <span className="w-16 shrink-0" />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {completed.map((c) => {
           const month = new Intl.DateTimeFormat(language, {
             month: 'short',
@@ -65,13 +67,14 @@ export default function CycleStacked({
           }).format(new Date(`${c.start}T12:00:00`));
           const ovulation = c.length! - LUTEAL;
           return (
-            <div key={c.start} className="flex items-center gap-2 text-[12px]">
+            <div key={c.start} className="flex items-center gap-3 text-[12px]">
               <span className="w-14 shrink-0 capitalize text-muted">{month}</span>
-              <div className="relative h-4 flex-1">
+              <div className="relative h-5 flex-1">
+                {/* gridlines span the bar so each cycle reads against the ruler */}
                 {ticks.map((tck) => (
                   <span
                     key={tck}
-                    className="absolute inset-y-0 w-px bg-hair/60"
+                    className="absolute inset-y-0 w-px bg-hair"
                     style={{ left: pct(tck) }}
                   />
                 ))}
@@ -85,7 +88,7 @@ export default function CycleStacked({
                 />
                 {ovulation > c.periodLength ? (
                   <span
-                    className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] bg-accent"
+                    className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] bg-accent ring-2 ring-bg"
                     style={{ left: pct(ovulation) }}
                     title={`${ovulationLabel} · J${ovulation}`}
                   />
@@ -95,7 +98,7 @@ export default function CycleStacked({
                 className="w-16 shrink-0 text-right text-[11px] tabular-nums"
                 title={`${periodLabel} ${c.periodLength} · ${unit(c.length!)}`}
               >
-                <span className="font-medium text-low">{c.periodLength}</span>
+                <span className="font-semibold text-low">{c.periodLength}</span>
                 <span className="text-muted-soft"> / {unit(c.length!)}</span>
               </span>
             </div>
@@ -103,8 +106,8 @@ export default function CycleStacked({
         })}
       </div>
 
-      {/* Legend */}
-      <div className="mt-3 flex items-center gap-4 text-[11px] text-muted">
+      {/* Legend — given room to breathe below the bars. */}
+      <div className="mt-6 flex items-center gap-4 border-t border-hair pt-3 text-[11px] text-muted">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-low" />
           {periodLabel}

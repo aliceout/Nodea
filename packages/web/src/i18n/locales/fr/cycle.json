@@ -20,7 +20,8 @@
   "view": {
     "calendar": "Calendrier",
     "ring": "Anneau",
-    "stacked": "Cycles"
+    "stacked": "Cycles",
+    "heatmap": "Historique"
   },
   "ring": {
     "day": "Jour {count}",
@@ -41,7 +42,8 @@
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",
     "unit": "{count} j",
-    "ovulation": "Ovulation estimée"
+    "ovulation": "Ovulation estimée",
+    "days": "jours"
   },
   "loadFailed": "Chargement impossible.",
   "form": {

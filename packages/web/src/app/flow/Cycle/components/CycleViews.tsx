@@ -16,11 +16,12 @@ import CollapseToggle from '@/ui/dirk/module/CollapseToggle';
 import Tabs from '@/ui/dirk/Tabs';
 import type { CycleStats } from '../lib/cycle-model';
 import CycleCalendar from './CycleCalendar';
+import CycleHeatmap from './CycleHeatmap';
 import CycleRing from './CycleRing';
 import CycleStacked from './CycleStacked';
 
-type CycleView = 'calendar' | 'ring' | 'stacked';
-const VIEWS: readonly CycleView[] = ['calendar', 'ring', 'stacked'];
+type CycleView = 'calendar' | 'ring' | 'stacked' | 'heatmap';
+const VIEWS: readonly CycleView[] = ['calendar', 'ring', 'stacked', 'heatmap'];
 
 interface Props {
   stats: CycleStats;
@@ -130,7 +131,12 @@ export default function CycleViews({
                 unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
                 periodLabel={t('cycle.legend.period')}
                 ovulationLabel={t('cycle.stacked.ovulation')}
+                daysLabel={t('cycle.stacked.days')}
               />
+            ) : null}
+
+            {view === 'heatmap' ? (
+              <CycleHeatmap flowByDate={flowByDate} today={today} onSelectDay={onSelectDay} />
             ) : null}
           </div>
         </div>

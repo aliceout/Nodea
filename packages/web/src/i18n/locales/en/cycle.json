@@ -20,7 +20,8 @@
   "view": {
     "calendar": "Calendar",
     "ring": "Ring",
-    "stacked": "Cycles"
+    "stacked": "Cycles",
+    "heatmap": "History"
   },
   "ring": {
     "day": "Day {count}",
@@ -41,7 +42,8 @@
   "stacked": {
     "empty": "No completed cycle to compare yet.",
     "unit": "{count} d",
-    "ovulation": "Est. ovulation"
+    "ovulation": "Est. ovulation",
+    "days": "days"
   },
   "loadFailed": "Could not load.",
   "form": {
