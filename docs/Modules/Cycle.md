@@ -166,6 +166,14 @@ per-module-lock note in §1.
 - **Later / opt-in** — sensitive fields (intimacy, pregnancy tests,
   contraception log), gated behind the per-module lock.
 
+## Seed
+
+`pnpm --filter @nodea/api seed:test cycle` inserts 6 period starts over
+~6 months at a ~28-day cadence (mild 27-29 d variation), 30 rows total —
+enough for a « next period ~ok » estimate, a mid-cycle ring, and 5
+completed bars in the stacked view. Fixtures:
+[`packages/api/src/seed/cycle.fixtures.ts`](../../packages/api/src/seed/cycle.fixtures.ts).
+
 ## 10. Open decisions
 
 - Per-module lock surface — cross-cutting, not built yet ; this module

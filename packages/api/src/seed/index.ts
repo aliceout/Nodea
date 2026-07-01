@@ -10,7 +10,8 @@
  *   pnpm --filter @nodea/api seed:test mood goals    # subset
  *
  * Module names accepted on the CLI : `mood`, `goals`, `journal`,
- * `library`, `review`, `hrt`. Unknown names are skipped with a warning.
+ * `library`, `review`, `hrt`, `cycle`. Unknown names are skipped with a
+ * warning.
  */
 
 import { eq } from 'drizzle-orm';
@@ -23,6 +24,7 @@ import { seedJournal } from './journal.ts';
 import { seedLibrary } from './library.ts';
 import { seedReview } from './review.ts';
 import { seedHrt } from './hrt.ts';
+import { seedCycle } from './cycle.ts';
 
 const MODULES: ReadonlyArray<{
   name: string;
@@ -34,6 +36,7 @@ const MODULES: ReadonlyArray<{
   { name: 'library', fn: seedLibrary },
   { name: 'review', fn: seedReview },
   { name: 'hrt', fn: seedHrt },
+  { name: 'cycle', fn: seedCycle },
 ];
 
 async function main(): Promise<void> {
