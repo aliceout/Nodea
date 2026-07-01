@@ -93,19 +93,7 @@ export default function CyclePage() {
       new Date(`${stats.next.date}T12:00:00`),
     );
 
-  const side =
-    selected && ctx ? (
-      <CycleDayForm
-        ctx={ctx}
-        date={selected}
-        existing={byDate.get(selected) ?? null}
-        onSaved={() => {
-          setSelected(null);
-          reload();
-        }}
-        onCancel={() => setSelected(null)}
-      />
-    ) : (
+  const side = (
       <div className="flex flex-col gap-4">
         <div className="rounded-[var(--radius-md)] border border-hair bg-bg p-4">
           <div className="text-[12px] font-medium text-muted">
@@ -165,7 +153,21 @@ export default function CyclePage() {
           {loadError}
         </p>
       ) : (
-        <>
+        <div className="min-w-0">
+          {selected && ctx ? (
+            <div className="mb-6">
+              <CycleDayForm
+                ctx={ctx}
+                date={selected}
+                existing={byDate.get(selected) ?? null}
+                onSaved={() => {
+                  setSelected(null);
+                  reload();
+                }}
+                onCancel={() => setSelected(null)}
+              />
+            </div>
+          ) : null}
           <CycleViews
             stats={stats}
             flowByDate={flowByDate}
@@ -174,7 +176,7 @@ export default function CyclePage() {
             onSelectDay={setSelected}
           />
           <CycleEntriesList records={records} onSelect={setSelected} />
-        </>
+        </div>
       )}
     </ModuleShell>
   );
