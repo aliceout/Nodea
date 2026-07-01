@@ -16,7 +16,8 @@ const DAY_MS = 86_400_000;
 
 export interface CycleHeatCell {
   iso: string;
-  flow: CycleFlow;
+  /** Absent when the day was logged but carries no flow (symptoms only). */
+  flow?: CycleFlow;
   isToday: boolean;
 }
 export interface CycleMonthLabel {
@@ -40,6 +41,9 @@ export function buildCycleHeatmap(
   /** `null` = rolling window ending today ; a year = that calendar
    *  year (Jan → Dec, capped at today for the current year). */
   year: number | null = null,
+  /** Every day that carries ANY entry — so symptom-only days show too
+   *  (rendered neutral, no flow). Omit to only surface flow days. */
+  loggedDates?: ReadonlySet<string>,
 ): { cells: Array<CycleHeatCell | null>; monthLabels: CycleMonthLabel[] } {
   const todayMs = toMs(todayIso);
   const endMs = year == null ? todayMs : Math.min(Date.UTC(year, 11, 31, 12), todayMs);
@@ -56,8 +60,11 @@ export function buildCycleHeatmap(
       continue;
     }
     const iso = toIso(ms);
+    const isToday = ms === todayMs;
     const flow = flowByDate.get(iso);
-    cells.push(flow ? { iso, flow, isToday: ms === todayMs } : null);
+    if (flow) cells.push({ iso, flow, isToday });
+    else if (loggedDates?.has(iso)) cells.push({ iso, isToday }); // logged, no flow
+    else cells.push(null);
   }
 
   const monthFmt = new Intl.DateTimeFormat(language, { month: 'short' });

@@ -46,6 +46,9 @@
     "title": "Entries",
     "empty": "No entries yet."
   },
+  "heatmap": {
+    "logged": "Logged"
+  },
   "stacked": {
     "empty": "No completed cycle to compare yet.",
     "unit": "{count} d",

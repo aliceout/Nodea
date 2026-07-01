@@ -27,22 +27,38 @@ const FLOW_FILL: Record<CycleFlow, string> = {
 
 interface Props {
   flowByDate: ReadonlyMap<string, CycleFlow>;
+  /** Every logged day — so symptom-only days show too (neutral). */
+  loggedDates: ReadonlySet<string>;
   today: string;
   onSelectDay: (iso: string) => void;
   /** `null` = rolling year ; a year scopes the frise to that year. */
   year: number | null;
 }
 
-export default function CycleHeatmap({ flowByDate, today, onSelectDay, year }: Props) {
+export default function CycleHeatmap({
+  flowByDate,
+  loggedDates,
+  today,
+  onSelectDay,
+  year,
+}: Props) {
   const { t, language } = useI18n();
 
   const full = useMemo(
-    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_WEEKS, year),
-    [flowByDate, today, language, year],
+    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_WEEKS, year, loggedDates),
+    [flowByDate, today, language, year, loggedDates],
   );
   const compact = useMemo(
-    () => buildCycleHeatmap(flowByDate, today, language, CYCLE_HEATMAP_COMPACT_WEEKS, year),
-    [flowByDate, today, language, year],
+    () =>
+      buildCycleHeatmap(
+        flowByDate,
+        today,
+        language,
+        CYCLE_HEATMAP_COMPACT_WEEKS,
+        year,
+        loggedDates,
+      ),
+    [flowByDate, today, language, year, loggedDates],
   );
 
   const toCells = (cells: ReadonlyArray<CycleHeatCell | null>): Array<HeatmapCellInput | null> =>
@@ -53,11 +69,19 @@ export default function CycleHeatmap({ flowByDate, today, onSelectDay, year }: P
         day: 'numeric',
         month: 'long',
       }).format(new Date(`${c.iso}T12:00:00`));
-      return {
-        className: FLOW_FILL[c.flow],
-        isToday: c.isToday,
-        title: `${dateLabel} · ${t(`cycle.form.flow.${c.flow}`)}`,
-      };
+      // Flow day → warm ramp ; logged-but-no-flow (symptoms only) → a
+      // neutral swatch so the day still reads as « something logged ».
+      return c.flow
+        ? {
+            className: FLOW_FILL[c.flow],
+            isToday: c.isToday,
+            title: `${dateLabel} · ${t(`cycle.form.flow.${c.flow}`)}`,
+          }
+        : {
+            className: 'bg-hair',
+            isToday: c.isToday,
+            title: `${dateLabel} · ${t('cycle.heatmap.logged')}`,
+          };
     });
 
   const dayLabels = Array.from({ length: 7 }, (_, i) =>

@@ -29,6 +29,7 @@ const VIEWS: readonly CycleView[] = ['calendar', 'ring', 'stacked', 'heatmap'];
 interface Props {
   stats: CycleStats;
   flowByDate: ReadonlyMap<string, CycleFlow>;
+  loggedDates: ReadonlySet<string>;
   today: string;
   selected: string | null;
   onSelectDay: (iso: string) => void;
@@ -44,6 +45,7 @@ interface Props {
 export default function CycleViews({
   stats,
   flowByDate,
+  loggedDates,
   today,
   selected,
   onSelectDay,
@@ -160,6 +162,7 @@ export default function CycleViews({
             {view === 'heatmap' ? (
               <CycleHeatmap
                 flowByDate={flowByDate}
+                loggedDates={loggedDates}
                 today={today}
                 onSelectDay={onSelectDay}
                 year={year}

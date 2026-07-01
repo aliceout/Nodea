@@ -46,6 +46,9 @@
     "title": "Entrées",
     "empty": "Aucune entrée pour l’instant."
   },
+  "heatmap": {
+    "logged": "Noté"
+  },
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",
     "unit": "{count} j",
