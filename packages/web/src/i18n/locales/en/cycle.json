@@ -26,14 +26,12 @@
   },
   "view": {
     "calendar": "Calendar",
-    "ring": "Ring",
     "stacked": "Cycles",
     "heatmap": "History"
   },
   "ring": {
     "day": "Day {count}",
     "j1hint": "D1 = first day of the period",
-    "noData": "Start logging your periods to see where you are.",
     "dayBadge": "D{count}",
     "todayLabel": "Today · {date}",
     "periodDay": "Day {count} of your period",
@@ -48,6 +46,9 @@
   },
   "heatmap": {
     "logged": "Logged"
+  },
+  "side": {
+    "current": "Where I’m at"
   },
   "stacked": {
     "empty": "No completed cycle to compare yet.",

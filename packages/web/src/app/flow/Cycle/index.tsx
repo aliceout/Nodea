@@ -108,7 +108,7 @@ export default function CyclePage() {
           ) : null}
         </Topbar>
       }
-      side={<SideColumn stats={stats} />}
+      side={<SideColumn stats={stats} today={today} />}
     >
       {!ctx ? (
         <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>

@@ -26,14 +26,12 @@
   },
   "view": {
     "calendar": "Calendrier",
-    "ring": "Anneau",
     "stacked": "Cycles",
     "heatmap": "Historique"
   },
   "ring": {
     "day": "Jour {count}",
     "j1hint": "J1 = 1er jour des règles",
-    "noData": "Commence à noter tes règles pour voir où tu en es.",
     "dayBadge": "J{count}",
     "todayLabel": "Aujourd’hui · {date}",
     "periodDay": "Jour {count} des règles",
@@ -48,6 +46,9 @@
   },
   "heatmap": {
     "logged": "Noté"
+  },
+  "side": {
+    "current": "Où j’en suis"
   },
   "stacked": {
     "empty": "Pas encore de cycle complet à comparer.",

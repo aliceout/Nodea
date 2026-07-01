@@ -19,12 +19,11 @@ import type { CycleStats } from '../lib/cycle-model';
 import CycleCalendar from './CycleCalendar';
 import CycleHeatmap from './CycleHeatmap';
 import CycleMonthSelector from './CycleMonthSelector';
-import CycleRing from './CycleRing';
 import CycleStacked from './CycleStacked';
 import CycleYearSelector from './CycleYearSelector';
 
-type CycleView = 'calendar' | 'ring' | 'stacked' | 'heatmap';
-const VIEWS: readonly CycleView[] = ['calendar', 'ring', 'stacked', 'heatmap'];
+type CycleView = 'calendar' | 'stacked' | 'heatmap';
+const VIEWS: readonly CycleView[] = ['calendar', 'stacked', 'heatmap'];
 
 interface Props {
   stats: CycleStats;
@@ -128,23 +127,6 @@ export default function CycleViews({
                 onSelectDay={onSelectDay}
                 language={language}
               />
-            ) : null}
-
-            {view === 'ring' ? (
-              stats.current ? (
-                <div className="py-4">
-                  <CycleRing
-                    day={stats.current.day}
-                    length={stats.current.length}
-                    periodLength={stats.cycles.at(-1)?.periodLength ?? 0}
-                    ovulation={stats.current.ovulation}
-                    next={stats.next}
-                    todayIso={today}
-                  />
-                </div>
-              ) : (
-                <p className="py-8 text-center text-sm text-muted">{t('cycle.ring.noData')}</p>
-              )
             ) : null}
 
             {view === 'stacked' ? (
