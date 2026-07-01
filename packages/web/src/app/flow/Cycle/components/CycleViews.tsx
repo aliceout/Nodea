@@ -111,19 +111,12 @@ export default function CycleViews({
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3">
         <Tabs
           tabs={views.map((v) => ({ id: v, label: t(`cycle.view.${v}`) }))}
           value={view}
           onChange={setView}
         />
-        {formOpen || settingsOpen ? null : (
-          <CollapseToggle
-            open={!collapsed}
-            onToggle={() => setCollapsed((c) => !c)}
-            label={collapsed ? t('cycle.showChart') : t('cycle.hideChart')}
-          />
-        )}
       </div>
 
       {/* Animatable collapse : the graph rides a grid-rows 1fr↔0fr
@@ -142,6 +135,7 @@ export default function CycleViews({
             {view === 'calendar' ? (
               <CycleCalendar
                 flowByDate={flowByDate}
+                phaseByDate={stats.phaseByDate}
                 predictedDays={stats.predictedDays}
                 today={today}
                 selected={selected}
@@ -156,8 +150,11 @@ export default function CycleViews({
                 language={language}
                 emptyLabel={t('cycle.stacked.empty')}
                 unit={(days) => t('cycle.stacked.unit', { values: { count: days } })}
-                periodLabel={t('cycle.legend.period')}
-                ovulationLabel={t('cycle.stacked.ovulation')}
+                periodLabel={t('cycle.phase.menstrual')}
+                follicularLabel={t('cycle.phase.follicular')}
+                fertileLabel={t('cycle.phase.fertile')}
+                ovulationLabel={t('cycle.phase.ovulation')}
+                lutealLabel={t('cycle.phase.luteal')}
               />
             ) : null}
 
@@ -172,13 +169,24 @@ export default function CycleViews({
         </div>
       </div>
 
-      {/* Month strip — only when a specific year is selected (the
-          rolling window straddles months). Filters the entries list. */}
-      {year !== null ? (
-        <div className="mt-3">
-          <CycleMonthSelector month={month} onChange={onMonthChange} />
+      {/* Below-graph row (Mood parity) : the month strip on the left (only
+          when a specific year is selected — the rolling window straddles
+          months) and the fold toggle on the right, hidden while an inline
+          panel is open. */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div>
+          {year !== null ? (
+            <CycleMonthSelector month={month} onChange={onMonthChange} />
+          ) : null}
         </div>
-      ) : null}
+        {formOpen || settingsOpen ? null : (
+          <CollapseToggle
+            open={!collapsed}
+            onToggle={() => setCollapsed((c) => !c)}
+            label={collapsed ? t('cycle.showChart') : t('cycle.hideChart')}
+          />
+        )}
+      </div>
     </div>
   );
 }

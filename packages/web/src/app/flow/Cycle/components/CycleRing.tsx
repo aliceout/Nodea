@@ -18,11 +18,14 @@ interface Props {
   periodLength: number;
   ovulation: { day: number; date: string } | null;
   next: { date: string; daysUntil: number } | null;
+  /** Day-1 date of the current cycle (top of the ring). */
+  startIso: string;
   todayIso: string;
+  /** Prefix the next-period read with « ~ » — the estimate is looser than
+   *  usual (few cycles, or a clamped ovulation). */
+  approximate?: boolean;
   /** Ring diameter in px (default 300). */
   size?: number;
-  /** Force the recap below the ring instead of beside it (sidebar). */
-  stacked?: boolean;
 }
 
 const WEEK_MARKS = [7, 14, 21, 28, 35, 42] as const;
@@ -33,11 +36,19 @@ export default function CycleRing({
   periodLength,
   ovulation,
   next,
+  startIso,
   todayIso,
+  approximate = false,
   size = 300,
-  stacked = false,
 }: Props) {
   const { t, language } = useI18n();
+  const approx = approximate ? '~' : '';
+  const addDays = (iso: string, n: number) => {
+    const [yy, mm, dd] = iso.split('-').map(Number);
+    return new Date(Date.UTC(yy!, mm! - 1, dd!, 12) + n * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+  };
 
   const stroke = Math.max(12, Math.round(size * 0.06));
   const r = (size - stroke) / 2;
@@ -55,6 +66,9 @@ export default function CycleRing({
   const elapsedFrac = total ? Math.min(day / total, 1) : 0;
   const today = total ? pointAt(elapsedFrac) : null;
   const ovPoint = total && ovulation ? pointAt(ovulation.day / total) : null;
+  // Date anchors OUTSIDE the ring : day 1 at the top (12 o'clock), the
+  // mid-cycle date at the bottom (6 o'clock = half a turn = day total/2).
+  const midDate = total ? addDays(startIso, Math.round(total / 2) - 1) : null;
 
   const fmtDate = (iso: string) =>
     new Intl.DateTimeFormat(language, { day: 'numeric', month: 'short' }).format(
@@ -65,7 +79,7 @@ export default function CycleRing({
     periodLength > 0 && day <= periodLength
       ? t('cycle.ring.periodDay', { values: { count: day } })
       : next && next.daysUntil > 0
-        ? t('cycle.ring.periodsIn', { values: { count: next.daysUntil } })
+        ? approx + t('cycle.ring.periodsIn', { values: { count: next.daysUntil } })
         : next
           ? t('cycle.ring.periodsToday')
           : t('cycle.ring.day', { values: { count: day } });
@@ -74,16 +88,10 @@ export default function CycleRing({
   const padX = Math.round(size * 0.12);
 
   return (
-    <div
-      className={cn(
-        'flex flex-col items-center',
-        stacked ? 'gap-3' : 'gap-6 py-2 sm:flex-row sm:justify-center sm:gap-12',
-      )}
-    >
-      <div
-        className={cn('relative shrink-0', stacked ? '' : 'order-1')}
-        style={{ width: size, height: size }}
-      >
+    <div className="flex flex-col items-center gap-1">
+      {/* Top anchor : cycle start date (day 1 sits at 12 o'clock). */}
+      <span className="text-[11px] tabular-nums text-muted">{fmtDate(startIso)}</span>
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full">
           <g transform={`rotate(-90 ${center} ${center})`}>
             <circle cx={center} cy={center} r={r} fill="none" strokeWidth={stroke} className="stroke-bg-2" />
@@ -147,13 +155,11 @@ export default function CycleRing({
               })
             : null}
           {ovPoint ? (
-            <rect
-              x={ovPoint.x - 5}
-              y={ovPoint.y - 5}
-              width={10}
-              height={10}
-              transform={`rotate(45 ${ovPoint.x} ${ovPoint.y})`}
-              className="fill-accent stroke-bg"
+            <circle
+              cx={ovPoint.x}
+              cy={ovPoint.y}
+              r={5.5}
+              className="fill-bg stroke-accent"
               strokeWidth={2}
             />
           ) : null}
@@ -183,23 +189,10 @@ export default function CycleRing({
         </div>
       </div>
 
-      <div
-        className={cn(
-          'space-y-1.5 text-center text-[13px] text-muted',
-          stacked ? '' : 'order-2 sm:text-left',
-        )}
-      >
-        <p>
-          <span className="font-medium text-low">{t('cycle.legend.period')}</span> ·{' '}
-          {t('cycle.stacked.unit', { values: { count: periodLength } })}
-        </p>
-        {ovulation ? (
-          <p>
-            <span className="font-medium text-accent">{t('cycle.ring.ovulationDay')}</span> ·{' '}
-            ~J{ovulation.day} · {fmtDate(ovulation.date)}
-          </p>
-        ) : null}
-      </div>
+      {/* Bottom anchor : mid-cycle date (6 o'clock = half a turn). */}
+      {midDate ? (
+        <span className="text-[11px] tabular-nums text-muted">{fmtDate(midDate)}</span>
+      ) : null}
     </div>
   );
 }

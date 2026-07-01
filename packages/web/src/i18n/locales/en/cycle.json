@@ -24,6 +24,13 @@
     "predicted": "Predicted",
     "today": "Today"
   },
+  "phase": {
+    "menstrual": "Menstrual",
+    "follicular": "Follicular",
+    "fertile": "Fertile",
+    "ovulation": "Ovulation",
+    "luteal": "Luteal"
+  },
   "view": {
     "calendar": "Calendar",
     "stacked": "Cycles",

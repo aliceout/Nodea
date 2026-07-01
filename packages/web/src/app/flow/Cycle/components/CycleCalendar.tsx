@@ -1,19 +1,24 @@
 /**
- * Cycle calendar — up to three months side by side, responsive : one
- * month on mobile, two at `md`, three at `lg` (the extra months are
- * `hidden` below their breakpoint, never stacked). Each month is a
- * compact grid : the date on top, a small flow droplet underneath
- * (never a big disc). Predicted next-period days show a hollow droplet ;
- * today sits in an accent pill. Every day is a focusable button (a11y)
- * that opens the day form. Weekday / month names come from `Intl`.
+ * Cycle calendar — up to three months side by side, responsive : one month
+ * on mobile, two at `md`, three at `lg` (extra months are `hidden` below
+ * their breakpoint, never stacked). Each day is a compact, uncluttered cell :
+ * the date on top (period days get a light-red disc, today an accent pill),
+ * and a small mark underneath telling its CYCLE PHASE — a flow droplet
+ * (logged period), a coloured dot (follicular / fertile / luteal) or a sage
+ * diamond (estimated ovulation). Projected future days (this cycle's estimate)
+ * fade their mark. Deliberately discreet — a dot, never a filled cell. Every
+ * day is a focusable button (a11y) that opens the day form. Weekday / month
+ * names come from `Intl`.
  */
 import { useMemo } from 'react';
 import type { CycleFlow } from '@nodea/shared';
 import { cn } from '@/lib/utils';
+import type { CyclePhase, DayPhase } from '../lib/cycle-model';
 import FlowMark from './FlowMark';
 
 interface Props {
   flowByDate: ReadonlyMap<string, CycleFlow>;
+  phaseByDate: ReadonlyMap<string, DayPhase>;
   predictedDays: ReadonlySet<string>;
   today: string;
   selected: string | null;
@@ -21,13 +26,59 @@ interface Props {
   language: string;
 }
 
+// Dot colour per phase (menstrual = the flow droplet ; ovulation = a diamond).
+const PHASE_DOT: Record<'follicular' | 'fertile' | 'luteal', string> = {
+  follicular: 'bg-phase-follicular',
+  fertile: 'bg-accent-soft',
+  luteal: 'bg-phase-luteal',
+};
+
 const pad = (n: number) => String(n).padStart(2, '0');
 const isoOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
+/** The small phase mark under the day number — droplet / dot / diamond. */
+function DayMark({
+  flow,
+  phase,
+  predicted,
+  isPredictedPeriod,
+}: {
+  flow: CycleFlow | undefined;
+  phase: CyclePhase | undefined;
+  predicted: boolean;
+  isPredictedPeriod: boolean;
+}) {
+  if (flow) return <FlowMark flow={flow} />;
+  if (isPredictedPeriod) return <FlowMark predicted />;
+  if (phase === 'ovulation') {
+    // A hollow accent ring — distinct from the filled phase dots and the
+    // teardrop droplet, without the diamond.
+    return (
+      <span
+        className={cn(
+          'h-2.5 w-2.5 rounded-full border-[1.5px] border-accent',
+          predicted && 'opacity-60',
+        )}
+        aria-hidden="true"
+      />
+    );
+  }
+  if (phase && phase !== 'menstrual') {
+    return (
+      <span
+        className={cn('h-2 w-2 rounded-full', PHASE_DOT[phase], predicted && 'opacity-60')}
+        aria-hidden="true"
+      />
+    );
+  }
+  return null;
+}
 
 function MonthGrid({
   y,
   m,
   flowByDate,
+  phaseByDate,
   predictedDays,
   today,
   selected,
@@ -64,8 +115,13 @@ function MonthGrid({
           const day = i + 1;
           const iso = isoOf(y, m, day);
           const flow = flowByDate.get(iso);
+          const dp = phaseByDate.get(iso);
+          // Logged flow always reads as menstrual (its own droplet), whatever
+          // the projection says ; the phase dot is for the non-period days.
+          const phase: CyclePhase | undefined = flow ? undefined : dp?.phase;
+          const phasePredicted = !flow && (dp?.predicted ?? false);
+          const isPredictedPeriod = !flow && predictedDays.has(iso);
           const isPeriod = flow !== undefined;
-          const isPredicted = !flow && predictedDays.has(iso);
           const isToday = iso === today;
           const isSelected = iso === selected;
           return (
@@ -74,7 +130,16 @@ function MonthGrid({
               type="button"
               onClick={() => onSelectDay(iso)}
               aria-pressed={isSelected}
-              aria-label={iso + (flow ? ` · règles (${flow})` : isPredicted ? ' · prédiction' : '')}
+              aria-label={
+                iso +
+                (flow
+                  ? ` · règles (${flow})`
+                  : dp?.phase
+                    ? ` · phase ${dp.phase}${phasePredicted ? ' (estimée)' : ''}`
+                    : isPredictedPeriod
+                      ? ' · prédiction'
+                      : '')
+              }
               className={cn(
                 'flex h-11 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-input)]',
                 'text-[12px] tabular-nums hover:bg-bg-2',
@@ -82,8 +147,6 @@ function MonthGrid({
                 isSelected && 'ring-2 ring-accent',
               )}
             >
-              {/* Period days get a light-red disc on the number (like
-                  today's accent pill) ; predictions keep a hollow droplet. */}
               <span
                 className={cn(
                   'flex h-6 w-6 items-center justify-center rounded-full',
@@ -98,7 +161,12 @@ function MonthGrid({
                 {day}
               </span>
               <span className="flex h-2.5 items-center">
-                <FlowMark {...(flow ? { flow } : { predicted: isPredicted })} />
+                <DayMark
+                  flow={flow}
+                  phase={phase}
+                  predicted={phasePredicted}
+                  isPredictedPeriod={isPredictedPeriod}
+                />
               </span>
             </button>
           );
@@ -110,18 +178,16 @@ function MonthGrid({
 
 export default function CycleCalendar(props: Props) {
   const [ty, tm] = props.today.split('-').map(Number);
-  // Three consecutive months ending on the current month (rightmost, so
-  // the past reads to its left). No nav here — the header year/month
-  // selectors will drive the window.
+  // Three consecutive months ending on the current month (rightmost, so the
+  // past reads to its left). No nav here — the header selectors drive the window.
   const months = [-2, -1, 0].map((i) => {
     const d = new Date(ty!, tm! - 1 + i, 1);
     return { y: d.getFullYear(), m: d.getMonth() };
   });
 
   return (
-    // Container query, not viewport : a month is dropped when the width
-    // can't hold it, never wrapped ; the current month (rightmost) always
-    // shows, past months appear to its left as width allows.
+    // Container query, not viewport : a month is dropped when the width can't
+    // hold it, never wrapped ; the current month (rightmost) always shows.
     <div className="@container">
       <div className="flex flex-nowrap justify-evenly">
         <div className="hidden shrink-0 @min-[1000px]:block">

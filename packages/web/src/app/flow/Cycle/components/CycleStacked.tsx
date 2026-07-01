@@ -1,12 +1,14 @@
 /**
- * Stacked-cycles view (spec §6) — the honest picture over time. One bar
- * per completed cycle (max 6, most recent). Each bar is captioned with
- * its own start date (left) and end date (right, at the bar's end) — a
- * cycle doesn't align to a month — and topped by a per-day tick ruler as
- * a day reference. The red block is menstruation, the sage diamond the
- * estimated ovulation (≈ next period − 14). Pure CSS widths — no chart lib.
+ * Stacked-cycles view (spec §6) — the honest picture over time. One bar per
+ * completed cycle (max 5, most recent). Each bar is captioned with its own
+ * start date (left) and end date (right) — a cycle doesn't align to a month —
+ * topped by a per-day tick ruler, and segmented by CYCLE PHASE : menstrual
+ * (terracotta) · follicular · fertile (pale sage) · ovulation (sage diamond) ·
+ * luteal. Phase boundaries come straight from the model (`ovulationDay`, with
+ * O = length − 14). Pure CSS widths — no chart lib.
  */
-import type { CycleSpan } from '../lib/cycle-model';
+import type { CyclePhase, CycleSpan } from '../lib/cycle-model';
+import { phaseSegments } from '../lib/cycle-model';
 
 interface Props {
   cycles: readonly CycleSpan[];
@@ -14,12 +16,21 @@ interface Props {
   emptyLabel: string;
   unit: (days: number) => string;
   periodLabel: string;
+  follicularLabel: string;
+  fertileLabel: string;
   ovulationLabel: string;
+  lutealLabel: string;
 }
 
-const LUTEAL = 14; // days from ovulation to the next period (estimate).
 const MAX_ROWS = 5; // the 5 most recent completed cycles (fits 300px, no scroll).
 const DAY_MS = 86_400_000;
+
+const PHASE_BG: Record<Exclude<CyclePhase, 'ovulation'>, string> = {
+  menstrual: 'bg-low',
+  follicular: 'bg-phase-follicular',
+  fertile: 'bg-accent-soft',
+  luteal: 'bg-phase-luteal',
+};
 
 /** A cycle runs from its start (J1) to the day before the next period. */
 function endIso(startIso: string, length: number): string {
@@ -34,7 +45,10 @@ export default function CycleStacked({
   emptyLabel,
   unit,
   periodLabel,
+  follicularLabel,
+  fertileLabel,
   ovulationLabel,
+  lutealLabel,
 }: Props) {
   const completed = cycles.filter((c) => c.length != null).slice(-MAX_ROWS).reverse();
   if (completed.length === 0) {
@@ -51,7 +65,7 @@ export default function CycleStacked({
     <div className="flex h-full flex-col px-1 py-2">
       <div className="flex flex-col gap-2.5">
         {completed.map((c) => {
-          const ovulation = c.length! - LUTEAL;
+          const segs = phaseSegments(c.length!, c.periodLength, c.ovulationDay);
           return (
             <div key={c.start} className="flex items-center gap-3 text-[12px]">
               <div className="flex-1">
@@ -77,20 +91,19 @@ export default function CycleStacked({
                     />
                   ))}
                 </div>
-                <div className="relative h-3">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-bg-2"
-                    style={{ width: pct(c.length!) }}
-                  />
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-low"
-                    style={{ width: pct(Math.min(c.periodLength, c.length!)) }}
-                  />
-                  {ovulation > c.periodLength ? (
+                <div className="relative h-3 overflow-hidden rounded-full bg-bg-2">
+                  {segs.map((s) => (
+                    <div
+                      key={s.phase}
+                      className={`absolute inset-y-0 ${PHASE_BG[s.phase]}`}
+                      style={{ left: pct(s.from - 1), width: pct(s.to - s.from + 1) }}
+                    />
+                  ))}
+                  {c.ovulationDay != null && c.ovulationDay > c.periodLength ? (
                     <span
-                      className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] bg-accent ring-2 ring-bg"
-                      style={{ left: pct(ovulation) }}
-                      title={`${ovulationLabel} · J${ovulation}`}
+                      className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-accent bg-bg"
+                      style={{ left: pct(c.ovulationDay - 0.5) }}
+                      title={`${ovulationLabel} · J${c.ovulationDay}`}
                     />
                   ) : null}
                 </div>
@@ -107,16 +120,22 @@ export default function CycleStacked({
         })}
       </div>
 
-      <div className="mt-auto flex items-center gap-4 border-t border-hair pt-2 text-[11px] text-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-low" />
-          {periodLabel}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rotate-45 rounded-[1px] bg-accent" />
-          {ovulationLabel}
-        </span>
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-hair pt-2 text-[11px] text-muted">
+        <LegendSwatch swatch="bg-low" label={periodLabel} />
+        <LegendSwatch swatch="bg-phase-follicular" label={follicularLabel} />
+        <LegendSwatch swatch="bg-accent-soft" label={fertileLabel} />
+        <LegendSwatch swatch="rounded-full border-[1.5px] border-accent" label={ovulationLabel} />
+        <LegendSwatch swatch="bg-phase-luteal" label={lutealLabel} />
       </div>
     </div>
+  );
+}
+
+function LegendSwatch({ swatch, label }: { swatch: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`inline-block h-2.5 w-2.5 ${swatch.includes('rounded') ? '' : 'rounded-full'} ${swatch}`} />
+      {label}
+    </span>
   );
 }

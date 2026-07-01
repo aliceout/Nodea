@@ -83,6 +83,15 @@
   --color-k-low-soft: #ddc0b1;
   --color-k-low-deep: #5e2f25;
 
+  /* Cycle phases (module Cycle) — deux teintes PÂLES dédiées pour que les
+     quatre phases se distinguent, tout en restant dans la famille sobre :
+     menstruelle = terracotta (low), fertile/ovulation = sauge (accent), il
+     manquait donc une teinte « folliculaire » (fraîche, phase montante) et
+     une « lutéale » (chaude, phase descendante). Désaturées exprès pour ne
+     pas rivaliser avec l'accent sauge. Utilisées en fond de cellule. */
+  --color-k-phase-follicular: #cdd9d6;
+  --color-k-phase-luteal: #e6d9c1;
+
   /* Systémique */
   --color-k-danger: #dc2626;
 }
@@ -211,6 +220,11 @@
   --color-k-low-soft: #4d3329;
   --color-k-low-deep: #d8a698;
 
+  /* Cycle phases — voir la note light. Versions sombres profondes (fond de
+     cellule sous texte clair), désaturées, distinctes du sauge/terracotta. */
+  --color-k-phase-follicular: #354443;
+  --color-k-phase-luteal: #453d2b;
+
   /* Le rouge système ne change pas — la zone rouge reste rouge */
   --color-k-danger: #dc2626;
 
@@ -293,6 +307,8 @@
   --color-low: var(--color-k-low);
   --color-low-soft: var(--color-k-low-soft);
   --color-low-deep: var(--color-k-low-deep);
+  --color-phase-follicular: var(--color-k-phase-follicular);
+  --color-phase-luteal: var(--color-k-phase-luteal);
   --color-danger: var(--color-k-danger);
 
   /* Typographies — `font-sans` (UI), `font-serif` (citations,

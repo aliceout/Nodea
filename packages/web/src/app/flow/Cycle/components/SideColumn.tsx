@@ -15,7 +15,9 @@ import CycleRing from './CycleRing';
 function LegendRow({ swatch, label }: { swatch: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`inline-block h-3.5 w-3.5 rounded-full ${swatch}`} />
+      <span
+        className={`inline-block h-3.5 w-3.5 ${swatch.includes('rounded') ? '' : 'rounded-full'} ${swatch}`}
+      />
       <span>{label}</span>
     </div>
   );
@@ -31,12 +33,13 @@ export default function SideColumn({ stats, today }: { stats: CycleStats; today:
         {stats.current ? (
           <CycleRing
             size={200}
-            stacked
             day={stats.current.day}
             length={stats.current.length}
             periodLength={stats.cycles.at(-1)?.periodLength ?? 0}
             ovulation={stats.current.ovulation}
             next={stats.next}
+            approximate={stats.approximate}
+            startIso={stats.periodStarts.at(-1) ?? today}
             todayIso={today}
           />
         ) : (
@@ -56,12 +59,15 @@ export default function SideColumn({ stats, today }: { stats: CycleStats; today:
       <section>
         <SectionLabel variant="section">{t('cycle.legend.title')}</SectionLabel>
         <div className="flex flex-col gap-1.5 text-[12px] text-muted">
-          <LegendRow swatch="bg-low" label={t('cycle.legend.period')} />
+          <LegendRow swatch="bg-low" label={t('cycle.phase.menstrual')} />
+          <LegendRow swatch="bg-phase-follicular" label={t('cycle.phase.follicular')} />
+          <LegendRow swatch="bg-accent-soft" label={t('cycle.phase.fertile')} />
+          <LegendRow swatch="rounded-full border-[1.5px] border-accent" label={t('cycle.phase.ovulation')} />
+          <LegendRow swatch="bg-phase-luteal" label={t('cycle.phase.luteal')} />
           <LegendRow
             swatch="border border-dashed border-low-soft"
             label={t('cycle.legend.predicted')}
           />
-          <LegendRow swatch="bg-accent-soft" label={t('cycle.legend.today')} />
         </div>
       </section>
     </ModuleSidebar>

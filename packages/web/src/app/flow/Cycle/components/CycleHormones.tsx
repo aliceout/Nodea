@@ -10,6 +10,7 @@
  */
 import { useMemo } from 'react';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { phaseSegments, type CyclePhase } from '../lib/cycle-model';
 import {
   sampleHormones,
   type HormoneId,
@@ -26,12 +27,21 @@ interface Props {
 const W = 340;
 const H = 100;
 const PAD = 6;
+/** Standard menstrual length for the textbook phase band under the curves. */
+const BAND_PERIOD_DAYS = 5;
 
 const HORMONE_COLOR: Record<HormoneId, string> = {
   estrogen: 'stroke-accent',
   progesterone: 'stroke-ink-soft',
   lh: 'stroke-low',
   testosterone: 'stroke-low-deep',
+};
+
+const PHASE_BAND_BG: Record<Exclude<CyclePhase, 'ovulation'>, string> = {
+  menstrual: 'bg-low-soft',
+  follicular: 'bg-phase-follicular',
+  fertile: 'bg-accent-soft',
+  luteal: 'bg-phase-luteal',
 };
 
 /** Smooth path through points via Catmull-Rom → cubic béziers. */
@@ -70,6 +80,17 @@ export default function CycleHormones({ length, day, profile }: Props) {
   const pctX = (d: number) => ((d - 1) / Math.max(1, length - 1)) * 100;
   const ticks = [1, ...[7, 14, 21, 28, 35].filter((d) => d < length - 2), length];
 
+  // Phase band under the curves (natal only — a masc HRT profile has no
+  // cycle). Explains which hormonal phase each region of the graph is.
+  const phaseLabel: Record<Exclude<CyclePhase, 'ovulation'>, string> = {
+    menstrual: t('cycle.phase.menstrual'),
+    follicular: t('cycle.phase.follicular'),
+    fertile: t('cycle.phase.fertile'),
+    luteal: t('cycle.phase.luteal'),
+  };
+  const bandSegments =
+    ovulation !== null ? phaseSegments(length, BAND_PERIOD_DAYS, ovulation) : [];
+
   return (
     <div className="flex h-full flex-col px-1 py-1">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -103,6 +124,20 @@ export default function CycleHormones({ length, day, profile }: Props) {
               className="absolute inset-0 h-full w-full"
               preserveAspectRatio="none"
             >
+              {/* Vertical scale — faint gridlines at low / mid / high, so the
+                  « élevé / faible » gutter reads as a real axis. */}
+              {[0, 0.5, 1].map((v) => (
+                <line
+                  key={v}
+                  x1={0}
+                  y1={y(v)}
+                  x2={W}
+                  y2={y(v)}
+                  className="stroke-hair"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
               {ovulation !== null ? (
                 <line x1={x(ovulation)} y1={0} x2={x(ovulation)} y2={H} className="stroke-accent-soft" strokeWidth={1} vectorEffect="non-scaling-stroke" />
               ) : null}
@@ -146,6 +181,28 @@ export default function CycleHormones({ length, day, profile }: Props) {
               </span>
             ))}
           </div>
+
+          {/* Phase band — a horizontal scale under the curves naming each
+              phase, aligned to the same day x-scale. Contiguous segments : a
+              segment runs to the next one's start. */}
+          {bandSegments.length > 0 ? (
+            <div className="relative mt-1 h-4">
+              {bandSegments.map((s, i, arr) => {
+                const left = pctX(s.from);
+                const right = i < arr.length - 1 ? pctX(arr[i + 1]!.from) : 100;
+                return (
+                  <div
+                    key={s.phase}
+                    className={`absolute inset-y-0 flex items-center justify-center overflow-hidden rounded-[2px] text-[8px] leading-none text-ink-soft ${PHASE_BAND_BG[s.phase]}`}
+                    style={{ left: `${left}%`, width: `${right - left}%` }}
+                    title={phaseLabel[s.phase]}
+                  >
+                    <span className="truncate px-0.5">{phaseLabel[s.phase]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
 
