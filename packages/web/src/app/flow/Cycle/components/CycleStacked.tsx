@@ -21,6 +21,14 @@ interface Props {
 const LUTEAL = 14; // days from ovulation to the next period (estimate).
 const TICKS = [7, 14, 21, 28, 35] as const;
 const MAX_ROWS = 6; // « max 6 mois » — the 6 most recent completed cycles.
+const DAY_MS = 86_400_000;
+
+/** A cycle runs from its start (J1) to the day before the next period. */
+function endIso(startIso: string, length: number): string {
+  const [y, m, d] = startIso.split('-').map(Number);
+  const t = Date.UTC(y!, m! - 1, d!, 12) + (length - 1) * DAY_MS;
+  return new Date(t).toISOString().slice(0, 10);
+}
 
 export default function CycleStacked({
   cycles,
@@ -39,6 +47,10 @@ export default function CycleStacked({
   const scale = Math.max(35, maxLen);
   const ticks = TICKS.filter((tck) => tck <= scale);
   const pct = (days: number) => `${(days / scale) * 100}%`;
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat(language, { day: 'numeric', month: 'short' }).format(
+      new Date(`${iso}T12:00:00`),
+    );
 
   return (
     <div className="px-1 py-2">
@@ -46,7 +58,7 @@ export default function CycleStacked({
           labelled at each week (7 / 14 / 21…) so the red block reads
           « ≈ N days » at a glance. */}
       <div className="mb-2 flex items-end gap-3">
-        <span className="w-14 shrink-0 text-[10px] text-muted-soft">{daysLabel}</span>
+        <span className="w-20 shrink-0 text-[10px] text-muted-soft">{daysLabel}</span>
         <div className="relative h-5 flex-1">
           {Array.from({ length: scale }, (_, i) => i + 1).map((d) => (
             <span
@@ -72,14 +84,14 @@ export default function CycleStacked({
 
       <div className="flex flex-col gap-3">
         {completed.map((c) => {
-          const month = new Intl.DateTimeFormat(language, {
-            month: 'short',
-            year: '2-digit',
-          }).format(new Date(`${c.start}T12:00:00`));
           const ovulation = c.length! - LUTEAL;
           return (
             <div key={c.start} className="flex items-center gap-3 text-[12px]">
-              <span className="w-14 shrink-0 capitalize text-muted">{month}</span>
+              {/* A cycle doesn't align to a month — show its own span dates. */}
+              <span className="w-20 shrink-0 text-[10px] leading-tight text-muted">
+                {fmt(c.start)}
+                <span className="block text-muted-soft">→ {fmt(endIso(c.start, c.length!))}</span>
+              </span>
               <div className="relative h-5 flex-1">
                 {/* gridlines span the bar so each cycle reads against the ruler */}
                 {ticks.map((tck) => (
