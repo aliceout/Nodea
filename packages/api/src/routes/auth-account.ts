@@ -53,11 +53,19 @@ export const authAccountRoutes = makeAuthedRouter();
  * for every user behind the same NAT. Now keyed on the
  * authenticated user id and mounted last in the chain, so only a
  * fully re-authenticated call consumes the quota.
+ *
+ * `skipFailedRequests` so ONLY a successful change spends the budget :
+ * a mistyped / already-taken address (409), a stale re-auth (401) or a
+ * cooldown rejection (429) rolls the increment back, so an honest user
+ * who fat-fingers the target isn't locked out of the corrected retry
+ * for 24 h. (A no-op change to one's own current address still returns
+ * 200 and counts — it's a completed request, not a failure.)
  */
 const changeEmailLimiter = rateLimit({
   max: 1,
   windowMs: 24 * 60 * 60 * 1000,
   keyPrefix: 'rl:change-email',
+  skipFailedRequests: true,
   keyFn: (c) => {
     const user = c.get('user') as { id?: string } | undefined;
     return user?.id ?? null;
