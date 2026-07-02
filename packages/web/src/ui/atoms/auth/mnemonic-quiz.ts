@@ -12,19 +12,27 @@
  * answer-matching logic stays unit-testable without rendering.
  */
 
+import { randomBytes } from '@/core/crypto/base64';
+
 /**
  * Pick `count` DISTINCT positions in `[0, total)`, sorted ascending.
- * Uses the crypto RNG so the quizzed slots aren't predictable (not a
- * secret — just no fixed pattern to rote-learn). Caps at `total` when
- * asked for more than exist.
+ * Draws from the shared CSPRNG so the quizzed slots aren't predictable
+ * (not a secret — just no fixed pattern to rote-learn). Caps at `total`
+ * when asked for more than exist.
  */
 export function pickQuizPositions(total: number, count: number): number[] {
   const n = Math.min(count, Math.max(0, total));
+  if (n === 0) return [];
   const chosen = new Set<number>();
-  const buf = new Uint32Array(1);
+  // Uniform index in [0, total) from the single randomBytes source
+  // (crypto rule 3). Rejection-sampling the final partial 2^32 block
+  // drops the modulo bias a bare `u32 % total` would carry.
+  const limit = 0x1_0000_0000 - (0x1_0000_0000 % total);
   while (chosen.size < n) {
-    crypto.getRandomValues(buf);
-    chosen.add(buf[0]! % total);
+    const bytes = randomBytes(4);
+    const r = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0);
+    if (r >= limit) continue;
+    chosen.add(r % total);
   }
   return [...chosen].sort((a, b) => a - b);
 }

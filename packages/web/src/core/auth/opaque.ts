@@ -48,8 +48,10 @@ export interface ClientRegisterFinishResult {
   /** Wire payload for `POST /auth/register/opaque/finish` — gets stored
    *  in `opaque_records.envelope` server-side. */
   registrationRecord: string;
-  /** 32-byte symmetric key (hex) the client uses to derive `wk_password`
-   *  via HKDF label `nodea:wrap-kek`. NEVER ship this to the server. */
+  /** 64-byte symmetric key (base64url) the client uses to derive
+   *  `wk_password` via HKDF label `nodea:wrap-kek`. NEVER ship this to
+   *  the server. (The `@serenity-kit/opaque` exportKey is base64url, not
+   *  hex — see factor-wrap.ts, which decodes it via base64UrlToBytes.) */
   exportKey: string;
   /** Server's static public key — caller may pin it to detect a server
    *  swap. We don't (yet); pin lookups can land in Phase 2C if useful. */
