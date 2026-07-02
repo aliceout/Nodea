@@ -3,10 +3,18 @@
  * atom's markup for controls that aren't a bare `<input>` (`Select`,
  * `Textarea`). Shared by both module forms so the two stay
  * pixel-aligned with `Field`.
+ *
+ * The control is passed as `children`, so — unlike the `Field` atom,
+ * which renders its own `<input>` — FieldRow can't wire the error onto
+ * it directly. Callers point the control's `aria-describedby` at
+ * `fieldErrorId(htmlFor)` and set `aria-invalid` on error, so assistive
+ * tech associates the two (id scheme mirrors Field's `${inputId}-error`).
  */
 import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
+
+import { fieldErrorId } from './field-error-id';
 
 interface FieldRowProps {
   label: string;
@@ -25,7 +33,7 @@ export default function FieldRow({ label, htmlFor, error, className, children }:
       </label>
       {children}
       {error ? (
-        <p role="alert" className="mt-1 text-[11px] text-danger">
+        <p id={fieldErrorId(htmlFor)} role="alert" className="mt-1 text-[11px] text-danger">
           {error}
         </p>
       ) : null}
