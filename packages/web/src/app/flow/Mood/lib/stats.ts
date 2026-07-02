@@ -210,8 +210,11 @@ function formatStreakRange(
   monthNames: ReadonlyArray<string>,
   t: StatsTranslate,
 ): string {
-  const start = new Date(startIso);
-  const end = new Date(endIso);
+  // parseLocalDate (not `new Date(iso)`) so a bare YYYY-MM-DD is read at
+  // LOCAL midnight — `new Date('2026-03-12')` is UTC midnight, which the
+  // local getters below then render as the previous day west of UTC.
+  const start = parseLocalDate(startIso);
+  const end = parseLocalDate(endIso);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return `${startIso} → ${endIso}`;
   }

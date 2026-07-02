@@ -72,12 +72,19 @@ describe('projectMoodEntries', () => {
     expect(out).toEqual([]);
   });
 
-  it('drops records with an unexpected mood score', () => {
+  it('converts legacy / out-of-range scores onto −2..+2 instead of dropping them', () => {
+    // Same normalizeScore the Mood page uses, so migrated 0..10 entries
+    // stay consistent between the home frise/average and the Mood page.
     const out = projectMoodEntries([
-      moodRecord('a', { date: '2026-03-15', moodScore: '99' }),
-      moodRecord('b', { date: '2026-03-14', moodScore: 'neutre' }),
+      moodRecord('a', { date: '2026-03-15', moodScore: '7' }), // legacy 0..10 → 1
+      moodRecord('b', { date: '2026-03-14', moodScore: '99' }), // out of range → clamps to 2
+      moodRecord('c', { date: '2026-03-13', moodScore: 'neutre' }), // non-finite → 0
     ]);
-    expect(out).toEqual([]);
+    expect(out).toEqual([
+      { dateIso: '2026-03-15', score: '1', createdAt: '2026-03-15' },
+      { dateIso: '2026-03-14', score: '2', createdAt: '2026-03-14' },
+      { dateIso: '2026-03-13', score: '0', createdAt: '2026-03-13' },
+    ]);
   });
 });
 
