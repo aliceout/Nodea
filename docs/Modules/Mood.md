@@ -4,8 +4,24 @@
 
 Daily module for tracking mood and recording three positive things.
 - Ideal cadence: one entry per day (optional).
-- UI: mood score (−2 to +2), emoji, three positives, optional comment,
-  optionally an introspection question / answer.
+- UI: mood score (−2 to +2), a free note (« mot du jour »), three positives,
+  and an introspection question / answer.
+
+### Composer layout
+
+The score (« note du jour ») and the free « mot du jour » (payload `comment`)
+always sit in the main questionnaire. The three positives and the « question du
+jour » are each placed independently — in the main questionnaire, in an
+expandable drawer, or not offered at all — via the encrypted preferences
+`moodPositivesPlacement` / `moodQuestionPlacement` (both default to the drawer;
+the question falls back to the legacy `moodOfferDailyQuestion` boolean for blobs
+written before this setting). Resolved in `Mood/lib/placements.ts`, configured
+from the module settings panel.
+
+In the entries **list**, `moodEntryLead` (absent ⇒ `positives`) picks which of
+the three body blocks — the positives, the « mot du jour », or the « question
+du jour » — leads each row; the other two follow in the canonical order. This
+is a display concern only (`moodEntryOrder`); the composer order is fixed.
 
 ## Expected cleartext payload
 

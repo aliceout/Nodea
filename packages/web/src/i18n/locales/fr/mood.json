@@ -82,12 +82,12 @@
     "positivePlaceholder2": "Un deuxième — plus discret peut-être.",
     "positivePlaceholder3": "Un troisième — même tout petit.",
     "scoreHeading": "Note du jour",
-    "optionalsExpand": "+ Question du jour & commentaire",
+    "optionalsExpand": "+ Déplier le questionnaire",
     "optionalsCollapse": "− Replier",
     "questionLabel": "Question du jour : ",
     "answerPlaceholder": "Réponse (optionnelle)",
-    "commentHeading": "Commentaire",
-    "commentPlaceholder": "Ce qui ne tient pas dans les trois lignes du dessus.",
+    "commentHeading": "Mot du jour",
+    "commentPlaceholder": "Quelques mots sur ta journée, si le cœur t’en dit.",
     "errors": {
       "scoreRequired": "Choisis une note du jour.",
       "missingConfig": "Module Mood non configuré ou clé absente — reconnecte-toi.",
@@ -98,7 +98,21 @@
   "settings": {
     "chartCollapsedLabel": "Frise repliée au démarrage",
     "chartCollapsedHint": "À l’ouverture du module, la frise (heatmap) est repliée plutôt que déployée.",
-    "offerDailyQuestionLabel": "Proposer une question du jour",
-    "offerDailyQuestionHint": "Sur une nouvelle entrée, une question du jour est tirée pour la section optionnelle."
+    "positivesPlacementLabel": "Trois choses positives",
+    "positivesPlacementHint": "Où proposer les trois lignes positives du jour.",
+    "questionPlacementLabel": "Question du jour",
+    "questionPlacementHint": "Où proposer la question introspective du jour.",
+    "placement": {
+      "form": "Dans le questionnaire",
+      "accordion": "Dans le dépliable",
+      "off": "Pas du tout"
+    },
+    "entryLeadLabel": "Les entrées commencent par",
+    "entryLeadHint": "Dans la liste, le bloc affiché en premier dans chaque entrée.",
+    "entryLead": {
+      "positives": "Les trois positives",
+      "comment": "Le mot du jour",
+      "question": "La question du jour"
+    }
   }
 }

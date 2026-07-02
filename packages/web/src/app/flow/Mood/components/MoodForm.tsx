@@ -15,9 +15,11 @@ import FormFooter from '@/ui/dirk/forms/FormFooter';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 import { useMoodActions } from '../context';
+import { moodPositivesPlacement, moodQuestionPlacement } from '../lib/placements';
 
-import OptionalsSection from './form-sections/OptionalsSection';
+import CommentSection from './form-sections/CommentSection';
 import PositivesSection from './form-sections/PositivesSection';
+import QuestionSection from './form-sections/QuestionSection';
 import ScoreSection from './form-sections/ScoreSection';
 
 import type { MoodEntry } from '../lib/types';
@@ -36,9 +38,12 @@ interface MoodFormProps {
  * cancel/save row, no chrome that pulls the user away from the
  * page.
  *
- * Decomposed across three sub-sections (`PositivesSection`,
- * `ScoreSection`, `OptionalsSection`) living next door in
- * `./form-sections/`.
+ * Layout : the score (« note du jour », `ScoreSection`) and the free « mot du
+ * jour » (`CommentSection`, payload `comment`) always sit in the main form. The
+ * three positives (`PositivesSection`) and the « question du jour »
+ * (`QuestionSection`) are each placed — main form, expandable drawer, or off —
+ * per the user's `moodPositivesPlacement` / `moodQuestionPlacement` preferences
+ * (resolved by `../lib/placements`; both default to the drawer).
  *
  * Save / update / error handling : `upsertRecord` splices the saved
  * record into the in-memory list on success (no full-collection
@@ -68,31 +73,54 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
   const [score, setScore] = useState<MoodScore | null>(initialScore);
   const [answer, setAnswer] = useState(initial?.answer ?? '');
   const [comment, setComment] = useState(initial?.comment ?? '');
-  const [optionalsOpen, setOptionalsOpen] = useState(
-    Boolean(initial && (initial.answer || initial.comment)),
-  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEdit = initial !== undefined;
 
-  // Pin the « question du jour » once at mount on create so it
-  // doesn't shuffle while the user types. `useState` initialiser
-  // (not `useMemo([language])`) — a language switch mid-typing
-  // used to draw a *different* random question, orphaning the
-  // answer already typed under the previous one (audit 2026-06).
-  // On edit, the original question stays paired with the saved
-  // answer. On create the « question du jour » is only drawn when the
-  // persisted `moodOfferDailyQuestion` default is on (absent ⇒ true / current
-  // behaviour); when off, the field stays empty and the optionals section shows
-  // only the free comment.
+  // Placement of the two configurable blocks, captured once at mount so the
+  // composer doesn't reshuffle if the user opens the settings panel mid-entry.
+  const [placements] = useState(() => {
+    const p = useNodeaStore.getState().preferences;
+    return { question: moodQuestionPlacement(p), positives: moodPositivesPlacement(p) };
+  });
+
+  // Pin the « question du jour » once at mount on create so it doesn't shuffle
+  // while the user types. `useState` initialiser (not `useMemo([language])`) —
+  // a language switch mid-typing used to draw a *different* random question,
+  // orphaning the answer already typed under the previous one (audit 2026-06).
+  // On edit the original question stays paired with its saved answer; on create
+  // it's drawn only when the question is offered at all (placement ≠ 'off').
   const [question] = useState<string>(() => {
     if (initial?.question) return initial.question;
     if (initial) return '';
-    const offerDailyQuestion =
-      useNodeaStore.getState().preferences.moodOfferDailyQuestion !== false;
-    return offerDailyQuestion ? pickQuestion(language) : '';
+    return placements.question === 'off' ? '' : pickQuestion(language);
   });
+
+  // On edit, never HIDE a block that already holds data: surface an
+  // otherwise-'off' block in the drawer so it stays editable rather than
+  // silently re-saved but invisible.
+  const hasQuestionData = Boolean(initial && (initial.question || initial.answer));
+  const hasPositivesData = Boolean(initial && initial.positives.some((x) => x.length > 0));
+  const questionPlace =
+    placements.question === 'off' && hasQuestionData ? 'accordion' : placements.question;
+  const positivesPlace =
+    placements.positives === 'off' && hasPositivesData ? 'accordion' : placements.positives;
+
+  // A question with no text (an old entry that never had one) is never shown;
+  // a freshly drawn question is always non-empty unless placement is 'off'.
+  const questionShown = questionPlace !== 'off' && question.length > 0;
+  const positivesShown = positivesPlace !== 'off';
+  const questionInForm = questionShown && questionPlace === 'form';
+  const questionInDrawer = questionShown && questionPlace === 'accordion';
+  const positivesInForm = positivesShown && positivesPlace === 'form';
+  const positivesInDrawer = positivesShown && positivesPlace === 'accordion';
+  const hasDrawer = questionInDrawer || positivesInDrawer;
+
+  const [drawerOpen, setDrawerOpen] = useState(
+    Boolean(initial) &&
+      ((questionInDrawer && hasQuestionData) || (positivesInDrawer && hasPositivesData)),
+  );
 
   function setPositive(idx: 0 | 1 | 2, value: string): void {
     setPositives((prev) => {
@@ -182,32 +210,56 @@ export default function MoodForm({ initial, onClose }: MoodFormProps) {
           />
         </div>
 
-        <PositivesSection
-          values={positives}
-          onChange={setPositive}
-          onSubmit={handleSave}
-        />
+        {positivesInForm ? (
+          <PositivesSection values={positives} onChange={setPositive} onSubmit={handleSave} />
+        ) : null}
 
-        <button
-          type="button"
-          onClick={() => setOptionalsOpen((v) => !v)}
-          className="text-[12px] text-muted transition-colors hover:text-ink"
-          aria-expanded={optionalsOpen}
-        >
-          {optionalsOpen
-            ? t('mood.composer.optionalsCollapse')
-            : t('mood.composer.optionalsExpand')}
-        </button>
-
-        {optionalsOpen ? (
-          <OptionalsSection
+        {questionInForm ? (
+          <QuestionSection
             question={question}
             answer={answer}
-            comment={comment}
             onAnswerChange={setAnswer}
-            onCommentChange={setComment}
             onSubmit={handleSave}
           />
+        ) : null}
+
+        {/* The free « Mot du jour » always sits in the main form, next to the
+            score — the one free field offered on every entry. */}
+        <CommentSection comment={comment} onCommentChange={setComment} onSubmit={handleSave} />
+
+        {hasDrawer ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen((v) => !v)}
+              className="text-[12px] text-muted transition-colors hover:text-ink"
+              aria-expanded={drawerOpen}
+            >
+              {drawerOpen
+                ? t('mood.composer.optionalsCollapse')
+                : t('mood.composer.optionalsExpand')}
+            </button>
+
+            {drawerOpen ? (
+              <div className="space-y-3 pt-1">
+                {positivesInDrawer ? (
+                  <PositivesSection
+                    values={positives}
+                    onChange={setPositive}
+                    onSubmit={handleSave}
+                  />
+                ) : null}
+                {questionInDrawer ? (
+                  <QuestionSection
+                    question={question}
+                    answer={answer}
+                    onAnswerChange={setAnswer}
+                    onSubmit={handleSave}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </>
         ) : null}
       </div>
 

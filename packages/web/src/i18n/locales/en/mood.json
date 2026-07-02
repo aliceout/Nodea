@@ -82,12 +82,12 @@
     "positivePlaceholder2": "A second one — quieter, maybe.",
     "positivePlaceholder3": "A third one — even a tiny one.",
     "scoreHeading": "Today's score",
-    "optionalsExpand": "+ Question of the day & comment",
+    "optionalsExpand": "+ Expand the questionnaire",
     "optionalsCollapse": "− Collapse",
     "questionLabel": "Question of the day: ",
     "answerPlaceholder": "Answer (optional)",
-    "commentHeading": "Comment",
-    "commentPlaceholder": "Anything that didn't fit in the three lines above.",
+    "commentHeading": "A few words",
+    "commentPlaceholder": "A few words about your day, if you feel like it.",
     "errors": {
       "scoreRequired": "Pick today's score.",
       "missingConfig": "Mood module not configured or key missing — sign in again.",
@@ -98,7 +98,21 @@
   "settings": {
     "chartCollapsedLabel": "Heatmap collapsed on open",
     "chartCollapsedHint": "When the module opens, the heatmap starts collapsed rather than expanded.",
-    "offerDailyQuestionLabel": "Offer a question of the day",
-    "offerDailyQuestionHint": "On a new entry, a question of the day is drawn for the optional section."
+    "positivesPlacementLabel": "Three positive things",
+    "positivesPlacementHint": "Where to offer the day's three positive lines.",
+    "questionPlacementLabel": "Question of the day",
+    "questionPlacementHint": "Where to offer the day's introspection question.",
+    "placement": {
+      "form": "In the questionnaire",
+      "accordion": "In the drawer",
+      "off": "Not at all"
+    },
+    "entryLeadLabel": "Entries start with",
+    "entryLeadHint": "In the list, the block shown first in each entry.",
+    "entryLead": {
+      "positives": "The three positives",
+      "comment": "A few words",
+      "question": "The question of the day"
+    }
   }
 }

@@ -123,6 +123,27 @@ export type CycleHormoneProfile = z.infer<typeof CycleHormoneProfileSchema>;
 export type GoalsDefaultStatus = z.infer<typeof GoalsDefaultStatusSchema>;
 
 /**
+ * Mood: where an optional composer block (the « question du jour », the three
+ * positives) is offered — in the main questionnaire, tucked inside the
+ * expandable drawer, or not at all. The score (« note du jour ») and the free
+ * « mot du jour » always sit in the main form and aren't configurable.
+ * Absent ⇒ 'accordion' (the question also honours the legacy
+ * `moodOfferDailyQuestion`: false ⇒ 'off'). See `Mood/lib/placements.ts`.
+ */
+export const MoodSectionPlacementSchema = z.enum(['form', 'accordion', 'off']);
+export type MoodSectionPlacement = z.infer<typeof MoodSectionPlacementSchema>;
+
+/**
+ * Mood: which block leads each row in the entries LIST — the three positives,
+ * the free « mot du jour » (`comment`), or the « question du jour ». The other
+ * two follow in the canonical order (positives → comment → question). A display
+ * concern only (the composer order is fixed); absent ⇒ 'positives'. See
+ * `Mood/lib/placements.ts` (`moodEntryOrder`).
+ */
+export const MoodEntryLeadSchema = z.enum(['positives', 'comment', 'question']);
+export type MoodEntryLead = z.infer<typeof MoodEntryLeadSchema>;
+
+/**
  * Journal: default grouping the module opens on (the sidebar toggle still
  * overrides per session). Absent ⇒ 'month'.
  */
@@ -269,8 +290,18 @@ export const UserPreferencesPayloadSchema = z.looseObject({
   goalsPrefillYear: z.boolean().optional(),
   /** Mood: open with the frise (heatmap) collapsed. Absent ⇒ false (expanded). */
   moodChartCollapsed: z.boolean().optional(),
-  /** Mood: offer the « question du jour » prompt on new entries. Absent ⇒ true. */
+  /** Mood: offer the « question du jour » prompt on new entries. Absent ⇒ true.
+   *  @deprecated superseded by `moodQuestionPlacement`; still READ as a fallback
+   *  so blobs written before the placement setting keep their behaviour
+   *  (false ⇒ 'off'). No longer written. */
   moodOfferDailyQuestion: z.boolean().optional(),
+  /** Mood: placement of the « question du jour » block. Absent ⇒ derived from
+   *  `moodOfferDailyQuestion` (false ⇒ 'off', else 'accordion'). */
+  moodQuestionPlacement: MoodSectionPlacementSchema.optional(),
+  /** Mood: placement of the three-positives block. Absent ⇒ 'accordion'. */
+  moodPositivesPlacement: MoodSectionPlacementSchema.optional(),
+  /** Mood: which block leads each entry row in the list. Absent ⇒ 'positives'. */
+  moodEntryLead: MoodEntryLeadSchema.optional(),
   /** Cycle: hormone-curve reference profile (or « off » to hide the tab). Absent ⇒ 'natal'.
    *  `.catch` degrades a legacy value dropped from the enum (e.g. the removed
    *  'fem') to the default rather than failing the whole prefs parse. */
