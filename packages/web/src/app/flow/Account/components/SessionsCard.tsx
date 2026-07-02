@@ -133,21 +133,26 @@ export default function SessionsCard() {
     const hint = parseDeviceLabel(navigator.userAgent);
     const aad = buildSessionDeviceLabelAAD(user.id);
     encryptMetaString(hint.label, mainKey.aesKey, aad)
-      .then(({ cipher, iv }) =>
-        apiPatchCurrentSessionDeviceLabel({ cipher, iv }),
-      )
-      .then(() => {
+      .then(async ({ cipher, iv }) => {
+        await apiPatchCurrentSessionDeviceLabel({ cipher, iv });
+        return { cipher, iv };
+      })
+      .then(({ cipher, iv }) => {
         if (cancelled) return;
         // Refresh the view : the local label cache for the current
         // session now points at the just-encrypted hint, and the
-        // session row's cipher fields can be marked as set so we
-        // don't try to PATCH again on rerender.
+        // session row gets the REAL cipher/iv we just wrote. Writing
+        // the actual blobs (not a 'set' sentinel) matters — this
+        // setSessions re-runs the decrypt effect above, which would
+        // choke on a sentinel and clobber the label with « échec du
+        // déchiffrement » ; with the real blobs it round-trips back to
+        // hint.label, and the null-cipher guard stops the re-PATCH.
         setLabels((prev) => new Map(prev).set(current.id, hint.label));
         setSessions((prev) =>
           prev
             ? prev.map((s) =>
                 s.id === current.id
-                  ? { ...s, deviceLabelCipher: 'set', deviceLabelIv: 'set' }
+                  ? { ...s, deviceLabelCipher: cipher, deviceLabelIv: iv }
                   : s,
               )
             : prev,
