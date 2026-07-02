@@ -9,7 +9,7 @@
  * and Tabs, same posture as Mood / Goals. Opt-in fertility block is P3.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CycleFlow, CyclePayload, MOOD_SCORE_VALUES, type MoodScore  } from '@nodea/shared';
+import { type CycleFlow, type CyclePayload, MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cycleClient } from '@/core/api/modules/cycle';
 import { moodClient } from '@/core/api/modules/mood';
