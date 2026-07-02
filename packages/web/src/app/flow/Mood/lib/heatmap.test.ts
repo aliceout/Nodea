@@ -76,4 +76,16 @@ describe('buildHeatmap', () => {
       expect(m.weekIndex).toBeLessThan(HEATMAP_WEEKS);
     }
   });
+
+  it('localises the month labels to the active language', () => {
+    const fr = buildHeatmap(null, [], TODAY, HEATMAP_WEEKS, 'fr')
+      .monthLabels.map((m) => m.label)
+      .join(',');
+    const en = buildHeatmap(null, [], TODAY, HEATMAP_WEEKS, 'en')
+      .monthLabels.map((m) => m.label)
+      .join(',');
+    // Before the fix both were hardcoded 'fr-FR' and identical.
+    expect(en).not.toBe(fr);
+    expect(en).toMatch(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/);
+  });
 });

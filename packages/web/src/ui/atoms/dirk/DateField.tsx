@@ -38,6 +38,9 @@ interface DateFieldProps {
   className?: string;
   ariaLabel?: string;
   ariaInvalid?: boolean;
+  /** Id of an external error element to associate via `aria-describedby`
+   *  (e.g. a FieldRow's inline error). */
+  ariaDescribedBy?: string;
 }
 
 /** Parse an ISO `YYYY-MM-DD` to a LOCAL-midnight Date (no TZ shift). */
@@ -66,6 +69,7 @@ export default function DateField({
   className,
   ariaLabel,
   ariaInvalid = false,
+  ariaDescribedBy,
 }: DateFieldProps) {
   const { t } = useI18n();
   const reactId = useId();
@@ -90,6 +94,7 @@ export default function DateField({
           {...(className ? { className } : {})}
           {...(ariaLabel ? { 'aria-label': ariaLabel } : {})}
           {...(ariaInvalid ? { 'aria-invalid': true as const } : {})}
+          {...(ariaDescribedBy ? { 'aria-describedby': ariaDescribedBy } : {})}
         />
       }
     />

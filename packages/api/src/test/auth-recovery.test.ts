@@ -536,6 +536,22 @@ describe('POST /auth/recover-kek/start (anti-enum)', () => {
     expect(start.recoverSessionId).toBeTypeOf('string');
   });
 
+  it('returns STABLE decoy blobs across calls for one unknown email (anti-enum)', async () => {
+    // A real user's wrap blobs are a stable DB column. If the decoy
+    // blobs varied between two calls for the same unknown email, that
+    // instability alone would distinguish unknown (varies) from known
+    // (stable) — the enumeration oracle. So the decoys are derived
+    // deterministically per email and MUST be identical across calls.
+    const a = await callRecoverStart('ghost-stable@example.com', NEW_PASSWORD);
+    const b = await callRecoverStart('ghost-stable@example.com', NEW_PASSWORD);
+    expect(a.wrappedKekRecovery).toBe(b.wrappedKekRecovery);
+    expect(a.wrappedKekRecoveryIv).toBe(b.wrappedKekRecoveryIv);
+    expect(a.userId).toBe(b.userId);
+    // …but distinct per email, so two unknown emails don't collide.
+    const c = await callRecoverStart('ghost-other@example.com', NEW_PASSWORD);
+    expect(c.wrappedKekRecovery).not.toBe(a.wrappedKekRecovery);
+  });
+
   it('returns the same shape for a known user without a recovery code (anti-enum)', async () => {
     // Seeded user but no recovery code set up — should be
     // indistinguishable from the unknown-email branch.

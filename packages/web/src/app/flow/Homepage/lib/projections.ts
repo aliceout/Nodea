@@ -2,13 +2,12 @@ import type {
   GoalsPayload,
   JournalPayload,
   MoodPayload,
-  MoodScore,
 } from '@nodea/shared';
 
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 
 import { VALID_STATUS as GOAL_VALID_STATUS } from '@/app/flow/Goals/lib/mappers';
-import { VALID_SCORES as MOOD_VALID_SCORES } from '@/app/flow/Mood/lib/mappers';
+import { normalizeScore } from '@/app/flow/Mood/lib/mappers';
 
 import type {
   GoalEntryLite,
@@ -23,9 +22,12 @@ import type {
  * Server-side timestamps are gone (minimum-readable-surface
  * design) — the user-facing `payload.date` is the only date we
  * have. Records with a missing or malformed date are dropped
- * (rather than guessed at), as are records with an unexpected
- * mood score. The lite `createdAt` falls back to `dateIso` so
- * downstream tie-breaking still has something to compare on.
+ * (rather than guessed at). Legacy 0..10 mood scores are mapped
+ * onto −2..+2 via the Mood page's `normalizeScore` — NOT dropped —
+ * so migrated entries stay consistent between the home frise /
+ * average and the Mood page. The lite `createdAt` falls back to
+ * `dateIso` so downstream tie-breaking still has something to
+ * compare on.
  *
  * Pure : no I/O, no global clock, no React. Suitable for Vitest.
  */
@@ -36,11 +38,10 @@ export function projectMoodEntries(
   for (const r of records) {
     const p = r.payload;
     if (!p.date || !/^\d{4}-\d{2}-\d{2}/.test(p.date)) continue;
-    if (!MOOD_VALID_SCORES.has(p.moodScore)) continue;
     const dateIso = p.date.slice(0, 10);
     out.push({
       dateIso,
-      score: p.moodScore as MoodScore,
+      score: normalizeScore(p.moodScore ?? '0'),
       createdAt: dateIso,
     });
   }

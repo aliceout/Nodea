@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 
 interface FilterChipProps {
   active: boolean;
@@ -25,6 +25,7 @@ export default function FilterChip({ active, onClick, label, count }: FilterChip
       aria-pressed={active}
       className={cn(
         'cursor-pointer rounded px-2.5 py-1 text-[12px] tabular-nums transition-colors',
+        FOCUS_RING,
         active
           ? 'bg-accent-soft font-semibold text-accent-deep'
           : 'text-muted hover:bg-bg-2 hover:text-ink',

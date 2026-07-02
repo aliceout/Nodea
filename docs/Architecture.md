@@ -513,7 +513,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   recovery widgets), `dirk/` (the canonical Button / Input / Select /
   Textarea / Field set used by composer and forms), `feedback/`
   (InlineAlert, ErrorBoundary), `layout/` (Surface, Modal), and
-  `specifics/` (KeyMissingModal, SurfaceCard) for the rare components
+  `specifics/` (KeyMissingModal) for the rare components
   that don't fit elsewhere.
 - Per-module pages live at `src/app/flow/<Module>/`. Each module is
   lazy-loaded behind an `ErrorBoundary` so a crash stays confined to

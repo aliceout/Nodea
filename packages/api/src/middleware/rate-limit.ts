@@ -43,6 +43,16 @@ export interface RateLimitOptions {
    * `null` the limiter falls back to the trusted client IP.
    */
   keyFn?: (c: Context) => string | null;
+  /**
+   * When `true`, a request that ends in an error response (status
+   * ≥ 400) does NOT consume the caller's budget — the increment made
+   * for it is rolled back after the handler runs. Use it where the
+   * budget should meter *successful* actions, so a rejected attempt
+   * (bad input, already-taken target, a downstream 4xx) can't block a
+   * legitimate retry. Off by default: a login limiter, say, wants
+   * failures to count.
+   */
+  skipFailedRequests?: boolean;
 }
 
 // Stashed on globalThis so Vitest 4's per-test-file module
@@ -111,7 +121,19 @@ export function rateLimit(opts: RateLimitOptions): MiddlewareHandler {
         return c.json({ error: 'rate_limited' }, 429);
       }
     }
+
     await next();
+
+    // `skipFailedRequests`: an error response didn't perform the metered
+    // action, so refund the increment we made above (only successes count).
+    // The limiter's own 429 returns before `next()`, so it's never refunded.
+    if (opts.skipFailedRequests && c.res.status >= 400) {
+      const b = buckets.get(key);
+      if (b) {
+        b.count -= 1;
+        if (b.count <= 0) buckets.delete(key);
+      }
+    }
   };
 }
 

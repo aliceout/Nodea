@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { formatLongDate } from '@/core/i18n/date-format';
+import { formatLongDate, getMonthNames, toIsoDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useMediaQuery } from '@/lib/use-media-query';
 import Heatmap, {
@@ -13,7 +13,6 @@ import {
   densityToIntensity,
   type DayDensity,
 } from '@/app/flow/Journal/lib/day-density';
-import { isoDay } from '@/app/flow/Journal/lib/stats';
 
 import { useHomepageData } from '../context';
 import HomeCard from './HomeCard';
@@ -67,7 +66,7 @@ export default function JournalHeatmap() {
         cellsOut.push(null);
         continue;
       }
-      const iso = isoDay(cellDate);
+      const iso = toIsoDate(cellDate);
       const density: DayDensity | undefined = byDay.get(iso);
       if (!density) {
         cellsOut.push(null);
@@ -85,14 +84,14 @@ export default function JournalHeatmap() {
       });
     }
 
-    const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
+    const monthNames = getMonthNames(language, 'short');
     const labels: HeatmapMonthLabel[] = [];
     let prevMonth = -1;
     for (let w = 0; w < weeks; w++) {
       const monday = new Date(oldestMonday);
       monday.setDate(oldestMonday.getDate() + w * 7);
       if (monday.getMonth() !== prevMonth) {
-        labels.push({ weekIndex: w, label: monthFormatter.format(monday) });
+        labels.push({ weekIndex: w, label: monthNames[monday.getMonth()]! });
         prevMonth = monday.getMonth();
       }
     }

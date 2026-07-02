@@ -228,11 +228,6 @@ export type OptionalSectionId = (typeof OPTIONAL_SECTION_IDS)[number];
 
 const OPTIONAL_SECTION_ID_SET = new Set<string>(OPTIONAL_SECTION_IDS);
 
-/** Whether `id` names an optional (hideable) section. */
-export function isOptionalSection(id: string): id is OptionalSectionId {
-  return OPTIONAL_SECTION_ID_SET.has(id);
-}
-
 /**
  * Clamp an arbitrary stored `reviewHiddenSections` list to the ids this client
  * actually knows are optional — a future blob carrying an unknown id (or a now-

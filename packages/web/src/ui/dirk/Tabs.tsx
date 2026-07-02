@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 
 import { useSlidingIndicator } from './use-sliding-indicator';
 
@@ -104,7 +104,7 @@ export default function Tabs<Id extends string>({
             aria-selected={active}
             onClick={() => onChange(tt.id)}
             data-active={active}
-            className={buttonClass}
+            className={cn(buttonClass, FOCUS_RING)}
           >
             {tt.label}
           </button>

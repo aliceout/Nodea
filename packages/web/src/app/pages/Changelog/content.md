@@ -5,7 +5,36 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
-## v2.19.0 — 2026-07-01
+## v2.20.0 — 2026-07-02
+
+### Nouveautés
+
+- **mood** : configurable composer placement + entry lead order _(ce68941)_
+
+### Corrections
+
+- **a11y** : associate HRT field errors with their control _(621dab0)_
+- **auth** : only spend the email-change quota on a successful change _(90c380c)_
+- **mood** : correct streak-range dates and keep migrated scores on the home frise _(89b830f)_
+- **i18n** : localise heatmap month + tooltip labels _(8f50a2d)_
+- **account** : stop clobbering current-device label with decrypt-failed _(dbb2691)_
+- **auth** : derive recovery decoy blobs deterministically to close enumeration oracle _(457ad1d)_
+- **a11y** : restore visible keyboard focus ring on bespoke buttons _(fcda6c0)_
+
+### Refactor
+
+- **crypto** : route quiz RNG through shared randomBytes; fix exportKey doc _(d016187)_
+- **journal** : drop isoDay in favour of shared toIsoDate _(2810868)_
+
+<details>
+<summary>Maintenance — 2 commits</summary>
+
+- **release** : v2.20.0 _(4b02137)_
+- remove dead code flagged by the audit _(8c7f75e)_
+
+</details>
+
+## v2.19.0 — 2026-07-02
 
 ### Nouveautés
 
@@ -36,6 +65,7 @@ pliés pour ne pas noyer l'essentiel.
 
 ### Corrections
 
+- **cycle** : import MOOD_SCORE_VALUES as a value, not under import type _(82198ec)_
 - **cycle** : enable the wipe action in Settings _(8585c7f)_
 - **auth** : require passkey + live TOTP to delete an account (§6/§7.11) _(7e2880f)_
 - **auth** : serialize security-mode change; key passkey MFA limiter by user _(3013972)_
@@ -67,6 +97,7 @@ pliés pour ne pas noyer l'essentiel.
 
 ### Documentation
 
+- **changelog** : regenerate for v2.19.0 _(9058911)_
 - **cycle** : mark P1 + P2 views shipped in roadmap _(42e0d51)_
 
 <details>

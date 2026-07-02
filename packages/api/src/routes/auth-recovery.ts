@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   RecoverKekFinishBodySchema,
   RecoverKekStartBodySchema,
@@ -354,15 +354,22 @@ interface FakeBlobs {
 }
 
 /**
- * Generate fresh random base64-shaped blobs of the right
- * lengths so the response for an unknown email is byte-shape-
- * indistinguishable from a real one. The client will fail to
- * unwrap them with whatever recovery code they typed — no
- * server log of the mismatch.
+ * Derive base64-shaped decoy blobs of the right lengths so the
+ * response for an unknown email is byte-shape-indistinguishable
+ * from a real one. The client fails to unwrap them with whatever
+ * recovery code they typed — no server log of the mismatch.
  *
  * Real `wrappedKekRecovery` is AES-GCM(KEK, …) → 32-byte KEK +
  * 16-byte tag = 48 bytes ciphertext → 64 chars base64.
  * IV is 12 bytes → 16 chars base64.
+ *
+ * **Decoys MUST be deterministic per email**, for the exact reason
+ * the userId below is (audit v2.8.0): a real `wrappedKekRecovery`
+ * is a stable DB column, so a `randomBytes` decoy that differed
+ * between two calls for the same email would distinguish unknown
+ * (varies) from known (stable) — re-opening the enumeration oracle
+ * the userId fix closed. Both blobs are therefore HMAC-derived
+ * under COOKIE_SECRET (same shield label), stable per email.
  *
  * **userId determinism (audit v2.8.0).** Before, the fake userId
  * used `randomUUID()` and was therefore different on every call —
@@ -406,10 +413,43 @@ function deriveFakeUserId(email: string, secret: string): string {
   );
 }
 
+/**
+ * `length` deterministic bytes for (secret, email, label), via
+ * HMAC-SHA-256 expanded across a counter when one 32-byte block isn't
+ * enough. Same inputs → same bytes, so the decoy blobs stay stable
+ * across repeated calls for a given email (see the anti-enum note above).
+ */
+function deriveFakeBytes(
+  email: string,
+  secret: string,
+  label: string,
+  length: number,
+): Buffer {
+  const blocks: Buffer[] = [];
+  for (let counter = 0; blocks.length * 32 < length; counter++) {
+    blocks.push(
+      createHmac('sha256', secret)
+        .update(RECOVER_ENUM_SHIELD_LABEL)
+        .update('\x1f')
+        .update(label)
+        .update('\x1f')
+        .update(email)
+        .update('\x1f')
+        .update(String(counter))
+        .digest(),
+    );
+  }
+  return Buffer.concat(blocks).subarray(0, length);
+}
+
 function fakeRecoveryBlobs(email: string, secret: string): FakeBlobs {
   return {
-    wrappedKekRecovery: randomBytes(48).toString('base64'),
-    wrappedKekRecoveryIv: randomBytes(12).toString('base64'),
+    wrappedKekRecovery: deriveFakeBytes(email, secret, 'wrappedKekRecovery', 48).toString(
+      'base64',
+    ),
+    wrappedKekRecoveryIv: deriveFakeBytes(email, secret, 'wrappedKekRecoveryIv', 12).toString(
+      'base64',
+    ),
     userId: deriveFakeUserId(email, secret),
   };
 }

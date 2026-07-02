@@ -62,12 +62,6 @@ export function genMonthOptions(
  *  produces those legacy values. */
 export type GoalStatus = 'open' | 'wip' | 'done';
 
-export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
-  open: 'Ouvert',
-  wip: 'En cours',
-  done: 'Terminé',
-};
-
 /** Active-state classes for the goal status pill picker. The
  *  inactive state shares `border-hair bg-bg text-muted` for
  *  every status, so only the active variant is per-status. */

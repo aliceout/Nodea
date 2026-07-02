@@ -1,6 +1,6 @@
 import type { MoodScore } from '@nodea/shared';
 
-import { toIsoDate } from '@/core/i18n/date-format';
+import { getMonthNames, intlLocale, toIsoDate } from '@/core/i18n/date-format';
 
 import { rangeFor } from './date-format';
 import type { HeatmapCell, MonthLabel, MoodEntry } from './types';
@@ -48,6 +48,10 @@ export function buildHeatmap(
   entries: ReadonlyArray<HeatmapEntry>,
   today: Date = new Date(),
   weeks: number = HEATMAP_WEEKS,
+  // Active app language for the cell tooltip + month-axis labels.
+  // Defaults to 'fr' so the pure-function tests (which don't wire i18n)
+  // keep their previous French output.
+  language: string = 'fr',
 ): {
   cells: Array<HeatmapCell | null>;
   monthLabels: MonthLabel[];
@@ -81,12 +85,13 @@ export function buildHeatmap(
   const oldestMonday = new Date(lastWeekMonday);
   oldestMonday.setDate(lastWeekMonday.getDate() - (weeks - 1) * 7);
 
-  const sameYearFmt = new Intl.DateTimeFormat('fr-FR', {
+  const locale = intlLocale(language);
+  const sameYearFmt = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
-  const crossYearFmt = new Intl.DateTimeFormat('fr-FR', {
+  const crossYearFmt = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -124,7 +129,7 @@ export function buildHeatmap(
   // Month labels : every time a week's Monday lands in a
   // different calendar month than the previous week's Monday,
   // drop a label.
-  const monthFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
+  const monthNames = getMonthNames(language, 'short');
   const monthLabels: MonthLabel[] = [];
   let prevMonth = -1;
   for (let w = 0; w < weeks; w++) {
@@ -132,7 +137,7 @@ export function buildHeatmap(
     const monday = new Date(lastWeekMonday);
     monday.setDate(lastWeekMonday.getDate() - weeksAgo * 7);
     if (monday.getMonth() !== prevMonth) {
-      monthLabels.push({ weekIndex: w, label: monthFormatter.format(monday) });
+      monthLabels.push({ weekIndex: w, label: monthNames[monday.getMonth()]! });
       prevMonth = monday.getMonth();
     }
   }

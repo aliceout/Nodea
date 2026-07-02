@@ -1,12 +1,15 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import type { MoodEntryLead } from '@nodea/shared';
 
+import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
 import HoverActions from '@/ui/dirk/module/HoverActions';
 
 import NoteBadge from '../components/NoteBadge';
 import { useMoodActions } from '../context';
+import { moodEntryOrder } from '../lib/placements';
 import type { MoodEntry } from '../lib/types';
 
 /** One row of the Mood entry list. Date label · score badge ·
@@ -35,6 +38,63 @@ import type { MoodEntry } from '../lib/types';
 function EntryRowImpl({ entry }: { entry: MoodEntry }) {
   const { t } = useI18n();
   const { editEntry, deleteEntry } = useMoodActions();
+  // Which block leads the row (display order only — the composer order is
+  // fixed). Read as a primitive so a lead change re-renders the rows but an
+  // unrelated pref write doesn't; the memo still guards entry-data changes.
+  const lead = useNodeaStore((s) => s.preferences.moodEntryLead ?? 'positives');
+
+  const filledPositives = entry.positives.filter((p) => p.trim().length > 0);
+  const blocks: Record<MoodEntryLead, ReactNode> = {
+    positives:
+      filledPositives.length > 0 ? (
+        <ul key="positives" className="space-y-0.5">
+          {filledPositives.map((p, i) => (
+            <li key={i} className="flex items-baseline gap-2 text-[13px] leading-[1.5] text-ink">
+              {/* Bullet only on desktop — on mobile the body is its own row and
+                  a leading « · » would break alignment with the date above. */}
+              <span
+                aria-hidden="true"
+                className="mt-0.5 hidden shrink-0 text-[10px] text-muted md:inline"
+              >
+                ·
+              </span>
+              <span>{p}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null,
+    comment: entry.comment ? (
+      <div
+        key="comment"
+        className="flex items-baseline gap-2 text-[13px] italic leading-[1.5] text-ink-soft"
+      >
+        <span aria-hidden="true" className="hidden shrink-0 text-[10px] md:inline invisible">
+          ·
+        </span>
+        <span>{entry.comment}</span>
+      </div>
+    ) : null,
+    question: entry.question ? (
+      <div
+        key="question"
+        className="flex items-baseline gap-2 text-[13px] leading-[1.5] text-muted"
+      >
+        <span aria-hidden="true" className="hidden shrink-0 text-[10px] md:inline invisible">
+          ·
+        </span>
+        <div>
+          <span className="font-semibold tracking-[0.02em]">{t('mood.row.questionMarker')}</span>{' '}
+          <span className="italic">{entry.question}</span>
+          {entry.answer ? (
+            <>
+              {' — '}
+              <span className="text-ink">{entry.answer}</span>
+            </>
+          ) : null}
+        </div>
+      </div>
+    ) : null,
+  };
 
   return (
     <article className="group grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 border-b border-hair py-4 md:grid-cols-[110px_44px_1fr_auto] md:items-baseline md:gap-x-4 md:gap-y-0">
@@ -44,44 +104,13 @@ function EntryRowImpl({ entry }: { entry: MoodEntry }) {
       <div className="col-start-2 row-start-1">
         <NoteBadge score={entry.score} />
       </div>
-      <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-3 md:row-start-1">
-        <ul className="space-y-0.5">
-          {entry.positives
-            .filter((p) => p.trim().length > 0)
-            .map((p, i) => (
-              <li
-                key={i}
-                className="flex items-baseline gap-2 text-[13px] leading-[1.5] text-ink"
-              >
-                {/* Bullet marker only on desktop — on mobile the
-                    body is in its own row and the leading « · »
-                    would push the text out of alignment with the
-                    date above, which the user explicitly called
-                    out. */}
-                <span aria-hidden="true" className="mt-0.5 hidden text-[10px] text-muted md:inline">
-                  ·
-                </span>
-                <span>{p}</span>
-              </li>
-            ))}
-        </ul>
-        {entry.comment ? (
-          <p className="mt-1.5 text-[13px] italic leading-[1.5] text-ink-soft">
-            {entry.comment}
-          </p>
-        ) : null}
-        {entry.question ? (
-          <div className="mt-1.5 text-[13px] leading-[1.5] text-muted">
-            <span className="font-semibold tracking-[0.02em]">{t('mood.row.questionMarker')}</span>{' '}
-            <span className="italic">{entry.question}</span>
-            {entry.answer ? (
-              <>
-                {' — '}
-                <span className="text-ink">{entry.answer}</span>
-              </>
-            ) : null}
-          </div>
-        ) : null}
+      {/* Positives · mot du jour · question, in the user-chosen lead order
+          (`moodEntryLead`). Each block hangs behind an invisible bullet so its
+          text lines up with the positives' text, not the bullet column; on
+          mobile the bullet is hidden so everything stays flush-left. Blocks are
+          built above; `space-y-1.5` gaps them regardless of which leads. */}
+      <div className="col-span-2 row-start-2 min-w-0 space-y-1.5 md:col-span-1 md:col-start-3 md:row-start-1">
+        {moodEntryOrder(lead).map((k) => blocks[k])}
       </div>
 
       {/* `display: contents` on md+ promotes HoverActions to a

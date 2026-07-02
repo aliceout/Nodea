@@ -545,6 +545,32 @@ describe('PATCH /auth/email', () => {
     });
     expect(res.status).toBe(409);
   });
+
+  it('a failed change (409) does not burn the 24h quota — a corrected retry still succeeds', async () => {
+    await seedUser('taken-target@example.com');
+    await seedUser('retry@example.com');
+    const cookie = await loginAs(app, 'retry@example.com', TEST_PASSWORD);
+
+    // First attempt targets an already-taken address → 409.
+    const proof1 = await passwordProofFor(app, 'retry@example.com', TEST_PASSWORD);
+    const clash = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ ...proof1, newEmail: 'taken-target@example.com' }),
+    });
+    expect(clash.status).toBe(409);
+
+    // Corrected retry to a free address, same day: the failed attempt
+    // must not have consumed the 1/24h budget (skipFailedRequests), so
+    // this succeeds instead of hitting the limiter's 429.
+    const proof2 = await passwordProofFor(app, 'retry@example.com', TEST_PASSWORD);
+    const fixed = await app.request('/auth/email', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ ...proof2, newEmail: 'retry-fixed@example.com' }),
+    });
+    expect(fixed.status).toBe(200);
+  });
 });
 
 describe('PATCH /auth/username', () => {

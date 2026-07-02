@@ -1,7 +1,7 @@
 import { MOOD_SCORE_VALUES, type MoodScore } from '@nodea/shared';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 import SectionLabel from '@/ui/dirk/module/SectionLabel';
 
 /**
@@ -79,6 +79,7 @@ export default function ScoreSection({
               // value.
               className={cn(
                 'flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius-input)] border px-2 text-[11px] transition-colors',
+                FOCUS_RING,
                 tone,
               )}
             >

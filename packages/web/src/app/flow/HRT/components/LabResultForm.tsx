@@ -37,6 +37,7 @@ import FormFooter from '@/ui/dirk/forms/FormFooter';
 import { drawContextLabel, todayIso } from '../lib/labels';
 import type { LabResultEntry } from '../hooks/use-lab-results';
 import FieldRow from './FieldRow';
+import { fieldErrorId } from './field-error-id';
 import TextField from './TextField';
 
 type FormIn = z.input<typeof HrtLabResultPayloadSchema>;
@@ -142,7 +143,7 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
             id="hrt-lab-date"
             value={watch('date') ?? ''}
             onChange={(iso) => setValue('date', iso, { shouldValidate: true })}
-            {...(errors.date ? { ariaInvalid: true } : {})}
+            {...(errors.date ? { ariaInvalid: true, ariaDescribedBy: fieldErrorId('hrt-lab-date') } : {})}
           />
         </FieldRow>
 
@@ -152,6 +153,8 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
               <Input
                 id="hrt-marker"
                 placeholder={t('hrt.labs.form.markerPlaceholder')}
+                aria-invalid={errors.marker ? true : undefined}
+                aria-describedby={errors.marker ? fieldErrorId('hrt-marker') : undefined}
                 {...register('marker')}
               />
               <Button
@@ -171,6 +174,8 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
               id="hrt-marker"
               value={presetSelectValue}
               onChange={(e) => onPresetChange(e.target.value)}
+              aria-invalid={errors.marker ? true : undefined}
+              aria-describedby={errors.marker ? fieldErrorId('hrt-marker') : undefined}
             >
               <option value="" disabled>
                 {t('hrt.labs.form.chooseMarker')}
@@ -195,7 +200,12 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
           {...register('value', { valueAsNumber: true })}
         />
         <FieldRow label={t('hrt.labs.form.unit')} htmlFor="hrt-lab-unit" error={errors.unit?.message}>
-          <Select id="hrt-lab-unit" {...register('unit')}>
+          <Select
+            id="hrt-lab-unit"
+            aria-invalid={errors.unit ? true : undefined}
+            aria-describedby={errors.unit ? fieldErrorId('hrt-lab-unit') : undefined}
+            {...register('unit')}
+          >
             <option value="" disabled>
               {t('hrt.labs.form.unitPlaceholder')}
             </option>
@@ -209,7 +219,12 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
         </FieldRow>
 
         <FieldRow label={t('hrt.labs.form.context')} htmlFor="hrt-context" error={errors.context?.message}>
-          <Select id="hrt-context" {...register('context')}>
+          <Select
+            id="hrt-context"
+            aria-invalid={errors.context ? true : undefined}
+            aria-describedby={errors.context ? fieldErrorId('hrt-context') : undefined}
+            {...register('context')}
+          >
             {HRT_DRAW_CONTEXT_VALUES.map((c) => (
               <option key={c} value={c}>
                 {drawContextLabel(t, c)}
@@ -227,7 +242,13 @@ export default function LabResultForm({ initial, onSubmit, onClose }: LabResultF
       </div>
 
       <FieldRow label={t('hrt.form.notes')} htmlFor="hrt-lab-notes" error={errors.notes?.message}>
-        <Textarea id="hrt-lab-notes" minHeightPx={56} {...register('notes')} />
+        <Textarea
+          id="hrt-lab-notes"
+          minHeightPx={56}
+          aria-invalid={errors.notes ? true : undefined}
+          aria-describedby={errors.notes ? fieldErrorId('hrt-lab-notes') : undefined}
+          {...register('notes')}
+        />
       </FieldRow>
 
       <FormError id="hrt-labresult-error">{serverError}</FormError>

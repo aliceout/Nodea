@@ -37,6 +37,7 @@ import { categoryLabel, todayIso } from '../lib/labels';
 import { doseUnitOf, mgEquivalent } from '../lib/export-model';
 import type { AdminLogEntry } from '../hooks/use-admin-logs';
 import FieldRow from './FieldRow';
+import { fieldErrorId } from './field-error-id';
 import ProductForm from './ProductForm';
 
 type FormIn = z.input<typeof HrtAdminLogPayloadSchema>;
@@ -140,7 +141,12 @@ export default function AdminLogForm({
         <FieldRow label={t('hrt.form.product')} htmlFor="hrt-product" error={errors.product?.message}>
           <div className="flex items-center gap-1.5">
             <div className="min-w-0 flex-1">
-              <Select id="hrt-product" {...register('product')}>
+              <Select
+                id="hrt-product"
+                aria-invalid={errors.product ? true : undefined}
+                aria-describedby={errors.product ? fieldErrorId('hrt-product') : undefined}
+                {...register('product')}
+              >
                 <option value="" disabled>
                   {products.length === 0
                     ? t('hrt.form.productNone')
@@ -185,6 +191,7 @@ export default function AdminLogForm({
             // Hide the native number-spinner arrows (webkit + Firefox).
             className="[appearance:textfield] [&::-webkit-inner-spin-button]:[-webkit-appearance:none] [&::-webkit-outer-spin-button]:[-webkit-appearance:none] [&::-webkit-inner-spin-button]:m-0"
             {...(errors.dose ? { 'aria-invalid': true as const } : {})}
+            {...(errors.dose ? { 'aria-describedby': fieldErrorId('hrt-dose') } : {})}
             {...register('dose', { valueAsNumber: true })}
           />
           {mgPreview != null ? (
@@ -197,13 +204,19 @@ export default function AdminLogForm({
             id="hrt-date"
             value={watch('date') ?? ''}
             onChange={(iso) => setValue('date', iso, { shouldValidate: true })}
-            {...(errors.date ? { ariaInvalid: true } : {})}
+            {...(errors.date ? { ariaInvalid: true, ariaDescribedBy: fieldErrorId('hrt-date') } : {})}
           />
         </FieldRow>
       </div>
 
       <FieldRow label={t('hrt.form.notes')} htmlFor="hrt-notes" error={errors.notes?.message}>
-        <Textarea id="hrt-notes" minHeightPx={56} {...register('notes')} />
+        <Textarea
+          id="hrt-notes"
+          minHeightPx={56}
+          aria-invalid={errors.notes ? true : undefined}
+          aria-describedby={errors.notes ? fieldErrorId('hrt-notes') : undefined}
+          {...register('notes')}
+        />
       </FieldRow>
 
       <FormError id="hrt-adminlog-error">{serverError}</FormError>

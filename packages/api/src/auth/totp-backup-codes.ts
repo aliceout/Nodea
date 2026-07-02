@@ -27,8 +27,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 /** Base32 alphabet (RFC 4648, no padding) — same as TOTP secrets. */
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
-export const BACKUP_CODE_BIT_LENGTH = 120;
-/** 120 / 5 = 24 base32 chars. */
+/** 120 bits / 5 = 24 base32 chars. */
 export const BACKUP_CODE_LENGTH_CHARS = 24;
 export const BACKUP_CODES_PER_USER = 10;
 

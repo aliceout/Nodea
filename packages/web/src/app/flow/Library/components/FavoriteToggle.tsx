@@ -2,7 +2,7 @@ import { StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 
 /**
  * Hover-revealed star toggle for a Library item's `isFavorite` flag.
@@ -39,6 +39,7 @@ export default function FavoriteToggle({
       title={label}
       className={cn(
         'inline-flex cursor-pointer items-center justify-center rounded-sm transition-colors',
+        FOCUS_RING,
         size === 'md' ? 'h-7 w-7' : 'h-6 w-6',
         isFavorite
           ? 'text-accent hover:bg-accent-soft'

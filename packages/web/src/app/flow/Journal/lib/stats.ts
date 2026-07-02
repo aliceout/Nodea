@@ -1,3 +1,5 @@
+import { toIsoDate } from '@/core/i18n/date-format';
+
 import type { JournalEntry, JournalStats } from './types';
 
 /**
@@ -29,8 +31,8 @@ export function computeStats(
   }
   const refDay = new Date(today);
   refDay.setHours(0, 0, 0, 0);
-  const todayKey = isoDay(refDay);
-  const yesterdayKey = isoDay(new Date(refDay.getTime() - 24 * 3600 * 1000));
+  const todayKey = toIsoDate(refDay);
+  const yesterdayKey = toIsoDate(new Date(refDay.getTime() - 24 * 3600 * 1000));
   const streakIncludesToday = dayKeys.has(todayKey);
   let cursor = streakIncludesToday
     ? new Date(refDay)
@@ -38,7 +40,7 @@ export function computeStats(
       ? new Date(refDay.getTime() - 24 * 3600 * 1000)
       : null;
   let streakDays = 0;
-  while (cursor && dayKeys.has(isoDay(cursor))) {
+  while (cursor && dayKeys.has(toIsoDate(cursor))) {
     streakDays += 1;
     cursor = new Date(cursor.getTime() - 24 * 3600 * 1000);
   }
@@ -56,14 +58,4 @@ export function countWords(text: string): number {
   const trimmed = text.trim();
   if (!trimmed) return 0;
   return trimmed.split(/\s+/).length;
-}
-
-/** ISO `YYYY-MM-DD` for a `Date` (zero-padded month / day, local
- *  time). Used internally by `computeStats` for the streak Set
- *  lookups ; exported for the tests. */
-export function isoDay(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
