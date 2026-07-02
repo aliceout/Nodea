@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 
 export type ButtonVariant =
   | 'primary'
@@ -93,9 +93,9 @@ export default function Button({
         'transition-[background-color,transform,color] duration-150',
         // Visible keyboard focus ring — the global reset in utilities.css
         // strips the native outline on every <button>, and this atom is
-        // the single source for clickable surfaces, so the ring lives
-        // here once (WCAG 2.4.7) instead of per call-site.
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        // the single source for clickable surfaces (WCAG 2.4.7). Shared
+        // `FOCUS_RING` so bespoke buttons that can't use this atom match.
+        FOCUS_RING,
         'disabled:cursor-not-allowed disabled:opacity-60',
         iconOnly ? ICON_SIZE_CLASS[size] : SIZE_CLASS[size],
         VARIANT_CLASS[variant],

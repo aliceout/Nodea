@@ -21,7 +21,7 @@ import {
   type HrtSubview,
 } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 import { useSlidingIndicator } from '@/ui/dirk/use-sliding-indicator';
 
 interface NavItem {
@@ -219,6 +219,7 @@ function SidebarItem({
         // transparent and only its text / icon colour changes.
         'group relative z-10 flex w-full items-center rounded px-2.5 py-[0.4125rem] text-left transition-[background-color,color,transform] duration-200',
         'text-[13.5px] text-ink-soft',
+        FOCUS_RING,
         drawer ? '' : collapsed ? 'justify-center' : 'justify-center lg:justify-start',
         active
           ? // Deep-green text, with the icon kept at full accent (see below)
@@ -292,6 +293,7 @@ function LibrarySubNav({
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'block w-full rounded px-2 py-[0.275rem] text-left text-[12.5px] transition-colors',
+                FOCUS_RING,
                 active
                   ? 'bg-bg font-medium text-ink'
                   : 'text-muted hover:bg-bg hover:text-ink',
@@ -351,6 +353,7 @@ function HrtSubNav({
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'block w-full rounded px-2 py-[0.275rem] text-left text-[12.5px] transition-colors',
+                FOCUS_RING,
                 active
                   ? 'bg-bg font-medium text-ink'
                   : 'text-muted hover:bg-bg hover:text-ink',

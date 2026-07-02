@@ -1,6 +1,7 @@
 import type { NormalisedBook } from '@nodea/shared';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
+import { FOCUS_RING } from '@/lib/utils';
 
 interface CoverGridProps {
   results: NormalisedBook[];
@@ -40,7 +41,7 @@ export default function CoverGrid({
               type="button"
               onClick={() => onPick(book)}
               title={book.title}
-              className="group flex w-full cursor-pointer flex-col gap-1 rounded-sm p-1 text-left transition-colors hover:bg-bg-2"
+              className={`group flex w-full cursor-pointer flex-col gap-1 rounded-sm p-1 text-left transition-colors hover:bg-bg-2 ${FOCUS_RING}`}
             >
               <span className="block aspect-[2/3] w-full overflow-hidden rounded-sm border border-hair bg-bg-2">
                 <img

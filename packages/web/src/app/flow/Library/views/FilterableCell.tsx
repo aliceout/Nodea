@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 
 import { useLibraryFilters } from '../context';
 import { type CellFilterField } from '../lib/cell-filter';
@@ -43,7 +43,8 @@ export default function FilterableCell({
         setCellFilter({ field, value });
       }}
       className={cn(
-        'cursor-pointer text-left transition-colors hover:text-accent hover:underline underline-offset-2',
+        'cursor-pointer rounded-sm text-left transition-colors hover:text-accent hover:underline underline-offset-2',
+        FOCUS_RING,
         className,
       )}
       title={t('library.cellFilter.filterTitle', {

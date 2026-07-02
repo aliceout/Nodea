@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 import Select from '@/ui/atoms/dirk/Select';
 
 /**
@@ -26,6 +26,7 @@ interface Props {
 const chip = (active: boolean) =>
   cn(
     'cursor-pointer rounded px-2.5 py-1 text-[12px] transition-colors',
+    FOCUS_RING,
     active
       ? 'bg-accent-soft font-semibold text-accent-deep'
       : 'text-muted hover:bg-bg-2 hover:text-ink',

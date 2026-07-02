@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
+import { FOCUS_RING } from '@/lib/utils';
+
 /**
  * Mobile-only « + Filtres » disclosure — folds a module's filter
  * sections so they don't squat at the bottom of the page when the
@@ -43,7 +45,7 @@ export default function CollapsibleFiltersToggle({
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="text-[12px] text-muted transition-colors hover:text-ink"
+          className={`rounded-sm text-[12px] text-muted transition-colors hover:text-ink ${FOCUS_RING}`}
         >
           {open ? '− ' : '+ '}
           {label}

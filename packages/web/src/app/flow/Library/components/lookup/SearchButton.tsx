@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '@/i18n/I18nProvider.jsx';
-import { cn } from '@/lib/utils';
+import { cn, FOCUS_RING } from '@/lib/utils';
 import DirkButton from '@/ui/atoms/dirk/Button';
 
 interface SearchButtonProps {
@@ -82,7 +82,8 @@ export default function SearchButton({
             className={cn(
               'inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-l-none rounded-r-md bg-accent-strong px-2 text-white font-semibold transition-[background-color,color] duration-150',
               'shadow-[inset_1px_0_0_rgba(255,255,255,0.25)]',
-              'hover:bg-accent-strong-hover focus:outline-none disabled:cursor-not-allowed disabled:opacity-60',
+              'hover:bg-accent-strong-hover disabled:cursor-not-allowed disabled:opacity-60',
+              FOCUS_RING,
             )}
           >
             <span aria-hidden="true" className="text-[11px] leading-none">
@@ -108,6 +109,7 @@ export default function SearchButton({
                     }}
                     className={cn(
                       'block w-full cursor-pointer rounded-sm px-2.5 py-1.5 text-left text-[12px] transition-colors',
+                      FOCUS_RING,
                       active
                         ? 'bg-accent-soft font-semibold text-accent-deep'
                         : 'text-ink hover:bg-bg-2',
