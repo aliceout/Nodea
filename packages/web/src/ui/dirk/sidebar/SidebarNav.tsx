@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import {
+  ArrowPathIcon,
   BeakerIcon,
   BookOpenIcon,
   CalendarIcon,
@@ -41,6 +42,7 @@ const MAIN_ITEMS: NavItem[] = [
   { id: 'library', labelKey: 'layout.nav.library', icon: BookOpenIcon },
   { id: 'review', labelKey: 'layout.nav.review', icon: CalendarIcon },
   { id: 'hrt', labelKey: 'layout.nav.hrt', icon: BeakerIcon },
+  { id: 'cycle', labelKey: 'layout.nav.cycle', icon: ArrowPathIcon },
 ];
 
 /**

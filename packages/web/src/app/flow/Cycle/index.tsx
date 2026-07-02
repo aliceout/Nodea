@@ -1,0 +1,215 @@
+/**
+ * Cycle — menstrual-cycle tracking (spec `docs/Modules/Cycle.md`).
+ *
+ * Orchestrates the page : three switchable views (calendar / ring /
+ * stacked, via CycleViews) with the inline day composer above them
+ * (CycleDayForm mounted through the shared InlinePanel) and an entries
+ * list below, plus a next-period estimate in the side column. Reuses
+ * the shared form chrome (MODULE_FORM_CARD / FormFooter / FormError)
+ * and Tabs, same posture as Mood / Goals. Opt-in fertility block is P3.
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { CycleFlow, CyclePayload, MOOD_SCORE_VALUES, type MoodScore  } from '@nodea/shared';
+import type { DecryptedRecord } from '@/core/api/modules/collection-client';
+import { cycleClient } from '@/core/api/modules/cycle';
+import { moodClient } from '@/core/api/modules/mood';
+import { usePreferences } from '@/core/auth/use-preferences';
+import { useModuleClient } from '@/core/modules/use-module-client';
+import { useNodeaStore } from '@/core/store/nodea-store';
+import { useI18n } from '@/i18n/I18nProvider.jsx';
+import Button from '@/ui/atoms/dirk/Button';
+import InlinePanel from '@/ui/dirk/forms/InlinePanel';
+import ModuleShell from '@/ui/dirk/module/ModuleShell';
+import Topbar from '@/ui/dirk/Topbar';
+import CycleDayForm from './components/CycleDayForm';
+import CycleEntriesList from './components/CycleEntriesList';
+import CycleSettingsPanel from './components/CycleSettingsPanel';
+import CycleViews from './components/CycleViews';
+import SideColumn from './components/SideColumn';
+import { computeCycle } from './lib/cycle-model';
+
+type Rec = DecryptedRecord<CyclePayload>;
+
+function todayIso(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export default function CyclePage() {
+  const { t } = useI18n();
+  const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
+  const ctx = useModuleClient('cycle');
+  const { preferences } = usePreferences();
+  const hormoneProfile = preferences.cycleHormoneProfile ?? 'natal';
+  const today = useMemo(todayIso, []);
+  const [records, setRecords] = useState<Rec[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [year, setYear] = useState<number | null>(null);
+  const [month, setMonth] = useState<number | null>(null);
+
+  const reload = useCallback(() => {
+    if (!ctx) return;
+    cycleClient
+      .list(ctx.moduleUserId, ctx.mainKey)
+      .then((r) => {
+        setRecords(r);
+        setLoadError(null);
+      })
+      // Never swallow silently — an empty module and a broken fetch must
+      // not look the same (a missing table 500 read as « no data »).
+      .catch((e: unknown) => {
+        setLoadError(e instanceof Error ? e.message : t('cycle.loadFailed'));
+      });
+  }, [ctx, t]);
+  useEffect(reload, [reload]);
+
+  // Cross-reference Mood by date : the same-day score at the end of each entry
+  // row (opt-in, default on). A best-effort annotation — if Mood is disabled or
+  // its load fails, the notes just don't show. Never blocks the cycle list.
+  const moodCtx = useModuleClient('mood');
+  const showMoodNote = preferences.cycleShowMoodNote ?? true;
+  const [moodByDate, setMoodByDate] = useState<ReadonlyMap<string, MoodScore>>(new Map());
+  useEffect(() => {
+    if (!moodCtx || !showMoodNote) {
+      setMoodByDate(new Map());
+      return undefined;
+    }
+    let cancelled = false;
+    moodClient
+      .list(moodCtx.moduleUserId, moodCtx.mainKey)
+      .then((recs) => {
+        if (cancelled) return;
+        const m = new Map<string, MoodScore>();
+        for (const r of recs) {
+          const s = r.payload.moodScore;
+          if ((MOOD_SCORE_VALUES as readonly string[]).includes(s)) {
+            m.set(r.payload.date, s as MoodScore);
+          }
+        }
+        setMoodByDate(m);
+      })
+      .catch(() => {
+        if (!cancelled) setMoodByDate(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [moodCtx, showMoodNote]);
+
+  const stats = useMemo(
+    () =>
+      computeCycle(
+        records.map((r) => ({
+          date: r.payload.date,
+          ...(r.payload.flow ? { flow: r.payload.flow } : {}),
+        })),
+        today,
+      ),
+    [records, today],
+  );
+  const byDate = useMemo(() => {
+    const m = new Map<string, Rec>();
+    for (const r of records) m.set(r.payload.date, r);
+    return m;
+  }, [records]);
+  const flowByDate = useMemo(() => {
+    const m = new Map<string, CycleFlow>();
+    for (const r of records) if (r.payload.flow) m.set(r.payload.date, r.payload.flow);
+    return m;
+  }, [records]);
+  // Dates already logged — the Clue import dedupes against these.
+  const existingDates = useMemo(() => new Set(byDate.keys()), [byDate]);
+  const availableYears = useMemo(() => {
+    const set = new Set<number>();
+    for (const r of records) set.add(Number(r.payload.date.slice(0, 4)));
+    return Array.from(set).sort((a, b) => b - a);
+  }, [records]);
+  // Jumping years drops a stale month so the entries list can't silently
+  // empty (same guard as Mood).
+  const changeYear = useCallback((y: number | null) => {
+    setYear(y);
+    setMonth(null);
+  }, []);
+  // Calendar arrows move the anchor and keep both selectors in sync.
+  const setAnchor = useCallback((y: number, m: number) => {
+    setYear(y);
+    setMonth(m);
+  }, []);
+
+  return (
+    <ModuleShell
+      topbar={
+        <Topbar label={t('cycle.title')} onOpenMenu={() => setMobileMenuOpen(true)}>
+          {!selected ? (
+            <Button variant="primary" size="sm" onClick={() => setSelected(today)}>
+              {t('cycle.logToday')}
+            </Button>
+          ) : null}
+        </Topbar>
+      }
+      side={
+        <SideColumn
+          stats={stats}
+          today={today}
+          year={year}
+          ctx={ctx}
+          existingDates={existingDates}
+          onImported={reload}
+        />
+      }
+    >
+      {!ctx ? (
+        <p className="p-6 text-center text-sm text-muted">{t('cycle.notReady')}</p>
+      ) : loadError ? (
+        <p className="p-6 text-center text-sm text-danger" role="alert">
+          {loadError}
+        </p>
+      ) : (
+        <section className="flex min-w-0 flex-col">
+          <CycleViews
+            stats={stats}
+            flowByDate={flowByDate}
+            today={today}
+            selected={selected}
+            onSelectDay={setSelected}
+            formOpen={selected !== null}
+            year={year}
+            month={month}
+            availableYears={availableYears}
+            onYearChange={changeYear}
+            onMonthChange={setMonth}
+            onAnchorChange={setAnchor}
+            hormoneProfile={hormoneProfile}
+          />
+          <CycleSettingsPanel />
+          <InlinePanel open={selected !== null}>
+            {selected ? (
+              <CycleDayForm
+                ctx={ctx}
+                date={selected}
+                initial={byDate.get(selected) ?? null}
+                onSaved={(rec) => {
+                  setRecords((prev) => {
+                    const without = prev.filter((r) => r.payload.date !== selected);
+                    return rec ? [rec, ...without] : without;
+                  });
+                  setSelected(null);
+                }}
+                onCancel={() => setSelected(null)}
+              />
+            ) : null}
+          </InlinePanel>
+          <CycleEntriesList
+            records={records}
+            year={year}
+            month={month}
+            moodByDate={moodByDate}
+            onSelect={setSelected}
+          />
+        </section>
+      )}
+    </ModuleShell>
+  );
+}

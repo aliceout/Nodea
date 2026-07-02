@@ -1,0 +1,148 @@
+{
+  "title": "Cycle",
+  "logToday": "Noter aujourd’hui",
+  "showChart": "Afficher le graphique",
+  "hideChart": "Masquer le graphique",
+  "selectors": {
+    "yearAria": "Choisir l’année",
+    "yearRolling": "En cours",
+    "monthAria": "Choisir le mois",
+    "monthAll": "Tous"
+  },
+  "notReady": "Active le module Cycle depuis Mon compte → Modules pour commencer.",
+  "disclaimer": "Estimation informative — ni un moyen de contraception, ni un diagnostic. En cas de doute, parles-en à un·e soignant·e.",
+  "estimate": {
+    "title": "Prochaines règles",
+    "inDays": "dans {count} j",
+    "avg": "cycle moyen ~{days} j",
+    "notEnough": "Pas encore assez de régularité pour estimer.",
+    "irregular": "Cycles trop irréguliers pour une estimation fiable."
+  },
+  "legend": {
+    "title": "Légende",
+    "period": "Règles",
+    "predicted": "Prédiction",
+    "today": "Aujourd’hui"
+  },
+  "averages": {
+    "title": "Moyennes sur les 12 derniers mois",
+    "days": {
+      "one": "{count} jour",
+      "other": "{count} jours"
+    },
+    "cycleSentence": "Ton cycle dure en moyenne {days}.",
+    "periodSentence": "Tes règles durent en moyenne {days}.",
+    "window": "Sur les 12 derniers mois",
+    "notEnough": "Pas encore assez de cycles complets pour une moyenne.",
+    "inYear": "En {year}",
+    "yearCycleSentence": "Ton cycle durait en moyenne {days}.",
+    "yearPeriodSentence": "Tes règles duraient {days}.",
+    "notEnoughYear": "Pas de cycle complet enregistré cette année-là."
+  },
+  "calendar": {
+    "prevMonth": "Mois précédents",
+    "nextMonth": "Mois suivants"
+  },
+  "phase": {
+    "menstrual": "Menstruelle",
+    "follicular": "Folliculaire",
+    "fertile": "Fertile",
+    "ovulation": "Ovulation",
+    "luteal": "Lutéale"
+  },
+  "import": {
+    "trigger": "Importer des données",
+    "title": "Importer depuis Clue",
+    "help": "Exporte tes données depuis Clue (menu → Réglages → « Télécharger mes données »), puis choisis ici le .zip reçu — ou le fichier measurements.json si tu l’as déjà extrait. Si le zip est protégé, le mot de passe te sera demandé.",
+    "choose": "Choisir un fichier…",
+    "passwordLabel": "Mot de passe du zip Clue",
+    "unlock": "Déverrouiller",
+    "summary": "{days} jours trouvés · {withFlow} avec règles",
+    "range": "du {from} au {to}",
+    "newDays": "{count} nouveaux jours à importer",
+    "skipped": "{count} déjà présents (ignorés)",
+    "cta": "Importer {count} jours",
+    "importing": "Import…",
+    "done": "{count} jours importés.",
+    "close": "Fermer",
+    "errors": {
+      "invalid_json": "Fichier illisible (JSON invalide).",
+      "unrecognized_clue_format": "Format Clue non reconnu — choisis le .zip ou le fichier measurements.json.",
+      "empty": "Aucune donnée exploitable dans ce fichier.",
+      "wrong_password": "Mot de passe incorrect.",
+      "no_measurements": "measurements.json introuvable dans le zip.",
+      "read_failed": "Lecture du fichier impossible.",
+      "failed": "Échec de l’import."
+    }
+  },
+  "view": {
+    "calendar": "Calendrier",
+    "stacked": "Cycles",
+    "hormones": "Hormones"
+  },
+  "ring": {
+    "day": "Jour {count}",
+    "dayBadge": "J{count}",
+    "todayLabel": "Aujourd’hui · {date}",
+    "periodDay": "Jour {count} des règles",
+    "periodsIn": "Règles dans {count} j",
+    "periodsToday": "Règles aujourd’hui",
+    "ovulationDay": "Jour d’ovulation estimé"
+  },
+  "entries": {
+    "empty": "Aucune entrée pour l’instant."
+  },
+  "side": {
+    "current": "Où j’en suis"
+  },
+  "hormones": {
+    "title": "Taux hormonaux (indicatifs)",
+    "estrogen": "Œstrogènes",
+    "progesterone": "Progestérone",
+    "lh": "LH",
+    "testosterone": "Testostérone",
+    "axis": {
+      "high": "Élevé",
+      "low": "Faible"
+    },
+    "disclaimer": "Courbes moyennes indicatives — pas tes valeurs. Pour tes taux réels, parles-en à un·e soignant·e (analyses)."
+  },
+  "settings": {
+    "hormoneProfileLabel": "Courbe hormonale de référence",
+    "hormoneProfileHint": "Le schéma type à afficher (indicatif). Masculinisant = sous HRT.",
+    "profile": {
+      "off": "Désactivée",
+      "natal": "Cycle menstruel",
+      "masc": "HRT masculinisant"
+    },
+    "moodNoteLabel": "Note d’humeur du jour",
+    "moodNoteHint": "Affiche la note Mood du même jour au bout de chaque entrée."
+  },
+  "moodNote": {
+    "title": "Note Mood du jour"
+  },
+  "stacked": {
+    "empty": "Pas encore de cycle complet à comparer.",
+    "unit": "{count} j",
+    "ovulation": "Ovulation estimée"
+  },
+  "loadFailed": "Chargement impossible.",
+  "form": {
+    "flow": {
+      "label": "Flux",
+      "none": "Aucun",
+      "spotting": "Traces",
+      "light": "Léger",
+      "medium": "Moyen",
+      "heavy": "Abondant"
+    },
+    "symptoms": {
+      "label": "Symptômes",
+      "placeholder": "crampes, fatigue, maux de tête…"
+    },
+    "notes": {
+      "label": "Notes"
+    },
+    "saveFailed": "Enregistrement impossible."
+  }
+}

@@ -264,6 +264,10 @@
     "gateHint": "Retape ton e-mail et ton mot de passe actuel pour activer la suppression.",
     "windowConfirm": "Cette action est irréversible. Toutes tes entrées chiffrées seront supprimées. Continuer ?",
     "wrongPassword": "Mot de passe actuel incorrect.",
+    "totpLabel": "Code d’authentification (2FA)",
+    "wrongTotp": "Code 2FA invalide ou expiré.",
+    "passkeyCancelled": "Vérification par passkey annulée.",
+    "passkeyRequired": "Vérification par passkey requise.",
     "error": "Erreur lors de la suppression.",
     "explanation": "La suppression efface toutes tes entrées chiffrées, sessions et invitations. Aucune récupération possible — pense à exporter avant."
   }

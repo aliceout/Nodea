@@ -80,6 +80,7 @@ export const hrtAdminLogsEntries = createEntryTable('hrt_admin_logs_entries');
 export const hrtLabResultsEntries = createEntryTable('hrt_lab_results_entries');
 export const hrtSuppliersEntries = createEntryTable('hrt_suppliers_entries');
 export const hrtSchedulesEntries = createEntryTable('hrt_schedules_entries');
+export const cycleEntries = createEntryTable('cycle_entries');
 
 /**
  * Shared type alias. All entry tables are structurally

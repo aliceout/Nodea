@@ -1,0 +1,148 @@
+{
+  "title": "Cycle",
+  "logToday": "Log today",
+  "showChart": "Show chart",
+  "hideChart": "Hide chart",
+  "selectors": {
+    "yearAria": "Select year",
+    "yearRolling": "Rolling",
+    "monthAria": "Select month",
+    "monthAll": "All"
+  },
+  "notReady": "Enable the Cycle module from My account → Modules to get started.",
+  "disclaimer": "Informational estimate — not contraception and not a diagnosis. If in doubt, talk to a clinician.",
+  "estimate": {
+    "title": "Next period",
+    "inDays": "in {count} d",
+    "avg": "avg cycle ~{days} d",
+    "notEnough": "Not enough regularity to estimate yet.",
+    "irregular": "Cycles too irregular for a reliable estimate."
+  },
+  "legend": {
+    "title": "Legend",
+    "period": "Period",
+    "predicted": "Predicted",
+    "today": "Today"
+  },
+  "averages": {
+    "title": "Averages over the last 12 months",
+    "days": {
+      "one": "{count} day",
+      "other": "{count} days"
+    },
+    "cycleSentence": "Your cycle lasts {days} on average.",
+    "periodSentence": "Your period lasts {days} on average.",
+    "window": "Over the last 12 months",
+    "notEnough": "Not enough complete cycles for an average yet.",
+    "inYear": "In {year}",
+    "yearCycleSentence": "Your cycle lasted {days} on average.",
+    "yearPeriodSentence": "Your period lasted {days}.",
+    "notEnoughYear": "No complete cycle recorded that year."
+  },
+  "calendar": {
+    "prevMonth": "Previous months",
+    "nextMonth": "Next months"
+  },
+  "phase": {
+    "menstrual": "Menstrual",
+    "follicular": "Follicular",
+    "fertile": "Fertile",
+    "ovulation": "Ovulation",
+    "luteal": "Luteal"
+  },
+  "import": {
+    "trigger": "Import data",
+    "title": "Import from Clue",
+    "help": "Export your data from Clue (menu → Settings → “Download my data”), then pick the .zip you received here — or the measurements.json file if you already extracted it. If the zip is protected, you'll be asked for the password.",
+    "choose": "Choose a file…",
+    "passwordLabel": "Clue zip password",
+    "unlock": "Unlock",
+    "summary": "{days} days found · {withFlow} with a period",
+    "range": "from {from} to {to}",
+    "newDays": "{count} new days to import",
+    "skipped": "{count} already present (skipped)",
+    "cta": "Import {count} days",
+    "importing": "Importing…",
+    "done": "{count} days imported.",
+    "close": "Close",
+    "errors": {
+      "invalid_json": "Unreadable file (invalid JSON).",
+      "unrecognized_clue_format": "Unrecognised Clue format — pick the .zip or the measurements.json file.",
+      "empty": "No usable data in this file.",
+      "wrong_password": "Wrong password.",
+      "no_measurements": "measurements.json not found in the zip.",
+      "read_failed": "Could not read the file.",
+      "failed": "Import failed."
+    }
+  },
+  "view": {
+    "calendar": "Calendar",
+    "stacked": "Cycles",
+    "hormones": "Hormones"
+  },
+  "ring": {
+    "day": "Day {count}",
+    "dayBadge": "D{count}",
+    "todayLabel": "Today · {date}",
+    "periodDay": "Day {count} of your period",
+    "periodsIn": "Period in {count} d",
+    "periodsToday": "Period due today",
+    "ovulationDay": "Est. ovulation day"
+  },
+  "entries": {
+    "empty": "No entries yet."
+  },
+  "side": {
+    "current": "Where I’m at"
+  },
+  "hormones": {
+    "title": "Hormone levels (typical)",
+    "estrogen": "Estrogen",
+    "progesterone": "Progesterone",
+    "lh": "LH",
+    "testosterone": "Testosterone",
+    "axis": {
+      "high": "High",
+      "low": "Low"
+    },
+    "disclaimer": "Indicative average curves — not your values. For your actual levels, see a clinician (lab tests)."
+  },
+  "settings": {
+    "hormoneProfileLabel": "Reference hormone curve",
+    "hormoneProfileHint": "Which typical pattern to show (indicative). Masculinising = on HRT.",
+    "profile": {
+      "off": "Off",
+      "natal": "Menstrual cycle",
+      "masc": "Masculinising HRT"
+    },
+    "moodNoteLabel": "Same-day mood score",
+    "moodNoteHint": "Show the Mood score of the same day at the end of each entry."
+  },
+  "moodNote": {
+    "title": "Mood score for the day"
+  },
+  "stacked": {
+    "empty": "No completed cycle to compare yet.",
+    "unit": "{count} d",
+    "ovulation": "Est. ovulation"
+  },
+  "loadFailed": "Could not load.",
+  "form": {
+    "flow": {
+      "label": "Flow",
+      "none": "None",
+      "spotting": "Spotting",
+      "light": "Light",
+      "medium": "Medium",
+      "heavy": "Heavy"
+    },
+    "symptoms": {
+      "label": "Symptoms",
+      "placeholder": "cramps, fatigue, headache…"
+    },
+    "notes": {
+      "label": "Notes"
+    },
+    "saveFailed": "Could not save."
+  }
+}

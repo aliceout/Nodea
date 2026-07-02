@@ -29,6 +29,10 @@
     "label": "HRT",
     "description": "Track hormone therapy administration and lab results over time."
   },
+  "cycle": {
+    "label": "Cycle",
+    "description": "Track your periods, symptoms and cycles — end-to-end encrypted, blind server."
+  },
   "account": {
     "label": "My account",
     "description": "Manage your personal information, security and account preferences."

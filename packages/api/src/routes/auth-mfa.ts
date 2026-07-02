@@ -98,10 +98,20 @@ const verifyLimiter = rateLimit({
   },
 });
 
+// Keyed on the pending session's USER, same as the TOTP + password verify
+// limiters — otherwise an attacker holding the mfa_pending cookie could exceed
+// the intended per-user cap on passkey start/finish by rotating IPs (audit
+// 2026-07 — this one was left IP-keyed when its two siblings were re-keyed in
+// 2026-06). A passkey assertion isn't guessable, so the cap here bounds
+// challenge/CPU churn rather than credential guessing. IP stays the fallback.
 const passkeyMfaLimiter = rateLimit({
   max: 10,
   windowMs: 5 * 60_000,
   keyPrefix: 'mfa-passkey',
+  keyFn: (c) => {
+    const user = c.get('user') as { id?: string } | undefined;
+    return user?.id ?? null;
+  },
 });
 
 // Keyed on the pending session's USER (like the TOTP verify limiter) so

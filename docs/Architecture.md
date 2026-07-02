@@ -670,8 +670,8 @@ the server never sees cleartext or the passphrase.
 - The export/backup walk is driven by the `registry.data.ts` plugin
   list: `mood, goals, journal,
   library_items, library_reviews, review, hrt_products,
-  hrt_admin_logs, hrt_lab_results, hrt_schedules` (legacy `library`
-  key aliases onto its split variants). `library_covers`
+  hrt_admin_logs, hrt_lab_results, hrt_schedules, cycle` (legacy
+  `library` key aliases onto its split variants). `library_covers`
   is intentionally excluded — re-fetchable artwork.
 
 **Encrypted backup** (`.age`) — a portable backup sealed under a 12-word

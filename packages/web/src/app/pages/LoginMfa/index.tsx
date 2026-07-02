@@ -79,15 +79,28 @@ export default function LoginMfaPage() {
   const factorsNeeded = navState?.factorsNeeded;
   // Picker only shows when the server explicitly flagged
   // `secondFactorChoice` AND the wire still lists both
-  // alternatives. Reload → navState is null → fall back to
-  // TOTP (still a valid path : the server accepts either).
+  // alternatives. Otherwise honor whichever factor the server
+  // actually asked for : a user who disabled TOTP but kept a
+  // passkey (mode `always_2fa`) gets `['passkey']` and must land
+  // on the passkey step — the old `: 'totp'` fallback stranded
+  // them on a TOTP screen they could never satisfy. TOTP wins
+  // when present (mode `maximum` password-first lists both as
+  // mandatory and started there historically). Reload → navState
+  // null → factorsNeeded undefined → fall back to TOTP (still a
+  // valid path : the server accepts either).
   const initialStep: 'picker' | 'totp' | 'passkey' | 'password' =
     navState?.secondFactorChoice === true &&
     factorsNeeded !== undefined &&
     factorsNeeded.includes('totp') &&
     factorsNeeded.includes('passkey')
       ? 'picker'
-      : 'totp';
+      : factorsNeeded === undefined || factorsNeeded.includes('totp')
+        ? 'totp'
+        : factorsNeeded.includes('passkey')
+          ? 'passkey'
+          : factorsNeeded.includes('password')
+            ? 'password'
+            : 'totp';
   const [step, setStep] = useState<'picker' | 'totp' | 'passkey' | 'password'>(
     initialStep,
   );

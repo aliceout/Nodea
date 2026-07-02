@@ -15,6 +15,7 @@ import {
   BookOpenIcon,
   CalendarIcon,
   BeakerIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { ErrorBoundary } from '@/ui/atoms/feedback/ErrorBoundary';
 
@@ -32,6 +33,7 @@ const Goals = lazy(() => import('@/app/flow/Goals'));
 const Library = lazy(() => import('@/app/flow/Library'));
 const Review = lazy(() => import('@/app/flow/Review'));
 const Hrt = lazy(() => import('@/app/flow/HRT'));
+const Cycle = lazy(() => import('@/app/flow/Cycle'));
 const Account = lazy(() => import('@/app/flow/Account'));
 const Admin = lazy(() => import('@/app/flow/Admin'));
 
@@ -136,6 +138,18 @@ export const MODULES: readonly ModuleDef[] = [
     to_toggle: true,
     description: 'modules.hrt.description',
     icon: BeakerIcon,
+    display: true,
+  },
+  {
+    /** Menstrual-cycle tracking. Encrypted daily entries in
+     *  `cycle_entries` ; the cycle itself is derived client-side. */
+    id: 'cycle',
+    label: 'modules.cycle.label',
+    collection: 'cycle_entries',
+    element: lazyModule('cycle', Cycle),
+    to_toggle: true,
+    description: 'modules.cycle.description',
+    icon: ArrowPathIcon,
     display: true,
   },
   {

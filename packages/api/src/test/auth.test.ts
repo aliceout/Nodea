@@ -10,9 +10,10 @@
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { client, ready } from '@serenity-kit/opaque';
+import { generate as otplibGenerate } from 'otplib';
 import { buildApp } from '../app.ts';
 import { db } from '../db/client.ts';
-import { invites, sessions, users } from '../db/schema.ts';
+import { authFactors, invites, mfaTotp, sessions, users } from '../db/schema.ts';
 import {
   TEST_PASSWORD,
   ADMIN_PASSWORD,
@@ -674,6 +675,98 @@ describe('DELETE /auth/me', () => {
       error: 'reauth_required',
       reauth_required: 'password',
     });
+  });
+
+  // §6/§7.11 — the delete must re-prove the account's 2FA, not just the
+  // fresh password the middleware checks (audit 2026-07).
+  // 32 base32 chars = 20 bytes ≥ the 128-bit minimum otplib enforces.
+  const TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+
+  async function deleteMe(cookie: string, body: unknown): Promise<Response> {
+    return app.request('/auth/me', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('requires a live TOTP code when TOTP is enabled', async () => {
+    const u = await seedUser('del-totp@example.com');
+    await db
+      .insert(mfaTotp)
+      .values({ userId: u.id, secret: TOTP_SECRET, enabledAt: new Date() });
+    const cookie = await loginAs(app, 'del-totp@example.com', TEST_PASSWORD);
+
+    const noCode = await deleteMe(cookie, {});
+    expect(noCode.status).toBe(401);
+    expect(await noCode.json()).toMatchObject({ error: 'totp_required' });
+
+    const wrong = await deleteMe(cookie, { totpCode: '000000' });
+    expect(wrong.status).toBe(401);
+
+    // Account survives a rejected delete.
+    expect(await db.select().from(users).where(eq(users.id, u.id))).toHaveLength(1);
+  });
+
+  it('deletes with a valid TOTP code when TOTP is enabled', async () => {
+    const u = await seedUser('del-totp-ok@example.com');
+    await db
+      .insert(mfaTotp)
+      .values({ userId: u.id, secret: TOTP_SECRET, enabledAt: new Date() });
+    const cookie = await loginAs(app, 'del-totp-ok@example.com', TEST_PASSWORD);
+    const code = await otplibGenerate({
+      strategy: 'totp',
+      secret: TOTP_SECRET,
+      digits: 6,
+      period: 30,
+      algorithm: 'sha1',
+    });
+
+    const res = await deleteMe(cookie, { totpCode: code });
+    expect(res.status).toBe(200);
+    expect(await db.select().from(users).where(eq(users.id, u.id))).toHaveLength(0);
+  });
+
+  it('requires a fresh passkey re-auth when a passkey is enrolled', async () => {
+    const u = await seedUser('del-pk@example.com');
+    await db.insert(authFactors).values({
+      id: 'pk-del',
+      userId: u.id,
+      kind: 'passkey',
+      credentialId: 'cred-del-pk',
+      publicKey: 'pk',
+      prfSupported: true,
+    });
+    // loginAs stamps a fresh password but NOT a fresh passkey.
+    const cookie = await loginAs(app, 'del-pk@example.com', TEST_PASSWORD);
+
+    const res = await deleteMe(cookie, {});
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ error: 'passkey_reauth_required' });
+    expect(await db.select().from(users).where(eq(users.id, u.id))).toHaveLength(1);
+  });
+
+  it('deletes when the passkey re-auth is fresh', async () => {
+    const u = await seedUser('del-pk-ok@example.com');
+    await db.insert(authFactors).values({
+      id: 'pk-del-ok',
+      userId: u.id,
+      kind: 'passkey',
+      credentialId: 'cred-del-pk-ok',
+      publicKey: 'pk',
+      prfSupported: true,
+    });
+    const cookie = await loginAs(app, 'del-pk-ok@example.com', TEST_PASSWORD);
+    // Stamp a fresh passkey re-auth directly (no virtual authenticator here).
+    const sessionId = cookie.replace(/^nodea_session=/, '').split('.')[0]!;
+    await db
+      .update(sessions)
+      .set({ reauthPasskeyAt: new Date() })
+      .where(eq(sessions.id, sessionId));
+
+    const res = await deleteMe(cookie, {});
+    expect(res.status).toBe(200);
+    expect(await db.select().from(users).where(eq(users.id, u.id))).toHaveLength(0);
   });
 });
 

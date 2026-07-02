@@ -133,9 +133,16 @@ export type ChangeUsernameBody = z.infer<typeof ChangeUsernameBodySchema>;
 
 /**
  * Self-delete the authenticated user. Re-auth gated by the
- * `requireFreshPassword` middleware (Phase 7B); the body is empty.
+ * `requireFreshPassword` middleware (Phase 7B). Per Auth-Spec §6 / §7.11 the
+ * handler ALSO requires a fresh passkey assertion when a passkey is enrolled
+ * and a live TOTP code when TOTP is enabled — the code rides here; the passkey
+ * proof is stamped out-of-band via `/auth/reauth/passkey`.
  */
-export const DeleteSelfBodySchema = z.looseObject({});
+export const DeleteSelfBodySchema = z.object({
+  /** Live TOTP code — mandatory server-side when the account has TOTP enabled;
+   *  ignored otherwise. Kept lenient in length (a 6-digit code today). */
+  totpCode: z.string().min(1).max(24).optional(),
+});
 export type DeleteSelfBody = z.infer<typeof DeleteSelfBodySchema>;
 
 /**

@@ -21,6 +21,10 @@ import { revokeAllUserSessions } from '../auth/session.ts';
 import { getConfig } from '../config.ts';
 import { db } from '../db/client.ts';
 import {
+  authFactors,
+  mfaBypassRequests,
+  mfaTotp,
+  mfaTotpRecoveryCodes,
   modulesConfig,
   opaqueRecords,
   passwordResetTokens,
@@ -266,6 +270,29 @@ authResetRoutes.openapi(resetFinishRoute, async (c) => {
     await tx.delete(modulesConfig).where(eq(modulesConfig.userId, user.id));
     await tx.delete(userPreferences).where(eq(userPreferences.userId, user.id));
 
+    // Destructive reset mints a FRESH KEK + main key (client-side), so every
+    // MFA factor and the recovery code are now bound to the DISCARDED key —
+    // they must be purged in the same transaction, exactly as Auth-Spec §4.3
+    // mandates. Leaving them behind (audit 2026-07) meant:
+    //  - security_mode stayed always_2fa/maximum with stale TOTP/passkey rows,
+    //    so login demanded a 2nd factor the user could no longer satisfy ;
+    //  - the old TOTP secret + backup codes stayed valid on the reset account ;
+    //  - the stale recovery hash still "validated" but decrypted the OLD key,
+    //    so a later /recover silently consumed the code and corrupted the
+    //    account beyond repair.
+    // NB: this is the re-key flavour of the reset (client ships new wrap blobs),
+    // so opaque_records / users wrap blobs are UPDATED (not NULLed) and
+    // register_state is preserved — only the factor/mode/recovery purge from
+    // §4.3 applies here.
+    await tx.delete(authFactors).where(eq(authFactors.userId, user.id));
+    await tx.delete(mfaTotp).where(eq(mfaTotp.userId, user.id));
+    await tx
+      .delete(mfaTotpRecoveryCodes)
+      .where(eq(mfaTotpRecoveryCodes.userId, user.id));
+    await tx
+      .delete(mfaBypassRequests)
+      .where(eq(mfaBypassRequests.userId, user.id));
+
     await tx
       .update(opaqueRecords)
       .set({
@@ -284,6 +311,18 @@ authResetRoutes.openapi(resetFinishRoute, async (c) => {
         wrappedMainKeyIv: body.wrappedMainKeyIv,
         wrappedKekPassword: body.wrappedKekPassword,
         wrappedKekPasswordIv: body.wrappedKekPasswordIv,
+        // No 2FA survives the reset → drop back to the baseline mode so the
+        // login policy never demands a purged factor (Auth-Spec §4.3 / §6.1).
+        securityMode: 'password_or_passkey',
+        // Recovery blobs wrap the discarded KEK and the hash matches an
+        // unusable code — NULL them (same posture as recover-kek/finish). The
+        // user re-sets a recovery code during onboarding (status = pending).
+        wrappedKekRecovery: null,
+        wrappedKekRecoveryIv: null,
+        recoveryCodeHash: null,
+        recoveryAcknowledgedAt: null,
+        recoveryVerifiedAt: null,
+        recoveryVerifyStreak: 0,
         onboardingStatus: 'pending',
         updatedAt: new Date(),
       })

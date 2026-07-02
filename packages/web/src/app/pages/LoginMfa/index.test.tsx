@@ -101,6 +101,15 @@ describe('LoginMfa — step selection', () => {
     expect(screen.queryByRole('button', { name: 'auth.mfa.combined.passkeyCta' })).toBeNull();
   });
 
+  it('starts on the passkey step when passkey is the only factor needed (TOTP disabled, always_2fa)', () => {
+    // Regression : the old `: 'totp'` fallback stranded a user who
+    // disabled TOTP but kept a passkey on a TOTP screen they could
+    // never satisfy — and never reached the passkey step's recovery.
+    renderMfa({ factorsNeeded: ['passkey'], secondFactorChoice: false });
+    expect(screen.getByText('auth.mfa.passkey.title')).toBeTruthy();
+    expect(screen.queryByLabelText('auth.mfa.totp.codeLabel')).toBeNull();
+  });
+
   it('falls back to the TOTP step on reload (navState null), not a crash', () => {
     renderMfa(null);
     expect(screen.getByText('auth.mfa.totp.titleCode')).toBeTruthy();

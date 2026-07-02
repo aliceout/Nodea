@@ -5,11 +5,86 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.19.0 — 2026-07-01
+
+### Nouveautés
+
+- **cycle** : same-day Mood score on rows, focused views, reworded averages _(be8d622)_
+- **ui** : shared Year/Month selectors with an « earlier » dropdown _(0ad16fb)_
+- **cycle** : month navigation, focused phases, median averages & Clue import _(ca1407d)_
+- **cycle** : render phases + honest indicators across the views _(e7a4949)_
+- **cycle** : phase model + honest prediction (band, ovulation clamp, std-dev gate) _(20f30be)_
+- **cycle** : drop feminising HRT profile, add hormone graph axes, align year selector _(c88201e)_
+- **cycle** : hormone curve by reference profile (natal / masc / fem HRT) _(7da9dd3)_
+- **cycle** : hormone curves as a 3rd view, not an always-on band _(d8b07b9)_
+- **cycle** : indicative hormone-curve band, toggleable in module settings _(3bc2719)_
+- **cycle** : drop the Historique (heatmap) view; layout cleanups _(15d1c1e)_
+- **cycle** : move the ring into the right sidebar _(f5040a5)_
+- **cycle** : responsive multi-month calendar (1/2/3 months) _(225d7c0)_
+- **cycle** : heatmap shows all logged days, not just period days _(82176bb)_
+- **cycle** : ring — week labels, adaptive scale, fertility in recap _(416705e)_
+- **cycle** : module title + year/month selectors (Mood parity) _(97c21ca)_
+- **cycle** : heatmap view + roomier stacked view with a day ruler _(30c924a)_
+- **cycle** : sticky-collapsible graph frame (Mood/Journal frise parity) _(0b75fd6)_
+- **cycle** : Clue-style ring center + entries list under the views _(13ce6cb)_
+- **cycle** : period-days count, ring ovulation estimate, day-1 hint _(57b1627)_
+- **cycle** : seed fixture — 6 cycles over ~6 months _(74f9fd8)_
+- **cycle** : P2 views — ring + stacked cycles, view switcher _(fe22caf)_
+- **cycle** : enroll in account backup (import/export plugin) _(d78f377)_
+- **cycle** : P1 web surface — calendar, day form, next-period estimate _(f32f628)_
+- **cycle** : module spec + data-layer foundation _(499e45c)_
+
+### Corrections
+
+- **cycle** : enable the wipe action in Settings _(8585c7f)_
+- **auth** : require passkey + live TOTP to delete an account (§6/§7.11) _(7e2880f)_
+- **auth** : serialize security-mode change; key passkey MFA limiter by user _(3013972)_
+- **auth** : flag key missing on TOTP/passkey MFA finalize after a reload _(1b0a4ae)_
+- **auth** : purge MFA factors + recovery blobs on destructive password reset _(d2e33ef)_
+- **auth** : show the passkey step at MFA when it's the only enrolled factor _(c08ab8f)_
+- **cycle** : smaller calendar type; fold graph when settings open _(ab77114)_
+- **cycle** : drop the « Entrées » heading above the list _(957a84e)_
+- **cycle** : working module-settings button + align year selector _(2e98470)_
+- **cycle** : smooth the hormone curves (Catmull-Rom béziers) _(271bd15)_
+- **cycle** : thinner hormone curves with non-scaling stroke _(c47cd5e)_
+- **cycle** : calendar period disc, 5 cycles, evenly-spread months, ring label _(6dd009b)_
+- **cycle** : fit the graph frame to 300px, no scroll _(590c21e)_
+- **cycle** : stacked day ticks above each bar, darker _(7ba4d93)_
+- **cycle** : stacked view — end date at bar end, ticks between rows _(11d0def)_
+- **cycle** : calendar months by container width, current month rightmost _(385a5c8)_
+- **cycle** : cycle span dates above each bar, not in a left column _(e4bbd3a)_
+- **cycle** : stacked rows show the cycle's span dates, not a month _(10292ac)_
+- **cycle** : bigger ring, recap moved beside it _(68be488)_
+- **cycle** : entries list in the central column, not the sidebar _(3b1588e)_
+- **cycle** : ring reads as a real cycle clock + ovulation date off-by-one _(a579ce3)_
+- **cycle** : calendar sizing + period palette + readable stacked view _(1076a9f)_
+- **cycle** : show Cycle in the sidebar nav _(ea88d0e)_
+
+### Refactor
+
+- **cycle** : shared sidebar shell, per-day ticks, full-year heatmap _(c99d224)_
+- **cycle** : reuse shared form chrome, Tabs, and a fixed-height frame _(cc3be8a)_
+
+### Documentation
+
+- **cycle** : mark P1 + P2 views shipped in roadmap _(42e0d51)_
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **release** : v2.19.0 _(52807de)_
+
+</details>
+
 ## v2.18.1 — 2026-06-30
 
 ### Corrections
 
 - **docker** : build web with NODE_ENV=production (no « Mode démo » on prod) _(90ed47f)_
+
+### Documentation
+
+- **changelog** : regenerate for v2.18.1 _(fb4feb3)_
 
 <details>
 <summary>Maintenance — 1 commit</summary>
