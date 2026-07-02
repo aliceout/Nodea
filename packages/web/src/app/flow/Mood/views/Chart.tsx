@@ -60,16 +60,16 @@ function toHeatmapCells(
  * and surfacing the score legend below the grid.
  */
 export default function Chart() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { entries, today } = useMoodData();
   const { year, dayFilter, setDayFilter } = useMoodFilters();
   const fullYear = useMemo(
-    () => buildHeatmap(year, entries, today),
-    [year, entries, today],
+    () => buildHeatmap(year, entries, today, HEATMAP_WEEKS, language),
+    [year, entries, today, language],
   );
   const compact = useMemo(
-    () => buildHeatmap(year, entries, today, COMPACT_HEATMAP_WEEKS),
-    [year, entries, today],
+    () => buildHeatmap(year, entries, today, COMPACT_HEATMAP_WEEKS, language),
+    [year, entries, today, language],
   );
 
   const dayLabels = [

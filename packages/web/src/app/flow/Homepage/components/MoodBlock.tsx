@@ -29,15 +29,15 @@ import HomeModuleLink from './HomeModuleLink';
  * previous 14-day strip wasn't.
  */
 export default function MoodBlock() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { mood } = useHomepageData();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const weeks = isDesktop ? WEEKS_DESKTOP : WEEKS_MOBILE;
   const months = isDesktop ? 6 : 4;
 
   const { cells, monthLabels } = useMemo(
-    () => buildHeatmap(null, mood, new Date(), weeks),
-    [mood, weeks],
+    () => buildHeatmap(null, mood, new Date(), weeks, language),
+    [mood, weeks, language],
   );
 
   const heatmapCells = useMemo<Array<HeatmapCellInput | null>>(
