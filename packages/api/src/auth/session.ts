@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { and, eq, gt, lt } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { sessions, users, type User } from '../db/schema.ts';
 import { getConfig } from '../config.ts';
@@ -273,10 +273,4 @@ export async function finalizeMfaSession(
     if (!row) throw new Error('finalizeMfaSession: failed to insert full session');
     return { id: row.id, userId: row.userId, expiresAt: row.expiresAt };
   });
-}
-
-/** Housekeeping — remove expired rows. Safe to call on an interval. */
-export async function pruneExpiredSessions(): Promise<number> {
-  const result = await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
-  return result.length;
 }

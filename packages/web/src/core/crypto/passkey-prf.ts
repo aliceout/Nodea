@@ -32,7 +32,6 @@
 import { hkdfDeriveBits } from './hkdf.ts';
 import {
   base64ToBytes,
-  base64UrlToBytes,
   bytesToBase64,
   bytesToBase64Url,
   randomBytes,
@@ -157,18 +156,4 @@ export async function unwrapKekUnderPrf(
     data as BufferSource,
   );
   return new Uint8Array(plaintext);
-}
-
-/* ============================================================================
- * Helpers exposed for tests + the enrollment / login orchestrators
- * ========================================================================== */
-
-/**
- * Decode a base64url string back to bytes — small re-export so call
- * sites can stay on this module without reaching into `base64.ts`
- * directly. (The wider crypto module already exports `base64UrlToBytes`,
- * but pulling it through here keeps the passkey surface coherent.)
- */
-export function decodeBase64Url(value: string): Uint8Array {
-  return base64UrlToBytes(value);
 }

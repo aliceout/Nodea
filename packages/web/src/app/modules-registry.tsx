@@ -173,6 +173,3 @@ export const MODULES: readonly ModuleDef[] = [
     display: false,
   },
 ];
-
-export const getModuleById = (id: string): ModuleDef | null =>
-  MODULES.find((m) => m.id === id) ?? null;
