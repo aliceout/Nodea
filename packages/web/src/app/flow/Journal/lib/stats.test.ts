@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { computeStats, countWords, isoDay } from './stats';
+import { computeStats, countWords } from './stats';
 import type { JournalEntry } from './types';
 
 function fixture(partial: Partial<JournalEntry> & { id: string }): JournalEntry {
@@ -31,13 +31,6 @@ describe('countWords', () => {
 
   it('treats punctuation as part of a word', () => {
     expect(countWords("c'était bien.")).toBe(2);
-  });
-});
-
-describe('isoDay', () => {
-  it('formats a Date as YYYY-MM-DD with zero-padding', () => {
-    expect(isoDay(new Date(2026, 0, 5))).toBe('2026-01-05');
-    expect(isoDay(new Date(2024, 11, 31))).toBe('2024-12-31');
   });
 });
 

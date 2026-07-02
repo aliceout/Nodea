@@ -1,4 +1,6 @@
-import { countWords, isoDay } from './stats';
+import { toIsoDate } from '@/core/i18n/date-format';
+
+import { countWords } from './stats';
 
 /**
  * Per-day writing density for the Journal heatmap (issue #56).
@@ -88,5 +90,5 @@ export function buildIntensityLookup(
   entries: ReadonlyArray<DayDensityInput>,
 ): (date: Date) => number {
   const byDay = aggregateByDay(entries);
-  return (date) => densityToIntensity(byDay.get(isoDay(date)));
+  return (date) => densityToIntensity(byDay.get(toIsoDate(date)));
 }

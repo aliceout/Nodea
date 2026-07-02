@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { formatLongDate, getMonthNames } from '@/core/i18n/date-format';
+import { formatLongDate, getMonthNames, toIsoDate } from '@/core/i18n/date-format';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { useMediaQuery } from '@/lib/use-media-query';
 import Heatmap, {
@@ -13,7 +13,6 @@ import {
   densityToIntensity,
   type DayDensity,
 } from '@/app/flow/Journal/lib/day-density';
-import { isoDay } from '@/app/flow/Journal/lib/stats';
 
 import { useHomepageData } from '../context';
 import HomeCard from './HomeCard';
@@ -67,7 +66,7 @@ export default function JournalHeatmap() {
         cellsOut.push(null);
         continue;
       }
-      const iso = isoDay(cellDate);
+      const iso = toIsoDate(cellDate);
       const density: DayDensity | undefined = byDay.get(iso);
       if (!density) {
         cellsOut.push(null);

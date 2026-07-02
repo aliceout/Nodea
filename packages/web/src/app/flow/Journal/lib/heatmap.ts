@@ -2,10 +2,9 @@ import type {
   HeatmapCellInput,
   HeatmapMonthLabel,
 } from '@/ui/dirk/Heatmap';
-import { formatLongDate, getMonthNames } from '@/core/i18n/date-format';
+import { formatLongDate, getMonthNames, toIsoDate } from '@/core/i18n/date-format';
 
 import { densityToIntensity, type DayDensity } from './day-density';
-import { isoDay } from './stats';
 
 /** Default heatmap width — matches Mood and the rest of the
  *  GitHub-style frises in the app. */
@@ -91,7 +90,7 @@ export function buildJournalHeatmap(
     const cellDate = new Date(oldestMonday);
     cellDate.setDate(oldestMonday.getDate() + i);
     const cellTime = cellDate.getTime();
-    const iso = isoDay(cellDate);
+    const iso = toIsoDate(cellDate);
 
     // Out-of-range : before the picked year's Jan 1, after its
     // Dec 31, or after today in « En cours ».
