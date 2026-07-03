@@ -25,6 +25,15 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Don't propose a version until it has aged past CI's pnpm
+    # `minimumReleaseAge` supply-chain gate (24 h). Without this, a
+    # same-day npm release lands in the weekly PR and CI red-flags it
+    # with ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION until the version
+    # ages — a recurring false-red. 2 days clears the 24 h gate with
+    # margin for the create→CI-install delay. Security advisories come
+    # through their own path and aren't held back by this.
+    cooldown:
+      default-days: 2
     open-pull-requests-limit: 5
     groups:
       minor-and-patch:
