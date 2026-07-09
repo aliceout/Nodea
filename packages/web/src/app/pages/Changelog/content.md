@@ -5,6 +5,12 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.21.1 — 2026-07-10
+
+### Corrections
+
+- **docker** : patch web image c-ares/expat CVEs flagged by Trivy _(77344bf)_
+
 ## v2.21.0 — 2026-07-09
 
 ### Nouveautés
