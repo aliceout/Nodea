@@ -187,9 +187,14 @@ export default function CyclePage() {
           <InlinePanel open={selected !== null}>
             {selected ? (
               <CycleDayForm
+                // Remount when the picked day changes so the fields
+                // re-hydrate from that day's record (edit) or clear (new)
+                // — see the date-navigation note in CycleDayForm.
+                key={selected}
                 ctx={ctx}
                 date={selected}
                 initial={byDate.get(selected) ?? null}
+                onDateChange={setSelected}
                 onSaved={(rec) => {
                   setRecords((prev) => {
                     const without = prev.filter((r) => r.payload.date !== selected);
