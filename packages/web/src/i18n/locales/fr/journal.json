@@ -39,6 +39,12 @@
     "threadsManageCta": "Gérer les fils",
     "filtersToggle": "Filtres"
   },
+  "export": {
+    "pdf": {
+      "noThread": "— sans fil —",
+      "generated": "Exporté le {date}"
+    }
+  },
   "selectors": {
     "monthAria": "Mois",
     "monthAll": "Tous"
@@ -64,7 +70,9 @@
     "edit": "Modifier",
     "close": "Fermer",
     "prev": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "export": "Exporter en PDF",
+    "exporting": "Export…"
   },
   "context": {
     "loadFailed": "Erreur lors du chargement du journal.",
