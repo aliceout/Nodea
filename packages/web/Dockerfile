@@ -39,6 +39,14 @@ RUN pnpm run build
 # ---- Stage 2: runtime --------------------------------------------------------
 FROM nginx:alpine AS runtime
 
+# Patch the base-image OS packages the Docker-build Trivy gate flags HIGH
+# (docker-build.yml → severity HIGH,CRITICAL + ignore-unfixed). nginx:alpine
+# still ships vulnerable c-ares / expat, but the fixes are already in the
+# alpine repo, so a targeted upgrade clears the gate without suppressing
+# anything. Runs as root, before the USER switch below. Widen the package
+# list if the flagged set grows (or switch to a blanket `apk upgrade`).
+RUN apk add --no-cache --upgrade c-ares expat
+
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 COPY packages/web/nginx.conf /etc/nginx/conf.d/default.conf
 
