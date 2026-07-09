@@ -2,9 +2,14 @@
  * Cycle day form — inline composer, same posture as `MoodForm` /
  * `GoalForm` : the shared `MODULE_FORM_CARD` chrome + `FormError` +
  * `FormFooter`, mounted through `InlinePanel` above the views. Logs /
- * edits one day (spec §3) : flow, free symptoms, notes. The date is
- * pinned by the calendar day the user opened (not an editable field).
- * The opt-in fertility block (BBT / mucus / LH) is P3.
+ * edits one day (spec §3) : date, flow, free symptoms, notes.
+ *
+ * The date is editable (`DateField` → `onDateChange`): picking a day
+ * drives the parent's `selected`, which re-resolves `initial` from the
+ * existing records and (via the parent's `key={selected}`) remounts this
+ * form on it. So navigating to a day that already has an entry loads it
+ * for editing rather than silently creating a duplicate. Future dates are
+ * capped at today. The opt-in fertility block (BBT / mucus / LH) is P3.
  */
 import { useState, type FormEvent } from 'react';
 import {
@@ -14,9 +19,11 @@ import {
 } from '@nodea/shared';
 import type { DecryptedRecord } from '@/core/api/modules/collection-client';
 import { cycleClient } from '@/core/api/modules/cycle';
+import { toIsoDate } from '@/core/i18n/date-format';
 import type { ModuleClient } from '@/core/modules/use-module-client';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import Button from '@/ui/atoms/dirk/Button';
+import DateField from '@/ui/atoms/dirk/DateField';
 import Field from '@/ui/atoms/dirk/Field';
 import Select from '@/ui/atoms/dirk/Select';
 import Textarea from '@/ui/atoms/dirk/Textarea';
@@ -31,13 +38,17 @@ interface Props {
   date: string;
   /** Existing record for this date, when editing. */
   initial: Rec | null;
+  /** Change the logged day. The parent re-points `selected` (and remounts
+   *  this form via `key`), so switching to a day that already has an entry
+   *  loads it instead of duplicating. */
+  onDateChange: (iso: string) => void;
   /** Saved record to splice into the list ; `null` = the day was deleted. */
   onSaved: (record: Rec | null) => void;
   onCancel: () => void;
 }
 
-export default function CycleDayForm({ ctx, date, initial, onSaved, onCancel }: Props) {
-  const { t, language } = useI18n();
+export default function CycleDayForm({ ctx, date, initial, onDateChange, onSaved, onCancel }: Props) {
+  const { t } = useI18n();
   const p = initial?.payload;
   const [flow, setFlow] = useState<string>(p?.flow ?? '');
   const [symptoms, setSymptoms] = useState<string>((p?.symptoms ?? []).join(', '));
@@ -46,11 +57,8 @@ export default function CycleDayForm({ ctx, date, initial, onSaved, onCancel }: 
   const [error, setError] = useState<string | null>(null);
   const isEdit = initial !== null;
 
-  const dayLabel = new Intl.DateTimeFormat(language, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(new Date(`${date}T12:00:00`));
+  // Can't log the future — a cycle entry is a record of a day that happened.
+  const todayIso = toIsoDate(new Date());
 
   async function handleSave(): Promise<void> {
     if (submitting) return;
@@ -96,24 +104,36 @@ export default function CycleDayForm({ ctx, date, initial, onSaved, onCancel }: 
       className={MODULE_FORM_CARD}
       noValidate
     >
-      <h2 className="mb-3 text-sm font-semibold capitalize text-ink">{dayLabel}</h2>
-
-      <label htmlFor="cycle-flow" className="mb-1 block text-[12px] font-medium text-muted">
-        {t('cycle.form.flow.label')}
-      </label>
-      <Select
-        id="cycle-flow"
-        value={flow}
-        onChange={(e) => setFlow(e.target.value)}
-        className="mb-3"
-      >
-        <option value="">{t('cycle.form.flow.none')}</option>
-        {CYCLE_FLOW_VALUES.map((v) => (
-          <option key={v} value={v}>
-            {t(`cycle.form.flow.${v}`)}
-          </option>
-        ))}
-      </Select>
+      {/* Date + flow share one row — the two facts you log first, side by
+          side. `items-end` keeps the inputs aligned when the labels wrap. */}
+      <div className="mb-3 grid grid-cols-2 items-end gap-3">
+        <div>
+          <label htmlFor="cycle-date" className="mb-1 block text-[12px] font-medium text-muted">
+            {t('cycle.form.date.label')}
+          </label>
+          <DateField
+            id="cycle-date"
+            value={date}
+            onChange={onDateChange}
+            max={todayIso}
+            disabled={submitting}
+            ariaLabel={t('cycle.form.date.label')}
+          />
+        </div>
+        <div>
+          <label htmlFor="cycle-flow" className="mb-1 block text-[12px] font-medium text-muted">
+            {t('cycle.form.flow.label')}
+          </label>
+          <Select id="cycle-flow" value={flow} onChange={(e) => setFlow(e.target.value)}>
+            <option value="">{t('cycle.form.flow.none')}</option>
+            {CYCLE_FLOW_VALUES.map((v) => (
+              <option key={v} value={v}>
+                {t(`cycle.form.flow.${v}`)}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
 
       <Field
         label={t('cycle.form.symptoms.label')}

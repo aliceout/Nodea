@@ -5,6 +5,17 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.21.0 — 2026-07-09
+
+### Nouveautés
+
+- **journal** : per-entry PDF export from the reader, styled to the charte _(c952b46)_
+- **cycle** : editable log date, with date + flow on one row _(bb2ae14)_
+
+### Corrections
+
+- **mood** : keep the frise's last column from clipping _(0f9a358)_
+
 ## v2.20.0 — 2026-07-02
 
 ### Nouveautés

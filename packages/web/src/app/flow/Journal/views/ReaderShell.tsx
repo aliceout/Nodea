@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { splitThreads } from '@nodea/shared';
 
 import { useNodeaStore } from '@/core/store/nodea-store';
 import { useI18n } from '@/i18n/I18nProvider.jsx';
 import { cn } from '@/lib/utils';
 import { LiteMarkdown } from '@/lib/lite-markdown';
+import Button from '@/ui/atoms/dirk/Button';
 import EntryReader from '@/ui/dirk/module/EntryReader';
+import Tag from '@/ui/dirk/module/Tag';
 
 import { useJournalActions, useJournalData } from '../context';
 import { attachmentSrc } from '../hooks/imageResize';
+import { downloadJournalEntryPdf } from '../lib/export-pdf';
 
 /**
  * Focus reading mode for Journal entries. Composes the shared
@@ -34,7 +38,7 @@ import { attachmentSrc } from '../hooks/imageResize';
  * reading entry, so `JournalView` can mount this unconditionally.
  */
 export default function ReaderShell() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const setMobileMenuOpen = useNodeaStore((s) => s.setMobileMenuOpen);
   const { entries } = useJournalData();
   const { readingId, editEntry, openReader, closeReader } = useJournalActions();
@@ -44,6 +48,8 @@ export default function ReaderShell() {
   // it survives prev/next (the shell stays mounted) and resets when the
   // reader is closed + reopened (the shell unmounts on `readingId` null).
   const [navThread, setNavThread] = useState<string | null>(null);
+  // PDF generation is async (jsPDF loads on demand) — gate the button.
+  const [exporting, setExporting] = useState(false);
 
   // Resolve the current entry from the full `entries` set (not the
   // sidebar-filtered list) — the reader's neighbourhood is keyed on
@@ -104,6 +110,58 @@ export default function ReaderShell() {
   const position = readingIndex + 1;
   const total = neighbours.length;
 
+  async function handleExport(): Promise<void> {
+    if (exporting || !entry) return;
+    setExporting(true);
+    try {
+      await downloadJournalEntryPdf({
+        entry: {
+          dateIso: entry.dateIso,
+          thread: entry.thread,
+          title: entry.title,
+          content: entry.content,
+          attachments: entry.attachments.map((a) => ({ mime: a.mime, data: a.data })),
+        },
+        // Neutral content-word filename (no app name, no stigmatised module)
+        // — same Downloads-folder privacy posture as the HRT exports.
+        filename: `journal_${entry.dateIso.slice(0, 10)}.pdf`,
+        t,
+        language,
+      });
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('journal: entry pdf export failed', err);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // One chip per thread (not the raw comma-joined string) so a multi-thread
+  // entry reads as separate tags in the header — matches the footer picker.
+  const eyebrowNode = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {currentTags.length > 0 ? (
+        currentTags.map((tag) => <Tag key={tag}>{tag}</Tag>)
+      ) : (
+        <Tag>{t('journal.reader.noThreadEyebrow')}</Tag>
+      )}
+    </div>
+  );
+
+  // Lives in the reader's action bar (EntryReader `topbarExtras`) — so the
+  // export affordance shows ONLY while reading a single entry, never in the
+  // list. Ghost button to sit quietly beside « Modifier » / « Fermer ».
+  const exportButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => void handleExport()}
+      disabled={exporting}
+    >
+      <ArrowDownTrayIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+      {exporting ? t('journal.reader.exporting') : t('journal.reader.export')}
+    </Button>
+  );
+
   // When the entry carries several threads, surface a chip per thread so
   // the user picks which one « précédent / suivant » follows. Single- or
   // zero-thread entries get no picker (nothing to choose).
@@ -143,10 +201,12 @@ export default function ReaderShell() {
       onClose={closeReader}
       onPrev={onPrev}
       onNext={onNext}
+      topbarExtras={exportButton}
       navScope={navScope}
       position={position}
       total={total}
       eyebrow={entry.thread || t('journal.reader.noThreadEyebrow')}
+      eyebrowNode={eyebrowNode}
       dateLabel={entry.dateLabel}
       title={entry.title}
       editLabel={t('journal.reader.edit')}

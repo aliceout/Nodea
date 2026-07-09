@@ -14,12 +14,13 @@ import Topbar from '../Topbar';
 interface EntryReaderProps {
   /** Topbar centre label — typically `« <Module> · N / total »`. */
   topbarLabel: string;
-  /** Optional extra controls placed between `Modifier` and `Fermer`
-   *  in the action bar above the article. Modules can drop a status
-   *  pill / quick-action here when the reader header isn't the
-   *  right spot. (Used to be in the topbar pre-#58 follow-up ; the
-   *  action bar is closer to the content the user is reading,
-   *  matches the K · Sauge contextual-affordance rhythm.) */
+  /** Optional extra control grouped WITH `Modifier` on the left of the
+   *  action bar above the article (`Fermer` stays pushed to the right).
+   *  Modules drop a quick-action here — e.g. Journal's per-entry PDF
+   *  export — when the reader header is the right spot. (Used to be in
+   *  the topbar pre-#58 follow-up ; the action bar is closer to the
+   *  content the user is reading, matches the K · Sauge
+   *  contextual-affordance rhythm.) */
   topbarExtras?: ReactNode;
   onOpenMenu: () => void;
   onEdit: () => void;
@@ -38,6 +39,10 @@ interface EntryReaderProps {
   /** Small uppercase tag in the top-left of the header — `thread`
    *  for Journal, status label / thread for Goals, etc. */
   eyebrow: string;
+  /** Optional pre-rendered eyebrow that REPLACES the default single
+   *  `<Tag>{eyebrow}</Tag>` — e.g. Journal renders one chip per thread so
+   *  a multi-thread entry reads as separate tags, not one lumped pill. */
+  eyebrowNode?: ReactNode;
   /** Right-aligned secondary date / metadata. Optional — Library
    *  reader future-uses won't always have a date. */
   dateLabel?: string;
@@ -94,6 +99,7 @@ export default function EntryReader({
   position,
   total,
   eyebrow,
+  eyebrowNode,
   dateLabel,
   title,
   children,
@@ -145,10 +151,11 @@ export default function EntryReader({
           text sits closer to the sidebar/nav side. `max()` clamps the
           offset to 0 on viewports narrower than the column. */}
       <article className="ml-[max(0px,calc((100%_-_50rem)/3))] max-w-[50rem]">
-        {/* Action bar above the entry. `Modifier` is pushed to the
-            left (mr-auto) ; the extras + `Fermer` stay on the right. */}
+        {/* Action bar above the entry. `Modifier` + the optional extras
+            sit together on the left ; `Fermer` is pushed to the right
+            (ml-auto). */}
         <div className="mb-5 flex items-center gap-1.5 border-b border-hair pb-3">
-          <Button variant="ghost" size="sm" onClick={onEdit} className="mr-auto">
+          <Button variant="ghost" size="sm" onClick={onEdit}>
             <PencilSquareIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
             {editLabel}
           </Button>
@@ -159,16 +166,17 @@ export default function EntryReader({
             iconOnly
             onClick={onClose}
             aria-label={closeLabel}
+            className="ml-auto"
           >
             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
 
         <header className="mb-7">
-          <div className="flex items-center justify-between gap-3">
-            <Tag>{eyebrow}</Tag>
+          <div className="flex items-start justify-between gap-3">
+            {eyebrowNode ?? <Tag>{eyebrow}</Tag>}
             {dateLabel ? (
-              <p className="text-[12px] tabular-nums text-muted">{dateLabel}</p>
+              <p className="shrink-0 text-[12px] tabular-nums text-muted">{dateLabel}</p>
             ) : null}
           </div>
           {title ? (
@@ -187,11 +195,8 @@ export default function EntryReader({
         {children}
 
         <footer className="mt-12 border-t border-hair pt-5">
-          {navScope ? (
-            <div className="mb-3 flex flex-wrap items-center justify-center gap-1.5">
-              {navScope}
-            </div>
-          ) : null}
+          {/* Prev / next on one row, with the nav-scope picker + position
+              counter grouped in the centre (same line as the arrows). */}
           <div className="flex items-center justify-between gap-3">
             <Button
               variant="neutral"
@@ -202,9 +207,12 @@ export default function EntryReader({
               <ArrowLeftIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
               {prevLabel}
             </Button>
-            <span className="text-[11px] tabular-nums text-muted">
-              {position} / {total}
-            </span>
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+              <span className="text-[11px] tabular-nums text-muted">
+                {position} / {total}
+              </span>
+              {navScope}
+            </div>
             <Button
               variant="neutral"
               size="sm"

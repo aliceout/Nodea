@@ -39,6 +39,12 @@
     "threadsManageCta": "Manage threads",
     "filtersToggle": "Filters"
   },
+  "export": {
+    "pdf": {
+      "noThread": "— no thread —",
+      "generated": "Exported on {date}"
+    }
+  },
   "selectors": {
     "monthAria": "Month",
     "monthAll": "All"
@@ -64,7 +70,9 @@
     "edit": "Edit",
     "close": "Close",
     "prev": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "export": "Export to PDF",
+    "exporting": "Exporting…"
   },
   "context": {
     "loadFailed": "Failed to load journal.",

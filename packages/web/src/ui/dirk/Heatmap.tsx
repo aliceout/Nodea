@@ -89,7 +89,13 @@ export default function Heatmap({
     <div
       role="img"
       aria-label={ariaLabel}
-      className={cn('grid gap-x-1 gap-y-[3px]', className)}
+      // `pr-1` reserves bleed room on the right edge: today's cell is
+      // always the rightmost column and its ring (`ring-offset` pushes it
+      // ~3px past the cell) plus the hover-scale would otherwise be clipped
+      // by an `overflow-hidden` ancestor — Mood folds the frise inside one.
+      // Only the right edge needs it (rings on the other three edges bleed
+      // into the label / legend gutters, which aren't clipped).
+      className={cn('grid gap-x-1 gap-y-[3px] pr-1.5', className)}
       style={{
         gridTemplateColumns: `28px repeat(${weeks}, minmax(0, 1fr))`,
         gridTemplateRows: `14px repeat(${DAYS_PER_WEEK}, auto)`,

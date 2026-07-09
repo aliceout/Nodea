@@ -55,6 +55,19 @@ Journal follows the rules shared by every module — see
 - Read pagination: 200 entries per request.
 - No natural deduplication key: the user can write several entries
   on the same day in the same thread. Import doesn't deduplicate.
+- **PDF export** (single entry — reader → « Exporter en PDF »): a
+  human-readable keepsake of ONE entry, distinct from the JSON data
+  backup above. The button lives only in the entry reader (mounted via
+  `EntryReader`'s `topbarExtras`, grouped with « Modifier »), so it
+  exports the entry being read — never the whole journal. Generated
+  client-side from the decrypted entry via `lib/export-pdf.ts`
+  (`downloadJournalEntryPdf`; jsPDF, lazy-loaded — plaintext + inline
+  photos, so no server render), styled to the K · Sauge charte: sage
+  eyebrow = thread, ink headline = title (or the date when untitled),
+  body, then the attached photos embedded full-width, and a discreet
+  « Nodea » footer. Neutral filename (`journal_<date>.pdf`), own-anchor
+  download + WinAnsi-encoding caveat (no emoji/CJK) like the HRT recap
+  export.
 
 ## Key points
 

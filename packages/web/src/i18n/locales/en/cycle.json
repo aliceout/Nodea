@@ -128,6 +128,9 @@
   },
   "loadFailed": "Could not load.",
   "form": {
+    "date": {
+      "label": "Date"
+    },
     "flow": {
       "label": "Flow",
       "none": "None",
