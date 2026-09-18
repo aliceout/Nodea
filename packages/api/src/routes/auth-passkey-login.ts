@@ -5,7 +5,7 @@ import {
 } from '@simplewebauthn/server';
 import type {
   AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
+  AuthenticatorTransport,
 } from '@simplewebauthn/server';
 import {
   PasskeyLoginFinishBodySchema,
@@ -102,7 +102,7 @@ authPasskeyLoginRoutes.openapi(loginStartRoute, async (c) => {
   const config = getConfig();
 
   let userId: string | null = null;
-  let allowCredentials: { id: string; transports?: AuthenticatorTransportFuture[] }[] | undefined;
+  let allowCredentials: { id: string; transports?: AuthenticatorTransport[] }[] | undefined;
 
   if (body.email) {
     const email = body.email.toLowerCase();

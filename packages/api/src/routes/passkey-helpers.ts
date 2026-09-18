@@ -1,4 +1,4 @@
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
+import type { AuthenticatorTransport } from '@simplewebauthn/server';
 
 import { rateLimit } from '../middleware/rate-limit.ts';
 
@@ -9,6 +9,18 @@ import { rateLimit } from '../middleware/rate-limit.ts';
  * `any`.
  */
 export type AuthenticationExtensionsClientInputsLike = Record<string, unknown>;
+
+/**
+ * COSE algorithm IDs offered (`pubKeyCredParams`) and accepted at
+ * passkey enrollment: EdDSA (-8), ES256 (-7), RS256 (-257).
+ * Passed explicitly because `@simplewebauthn/server` 14 prepends
+ * ML-DSA-44 to its default list on runtimes with PQC support
+ * (Node 24) — adopting a new signature algorithm is an Auth-Spec
+ * §13 decision, not a side effect of a dependency bump. Must be
+ * given to both `generateRegistrationOptions` and
+ * `verifyRegistrationResponse`.
+ */
+export const PASSKEY_ALGORITHM_IDS = [-8, -7, -257];
 
 /** Enrollment rate limiter — 10 requests / 15 min / IP. */
 export const enrollLimiter = rateLimit({
@@ -84,15 +96,15 @@ export function base64UrlToBytes(value: string) {
  * Decode the `transports` CSV stored on `auth_factors.transports`
  * back into the lib's enum-ish array. Browsers / authenticators
  * report a wider transport set than what
- * `AuthenticatorTransportFuture` enumerates today ; we trust
+ * `AuthenticatorTransport` enumerates today ; we trust
  * the round-tripped values without filtering since storage was
  * already controlled by us at enrollment.
  */
 export function parseTransports(
   csv: string | null,
-): AuthenticatorTransportFuture[] | undefined {
+): AuthenticatorTransport[] | undefined {
   if (!csv) return undefined;
   const parts = csv.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
   if (parts.length === 0) return undefined;
-  return parts as AuthenticatorTransportFuture[];
+  return parts as AuthenticatorTransport[];
 }
