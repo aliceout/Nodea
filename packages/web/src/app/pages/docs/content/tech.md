@@ -36,7 +36,7 @@ Cette section liste explicitement contre quoi Nodea protège — et contre quoi 
 | Usage | Algo | Paramètres exacts | Source |
 |---|---|---|---|
 | Password proof + key export | OPAQUE-3DH | suite OPAQUE-3DH-RISTRETTO255-SHA512-Argon2id ; Argon2 m=64 MiB, t=3, p=4 | RFC 9497, librairie `@serenity-kit/opaque` 1.1.0 (Rust + WASM, audit Cure53) |
-| Passkey | WebAuthn level 2 | `userVerification: 'required'`, attestation `'none'`, extension PRF, algos ES256 (-7) + RS256 (-257) | WebAuthn L2, librairie `@simplewebauthn` 14.0 |
+| Passkey | WebAuthn level 2 | `userVerification: 'required'`, attestation `'none'`, extension PRF, algos EdDSA (-8) + ES256 (-7) + RS256 (-257) | WebAuthn L2, librairie `@simplewebauthn` 14.0 |
 | Wrapping key derivation | HKDF-SHA-256 | labels figés ci-dessous | RFC 5869, WebCrypto |
 | Symmetric encryption | AES-256-GCM | clé 256 bits, IV 96 bits aléatoire par chiffrement, tag 128 bits | NIST SP 800-38D, WebCrypto |
 | Integrity (guards) | HMAC-SHA-256 | sub-key dérivée par HKDF label `nodea:hmac` | RFC 2104, WebCrypto |
