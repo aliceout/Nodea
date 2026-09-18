@@ -824,8 +824,20 @@ in cleartext (shown only once).
   No vendor tracking.
 - `authenticatorSelection.residentKey: 'preferred'` — allows
   discoverable credentials (login without email).
-- `pubKeyCredParams: [{type: 'public-key', alg: -7}, // ES256
+- `pubKeyCredParams: [{type: 'public-key', alg: -8},  // EdDSA (Ed25519)
+  {type: 'public-key', alg: -7},   // ES256
   {type: 'public-key', alg: -257}]` // RS256.
+  Passed explicitly server-side via `PASSKEY_ALGORITHM_IDS`
+  (`routes/passkey-helpers.ts`), to both
+  `generateRegistrationOptions` and `verifyRegistrationResponse`.
+  Never rely on the library default: `@simplewebauthn/server` 14
+  prepends ML-DSA-44 to it on PQC-capable runtimes (Node 24), and
+  adopting a new signature algorithm is a §13 decision, not a side
+  effect of a dependency bump. EdDSA sits first — it is the
+  library's own ordering, and Ed25519's deterministic signatures
+  avoid ECDSA's nonce-reuse failure mode, so an authenticator that
+  supports it should use it. Authenticators that don't fall back to
+  ES256, which every FIDO2 authenticator implements.
 - PRF extension enabled: `extensions: { prf: { eval: { first:
   PRF_INPUT_FIXED } } }`.
 
@@ -1129,7 +1141,7 @@ PR + this section's revision + a rotation plan.)
 | WebAuthn | UV | `'required'` (enrollment + assertion) |
 | WebAuthn | rpId | derived from `DOMAIN`, prod default `nodea.app` |
 | WebAuthn | attestation | `'none'` |
-| WebAuthn | algos | ES256 (-7), RS256 (-257) |
+| WebAuthn | algos | EdDSA (-8), ES256 (-7), RS256 (-257) — in that preference order |
 | WebAuthn | PRF input v1 | `"nodea:prf-v1"` + zero-padding 32 bytes |
 | Cookie | full session TTL | 7 days fixed (no slide) |
 | Cookie | rate-limit storage | in-process RAM (V1 single-instance) |

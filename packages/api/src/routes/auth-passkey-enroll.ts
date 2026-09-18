@@ -31,6 +31,7 @@ import {
   bytesToBase64Url,
   enrollLimiter,
   parseTransports,
+  PASSKEY_ALGORITHM_IDS,
   userIdToHandle,
   type AuthenticationExtensionsClientInputsLike,
 } from './passkey-helpers.ts';
@@ -110,6 +111,7 @@ authPasskeyEnrollRoutes.openapi(enrollStartRoute, async (c) => {
       userVerification: 'required',
       residentKey: 'preferred',
     },
+    supportedAlgorithmIDs: PASSKEY_ALGORITHM_IDS,
     excludeCredentials: existing.map((row) => {
       const transports = parseTransports(row.transports);
       // exactOptionalPropertyTypes : only include the
@@ -198,6 +200,7 @@ authPasskeyEnrollRoutes.openapi(enrollFinishRoute, async (c) => {
       expectedOrigin: config.WEBAUTHN_ORIGIN,
       expectedRPID: config.WEBAUTHN_RP_ID,
       requireUserVerification: true,
+      supportedAlgorithmIDs: PASSKEY_ALGORITHM_IDS,
     });
   } catch {
     return c.json({ error: 'verification_failed' }, 400);

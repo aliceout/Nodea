@@ -11,6 +11,7 @@ import { MarkdownTier, parseToc } from './primitives';
  * automatiquement (et la table des matières aussi).
  */
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const tocSections = parseToc(source);
 
 export default function DocsTierNewbie() {

@@ -14,11 +14,11 @@
   "dependencies": {
     "@nodea/shared": "workspace:*",
     "@serenity-kit/opaque": "1.1.0",
-    "otplib": "13.4.1",
+    "otplib": "13.5.0",
     "postgres": "3.4.9"
   },
   "devDependencies": {
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "24.13.2",
     "typescript": "6.0.3"
   }

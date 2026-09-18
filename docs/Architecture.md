@@ -267,7 +267,7 @@ the factory loops over. There is nowhere to forget a guard.
   - Five authenticated routes (`enroll/start`, `enroll/finish`,
     `list`, `:id/label`, `:id/remove`) for Settings, two anonymous
     routes (`login/start`, `login/finish`) for the login flow.
-  - Server primitives via `@simplewebauthn/server@13.3.1`. Challenges
+  - Server primitives via `@simplewebauthn/server@14.0.2`. Challenges
     persisted on `sessions.pending_webauthn_challenge` for enrollment
     (TTL 5 min) and on a single-use in-memory pending entry
     (`auth/passkey-login-state.ts`) for login. UV `'required'` is
@@ -318,7 +318,7 @@ the factory loops over. There is nowhere to forget a guard.
     sessions — the client unwraps the KEK + main key locally
     while the session is still pending (Auth-Spec §7.2.bis: no
     leak because no full cookie = no data routes accessible).
-  - Helpers: `auth/totp.ts` wraps `otplib@13.4.0` with the spec
+  - Helpers: `auth/totp.ts` wraps `otplib@13.5.0` with the spec
     params (SHA-1 / 6 / 30s, ±1 window skew, returns matched
     window for anti-replay). `auth/totp-backup-codes.ts` generates
     10 × 120-bit base32 codes with 4-4-4-4-4-4 hyphenation,

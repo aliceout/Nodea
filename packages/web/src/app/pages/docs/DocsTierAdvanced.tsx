@@ -11,6 +11,7 @@ import { MarkdownTier, parseToc } from './primitives';
  * TOC se mettent à jour tout seuls.
  */
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const tocSections = parseToc(source);
 
 export default function DocsTierAdvanced() {

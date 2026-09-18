@@ -1,7 +1,7 @@
 {
   "name": "nodea",
   "private": true,
-  "version": "2.21.1",
+  "version": "2.21.2",
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
@@ -23,17 +23,17 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@vitest/coverage-v8": "4.1.9",
-    "eslint": "10.6.0",
+    "@vitest/coverage-v8": "5.0.1",
+    "eslint": "10.10.0",
     "eslint-plugin-import-x": "4.17.1",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
-    "eslint-plugin-react-refresh": "0.5.3",
-    "globals": "17.7.0",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.12.0",
     "husky": "9.1.7",
-    "lint-staged": "17.0.8",
+    "lint-staged": "17.5.1",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.62.1"
+    "typescript-eslint": "8.70.0"
   }
 }
