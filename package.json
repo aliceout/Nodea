@@ -3,7 +3,7 @@
   "private": true,
   "version": "2.21.2",
   "license": "AGPL-3.0-or-later",
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.27.0",
   "scripts": {
     "dev:web": "pnpm --filter @nodea/web dev",
     "dev:api": "pnpm --filter @nodea/api dev",
