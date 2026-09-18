@@ -5,6 +5,15 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.21.2 — 2026-09-18
+
+<details>
+<summary>Maintenance — 1 commit</summary>
+
+- **deps** : bump every dependency to latest (except TypeScript 7) _(f443944)_
+
+</details>
+
 ## v2.21.1 — 2026-07-10
 
 ### Corrections
