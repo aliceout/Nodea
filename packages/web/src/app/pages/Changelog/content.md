@@ -8,8 +8,9 @@ pliés pour ne pas noyer l'essentiel.
 ## v2.21.2 — 2026-09-18
 
 <details>
-<summary>Maintenance — 1 commit</summary>
+<summary>Maintenance — 2 commits</summary>
 
+- **auth** : record EdDSA in the passkey algorithm set _(73ec265)_
 - **deps** : bump every dependency to latest (except TypeScript 7) _(f443944)_
 
 </details>
