@@ -1,3 +1,10 @@
+/**
+ * Admin diagnostics: `GET /admin/sources` — live health probe of the
+ * external library-metadata providers.
+ *
+ * Where: api admin route layer (mounted at `/admin`, behind requireAdmin);
+ * delegates to `services/library-lookup/dispatcher.ts`.
+ */
 import { AdminSourcesResponseSchema } from '@nodea/shared';
 import type { AdminSourcesResponse } from '@nodea/shared';
 import { requireUser, requireAdmin } from '../middleware/require-user.ts';

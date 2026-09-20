@@ -1,3 +1,10 @@
+/**
+ * Zod DTOs for step-up re-auth (password + passkey, start/finish).
+ *
+ * Where: packages/shared — shared by the api `/auth/reauth/*` routes and
+ * the web re-auth helper. The proof is a fresh OPAQUE / WebAuthn round-
+ * trip, not an embedded password.
+ */
 import { z } from 'zod';
 
 /**

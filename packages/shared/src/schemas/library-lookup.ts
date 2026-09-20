@@ -1,3 +1,11 @@
+/**
+ * Zod DTOs for external book-metadata lookup (by-isbn, by-query) and the
+ * normalised result shape (`NormalisedBook`).
+ *
+ * Where: packages/shared — shared by the api `/library/lookup/*` proxy and
+ * the web Library import UI. The `provider` enum lists the six adapters
+ * (Open Library, Google Books, BNF, BNE, Wikidata, Amazon).
+ */
 import { z } from 'zod';
 
 /**

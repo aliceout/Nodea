@@ -1,3 +1,9 @@
+/**
+ * Zod DTO for the admin library-provider health-probe response.
+ *
+ * Where: packages/shared — shared by the api `GET /admin/sources` route and
+ * the web admin diagnostics panel.
+ */
 import { z } from 'zod';
 
 /**

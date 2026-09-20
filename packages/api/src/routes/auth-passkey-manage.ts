@@ -1,3 +1,14 @@
+/**
+ * Passkey management routes: `GET /auth/passkeys/list`,
+ * `PATCH /auth/passkeys/{id}/label` (rename), `POST /auth/passkeys/{id}/remove`.
+ *
+ * Where: api auth route layer (combined into `auth-passkey.ts`, mounted at
+ * `/auth`), behind requireUser.
+ *
+ * Non-obvious: removing the last PRF passkey is constrained by the active
+ * security mode (can't drop below the mode's factor requirement). Bucket
+ * `passkey-manage` (30/15min).
+ */
 import { and, eq } from 'drizzle-orm';
 import {
   PasskeyDeleteBodySchema,

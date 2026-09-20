@@ -1,3 +1,10 @@
+/**
+ * Zod DTOs for the lost-factor MFA-bypass flow (request + confirm).
+ *
+ * Where: packages/shared — shared by the api `/auth/mfa/bypass/*` routes
+ * and the web bypass flow. Responses are intentionally uniform whether or
+ * not a bypass exists (anti-enumeration).
+ */
 import { z } from 'zod';
 
 /**

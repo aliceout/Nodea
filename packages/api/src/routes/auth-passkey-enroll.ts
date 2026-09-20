@@ -1,3 +1,14 @@
+/**
+ * Passkey enrollment routes: `POST /auth/passkeys/enroll/start` + `/finish`.
+ *
+ * Where: api auth route layer (combined into `auth-passkey.ts`, mounted at
+ * `/auth`), behind requireUser.
+ *
+ * Non-obvious: enroll requires a PRF-capable, user-verifying authenticator
+ * — `uv !== true` is rejected with `user_verification_required`/400 (only
+ * enroll surfaces this distinct code). The new KEK wrap is AAD-bound to the
+ * credential id. Bucket `passkey-enroll` (10/15min).
+ */
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {

@@ -71,7 +71,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Install
@@ -111,6 +111,12 @@ jobs:
       # keeps the tree close enough to upstream for this to stay green.
       - name: Audit dependencies
         run: pnpm audit --audit-level=high
+
+      # Doc↔code drift guard: dead path references + count parity
+      # (store slices / i18n namespaces / entry tables). See
+      # scripts/check-docs.mjs. No network, no DB — runs in <1s.
+      - name: Check docs
+        run: pnpm check:docs
 
       - name: Lint
         run: pnpm lint

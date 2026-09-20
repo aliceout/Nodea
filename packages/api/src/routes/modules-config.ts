@@ -1,3 +1,15 @@
+/**
+ * `/modules-config` — read/write the per-user encrypted module config
+ * (which modules are active + their settings).
+ *
+ * Where: api route layer, mounted at `/modules-config`.
+ *
+ * GUARD-EXEMPT by design: the table PK is `user_id` (1:1), so
+ * `requireUser` + `user_id` scoping fully authorizes access — there is no
+ * independent row `id` to authenticate, hence no `requireGuard`
+ * (CLAUDE.md mandates documenting this exemption in the route). Writes
+ * are rate-limited (`modules-config-put`, 30/min).
+ */
 import { eq } from 'drizzle-orm';
 import { ModulesConfigBodySchema } from '@nodea/shared/schemas/entries';
 import { db } from '../db/client.ts';

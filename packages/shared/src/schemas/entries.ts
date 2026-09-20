@@ -1,3 +1,13 @@
+/**
+ * Zod DTOs for the encrypted-record API: create/update/bulk/wipe bodies,
+ * the `EntryView` response (which OMITS `guard`), `COLLECTION_NAMES`, and
+ * the `INIT_GUARD` sentinel.
+ *
+ * Where: packages/shared — single source of truth for the `/records` route
+ * and the web collection client. `COLLECTION_NAMES` is the canonical list
+ * of guarded collections; the body-size caps below bound the encrypted
+ * envelope on the wire.
+ */
 import { z } from 'zod';
 
 /**

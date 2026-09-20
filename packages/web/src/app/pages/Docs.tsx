@@ -41,9 +41,8 @@ import DocsSelfHost, {
  *     `CONTRIBUTING.md` du repo qui couvre le workflow upstream
  *     (PR, conventions de commit) — audience différente.
  *   - **Auto-héberger** (`/docs/self-host`) — install Docker, env
- *     vars, reverse proxy, mises à jour, backups. Source de vérité
- *     progressive : transfère depuis `docs/Operations.md` + le root
- *     README.
+ *     vars, reverse proxy, mises à jour, backups. Reprend et
+ *     complète le README racine du repo.
  *
  * Le `/flow` privacy invariant ne s'applique pas ici : `/docs` est
  * public, l'audience varie d'un onglet à l'autre, et les URLs par

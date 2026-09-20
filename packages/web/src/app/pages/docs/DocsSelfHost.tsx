@@ -8,8 +8,7 @@ import { MarkdownTier, parseToc } from './primitives';
  * (sur VPS, NAS, machine perso). Couvre l'install Docker, les
  * variables d'environnement critiques, le reverse proxy, les
  * mises à jour, le backup et le diagnostic en panne. Le contenu
- * est progressivement transféré depuis `docs/Operations.md` et
- * le README racine du repo vers cette page.
+ * reprend et complète le README racine du repo.
  */
 
 // eslint-disable-next-line react-refresh/only-export-components

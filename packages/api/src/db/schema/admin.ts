@@ -1,3 +1,13 @@
+/**
+ * Admin / instance tables (Drizzle DDL, re-exported by `db/schema.ts`):
+ * `invites` (email-bound, token stored hashed in `code_hash`),
+ * `app_settings` (key/value — e.g. `open_registration`), `announcements`.
+ *
+ * Where: api db layer. `invites.created_by`/`used_by`,
+ * `app_settings.updated_by` and `announcements.created_by` are FK ON DELETE
+ * SET NULL (an admin can be deleted without losing the rows). Per-table
+ * details are documented on each export below.
+ */
 import {
   boolean,
   index,

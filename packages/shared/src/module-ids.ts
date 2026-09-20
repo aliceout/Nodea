@@ -13,9 +13,7 @@
  * `settings` (alias to `account`) is intentionally absent — it was
  * killed alongside the URL-routing rework. `home` is the cold-start
  * default ; `account` and `admin` are reachable but hidden from the
- * public module list (`display: false` in `modules_list.tsx`).
- *
- * Reference: `docs/roadmap/health.md` Tier B.5.
+ * public module list (`display: false` in `modules-registry.tsx`).
  */
 
 export const MODULE_IDS = [

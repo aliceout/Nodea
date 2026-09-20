@@ -1,3 +1,18 @@
+/**
+ * Stepped-MFA verification routes: `POST /auth/mfa/totp/verify`,
+ * `POST /auth/mfa/passkey/start` + `/finish`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), reached only with an
+ * `mfa_pending` session (requireMfaPending) between primary auth and the
+ * second factor.
+ *
+ * Non-obvious: the last successful factor finalizes the session INLINE
+ * (there is no `/auth/mfa/finalize` route) — it returns
+ * `{ finalized: true }` (or `{ finalized: false, missing }`) and swaps
+ * the cookie to `full`. TOTP `verify` also accepts a backup code in the
+ * same `code` field (format-disambiguated). UV failure collapses to 401
+ * `invalid_credentials`. Keyed-session rate limit (10/5min).
+ */
 import { and, eq, isNull } from 'drizzle-orm';
 import {
   MfaPasskeyFinishBodySchema,
