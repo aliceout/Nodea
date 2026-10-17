@@ -5,6 +5,40 @@ l'historique git à chaque release. Les commits sont groupés par
 type (Conventional Commits) ; les chores de maintenance sont
 pliés pour ne pas noyer l'essentiel.
 
+## v2.22.0 — 2026-10-17
+
+### Corrections
+
+- **docker** : give postgres two minutes to checkpoint on stop _(7c92bf4)_
+- **docker** : bump pnpm to 11.27.0 for the vendored pnpm/tar CVEs (#188) _(54f57e5)_
+- **comments** : repair stale doc/code references in comments _(24aeb33)_
+
+### Documentation
+
+- **shared,db** : add file-overview headers to schemas + DDL _(1a205f1)_
+- **api** : add file-overview headers to route handlers _(0270e42)_
+- **auth** : align Auth-Spec + flow docs with shipped routes _(cbe7769)_
+- **public** : fix self-host env vars, ports, commands and counts _(66a7bad)_
+- **modules** : align module payload docs with the Zod schemas _(a52b076)_
+- **diagrams** : correct auth endpoint paths in security diagrams _(bfb5c89)_
+- **adr** : add Update notes for client growth and composer removal _(1503d02)_
+- **architecture,db** : align structure, guard formula and counts with code _(e46cecd)_
+- **security** : align tech.md crypto reference with code _(cbb9a06)_
+
+### Autres
+
+- build(docs): add doc-drift CI guard + pin Node 24 _(a7466b5)_
+
+<details>
+<summary>Maintenance — 4 commits</summary>
+
+- move actions to their current majors, drop the last Trivy exception _(b4c791d)_
+- remove Sentry _(4095c9f)_
+- **deps** : refresh dependencies, patch four advisories, pnpm 11.28.6 _(aef87b4)_
+- **deps-dev** : bump @types/node (#187) _(2c6b810)_
+
+</details>
+
 ## v2.21.2 — 2026-09-18
 
 <details>
