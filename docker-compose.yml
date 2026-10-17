@@ -33,6 +33,16 @@ services:
     image: postgres:16-alpine
     container_name: nodea-postgres
     restart: unless-stopped
+    # Docker's default stop timeout is 10 s, then SIGKILL. Postgres
+    # answers SIGTERM with a shutdown checkpoint that flushes every
+    # dirty buffer; after a write-heavy stretch (a test-suite run) on a
+    # slow bind mount (Docker Desktop on Windows), that takes longer
+    # than 10 s. The kill lands mid-checkpoint, and the next start
+    # pays a full data-dir fsync + WAL redo — minutes during which
+    # every connection gets `57P03 the database system is starting
+    # up`. Two minutes lets the checkpoint finish; a clean stop takes
+    # well under a second, so the grace period costs nothing.
+    stop_grace_period: 2m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-nodea}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nodea_dev}
