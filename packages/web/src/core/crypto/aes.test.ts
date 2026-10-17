@@ -41,7 +41,7 @@ describe('AES-GCM round-trip', () => {
     // Flip one character in the b64-encoded data.
     const tampered = {
       iv: blob.iv,
-      data: (blob.data.startsWith('A') ? 'B' : 'A' + blob.data.slice(1)) as typeof blob.data,
+      data: ((blob.data.startsWith('A') ? 'B' : 'A') + blob.data.slice(1)) as typeof blob.data,
     };
     await expect(decryptAESGCM(tampered, key)).rejects.toBeDefined();
   });
