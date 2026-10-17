@@ -1,3 +1,11 @@
+/**
+ * Shared auth-route helpers: the pre-auth rate limiters (`login`,
+ * `request-reset`, `reset`) and a Postgres unique-violation matcher.
+ *
+ * Where: api auth route layer — factored here so the login / reset /
+ * register route files share one limiter definition and one duplicate-key
+ * detector (matched by SQLSTATE 23505 + constraint name, not the message).
+ */
 import { rateLimit } from '../middleware/rate-limit.ts';
 
 /**

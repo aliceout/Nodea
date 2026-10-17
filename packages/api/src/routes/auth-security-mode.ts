@@ -1,3 +1,14 @@
+/**
+ * `POST /auth/security-mode/change` — switch the per-user security mode
+ * (`password_or_passkey` / `always_2fa` / `maximum`).
+ *
+ * Where: api auth route layer (mounted at `/auth`), behind requireUser +
+ * fresh re-auth.
+ *
+ * Non-obvious: upgrades enforce the activation invariant (Auth-Spec §6.1)
+ * — e.g. `maximum` requires TOTP enabled AND a PRF-capable passkey before
+ * it can be selected. Rate-limited `security-mode-change` (10/15min).
+ */
 import { and, eq } from 'drizzle-orm';
 import {
   SecurityModeChangeBodySchema,

@@ -1,3 +1,15 @@
+/**
+ * Change-password routes: `POST /auth/change-password/start` + `/finish`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), behind requireUser +
+ * `requireFreshPasswordOrPasskey`.
+ *
+ * Non-obvious: rotates the OPAQUE record and rewraps only
+ * `wrapped_kek_password` — NO existing ciphertext is touched (the main key
+ * is unchanged), so data survives. The `/start` body carries just
+ * `{ registrationRequest }`; re-auth is proven out-of-band via the fresh-
+ * reauth gate, not embedded in the body. Bucket `change-password` 5/1h.
+ */
 import { eq } from 'drizzle-orm';
 import {
   ChangePasswordFinishBodySchema,

@@ -1,3 +1,17 @@
+/**
+ * KEK recovery routes: `POST /auth/recover-kek/start` · `/verify` ·
+ * `/finish`, and `POST /auth/security/recovery-code` (setup + regenerate).
+ *
+ * Where: api auth route layer (mounted at `/auth`).
+ *
+ * Non-obvious: recovery re-registers the OPAQUE record under a new
+ * password and rewraps the KEK from the recovery code — data is preserved
+ * (unlike a destructive reset). `/finish` nulls the old recovery wrap
+ * blobs server-side (they aren't re-supplied). Hash mismatch logs
+ * `[auth/recover-kek] hash_mismatch` and returns 401 `invalid_credentials`.
+ * Buckets: `recover-kek` 5/1h, `recover-kek-verify` 3/1h,
+ * `recovery-code-setup` 5/1h.
+ */
 import { eq } from 'drizzle-orm';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
@@ -551,10 +565,9 @@ authRecoveryRoutes.openapi(recoverFinishRoute, async (c) => {
   // Constant-time hash comparison. A mismatch is logged as an
   // **aggregated counter** (no per-user identifier — SEC-06) so the
   // operator sees the rate without being able to correlate hash
-  // mismatches to a specific user. If a future investigation needs
-  // to trace one specific account, surface the user id via Sentry's
-  // event metadata (which already strips PII via beforeSend) rather
-  // than into stdout logs.
+  // mismatches to a specific user. A future investigation that needs
+  // to trace one specific account must not do it by logging the user
+  // id to stdout.
   if (!constantTimeEqualHex(user.recoveryCodeHash, body.recoveryCodeHash)) {
     console.warn('[auth/recover-kek] hash_mismatch');
     return c.json({ error: 'invalid_credentials' }, 401);

@@ -14,22 +14,6 @@
 # Anything you'd put here for an api/web npm package should land in
 # `pnpm.auditConfig.ignoreGhsas` (in the root `package.json`) instead.
 
-# ---------------------------------------------------------------------
-# libexpat CVE-2026-45186 inside the nginx:alpine base image
-# ---------------------------------------------------------------------
-# `packages/web/Dockerfile` uses `nginx:alpine` as the runtime base.
-# Alpine shipped the fix in libexpat 2.8.1-r0 ; the nginx:alpine
-# snapshot we pull still carries 2.7.5-r0. The next nginx:alpine
-# rebuild picks it up — the libxml2 / openssl entries that used to sit
-# here went through exactly this and were dropped once the image caught
-# up (libxml2 2.13.9-r1, libcrypto3/libssl3 3.5.7-r0 now ship in base).
-#
-# Blast radius : libexpat is the Expat XML parser linked by nginx. Our
-# vhost (`packages/web/nginx.conf`) only serves static assets + proxies
-# `/api` — no XML body parsing reaches the parser, so the DoS-via-XML
-# vuln is unreachable through our surface.
-#
-# Drop criterion : when `nginx:alpine` ships libexpat ≥ 2.8.1-r0
-# (verify with `docker pull nginx:alpine && docker run --rm
-# nginx:alpine apk info libexpat`).
-CVE-2026-45186
+# No active exceptions. Last one (libexpat CVE-2026-45186 in
+# nginx:alpine) dropped once the base image shipped libexpat 2.8.5-r0;
+# packages/web/Dockerfile also force-upgrades expat at build time.

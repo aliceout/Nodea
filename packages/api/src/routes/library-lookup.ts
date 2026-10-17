@@ -1,3 +1,16 @@
+/**
+ * External book-metadata proxy: `POST /library/lookup/by-isbn`,
+ * `POST /library/lookup/by-query/stream`, `GET /library/lookup/cover-fetch`.
+ *
+ * Where: api route layer, mounted at `/library/lookup`; dispatches to the
+ * providers in `services/library-lookup/` (ADR-0009).
+ *
+ * Non-obvious: the one route family that calls third-party APIs (the public
+ * egress surface). Results are cached in-memory
+ * (`services/library-lookup/cache.ts`) and the cover-fetch proxy caps the
+ * raw response at 5 MB. No user crypto material involved. Buckets:
+ * `library-lookup-isbn`/`-query` 30/min, `-cover` 60/min.
+ */
 import { stream } from 'hono/streaming';
 import {
   LibraryLookupByIsbnBodySchema,

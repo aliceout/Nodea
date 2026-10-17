@@ -32,11 +32,12 @@ pnpm --filter @nodea/web dev   # Web Vite sur :8089
 
 ## Comprendre la structure
 
-Trois packages dans un monorepo pnpm :
+Quatre packages dans un monorepo pnpm :
 
 - **`packages/shared/`** — schémas Zod, types branded crypto, partagés entre back et front. Le keystone : un schéma défini ici sert de validation API ET de resolver React Hook Form côté web.
 - **`packages/api/`** — Hono + Drizzle ORM + PostgreSQL 16. Les routes vivent dans `src/routes/`, les schémas DB dans `src/db/schema/`, les migrations dans `drizzle/`.
 - **`packages/web/`** — React 19 + Vite + Tailwind + Zustand. Les pages dans `src/app/pages/`, le store dans `src/core/store/`, la crypto dans `src/core/crypto/`.
+- **`packages/e2e/`** — suite de tests end-to-end Playwright (parcours auth, modules) lancée contre la stack complète.
 
 Toute la documentation détaillée de l'architecture vit dans le repo aujourd'hui (`docs/Architecture.md`, `docs/Database.md`, `docs/Auth-Spec.md`) — elle migrera ici au fur et à mesure.
 
@@ -47,7 +48,7 @@ Trois suites cohabitent.
 ```bash
 pnpm --filter @nodea/api test  # ~278 tests d'intégration, ~3 min
 pnpm --filter @nodea/web test  # ~319 tests unitaires React, ~5 s
-pnpm --filter @nodea/e2e test  # 13 tests Playwright end-to-end, ~3-5 min
+pnpm --filter @nodea/e2e e2e   # 13 tests Playwright end-to-end, ~3-5 min
 ```
 
 Pour les tests e2e, prérequis machine : Postgres + Mailpit en route, plus le binaire Chromium installé une fois (`pnpm --filter @nodea/e2e install:browsers`).
@@ -80,15 +81,15 @@ Si tu veux distinguer ta fork de l'instance officielle (autre nom, autres couleu
 
 ### Tokens couleurs
 
-Définis dans `packages/web/src/ui/theme/global.css`. Les noms sémantiques sont volontairement non-anglophones pour ne pas être confondus avec des classes Tailwind par défaut.
+Définis dans `packages/web/src/ui/theme/dirk.css` (les `--color-k-*` sur `:root` pour le mode clair et `.dark` pour le mode sombre). `global.css` ne fait que des `@import` — il ne contient aucune couleur. Les noms sémantiques sont volontairement non-anglophones pour ne pas être confondus avec des classes Tailwind par défaut.
 
-| Nom | Hex | Rôle |
-|---|---|---|
-| Sauge | `#5a7a5e` | Accent principal (boutons primaires, liens, focus) |
-| Sauge clarifié | `#9bbf9f` | Variante dark mode du sauge |
-| Encre | `#161614` | Texte principal sur fond clair |
-| Papier | `#fcfcfa` | Fond clair |
-| Nuit chaude | `#1d1c18` | Fond dark mode |
+| Nom | Token | Hex | Rôle |
+|---|---|---|---|
+| Sauge | `--color-k-accent` | `#5a7a5e` | Accent principal (boutons primaires, liens, focus) |
+| Sauge clarifié | `--color-k-accent` (`.dark`) | `#7ea582` | Variante dark mode du sauge |
+| Encre | `--color-k-ink` | `#161614` | Texte principal sur fond clair |
+| Papier | `--color-k-bg` | `#f9f8f3` | Fond clair |
+| Nuit chaude | `--color-k-bg` (`.dark`) | `#272620` | Fond dark mode |
 
 Wordmark : Instrument Serif, `font-weight: 400`, `letter-spacing: -0.015em`.
 

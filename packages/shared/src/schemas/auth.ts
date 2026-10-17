@@ -1,3 +1,12 @@
+/**
+ * Core auth Zod DTOs: the OPAQUE re-auth proof, change-password/email,
+ * self-delete, and the shared field primitives (`UsernameField`, base64ish
+ * blobs) reused across the other auth-* schema files.
+ *
+ * Where: packages/shared — the keystone auth schema, single source of truth
+ * for both the api auth routes and the web session client. camelCase wire
+ * (ADR-0012); Update DTOs derive from Create via `.partial()`.
+ */
 import { z } from 'zod';
 
 const Base64ish = z.string().min(1);

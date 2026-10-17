@@ -1,3 +1,16 @@
+/**
+ * OPAQUE registration routes: `GET /auth/register/invite-info`,
+ * `POST /auth/register/start` · `/finish` · `/activate`.
+ *
+ * Where: api auth route layer, mounted at `/auth/register`.
+ *
+ * Invariants: invite consumption is atomic — the `/finish` transaction
+ * does SELECT … FOR UPDATE on the invite, creates the user + opaque
+ * record, and deletes the invite together, so a code can never mint two
+ * accounts. Email is bound to the invite (form email must match). Errors
+ * surface as `{ error: 'register_failed'|'activation_failed', reason }`.
+ * Each step has its own rate-limit bucket (see tech.md rate-limit catalog).
+ */
 import { and, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {

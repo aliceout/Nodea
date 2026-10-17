@@ -803,7 +803,7 @@ in cleartext (shown only once).
 ## 9. Passkey — details
 
 > Code: routes `packages/api/src/routes/auth-passkey.ts`, client
-> orchestrator `packages/web/src/core/auth/passkey-flow.ts`,
+> orchestrator `packages/web/src/core/auth/passkey/index.ts`,
 > dedicated Settings page `/passkeys` (and the "Passkey"
 > SecuritySection in Account → Security). Dismissable amber
 > sidebar tip prompts enrollment when `passkeysCount === 0`
@@ -1201,7 +1201,7 @@ The repo never contains credentials, nor a committed `.env` file.
 
 A single job: `cleanup-unactivated-accounts`, scheduled via
 `node-cron` at **03:00 every Monday (UTC, container TZ)**, in the
-API process. Cf. `packages/api/src/cron/index.ts` —
+API process. Cf. `packages/api/src/cron.ts` —
 `startCronScheduler()` is called from `index.ts` at startup.
 
 | Target | Purge condition | Why |
@@ -1315,9 +1315,9 @@ Mandatory tests **before** merging each phase. Locations:
 
 - Vitest unit: `packages/api/test/auth/**` and
   `packages/web/test/auth/**`.
-- Vitest integration: `packages/api/test/integration/auth.test.ts`
+- Vitest integration: `packages/api/src/test/auth.test.ts`
   (with `testcontainers` PostgreSQL).
-- Playwright: `packages/web/e2e/auth.spec.ts`.
+- Playwright: `packages/e2e/tests/01-register-activate-login.spec.ts`.
 
 ### 15.1 Crypto unit tests
 

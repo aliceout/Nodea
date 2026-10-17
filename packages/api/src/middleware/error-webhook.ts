@@ -5,10 +5,10 @@
  * accepts an incoming JSON message with a `content` (Discord) or
  * `text` (Slack) field.
  *
- * Tier 1 étape C pas 1 (OPS-02). Pas 2 (Sentry SDK) plugs on top
- * of this — the webhook stays as the cheap, dep-free signal that
- * never disappears even if Sentry quota runs out, the network to
- * Sentry's cloud is degraded, or someone unsets `SENTRY_DSN`.
+ * Tier 1 étape C pas 1 (OPS-02). This is the api's only outbound
+ * error signal: the Sentry SDK that once sat on top (pas 2) was
+ * removed — unused, and a third-party cloud receiving stack traces
+ * that can name the active module. Cheap and dep-free on purpose.
  *
  * **Privacy contract.** The payload sent to the webhook contains :
  *   - HTTP method (`POST`, `GET`, etc.)
@@ -22,16 +22,15 @@
  * Slack workspace) without leaking anything that would let the
  * recipient correlate activity to a user. The signal is « an
  * error happened on this route at this time » ; the *content* of
- * the error stays inside the api logs (which never leave the
- * server) and Sentry (which has its own scrubbing — see pas 2).
+ * the error stays inside the api logs, which never leave the
+ * server.
  *
  * **Path stripping.** The path is taken from `new URL(c.req.url)
  * .pathname`, never from `c.req.url` directly — so a stray
- * query string can't slip through. The route paths themselves
- * still encode the module name for encrypted-record routes
- * (`/mood-entries/records/...`), which is the residual leak
- * tracked by issue #71 ; the webhook surface inherits the same
- * limitation but doesn't add to it.
+ * query string can't slip through. Encrypted-record routes are
+ * module-agnostic (`/records`, the target collection travels in the
+ * `X-Collection` header — issue #67), so the path doesn't name the
+ * active module either.
  *
  * **Failure mode.** The fetch is fire-and-forget — the operator's
  * Slack going down must NEVER cascade into a user-facing request

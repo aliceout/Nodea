@@ -252,7 +252,7 @@ Before opening a PR, run the 3 suites:
 ```bash
 pnpm --filter @nodea/api test  # ~3 min
 pnpm --filter @nodea/web test  # ~5 s
-pnpm --filter @nodea/e2e test  # ~3-5 min, requires Postgres + Mailpit + Chromium
+pnpm --filter @nodea/e2e e2e   # ~3-5 min, requires Postgres + Mailpit + Chromium
 ```
 
 A PR with red tests will be put on hold until fixed before review.

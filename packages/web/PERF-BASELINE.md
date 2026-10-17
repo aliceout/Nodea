@@ -73,7 +73,8 @@ Pas urgentes mais notées pour le jour où on tape le plafond :
    qu'une lib tire toute une dep tree là où on en utilise un
    bout).
 
-2. **Sentry à 233 KB gzip.** C'est `@sentry/browser` complet.
+2. **Sentry à 233 KB gzip.** *Clos (2026-10) : Sentry a été retiré
+   du projet, le bucket disparaît des prochaines mesures.* C'est `@sentry/browser` complet.
    Alternatives plus légères : `@sentry/browser` light variant,
    ou un SDK plus minimal genre Highlight. Pas urgent mais à
    surveiller — c'est 24 % du bundle pour une feature qui ne

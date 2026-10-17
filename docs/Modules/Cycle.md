@@ -85,10 +85,12 @@ Defined in `packages/shared/src/schemas/modules/cycle.ts`.
   best-effort from the `mood` collection ; a Mood-disabled or failed load
   just hides the notes. Toggled by the `cycleShowMoodNote` preference
   (absent ⇒ on) in « Paramètre du module ».
-- Symptom vocabulary lives in
-  `packages/shared/src/cycle-presets.ts` (suggestions only, à la
-  `hrt-presets.ts`). `symptoms` stays a free string array so an
-  uncommon symptom is never blocked.
+- No symptom preset module ships: `symptoms` is a free string array
+  (`packages/shared/src/schemas/modules/cycle.ts`) so an uncommon
+  symptom is never blocked. The only fixed vocabulary is the Clue
+  importer's `SYMPTOM_TYPES`
+  (`packages/web/src/app/flow/Cycle/lib/import-clue.ts`), which maps
+  a third-party export onto that free array.
 - **Sensitive fields out of MVP** (sexual activity, pregnancy tests,
   contraception log): deferred to a later phase, opt-in, ideally
   gated behind the per-module lock.

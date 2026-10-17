@@ -6,24 +6,35 @@ Tracking of annual (or multi-year) goals.
 - One entry = one goal.
 - Goals can be grouped by thread (free tag) and filtered by status
   (`open` → `wip` → `done`).
-- No automatic logs. The encrypted payload carries an `updated_at`
+- No automatic logs. The encrypted payload carries an `updatedAt`
   that the client bumps on every save (used by the "Recent" sort) and
-  a `completed_at` set when the status flips to `done`.
+  a `completedAt` set when the status flips to `done`.
 
 ## Expected cleartext payload
 
-```json
+```jsonc
 {
-  "date": "YYYY-MM-DD",        // reference date (creation, deadline...)
-  "title": "string",           // headline
-  "note": "string|optional",   // free description
-  "status": "open|wip|done",   // progression
-  "thread": "string"           // free tag / group (optional)
+  "date": "YYYY-MM-DD",          // reference date (creation, deadline...)
+  "title": "string",             // headline
+  "note": "string|optional",     // free description
+  "status": "open|wip|done",     // progression (see enum note below)
+  "thread": "string",            // free tag / group (optional)
+  "completedAt": "ISO|null",     // set when status flips to `done`, else null
+  "updatedAt": "ISO|string"      // bumped on every save (defaults to "")
 }
 ```
 
 - `title` and `status` are required.
 - `thread` powers the history view and the form autocomplete.
+- The full `status` enum is `open | wip | done | active | archived`.
+  `active` / `archived` are **legacy import aliases** kept for
+  forwards-compat with older export files ; they are collapsed in
+  `Goals/lib/mappers.ts` (`normalizeStatus`) to `open` / `done`
+  respectively, so the UI only ever surfaces the three canonical
+  states.
+- `completedAt` defaults to `null` (cleared when the goal cycles back
+  to `open` / `wip`) ; `updatedAt` defaults to `""`. Both live in the
+  encrypted payload, not in a server column.
 
 ## Security
 
@@ -52,13 +63,17 @@ Goals follows the rules shared by every module — see
         "title": "Learn React",
         "note": "Build a small side project",
         "status": "wip",
-        "thread": "#learning"
+        "thread": "#learning",
+        "completedAt": null,
+        "updatedAt": "2025-02-10T09:30:00.000Z"
       },
       {
         "date": "2025-03-15",
         "title": "Tennis every week",
         "status": "open",
-        "thread": "#sport"
+        "thread": "#sport",
+        "completedAt": null,
+        "updatedAt": "2025-03-15T08:00:00.000Z"
       }
     ]
   }

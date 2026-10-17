@@ -40,7 +40,6 @@ const BUCKET_PATTERNS = [
   { name: 'docs page',  pattern: /Docs-|markdown-/ },
   { name: 'react',      pattern: /react-vendor/ },
   { name: 'ui kit',     pattern: /headlessui|heroicons/ },
-  { name: 'sentry',     pattern: /sentry|index\.esm/ },
   { name: 'app',        pattern: /index-/ },
   { name: 'modules',    pattern: /^(mood|goals|journal|library|review)/ },
 ];

@@ -37,13 +37,15 @@ cp .env.example .env
 COOKIE_SECRET=<32 chars random>
 OPAQUE_SERVER_SETUP=<base64url, voir ci-dessous>
 DOMAIN=nodea.exemple.fr
-WEB_BASE_URL=https://nodea.exemple.fr
+ADDRESS=nodea.exemple.fr
 WEBAUTHN_RP_NAME=Nodea
 SMTP_HOST=...
 SMTP_PORT=...
 SMTP_USER=...
-SMTP_PASSWORD=...
+SMTP_PASS=...
 ```
+
+`ADDRESS` accepte soit un hôte nu (`nodea.exemple.fr` — l'API préfixe `https://` en interne), soit une URL complète (`https://nodea.exemple.fr`). C'est **requis** : `docker compose up` échoue immédiatement s'il est absent.
 
 Génère un `COOKIE_SECRET` fort :
 
@@ -78,15 +80,18 @@ docker compose exec api sh -c \
 | `COOKIE_SECRET` | 32 chars random | Oui — change-le et toutes les sessions actives sont invalidées |
 | `OPAQUE_SERVER_SETUP` | Généré une fois, à conserver | Oui — le perdre = comptes existants inutilisables |
 | `DOMAIN` | Ton domaine sans `https://` ni port (sert aussi de WebAuthn rpId) | Oui — change-le et toutes les passkeys enrôlées sont perdues |
-| `WEB_BASE_URL` | URL complète avec `https://` (sert aussi d'origin WebAuthn) | Oui — doit matcher exactement ce que voit le navigateur |
-| `SMTP_*` | Provider SMTP | Oui — sans ça pas d'activation, pas de récupération |
-| `OPEN_REGISTRATION` | `true` ou `false` | Optionnel — défaut `false` (admin doit envoyer une invitation) |
+| `ADDRESS` | Hôte nu (`nodea.exemple.fr`) ou URL complète avec `https://` (sert aussi d'origin WebAuthn) | Oui — requis, l'API refuse de démarrer sans ; doit matcher exactement ce que voit le navigateur |
+| `COOKIE_SECURE` | `true` ou `false` | Oui — défaut `true` (fail-secure) ; passe à `false` uniquement en dev HTTP local |
+| `DATA_DIR` | Racine du bind-mount Postgres | Oui en prod — pointe vers un dossier sauvegardé (défaut dev `./data`) |
+| `SMTP_*` | Provider SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, …) | Oui — sans ça pas d'activation, pas de récupération |
+
+L'inscription ouverte (`open_registration`) n'est **pas** une variable d'environnement : c'est un réglage stocké en base (`app_settings`) qu'on active depuis l'interface d'administration (Réglages admin). Par défaut elle est désactivée (l'admin doit envoyer une invitation).
 
 La liste exhaustive avec types Zod et valeurs par défaut est dans `packages/api/src/config.ts`.
 
 ## Reverse proxy (HTTPS)
 
-Nodea écoute sur :3000 (API) et :8089 (web statique) à l'intérieur de Docker. Tu mets un reverse proxy devant qui :
+Nodea écoute sur :3000 (API) et :8080 (web statique, nginx) à l'intérieur de Docker. (Le :8089 est le port du serveur de dev Vite — une autre chose, voir `vite.config.js`.) Tu mets un reverse proxy devant qui :
 
 1. Termine TLS (Let's Encrypt via Caddy ou Traefik).
 2. Sert le web statique sur `/`.
@@ -119,4 +124,4 @@ docker compose logs --tail=50 api
 docker compose logs --tail=50 postgres
 ```
 
-Un runbook ops complet (que faire quand X panne) sera transféré ici depuis `docs/Operations.md` du repo prochainement.
+Un runbook ops complet (que faire quand X panne) sera ajouté ici prochainement.

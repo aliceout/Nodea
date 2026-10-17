@@ -1,3 +1,15 @@
+/**
+ * Admin invite management: `POST /admin/invites`,
+ * `POST /admin/invites/{id}/resend`, `GET /admin/invites`,
+ * `DELETE /admin/invites/{id}`.
+ *
+ * Where: api admin route layer (mounted at `/admin`, behind requireAdmin).
+ *
+ * Non-obvious: invite tokens are stored hashed (SHA-256 in `code_hash`);
+ * the raw token exists only in the emailed link. Creation delegates to
+ * `auth/invites.ts`. Validation/consumption lives in `/auth/register`,
+ * never a standalone check endpoint.
+ */
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { CreateInviteBodySchema } from '@nodea/shared';
 import { createInvite } from '../auth/invites.ts';

@@ -1,3 +1,12 @@
+/**
+ * Zod schema for the encrypted-record envelope shared by every module
+ * (front + back single source of truth).
+ *
+ * Where: packages/shared — imported by the api records route and the web
+ * collection client. Mirrors the `*_entries` columns the server sees:
+ * `cipherIv` + `payload` (the AES-GCM blob). camelCase on the wire
+ * (ADR-0012).
+ */
 import { z } from 'zod';
 
 /**

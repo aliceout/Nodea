@@ -1,3 +1,12 @@
+/**
+ * Admin instance settings: `GET`/`PATCH /admin/settings`.
+ *
+ * Where: api admin route layer (mounted at `/admin`, behind requireAdmin).
+ *
+ * Non-obvious: this is where `open_registration` lives — a DB-backed
+ * `app_settings` row (via `services/settings.ts`), NOT an env var.
+ * Toggling it here opens/closes self-service signup.
+ */
 import { AdminSettingsPatchBodySchema } from '@nodea/shared';
 import { requireUser, requireAdmin } from '../middleware/require-user.ts';
 import {

@@ -1,3 +1,13 @@
+/**
+ * Core identity tables (Drizzle DDL, re-exported by `db/schema.ts`):
+ * `users` (owners of encrypted data + the KEK wrap blobs) and `sessions`
+ * (server-side session rows; the cookie carries only the signed id, so a
+ * deleted row revokes access immediately).
+ *
+ * Where: api db layer. `sessions.user_id` is FK ON DELETE CASCADE; the
+ * `users` wrap blobs and the `sessions` device label are AAD-bound encrypted
+ * columns. Per-table details are documented on each export below.
+ */
 import {
   boolean,
   index,

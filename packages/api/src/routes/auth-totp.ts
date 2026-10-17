@@ -1,3 +1,15 @@
+/**
+ * TOTP management routes: `POST /auth/totp/enroll/start` + `/enroll/verify`,
+ * `/totp/disable`, `/totp/backup-codes/regenerate`.
+ *
+ * Where: api auth route layer (mounted at `/auth`), behind requireUser
+ * (+ fresh re-auth on sensitive ops).
+ *
+ * Non-obvious: enroll surfaces a distinct `user_verification_required`
+ * error (login/MFA do not); the secret + backup codes are shown once.
+ * Wraps `otplib` via `auth/totp.ts`. Buckets: `totp-enroll` 10/15min,
+ * `totp-manage` 30/15min.
+ */
 import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import {

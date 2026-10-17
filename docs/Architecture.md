@@ -458,7 +458,7 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
   opening "Mood" for the first time fetches only Mood's code chunk.
   Per-module `ErrorBoundary`.
 
-### State slices
+### State slices (9)
 
 | Slice            | Source of truth                    | Wiped at logout |
 | ---------------- | ---------------------------------- | --------------- |
@@ -467,8 +467,10 @@ end Playwright smoke + TOTP scenarios live in `packages/e2e/`.
 | `modules`        | Encrypted `modules_config` payload | yes             |
 | `preferences`    | Encrypted `user_preferences`       | yes             |
 | `notifications`  | Local only (toast queue)           | yes             |
-| `mobileMenuOpen` | Local only (sidebar drawer)        | yes             |
+| `ui`             | Local only (sidebar drawer flag)   | yes             |
 | `flow`           | Local only (current module + Library subview) | yes  |
+| `backup`         | Local only (in-flight cloud-push progress) | yes     |
+| `versions`       | Local only (per-module mutation counters) | yes      |
 
 ### Data access
 
