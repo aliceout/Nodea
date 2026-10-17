@@ -581,9 +581,11 @@ En complément, un second export — la **sauvegarde chiffrée** (`.age`) — pr
 
 En production, stdout est capturé par le runtime container. Responsabilité opérateur : configurer la rétention des logs au niveau runtime (`docker logs --max-size`, journald, etc.). Recommandation : **rotation à 7 jours**, jamais d'archivage offsite des logs bruts.
 
-### Télémétrie Sentry
+### Télémétrie
 
-Quand `VITE_SENTRY_DSN` / `SENTRY_DSN` sont définis, le SDK envoie les events d'erreur à Sentry. Le hook `beforeSend` (`packages/api/src/sentry.ts`, `packages/web/src/sentry.ts`) strip cookies, query-strings, request bodies, headers et `event.user` avant transmission. Ce qui atteint Sentry : la stack trace, la route, le code de statut. Aucune donnée personnelle, aucun contenu E2E.
+Nodea n'embarque **aucun SDK de télémétrie** (ni Sentry, ni analytics, ni APM) : aucun événement d'erreur, aucune stack trace, aucune trace de performance ne quitte le serveur ou le navigateur vers un tiers.
+
+Le seul signal d'erreur sortant est **optionnel** et désactivé par défaut : un webhook (`ERROR_WEBHOOK_URL`, `packages/api/src/middleware/error-webhook.ts`) appelé à chaque réponse 5xx, typiquement vers Discord ou Slack. Il transmet la méthode HTTP, le chemin sans query-string, le code de statut et la durée — rien d'autre : pas de corps, pas de headers, pas d'IP, pas de cookie, pas de message d'erreur. Le chemin ne nomme pas le module actif, la collection chiffrée voyageant dans l'en-tête `X-Collection`. Le contenu de l'erreur reste dans les logs du serveur.
 
 ### Ce qui n'est PAS purgé automatiquement (gaps connus)
 

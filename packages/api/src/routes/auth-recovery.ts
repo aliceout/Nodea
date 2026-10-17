@@ -565,10 +565,9 @@ authRecoveryRoutes.openapi(recoverFinishRoute, async (c) => {
   // Constant-time hash comparison. A mismatch is logged as an
   // **aggregated counter** (no per-user identifier — SEC-06) so the
   // operator sees the rate without being able to correlate hash
-  // mismatches to a specific user. If a future investigation needs
-  // to trace one specific account, surface the user id via Sentry's
-  // event metadata (which already strips PII via beforeSend) rather
-  // than into stdout logs.
+  // mismatches to a specific user. A future investigation that needs
+  // to trace one specific account must not do it by logging the user
+  // id to stdout.
   if (!constantTimeEqualHex(user.recoveryCodeHash, body.recoveryCodeHash)) {
     console.warn('[auth/recover-kek] hash_mismatch');
     return c.json({ error: 'invalid_credentials' }, 401);

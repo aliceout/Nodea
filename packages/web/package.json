@@ -22,7 +22,6 @@
     "@hookform/resolvers": "^5.9.1",
     "@nodea/shared": "workspace:*",
     "@scure/bip39": "2.4.0",
-    "@sentry/react": "10.75.0",
     "@serenity-kit/opaque": "1.1.0",
     "@simplewebauthn/browser": "14.0.0",
     "@tailwindcss/vite": "^4.3.3",

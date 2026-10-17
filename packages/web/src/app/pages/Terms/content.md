@@ -82,12 +82,12 @@ Pour les détails techniques, voir
   ID. Rotation à 7 jours. Voir
   [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
   (section « Logs serveur »).
-- **Sentry** (optionnel, activé par l'opérateur) : reçoit la stack
-  trace + la route + le code statut quand une erreur survient.
-  `beforeSend` strippe cookies, query strings, body, headers et user
-  avant envoi. Voir
+- **Aucune télémétrie d'erreur tierce** : pas de SDK de suivi
+  d'erreurs. Le seul signal sortant possible est un webhook 5xx,
+  désactivé par défaut et configuré par l'opérateur : méthode, chemin,
+  code de retour et durée — ni contenu, ni cookie, ni IP. Voir
   [`nodea.app/docs/security/tech`](https://nodea.app/docs/security/tech)
-  (section « Télémétrie Sentry »).
+  (section « Télémétrie »).
 - **Aucun analytics tiers**, aucun pixel de tracking, aucun
   fingerprinting.
 
