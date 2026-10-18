@@ -179,9 +179,15 @@ describe('POST /auth/login/finish', () => {
     });
 
     // Tamper one base64 char in the middle of the request — auth-tag
-    // mismatch on the server side.
-    const tampered = (finished!.finishLoginRequest.charAt(20) === 'A' ? 'B' : 'A') +
-      finished!.finishLoginRequest.slice(1);
+    // mismatch on the server side. Must replace the char it inspects:
+    // the request is random per run, and a replacement chosen from one
+    // index but written at another is a no-op whenever the written char
+    // already matches (1 run in 64), which then gets a legitimate 200.
+    const original = finished!.finishLoginRequest;
+    const i = 20;
+    const tampered =
+      original.slice(0, i) + (original.charAt(i) === 'A' ? 'B' : 'A') + original.slice(i + 1);
+    expect(tampered).not.toBe(original);
 
     const res = await app.request(
       '/auth/login/finish',
