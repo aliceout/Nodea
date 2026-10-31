@@ -33,7 +33,7 @@
     "drizzle-orm": "^0.45.4",
     "hono": "4.13.13",
     "node-cron": "4.6.0",
-    "nodemailer": "^10.1.1",
+    "nodemailer": "^10.1.4",
     "otplib": "13.5.0",
     "postgres": "^3.4.9",
     "puppeteer": "25.14.0",
